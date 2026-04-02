@@ -1,5 +1,5 @@
 /**
- * phase-graduate Skill - Graduate verified research findings into
+ * research-graduate Skill - Graduate verified research findings into
  * MuninnDB engrams for per-task recall during execution.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";

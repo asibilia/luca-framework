@@ -8,7 +8,7 @@ import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 const luRepoMapperConfig: AgentConfig = {
   frontmatter: {
     name: "lu-repo-mapper",
-    description: `Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.`,
+    description: `Explores codebase and writes structured analysis documents. Spawned by repo-map with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.`,
     tools: ["Read", "Bash", "Grep", "Glob", "Write"],
     color: "cyan",
     cognition: {

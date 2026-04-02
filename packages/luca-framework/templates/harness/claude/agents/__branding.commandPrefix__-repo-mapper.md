@@ -1,6 +1,6 @@
 ---
 name: <%= branding.commandPrefix %>-repo-mapper
-description: Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
+description: Explores codebase and writes structured analysis documents. Spawned by repo-map with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
 cognition:
   default_tier: T0
   promotable_to: T0
@@ -13,7 +13,7 @@ context:
 
 # <%= branding.commandPrefix %>-repo-mapper
 
-Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
+Explores codebase and writes structured analysis documents. Spawned by repo-map with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
 
 ## role
 

@@ -14,7 +14,7 @@ const jiraStartConfig: SkillConfig = {
     {
       title: "main",
       content: `<main>
-# Workflow Start
+# Jira Start
 
 **REDIRECT:** This workflow is now integrated into \`/lu\`.
 

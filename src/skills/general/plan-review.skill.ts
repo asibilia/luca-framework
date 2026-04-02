@@ -1,5 +1,5 @@
 /**
- * phase-plan-review Skill - Orchestrate convergence-based plan review loop
+ * plan-review Skill - Orchestrate convergence-based plan review loop
  * with cold-isolated reviewer agents before execution.
  *
  * Modeled on research-review but reviews PLAN.md files instead of

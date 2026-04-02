@@ -1,10 +1,10 @@
 /**
- * qa-consolidate Skill - Consolidate QA testing plans from merged feature PRs onto a parent release PR.
+ * pr-qa-consolidate Skill - Consolidate QA testing plans from merged feature PRs onto a parent release PR.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the qa-consolidate skill configuration
+// Define the pr-qa-consolidate skill configuration
 const prQaConsolidateConfig: SkillConfig = {
   frontmatter: {
     name: "pr-qa-consolidate",

@@ -1,5 +1,5 @@
 /**
- * context-restore Skill - On-demand deep context recovery after compaction.
+ * session-restore Skill - On-demand deep context recovery after compaction.
  *
  * Layer 2 restore: reads checkpoint from filesystem/MuninnDB, performs
  * hub-and-spoke semantic recall, and presents structured context.
@@ -16,7 +16,7 @@ const sessionRestoreConfig: SkillConfig = {
     {
       title: "main",
       content: `<main>
-# Context Restore
+# Session Restore
 
 Recover deep context after compaction or session interruption. This is Layer 2 of the restore architecture — deeper than the automatic SessionStart hook injection.
 

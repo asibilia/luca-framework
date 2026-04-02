@@ -15,14 +15,14 @@ const repoCleanupConfig: SkillConfig = {
     {
       title: "main",
       content: `<main>
-# Luca Shadow Cleanup
+# Luca Repo Cleanup
 
 Scan the repository for AI-session debris and interactively review findings.
 
 **Arguments:**
 
 \`\`\`
-/shadow-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-6>]
+/repo-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-6>]
 \`\`\`
 
 **Flags:**

@@ -32,8 +32,8 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
 ```
 
-| Agent                 | quality | balanced | budget |
-| --------------------- | ------- | -------- | ------ |
+| Agent                                     | quality | balanced | budget |
+| ----------------------------------------- | ------- | -------- | ------ |
 | <%= branding.commandPrefix %>-repo-mapper | opus    | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports `model="fast"` or inheriting from parent. This table is preserved for future compatibility.
@@ -49,11 +49,11 @@ mapper_model = "fast"
 
 Read this reference file before executing:
 
-- `.claude/<%= branding.nameLowercase %>/workflows/map-codebase.md`
+- `.claude/<%= branding.nameLowercase %>/workflows/repo-map.md`
 
 ## When to Use
 
-**Use map-codebase for:**
+**Use repo-map for:**
 
 - Brownfield projects before initialization (understand existing code first)
 - Refreshing codebase map after significant changes
@@ -61,13 +61,12 @@ Read this reference file before executing:
 - Before major refactoring (understand current state)
 - When project state references outdated codebase info
 
-**Skip map-codebase for:**
+**Skip repo-map for:**
 
 - Greenfield projects with no code yet (nothing to map)
 - Trivial codebases (<5 files)
 
 ## Process
-
 
 1. Check if `.planning/codebase/` already exists (offer to refresh or skip)
 2. Create `.planning/codebase/` directory structure
@@ -231,7 +230,7 @@ DETECTED_SECTION=$(sed -n '/## Detected Profiles/,/^---/p' .planning/codebase/ST
 
 Report to the user:
 
-```
+````
 ## Profile Suggestions
 
 Based on codebase analysis, the following tech stack profiles were detected:
@@ -243,9 +242,10 @@ Current config has: [current profiles list]
 To update, edit `.planning/config.json` → `workflow.tech_stack_profiles`:
 ```json
 "tech_stack_profiles": ["typescript", "python"]
-```
+````
 
 Then run `bun run build:all` to load the new profile rules.
+
 ```
 
 **If all detected profiles match the current config**, skip this step silently.
@@ -266,3 +266,4 @@ Then run `bun run build:all` to load the new profile rules.
 
 - `/milestone-new` — Start a new milestone using codebase knowledge
 - `/phase-discuss {N}` — Discuss a phase with codebase awareness
+```

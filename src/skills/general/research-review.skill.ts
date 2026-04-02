@@ -1,5 +1,5 @@
 /**
- * phase-research-review Skill - Orchestrate convergence-based research
+ * research-review Skill - Orchestrate convergence-based research
  * review loop with cold-isolated reviewer agents.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";

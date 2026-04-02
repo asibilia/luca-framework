@@ -1,5 +1,5 @@
 /**
- * phase-research-expand Skill - Deep expansion on specific research topics
+ * research-expand Skill - Deep expansion on specific research topics
  * identified during review or by user request.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";

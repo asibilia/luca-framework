@@ -1,11 +1,11 @@
 /**
- * post-init-tour Skill - Guide new users through Luca's core concepts after project initialization.
+ * help-tour Skill - Guide new users through Luca's core concepts after project initialization.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 /**
- * Tour step definitions for the post-init interactive tour.
+ * Tour step definitions for the help tour.
  *
  * Each step introduces a core Luca concept with a title and content
  * that the agent presents sequentially to the user.
@@ -58,7 +58,7 @@ const helpTourConfig: SkillConfig = {
     {
       title: "main",
       content: `<main>
-# Post-Init Interactive Tour
+# Help Tour
 
 Walk the user through Luca's core concepts after /project-new completes.
 
