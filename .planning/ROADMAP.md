@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.2.0 — Platform Cleanup & Install Hygiene
+**Current Milestone:** v9.2.1 — Statusline Bundle Fix
 
 ---
 
@@ -1019,6 +1019,23 @@ Complete two incomplete migrations: Cursor platform removal (Phase 159 left adap
 - [x] increase-read-ttl — In `src/shared/__helpers/status-bus.ts`, change `readStatusBus` default `maxAgeMs` from 300_000 (5 min) to 1_800_000 (30 min). Extract both TTL values as named constants (`WRITE_MERGE_TTL_MS`, `READ_STALENESS_TTL_MS`). Fix stale JSDoc that says `(default: 60000)`. (@src/shared/\_\_helpers/status-bus.ts)
 - [x] clear-bus-on-session-end — In `src/hooks/scripts/session-persist.ts`, import and call `clearStatusBus()` before exit to prevent stale data bleeding into the next session. (@src/hooks/scripts/session-persist.ts)
 - [x] update-comment — In `src/hooks/scripts/skill-status-exit.ts` line 11, change "5-minute" to "30-minute". (@src/hooks/scripts/skill-status-exit.ts)
+
+---
+
+## v9.2.1 — Statusline Bundle Fix
+
+Fix statusline not appearing for npm-installed users. The `statusline.sh` wrapper referenced `src/hooks/scripts/statusline.ts`, but `src/` is not published to npm. Solution: bundle statusline.ts into a standalone `dist/statusline.bundle.js` at build time and update the wrapper to prefer the bundle.
+
+### Phase 280: Bundle Statusline for npm Distribution — COMPLETE
+
+**Goal:** Bundle statusline.ts into a self-contained JS file that ships with the npm package, so the statusline works on machines where only `dist/` and `templates/` are available.
+**Complexity:** SIMPLE
+**Verification:** Standard
+
+- [x] fix-barrel-import — Change statusline.ts import from state barrel (which pulls in full XState machine) to direct `resolve-state-value.ts` helper. (@src/hooks/scripts/statusline.ts)
+- [x] create-bundle-script — Create `build-statusline.ts` that uses `Bun.build()` to compile statusline.ts and all internal deps into `dist/statusline.bundle.js`. (@packages/luca-framework/scripts/build-statusline.ts)
+- [x] update-wrapper-template — Update `statusline.sh` template to prefer `dist/statusline.bundle.js`, falling back to source TS for monorepo dev. (@packages/luca-framework/templates/harness/claude/statusline.sh)
+- [x] chain-into-build — Add `build:statusline` script to package.json and chain into `prepublishOnly`. (@packages/luca-framework/package.json)
 
 ---
 
