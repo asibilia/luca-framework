@@ -64,7 +64,8 @@
   "scripts": {
     "build": "unbuild",
     "build:plugin": "bun run scripts/copy-plugin.ts",
-    "prepublishOnly": "bun run build && bun run build:plugin",
+    "build:statusline": "bun run scripts/build-statusline.ts",
+    "prepublishOnly": "bun run build && bun run build:statusline && bun run build:plugin",
     "test": "bun test",
     "validate": "bun run scripts/validate-package.ts"
   },

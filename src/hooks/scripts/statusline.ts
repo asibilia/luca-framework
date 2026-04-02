@@ -27,7 +27,7 @@ import {
 } from "../../shared";
 
 import { projectDir } from "../__helpers/hook-io.ts";
-import { resolveStateValue } from "../../../packages/luca-framework/src/state";
+import { resolveStateValue } from "../../../packages/luca-framework/src/state/__helpers/resolve-state-value";
 
 // ─── Workflow HUD ────────────────────────────────────────────────────────────
 
