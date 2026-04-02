@@ -14,7 +14,7 @@ const repoMapConfig: SkillConfig = {
   sections: [
     {
       title: "main",
-      content: `# Luca Map Codebase
+      content: `# Repo Map
 
 Analyze existing codebase using parallel lu-repo-mapper agents to produce structured codebase documents.
 
@@ -63,7 +63,7 @@ Read this reference file before executing:
 
 ## When to Use
 
-**Use map-codebase for:**
+**Use repo-map for:**
 
 - Brownfield projects before initialization (understand existing code first)
 - Refreshing codebase map after significant changes
@@ -71,7 +71,7 @@ Read this reference file before executing:
 - Before major refactoring (understand current state)
 - When project state references outdated codebase info
 
-**Skip map-codebase for:**
+**Skip repo-map for:**
 
 - Greenfield projects with no code yet (nothing to map)
 - Trivial codebases (<5 files)

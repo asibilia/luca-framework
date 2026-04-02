@@ -365,8 +365,8 @@ const AGENTS: AgentDef[] = [
 
   // Plan stage — additional agents
   {
-    id: "lu-codebase-mapper",
-    label: "lu-codebase-mapper",
+    id: "lu-repo-mapper",
+    label: "lu-repo-mapper",
     stage: "plan",
     description: "Explore codebase and write structured analysis",
     model_tier: "balanced",
