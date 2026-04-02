@@ -1,13 +1,13 @@
 /**
- * workflow-start Skill - Start work on a Jira ticket. Redirects to /lu for the full development workflow.
+ * jira-start Skill - Start work on a Jira ticket. Redirects to /lu for the full development workflow.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the workflow-start skill configuration
-const workflowStartConfig: SkillConfig = {
+// Define the jira-start skill configuration
+const jiraStartConfig: SkillConfig = {
   frontmatter: {
-    name: "workflow-start",
+    name: "jira-start",
     description: `Start work on a Jira ticket. Redirects to /lu for the full development workflow.`,
   },
   sections: [
@@ -20,7 +20,7 @@ const workflowStartConfig: SkillConfig = {
 
 ## Usage
 
-Instead of \`/workflow-start PROJ-1234\`, use:
+Instead of \`/jira-start PROJ-1234\`, use:
 
 \`\`\`
 /lu PROJ-1234
@@ -85,4 +85,4 @@ This is now fully handled by \`/lu\` when given a Jira ticket input.
   ],
 };
 
-export const workflowStartSkill = createSkill(workflowStartConfig);
+export const jiraStartSkill = createSkill(jiraStartConfig);

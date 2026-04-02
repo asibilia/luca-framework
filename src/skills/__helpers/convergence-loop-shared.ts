@@ -1,7 +1,7 @@
 /**
  * Shared convergence state machine constants for review loop skills.
  *
- * Both phase-research-review and phase-plan-review use identical
+ * Both research-review and plan-review use identical
  * convergence transition logic when blocking gaps exist. This module
  * provides the shared state machine description as a string constant
  * that each skill embeds in its content.

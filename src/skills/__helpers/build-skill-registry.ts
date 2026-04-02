@@ -10,7 +10,7 @@ import { codeLintSkill } from "../general/code-lint.skill";
 import { codeTypecheckSkill } from "../general/code-typecheck.skill";
 import { gitCommitSkill } from "../general/git-commit.skill";
 import { gitFeatureSkill } from "../general/git-feature.skill";
-import { gitPrSkill } from "../general/git-pr.skill";
+import { prCreateSkill } from "../general/pr-create.skill";
 import { jiraIssueSkill } from "../general/jira-issue.skill";
 import { phaseAddSkill } from "../general/phase-add.skill";
 import { todoAddSkill } from "../general/todo-add.skill";
@@ -27,10 +27,10 @@ import { phaseInsertSkill } from "../general/phase-insert.skill";
 import { sessionPauseSkill } from "../general/session-pause.skill";
 import { sessionResumeSkill } from "../general/session-resume.skill";
 import { phaseResearchSkill } from "../general/phase-research.skill";
-import { phaseResearchReviewSkill } from "../general/phase-research-review.skill";
-import { phaseResearchExpandSkill } from "../general/phase-research-expand.skill";
-import { phaseGraduateSkill } from "../general/phase-graduate.skill";
-import { phasePlanReviewSkill } from "../general/phase-plan-review.skill";
+import { researchReviewSkill } from "../general/research-review.skill";
+import { researchExpandSkill } from "../general/research-expand.skill";
+import { researchGraduateSkill } from "../general/research-graduate.skill";
+import { planReviewSkill } from "../general/plan-review.skill";
 import { configProfileSkill } from "../general/config-profile.skill";
 import { quickSkill } from "../general/quick.skill";
 import { repoAuditSkill } from "../general/repo-audit.skill";
@@ -39,15 +39,15 @@ import { phasePlanSkill } from "../general/phase-plan.skill";
 import { sessionPlanSkill } from "../general/session-plan.skill";
 import { progressSkill } from "../general/progress.skill";
 import { phaseAssumptionsSkill } from "../general/phase-assumptions.skill";
-import { codebaseMapSkill } from "../general/codebase-map.skill";
+import { repoMapSkill } from "../general/repo-map.skill";
 import { verifySkill } from "../general/verify.skill";
 import { configSettingsSkill } from "../general/config-settings.skill";
 import { milestoneNewSkill } from "../general/milestone-new.skill";
 import { projectNewSkill } from "../general/project-new.skill";
 import { phaseRemoveSkill } from "../general/phase-remove.skill";
-import { workflowStartSkill } from "../general/workflow-start.skill";
+import { jiraStartSkill } from "../general/jira-start.skill";
 import { testRunSkill } from "../general/test-run.skill";
-import { qaConsolidateSkill } from "../general/qa-consolidate.skill";
+import { prQaConsolidateSkill } from "../general/pr-qa-consolidate.skill";
 import { ruleComplexityGatingSkill } from "../general/rule-complexity-gating.skill";
 import { ruleFileNamingSkill } from "../general/rule-file-naming.skill";
 import { ruleHarnessVerificationSkill } from "../general/rule-harness-verification.skill";
@@ -55,14 +55,14 @@ import { ruleHookSkillBoundarySkill } from "../general/rule-hook-skill-boundary.
 import { ruleLuWorkflowSkill } from "../general/rule-lu-workflow.skill";
 import { noteSkill } from "../general/note.skill";
 import { updateSkill } from "../general/update.skill";
-import { postInitTourSkill } from "../general/post-init-tour.skill";
+import { helpTourSkill } from "../general/help-tour.skill";
 import { workflowSaveSkill } from "../general/workflow-save.skill";
 import { profileExportSkill } from "../general/profile-export.skill";
 import { profileImportSkill } from "../general/profile-import.skill";
 import { seedMemorySkill } from "../general/seed-memory.skill";
 import { outcomeSkill } from "../general/outcome.skill";
-import { contextRestoreSkill } from "../general/context-restore.skill";
-import { shadowCleanupSkill } from "../general/shadow-cleanup.skill";
+import { sessionRestoreSkill } from "../general/session-restore.skill";
+import { repoCleanupSkill } from "../general/repo-cleanup.skill";
 import { scoutSkill } from "../general/scout.skill";
 import { scoutIngestSkill } from "../general/scout-ingest.skill";
 import { scoutRelevanceSkill } from "../general/scout-relevance.skill";
@@ -90,7 +90,7 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "code-typecheck": () => codeTypecheckSkill,
   "git-commit": () => gitCommitSkill,
   "git-feature": () => gitFeatureSkill,
-  "git-pr": () => gitPrSkill,
+  "pr-create": () => prCreateSkill,
   "jira-issue": () => jiraIssueSkill,
   "phase-add": () => phaseAddSkill,
   "todo-add": () => todoAddSkill,
@@ -107,27 +107,27 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "session-pause": () => sessionPauseSkill,
   "session-resume": () => sessionResumeSkill,
   "phase-research": () => phaseResearchSkill,
-  "phase-research-review": () => phaseResearchReviewSkill,
-  "phase-research-expand": () => phaseResearchExpandSkill,
-  "phase-graduate": () => phaseGraduateSkill,
+  "research-review": () => researchReviewSkill,
+  "research-expand": () => researchExpandSkill,
+  "research-graduate": () => researchGraduateSkill,
   "config-profile": () => configProfileSkill,
   quick: () => quickSkill,
   "repo-audit": () => repoAuditSkill,
   "milestone-gaps": () => milestoneGapsSkill,
   "phase-plan": () => phasePlanSkill,
-  "phase-plan-review": () => phasePlanReviewSkill,
+  "plan-review": () => planReviewSkill,
   "session-plan": () => sessionPlanSkill,
   progress: () => progressSkill,
   "phase-assumptions": () => phaseAssumptionsSkill,
-  "codebase-map": () => codebaseMapSkill,
+  "repo-map": () => repoMapSkill,
   verify: () => verifySkill,
   "config-settings": () => configSettingsSkill,
   "milestone-new": () => milestoneNewSkill,
   "project-new": () => projectNewSkill,
   "phase-remove": () => phaseRemoveSkill,
-  "workflow-start": () => workflowStartSkill,
+  "jira-start": () => jiraStartSkill,
   "test-run": () => testRunSkill,
-  "qa-consolidate": () => qaConsolidateSkill,
+  "pr-qa-consolidate": () => prQaConsolidateSkill,
   "rule-complexity-gating": () => ruleComplexityGatingSkill,
   "rule-file-naming": () => ruleFileNamingSkill,
   "rule-harness-verification": () => ruleHarnessVerificationSkill,
@@ -135,14 +135,14 @@ export const skillRegistry: Record<string, () => BaseSkill> = {
   "rule-lu-workflow": () => ruleLuWorkflowSkill,
   note: () => noteSkill,
   update: () => updateSkill,
-  "post-init-tour": () => postInitTourSkill,
+  "help-tour": () => helpTourSkill,
   "workflow-save": () => workflowSaveSkill,
   "profile-export": () => profileExportSkill,
   "profile-import": () => profileImportSkill,
   "seed-memory": () => seedMemorySkill,
   outcome: () => outcomeSkill,
-  "context-restore": () => contextRestoreSkill,
-  "shadow-cleanup": () => shadowCleanupSkill,
+  "session-restore": () => sessionRestoreSkill,
+  "repo-cleanup": () => repoCleanupSkill,
   scout: () => scoutSkill,
   "scout-ingest": () => scoutIngestSkill,
   "scout-relevance": () => scoutRelevanceSkill,

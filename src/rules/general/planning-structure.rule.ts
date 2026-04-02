@@ -105,7 +105,7 @@ Each phase directory may contain:
 | \`SUMMARY.md\` | Single-wave summary (shorthand) | lu-executor |
 | \`.wave-progress.jsonl\` | Wave progress ledger | phase-execute |
 | \`GRADUATION-REPORT.md\` | Graduated research findings | lu-research-graduator |
-| \`REVIEW-LOG.md\` | Research review log | phase-research-review |
+| \`REVIEW-LOG.md\` | Research review log | research-review |
 | \`research/\` | Numbered research artifacts | lu-phase-researcher |
 
 Wave numbers are zero-padded two digits: \`01-\`, \`02-\`, \`03-\`, etc.

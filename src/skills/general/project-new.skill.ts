@@ -165,10 +165,10 @@ Use AskQuestion tool:
 - header: "Existing Code"
 - question: "I detected existing code in this directory. Would you like to map the codebase first?"
 - options:
-  - "Map codebase first" — Run /codebase-map to understand existing architecture (Recommended)
+  - "Map codebase first" — Run /repo-map to understand existing architecture (Recommended)
   - "Skip mapping" — Proceed with project initialization
 
-**If "Map codebase first":** Run \`/codebase-map\` first, then return to \`/project-new\`. Exit command.
+**If "Map codebase first":** Run \`/repo-map\` first, then return to \`/project-new\`. Exit command.
 
 ### Phase 3: Deep Questioning
 
@@ -608,14 +608,14 @@ Present completion with next steps:
 |-----------|--------|---------|
 | Project initialized | Discuss first phase | \`/phase-discuss 1\` |
 | Want to skip discussion | Plan directly | \`/phase-plan 1\` |
-| Need to map existing code | Map codebase | \`/codebase-map\` |
+| Need to map existing code | Map codebase | \`/repo-map\` |
 
 **Primary:** \`/phase-discuss 1\` — Gather context for first phase
 
 **Also available:**
 
 - \`/phase-plan 1\` — Skip discussion, plan directly
-- \`/codebase-map\` — Map existing codebase first (brownfield)
+- \`/repo-map\` — Map existing codebase first (brownfield)
 </main>`,
       order: 1,
     },

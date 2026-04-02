@@ -6,9 +6,9 @@ import { createSkill } from "~/skills/__helpers/create-skill";
 
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-const phaseResearchExpandConfig: SkillConfig = {
+const researchExpandConfig: SkillConfig = {
   frontmatter: {
-    name: "phase-research-expand",
+    name: "research-expand",
     description:
       "Deep expansion on specific research topics identified during review or by user request.",
     "disable-model-invocation": true,
@@ -143,4 +143,4 @@ for researcher in researchers_needed:
   ],
 };
 
-export const phaseResearchExpandSkill = createSkill(phaseResearchExpandConfig);
+export const researchExpandSkill = createSkill(researchExpandConfig);

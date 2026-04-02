@@ -7,9 +7,9 @@
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-const contextRestoreConfig: SkillConfig = {
+const sessionRestoreConfig: SkillConfig = {
   frontmatter: {
-    name: "context-restore",
+    name: "session-restore",
     description: `On-demand deep context recovery after compaction or /clear. Reads checkpoint from MuninnDB + filesystem, performs semantic recall, and presents structured context with source attribution.`,
   },
   sections: [
@@ -110,4 +110,4 @@ After presenting, remove the checkpoint file:
   ],
 };
 
-export const contextRestoreSkill = createSkill(contextRestoreConfig);
+export const sessionRestoreSkill = createSkill(sessionRestoreConfig);

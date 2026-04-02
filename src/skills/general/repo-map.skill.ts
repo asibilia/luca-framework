@@ -1,13 +1,13 @@
 /**
- * codebase-map Skill - Analyze an existing codebase with parallel mapper agents to build a structural overview.
+ * repo-map Skill - Analyze an existing codebase with parallel mapper agents to build a structural overview.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the codebase-map skill configuration
-const codebaseMapConfig: SkillConfig = {
+// Define the repo-map skill configuration
+const repoMapConfig: SkillConfig = {
   frontmatter: {
-    name: "codebase-map",
+    name: "repo-map",
     description: `Analyze an existing codebase with parallel mapper agents to build a structural overview.`,
     "disable-model-invocation": true,
   },
@@ -16,7 +16,7 @@ const codebaseMapConfig: SkillConfig = {
       title: "main",
       content: `# Luca Map Codebase
 
-Analyze existing codebase using parallel lu-codebase-mapper agents to produce structured codebase documents.
+Analyze existing codebase using parallel lu-repo-mapper agents to produce structured codebase documents.
 
 Each mapper agent explores a focus area and **writes documents directly** to \`.planning/codebase/\`. The orchestrator only receives confirmations, keeping context usage minimal.
 
@@ -30,7 +30,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`lu-codebase-mapper\` - Analyzes codebase and writes documents (4 parallel agents)
+- \`lu-repo-mapper\` - Analyzes codebase and writes documents (4 parallel agents)
 
 **DO NOT** attempt to analyze the codebase yourself. Spawn the mapper agents.
 
@@ -44,7 +44,7 @@ MODEL_PROFILE=$(cat .planning/config.json 2>/dev/null | grep -o '"model_profile"
 
 | Agent                 | quality | balanced | budget |
 | --------------------- | ------- | -------- | ------ |
-| lu-codebase-mapper | opus    | sonnet   | haiku  |
+| lu-repo-mapper | opus    | sonnet   | haiku  |
 
 > **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
 
@@ -86,9 +86,9 @@ Read this reference file before executing:
 mkdir -p .planning/codebase
 \`\`\`
 
-1. Spawn 4 parallel lu-codebase-mapper agents:
+1. Spawn 4 parallel lu-repo-mapper agents:
 
-**MANDATORY**: You MUST spawn 4 lu-codebase-mapper agents in PARALLEL. Do NOT analyze the codebase yourself.
+**MANDATORY**: You MUST spawn 4 lu-repo-mapper agents in PARALLEL. Do NOT analyze the codebase yourself.
 
 \`\`\`python
 # Agent 1: Tech Focus - STACK.md, INTEGRATIONS.md
@@ -117,7 +117,7 @@ Task(
 
 Analyze the codebase's technology stack and integrations.
 """,
-  subagent_type="lu-codebase-mapper",
+  subagent_type="lu-repo-mapper",
   model="{mapper_model}",
   description="Map: tech focus"
 )
@@ -148,7 +148,7 @@ Task(
 
 Analyze the codebase's architecture and structure.
 """,
-  subagent_type="lu-codebase-mapper",
+  subagent_type="lu-repo-mapper",
   model="{mapper_model}",
   description="Map: arch focus"
 )
@@ -179,7 +179,7 @@ Task(
 
 Analyze the codebase's coding conventions and testing patterns.
 """,
-  subagent_type="lu-codebase-mapper",
+  subagent_type="lu-repo-mapper",
   model="{mapper_model}",
   description="Map: quality focus"
 )
@@ -211,7 +211,7 @@ Task(
 
 Analyze the codebase for concerns, tech debt, and risks.
 """,
-  subagent_type="lu-codebase-mapper",
+  subagent_type="lu-repo-mapper",
   model="{mapper_model}",
   description="Map: concerns focus"
 )
@@ -281,4 +281,4 @@ Then run \`bun run build:all\` to load the new profile rules.
   ],
 };
 
-export const codebaseMapSkill = createSkill(codebaseMapConfig);
+export const repoMapSkill = createSkill(repoMapConfig);

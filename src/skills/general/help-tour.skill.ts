@@ -48,9 +48,9 @@ export const tourSteps = [
   },
 ] as const;
 
-const postInitTourConfig: SkillConfig = {
+const helpTourConfig: SkillConfig = {
   frontmatter: {
-    name: "post-init-tour",
+    name: "help-tour",
     description:
       "Guide new users through Luca's core concepts after project initialization.",
   },
@@ -91,4 +91,4 @@ ${step.content}`,
   ],
 };
 
-export const postInitTourSkill = createSkill(postInitTourConfig);
+export const helpTourSkill = createSkill(helpTourConfig);

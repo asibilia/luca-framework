@@ -7,9 +7,9 @@ import { CONVERGENCE_BLOCKING_TRANSITIONS } from "~/skills/__helpers/convergence
 
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-const phaseResearchReviewConfig: SkillConfig = {
+const researchReviewConfig: SkillConfig = {
   frontmatter: {
-    name: "phase-research-review",
+    name: "research-review",
     description:
       "Orchestrate convergence-based research review loop with cold-isolated reviewer agents.",
     "disable-model-invocation": true,
@@ -124,7 +124,7 @@ When convergence check returns NEEDS_EXPANSION:
 expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITICAL", "IMPORTANT")]
 
 # Signal to the orchestrator that expansion is needed.
-# The ORCHESTRATOR (not this skill) should invoke phase-research-expand
+# The ORCHESTRATOR (not this skill) should invoke research-expand
 # as a separate Agent() call, since sub-agents cannot call Skill().
 # Return NEEDS_EXPANSION status with the expansion targets.
 
@@ -132,7 +132,7 @@ expansion_targets = [gap.description for gap in gaps if gap.severity in ("CRITIC
 iteration += 1
 \`\`\`
 
-**IMPORTANT:** This skill MUST NOT call \`Skill(skill: "phase-research-expand")\` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return \`NEEDS_EXPANSION\` with the expansion targets, and let the orchestrator handle the expansion call.
+**IMPORTANT:** This skill MUST NOT call \`Skill(skill: "research-expand")\` directly. When running as an Agent() sub-agent, it cannot invoke Skill(). Instead, return \`NEEDS_EXPANSION\` with the expansion targets, and let the orchestrator handle the expansion call.
 
 ### Step 8: Write REVIEW-LOG.md
 
@@ -213,4 +213,4 @@ Write to \`$RESEARCH_DIR/REVIEW-LOG.md\` with all iterations:
   ],
 };
 
-export const phaseResearchReviewSkill = createSkill(phaseResearchReviewConfig);
+export const researchReviewSkill = createSkill(researchReviewConfig);

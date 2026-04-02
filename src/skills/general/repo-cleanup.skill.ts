@@ -1,13 +1,13 @@
 /**
- * shadow-cleanup Skill - Detect and interactively clean up AI-session debris from the repository.
+ * repo-cleanup Skill - Detect and interactively clean up AI-session debris from the repository.
  */
 import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-// Define the shadow-cleanup skill configuration
-const shadowCleanupConfig: SkillConfig = {
+// Define the repo-cleanup skill configuration
+const repoCleanupConfig: SkillConfig = {
   frontmatter: {
-    name: "shadow-cleanup",
+    name: "repo-cleanup",
     description: `Detect and interactively clean up AI-session debris: orphaned scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, and orphaned/misplaced markdown.`,
     "disable-model-invocation": true,
   },
@@ -265,4 +265,4 @@ Found: {total} | Fixed: {n_fixed} | Kept: {n_kept} | Skipped: {n_skipped}
   ],
 };
 
-export const shadowCleanupSkill = createSkill(shadowCleanupConfig);
+export const repoCleanupSkill = createSkill(repoCleanupConfig);

@@ -13,7 +13,7 @@ Model profiles control which Claude model each <%= branding.frameworkName %> age
 | <%= branding.commandPrefix %>-project-researcher | opus | sonnet | haiku |
 | <%= branding.commandPrefix %>-research-synthesizer | sonnet | sonnet | haiku |
 | <%= branding.commandPrefix %>-debugger | opus | sonnet | sonnet |
-| <%= branding.commandPrefix %>-codebase-mapper | sonnet | haiku | haiku |
+| <%= branding.commandPrefix %>-repo-mapper | sonnet | haiku | haiku |
 | <%= branding.commandPrefix %>-verifier | sonnet | sonnet | haiku |
 | <%= branding.commandPrefix %>-plan-checker | sonnet | sonnet | haiku |
 | <%= branding.commandPrefix %>-integration-checker | sonnet | sonnet | haiku |
@@ -76,7 +76,7 @@ Executors follow explicit PLAN.md instructions. The plan already contains the re
 **Why Sonnet (not Haiku) for verifiers in balanced?**
 Verification requires goal-backward reasoning - checking if code *delivers* what the phase promised, not just pattern matching. Sonnet handles this well; Haiku may miss subtle gaps.
 
-**Why Haiku for <%= branding.commandPrefix %>-codebase-mapper?**
+**Why Haiku for <%= branding.commandPrefix %>-repo-mapper?**
 Read-only exploration and pattern extraction. No reasoning required, just structured output from file contents.
 
 **Why Sonnet/Haiku for code reviewers (dx-advocate, code-simplifier, security-auditor)?**

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Current Milestone:** v9.2.1 — Statusline Bundle Fix (COMPLETE)
+**Current Milestone:** v9.3.0 — Skill Naming Reorganization
 
 ---
 
@@ -1036,6 +1036,33 @@ Fix statusline not appearing for npm-installed users. The `statusline.sh` wrappe
 - [x] create-bundle-script — Create `build-statusline.ts` that uses `Bun.build()` to compile statusline.ts and all internal deps into `dist/statusline.bundle.js`. (@packages/luca-framework/scripts/build-statusline.ts)
 - [x] update-wrapper-template — Update `statusline.sh` template to prefer `dist/statusline.bundle.js`, falling back to source TS for monorepo dev. (@packages/luca-framework/templates/harness/claude/statusline.sh)
 - [x] chain-into-build — Add `build:statusline` script to package.json and chain into `prepublishOnly`. (@packages/luca-framework/package.json)
+
+---
+
+## v9.3.0 — Skill Naming Reorganization
+
+Rename all skills to a consistent `{domain}-{action}` convention. Every skill starts with its domain noun prefix, enabling tab-completion discovery. Fixes inconsistencies like `git-pr` vs `pr-address` and reduces `phase-*` overload by splitting research sub-pipeline into its own `research-` domain.
+
+### Phase 281: Rename Skills to Domain-Action Convention
+
+**Goal:** Rename ~11 skills to follow consistent `{domain}-{action}` naming, update all cross-references in skill files, agent prompts, orchestrator specs, and hook scripts.
+**Complexity:** MODERATE
+**Verification:** Standard
+
+- [x] rename-git-pr — Rename `git-pr` skill to `pr-create`. Update source file, skill name, and all cross-references. (@src/skills/general/git-pr.skill.ts)
+- [x] rename-context-restore — Rename `context-restore` skill to `session-restore`. Update source file and cross-references. (@src/skills/general/context-restore.skill.ts)
+- [x] rename-codebase-map — Rename `codebase-map` skill to `repo-map`. Update source file and cross-references. (@src/skills/general/codebase-map.skill.ts)
+- [x] rename-shadow-cleanup — Rename `shadow-cleanup` skill to `repo-cleanup`. Update source file and cross-references. (@src/skills/general/shadow-cleanup.skill.ts)
+- [x] rename-phase-research-review — Rename `phase-research-review` skill to `research-review`. Update source file and cross-references. (@src/skills/general/phase-research-review.skill.ts)
+- [x] rename-phase-research-expand — Rename `phase-research-expand` skill to `research-expand`. Update source file and cross-references. (@src/skills/general/phase-research-expand.skill.ts)
+- [x] rename-phase-graduate — Rename `phase-graduate` skill to `research-graduate`. Update source file and cross-references. (@src/skills/general/phase-graduate.skill.ts)
+- [x] rename-phase-plan-review — Rename `phase-plan-review` skill to `plan-review`. Update source file and cross-references. (@src/skills/general/phase-plan-review.skill.ts)
+- [x] rename-qa-consolidate — Rename `qa-consolidate` skill to `pr-qa-consolidate`. Update source file and cross-references. (@src/skills/general/qa-consolidate.skill.ts)
+- [x] rename-post-init-tour — Rename `post-init-tour` skill to `help-tour`. Update source file and cross-references. (@src/skills/general/post-init-tour.skill.ts)
+- [x] rename-workflow-start — Rename `workflow-start` skill to `jira-start`. Update source file and cross-references. (@src/skills/general/workflow-start.skill.ts)
+- [x] update-orchestrator-refs — Update lu.skill.ts, phase-execute.skill.ts, and any other orchestrators that reference renamed skills by old names.
+- [x] update-hook-matchers — Update pre-step hook scripts that match on skill names (pre-step-\*.sh patterns).
+- [x] verify-typecheck — Run `bunx --bun tsc --noEmit` to confirm no broken imports.
 
 ---
 

@@ -5,9 +5,9 @@ import { createSkill } from "~/skills/__helpers/create-skill";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
 // Define the qa-consolidate skill configuration
-const qaConsolidateConfig: SkillConfig = {
+const prQaConsolidateConfig: SkillConfig = {
   frontmatter: {
-    name: "qa-consolidate",
+    name: "pr-qa-consolidate",
     description: `Consolidate QA testing plans from merged feature PRs onto a parent release PR.`,
   },
   sections: [
@@ -302,4 +302,4 @@ User says: "generate missing QA plans and consolidate for RELEASE-1345"
   ],
 };
 
-export const qaConsolidateSkill = createSkill(qaConsolidateConfig);
+export const prQaConsolidateSkill = createSkill(prQaConsolidateConfig);

@@ -110,7 +110,7 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     description: "Create feature branches from tickets",
   },
   {
-    name: "git-pr",
+    name: "pr-create",
     tier: "core",
     category: "git",
     description: "Create pull requests with structured descriptions",
@@ -226,7 +226,7 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     description: "Present options and capture user decisions",
   },
   {
-    name: "codebase-map",
+    name: "repo-map",
     tier: "standard",
     category: "analysis",
     description: "Generate a structural map of the codebase",
@@ -245,7 +245,7 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     tier: "extended",
     category: "git",
     description: "Address PR review comments systematically",
-    depends_on: ["git-pr"],
+    depends_on: ["pr-create"],
   },
   {
     name: "milestone-audit",
@@ -308,13 +308,13 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     description: "Remove a phase from the project roadmap",
   },
   {
-    name: "post-init-tour",
+    name: "help-tour",
     tier: "extended",
     category: "workflow",
     description: "Interactive tour after project initialization",
   },
   {
-    name: "qa-consolidate",
+    name: "pr-qa-consolidate",
     tier: "extended",
     category: "verification",
     description: "Consolidate QA results across phases",
@@ -338,7 +338,7 @@ export const SKILL_MANIFEST: SkillManifestEntryInput[] = [
     description: "Save current workflow state for later resumption",
   },
   {
-    name: "workflow-start",
+    name: "jira-start",
     tier: "extended",
     category: "workflow",
     description: "Start a saved workflow from checkpoint",

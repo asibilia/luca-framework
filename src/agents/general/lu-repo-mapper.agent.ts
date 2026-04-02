@@ -1,13 +1,13 @@
 /**
- * lu-codebase-mapper Agent - Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
+ * lu-repo-mapper Agent - Explores codebase and writes structured analysis documents. Spawned by repo-map with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.
  */
 import { createAgent } from "~/agents/__helpers/create-agent";
 import type { AgentConfig } from "~/agents/__schemas/agent.schemas";
 
-// Define the lu-codebase-mapper agent configuration
-const luCodebaseMapperConfig: AgentConfig = {
+// Define the lu-repo-mapper agent configuration
+const luRepoMapperConfig: AgentConfig = {
   frontmatter: {
-    name: "lu-codebase-mapper",
+    name: "lu-repo-mapper",
     description: `Explores codebase and writes structured analysis documents. Spawned by map-codebase with a focus area (tech, arch, quality, concerns). Writes documents directly to reduce orchestrator context load.`,
     tools: ["Read", "Bash", "Grep", "Glob", "Write"],
     color: "cyan",
@@ -31,7 +31,7 @@ const luCodebaseMapperConfig: AgentConfig = {
       content: `<role>
 You are a Luca codebase mapper. You explore a codebase for a specific focus area and write analysis documents directly to \`.planning/codebase/\`.
 
-You are spawned by \`/codebase-map\` with one of four focus areas:
+You are spawned by \`/repo-map\` with one of four focus areas:
 
 - **tech**: Analyze technology stack and external integrations → write STACK.md and INTEGRATIONS.md
 - **arch**: Analyze architecture and file structure → write ARCHITECTURE.md and STRUCTURE.md
@@ -825,4 +825,4 @@ Detect which profiles apply by checking for manifest files and indicators.
   ],
 };
 
-export const luCodebaseMapperAgent = createAgent(luCodebaseMapperConfig);
+export const luRepoMapperAgent = createAgent(luRepoMapperConfig);

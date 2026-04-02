@@ -2,7 +2,7 @@
  * phase-plan-review Skill - Orchestrate convergence-based plan review loop
  * with cold-isolated reviewer agents before execution.
  *
- * Modeled on phase-research-review but reviews PLAN.md files instead of
+ * Modeled on research-review but reviews PLAN.md files instead of
  * research corpus. Uses code-architect, dx-advocate, and security-auditor
  * as reviewers with BLOCKING/ADVISORY severity labels.
  */
@@ -10,9 +10,9 @@ import { createSkill } from "~/skills/__helpers/create-skill";
 import { CONVERGENCE_BLOCKING_TRANSITIONS } from "~/skills/__helpers/convergence-loop-shared";
 import type { SkillConfig } from "~/skills/__schemas/skill.schemas";
 
-const phasePlanReviewConfig: SkillConfig = {
+const planReviewConfig: SkillConfig = {
   frontmatter: {
-    name: "phase-plan-review",
+    name: "plan-review",
     description:
       "Orchestrate convergence-based plan review loop with cold-isolated reviewer agents.",
     "disable-model-invocation": true,
@@ -251,4 +251,4 @@ Write to \`$PHASE_DIR/PLAN-REVIEW-LOG.md\` with all iterations:
   ],
 };
 
-export const phasePlanReviewSkill = createSkill(phasePlanReviewConfig);
+export const planReviewSkill = createSkill(planReviewConfig);
