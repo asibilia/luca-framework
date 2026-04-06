@@ -51,6 +51,7 @@
   },
   "scripts": {
     "build": "next build",
+    "check:studio-drift": "bun scripts/check-studio-drift.ts",
     "css:build": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --minify",
     "css:dev": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css",
     "css:watch": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --watch",
@@ -59,7 +60,6 @@
     "lint:fix": "eslint app/ components/ hooks/ lib/ stores/ --fix",
     "sidecar:dev": "bun run --watch sidecar/compiler.ts",
     "sidecar:start": "bun sidecar/compiler.ts",
-    "check:studio-drift": "bun scripts/check-studio-drift.ts",
     "start": "next start --port 3456"
   },
   "type": "module"

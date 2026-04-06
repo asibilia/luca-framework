@@ -1,0 +1,709 @@
+#!/usr/bin/env bun
+/**
+ * Luca — Custom Mastra Code distribution.
+ *
+ * Rewires Luca's 11-step AI coding workflow into Mastra-native primitives:
+ * 9 modes (3 stock + 6 pipeline), 7 subagent types, 6 custom tools, and workflow state.
+ *
+ * Usage:
+ *   bun run packages/luca-mastracode/src/index.ts
+ *   # or via the monorepo script:
+ *   bun run mastracode
+ */
+import { createMastraCode } from "mastracode";
+import { MastraTUI } from "mastracode/tui";
+import { Agent } from "@mastra/core/agent";
+import { readLucaState, writeLucaState, type LucaWorkflowState } from "./luca-store.js";
+import { existsSync, readFileSync, mkdirSync, cpSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// --- Stock mode instruction builders ---
+import {
+  buildBuildInstructions,
+  resolveBuildModel,
+  buildMode,
+} from "./modes/build.js";
+import {
+  buildPlanInstructions,
+  resolvePlanModel,
+  planMode,
+} from "./modes/plan.js";
+import {
+  buildFastInstructions,
+  resolveFastModel,
+  fastMode,
+} from "./modes/fast.js";
+import {
+  buildDiscussInstructions,
+  resolveDiscussModel,
+  discussMode,
+} from "./modes/discuss.js";
+
+// --- Luca pipeline mode instruction builders ---
+import {
+  buildTriageInstructions,
+  resolveTriageModel,
+  triageMode,
+} from "./modes/triage.js";
+import {
+  buildResearchInstructions,
+  resolveResearchModel,
+  researchMode,
+} from "./modes/research.js";
+import {
+  buildArchitectInstructions,
+  resolveArchitectModel,
+  architectMode,
+} from "./modes/architect.js";
+import {
+  buildExecuteInstructions,
+  resolveExecuteModel,
+  executeMode,
+} from "./modes/execute.js";
+import {
+  buildReviewInstructions,
+  resolveReviewModel,
+  reviewMode,
+} from "./modes/review.js";
+import {
+  buildFinalizeInstructions,
+  resolveFinalizeModel,
+  finalizeMode,
+} from "./modes/finalize.js";
+
+// --- Tools ---
+
+import { buildModeTools } from "./tools/build-mode-tools.js";
+
+// --- Subagents ---
+import { researcherSubagent } from "./subagents/researcher.js";
+import { plannerSubagent } from "./subagents/planner.js";
+import { planReviewerSubagent } from "./subagents/plan-reviewer.js";
+import { executorSubagent } from "./subagents/executor.js";
+import { verifierSubagent } from "./subagents/verifier.js";
+import { reviewerSubagent } from "./subagents/reviewer.js";
+import { learnerSubagent } from "./subagents/learner.js";
+import { discussionSubagent } from "./subagents/discussion.js";
+import { shadowScannerSubagent } from "./subagents/shadow-scanner.js";
+
+// ---------------------------------------------------------------------------
+// Branding — load from .planning/config.json if present
+// ---------------------------------------------------------------------------
+
+interface LucaBranding {
+  name: string;
+  tagline: string;
+}
+
+function loadBranding(): LucaBranding {
+  const configPath = join(process.cwd(), ".planning", "config.json");
+  if (existsSync(configPath)) {
+    try {
+      const raw = JSON.parse(readFileSync(configPath, "utf-8"));
+      return {
+        name: raw.branding?.name ?? "Luca",
+        tagline: raw.branding?.tagline ?? "AI-powered development workflow",
+      };
+    } catch {
+      // Fall through to defaults
+    }
+  }
+  return { name: "Luca", tagline: "AI-powered development workflow" };
+}
+
+// ---------------------------------------------------------------------------
+// Mutable refs — wired up after createMastraCode() returns.
+// Extracted to refs.ts to avoid circular imports with tool modules.
+// ---------------------------------------------------------------------------
+import { resolveModelRef, switchModeRef, followUpRef } from "./refs.js";
+import * as pipelineGuard from "./pipeline-guard.js";
+
+// ---------------------------------------------------------------------------
+// Static agent builder — creates Agent instances with dynamic instructions/model
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a static agent for a Luca mode.
+ * Returns a single Agent instance with dynamic `instructions` and `model`
+ * callbacks. The harness init loop injects memory (for Observational Memory)
+ * into static agents — factory agents `(state) => Agent` are skipped, which
+ * breaks OM. Using static agents with dynamic callbacks gives us both:
+ *   - Dynamic behavior (instructions/model change per-request)
+ *   - Proper memory injection from the harness
+ *
+ * Model resolution uses Mastra Code's `resolveModel` (which handles OAuth,
+ * stored API keys, and the Claude Max provider) via the mutable
+ * `resolveModelRef`.
+ */
+
+// ---------------------------------------------------------------------------
+// Per-mode tool subsets — driven by the permission manifest in
+// tools/mode-permissions.ts. Each mode gets only the tools (and actions)
+// its instructions actually use. See that file for the full access matrix.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Universal constraints — appended to EVERY mode agent's instructions.
+// ---------------------------------------------------------------------------
+const AGENT_CONSTRAINTS = `
+
+---
+
+## Hard Constraints (all modes)
+
+- **Never use temp files as an edit workaround.** Do not write content to a temporary file and then copy, move, or \`cat\` it into the target file. Do not use \`sed\`, \`awk\`, \`cp\`, \`mv\`, \`tee\`, heredocs, or any shell command to bypass the edit tools (\`string_replace_lsp\`, \`write_file\`, \`ast_smart_edit\`). If you don't have permission to edit a file, that restriction is intentional — do not circumvent it.
+- **Never shell out for file edits.** All file modifications must go through the provided edit tools, not through \`execute_command\`. The only exception is running build/test/lint commands.
+- **Respect mode boundaries.** If your mode is read-only, do not attempt any workaround to modify files. Report what needs to change and let the appropriate mode handle it.
+`;
+
+function createStaticAgent({
+  id,
+  name,
+  defaultModelId,
+  buildInstructions,
+  resolveModelFn,
+  tools,
+}: {
+  id: string;
+  name: string;
+  defaultModelId: string;
+  buildInstructions: () => string;
+  resolveModelFn: () => string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools: Record<string, any>;
+}): Agent {
+  return new Agent({
+    id,
+    name: `Luca ${name}`,
+    // Dynamic instructions: called per-request, reads luca-store at call time.
+    // AGENT_CONSTRAINTS is appended to every mode's instructions.
+    instructions: () => buildInstructions() + AGENT_CONSTRAINTS,
+    // Dynamic model: called per-request, resolves via OAuth-aware pipeline
+    model: () => {
+      const modelId = resolveModelFn() ?? defaultModelId;
+      if (resolveModelRef.current) {
+        return resolveModelRef.current(modelId);
+      }
+      return modelId;
+    },
+    tools,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Slash commands — copy bundled .md commands into .mastracode/commands/
+// ---------------------------------------------------------------------------
+
+function installSlashCommands() {
+  // Resolve the commands directory bundled alongside this script
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  const bundledCommandsDir = join(thisDir, "..", "commands");
+
+  if (!existsSync(bundledCommandsDir)) return;
+
+  // Install into the project's .mastracode/commands/ directory
+  const targetDir = join(process.cwd(), ".mastracode", "commands");
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
+  }
+
+  cpSync(bundledCommandsDir, targetDir, {
+    recursive: true,
+    force: false, // Don't overwrite user customizations
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Continuation messages — sent to the new agent after a pipeline mode switch
+// ---------------------------------------------------------------------------
+function buildContinuationMessage(
+  modeId: string,
+  state: LucaWorkflowState,
+): string {
+  const intent = state.intent ?? "Continue the current workflow.";
+  const complexity = state.complexity ?? "MODERATE";
+  const todos = state.assignedTodos?.length
+    ? `\nAssigned TODOs: #${state.assignedTodos.join(", #")}`
+    : "";
+  const areas = state.affectedAreas?.length
+    ? `\nAffected areas: ${state.affectedAreas.join(", ")}`
+    : "";
+
+  switch (modeId) {
+    case "research":
+      return [
+        `[Luca Pipeline — auto-continuing from Triage]`,
+        ``,
+        `Intent: ${intent}`,
+        `Complexity: ${complexity}`,
+        `Oversight: ${state.oversight ?? "full-auto"}`,
+        todos,
+        areas,
+        ``,
+        `Begin research. Use the workflowState tool to read the full triage state, then investigate the affected areas using the research dimensions from your instructions. When research is complete, save findings and transition to Architect mode.`,
+      ].filter(Boolean).join("\n");
+
+    case "architect":
+      return [
+        `[Luca Pipeline — auto-continuing from Research]`,
+        ``,
+        `Intent: ${intent}`,
+        `Complexity: ${complexity}`,
+        todos,
+        areas,
+        ``,
+        `Begin planning. Use the workflowState tool to read the research findings, then create a structured implementation plan following goal-backward analysis. When the plan is approved, transition to Execute mode.`,
+      ].filter(Boolean).join("\n");
+
+    case "execute": {
+      const planFile = state.planFile ?? "PLAN.md";
+      const roadmapFile = state.roadmapFile ?? "ROADMAP.md";
+      return [
+        `[Luca Pipeline — auto-continuing from Architect]`,
+        ``,
+        `Intent: ${intent}`,
+        `Complexity: ${complexity}`,
+        todos,
+        areas,
+        ``,
+        `Plan file: ${planFile}`,
+        `Roadmap file: ${roadmapFile}`,
+        ``,
+        `Begin execution. Read the plan from ${planFile} on disk using workspace tools (view/find_files) — this contains the atomic task definitions. Read ${roadmapFile} for phase sequencing. Do NOT re-create the plan. Implement changes in waves, run checks after each wave. When all waves are complete, transition to Review mode.`,
+      ].filter(Boolean).join("\n");
+    }
+
+    case "review":
+      return [
+        `[Luca Pipeline — auto-continuing from Execute]`,
+        ``,
+        `Intent: ${intent}`,
+        `Complexity: ${complexity}`,
+        todos,
+        ``,
+        `Review the code changes against the plan. Read PLAN.md and the changed files,`,
+        `then spawn reviewer subagents for a multi-perspective audit. Produce a REVIEW report.`,
+        `If must-fix issues are found, create an iteration plan and transition back to Execute.`,
+        `If clean, transition to Finalize.`,
+      ].filter(Boolean).join("\n");
+
+    case "finalize":
+      return [
+        `[Luca Pipeline — auto-continuing from Review]`,
+        ``,
+        `Intent: ${intent}`,
+        `Complexity: ${complexity}`,
+        todos,
+        ``,
+        `Begin finalization. Run final checks, perform gap audit, create PR if appropriate, and complete the session with final metrics. Read the latest .planning/REVIEW-*.md report for context on what was reviewed.`,
+      ].filter(Boolean).join("\n");
+
+    case "triage":
+      return [
+        `[Luca Pipeline — starting]`,
+        ``,
+        `A user has requested the Luca development workflow.`,
+        intent !== "Continue the current workflow." ? `User request: ${intent}` : "",
+        todos,
+        areas,
+        ``,
+        `Follow your triage instructions exactly:`,
+        `1. Parse the request into structured intent`,
+        `2. Classify complexity using the classifyComplexity tool`,
+        `3. Save state with workflowState(action: "write", updates: {...})`,
+        `4. IMMEDIATELY call workflowState(action: "switch-mode", targetMode: "<research|architect>")`,
+        ``,
+        `Do NOT implement anything. Do NOT create task lists. Do NOT modify files.`,
+        `Your ONLY job is to classify and transition.`,
+      ].filter(Boolean).join("\n");
+
+    default:
+      return `Continue the Luca workflow. Current intent: ${intent}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Launch
+// ---------------------------------------------------------------------------
+
+async function main() {
+  const branding = loadBranding();
+
+  const result = await createMastraCode({
+    // --- Stock utility modes ---
+    modes: [
+      {
+        id: buildMode.id,
+        name: buildMode.name,
+        default: true,
+        defaultModelId: buildMode.defaultModelId,
+        color: buildMode.color,
+        agent: createStaticAgent({
+          id: "luca-build",
+          name: "Build",
+          defaultModelId: buildMode.defaultModelId,
+          buildInstructions: buildBuildInstructions,
+          resolveModelFn: resolveBuildModel,
+          tools: buildModeTools({ mode_id: 'build' }),
+        }),
+      },
+      {
+        id: planMode.id,
+        name: planMode.name,
+        defaultModelId: planMode.defaultModelId,
+        color: planMode.color,
+        agent: createStaticAgent({
+          id: "luca-plan",
+          name: "Plan",
+          defaultModelId: planMode.defaultModelId,
+          buildInstructions: buildPlanInstructions,
+          resolveModelFn: resolvePlanModel,
+          tools: buildModeTools({ mode_id: 'plan' }),
+        }),
+      },
+      {
+        id: fastMode.id,
+        name: fastMode.name,
+        defaultModelId: fastMode.defaultModelId,
+        color: fastMode.color,
+        agent: createStaticAgent({
+          id: "luca-fast",
+          name: "Fast",
+          defaultModelId: fastMode.defaultModelId,
+          buildInstructions: buildFastInstructions,
+          resolveModelFn: resolveFastModel,
+          tools: buildModeTools({ mode_id: 'fast' }),
+        }),
+      },
+      {
+        id: discussMode.id,
+        name: discussMode.name,
+        defaultModelId: discussMode.defaultModelId,
+        color: discussMode.color,
+        agent: createStaticAgent({
+          id: "luca-discuss",
+          name: "Discuss",
+          defaultModelId: discussMode.defaultModelId,
+          buildInstructions: buildDiscussInstructions,
+          resolveModelFn: resolveDiscussModel,
+          tools: buildModeTools({ mode_id: 'discuss' }),
+        }),
+      },
+      // --- Luca pipeline modes ---
+      {
+        id: triageMode.id,
+        name: triageMode.name,
+        defaultModelId: triageMode.defaultModelId,
+        color: triageMode.color,
+        agent: createStaticAgent({
+          id: "luca-triage",
+          name: "Triage",
+          defaultModelId: triageMode.defaultModelId,
+          buildInstructions: buildTriageInstructions,
+          resolveModelFn: resolveTriageModel,
+          tools: buildModeTools({ mode_id: 'triage' }),
+        }),
+      },
+      {
+        id: researchMode.id,
+        name: researchMode.name,
+        defaultModelId: researchMode.defaultModelId,
+        color: researchMode.color,
+        agent: createStaticAgent({
+          id: "luca-research",
+          name: "Research",
+          defaultModelId: researchMode.defaultModelId,
+          buildInstructions: buildResearchInstructions,
+          resolveModelFn: resolveResearchModel,
+          tools: buildModeTools({ mode_id: 'research' }),
+        }),
+      },
+      {
+        id: architectMode.id,
+        name: architectMode.name,
+        defaultModelId: architectMode.defaultModelId,
+        color: architectMode.color,
+        agent: createStaticAgent({
+          id: "luca-architect",
+          name: "Architect",
+          defaultModelId: architectMode.defaultModelId,
+          buildInstructions: buildArchitectInstructions,
+          resolveModelFn: resolveArchitectModel,
+          tools: buildModeTools({ mode_id: 'architect' }),
+        }),
+      },
+      {
+        id: executeMode.id,
+        name: executeMode.name,
+        defaultModelId: executeMode.defaultModelId,
+        color: executeMode.color,
+        agent: createStaticAgent({
+          id: "luca-execute",
+          name: "Execute",
+          defaultModelId: executeMode.defaultModelId,
+          buildInstructions: buildExecuteInstructions,
+          resolveModelFn: resolveExecuteModel,
+          tools: buildModeTools({ mode_id: 'execute' }),
+        }),
+      },
+      {
+        id: reviewMode.id,
+        name: reviewMode.name,
+        defaultModelId: reviewMode.defaultModelId,
+        color: reviewMode.color,
+        agent: createStaticAgent({
+          id: "luca-review",
+          name: "Review",
+          defaultModelId: reviewMode.defaultModelId,
+          buildInstructions: buildReviewInstructions,
+          resolveModelFn: resolveReviewModel,
+          tools: buildModeTools({ mode_id: 'review' }),
+        }),
+      },
+      {
+        id: finalizeMode.id,
+        name: finalizeMode.name,
+        defaultModelId: finalizeMode.defaultModelId,
+        color: finalizeMode.color,
+        agent: createStaticAgent({
+          id: "luca-finalize",
+          name: "Finalize",
+          defaultModelId: finalizeMode.defaultModelId,
+          buildInstructions: buildFinalizeInstructions,
+          resolveModelFn: resolveFinalizeModel,
+          tools: buildModeTools({ mode_id: 'finalize' }),
+        }),
+      },
+    ],
+
+    // --- Subagent definitions ---
+    subagents: [
+      researcherSubagent,
+      discussionSubagent,
+      plannerSubagent,
+      planReviewerSubagent,
+      executorSubagent,
+      verifierSubagent,
+      reviewerSubagent,
+      learnerSubagent,
+      shadowScannerSubagent,
+    ],
+
+    // Note: Luca workflow state (complexity, oversight, pipeline step, etc.)
+    // is stored in .planning/luca-state.json via the workflowState tool.
+    // We can't use harness.setState() for custom fields because the built-in
+    // stateSchema (Zod default strip mode) silently removes unknown keys.
+  });
+
+  const { harness, hookManager, authStorage, mcpManager, storageWarning, resolveModel } =
+    result;
+
+  // Wire up the resolveModel ref so mode agent factories use OAuth-aware resolution.
+  // resolveModel's full signature has optional params we don't need; narrow to our ref type.
+  resolveModelRef.current = (modelId: string) => resolveModel(modelId);
+
+  // Wire up switchMode ref so the workflowState tool can switch modes directly.
+  // We can't use harness state for mode switching because the built-in Zod
+  // stateSchema strips unknown keys (our lucaNextMode field gets silently removed).
+  switchModeRef.current = async (modeId: string) => {
+    await harness.switchMode({ modeId });
+  };
+
+  // Wire up followUp ref so the pipeline guard can send corrective messages
+  // when a pipeline agent completes without calling switch-mode.
+  followUpRef.current = async (opts: { content: string }) => {
+    await harness.followUp(opts);
+  };
+
+  // Set initial permissions to a known clean state so stale permissionRules
+  // from a previous session don't leak into the current one.
+  await harness.setState({
+    permissionRules: { categories: {}, tools: {} },
+  });
+
+  // --- Read-only enforcement: when entering Plan mode, deny write/execute
+  // workspace tools via permissionRules so the model cannot modify files or
+  // run state-changing commands even if it ignores prompt instructions.
+  const READ_ONLY_MODES = new Set(["plan", "discuss", "triage", "research", "review"]);
+  const PLAN_DENY_TOOLS: Record<string, "deny"> = {
+    write_file: "deny",
+    string_replace_lsp: "deny",
+    ast_smart_edit: "deny",
+    execute_command: "deny",
+    delete_file: "deny",
+    mkdir: "deny",
+    kill_process: "deny",
+  };
+
+  harness.subscribe(async (event) => {
+    if (event.type !== "mode_changed") return;
+    if (READ_ONLY_MODES.has(event.modeId)) {
+      await harness.setState({
+        permissionRules: { categories: {}, tools: PLAN_DENY_TOOLS },
+      });
+    } else {
+      // Restore default permissions when leaving a read-only mode
+      await harness.setState({
+        permissionRules: { categories: {}, tools: {} },
+      });
+    }
+  });
+
+  // --- Pipeline guard: detect when submit_plan (or another built-in tool)
+  // auto-switches to the default "build" mode during an active pipeline run.
+  // In that case, redirect to the correct next pipeline mode instead.
+  //
+  // IMPORTANT: Only redirect when `nextMode` is set — that's the signal that
+  // the pipeline (via workflowState switch-mode) initiated a transition.
+  // If `nextMode` is unset, the switch came from the user (Shift+Tab mode
+  // picker), and we must NOT redirect — doing so creates an infinite loop
+  // (user picks build → guard redirects to finalize → stacked TUI frames → crash).
+  const PIPELINE_STEPS = new Set(["triage", "research", "architect", "execute", "review", "finalize"]);
+  harness.subscribe(async (event) => {
+    if (event.type !== "mode_changed") return;
+    if (event.modeId !== "build") return;
+
+    const state = readLucaState();
+    // Only intercept if a pipeline is active and the switch wasn't pipeline-driven
+    if (!state.pipelineStep || !PIPELINE_STEPS.has(state.pipelineStep)) return;
+
+    // No nextMode means this switch was user-initiated (Shift+Tab picker, etc.).
+    // Clear pipeline state and let the user go where they want.
+    if (!state.nextMode) {
+      writeLucaState({ pipelineStep: undefined, nextMode: undefined });
+      return;
+    }
+
+    if (state.nextMode === "build") return; // Pipeline explicitly requested build — allow it
+
+    // Pipeline wrote a nextMode that isn't "build" — this switch was NOT
+    // user-initiated (e.g., submit_plan auto-switched to the default mode).
+    // Redirect to the intended pipeline target.
+    const redirectTo = state.nextMode;
+
+    console.info(`⚠ Pipeline guard: intercepted unexpected switch to "build" during pipeline step "${state.pipelineStep}". Redirecting to "${redirectTo}".`);
+
+    // Small delay to let the initial switch settle
+    await new Promise((r) => setTimeout(r, 100));
+    await harness.switchMode({ modeId: redirectTo });
+  });
+
+  // --- Auto-continuation: when a pipeline-driven mode switch happens,
+  // automatically send a kick-off message to the new mode agent so
+  // the pipeline keeps flowing without waiting for user input.
+  harness.subscribe(async (event) => {
+    if (event.type !== "mode_changed") return;
+
+    const state = readLucaState();
+    // Only auto-continue if this switch was driven by the Luca pipeline
+    // (i.e., the agent called workflowState switch-mode and wrote nextMode).
+    // If the user manually switched modes via the TUI picker, nextMode
+    // won't match and we won't send an automatic message.
+    if (!state.nextMode || state.nextMode !== event.modeId) return;
+
+    // Clear nextMode so we don't re-trigger on manual switches later
+    writeLucaState({ nextMode: undefined });
+
+    // Clear stale tasks from the previous mode so the new agent starts fresh
+    await harness.setState({ tasks: [] });
+
+    // Build a context-rich kick-off message for the new agent
+    const kickoff = buildContinuationMessage(event.modeId, state);
+
+    // Small delay to let the TUI finish rendering the mode switch
+    await new Promise((r) => setTimeout(r, 200));
+
+    await harness.sendMessage({ content: kickoff });
+  });
+
+  // --- Pipeline enforcement watchdog: track tool calls during pipeline mode
+  // turns and detect when an agent finishes without calling switch-mode.
+  // Uses escalating enforcement: nudge → force.
+  harness.subscribe(async (event) => {
+    if (event.type === "mode_changed") {
+      if (PIPELINE_STEPS.has(event.modeId)) {
+        pipelineGuard.startTurn(event.modeId);
+      } else {
+        // Switched out of pipeline — stop tracking
+        pipelineGuard.resetTurn();
+      }
+      return;
+    }
+
+    if (event.type === "tool_start") {
+      pipelineGuard.recordToolStart(
+        event.toolCallId,
+        event.toolName,
+        event.args,
+      );
+      return;
+    }
+
+    if (event.type === "tool_end") {
+      pipelineGuard.recordToolEnd(event.toolCallId);
+      return;
+    }
+
+    if (event.type === "agent_end") {
+      const enforcement = pipelineGuard.checkTurnCompletion(event.reason);
+      if (enforcement) {
+        await pipelineGuard.executeEnforcement(enforcement);
+      }
+      return;
+    }
+  });
+
+  if (storageWarning) {
+    console.info(`\u26A0 ${storageWarning}`);
+  }
+
+  // --- Install slash commands into project .mastracode/commands/ ---
+  installSlashCommands();
+
+  // --- Launch TUI ---
+  const tui = new MastraTUI({
+    harness,
+    hookManager,
+    authStorage,
+    mcpManager,
+    appName: branding.name,
+    inlineQuestions: true,
+  });
+
+  // --- Stale state cleanup: if no active pipeline lock exists, clear any
+  // persisted workflow state from a previous session so the next /lu run
+  // starts fresh instead of inheriting the old intent/complexity.
+  const lockPath = join(process.cwd(), '.planning', '.luca-lock.json');
+  if (!existsSync(lockPath)) {
+    const staleState = readLucaState();
+    if (staleState.pipelineStep || staleState.intent) {
+      writeLucaState({});
+    }
+  }
+
+  await tui.run();
+}
+
+// --- Suppress Claude Code-format skill loading noise ---
+// Mastra Code's WorkspaceSkills loader expects YAML frontmatter in SKILL.md files,
+// but Luca's compiled skills use Claude Code format (# name\n\ndescription).
+// The errors are non-fatal (skills are just skipped), so we suppress the noise.
+const _origError = console.error;
+const _origWarn = console.warn;
+console.error = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("[WorkspaceSkills]")) return;
+  _origError(...args);
+};
+console.warn = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("[WorkspaceSkills]")) return;
+  _origWarn(...args);
+};
+
+// Run
+main().catch((err) => {
+  console.error("Luca startup failed:", err);
+  process.exit(1);
+});
+
+export { main };

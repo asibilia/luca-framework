@@ -5,7 +5,7 @@ Start work on a Jira ticket. Redirects to <%= branding.commandSlash %> for the f
 ## main
 
 <main>
-# Workflow Start
+# Jira Start
 
 **REDIRECT:** This workflow is now integrated into `<%= branding.commandSlash %>`.
 

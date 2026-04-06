@@ -5,7 +5,7 @@ Detect and interactively clean up AI-session debris: orphaned scripts, misplaced
 ## main
 
 <main>
-# <%= branding.frameworkName %> Shadow Cleanup
+# <%= branding.frameworkName %> Repo Cleanup
 
 Scan the repository for AI-session debris and interactively review findings.
 
@@ -17,14 +17,14 @@ Scan the repository for AI-session debris and interactively review findings.
 
 **Flags:**
 
-| Flag           | Description                                                     |
-| -------------- | --------------------------------------------------------------- |
-| (default)      | Standard mode — Categories 1+2+3+5+6                            |
-| `--quick`      | Quick mode — Categories 1+3 only                                |
-| `--full`       | Full mode — All 6 categories                                    |
-| `--dry-run`    | Report only, no deletions or moves                              |
-| `--fix`        | Auto-apply all auto-fixable findings without interactive prompt |
-| `--category=N` | Run only the specified category (1-6)                           |
+| Flag | Description |
+|------|-------------|
+| (default) | Standard mode — Categories 1+2+3+5+6 |
+| `--quick` | Quick mode — Categories 1+3 only |
+| `--full` | Full mode — All 6 categories |
+| `--dry-run` | Report only, no deletions or moves |
+| `--fix` | Auto-apply all auto-fixable findings without interactive prompt |
+| `--category=N` | Run only the specified category (1-6) |
 
 ## Vault Resolution
 
@@ -43,6 +43,7 @@ cross-cutting operations (shadow-debt:kept, pattern, preference).
 
 ## Execution Flow
 
+
 ### Step 1: Load and Validate Config
 
 Read `.planning/config.json` and extract the `shadow_debt` section.
@@ -54,12 +55,10 @@ SHADOW_ENABLED=$(echo "$CONFIG" | bun -e "const c=JSON.parse(await Bun.stdin.tex
 ```
 
 If `SHADOW_ENABLED` is false, display:
-
 ```
 Shadow cleanup is disabled in config (shadow_debt.enabled = false).
 To enable, set shadow_debt.enabled = true in .planning/config.json.
 ```
-
 and exit.
 
 ### Step 2: Determine Scan Mode
@@ -123,7 +122,6 @@ CRITICAL ({n}) | HIGH ({n}) | MEDIUM ({n}) | LOW ({n})
 ### Step 6: Dry-Run or No-Findings Exit
 
 If `--dry-run` flag is present OR `total` findings = 0:
-
 - Display the banner
 - Print: "No changes made (dry-run mode)." or "No findings — repository is clean."
 - Store scan metric (Step 9)
@@ -132,7 +130,6 @@ If `--dry-run` flag is present OR `total` findings = 0:
 ### Step 7: Auto-Fix Mode (`--fix` flag)
 
 If `--fix` flag is present:
-
 1. Collect all findings where `auto_fixable: true`.
 2. Apply each fix based on `recommended_action`:
 
@@ -181,7 +178,6 @@ Auto-fixable: {yes|no}
 Handle user response:
 
 **F — Fix:**
-
 - Apply the fix using the same action-type-aware logic from Step 7:
   - `"delete"`: remove file/directory
   - `"move"`: `mkdir -p` + `git mv` + grep for reference warnings
@@ -189,7 +185,6 @@ Handle user response:
 - Log action and continue to next finding.
 
 **K — Keep:**
-
 - Store the file path in MuninnDB so it is never flagged again:
   ```
   mcp__muninn__muninn_remember(
@@ -202,12 +197,10 @@ Handle user response:
 - Continue to next finding.
 
 **S — Skip:**
-
 - No action, no MuninnDB entry.
 - Continue to next finding.
 
 **A — Fix all remaining:**
-
 - Apply fixes for all remaining findings where `auto_fixable: true`.
 - For findings where `auto_fixable: false`, report them as skipped.
 - Display a summary of actions taken.
@@ -245,6 +238,7 @@ Display completion:
 Found: {total} | Fixed: {n_fixed} | Kept: {n_kept} | Skipped: {n_skipped}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
 
 ## Success Criteria
 

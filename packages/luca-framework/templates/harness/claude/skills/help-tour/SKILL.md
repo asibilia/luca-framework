@@ -5,7 +5,7 @@ Guide new users through <%= branding.frameworkName %>'s core concepts after proj
 ## main
 
 <main>
-# Post-Init Interactive Tour
+# Help Tour
 
 Walk the user through <%= branding.frameworkName %>'s core concepts after /project-new completes.
 

@@ -1,0 +1,41 @@
+/**
+ * Mutable references wired up after `createMastraCode()` initializes.
+ *
+ * These break the chicken-and-egg problem: tools and agent factories are
+ * registered _before_ the harness is created, but need access to harness
+ * capabilities at runtime. The refs are populated in index.ts after init.
+ *
+ * Extracted to a separate module to avoid circular imports between
+ * index.ts and tool modules.
+ */
+
+type ResolveModelFn = (modelId: string) => any;
+type SwitchModeFn = (modeId: string) => Promise<void>;
+
+/**
+ * Reference to Mastra Code's `resolveModel` function.
+ * Used by mode agent factories for OAuth-aware model resolution.
+ */
+export const resolveModelRef: { current: ResolveModelFn | null } = {
+  current: null,
+};
+
+/**
+ * Reference to `harness.switchMode()`.
+ * Used by the workflowState tool for direct mode transitions.
+ * We can't use harness state for this because the built-in Zod stateSchema
+ * strips unknown keys (our custom fields get silently removed).
+ */
+export const switchModeRef: { current: SwitchModeFn | null } = {
+  current: null,
+};
+
+/**
+ * Reference to `harness.followUp()`.
+ * Used by the pipeline guard to send corrective messages when a pipeline
+ * agent completes its turn without calling switch-mode.
+ */
+type FollowUpFn = (opts: { content: string }) => Promise<void>;
+export const followUpRef: { current: FollowUpFn | null } = {
+  current: null,
+};

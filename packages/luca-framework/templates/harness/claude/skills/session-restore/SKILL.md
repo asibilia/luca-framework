@@ -5,7 +5,7 @@ On-demand deep context recovery after compaction or /clear. Reads checkpoint fro
 ## main
 
 <main>
-# Context Restore
+# Session Restore
 
 Recover deep context after compaction or session interruption. This is Layer 2 of the restore architecture — deeper than the automatic SessionStart hook injection.
 

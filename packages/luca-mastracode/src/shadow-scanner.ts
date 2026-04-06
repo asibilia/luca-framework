@@ -1,17 +1,20 @@
-import { z } from "zod";
-
 /**
- * A single finding from the shadow scanner agent.
+ * Shadow scanner schemas and helpers.
  *
- * Represents one piece of AI-session debris detected in the repository.
- * Categories cover orphaned temp scripts, misplaced files, tool artifacts,
- * dead exports, stale planning artifacts, orphaned/misplaced markdown,
- * and repo-root markdown debris.
- *
- * Uses snake_case for data schema compatibility.
+ * Data module backing the repo-cleanup tool and shadow-scanner subagent.
+ * Defines finding/report/config schemas, config loading, and scan-mode
+ * resolution.
  */
+import { z } from "zod";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
+
+/** A single finding from the shadow scanner. */
 export const ShadowFindingSchema = z.object({
-  /** Detection category */
   category: z.enum([
     "orphaned-temp-script",
     "misplaced-file",
@@ -21,41 +24,22 @@ export const ShadowFindingSchema = z.object({
     "orphaned-markdown",
     "repo-root-markdown",
   ]),
-  /** Severity level of the finding */
   severity: z.enum(["critical", "high", "medium", "low"]),
-  /** Repository-relative file path where the issue was found */
   file_path: z.string(),
-  /** Human-readable description of the issue */
   description: z.string(),
-  /** Recommended remediation action (human-readable context) */
   recommendation: z.string(),
-  /** Machine-readable remediation verb */
   recommended_action: z.enum(["move", "delete", "gitignore"]).default("delete"),
-  /** Destination path when recommended_action is "move" */
   target_path: z.string().optional(),
-  /** Whether Luca can automatically apply the fix */
   auto_fixable: z.boolean().default(false),
 });
 
 export type ShadowFinding = z.infer<typeof ShadowFindingSchema>;
 
-/**
- * Full output of a shadow scan run.
- *
- * Returned by the lu-shadow-scanner agent after scanning the repository.
- * Callers should parse the structured JSON block at the end of the agent
- * response against this schema.
- *
- * Uses snake_case for data schema compatibility.
- */
+/** Full output of a shadow scan run. */
 export const ShadowScanReportSchema = z.object({
-  /** Scan depth used for this run */
   scan_mode: z.enum(["quick", "standard", "full"]),
-  /** Category numbers that were actually scanned (1-7) */
   categories_scanned: z.array(z.number().int().min(1).max(7)).default([]),
-  /** All findings from the scan */
   findings: z.array(ShadowFindingSchema).default([]),
-  /** Severity breakdown totals */
   summary: z.object({
     total: z.number().int().default(0),
     critical: z.number().int().default(0),
@@ -63,35 +47,20 @@ export const ShadowScanReportSchema = z.object({
     medium: z.number().int().default(0),
     low: z.number().int().default(0),
   }),
-  /** ISO 8601 timestamp when the scan was completed */
   scanned_at: z.string().default(() => new Date().toISOString()),
 });
 
 export type ShadowScanReport = z.infer<typeof ShadowScanReportSchema>;
 
-/**
- * Configuration shape for the shadow_debt section in .planning/config.json.
- *
- * Controls which scan mode runs at each workflow integration point,
- * what directories and patterns are allowlisted, and whether critical
- * findings block milestone completion.
- *
- * Uses snake_case for data schema compatibility.
- */
+/** Configuration for the shadow_debt section in .planning/config.json. */
 export const ShadowDebtConfigSchema = z.object({
-  /** Whether shadow debt scanning is active */
   enabled: z.boolean().default(true),
-  /** Scan mode used during phase-execute advisory scan (Step 10.6) */
   phase_scan_mode: z.enum(["quick", "standard", "full"]).default("quick"),
-  /** Scan mode used during milestone-complete pre-archive gate (Step 0.7) */
   milestone_scan_mode: z.enum(["quick", "standard", "full"]).default("full"),
-  /** When true, CRITICAL findings block milestone archival unless user skips */
   block_milestone_on_critical: z.boolean().default(true),
-  /** Directories that are safe to contain generated or temporary content */
   allowlist: z
     .array(z.string())
     .default(["scripts/", ".planning/", "docs/", "packages/"]),
-  /** Glob patterns that flag files as potential orphaned temp scripts */
   denylist_patterns: z
     .array(z.string())
     .default([
@@ -103,15 +72,12 @@ export const ShadowDebtConfigSchema = z.object({
       "tmp-*",
       "scratch-*",
     ]),
-  /** Directories where script-like files are expected and should not be flagged */
   known_good_script_dirs: z
     .array(z.string())
     .default(["scripts/", "src/hooks/scripts/", ".claude/hooks/"]),
-  /** Directories that are known build artifact locations */
   known_artifact_dirs: z
     .array(z.string())
     .default([".playwright-cli", ".next", ".turbo", ".cache", "coverage"]),
-  /** Canonical files allowed at .planning/ root level */
   planning_root_allowlist: z
     .array(z.string())
     .default([
@@ -125,7 +91,6 @@ export const ShadowDebtConfigSchema = z.object({
       ".context-metrics.json",
       "harness-result.json",
     ]),
-  /** Canonical directories allowed at .planning/ root level */
   planning_root_dirs: z
     .array(z.string())
     .default([
@@ -142,7 +107,6 @@ export const ShadowDebtConfigSchema = z.object({
       "done/",
       "plans/",
     ]),
-  /** Glob patterns for versioned files allowed at .planning/ root (e.g., milestone audits) */
   planning_root_versioned_patterns: z
     .array(z.string())
     .default(["v*-MILESTONE-AUDIT*.md"]),
@@ -162,3 +126,65 @@ export const ShadowDebtConfigSchema = z.object({
 });
 
 export type ShadowDebtConfig = z.infer<typeof ShadowDebtConfigSchema>;
+
+// ---------------------------------------------------------------------------
+// Scan mode enum
+// ---------------------------------------------------------------------------
+
+export const ScanMode = z.enum(["quick", "standard", "full"]);
+export type ScanMode = z.infer<typeof ScanMode>;
+
+/** Category numbers included in each scan mode. */
+export const SCAN_MODE_CATEGORIES: Record<ScanMode, readonly number[]> = {
+  quick: [1, 3],
+  standard: [1, 2, 3, 5, 6, 7],
+  full: [1, 2, 3, 4, 5, 6, 7],
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Load the shadow_debt config from `.planning/config.json`.
+ * Returns schema defaults if the file or section is missing.
+ */
+export function loadShadowDebtConfig(): ShadowDebtConfig {
+  const configPath = join(process.cwd(), ".planning", "config.json");
+  if (!existsSync(configPath)) {
+    return ShadowDebtConfigSchema.parse({});
+  }
+  try {
+    const raw = JSON.parse(readFileSync(configPath, "utf-8"));
+    return ShadowDebtConfigSchema.parse(raw.shadow_debt ?? {});
+  } catch {
+    return ShadowDebtConfigSchema.parse({});
+  }
+}
+
+/**
+ * Resolve scan mode from explicit flags or complexity level.
+ *
+ * Priority: explicit flag > complexity mapping > "standard" fallback.
+ */
+export function determineScanMode({
+  flags,
+  complexity,
+}: {
+  flags?: { quick?: boolean; full?: boolean };
+  complexity?: string;
+}): ScanMode {
+  // Explicit flags take priority
+  if (flags?.full) return "full";
+  if (flags?.quick) return "quick";
+
+  // Complexity-based mapping
+  if (complexity) {
+    const upper = complexity.toUpperCase();
+    if (upper === "TRIVIAL" || upper === "SIMPLE") return "quick";
+    if (upper === "MODERATE") return "standard";
+    if (upper === "COMPLEX" || upper === "CRITICAL") return "full";
+  }
+
+  return "standard";
+}
