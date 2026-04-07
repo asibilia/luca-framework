@@ -307,7 +307,7 @@ and never cleaned up (e.g., `FIRECRAWL_WEB_SEARCH_IMPLEMENTATION.md`, `MASTRA_SE
 1. Glob `*.md` at repo root (depth 1 only).
 
 2. Exclude files in `repo_root_markdown_allowlist` (default: README.md, CLAUDE.md, AGENTS.md,
-   SECURITY.md, LICENSE.md, CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md).
+   SECURITY.md, LICENSE.md, CONTRIBUTING.md, CHANGELOG.md, CODE_OF_CONDUCT.md, ROADMAP.md).
 
 3. Exclude files already flagged by Category 6 rule 4 (SUMMARY-*.md / *-SUMMARY.md patterns).
 

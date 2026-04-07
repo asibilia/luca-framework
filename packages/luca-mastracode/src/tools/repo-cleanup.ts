@@ -76,6 +76,7 @@ export const repoCleanupTool = createTool({
             planning_root_allowlist: config.planning_root_allowlist,
             planning_root_dirs: config.planning_root_dirs,
             planning_root_versioned_patterns: config.planning_root_versioned_patterns,
+            repo_root_markdown_allowlist: config.repo_root_markdown_allowlist,
           },
           instructions:
             `Spawn the shadow-scanner subagent with task: ` +

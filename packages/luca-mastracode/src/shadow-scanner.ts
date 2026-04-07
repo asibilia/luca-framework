@@ -122,6 +122,7 @@ export const ShadowDebtConfigSchema = z.object({
       "CONTRIBUTING.md",
       "CHANGELOG.md",
       "CODE_OF_CONDUCT.md",
+      "ROADMAP.md",
     ]),
 });
 

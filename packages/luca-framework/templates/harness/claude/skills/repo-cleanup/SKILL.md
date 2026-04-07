@@ -12,19 +12,19 @@ Scan the repository for AI-session debris and interactively review findings.
 **Arguments:**
 
 ```
-/repo-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-6>]
+/repo-cleanup [--quick|--full] [--fix] [--dry-run] [--category=<1-7>]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| (default) | Standard mode — Categories 1+2+3+5+6 |
+| (default) | Standard mode — Categories 1+2+3+5+6+7 |
 | `--quick` | Quick mode — Categories 1+3 only |
-| `--full` | Full mode — All 6 categories |
+| `--full` | Full mode — All 7 categories |
 | `--dry-run` | Report only, no deletions or moves |
 | `--fix` | Auto-apply all auto-fixable findings without interactive prompt |
-| `--category=N` | Run only the specified category (1-6) |
+| `--category=N` | Run only the specified category (1-7) |
 
 ## Vault Resolution
 
@@ -67,9 +67,9 @@ Apply flags in priority order:
 
 ```
 --quick      → mode = "quick"    (Categories 1+3)
---full       → mode = "full"     (Categories 1+2+3+4+5+6)
+--full       → mode = "full"     (Categories 1+2+3+4+5+6+7)
 --category=N → mode = "quick"    (single category, override scanner categories)
-(default)    → mode = "standard" (Categories 1+2+3+5+6)
+(default)    → mode = "standard" (Categories 1+2+3+5+6+7)
 ```
 
 ### Step 3: Spawn <%= branding.commandPrefix %>-shadow-scanner
