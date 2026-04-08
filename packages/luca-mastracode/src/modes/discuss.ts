@@ -20,15 +20,15 @@ export function buildDiscussInstructions(): string {
 }
 
 export function resolveDiscussModel(): string {
-  return 'anthropic/claude-sonnet-4-20250514';
+  return 'anthropic/claude-sonnet-4-6';
 }
 
 export const discussMode = {
-  id: 'discuss' as const,
+  id: 'luca:discuss' as const,
   name: 'Discuss',
   description: 'Read-only brainstorming and open-ended discussion.',
   color: '#f59e0b',
-  defaultModelId: 'anthropic/claude-sonnet-4-20250514',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildDiscussInstructions,
   resolveModel: resolveDiscussModel,
 };

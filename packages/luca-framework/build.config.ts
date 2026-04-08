@@ -4,7 +4,7 @@ import { defineBuildConfig } from "unbuild";
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 export default defineBuildConfig({
-  entries: ["src/index", "src/state/index", "src/state/bridge"],
+  entries: ["src/index"],
   clean: true,
   declaration: true,
   rollup: {
@@ -22,11 +22,7 @@ export default defineBuildConfig({
     "consola",
     "@clack/prompts",
     "pathe",
-    "defu",
-    "pkg-types",
-    "fs-extra",
-    "xstate",
+    "semver",
     "zod",
-    "lodash",
   ],
 });

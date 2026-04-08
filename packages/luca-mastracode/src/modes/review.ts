@@ -59,11 +59,11 @@ export function resolveReviewModel(_harnessState?: Record<string, unknown>): str
  * Review agent configuration for mode registration.
  */
 export const reviewMode = {
-  id: 'review' as const,
+  id: 'luca:5-review' as const,
   name: 'Review',
   description: 'Read-only code audit: multi-perspective review, structured findings, and iteration routing.',
   color: '#f59e0b',
-  defaultModelId: 'anthropic/claude-sonnet-4-5',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildReviewInstructions,
   resolveModel: resolveReviewModel,
 };

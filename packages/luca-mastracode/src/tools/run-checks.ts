@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import type { ParsedError } from './__schemas/checks.schemas';
+import { parserRegistry } from './parsers/parser-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -138,69 +140,25 @@ async function runWithTimeout(
 // Error fingerprinting and convergence tracking
 // ---------------------------------------------------------------------------
 
-interface ParsedError {
-  file: string;
-  line: number;
-  message: string;
+interface FingerprintedError extends ParsedError {
   fingerprint: string;
 }
 
-/** Parse TypeScript-style errors: `file(line,col): error TS...: message` */
-function parseTscErrors(output: string): ParsedError[] {
-  const errors: ParsedError[] = [];
-  const pattern = /^(.+?)\((\d+),\d+\): error \w+: (.+)$/gm;
-  let m;
-  while ((m = pattern.exec(output)) !== null) {
-    const file = m[1] ?? '';
-    const line = parseInt(m[2] ?? '0', 10);
-    const message = m[3] ?? '';
-    const fingerprint = createHash('sha256').update(`${file}:${line}:${message}`).digest('hex').slice(0, 12);
-    errors.push({ file, line, message, fingerprint });
+/** Run the canonical parser for `checkName` and attach SHA256 fingerprints. */
+function parseAndFingerprint(checkName: string, output: string): FingerprintedError[] {
+  const parserFactory = parserRegistry[checkName];
+  if (!parserFactory) {
+    console.warn(`[run-checks] No parser found for check "${checkName}" — raw output will not be parsed`);
+    return [];
   }
-  return errors;
-}
-
-/** Parse ESLint-style errors: `file:line:col: message  rule-name` */
-function parseEslintErrors(output: string): ParsedError[] {
-  const errors: ParsedError[] = [];
-  let currentFile = '';
-  for (const rawLine of output.split('\n')) {
-    const fileMatch = rawLine.match(/^([/.][\S]+)$/);
-    if (fileMatch) {
-      currentFile = fileMatch[1] ?? '';
-      continue;
-    }
-    const errorMatch = rawLine.match(/^\s+(\d+):(\d+)\s+error\s+(.+?)\s{2,}\S+$/);
-    if (errorMatch && currentFile) {
-      const line = parseInt(errorMatch[1] ?? '0', 10);
-      const message = errorMatch[3] ?? '';
-      const fingerprint = createHash('sha256').update(`${currentFile}:${line}:${message}`).digest('hex').slice(0, 12);
-      errors.push({ file: currentFile, line, message, fingerprint });
-    }
-  }
-  return errors;
-}
-
-/** Parse test failures — extract test names/suites */
-function parseTestErrors(output: string): ParsedError[] {
-  const errors: ParsedError[] = [];
-  const failPattern = /(?:✗|✕|FAIL)\s+(.+)/g;
-  let m;
-  while ((m = failPattern.exec(output)) !== null) {
-    const message = (m[1] ?? '').trim();
-    const fingerprint = createHash('sha256').update(`test:${message}`).digest('hex').slice(0, 12);
-    errors.push({ file: 'test', line: 0, message, fingerprint });
-  }
-  return errors;
-}
-
-function parseErrors(checkName: string, output: string): ParsedError[] {
-  switch (checkName) {
-    case 'tsc': return parseTscErrors(output);
-    case 'eslint': return parseEslintErrors(output);
-    case 'bun-test': return parseTestErrors(output);
-    default: return [];
-  }
+  const parser = parserFactory();
+  return parser(output).map(err => ({
+    ...err,
+    fingerprint: createHash('sha256')
+      .update(`${err.file}:${err.line ?? 0}:${err.message}`)
+      .digest('hex')
+      .slice(0, 12),
+  }));
 }
 
 const CONVERGENCE_FILE = '.planning/checks-convergence.json';
@@ -292,7 +250,7 @@ export const runChecksTool = createTool({
       errorCount: number;
       warningCount: number;
       output: string;
-      parsedErrors: ParsedError[];
+      parsedErrors: FingerprintedError[];
     }> = [];
 
     const checksToRun = checks.includes('all')
@@ -334,7 +292,7 @@ export const runChecksTool = createTool({
       }
 
       const output = (stdout + '\n' + stderr).trim();
-      const parsed = parseErrors(check, output);
+      const parsed = parseAndFingerprint(check, output);
       // Use parsed error count when available, fall back to regex for unparsed output
       const errorCount = parsed.length > 0 ? parsed.length : (output.match(/error/gi) ?? []).length;
       const warningCount = (output.match(/warning/gi) ?? []).length;

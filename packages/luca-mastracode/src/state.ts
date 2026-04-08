@@ -192,45 +192,4 @@ export function resolveBudgetLimits({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Valid pipeline step transitions
-// ---------------------------------------------------------------------------
 
-const VALID_TRANSITIONS: Record<string, ReadonlyArray<string>> = {
-  idle: ["triage"],
-  triage: ["classify"],
-  classify: ["configure"],
-  configure: ["git-setup", "discuss", "roadmap"],
-  "git-setup": ["discuss", "roadmap"],
-  roadmap: ["phase-order"],
-  "phase-order": ["research", "discuss", "architect", "execute"],
-  research: ["discuss", "architect"],
-  discuss: ["architect"],
-  architect: ["plan", "plan-review", "execute"],
-  plan: ["plan-review"],
-  "plan-review": ["architect", "plan", "execute"],
-  execute: ["checks"],
-  checks: ["verify", "execute"],
-  verify: ["review", "execute"],
-  review: ["learn"],
-  learn: ["review-audit", "execute", "milestone", "phase-order"],
-  "review-audit": ["execute", "finalize"],
-  milestone: ["gap-audit", "phase-order"],
-  "gap-audit": ["cleanup"],
-  cleanup: ["complete"],
-  complete: ["idle"],
-};
-
-/**
- * Check if a pipeline step transition is valid.
- */
-export function isValidTransition({
-  from,
-  to,
-}: {
-  from: PipelineStep;
-  to: PipelineStep;
-}): boolean {
-  const allowed = VALID_TRANSITIONS[from];
-  return allowed ? allowed.includes(to) : false;
-}

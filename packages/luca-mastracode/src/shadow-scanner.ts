@@ -74,7 +74,7 @@ export const ShadowDebtConfigSchema = z.object({
     ]),
   known_good_script_dirs: z
     .array(z.string())
-    .default(["scripts/", "src/hooks/scripts/", ".claude/hooks/"]),
+    .default(["scripts/"]),
   known_artifact_dirs: z
     .array(z.string())
     .default([".playwright-cli", ".next", ".turbo", ".cache", "coverage"]),
@@ -89,7 +89,7 @@ export const ShadowDebtConfigSchema = z.object({
       "CANONICAL-DECISIONS.md",
       "MILESTONE-AUDIT.md",
       ".context-metrics.json",
-      "harness-result.json",
+      "checks-result.json",
     ]),
   planning_root_dirs: z
     .array(z.string())
@@ -102,7 +102,7 @@ export const ShadowDebtConfigSchema = z.object({
       "notes/",
       "codebase/",
       "checkpoints/",
-      "harness-runs/",
+      "checks-runs/",
       "migration/",
       "done/",
       "plans/",

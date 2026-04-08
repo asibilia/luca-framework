@@ -20,12 +20,11 @@ const config: CommitConfig = {
         },
     ],
     scopes: [
-        { value: 'ui', label: 'Components & Pages' },
-        { value: 'convex', label: 'Database & Backend' },
-        { value: 'utils', label: 'Utilities & Helpers' },
-        { value: 'styles', label: 'Tailwind & Theming' },
-        { value: 'auth', label: 'Authentication' },
+        { value: 'framework', label: 'Luca CLI (luca-framework)' },
+        { value: 'mastracode', label: 'Mastra Code harness' },
+        { value: 'studio', label: 'Luca Studio UI' },
         { value: 'config', label: 'Configuration' },
+        { value: 'docs', label: 'Documentation' },
         { value: 'repo', label: 'Repository & Tooling' },
     ],
     git: {

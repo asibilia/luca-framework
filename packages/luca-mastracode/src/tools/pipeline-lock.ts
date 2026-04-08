@@ -1,8 +1,9 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { readLucaState } from '../luca-store.js';
+import { atomicWriteSync } from '../atomic-write.js';
 
 const LOCK_FILE = '.planning/.luca-lock.json';
 
@@ -14,7 +15,7 @@ interface LockInfo {
   phaseStep: string;
 }
 
-type RecoveryStrategy = 'fresh-start' | 'restart-step' | 'resume-phase' | 'advance-phase';
+export type RecoveryStrategy = 'fresh-start' | 'restart-step' | 'resume-phase' | 'advance-phase';
 
 /**
  * Determine recovery strategy based on lock + workflow state.
@@ -30,17 +31,17 @@ function determineRecovery(lock: LockInfo): {
 
   // No meaningful progress → fresh start
   if (!step || step === 'init' || step === 'idle' || step === 'triage') {
-    return { strategy: 'fresh-start', resumeMode: 'triage', reason: 'No meaningful pipeline progress to resume' };
+    return { strategy: 'fresh-start', resumeMode: 'luca:1-triage', reason: 'No meaningful pipeline progress to resume' };
   }
 
   // Crashed during research → restart research
   if (step === 'research') {
-    return { strategy: 'restart-step', resumeMode: 'research', reason: 'Crashed during research — restarting step' };
+    return { strategy: 'restart-step', resumeMode: 'luca:2-research', reason: 'Crashed during research — restarting step' };
   }
 
   // Crashed during planning substeps → restart architect
   if (['discuss', 'architect', 'plan', 'plan-review', 'git-setup', 'roadmap', 'phase-order', 'classify', 'configure'].includes(step)) {
-    return { strategy: 'restart-step', resumeMode: 'architect', reason: `Crashed during ${step} — restarting architect mode` };
+    return { strategy: 'restart-step', resumeMode: 'luca:3-architect', reason: `Crashed during ${step} — restarting architect mode` };
   }
 
   // Crashed during execution substeps
@@ -50,26 +51,26 @@ function determineRecovery(lock: LockInfo): {
     if (phaseName) {
       return {
         strategy: 'resume-phase',
-        resumeMode: 'execute',
+        resumeMode: 'luca:4-execute',
         resumePhase: phaseName,
         reason: `Crashed during ${step} in phase "${phaseName}" wave ${wave} — resuming execution`,
       };
     }
-    return { strategy: 'restart-step', resumeMode: 'execute', reason: `Crashed during ${step} — restarting execute mode` };
+    return { strategy: 'restart-step', resumeMode: 'luca:4-execute', reason: `Crashed during ${step} — restarting execute mode` };
   }
 
   // Crashed during review/learn → resume review
   if (['review', 'review-audit', 'learn'].includes(step)) {
-    return { strategy: 'resume-phase', resumeMode: 'review', reason: `Crashed during ${step} — resuming review` };
+    return { strategy: 'resume-phase', resumeMode: 'luca:5-review', reason: `Crashed during ${step} — resuming review` };
   }
 
   // Crashed during milestone/cleanup → advance to finalize
   if (['milestone', 'gap-audit', 'cleanup'].includes(step)) {
-    return { strategy: 'advance-phase', resumeMode: 'finalize', reason: `Crashed during ${step} — advancing to finalize` };
+    return { strategy: 'advance-phase', resumeMode: 'luca:6-finalize', reason: `Crashed during ${step} — advancing to finalize` };
   }
 
   // Default fallback
-  return { strategy: 'fresh-start', resumeMode: 'triage', reason: `Unknown step "${step}" — starting fresh` };
+  return { strategy: 'fresh-start', resumeMode: 'luca:1-triage', reason: `Unknown step "${step}" — starting fresh` };
 }
 
 export const pipelineLockTool = createTool({
@@ -111,7 +112,7 @@ export const pipelineLockTool = createTool({
           pipelineStep: pipelineStep ?? 'init',
           phaseStep: phaseStep ?? '',
         };
-        writeFileSync(lockPath, JSON.stringify(lock, null, 2));
+        atomicWriteSync(lockPath, JSON.stringify(lock, null, 2));
         return { status: 'live' as const, message: `Lock acquired for session ${lock.sessionId}`, lock };
       }
       case 'release': {
@@ -125,7 +126,7 @@ export const pipelineLockTool = createTool({
         const lock: LockInfo = JSON.parse(readFileSync(lockPath, 'utf-8'));
         if (pipelineStep) lock.pipelineStep = pipelineStep;
         if (phaseStep) lock.phaseStep = phaseStep;
-        writeFileSync(lockPath, JSON.stringify(lock, null, 2));
+        atomicWriteSync(lockPath, JSON.stringify(lock, null, 2));
         return { status: 'live' as const, message: 'Lock updated', lock };
       }
       case 'recover': {

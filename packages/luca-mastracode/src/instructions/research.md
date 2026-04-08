@@ -66,9 +66,38 @@ Spawn researcher subagents in parallel for each dimension:
 
 ---
 
+## Capture Raw Research Outputs
+
+**IMMEDIATELY** after all 5 researcher subagents return, persist each dimension's raw output to a capture file **before** synthesis or further reasoning. This ensures findings survive OM context compression.
+
+Write each researcher's output to `.planning/research-capture-{dimension}.md` using this template:
+
+```markdown
+# Research Capture — {Dimension}
+
+**Subagent**: researcher
+**Perspective**: {dimension}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+```
+
+Files to write (5 total):
+- `.planning/research-capture-scope.md`
+- `.planning/research-capture-architecture.md`
+- `.planning/research-capture-patterns.md`
+- `.planning/research-capture-dependencies.md`
+- `.planning/research-capture-risk.md`
+
+---
+
 ## Synthesis
 
-After all researcher subagents complete, synthesize their findings into a unified **RESEARCH.md** with this structure:
+After all researcher subagents complete, synthesize their findings into a unified **RESEARCH.md**. If raw subagent outputs are no longer in the conversation context (OM compressed them), **re-read from** `.planning/research-capture-*.md` files as the source of truth.
+
+Structure:
 
 ```markdown
 # Research: <task title>
@@ -138,13 +167,19 @@ Track iterations. Maximum iterations = `maxResearchReviewIterations` from workfl
 
 ## Iteration Tracking
 
-Maintain an iteration counter:
+Maintain an iteration counter. Increment after each complete cycle of
+spawn-researchers → synthesize → quality-check:
 
 ```
 Research Iteration: <n> / <maxResearchReviewIterations>
 Quality: Accuracy=<pass|fail> Completeness=<pass|fail> Actionability=<pass|fail>
 Gaps: <list of specific gaps if any dimension failed>
 ```
+
+- Increment AFTER quality assessment, not before
+- If all 3 dimensions pass → proceed to transition
+- If any dimension fails AND budget allows → spawn targeted researchers for gaps only
+- If budget exceeded → proceed with current research, note gaps in RESEARCH.md
 
 ---
 
@@ -184,7 +219,7 @@ mcp__muninn__muninn_remember_batch(
     {
       concept: "research:<topic-keyword>",
       content: "<atomic insight>",
-      tags: ["research", "<session-id>", "<topic>"]
+      tags: ["research", "<codebase>", "<dimension>"]
     },
     ...
   ]
@@ -192,9 +227,9 @@ mcp__muninn__muninn_remember_batch(
 ```
 
 **Tagging strategy:**
-- Always include `"research"` tag
-- Include a session identifier tag (use the task title slugified, e.g. `"shadow-cleanup-port"`)
-- Include topic-specific tags for discoverability (e.g. `"dependency"`, `"architecture"`, `"risk"`)
+- Always include `"research"` tag as the first tag (primary category)
+- Always include the codebase identifier as the second tag (from `.planning/config.json` or repo name, e.g. `"luca-framework"`)
+- Include a dimension/topic tag as the third tag for discoverability (e.g. `"dependencies"`, `"architecture"`, `"risk"`)
 - Keep concepts descriptive: `"research:mastra-agent-subagent-pattern"` not `"research:finding-1"`
 
 **What NOT to store:**
@@ -233,7 +268,7 @@ Before transitioning, briefly summarize what was captured:
 - Number of todos created (list titles)
 - The session tag used for recall
 
-If MuninnDB is unavailable, skip the memory storage step (don't block graduation) but still create todos since they're filesystem-based.
+If MuninnDB is unavailable, skip the memory storage step (don't block graduation) but still create todos since they're filesystem-based. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "research-memory-storage", reason: "unavailable" })`.
 
 ---
 
@@ -261,7 +296,7 @@ Triage → [Research] → Architect → Execute → Review → Finalize
 After research graduates, use the `workflowState` tool to advance:
 
 ```
-workflowState(action: "switch-mode", targetMode: "architect")
+workflowState(action: "switch-mode", targetMode: "luca:3-architect")
 ```
 
 The mode switch to Architect happens automatically. Do NOT wait for user confirmation unless oversight mode is `human-in-loop`.

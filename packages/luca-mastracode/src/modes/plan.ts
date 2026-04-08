@@ -20,7 +20,7 @@ export function buildPlanInstructions(): string {
 }
 
 export function resolvePlanModel(): string {
-  return 'anthropic/claude-sonnet-4-20250514';
+  return 'anthropic/claude-sonnet-4-6';
 }
 
 export const planMode = {
@@ -28,7 +28,7 @@ export const planMode = {
   name: 'Plan',
   description: 'Read-only exploration and plan design. Does not modify files.',
   color: '#8b5cf6',
-  defaultModelId: 'anthropic/claude-sonnet-4-20250514',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildPlanInstructions,
   resolveModel: resolvePlanModel,
 };

@@ -1,22 +1,22 @@
 /**
- * PUT /api/config/harness -- Update the harness section of config.json.
+ * PUT /api/config/harness -- Update the harness (verification checks) section of config.json.
  *
- * Validates the incoming payload against HarnessSectionSchema and runs the
- * checkHarnessEnabled semantic validator to ensure at least one check type
+ * Validates the incoming payload against ChecksSectionSchema and runs the
+ * checkChecksEnabled semantic validator to ensure at least one check type
  * remains enabled.
  */
 import { createConfigSectionHandler } from "~/lib/config-section-handler";
-import { HarnessSectionSchema } from "~/lib/config-section-schemas";
-import type { HarnessCheck } from "~/lib/semantic-validators";
-import { checkHarnessEnabled } from "~/lib/semantic-validators";
+import { ChecksSectionSchema } from "~/lib/config-section-schemas";
+import type { CheckEntry } from "~/lib/semantic-validators";
+import { checkChecksEnabled } from "~/lib/semantic-validators";
 
 const handler = createConfigSectionHandler({
   section: "harness",
-  schema: HarnessSectionSchema,
+  schema: ChecksSectionSchema,
   semanticValidators: [
     (data) => {
-      const harness = data as { checks: HarnessCheck[] };
-      return checkHarnessEnabled(harness.checks);
+      const checks = data as { checks: CheckEntry[] };
+      return checkChecksEnabled(checks.checks);
     },
   ],
 });

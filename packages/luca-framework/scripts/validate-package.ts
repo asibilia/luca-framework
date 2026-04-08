@@ -4,11 +4,9 @@
  *
  * Checks:
  * 1. bin/luca.js exists and starts with #!/usr/bin/env bun
- * 2. dist/index.mjs exists and contains the correct version string
- * 3. dist/index.mjs does NOT contain the stale "0.0.1" sentinel
- * 4. templates/ directory exists with expected subdirectories
- * 5. dist/plugin/ exists (from build:plugin)
- * 6. package.json version matches the version in dist output
+ * 2. dist/index.mjs exists
+ * 3. dist/index.mjs contains the correct version string (not stale)
+ * 4. package.json version matches the version in dist output
  *
  * Usage: bun run scripts/validate-package.ts
  * Exit: 0 on all pass, 1 with details on failure
@@ -92,7 +90,6 @@ check("no stale 0.0.1 version", () => {
     return { passed: false, message: "dist/index.mjs does not exist" };
   }
   const content = readFileSync(distPath, "utf-8");
-  // Look for the specific hardcoded version pattern, not just any occurrence of 0.0.1
   if (
     content.includes('LUCA_VERSION = "0.0.1"') ||
     content.includes("LUCA_VERSION = '0.0.1'")
@@ -103,40 +100,6 @@ check("no stale 0.0.1 version", () => {
     };
   }
   return { passed: true, message: "No stale 0.0.1 LUCA_VERSION found" };
-});
-
-// Check 5: templates/ directory with expected subdirs
-check("templates/ directory structure", () => {
-  const templatesDir = resolve(pkgDir, "templates");
-  if (!existsSync(templatesDir)) {
-    return { passed: false, message: "templates/ directory does not exist" };
-  }
-  const expectedSubdirs = ["base", "framework", "harness", "hooks", "stacks"];
-  const missing = expectedSubdirs.filter(
-    (d) => !existsSync(resolve(templatesDir, d)),
-  );
-  if (missing.length > 0) {
-    return {
-      passed: false,
-      message: `Missing template subdirectories: ${missing.join(", ")}`,
-    };
-  }
-  return {
-    passed: true,
-    message: `All template subdirectories present: ${expectedSubdirs.join(", ")}`,
-  };
-});
-
-// Check 6: dist/plugin/ exists
-check("dist/plugin/ exists", () => {
-  const pluginDir = resolve(pkgDir, "dist", "plugin");
-  if (!existsSync(pluginDir)) {
-    return {
-      passed: false,
-      message: "dist/plugin/ does not exist. Run `bun run build:plugin` first.",
-    };
-  }
-  return { passed: true, message: "dist/plugin/ exists" };
 });
 
 // Print results
@@ -157,6 +120,6 @@ if (allPassed) {
   console.log("All checks passed. Package is ready to publish.");
   process.exit(0);
 } else {
-  console.error("Some checks failed. Fix issues before publishing.");
+  console.error("Some checks failed. Fix the issues above before publishing.");
   process.exit(1);
 }

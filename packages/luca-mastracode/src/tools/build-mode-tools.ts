@@ -1,6 +1,7 @@
 import type { Tool } from '@mastra/core/tools';
 import { createScopedTool } from './create-scoped-tool.js';
 import { MODE_PERMISSIONS } from './mode-permissions.js';
+import { appendLedger } from '../session-ledger.js';
 
 import { classifyComplexityTool } from './classify-complexity.js';
 import { manageTodosTool } from './manage-todos.js';
@@ -51,15 +52,13 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
  * Full-access tools ('*') are passed through unchanged.
  * Restricted tools get a scoped variant with a narrowed action enum.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildModeTools({ mode_id }: { mode_id: string }): Record<string, any> {
+export function buildModeTools({ mode_id }: { mode_id: string }): Record<string, Tool<any, any, any>> {
   const perms = MODE_PERMISSIONS[mode_id];
   if (!perms) {
     throw new Error(`No permissions defined for mode: ${mode_id}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tools: Record<string, any> = {};
+  const tools: Record<string, Tool<any, any, any>> = {};
 
   for (const [manifest_key, allowed_actions] of Object.entries(perms)) {
     const entry = TOOL_REGISTRY[manifest_key];
@@ -79,6 +78,14 @@ export function buildModeTools({ mode_id }: { mode_id: string }): Record<string,
       });
     }
   }
+
+  appendLedger('tool-access-granted', {
+    mode: mode_id,
+    tools: Object.entries(perms).map(([tool, actions]) => ({
+      tool,
+      actions: actions === '*' ? '*' : [...actions],
+    })),
+  });
 
   return tools;
 }

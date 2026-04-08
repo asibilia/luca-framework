@@ -3,11 +3,7 @@
  *
  * Runs all registered doctor checks in parallel, optionally filtering
  * by scope. Reports results with pass/fail/warning icons and fix suggestions.
- *
- * @see packages/luca-framework/src/utils/doctor/types.ts for DoctorScope
  */
-
-import filter from "lodash/filter";
 
 import { logger } from "../logger";
 
@@ -20,15 +16,6 @@ import type { DoctorCheck, DoctorScope } from "./types";
  * @param options.verbose - Show detailed check information for passing checks
  * @param options.scope - Filter checks to a specific scope category
  * @returns Exit code: 0 for success (possibly with warnings), 1 for failures
- *
- * @example
- * ```typescript
- * // Run all checks
- * const exitCode = await executeDoctor({ verbose: true });
- *
- * // Run only global checks
- * const exitCode = await executeDoctor({ scope: 'global' });
- * ```
  */
 export async function executeDoctor(
   options: { verbose?: boolean; scope?: DoctorScope } = {},
@@ -38,34 +25,18 @@ export async function executeDoctor(
 
   // Import all checks
   const { bunRuntimeCheck } = await import("./checks/bun-runtime");
-  const { cursorIdeCheck } = await import("./checks/cursor-ide");
-  const { configValidationCheck } = await import("./checks/config-validation");
-  const { harnessInstallationCheck } =
-    await import("./checks/harness-installation");
-  const { driftDetectionCheck } = await import("./checks/drift-detection");
   const { muninndbHealthCheck } = await import("./checks/muninndb-health");
-  const { globalArtifactsCheck } = await import("./checks/global-artifacts");
-  const { frameworkRuntimeCheck } = await import("./checks/framework-runtime");
-  const { projectContextCheck } = await import("./checks/project-context");
 
   const allChecks: DoctorCheck[] = [
     // Prerequisites
     bunRuntimeCheck,
-    cursorIdeCheck,
     // Global
     muninndbHealthCheck,
-    globalArtifactsCheck,
-    frameworkRuntimeCheck,
-    // Project
-    configValidationCheck,
-    harnessInstallationCheck,
-    driftDetectionCheck,
-    projectContextCheck,
   ];
 
   // Filter by scope if provided
   const checks = scope
-    ? filter(allChecks, (check) => check.scope === scope)
+    ? allChecks.filter((check) => check.scope === scope)
     : allChecks;
 
   if (checks.length === 0) {

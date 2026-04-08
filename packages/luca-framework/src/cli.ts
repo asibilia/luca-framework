@@ -1,8 +1,9 @@
 /**
  * CLI entry point for the Luca framework.
  *
- * Defines the main CLI command with sub-commands for init, update, status, doctor, and run.
- * Separated from index.ts to keep the barrel pure (re-exports only).
+ * Defines the main CLI command with sub-commands for init, vault:init,
+ * run, doctor, and version. Separated from index.ts to keep the barrel
+ * pure (re-exports only).
  */
 
 import { defineCommand, runMain as cittyRunMain } from "citty";
@@ -14,31 +15,18 @@ const main = defineCommand({
     name: "luca",
     version: LUCA_VERSION,
     description:
-      "Luca CLI — scaffold and manage AI-powered development workflows",
+      "Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness",
   },
   subCommands: {
     init: () => import("./commands/init").then((m) => m.initCommand),
     "vault:init": () =>
       import("./commands/vault-init").then((m) => m.vaultInitCommand),
-    reinit: () => import("./commands/reinit").then((m) => m.reinitCommand),
-    version: () => import("./commands/version").then((m) => m.versionCommand),
-    update: () => import("./commands/update").then((m) => m.updateCommand),
-    status: () => import("./commands/status").then((m) => m.statusCommand),
+    run: () => import("./commands/run").then((m) => m.runCommand),
     doctor: () => import("./commands/doctor").then((m) => m.default),
-    "add-skill": () =>
-      import("./commands/add-skill").then((m) => m.addSkillCommand),
-    build: () => import("./commands/build").then((m) => m.buildCommand),
-    "run:claude": () =>
-      import("./commands/run").then((m) => m.runClaudeCommand),
-    "run:cursor": () =>
-      import("./commands/run").then((m) => m.runCursorCommand),
+    version: () => import("./commands/version").then((m) => m.versionCommand),
   },
 });
 
-export const runMain = () => {
-  // Non-blocking version check runs in background
-  import("./utils/version-check").then((m) => m.checkForUpdates());
-  return cittyRunMain(main);
-};
+export const runMain = () => cittyRunMain(main);
 
 export const runInit = () => import("./commands/init").then((m) => m.runInit());

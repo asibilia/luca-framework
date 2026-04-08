@@ -1,46 +1,23 @@
 {
   "name": "luca-monorepo",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "0.2.81",
-    "@playwright/cli": "^0.1.1",
-    "js-tiktoken": "^1.0.21",
-    "js-yaml": "^4.1.0",
-    "lodash": "^4.17.23",
-    "xstate": "^5.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
-    "@mariozechner/pi-coding-agent": "^0.55.1",
-    "@mariozechner/pi-tui": "^0.55.1",
     "@types/bun": "latest",
-    "@types/js-yaml": "^4.0.9",
-    "@types/lodash": "^4.17.23",
     "typescript": "^5.0.0",
     "unbuild": "^3.5.0"
   },
   "private": true,
   "scripts": {
-    "build": "bun run build:all",
-    "build:all": "bun run ./scripts/build-all.ts",
-    "build:compile": "bun run ./scripts/build-compile.ts",
-    "build:deploy": "bun run ./scripts/build-deploy.ts",
-    "build:domain": "bun run ./scripts/targeted-recompile.ts",
-    "build:full": "bun run build:pkg && bun run build:all",
-    "build:pkg": "cd packages/luca-framework && bun run build",
-    "check:drift": "bun run ./scripts/check-drift.ts",
-    "check:prompt-safety": "bun ./scripts/check-prompt-safety.ts",
-    "check:side-effects": "bun scripts/check-template-side-effects.ts",
+    "build": "cd packages/luca-framework && bun run build",
     "commit": "bunx --bun @alecsibilia/commit",
     "css:studio": "bun run --filter @alecsibilia/luca-studio css:build",
-    "deploy": "bun run ./scripts/deploy-global.ts",
-    "deploy:remove": "bun run ./scripts/deploy-global.ts --remove",
     "dev:studio": "bun run --filter @alecsibilia/luca-studio dev",
-    "eval:run": "bun scripts/eval.ts",
-    "eval:skills": "bun scripts/eval-skills.ts",
     "mastracode": "bun run packages/luca-mastracode/src/index.ts",
     "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
-    "release:local": "bun run build:full && bun run deploy && cd packages/luca-framework && bun link"
+    "release:local": "bun run build && cd packages/luca-framework && bun link"
   },
   "type": "module",
   "workspaces": [

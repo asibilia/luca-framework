@@ -10,10 +10,7 @@ import {
   getCommonBinaryPaths,
 } from "./muninndb-schemas";
 
-import type {
-  MuninndbInstallResult,
-  MuninndbPlatformTarget,
-} from "./muninndb-schemas";
+import type { MuninndbInstallResult } from "./muninndb-schemas";
 
 /**
  * Base URL for the MuninnDB website.
@@ -88,26 +85,6 @@ export function validateDownloadUrl(
   }
 
   return { valid: true };
-}
-
-/**
- * Resolve the current platform into a validated MuninnDB platform target.
- *
- * Thin wrapper around `resolvePlatformTarget()` that returns either
- * the target string or an error result compatible with `MuninndbInstallResult`.
- *
- * @returns Object with `success` and either `target` or `error`.
- *
- * @example
- * ```typescript
- * const result = resolvePlatformForDownload();
- * if (!result.success) console.error(result.error);
- * ```
- */
-export function resolvePlatformForDownload():
-  | { success: true; target: MuninndbPlatformTarget }
-  | { success: false; error: string } {
-  return resolvePlatformTarget();
 }
 
 /**

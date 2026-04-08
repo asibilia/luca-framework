@@ -39,3 +39,13 @@ type FollowUpFn = (opts: { content: string }) => Promise<void>;
 export const followUpRef: { current: FollowUpFn | null } = {
   current: null,
 };
+
+/**
+ * Reference to the McpManager instance.
+ * Used by mode agent dynamic tools to merge MCP tools at request time,
+ * and by subagent definitions for MCP-aware subagents.
+ */
+type McpManagerLike = { getTools(): Record<string, any> };
+export const mcpManagerRef: { current: McpManagerLike | null } = {
+  current: null,
+};

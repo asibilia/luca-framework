@@ -9,15 +9,11 @@ import {
   resolveMuninndbPort,
 } from "./muninndb-schemas";
 import {
-  checkMuninndbBinary,
   checkMuninndbService,
   waitForMuninndbHealthy,
 } from "./muninndb-health";
 
-import type {
-  MuninndbBinaryStatus,
-  MuninndbServiceStatus,
-} from "./muninndb-schemas";
+import type { MuninndbServiceStatus } from "./muninndb-schemas";
 
 /**
  * Options for `startMuninndb()`.
@@ -206,57 +202,6 @@ export async function stopMuninndb(): Promise<{
       error: extractErrorMessage(err, "Failed to stop MuninnDB"),
     };
   }
-}
-
-/**
- * Restart the MuninnDB service (stop then start).
- *
- * @param options - Start options passed to `startMuninndb()`.
- * @returns A validated `MuninndbServiceStatus` after restart.
- *
- * @example
- * ```typescript
- * const status = await restartMuninndb();
- * if (status.healthy) {
- *   console.log('MuninnDB restarted successfully');
- * }
- * ```
- */
-export async function restartMuninndb(
-  options: StartMuninndbOptions = {},
-): Promise<MuninndbServiceStatus> {
-  await stopMuninndb();
-  return startMuninndb(options);
-}
-
-/**
- * Get a combined status report for MuninnDB binary and service.
- *
- * Combines `checkMuninndbBinary()` and `checkMuninndbService()` results
- * into a single object for use by doctor checks and status commands.
- *
- * @returns An object with both `binary` and `service` status.
- *
- * @example
- * ```typescript
- * const status = await getMuninndbStatus();
- * if (!status.binary.installed) {
- *   console.log('Binary not found');
- * } else if (!status.service.healthy) {
- *   console.log('Service not running');
- * }
- * ```
- */
-export async function getMuninndbStatus(): Promise<{
-  binary: MuninndbBinaryStatus;
-  service: MuninndbServiceStatus;
-}> {
-  const [binary, service] = await Promise.all([
-    checkMuninndbBinary(),
-    checkMuninndbService(),
-  ]);
-
-  return { binary, service };
 }
 
 /**

@@ -14,7 +14,7 @@ export type ModelTier = "fast" | "balanced" | "capable";
 
 const MODEL_IDS: Record<ModelTier, string> = {
   fast: "anthropic/claude-haiku-4-5",
-  balanced: "anthropic/claude-sonnet-4-5",
+  balanced: "anthropic/claude-sonnet-4-6",
   capable: "anthropic/claude-opus-4-6",
 };
 

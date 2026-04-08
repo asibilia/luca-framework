@@ -23,7 +23,7 @@ import { configDraftAtom } from "~/stores/config-atoms";
 type LevelBudget = {
   cognitivePreflight: string;
   planVerificationIterations: number;
-  harnessFixIterations: number;
+  checksFixIterations: number;
   verifyFixIterations: number;
   verificationMode: string;
   recallDepth: number | null;
@@ -124,7 +124,7 @@ export function ComplexityTab() {
                   Plan Verify
                 </th>
                 <th className="px-2 py-1.5 text-left font-medium">
-                  Harness Fix
+                  Checks Fix
                 </th>
                 <th className="px-2 py-1.5 text-left font-medium">
                   Verify Fix
@@ -173,11 +173,11 @@ export function ComplexityTab() {
                         type="number"
                         min={1}
                         max={10}
-                        value={budget.harnessFixIterations ?? 1}
+                        value={budget.checksFixIterations ?? 1}
                         onChange={(e) =>
                           updateBudgetField(
                             level,
-                            "harnessFixIterations",
+                            "checksFixIterations",
                             Number(e.target.value),
                           )
                         }

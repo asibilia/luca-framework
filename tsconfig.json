@@ -25,15 +25,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    // Paths
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./src/*"]
-    }
   },
   "exclude": [
     "dist",
-    "packages/luca-framework/templates/harness",
     "packages/luca-studio"
   ]
 }

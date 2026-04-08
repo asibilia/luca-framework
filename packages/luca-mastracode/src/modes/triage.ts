@@ -43,7 +43,7 @@ export function buildTriageInstructions(_harnessState?: Record<string, unknown>)
     state.intent ? `- Intent: ${state.intent}` : null,
     state.sessionId ? `- Session: ${state.sessionId}` : null,
     '',
-    state.complexity ? '**Triage is already complete.** If the user confirms, use `workflowState(action: "switch-mode", targetMode: "research")` to proceed.' : null,
+    state.complexity ? '**Triage is already complete.** If the user confirms, use `workflowState(action: "switch-mode", targetMode: "luca:2-research")` to proceed.' : null,
   ].filter(Boolean).join('\n');
 
   return base + stateContext;
@@ -56,7 +56,7 @@ export function buildTriageInstructions(_harnessState?: Record<string, unknown>)
 export function resolveTriageModel(_harnessState?: Record<string, unknown>): string {
   const state = readLucaState();
   if (!state.complexity) {
-    return 'anthropic/claude-sonnet-4-5';
+    return 'anthropic/claude-sonnet-4-6';
   }
   return resolveModel({
     subagentType: 'lu-cognition',
@@ -69,11 +69,11 @@ export function resolveTriageModel(_harnessState?: Record<string, unknown>): str
  * Triage agent configuration for mode registration.
  */
 export const triageMode = {
-  id: 'triage' as const,
+  id: 'luca:1-triage' as const,
   name: 'Triage',
   description: 'Parse, classify, and configure the workflow for a development request.',
   color: '#f59e0b',
-  defaultModelId: 'anthropic/claude-sonnet-4-5',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildTriageInstructions,
   resolveModel: resolveTriageModel,
 };

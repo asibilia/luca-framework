@@ -54,11 +54,11 @@ export function resolveResearchModel(_harnessState?: Record<string, unknown>): s
  * Research agent configuration for mode registration.
  */
 export const researchMode = {
-  id: 'research' as const,
+  id: 'luca:2-research' as const,
   name: 'Research',
   description: 'Deep codebase and ecosystem research before planning.',
   color: '#3b82f6',
-  defaultModelId: 'anthropic/claude-sonnet-4-5',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildResearchInstructions,
   resolveModel: resolveResearchModel,
 };

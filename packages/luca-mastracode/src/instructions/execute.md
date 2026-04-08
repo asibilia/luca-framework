@@ -221,15 +221,64 @@ Spawn **4 reviewer subagents in parallel**, each focused on a different dimensio
 - Are there simpler alternatives to complex implementations?
 - Is the change minimal — does it do only what's needed?
 
+### Capture Raw Review Findings
+
+**IMMEDIATELY** after all 4 reviewer subagents return, persist each reviewer's raw output to a capture file **before** consolidation or further reasoning. This ensures findings survive OM context compression.
+
+Write each reviewer's output to `.planning/execute-capture-{perspective}-{wave}.md`
+(e.g., `execute-capture-architecture-1.md`). These files are cleaned up during finalize.
+
+Use this template:
+
+```markdown
+# Execute Review Capture — {Perspective} [Wave {wave}]
+
+**Subagent**: reviewer
+**Perspective**: {perspective}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+```
+
+Files to write (4 total):
+- `.planning/execute-capture-architecture-{wave}.md`
+- `.planning/execute-capture-dx-{wave}.md`
+- `.planning/execute-capture-security-{wave}.md`
+- `.planning/execute-capture-simplification-{wave}.md`
+
+Get the current wave number from the phase/wave tracking in workflow state.
+
 ### Review Consolidation
 
-Collect all review findings and categorize:
+Collect all review findings and categorize. If raw subagent outputs are no longer in the conversation context (OM compressed them), **re-read from** `.planning/execute-capture-*-{wave}.md` files as the source of truth.
 
 - **Must-fix**: Issues that must be addressed before proceeding (security vulnerabilities, correctness bugs)
 - **Should-fix**: Issues worth addressing if time permits (DX improvements, simplifications)
 - **Note**: Observations for future reference (architectural suggestions, tech debt)
 
 Address all **must-fix** items before proceeding. Track **should-fix** items for the finalization phase.
+
+### Persist Notable Findings to MuninnDB (Optional)
+
+After consolidation, store MUST-FIX findings and recurring SHOULD-FIX findings in MuninnDB for cross-session recall. Determine the vault from `.planning/config.json` → `muninn.vault`, falling back to `"default"`.
+
+```
+mcp__muninn__muninn_remember_batch(
+  vault: "<repo_vault>",
+  memories: [
+    {
+      concept: "review-finding:<descriptive-slug>",
+      content: "<finding description, file paths, root cause, recommended fix>",
+      tags: ["review-finding", "<codebase>", "<perspective>"]
+    },
+    ...
+  ]
+)
+```
+
+Only store findings that represent **reusable knowledge** — specific issues in specific files are not worth storing unless they reveal a systemic pattern. If MuninnDB is unavailable, skip this step — it is informational, never blocking. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "execute-store-findings", reason: "unavailable" })`.
 
 ## Step 5 — Learn
 
@@ -274,7 +323,7 @@ Include any relevant recalled learnings in the executor subagent's task descript
 
 ### Fallback
 
-If MuninnDB is unavailable, the learner outputs structured text. Include this text in the execution summary so it's available for the review stage.
+If MuninnDB is unavailable, the learner outputs structured text. Include this text in the execution summary so it's available for the review stage. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "execute-learner-storage", reason: "unavailable" })`.
 
 ## Step 6 — Commit
 
@@ -328,7 +377,7 @@ Triage → Research → Architect → [Execute] → Review → Finalize
 After all phases and waves are complete, use the `workflowState` tool to transition to Review mode:
 
 ```
-workflowState(action: "switch-mode", targetMode: "review")
+workflowState(action: "switch-mode", targetMode: "luca:5-review")
 ```
 
 The Review mode will audit the code changes and either:

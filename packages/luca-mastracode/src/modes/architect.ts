@@ -56,7 +56,7 @@ export function resolveArchitectModel(_harnessState?: Record<string, unknown>): 
  * Architect agent configuration for mode registration.
  */
 export const architectMode = {
-  id: 'architect' as const,
+  id: 'luca:3-architect' as const,
   name: 'Architect',
   description: 'Git workflow, roadmap creation, PLAN.md via goal-backward analysis, and plan review.',
   color: '#a855f7',

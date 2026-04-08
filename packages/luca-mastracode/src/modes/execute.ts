@@ -58,7 +58,7 @@ export function resolveExecuteModel(_harnessState?: Record<string, unknown>): st
  * Execute agent configuration for mode registration.
  */
 export const executeMode = {
-  id: 'execute' as const,
+  id: 'luca:4-execute' as const,
   name: 'Execute',
   description: 'Implement code changes atomically with automated checks, verification, code review, and learning capture.',
   color: '#10b981',

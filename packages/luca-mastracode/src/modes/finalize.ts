@@ -55,11 +55,11 @@ export function resolveFinalizeModel(_harnessState?: Record<string, unknown>): s
  * Finalize agent configuration for mode registration.
  */
 export const finalizeMode = {
-  id: 'finalize' as const,
+  id: 'luca:6-finalize' as const,
   name: 'Finalize',
   description: 'Milestone boundaries, gap audit, PR creation, and session cleanup.',
   color: '#6366f1',
-  defaultModelId: 'anthropic/claude-sonnet-4-5',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildFinalizeInstructions,
   resolveModel: resolveFinalizeModel,
 };

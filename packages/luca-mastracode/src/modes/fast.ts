@@ -19,7 +19,7 @@ export function buildFastInstructions(): string {
 }
 
 export function resolveFastModel(): string {
-  return 'anthropic/claude-sonnet-4-20250514';
+  return 'anthropic/claude-sonnet-4-6';
 }
 
 export const fastMode = {
@@ -27,7 +27,7 @@ export const fastMode = {
   name: 'Fast',
   description: 'Speed-optimized mode for quick edits and direct answers.',
   color: '#fdac53',
-  defaultModelId: 'anthropic/claude-sonnet-4-20250514',
+  defaultModelId: 'anthropic/claude-sonnet-4-6',
   buildInstructions: buildFastInstructions,
   resolveModel: resolveFastModel,
 };

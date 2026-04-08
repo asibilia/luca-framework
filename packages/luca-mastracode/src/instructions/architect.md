@@ -63,7 +63,7 @@ If results are found:
 - Identify patterns or pitfalls from previous similar work
 - Include relevant context when spawning the discussion subagent
 
-If MuninnDB is unavailable or returns no results, proceed normally. **Time budget**: ≤2 tool calls.
+If MuninnDB is unavailable or returns no results, proceed normally — but log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "architect-context-recall", reason: "unavailable" })`. **Time budget**: ≤2 tool calls.
 
 ## Step 2 — Discussion (NEVER SKIP)
 
@@ -296,7 +296,7 @@ When the plan is approved (or plan review passes in full-auto mode):
    ```
 3. Transition to **Execute** mode:
    ```
-   workflowState(action: "switch-mode", targetMode: "execute")
+   workflowState(action: "switch-mode", targetMode: "luca:4-execute")
    ```
 
 **Important**: Do all three steps in order. The Execute agent reads `planFile` from workflow state to locate the plan on disk.
@@ -316,7 +316,7 @@ Triage → Research → [Architect] → Execute → Review → Finalize
 After the plan is approved (or auto-approved in `full-auto` mode), use the `workflowState` tool to advance:
 
 ```
-workflowState(action: "switch-mode", targetMode: "execute")
+workflowState(action: "switch-mode", targetMode: "luca:4-execute")
 ```
 
 The mode switch to Execute happens automatically.

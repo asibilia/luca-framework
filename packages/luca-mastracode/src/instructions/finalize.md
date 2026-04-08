@@ -34,7 +34,7 @@ Spawn a **learner** subagent for milestone-level synthesis:
 - Distill the most important lessons (not everything — the top 5–10)
 - Compare initial estimates vs. actual outcomes — what was misjudged?
 
-The learner subagent stores findings directly in MuninnDB. After it completes, verify storage was successful.
+The learner subagent stores findings directly in MuninnDB. After it completes, verify storage was successful. If MuninnDB is unavailable, skip the MuninnDB steps in this section — write learnings to `.planning/SESSION-ARCHIVE.md` only. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "finalize-milestone-learning", reason: "unavailable" })`.
 
 ### Pattern Pruning via MuninnDB
 
@@ -95,6 +95,8 @@ Also write the archive to `.planning/SESSION-ARCHIVE.md` for local reference:
 Before creating the PR, run an advisory shadow scan to catch AI-session debris:
 
 1. Call `repoCleanup(action: "scan", scan_mode: "standard")`
+   - `scan_mode` controls depth: `"quick"` (staged files only), `"standard"` (all tracked files), `"full"` (all files including untracked)
+   - Use `"standard"` for normal sessions. Use `"full"` only if the session created many new files.
 2. Spawn the **shadow-scanner** subagent with the returned scan parameters
 3. Call `repoCleanup(action: "parse-report", raw_output: <scanner response>)`
 4. If **critical** findings exist:
@@ -212,6 +214,16 @@ Release the pipeline lock so other sessions can run:
 pipelineLock(action: "release")
 ```
 
+### Clean Up Session Artifacts
+
+Remove intermediate capture files that are no longer needed:
+
+```
+repoCleanup(action: "cleanup-artifacts")
+```
+
+This removes `.planning/*-capture-*.md` and `.planning/checks-convergence.json`.
+
 ### Compute Session Metrics
 
 Use the session ledger to generate metrics:
@@ -300,7 +312,7 @@ Triage → Research → Architect → Execute → Review → [Finalize]
 If the roadmap has remaining phases and the milestone limit hasn't been reached:
 
 ```
-workflowState(action: "switch-mode", targetMode: "architect")
+workflowState(action: "switch-mode", targetMode: "luca:3-architect")
 ```
 
 This loops back to Architect mode for the next milestone cycle. The mode switch happens automatically.

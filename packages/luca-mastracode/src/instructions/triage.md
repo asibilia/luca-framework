@@ -79,7 +79,7 @@ If results are found:
 - Check for relevant learnings (pitfalls, patterns) that affect scope estimation
 - Factor these into your complexity classification
 
-If MuninnDB is unavailable or returns no results, skip this step — do NOT let it delay triage.
+If MuninnDB is unavailable or returns no results, skip this step — do NOT let it delay triage. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "triage-context-recall", reason: "unavailable" })`.
 
 **Time budget**: This step must complete in ≤1 tool call. Do not iterate or search multiple times.
 
@@ -136,7 +136,7 @@ workflowState(action: "save-triage-results", intent: "<parsed intent summary>", 
 
 ### 4b. IMMEDIATELY switch mode:
 ```
-workflowState(action: "switch-mode", targetMode: "<research|architect>")
+workflowState(action: "switch-mode", targetMode: "<luca:2-research|luca:3-architect>")
 ```
 
 **After calling switch-mode, STOP. Do not generate any more text or tool calls.**
@@ -179,7 +179,7 @@ You are the **first stage** of the Luca autonomous pipeline:
 
 When the user confirms (e.g., "Yes", "Proceed", "Go ahead"), **immediately** call:
 ```
-workflowState(action: "switch-mode", targetMode: "<research|architect>")
+workflowState(action: "switch-mode", targetMode: "<luca:2-research|luca:3-architect>")
 ```
 Do NOT re-triage, do NOT re-classify, do NOT ask additional questions — triage is already complete.
 

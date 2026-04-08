@@ -7,8 +7,11 @@
  *
  * This file survives mode switches, process restarts, and TUI reconnections.
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolveBudgetLimits } from './state.js';
+import type { ComplexityLevel, ProfileLevel } from './state.js';
+import { atomicWriteSync } from './atomic-write.js';
 
 const STATE_FILE = '.planning/luca-state.json';
 
@@ -67,6 +70,9 @@ export interface LucaWorkflowState {
   // --- Assigned work ---
   assignedTodos?: number[];
 
+  // --- Budget enforcement (advisory) ---
+  budgetExceeded?: boolean;
+
   // Allow arbitrary extension
   [key: string]: unknown;
 }
@@ -85,10 +91,26 @@ export function readLucaState(): LucaWorkflowState {
   try {
     const state = JSON.parse(readFileSync(p, 'utf-8'));
 
-    // Migrate stale "plan" pipeline references to "architect"
-    // (renamed in the pipeline: plan → architect)
+    // Migrate stale "plan" pipeline step to "architect"
+    // (legacy sub-step rename from before architect mode existed)
     if (state.pipelineStep === "plan") state.pipelineStep = "architect";
-    if (state.nextMode === "plan") state.nextMode = "architect";
+
+    // Migrate bare mode names to namespaced identifiers
+    const BARE_TO_NAMESPACED: Record<string, string> = {
+      discuss: 'luca:discuss',
+      triage: 'luca:1-triage',
+      research: 'luca:2-research',
+      architect: 'luca:3-architect',
+      execute: 'luca:4-execute',
+      review: 'luca:5-review',
+      finalize: 'luca:6-finalize',
+    };
+    if (state.pipelineStep && BARE_TO_NAMESPACED[state.pipelineStep]) {
+      state.pipelineStep = BARE_TO_NAMESPACED[state.pipelineStep];
+    }
+    if (state.nextMode && BARE_TO_NAMESPACED[state.nextMode]) {
+      state.nextMode = BARE_TO_NAMESPACED[state.nextMode];
+    }
 
     return state;
   } catch {
@@ -103,12 +125,7 @@ export function writeLucaState(updates: Partial<LucaWorkflowState>): LucaWorkflo
   const current = readLucaState();
   const merged = { ...current, ...updates };
 
-  const dir = join(process.cwd(), '.planning');
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  writeFileSync(statePath(), JSON.stringify(merged, null, 2), 'utf-8');
+  atomicWriteSync(statePath(), JSON.stringify(merged, null, 2));
   return merged;
 }
 
@@ -118,7 +135,7 @@ export function writeLucaState(updates: Partial<LucaWorkflowState>): LucaWorkflo
 export function resetLucaState(): void {
   const p = statePath();
   if (existsSync(p)) {
-    writeFileSync(p, '{}', 'utf-8');
+    atomicWriteSync(p, '{}');
   }
 }
 
@@ -158,6 +175,8 @@ export function startPhase({ name }: { name: string }): LucaWorkflowState {
 
 /**
  * Record a completed iteration within the current phase.
+ * Returns `budgetExceeded: true` (advisory) when the iteration count
+ * exceeds `maxChecksFixIterations` from the budget matrix.
  */
 export function recordIteration(): LucaWorkflowState {
   const state = readLucaState();
@@ -166,14 +185,25 @@ export function recordIteration(): LucaWorkflowState {
   if (current) {
     current.iterations = (current.iterations ?? 0) + 1;
   }
+  const nextIteration = (state.currentIteration ?? 0) + 1;
+
+  const limits = resolveBudgetLimits({
+    complexity: (state.complexity ?? 'MODERATE') as ComplexityLevel,
+    profile: (state.profile ?? 'balanced') as ProfileLevel,
+  });
+  const exceeded = nextIteration > limits.maxChecksFixIterations;
+
   return writeLucaState({
     phaseResults: results,
-    currentIteration: (state.currentIteration ?? 0) + 1,
+    currentIteration: nextIteration,
+    budgetExceeded: exceeded || undefined,
   });
 }
 
 /**
  * Advance to the next wave within the current phase.
+ * Returns `budgetExceeded: true` (advisory) when the wave count
+ * exceeds `maxPhases` from the budget matrix.
  */
 export function advanceWave(): LucaWorkflowState {
   const state = readLucaState();
@@ -182,10 +212,19 @@ export function advanceWave(): LucaWorkflowState {
   if (current) {
     current.wavesCompleted = (current.wavesCompleted ?? 0) + 1;
   }
+  const nextWave = (state.currentWave ?? 1) + 1;
+
+  const limits = resolveBudgetLimits({
+    complexity: (state.complexity ?? 'MODERATE') as ComplexityLevel,
+    profile: (state.profile ?? 'balanced') as ProfileLevel,
+  });
+  const exceeded = nextWave > limits.maxPhases;
+
   return writeLucaState({
     phaseResults: results,
-    currentWave: (state.currentWave ?? 1) + 1,
+    currentWave: nextWave,
     currentIteration: 0,
+    budgetExceeded: exceeded || undefined,
   });
 }
 

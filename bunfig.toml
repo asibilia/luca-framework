@@ -1,3 +1,2 @@
 # Test configuration intentionally removed.
 # Tests were removed wholesale to prevent memory exhaustion.
-# See: src/rules/general/no-tests.rule.ts

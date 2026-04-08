@@ -185,43 +185,43 @@ export function checkAgentRefs(
 }
 
 // ---------------------------------------------------------------------------
-// 3. Harness Enabled Check
+// 3. Checks Enabled Check
 // ---------------------------------------------------------------------------
 
-/** Minimal check shape expected by `checkHarnessEnabled`. */
-export type HarnessCheck = {
+/** Minimal check shape expected by `checkChecksEnabled`. */
+export type CheckEntry = {
   name: string;
   enabled: boolean;
 };
 
 /**
- * Verify that at least one harness check type remains enabled.
+ * Verify that at least one verification check type remains enabled.
  *
  * A configuration that disables every check type (test, typecheck, lint,
  * build) is almost certainly a mistake — it would make the verification
- * harness a no-op.
+ * checks a no-op.
  *
- * @param checks - Array of harness check configurations.
+ * @param checks - Array of verification check configurations.
  * @returns `{ valid: true }` when at least one check is enabled.
  *
  * @example
  * ```typescript
- * const result = checkHarnessEnabled([
+ * const result = checkChecksEnabled([
  *   { name: "test", enabled: false },
  *   { name: "typecheck", enabled: false },
  * ]);
- * // => { valid: false, errors: [{ code: "NO_HARNESS_CHECKS", ... }] }
+ * // => { valid: false, errors: [{ code: "NO_CHECKS_ENABLED", ... }] }
  * ```
  */
-export function checkHarnessEnabled(checks: HarnessCheck[]): SemanticResult {
+export function checkChecksEnabled(checks: CheckEntry[]): SemanticResult {
   const hasEnabled = checks.some((c) => c.enabled);
 
   if (!hasEnabled) {
     return fail([
       {
-        code: "NO_HARNESS_CHECKS",
+        code: "NO_CHECKS_ENABLED",
         message:
-          "All harness checks are disabled — at least one check type (test, typecheck, lint, build) must remain enabled",
+          "All verification checks are disabled — at least one check type (test, typecheck, lint, build) must remain enabled",
         path: "harness.checks",
       },
     ]);

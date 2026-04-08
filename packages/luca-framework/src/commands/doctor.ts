@@ -1,13 +1,7 @@
 /**
  * CLI command: luca doctor
  *
- * Run environment diagnostics and health checks across prerequisites,
- * global artifacts, and project configuration.
- *
- * Supports scoped checks via `--scope` flag:
- * - `prerequisites`: Bun runtime only
- * - `global`: Global artifacts, MuninnDB, framework runtime
- * - `project`: Config validation, harness installation, drift, project context
+ * Run environment diagnostics: Bun runtime and MuninnDB health.
  *
  * @example
  * ```bash
@@ -17,11 +11,8 @@
  * # Run with verbose output
  * luca doctor --verbose
  *
- * # Run only global checks
- * luca doctor --scope=global
- *
- * # Run only project checks
- * luca doctor --scope=project
+ * # Run only prerequisite checks
+ * luca doctor --scope=prerequisites
  * ```
  */
 import { defineCommand } from "citty";
@@ -31,7 +22,7 @@ import { executeDoctor } from "../utils/doctor";
 import type { DoctorScope } from "../utils/doctor/types";
 
 /** Valid scope values for the --scope argument. */
-const VALID_SCOPES: DoctorScope[] = ["prerequisites", "global", "project"];
+const VALID_SCOPES: DoctorScope[] = ["prerequisites", "global"];
 
 export default defineCommand({
   meta: {
@@ -47,7 +38,7 @@ export default defineCommand({
     },
     scope: {
       type: "string",
-      description: "Filter checks by scope: prerequisites, global, or project",
+      description: "Filter checks by scope: prerequisites or global",
       alias: "s",
     },
   },

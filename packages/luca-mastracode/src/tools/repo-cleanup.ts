@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   existsSync,
   readFileSync,
+  readdirSync,
   unlinkSync,
   renameSync,
   appendFileSync,
@@ -25,7 +26,7 @@ export const repoCleanupTool = createTool({
     "parses scanner output, applies fixes, and reports summaries.",
   inputSchema: z.object({
     action: z
-      .enum(["scan", "parse-report", "apply-fix", "summary"])
+      .enum(["scan", "parse-report", "apply-fix", "summary", "cleanup-artifacts"])
       .describe("Operation to perform"),
     scan_mode: z
       .enum(["quick", "standard", "full"])
@@ -208,6 +209,36 @@ export const repoCleanupTool = createTool({
           block_milestone_on_critical: config.block_milestone_on_critical,
           denylist_patterns: config.denylist_patterns,
           allowlist: config.allowlist,
+        };
+      }
+
+      case "cleanup-artifacts": {
+        const planningDir = join(process.cwd(), ".planning");
+        const removed: string[] = [];
+
+        if (existsSync(planningDir)) {
+          // Remove intermediate capture files (*-capture-*.md)
+          for (const file of readdirSync(planningDir)) {
+            if (/-capture-/.test(file) && file.endsWith(".md")) {
+              unlinkSync(join(planningDir, file));
+              removed.push(file);
+            }
+          }
+
+          // Remove convergence tracking file
+          const convergenceFile = join(planningDir, "checks-convergence.json");
+          if (existsSync(convergenceFile)) {
+            unlinkSync(convergenceFile);
+            removed.push("checks-convergence.json");
+          }
+        }
+
+        return {
+          status: removed.length > 0 ? "cleaned" : "nothing-to-clean",
+          removed,
+          message: removed.length > 0
+            ? `Removed ${removed.length} artifact(s): ${removed.join(", ")}`
+            : "No capture artifacts found in .planning/",
         };
       }
 

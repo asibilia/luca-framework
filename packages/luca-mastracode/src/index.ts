@@ -117,7 +117,7 @@ function loadBranding(): LucaBranding {
 // Mutable refs — wired up after createMastraCode() returns.
 // Extracted to refs.ts to avoid circular imports with tool modules.
 // ---------------------------------------------------------------------------
-import { resolveModelRef, switchModeRef, followUpRef } from "./refs.js";
+import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef } from "./refs.js";
 import * as pipelineGuard from "./pipeline-guard.js";
 
 // ---------------------------------------------------------------------------
@@ -188,7 +188,14 @@ function createStaticAgent({
       }
       return modelId;
     },
-    tools,
+    // Dynamic tools: merge static mode tools + MCP tools at request time.
+    // Static tools (from buildModeTools) are preserved; MCP tools (e.g. MuninnDB)
+    // are layered on top via mcpManagerRef, mirroring how stock mastracode's
+    // codeAgent gets them via createDynamicTools.
+    tools: () => {
+      const mcpTools = mcpManagerRef.current?.getTools() ?? {};
+      return { ...tools, ...mcpTools };
+    },
   });
 }
 
@@ -232,7 +239,7 @@ function buildContinuationMessage(
     : "";
 
   switch (modeId) {
-    case "research":
+    case "luca:2-research":
       return [
         `[Luca Pipeline — auto-continuing from Triage]`,
         ``,
@@ -245,7 +252,7 @@ function buildContinuationMessage(
         `Begin research. Use the workflowState tool to read the full triage state, then investigate the affected areas using the research dimensions from your instructions. When research is complete, save findings and transition to Architect mode.`,
       ].filter(Boolean).join("\n");
 
-    case "architect":
+    case "luca:3-architect":
       return [
         `[Luca Pipeline — auto-continuing from Research]`,
         ``,
@@ -257,7 +264,7 @@ function buildContinuationMessage(
         `Begin planning. Use the workflowState tool to read the research findings, then create a structured implementation plan following goal-backward analysis. When the plan is approved, transition to Execute mode.`,
       ].filter(Boolean).join("\n");
 
-    case "execute": {
+    case "luca:4-execute": {
       const planFile = state.planFile ?? "PLAN.md";
       const roadmapFile = state.roadmapFile ?? "ROADMAP.md";
       return [
@@ -275,7 +282,7 @@ function buildContinuationMessage(
       ].filter(Boolean).join("\n");
     }
 
-    case "review":
+    case "luca:5-review":
       return [
         `[Luca Pipeline — auto-continuing from Execute]`,
         ``,
@@ -289,7 +296,7 @@ function buildContinuationMessage(
         `If clean, transition to Finalize.`,
       ].filter(Boolean).join("\n");
 
-    case "finalize":
+    case "luca:6-finalize":
       return [
         `[Luca Pipeline — auto-continuing from Review]`,
         ``,
@@ -300,7 +307,7 @@ function buildContinuationMessage(
         `Begin finalization. Run final checks, perform gap audit, create PR if appropriate, and complete the session with final metrics. Read the latest .planning/REVIEW-*.md report for context on what was reviewed.`,
       ].filter(Boolean).join("\n");
 
-    case "triage":
+    case "luca:1-triage":
       return [
         `[Luca Pipeline — starting]`,
         ``,
@@ -313,7 +320,7 @@ function buildContinuationMessage(
         `1. Parse the request into structured intent`,
         `2. Classify complexity using the classifyComplexity tool`,
         `3. Save state with workflowState(action: "write", updates: {...})`,
-        `4. IMMEDIATELY call workflowState(action: "switch-mode", targetMode: "<research|architect>")`,
+        `4. IMMEDIATELY call workflowState(action: "switch-mode", targetMode: "<luca:2-research|luca:3-architect>")`,
         ``,
         `Do NOT implement anything. Do NOT create task lists. Do NOT modify files.`,
         `Your ONLY job is to classify and transition.`,
@@ -388,7 +395,7 @@ async function main() {
           defaultModelId: discussMode.defaultModelId,
           buildInstructions: buildDiscussInstructions,
           resolveModelFn: resolveDiscussModel,
-          tools: buildModeTools({ mode_id: 'discuss' }),
+          tools: buildModeTools({ mode_id: 'luca:discuss' }),
         }),
       },
       // --- Luca pipeline modes ---
@@ -403,7 +410,7 @@ async function main() {
           defaultModelId: triageMode.defaultModelId,
           buildInstructions: buildTriageInstructions,
           resolveModelFn: resolveTriageModel,
-          tools: buildModeTools({ mode_id: 'triage' }),
+          tools: buildModeTools({ mode_id: 'luca:1-triage' }),
         }),
       },
       {
@@ -417,7 +424,7 @@ async function main() {
           defaultModelId: researchMode.defaultModelId,
           buildInstructions: buildResearchInstructions,
           resolveModelFn: resolveResearchModel,
-          tools: buildModeTools({ mode_id: 'research' }),
+          tools: buildModeTools({ mode_id: 'luca:2-research' }),
         }),
       },
       {
@@ -431,7 +438,7 @@ async function main() {
           defaultModelId: architectMode.defaultModelId,
           buildInstructions: buildArchitectInstructions,
           resolveModelFn: resolveArchitectModel,
-          tools: buildModeTools({ mode_id: 'architect' }),
+          tools: buildModeTools({ mode_id: 'luca:3-architect' }),
         }),
       },
       {
@@ -445,7 +452,7 @@ async function main() {
           defaultModelId: executeMode.defaultModelId,
           buildInstructions: buildExecuteInstructions,
           resolveModelFn: resolveExecuteModel,
-          tools: buildModeTools({ mode_id: 'execute' }),
+          tools: buildModeTools({ mode_id: 'luca:4-execute' }),
         }),
       },
       {
@@ -459,7 +466,7 @@ async function main() {
           defaultModelId: reviewMode.defaultModelId,
           buildInstructions: buildReviewInstructions,
           resolveModelFn: resolveReviewModel,
-          tools: buildModeTools({ mode_id: 'review' }),
+          tools: buildModeTools({ mode_id: 'luca:5-review' }),
         }),
       },
       {
@@ -473,7 +480,7 @@ async function main() {
           defaultModelId: finalizeMode.defaultModelId,
           buildInstructions: buildFinalizeInstructions,
           resolveModelFn: resolveFinalizeModel,
-          tools: buildModeTools({ mode_id: 'finalize' }),
+          tools: buildModeTools({ mode_id: 'luca:6-finalize' }),
         }),
       },
     ],
@@ -495,6 +502,13 @@ async function main() {
     // is stored in .planning/luca-state.json via the workflowState tool.
     // We can't use harness.setState() for custom fields because the built-in
     // stateSchema (Zod default strip mode) silently removes unknown keys.
+
+    // Raise OM thresholds to reduce premature compression of subagent outputs
+    // in multi-agent workflows (review: 4 parallel, research: 5 parallel).
+    initialState: {
+      observationThreshold: 50_000,
+      reflectionThreshold: 60_000,
+    },
   });
 
   const { harness, hookManager, authStorage, mcpManager, storageWarning, resolveModel } =
@@ -517,6 +531,24 @@ async function main() {
     await harness.followUp(opts);
   };
 
+  // Wire up mcpManager ref so mode agents can merge MCP tools at request time.
+  if (mcpManager) {
+    mcpManagerRef.current = mcpManager;
+  }
+
+  // Inject MCP tools into subagents that reference them in their instructions.
+  // These objects are passed by reference to the harness — mutations are visible
+  // when createSubagentTool spawns agents per-request.
+  if (mcpManager) {
+    const mcpTools = mcpManager.getTools();
+    const mcpSubagents: Array<{ tools?: Record<string, unknown> }> = [
+      discussionSubagent, learnerSubagent, shadowScannerSubagent,
+    ];
+    for (const sub of mcpSubagents) {
+      sub.tools = { ...(sub.tools ?? {}), ...mcpTools };
+    }
+  }
+
   // --- Read-only enforcement: disable write/execute workspace tools.
   //
   // Stock getDynamicWorkspace (chunk-BTG3AOXO.js:486-499) only disables 3
@@ -537,7 +569,7 @@ async function main() {
   // Since getDynamicWorkspace calls setToolsConfig on every message (line 499),
   // we must intercept workspaceFn to apply our config AFTER the stock function.
 
-  const READ_ONLY_MODES = new Set(["plan", "discuss", "triage", "research", "review"]);
+  const READ_ONLY_MODES = new Set(["plan", "luca:discuss", "luca:1-triage", "luca:2-research", "luca:5-review"]);
 
   // Tool name overrides matching stock mastracode TOOL_NAME_OVERRIDES.
   // setToolsConfig does a full replacement (not a merge), so we must include
@@ -585,6 +617,13 @@ async function main() {
   // switches to ES private fields (#workspaceFn), this will need updating.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const originalWorkspaceFn = (harness as any).workspaceFn;
+  if (!originalWorkspaceFn) {
+    console.warn(
+      '[luca] WARNING: harness.workspaceFn not found — read-only mode enforcement is DISABLED. ' +
+      'This likely means @mastra/core changed its private field layout. ' +
+      'File an issue at https://github.com/mastra-ai/mastra.',
+    );
+  }
   if (originalWorkspaceFn) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (harness as any).workspaceFn = async (args: any) => {
@@ -648,7 +687,7 @@ async function main() {
   // If `nextMode` is unset, the switch came from the user (Shift+Tab mode
   // picker), and we must NOT redirect — doing so creates an infinite loop
   // (user picks build → guard redirects to finalize → stacked TUI frames → crash).
-  const PIPELINE_STEPS = new Set(["triage", "research", "architect", "execute", "review", "finalize"]);
+  const PIPELINE_STEPS = new Set(["luca:1-triage", "luca:2-research", "luca:3-architect", "luca:4-execute", "luca:5-review", "luca:6-finalize"]);
   harness.subscribe(async (event) => {
     if (event.type !== "mode_changed") return;
     if (event.modeId !== "build") return;

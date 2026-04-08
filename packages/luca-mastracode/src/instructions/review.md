@@ -83,15 +83,46 @@ Each subagent receives:
 - Project coding standards (if available in `.planning/` or `AGENTS.md`)
 - The relevant acceptance criteria from PLAN.md
 
+### Step 4.5 — Capture Raw Findings
+
+**IMMEDIATELY** after all 4 reviewer subagents return, persist each reviewer's raw output to a capture file **before** any consolidation or further reasoning. This ensures findings survive OM context compression.
+
+Write each reviewer's output to `.planning/review-capture-{perspective}-{wave}.md`
+(e.g., `review-capture-dx-1.md`). These files are cleaned up during finalize.
+
+Use this template:
+
+```markdown
+# Review Capture — {Perspective} [Wave {wave}]
+
+**Subagent**: reviewer
+**Perspective**: {perspective}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+```
+
+Files to write (4 total):
+- `.planning/review-capture-architecture-{wave}.md`
+- `.planning/review-capture-dx-{wave}.md`
+- `.planning/review-capture-security-{wave}.md`
+- `.planning/review-capture-simplification-{wave}.md`
+
+Get the current wave number from `workflowState(action: "read")` → `reviewIteration` (default to `1`).
+
 ### Step 5 — Consolidate Findings
 
-Merge all subagent outputs and categorize by severity:
+Merge all subagent outputs and categorize by severity. If raw subagent outputs are no longer in the conversation context (OM compressed them), **re-read from** `.planning/review-capture-*-{wave}.md` files as the source of truth.
 
 - **MUST-FIX** — Blocks proceeding. Regressions, missing requirements, security issues, broken tests.
 - **SHOULD-FIX** — Advisory. Pattern violations, DX improvements, minor issues. Worth fixing but don't block.
 - **NOTE** — Informational. Future tech debt, refactoring opportunities, observations.
 
-### Step 5.5 — Cross-Reference with MuninnDB (Optional)
+### Step 5.5 — Cross-Reference with MuninnDB
+
+**When to run:** Always attempt this step. Skip ONLY if MuninnDB is unreachable (error or timeout).
 
 Query MuninnDB to check if any findings match known patterns or recurring issues:
 
@@ -118,7 +149,7 @@ mcp__muninn__muninn_remember_batch(
     {
       concept: "review-finding:<descriptive-slug>",
       content: "<finding description, file paths, root cause, recommended fix>",
-      tags: ["review-finding", "<perspective>", "<codebase>"]
+      tags: ["review-finding", "<codebase>", "<perspective>"]
     },
     ...
   ]
@@ -127,7 +158,7 @@ mcp__muninn__muninn_remember_batch(
 
 Only store findings that represent **reusable knowledge** — specific issues in specific files are not worth storing unless they reveal a systemic pattern.
 
-If MuninnDB is unavailable, skip this step entirely — it is informational, never blocking.
+If MuninnDB is unavailable, skip this step entirely — it is informational, never blocking. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "review-store-findings", reason: "unavailable" })`.
 
 ### Step 6 — Produce Audit Report
 
@@ -187,7 +218,7 @@ Write the report to `.planning/REVIEW-{wave}.md`:
 2. Store the clean verdict in workflow state
 3. Transition to Finalize:
    ```
-   workflowState(action: "switch-mode", targetMode: "finalize")
+   workflowState(action: "switch-mode", targetMode: "luca:6-finalize")
    ```
 
 **Route B — Issues Found (MUST-FIX findings exist)**:
@@ -199,13 +230,13 @@ Write the report to `.planning/REVIEW-{wave}.md`:
    - Transition back to Execute:
      ```
      workflowState(action: "save-review-results", iterationPlan: [...], reviewIteration: <n+1>)
-     workflowState(action: "switch-mode", targetMode: "execute")
+     workflowState(action: "switch-mode", targetMode: "luca:4-execute")
      ```
 3. If at budget limit:
    - Save the review report with remaining issues noted
    - Transition to Finalize with a warning:
      ```
-     workflowState(action: "switch-mode", targetMode: "finalize")
+     workflowState(action: "switch-mode", targetMode: "luca:6-finalize")
      ```
 
 ---
@@ -234,8 +265,8 @@ Read the previous `REVIEW-*.md` reports to understand what was flagged before.
 ### Automatic Mode Transition
 
 Use `workflowState(action: "switch-mode")` to advance:
-- `targetMode: "finalize"` — when clean or at iteration limit
-- `targetMode: "execute"` — when MUST-FIX issues need another iteration
+- `targetMode: "luca:6-finalize"` — when clean or at iteration limit
+- `targetMode: "luca:4-execute"` — when MUST-FIX issues need another iteration
 
 ### Context From Previous Stages
 

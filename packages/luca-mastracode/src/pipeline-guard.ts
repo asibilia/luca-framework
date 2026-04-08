@@ -136,7 +136,7 @@ export function checkTurnCompletion(reason: string | undefined): {
   }
 
   // Finalize is the last step — no switch-mode needed
-  if (currentTurn.modeId === "finalize") {
+  if (currentTurn.modeId === "luca:6-finalize") {
     return null;
   }
 

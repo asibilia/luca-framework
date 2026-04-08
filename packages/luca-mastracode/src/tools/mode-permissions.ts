@@ -29,37 +29,38 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     session_ledger: '*',
     workflow_state: ['read'],
   },
-  discuss: {
+  "luca:discuss": {
     session_ledger: '*',
     manage_todos: ['list', 'read'],
     workflow_state: ['read'],
   },
-  triage: {
+  "luca:1-triage": {
     classify_complexity: '*',
     workflow_state: ['read', 'save-triage-results', 'switch-mode'],
     pipeline_lock: ['status', 'recover', 'acquire'],
   },
-  research: {
+  "luca:2-research": {
     workflow_state: ['read', 'switch-mode'],
     manage_todos: ['add'],
   },
-  architect: {
+  "luca:3-architect": {
     manage_roadmap: '*',
     workflow_state: ['read', 'save-plan-artifacts', 'switch-mode'],
   },
-  execute: {
+  "luca:4-execute": {
     workflow_state: ['read', 'start-phase', 'record-iteration', 'advance-wave', 'complete-phase', 'switch-mode'],
     manage_todos: ['list', 'read'],
+    pipeline_lock: ['update'],
     run_checks: '*',
     verification_result: '*',
   },
-  review: {
+  "luca:5-review": {
     workflow_state: ['read', 'save-review-results', 'switch-mode'],
     run_checks: '*',
     verification_result: ['read', 'read-history', 'aggregate'],
     repo_cleanup: ['scan', 'parse-report', 'summary'],
   },
-  finalize: {
+  "luca:6-finalize": {
     workflow_state: ['read', 'reset-pipeline', 'switch-mode'],
     run_checks: '*',
     pipeline_lock: ['release'],
