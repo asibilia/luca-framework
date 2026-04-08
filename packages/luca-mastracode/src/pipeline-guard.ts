@@ -11,7 +11,7 @@
  * when the workflow-state tool's switch-mode action was invoked.
  */
 import { followUpRef, switchModeRef } from "./refs.js";
-import { writeLucaState } from "./luca-store.js";
+import { readLucaState, writeLucaState } from "./luca-store.js";
 import { appendLedger } from "./session-ledger.js";
 import { PIPELINE_ORDER } from "./tools/workflow-state.js";
 
@@ -126,6 +126,13 @@ export function checkTurnCompletion(reason: string | undefined): {
 
   // Only enforce on pipeline modes
   if (!PIPELINE_MODES.has(currentTurn.modeId)) {
+    return null;
+  }
+
+  // Don't enforce if the pipeline is not actively running — prevents
+  // stale guard state from triggering false enforcement after completion.
+  const state = readLucaState();
+  if (!state.pipelineStep || state.pipelineStep === "idle") {
     return null;
   }
 

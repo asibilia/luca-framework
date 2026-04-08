@@ -18,8 +18,8 @@ Review mode receives control from Execute mode. Your job is to determine whether
 
 ### Step 1 — Load Context
 
-1. Read `PLAN.md` to understand what was supposed to be implemented
-2. Read `ROADMAP.md` for phase sequencing context
+1. Read `.planning/PLAN.md` to understand what was supposed to be implemented (or use `planFile` from workflow state)
+2. Read `.planning/ROADMAP.md` for phase sequencing context (or use `roadmapFile` from workflow state)
 3. Read workflow state via `workflowState(action: "read")` to get:
    - Complexity level and budget limits
    - Current review iteration count
@@ -81,7 +81,7 @@ Spawn 4 reviewer subagents in parallel, each reviewing from a different perspect
 Each subagent receives:
 - The list of changed files
 - Project coding standards (if available in `.planning/` or `AGENTS.md`)
-- The relevant acceptance criteria from PLAN.md
+- The relevant acceptance criteria from `.planning/PLAN.md`
 
 ### Step 4.5 — Capture Raw Findings
 
@@ -211,6 +211,26 @@ Write the report to `.planning/REVIEW-{wave}.md`:
 ```
 
 ### Step 7 — Route Decision
+
+#### User Checkpoint (non-full-auto oversight)
+
+When oversight is `checkpoint` or `human-in-loop` and MUST-FIX issues are found, present the findings to the user before routing:
+
+```
+ask_user(
+  question: "Code review found <N> must-fix issues:\n\n<brief summary of top issues>\n\nHow would you like to proceed?",
+  options: [
+    { label: "Fix issues", description: "Iterate back to Execute to address must-fix items" },
+    { label: "Proceed anyway", description: "Continue to Finalize despite issues" },
+    { label: "Show details", description: "Display the full review report" }
+  ]
+)
+```
+
+If the user chooses "Proceed anyway", treat it as Route A (clean) regardless of findings.
+If the user chooses "Show details", display the full report and re-ask.
+
+When oversight is `full-auto`, skip user interaction and route automatically based on findings.
 
 **Route A — Clean (no MUST-FIX findings)**:
 

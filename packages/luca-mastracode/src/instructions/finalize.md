@@ -21,6 +21,22 @@ You receive control from **Review mode** (not Execute). The latest `.planning/RE
 
 ---
 
+## Progress Tracking (TUI)
+
+Use `task_write` to give the user visibility into finalization progress:
+
+```
+task_write(tasks: [
+  { content: "Capture milestone learnings", status: "in_progress", activeForm: "Capturing milestone learnings" },
+  { content: "Run shadow debt scan", status: "pending", activeForm: "Running shadow debt scan" },
+  { content: "Create pull request", status: "pending", activeForm: "Creating pull request" },
+  { content: "Run gap detection audit", status: "pending", activeForm: "Running gap detection audit" },
+  { content: "Clean up and summarize", status: "pending", activeForm: "Cleaning up session artifacts" }
+])
+```
+
+Update task status as you progress through each step.
+
 ## Step 1 — Milestone Boundary
 
 Determine the MuninnDB vault from `.planning/config.json` → `muninn.vault`, falling back to `"default"`. This vault is used throughout this step and Step 2.
@@ -139,7 +155,7 @@ Verify that all planned work was actually completed:
    - Total waves, pass/fail/stalled counts
    - Whether all blocking criteria are met
    - List of remaining blocking gaps
-2. **Load PLAN.md** from workflow state
+2. **Load `.planning/PLAN.md`** from workflow state (use `planFile` path)
 3. **For each task in the plan**:
    - Was it executed? (check commit history)
    - Did it pass verification? (check structured verification results)
@@ -183,7 +199,7 @@ If gaps are found:
 
 ## Step 5 — Cross-Milestone Continuation
 
-Check if the ROADMAP.md has remaining phases:
+Check if `.planning/ROADMAP.md` has remaining phases:
 
 ### Continuation Logic
 

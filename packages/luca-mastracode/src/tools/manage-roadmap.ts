@@ -1,11 +1,11 @@
 import { createTool } from '@mastra/core/tools';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
 export const manageRoadmapTool = createTool({
   id: 'manage-roadmap',
-  description: 'Manage the ROADMAP.md file: create, read, update phase status, and compute execution order via topological sort with WSJF scoring.',
+  description: 'Manage the .planning/ROADMAP.md file: create, read, update phase status, and compute execution order via topological sort with WSJF scoring.',
   inputSchema: z.object({
     action: z.enum(['create', 'read', 'update-status', 'compute-order']).describe('Operation to perform'),
     phases: z.array(z.object({
@@ -46,8 +46,10 @@ export const manageRoadmapTool = createTool({
           status: p.status ?? 'pending' as string,
           wsjfScore: ((p.businessValue ?? 5) + (p.timeCriticality ?? 5)) / (p.effort ?? 5),
         }));
-        // Write ROADMAP.md to disk so it persists across mode switches
-        const roadmapPath = join(process.cwd(), 'ROADMAP.md');
+        // Write ROADMAP.md to .planning/ so it persists across mode switches
+        const planningDir = join(process.cwd(), '.planning');
+        mkdirSync(planningDir, { recursive: true });
+        const roadmapPath = join(planningDir, 'ROADMAP.md');
         const lines = [
           '# Roadmap',
           '',
@@ -62,7 +64,7 @@ export const manageRoadmapTool = createTool({
           ]).flat(),
         ];
         writeFileSync(roadmapPath, lines.join('\n'), 'utf-8');
-        return { success: true, message: `Created roadmap with ${phases.length} phases (written to ROADMAP.md)`, phases: scored };
+        return { success: true, message: `Created roadmap with ${phases.length} phases (written to .planning/ROADMAP.md)`, phases: scored };
       }
       case 'compute-order': {
         if (!phases) return { success: false, message: 'No phases to sort' };
@@ -97,9 +99,9 @@ export const manageRoadmapTool = createTool({
         if (!phaseName || !newStatus) {
           return { success: false, message: 'phaseName and newStatus required for update-status' };
         }
-        const roadmapPath = join(process.cwd(), 'ROADMAP.md');
+        const roadmapPath = join(process.cwd(), '.planning', 'ROADMAP.md');
         if (!existsSync(roadmapPath)) {
-          return { success: false, message: 'ROADMAP.md not found — cannot update status' };
+          return { success: false, message: '.planning/ROADMAP.md not found — cannot update status' };
         }
         const content = readFileSync(roadmapPath, 'utf-8');
         // Find the phase heading and update its status line
@@ -108,16 +110,16 @@ export const manageRoadmapTool = createTool({
           'i',
         );
         if (!phasePattern.test(content)) {
-          return { success: false, message: `Phase "${phaseName}" not found in ROADMAP.md` };
+          return { success: false, message: `Phase "${phaseName}" not found in .planning/ROADMAP.md` };
         }
         const updated = content.replace(phasePattern, `$1${newStatus}`);
         writeFileSync(roadmapPath, updated, 'utf-8');
-        return { success: true, message: `Updated "${phaseName}" to ${newStatus} in ROADMAP.md` };
+        return { success: true, message: `Updated "${phaseName}" to ${newStatus} in .planning/ROADMAP.md` };
       }
       case 'read': {
-        const roadmapPath = join(process.cwd(), 'ROADMAP.md');
+        const roadmapPath = join(process.cwd(), '.planning', 'ROADMAP.md');
         if (!existsSync(roadmapPath)) {
-          return { success: false, message: 'ROADMAP.md not found in project root. Create one first or use the plan file directly.', phases: [] };
+          return { success: false, message: '.planning/ROADMAP.md not found. Create one first or use the plan file directly.', phases: [] };
         }
         const content = readFileSync(roadmapPath, 'utf-8');
         return { success: true, message: `Roadmap read from disk (${content.length} chars)`, phases: [], roadmapContent: content };

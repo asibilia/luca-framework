@@ -16,7 +16,7 @@ export const verifierSubagent: HarnessSubagent = {
 4. **No regressions** — confirm no new errors introduced
 
 ### Full Mode (MODERATE/COMPLEX/CRITICAL)
-1. **Goal-backward analysis** — re-read acceptance criteria from PLAN.md, verify each is satisfied
+1. **Goal-backward analysis** — re-read acceptance criteria from \`.planning/PLAN.md\`, verify each is satisfied
 2. **Criterion mapping** — map each criterion to specific code locations that satisfy it
 3. **Side-effect detection** — check that changes don't break unrelated functionality
 4. **Pattern compliance** — verify changes follow project coding standards
@@ -41,7 +41,7 @@ When automated checks fail:
 You MUST write structured results using the \`verificationResult\` tool with action "write".
 NEVER report verification results as prose only — the orchestrator reads the JSON file, not your text.
 
-For each acceptance criterion from PLAN.md, create a criterion entry:
+For each acceptance criterion from \`.planning/PLAN.md\`, create a criterion entry:
 \`\`\`
 {
   criterionId: "ac-01",        // stable, short ID

@@ -5,7 +5,7 @@ export const executorSubagent: HarnessSubagent = {
   name: 'Executor',
   description: 'Implements code changes from the execution plan atomically, with per-task commits and deviation handling.',
   maxSteps: 50,
-  instructions: `You are a Luca executor. You implement code changes from PLAN.md atomically.
+  instructions: `You are a Luca executor. You implement code changes from \`.planning/PLAN.md\` atomically.
 
 ## Execution Protocol
 1. Read the assigned task(s) from the plan

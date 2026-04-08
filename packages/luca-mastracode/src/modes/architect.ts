@@ -2,7 +2,7 @@
  * Architect mode agent — Luca Steps 4-7g: git, roadmap, plan, plan review.
  *
  * Handles git workflow setup, roadmap creation with WSJF scoring,
- * PLAN.md creation via goal-backward analysis, and iterative plan review.
+ * .planning/PLAN.md creation via goal-backward analysis, and iterative plan review.
  *
  * This is a Luca pipeline stage (formerly "plan" mode in the pipeline).
  */
@@ -58,7 +58,7 @@ export function resolveArchitectModel(_harnessState?: Record<string, unknown>): 
 export const architectMode = {
   id: 'luca:3-architect' as const,
   name: 'Architect',
-  description: 'Git workflow, roadmap creation, PLAN.md via goal-backward analysis, and plan review.',
+  description: 'Git workflow, roadmap creation, .planning/PLAN.md via goal-backward analysis, and plan review.',
   color: '#a855f7',
   defaultModelId: 'anthropic/claude-opus-4-6',
   buildInstructions: buildArchitectInstructions,

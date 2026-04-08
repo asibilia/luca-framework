@@ -265,8 +265,8 @@ function buildContinuationMessage(
       ].filter(Boolean).join("\n");
 
     case "luca:4-execute": {
-      const planFile = state.planFile ?? "PLAN.md";
-      const roadmapFile = state.roadmapFile ?? "ROADMAP.md";
+      const planFile = state.planFile ?? ".planning/PLAN.md";
+      const roadmapFile = state.roadmapFile ?? ".planning/ROADMAP.md";
       return [
         `[Luca Pipeline — auto-continuing from Architect]`,
         ``,
@@ -290,7 +290,7 @@ function buildContinuationMessage(
         `Complexity: ${complexity}`,
         todos,
         ``,
-        `Review the code changes against the plan. Read PLAN.md and the changed files,`,
+        `Review the code changes against the plan. Read .planning/PLAN.md (or planFile from workflow state) and the changed files,`,
         `then spawn reviewer subagents for a multi-perspective audit. Produce a REVIEW report.`,
         `If must-fix issues are found, create an iteration plan and transition back to Execute.`,
         `If clean, transition to Finalize.`,
@@ -799,16 +799,10 @@ async function main() {
     inlineQuestions: true,
   });
 
-  // --- Stale state cleanup: if no active pipeline lock exists, clear any
-  // persisted workflow state from a previous session so the next /lu run
-  // starts fresh instead of inheriting the old intent/complexity.
-  const lockPath = join(process.cwd(), '.planning', '.luca-lock.json');
-  if (!existsSync(lockPath)) {
-    const staleState = readLucaState();
-    if (staleState.pipelineStep || staleState.intent) {
-      writeLucaState({});
-    }
-  }
+  // Stale pipeline state is handled by two explicit guards:
+  // 1. reset-pipeline (called by finalize) clears all session-scoped fields
+  // 2. switch-mode to triage detects stale state and prompts the user
+  // No startup wipe needed — avoids data loss if pipeline was interrupted mid-flight.
 
   await tui.run();
 }

@@ -84,7 +84,9 @@ export const ShadowDebtConfigSchema = z.object({
       "config.json",
       "state.json",
       "session-ledger.jsonl",
+      "PLAN.md",
       "ROADMAP.md",
+      "RESEARCH.md",
       "PROJECT.md",
       "CANONICAL-DECISIONS.md",
       "MILESTONE-AUDIT.md",
@@ -122,7 +124,6 @@ export const ShadowDebtConfigSchema = z.object({
       "CONTRIBUTING.md",
       "CHANGELOG.md",
       "CODE_OF_CONDUCT.md",
-      "ROADMAP.md",
     ]),
 });
 

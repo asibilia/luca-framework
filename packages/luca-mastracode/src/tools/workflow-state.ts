@@ -8,6 +8,7 @@ import {
   recordIteration,
   advanceWave,
   completePhase,
+  type LucaWorkflowState,
 } from "../luca-store.js";
 import { appendLedger } from "../session-ledger.js";
 import { MODE_PERMISSIONS } from "./mode-permissions.js";
@@ -33,6 +34,17 @@ const ALLOWED_BACKWARD_TRANSITIONS: Record<string, Set<string>> = {
   "luca:5-review":   new Set(["luca:4-execute"]),
   "luca:6-finalize": new Set(["luca:3-architect", "luca:4-execute"]),
 };
+
+/**
+ * Detect stale pipeline state from a previous run. Returns true if
+ * the state contains leftover intent or an active (non-idle) pipelineStep
+ * that would contaminate a new pipeline run.
+ */
+function hasStaleState(state: LucaWorkflowState): boolean {
+  if (state.pipelineStep && state.pipelineStep !== "idle") return true;
+  if (state.intent) return true;
+  return false;
+}
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
 // Used for runtime validation + type narrowing in the execute handler.
@@ -85,9 +97,9 @@ const saveTriageResultsAction = z.object({
 
 const savePlanArtifactsAction = z.object({
   action: z.literal("save-plan-artifacts"),
-  planFile: z.string().describe("Path to PLAN.md"),
+  planFile: z.string().describe("Path to plan file (default: .planning/PLAN.md)"),
   roadmapFile: z.string().optional()
-    .describe("Path to ROADMAP.md"),
+    .describe("Path to roadmap file (default: .planning/ROADMAP.md)"),
 });
 
 const saveReviewResultsAction = z.object({
@@ -176,9 +188,9 @@ const workflowStateInputSchema = z.object({
 
   // save-plan-artifacts
   planFile: z.string().optional()
-    .describe("Path to PLAN.md (required for 'save-plan-artifacts')."),
+    .describe("Path to plan file, default .planning/PLAN.md (required for 'save-plan-artifacts')."),
   roadmapFile: z.string().optional()
-    .describe("Path to ROADMAP.md (save-plan-artifacts only)."),
+    .describe("Path to roadmap file, default .planning/ROADMAP.md (save-plan-artifacts only)."),
 
   // save-review-results
   iterationPlan: z.array(z.string()).optional()
@@ -257,9 +269,33 @@ export const workflowStateTool = createTool({
             };
           }
 
+          // --- Stale state detection on pipeline entry ---
+          const prevState = readLucaState();
+          if (targetMode === "luca:1-triage" && hasStaleState(prevState)) {
+            return {
+              success: false,
+              message: [
+                `Stale pipeline state detected from a previous run.`,
+                prevState.intent ? `Previous intent: "${prevState.intent}"` : null,
+                prevState.pipelineStep && prevState.pipelineStep !== "idle" ? `Previous pipeline step: "${prevState.pipelineStep}"` : null,
+                ``,
+                `Before starting a new pipeline, ask the user (via ask_user) whether to:`,
+                `(1) Clear the old state and start fresh`,
+                `(2) Resume the previous pipeline`,
+                ``,
+                `If they choose to clear, call workflowState(action: "reset-pipeline") first, then retry this switch-mode call.`,
+              ].filter(Boolean).join("\n"),
+              staleState: {
+                intent: prevState.intent,
+                pipelineStep: prevState.pipelineStep,
+                complexity: prevState.complexity,
+                startedAt: prevState.startedAt,
+              },
+            };
+          }
+
           // --- Pipeline ordering enforcement ---
           const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER));
-          const prevState = readLucaState();
           const currentStep = prevState.pipelineStep;
 
           if (currentStep && PIPELINE_MODES.has(currentStep) && PIPELINE_MODES.has(targetMode)) {
@@ -400,10 +436,15 @@ export const workflowStateTool = createTool({
           };
         }
         case "save-plan-artifacts": {
-          const { planFile, roadmapFile } = parseAction(savePlanArtifactsAction, raw);
+          const { planFile: rawPlan, roadmapFile: rawRoadmap } = parseAction(savePlanArtifactsAction, raw);
+          // Normalize bare filenames to .planning/ directory
+          const planFile = rawPlan.startsWith(".planning/") ? rawPlan : `.planning/${rawPlan}`;
+          const roadmapFile = rawRoadmap
+            ? (rawRoadmap.startsWith(".planning/") ? rawRoadmap : `.planning/${rawRoadmap}`)
+            : undefined;
           const planState = writeLucaState({
             planFile,
-            roadmapFile: roadmapFile ?? undefined,
+            roadmapFile,
           });
           appendLedger('plan-artifacts-saved', { planFile, roadmapFile });
           return {
@@ -428,6 +469,14 @@ export const workflowStateTool = createTool({
         case "reset-pipeline": {
           const freshState = writeLucaState({
             pipelineStep: "idle",
+            // Triage output — stale intent is the #1 cause of session hijack
+            intent: undefined,
+            complexity: undefined,
+            oversight: undefined,
+            affectedAreas: undefined,
+            profile: undefined,
+            skipResearch: undefined,
+            // Pipeline progress
             currentPhase: 0,
             totalPhases: 0,
             phaseSubStep: undefined,
@@ -435,11 +484,15 @@ export const workflowStateTool = createTool({
             currentWave: 1,
             currentIteration: 0,
             nextMode: undefined,
-            skipResearch: false,
             budgetExceeded: false,
             planFile: undefined,
             roadmapFile: undefined,
             reviewIteration: undefined,
+            // Session metadata
+            sessionId: undefined,
+            startedAt: undefined,
+            assignedTodos: undefined,
+            phaseResults: undefined,
           });
           appendLedger('pipeline-reset', {});
           return {

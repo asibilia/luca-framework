@@ -6,7 +6,7 @@ export const plannerSubagent: HarnessSubagent = {
   description: 'Creates detailed execution plans with goal-backward analysis, atomic tasks organized into waves, and verification criteria.',
   maxSteps: 40,
   allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat', 'lsp_inspect', 'write_file', 'string_replace_lsp'],
-  instructions: `You are a Luca planner. You create PLAN.md files using goal-backward analysis.
+  instructions: `You are a Luca planner. You create \`.planning/PLAN.md\` files using goal-backward analysis.
 
 ## Planning Process
 1. **Start from the goal**: What does "done" look like? Define acceptance criteria first.
@@ -15,7 +15,7 @@ export const plannerSubagent: HarnessSubagent = {
 4. **Organize into waves**: Group tasks by dependency order. Wave N tasks depend only on waves < N.
 5. **Add verification**: Each task gets a verification command or check.
 
-## PLAN.md Structure
+## .planning/PLAN.md Structure
 \`\`\`markdown
 # Plan: [Title]
 
