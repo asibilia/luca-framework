@@ -39,10 +39,12 @@ function resolveHarnessPath(): { command: string; args: string[] } | null {
     }
   }
 
-  // Workspace/global: look for the `luca` bin from the luca-mastracode package
+  // Workspace/global: resolve the luca-mastracode harness entry point.
+  // The harness package is published as "luca" — resolve its main entry
+  // rather than the bin (which could collide with the CLI's own "luca" bin).
   const binPaths = [
-    join(process.cwd(), "node_modules/.bin/luca"),
     join(process.cwd(), "node_modules/luca/src/index.ts"),
+    join(process.cwd(), "node_modules/luca/dist/index.mjs"),
   ];
 
   for (const binPath of binPaths) {
@@ -67,8 +69,8 @@ export const runCommand = defineCommand({
     },
   },
   async run({ args }) {
-    // Passive update notification (non-blocking, 24h cache)
-    await checkForUpdates();
+    // Passive update notification — fire-and-forget so harness launch is never delayed
+    void checkForUpdates().catch(() => {});
 
     const resolved = resolveHarnessPath();
 
@@ -76,7 +78,8 @@ export const runCommand = defineCommand({
       logger.error(
         "Could not locate luca-mastracode harness.\n" +
           "  • In monorepo dev mode: ensure packages/luca-mastracode/ exists\n" +
-          "  • As installed package: ensure the `luca` package is in your dependencies",
+          '  • As installed package: ensure the `luca` package is in your dependencies\n' +
+          "    (npm install luca / bun add luca)",
       );
       process.exit(1);
     }

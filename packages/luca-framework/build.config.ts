@@ -24,5 +24,6 @@ export default defineBuildConfig({
     "pathe",
     "semver",
     "zod",
+    "update-notifier",
   ],
 });

@@ -26,8 +26,8 @@ export async function detectProjectContext(
     if (await pkgFile.exists()) {
       const pkg = JSON.parse(await pkgFile.text()) as Record<string, unknown>;
       context.hasPackageJson = true;
-      context.projectName = (pkg.name as string) || null;
-      context.projectDescription = (pkg.description as string) || null;
+      context.projectName = typeof pkg.name === "string" ? pkg.name : null;
+      context.projectDescription = typeof pkg.description === "string" ? pkg.description : null;
 
       // Detect stack from dependencies
       const deps = {

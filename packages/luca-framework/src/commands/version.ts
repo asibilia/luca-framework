@@ -33,6 +33,10 @@ export const versionCommand = defineCommand({
       ].join("\n"),
     );
 
-    await checkForUpdates();
+    try {
+      await checkForUpdates();
+    } catch {
+      // Ignore update-check failures so `luca version` remains reliable
+    }
   },
 });
