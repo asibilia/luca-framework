@@ -171,9 +171,15 @@ Verify that all planned work was actually completed:
 If gaps are found:
 
 - **Minor gaps** (missing docs, incomplete tests): Flag them in the PR description as follow-up items
-- **Major gaps** (missing functionality, failing tests): Report to the user with a recommendation:
-  - Option A: Address now (loop back to execute for targeted fixes)
-  - Option B: Track as follow-up work (create issues)
+- **Major gaps** (missing functionality, failing tests): Re-enter the pipeline for targeted fixes:
+  1. Save the gap detection results to workflow state
+  2. Re-enter the pipeline at Review or Execute:
+     ```
+     workflowState(action: "re-enter-pipeline", targetMode: "luca:5-review", reason: "Post-finalize gap detection found major gaps: <brief summary>")
+     ```
+     This re-enters the Review → Execute → Review → Finalize loop with full context preserved (plan, roadmap, execution results all retained).
+  3. **STOP.** Review mode handles the audit from here. If issues are found, it will iterate through Execute → Review as normal before returning to Finalize.
+  - If the user prefers not to fix now: track gaps as follow-up work (create issues) and proceed to cleanup
 
 ## Step 5 — Cross-Milestone Continuation
 

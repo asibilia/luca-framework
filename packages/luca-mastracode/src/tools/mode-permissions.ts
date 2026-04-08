@@ -61,7 +61,7 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     repo_cleanup: ['scan', 'parse-report', 'summary'],
   },
   "luca:6-finalize": {
-    workflow_state: ['read', 'reset-pipeline', 'switch-mode'],
+    workflow_state: ['read', 'reset-pipeline', 'switch-mode', 're-enter-pipeline'],
     run_checks: '*',
     pipeline_lock: ['release'],
     session_ledger: '*',

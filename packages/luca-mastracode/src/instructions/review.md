@@ -258,6 +258,17 @@ When `reviewIteration > 0`, this is a re-review after fixes. Focus on:
 
 Read the previous `REVIEW-*.md` reports to understand what was flagged before.
 
+### Post-Finalize Re-entry
+
+When `reEntryReason` is set in workflow state, this is a **post-finalization re-review**. The pipeline already completed once. Focus on:
+
+1. Re-read the `reEntryReason` to understand what triggered re-entry (gap detection, user request, etc.)
+2. Load all existing `REVIEW-*.md` reports from previous iterations
+3. Focus the review on areas flagged during finalization or described in the re-entry reason
+4. Follow the normal Review process (Steps 1–7) but with awareness that this is a second pass — previous review/execution context is preserved in state
+
+After review completes, the normal routing applies: clean → Finalize, issues found → Execute → Review loop.
+
 ---
 
 ## Pipeline Orchestration

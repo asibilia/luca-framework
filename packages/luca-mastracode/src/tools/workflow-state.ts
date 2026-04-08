@@ -23,14 +23,27 @@ export const PIPELINE_ORDER: Record<string, string | undefined> = {
   "luca:6-finalize": undefined,
 };
 
-// ── Per-action Zod schemas (discriminated union variants) ──────────
+/**
+ * Documented backward transitions that bypass the "no backward step" check.
+ * - Review → Execute:    iteration loop for MUST-FIX issues (review.md Step 7B)
+ * - Finalize → Architect: cross-milestone continuation (finalize.md Step 5)
+ * - Finalize → Execute:   gap-detected rework (finalize.md Step 4)
+ */
+const ALLOWED_BACKWARD_TRANSITIONS: Record<string, Set<string>> = {
+  "luca:5-review":   new Set(["luca:4-execute"]),
+  "luca:6-finalize": new Set(["luca:3-architect", "luca:4-execute"]),
+};
 
-const readAction = z.object({ action: z.literal("read") });
+// ── Per-action Zod schemas ──────────────────────────────────────────
+// Used for runtime validation + type narrowing in the execute handler.
+// Actions with no extra fields (read, record-iteration, advance-wave,
+// reset-pipeline) don't need a runtime parse — the flat inputSchema
+// already validates them via the action enum.
 
 const writeAction = z.object({
   action: z.literal("write"),
   updates: z.record(z.string(), z.unknown())
-    .describe("State fields to update (build/fast modes only)"),
+    .describe("State fields to update"),
 });
 
 const switchModeAction = z.object({
@@ -46,10 +59,6 @@ const startPhaseAction = z.object({
   phaseName: z.string()
     .describe("Phase name from ROADMAP.md"),
 });
-
-const recordIterationAction = z.object({ action: z.literal("record-iteration") });
-
-const advanceWaveAction = z.object({ action: z.literal("advance-wave") });
 
 const completePhaseAction = z.object({
   action: z.literal("complete-phase"),
@@ -89,268 +98,401 @@ const saveReviewResultsAction = z.object({
     .describe("Review iteration number"),
 });
 
-const resetPipelineAction = z.object({ action: z.literal("reset-pipeline") });
+const RE_ENTER_TARGETS = ["luca:4-execute", "luca:5-review"] as const;
 
-/**
- * All action variants — exported for createScopedTool to filter.
- * The array order determines the discriminated union variant order.
- */
-export const WORKFLOW_STATE_VARIANTS = [
-  readAction,
-  writeAction,
-  switchModeAction,
-  startPhaseAction,
-  recordIterationAction,
-  advanceWaveAction,
-  completePhaseAction,
-  saveTriageResultsAction,
-  savePlanArtifactsAction,
-  saveReviewResultsAction,
-  resetPipelineAction,
+const reEnterPipelineAction = z.object({
+  action: z.literal("re-enter-pipeline"),
+  targetMode: z.enum(RE_ENTER_TARGETS)
+    .describe("Pipeline mode to re-enter at. Only execute or review — cannot re-enter at triage/research/architect."),
+  reason: z.string()
+    .describe("Why the pipeline is being re-entered (stored in state as reEntryReason)."),
+});
+
+// ── All valid actions (exported for createScopedTool) ──────────────
+export const WORKFLOW_STATE_ACTIONS = [
+  "read",
+  "write",
+  "switch-mode",
+  "start-phase",
+  "record-iteration",
+  "advance-wave",
+  "complete-phase",
+  "save-triage-results",
+  "save-plan-artifacts",
+  "save-review-results",
+  "reset-pipeline",
+  "re-enter-pipeline",
 ] as const;
 
-export type WorkflowStateInput = z.infer<typeof WORKFLOW_STATE_VARIANTS[number]>;
+export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number];
+
+/**
+ * Flat z.object schema for the Anthropic API.
+ *
+ * z.discriminatedUnion produces { oneOf: [...] } without a top-level "type",
+ * which Anthropic's API rejects. This flat schema generates a valid
+ * { "type": "object", "properties": { ... } } JSON Schema.
+ *
+ * Action-specific fields are optional here; the execute handler validates
+ * required fields per-action using the strict per-action schemas above.
+ */
+const workflowStateInputSchema = z.object({
+  action: z.enum(WORKFLOW_STATE_ACTIONS)
+    .describe("Which action to perform on the workflow state."),
+
+  // write
+  updates: z.record(z.string(), z.unknown()).optional()
+    .describe("State fields to update (required for 'write' action)."),
+
+  // switch-mode
+  targetMode: z.string().optional()
+    .describe("Target mode ID (required for 'switch-mode'). One of: build, plan, fast, luca:discuss, luca:1-triage, luca:2-research, luca:3-architect, luca:4-execute, luca:5-review, luca:6-finalize"),
+  userRequest: z.string().optional()
+    .describe("Original user request to pass to target mode (switch-mode only). Written to state as 'intent'."),
+
+  // start-phase
+  phaseName: z.string().optional()
+    .describe("Phase name from ROADMAP.md (required for 'start-phase')."),
+
+  // complete-phase
+  verificationPassed: z.boolean().optional()
+    .describe("Whether verification passed (complete-phase only)."),
+  reviewPassed: z.boolean().optional()
+    .describe("Whether review passed (complete-phase only)."),
+
+  // save-triage-results
+  intent: z.string().optional()
+    .describe("Parsed intent summary (required for 'save-triage-results')."),
+  complexity: z.enum(["TRIVIAL", "SIMPLE", "MODERATE", "COMPLEX", "CRITICAL"]).optional()
+    .describe("Classified complexity level (required for 'save-triage-results')."),
+  oversight: z.enum(["full-auto", "checkpoint", "human-in-loop"]).optional()
+    .describe("Oversight mode (required for 'save-triage-results')."),
+  profile: z.string().optional()
+    .describe("Execution profile (save-triage-results only)."),
+  affectedAreas: z.array(z.string()).optional()
+    .describe("List of affected packages/modules (save-triage-results only)."),
+  skipResearch: z.boolean().optional()
+    .describe("Skip research phase for trivial/simple tasks (save-triage-results only)."),
+
+  // save-plan-artifacts
+  planFile: z.string().optional()
+    .describe("Path to PLAN.md (required for 'save-plan-artifacts')."),
+  roadmapFile: z.string().optional()
+    .describe("Path to ROADMAP.md (save-plan-artifacts only)."),
+
+  // save-review-results
+  iterationPlan: z.array(z.string()).optional()
+    .describe("Focused list of fixes for next execute iteration (save-review-results only)."),
+  reviewIteration: z.number().optional()
+    .describe("Review iteration number (save-review-results only)."),
+
+  // re-enter-pipeline
+  reason: z.string().optional()
+    .describe("Why the pipeline is being re-entered (required for 're-enter-pipeline'). Stored in state as reEntryReason."),
+});
+
+export type WorkflowStateInput = z.infer<typeof workflowStateInputSchema>;
+
+// ── Helper: strict parse an action's input ─────────────────────────
+function parseAction<S extends z.ZodTypeAny>(
+  schema: S,
+  input: Record<string, unknown>,
+): z.infer<S> {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    throw new ActionValidationError(input.action as string, issues);
+  }
+  return result.data;
+}
+
+class ActionValidationError extends Error {
+  constructor(action: string, details: string) {
+    super(`Invalid input for action '${action}': ${details}`);
+    this.name = "ActionValidationError";
+  }
+}
+
+// ── Tool definition ────────────────────────────────────────────────
 
 export const workflowStateTool = createTool({
   id: "workflow-state",
   description:
     "Read and write Luca workflow state. State persists to .planning/luca-state.json. Use this to track pipeline progress, update phase status, and trigger mode transitions.",
-  inputSchema: z.discriminatedUnion("action", [
-    readAction,
-    writeAction,
-    switchModeAction,
-    startPhaseAction,
-    recordIterationAction,
-    advanceWaveAction,
-    completePhaseAction,
-    saveTriageResultsAction,
-    savePlanArtifactsAction,
-    saveReviewResultsAction,
-    resetPipelineAction,
-  ]),
+  inputSchema: workflowStateInputSchema,
   execute: async (inputData) => {
-    switch (inputData.action) {
-      case "read": {
-        const state = readLucaState();
-        return {
-          success: true,
-          message: "State read successfully",
-          state,
-        };
-      }
-      case "write": {
-        const merged = writeLucaState(inputData.updates);
-        return {
-          success: true,
-          message: `Updated state: ${Object.keys(inputData.updates).join(", ")}`,
-          state: merged,
-        };
-      }
-      case "switch-mode": {
-        const { targetMode } = inputData;
-        if (!VALID_MODES.includes(targetMode)) {
-          return {
-            success: false,
-            message: `Invalid mode "${targetMode}". Valid modes: ${VALID_MODES.join(", ")}`,
-          };
-        }
-        if (!switchModeRef.current) {
-          return {
-            success: false,
-            message: "switchMode not available — harness not initialized",
-          };
-        }
+    try {
+      const raw = inputData as Record<string, unknown>;
 
-        // --- Pipeline ordering enforcement ---
-        // Validate that pipeline transitions follow the correct order.
-        // Non-pipeline targets (build, plan, fast, luca:discuss) are always allowed
-        // (user override / manual exit from pipeline).
-        const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER));
-        const prevState = readLucaState();
-        const currentStep = prevState.pipelineStep;
-
-        if (currentStep && PIPELINE_MODES.has(currentStep) && PIPELINE_MODES.has(targetMode)) {
-          const expectedNext = PIPELINE_ORDER[currentStep];
-
-          if (targetMode !== expectedNext) {
-            // Allow triage → architect skip when skipResearch is set
-            if (currentStep === "luca:1-triage" && targetMode === "luca:3-architect" && prevState.skipResearch) {
-              // Skip-ahead allowed
-            } else {
-              // Check if this is a backward jump or an invalid skip-ahead
-              const pipelineSequence = Object.keys(PIPELINE_ORDER);
-              const currentIdx = pipelineSequence.indexOf(currentStep);
-              const targetIdx = pipelineSequence.indexOf(targetMode);
-
-              if (targetIdx <= currentIdx) {
-                // Backward jump — block it
-                return {
-                  success: false,
-                  message: `Pipeline ordering violation: cannot go backward from "${currentStep}" to "${targetMode}". The correct next step is "${expectedNext}". Call workflowState(action: "switch-mode", targetMode: "${expectedNext}") instead.`,
-                };
-              }
-
-              // Forward skip (but not the expected next) — block it
-              return {
-                success: false,
-                message: `Pipeline ordering violation: cannot skip from "${currentStep}" to "${targetMode}". The correct next step is "${expectedNext}". Call workflowState(action: "switch-mode", targetMode: "${expectedNext}") instead.`,
-              };
-            }
-          }
-        }
-
-        try {
-          // Persist user request as intent so the target mode's continuation
-          // message can include the original context.
-          const stateUpdates: Record<string, unknown> = { pipelineStep: targetMode, nextMode: targetMode };
-          if (inputData.userRequest) {
-            stateUpdates.intent = inputData.userRequest;
-          }
-          writeLucaState(stateUpdates);
-          appendLedger('mode-transition', { from: prevState.pipelineStep, to: targetMode });
-          await switchModeRef.current(targetMode);
+      switch (inputData.action) {
+        case "read": {
+          const state = readLucaState();
           return {
             success: true,
-            message: `Switched to "${targetMode}" mode.`,
+            message: "State read successfully",
+            state,
           };
-        } catch (err) {
+        }
+        case "write": {
+          const { updates } = parseAction(writeAction, raw);
+          const merged = writeLucaState(updates);
+          return {
+            success: true,
+            message: `Updated state: ${Object.keys(updates).join(", ")}`,
+            state: merged,
+          };
+        }
+        case "switch-mode": {
+          const { targetMode, userRequest } = parseAction(switchModeAction, raw);
+          if (!VALID_MODES.includes(targetMode)) {
+            return {
+              success: false,
+              message: `Invalid mode "${targetMode}". Valid modes: ${VALID_MODES.join(", ")}`,
+            };
+          }
+          if (!switchModeRef.current) {
+            return {
+              success: false,
+              message: "switchMode not available — harness not initialized",
+            };
+          }
+
+          // --- Pipeline ordering enforcement ---
+          const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER));
+          const prevState = readLucaState();
+          const currentStep = prevState.pipelineStep;
+
+          if (currentStep && PIPELINE_MODES.has(currentStep) && PIPELINE_MODES.has(targetMode)) {
+            const expectedNext = PIPELINE_ORDER[currentStep];
+
+            if (targetMode !== expectedNext) {
+              // Allow triage → architect skip when skipResearch is set
+              if (currentStep === "luca:1-triage" && targetMode === "luca:3-architect" && prevState.skipResearch) {
+                // Skip-ahead allowed
+              } else {
+                const pipelineSequence = Object.keys(PIPELINE_ORDER);
+                const currentIdx = pipelineSequence.indexOf(currentStep);
+                const targetIdx = pipelineSequence.indexOf(targetMode);
+
+                if (targetIdx <= currentIdx) {
+                  // Allow documented backward transitions (iteration loops, cross-milestone continuation)
+                  const allowedBackward = ALLOWED_BACKWARD_TRANSITIONS[currentStep];
+                  if (!allowedBackward?.has(targetMode)) {
+                    return {
+                      success: false,
+                      message: `Pipeline ordering violation: cannot go backward from "${currentStep}" to "${targetMode}". The correct next step is "${expectedNext}". Call workflowState(action: "switch-mode", targetMode: "${expectedNext}") instead.`,
+                    };
+                  }
+                  // Backward transition allowed — fall through
+                } else {
+                  return {
+                    success: false,
+                    message: `Pipeline ordering violation: cannot skip from "${currentStep}" to "${targetMode}". The correct next step is "${expectedNext}". Call workflowState(action: "switch-mode", targetMode: "${expectedNext}") instead.`,
+                  };
+                }
+              }
+            }
+          }
+
+          try {
+            const stateUpdates: Record<string, unknown> = { pipelineStep: targetMode, nextMode: targetMode };
+            if (userRequest) {
+              stateUpdates.intent = userRequest;
+            }
+            writeLucaState(stateUpdates);
+            appendLedger('mode-transition', { from: prevState.pipelineStep, to: targetMode });
+            await switchModeRef.current(targetMode);
+            return {
+              success: true,
+              message: `Switched to "${targetMode}" mode.`,
+            };
+          } catch (err) {
+            return {
+              success: false,
+              message: `Failed to switch mode: ${err instanceof Error ? err.message : String(err)}`,
+              error: err instanceof Error ? err.stack : undefined,
+            };
+          }
+        }
+        case "start-phase": {
+          const { phaseName } = parseAction(startPhaseAction, raw);
+          const phaseState = startPhase({ name: phaseName });
+          appendLedger('phase-start', { phase: phaseName });
+          return {
+            success: true,
+            message: `Started phase "${phaseName}" (wave 1, iteration 0)`,
+            state: phaseState,
+          };
+        }
+        case "record-iteration": {
+          const iterState = recordIteration();
+          appendLedger('iteration-complete', {
+            phase: iterState.currentPhaseName,
+            wave: iterState.currentWave,
+            iteration: iterState.currentIteration,
+            budgetExceeded: iterState.budgetExceeded ?? false,
+          });
+          let iterMsg = `Recorded iteration ${iterState.currentIteration} for phase "${iterState.currentPhaseName}"`;
+          if (iterState.budgetExceeded) {
+            iterMsg += ` ⚠ Budget limit exceeded (maxChecksFixIterations). Consider advancing to the next wave or reporting remaining failures.`;
+            appendLedger('budget-exceeded', { type: 'iteration', iteration: iterState.currentIteration, phase: iterState.currentPhaseName });
+          }
+          return {
+            success: true,
+            message: iterMsg,
+            state: iterState,
+          };
+        }
+        case "advance-wave": {
+          const waveState = advanceWave();
+          appendLedger('wave-advance', {
+            phase: waveState.currentPhaseName,
+            wave: waveState.currentWave,
+            budgetExceeded: waveState.budgetExceeded ?? false,
+          });
+          let waveMsg = `Advanced to wave ${waveState.currentWave} in phase "${waveState.currentPhaseName}"`;
+          if (waveState.budgetExceeded) {
+            waveMsg += ` ⚠ Budget limit exceeded (maxPhases). Consider completing the phase or reporting remaining work.`;
+            appendLedger('budget-exceeded', { type: 'wave', wave: waveState.currentWave, phase: waveState.currentPhaseName });
+          }
+          return {
+            success: true,
+            message: waveMsg,
+            state: waveState,
+          };
+        }
+        case "complete-phase": {
+          const { verificationPassed, reviewPassed } = parseAction(completePhaseAction, raw);
+          const phaseResult = completePhase({
+            verificationPassed,
+            reviewPassed,
+          });
+          appendLedger('phase-complete', {
+            phase: phaseResult.completedPhaseName,
+            verificationPassed: verificationPassed ?? null,
+            reviewPassed: reviewPassed ?? null,
+          });
+          return {
+            success: true,
+            message: `Completed phase "${phaseResult.completedPhaseName}" (${phaseResult.completedPhases}/${phaseResult.totalPhases} phases done)`,
+            state: phaseResult,
+          };
+        }
+        case "save-triage-results": {
+          const triage = parseAction(saveTriageResultsAction, raw);
+          const triageState = writeLucaState({
+            intent: triage.intent,
+            complexity: triage.complexity,
+            oversight: triage.oversight,
+            profile: triage.profile ?? "balanced",
+            affectedAreas: triage.affectedAreas,
+            skipResearch: triage.skipResearch,
+          });
+          appendLedger('triage-complete', {
+            intent: triage.intent,
+            complexity: triage.complexity,
+            oversight: triage.oversight,
+          });
+          return {
+            success: true,
+            message: `Triage saved: complexity=${triage.complexity}, oversight=${triage.oversight}${triage.skipResearch ? " (research skipped)" : ""}`,
+            state: triageState,
+          };
+        }
+        case "save-plan-artifacts": {
+          const { planFile, roadmapFile } = parseAction(savePlanArtifactsAction, raw);
+          const planState = writeLucaState({
+            planFile,
+            roadmapFile: roadmapFile ?? undefined,
+          });
+          appendLedger('plan-artifacts-saved', { planFile, roadmapFile });
+          return {
+            success: true,
+            message: `Plan artifacts saved: planFile=${planFile}${roadmapFile ? `, roadmapFile=${roadmapFile}` : ""}`,
+            state: planState,
+          };
+        }
+        case "save-review-results": {
+          const { iterationPlan, reviewIteration } = parseAction(saveReviewResultsAction, raw);
+          const reviewState = writeLucaState({
+            iterationPlan: iterationPlan ?? undefined,
+            reviewIteration: reviewIteration ?? undefined,
+          });
+          appendLedger('review-results-saved', { iterationPlan, reviewIteration });
+          return {
+            success: true,
+            message: `Review results saved${reviewIteration != null ? ` (iteration ${reviewIteration})` : ""}${iterationPlan?.length ? `, ${iterationPlan.length} fixes planned` : ""}`,
+            state: reviewState,
+          };
+        }
+        case "reset-pipeline": {
+          const freshState = writeLucaState({
+            pipelineStep: "idle",
+            currentPhase: 0,
+            totalPhases: 0,
+            phaseSubStep: undefined,
+            currentPhaseName: undefined,
+            currentWave: 1,
+            currentIteration: 0,
+            nextMode: undefined,
+            skipResearch: false,
+            budgetExceeded: false,
+            planFile: undefined,
+            roadmapFile: undefined,
+            reviewIteration: undefined,
+          });
+          appendLedger('pipeline-reset', {});
+          return {
+            success: true,
+            message: "Pipeline reset to idle state",
+            state: freshState,
+          };
+        }
+        case "re-enter-pipeline": {
+          const { targetMode: reEntryTarget, reason: reEntryReason } = parseAction(reEnterPipelineAction, raw);
+          if (!switchModeRef.current) {
+            return {
+              success: false,
+              message: "switchMode not available — harness not initialized",
+            };
+          }
+
+          // Preserve existing state, update pipeline position and reset review counters
+          const reEntryState = writeLucaState({
+            pipelineStep: reEntryTarget,
+            nextMode: reEntryTarget,
+            reEntryReason,
+            reviewIteration: 0,
+            budgetExceeded: false,
+          });
+          appendLedger('pipeline-re-entered', { targetMode: reEntryTarget, reason: reEntryReason });
+
+          try {
+            await switchModeRef.current(reEntryTarget);
+            return {
+              success: true,
+              message: `Pipeline re-entered at "${reEntryTarget}". Reason: ${reEntryReason}`,
+              state: reEntryState,
+            };
+          } catch (err) {
+            return {
+              success: false,
+              message: `Re-entered state but mode switch failed: ${err instanceof Error ? err.message : String(err)}`,
+            };
+          }
+        }
+        default: {
           return {
             success: false,
-            message: `Failed to switch mode: ${err instanceof Error ? err.message : String(err)}`,
-            error: err instanceof Error ? err.stack : undefined,
+            message: `Unknown action: "${inputData.action}"`,
           };
         }
       }
-      case "start-phase": {
-        const phaseState = startPhase({ name: inputData.phaseName });
-        appendLedger('phase-start', { phase: inputData.phaseName });
-        return {
-          success: true,
-          message: `Started phase "${inputData.phaseName}" (wave 1, iteration 0)`,
-          state: phaseState,
-        };
+    } catch (err) {
+      if (err instanceof ActionValidationError) {
+        return { success: false, message: err.message };
       }
-      case "record-iteration": {
-        const iterState = recordIteration();
-        appendLedger('iteration-complete', {
-          phase: iterState.currentPhaseName,
-          wave: iterState.currentWave,
-          iteration: iterState.currentIteration,
-          budgetExceeded: iterState.budgetExceeded ?? false,
-        });
-        let iterMsg = `Recorded iteration ${iterState.currentIteration} for phase "${iterState.currentPhaseName}"`;
-        if (iterState.budgetExceeded) {
-          iterMsg += ` ⚠ Budget limit exceeded (maxChecksFixIterations). Consider advancing to the next wave or reporting remaining failures.`;
-          appendLedger('budget-exceeded', { type: 'iteration', iteration: iterState.currentIteration, phase: iterState.currentPhaseName });
-        }
-        return {
-          success: true,
-          message: iterMsg,
-          state: iterState,
-        };
-      }
-      case "advance-wave": {
-        const waveState = advanceWave();
-        appendLedger('wave-advance', {
-          phase: waveState.currentPhaseName,
-          wave: waveState.currentWave,
-          budgetExceeded: waveState.budgetExceeded ?? false,
-        });
-        let waveMsg = `Advanced to wave ${waveState.currentWave} in phase "${waveState.currentPhaseName}"`;
-        if (waveState.budgetExceeded) {
-          waveMsg += ` ⚠ Budget limit exceeded (maxPhases). Consider completing the phase or reporting remaining work.`;
-          appendLedger('budget-exceeded', { type: 'wave', wave: waveState.currentWave, phase: waveState.currentPhaseName });
-        }
-        return {
-          success: true,
-          message: waveMsg,
-          state: waveState,
-        };
-      }
-      case "complete-phase": {
-        const completeState = completePhase({
-          verificationPassed: inputData.verificationPassed,
-          reviewPassed: inputData.reviewPassed,
-        });
-        appendLedger('phase-complete', {
-          phase: completeState.currentPhaseName,
-          verificationPassed: inputData.verificationPassed,
-          reviewPassed: inputData.reviewPassed,
-          phasesCompleted: completeState.currentPhase,
-          totalPhases: completeState.totalPhases,
-        });
-        return {
-          success: true,
-          message: `Completed phase "${completeState.currentPhaseName ?? 'unknown'}". ${completeState.currentPhase}/${completeState.totalPhases} phases done.`,
-          state: completeState,
-        };
-      }
-      case "save-triage-results": {
-        const triageState = writeLucaState({
-          intent: inputData.intent,
-          complexity: inputData.complexity,
-          oversight: inputData.oversight,
-          profile: inputData.profile ?? "balanced",
-          affectedAreas: inputData.affectedAreas ?? [],
-          skipResearch: inputData.skipResearch ?? false,
-          pipelineStep: "luca:1-triage",
-          startedAt: new Date().toISOString(),
-        });
-        appendLedger("triage-complete", {
-          complexity: inputData.complexity,
-          oversight: inputData.oversight,
-          skipResearch: inputData.skipResearch,
-        });
-        return {
-          success: true,
-          message: `Triage results saved (${inputData.complexity}, ${inputData.oversight})`,
-          state: triageState,
-        };
-      }
-      case "save-plan-artifacts": {
-        const planState = writeLucaState({
-          planFile: inputData.planFile,
-          roadmapFile: inputData.roadmapFile,
-        });
-        appendLedger("plan-artifacts-saved", {
-          planFile: inputData.planFile,
-          roadmapFile: inputData.roadmapFile,
-        });
-        return {
-          success: true,
-          message: `Plan artifacts saved (${inputData.planFile})`,
-          state: planState,
-        };
-      }
-      case "save-review-results": {
-        const reviewState = writeLucaState({
-          iterationPlan: inputData.iterationPlan,
-          reviewIteration: inputData.reviewIteration,
-        });
-        appendLedger("review-results-saved", {
-          reviewIteration: inputData.reviewIteration,
-          issueCount: inputData.iterationPlan?.length ?? 0,
-        });
-        return {
-          success: true,
-          message: `Review results saved (iteration ${inputData.reviewIteration})`,
-          state: reviewState,
-        };
-      }
-      case "reset-pipeline": {
-        const resetState = writeLucaState({
-          pipelineStep: undefined,
-          nextMode: undefined,
-        });
-        appendLedger("pipeline-reset", {});
-        return {
-          success: true,
-          message: "Pipeline state reset",
-          state: resetState,
-        };
-      }
-      default:
-        return { success: false, message: `Unknown action: ${(inputData as { action: string }).action}` };
+      throw err;
     }
   },
 });
