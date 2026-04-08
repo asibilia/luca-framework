@@ -7,40 +7,24 @@ alwaysApply: false
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
 - Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
 - Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Bun automatically loads .env, so don't use dotenv.
 
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
 ## Repo-specific guidance for agents
 
-- **This repo is a developer tooling monorepo**, not a web app. It builds Luca’s agents/skills/rules/hooks and related tooling.
+- **This repo is a developer tooling monorepo**, not a web app. It builds Luca's CLI (`luca-framework`) and custom Mastra Code harness (`luca-mastracode`).
 - **Core commands** (same as `AGENTS.md`, surfaced here for convenience):
   - Install deps: `bun install`
-  - Run tests: `bun test`
   - Type check: `bunx --bun tsc --noEmit`
-  - Build packages: `bun run build`
-  - Build full pipeline (agents/skills/rules/hooks/plugin): `bun run build:all`
-  - Drift check (built outputs vs source): `bun run check:drift`
-- **CRITICAL — Generated files**: `bun run build:all` outputs to `dist/claude/` (gitignored staging area). `bun run deploy` installs from there to `~/.claude/`. **Never edit generated output directly** — always edit the source in `src/` and rebuild. The local `.claude/` in this repo contains only `settings.local.json` and `plans/` — not generated artifacts.
+  - Build luca-framework: `bun run build`
+  - Run mastracode: `bun run mastracode`
+- The local `.claude/` in this repo contains only `settings.local.json` and `plans/` — not generated artifacts.
 - **High-leverage gotchas**:
-  - Some tests in `__tests__/scripts/` expect `bun run build:all` to have been run first because they validate artifacts under `dist/plugin/`.
   - There is **no ESLint configuration**; linting is effectively TypeScript type checking.
   - Bun is required (repo uses `bun.lock` and `bunfig.toml`). If Bun is missing, install it before running any commands.
-  - No `.env` is required for core development; Jira adapter env vars are optional.
+  - No `.env` is required for core development.
 
 ## Response approach
 

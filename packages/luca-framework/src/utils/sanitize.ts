@@ -41,34 +41,9 @@ function stripPrototypeKeys(obj: unknown): unknown {
  * @returns Parsed and sanitized value
  * @throws {SyntaxError} If the input is not valid JSON
  */
-/**
- * NOTE: This function exists in 2 copies across isolated package boundaries.
- * packages/luca-framework/ and src/ cannot cross-import by design.
- * If you modify this function, update the other copy:
- * - packages/luca-framework/src/utils/sanitize.ts (this file)
- * - src/shared/__helpers/validation-utils.ts
- */
 export function sanitizeJsonParse(json: string): unknown {
   const parsed = JSON.parse(json);
   return stripPrototypeKeys(parsed);
 }
 
-/**
- * Safe wrapper around sanitizeJsonParse with try/catch error handling.
- *
- * @param json - The JSON string to parse
- * @returns Object with success, optional data, and optional error
- */
-export function safeSanitizeJsonParse(
-  json: string,
-): { success: true; data: unknown } | { success: false; error: string } {
-  try {
-    const data = sanitizeJsonParse(json);
-    return { success: true, data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "JSON parse failed",
-    };
-  }
-}
+

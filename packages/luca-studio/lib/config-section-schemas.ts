@@ -4,7 +4,7 @@
  * Four schemas are defined locally for Studio use (WorkflowSectionSchema,
  * GatesSectionSchema, ComplexitySectionSchema, PlannerSectionSchema).
  * Two schemas mirror their `src/` counterparts at the Zod version used by
- * luca-studio (v3) — HarnessSectionSchema and LuSectionSchema.
+ * luca-studio (v3) — ChecksSectionSchema and LuSectionSchema.
  *
  * These schemas validate the Studio-facing shape of each section as it
  * appears in config.json. They are the source of truth for PUT route
@@ -52,7 +52,7 @@ export const GatesSectionSchema = z.record(z.string(), z.boolean());
 export type GatesSection = z.infer<typeof GatesSectionSchema>;
 
 // ---------------------------------------------------------------------------
-// Harness section (mirrors src/harness/__schemas/ for Studio zod v3)
+// Checks section (mirrors src/checks/__schemas/ for Studio zod v3)
 // ---------------------------------------------------------------------------
 
 const CheckConfigSchema = z.object({
@@ -72,22 +72,22 @@ const CheckConfigSchema = z.object({
 /**
  * Schema for the `harness` config section.
  *
- * Controls the verification harness: enabled state, check array,
+ * Controls the verification checks: enabled state, check array,
  * iteration limits, and fail-fast behavior.
  *
  * NOTE: `maxFixIterations` and `failFast` use camelCase to match the
- * canonical schema in `src/harness/__schemas/harness.schemas.ts` and the
+ * canonical schema in `src/checks/__schemas/checks.schemas.ts` and the
  * existing `config.json` shape. This is an intentional exception to the
  * project's snake_case API convention.
  */
-export const HarnessSectionSchema = z.object({
+export const ChecksSectionSchema = z.object({
   enabled: z.boolean(),
   checks: z.array(CheckConfigSchema),
   maxFixIterations: z.number().int().positive(),
   failFast: z.boolean(),
 });
 
-export type HarnessSection = z.infer<typeof HarnessSectionSchema>;
+export type ChecksSection = z.infer<typeof ChecksSectionSchema>;
 
 // ---------------------------------------------------------------------------
 // Complexity section
@@ -97,7 +97,7 @@ export type HarnessSection = z.infer<typeof HarnessSectionSchema>;
 const ComplexityLevelSchema = z.object({
   cognitivePreflight: z.enum(["lite", "full"]),
   planVerificationIterations: z.number().int().positive(),
-  harnessFixIterations: z.number().int().positive(),
+  checksFixIterations: z.number().int().positive(),
   verifyFixIterations: z.number().int().positive(),
   verificationMode: z.enum(["quick", "standard", "full", "full+human"]),
   recallDepth: z.number().int().positive().nullable(),
@@ -193,7 +193,7 @@ export type ConfigSectionKey =
 export const CONFIG_SECTION_SCHEMAS: Record<ConfigSectionKey, z.ZodType> = {
   workflow: WorkflowSectionSchema,
   gates: GatesSectionSchema,
-  harness: HarnessSectionSchema,
+  harness: ChecksSectionSchema,
   complexity: ComplexitySectionSchema,
   lu: LuSectionSchema,
   planner: PlannerSectionSchema,

@@ -1,0 +1,25 @@
+{
+  "name": "luca",
+  "description": "Luca workflow as a custom Mastra Code distribution — custom modes, agents, subagents, and tools",
+  "version": "0.1.0",
+  "bin": {
+    "luca": "src/index.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.21.0",
+    "@mastra/libsql": "^1.7.3",
+    "@mastra/memory": "^1.13.0",
+    "mastracode": "^0.10.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "bunx --bun tsc --noEmit"
+  },
+  "type": "module"
+}

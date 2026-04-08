@@ -1,64 +1,56 @@
 # Luca Framework
 
-The zero-friction framework for building structured AI coding agents.
+A developer tooling monorepo for structured AI coding workflows.
 
 ## Overview
 
-Luca is a lightweight framework designed to help developers build, manage, and execute structured AI coding tasks. It bridges the gap between high-level planning and atomic code execution, providing a robust workflow for AI-driven development.
+Luca orchestrates structured AI coding workflows on top of existing repos. It provides a CLI tool (`luca`) for initialization and diagnostics, and a custom Mastra Code harness (`luca-mastracode`) with pipeline modes, subagents, and specialized tools.
 
-## Key Features
+## Packages
 
-- **🚀 Zero-Friction Scaffolding**: Get started in seconds with `create-luca`.
-- **📋 Structured Planning**: Define work in `PLAN.md` files with clear objectives and tasks.
-- **🤖 Atomic Execution**: Execute tasks with automatic commits and deviation handling.
-- **🔄 Smart Updates**: Keep your project structure up-to-date with non-destructive updates.
-- **🛠️ Extensible Adapters**: Integrate with GitHub, Jira, and more.
+| Package | Description |
+| ------- | ----------- |
+| `packages/luca-framework` | CLI tool — init, vault setup, MuninnDB management, diagnostics |
+| `packages/luca-mastracode` | Custom Mastra Code distribution with 9 modes, 7 subagents, 6 tools |
+| `packages/luca-studio` | Next.js UI for project visualization and configuration |
 
 ## Quickstart
 
-### 1. Initialize a new project
-
-```bash
-mkdir my-agent-project && cd my-agent-project
-bunx create-luca
-```
-
-### 2. Install dependencies
+### 1. Install dependencies
 
 ```bash
 bun install
 ```
 
-### 3. Create your first plan
-
-Luca projects use a `.planning/` directory to manage state and plans.
+### 2. Initialize Luca
 
 ```bash
-# Example structure
-.planning/
-  phases/
-    01-foundation/
-      01-01-PLAN.md
+luca init          # Set up MuninnDB
+luca vault:init    # Configure vault for your project
 ```
 
-### 4. Execute a plan
+### 3. Run Mastra Code
 
-Open a plan file in your IDE and use the `/lu` command to execute it. Luca plans are designed to be executed through your AI-powered IDE (Cursor, Claude Code, etc.) rather than a standalone CLI command.
+```bash
+bun run mastracode
+```
+
+Or use the `/lu` slash command within your IDE to execute pipeline workflows.
+
+## Development
+
+```bash
+bun install              # Install dependencies
+bun run build            # Build luca-framework
+bun run mastracode       # Run mastracode harness
+bunx --bun tsc --noEmit  # Type check
+```
 
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
-- [Architecture](docs/architecture/agent-framework.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Coding Standards](docs/guides/coding-standards.md)
-
-## Upgrade
-
-To update your project to the latest Luca framework version:
-
-```bash
-bunx luca update
-```
 
 ## License
 

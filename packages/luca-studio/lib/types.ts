@@ -7,14 +7,14 @@ import { z } from "zod";
  *
  * Several schemas in this file are intentional studio-local mirrors of
  * schemas defined in `packages/luca-framework/src/state/` and
- * `packages/luca-framework/src/harness/`. They are duplicated — NOT imported —
+ * `packages/luca-framework/src/checks/`. They are duplicated — NOT imported —
  * to avoid a cross-package runtime dependency between luca-studio (Next.js app)
  * and luca-framework (Node/Bun CLI tool).
  *
  * **When luca-framework schemas change**, the corresponding studio-local mirrors
  * must be updated manually. Run `bun run check:studio-drift` to detect mismatches:
  * - `LedgerEntrySchema` mirrors `ledger.ts::ledgerEntrySchema`
- * - `HarnessResultSnapshotSchema` mirrors `harness.schemas.ts::HarnessResultSchema`
+ * - `ChecksResultSnapshotSchema` mirrors `checks.schemas.ts::ChecksResultSchema`
  *   (with snake_case field names; the original uses camelCase for internal use)
  * - `IterationRecordSnapshotSchema` mirrors luca-framework iteration schemas
  * - `SessionPlanSnapshotSchema` mirrors luca-framework planner schemas
@@ -24,7 +24,7 @@ import { z } from "zod";
  * the source schema uses camelCase for internal TypeScript use.
  *
  * @see packages/luca-framework/src/state/ledger.ts
- * @see packages/luca-framework/src/harness/__schemas/harness.schemas.ts
+ * @see packages/luca-framework/src/checks/__schemas/checks.schemas.ts
  */
 
 /**
@@ -136,15 +136,15 @@ export const LedgerEntrySchema = z.object({
 
 export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
 
-// ─── Harness Result Snapshot Schemas ─────────────────────────────────────────
+// ─── Checks Result Snapshot Schemas ──────────────────────────────────────────
 
-// NOTE: Studio-local mirrors of luca-framework's harness check schemas (snake_case fields)
+// NOTE: Studio-local mirrors of luca-framework's checks schemas (snake_case fields)
 /**
  * Studio-local mirror of luca-framework's ParsedError.
  *
  * A single parsed error from toolchain output.
  *
- * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::parsedErrorSchema
+ * Source: packages/luca-framework/src/checks/__schemas/checks.schemas.ts::parsedErrorSchema
  * Differences: field names identical; source uses camelCase internally but these match API output.
  * Update this schema when the source schema changes.
  *
@@ -164,9 +164,9 @@ export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
 /**
  * Studio-local mirror of luca-framework's CheckResult.
  *
- * Result of a single harness check (test, typecheck, lint, build).
+ * Result of a single verification check (test, typecheck, lint, build).
  *
- * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::checkResultSchema
+ * Source: packages/luca-framework/src/checks/__schemas/checks.schemas.ts::checkResultSchema
  * Differences: uses snake_case (source may use camelCase for internal TypeScript types).
  * Update this schema when the source schema changes.
  *
@@ -185,17 +185,17 @@ export const CheckResultSnapshotSchema = z.object({
 export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
 
 /**
- * Studio-local mirror of luca-framework's HarnessResult.
+ * Studio-local mirror of luca-framework's ChecksResult.
  *
- * Aggregate result of running all harness checks.
+ * Aggregate result of running all verification checks.
  *
- * Source: packages/luca-framework/src/harness/__schemas/harness.schemas.ts::HarnessResultSchema
+ * Source: packages/luca-framework/src/checks/__schemas/checks.schemas.ts::ChecksResultSchema
  * Differences: uses snake_case (source uses camelCase for internal TypeScript types).
  * Update this schema when the source schema changes.
  *
  * Uses snake_case for API compatibility.
  */
-export const HarnessResultSnapshotSchema = z.object({
+export const ChecksResultSnapshotSchema = z.object({
   status: z.enum(["passed", "failed"]),
   checks: z.array(CheckResultSnapshotSchema).default([]),
   total_errors: z.number().int().nonnegative().default(0),
@@ -204,7 +204,7 @@ export const HarnessResultSnapshotSchema = z.object({
   timestamp: z.string().default(""),
 });
 
-export type HarnessResultSnapshot = z.infer<typeof HarnessResultSnapshotSchema>;
+export type ChecksResultSnapshot = z.infer<typeof ChecksResultSnapshotSchema>;
 
 // ─── Iteration Snapshot Schemas ──────────────────────────────────────────────
 
@@ -240,7 +240,7 @@ export type ConvergenceSignalsSnapshot = z.infer<
 export const IterationRecordSnapshotSchema = z.object({
   tag: z.string(),
   phase: z.number().int().positive(),
-  loop: z.enum(["harness", "verify"]),
+  loop: z.enum(["checks", "verify"]),
   iteration: z.number().int().positive(),
   error_count: z.number().int().nonnegative(),
   error_delta: z.number().int(),

@@ -39,10 +39,9 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The co
 ### Key Commands
 
 ```bash
-bun install            # Install dependencies
-bun run build          # Build packages
-bun run build:all      # Build full pipeline (agents/skills/rules/hooks/plugin)
-bun run check:drift    # Verify built outputs match source
+bun install              # Install dependencies
+bun run build            # Build luca-framework
+bun run mastracode       # Run mastracode harness
 bunx --bun tsc --noEmit  # Type check
 ```
 
@@ -57,16 +56,15 @@ All files use `kebab-case` naming.
 **DO:**
 
 ```
-src/agents/general/lu-debugger.agent.ts
-src/skills/general/lu-plan-phase.skill.ts
-src/rules/general/schema-first-parsing.rule.ts
+packages/luca-mastracode/src/tools/run-checks.ts
+packages/luca-framework/src/utils/vault-setup.ts
 ```
 
 **DON'T:**
 
 ```
-src/agents/general/LuDebugger.agent.ts
-src/skills/general/luPlanPhase.skill.ts
+packages/luca-mastracode/src/tools/RunChecks.ts
+packages/luca-framework/src/utils/vaultSetup.ts
 ```
 
 ### Planning Artifacts: `UPPERCASE.md`

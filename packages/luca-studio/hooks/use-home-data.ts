@@ -41,7 +41,7 @@ export type HomeData = {
  * 1. Use existing summary field if present.
  * 2. Check event_data.summary — some transitions embed a summary string.
  * 3. For phase events: extract event_data.phase_id and form a descriptive label.
- * 4. For HARNESS_COMPLETE: event_data.status (with optional error count).
+ * 4. For CHECKS_COMPLETE: event_data.status (with optional error count).
  * 5. For ROUTE_COMPLETE: event_data.complexity → "Routed as {complexity}".
  * 6. For `field_set` events: "Set {field} to {value}".
  * 7. For transitions with previous_state/current_state: "{prev} -> {current}".
@@ -77,14 +77,14 @@ function synthesizeSummary(entry: Record<string, unknown>): string {
     }
   }
 
-  // 4. For HARNESS_COMPLETE: status and optional error count
-  if (eventType === "HARNESS_COMPLETE") {
+  // 4. For CHECKS_COMPLETE: status and optional error count
+  if (eventType === "CHECKS_COMPLETE") {
     const status = get(eventData, "status", "") as string;
     if (status) {
       const errorCount = get(eventData, "total_errors", null) as number | null;
       return errorCount != null && errorCount > 0
-        ? `Harness ${status} (${errorCount} errors)`
-        : `Harness ${status}`;
+        ? `Checks ${status} (${errorCount} errors)`
+        : `Checks ${status}`;
     }
   }
 

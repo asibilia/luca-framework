@@ -8,17 +8,7 @@
 export { runMain, runInit } from "./cli";
 
 // Re-export types for consumers
-export type {
-  ProjectContext,
-  BrandingConfig,
-  LucaConfig,
-  LucaManifest,
-  FileComparison,
-  FileSource,
-  ApprovalConfig,
-  HarnessId,
-  PresetId,
-} from "./types";
+export type { ProjectContext } from "./types";
 
 // Re-export version for consumers
 export { LUCA_VERSION } from "./utils/manifest";

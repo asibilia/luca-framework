@@ -1,59 +1,39 @@
 {
   "name": "@alecsibilia/luca-framework",
-  "description": "Luca - Agentic development framework for AI-powered development workflows",
-  "version": "5.4.0",
+  "description": "Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness",
+  "version": "10.0.0",
   "bin": {
-    "luca": "./bin/luca.js",
-    "luca-bridge": "./bin/luca-bridge.js"
+    "luca": "./bin/luca.js"
   },
   "dependencies": {
     "@clack/prompts": "^1.0.0",
     "citty": "^0.2.0",
     "consola": "^3.4.0",
-    "defu": "^6.1.4",
-    "ejs": "^3.1.10",
-    "lodash": "^4.17.23",
     "pathe": "^2.0.3",
-    "pkg-types": "^2.1.0",
-    "semver": "^7.7.3",
+    "semver": "^7.6.0",
     "update-notifier": "^7.3.1",
-    "xstate": "^5.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/ejs": "^3.1.5",
-    "@types/lodash": "^4.17.23",
-    "@types/semver": "^7.7.1",
     "@types/update-notifier": "^6.0.8"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
-    },
-    "./state": {
-      "types": "./dist/state/index.d.mts",
-      "import": "./dist/state/index.mjs"
-    },
-    "./state/bridge": {
-      "types": "./dist/state/bridge.d.mts",
-      "import": "./dist/state/bridge.mjs"
     }
   },
   "files": [
     "bin",
-    "dist",
-    "dist/plugin",
-    "templates"
+    "dist"
   ],
   "keywords": [
     "agent",
     "ai",
-    "claude",
     "cli",
-    "cursor",
-    "framework",
-    "luca"
+    "luca",
+    "mastracode",
+    "muninndb"
   ],
   "module": "./dist/index.mjs",
   "repository": {
@@ -63,10 +43,7 @@
   },
   "scripts": {
     "build": "unbuild",
-    "build:plugin": "bun run scripts/copy-plugin.ts",
-    "build:statusline": "bun run scripts/build-statusline.ts",
-    "prepublishOnly": "bun run build && bun run build:statusline && bun run build:plugin",
-    "test": "bun test",
+    "prepublishOnly": "bun run build",
     "validate": "bun run scripts/validate-package.ts"
   },
   "type": "module",

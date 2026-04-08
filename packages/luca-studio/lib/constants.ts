@@ -7,7 +7,7 @@ export const EVENT_TYPES = {
   "tool.pre": { label: "Tool Pre", color: "event-tool" },
   "tool.post": { label: "Tool Post", color: "event-tool" },
   "state.transition": { label: "State Transition", color: "event-state" },
-  "harness.result": { label: "Harness Result", color: "event-harness" },
+  "harness.result": { label: "Checks Result", color: "event-harness" },
   "iteration.checkpoint": { label: "Iteration", color: "event-iteration" },
   "convergence.assessment": {
     label: "Convergence",
@@ -41,7 +41,7 @@ export const EVENT_TYPES = {
   PLAN_COMPLETE: { label: "Plan Complete", color: "event-state" },
   COMMIT_COMPLETE: { label: "Commit Complete", color: "event-commit" },
   LEARN_COMPLETE: { label: "Learn Complete", color: "event-memory" },
-  HARNESS_COMPLETE: { label: "Harness Complete", color: "event-harness" },
+  CHECKS_COMPLETE: { label: "Checks Complete", color: "event-harness" },
   REVIEW_COMPLETE: { label: "Review Complete", color: "event-state" },
   SKIP: { label: "Skip", color: "event-state" },
   SKIP_COOLDOWN: { label: "Skip Cooldown", color: "event-state" },

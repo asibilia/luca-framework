@@ -4,27 +4,15 @@ import { z } from "zod";
  * Scope categories for doctor checks.
  *
  * - `prerequisites`: Bun runtime and platform checks
- * - `global`: Global artifacts, MuninnDB, framework runtime
- * - `project`: Config validation, harness installation, drift, project context
+ * - `global`: MuninnDB binary and service health
  */
-export type DoctorScope = "prerequisites" | "global" | "project";
+export type DoctorScope = "prerequisites" | "global";
 
 /**
  * Internal schema: Doctor check result.
  *
  * Represents the outcome of a single doctor diagnostic check.
  * Uses camelCase -- internal-only, not an API payload.
- *
- * @example
- * ```typescript
- * const result = CheckResultSchema.parse({
- *   name: "Bun Runtime",
- *   status: "pass",
- *   message: "Bun 1.1.38 (1.0.0+ required)",
- *   fixCommand: null,
- *   details: null,
- * });
- * ```
  */
 export const CheckResultSchema = z.object({
   name: z.string(),

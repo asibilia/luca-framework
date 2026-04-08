@@ -320,7 +320,6 @@ export async function writeApiKeyToEnv(
     ...(vaultName && vaultName !== "default"
       ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
       : []),
-    // Generic fallback read by runtime code (bridge, emitter)
     `MUNINN_DB_API_KEY=${apiKey}`,
   ];
 

@@ -47,7 +47,7 @@ const STAGE_DESCRIPTIONS: Record<WorkflowStage, string> = {
   discuss: "Gather context and resolve gray areas",
   plan: "Generate PLAN.md with atomic tasks",
   execute: "Implement code changes via lu-executor",
-  verify: "Verify results via harness and lu-verifier",
+  verify: "Verify results via checks and lu-verifier",
   learn: "Capture patterns, decisions, pitfalls",
 };
 

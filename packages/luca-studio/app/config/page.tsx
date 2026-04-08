@@ -7,7 +7,7 @@ import { AlertTriangle } from "lucide-react";
 
 import { ComplexityTab } from "~/components/config/complexity-tab";
 import { GatesTab } from "~/components/config/gates-tab";
-import { HarnessTab } from "~/components/config/harness-tab";
+import { ChecksTab } from "~/components/config/checks-tab";
 import { SaveBar } from "~/components/feedback/save-bar";
 import { PageContainer } from "~/components/layout/page-container";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -22,7 +22,7 @@ import { setGlobalSaveCallbackAtom } from "~/stores/layout";
  * Tabs:
  * - **Complexity Routing**: Model routing matrix and loop budgets
  * - **Gates**: Toggle grid for workflow gates with fail-closed semantics
- * - **Harness**: Check type toggles, command overrides, iteration limits
+ * - **Checks**: Check type toggles, command overrides, iteration limits
  *
  * Uses SSE conflict detection to warn when config.json changes externally
  * while the user has unsaved edits. A shared SaveBar at the bottom handles
@@ -70,8 +70,8 @@ export default function ConfigPage() {
         <TabsList variant="line">
           <TabsTrigger value="complexity">Complexity Routing</TabsTrigger>
           <TabsTrigger value="gates">Gates</TabsTrigger>
-          <TabsTrigger value="harness">
-            Harness{" "}
+          <TabsTrigger value="checks">
+            Checks{" "}
             <span className="text-[10px] font-normal text-muted-foreground">
               (Advanced)
             </span>
@@ -86,8 +86,8 @@ export default function ConfigPage() {
           <GatesTab />
         </TabsContent>
 
-        <TabsContent value="harness" className="pt-2">
-          <HarnessTab />
+        <TabsContent value="checks" className="pt-2">
+          <ChecksTab />
         </TabsContent>
       </Tabs>
 

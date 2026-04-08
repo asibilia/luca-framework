@@ -40,8 +40,8 @@ const BUDGET_FIELDS: BudgetField[] = [
     description: "Plan checker retry budget",
   },
   {
-    key: "harnessFixIterations",
-    label: "Harness Fix",
+    key: "checksFixIterations",
+    label: "Checks Fix",
     description: "Mechanical fix loop budget",
   },
   {
@@ -61,7 +61,7 @@ const MAX_BUDGET = 5;
  *
  * Provides numeric inputs with +/- controls for iteration caps:
  * - Plan verification iterations
- * - Harness fix iterations
+ * - Checks fix iterations
  * - Verify fix iterations
  *
  * Reads from / writes to `configDraftAtom` under the
