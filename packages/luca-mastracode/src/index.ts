@@ -236,6 +236,12 @@ const PIPELINE_STEPS_ORDERED = [
 ] as const;
 
 /**
+ * Derive the canonical set of pipeline step IDs from the ordered list.
+ * This ensures the UI header and pipeline guard reference the same authoritative list.
+ */
+const PIPELINE_STEP_IDS = PIPELINE_STEPS_ORDERED.map((step) => step.id);
+
+/**
  * Build a two-line progress header for use inside <system-reminder> boxes.
  *
  * Line 1: "ARCHITECT MODE  ·  Step 3 of 6"
@@ -261,11 +267,27 @@ function buildPipelineProgressHeader(modeId: string): string {
 }
 
 /**
+ * Escape XML-unsafe characters in a string to prevent tag injection.
+ * Prevents malicious/accidental `</system-reminder>` substrings from breaking
+ * MastraTUI's regex parser.
+ */
+function escapeSystemReminderBody(body: string): string {
+  return body
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Wrap a message body in <system-reminder> tags so MastraTUI renders it
  * as an amber-bordered SystemReminderComponent instead of a plain user bubble.
+ * The body is escaped to prevent tag-injection attacks via user-controlled content.
  */
 function wrapInSystemReminder(body: string): string {
-  return `<system-reminder>\n${body}\n</system-reminder>`;
+  const safe = escapeSystemReminderBody(body);
+  return `<system-reminder>\n${safe}\n</system-reminder>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -733,7 +755,7 @@ async function main() {
   // If `nextMode` is unset, the switch came from the user (Shift+Tab mode
   // picker), and we must NOT redirect — doing so creates an infinite loop
   // (user picks build → guard redirects to finalize → stacked TUI frames → crash).
-  const PIPELINE_STEPS = new Set(["luca:1-triage", "luca:2-research", "luca:3-architect", "luca:4-execute", "luca:5-review", "luca:6-finalize"]);
+  const PIPELINE_STEPS = new Set<string>(PIPELINE_STEP_IDS);
   harness.subscribe(async (event) => {
     if (event.type !== "mode_changed") return;
     if (event.modeId !== "build") return;
