@@ -20,14 +20,18 @@ Wrap the `buildContinuationMessage()` output in `<system-reminder>` XML tags so 
 
 ## Implementation
 
-**Single file change:** `packages/luca-mastracode/src/index.ts`
+**Files changed:**
+- `packages/luca-mastracode/src/index.ts` — TUI helpers, mode_changed subscriber update
+- `packages/luca-mastracode/src/tools/workflow-state.ts` — Cross-reference comment
+- `.gitignore` — Runtime artifact entries
+- `.planning/ROADMAP.md` — Restored to full historical version
 
-1. In the `mode_changed` subscriber (around line 740-745), wrap the kickoff message in `<system-reminder>` tags before passing to `harness.sendMessage()`.
-2. Include a pipeline progress indicator in the notification body:
-   - Current mode name and step number (e.g., "ARCHITECT MODE · Step 3 of 6")
-   - Visual progress line: `✓ Triage  ✓ Research  → Architect  ○ Execute  ○ Review  ○ Finalize`
-   - Intent summary from workflow state
-3. The existing continuation message content (instructions for the agent) should still be included inside the system-reminder body so the agent receives it.
+1. In the `mode_changed` subscriber (line ~790), wrap the kickoff message in `<system-reminder>` tags before passing to `harness.sendMessage()`.
+2. Add pipeline progress indicator helpers:
+   - `buildPipelineProgressHeader(modeId)` — returns two-line header with mode name, step number, and visual progress
+   - `escapeSystemReminderBody(body)` — sanitizes closing-tag injection attempts
+   - `wrapInSystemReminder(body)` — wraps content in XML tags for MastraTUI rendering
+3. The continuation message content (instructions) is included inside the system-reminder body so the agent receives it in the amber-bordered box.
 
 ## Key Finding
 

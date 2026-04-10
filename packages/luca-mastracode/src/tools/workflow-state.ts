@@ -16,15 +16,22 @@ import { MODE_PERMISSIONS } from "./mode-permissions.js";
 const VALID_MODES = Object.keys(MODE_PERMISSIONS);
 
 /**
- * Canonical pipeline step order and transition map.
+ * Pipeline step order and transition map.
  *
- * IMPORTANT — single source of truth: if you add, remove, or rename a pipeline step,
- * update PIPELINE_STEPS_ORDERED in `../index.ts` first (it is the canonical ordered
- * list with display labels), then mirror the change here. The display labels, guard
- * sets, and TUI progress bar are all derived from PIPELINE_STEPS_ORDERED.
+ * MANUAL MIRROR: This map defines step transitions (who can come next).
+ * It is manually maintained alongside PIPELINE_STEPS_ORDERED in `../index.ts`
+ * (the ordered list with display labels). Both lists must stay synchronized:
+ * if you add, remove, or rename a step, update BOTH files.
  *
- * Related: BARE_TO_NAMESPACED in `../luca-store.ts` — migration map for historical
- * mode ID renames; update separately if IDs change.
+ * Currently these are kept separate because they serve different purposes:
+ * - PIPELINE_STEPS_ORDERED: ordered list with labels, used for TUI progress display
+ * - PIPELINE_ORDER: transition mapping, used for step sequencing/validation
+ *
+ * Note: A future refactor (Phase N+1) should consolidate these into a single
+ * pipeline-steps.ts module to eliminate manual synchronization.
+ *
+ * Related: BARE_TO_NAMESPACED in `../luca-store.ts` — historical migration map
+ * for mode ID renames; update separately if IDs change.
  */
 export const PIPELINE_ORDER: Record<string, string | undefined> = {
   "luca:1-triage": "luca:2-research",
