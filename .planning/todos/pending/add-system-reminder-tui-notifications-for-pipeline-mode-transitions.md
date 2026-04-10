@@ -24,7 +24,7 @@ Wrap the `buildContinuationMessage()` output in `<system-reminder>` XML tags so 
 - `packages/luca-mastracode/src/index.ts` — TUI helpers, mode_changed subscriber update
 - `packages/luca-mastracode/src/tools/workflow-state.ts` — Cross-reference comment
 - `.gitignore` — Runtime artifact entries
-- `.planning/ROADMAP.md` — Restored to full historical version
+- `.planning/ROADMAP.md` — Regenerated as minimal stub for Phase 1 planning
 
 1. In the `mode_changed` subscriber (line ~790), wrap the kickoff message in `<system-reminder>` tags before passing to `harness.sendMessage()`.
 2. Add pipeline progress indicator helpers:
