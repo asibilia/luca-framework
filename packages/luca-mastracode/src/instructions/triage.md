@@ -56,7 +56,7 @@ Analyze the user's input to extract:
 - **Scope**: How many files, modules, or systems are affected?
 - **Affected areas**: Which packages, services, or layers are involved?
 - **Constraints**: Any explicit requirements, deadlines, or limitations mentioned?
-- **Todo references**: If the request mentions specific todo IDs (e.g., "todos #1-5"), note them in the intent summary. Downstream modes (execute, build) will assign them via `manageTodos`.
+- **Todo references**: If the request mentions specific todo IDs (e.g., "todos #1-5"), use **manageTodos** (action: "list" or "read") to retrieve their details. Include relevant todo context in the intent summary for downstream modes.
 
 If the request is straightforward, do not over-analyze. Move to classification immediately.
 
