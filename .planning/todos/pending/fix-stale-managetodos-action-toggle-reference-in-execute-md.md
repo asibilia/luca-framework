@@ -1,5 +1,5 @@
 ---
-title: "Fix stale manageTodos(action: "toggle") reference in execute.md"
+title: 'Fix stale manageTodos(action: "toggle") reference in execute.md'
 area: instructions
 created: 2026-04-10
 priority: medium

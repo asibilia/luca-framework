@@ -1,5 +1,5 @@
 ---
-title: "Audit plan mode session_ledger: '*' — full write access in "read-only" mode"
+title: 'Audit plan mode session_ledger: ''*'' — full write access in "read-only" mode'
 area: permissions
 created: 2026-04-10
 priority: low
