@@ -25,7 +25,7 @@ export function resolveDiscussModel(): string {
 
 export const discussMode = {
   id: 'luca:discuss' as const,
-  name: 'Discuss',
+  name: 'luca: Discuss',
   description: 'Read-only brainstorming and open-ended discussion.',
   color: '#f59e0b',
   defaultModelId: 'anthropic/claude-sonnet-4-6',

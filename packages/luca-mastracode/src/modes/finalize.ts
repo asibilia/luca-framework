@@ -56,7 +56,7 @@ export function resolveFinalizeModel(_harnessState?: Record<string, unknown>): s
  */
 export const finalizeMode = {
   id: 'luca:6-finalize' as const,
-  name: 'Finalize',
+  name: 'luca: Finalize',
   description: 'Milestone boundaries, gap audit, PR creation, and session cleanup.',
   color: '#6366f1',
   defaultModelId: 'anthropic/claude-sonnet-4-6',

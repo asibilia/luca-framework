@@ -70,7 +70,7 @@ export function resolveTriageModel(_harnessState?: Record<string, unknown>): str
  */
 export const triageMode = {
   id: 'luca:1-triage' as const,
-  name: 'Triage',
+  name: 'luca: Triage',
   description: 'Parse, classify, and configure the workflow for a development request.',
   color: '#f59e0b',
   defaultModelId: 'anthropic/claude-sonnet-4-6',

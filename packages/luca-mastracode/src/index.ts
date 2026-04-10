@@ -227,13 +227,13 @@ function installSlashCommands() {
 // ---------------------------------------------------------------------------
 
 const PIPELINE_STEPS_ORDERED = [
-  { id: "luca:1-triage",    label: "Triage" },
-  { id: "luca:2-research",  label: "Research" },
-  { id: "luca:3-architect", label: "Architect" },
-  { id: "luca:4-execute",   label: "Execute" },
-  { id: "luca:5-review",    label: "Review" },
-  { id: "luca:6-finalize",  label: "Finalize" },
-] as const;
+  { id: triageMode.id,     label: triageMode.name },
+  { id: researchMode.id,   label: researchMode.name },
+  { id: architectMode.id,  label: architectMode.name },
+  { id: executeMode.id,    label: executeMode.name },
+  { id: reviewMode.id,     label: reviewMode.name },
+  { id: finalizeMode.id,   label: finalizeMode.name },
+] satisfies ReadonlyArray<{ id: string; label: string }>;
 
 
 
@@ -242,6 +242,9 @@ const PIPELINE_STEPS_ORDERED = [
  *
  * Line 1: "ARCHITECT MODE  ·  Step 3 of 6"
  * Line 2: "✓ Triage  ✓ Research  → Architect  ○ Execute  ○ Review  ○ Finalize"
+ *
+ * Labels are derived from mode config .name fields (e.g. "luca: Execute") with the
+ * "luca: " prefix stripped for compact display.
  */
 function buildPipelineProgressHeader(modeId: string): string {
   const currentIndex = PIPELINE_STEPS_ORDERED.findIndex((s) => s.id === modeId);
@@ -251,12 +254,15 @@ function buildPipelineProgressHeader(modeId: string): string {
   const total = PIPELINE_STEPS_ORDERED.length;
   const stepNum = currentIndex + 1;
 
-  const line1 = `${step.label.toUpperCase()} MODE  ·  Step ${stepNum} of ${total}`;
+  // Strip "luca: " prefix for compact display labels (e.g. "luca: Execute" → "Execute")
+  const short = (s: { label: string }) => s.label.replace(/^luca: /, '');
+
+  const line1 = `${short(step).toUpperCase()} MODE  ·  Step ${stepNum} of ${total}`;
 
   const line2 = PIPELINE_STEPS_ORDERED.map((s, i) => {
-    if (i < currentIndex) return `✓ ${s.label}`;
-    if (i === currentIndex) return `→ ${s.label}`;
-    return `○ ${s.label}`;
+    if (i < currentIndex) return `✓ ${short(s)}`;
+    if (i === currentIndex) return `→ ${short(s)}`;
+    return `○ ${short(s)}`;
   }).join("  ");
 
   return `${line1}\n${line2}`;
