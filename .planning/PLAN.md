@@ -1,142 +1,132 @@
-# Plan: Luca Mode Display Names
+# Plan: Pipeline Mode Permission Fixes
 
 ## Objective
 
-Update Luca pipeline mode `.name` fields to include the `luca:` namespace prefix in the TUI display, so users see `luca: Execute`, `luca: Discuss`, etc. instead of generic `Execute`, `Discuss`. Simultaneously consolidate `PIPELINE_STEPS_ORDERED` to derive from mode config objects (closing the PR #138 REVIEW-2.md duplication advisory).
+Fix 4 permission gaps in Luca's pipeline mode system:
+1. Create a new `writePlanningFile` tool so read-only modes can write `.planning/` files via `node:fs` (bypassing workspace write restrictions)
+2. Grant `write_planning_file` to `luca:2-research` and `luca:5-review` modes
+3. Grant `manage_todos: ['list', 'read']` to `luca:1-triage` mode
+4. Expand `luca:2-research` `manage_todos` from `['add']` to `['list', 'read', 'add']`
 
 ## Context
 
-**Root cause**: MastraTUI uses `mode.name` for badge/picker display (not `mode.id`). Current mode configs define `name: 'Execute'` — TUI shows `execute`. User wants to see the `luca:` namespace prefix in the display.
+### Current State
+- Research and review modes are in `READ_ONLY_MODES` (index.ts:579), which strips workspace `write_file`/`string_replace_lsp` tools. But their instructions tell them to write `.planning/` capture files — they have no tool to do so.
+- Triage mode references todo IDs in its analysis (triage.md:59) but has no `manage_todos` permission to read them.
+- Research mode can `add` todos but cannot `list` or `read` them — an asymmetric gap that prevents it from checking existing todos before adding duplicates.
 
-**Design decision** (full-auto): Use `name: 'luca: Execute'` format — lowercase namespace prefix, colon-space separator, PascalCase role name. This matches the mode ID format (`luca:4-execute`) semantically while being readable.
+### Architecture
+- **Layer 1** — `MODE_PERMISSIONS` (mode-permissions.ts): Maps mode IDs → tool→actions. `buildModeTools()` uses `createScopedTool()` to narrow Zod `action` enums.
+- **Layer 2** — `READ_ONLY_MODES` (index.ts:579): Removes workspace write tools. Orthogonal to Layer 1 — custom tools using `node:fs` bypass this.
+- **Tool registration pipeline**: create tool → register in `TOOL_REGISTRY` → export from `tools/index.ts` → add to `MODE_PERMISSIONS`. **CRITICAL**: `buildModeTools()` throws if `MODE_PERMISSIONS` references a tool not in `TOOL_REGISTRY`.
 
-**Affected areas**:
-- 7 Luca-custom mode files (`modes/*.ts`) — NOT stock modes (build, plan, fast)
-- `index.ts` — `PIPELINE_STEPS_ORDERED` consolidation (derive labels from mode configs)
-- `index.ts` — `buildPipelineProgressHeader` — strip `luca: ` prefix for compact progress bar labels
+### Naming Convention
+- Tool ID: `write-planning-file` (kebab-case)
+- Registry key: `write_planning_file` (snake_case)
+- Record key: `writePlanningFile` (camelCase)
 
-**Key constraint**: `createStaticAgent({ name: "Execute" })` internal agent names stay unchanged — changing to `"luca: Execute"` would produce `"Luca luca: Execute"` in Mastra's registry (redundant). The `name` param in `createStaticAgent` is internal only, not TUI-visible.
+### Decisions
+| # | Decision | Choice |
+|---|----------|--------|
+| 1 | `writePlanningFile` actions | `write` and `read` only |
+| 2 | Path restrictions | `.planning/` prefix enforced; reject `..` traversal; reject absolute paths |
+| 3 | Mode grants | `luca:2-research` and `luca:5-review` get `['write', 'read']` |
+| 4 | Research todos | Expand from `['add']` to `['list', 'read', 'add']` |
+| 5 | Triage todos | New `manage_todos: ['list', 'read']` |
+| 6 | Implementation pattern | Follow `manageRoadmapTool` — `node:fs` direct I/O |
+| 7 | Instruction updates | Surgical one-line callouts referencing the new tool |
 
-**Branch**: `feat/system-reminder-tui-notifications` (current PR #138)
+## Tasks
 
-## Phase 1: Luca Mode Display Names
+### Wave 1: Create the `writePlanningFile` tool
 
-### Wave 1: Update mode config `.name` fields (7 files)
+- [ ] **Task 1.1**: Create `packages/luca-mastracode/src/tools/write-planning-file.ts`
+  - File: `packages/luca-mastracode/src/tools/write-planning-file.ts` (NEW)
+  - Details:
+    - `createTool()` with id `write-planning-file`
+    - `inputSchema`: `action: z.enum(['write', 'read'])`, `path: z.string()` (relative to `.planning/`), `content: z.string().optional()` (required for write)
+    - `outputSchema`: `success: z.boolean()`, `message: z.string()`, `content: z.string().optional()` (returned on read)
+    - Security: use `path.resolve(process.cwd(), '.planning', userPath)` then verify `resolved.startsWith(path.join(process.cwd(), '.planning'))` — reject if false. Also reject if `userPath` starts with `/` (absolute paths). This is the canonical containment pattern, not just a string `..` check.
+    - `write` action: runtime-validate that `content` is defined (Zod schema has it as `.optional()` for the `read` action). Use `mkdirSync(dirname(resolved), { recursive: true })` then `writeFileSync(resolved, content, 'utf-8')`.
+    - `read` action: check `existsSync(resolved)` first — return `{ success: false, message: 'File not found: ...' }` if missing. Otherwise `readFileSync(resolved, 'utf-8')` and return content.
+    - Imports: `createTool` from `@mastra/core/tools`, `{ readFileSync, writeFileSync, existsSync, mkdirSync }` from `node:fs`, `{ join, resolve, dirname }` from `node:path`, `{ z }` from `zod`
+    - Follow `manageRoadmapTool` pattern for structure and error handling
+  - Verify: `bunx --bun tsc --noEmit` passes (file compiles in isolation)
 
-- [ ] **Task 1.1.1**: Update `modes/triage.ts` name field
-  - File: `packages/luca-mastracode/src/modes/triage.ts`
-  - Change: `name: 'Triage'` → `name: 'luca: Triage'` (line 73)
-  - Verification: File content matches expected after edit; `grep "name: 'luca: Triage'" triage.ts` passes
+### Wave 2: Register and export the tool
 
-- [ ] **Task 1.1.2**: Update `modes/research.ts` name field
-  - File: `packages/luca-mastracode/src/modes/research.ts`
-  - Change: `name: 'Research'` → `name: 'luca: Research'` (line 58)
-  - Verification: `grep "name: 'luca: Research'" research.ts` passes
+- [ ] **Task 2.1**: Register `writePlanningFile` in `TOOL_REGISTRY`
+  - File: `packages/luca-mastracode/src/tools/build-mode-tools.ts`
+  - Details:
+    - Add import: `import { writePlanningFileTool } from './write-planning-file.js';` (after line 14)
+    - Add registry entry: `write_planning_file: { tool: writePlanningFileTool, record_key: 'writePlanningFile' },` (in `TOOL_REGISTRY` object, after line 38)
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-- [ ] **Task 1.1.3**: Update `modes/architect.ts` name field
-  - File: `packages/luca-mastracode/src/modes/architect.ts`
-  - Change: `name: 'Architect'` → `name: 'luca: Architect'` (line 60)
-  - Verification: `grep "name: 'luca: Architect'" architect.ts` passes
+- [ ] **Task 2.2**: Export from `tools/index.ts`
+  - File: `packages/luca-mastracode/src/tools/index.ts`
+  - Details:
+    - Add: `export { writePlanningFileTool } from './write-planning-file.js';` (after line 10, with other tool exports)
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-- [ ] **Task 1.1.4**: Update `modes/execute.ts` name field
-  - File: `packages/luca-mastracode/src/modes/execute.ts`
-  - Change: `name: 'Execute'` → `name: 'luca: Execute'` (line 62)
-  - Verification: `grep "name: 'luca: Execute'" execute.ts` passes
+### Wave 3: Update mode permissions
 
-- [ ] **Task 1.1.5**: Update `modes/review.ts` name field
-  - File: `packages/luca-mastracode/src/modes/review.ts`
-  - Change: `name: 'Review'` → `name: 'luca: Review'` (line 63)
-  - Verification: `grep "name: 'luca: Review'" review.ts` passes
+- [ ] **Task 3.1**: Grant `write_planning_file: ['write', 'read']` to `luca:2-research`
+  - File: `packages/luca-mastracode/src/tools/mode-permissions.ts`
+  - Details: Add `write_planning_file: ['write', 'read'],` to the `"luca:2-research"` block (lines 42-45)
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-- [ ] **Task 1.1.6**: Update `modes/finalize.ts` name field
-  - File: `packages/luca-mastracode/src/modes/finalize.ts`
-  - Change: `name: 'Finalize'` → `name: 'luca: Finalize'` (line 59)
-  - Verification: `grep "name: 'luca: Finalize'" finalize.ts` passes
+- [ ] **Task 3.2**: Expand `luca:2-research` `manage_todos` from `['add']` to `['list', 'read', 'add']`
+  - File: `packages/luca-mastracode/src/tools/mode-permissions.ts`
+  - Details: Change line 44 from `manage_todos: ['add'],` to `manage_todos: ['list', 'read', 'add'],`
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-- [ ] **Task 1.1.7**: Update `modes/discuss.ts` name field
-  - File: `packages/luca-mastracode/src/modes/discuss.ts`
-  - Change: `name: 'Discuss'` → `name: 'luca: Discuss'` (line 28)
-  - Verification: `grep "name: 'luca: Discuss'" discuss.ts` passes
+- [ ] **Task 3.3**: Grant `manage_todos: ['list', 'read']` to `luca:1-triage`
+  - File: `packages/luca-mastracode/src/tools/mode-permissions.ts`
+  - Details: Add `manage_todos: ['list', 'read'],` to the `"luca:1-triage"` block (after line 40)
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-### Wave 2: Consolidate `PIPELINE_STEPS_ORDERED` and fix progress bar rendering in `index.ts`
+- [ ] **Task 3.4**: Grant `write_planning_file: ['write', 'read']` to `luca:5-review`
+  - File: `packages/luca-mastracode/src/tools/mode-permissions.ts`
+  - Details: Add `write_planning_file: ['write', 'read'],` to the `"luca:5-review"` block (lines 57-62)
+  - Verify: `bunx --bun tsc --noEmit` passes
 
-- [ ] **Task 1.2.1**: Derive `PIPELINE_STEPS_ORDERED` from mode config imports
-  - File: `packages/luca-mastracode/src/index.ts`
-  - Change: Replace hardcoded `label:` strings in `PIPELINE_STEPS_ORDERED` (lines 229–236) with values derived from imported mode objects. Since mode `name` will now be `'luca: Execute'` etc., derive the short label by stripping the prefix:
-    ```typescript
-    const PIPELINE_STEPS_ORDERED = [
-      { id: triageMode.id,    label: triageMode.name },
-      { id: researchMode.id,  label: researchMode.name },
-      { id: architectMode.id, label: architectMode.name },
-      { id: executeMode.id,   label: executeMode.name },
-      { id: reviewMode.id,    label: reviewMode.name },
-      { id: finalizeMode.id,  label: finalizeMode.name },
-    ] as const satisfies ReadonlyArray<{ id: string; label: string }>;
-    ```
-  - Note: Remove `as const` on array (labels become `string` not literal) — use `satisfies` pattern instead for type safety
-  - Verification: No TypeScript errors; `PIPELINE_STEPS_ORDERED` correctly derived
+### Wave 4: Update instruction files
 
-- [ ] **Task 1.2.2**: Fix `buildPipelineProgressHeader` to strip `luca: ` prefix for compact display
-  - File: `packages/luca-mastracode/src/index.ts`
-  - Change: Add a `shortLabel` helper inside `buildPipelineProgressHeader` that strips the `luca: ` prefix for the compact progress bar:
-    ```typescript
-    function buildPipelineProgressHeader(modeId: string): string {
-      const currentIndex = PIPELINE_STEPS_ORDERED.findIndex((s) => s.id === modeId);
-      if (currentIndex === -1) return "";
+- [ ] **Task 4.1**: Add `writePlanningFile` callout to research instructions
+  - File: `packages/luca-mastracode/src/instructions/research.md`
+  - Details:
+    - At line 73 (after "Write each researcher's output to `.planning/research-capture-{dimension}.md`"), add a callout: `Use the **writePlanningFile** tool (action: "write") to create these files — workspace write tools are unavailable in research mode.`
+    - At line 188, update the behavioral guideline to mention `writePlanningFile`: change the full line from `- **Read-only.** Never create, modify, or delete code files. You may only produce '.planning/RESEARCH.md'.` to `- **Read-only.** Never create, modify, or delete code files. You may only produce '.planning/' files via the **writePlanningFile** tool.` (preserves the read-only prefix)
+  - Verify: File contains the new callouts (grep check)
 
-      const step = PIPELINE_STEPS_ORDERED[currentIndex]!;
-      const total = PIPELINE_STEPS_ORDERED.length;
-      const stepNum = currentIndex + 1;
+- [ ] **Task 4.2**: Add `writePlanningFile` callout to review instructions
+  - File: `packages/luca-mastracode/src/instructions/review.md`
+  - Details:
+    - At line 90 (after "Write each reviewer's output to `.planning/review-capture-{perspective}-{wave}.md`"), add a callout: `Use the **writePlanningFile** tool (action: "write") to create these files — workspace write tools are unavailable in review mode.`
+    - At line 165 (after "Write the report to `.planning/REVIEW-{wave}.md`"), add a similar callout.
+  - Verify: File contains the new callouts (grep check)
 
-      // Strip "luca: " prefix for compact display labels
-      const shortLabel = (s: { label: string }) => s.label.replace(/^luca: /, '');
+- [ ] **Task 4.3**: Add `manageTodos` guidance to triage instructions
+  - File: `packages/luca-mastracode/src/instructions/triage.md`
+  - Details:
+    - At line 59 (the "Todo references" bullet), update to: `- **Todo references**: If the request mentions specific todo IDs (e.g., "todos #1-5"), use **manageTodos** (action: "list" or "read") to retrieve their details. Include relevant todo context in the intent summary for downstream modes.`
+  - Verify: File contains the updated guidance (grep check)
 
-      const line1 = `${shortLabel(step).toUpperCase()} MODE  ·  Step ${stepNum} of ${total}`;
+## Verification
 
-      const line2 = PIPELINE_STEPS_ORDERED.map((s, i) => {
-        if (i < currentIndex) return `✓ ${shortLabel(s)}`;
-        if (i === currentIndex) return `→ ${shortLabel(s)}`;
-        return `○ ${shortLabel(s)}`;
-      }).join("  ");
+### Per-task
+Each task includes a `bunx --bun tsc --noEmit` or grep verification.
 
-      return `${line1}\n${line2}`;
-    }
-    ```
-  - Verification: Progress bar still renders `EXECUTE MODE  ·  Step 4 of 6` and `✓ Triage  ✓ Research  → Execute  ...` (short labels, not `luca: Execute`)
+### Full integration
+1. **Type check**: `bunx --bun tsc --noEmit` — must pass with zero errors
+2. **Manual smoke test**: Mode-switch into `luca:5-review`, confirm `writePlanningFile` tool is available with only `write` and `read` actions in the schema
+4. **Permission audit** (manual): Verify final `mode-permissions.ts` contains:
+   - `luca:1-triage` → `manage_todos: ['list', 'read']`
+   - `luca:2-research` → `manage_todos: ['list', 'read', 'add']`, `write_planning_file: ['write', 'read']`
+   - `luca:5-review` → `write_planning_file: ['write', 'read']`
 
-### Wave 3: Verification
-
-- [ ] **Task 1.3.1**: TypeScript compilation check
-  - Command: `cd packages/luca-mastracode && bun run typecheck` (or `tsc --noEmit`)
-  - Verification: Zero errors
-
-- [ ] **Task 1.3.2**: Spot-check mode name propagation in `index.ts`
-  - Verify `triageMode.name` at `index.ts:470` is now `'luca: Triage'` via the mode import
-  - Verify `PIPELINE_STEPS_ORDERED` labels are now derived from mode objects
-  - Verify `buildPipelineProgressHeader` strips `luca: ` prefix correctly
-
-## Verification Criteria
-
-1. All 7 Luca mode files have `name: 'luca: <Role>'` format
-2. Stock modes (build, plan, fast) are unchanged
-3. `PIPELINE_STEPS_ORDERED` derives `id` and `label` from imported mode config objects
-4. `buildPipelineProgressHeader` produces short labels (strips `luca: ` prefix) for the progress bar
-5. `createStaticAgent({ name: "..." })` call sites are **unchanged** (internal names stay short)
-6. `tsc --noEmit` passes with zero errors
-7. `/mode` listing in TUI will show: `luca:4-execute - luca: Execute` (id - name format)
-8. Status badge will show: `luca: execute` (lowercased, clearly branded)
-
-## Risks & Mitigations
-
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| TypeScript `as const` on derived array causes type mismatch | Low | Use `satisfies` pattern or remove `as const`, relying on inferred type |
-| `buildPipelineProgressHeader` regex strips too aggressively | Low | Regex `^luca: ` anchored to start; only strips exact prefix |
-| Stock mode names accidentally changed | None | Explicitly scoped to 7 Luca-specific files only |
-| `createStaticAgent` name produces `"Luca luca: Execute"` | None | Explicitly leaving `createStaticAgent` names unchanged |
-
-## Notes
-
-- `PIPELINE_STEPS_ORDERED` was flagged in REVIEW-2.md as a duplication advisory — this change closes it
-- The `as const` on `PIPELINE_STEPS_ORDERED` will need to change since labels are now `string` (not string literals). The `buildPipelineProgressHeader` function doesn't rely on literal types, so this is safe. Use `as const satisfies ReadonlyArray<{ id: string; label: string }>` or just remove `as const`.
-- The `workflow-state.ts` comment at line 22 ("manually mirror alongside PIPELINE_STEPS_ORDERED in ../index.ts") will remain accurate — that file's `PIPELINE_ORDER` map is still independent and manually maintained (it has different structure/purpose).
+## Metadata
+- Estimated files: 7 (1 new, 6 modified)
+- Scope: MEDIUM
+- Waves: 4
+- Critical ordering: Wave 1 (create tool) → Wave 2 (register + export) → Wave 3 (permissions) → Wave 4 (instructions)

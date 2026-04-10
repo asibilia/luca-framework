@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools';
-import { readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
-import { join, resolve, dirname, sep } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, resolve, dirname, sep, isAbsolute } from 'node:path';
 import { z } from 'zod';
 
 export const writePlanningFileTool = createTool({
@@ -9,7 +9,7 @@ export const writePlanningFileTool = createTool({
   inputSchema: z.object({
     action: z.enum(['write', 'read']).describe('Operation to perform'),
     path: z.string().describe('File path relative to .planning/ directory (e.g., "RESEARCH.md" or "review-capture-dx-1.md")'),
-    content: z.string().optional().describe('File content (REQUIRED for "write" action, ignored for "read")'),
+    content: z.string().max(524_288, 'content exceeds 512 KB limit — split into multiple files if needed').optional().describe('File content (REQUIRED for "write" action, ignored for "read"; max 512 KB)'),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -25,7 +25,7 @@ export const writePlanningFileTool = createTool({
     }
 
     // Reject absolute paths
-    if (userPath.startsWith('/')) {
+    if (isAbsolute(userPath)) {
       return { success: false, message: 'Absolute paths are not allowed — use a relative path within .planning/' };
     }
 
@@ -37,6 +37,7 @@ export const writePlanningFileTool = createTool({
     // Canonical path containment check (lexical — catches ../ traversal)
     const planningDir = join(process.cwd(), '.planning');
     const resolved = resolve(planningDir, userPath);
+    // Append sep so ".planning/" doesn't match a sibling dir like ".planning-extra/"
     if (!resolved.startsWith(planningDir + sep)) {
       return { success: false, message: 'Path escapes .planning/ boundary' };
     }
@@ -47,17 +48,18 @@ export const writePlanningFileTool = createTool({
           return { success: false, message: `content is required when action is "write" — provide the file content to write to .planning/${userPath}` };
         }
         mkdirSync(dirname(resolved), { recursive: true });
-        // Post-write symlink check: verify the parent directory resolves inside .planning/
         try {
-          const realParent = realpathSync(dirname(resolved));
-          const realPlanning = realpathSync(planningDir);
-          if (realParent !== realPlanning && !realParent.startsWith(realPlanning + sep)) {
-            return { success: false, message: 'Symlink escape detected — parent directory resolves outside .planning/' };
+          writeFileSync(resolved, content, 'utf-8');
+        } catch (err: unknown) {
+          const code = err instanceof Error && 'code' in err ? (err as NodeJS.ErrnoException).code : undefined;
+          if (code === 'EACCES' || code === 'EPERM') {
+            return { success: false, message: `Permission denied writing to .planning/${userPath}` };
           }
-        } catch {
-          // realpathSync may fail if planningDir doesn't exist yet — safe to proceed
+          if (code === 'EISDIR') {
+            return { success: false, message: `Path .planning/${userPath} is a directory, not a file` };
+          }
+          throw err;
         }
-        writeFileSync(resolved, content, 'utf-8');
         return { success: true, message: `Written to .planning/${userPath}` };
       }
       case 'read': {

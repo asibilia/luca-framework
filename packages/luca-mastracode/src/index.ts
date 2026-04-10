@@ -225,7 +225,7 @@ function installSlashCommands() {
 
   cpSync(bundledCommandsDir, targetDir, {
     recursive: true,
-    force: false, // Don't overwrite user customizations
+    force: true, // Always sync bundled commands so updates propagate
   });
 }
 

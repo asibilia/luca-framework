@@ -278,10 +278,9 @@ If MuninnDB is unavailable, skip the memory storage step (don't block graduation
 
 When research graduates (all quality dimensions pass or max iterations reached):
 
-1. Store research findings in MuninnDB (see Knowledge Capture section above)
-2. Capture knowledge in MuninnDB and create backlog todos (see above)
-3. Report research summary, quality scores, and capture summary
-4. Transition to **Architect** mode
+1. Store research findings in MuninnDB and create backlog todos (see Knowledge Capture section above)
+2. Report research summary, quality scores, and capture summary
+3. Transition to **Architect** mode
 
 ---
 
