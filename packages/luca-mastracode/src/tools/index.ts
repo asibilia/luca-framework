@@ -8,6 +8,7 @@ export { runChecksTool } from './run-checks.js';
 export { sessionLedgerTool } from './session-ledger.js';
 export { verificationResultTool } from './verification-result.js';
 export { repoCleanupTool } from './repo-cleanup.js';
+export { writePlanningFileTool } from './write-planning-file.js';
 
 // Permission system
 export { createScopedTool } from './create-scoped-tool.js';
