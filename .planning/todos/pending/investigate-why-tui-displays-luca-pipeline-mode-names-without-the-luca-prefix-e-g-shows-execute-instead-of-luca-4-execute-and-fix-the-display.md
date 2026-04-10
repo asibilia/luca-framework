@@ -1,5 +1,5 @@
 ---
-title: "Investigate why TUI displays Luca pipeline mode names without the "luca:" prefix (e.g. shows "execute" instead of "luca:4-execute") and fix the display"
+title: 'Investigate why TUI displays Luca pipeline mode names without the "luca:" prefix (e.g. shows "execute" instead of "luca:4-execute") and fix the display'
 area: ui
 created: 2026-04-10
 priority: medium
