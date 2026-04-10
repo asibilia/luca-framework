@@ -38,10 +38,12 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     classify_complexity: '*',
     workflow_state: ['read', 'save-triage-results', 'switch-mode'],
     pipeline_lock: ['status', 'recover', 'acquire'],
+    manage_todos: ['list', 'read'],
   },
   "luca:2-research": {
     workflow_state: ['read', 'switch-mode'],
-    manage_todos: ['add'],
+    manage_todos: ['list', 'read', 'add'],
+    write_planning_file: ['write', 'read'],
   },
   "luca:3-architect": {
     manage_roadmap: '*',
@@ -59,6 +61,7 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     run_checks: '*',
     verification_result: ['read', 'read-history', 'aggregate'],
     repo_cleanup: ['scan', 'parse-report', 'summary'],
+    write_planning_file: ['write', 'read'],
   },
   "luca:6-finalize": {
     workflow_state: ['read', 'reset-pipeline', 'switch-mode', 're-enter-pipeline'],
