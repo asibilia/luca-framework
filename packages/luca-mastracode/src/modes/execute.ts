@@ -59,7 +59,7 @@ export function resolveExecuteModel(_harnessState?: Record<string, unknown>): st
  */
 export const executeMode = {
   id: 'luca:4-execute' as const,
-  name: 'Execute',
+  name: 'luca: Execute',
   description: 'Implement code changes atomically with automated checks, verification, code review, and learning capture.',
   color: '#10b981',
   defaultModelId: 'anthropic/claude-opus-4-6',

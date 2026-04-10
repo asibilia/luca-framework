@@ -88,7 +88,7 @@ Each subagent receives:
 **IMMEDIATELY** after all 4 reviewer subagents return, persist each reviewer's raw output to a capture file **before** any consolidation or further reasoning. This ensures findings survive OM context compression.
 
 Write each reviewer's output to `.planning/review-capture-{perspective}-{wave}.md`
-(e.g., `review-capture-dx-1.md`). These files are cleaned up during finalize.
+(e.g., `review-capture-dx-1.md`). Use the **writePlanningFile** tool (action: "write") to create these files — workspace write tools are unavailable in review mode. These files are cleaned up during finalize.
 
 Use this template:
 
@@ -162,7 +162,7 @@ If MuninnDB is unavailable, skip this step entirely — it is informational, nev
 
 ### Step 6 — Produce Audit Report
 
-Write the report to `.planning/REVIEW-{wave}.md`:
+Write the report to `.planning/REVIEW-{wave}.md` using the **writePlanningFile** tool (action: "write"):
 
 ```markdown
 # Code Review — Wave {wave}

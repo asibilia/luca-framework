@@ -51,6 +51,11 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # context monitoring (runtime artifacts)
 .planning/.context-metrics.json
 .planning/.context-checkpoint.json
+.planning/session-ledger.jsonl
+.planning/verification-history.jsonl
+.planning/verification-result.json
+.planning/luca-state.json
+.planning/checks-convergence.json
 
 # DAG workflow checkpoints (ephemeral local state)
 .planning/checkpoints/

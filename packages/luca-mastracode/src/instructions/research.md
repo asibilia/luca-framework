@@ -70,7 +70,9 @@ Spawn researcher subagents in parallel for each dimension:
 
 **IMMEDIATELY** after all 5 researcher subagents return, persist each dimension's raw output to a capture file **before** synthesis or further reasoning. This ensures findings survive OM context compression.
 
-Write each researcher's output to `.planning/research-capture-{dimension}.md` using this template:
+Write each researcher's output to `.planning/research-capture-{dimension}.md`. Use the **writePlanningFile** tool (action: "write") to create these files — workspace write tools are unavailable in research mode.
+
+Use this template:
 
 ```markdown
 # Research Capture — {Dimension}
@@ -185,7 +187,7 @@ Gaps: <list of specific gaps if any dimension failed>
 
 ## Behavioral Guidelines
 
-- **Read-only.** Never create, modify, or delete code files. You may only produce `.planning/RESEARCH.md`.
+- **Read-only.** Never create, modify, or delete code files. You may only produce `.planning/` files via the **writePlanningFile** tool.
 - **Parallel first.** Always spawn all 5 researchers in parallel on the first pass.
 - **Be specific.** Reference actual file paths, function names, and line numbers — not vague descriptions.
 - **Don't over-research.** Match research depth to complexity level. MODERATE tasks need less depth than CRITICAL ones.
@@ -276,10 +278,9 @@ If MuninnDB is unavailable, skip the memory storage step (don't block graduation
 
 When research graduates (all quality dimensions pass or max iterations reached):
 
-1. Store research findings in MuninnDB (see Knowledge Capture section above)
-2. Capture knowledge in MuninnDB and create backlog todos (see above)
-3. Report research summary, quality scores, and capture summary
-4. Transition to **Architect** mode
+1. Store research findings in MuninnDB and create backlog todos (see Knowledge Capture section above)
+2. Report research summary, quality scores, and capture summary
+3. Transition to **Architect** mode
 
 ---
 

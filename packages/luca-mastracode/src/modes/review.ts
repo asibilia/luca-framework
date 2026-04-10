@@ -60,7 +60,7 @@ export function resolveReviewModel(_harnessState?: Record<string, unknown>): str
  */
 export const reviewMode = {
   id: 'luca:5-review' as const,
-  name: 'Review',
+  name: 'luca: Review',
   description: 'Read-only code audit: multi-perspective review, structured findings, and iteration routing.',
   color: '#f59e0b',
   defaultModelId: 'anthropic/claude-sonnet-4-6',

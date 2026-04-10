@@ -57,7 +57,7 @@ export function resolveArchitectModel(_harnessState?: Record<string, unknown>): 
  */
 export const architectMode = {
   id: 'luca:3-architect' as const,
-  name: 'Architect',
+  name: 'luca: Architect',
   description: 'Git workflow, roadmap creation, .planning/PLAN.md via goal-backward analysis, and plan review.',
   color: '#a855f7',
   defaultModelId: 'anthropic/claude-opus-4-6',

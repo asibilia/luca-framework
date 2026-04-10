@@ -88,6 +88,13 @@ import { learnerSubagent } from "./subagents/learner.js";
 import { discussionSubagent } from "./subagents/discussion.js";
 import { shadowScannerSubagent } from "./subagents/shadow-scanner.js";
 
+// --- Pipeline TUI helpers ---
+import {
+  PIPELINE_STEPS_ORDERED,
+  buildPipelineProgressHeader,
+  wrapInSystemReminder,
+} from "./pipeline-tui.js";
+
 // ---------------------------------------------------------------------------
 // Branding — load from .planning/config.json if present
 // ---------------------------------------------------------------------------
@@ -218,7 +225,7 @@ function installSlashCommands() {
 
   cpSync(bundledCommandsDir, targetDir, {
     recursive: true,
-    force: false, // Don't overwrite user customizations
+    force: true, // Always sync bundled commands so updates propagate
   });
 }
 
@@ -687,7 +694,8 @@ async function main() {
   // If `nextMode` is unset, the switch came from the user (Shift+Tab mode
   // picker), and we must NOT redirect — doing so creates an infinite loop
   // (user picks build → guard redirects to finalize → stacked TUI frames → crash).
-  const PIPELINE_STEPS = new Set(["luca:1-triage", "luca:2-research", "luca:3-architect", "luca:4-execute", "luca:5-review", "luca:6-finalize"]);
+  // Derive the guard set from the canonical ordered list — single source of truth.
+  const PIPELINE_STEPS = new Set<string>(PIPELINE_STEPS_ORDERED.map((s) => s.id));
   harness.subscribe(async (event) => {
     if (event.type !== "mode_changed") return;
     if (event.modeId !== "build") return;
@@ -736,8 +744,13 @@ async function main() {
     // Clear stale tasks from the previous mode so the new agent starts fresh
     await harness.setState({ tasks: [] });
 
-    // Build a context-rich kick-off message for the new agent
-    const kickoff = buildContinuationMessage(event.modeId, state);
+    // Build a context-rich kick-off message for the new agent, wrapped in
+    // <system-reminder> so MastraTUI renders it as an amber-bordered box.
+    const agentInstructions = buildContinuationMessage(event.modeId, state);
+    const progressHeader = buildPipelineProgressHeader(event.modeId);
+    const kickoff = progressHeader
+      ? wrapInSystemReminder(`${progressHeader}\n\n${agentInstructions}`)
+      : agentInstructions;
 
     // Small delay to let the TUI finish rendering the mode switch
     await new Promise((r) => setTimeout(r, 200));

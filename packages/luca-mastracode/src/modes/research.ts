@@ -55,7 +55,7 @@ export function resolveResearchModel(_harnessState?: Record<string, unknown>): s
  */
 export const researchMode = {
   id: 'luca:2-research' as const,
-  name: 'Research',
+  name: 'luca: Research',
   description: 'Deep codebase and ecosystem research before planning.',
   color: '#3b82f6',
   defaultModelId: 'anthropic/claude-sonnet-4-6',
