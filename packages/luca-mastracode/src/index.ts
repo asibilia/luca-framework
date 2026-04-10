@@ -88,6 +88,13 @@ import { learnerSubagent } from "./subagents/learner.js";
 import { discussionSubagent } from "./subagents/discussion.js";
 import { shadowScannerSubagent } from "./subagents/shadow-scanner.js";
 
+// --- Pipeline TUI helpers ---
+import {
+  PIPELINE_STEPS_ORDERED,
+  buildPipelineProgressHeader,
+  wrapInSystemReminder,
+} from "./pipeline-tui.js";
+
 // ---------------------------------------------------------------------------
 // Branding — load from .planning/config.json if present
 // ---------------------------------------------------------------------------
@@ -220,78 +227,6 @@ function installSlashCommands() {
     recursive: true,
     force: false, // Don't overwrite user customizations
   });
-}
-
-// ---------------------------------------------------------------------------
-// Pipeline TUI helpers
-// ---------------------------------------------------------------------------
-
-const PIPELINE_STEPS_ORDERED = [
-  { id: triageMode.id,     label: triageMode.name },
-  { id: researchMode.id,   label: researchMode.name },
-  { id: architectMode.id,  label: architectMode.name },
-  { id: executeMode.id,    label: executeMode.name },
-  { id: reviewMode.id,     label: reviewMode.name },
-  { id: finalizeMode.id,   label: finalizeMode.name },
-] satisfies ReadonlyArray<{ id: string; label: string }>;
-
-
-
-/**
- * Build a two-line progress header for use inside <system-reminder> boxes.
- *
- * Line 1: "ARCHITECT MODE  ·  Step 3 of 6"
- * Line 2: "✓ Triage  ✓ Research  → Architect  ○ Execute  ○ Review  ○ Finalize"
- *
- * Labels are derived from mode config .name fields (e.g. "luca: Execute") with the
- * "luca: " prefix stripped for compact display.
- */
-function buildPipelineProgressHeader(modeId: string): string {
-  const currentIndex = PIPELINE_STEPS_ORDERED.findIndex((s) => s.id === modeId);
-  if (currentIndex === -1) return "";
-
-  const step = PIPELINE_STEPS_ORDERED[currentIndex]!;
-  const total = PIPELINE_STEPS_ORDERED.length;
-  const stepNum = currentIndex + 1;
-
-  // Strip "luca: " prefix for compact display labels (e.g. "luca: Execute" → "Execute")
-  const short = (s: { label: string }) => s.label.replace(/^luca: /, '');
-
-  const line1 = `${short(step).toUpperCase()} MODE  ·  Step ${stepNum} of ${total}`;
-
-  const line2 = PIPELINE_STEPS_ORDERED.map((s, i) => {
-    if (i < currentIndex) return `✓ ${short(s)}`;
-    if (i === currentIndex) return `→ ${short(s)}`;
-    return `○ ${short(s)}`;
-  }).join("  ");
-
-  return `${line1}\n${line2}`;
-}
-
-/**
- * Sanitize a message body for safe embedding inside <system-reminder> tags.
- *
- * Only the `</system-reminder>` closing-tag sequence needs to be escaped —
- * MastraTUI's parser uses a lazy regex that terminates on the literal closing tag.
- * Full XML-encoding (escaping all `<`, `>`, `"`, `'`) is intentionally avoided
- * because the body contains LLM instruction content with angle-bracket notation
- * (e.g. `targetMode: "<luca:2-research|luca:3-architect>"`) that must remain
- * readable to the agent verbatim.
- */
-function escapeSystemReminderBody(body: string): string {
-  // Escape only the sequence that would close the tag prematurely.
-  return body.replace(/<\/system-reminder>/gi, "<\\/system-reminder>");
-}
-
-/**
- * Wrap a message body in <system-reminder> tags so MastraTUI renders it
- * as an amber-bordered SystemReminderComponent instead of a plain user bubble.
- * The body is sanitized to prevent `</system-reminder>` injection via
- * user-controlled content (e.g. workflow intent, affectedAreas from luca-state.json).
- */
-function wrapInSystemReminder(body: string): string {
-  const safe = escapeSystemReminderBody(body);
-  return `<system-reminder>\n${safe}\n</system-reminder>`;
 }
 
 // ---------------------------------------------------------------------------
