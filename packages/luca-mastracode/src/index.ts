@@ -235,11 +235,7 @@ const PIPELINE_STEPS_ORDERED = [
   { id: "luca:6-finalize",  label: "Finalize" },
 ] as const;
 
-/**
- * Derive the canonical set of pipeline step IDs from the ordered list.
- * This ensures the UI header and pipeline guard reference the same authoritative list.
- */
-const PIPELINE_STEP_IDS = PIPELINE_STEPS_ORDERED.map((step) => step.id);
+
 
 /**
  * Build a two-line progress header for use inside <system-reminder> boxes.
@@ -267,23 +263,25 @@ function buildPipelineProgressHeader(modeId: string): string {
 }
 
 /**
- * Escape XML-unsafe characters in a string to prevent tag injection.
- * Prevents malicious/accidental `</system-reminder>` substrings from breaking
- * MastraTUI's regex parser.
+ * Sanitize a message body for safe embedding inside <system-reminder> tags.
+ *
+ * Only the `</system-reminder>` closing-tag sequence needs to be escaped —
+ * MastraTUI's parser uses a lazy regex that terminates on the literal closing tag.
+ * Full XML-encoding (escaping all `<`, `>`, `"`, `'`) is intentionally avoided
+ * because the body contains LLM instruction content with angle-bracket notation
+ * (e.g. `targetMode: "<luca:2-research|luca:3-architect>"`) that must remain
+ * readable to the agent verbatim.
  */
 function escapeSystemReminderBody(body: string): string {
-  return body
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  // Escape only the sequence that would close the tag prematurely.
+  return body.replace(/<\/system-reminder>/gi, "<\\/system-reminder>");
 }
 
 /**
  * Wrap a message body in <system-reminder> tags so MastraTUI renders it
  * as an amber-bordered SystemReminderComponent instead of a plain user bubble.
- * The body is escaped to prevent tag-injection attacks via user-controlled content.
+ * The body is sanitized to prevent `</system-reminder>` injection via
+ * user-controlled content (e.g. workflow intent, affectedAreas from luca-state.json).
  */
 function wrapInSystemReminder(body: string): string {
   const safe = escapeSystemReminderBody(body);
@@ -755,7 +753,8 @@ async function main() {
   // If `nextMode` is unset, the switch came from the user (Shift+Tab mode
   // picker), and we must NOT redirect — doing so creates an infinite loop
   // (user picks build → guard redirects to finalize → stacked TUI frames → crash).
-  const PIPELINE_STEPS = new Set<string>(PIPELINE_STEP_IDS);
+  // Derive the guard set from the canonical ordered list — single source of truth.
+  const PIPELINE_STEPS = new Set<string>(PIPELINE_STEPS_ORDERED.map((s) => s.id));
   harness.subscribe(async (event) => {
     if (event.type !== "mode_changed") return;
     if (event.modeId !== "build") return;
