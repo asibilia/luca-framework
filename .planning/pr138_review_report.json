@@ -1,0 +1,73 @@
+{
+  "pr_number": 138,
+  "url": "https://github.com/asibilia/luca-framework/pull/138",
+  "title": "feat(luca-mastracode): render pipeline mode transitions as system-reminder TUI boxes",
+  "review_decision": "No formal decision recorded (reviewer state: COMMENTED)",
+  "total_comments": 3,
+  "comment_breakdown": {
+    "inline_review_comments": 2,
+    "general_review_comments": 1,
+    "issue_level_comments": 0
+  },
+  "categories": {
+    "must_fix": {
+      "security": [
+        {
+          "comment_id": 3058722825,
+          "author": "Copilot",
+          "file": "packages/luca-mastracode/src/index.ts",
+          "line": 268,
+          "in_reply_to": null,
+          "is_duplicate": false,
+          "duplicate_group_id": null,
+          "has_suggestion": true,
+          "body": "wrapInSystemReminder() directly interpolates `body` inside the `<system-reminder>` XML-like wrapper. Since `body` includes user-influenced fields (e.g., workflow `intent`), a malicious/accidental `</system-reminder>` substring can prematurely close the tag and break MastraTUI parsing/rendering. Consider escaping or stripping closing/opening tags from `body` (or encoding the content) before wrapping.",
+          "rationale": "Tag-injection via user-controlled content into an XML-like wrapper. A workflow intent string containing '</system-reminder>' would break MastraTUI's regex parser and could cause unexpected rendering or content leakage between reminder blocks.",
+          "copilot_suggestion": "Add escapeSystemReminderBody() helper that replaces &, <, >, \", ' with HTML entities, then call it inside wrapInSystemReminder() before interpolation."
+        }
+      ],
+      "bug": [],
+      "requirement": []
+    },
+    "should_fix": {
+      "style": [],
+      "improvement": [
+        {
+          "comment_id": 3058722875,
+          "author": "Copilot",
+          "file": "packages/luca-mastracode/src/index.ts",
+          "line": 237,
+          "in_reply_to": null,
+          "is_duplicate": false,
+          "duplicate_group_id": null,
+          "has_suggestion": true,
+          "body": "PIPELINE_STEPS_ORDERED duplicates the same pipeline mode IDs that are also hard-coded into the PIPELINE_STEPS Set later in this file. This creates two sources of truth; if a step is added/renamed, the UI header and pipeline guard could silently diverge. Consider deriving PIPELINE_STEPS from PIPELINE_STEPS_ORDERED.",
+          "rationale": "Two independent hard-coded lists of the same 6 pipeline step IDs. Deriving the Set from the ordered array eliminates the duplication and prevents silent divergence.",
+          "copilot_suggestion": "const PIPELINE_STEP_IDS = PIPELINE_STEPS_ORDERED.map((step) => step.id);\nconst PIPELINE_STEPS = new Set<string>(PIPELINE_STEP_IDS);"
+        }
+      ]
+    },
+    "respond_only": {
+      "question": [],
+      "praise": [
+        {
+          "comment_id": "PRR_kwDORInzGM7zYgcB",
+          "author": "copilot-pull-request-reviewer",
+          "file": null,
+          "line": null,
+          "in_reply_to": null,
+          "is_duplicate": false,
+          "duplicate_group_id": null,
+          "body": "Pull request overview confirming the three changes are coherent and well-scoped (pipeline step metadata, system-reminder wrapper, mode_changed subscriber update). No blocking issues raised in the overview body.",
+          "rationale": "Top-level review overview; descriptive/confirmatory, no action required."
+        }
+      ]
+    },
+    "nit": []
+  },
+  "duplicates": {},
+  "cross_references": {
+    "note": "Both inline Copilot comments (tag-injection at line 268 + dual sources-of-truth at line 237) are also mentioned in the PR body under 'Review findings (non-blocking)'. These are author self-notes echoing the reviewer findings, not duplicate reviewer comments."
+  },
+  "summary": "Must Fix: 1, Should Fix: 1, Respond Only: 1, Nit: 0"
+}
