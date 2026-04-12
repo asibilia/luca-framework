@@ -158,7 +158,7 @@ mcp__muninn__muninn_remember_batch(
 
 Only store findings that represent **reusable knowledge** — specific issues in specific files are not worth storing unless they reveal a systemic pattern.
 
-If MuninnDB is unavailable, skip this step entirely — it is informational, never blocking. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "review-store-findings", reason: "unavailable" })`.
+If MuninnDB is unavailable, skip this step entirely — it is informational, never blocking.
 
 ### Step 6 — Produce Audit Report
 

@@ -48,10 +48,11 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
   "luca:3-architect": {
     manage_roadmap: '*',
     workflow_state: ['read', 'save-plan-artifacts', 'switch-mode'],
+    write_planning_file: ['read'],
   },
   "luca:4-execute": {
     workflow_state: ['read', 'start-phase', 'record-iteration', 'advance-wave', 'complete-phase', 'switch-mode'],
-    manage_todos: ['list', 'read'],
+    manage_todos: ['list', 'read', 'move'],
     pipeline_lock: ['update'],
     run_checks: '*',
     verification_result: '*',

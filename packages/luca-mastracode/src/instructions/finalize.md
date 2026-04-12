@@ -50,7 +50,7 @@ Spawn a **learner** subagent for milestone-level synthesis:
 - Distill the most important lessons (not everything — the top 5–10)
 - Compare initial estimates vs. actual outcomes — what was misjudged?
 
-The learner subagent stores findings directly in MuninnDB. After it completes, verify storage was successful. If MuninnDB is unavailable, skip the MuninnDB steps in this section — write learnings to `.planning/SESSION-ARCHIVE.md` only. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "finalize-milestone-learning", reason: "unavailable" })`.
+The learner subagent stores findings directly in MuninnDB. After it completes, verify storage was successful. If MuninnDB is unavailable, skip the MuninnDB steps in this section — write learnings to `.planning/SESSION-ARCHIVE.md` only.
 
 ### Pattern Pruning via MuninnDB
 

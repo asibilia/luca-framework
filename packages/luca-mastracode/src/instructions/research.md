@@ -270,7 +270,7 @@ Before transitioning, briefly summarize what was captured:
 - Number of todos created (list titles)
 - The session tag used for recall
 
-If MuninnDB is unavailable, skip the memory storage step (don't block graduation) but still create todos since they're filesystem-based. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "research-memory-storage", reason: "unavailable" })`.
+If MuninnDB is unavailable, skip the memory storage step (don't block graduation) but still create todos since they're filesystem-based.
 
 ---
 

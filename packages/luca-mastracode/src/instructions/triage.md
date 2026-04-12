@@ -79,7 +79,7 @@ If results are found:
 - Check for relevant learnings (pitfalls, patterns) that affect scope estimation
 - Factor these into your complexity classification
 
-If MuninnDB is unavailable or returns no results, skip this step — do NOT let it delay triage. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "triage-context-recall", reason: "unavailable" })`.
+If MuninnDB is unavailable or returns no results, skip this step — do NOT let it delay triage.
 
 **Time budget**: This step must complete in ≤1 tool call. Do not iterate or search multiple times.
 
