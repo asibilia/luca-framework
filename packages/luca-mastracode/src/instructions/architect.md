@@ -63,7 +63,7 @@ If results are found:
 - Identify patterns or pitfalls from previous similar work
 - Include relevant context when spawning the discussion subagent
 
-If MuninnDB is unavailable or returns no results, proceed normally — but log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "architect-context-recall", reason: "unavailable" })`. **Time budget**: ≤2 tool calls.
+If MuninnDB is unavailable or returns no results, proceed normally. **Time budget**: ≤2 tool calls.
 
 ## Step 2 — Discussion (NEVER SKIP)
 
@@ -101,6 +101,16 @@ Only store **significant** decisions — not obvious choices. Good candidates:
 - Architectural patterns chosen (and alternatives rejected)
 - Scope boundaries and what was intentionally excluded
 - Trade-offs accepted (performance vs. simplicity, etc.)
+
+## Step 2.5 — Read Research Findings
+
+If the research phase ran (i.e., complexity is MODERATE or above and `skipResearch` was not set), read the research output before creating the roadmap or plan:
+
+```
+writePlanningFile(action: "read", path: "RESEARCH.md")
+```
+
+Use the findings to inform task design, risk identification, and verification criteria. If `RESEARCH.md` does not exist, proceed without it — the triage and discussion context are sufficient for simpler tasks.
 
 ## Step 3 — Roadmap Creation
 
