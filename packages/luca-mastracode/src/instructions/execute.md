@@ -313,7 +313,7 @@ mcp__muninn__muninn_remember_batch(
 )
 ```
 
-Only store findings that represent **reusable knowledge** — specific issues in specific files are not worth storing unless they reveal a systemic pattern. If MuninnDB is unavailable, skip this step — it is informational, never blocking. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "execute-store-findings", reason: "unavailable" })`.
+Only store findings that represent **reusable knowledge** — specific issues in specific files are not worth storing unless they reveal a systemic pattern. If MuninnDB is unavailable, skip this step — it is informational, never blocking.
 
 ## Step 5 — Learn
 
@@ -358,7 +358,7 @@ Include any relevant recalled learnings in the executor subagent's task descript
 
 ### Fallback
 
-If MuninnDB is unavailable, the learner outputs structured text. Include this text in the execution summary so it's available for the review stage. Log the skip: `sessionLedger(action: "append", event: "muninn-skipped", data: { step: "execute-learner-storage", reason: "unavailable" })`.
+If MuninnDB is unavailable, the learner outputs structured text. Include this text in the execution summary so it's available for the review stage.
 
 ## Step 6 — Commit
 
@@ -432,4 +432,4 @@ Read the workflow state via `workflowState(action: "read")` to get:
 
 ### TODO Progress
 
-After completing tasks, use `manageTodos(action: "toggle", id: <n>, status: "done")` to mark corresponding backlog items as complete.
+After completing tasks, use `manageTodos(action: "move", identifier: <n>, targetStatus: "done")` to mark corresponding backlog items as complete.
