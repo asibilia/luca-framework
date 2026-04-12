@@ -1,7 +1,7 @@
 {
   "name": "luca",
   "description": "Luca workflow as a custom Mastra Code distribution — custom modes, agents, subagents, and tools",
-  "version": "0.1.0",
+  "version": "10.1.1",
   "bin": {
     "luca": "src/index.ts"
   },
