@@ -15,7 +15,7 @@ import { MastraTUI } from "mastracode/tui";
 import { Agent } from "@mastra/core/agent";
 import { WORKSPACE_TOOLS } from "@mastra/core/workspace";
 import { readLucaState, writeLucaState, type LucaWorkflowState } from "./luca-store.js";
-import { existsSync, readFileSync, mkdirSync, cpSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, mkdirSync, cpSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -154,16 +154,86 @@ import * as pipelineGuard from "./pipeline-guard.js";
 // ---------------------------------------------------------------------------
 // Universal constraints — appended to EVERY mode agent's instructions.
 // ---------------------------------------------------------------------------
-const AGENT_CONSTRAINTS = `
-
----
-
+const HARD_CONSTRAINTS = `
 ## Hard Constraints (all modes)
 
 - **Never use temp files as an edit workaround.** Do not write content to a temporary file and then copy, move, or \`cat\` it into the target file. Do not use \`sed\`, \`awk\`, \`cp\`, \`mv\`, \`tee\`, heredocs, or any shell command to bypass the edit tools (\`string_replace_lsp\`, \`write_file\`, \`ast_smart_edit\`). If you don't have permission to edit a file, that restriction is intentional — do not circumvent it.
 - **Never shell out for file edits.** All file modifications must go through the provided edit tools, not through \`execute_command\`. The only exception is running build/test/lint commands.
 - **Respect mode boundaries.** If your mode is read-only, do not attempt any workaround to modify files. Report what needs to change and let the appropriate mode handle it.
 `;
+
+// ---------------------------------------------------------------------------
+// Rules — load bundled alwaysApply rules and append to every agent's prompt
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse YAML-ish frontmatter from a rule .md file.
+ * Returns { frontmatter, body } where frontmatter is a simple key-value map.
+ * Handles the subset we need (description, alwaysApply) without a full YAML parser.
+ */
+function parseRuleFrontmatter(content: string): { frontmatter: Record<string, string>; body: string } {
+  const fm: Record<string, string> = {};
+  if (!content.startsWith("---")) return { frontmatter: fm, body: content };
+  // Match closing --- on its own line to avoid false matches inside values
+  const endMatch = content.match(/\r?\n---\s*(?:\r?\n|$)/);
+  if (!endMatch || endMatch.index === undefined) return { frontmatter: fm, body: content };
+  const endIdx = endMatch.index;
+  const fmBlock = content.slice(3, endIdx).trim();
+  for (const line of fmBlock.split("\n")) {
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+    const key = line.slice(0, colonIdx).trim();
+    const val = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, "");
+    fm[key] = val;
+  }
+  return { frontmatter: fm, body: content.slice(endIdx + endMatch[0].length).trim() };
+}
+
+/**
+ * Load all rules with `alwaysApply: true` from a directory and return their
+ * bodies concatenated into a single instruction block.
+ *
+ * Reads from the installed `.mastracode/rules/` directory (synced from
+ * bundled rules at startup) with a fallback to the bundled directory.
+ */
+function loadAlwaysApplyRules(): string {
+  const installedDir = join(process.cwd(), ".mastracode", "rules");
+  const bundledDir = join(dirname(fileURLToPath(import.meta.url)), "..", "rules");
+  const rulesDir = existsSync(installedDir) ? installedDir : bundledDir;
+  if (!existsSync(rulesDir)) return "";
+
+  const blocks: string[] = [];
+  for (const file of readdirSync(rulesDir).sort()) {
+    if (!file.endsWith(".md")) continue;
+    try {
+      const raw = readFileSync(join(rulesDir, file), "utf-8");
+      const { frontmatter, body } = parseRuleFrontmatter(raw);
+      if (frontmatter.alwaysApply === "true" && body) {
+        blocks.push(body);
+      }
+    } catch (error) {
+      console.warn(
+        `[luca] Warning: failed to load rule "${file}": ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+  return blocks.length > 0 ? blocks.join("\n\n") : "";
+}
+
+// AGENT_CONSTRAINTS is built lazily so that rules are loaded after
+// installRules() has copied bundled rules into .mastracode/rules/.
+let _agentConstraints: string | null = null;
+function getAgentConstraints(): string {
+  if (_agentConstraints === null) {
+    const alwaysApplyRules = loadAlwaysApplyRules();
+    _agentConstraints = ["\n\n---\n", HARD_CONSTRAINTS, alwaysApplyRules]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return _agentConstraints;
+}
 
 function createStaticAgent({
   id,
@@ -185,8 +255,8 @@ function createStaticAgent({
     id,
     name: `Luca ${name}`,
     // Dynamic instructions: called per-request, reads luca-store at call time.
-    // AGENT_CONSTRAINTS is appended to every mode's instructions.
-    instructions: () => buildInstructions() + AGENT_CONSTRAINTS,
+    // getAgentConstraints() is appended to every mode's instructions.
+    instructions: () => buildInstructions() + getAgentConstraints(),
     // Dynamic model: called per-request, resolves via OAuth-aware pipeline
     model: () => {
       const modelId = resolveModelFn() ?? defaultModelId;
@@ -226,6 +296,54 @@ function installSlashCommands() {
   cpSync(bundledCommandsDir, targetDir, {
     recursive: true,
     force: true, // Always sync bundled commands so updates propagate
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Skills — copy bundled skill folders into .mastracode/skills/
+// ---------------------------------------------------------------------------
+
+function installSkills() {
+  // Resolve the skills directory bundled alongside this script
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  const bundledSkillsDir = join(thisDir, "..", "skills");
+
+  if (!existsSync(bundledSkillsDir)) return;
+
+  // Install into the project's .mastracode/skills/ directory
+  const targetDir = join(process.cwd(), ".mastracode", "skills");
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
+  }
+
+  cpSync(bundledSkillsDir, targetDir, {
+    recursive: true,
+    force: true, // Always sync bundled skills so updates propagate
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Rules — copy bundled rule .md files into .mastracode/rules/
+// ---------------------------------------------------------------------------
+
+function installRules() {
+  // Resolve the rules directory bundled alongside this script
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  const bundledRulesDir = join(thisDir, "..", "rules");
+
+  if (!existsSync(bundledRulesDir)) return;
+
+  // Bundled rules are authoritative — clear the installed dir first so
+  // stale rules removed from the bundle don't persist indefinitely.
+  const targetDir = join(process.cwd(), ".mastracode", "rules");
+  if (existsSync(targetDir)) {
+    rmSync(targetDir, { recursive: true, force: true });
+  }
+  mkdirSync(targetDir, { recursive: true });
+
+  cpSync(bundledRulesDir, targetDir, {
+    recursive: true,
+    force: true,
   });
 }
 
@@ -801,6 +919,12 @@ async function main() {
 
   // --- Install slash commands into project .mastracode/commands/ ---
   installSlashCommands();
+
+  // --- Install bundled skills into project .mastracode/skills/ ---
+  installSkills();
+
+  // --- Install bundled rules into project .mastracode/rules/ ---
+  installRules();
 
   // --- Launch TUI ---
   const tui = new MastraTUI({
