@@ -1,5 +1,5 @@
 ---
-description: "PR title format — type(#issue): version — Title"
+description: "PR title format — type(scope): version #issue description"
 alwaysApply: true
 ---
 
@@ -8,18 +8,19 @@ alwaysApply: true
 PR titles MUST follow this exact structure:
 
 ```
-type(#issue): version — Title
+type(scope): <version?> #issue description
 ```
 
+- **type**: feat | fix | docs | style | refactor | test | chore (from commit.config.ts)
+- **scope**: framework | mastracode | studio | config | docs | repo (from commit.config.ts)
+- **version**: milestone version if one exists (e.g. v10.2.0) — omit if no version applies
+- **#issue**: GitHub issue number prefixed with # (e.g. #143)
+- **description**: concise human-readable summary
+
 Examples:
-- `feat(#143): v10.2.0 — Bundled Skills & Rules`
-- `fix(#140): v10.1.0 — Align Mode Instructions`
-- `refactor(#99): v9.0.0 — Workflow Pipeline Redesign`
+- `fix(mastracode): v10.1.0 #140 align mode instructions with tool permissions`
+- `feat(mastracode): v10.2.0 #143 bundled skills and rules system`
+- `fix(studio): #152 validate API schemas against real responses` (no version)
 
-Components:
-- **type**: feat | fix | refactor | chore
-- **#issue**: GitHub issue number this PR closes
-- **version**: milestone version (e.g. v10.2.0)
-- **Title**: human-readable milestone or feature summary
-
-NEVER use bare conventional-commit format like `feat(mastracode): description`. Always include `(#issue)`, version, and em-dash title.
+NEVER use `(#issue)` as the scope. The scope always comes from commit.config.ts.
+Always recall memory for PR conventions before creating a PR.
