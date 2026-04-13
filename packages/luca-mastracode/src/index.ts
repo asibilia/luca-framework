@@ -197,7 +197,7 @@ function loadAlwaysApplyRules(): string {
   if (!existsSync(rulesDir)) return "";
 
   const blocks: string[] = [];
-  for (const file of readdirSync(rulesDir)) {
+  for (const file of readdirSync(rulesDir).sort()) {
     if (!file.endsWith(".md")) continue;
     try {
       const raw = readFileSync(join(rulesDir, file), "utf-8");
@@ -205,8 +205,12 @@ function loadAlwaysApplyRules(): string {
       if (frontmatter.alwaysApply === "true" && body) {
         blocks.push(body);
       }
-    } catch {
-      // Skip unreadable rule files
+    } catch (error) {
+      console.warn(
+        `[luca] Warning: failed to load bundled rule "${file}": ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
   return blocks.length > 0 ? blocks.join("\n\n") : "";
