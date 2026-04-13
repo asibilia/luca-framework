@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-A critical insight from Tyler Folkman's analysis of the Claude Code source leak: **instruction budgets are shared between system prompts and user configurations, causing dilution as line count increases.** This reframes CLAUDE.md not as a document but as a **finite budget of ~100 prescriptive constraints** that must be optimized for signal density. Combined with the system prompt structure analysis, this reveals a complete picture of prompt economics that should fundamentally shape how luca-mastracode allocates its instruction token budget.
+A critical insight from Tyler Folkman's analysis of Claude Code's architecture: **instruction budgets are shared between system prompts and user configurations, causing dilution as line count increases.** This reframes CLAUDE.md not as a document but as a **finite budget of ~100 prescriptive constraints** that must be optimized for signal density. Combined with the system prompt structure analysis, this reveals a complete picture of prompt economics that should fundamentally shape how luca-mastracode allocates its instruction token budget.
 
 ---
 
@@ -389,7 +389,7 @@ Only connect MuninnDB and other MCP servers when the mode actually needs them. D
 
 ### Primary Sources
 
-- [I Read the Claude Code Source Leak — Here's What I Changed](https://tylerfolkman.substack.com/p/i-read-the-claude-code-source-leak) — Tyler Folkman's analysis of instruction budget optimization
+- [I Read the Claude Code Source — Here's What I Changed](https://tylerfolkman.substack.com/p/i-read-the-claude-code-source-leak) — Tyler Folkman's analysis of instruction budget optimization
 - [Claude Code System Prompt (v2.1.50)](https://github.com/asgeirtj/system_prompts_leaks/blob/main/Anthropic/claude-code.md) — Extracted system prompt from asgeirtj/system_prompts_leaks
 - [Piebald-AI/claude-code-system-prompts](https://github.com/Piebald-AI/claude-code-system-prompts) — Version-tracked system prompt evolution
 

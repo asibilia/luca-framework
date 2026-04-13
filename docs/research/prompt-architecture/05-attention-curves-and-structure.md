@@ -73,7 +73,7 @@ Research shows the balance between primacy and recency varies by model:
 
 ### Structural Layout
 
-Reverse-engineering of Claude Code's system prompt (via the March 2026 source leak and community analysis) reveals deliberate positional exploitation:
+Reverse-engineering of Claude Code's system prompt (via public source analysis and community research) reveals deliberate positional exploitation:
 
 ```
 [START - PEAK PRIMACY]
@@ -361,7 +361,7 @@ For agent system prompts specifically, few-shot examples are most valuable for:
 - [The Complete Guide to Writing Agent System Prompts](https://medium.com/@fengliu_367/the-complete-guide-to-writing-agent-system-prompts-lessons-from-reverse-engineering-claude-code-09ecd87c7cc1) -- Feng Liu
 - [Claude Code Prompts | Anatomy of an AI Coding Agent](https://ccprompts.info/) -- Community catalog
 - [Piebald-AI/claude-code-system-prompts](https://github.com/Piebald-AI/claude-code-system-prompts) -- Extracted system prompts
-- [Diving into Claude Code's Source Code Leak](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) -- Engineer's Codex
+- [Diving into Claude Code's Source Code](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) -- Engineer's Codex
 - [Claude Code Feels Dumber? The System Prompt Architecture Trap](https://support.tools/claude-code-system-prompt-behavior-claude-md-optimization-guide/) -- Support Tools
 - [The Impact of Prompt Bloat on LLM Output Quality](https://mlops.community/the-impact-of-prompt-bloat-on-llm-output-quality/) -- MLOps Community
 - [Disadvantage of Long Prompt for LLM](https://blog.promptlayer.com/disadvantage-of-long-prompt-for-llm/) -- PromptLayer

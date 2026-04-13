@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Context management is the defining constraint of long-running AI coding agents. Every agent — Claude Code, Cursor, Cline, Aider — solves the same fundamental problem: finite token windows degrade output quality as conversations grow. Claude Code's approach is the most sophisticated publicly documented system, implementing a 5-level compression pipeline with progressive cost escalation, a three-layer persistent memory architecture, and a background consolidation process ("autoDream") that mirrors biological sleep. This document catalogs every technique identified through source analysis, the March 2026 source leak, and published research — then maps each to implementation recommendations for luca-mastracode.
+Context management is the defining constraint of long-running AI coding agents. Every agent — Claude Code, Cursor, Cline, Aider — solves the same fundamental problem: finite token windows degrade output quality as conversations grow. Claude Code's approach is the most sophisticated publicly documented system, implementing a 5-level compression pipeline with progressive cost escalation, a three-layer persistent memory architecture, and a background consolidation process ("autoDream") that mirrors biological sleep. This document catalogs every technique identified through source analysis, publicly documented behavior, and published research — then maps each to implementation recommendations for luca-mastracode.
 
 ---
 
@@ -338,7 +338,7 @@ When implementing any compaction strategy, ensure it respects the cache boundary
 - [Claude Code AutoDream: Memory Consolidation for AI Agents](https://zenvanriel.com/ai-engineer-blog/claude-code-autodream-memory-consolidation-guide/) — Implementation guide
 - [Claude Memory Guide: Understanding the 3-Layer Architecture](https://www.shareuhack.com/en/posts/claude-memory-feature-guide-2026) — Index, topic files, transcript layers
 
-### Source Leak Analysis
+### Public Source Analysis
 
 - [Comprehensive Analysis of Claude Code Source Leak](https://www.sabrina.dev/p/claude-code-source-leak-analysis) — Architecture analysis including compaction
 - [The Claude Code Source Leak](https://alex000kim.com/posts/2026-03-31-claude-code-source-leak/) — Anti-distillation, frustration detection, circuit breakers

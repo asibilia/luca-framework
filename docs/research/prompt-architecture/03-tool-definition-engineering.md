@@ -249,7 +249,7 @@ For modes with many tools (like `luca:6-finalize` with 6 tools), consider Gemini
 - [Piebald-AI/claude-code-system-prompts](https://github.com/Piebald-AI/claude-code-system-prompts) -- Extracted system prompts, 24 builtin tool descriptions, and sub-agent prompts updated per Claude Code release (v2.1.104)
 - [Tools and System Prompt of Claude Code (Gist)](https://gist.github.com/wong2/e0f34aac66caf890a332f7b6f9e2ba8f) -- Complete tool descriptions and system prompt text extraction
 - [Claude Code Prompts | Anatomy of an AI Coding Agent](https://ccprompts.info/) -- Catalog of 124 prompts across 9 categories with token counts per tool
-- [Diving into Claude Code's Source Code Leak](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) -- Analysis of permission critic pattern, anti-distillation, and tool security architecture
+- [Diving into Claude Code's Source Code](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) -- Analysis of permission critic pattern, anti-distillation, and tool security architecture
 
 ### Agent Building Patterns
 

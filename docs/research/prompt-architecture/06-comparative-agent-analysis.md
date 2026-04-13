@@ -188,7 +188,7 @@ Models default to sequential tool calls despite the efficiency benefits of paral
 
 ### Verbosity
 
-Models trained for verbose reasoning leak that verbosity into code generation and explanations. Claude Code uses quantified constraints ("<=25 words between tool calls"), while others use qualitative directives ("be concise", "brevity is critical").
+Models trained for verbose reasoning carry that verbosity into code generation and explanations. Claude Code uses quantified constraints ("<=25 words between tool calls"), while others use qualitative directives ("be concise", "brevity is critical").
 
 ---
 

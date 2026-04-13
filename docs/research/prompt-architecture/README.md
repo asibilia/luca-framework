@@ -49,7 +49,7 @@ Deep research into how Claude Code and other AI coding agents construct system p
 ~185 unique sources cited across all documents, including:
 - 15+ academic papers (NeurIPS, ICML, ICLR, arXiv)
 - Anthropic official documentation
-- Claude Code source leak analysis (8+ independent analyses)
+- Claude Code public source analysis (8+ independent analyses)
 - Reverse-engineering projects (Piebald-AI, ccprompts.info, DeepWiki)
 - Industry blog posts and technical write-ups
-- Curated resource lists (awesome-claude-code-postleak-insights)
+- Curated resource lists and community insights

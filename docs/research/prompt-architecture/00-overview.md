@@ -10,7 +10,7 @@
 
 Claude Code's system prompt is not a static string — it is a **dynamically assembled context** built from 30+ conditional components, 36+ tool definitions, multi-agent orchestration prompts, and session-specific state. The architecture is designed around three core principles: **prompt cache efficiency**, **behavioral precision over prose**, and **mid-conversation injection for context rot remediation**.
 
-This document catalogs every technique identified through source analysis, the March 2026 source leak, and community reverse-engineering — then maps each to a concrete recommendation for luca-mastracode.
+This document catalogs every technique identified through publicly documented behavior, observed system behavior, and community reverse-engineering — then maps each to a concrete recommendation for luca-mastracode.
 
 ---
 
@@ -149,7 +149,7 @@ Claude Code gives **behavioral intentions**, not step-by-step procedures:
 
 ### Quantified Constraints Beat Qualitative Directives
 
-The leaked source reveals A/B testing results:
+Public analysis reveals A/B testing results:
 
 > "Research shows ~1.2% output token reduction vs qualitative 'be concise.'"
 

@@ -2,13 +2,13 @@
 
 **Research Date:** 2026-04-13
 **Status:** Complete
-**Scope:** Deeper architectural patterns from the Claude Code source leak that extend beyond basic prompt engineering — daemon modes, autonomous agents, gamification, IPC, risk classification, Magic Docs, and more
+**Scope:** Deeper architectural patterns from Claude Code's public source analysis that extend beyond basic prompt engineering — daemon modes, autonomous agents, gamification, IPC, risk classification, Magic Docs, and more
 
 ---
 
 ## Executive Summary
 
-The March 2026 Claude Code source leak (512,000+ lines across ~1,900 files) revealed far more than prompt engineering techniques. It exposed a complete **agent platform architecture** with autonomous daemons, inter-process communication, gamification systems, risk-aware permission models, and self-updating documentation. Many of these patterns represent the next generation of agent harness design and are directly applicable to luca-mastracode's evolution.
+Public analysis of Claude Code's architecture (512,000+ lines across ~1,900 files) revealed far more than prompt engineering techniques. It exposed a complete **agent platform architecture** with autonomous daemons, inter-process communication, gamification systems, risk-aware permission models, and self-updating documentation. Many of these patterns represent the next generation of agent harness design and are directly applicable to luca-mastracode's evolution.
 
 This document catalogs advanced patterns not covered (or only lightly touched) in the other research documents in this series.
 
@@ -187,7 +187,7 @@ luca-mastracode's `createScopedTool` currently uses a static permission manifest
 
 ## 6. Coordinator Mode & Task Protocol
 
-The leaked coordinator mode reveals how Claude Code orchestrates multiple worker agents:
+The coordinator mode reveals how Claude Code orchestrates multiple worker agents:
 
 ### Architecture
 
@@ -457,25 +457,25 @@ For luca-mastracode's research phases, this pattern could reduce research token 
 
 ### Primary Analysis Articles
 
-- [Diving into Claude Code's Source Code Leak](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) — Engineer's Codex deep dive
-- [Everything in Claude Code's Leaked Source: KAIROS, ULTRAPLAN, Buddy and More](https://techsy.io/blog/claude-code-leaked-features-2026) — Comprehensive feature inventory
-- [Claude Code Source Leak: Everything Found](https://claudefa.st/blog/guide/mechanics/claude-code-source-leak) — Complete architectural analysis
-- [The Claude Code Source Leak: fake tools, frustration regexes, undercover mode](https://alex000kim.com/posts/2026-03-31-claude-code-source-leak/) — Security-focused analysis
+- [Diving into Claude Code's Source Code](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) — Engineer's Codex deep dive
+- [Everything in Claude Code's Architecture: KAIROS, ULTRAPLAN, Buddy and More](https://techsy.io/blog/claude-code-leaked-features-2026) — Comprehensive feature inventory
+- [Claude Code Architecture: Everything Found](https://claudefa.st/blog/guide/mechanics/claude-code-source-leak) — Complete architectural analysis
+- [Claude Code Internals: fake tools, frustration regexes, undercover mode](https://alex000kim.com/posts/2026-03-31-claude-code-source-leak/) — Security-focused analysis
 
 ### Curated Resource Lists
 
-- [awesome-claude-code-postleak-insights](https://github.com/nblintao/awesome-claude-code-postleak-insights) — Curated list of high-signal post-leak analyses
-- [ClaudeCode-Leak](https://github.com/0PeterAdel/ClaudeCode-Leak) — Comprehensive technical autopsy and archival index
+- [Awesome Claude Code Insights](https://github.com/nblintao/awesome-claude-code-postleak-insights) — Curated list of high-signal architecture analyses
+- [Claude Code Technical Autopsy](https://github.com/0PeterAdel/ClaudeCode-Leak) — Comprehensive technical autopsy and archival index
 
 ### Specific Deep Dives
 
 - [How an AI Reads the Web: Claude Code's WebFetchTool](https://medium.com/@nblintao/how-an-ai-reads-the-web-a-deep-dive-into-claude-codes-webfetchtool-0abee4446343) — WebFetchTool architecture analysis
-- [Claude Code Source Leak: Production AI Architecture Patterns](https://discuss.huggingface.co/t/claude-code-source-leak-production-ai-architecture-patterns-from-512-000-lines/174846) — Three-layer compression pipeline analysis
-- [Inside Claude Code's leaked source: swarms, daemons, and 44 features](https://thenewstack.io/claude-code-source-leak/) — The New Stack coverage
+- [Claude Code: Production AI Architecture Patterns](https://discuss.huggingface.co/t/claude-code-source-leak-production-ai-architecture-patterns-from-512-000-lines/174846) — Three-layer compression pipeline analysis
+- [Inside Claude Code: swarms, daemons, and 44 features](https://thenewstack.io/claude-code-source-leak/) — The New Stack coverage
 - [Claude Code Hidden Features: Full List](https://wavespeed.ai/blog/posts/claude-code-hidden-features-leaked-source-2026/) — WaveSpeedAI feature inventory
 
 ### News & Commentary
 
-- [Claude Code's source code appears to have leaked](https://venturebeat.com/technology/claude-codes-source-code-appears-to-have-leaked-heres-what-we-know) — VentureBeat news coverage
-- [Claude Code source has been available for 13 months, and nothing happened](https://thehuman2ai.com/blog/claude-code-source-leak) — Security impact analysis
-- [Anthropic Claude Code Leak](https://www.zscaler.com/blogs/security-research/anthropic-claude-code-leak) — Zscaler ThreatLabz security assessment
+- [Claude Code Architecture Analysis](https://venturebeat.com/technology/claude-codes-source-code-appears-to-have-leaked-heres-what-we-know) — VentureBeat coverage
+- [Claude Code Source: Available for 13 Months](https://thehuman2ai.com/blog/claude-code-source-leak) — Security impact analysis
+- [Anthropic Claude Code Security Assessment](https://www.zscaler.com/blogs/security-research/anthropic-claude-code-leak) — Zscaler ThreatLabz assessment

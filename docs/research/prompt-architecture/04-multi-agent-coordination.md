@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Multi-agent coordination in AI coding systems has converged on a shared set of architectural patterns: coordinator-worker hierarchies, cache-efficient subagent spawning, and adversarial verification loops. Claude Code's leaked source (March 2026) provides the most detailed public record of these patterns, revealing that orchestration behavior is defined entirely in natural language prompts rather than branching code. This document catalogs the coordination patterns across Claude Code, Cursor, Codex, Devin, and academic research, then maps each to concrete recommendations for luca-mastracode's 9-subagent architecture.
+Multi-agent coordination in AI coding systems has converged on a shared set of architectural patterns: coordinator-worker hierarchies, cache-efficient subagent spawning, and adversarial verification loops. Claude Code's public source analysis (March 2026) provides the most detailed public record of these patterns, revealing that orchestration behavior is defined entirely in natural language prompts rather than branching code. This document catalogs the coordination patterns across Claude Code, Cursor, Codex, Devin, and academic research, then maps each to concrete recommendations for luca-mastracode's 9-subagent architecture.
 
 ---
 
@@ -27,7 +27,7 @@ The coordinator follows a four-phase workflow: **Research -> Synthesis -> Implem
 
 ### 1.2 Worker Instructions
 
-Worker agents receive focused directives from the coordinator. The leaked `system-prompt-worker-instructions.md` reveals a five-step protocol:
+Worker agents receive focused directives from the coordinator. The `system-prompt-worker-instructions.md` reveals a five-step protocol:
 
 1. **Simplify** -- invoke the simplify skill to clean up changes
 2. **Run unit tests** -- execute the project's test suite
@@ -60,7 +60,7 @@ Claude Code offers three distinct models for spawning sub-work, each with differ
 
 ### 2.1 Fork
 
-A forked subagent inherits the parent context as a byte-identical copy. This is the cache-efficient model -- because the API request prefix is identical, all forked workers share the same KV cache entry (90% cache discount on shared context). The leaked fork usage guidelines reveal:
+A forked subagent inherits the parent context as a byte-identical copy. This is the cache-efficient model -- because the API request prefix is identical, all forked workers share the same KV cache entry (90% cache discount on shared context). The fork usage guidelines reveal:
 
 - **"Don't peek"** -- never read a fork's output file mid-flight; wait for the completion notification
 - **"Don't race"** -- never fabricate or predict fork results; if asked before notification arrives, acknowledge the fork is still running
@@ -123,7 +123,7 @@ Agents treat their own recollections as hints requiring verification against gro
 
 ## 4. Coordinator Prompt Design Principles
 
-Synthesizing across Claude Code's leaked source, community analysis, and production systems, five principles emerge for coordinator prompt design:
+Synthesizing across Claude Code's public architecture, community analysis, and production systems, five principles emerge for coordinator prompt design:
 
 ### P1: Active Synthesis Over Passive Relay
 

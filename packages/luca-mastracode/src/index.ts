@@ -15,7 +15,7 @@ import { MastraTUI } from "mastracode/tui";
 import { Agent } from "@mastra/core/agent";
 import { WORKSPACE_TOOLS } from "@mastra/core/workspace";
 import { readLucaState, writeLucaState, type LucaWorkflowState } from "./luca-store.js";
-import { existsSync, readFileSync, readdirSync, mkdirSync, cpSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, mkdirSync, cpSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -174,8 +174,10 @@ const HARD_CONSTRAINTS = `
 function parseRuleFrontmatter(content: string): { frontmatter: Record<string, string>; body: string } {
   const fm: Record<string, string> = {};
   if (!content.startsWith("---")) return { frontmatter: fm, body: content };
-  const endIdx = content.indexOf("---", 3);
-  if (endIdx === -1) return { frontmatter: fm, body: content };
+  // Match closing --- on its own line to avoid false matches inside values
+  const endMatch = content.match(/\r?\n---\s*(?:\r?\n|$)/);
+  if (!endMatch || endMatch.index === undefined) return { frontmatter: fm, body: content };
+  const endIdx = endMatch.index;
   const fmBlock = content.slice(3, endIdx).trim();
   for (const line of fmBlock.split("\n")) {
     const colonIdx = line.indexOf(":");
@@ -184,15 +186,15 @@ function parseRuleFrontmatter(content: string): { frontmatter: Record<string, st
     const val = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, "");
     fm[key] = val;
   }
-  return { frontmatter: fm, body: content.slice(endIdx + 3).trim() };
+  return { frontmatter: fm, body: content.slice(endIdx + endMatch[0].length).trim() };
 }
 
 /**
  * Load all rules with `alwaysApply: true` from a directory and return their
  * bodies concatenated into a single instruction block.
  *
- * Prefers the installed `.mastracode/rules/` directory (which may contain
- * user edits) with a fallback to the bundled rules directory.
+ * Reads from the installed `.mastracode/rules/` directory (synced from
+ * bundled rules at startup) with a fallback to the bundled directory.
  */
 function loadAlwaysApplyRules(): string {
   const installedDir = join(process.cwd(), ".mastracode", "rules");
@@ -331,15 +333,17 @@ function installRules() {
 
   if (!existsSync(bundledRulesDir)) return;
 
-  // Install into the project's .mastracode/rules/ directory
+  // Bundled rules are authoritative — clear the installed dir first so
+  // stale rules removed from the bundle don't persist indefinitely.
   const targetDir = join(process.cwd(), ".mastracode", "rules");
-  if (!existsSync(targetDir)) {
-    mkdirSync(targetDir, { recursive: true });
+  if (existsSync(targetDir)) {
+    rmSync(targetDir, { recursive: true, force: true });
   }
+  mkdirSync(targetDir, { recursive: true });
 
   cpSync(bundledRulesDir, targetDir, {
     recursive: true,
-    force: true, // Always sync bundled rules so updates propagate
+    force: true,
   });
 }
 
