@@ -188,12 +188,16 @@ function parseRuleFrontmatter(content: string): { frontmatter: Record<string, st
 }
 
 /**
- * Load all bundled rules with `alwaysApply: true` and return their bodies
- * concatenated into a single instruction block.
+ * Load all rules with `alwaysApply: true` from a directory and return their
+ * bodies concatenated into a single instruction block.
+ *
+ * Prefers the installed `.mastracode/rules/` directory (which may contain
+ * user edits) with a fallback to the bundled rules directory.
  */
 function loadAlwaysApplyRules(): string {
-  const thisDir = dirname(fileURLToPath(import.meta.url));
-  const rulesDir = join(thisDir, "..", "rules");
+  const installedDir = join(process.cwd(), ".mastracode", "rules");
+  const bundledDir = join(dirname(fileURLToPath(import.meta.url)), "..", "rules");
+  const rulesDir = existsSync(installedDir) ? installedDir : bundledDir;
   if (!existsSync(rulesDir)) return "";
 
   const blocks: string[] = [];
@@ -207,7 +211,7 @@ function loadAlwaysApplyRules(): string {
       }
     } catch (error) {
       console.warn(
-        `[luca] Warning: failed to load bundled rule "${file}": ${
+        `[luca] Warning: failed to load rule "${file}": ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -216,14 +220,18 @@ function loadAlwaysApplyRules(): string {
   return blocks.length > 0 ? blocks.join("\n\n") : "";
 }
 
-// Build the combined suffix appended to every mode agent's instructions.
-// Hard constraints + any bundled alwaysApply rules.
-const ALWAYS_APPLY_RULES = loadAlwaysApplyRules();
-const AGENT_CONSTRAINTS = [
-  "\n\n---\n",
-  HARD_CONSTRAINTS,
-  ALWAYS_APPLY_RULES,
-].filter(Boolean).join("\n\n");
+// AGENT_CONSTRAINTS is built lazily so that rules are loaded after
+// installRules() has copied bundled rules into .mastracode/rules/.
+let _agentConstraints: string | null = null;
+function getAgentConstraints(): string {
+  if (_agentConstraints === null) {
+    const alwaysApplyRules = loadAlwaysApplyRules();
+    _agentConstraints = ["\n\n---\n", HARD_CONSTRAINTS, alwaysApplyRules]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return _agentConstraints;
+}
 
 function createStaticAgent({
   id,
@@ -245,8 +253,8 @@ function createStaticAgent({
     id,
     name: `Luca ${name}`,
     // Dynamic instructions: called per-request, reads luca-store at call time.
-    // AGENT_CONSTRAINTS is appended to every mode's instructions.
-    instructions: () => buildInstructions() + AGENT_CONSTRAINTS,
+    // getAgentConstraints() is appended to every mode's instructions.
+    instructions: () => buildInstructions() + getAgentConstraints(),
     // Dynamic model: called per-request, resolves via OAuth-aware pipeline
     model: () => {
       const modelId = resolveModelFn() ?? defaultModelId;

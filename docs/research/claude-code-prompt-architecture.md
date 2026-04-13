@@ -10,7 +10,7 @@
 
 Claude Code's system prompt is not a static string — it is a **dynamically assembled context** built from 30+ conditional components, 36+ tool definitions, multi-agent orchestration prompts, and session-specific state. The architecture is designed around three core principles: **prompt cache efficiency**, **behavioral precision over prose**, and **mid-conversation injection for context rot remediation**.
 
-This document catalogs every technique identified through source analysis, the March 2026 source leak, and community reverse-engineering — then maps each to a concrete recommendation for luca-mastracode.
+This document catalogs every technique identified through publicly documented behavior, observed system behavior, and community reverse-engineering — then maps each to a concrete recommendation for luca-mastracode.
 
 ---
 
@@ -149,7 +149,7 @@ Claude Code gives **behavioral intentions**, not step-by-step procedures:
 
 ### Quantified Constraints Beat Qualitative Directives
 
-The leaked source reveals A/B testing results:
+Public analysis reveals A/B testing results:
 
 > "Research shows ~1.2% output token reduction vs qualitative 'be concise.'"
 
@@ -546,12 +546,12 @@ Instead of allowlists, Claude Code uses a **critic pattern**: a separate query a
 - [How Claude Code Builds a System Prompt](https://www.dbreunig.com/2026/04/04/how-claude-code-builds-a-system-prompt.html) — Drew Breunig's analysis of the 30+ component dynamic assembly
 - [System Prompts Define the Agent as Much as the Model](https://www.dbreunig.com/2026/02/10/system-prompts-define-the-agent-as-much-as-the-model.html) — Empirical study showing prompt swaps produce different agent workflows on identical tasks
 
-### Source Leak Analysis
+### Public Source Analysis
 
-- [Diving into Claude Code's Source Code Leak](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) — Engineer's Codex deep dive on cache boundaries, anti-distillation, KAIROS
-- [Comprehensive Analysis of Claude Code Source Leak](https://www.sabrina.dev/p/claude-code-source-leak-analysis) — Detailed architecture analysis including compaction, A/B testing results
-- [The Claude Code Source Leak: fake tools, frustration regexes, undercover mode](https://alex000kim.com/posts/2026-03-31-claude-code-source-leak/) — Alex Kim's analysis of anti-distillation, frustration detection, undercover mode
-- [Claude Code Source Code Leaked: What's Inside](https://www.the-ai-corner.com/p/claude-code-source-code-leaked-2026) — AI Corner overview
+- [Diving into Claude Code's Source Code](https://read.engineerscodex.com/p/diving-into-claude-codes-source-code) — Engineer's Codex deep dive on cache boundaries, anti-distillation, KAIROS
+- [Comprehensive Analysis of Claude Code Architecture](https://www.sabrina.dev/p/claude-code-source-leak-analysis) — Detailed architecture analysis including compaction, A/B testing results
+- [Claude Code Internals: fake tools, frustration regexes, undercover mode](https://alex000kim.com/posts/2026-03-31-claude-code-source-leak/) — Alex Kim's analysis of anti-distillation, frustration detection, undercover mode
+- [Claude Code Source Code: What's Inside](https://www.the-ai-corner.com/p/claude-code-source-code-leaked-2026) — AI Corner overview
 
 ### Reverse Engineering & Community Analysis
 
@@ -563,5 +563,4 @@ Instead of allowlists, Claude Code uses a **critic pattern**: a separate query a
 ### Prompt Engineering Patterns
 
 - [AI Agent Prompt Engineering: 10 Patterns That Actually Work](https://paxrel.com/blog-ai-agent-prompts) — Production patterns including progressive disclosure, guard rails, self-evaluation loops
-- [Claude Code Source Code Leak: 8 Hidden Features](https://www.mindstudio.ai/blog/claude-code-source-code-leak-8-hidden-features) — Feature flags and hidden capabilities
-- [VentureBeat: Claude Code's source code appears to have leaked](https://venturebeat.com/technology/claude-codes-source-code-appears-to-have-leaked-heres-what-we-know) — News coverage of the leak event
+- [Claude Code: 8 Hidden Features](https://www.mindstudio.ai/blog/claude-code-source-code-leak-8-hidden-features) — Feature flags and hidden capabilities
