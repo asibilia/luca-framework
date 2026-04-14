@@ -355,10 +355,10 @@ export const workflowStateTool = createTool({
             }
             writeLucaState(stateUpdates);
             appendLedger('mode-transition', { from: prevState.pipelineStep, to: targetMode });
-            // Notify context refresher of mode change so it injects the right
-            // mode-specific reminders when token budget thresholds fire.
-            contextRefresherRef.current?.setMode(targetMode);
             await switchModeRef.current(targetMode);
+            // Notify context refresher of mode change AFTER successful switch
+            // so it doesn't get stuck in the wrong mode if switch fails.
+            contextRefresherRef.current?.setMode(targetMode);
             return {
               success: true,
               message: `Switched to "${targetMode}" mode.`,
@@ -540,10 +540,12 @@ export const workflowStateTool = createTool({
             budgetExceeded: false,
           });
           appendLedger('pipeline-re-entered', { targetMode: reEntryTarget, reason: reEntryReason });
-          contextRefresherRef.current?.setMode(reEntryTarget);
 
           try {
             await switchModeRef.current(reEntryTarget);
+            // Notify context refresher AFTER successful switch so it doesn't
+            // get stuck in the wrong mode if switch fails.
+            contextRefresherRef.current?.setMode(reEntryTarget);
             return {
               success: true,
               message: `Pipeline re-entered at "${reEntryTarget}". Reason: ${reEntryReason}`,

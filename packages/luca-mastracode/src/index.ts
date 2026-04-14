@@ -711,8 +711,8 @@ async function main() {
   harness.subscribe((event) => {
     if (event.type === 'message_end') {
       // Extract text from message content parts for token estimation.
-      const text = event.message.content
-        .map((c) => {
+      const text = (event.message.content ?? [])
+        .map((c: { type: string; text?: string; thinking?: string; result?: unknown }) => {
           if (c.type === 'text') return c.text;
           if (c.type === 'thinking') return c.thinking;
           if (c.type === 'tool_result') return typeof c.result === 'string' ? c.result : JSON.stringify(c.result ?? '');

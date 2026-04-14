@@ -2,7 +2,7 @@
 
 ## Objective
 
-Implement 16 of 18 pending todos across `packages/luca-mastracode` to harden prompt engineering (anti-sycophancy, quantified constraints, attention curve exploitation, HARD_CONSTRAINTS dual-injection) and add context window infrastructure (conditional MCP loading, token budget monitoring, mid-conversation injection). Two items deferred: cache boundary and progressive compaction (blocked on Mastra API investigation).
+Implement 16 of 18 pending todos across `packages/luca-mastracode` to harden prompt engineering (anti-sycophancy, quantified constraints, attention curve exploitation, HARD_CONSTRAINTS dual-injection) and add context window infrastructure (unconditional MCP availability, token budget monitoring, mid-conversation injection). Two items deferred: cache boundary and progressive compaction (blocked on Mastra API investigation).
 
 ## Context
 
@@ -256,35 +256,21 @@ Implement 16 of 18 pending todos across `packages/luca-mastracode` to harden pro
 
 ## Phase 5: Context Window Infrastructure
 
-> Add conditional MCP loading, token budget monitoring, and mid-conversation injection.
+> Add unconditional MCP tool availability, token budget monitoring, and mid-conversation injection.
 
-### Wave 5.1: Implement conditional MCP loading per mode
+### Wave 5.1: Unconditional MCP tool availability ✅ (UPDATED)
 
-- [ ] **Task 5.1.1**: Define MCP-aware mode list constant
-  - Files: `packages/luca-mastracode/src/index.ts` (near line 155)
-  - Change: Add a constant using the actual `createStaticAgent()` `id` values (NOT mode_id values):
-    ```typescript
-    const MCP_ENABLED_MODES = new Set([
-      'luca-build', 'luca-execute', 'luca-finalize', 'luca-discuss',
-    ]);
-    ```
-    These are the modes that benefit from MuninnDB tools. Lightweight modes (luca-fast, luca-plan, luca-triage, luca-research, luca-architect, luca-review) don't need them.
-    NOTE: Agent `id` values use hyphens (`luca-build`), NOT colons (`luca:discuss`) or bare names (`build`). The colon-format (`luca:4-execute`) is the mode_id used in `MODE_PERMISSIONS`, not the agent id.
-  - Verification: `bunx --bun tsc --noEmit` passes.
+> **Decision**: MCP gating was initially planned as conditional per mode, but was changed to unconditional after implementation. MuninnDB recall is core infrastructure and should not be hindered by per-mode gating. All 10 mode agents now merge MCP tools unconditionally.
 
-- [ ] **Task 5.1.2**: Conditionally inject MCP tools in `createStaticAgent()`
-  - Files: `packages/luca-mastracode/src/index.ts` (lines 272-275)
-  - Change: Update the `tools` callback:
+- [x] **Task 5.1.1**: ~~Define MCP-aware mode list constant~~ → Removed. All modes get MCP tools.
+- [x] **Task 5.1.2**: MCP tools merged unconditionally in `createStaticAgent()` tools callback:
     ```typescript
     tools: () => {
-      if (MCP_ENABLED_MODES.has(id)) {
-        const mcpTools = mcpManagerRef.current?.getTools() ?? {};
-        return { ...tools, ...mcpTools };
-      }
-      return tools;
+      const mcpTools = mcpManagerRef.current?.getTools() ?? {};
+      return { ...tools, ...mcpTools };
     },
     ```
-  - Verification: `bunx --bun tsc --noEmit` passes. Lightweight modes no longer receive MCP tools (~15K token savings per turn).
+  - Verification: `bunx --bun tsc --noEmit` passes. All modes have MuninnDB access.
 
 ### Wave 5.2: Implement token budget monitoring
 
@@ -338,7 +324,7 @@ Implement 16 of 18 pending todos across `packages/luca-mastracode` to harden pro
 2. **Phase 2**: All 10 `.md` files have quantified constraints in primacy zone (first 15 lines). No qualitative directives remain. Luca-reminder convention noted in all files. Each file within 85-90% of post-restructuring line count after compression. **Grep-based verification**: For each file, run `head -15 <file> | grep -c '<expected-constraint>'` to confirm primacy zone placement. Verify luca-reminder with `grep -c 'luca-reminder' <file>`.
 3. **Phase 3**: Shared prefix present in all 9 subagent instructions (verify via logging or debugger). Anti-sycophancy gate in reviewer requires evidence for APPROVE. Self-distrust mandate in executor, verifier, planner, plan-reviewer.
 4. **Phase 4**: All 10 tool descriptions enriched with behavioral guidance. Cross-tool coordination sections in execute.md, review.md, finalize.md.
-5. **Phase 5**: MCP tools only injected for modes in `MCP_ENABLED_MODES`. Token budget monitor instantiated and tracking turns. Context refresher fires reminder at 30% utilization threshold.
+5. **Phase 5**: MCP tools available in all modes (unconditional). Token budget monitor instantiated and tracking turns via harness events. Context refresher fires reminder at 30% utilization threshold.
 
 ### Overall Verification
 - `bunx --bun tsc --noEmit` passes after all phases
@@ -347,7 +333,7 @@ Implement 16 of 18 pending todos across `packages/luca-mastracode` to harden pro
   - Research respects tool-call budget
   - Execute runs checks after wave completion
   - Review doesn't rubber-stamp (APPROVE requires evidence)
-  - MCP tools absent from research/architect mode tools
+  - MCP tools available in all modes (verify MuninnDB recall works from any mode)
 
 ## Risks & Mitigations
 
