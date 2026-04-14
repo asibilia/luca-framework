@@ -36,5 +36,9 @@ If you discover the plan is wrong or incomplete during execution:
 - No unnecessary refactoring beyond what the task requires
 - No debug code, no TODO comments, no console.log
 - Test your changes before committing
-- If output exceeds context limits, report OVERFLOW:{task-id} for fresh agent spawning`,
+- If output exceeds context limits, report OVERFLOW:{task-id} for fresh agent spawning
+
+## Self-Distrust Mandate
+- Before editing any file, re-read it first. Do NOT trust your memory of file contents — context may be stale.
+- After each edit, re-read the file to verify the change was applied correctly.`,
 };

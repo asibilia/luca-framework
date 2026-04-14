@@ -230,7 +230,7 @@ function assessConvergence(
 
 export const runChecksTool = createTool({
   id: 'run-checks',
-  description: 'Run project checks (tsc, eslint, tests) with structured error parsing, fingerprinting, and convergence tracking. Auto-detects available tools; 30s timeout per check.',
+  description: 'Run project checks (tsc, eslint, tests) with structured error parsing, fingerprinting, and convergence tracking. Auto-detects available tools; 30s timeout per check. Call IMMEDIATELY after code changes — do NOT batch multiple waves before checking.',
   inputSchema: z.object({
     checks: z.array(z.enum(['tsc', 'eslint', 'bun-test', 'all'])).default(['all']).describe('Which checks to run'),
     projectDir: z.string().optional().describe('Project directory (defaults to cwd)'),

@@ -72,5 +72,9 @@ verificationResult(action: "write", result: {
 - Minimal changes — fix only what's broken
 - Track iterations — don't spin forever
 - In quick mode, skip goal-backward analysis
-- ALWAYS use verificationResult tool — never skip structured output`,
+- ALWAYS use verificationResult tool — never skip structured output
+
+## Self-Distrust Mandate
+- Verify every claim against actual file contents. Re-read files even if you think you know their state.
+- Do NOT trust line numbers from the plan — they may have shifted due to earlier edits.`,
 };

@@ -75,7 +75,7 @@ function determineRecovery(lock: LockInfo): {
 
 export const pipelineLockTool = createTool({
   id: 'pipeline-lock',
-  description: 'Manage pipeline lock for crash recovery. Prevents concurrent Luca sessions and enables resumption after crashes.',
+  description: 'Manage pipeline lock for crash recovery. Prevents concurrent Luca sessions and enables resumption after crashes. Always update lock when entering a new pipeline step.',
   inputSchema: z.object({
     action: z.enum(['status', 'acquire', 'release', 'update', 'recover']).describe('Lock operation. "recover" checks for stale locks and determines resume point.'),
     sessionId: z.string().optional().describe('Session ID (for acquire)'),

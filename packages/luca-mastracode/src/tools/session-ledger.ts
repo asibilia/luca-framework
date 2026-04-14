@@ -9,7 +9,7 @@ import {
 
 export const sessionLedgerTool = createTool({
   id: 'session-ledger',
-  description: 'Read session ledger events and compute session metrics. Use this for finalization, process data analysis, and session summaries.',
+  description: 'Read session ledger events and compute session metrics. Use this for finalization, process data analysis, and session summaries. Record entries at mode transitions and phase boundaries to maintain an accurate audit trail.',
   inputSchema: z.object({
     action: z.enum(['read', 'filter', 'metrics', 'routing-history']).describe(
       'read: all events | filter: events by type | metrics: session summary | routing-history: model routing decisions'

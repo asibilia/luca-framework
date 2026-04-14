@@ -87,6 +87,7 @@ import { reviewerSubagent } from "./subagents/reviewer.js";
 import { learnerSubagent } from "./subagents/learner.js";
 import { discussionSubagent } from "./subagents/discussion.js";
 import { shadowScannerSubagent } from "./subagents/shadow-scanner.js";
+import { SUBAGENT_SHARED_PREFIX } from "./subagents/shared-prefix.js";
 
 // --- Pipeline TUI helpers ---
 import {
@@ -124,7 +125,9 @@ function loadBranding(): LucaBranding {
 // Mutable refs — wired up after createMastraCode() returns.
 // Extracted to refs.ts to avoid circular imports with tool modules.
 // ---------------------------------------------------------------------------
-import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef } from "./refs.js";
+import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef, tokenBudgetRef, contextRefresherRef } from "./refs.js";
+import { TokenBudgetMonitor } from './token-budget.js';
+import { ContextRefresher } from './context-refresher.js';
 import * as pipelineGuard from "./pipeline-guard.js";
 
 // ---------------------------------------------------------------------------
@@ -152,14 +155,31 @@ import * as pipelineGuard from "./pipeline-guard.js";
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// Core operating rules — compact summary prepended to EVERY mode agent's
+// instructions (primacy zone) for attention-curve exploitation.
+// ---------------------------------------------------------------------------
+const CORE_OPERATING_RULES = `## Core Operating Rules
+- No temp files or shell commands for edits — use edit tools only.
+- No prose between consecutive tool calls — invoke tools directly.
+- Respect mode boundaries — read-only means read-only.
+`;
+
+// ---------------------------------------------------------------------------
 // Universal constraints — appended to EVERY mode agent's instructions.
 // ---------------------------------------------------------------------------
 const HARD_CONSTRAINTS = `
 ## Hard Constraints (all modes)
 
-- **Never use temp files as an edit workaround.** Do not write content to a temporary file and then copy, move, or \`cat\` it into the target file. Do not use \`sed\`, \`awk\`, \`cp\`, \`mv\`, \`tee\`, heredocs, or any shell command to bypass the edit tools (\`string_replace_lsp\`, \`write_file\`, \`ast_smart_edit\`). If you don't have permission to edit a file, that restriction is intentional — do not circumvent it.
-- **Never shell out for file edits.** All file modifications must go through the provided edit tools, not through \`execute_command\`. The only exception is running build/test/lint commands.
-- **Respect mode boundaries.** If your mode is read-only, do not attempt any workaround to modify files. Report what needs to change and let the appropriate mode handle it.
+- **Never use temp files as an edit workaround** because it bypasses the harness's change tracking and makes modifications invisible to the review and verification pipeline. Do not write content to a temporary file and then copy, move, or \`cat\` it into the target file. Do not use \`sed\`, \`awk\`, \`cp\`, \`mv\`, \`tee\`, heredocs, or any shell command to bypass the edit tools (\`string_replace_lsp\`, \`write_file\`, \`ast_smart_edit\`). If you don't have permission to edit a file, that restriction is intentional — do not circumvent it.
+- **Never shell out for file edits** because execute_command output is not tracked by edit tools, so changes cannot be verified, reviewed, or rolled back by the harness. All file modifications must go through the provided edit tools, not through \`execute_command\`. The only exception is running build/test/lint commands.
+- **Respect mode boundaries** because mode restrictions separate concerns — a read-only mode that secretly writes files corrupts the verification guarantee of subsequent phases. If your mode is read-only, do not attempt any workaround to modify files. Report what needs to change and let the appropriate mode handle it.
+- **Do NOT generate explanatory prose between consecutive tool calls** because text between tool calls wastes tokens and slows execution. If your next action is a tool call, invoke it directly.
+`;
+
+const RECENCY_REMINDERS = `## Reminders (re-read before every tool call)
+- Check your mode. If read-only, do NOT write.
+- No prose between tool calls.
+- When done: call switch-mode (pipeline) or stop (stock modes).
 `;
 
 // ---------------------------------------------------------------------------
@@ -222,17 +242,11 @@ function loadAlwaysApplyRules(): string {
   return blocks.length > 0 ? blocks.join("\n\n") : "";
 }
 
-// AGENT_CONSTRAINTS is built lazily so that rules are loaded after
-// installRules() has copied bundled rules into .mastracode/rules/.
-let _agentConstraints: string | null = null;
 function getAgentConstraints(): string {
-  if (_agentConstraints === null) {
-    const alwaysApplyRules = loadAlwaysApplyRules();
-    _agentConstraints = ["\n\n---\n", HARD_CONSTRAINTS, alwaysApplyRules]
-      .filter(Boolean)
-      .join("\n\n");
-  }
-  return _agentConstraints;
+  const alwaysApplyRules = loadAlwaysApplyRules();
+  return ["\n\n---\n", HARD_CONSTRAINTS, alwaysApplyRules, RECENCY_REMINDERS]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function createStaticAgent({
@@ -255,8 +269,9 @@ function createStaticAgent({
     id,
     name: `Luca ${name}`,
     // Dynamic instructions: called per-request, reads luca-store at call time.
-    // getAgentConstraints() is appended to every mode's instructions.
-    instructions: () => buildInstructions() + getAgentConstraints(),
+    // CORE_OPERATING_RULES is prepended (primacy zone) and
+    // getAgentConstraints() is appended (recency zone) to every mode's instructions.
+    instructions: () => CORE_OPERATING_RULES + '\n\n' + buildInstructions() + getAgentConstraints(),
     // Dynamic model: called per-request, resolves via OAuth-aware pipeline
     model: () => {
       const modelId = resolveModelFn() ?? defaultModelId;
@@ -463,6 +478,23 @@ function buildContinuationMessage(
 async function main() {
   const branding = loadBranding();
 
+  // Build subagent list up-front so MCP tools can be injected into the
+  // same objects the harness holds (not stale pre-.map() originals).
+  const subagentList = [
+    researcherSubagent,
+    discussionSubagent,
+    plannerSubagent,
+    planReviewerSubagent,
+    executorSubagent,
+    verifierSubagent,
+    reviewerSubagent,
+    learnerSubagent,
+    shadowScannerSubagent,
+  ].map(sub => ({
+    ...sub,
+    instructions: SUBAGENT_SHARED_PREFIX + '\n\n' + sub.instructions,
+  }));
+
   const result = await createMastraCode({
     // --- Stock utility modes ---
     modes: [
@@ -611,17 +643,10 @@ async function main() {
     ],
 
     // --- Subagent definitions ---
-    subagents: [
-      researcherSubagent,
-      discussionSubagent,
-      plannerSubagent,
-      planReviewerSubagent,
-      executorSubagent,
-      verifierSubagent,
-      reviewerSubagent,
-      learnerSubagent,
-      shadowScannerSubagent,
-    ],
+    // Note: subagents array is built from the local `subagentList` variable
+    // so that MCP tools injected after createMastraCode() apply to the same
+    // objects the harness holds (not stale pre-.map() originals).
+    subagents: subagentList,
 
     // Note: Luca workflow state (complexity, oversight, pipeline step, etc.)
     // is stored in .planning/luca-state.json via the workflowState tool.
@@ -661,16 +686,72 @@ async function main() {
     mcpManagerRef.current = mcpManager;
   }
 
-  // Inject MCP tools into subagents that reference them in their instructions.
-  // These objects are passed by reference to the harness — mutations are visible
-  // when createSubagentTool spawns agents per-request.
+  // Wire up token budget monitor for context window management.
+  const tokenBudget = new TokenBudgetMonitor();
+  tokenBudgetRef.current = tokenBudget;
+
+  // Wire up context refresher for mid-conversation injection.
+  const contextRefresher = new ContextRefresher(async (opts) => {
+    if (followUpRef.current) {
+      await followUpRef.current(opts);
+    }
+  });
+
+  // Wire up context refresher ref so the workflowState tool can call
+  // setMode() on mode transitions.
+  contextRefresherRef.current = contextRefresher;
+
+  // Connect token budget thresholds to context refresher.
+  tokenBudget.onThresholdCrossed((threshold, state) => {
+    // Fire-and-forget: don't block the monitor on async followUp
+    contextRefresher.handleThreshold(threshold, state).catch(() => {});
+  });
+
+  // Subscribe to harness events for token tracking and mode synchronization.
+  harness.subscribe((event) => {
+    if (event.type === 'message_end') {
+      // Extract text from message content parts for token estimation.
+      const text = (event.message.content ?? [])
+        .map((c: { type: string; text?: string; thinking?: string; result?: unknown }) => {
+          if (c.type === 'text') return c.text;
+          if (c.type === 'thinking') return c.thinking;
+          if (c.type === 'tool_result') return typeof c.result === 'string' ? c.result : JSON.stringify(c.result ?? '');
+          return '';
+        })
+        .join('');
+      if (!text) return;
+      if (event.message.role === 'user') {
+        tokenBudget.recordInput(text);
+      } else {
+        tokenBudget.recordOutput(text);
+      }
+    }
+    if (event.type === 'tool_end') {
+      tokenBudget.recordToolCall();
+    }
+    if (event.type === 'agent_end') {
+      tokenBudget.recordTurn();
+    }
+    if (event.type === 'mode_changed') {
+      // Primary source for mode sync — fires on all mode changes including
+      // initial load, pipeline-guard redirects, and manual user switches.
+      // The workflowState tool also calls setMode() as a secondary source.
+      contextRefresher.setMode(event.modeId);
+      // Reset INJECT_REMINDERS threshold so each mode can get its own reminder.
+      tokenBudget.clearThreshold('INJECT_REMINDERS');
+    }
+  });
+
+  // Inject MCP tools into subagents that need them.
+  // We mutate the subagentList objects (the same objects the harness holds)
+  // so that MCP tools are available when createSubagentTool spawns agents.
   if (mcpManager) {
     const mcpTools = mcpManager.getTools();
-    const mcpSubagents: Array<{ tools?: Record<string, unknown> }> = [
-      discussionSubagent, learnerSubagent, shadowScannerSubagent,
-    ];
-    for (const sub of mcpSubagents) {
-      sub.tools = { ...(sub.tools ?? {}), ...mcpTools };
+    const mcpSubagentIds = new Set(['discussion', 'learner', 'shadow-scanner']);
+    for (const sub of subagentList) {
+      if (mcpSubagentIds.has(sub.id)) {
+        sub.tools = { ...(sub.tools ?? {}), ...mcpTools };
+      }
     }
   }
 

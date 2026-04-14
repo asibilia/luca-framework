@@ -23,7 +23,8 @@ export const repoCleanupTool = createTool({
   description:
     "Scan and clean up AI-session debris in the repository. " +
     "Orchestrates the shadow-scanner subagent: prepares scan parameters, " +
-    "parses scanner output, applies fixes, and reports summaries.",
+    "parses scanner output, applies fixes, and reports summaries. " +
+    "Run during finalization before PR creation — not during execution.",
   inputSchema: z.object({
     action: z
       .enum(["scan", "parse-report", "apply-fix", "summary", "cleanup-artifacts"])

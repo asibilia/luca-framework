@@ -1,56 +1,60 @@
-# Context — Pipeline Permission Fixes: writePlanningFile Tool + Triage Todos + Audit Gaps
+# Context — Prompt Engineering Hardening & Context Window Architecture Milestone
 
 ## Decisions
 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
-| 1 | **`writePlanningFile` actions** | `write` and `read` only | `write` covers creating/overwriting capture files and final reports. `read` lets modes re-read their own captures when OM compresses context (instructions explicitly say "re-read from .planning/…"). No `append` — all writes are full-file overwrites per the instruction patterns. No `list` — modes use workspace `find_files` (read-only, not blocked). Keeping the action set minimal reduces attack surface. |
-| 2 | **Path restrictions** | `.planning/` prefix enforced; reject `..` traversal; reject absolute paths | The tool must ONLY write inside `.planning/`. This is the security boundary that justifies bypassing `READ_ONLY_MODES`. Reject paths containing `..` or starting with `/` to prevent escape. Normalize to `join(cwd, '.planning', relativePath)`. |
-| 3 | **Which modes get `write_planning_file`** | `luca:2-research` (`['write', 'read']`) and `luca:5-review` (`['write', 'read']`) | These are the two read-only pipeline modes whose instructions explicitly require writing `.planning/` files. Architect (`luca:3-architect`) is NOT in `READ_ONLY_MODES` so it already has workspace `write_file` — no need. Triage, discuss, execute, finalize either don't write planning files or already have write access. |
-| 4 | **Research `manage_todos` expansion** | Expand from `['add']` to `['list', 'read', 'add']` | Research instruction §"Knowledge Capture & Backlog Handoff" creates todos from discoveries. But without `list`/`read`, research can't check for duplicates or read existing todo context before adding. The `luca:discuss` mode already proves `['list', 'read']` is the safe read pattern. Adding these to research's existing `['add']` is a minimal, safe expansion. |
-| 5 | **Triage `manage_todos` access** | Add `manage_todos: ['list', 'read']` | Triage instruction §Step 1 references todo IDs ("Downstream modes will assign them via manageTodos"). Triage needs to read referenced todos to understand scope. Same proven read-only pattern as `luca:discuss`. |
-| 6 | **Tool implementation pattern** | Follow `manageRoadmapTool` pattern: `node:fs` direct I/O, action-based Zod schema, `createTool()` | `manageRoadmapTool` already proves the pattern of a custom tool using `writeFileSync`/`readFileSync` to bypass workspace read-only restrictions. Same approach: `createTool()` with `z.enum(['write', 'read'])` action field, compatible with `createScopedTool()`. |
-| 7 | **Tool naming convention** | snake_case key `write_planning_file`, camelCase record key `writePlanningFile`, kebab-case tool id `write-planning-file` | Matches existing convention: `manage_todos` → `manageTodos` → `manage-todos`, `manage_roadmap` → `manageRoadmap` → `manage-roadmap`. |
-| 8 | **Instruction file updates** | Add brief tool-usage callouts in research.md and review.md where they reference writing capture files | Modes currently say "Write each researcher's output to `.planning/research-capture-{dimension}.md`" without specifying HOW. Add a one-line callout: "Use `writePlanningFile(action: "write", …)` to create these files." Minimal — don't restructure instructions. |
+| 1 | **Phasing strategy** | 5 focused phases matching sprint dependency graph | Research identified a hard dependency chain: Sprint 1-2 (prompt eng) → Sprint 3 (shared prefix) → Sprint 4 (mid-conv injection) → Sprint 5 (context architecture). Mega-phase risks cascade failures. 5 phases enable incremental verification and rollback. |
+| 2 | **Shared prefix injection point** | Central injection in `index.ts` at subagent registration time (lines 614-624) | Cleaner: one code change vs. 9 file edits. The prefix IS mode-agnostic (behavioral constraints apply to all subagents equally). Per-file import is more verbose and creates 9 maintenance points. Central injection follows the existing `HARD_CONSTRAINTS` pattern for mode agents. |
+| 3 | **HARD_CONSTRAINTS dual-injection heading** | Front-injected copy uses `## Core Operating Rules` heading; back-injected keeps `## Hard Constraints (all modes)` | Research identified heading collision as a guaranteed bug if same heading used twice. Different headings exploit primacy (Core Operating Rules, first thing the model sees) and recency (Hard Constraints, last thing) without structural ambiguity. |
+| 4 | **Recency reminder placement** | Integrated into `getAgentConstraints()` as the absolute last content | Research showed appending reminders AFTER constraints pushes stop-directives from terminal position. By making reminders part of `getAgentConstraints()`, they're guaranteed to be the absolute last content in every mode's instructions. The lazy singleton must be replaced with a per-call function to support dynamic reminders. |
+| 5 | **MCP tool availability** | Unconditional — all modes get MCP tools (UPDATED from conditional) | Originally planned as conditional per mode to save ~15K tokens. Changed during implementation: MuninnDB recall is core infrastructure and should not be hindered by per-mode gating. All 10 mode agents now merge MCP tools unconditionally. |
+| 6 | **Context architecture items (Sprint 5) scope** | Implement token budget monitor + unconditional MCP availability this milestone. Defer cache boundary and progressive compaction to future milestone pending Mastra API investigation. | Token budget monitoring (character heuristic) has zero Mastra API dependencies — pure TypeScript. Cache boundary requires unknown Mastra array-prompt support. Progressive compaction requires tool result interception. Deferring uncertain items avoids blocking the deliverable milestone. |
+| 7 | **Testing strategy** | No prerequisite test phase; add minimal smoke validation in PLAN.md verification criteria | Zero test coverage is a real risk, but adding a test framework is a separate concern that would expand scope beyond the 18 todos. Verification criteria in the plan will specify manual pipeline validation checks after each phase. The backlog already has a "add snapshot tests" todo from research. |
+| 8 | **Token budget ceiling** | Accept +4,500 tokens with MuninnDB present across all modes | The 4,500 token overhead is acceptable given: (a) MuninnDB recall is core infrastructure available in all modes, (b) OM thresholds at 50K/60K provide ample headroom, (c) the behavioral improvements (anti-sycophancy, quantified constraints) justify the overhead in output quality. |
+| 9 | **`getAgentConstraints()` refactor** | Replace lazy singleton with per-call function | The lazy cache (`_agentConstraints`) prevents dynamic content injection. Mid-conversation reminders and dual-injection require per-call evaluation. The `loadAlwaysApplyRules()` call is cheap (reads from an already-installed local directory). Performance impact is negligible — `readFileSync` on local `.mastracode/rules/` is sub-millisecond. |
+| 10 | **4th HARD_CONSTRAINT ("no prose between tool calls")** | Include in Sprint 1 alongside dual-injection | This constraint is the most commonly violated anti-pattern across all modes. Adding it alongside the existing 3 constraints keeps the total under the 200-token budget. The "because" clause makes it teachable. |
+| 11 | **Quantified directive values** | Use research-provided values as starting point, validated against BUDGET_MATRIX | Research provided specific quantified replacements for each qualitative directive. Cross-reference against `BUDGET_MATRIX` in `luca-store.ts` to avoid conflicts (e.g., don't say "max 3 attempts" in prompt if matrix allows 4 for COMPLEX/quality). |
+| 12 | **Attention curve restructuring approach** | Move HARD_CONSTRAINTS summary to primacy zone (first 3-5 lines) of each .md file + add recency footer | Research shows U-shaped attention: first and last ~200 tokens get equal attention. Front-load a brief constraint summary in the ## Role section. Keep full constraints appended via `getAgentConstraints()`. Recency footer in `getAgentConstraints()` reinforces critical rules. |
+| 13 | **Effective scope for this milestone** | 16 of 18 todos (defer cache boundary and progressive compaction) | Deferred items depend on unknown Mastra API capabilities. 16 remaining items are fully implementable with current framework. Creates a clean deliverable milestone. |
 
 ## Constraints
 
-- **`buildModeTools()` throws on unregistered tools** — the new tool MUST be registered in `TOOL_REGISTRY` before any mode references it in `MODE_PERMISSIONS`
-- **`createScopedTool()` requires `action` field in `z.object` input schema** — the new tool must follow the action-based pattern
-- **Read-only modes cannot use workspace `write_file`** — the whole point of this tool is to provide a safe, scoped alternative via `node:fs`
-- **TypeScript strict mode** — the codebase uses strict TypeScript; tool must have proper types and Zod schemas
-- **Existing tests** — `mode-permissions.test.ts` or similar may need updating if they validate the permission manifest
-- **Tool sequencing** — import in `build-mode-tools.ts` must happen before `TOOL_REGISTRY` references the tool
+- All changes are internal to `packages/luca-mastracode` — no cross-package modifications
+- Instruction `.md` changes are hot-reloadable; subagent `.ts` changes require type-check
+- The `shadow-scanner.ts` has fan-in 2 — exported utility functions must remain stable
+- `HARD_CONSTRAINTS` total must stay under 200 tokens (including new 4th constraint)
+- Quantified limits must not conflict with BUDGET_MATRIX programmatic limits
+- The `_agentConstraints` lazy cache must be replaced before mid-conversation injection can work
 
-## Scope
+## Scope Boundaries
 
-### In Scope
-- New `write-planning-file.ts` tool with `write` and `read` actions
-- `TOOL_REGISTRY` entry in `build-mode-tools.ts`
-- `MODE_PERMISSIONS` updates: add `write_planning_file` to `luca:2-research` and `luca:5-review`
-- `MODE_PERMISSIONS` updates: add `manage_todos: ['list', 'read']` to `luca:1-triage`
-- `MODE_PERMISSIONS` updates: expand `luca:2-research` `manage_todos` from `['add']` to `['list', 'read', 'add']`
-- Export from `tools/index.ts`
-- Instruction file callouts in `research.md` and `review.md` for tool usage
-- Instruction file callout in `triage.md` for `manageTodos` read access
+**In scope (16 items):**
+1. Anti-sycophancy quality gate (reviewer subagent)
+2. Self-distrust mandates (all subagents)
+3. Attention curve exploitation (10 instruction files)
+4. HARD_CONSTRAINTS dual-injection + "because" clauses + 4th constraint
+5. Tool description behavioral enrichment (10 tools)
+6. Subagent instruction upgrades (9 subagents)
+7. Template compression (instruction files)
+8. Quantified directives (9 instruction files)
+9. Shared subagent instruction prefix
+10. Unconditional MCP tool availability (all modes)
+11. Mid-conversation injection infrastructure (context refresher)
+12. Token budget monitoring
+13. Bidirectional tool constraints
+14. Cross-tool coordination directives
+15. luca-reminder convention
+16. Instruction file restructuring for attention curves
 
-### Out of Scope
-- Modifying `READ_ONLY_MODES` set or workspace tool config in `index.ts` — the new tool intentionally bypasses this layer
-- Adding `writePlanningFile` to non-read-only modes (architect, execute, finalize already have `write_file`)
-- Adding `writePlanningFile` to `luca:discuss` or `plan` — they don't write `.planning/` files
-- Restructuring instruction files beyond adding tool-usage callouts
-- Changes to `createScopedTool()` — it already handles the pattern we need
-- `repo_cleanup` permissions — confirmed correct during audit (finalize has `'*'`)
+**Deferred to future milestone (2 items):**
+- Cache boundary in prompt assembly (blocked on Mastra API investigation)
+- Progressive context compaction pipeline (blocked on Mastra tool result interception)
 
-## Preferences
-
-- **Minimal tool surface**: Only `write` and `read` actions. Don't add `list`, `delete`, `append` unless a concrete instruction requires them.
-- **Fail-safe path validation**: Reject anything outside `.planning/` at the tool level, not just by convention. Use `path.resolve()` + `startsWith()` check.
-- **Consistent error shape**: Return `{ success: boolean, message: string }` matching `manageRoadmapTool` output pattern.
-- **Auto-create `.planning/` directory**: Use `mkdirSync({ recursive: true })` like `manageRoadmapTool` does — don't fail if directory doesn't exist.
-- **UTF-8 only**: All `.planning/` files are markdown text. No binary support needed.
-- **Instruction updates should be surgical**: One-line additions near existing "Write to .planning/…" instructions. Don't rewrite paragraphs.
-
-## Open Questions
-
-- **None** — all decisions resolved via full-auto defaults based on codebase patterns and instruction analysis.
+## Priority Ordering
+1. **Highest**: HARD_CONSTRAINTS dual-injection + "because" clauses (affects all modes, foundation for other changes)
+2. **High**: Attention curve restructuring + quantified directives (touches all instruction files, do together)
+3. **High**: Shared subagent prefix + anti-sycophancy + self-distrust (touches all subagent files, do together)
+4. **Medium**: MCP tool availability + token budget monitor (new infrastructure)
+5. **Medium**: Mid-conversation injection (depends on #1-3 being stable)
+6. **Lower**: Tool description enrichment (independent, can parallelize)

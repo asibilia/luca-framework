@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export const manageRoadmapTool = createTool({
   id: 'manage-roadmap',
-  description: 'Manage the .planning/ROADMAP.md file: create, read, update phase status, and compute execution order via topological sort with WSJF scoring.',
+  description: 'Manage the .planning/ROADMAP.md file: create, read, update phase status, and compute execution order via topological sort with WSJF scoring. Always \'read\' before \'update-status\' to verify current state. Use \'compute-order\' after creating phases to validate dependency graph.',
   inputSchema: z.object({
     action: z.enum(['create', 'read', 'update-status', 'compute-order']).describe('Operation to perform'),
     phases: z.array(z.object({

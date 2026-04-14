@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const classifyComplexityTool = createTool({
   id: 'classify-complexity',
-  description: 'Classify the complexity of a development task based on scope, file count, dependency depth, and risk factors. Returns a complexity level (TRIVIAL/SIMPLE/MODERATE/COMPLEX/CRITICAL) with reasoning.',
+  description: 'Classify the complexity of a development task based on scope, file count, dependency depth, and risk factors. Returns a complexity level (TRIVIAL/SIMPLE/MODERATE/COMPLEX/CRITICAL) with reasoning. Provide estimatedFileCount and crossCuttingConcerns for accurate classification — omitting them reduces the score and may under-estimate complexity.',
   inputSchema: z.object({
     taskDescription: z.string().describe('Description of the development task'),
     estimatedFileCount: z.number().optional().describe('Estimated number of files affected'),
