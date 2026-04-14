@@ -39,7 +39,8 @@ export function buildExecuteInstructions(_harnessState?: Record<string, unknown>
   ].filter(Boolean).join('\n');
 
   // Inject review iteration context when re-entering from Review mode
-  const iterationPlan = state.iterationPlan;
+  const rawPlan = state.iterationPlan;
+  const iterationPlan = Array.isArray(rawPlan) ? rawPlan : undefined;
   const reviewIteration = state.reviewIteration;
   const reviewContext = iterationPlan?.length ? [
     '',

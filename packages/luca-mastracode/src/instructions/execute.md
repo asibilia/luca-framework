@@ -379,7 +379,7 @@ When `iterationPlan` is present in workflow state, you are re-entering from **Re
 1. **Read `iterationPlan`** from state — it contains the focused list of fixes from the reviewer
 2. **Read `.planning/REVIEW-{wave}.md`** — the full audit report with file paths, evidence, and fix suggestions
 3. **Scope your work** to the iteration plan items ONLY — do not re-execute the full plan
-4. After fixes, run checks and transition back to Review: `workflowState(switch-mode, targetMode: "luca:5-review")`
+4. After fixes, run checks and transition back to Review: `workflowState(action: "switch-mode", targetMode: "luca:5-review")`
 
 The iteration plan is your task list for this pass. Treat each item as a focused fix, not a full wave.
 
