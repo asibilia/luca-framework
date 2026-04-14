@@ -38,7 +38,22 @@ export function buildExecuteInstructions(_harnessState?: Record<string, unknown>
     state.assignedTodos?.length ? `- Assigned TODOs: #${state.assignedTodos.join(', #')}` : null,
   ].filter(Boolean).join('\n');
 
-  return base + stateContext;
+  // Inject review iteration context when re-entering from Review mode
+  const iterationPlan = state.iterationPlan;
+  const reviewIteration = state.reviewIteration;
+  const reviewContext = iterationPlan?.length ? [
+    '',
+    '## ⚠️ Review Iteration Re-entry',
+    `**This is review iteration ${reviewIteration ?? 1}.** You are re-entering from Review mode to fix must-fix issues.`,
+    '',
+    '**Iteration plan (your task list for this pass):**',
+    ...iterationPlan.map((fix, i) => `${i + 1}. ${fix}`),
+    '',
+    `Read the latest \`.planning/REVIEW-*.md\` for full context (file paths, evidence, fix suggestions).`,
+    'Scope your work to these items ONLY — do not re-execute the full plan.',
+  ].join('\n') : '';
+
+  return base + stateContext + reviewContext;
 }
 
 /**

@@ -266,7 +266,9 @@ Read `workflowState(action: "read")` for:
 - `intent` — original user intent
 
 ## Tool Coordination
-Sequence: (1) Spawn 4 reviewer subagents → (2) aggregate findings → (3) `verificationResult(write)` → (4) if must-fix: `workflowState(switch-mode → execute)`, else: `workflowState(switch-mode → finalize)`.
+Sequence: (1) Spawn 4 reviewer subagents → (2) capture raw findings via `writePlanningFile` → (3) consolidate & write audit report to `.planning/REVIEW-{wave}.md` → (4) `workflowState(save-review-results)` with iteration plan → (5) if must-fix: `workflowState(switch-mode → execute)`, else: `workflowState(switch-mode → finalize)`.
+
+> **Note**: Review does NOT write verification results. The `verificationResult` tool is read-only in this mode — use it to read what the executor/verifier produced. Review's output is the audit report and iteration plan.
 
 ## Luca Reminders
 Obey `<luca-reminder>` tags when they appear in conversation — they contain authoritative mid-session guidance that supersedes stale context.

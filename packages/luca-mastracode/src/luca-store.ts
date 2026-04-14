@@ -58,6 +58,7 @@ export interface LucaWorkflowState {
 
   // --- Review tracking ---
   reviewIteration?: number;
+  iterationPlan?: string[];
 
   // --- Plan artifacts ---
   planFile?: string;
