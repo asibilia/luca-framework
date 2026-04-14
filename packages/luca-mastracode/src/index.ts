@@ -165,15 +165,6 @@ const CORE_OPERATING_RULES = `## Core Operating Rules
 `;
 
 // ---------------------------------------------------------------------------
-// MCP-enabled modes — only these agents receive MuninnDB and other MCP tools.
-// Lightweight modes (fast, plan, triage, research, architect, review) skip
-// MCP injection to save ~15K tokens per turn.
-// ---------------------------------------------------------------------------
-const MCP_ENABLED_MODES = new Set([
-  'luca-build', 'luca-execute', 'luca-finalize', 'luca-discuss',
-]);
-
-// ---------------------------------------------------------------------------
 // Universal constraints — appended to EVERY mode agent's instructions.
 // ---------------------------------------------------------------------------
 const HARD_CONSTRAINTS = `
@@ -294,11 +285,8 @@ function createStaticAgent({
     // are layered on top via mcpManagerRef, mirroring how stock mastracode's
     // codeAgent gets them via createDynamicTools.
     tools: () => {
-      if (MCP_ENABLED_MODES.has(id)) {
-        const mcpTools = mcpManagerRef.current?.getTools() ?? {};
-        return { ...tools, ...mcpTools };
-      }
-      return tools;
+      const mcpTools = mcpManagerRef.current?.getTools() ?? {};
+      return { ...tools, ...mcpTools };
     },
   });
 }
