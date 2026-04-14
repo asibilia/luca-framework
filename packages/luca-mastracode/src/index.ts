@@ -125,7 +125,9 @@ function loadBranding(): LucaBranding {
 // Mutable refs — wired up after createMastraCode() returns.
 // Extracted to refs.ts to avoid circular imports with tool modules.
 // ---------------------------------------------------------------------------
-import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef } from "./refs.js";
+import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef, tokenBudgetRef } from "./refs.js";
+import { TokenBudgetMonitor } from './token-budget.js';
+import { ContextRefresher } from './context-refresher.js';
 import * as pipelineGuard from "./pipeline-guard.js";
 
 // ---------------------------------------------------------------------------
@@ -688,6 +690,33 @@ async function main() {
   if (mcpManager) {
     mcpManagerRef.current = mcpManager;
   }
+
+  // Wire up token budget monitor for context window management.
+  const tokenBudget = new TokenBudgetMonitor();
+  tokenBudgetRef.current = tokenBudget;
+
+  // Wire up context refresher for mid-conversation injection.
+  const contextRefresher = new ContextRefresher(async (opts) => {
+    if (followUpRef.current) {
+      await followUpRef.current(opts);
+    }
+  });
+
+  // Connect token budget thresholds to context refresher.
+  tokenBudget.onThresholdCrossed((threshold, state) => {
+    // Fire-and-forget: don't block the monitor on async followUp
+    contextRefresher.handleThreshold(threshold as any, state).catch(() => {});
+  });
+
+  // Subscribe to harness events for token tracking.
+  // Note: harness event system may not be available yet — this is
+  // forward-compatible with when Mastra exposes lifecycle hooks.
+  // For now, the tokenBudget is wired up and ready for manual tracking
+  // via refs from tools or middleware.
+
+  // TODO: Connect contextRefresher.setMode() to mode change events
+  // when the harness exposes a mode_changed lifecycle hook.
+  // For now, the initial mode can be set manually or via followUp injection.
 
   // Inject MCP tools into subagents that reference them in their instructions.
   // These objects are passed by reference to the harness — mutations are visible

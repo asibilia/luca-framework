@@ -49,3 +49,22 @@ type McpManagerLike = { getTools(): Record<string, any> };
 export const mcpManagerRef: { current: McpManagerLike | null } = {
   current: null,
 };
+
+/**
+ * Reference to the TokenBudgetMonitor instance.
+ * Used by context-refresher to check utilization thresholds
+ * and by tools to make budget-aware decisions.
+ */
+type TokenBudgetMonitorLike = {
+  recordInput(text: string): void;
+  recordOutput(text: string): void;
+  recordToolCall(): void;
+  recordTurn(): void;
+  getState(): { estimatedUtilization: number; turnsCompleted: number; toolCallsCompleted: number };
+  isAboveThreshold(threshold: string): boolean;
+  onThresholdCrossed(callback: (threshold: string, state: any) => void): void;
+  reset(): void;
+};
+export const tokenBudgetRef: { current: TokenBudgetMonitorLike | null } = {
+  current: null,
+};
