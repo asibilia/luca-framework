@@ -127,10 +127,10 @@ luca init          # Set up MuninnDB
 luca vault:init    # Configure vault for your project
 ```
 
-### 3. Run Mastra Code harness
+### 3. Launch the harness
 
 ```bash
-bun run mastracode
+luca run
 ```
 
 Or use the `/lu` slash command within the TUI to execute pipeline workflows.
@@ -140,7 +140,7 @@ Or use the `/lu` slash command within the TUI to execute pipeline workflows.
 ```bash
 bun install              # Install dependencies
 bun run build            # Build luca-framework CLI
-bun run mastracode       # Run mastracode harness
+luca run                 # Launch mastracode harness
 bunx --bun tsc --noEmit  # Type check
 bun run dev:studio       # Run studio UI (dev mode)
 ```
