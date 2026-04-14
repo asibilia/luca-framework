@@ -125,10 +125,27 @@ If `repoCleanup` returns `status: "disabled"`, skip silently.
 
 If git workflow was used (issue + branch created):
 
+### 3a. Recall Release Conventions
+
+**Before any PR work**, recall release details from MuninnDB:
+
+```
+muninn_recall(
+  context: ["release checklist", "PR title format", "version convention", "naming convention"],
+  mode: "semantic",
+  limit: 5
+)
+```
+
+Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
+
+### 3b. Create PR
+
 1. **Push** feature branch to remote
 2. **Create PR** with:
-   - **Title**: Matches issue title
+   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
    - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations
+   - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured
 3. Store PR URL in `workflow_state`
