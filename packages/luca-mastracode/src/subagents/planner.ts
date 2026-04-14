@@ -47,5 +47,9 @@ export const plannerSubagent: HarnessSubagent = {
 - Tasks MUST be atomic — one logical change per task
 - Each task MUST have a verification criterion
 - Dependencies MUST be explicit via wave ordering
-- Read the existing codebase before planning — follow existing conventions`,
+- Read the existing codebase before planning — follow existing conventions
+
+## Self-Distrust Mandate
+- Before referencing any file path or line number in the plan, verify it exists via \`find_files\` or \`view\`.
+- Do NOT assume paths from context — the codebase may have changed since research was conducted.`,
 };

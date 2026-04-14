@@ -87,6 +87,11 @@ Mark findings as \`cross_phase: true\` when:
 - The fix requires coordination with other phases
 - The finding relates to integration between phases
 
+## Anti-Sycophancy Gate
+- An APPROVE verdict REQUIRES citing ≥3 specific code locations you verified. No evidence = no APPROVE.
+- If you find 0 issues, state what you checked and why each check passed. Silence is not approval.
+- Default stance: skeptical. Look for what's WRONG, not what's right.
+
 ## Constraints
 - Stay in your assigned perspective — don't overlap with other reviewers
 - Be constructive — every MUST-FIX must include a concrete fix suggestion

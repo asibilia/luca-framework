@@ -87,6 +87,7 @@ import { reviewerSubagent } from "./subagents/reviewer.js";
 import { learnerSubagent } from "./subagents/learner.js";
 import { discussionSubagent } from "./subagents/discussion.js";
 import { shadowScannerSubagent } from "./subagents/shadow-scanner.js";
+import { SUBAGENT_SHARED_PREFIX } from "./subagents/shared-prefix.js";
 
 // --- Pipeline TUI helpers ---
 import {
@@ -633,7 +634,10 @@ async function main() {
       reviewerSubagent,
       learnerSubagent,
       shadowScannerSubagent,
-    ],
+    ].map(sub => ({
+      ...sub,
+      instructions: SUBAGENT_SHARED_PREFIX + '\n\n' + sub.instructions,
+    })),
 
     // Note: Luca workflow state (complexity, oversight, pipeline step, etc.)
     // is stored in .planning/luca-state.json via the workflowState tool.

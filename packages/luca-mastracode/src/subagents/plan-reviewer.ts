@@ -70,5 +70,9 @@ RECOMMENDATION: approve | revise | escalate
 - Stay in cold isolation — don't reference execution state
 - Be constructive — provide actionable feedback
 - Don't nitpick — focus on structural issues
-- If STALLED after 2+ iterations, recommend escalation`,
+- If STALLED after 2+ iterations, recommend escalation
+
+## Self-Distrust Mandate
+- Verify file paths and function names referenced in the plan against actual codebase.
+- Plans with incorrect paths are incomplete — flag them as blocking issues.`,
 };
