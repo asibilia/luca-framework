@@ -98,7 +98,7 @@ Use findings for task design, risk identification, and verification criteria. If
 
 ## Step 3: Roadmap Creation
 
-Use `manage_roadmap` to create/update `.planning/ROADMAP.md`:
+Use `manageRoadmap` to create/update `.planning/ROADMAP.md`:
 
 ```markdown
 # Roadmap: <project/feature title>

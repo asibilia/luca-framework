@@ -140,15 +140,14 @@ Returns structured results with convergence tracking:
 ```
 {
   passed: boolean,
-  summary: "tsc: X errors, eslint: Y warnings, tests: Z/N passed",
-  convergence: {
-    status: "resolved" | "converging" | "stalled" | "diverging",
-    iteration: N,
-    errorFingerprints: ["<hash>:file:line", ...],
-    newErrors: N,
-    resolvedErrors: N,
-    persistentErrors: N
-  }
+  summary: "tsc: pass, eslint: skip, ...",
+  checks: [{ name, status, duration, fingerprints, exitCode, stdout, stderr }],
+  convergence: "resolved" | "converging" | "stalled" | "diverging",
+  iteration: N,
+  staleIterations: N,
+  totalErrors: N,
+  newErrors: N,
+  resolvedErrors: N
 }
 ```
 
@@ -163,7 +162,7 @@ Returns structured results with convergence tracking:
 
 Spawn **fix** subagent with error details and affected files. Fix subagent addresses errors without introducing new ones.
 
-**Hard limit**: If `convergence.iteration >= 3` and status is not `resolved`, stop and escalate.
+**Hard limit**: If `iteration >= 3` and convergence is not `resolved`, stop and escalate.
 
 ## Step 3: Verify
 

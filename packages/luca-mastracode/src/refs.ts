@@ -63,6 +63,7 @@ type TokenBudgetMonitorLike = {
   getState(): { estimatedUtilization: number; turnsCompleted: number; toolCallsCompleted: number };
   isAboveThreshold(threshold: string): boolean;
   onThresholdCrossed(callback: (threshold: string, state: any) => void): void;
+  clearThreshold(name: string): void;
   reset(): void;
 };
 export const tokenBudgetRef: { current: TokenBudgetMonitorLike | null } = {

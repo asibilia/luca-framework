@@ -88,6 +88,14 @@ export class TokenBudgetMonitor {
     return this.state.estimatedUtilization >= THRESHOLDS[threshold];
   }
 
+  /**
+   * Clear a specific fired threshold so it can fire again.
+   * Use on mode changes so each mode can receive its own reminder.
+   */
+  clearThreshold(name: ThresholdName): void {
+    this.firedThresholds.delete(name);
+  }
+
   /** Reset the monitor (e.g., on mode change or new conversation). */
   reset(): void {
     this.state = {

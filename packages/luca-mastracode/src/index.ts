@@ -707,14 +707,40 @@ async function main() {
     contextRefresher.handleThreshold(threshold as any, state).catch(() => {});
   });
 
-  // Subscribe to harness events for token tracking.
-  // Note: harness event system may not be available yet — this is
-  // forward-compatible with when Mastra exposes lifecycle hooks.
-  // For now, the tokenBudget is wired up and ready for manual tracking
-  // via refs from tools or middleware.
-
-  // contextRefresher.setMode() is wired via contextRefresherRef in the
-  // workflowState tool's switch-mode handler — called on every mode transition.
+  // Subscribe to harness events for token tracking and mode synchronization.
+  harness.subscribe((event) => {
+    if (event.type === 'message_end') {
+      // Extract text from message content parts for token estimation.
+      const text = event.message.content
+        .map((c) => {
+          if (c.type === 'text') return c.text;
+          if (c.type === 'thinking') return c.thinking;
+          if (c.type === 'tool_result') return typeof c.result === 'string' ? c.result : JSON.stringify(c.result ?? '');
+          return '';
+        })
+        .join('');
+      if (!text) return;
+      if (event.message.role === 'user') {
+        tokenBudget.recordInput(text);
+      } else {
+        tokenBudget.recordOutput(text);
+      }
+    }
+    if (event.type === 'tool_end') {
+      tokenBudget.recordToolCall();
+    }
+    if (event.type === 'agent_end') {
+      tokenBudget.recordTurn();
+    }
+    if (event.type === 'mode_changed') {
+      // Primary source for mode sync — fires on all mode changes including
+      // initial load, pipeline-guard redirects, and manual user switches.
+      // The workflowState tool also calls setMode() as a secondary source.
+      contextRefresher.setMode(event.modeId);
+      // Reset INJECT_REMINDERS threshold so each mode can get its own reminder.
+      tokenBudget.clearThreshold('INJECT_REMINDERS');
+    }
+  });
 
   // Inject MCP tools into subagents that need them.
   // We mutate the subagentList objects (the same objects the harness holds)
