@@ -130,7 +130,8 @@ If git workflow was used (issue + branch created):
 **Before any PR work**, recall release details from MuninnDB:
 
 ```
-muninn_recall(
+mcp__muninn__muninn_recall(
+  vault: "<repo_vault>",
   context: ["release checklist", "PR title format", "version convention", "naming convention"],
   mode: "semantic",
   limit: 5

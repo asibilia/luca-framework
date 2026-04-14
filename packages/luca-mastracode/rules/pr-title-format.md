@@ -6,7 +6,7 @@ alwaysApply: true
 **Before creating any PR**, recall release conventions from MuninnDB:
 
 ```
-muninn_recall(context: ["release checklist", "PR title format", "version convention"], mode: "semantic", limit: 5)
+mcp__muninn__muninn_recall(context: ["release checklist", "PR title format", "version convention"], mode: "semantic", limit: 5)
 ```
 
 Apply the recalled conventions to determine: version number, title format, milestone linkage, and PR body structure.

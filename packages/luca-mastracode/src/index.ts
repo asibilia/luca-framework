@@ -704,7 +704,7 @@ async function main() {
   // Connect token budget thresholds to context refresher.
   tokenBudget.onThresholdCrossed((threshold, state) => {
     // Fire-and-forget: don't block the monitor on async followUp
-    contextRefresher.handleThreshold(threshold as any, state).catch(() => {});
+    contextRefresher.handleThreshold(threshold, state).catch(() => {});
   });
 
   // Subscribe to harness events for token tracking and mode synchronization.

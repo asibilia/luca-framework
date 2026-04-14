@@ -54,16 +54,25 @@ export const mcpManagerRef: { current: McpManagerLike | null } = {
  * Reference to the TokenBudgetMonitor instance.
  * Used by context-refresher to check utilization thresholds
  * and by tools to make budget-aware decisions.
+ *
+ * ThresholdName and BudgetState are declared locally (not imported from
+ * token-budget.ts) to avoid circular imports while preserving type safety.
  */
+type ThresholdName = 'INJECT_REMINDERS' | 'WARNING' | 'BLOCK';
+type BudgetState = {
+  estimatedUtilization: number;
+  turnsCompleted: number;
+  toolCallsCompleted: number;
+};
 type TokenBudgetMonitorLike = {
   recordInput(text: string): void;
   recordOutput(text: string): void;
   recordToolCall(): void;
   recordTurn(): void;
-  getState(): { estimatedUtilization: number; turnsCompleted: number; toolCallsCompleted: number };
-  isAboveThreshold(threshold: string): boolean;
-  onThresholdCrossed(callback: (threshold: string, state: any) => void): void;
-  clearThreshold(name: string): void;
+  getState(): BudgetState;
+  isAboveThreshold(threshold: ThresholdName): boolean;
+  onThresholdCrossed(callback: (threshold: ThresholdName, state: BudgetState) => void): void;
+  clearThreshold(name: ThresholdName): void;
   reset(): void;
 };
 export const tokenBudgetRef: { current: TokenBudgetMonitorLike | null } = {
