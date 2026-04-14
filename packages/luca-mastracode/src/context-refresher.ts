@@ -8,18 +8,18 @@
 
 import type { ThresholdName, BudgetState } from './token-budget.js';
 
-/** Mode-specific reminder templates, keyed by mode agent ID */
+/** Mode-specific reminder templates, keyed by harness mode ID (e.g. "luca:1-triage", "build"). */
 const MODE_REMINDERS: Record<string, string> = {
-  'luca-triage': '<luca-reminder>You are in triage mode. ≤75 words output. Classify → rationale → next mode.</luca-reminder>',
-  'luca-research': '<luca-reminder>You are in research mode. Budget: MODERATE ≤10, COMPLEX ≤20, CRITICAL ≤30 tool calls. Synthesis ≤200 lines.</luca-reminder>',
-  'luca-architect': '<luca-reminder>You are in architect mode. ≤3 sentences per task. ≤150 lines PLAN.md total. Validate with plan-reviewer before finishing.</luca-reminder>',
-  'luca-execute': '<luca-reminder>You are in execute mode. Run checks within 1 tool call of wave completion. Stalled ≥2 iterations = stop and escalate. No prose between tool calls.</luca-reminder>',
-  'luca-review': '<luca-reminder>You are in review mode (read-only). Maximum 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.</luca-reminder>',
-  'luca-finalize': '<luca-reminder>You are in finalize mode. Check every task in PLAN.md. Report exact completed/total ratio.</luca-reminder>',
-  'luca-build': '<luca-reminder>You are in build mode. Implement atomically. Run checks after each logical unit.</luca-reminder>',
-  'luca-fast': '<luca-reminder>Fast mode. Under 100 words. ≤25 words between tool calls.</luca-reminder>',
-  'luca-plan': '<luca-reminder>Plan mode (read-only). Do NOT make changes. Explore and design only.</luca-reminder>',
-  'luca-discuss': '<luca-reminder>Discuss mode (read-only). Under 300 words per turn. ≤2 clarifying questions.</luca-reminder>',
+  'luca:1-triage': '<luca-reminder>You are in triage mode. ≤75 words output. Classify → rationale → next mode.</luca-reminder>',
+  'luca:2-research': '<luca-reminder>You are in research mode. Budget: MODERATE ≤10, COMPLEX ≤20, CRITICAL ≤30 tool calls. Synthesis ≤200 lines.</luca-reminder>',
+  'luca:3-architect': '<luca-reminder>You are in architect mode. ≤3 sentences per task. ≤150 lines PLAN.md total. Validate with plan-reviewer before finishing.</luca-reminder>',
+  'luca:4-execute': '<luca-reminder>You are in execute mode. Run checks within 1 tool call of wave completion. Stalled ≥2 iterations = stop and escalate. No prose between tool calls.</luca-reminder>',
+  'luca:5-review': '<luca-reminder>You are in review mode (read-only). Maximum 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.</luca-reminder>',
+  'luca:6-finalize': '<luca-reminder>You are in finalize mode. Check every task in PLAN.md. Report exact completed/total ratio.</luca-reminder>',
+  'build': '<luca-reminder>You are in build mode. Implement atomically. Run checks after each logical unit.</luca-reminder>',
+  'fast': '<luca-reminder>Fast mode. Under 100 words. ≤25 words between tool calls.</luca-reminder>',
+  'plan': '<luca-reminder>Plan mode (read-only). Do NOT make changes. Explore and design only.</luca-reminder>',
+  'luca:discuss': '<luca-reminder>Discuss mode (read-only). Under 300 words per turn. ≤2 clarifying questions.</luca-reminder>',
 };
 
 const GENERIC_REMINDER = '<luca-reminder>Re-read your mode constraints. No prose between tool calls. Respect mode boundaries.</luca-reminder>';

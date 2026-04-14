@@ -102,7 +102,7 @@ export class TokenBudgetMonitor {
 
   private updateUtilization(): void {
     const totalTokens = this.state.totalInputTokens + this.state.totalOutputTokens;
-    this.state.estimatedUtilization = totalTokens / this.contextWindowSize;
+    this.state.estimatedUtilization = Math.min(1, totalTokens / this.contextWindowSize);
 
     // Check thresholds in order
     for (const [name, value] of Object.entries(THRESHOLDS) as [ThresholdName, number][]) {

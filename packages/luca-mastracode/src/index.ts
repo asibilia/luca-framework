@@ -125,7 +125,7 @@ function loadBranding(): LucaBranding {
 // Mutable refs — wired up after createMastraCode() returns.
 // Extracted to refs.ts to avoid circular imports with tool modules.
 // ---------------------------------------------------------------------------
-import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef, tokenBudgetRef } from "./refs.js";
+import { resolveModelRef, switchModeRef, followUpRef, mcpManagerRef, tokenBudgetRef, contextRefresherRef } from "./refs.js";
 import { TokenBudgetMonitor } from './token-budget.js';
 import { ContextRefresher } from './context-refresher.js';
 import * as pipelineGuard from "./pipeline-guard.js";
@@ -478,6 +478,23 @@ function buildContinuationMessage(
 async function main() {
   const branding = loadBranding();
 
+  // Build subagent list up-front so MCP tools can be injected into the
+  // same objects the harness holds (not stale pre-.map() originals).
+  const subagentList = [
+    researcherSubagent,
+    discussionSubagent,
+    plannerSubagent,
+    planReviewerSubagent,
+    executorSubagent,
+    verifierSubagent,
+    reviewerSubagent,
+    learnerSubagent,
+    shadowScannerSubagent,
+  ].map(sub => ({
+    ...sub,
+    instructions: SUBAGENT_SHARED_PREFIX + '\n\n' + sub.instructions,
+  }));
+
   const result = await createMastraCode({
     // --- Stock utility modes ---
     modes: [
@@ -626,20 +643,10 @@ async function main() {
     ],
 
     // --- Subagent definitions ---
-    subagents: [
-      researcherSubagent,
-      discussionSubagent,
-      plannerSubagent,
-      planReviewerSubagent,
-      executorSubagent,
-      verifierSubagent,
-      reviewerSubagent,
-      learnerSubagent,
-      shadowScannerSubagent,
-    ].map(sub => ({
-      ...sub,
-      instructions: SUBAGENT_SHARED_PREFIX + '\n\n' + sub.instructions,
-    })),
+    // Note: subagents array is built from the local `subagentList` variable
+    // so that MCP tools injected after createMastraCode() apply to the same
+    // objects the harness holds (not stale pre-.map() originals).
+    subagents: subagentList,
 
     // Note: Luca workflow state (complexity, oversight, pipeline step, etc.)
     // is stored in .planning/luca-state.json via the workflowState tool.
@@ -690,6 +697,10 @@ async function main() {
     }
   });
 
+  // Wire up context refresher ref so the workflowState tool can call
+  // setMode() on mode transitions.
+  contextRefresherRef.current = contextRefresher;
+
   // Connect token budget thresholds to context refresher.
   tokenBudget.onThresholdCrossed((threshold, state) => {
     // Fire-and-forget: don't block the monitor on async followUp
@@ -702,20 +713,19 @@ async function main() {
   // For now, the tokenBudget is wired up and ready for manual tracking
   // via refs from tools or middleware.
 
-  // TODO: Connect contextRefresher.setMode() to mode change events
-  // when the harness exposes a mode_changed lifecycle hook.
-  // For now, the initial mode can be set manually or via followUp injection.
+  // contextRefresher.setMode() is wired via contextRefresherRef in the
+  // workflowState tool's switch-mode handler — called on every mode transition.
 
-  // Inject MCP tools into subagents that reference them in their instructions.
-  // These objects are passed by reference to the harness — mutations are visible
-  // when createSubagentTool spawns agents per-request.
+  // Inject MCP tools into subagents that need them.
+  // We mutate the subagentList objects (the same objects the harness holds)
+  // so that MCP tools are available when createSubagentTool spawns agents.
   if (mcpManager) {
     const mcpTools = mcpManager.getTools();
-    const mcpSubagents: Array<{ tools?: Record<string, unknown> }> = [
-      discussionSubagent, learnerSubagent, shadowScannerSubagent,
-    ];
-    for (const sub of mcpSubagents) {
-      sub.tools = { ...(sub.tools ?? {}), ...mcpTools };
+    const mcpSubagentIds = new Set(['discussion', 'learner', 'shadow-scanner']);
+    for (const sub of subagentList) {
+      if (mcpSubagentIds.has(sub.id)) {
+        sub.tools = { ...(sub.tools ?? {}), ...mcpTools };
+      }
     }
   }
 

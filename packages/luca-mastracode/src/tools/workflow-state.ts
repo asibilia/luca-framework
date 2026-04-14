@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { switchModeRef } from "../refs.js";
+import { switchModeRef, contextRefresherRef } from "../refs.js";
 import {
   readLucaState,
   writeLucaState,
@@ -355,6 +355,9 @@ export const workflowStateTool = createTool({
             }
             writeLucaState(stateUpdates);
             appendLedger('mode-transition', { from: prevState.pipelineStep, to: targetMode });
+            // Notify context refresher of mode change so it injects the right
+            // mode-specific reminders when token budget thresholds fire.
+            contextRefresherRef.current?.setMode(targetMode);
             await switchModeRef.current(targetMode);
             return {
               success: true,
@@ -537,6 +540,7 @@ export const workflowStateTool = createTool({
             budgetExceeded: false,
           });
           appendLedger('pipeline-re-entered', { targetMode: reEntryTarget, reason: reEntryReason });
+          contextRefresherRef.current?.setMode(reEntryTarget);
 
           try {
             await switchModeRef.current(reEntryTarget);

@@ -68,3 +68,14 @@ type TokenBudgetMonitorLike = {
 export const tokenBudgetRef: { current: TokenBudgetMonitorLike | null } = {
   current: null,
 };
+
+/**
+ * Reference to the ContextRefresher instance.
+ * Used by the workflowState tool to call setMode() on mode transitions.
+ */
+type ContextRefresherLike = {
+  setMode(modeId: string): void;
+};
+export const contextRefresherRef: { current: ContextRefresherLike | null } = {
+  current: null,
+};
