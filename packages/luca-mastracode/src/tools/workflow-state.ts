@@ -168,7 +168,7 @@ export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number];
  */
 const workflowStateInputSchema = z.object({
   action: z.enum(WORKFLOW_STATE_ACTIONS)
-    .describe("Which action to perform on the workflow state."),
+    .describe("Which action to perform. read: check state before acting. switch-mode: only after current mode's work is complete. start-phase/complete-phase: bracket each phase. advance-wave: only after checks pass."),
 
   // write
   updates: z.record(z.string(), z.unknown()).optional()
@@ -248,7 +248,7 @@ class ActionValidationError extends Error {
 export const workflowStateTool = createTool({
   id: "workflow-state",
   description:
-    "Read and write Luca workflow state. State persists to .planning/luca-state.json. Use this to track pipeline progress, update phase status, and trigger mode transitions.",
+    "Read/write Luca workflow state (.planning/luca-state.json). Tracks pipeline progress, phase status, and mode transitions. Pipeline order: triage→research→architect→execute→review→finalize. Do NOT call switch-mode without completing current mode's requirements.",
   inputSchema: workflowStateInputSchema,
   execute: async (inputData) => {
     try {

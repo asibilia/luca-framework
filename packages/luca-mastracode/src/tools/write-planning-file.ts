@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export const writePlanningFileTool = createTool({
   id: 'write-planning-file',
-  description: 'Read or write files inside the .planning/ directory. Allows read-only pipeline modes to persist planning artifacts (research captures, review notes, etc.) using direct filesystem access.',
+  description: 'Read or write files inside the .planning/ directory. Allows read-only pipeline modes to persist planning artifacts (research captures, review notes, etc.) using direct filesystem access. Paths are relative to .planning/ (e.g., "RESEARCH.md", not ".planning/RESEARCH.md").',
   inputSchema: z.object({
     action: z.enum(['write', 'read']).describe('Operation to perform'),
     path: z.string().describe('File path relative to .planning/ directory (e.g., "RESEARCH.md" or "review-capture-dx-1.md")'),

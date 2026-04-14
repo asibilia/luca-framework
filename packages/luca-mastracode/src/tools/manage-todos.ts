@@ -15,7 +15,8 @@ export const manageTodosTool = createTool({
   description:
     "Manage the Luca development backlog stored as markdown files in .planning/todos/. " +
     "Todos live in status directories: pending/, backlog/, done/. " +
-    "Supports listing, adding, moving between statuses, reading full content, removing, and batch-assigning.",
+    "Supports listing, adding, moving between statuses, reading full content, removing, and batch-assigning. " +
+    "Use 'list' before 'add' to check for duplicates. When moving to 'done', verify the task is actually complete.",
   inputSchema: z.object({
     action: z
       .enum(["list", "add", "move", "read", "remove", "assign-batch"])

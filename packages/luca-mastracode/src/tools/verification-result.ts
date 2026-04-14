@@ -26,7 +26,7 @@ const checkResultSchema = z.object({
 
 export const verificationResultTool = createTool({
   id: 'verification-result',
-  description: 'Read or write structured verification results (JSON). Replaces prose-based verification with deterministic output for orchestrator consumption.',
+  description: 'Read or write structured verification results (JSON). Replaces prose-based verification with deterministic output for orchestrator consumption. Always write results after verification — never skip this step.',
   inputSchema: z.object({
     action: z.enum(['write', 'read', 'read-history', 'aggregate']).describe(
       'write: save a new result | read: get latest | read-history: get all | aggregate: milestone summary'
