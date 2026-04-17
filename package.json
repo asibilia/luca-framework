@@ -22,5 +22,8 @@
   "type": "module",
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "@mastra/core": "1.25.0"
+  }
 }

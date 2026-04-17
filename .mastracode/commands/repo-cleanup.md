@@ -8,10 +8,10 @@ Scan the repository for AI-session debris and optionally clean it up.
 
 Parse `$ARGUMENTS` for flags:
 - `--quick` — quick scan (Categories 1+3 only)
-- `--full` — full scan (all 6 categories including dead exports)
+- `--full` — full scan (all 7 categories including dead exports)
 - `--dry-run` — show findings without offering fixes
 - `--fix` — auto-apply all auto-fixable findings without prompting
-- `--category=N` — restrict to a specific category (1-6)
+- `--category=N` — restrict to a specific category (1-7)
 
 If no flags, default to standard mode with interactive review.
 
