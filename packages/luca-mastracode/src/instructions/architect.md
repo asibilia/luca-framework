@@ -253,14 +253,14 @@ Template:
 {raw subagent output, preserved verbatim}
 ```
 
-Iteration number from `workflowState(action: "read")` → `planReviewIteration` (default `1`).
+Track iteration number yourself: first review = 1, each re-review after revision = n+1. Each iteration produces a distinct capture file so prior findings are never overwritten.
 
 ### Review Loop
 
 If issues found:
 1. Categorize as **blocking** (must fix) or **advisory** (nice to fix) — if raw output was OM-compressed, **re-read from** `.planning/plan-review-capture-{iteration}.md`
 2. Revise plan to address all blocking issues
-3. Re-submit for review (capture again at each iteration)
+3. Re-submit for review — increment iteration counter, capture to new file (e.g., `plan-review-capture-2.md`)
 4. Max iterations = `maxPlanReviewIterations`
 
 If max reached, flag unresolved issues and proceed.
