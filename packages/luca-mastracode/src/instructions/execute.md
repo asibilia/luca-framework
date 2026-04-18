@@ -227,7 +227,7 @@ Spawn **4 reviewer subagents in parallel**:
 
 ### Capture Raw Findings
 
-**IMMEDIATELY** after all 4 return, persist raw output to `.planning/execute-capture-{perspective}-{wave}.md` **before** consolidation. Use template:
+**IMMEDIATELY** after all 4 return, persist raw output to `.planning/execute-capture-{perspective}-{wave}.md` via **writePlanningFile** (action: "write") **before** consolidation. Use template:
 
 ```markdown
 # Execute Review Capture — {Perspective} [Wave {wave}]
