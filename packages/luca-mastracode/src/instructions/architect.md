@@ -236,12 +236,31 @@ Spawn a **plan-reviewer** subagent to validate:
 5. **Feasibility**: Tasks realistic given codebase state?
 6. **Gap detection**: Anything from research missing?
 
+### Step 5.5: Capture Raw Review Findings
+
+**IMMEDIATELY** after plan-reviewer subagent returns, persist raw output to `.planning/plan-review-capture-{iteration}.md` **before** analyzing or categorizing findings. Use **writePlanningFile** (action: "write").
+
+Template:
+```markdown
+# Plan Review Capture — Iteration {n}
+
+**Subagent**: plan-reviewer
+**Iteration**: {n}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+```
+
+Iteration number from `workflowState(action: "read")` → `planReviewIteration` (default `1`).
+
 ### Review Loop
 
 If issues found:
-1. Categorize as **blocking** (must fix) or **advisory** (nice to fix)
+1. Categorize as **blocking** (must fix) or **advisory** (nice to fix) — if raw output was OM-compressed, **re-read from** `.planning/plan-review-capture-{iteration}.md`
 2. Revise plan to address all blocking issues
-3. Re-submit for review
+3. Re-submit for review (capture again at each iteration)
 4. Max iterations = `maxPlanReviewIterations`
 
 If max reached, flag unresolved issues and proceed.
