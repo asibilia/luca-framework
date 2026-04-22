@@ -1,8 +1,7 @@
-import { atom } from "jotai";
+import type { Edge, Node } from '@xyflow/react'
+import { atom } from 'jotai'
 
-import type { Edge, Node } from "@xyflow/react";
-
-import type { WorkflowEdgeData, WorkflowNodeData } from "~/lib/workflow-types";
+import type { WorkflowEdgeData, WorkflowNodeData } from '~/lib/workflow-types'
 
 // ---------------------------------------------------------------------------
 // Pipeline Canvas State Atoms
@@ -20,7 +19,7 @@ import type { WorkflowEdgeData, WorkflowNodeData } from "~/lib/workflow-types";
  * by drag handlers, insert/delete operations, and save/discard cycles.
  * Starts empty -- populated after the first successful fetch.
  */
-export const pipelineNodesAtom = atom<Node<WorkflowNodeData>[]>([]);
+export const pipelineNodesAtom = atom<Node<WorkflowNodeData>[]>([])
 
 /**
  * Controlled React Flow edges for the pipeline editor.
@@ -28,7 +27,7 @@ export const pipelineNodesAtom = atom<Node<WorkflowNodeData>[]>([]);
  * Initialized alongside `pipelineNodesAtom` from the topology API.
  * Mutated by connection/reconnection handlers and structural operations.
  */
-export const pipelineEdgesAtom = atom<Edge<WorkflowEdgeData>[]>([]);
+export const pipelineEdgesAtom = atom<Edge<WorkflowEdgeData>[]>([])
 
 /**
  * ID of the currently selected node in the pipeline editor.
@@ -36,14 +35,14 @@ export const pipelineEdgesAtom = atom<Edge<WorkflowEdgeData>[]>([]);
  * Set on node click, cleared on pane click or Escape. The step config
  * panel reads this atom to determine which node's configuration to show.
  */
-export const selectedPipelineNodeIdAtom = atom<string | null>(null);
+export const selectedPipelineNodeIdAtom = atom<string | null>(null)
 
 /**
  * Whether the minimap is visible in the pipeline editor.
  *
  * Toggled via the canvas toolbar's minimap button.
  */
-export const pipelineMinimapVisibleAtom = atom<boolean>(true);
+export const pipelineMinimapVisibleAtom = atom<boolean>(true)
 
 /**
  * Layout direction for the pipeline DAG.
@@ -53,6 +52,6 @@ export const pipelineMinimapVisibleAtom = atom<boolean>(true);
  *
  * Toggled via the canvas toolbar's layout toggle button.
  */
-export const pipelineLayoutDirectionAtom = atom<"vertical" | "horizontal">(
-  "vertical",
-);
+export const pipelineLayoutDirectionAtom = atom<'vertical' | 'horizontal'>(
+    'vertical'
+)

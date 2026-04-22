@@ -5,22 +5,22 @@
  * checkChecksEnabled semantic validator to ensure at least one check type
  * remains enabled.
  */
-import { createConfigSectionHandler } from "~/lib/config-section-handler";
-import { ChecksSectionSchema } from "~/lib/config-section-schemas";
-import type { CheckEntry } from "~/lib/semantic-validators";
-import { checkChecksEnabled } from "~/lib/semantic-validators";
+import { createConfigSectionHandler } from '~/lib/config-section-handler'
+import { ChecksSectionSchema } from '~/lib/config-section-schemas'
+import type { CheckEntry } from '~/lib/semantic-validators'
+import { checkChecksEnabled } from '~/lib/semantic-validators'
 
 const handler = createConfigSectionHandler({
-  section: "harness",
-  schema: ChecksSectionSchema,
-  semanticValidators: [
-    (data) => {
-      const checks = data as { checks: CheckEntry[] };
-      return checkChecksEnabled(checks.checks);
-    },
-  ],
-});
+    section: 'harness',
+    schema: ChecksSectionSchema,
+    semanticValidators: [
+        (data) => {
+            const checks = data as { checks: CheckEntry[] }
+            return checkChecksEnabled(checks.checks)
+        },
+    ],
+})
 
 export async function PUT(request: Request) {
-  return handler(request);
+    return handler(request)
 }

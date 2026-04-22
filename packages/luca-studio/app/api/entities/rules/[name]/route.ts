@@ -18,9 +18,9 @@
  * - 422: Malformed entity or missing fields
  * - 500: Unexpected write failure
  */
-import { createEntityDetailHandler } from "~/lib/entity-route-helpers";
+import { createEntityDetailHandler } from '~/lib/entity-route-helpers'
 
-const handlers = createEntityDetailHandler("rules");
+const handlers = createEntityDetailHandler('rules')
 
-export const GET = handlers.GET;
-export const PUT = handlers.PUT;
+export const GET = handlers.GET
+export const PUT = handlers.PUT

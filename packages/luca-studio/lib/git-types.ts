@@ -22,9 +22,9 @@
  * ```
  */
 export type HistoryCommit = {
-  sha: string;
-  message: string;
-  date: string;
-  author: string;
-  files: string[];
-};
+    sha: string
+    message: string
+    date: string
+    author: string
+    files: string[]
+}

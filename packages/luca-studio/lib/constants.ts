@@ -2,100 +2,104 @@
  * Event type definitions with display metadata.
  */
 export const EVENT_TYPES = {
-  "session.start": { label: "Session Start", color: "event-session" },
-  "session.end": { label: "Session End", color: "event-session" },
-  "tool.pre": { label: "Tool Pre", color: "event-tool" },
-  "tool.post": { label: "Tool Post", color: "event-tool" },
-  "state.transition": { label: "State Transition", color: "event-state" },
-  "harness.result": { label: "Checks Result", color: "event-harness" },
-  "iteration.checkpoint": { label: "Iteration", color: "event-iteration" },
-  "convergence.assessment": {
-    label: "Convergence",
-    color: "event-convergence",
-  },
-  "tribunal.result": { label: "Tribunal", color: "event-tribunal" },
-  "memory.update": { label: "Memory Update", color: "event-memory" },
-  "commit.complete": { label: "Commit", color: "event-commit" },
-  "context.check": { label: "Context Check", color: "event-context" },
-  "typecheck.pass": { label: "Typecheck Pass", color: "event-state" },
-  "typecheck.fail": { label: "Typecheck Fail", color: "event-harness" },
-  "tests.pass": { label: "Tests Pass", color: "event-state" },
-  "tests.fail": { label: "Tests Fail", color: "event-harness" },
-  "commit.blocked": { label: "Commit Blocked", color: "event-harness" },
-  "commit.allowed": { label: "Commit Allowed", color: "event-commit" },
-  "note.added": { label: "Note Added", color: "event-memory" },
-  "phase.added": { label: "Phase Added", color: "event-state" },
-  "note.consumed": { label: "Note Consumed", color: "event-commit" },
+    'session.start': { label: 'Session Start', color: 'event-session' },
+    'session.end': { label: 'Session End', color: 'event-session' },
+    'tool.pre': { label: 'Tool Pre', color: 'event-tool' },
+    'tool.post': { label: 'Tool Post', color: 'event-tool' },
+    'state.transition': { label: 'State Transition', color: 'event-state' },
+    'harness.result': { label: 'Checks Result', color: 'event-harness' },
+    'iteration.checkpoint': { label: 'Iteration', color: 'event-iteration' },
+    'convergence.assessment': {
+        label: 'Convergence',
+        color: 'event-convergence',
+    },
+    'tribunal.result': { label: 'Tribunal', color: 'event-tribunal' },
+    'memory.update': { label: 'Memory Update', color: 'event-memory' },
+    'commit.complete': { label: 'Commit', color: 'event-commit' },
+    'context.check': { label: 'Context Check', color: 'event-context' },
+    'typecheck.pass': { label: 'Typecheck Pass', color: 'event-state' },
+    'typecheck.fail': { label: 'Typecheck Fail', color: 'event-harness' },
+    'tests.pass': { label: 'Tests Pass', color: 'event-state' },
+    'tests.fail': { label: 'Tests Fail', color: 'event-harness' },
+    'commit.blocked': { label: 'Commit Blocked', color: 'event-harness' },
+    'commit.allowed': { label: 'Commit Allowed', color: 'event-commit' },
+    'note.added': { label: 'Note Added', color: 'event-memory' },
+    'phase.added': { label: 'Phase Added', color: 'event-state' },
+    'note.consumed': { label: 'Note Consumed', color: 'event-commit' },
 
-  // State machine event types
-  START: { label: "Start", color: "event-session" },
-  RESET: { label: "Reset", color: "event-state" },
-  PREFLIGHT_COMPLETE: { label: "Pre-Flight Done", color: "event-state" },
-  PHASE_START: { label: "Phase Start", color: "event-state" },
-  PHASE_COMPLETE: { label: "Phase Complete", color: "event-state" },
-  VERIFY_PASSED: { label: "Verify Passed", color: "event-state" },
-  VERIFY_FAILED: { label: "Verify Failed", color: "event-harness" },
-  field_set: { label: "Field Set", color: "event-state" }, // Matches luca-bridge event name exactly — do not uppercase
-  ROUTE_COMPLETE: { label: "Route Complete", color: "event-state" },
-  DISCUSS_COMPLETE: { label: "Discuss Complete", color: "event-state" },
-  PLAN_COMPLETE: { label: "Plan Complete", color: "event-state" },
-  COMMIT_COMPLETE: { label: "Commit Complete", color: "event-commit" },
-  LEARN_COMPLETE: { label: "Learn Complete", color: "event-memory" },
-  CHECKS_COMPLETE: { label: "Checks Complete", color: "event-harness" },
-  REVIEW_COMPLETE: { label: "Review Complete", color: "event-state" },
-  SKIP: { label: "Skip", color: "event-state" },
-  SKIP_COOLDOWN: { label: "Skip Cooldown", color: "event-state" },
-  PREMORTEM_COMPLETE: { label: "Premortem Done", color: "event-state" },
-  PROCESS_DATA_COMPLETE: { label: "Process Data Done", color: "event-state" },
-  EXECUTION_COMPLETE: { label: "Execution Done", color: "event-state" },
-  PHASE_VERIFY_PASSED: { label: "Phase Verified", color: "event-state" },
-  PHASE_LEARN_COMPLETE: { label: "Phase Learn Done", color: "event-memory" },
-} as const;
+    // State machine event types
+    START: { label: 'Start', color: 'event-session' },
+    RESET: { label: 'Reset', color: 'event-state' },
+    PREFLIGHT_COMPLETE: { label: 'Pre-Flight Done', color: 'event-state' },
+    PHASE_START: { label: 'Phase Start', color: 'event-state' },
+    PHASE_COMPLETE: { label: 'Phase Complete', color: 'event-state' },
+    VERIFY_PASSED: { label: 'Verify Passed', color: 'event-state' },
+    VERIFY_FAILED: { label: 'Verify Failed', color: 'event-harness' },
+    field_set: { label: 'Field Set', color: 'event-state' }, // Matches luca-bridge event name exactly — do not uppercase
+    ROUTE_COMPLETE: { label: 'Route Complete', color: 'event-state' },
+    DISCUSS_COMPLETE: { label: 'Discuss Complete', color: 'event-state' },
+    PLAN_COMPLETE: { label: 'Plan Complete', color: 'event-state' },
+    COMMIT_COMPLETE: { label: 'Commit Complete', color: 'event-commit' },
+    LEARN_COMPLETE: { label: 'Learn Complete', color: 'event-memory' },
+    CHECKS_COMPLETE: { label: 'Checks Complete', color: 'event-harness' },
+    REVIEW_COMPLETE: { label: 'Review Complete', color: 'event-state' },
+    SKIP: { label: 'Skip', color: 'event-state' },
+    SKIP_COOLDOWN: { label: 'Skip Cooldown', color: 'event-state' },
+    PREMORTEM_COMPLETE: { label: 'Premortem Done', color: 'event-state' },
+    PROCESS_DATA_COMPLETE: { label: 'Process Data Done', color: 'event-state' },
+    EXECUTION_COMPLETE: { label: 'Execution Done', color: 'event-state' },
+    PHASE_VERIFY_PASSED: { label: 'Phase Verified', color: 'event-state' },
+    PHASE_LEARN_COMPLETE: { label: 'Phase Learn Done', color: 'event-memory' },
+} as const
 
-export type EventTypeName = keyof typeof EVENT_TYPES;
+export type EventTypeName = keyof typeof EVENT_TYPES
 
 /**
  * Workflow state display metadata.
  */
 export const WORKFLOW_STATES = {
-  idle: { label: "Idle", color: "muted-foreground" },
-  preflight: { label: "Pre-Flight", color: "info" },
-  routing: { label: "Routing", color: "info" },
-  discussing: { label: "Discussing", color: "accent" },
-  planning: { label: "Planning", color: "accent" },
-  executing: { label: "Executing", color: "warning" },
-  verifying: { label: "Verifying", color: "info" },
-  learning: { label: "Learning", color: "event-memory" },
-  committing: { label: "Committing", color: "event-commit" },
-  complete: { label: "Complete", color: "success" },
-  paused: { label: "Paused", color: "muted-foreground" },
-  suspended: { label: "Suspended", color: "warning" },
-  failed: { label: "Failed", color: "destructive" },
-} as const;
+    idle: { label: 'Idle', color: 'muted-foreground' },
+    preflight: { label: 'Pre-Flight', color: 'info' },
+    routing: { label: 'Routing', color: 'info' },
+    discussing: { label: 'Discussing', color: 'accent' },
+    planning: { label: 'Planning', color: 'accent' },
+    executing: { label: 'Executing', color: 'warning' },
+    verifying: { label: 'Verifying', color: 'info' },
+    learning: { label: 'Learning', color: 'event-memory' },
+    committing: { label: 'Committing', color: 'event-commit' },
+    complete: { label: 'Complete', color: 'success' },
+    paused: { label: 'Paused', color: 'muted-foreground' },
+    suspended: { label: 'Suspended', color: 'warning' },
+    failed: { label: 'Failed', color: 'destructive' },
+} as const
 
 /**
  * Complexity level display metadata.
  */
 export const COMPLEXITY_LEVELS = {
-  TRIVIAL: { label: "Trivial", color: "muted-foreground", tier: "lightweight" },
-  SIMPLE: { label: "Simple", color: "success", tier: "lightweight" },
-  MODERATE: { label: "Moderate", color: "info", tier: "standard" },
-  COMPLEX: { label: "Complex", color: "warning", tier: "thorough" },
-  CRITICAL: { label: "Critical", color: "destructive", tier: "thorough" },
-} as const;
+    TRIVIAL: {
+        label: 'Trivial',
+        color: 'muted-foreground',
+        tier: 'lightweight',
+    },
+    SIMPLE: { label: 'Simple', color: 'success', tier: 'lightweight' },
+    MODERATE: { label: 'Moderate', color: 'info', tier: 'standard' },
+    COMPLEX: { label: 'Complex', color: 'warning', tier: 'thorough' },
+    CRITICAL: { label: 'Critical', color: 'destructive', tier: 'thorough' },
+} as const
 
 /** Shape of a single navigation item. */
 export type NavItem = {
-  readonly href: string;
-  readonly label: string;
-  readonly icon: string;
-};
+    readonly href: string
+    readonly label: string
+    readonly icon: string
+}
 
 /** Shape of a navigation group containing items. */
 export type NavGroup = {
-  readonly label: string;
-  readonly items: readonly NavItem[];
-};
+    readonly label: string
+    readonly items: readonly NavItem[]
+}
 
 /**
  * Grouped navigation structure for the NavRail.
@@ -104,31 +108,31 @@ export type NavGroup = {
  * CONFIGURE (settings and configuration).
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
-  {
-    label: "OBSERVE",
-    items: [
-      { href: "/", label: "Home", icon: "LayoutDashboard" },
-      { href: "/sessions", label: "Sessions", icon: "Activity" },
-      { href: "/memory", label: "Memory", icon: "Brain" },
-    ],
-  },
-  {
-    label: "BUILD",
-    items: [
-      { href: "/pipeline", label: "Pipeline", icon: "Workflow" },
-      { href: "/agents", label: "Agents", icon: "Bot" },
-      { href: "/skills", label: "Skills", icon: "Hexagon" },
-      { href: "/rules", label: "Rules", icon: "Shield" },
-    ],
-  },
-  {
-    label: "CONFIGURE",
-    items: [
-      { href: "/config", label: "Config", icon: "SlidersHorizontal" },
-      { href: "/settings", label: "Settings", icon: "Settings" },
-    ],
-  },
-];
+    {
+        label: 'OBSERVE',
+        items: [
+            { href: '/', label: 'Home', icon: 'LayoutDashboard' },
+            { href: '/sessions', label: 'Sessions', icon: 'Activity' },
+            { href: '/memory', label: 'Memory', icon: 'Brain' },
+        ],
+    },
+    {
+        label: 'BUILD',
+        items: [
+            { href: '/pipeline', label: 'Pipeline', icon: 'Workflow' },
+            { href: '/agents', label: 'Agents', icon: 'Bot' },
+            { href: '/skills', label: 'Skills', icon: 'Hexagon' },
+            { href: '/rules', label: 'Rules', icon: 'Shield' },
+        ],
+    },
+    {
+        label: 'CONFIGURE',
+        items: [
+            { href: '/config', label: 'Config', icon: 'SlidersHorizontal' },
+            { href: '/settings', label: 'Settings', icon: 'Settings' },
+        ],
+    },
+]
 
 /**
  * Flat navigation items derived from NAV_GROUPS for backward compatibility.
@@ -136,8 +140,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
  * @deprecated Use NAV_GROUPS instead for grouped rendering. Will be removed in v10.0.0.
  */
 export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap(
-  (group) => group.items,
-);
+    (group) => group.items
+)
 
 /**
  * Convergence status to CSS color token mapping.
@@ -146,12 +150,12 @@ export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap(
  * status badges and bars.
  */
 export const CONVERGENCE_STATUS_COLORS: Record<string, string> = {
-  improved: "success",
-  stalled: "warning",
-  regressed: "destructive",
-} as const;
+    improved: 'success',
+    stalled: 'warning',
+    regressed: 'destructive',
+} as const
 
-export const DEFAULT_PORT = 3456;
+export const DEFAULT_PORT = 3456
 
 /**
  * Maps a singular entity type to its plural domain name.
@@ -160,11 +164,11 @@ export const DEFAULT_PORT = 3456;
  * (agent, skill, rule) to the API-level domain identifier (agents,
  * skills, rules).
  */
-export const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
-  agent: "agents",
-  skill: "skills",
-  rule: "rules",
-};
+export const ENTITY_DOMAIN: Record<'agent' | 'skill' | 'rule', string> = {
+    agent: 'agents',
+    skill: 'skills',
+    rule: 'rules',
+}
 
 /**
  * File path prefixes that Studio considers "tracked" for git publish operations.
@@ -174,11 +178,11 @@ export const ENTITY_DOMAIN: Record<"agent" | "skill" | "rule", string> = {
  * non-Studio changes.
  */
 export const STUDIO_PATH_PREFIXES = [
-  "src/agents/",
-  "src/skills/",
-  "src/rules/",
-  ".planning/config.json",
-];
+    'src/agents/',
+    'src/skills/',
+    'src/rules/',
+    '.planning/config.json',
+]
 
 /**
  * Base URL for the compilation sidecar process.
@@ -186,7 +190,7 @@ export const STUDIO_PATH_PREFIXES = [
  * The sidecar runs on a fixed port and handles entity compilation requests
  * proxied from the Studio API routes.
  */
-export const SIDECAR_URL = "http://localhost:3457";
+export const SIDECAR_URL = 'http://localhost:3457'
 
 /**
  * Timeout (in milliseconds) for compilation requests to the sidecar.
@@ -194,4 +198,4 @@ export const SIDECAR_URL = "http://localhost:3457";
  * If the sidecar does not respond within this window, the proxy route
  * returns 504 Gateway Timeout.
  */
-export const SIDECAR_TIMEOUT_MS = 30_000;
+export const SIDECAR_TIMEOUT_MS = 30_000

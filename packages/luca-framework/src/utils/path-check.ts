@@ -1,4 +1,4 @@
-import { delimiter } from "node:path";
+import { delimiter } from 'node:path'
 
 /**
  * Check whether a directory is included in the current PATH environment variable.
@@ -18,9 +18,9 @@ import { delimiter } from "node:path";
  * ```
  */
 export function isOnPath(dir: string): boolean {
-  const pathEnv = process.env.PATH ?? "";
-  const entries = pathEnv.split(delimiter);
-  return entries.includes(dir);
+    const pathEnv = process.env.PATH ?? ''
+    const entries = pathEnv.split(delimiter)
+    return entries.includes(dir)
 }
 
 /**
@@ -43,40 +43,41 @@ export function isOnPath(dir: string): boolean {
  * ```
  */
 export function getPathGuidance(dir: string): string {
-  const shell = process.env.SHELL ?? "";
-  const shellName = shell.split("/").pop() ?? "";
+    const shell = process.env.SHELL ?? ''
+    const shellName = shell.split('/').pop() ?? ''
 
-  switch (shellName) {
-    case "zsh":
-      return [
-        "Add to your shell config (~/.zshrc):",
-        `  export PATH="${dir}:$PATH"`,
-        "",
-        "Then reload:",
-        "  source ~/.zshrc",
-      ].join("\n");
+    switch (shellName) {
+        case 'zsh':
+            return [
+                'Add to your shell config (~/.zshrc):',
+                `  export PATH="${dir}:$PATH"`,
+                '',
+                'Then reload:',
+                '  source ~/.zshrc',
+            ].join('\n')
 
-    case "bash":
-      return [
-        "Add to your shell config (~/.bashrc or ~/.bash_profile):",
-        `  export PATH="${dir}:$PATH"`,
-        "",
-        "Then reload:",
-        "  source ~/.bashrc",
-      ].join("\n");
+        case 'bash':
+            return [
+                'Add to your shell config (~/.bashrc or ~/.bash_profile):',
+                `  export PATH="${dir}:$PATH"`,
+                '',
+                'Then reload:',
+                '  source ~/.bashrc',
+            ].join('\n')
 
-    case "fish":
-      return [
-        "Add to your fish config (~/.config/fish/config.fish):",
-        `  fish_add_path ${dir}`,
-        "",
-        "Then reload:",
-        "  source ~/.config/fish/config.fish",
-      ].join("\n");
+        case 'fish':
+            return [
+                'Add to your fish config (~/.config/fish/config.fish):',
+                `  fish_add_path ${dir}`,
+                '',
+                'Then reload:',
+                '  source ~/.config/fish/config.fish',
+            ].join('\n')
 
-    default:
-      return ["Add to your shell config:", `  export PATH="${dir}:$PATH"`].join(
-        "\n",
-      );
-  }
+        default:
+            return [
+                'Add to your shell config:',
+                `  export PATH="${dir}:$PATH"`,
+            ].join('\n')
+    }
 }

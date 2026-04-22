@@ -32,15 +32,15 @@
  * @property path    - Optional dot-path to the offending field.
  */
 export type SemanticError = {
-  code: string;
-  message: string;
-  path?: string;
-};
+    code: string
+    message: string
+    path?: string
+}
 
 /** Discriminated union returned by every semantic validator. */
 export type SemanticResult =
-  | { valid: true }
-  | { valid: false; errors: SemanticError[] };
+    | { valid: true }
+    | { valid: false; errors: SemanticError[] }
 
 /**
  * Function signature for a composable semantic validator.
@@ -49,16 +49,16 @@ export type SemanticResult =
  * Validators that need only a subset should destructure or project
  * internally.
  */
-export type SemanticValidator = (data: unknown) => SemanticResult;
+export type SemanticValidator = (data: unknown) => SemanticResult
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const pass: SemanticResult = { valid: true };
+const pass: SemanticResult = { valid: true }
 
 function fail(errors: SemanticError[]): SemanticResult {
-  return { valid: false, errors };
+    return { valid: false, errors }
 }
 
 // ---------------------------------------------------------------------------
@@ -67,9 +67,9 @@ function fail(errors: SemanticError[]): SemanticResult {
 
 /** Minimal step shape expected by `detectCycles`. */
 export type WorkflowStep = {
-  id: string;
-  dependsOn?: string[];
-};
+    id: string
+    dependsOn?: string[]
+}
 
 /**
  * Detect cycles in a directed acyclic graph of workflow steps.
@@ -91,59 +91,59 @@ export type WorkflowStep = {
  * ```
  */
 export function detectCycles(steps: WorkflowStep[]): SemanticResult {
-  const WHITE = 0;
-  const GREY = 1;
-  const BLACK = 2;
+    const WHITE = 0
+    const GREY = 1
+    const BLACK = 2
 
-  const color = new Map<string, number>();
-  const adj = new Map<string, string[]>();
+    const color = new Map<string, number>()
+    const adj = new Map<string, string[]>()
 
-  for (const step of steps) {
-    color.set(step.id, WHITE);
-    adj.set(step.id, step.dependsOn ?? []);
-  }
-
-  const errors: SemanticError[] = [];
-
-  for (const step of steps) {
-    if (color.get(step.id) === WHITE) {
-      // Iterative DFS using an explicit stack
-      const stack: Array<{ node: string; index: number }> = [
-        { node: step.id, index: 0 },
-      ];
-      color.set(step.id, GREY);
-
-      while (stack.length > 0) {
-        const frame = stack[stack.length - 1]!;
-        const neighbours = adj.get(frame.node) ?? [];
-
-        if (frame.index >= neighbours.length) {
-          // All neighbours explored — mark black and pop
-          color.set(frame.node, BLACK);
-          stack.pop();
-          continue;
-        }
-
-        const neighbour = neighbours[frame.index]!;
-        frame.index++;
-
-        const neighbourColor = color.get(neighbour);
-        if (neighbourColor === GREY) {
-          errors.push({
-            code: "CYCLE_DETECTED",
-            message: `Cycle detected: "${frame.node}" -> "${neighbour}" forms a back-edge`,
-            path: `steps.${frame.node}.dependsOn`,
-          });
-        } else if (neighbourColor === WHITE) {
-          color.set(neighbour, GREY);
-          stack.push({ node: neighbour, index: 0 });
-        }
-        // BLACK neighbours are already fully explored — skip
-      }
+    for (const step of steps) {
+        color.set(step.id, WHITE)
+        adj.set(step.id, step.dependsOn ?? [])
     }
-  }
 
-  return errors.length > 0 ? fail(errors) : pass;
+    const errors: SemanticError[] = []
+
+    for (const step of steps) {
+        if (color.get(step.id) === WHITE) {
+            // Iterative DFS using an explicit stack
+            const stack: Array<{ node: string; index: number }> = [
+                { node: step.id, index: 0 },
+            ]
+            color.set(step.id, GREY)
+
+            while (stack.length > 0) {
+                const frame = stack[stack.length - 1]!
+                const neighbours = adj.get(frame.node) ?? []
+
+                if (frame.index >= neighbours.length) {
+                    // All neighbours explored — mark black and pop
+                    color.set(frame.node, BLACK)
+                    stack.pop()
+                    continue
+                }
+
+                const neighbour = neighbours[frame.index]!
+                frame.index++
+
+                const neighbourColor = color.get(neighbour)
+                if (neighbourColor === GREY) {
+                    errors.push({
+                        code: 'CYCLE_DETECTED',
+                        message: `Cycle detected: "${frame.node}" -> "${neighbour}" forms a back-edge`,
+                        path: `steps.${frame.node}.dependsOn`,
+                    })
+                } else if (neighbourColor === WHITE) {
+                    color.set(neighbour, GREY)
+                    stack.push({ node: neighbour, index: 0 })
+                }
+                // BLACK neighbours are already fully explored — skip
+            }
+        }
+    }
+
+    return errors.length > 0 ? fail(errors) : pass
 }
 
 // ---------------------------------------------------------------------------
@@ -165,23 +165,23 @@ export function detectCycles(steps: WorkflowStep[]): SemanticResult {
  * ```
  */
 export function checkAgentRefs(
-  referencedAgents: string[],
-  knownAgents: string[],
+    referencedAgents: string[],
+    knownAgents: string[]
 ): SemanticResult {
-  const known = new Set(knownAgents);
-  const errors: SemanticError[] = [];
+    const known = new Set(knownAgents)
+    const errors: SemanticError[] = []
 
-  for (const agent of referencedAgents) {
-    if (!known.has(agent)) {
-      errors.push({
-        code: "UNKNOWN_AGENT",
-        message: `Agent "${agent}" is referenced but does not exist in the registry`,
-        path: `agents.${agent}`,
-      });
+    for (const agent of referencedAgents) {
+        if (!known.has(agent)) {
+            errors.push({
+                code: 'UNKNOWN_AGENT',
+                message: `Agent "${agent}" is referenced but does not exist in the registry`,
+                path: `agents.${agent}`,
+            })
+        }
     }
-  }
 
-  return errors.length > 0 ? fail(errors) : pass;
+    return errors.length > 0 ? fail(errors) : pass
 }
 
 // ---------------------------------------------------------------------------
@@ -190,9 +190,9 @@ export function checkAgentRefs(
 
 /** Minimal check shape expected by `checkChecksEnabled`. */
 export type CheckEntry = {
-  name: string;
-  enabled: boolean;
-};
+    name: string
+    enabled: boolean
+}
 
 /**
  * Verify that at least one verification check type remains enabled.
@@ -214,20 +214,20 @@ export type CheckEntry = {
  * ```
  */
 export function checkChecksEnabled(checks: CheckEntry[]): SemanticResult {
-  const hasEnabled = checks.some((c) => c.enabled);
+    const hasEnabled = checks.some((c) => c.enabled)
 
-  if (!hasEnabled) {
-    return fail([
-      {
-        code: "NO_CHECKS_ENABLED",
-        message:
-          "All verification checks are disabled — at least one check type (test, typecheck, lint, build) must remain enabled",
-        path: "harness.checks",
-      },
-    ]);
-  }
+    if (!hasEnabled) {
+        return fail([
+            {
+                code: 'NO_CHECKS_ENABLED',
+                message:
+                    'All verification checks are disabled — at least one check type (test, typecheck, lint, build) must remain enabled',
+                path: 'harness.checks',
+            },
+        ])
+    }
 
-  return pass;
+    return pass
 }
 
 // ---------------------------------------------------------------------------
@@ -254,28 +254,28 @@ export function checkChecksEnabled(checks: CheckEntry[]): SemanticResult {
  * ```
  */
 export function checkRequiredGates(
-  gates: Record<string, boolean>,
-  requiredGates: string[],
+    gates: Record<string, boolean>,
+    requiredGates: string[]
 ): SemanticResult {
-  const errors: SemanticError[] = [];
+    const errors: SemanticError[] = []
 
-  for (const gate of requiredGates) {
-    if (!(gate in gates)) {
-      errors.push({
-        code: "REQUIRED_GATE_MISSING",
-        message: `Required gate "${gate}" is missing from the configuration`,
-        path: `gates.${gate}`,
-      });
-    } else if (!gates[gate]) {
-      errors.push({
-        code: "REQUIRED_GATE_DISABLED",
-        message: `Required gate "${gate}" is disabled — this gate must remain enabled`,
-        path: `gates.${gate}`,
-      });
+    for (const gate of requiredGates) {
+        if (!(gate in gates)) {
+            errors.push({
+                code: 'REQUIRED_GATE_MISSING',
+                message: `Required gate "${gate}" is missing from the configuration`,
+                path: `gates.${gate}`,
+            })
+        } else if (!gates[gate]) {
+            errors.push({
+                code: 'REQUIRED_GATE_DISABLED',
+                message: `Required gate "${gate}" is disabled — this gate must remain enabled`,
+                path: `gates.${gate}`,
+            })
+        }
     }
-  }
 
-  return errors.length > 0 ? fail(errors) : pass;
+    return errors.length > 0 ? fail(errors) : pass
 }
 
 // ---------------------------------------------------------------------------
@@ -284,18 +284,18 @@ export function checkRequiredGates(
 
 /** The five complexity levels every agent row must cover. */
 const COMPLEXITY_LEVELS = [
-  "TRIVIAL",
-  "SIMPLE",
-  "MODERATE",
-  "COMPLEX",
-  "CRITICAL",
-] as const;
+    'TRIVIAL',
+    'SIMPLE',
+    'MODERATE',
+    'COMPLEX',
+    'CRITICAL',
+] as const
 
 /** Minimal routing row shape expected by `checkRoutingCoverage`. */
 export type RoutingRow = {
-  agent: string;
-  levels: Record<string, string>;
-};
+    agent: string
+    levels: Record<string, string>
+}
 
 /**
  * Verify that every agent row in the model routing table covers all five
@@ -316,19 +316,19 @@ export type RoutingRow = {
  * ```
  */
 export function checkRoutingCoverage(rows: RoutingRow[]): SemanticResult {
-  const errors: SemanticError[] = [];
+    const errors: SemanticError[] = []
 
-  for (const row of rows) {
-    for (const level of COMPLEXITY_LEVELS) {
-      if (!(level in row.levels) || !row.levels[level]) {
-        errors.push({
-          code: "INCOMPLETE_ROUTING",
-          message: `Agent "${row.agent}" is missing model assignment for complexity level "${level}"`,
-          path: `routing.${row.agent}.${level}`,
-        });
-      }
+    for (const row of rows) {
+        for (const level of COMPLEXITY_LEVELS) {
+            if (!(level in row.levels) || !row.levels[level]) {
+                errors.push({
+                    code: 'INCOMPLETE_ROUTING',
+                    message: `Agent "${row.agent}" is missing model assignment for complexity level "${level}"`,
+                    path: `routing.${row.agent}.${level}`,
+                })
+            }
+        }
     }
-  }
 
-  return errors.length > 0 ? fail(errors) : pass;
+    return errors.length > 0 ? fail(errors) : pass
 }

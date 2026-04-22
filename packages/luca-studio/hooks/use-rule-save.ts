@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { RULE_SAVE_CONFIG } from "~/hooks/schemas/entity-hook-config";
-import { useEntitySave } from "~/hooks/use-entity-save";
+import { RULE_SAVE_CONFIG } from '~/hooks/schemas/entity-hook-config'
+import { useEntitySave } from '~/hooks/use-entity-save'
 
 // ---------------------------------------------------------------------------
 // Thin wrapper
@@ -23,5 +23,5 @@ import { useEntitySave } from "~/hooks/use-entity-save";
  * ```
  */
 export function useRuleSave(name: string | null, etag: string | null) {
-  return useEntitySave(name, etag, RULE_SAVE_CONFIG);
+    return useEntitySave(name, etag, RULE_SAVE_CONFIG)
 }

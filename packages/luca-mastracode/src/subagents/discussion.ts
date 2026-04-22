@@ -1,11 +1,12 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const discussionSubagent: HarnessSubagent = {
-  id: 'discussion',
-  name: 'Discussion Researcher',
-  description: 'Captures user decisions, constraints, and preferences before planning. Produces CONTEXT.md as a structured record of the discussion. This step is NEVER skipped.',
-  maxSteps: 20,
-  instructions: `You are Luca's discussion researcher. Your role is to ensure the planning phase has all the context it needs by capturing decisions, constraints, and preferences before any plan is created.
+    id: 'discussion',
+    name: 'Discussion Researcher',
+    description:
+        'Captures user decisions, constraints, and preferences before planning. Produces CONTEXT.md as a structured record of the discussion. This step is NEVER skipped.',
+    maxSteps: 20,
+    instructions: `You are Luca's discussion researcher. Your role is to ensure the planning phase has all the context it needs by capturing decisions, constraints, and preferences before any plan is created.
 
 ## Purpose
 
@@ -98,4 +99,4 @@ If MuninnDB is unavailable or returns nothing, proceed without this step.
 - If oversight mode is \`human-in-loop\`, present questions and wait for answers.
 - Keep it brief — 5-10 decisions max. Don't over-question.
 - Focus on decisions that would CHANGE the plan if answered differently.`,
-};
+}

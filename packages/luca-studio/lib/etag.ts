@@ -19,8 +19,8 @@
  * // => "a1b2c3d4e5f67890"  (deterministic for same input)
  * ```
  */
-import { createHash } from "node:crypto";
+import { createHash } from 'node:crypto'
 
 export function computeETag(content: string): string {
-  return createHash("sha256").update(content).digest("hex").substring(0, 16);
+    return createHash('sha256').update(content).digest('hex').substring(0, 16)
 }

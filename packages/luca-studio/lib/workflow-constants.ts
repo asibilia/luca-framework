@@ -24,41 +24,41 @@
  * - `headerBg`: Tailwind bg class for card header background
  */
 export const TIER_DISPLAY_CONFIG: Record<
-  string,
-  {
-    label: string;
-    description: string;
-    variant: "default" | "secondary" | "outline";
-    borderClass: string;
-    dotColor: string;
-    headerBg: string;
-  }
+    string,
+    {
+        label: string
+        description: string
+        variant: 'default' | 'secondary' | 'outline'
+        borderClass: string
+        dotColor: string
+        headerBg: string
+    }
 > = {
-  fast: {
-    label: "Fast (Haiku)",
-    description: "Lightweight model for quick tasks",
-    variant: "outline",
-    borderClass: "border-gray-500/40",
-    dotColor: "bg-gray-400",
-    headerBg: "bg-gray-500/10",
-  },
-  balanced: {
-    label: "Balanced (Sonnet)",
-    description: "Standard model for most tasks",
-    variant: "secondary",
-    borderClass: "border-sky-500/40",
-    dotColor: "bg-sky-400",
-    headerBg: "bg-sky-500/10",
-  },
-  capable: {
-    label: "Capable (Opus)",
-    description: "Deep analysis model for complex tasks",
-    variant: "default",
-    borderClass: "border-amber-500/40",
-    dotColor: "bg-amber-400",
-    headerBg: "bg-amber-500/10",
-  },
-};
+    fast: {
+        label: 'Fast (Haiku)',
+        description: 'Lightweight model for quick tasks',
+        variant: 'outline',
+        borderClass: 'border-gray-500/40',
+        dotColor: 'bg-gray-400',
+        headerBg: 'bg-gray-500/10',
+    },
+    balanced: {
+        label: 'Balanced (Sonnet)',
+        description: 'Standard model for most tasks',
+        variant: 'secondary',
+        borderClass: 'border-sky-500/40',
+        dotColor: 'bg-sky-400',
+        headerBg: 'bg-sky-500/10',
+    },
+    capable: {
+        label: 'Capable (Opus)',
+        description: 'Deep analysis model for complex tasks',
+        variant: 'default',
+        borderClass: 'border-amber-500/40',
+        dotColor: 'bg-amber-400',
+        headerBg: 'bg-amber-500/10',
+    },
+}
 
 // -- Node type colors ---------------------------------------------------------
 
@@ -72,17 +72,17 @@ export const TIER_DISPLAY_CONFIG: Record<
  * - `tailwind`: Tailwind bg class for DOM context (stats bar dots)
  */
 export const NODE_TYPE_COLORS: Record<
-  string,
-  { hex: string; tailwind: string }
+    string,
+    { hex: string; tailwind: string }
 > = {
-  "stage-group": { hex: "#60a5fa", tailwind: "bg-blue-400" },
-  agent: { hex: "#9ca3af", tailwind: "bg-gray-400" },
-  gate: { hex: "#fbbf24", tailwind: "bg-amber-400" },
-  skill: { hex: "#a78bfa", tailwind: "bg-violet-400" },
-};
+    'stage-group': { hex: '#60a5fa', tailwind: 'bg-blue-400' },
+    agent: { hex: '#9ca3af', tailwind: 'bg-gray-400' },
+    gate: { hex: '#fbbf24', tailwind: 'bg-amber-400' },
+    skill: { hex: '#a78bfa', tailwind: 'bg-violet-400' },
+}
 
 /** Fallback color for unknown node types. */
 export const NODE_TYPE_COLOR_DEFAULT = {
-  hex: "#6b7280",
-  tailwind: "bg-gray-500",
-};
+    hex: '#6b7280',
+    tailwind: 'bg-gray-500',
+}

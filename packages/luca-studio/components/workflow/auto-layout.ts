@@ -10,41 +10,41 @@
  *
  * @see workflow-topology.ts for the curated node/edge data
  */
-import filter from "lodash/filter";
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from '@xyflow/react'
+import filter from 'lodash/filter'
 
-import type { WorkflowNodeData } from "~/lib/workflow-types";
+import type { WorkflowNodeData } from '~/lib/workflow-types'
 
 // -- Layout constants ---------------------------------------------------------
 
 /** Vertical gap between stacked stage containers. */
-const GROUP_Y_GAP = 40;
+const GROUP_Y_GAP = 40
 
 /** Starting Y offset for the first stage container. */
-const GROUP_Y_START = 40;
+const GROUP_Y_START = 40
 
 /** X position to center the column of stage containers. */
-const GROUP_X = 200;
+const GROUP_X = 200
 
 // -- Node dimensions (used by React Flow for edge routing) --------------------
 
 /** Pixel width per node type, used by React Flow for edge routing. */
 export const NODE_WIDTH: Record<string, number> = {
-  "stage-group": 576,
-  agent: 250,
-  skill: 240,
-  gate: 250,
-  default: 200,
-};
+    'stage-group': 576,
+    agent: 250,
+    skill: 240,
+    gate: 250,
+    default: 200,
+}
 
 /** Pixel height per node type, used by React Flow for edge routing. */
 export const NODE_HEIGHT: Record<string, number> = {
-  "stage-group": 300,
-  agent: 80,
-  skill: 70,
-  gate: 80,
-  default: 60,
-};
+    'stage-group': 300,
+    agent: 80,
+    skill: 70,
+    gate: 80,
+    default: 60,
+}
 
 // -- Public API ---------------------------------------------------------------
 
@@ -60,25 +60,25 @@ export const NODE_HEIGHT: Record<string, number> = {
  * @returns New array of nodes with computed positions, groups before children
  */
 export function applyGroupedColumnLayout(
-  nodes: Node<WorkflowNodeData>[],
-  _edges: Edge[],
+    nodes: Node<WorkflowNodeData>[],
+    _edges: Edge[]
 ): Node<WorkflowNodeData>[] {
-  // Separate group nodes from child nodes
-  const groupNodes = filter(nodes, (n) => n.data?.node_type === "stage-group");
-  const childNodes = filter(nodes, (n) => n.data?.node_type !== "stage-group");
+    // Separate group nodes from child nodes
+    const groupNodes = filter(nodes, (n) => n.data?.node_type === 'stage-group')
+    const childNodes = filter(nodes, (n) => n.data?.node_type !== 'stage-group')
 
-  // Position groups in a vertical stack (centered X, stacked Y)
-  let currentY = GROUP_Y_START;
-  const positionedGroups = groupNodes.map((node) => {
-    const height =
-      (node.style?.height as number) ?? NODE_HEIGHT["stage-group"] ?? 300;
-    const pos = { x: GROUP_X, y: currentY };
-    currentY += height + GROUP_Y_GAP;
-    return { ...node, position: pos };
-  });
+    // Position groups in a vertical stack (centered X, stacked Y)
+    let currentY = GROUP_Y_START
+    const positionedGroups = groupNodes.map((node) => {
+        const height =
+            (node.style?.height as number) ?? NODE_HEIGHT['stage-group'] ?? 300
+        const pos = { x: GROUP_X, y: currentY }
+        currentY += height + GROUP_Y_GAP
+        return { ...node, position: pos }
+    })
 
-  // Children keep their relative positions (set by topology via parentId).
-  // We don't reposition them — React Flow places them relative to parent.
-  // But we DO need to ensure they come AFTER their parent in the array.
-  return [...positionedGroups, ...childNodes];
+    // Children keep their relative positions (set by topology via parentId).
+    // We don't reposition them — React Flow places them relative to parent.
+    // But we DO need to ensure they come AFTER their parent in the array.
+    return [...positionedGroups, ...childNodes]
 }

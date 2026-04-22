@@ -6,12 +6,12 @@
  * on wiring and make these pure functions independently testable.
  */
 
-import { triageMode }    from "./modes/triage.js";
-import { researchMode }  from "./modes/research.js";
-import { architectMode } from "./modes/architect.js";
-import { executeMode }   from "./modes/execute.js";
-import { reviewMode }    from "./modes/review.js";
-import { finalizeMode }  from "./modes/finalize.js";
+import { architectMode } from './modes/architect.js'
+import { executeMode } from './modes/execute.js'
+import { finalizeMode } from './modes/finalize.js'
+import { researchMode } from './modes/research.js'
+import { reviewMode } from './modes/review.js'
+import { triageMode } from './modes/triage.js'
 
 // ---------------------------------------------------------------------------
 // Canonical pipeline step registry (display-oriented)
@@ -25,16 +25,16 @@ import { finalizeMode }  from "./modes/finalize.js";
  * and BARE_TO_NAMESPACED in `luca-store.ts` (historical migration map).
  */
 export const PIPELINE_STEPS_ORDERED = [
-  { id: triageMode.id,     label: triageMode.name },
-  { id: researchMode.id,   label: researchMode.name },
-  { id: architectMode.id,  label: architectMode.name },
-  { id: executeMode.id,    label: executeMode.name },
-  { id: reviewMode.id,     label: reviewMode.name },
-  { id: finalizeMode.id,   label: finalizeMode.name },
-] satisfies ReadonlyArray<{ id: string; label: string }>;
+    { id: triageMode.id, label: triageMode.name },
+    { id: researchMode.id, label: researchMode.name },
+    { id: architectMode.id, label: architectMode.name },
+    { id: executeMode.id, label: executeMode.name },
+    { id: reviewMode.id, label: reviewMode.name },
+    { id: finalizeMode.id, label: finalizeMode.name },
+] satisfies ReadonlyArray<{ id: string; label: string }>
 
 /** Union type of all pipeline step mode IDs (e.g. "luca:1-triage"). */
-export type PipelineStepId = (typeof PIPELINE_STEPS_ORDERED)[number]["id"];
+export type PipelineStepId = (typeof PIPELINE_STEPS_ORDERED)[number]['id']
 
 // ---------------------------------------------------------------------------
 // Progress header
@@ -49,24 +49,28 @@ export type PipelineStepId = (typeof PIPELINE_STEPS_ORDERED)[number]["id"];
  * Labels are derived from mode config .name fields (e.g. "luca: Execute") with the
  * "luca: " prefix stripped for compact display.
  */
-export function buildPipelineProgressHeader(modeId: PipelineStepId | string): string {
-  const currentIndex = PIPELINE_STEPS_ORDERED.findIndex((s) => s.id === modeId);
-  if (currentIndex === -1) return "";
+export function buildPipelineProgressHeader(
+    modeId: PipelineStepId | string
+): string {
+    const currentIndex = PIPELINE_STEPS_ORDERED.findIndex(
+        (s) => s.id === modeId
+    )
+    if (currentIndex === -1) return ''
 
-  const step = PIPELINE_STEPS_ORDERED[currentIndex]!;
+    const step = PIPELINE_STEPS_ORDERED[currentIndex]!
 
-  // Strip "luca: " prefix for compact display labels (e.g. "luca: Execute" → "Execute")
-  const short = (s: { label: string }) => s.label.replace(/^luca: /, '');
+    // Strip "luca: " prefix for compact display labels (e.g. "luca: Execute" → "Execute")
+    const short = (s: { label: string }) => s.label.replace(/^luca: /, '')
 
-  const line1 = `${short(step).toUpperCase()} MODE  ·  Step ${currentIndex + 1} of ${PIPELINE_STEPS_ORDERED.length}`;
+    const line1 = `${short(step).toUpperCase()} MODE  ·  Step ${currentIndex + 1} of ${PIPELINE_STEPS_ORDERED.length}`
 
-  const line2 = PIPELINE_STEPS_ORDERED.map((s, i) => {
-    if (i < currentIndex) return `✓ ${short(s)}`;
-    if (i === currentIndex) return `→ ${short(s)}`;
-    return `○ ${short(s)}`;
-  }).join("  ");
+    const line2 = PIPELINE_STEPS_ORDERED.map((s, i) => {
+        if (i < currentIndex) return `✓ ${short(s)}`
+        if (i === currentIndex) return `→ ${short(s)}`
+        return `○ ${short(s)}`
+    }).join('  ')
 
-  return `${line1}\n${line2}`;
+    return `${line1}\n${line2}`
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +87,7 @@ export function buildPipelineProgressHeader(modeId: PipelineStepId | string): st
  * Full XML-encoding is intentionally NOT applied.
  */
 export function wrapInSystemReminder(body: string): string {
-  // Escape only the sequence that would close the tag prematurely.
-  const safe = body.replace(/<\/system-reminder>/gi, "<\\/system-reminder>");
-  return `<system-reminder>\n${safe}\n</system-reminder>`;
+    // Escape only the sequence that would close the tag prematurely.
+    const safe = body.replace(/<\/system-reminder>/gi, '<\\/system-reminder>')
+    return `<system-reminder>\n${safe}\n</system-reminder>`
 }

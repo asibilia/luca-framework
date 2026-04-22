@@ -1,15 +1,16 @@
-"use client";
+'use client'
 
-import { useCallback, type ReactNode } from "react";
+import { useCallback, type ReactNode } from 'react'
+
 import {
-  ErrorBoundary as ReactErrorBoundary,
-  type FallbackProps,
-} from "react-error-boundary";
+    ErrorBoundary as ReactErrorBoundary,
+    type FallbackProps,
+} from 'react-error-boundary'
 
 interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  name?: string;
+    children: ReactNode
+    fallback?: ReactNode
+    name?: string
 }
 
 /**
@@ -28,70 +29,70 @@ interface ErrorBoundaryProps {
  * ```
  */
 export function ErrorBoundary({
-  children,
-  fallback,
-  name,
+    children,
+    fallback,
+    name,
 }: ErrorBoundaryProps) {
-  const handleError = useCallback(
-    (error: unknown, info: { componentStack?: string | null }) => {
-      console.error(
-        `[ErrorBoundary${name ? `:${name}` : ""}]`,
-        error,
-        info.componentStack,
-      );
-    },
-    [name],
-  );
+    const handleError = useCallback(
+        (error: unknown, info: { componentStack?: string | null }) => {
+            console.error(
+                `[ErrorBoundary${name ? `:${name}` : ''}]`,
+                error,
+                info.componentStack
+            )
+        },
+        [name]
+    )
 
-  if (fallback !== undefined) {
+    if (fallback !== undefined) {
+        return (
+            <ReactErrorBoundary fallback={fallback} onError={handleError}>
+                {children}
+            </ReactErrorBoundary>
+        )
+    }
+
     return (
-      <ReactErrorBoundary fallback={fallback} onError={handleError}>
-        {children}
-      </ReactErrorBoundary>
-    );
-  }
-
-  return (
-    <ReactErrorBoundary
-      FallbackComponent={DefaultFallback}
-      onError={handleError}
-    >
-      {children}
-    </ReactErrorBoundary>
-  );
+        <ReactErrorBoundary
+            FallbackComponent={DefaultFallback}
+            onError={handleError}
+        >
+            {children}
+        </ReactErrorBoundary>
+    )
 }
 
 /**
  * Default fallback UI matching the original error boundary design.
  */
 function DefaultFallback({ error, resetErrorBoundary }: FallbackProps) {
-  const errorMessage =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : null;
+    const errorMessage =
+        error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : null
 
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <h3 className="font-mono text-sm font-medium text-destructive">
-            Some data could not be loaded
-          </h3>
-          {errorMessage && (
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              {errorMessage}
-            </p>
-          )}
-          <button
-            onClick={resetErrorBoundary}
-            className="mt-3 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            Try again
-          </button>
+    return (
+        <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-start gap-3">
+                <div className="flex-1">
+                    <h3 className="font-mono text-sm font-medium text-destructive">
+                        Some data could not be loaded
+                    </h3>
+                    {errorMessage && (
+                        <p className="mt-1 font-mono text-xs text-muted-foreground">
+                            {errorMessage}
+                        </p>
+                    )}
+                    <button
+                        onClick={resetErrorBoundary}
+                        className="mt-3 rounded-md bg-primary px-3 py-1.5 font-mono text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                        Try again
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    )
 }

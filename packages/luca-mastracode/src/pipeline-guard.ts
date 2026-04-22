@@ -10,37 +10,37 @@
  * correlates tool_start → tool_end events via toolCallId to accurately detect
  * when the workflow-state tool's switch-mode action was invoked.
  */
-import { followUpRef, switchModeRef } from "./refs.js";
-import { readLucaState, writeLucaState } from "./luca-store.js";
-import { appendLedger } from "./session-ledger.js";
-import { PIPELINE_ORDER } from "./tools/workflow-state.js";
+import { readLucaState, writeLucaState } from './luca-store.js'
+import { followUpRef, switchModeRef } from './refs.js'
+import { appendLedger } from './session-ledger.js'
+import { PIPELINE_ORDER } from './tools/workflow-state.js'
 
-export { PIPELINE_ORDER };
-export const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER));
+export { PIPELINE_ORDER }
+export const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER))
 
 // ---------------------------------------------------------------------------
 // Turn tracking state
 // ---------------------------------------------------------------------------
 
 interface TurnState {
-  /** The pipeline mode this turn started in */
-  modeId: string;
-  /** Number of tool calls observed during this turn */
-  toolCallCount: number;
-  /** Whether switch-mode was successfully called */
-  switchModeCalled: boolean;
-  /** Consecutive enforcement nudges sent without a successful switch-mode */
-  consecutiveMisses: number;
+    /** The pipeline mode this turn started in */
+    modeId: string
+    /** Number of tool calls observed during this turn */
+    toolCallCount: number
+    /** Whether switch-mode was successfully called */
+    switchModeCalled: boolean
+    /** Consecutive enforcement nudges sent without a successful switch-mode */
+    consecutiveMisses: number
 }
 
 /** Active tool_start → toolName+args mapping for tool_end correlation */
 interface PendingToolCall {
-  toolName: string;
-  isSwitchMode: boolean;
+    toolName: string
+    isSwitchMode: boolean
 }
 
-let currentTurn: TurnState | null = null;
-const pendingToolCalls = new Map<string, PendingToolCall>();
+let currentTurn: TurnState | null = null
+const pendingToolCalls = new Map<string, PendingToolCall>()
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -52,18 +52,18 @@ const pendingToolCalls = new Map<string, PendingToolCall>();
  * (for escalation tracking).
  */
 export function startTurn(modeId: string): void {
-  const prevMisses =
-    currentTurn && currentTurn.modeId === modeId
-      ? currentTurn.consecutiveMisses
-      : 0;
+    const prevMisses =
+        currentTurn && currentTurn.modeId === modeId
+            ? currentTurn.consecutiveMisses
+            : 0
 
-  currentTurn = {
-    modeId,
-    toolCallCount: 0,
-    switchModeCalled: false,
-    consecutiveMisses: prevMisses,
-  };
-  pendingToolCalls.clear();
+    currentTurn = {
+        modeId,
+        toolCallCount: 0,
+        switchModeCalled: false,
+        consecutiveMisses: prevMisses,
+    }
+    pendingToolCalls.clear()
 }
 
 /**
@@ -74,28 +74,28 @@ export function startTurn(modeId: string): void {
  * workflow-state tool.
  */
 export function recordToolStart(
-  toolCallId: string,
-  toolName: string,
-  args: unknown,
+    toolCallId: string,
+    toolName: string,
+    args: unknown
 ): void {
-  if (!currentTurn) return;
-  currentTurn.toolCallCount++;
+    if (!currentTurn) return
+    currentTurn.toolCallCount++
 
-  // Check if this is a workflow-state switch-mode call
-  const isSwitchMode =
-    toolName === "workflowState" &&
-    typeof args === "object" &&
-    args !== null &&
-    (args as Record<string, unknown>).action === "switch-mode";
+    // Check if this is a workflow-state switch-mode call
+    const isSwitchMode =
+        toolName === 'workflowState' &&
+        typeof args === 'object' &&
+        args !== null &&
+        (args as Record<string, unknown>).action === 'switch-mode'
 
-  pendingToolCalls.set(toolCallId, { toolName, isSwitchMode });
+    pendingToolCalls.set(toolCallId, { toolName, isSwitchMode })
 
-  // Optimistic: mark switch-mode as called on tool_start.
-  // Even if the tool errors, the intent was there — we don't want to
-  // double-nudge for a transient failure.
-  if (isSwitchMode) {
-    currentTurn.switchModeCalled = true;
-  }
+    // Optimistic: mark switch-mode as called on tool_start.
+    // Even if the tool errors, the intent was there — we don't want to
+    // double-nudge for a transient failure.
+    if (isSwitchMode) {
+        currentTurn.switchModeCalled = true
+    }
 }
 
 /**
@@ -103,7 +103,7 @@ export function recordToolStart(
  * (or errored — we still count it as "attempted").
  */
 export function recordToolEnd(toolCallId: string): void {
-  pendingToolCalls.delete(toolCallId);
+    pendingToolCalls.delete(toolCallId)
 }
 
 /**
@@ -111,57 +111,57 @@ export function recordToolEnd(toolCallId: string): void {
  * needed (if any), or null if no enforcement is required.
  */
 export function checkTurnCompletion(reason: string | undefined): {
-  action: "nudge" | "force";
-  modeId: string;
-  nextMode: string;
-  consecutiveMisses: number;
-  toolCallCount: number;
+    action: 'nudge' | 'force'
+    modeId: string
+    nextMode: string
+    consecutiveMisses: number
+    toolCallCount: number
 } | null {
-  if (!currentTurn) return null;
+    if (!currentTurn) return null
 
-  // Only enforce on normal completions — not aborts, errors, or suspensions
-  if (reason !== "complete") {
-    return null;
-  }
+    // Only enforce on normal completions — not aborts, errors, or suspensions
+    if (reason !== 'complete') {
+        return null
+    }
 
-  // Only enforce on pipeline modes
-  if (!PIPELINE_MODES.has(currentTurn.modeId)) {
-    return null;
-  }
+    // Only enforce on pipeline modes
+    if (!PIPELINE_MODES.has(currentTurn.modeId)) {
+        return null
+    }
 
-  // Don't enforce if the pipeline is not actively running — prevents
-  // stale guard state from triggering false enforcement after completion.
-  const state = readLucaState();
-  if (!state.pipelineStep || state.pipelineStep === "idle") {
-    return null;
-  }
+    // Don't enforce if the pipeline is not actively running — prevents
+    // stale guard state from triggering false enforcement after completion.
+    const state = readLucaState()
+    if (!state.pipelineStep || state.pipelineStep === 'idle') {
+        return null
+    }
 
-  // If switch-mode was called, all good
-  if (currentTurn.switchModeCalled) {
-    currentTurn.consecutiveMisses = 0;
-    return null;
-  }
+    // If switch-mode was called, all good
+    if (currentTurn.switchModeCalled) {
+        currentTurn.consecutiveMisses = 0
+        return null
+    }
 
-  // Finalize is the last step — no switch-mode needed
-  if (currentTurn.modeId === "luca:6-finalize") {
-    return null;
-  }
+    // Finalize is the last step — no switch-mode needed
+    if (currentTurn.modeId === 'luca:6-finalize') {
+        return null
+    }
 
-  // Agent completed without calling switch-mode — enforcement needed
-  const nextMode = PIPELINE_ORDER[currentTurn.modeId];
-  if (!nextMode) return null;
+    // Agent completed without calling switch-mode — enforcement needed
+    const nextMode = PIPELINE_ORDER[currentTurn.modeId]
+    if (!nextMode) return null
 
-  currentTurn.consecutiveMisses++;
+    currentTurn.consecutiveMisses++
 
-  const action = currentTurn.consecutiveMisses >= 2 ? "force" : "nudge";
+    const action = currentTurn.consecutiveMisses >= 2 ? 'force' : 'nudge'
 
-  return {
-    action,
-    modeId: currentTurn.modeId,
-    nextMode,
-    consecutiveMisses: currentTurn.consecutiveMisses,
-    toolCallCount: currentTurn.toolCallCount,
-  };
+    return {
+        action,
+        modeId: currentTurn.modeId,
+        nextMode,
+        consecutiveMisses: currentTurn.consecutiveMisses,
+        toolCallCount: currentTurn.toolCallCount,
+    }
 }
 
 /**
@@ -169,15 +169,15 @@ export function checkTurnCompletion(reason: string | undefined): {
  * a pipeline mode or when the pipeline completes.
  */
 export function resetTurn(): void {
-  currentTurn = null;
-  pendingToolCalls.clear();
+    currentTurn = null
+    pendingToolCalls.clear()
 }
 
 /**
  * Get current turn state (for testing/debugging).
  */
 export function getCurrentTurn(): TurnState | null {
-  return currentTurn ? { ...currentTurn } : null;
+    return currentTurn ? { ...currentTurn } : null
 }
 
 // ---------------------------------------------------------------------------
@@ -189,56 +189,56 @@ export function getCurrentTurn(): TurnState | null {
  * Handles both nudge (followUp message) and force (direct switchMode).
  */
 export async function executeEnforcement(enforcement: {
-  action: "nudge" | "force";
-  modeId: string;
-  nextMode: string;
-  consecutiveMisses: number;
-  toolCallCount: number;
+    action: 'nudge' | 'force'
+    modeId: string
+    nextMode: string
+    consecutiveMisses: number
+    toolCallCount: number
 }): Promise<void> {
-  const { action, modeId, nextMode, consecutiveMisses, toolCallCount } =
-    enforcement;
+    const { action, modeId, nextMode, consecutiveMisses, toolCallCount } =
+        enforcement
 
-  if (action === "nudge") {
-    appendLedger("pipeline-enforcement", {
-      mode: modeId,
-      nextMode,
-      reason: "missing-switch-mode",
-      toolCallCount,
-      consecutiveMisses,
-    });
+    if (action === 'nudge') {
+        appendLedger('pipeline-enforcement', {
+            mode: modeId,
+            nextMode,
+            reason: 'missing-switch-mode',
+            toolCallCount,
+            consecutiveMisses,
+        })
 
-    if (followUpRef.current) {
-      await followUpRef.current({
-        content: [
-          `⚠ **Pipeline enforcement**: You completed your turn in **${modeId}** mode without calling \`workflowState(action: "switch-mode")\`.`,
-          ``,
-          `You **MUST** transition to the next pipeline step now. Call:`,
-          `\`\`\``,
-          `workflowState(action: "switch-mode", targetMode: "${nextMode}")`,
-          `\`\`\``,
-          ``,
-          `Do NOT do any other work. Call switch-mode immediately.`,
-        ].join("\n"),
-      });
+        if (followUpRef.current) {
+            await followUpRef.current({
+                content: [
+                    `⚠ **Pipeline enforcement**: You completed your turn in **${modeId}** mode without calling \`workflowState(action: "switch-mode")\`.`,
+                    ``,
+                    `You **MUST** transition to the next pipeline step now. Call:`,
+                    `\`\`\``,
+                    `workflowState(action: "switch-mode", targetMode: "${nextMode}")`,
+                    `\`\`\``,
+                    ``,
+                    `Do NOT do any other work. Call switch-mode immediately.`,
+                ].join('\n'),
+            })
+        }
+    } else {
+        // Force transition — agent ignored the nudge
+        appendLedger('pipeline-forced-transition', {
+            mode: modeId,
+            nextMode,
+            reason: 'agent-ignored-nudge',
+            consecutiveMisses,
+        })
+
+        // Write state as if the agent had called switch-mode properly
+        writeLucaState({ pipelineStep: nextMode, nextMode })
+        appendLedger('mode-transition', { from: modeId, to: nextMode })
+
+        if (switchModeRef.current) {
+            await switchModeRef.current(nextMode)
+        }
+
+        // Reset after forced transition
+        resetTurn()
     }
-  } else {
-    // Force transition — agent ignored the nudge
-    appendLedger("pipeline-forced-transition", {
-      mode: modeId,
-      nextMode,
-      reason: "agent-ignored-nudge",
-      consecutiveMisses,
-    });
-
-    // Write state as if the agent had called switch-mode properly
-    writeLucaState({ pipelineStep: nextMode, nextMode });
-    appendLedger("mode-transition", { from: modeId, to: nextMode });
-
-    if (switchModeRef.current) {
-      await switchModeRef.current(nextMode);
-    }
-
-    // Reset after forced transition
-    resetTurn();
-  }
 }

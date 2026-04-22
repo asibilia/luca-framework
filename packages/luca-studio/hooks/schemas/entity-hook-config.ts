@@ -13,21 +13,19 @@
  * @module entity-hook-config
  */
 
-import { z } from "zod";
+import type { WritableAtom } from 'jotai'
+import { z } from 'zod'
 
-import type { WritableAtom } from "jotai";
-
+import type { FieldKeyMap } from '~/hooks/helpers/merge-field-overrides'
+import { agentRegistryAtom } from '~/stores/config-atoms'
 import {
-  agentDraftAtom,
-  agentHistoryAtom,
-  skillDraftAtom,
-  skillHistoryAtom,
-  ruleDraftAtom,
-  ruleHistoryAtom,
-} from "~/stores/entity-atoms";
-import { agentRegistryAtom } from "~/stores/config-atoms";
-
-import type { FieldKeyMap } from "~/hooks/helpers/merge-field-overrides";
+    agentDraftAtom,
+    agentHistoryAtom,
+    skillDraftAtom,
+    skillHistoryAtom,
+    ruleDraftAtom,
+    ruleHistoryAtom,
+} from '~/stores/entity-atoms'
 
 // ---------------------------------------------------------------------------
 // Shared metadata extractor
@@ -45,20 +43,20 @@ import type { FieldKeyMap } from "~/hooks/helpers/merge-field-overrides";
  * @returns Metadata object ready for JSON serialization
  */
 function extractMetadata(
-  draft: Record<string, unknown>,
-  domainDefault: string,
+    draft: Record<string, unknown>,
+    domainDefault: string
 ): Record<string, unknown> {
-  return {
-    varName: (draft.varName as string) ?? "",
-    domain: (draft.domain as string) ?? domainDefault,
-    imports: (draft.imports as string[]) ?? [],
-    sharedConstants: (draft.sharedConstants as string[]) ?? [],
-    exportVarName: (draft.exportVarName as string) ?? "",
-    factoryFn: (draft.factoryFn as string) ?? "",
-    configType: (draft.configType as string) ?? "",
-    prefix: (draft.prefix as string) ?? "",
-    suffix: (draft.suffix as string) ?? "",
-  };
+    return {
+        varName: (draft.varName as string) ?? '',
+        domain: (draft.domain as string) ?? domainDefault,
+        imports: (draft.imports as string[]) ?? [],
+        sharedConstants: (draft.sharedConstants as string[]) ?? [],
+        exportVarName: (draft.exportVarName as string) ?? '',
+        factoryFn: (draft.factoryFn as string) ?? '',
+        configType: (draft.configType as string) ?? '',
+        prefix: (draft.prefix as string) ?? '',
+        suffix: (draft.suffix as string) ?? '',
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +69,7 @@ function extractMetadata(
  * Validates that each entry is a record of field names to arrays of config key
  * variants (e.g., both snake_case and camelCase alternatives).
  */
-export const FieldKeyMapSchema = z.record(z.string(), z.array(z.string()));
+export const FieldKeyMapSchema = z.record(z.string(), z.array(z.string()))
 
 /**
  * Zod schema for the subset of `EntitySaveConfig` fields that are
@@ -81,11 +79,11 @@ export const FieldKeyMapSchema = z.record(z.string(), z.array(z.string()));
  * Used to validate the per-entity config constants at module load time.
  */
 export const EntitySaveStaticConfigSchema = z.object({
-  entityType: z.string().min(1),
-  entitySingular: z.string().min(1),
-  endpoint: z.string().startsWith("/"),
-  fieldKeyMap: FieldKeyMapSchema,
-});
+    entityType: z.string().min(1),
+    entitySingular: z.string().min(1),
+    endpoint: z.string().startsWith('/'),
+    fieldKeyMap: FieldKeyMapSchema,
+})
 
 /**
  * Validate a FieldKeyMap value via safeParse. Logs a development warning
@@ -96,17 +94,17 @@ export const EntitySaveStaticConfigSchema = z.object({
  * @returns The validated FieldKeyMap, or the raw value if validation fails
  */
 function validateFieldKeyMap(raw: FieldKeyMap, label: string): FieldKeyMap {
-  const result = FieldKeyMapSchema.safeParse(raw);
-  if (!result.success) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn(
-        `[entity-hook-config] FieldKeyMap validation failed for ${label}:`,
-        result.error.issues,
-      );
+    const result = FieldKeyMapSchema.safeParse(raw)
+    if (!result.success) {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn(
+                `[entity-hook-config] FieldKeyMap validation failed for ${label}:`,
+                result.error.issues
+            )
+        }
+        return raw
     }
-    return raw;
-  }
-  return result.data;
+    return result.data
 }
 
 // ---------------------------------------------------------------------------
@@ -120,21 +118,21 @@ function validateFieldKeyMap(raw: FieldKeyMap, label: string): FieldKeyMap {
  * for merging overrides, and a metadata extractor.
  */
 export type EntitySaveConfig = {
-  /** Entity type identifier (e.g., "agents", "skills", "rules"). */
-  entityType: string;
-  /** Singular entity label for the entity key (e.g., "agent", "skill", "rule"). */
-  entitySingular: string;
-  /** API endpoint path (e.g., "/api/entities/agents"). */
-  endpoint: string;
-  /** Jotai atomFamily factory for the draft atom, keyed by entity name. */
-  draftAtomFactory: (
-    name: string,
-  ) => WritableAtom<Record<string, unknown>, [Record<string, unknown>], void>;
-  /** Field-to-config-key mapping for mergeFieldOverrides. */
-  fieldKeyMap: FieldKeyMap;
-  /** Extract metadata from the draft for the PUT payload. */
-  extractMetadata: (draft: Record<string, unknown>) => Record<string, unknown>;
-};
+    /** Entity type identifier (e.g., "agents", "skills", "rules"). */
+    entityType: string
+    /** Singular entity label for the entity key (e.g., "agent", "skill", "rule"). */
+    entitySingular: string
+    /** API endpoint path (e.g., "/api/entities/agents"). */
+    endpoint: string
+    /** Jotai atomFamily factory for the draft atom, keyed by entity name. */
+    draftAtomFactory: (
+        name: string
+    ) => WritableAtom<Record<string, unknown>, [Record<string, unknown>], void>
+    /** Field-to-config-key mapping for mergeFieldOverrides. */
+    fieldKeyMap: FieldKeyMap
+    /** Extract metadata from the draft for the PUT payload. */
+    extractMetadata: (draft: Record<string, unknown>) => Record<string, unknown>
+}
 
 /**
  * Configuration for the generic `useEntityList` hook.
@@ -143,13 +141,13 @@ export type EntitySaveConfig = {
  * messages, and an optional registry atom to populate on fetch success.
  */
 export type EntityListConfig = {
-  /** Entity type identifier (e.g., "agents", "skills", "rules"). */
-  entityType: string;
-  /** API endpoint path (e.g., "/api/entities/agents"). */
-  endpoint: string;
-  /** Optional Jotai atom to populate with fetched entities (server-state mirror). */
-  registryAtom?: WritableAtom<unknown, [unknown], void>;
-};
+    /** Entity type identifier (e.g., "agents", "skills", "rules"). */
+    entityType: string
+    /** API endpoint path (e.g., "/api/entities/agents"). */
+    endpoint: string
+    /** Optional Jotai atom to populate with fetched entities (server-state mirror). */
+    registryAtom?: WritableAtom<unknown, [unknown], void>
+}
 
 /**
  * Configuration for the generic `useEntityDetail` hook.
@@ -158,18 +156,18 @@ export type EntityListConfig = {
  * the API endpoint, and the entity type label.
  */
 export type EntityDetailConfig = {
-  /** Entity type identifier (e.g., "agents", "skills", "rules"). */
-  entityType: string;
-  /** API endpoint path (e.g., "/api/entities/agents"). */
-  endpoint: string;
-  /** Jotai atomFamily factory for the draft atom, keyed by entity name. */
-  draftAtomFactory: (
-    name: string,
-  ) => WritableAtom<Record<string, unknown>, [Record<string, unknown>], void>;
-  /** Jotai atomFamily factory for the history atom, keyed by entity name. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  historyAtomFactory: (name: string) => WritableAtom<any, [any], void>;
-};
+    /** Entity type identifier (e.g., "agents", "skills", "rules"). */
+    entityType: string
+    /** API endpoint path (e.g., "/api/entities/agents"). */
+    endpoint: string
+    /** Jotai atomFamily factory for the draft atom, keyed by entity name. */
+    draftAtomFactory: (
+        name: string
+    ) => WritableAtom<Record<string, unknown>, [Record<string, unknown>], void>
+    /** Jotai atomFamily factory for the history atom, keyed by entity name. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    historyAtomFactory: (name: string) => WritableAtom<any, [any], void>
+}
 
 // ---------------------------------------------------------------------------
 // Per-entity config constants: SAVE
@@ -177,52 +175,52 @@ export type EntityDetailConfig = {
 
 /** Agent-specific save configuration. */
 export const AGENT_SAVE_CONFIG: EntitySaveConfig = {
-  entityType: "agents",
-  entitySingular: "agent",
-  endpoint: "/api/entities/agents",
-  draftAtomFactory: agentDraftAtom,
-  fieldKeyMap: validateFieldKeyMap(
-    {
-      description: ["description"],
-      modelTier: ["model_tier", "modelTier"],
-      purpose: ["purpose"],
-      stage: ["stage"],
-    },
-    "AGENT_SAVE_CONFIG",
-  ),
-  extractMetadata: (draft) => extractMetadata(draft, "agents"),
-};
+    entityType: 'agents',
+    entitySingular: 'agent',
+    endpoint: '/api/entities/agents',
+    draftAtomFactory: agentDraftAtom,
+    fieldKeyMap: validateFieldKeyMap(
+        {
+            description: ['description'],
+            modelTier: ['model_tier', 'modelTier'],
+            purpose: ['purpose'],
+            stage: ['stage'],
+        },
+        'AGENT_SAVE_CONFIG'
+    ),
+    extractMetadata: (draft) => extractMetadata(draft, 'agents'),
+}
 
 /** Skill-specific save configuration. */
 export const SKILL_SAVE_CONFIG: EntitySaveConfig = {
-  entityType: "skills",
-  entitySingular: "skill",
-  endpoint: "/api/entities/skills",
-  draftAtomFactory: skillDraftAtom,
-  fieldKeyMap: validateFieldKeyMap(
-    {
-      description: ["description"],
-    },
-    "SKILL_SAVE_CONFIG",
-  ),
-  extractMetadata: (draft) => extractMetadata(draft, "skills"),
-};
+    entityType: 'skills',
+    entitySingular: 'skill',
+    endpoint: '/api/entities/skills',
+    draftAtomFactory: skillDraftAtom,
+    fieldKeyMap: validateFieldKeyMap(
+        {
+            description: ['description'],
+        },
+        'SKILL_SAVE_CONFIG'
+    ),
+    extractMetadata: (draft) => extractMetadata(draft, 'skills'),
+}
 
 /** Rule-specific save configuration. */
 export const RULE_SAVE_CONFIG: EntitySaveConfig = {
-  entityType: "rules",
-  entitySingular: "rule",
-  endpoint: "/api/entities/rules",
-  draftAtomFactory: ruleDraftAtom,
-  fieldKeyMap: validateFieldKeyMap(
-    {
-      description: ["description"],
-      alwaysApply: ["alwaysApply"],
-    },
-    "RULE_SAVE_CONFIG",
-  ),
-  extractMetadata: (draft) => extractMetadata(draft, "rules"),
-};
+    entityType: 'rules',
+    entitySingular: 'rule',
+    endpoint: '/api/entities/rules',
+    draftAtomFactory: ruleDraftAtom,
+    fieldKeyMap: validateFieldKeyMap(
+        {
+            description: ['description'],
+            alwaysApply: ['alwaysApply'],
+        },
+        'RULE_SAVE_CONFIG'
+    ),
+    extractMetadata: (draft) => extractMetadata(draft, 'rules'),
+}
 
 // ---------------------------------------------------------------------------
 // Per-entity config constants: LIST
@@ -230,22 +228,22 @@ export const RULE_SAVE_CONFIG: EntitySaveConfig = {
 
 /** Agent-specific list configuration. */
 export const AGENT_LIST_CONFIG: EntityListConfig = {
-  entityType: "agents",
-  endpoint: "/api/entities/agents",
-  registryAtom: agentRegistryAtom as WritableAtom<unknown, [unknown], void>,
-};
+    entityType: 'agents',
+    endpoint: '/api/entities/agents',
+    registryAtom: agentRegistryAtom as WritableAtom<unknown, [unknown], void>,
+}
 
 /** Skill-specific list configuration. */
 export const SKILL_LIST_CONFIG: EntityListConfig = {
-  entityType: "skills",
-  endpoint: "/api/entities/skills",
-};
+    entityType: 'skills',
+    endpoint: '/api/entities/skills',
+}
 
 /** Rule-specific list configuration. */
 export const RULE_LIST_CONFIG: EntityListConfig = {
-  entityType: "rules",
-  endpoint: "/api/entities/rules",
-};
+    entityType: 'rules',
+    endpoint: '/api/entities/rules',
+}
 
 // ---------------------------------------------------------------------------
 // Per-entity config constants: DETAIL
@@ -253,30 +251,30 @@ export const RULE_LIST_CONFIG: EntityListConfig = {
 
 /** Agent-specific detail configuration. */
 export const AGENT_DETAIL_CONFIG: EntityDetailConfig = {
-  entityType: "agents",
-  endpoint: "/api/entities/agents",
-  draftAtomFactory: agentDraftAtom,
-  historyAtomFactory: agentHistoryAtom as unknown as (
-    name: string,
-  ) => WritableAtom<unknown, [unknown], void>,
-};
+    entityType: 'agents',
+    endpoint: '/api/entities/agents',
+    draftAtomFactory: agentDraftAtom,
+    historyAtomFactory: agentHistoryAtom as unknown as (
+        name: string
+    ) => WritableAtom<unknown, [unknown], void>,
+}
 
 /** Skill-specific detail configuration. */
 export const SKILL_DETAIL_CONFIG: EntityDetailConfig = {
-  entityType: "skills",
-  endpoint: "/api/entities/skills",
-  draftAtomFactory: skillDraftAtom,
-  historyAtomFactory: skillHistoryAtom as unknown as (
-    name: string,
-  ) => WritableAtom<unknown, [unknown], void>,
-};
+    entityType: 'skills',
+    endpoint: '/api/entities/skills',
+    draftAtomFactory: skillDraftAtom,
+    historyAtomFactory: skillHistoryAtom as unknown as (
+        name: string
+    ) => WritableAtom<unknown, [unknown], void>,
+}
 
 /** Rule-specific detail configuration. */
 export const RULE_DETAIL_CONFIG: EntityDetailConfig = {
-  entityType: "rules",
-  endpoint: "/api/entities/rules",
-  draftAtomFactory: ruleDraftAtom,
-  historyAtomFactory: ruleHistoryAtom as unknown as (
-    name: string,
-  ) => WritableAtom<unknown, [unknown], void>,
-};
+    entityType: 'rules',
+    endpoint: '/api/entities/rules',
+    draftAtomFactory: ruleDraftAtom,
+    historyAtomFactory: ruleHistoryAtom as unknown as (
+        name: string
+    ) => WritableAtom<unknown, [unknown], void>,
+}

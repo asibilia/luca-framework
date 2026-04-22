@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Vault page redirect.
@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * Redirects to /memory?tab=health for backward compatibility.
  */
 export default function VaultPage() {
-  redirect("/memory?tab=health");
+    redirect('/memory?tab=health')
 }

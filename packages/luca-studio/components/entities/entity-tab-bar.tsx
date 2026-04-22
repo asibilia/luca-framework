@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
 /** Tab identifiers for the entity deep-dive view. */
-export type TabId = "timeline" | "relationships" | "engrams" | "co-occurrences";
+export type TabId = 'timeline' | 'relationships' | 'engrams' | 'co-occurrences'
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: "timeline", label: "Timeline" },
-  { id: "relationships", label: "Relationships" },
-  { id: "engrams", label: "Engrams" },
-  { id: "co-occurrences", label: "Co-occurrences" },
-];
+    { id: 'timeline', label: 'Timeline' },
+    { id: 'relationships', label: 'Relationships' },
+    { id: 'engrams', label: 'Engrams' },
+    { id: 'co-occurrences', label: 'Co-occurrences' },
+]
 
 /**
  * Tab bar for switching between entity deep-dive sections.
@@ -17,31 +17,31 @@ const TABS: Array<{ id: TabId; label: string }> = [
  * @param onTabChange - Callback when a tab is clicked
  */
 export function EntityTabBar({
-  activeTab,
-  onTabChange,
+    activeTab,
+    onTabChange,
 }: {
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
+    activeTab: TabId
+    onTabChange: (tab: TabId) => void
 }) {
-  return (
-    <div className="flex gap-1 border-b border-border">
-      {TABS.map((tab) => {
-        const isActive = tab.id === activeTab;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={`px-4 py-2 text-sm rounded-t-md transition-colors ${
-              isActive
-                ? "bg-primary/10 text-primary font-medium border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+    return (
+        <div className="flex gap-1 border-b border-border">
+            {TABS.map((tab) => {
+                const isActive = tab.id === activeTab
+                return (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => onTabChange(tab.id)}
+                        className={`px-4 py-2 text-sm rounded-t-md transition-colors ${
+                            isActive
+                                ? 'bg-primary/10 text-primary font-medium border-b-2 border-primary'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                )
+            })}
+        </div>
+    )
 }

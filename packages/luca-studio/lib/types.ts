@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod'
 
 /**
  * Studio-local type definitions.
@@ -34,48 +34,48 @@ import { z } from "zod";
  * Uses snake_case for API compatibility.
  */
 export const ObserverEventSchema = z.object({
-  event_type: z.string(),
-  event_subtype: z.string().optional(),
-  session_id: z.string().optional(),
-  timestamp: z.string().optional(),
-  payload: z.record(z.unknown()).optional(),
-  agent_name: z.string().optional(),
-  tool_name: z.string().optional(),
-  file_path: z.string().optional(),
-  duration_ms: z.number().optional(),
-  status: z.string().optional(),
-  phase_id: z.number().optional(),
-  complexity: z.string().optional(),
-});
+    event_type: z.string(),
+    event_subtype: z.string().optional(),
+    session_id: z.string().optional(),
+    timestamp: z.string().optional(),
+    payload: z.record(z.unknown()).optional(),
+    agent_name: z.string().optional(),
+    tool_name: z.string().optional(),
+    file_path: z.string().optional(),
+    duration_ms: z.number().optional(),
+    status: z.string().optional(),
+    phase_id: z.number().optional(),
+    complexity: z.string().optional(),
+})
 
-export type ObserverEvent = z.infer<typeof ObserverEventSchema>;
+export type ObserverEvent = z.infer<typeof ObserverEventSchema>
 
 /**
  * Internal type: Stored event with auto-generated fields.
  */
 export const StoredEventSchema = ObserverEventSchema.extend({
-  id: z.number(),
-  timestamp_ms: z.number(),
-});
+    id: z.number(),
+    timestamp_ms: z.number(),
+})
 
-export type StoredEvent = z.infer<typeof StoredEventSchema>;
+export type StoredEvent = z.infer<typeof StoredEventSchema>
 
 /**
  * Internal type: Session record.
  */
 export const SessionRecordSchema = z.object({
-  id: z.string(),
-  started_at: z.string(),
-  ended_at: z.string().optional(),
-  ticket_id: z.string().optional(),
-  branch: z.string().optional(),
-  complexity: z.string().optional(),
-  status: z.string().default("active"),
-  total_events: z.number().default(0),
-  metadata: z.record(z.unknown()).default({}),
-});
+    id: z.string(),
+    started_at: z.string(),
+    ended_at: z.string().optional(),
+    ticket_id: z.string().optional(),
+    branch: z.string().optional(),
+    complexity: z.string().optional(),
+    status: z.string().default('active'),
+    total_events: z.number().default(0),
+    metadata: z.record(z.unknown()).default({}),
+})
 
-export type SessionRecord = z.infer<typeof SessionRecordSchema>;
+export type SessionRecord = z.infer<typeof SessionRecordSchema>
 
 /**
  * API Response: Event ingestion acknowledgment.
@@ -83,28 +83,28 @@ export type SessionRecord = z.infer<typeof SessionRecordSchema>;
  * Uses snake_case for API compatibility.
  */
 export const EventResponseSchema = z.object({
-  id: z.number(),
-  received: z.boolean(),
-});
+    id: z.number(),
+    received: z.boolean(),
+})
 
-export type EventResponse = z.infer<typeof EventResponseSchema>;
+export type EventResponse = z.infer<typeof EventResponseSchema>
 
 /**
  * Workflow state snapshot (read from .planning/state.json via bridge).
  */
 export const WorkflowSnapshotSchema = z.object({
-  workflow_state: z.string().default("idle"),
-  current_phase: z.number().default(0),
-  current_plan: z.string().default(""),
-  complexity: z.string().default("MODERATE"),
-  oversight: z.string().default("milestone"),
-  ticket_id: z.string().default(""),
-  branch: z.string().default(""),
-  session_id: z.string().default(""),
-  errors: z.array(z.string()).default([]),
-});
+    workflow_state: z.string().default('idle'),
+    current_phase: z.number().default(0),
+    current_plan: z.string().default(''),
+    complexity: z.string().default('MODERATE'),
+    oversight: z.string().default('milestone'),
+    ticket_id: z.string().default(''),
+    branch: z.string().default(''),
+    session_id: z.string().default(''),
+    errors: z.array(z.string()).default([]),
+})
 
-export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>;
+export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>
 
 // ─── Ledger Entry Schema ─────────────────────────────────────────────────────
 
@@ -122,19 +122,19 @@ export type WorkflowSnapshot = z.infer<typeof WorkflowSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const LedgerEntrySchema = z.object({
-  previous_state: z.string(),
-  current_state: z.string(),
-  event_type: z.string(),
-  event_data: z.record(z.unknown()).default({}),
-  actions_executed: z.array(z.string()).default([]),
-  context: z.record(z.unknown()).default({}),
-  timestamp: z.string().default(""),
-  session_id: z.string().default(""),
-  sequence_number: z.number().int().nonnegative(),
-  parent_id: z.number().int().nonnegative().nullable().default(null),
-});
+    previous_state: z.string(),
+    current_state: z.string(),
+    event_type: z.string(),
+    event_data: z.record(z.unknown()).default({}),
+    actions_executed: z.array(z.string()).default([]),
+    context: z.record(z.unknown()).default({}),
+    timestamp: z.string().default(''),
+    session_id: z.string().default(''),
+    sequence_number: z.number().int().nonnegative(),
+    parent_id: z.number().int().nonnegative().nullable().default(null),
+})
 
-export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
+export type LedgerEntry = z.infer<typeof LedgerEntrySchema>
 
 // ─── Checks Result Snapshot Schemas ──────────────────────────────────────────
 
@@ -151,15 +151,15 @@ export type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
  * Uses snake_case for API compatibility.
  */
 export const ParsedErrorSnapshotSchema = z.object({
-  file: z.string(),
-  line: z.number().optional(),
-  column: z.number().optional(),
-  message: z.string(),
-  code: z.string().optional(),
-  severity: z.enum(["error", "warning"]),
-});
+    file: z.string(),
+    line: z.number().optional(),
+    column: z.number().optional(),
+    message: z.string(),
+    code: z.string().optional(),
+    severity: z.enum(['error', 'warning']),
+})
 
-export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
+export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>
 
 /**
  * Studio-local mirror of luca-framework's CheckResult.
@@ -173,16 +173,16 @@ export type ParsedErrorSnapshot = z.infer<typeof ParsedErrorSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const CheckResultSnapshotSchema = z.object({
-  name: z.string(),
-  status: z.enum(["passed", "failed", "skipped", "timeout"]),
-  exit_code: z.number().int(),
-  errors: z.array(ParsedErrorSnapshotSchema).default([]),
-  warnings: z.array(ParsedErrorSnapshotSchema).default([]),
-  raw_output: z.string().default(""),
-  duration: z.number().nonnegative().default(0),
-});
+    name: z.string(),
+    status: z.enum(['passed', 'failed', 'skipped', 'timeout']),
+    exit_code: z.number().int(),
+    errors: z.array(ParsedErrorSnapshotSchema).default([]),
+    warnings: z.array(ParsedErrorSnapshotSchema).default([]),
+    raw_output: z.string().default(''),
+    duration: z.number().nonnegative().default(0),
+})
 
-export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
+export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>
 
 /**
  * Studio-local mirror of luca-framework's ChecksResult.
@@ -196,15 +196,15 @@ export type CheckResultSnapshot = z.infer<typeof CheckResultSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const ChecksResultSnapshotSchema = z.object({
-  status: z.enum(["passed", "failed"]),
-  checks: z.array(CheckResultSnapshotSchema).default([]),
-  total_errors: z.number().int().nonnegative().default(0),
-  total_warnings: z.number().int().nonnegative().default(0),
-  duration: z.number().nonnegative().default(0),
-  timestamp: z.string().default(""),
-});
+    status: z.enum(['passed', 'failed']),
+    checks: z.array(CheckResultSnapshotSchema).default([]),
+    total_errors: z.number().int().nonnegative().default(0),
+    total_warnings: z.number().int().nonnegative().default(0),
+    duration: z.number().nonnegative().default(0),
+    timestamp: z.string().default(''),
+})
 
-export type ChecksResultSnapshot = z.infer<typeof ChecksResultSnapshotSchema>;
+export type ChecksResultSnapshot = z.infer<typeof ChecksResultSnapshotSchema>
 
 // ─── Iteration Snapshot Schemas ──────────────────────────────────────────────
 
@@ -220,15 +220,15 @@ export type ChecksResultSnapshot = z.infer<typeof ChecksResultSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const ConvergenceSignalsSnapshotSchema = z.object({
-  error_count_delta: z.number().int(),
-  fingerprint_overlap: z.number().min(0).max(1),
-  artifact_change_delta: z.number().int().nonnegative(),
-  semantic_overlap: z.number().min(0).max(1).optional(),
-});
+    error_count_delta: z.number().int(),
+    fingerprint_overlap: z.number().min(0).max(1),
+    artifact_change_delta: z.number().int().nonnegative(),
+    semantic_overlap: z.number().min(0).max(1).optional(),
+})
 
 export type ConvergenceSignalsSnapshot = z.infer<
-  typeof ConvergenceSignalsSnapshotSchema
->;
+    typeof ConvergenceSignalsSnapshotSchema
+>
 
 /**
  * Studio-local mirror of luca-framework's IterationRecord.
@@ -238,26 +238,26 @@ export type ConvergenceSignalsSnapshot = z.infer<
  * Uses snake_case for API compatibility.
  */
 export const IterationRecordSnapshotSchema = z.object({
-  tag: z.string(),
-  phase: z.number().int().positive(),
-  loop: z.enum(["checks", "verify"]),
-  iteration: z.number().int().positive(),
-  error_count: z.number().int().nonnegative(),
-  error_delta: z.number().int(),
-  convergence_status: z.enum(["improved", "stalled", "regressed"]),
-  stale_count: z.number().int().nonnegative(),
-  permanent_errors: z.array(z.string()).default([]),
-  correctable_errors: z.array(z.string()).default([]),
-  transient_errors: z.array(z.string()).default([]),
-  artifacts_delta: z.number().int().nonnegative(),
-  agent_invoked: z.string(),
-  duration_ms: z.number().int().nonnegative(),
-  timestamp: z.string(),
-});
+    tag: z.string(),
+    phase: z.number().int().positive(),
+    loop: z.enum(['checks', 'verify']),
+    iteration: z.number().int().positive(),
+    error_count: z.number().int().nonnegative(),
+    error_delta: z.number().int(),
+    convergence_status: z.enum(['improved', 'stalled', 'regressed']),
+    stale_count: z.number().int().nonnegative(),
+    permanent_errors: z.array(z.string()).default([]),
+    correctable_errors: z.array(z.string()).default([]),
+    transient_errors: z.array(z.string()).default([]),
+    artifacts_delta: z.number().int().nonnegative(),
+    agent_invoked: z.string(),
+    duration_ms: z.number().int().nonnegative(),
+    timestamp: z.string(),
+})
 
 export type IterationRecordSnapshot = z.infer<
-  typeof IterationRecordSnapshotSchema
->;
+    typeof IterationRecordSnapshotSchema
+>
 
 /**
  * Studio-local mirror of luca-framework's BudgetState.
@@ -266,13 +266,13 @@ export type IterationRecordSnapshot = z.infer<
  * Uses snake_case for API compatibility.
  */
 export const BudgetStateSnapshotSchema = z.object({
-  max_iterations: z.number().int().positive(),
-  current_iteration: z.number().int().nonnegative(),
-  soft_stop_percent: z.number().min(0).max(100).default(80),
-  status: z.enum(["under_budget", "soft_stop", "exceeded"]),
-});
+    max_iterations: z.number().int().positive(),
+    current_iteration: z.number().int().nonnegative(),
+    soft_stop_percent: z.number().min(0).max(100).default(80),
+    status: z.enum(['under_budget', 'soft_stop', 'exceeded']),
+})
 
-export type BudgetStateSnapshot = z.infer<typeof BudgetStateSnapshotSchema>;
+export type BudgetStateSnapshot = z.infer<typeof BudgetStateSnapshotSchema>
 
 // ─── Planning Snapshot Schemas ───────────────────────────────────────────────
 
@@ -288,18 +288,18 @@ export type BudgetStateSnapshot = z.infer<typeof BudgetStateSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const WSJFScoredItemSnapshotSchema = z.object({
-  todo_path: z.string(),
-  title: z.string(),
-  area: z.string(),
-  wsjf_score: z.number().nonnegative(),
-  complexity: z.string(),
-  dependency_free: z.boolean(),
-  assigned_zone: z.enum(["peak", "good", "degrading", "stop"]).optional(),
-});
+    todo_path: z.string(),
+    title: z.string(),
+    area: z.string(),
+    wsjf_score: z.number().nonnegative(),
+    complexity: z.string(),
+    dependency_free: z.boolean(),
+    assigned_zone: z.enum(['peak', 'good', 'degrading', 'stop']).optional(),
+})
 
 export type WSJFScoredItemSnapshot = z.infer<
-  typeof WSJFScoredItemSnapshotSchema
->;
+    typeof WSJFScoredItemSnapshotSchema
+>
 
 /**
  * Studio-local mirror of luca-framework's SessionPlan.
@@ -308,15 +308,15 @@ export type WSJFScoredItemSnapshot = z.infer<
  * Uses snake_case for API compatibility.
  */
 export const SessionPlanSnapshotSchema = z.object({
-  generated_at: z.string(),
-  session_cap_minutes: z.number().int().positive().default(180),
-  total_effort_points: z.number().int().nonnegative(),
-  items: z.array(WSJFScoredItemSnapshotSchema),
-  big_rock_index: z.number().int().nonnegative().optional(),
-  rationale: z.string(),
-});
+    generated_at: z.string(),
+    session_cap_minutes: z.number().int().positive().default(180),
+    total_effort_points: z.number().int().nonnegative(),
+    items: z.array(WSJFScoredItemSnapshotSchema),
+    big_rock_index: z.number().int().nonnegative().optional(),
+    rationale: z.string(),
+})
 
-export type SessionPlanSnapshot = z.infer<typeof SessionPlanSnapshotSchema>;
+export type SessionPlanSnapshot = z.infer<typeof SessionPlanSnapshotSchema>
 
 // ─── Tribunal Snapshot Schemas ───────────────────────────────────────────────
 
@@ -332,16 +332,16 @@ export type SessionPlanSnapshot = z.infer<typeof SessionPlanSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const ReviewFindingSnapshotSchema = z.object({
-  id: z.string(),
-  severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
-  file: z.string(),
-  line: z.number().int().nonnegative().default(0),
-  issue: z.string(),
-  suggestion: z.string().default(""),
-  source_agent: z.string(),
-});
+    id: z.string(),
+    severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+    file: z.string(),
+    line: z.number().int().nonnegative().default(0),
+    issue: z.string(),
+    suggestion: z.string().default(''),
+    source_agent: z.string(),
+})
 
-export type ReviewFindingSnapshot = z.infer<typeof ReviewFindingSnapshotSchema>;
+export type ReviewFindingSnapshot = z.infer<typeof ReviewFindingSnapshotSchema>
 
 /**
  * Studio-local mirror of luca-framework's Disagreement.
@@ -350,18 +350,18 @@ export type ReviewFindingSnapshot = z.infer<typeof ReviewFindingSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const DisagreementSnapshotSchema = z.object({
-  id: z.string(),
-  file: z.string(),
-  line: z.number().int().nonnegative(),
-  conflicting_findings: z.array(ReviewFindingSnapshotSchema).min(2),
-  conflict_type: z.enum([
-    "contradictory",
-    "severity_mismatch",
-    "scope_overlap",
-  ]),
-});
+    id: z.string(),
+    file: z.string(),
+    line: z.number().int().nonnegative(),
+    conflicting_findings: z.array(ReviewFindingSnapshotSchema).min(2),
+    conflict_type: z.enum([
+        'contradictory',
+        'severity_mismatch',
+        'scope_overlap',
+    ]),
+})
 
-export type DisagreementSnapshot = z.infer<typeof DisagreementSnapshotSchema>;
+export type DisagreementSnapshot = z.infer<typeof DisagreementSnapshotSchema>
 
 /**
  * Studio-local mirror of luca-framework's Rebuttal.
@@ -370,14 +370,14 @@ export type DisagreementSnapshot = z.infer<typeof DisagreementSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const RebuttalSnapshotSchema = z.object({
-  finding_id: z.string(),
-  challenger_agent: z.string(),
-  challenge: z.string(),
-  defender_response: z.string(),
-  resolution: z.enum(["upheld", "withdrawn", "modified"]),
-});
+    finding_id: z.string(),
+    challenger_agent: z.string(),
+    challenge: z.string(),
+    defender_response: z.string(),
+    resolution: z.enum(['upheld', 'withdrawn', 'modified']),
+})
 
-export type RebuttalSnapshot = z.infer<typeof RebuttalSnapshotSchema>;
+export type RebuttalSnapshot = z.infer<typeof RebuttalSnapshotSchema>
 
 /**
  * Studio-local mirror of luca-framework's TribunalResult.
@@ -386,19 +386,19 @@ export type RebuttalSnapshot = z.infer<typeof RebuttalSnapshotSchema>;
  * Uses snake_case for API compatibility.
  */
 export const TribunalResultSnapshotSchema = z.object({
-  phase: z.number().int().positive(),
-  total_findings: z.number().int().nonnegative(),
-  disagreements_detected: z.number().int().nonnegative(),
-  rebuttals_conducted: z.number().int().nonnegative(),
-  findings_withdrawn: z.number().int().nonnegative(),
-  findings_modified: z.number().int().nonnegative(),
-  debate_token_cost: z.number().int().nonnegative().default(0),
-  timestamp: z.string(),
-});
+    phase: z.number().int().positive(),
+    total_findings: z.number().int().nonnegative(),
+    disagreements_detected: z.number().int().nonnegative(),
+    rebuttals_conducted: z.number().int().nonnegative(),
+    findings_withdrawn: z.number().int().nonnegative(),
+    findings_modified: z.number().int().nonnegative(),
+    debate_token_cost: z.number().int().nonnegative().default(0),
+    timestamp: z.string(),
+})
 
 export type TribunalResultSnapshot = z.infer<
-  typeof TribunalResultSnapshotSchema
->;
+    typeof TribunalResultSnapshotSchema
+>
 
 // ─── Agent Activity Snapshot Schemas ─────────────────────────────────────────
 
@@ -409,20 +409,20 @@ export type TribunalResultSnapshot = z.infer<
  * Uses snake_case for API compatibility.
  */
 export const AgentActivitySnapshotSchema = z.object({
-  agent_name: z.string(),
-  invocation_count: z.number().int().nonnegative(),
-  last_invoked_at: z.string().optional(),
-  total_duration_ms: z.number().int().nonnegative().default(0),
-  events: z
-    .array(
-      z.object({
-        event_type: z.string(),
-        timestamp: z.string(),
-        duration_ms: z.number().int().nonnegative().optional(),
-        status: z.string().optional(),
-      }),
-    )
-    .default([]),
-});
+    agent_name: z.string(),
+    invocation_count: z.number().int().nonnegative(),
+    last_invoked_at: z.string().optional(),
+    total_duration_ms: z.number().int().nonnegative().default(0),
+    events: z
+        .array(
+            z.object({
+                event_type: z.string(),
+                timestamp: z.string(),
+                duration_ms: z.number().int().nonnegative().optional(),
+                status: z.string().optional(),
+            })
+        )
+        .default([]),
+})
 
-export type AgentActivitySnapshot = z.infer<typeof AgentActivitySnapshotSchema>;
+export type AgentActivitySnapshot = z.infer<typeof AgentActivitySnapshotSchema>

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server'
 
-import { muninnProxyHandler } from "~/lib/muninn-route-helper";
+import { muninnProxyHandler } from '~/lib/muninn-route-helper'
 import {
-  ActivateRequestSchema,
-  ActivateResponseSchema,
-} from "~/lib/muninn-schemas";
+    ActivateRequestSchema,
+    ActivateResponseSchema,
+} from '~/lib/muninn-schemas'
 
 /**
  * POST /api/muninn/activate
@@ -15,26 +15,29 @@ import {
  * - limit: number (default: 20)
  */
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json(
+            { error: 'Invalid JSON body' },
+            { status: 400 }
+        )
+    }
 
-  const parsed = ActivateRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues.map((i) => i.message).join("; ") },
-      { status: 400 },
-    );
-  }
+    const parsed = ActivateRequestSchema.safeParse(body)
+    if (!parsed.success) {
+        return NextResponse.json(
+            { error: parsed.error.issues.map((i) => i.message).join('; ') },
+            { status: 400 }
+        )
+    }
 
-  const { vault, context, limit } = parsed.data;
+    const { vault, context, limit } = parsed.data
 
-  return muninnProxyHandler(
-    (client) => client.activate(vault, context, limit),
-    "Failed to activate MuninnDB recall",
-    ActivateResponseSchema,
-  );
+    return muninnProxyHandler(
+        (client) => client.activate(vault, context, limit),
+        'Failed to activate MuninnDB recall',
+        ActivateResponseSchema
+    )
 }

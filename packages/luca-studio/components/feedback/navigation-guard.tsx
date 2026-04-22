@@ -1,40 +1,40 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
+import { useEffect } from 'react'
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '~/components/ui/alert-dialog'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type NavigationGuardProps = {
-  /** Whether to block navigation (typically `isEditing && isDirty`). */
-  when: boolean;
-  /** Custom message for the dialog. */
-  message?: string;
-  /** Whether the confirmation dialog is currently shown. */
-  showDialog?: boolean;
-  /** Callback when the user confirms leaving (discard changes). */
-  onConfirm?: () => void;
-  /** Callback when the user cancels leaving (stay on page). */
-  onCancel?: () => void;
-};
+    /** Whether to block navigation (typically `isEditing && isDirty`). */
+    when: boolean
+    /** Custom message for the dialog. */
+    message?: string
+    /** Whether the confirmation dialog is currently shown. */
+    showDialog?: boolean
+    /** Callback when the user confirms leaving (discard changes). */
+    onConfirm?: () => void
+    /** Callback when the user cancels leaving (stay on page). */
+    onCancel?: () => void
+}
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MESSAGE = "You have unsaved changes. Discard and leave?";
+const DEFAULT_MESSAGE = 'You have unsaved changes. Discard and leave?'
 
 // ---------------------------------------------------------------------------
 // Component
@@ -68,42 +68,49 @@ const DEFAULT_MESSAGE = "You have unsaved changes. Discard and leave?";
  * ```
  */
 export function NavigationGuard({
-  when,
-  message,
-  showDialog,
-  onConfirm,
-  onCancel,
+    when,
+    message,
+    showDialog,
+    onConfirm,
+    onCancel,
 }: NavigationGuardProps) {
-  const displayMessage = message ?? DEFAULT_MESSAGE;
+    const displayMessage = message ?? DEFAULT_MESSAGE
 
-  // Browser guard: beforeunload event
-  useEffect(() => {
-    if (!when) return;
+    // Browser guard: beforeunload event
+    useEffect(() => {
+        if (!when) return
 
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault()
+            e.returnValue = ''
+        }
 
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [when]);
+        window.addEventListener('beforeunload', handler)
+        return () => window.removeEventListener('beforeunload', handler)
+    }, [when])
 
-  // Route guard: AlertDialog for in-app navigation
-  return (
-    <AlertDialog open={showDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-          <AlertDialogDescription>{displayMessage}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Stay</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm}>
-            Discard
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
+    // Route guard: AlertDialog for in-app navigation
+    return (
+        <AlertDialog open={showDialog}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {displayMessage}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={onCancel}>
+                        Stay
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        variant="destructive"
+                        onClick={onConfirm}
+                    >
+                        Discard
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
 }

@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react'
 
-import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
 
 /**
  * Layout context determines zone sizing and adaptation behavior.
@@ -10,7 +10,7 @@ import { atomWithStorage } from "jotai/utils";
  * - "editor": NavRail collapsed, content full bleed, detail docked
  * - "browser": NavRail expanded, content flexible, detail floating
  */
-export type LayoutContext = "dashboard" | "editor" | "browser";
+export type LayoutContext = 'dashboard' | 'editor' | 'browser'
 
 /**
  * Detail panel display state.
@@ -19,7 +19,7 @@ export type LayoutContext = "dashboard" | "editor" | "browser";
  * - "floating": absolute overlay on right, does not push content
  * - "docked": part of grid flow, pushes content left, resizable
  */
-export type DetailPanelState = "closed" | "floating" | "docked";
+export type DetailPanelState = 'closed' | 'floating' | 'docked'
 
 // ---------------------------------------------------------------------------
 // Persisted atoms (survive navigation and reload via localStorage)
@@ -31,9 +31,9 @@ export type DetailPanelState = "closed" | "floating" | "docked";
  * Persisted in localStorage under "luca-studio-nav-rail-expanded".
  */
 export const navRailExpandedAtom = atomWithStorage<boolean>(
-  "luca-studio-nav-rail-expanded",
-  false,
-);
+    'luca-studio-nav-rail-expanded',
+    false
+)
 
 /**
  * Current detail panel display state.
@@ -41,9 +41,9 @@ export const navRailExpandedAtom = atomWithStorage<boolean>(
  * Persisted in localStorage under "luca-studio-detail-panel-state".
  */
 export const detailPanelStateAtom = atomWithStorage<DetailPanelState>(
-  "luca-studio-detail-panel-state",
-  "closed",
-);
+    'luca-studio-detail-panel-state',
+    'closed'
+)
 
 /**
  * Detail panel width in pixels. Clamped to 400-600 range by consumers.
@@ -51,9 +51,9 @@ export const detailPanelStateAtom = atomWithStorage<DetailPanelState>(
  * Persisted in localStorage under "luca-studio-detail-panel-width".
  */
 export const detailPanelWidthAtom = atomWithStorage<number>(
-  "luca-studio-detail-panel-width",
-  480,
-);
+    'luca-studio-detail-panel-width',
+    480
+)
 
 // ---------------------------------------------------------------------------
 // Transient atoms (not persisted)
@@ -65,7 +65,7 @@ export const detailPanelWidthAtom = atomWithStorage<number>(
  * Set to true on mouse enter, false on mouse leave.
  * Not persisted — resets on reload.
  */
-export const navRailHoveredAtom = atom<boolean>(false);
+export const navRailHoveredAtom = atom<boolean>(false)
 
 /**
  * Layout context driving the adaptation table.
@@ -73,7 +73,7 @@ export const navRailHoveredAtom = atom<boolean>(false);
  * Pages set this atom to control NavRail/content/detail zone sizing.
  * Not persisted — defaults to "dashboard" on each navigation.
  */
-export const layoutContextAtom = atom<LayoutContext>("dashboard");
+export const layoutContextAtom = atom<LayoutContext>('dashboard')
 
 // ---------------------------------------------------------------------------
 // Keyboard Shortcut Atoms
@@ -84,14 +84,14 @@ export const layoutContextAtom = atom<LayoutContext>("dashboard");
  *
  * Toggled by Cmd+K shortcut and Escape key. Not persisted.
  */
-export const commandPaletteOpenAtom = atom<boolean>(false);
+export const commandPaletteOpenAtom = atom<boolean>(false)
 
 /**
  * Whether the compiled preview overlay/panel is open.
  *
  * Toggled by Cmd+Shift+P shortcut. Not persisted.
  */
-export const compiledPreviewOpenAtom = atom<boolean>(false);
+export const compiledPreviewOpenAtom = atom<boolean>(false)
 
 /**
  * Entity sidebar content for build pages (Agents, Skills, Rules).
@@ -102,7 +102,7 @@ export const compiledPreviewOpenAtom = atom<boolean>(false);
  *
  * Not persisted -- resets to null on navigation.
  */
-export const entitySidebarAtom = atom<ReactNode | null>(null);
+export const entitySidebarAtom = atom<ReactNode | null>(null)
 
 /**
  * Internal storage for the global save callback.
@@ -112,7 +112,7 @@ export const entitySidebarAtom = atom<ReactNode | null>(null);
  *
  * @private
  */
-const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
+const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null)
 
 /**
  * Read-only atom for the global save callback.
@@ -120,7 +120,7 @@ const _saveCallbackAtom = atom<(() => Promise<void>) | null>(null);
  * Used by the keyboard shortcut hook to invoke the current page's save.
  * Returns `null` when no save function is registered.
  */
-export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
+export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom))
 
 /**
  * Write atom to register/unregister the global save callback.
@@ -140,11 +140,11 @@ export const globalSaveCallbackAtom = atom((get) => get(_saveCallbackAtom));
  * ```
  */
 export const setGlobalSaveCallbackAtom = atom(
-  null,
-  (_get, set, callback: (() => Promise<void>) | null) => {
-    set(_saveCallbackAtom, callback ? () => callback : null);
-  },
-);
+    null,
+    (_get, set, callback: (() => Promise<void>) | null) => {
+        set(_saveCallbackAtom, callback ? () => callback : null)
+    }
+)
 
 // ---------------------------------------------------------------------------
 // Derived atoms
@@ -157,7 +157,7 @@ export const setGlobalSaveCallbackAtom = atom(
  * Read-only derived atom.
  */
 export const navRailWidthAtom = atom<number>((get) => {
-  const expanded = get(navRailExpandedAtom);
-  const hovered = get(navRailHoveredAtom);
-  return expanded || hovered ? 240 : 48;
-});
+    const expanded = get(navRailExpandedAtom)
+    const hovered = get(navRailHoveredAtom)
+    return expanded || hovered ? 240 : 48
+})

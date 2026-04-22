@@ -1,7 +1,8 @@
-import { z } from "zod";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "pathe";
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+
+import { dirname, join } from 'pathe'
+import { z } from 'zod'
 
 /**
  * Zod schema for the runtime context result.
@@ -11,16 +12,16 @@ import { dirname, join } from "pathe";
  * the resolved package directory, and the user's home directory.
  */
 export const RuntimeContextSchema = z.object({
-  /** Whether Luca is running from a global npm/bun install or from the monorepo in dev mode. */
-  mode: z.enum(["global", "dev"]),
-  /** Absolute path to the package directory containing the running script. */
-  packageDir: z.string(),
-  /** Absolute path to the user's home directory. */
-  homeDir: z.string(),
-});
+    /** Whether Luca is running from a global npm/bun install or from the monorepo in dev mode. */
+    mode: z.enum(['global', 'dev']),
+    /** Absolute path to the package directory containing the running script. */
+    packageDir: z.string(),
+    /** Absolute path to the user's home directory. */
+    homeDir: z.string(),
+})
 
 /** Runtime context inferred from the Zod schema. */
-export type RuntimeContext = z.infer<typeof RuntimeContextSchema>;
+export type RuntimeContext = z.infer<typeof RuntimeContextSchema>
 
 /**
  * Detect whether Luca is running from a global install or from the monorepo in dev mode.
@@ -42,17 +43,17 @@ export type RuntimeContext = z.infer<typeof RuntimeContextSchema>;
  * ```
  */
 export function detectRuntimeContext(): RuntimeContext {
-  const scriptDir = import.meta.dir;
-  const isDevMode = scriptDir.includes("packages/luca-framework/");
-  const home = homedir();
+    const scriptDir = import.meta.dir
+    const isDevMode = scriptDir.includes('packages/luca-framework/')
+    const home = homedir()
 
-  const result: RuntimeContext = {
-    mode: isDevMode ? "dev" : "global",
-    packageDir: scriptDir,
-    homeDir: home,
-  };
+    const result: RuntimeContext = {
+        mode: isDevMode ? 'dev' : 'global',
+        packageDir: scriptDir,
+        homeDir: home,
+    }
 
-  return RuntimeContextSchema.parse(result);
+    return RuntimeContextSchema.parse(result)
 }
 
 /**
@@ -72,9 +73,9 @@ export function detectRuntimeContext(): RuntimeContext {
  * ```
  */
 export function resolveMonorepoRoot(startDir: string): string {
-  let dir = startDir;
-  while (dir !== "/" && !existsSync(join(dir, "packages/luca-framework"))) {
-    dir = dirname(dir);
-  }
-  return dir;
+    let dir = startDir
+    while (dir !== '/' && !existsSync(join(dir, 'packages/luca-framework'))) {
+        dir = dirname(dir)
+    }
+    return dir
 }

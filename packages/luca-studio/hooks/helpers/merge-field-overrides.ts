@@ -31,7 +31,7 @@
  * };
  * ```
  */
-export type FieldKeyMap = Record<string, string[]>;
+export type FieldKeyMap = Record<string, string[]>
 
 // ---------------------------------------------------------------------------
 // Field replacement helpers
@@ -46,11 +46,11 @@ export type FieldKeyMap = Record<string, string[]>;
  * @returns Escaped string safe for embedding in double-quoted literals
  */
 function escapeForQuotedString(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r");
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
 }
 
 /**
@@ -68,17 +68,17 @@ function escapeForQuotedString(value: string): string {
  * @returns Updated text, or original if no match found
  */
 export function replaceStringField(
-  text: string,
-  key: string,
-  newValue: string,
+    text: string,
+    key: string,
+    newValue: string
 ): string {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(${escaped}\\s*:\\s*)["'\`]([^"'\`]*?)["'\`]`);
-  if (pattern.test(text)) {
-    const safeValue = escapeForQuotedString(newValue);
-    return text.replace(pattern, `$1"${safeValue}"`);
-  }
-  return text;
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(${escaped}\\s*:\\s*)["'\`]([^"'\`]*?)["'\`]`)
+    if (pattern.test(text)) {
+        const safeValue = escapeForQuotedString(newValue)
+        return text.replace(pattern, `$1"${safeValue}"`)
+    }
+    return text
 }
 
 /**
@@ -93,16 +93,16 @@ export function replaceStringField(
  * @returns Updated text, or original if no match found
  */
 export function replaceBoolField(
-  text: string,
-  key: string,
-  newValue: boolean,
+    text: string,
+    key: string,
+    newValue: boolean
 ): string {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(${escaped}\\s*:\\s*)(true|false)`);
-  if (pattern.test(text)) {
-    return text.replace(pattern, `$1${String(newValue)}`);
-  }
-  return text;
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(${escaped}\\s*:\\s*)(true|false)`)
+    if (pattern.test(text)) {
+        return text.replace(pattern, `$1${String(newValue)}`)
+    }
+    return text
 }
 
 // ---------------------------------------------------------------------------
@@ -133,24 +133,24 @@ export function replaceBoolField(
  * ```
  */
 export function mergeFieldOverrides(
-  draft: Record<string, unknown>,
-  fieldKeyMap: FieldKeyMap,
+    draft: Record<string, unknown>,
+    fieldKeyMap: FieldKeyMap
 ): string {
-  let text = (draft.rawConfigText as string) ?? "";
+    let text = (draft.rawConfigText as string) ?? ''
 
-  // String fields from the field key map
-  for (const [field, keys] of Object.entries(fieldKeyMap)) {
-    const value = draft[field];
-    if (value === undefined) continue;
-    for (const key of keys) {
-      text = replaceStringField(text, key, String(value));
+    // String fields from the field key map
+    for (const [field, keys] of Object.entries(fieldKeyMap)) {
+        const value = draft[field]
+        if (value === undefined) continue
+        for (const key of keys) {
+            text = replaceStringField(text, key, String(value))
+        }
     }
-  }
 
-  // Boolean: enabled (universal entity field)
-  if (draft.enabled !== undefined) {
-    text = replaceBoolField(text, "enabled", Boolean(draft.enabled));
-  }
+    // Boolean: enabled (universal entity field)
+    if (draft.enabled !== undefined) {
+        text = replaceBoolField(text, 'enabled', Boolean(draft.enabled))
+    }
 
-  return text;
+    return text
 }

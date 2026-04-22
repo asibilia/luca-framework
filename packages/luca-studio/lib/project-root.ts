@@ -10,11 +10,11 @@
  * The result is cached after first resolution for the process lifetime, so
  * subsequent calls are synchronous map lookups rather than filesystem walks.
  */
-import { access } from "node:fs/promises";
-import { resolve } from "node:path";
+import { access } from 'node:fs/promises'
+import { resolve } from 'node:path'
 
 /** Module-level cache -- populated once per process. */
-let cachedRoot: string | null = null;
+let cachedRoot: string | null = null
 
 /**
  * Walk up from `startDir` looking for a `.planning/` directory.
@@ -23,19 +23,19 @@ let cachedRoot: string | null = null;
  * @returns The first ancestor directory containing `.planning/`, or `null`.
  */
 async function walkUpForPlanning(startDir: string): Promise<string | null> {
-  let current = resolve(startDir);
-  const fsRoot = resolve("/");
+    let current = resolve(startDir)
+    const fsRoot = resolve('/')
 
-  while (current !== fsRoot) {
-    try {
-      await access(resolve(current, ".planning"));
-      return current;
-    } catch {
-      /* .planning not found at this level -- keep walking */
+    while (current !== fsRoot) {
+        try {
+            await access(resolve(current, '.planning'))
+            return current
+        } catch {
+            /* .planning not found at this level -- keep walking */
+        }
+        current = resolve(current, '..')
     }
-    current = resolve(current, "..");
-  }
-  return null;
+    return null
 }
 
 /**
@@ -58,22 +58,22 @@ async function walkUpForPlanning(startDir: string): Promise<string | null> {
  * ```
  */
 export async function resolveProjectRoot(): Promise<string> {
-  if (cachedRoot) return cachedRoot;
+    if (cachedRoot) return cachedRoot
 
-  const envRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
+    const envRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT
 
-  if (envRoot) {
-    const resolved = resolve(envRoot);
-    try {
-      await access(resolve(resolved, ".planning"));
-      cachedRoot = resolved;
-      return cachedRoot;
-    } catch {
-      // Env var points to a directory without .planning/ -- fall through to auto-detect
+    if (envRoot) {
+        const resolved = resolve(envRoot)
+        try {
+            await access(resolve(resolved, '.planning'))
+            cachedRoot = resolved
+            return cachedRoot
+        } catch {
+            // Env var points to a directory without .planning/ -- fall through to auto-detect
+        }
     }
-  }
 
-  const detected = await walkUpForPlanning(process.cwd());
-  cachedRoot = detected ?? process.cwd();
-  return cachedRoot;
+    const detected = await walkUpForPlanning(process.cwd())
+    cachedRoot = detected ?? process.cwd()
+    return cachedRoot
 }

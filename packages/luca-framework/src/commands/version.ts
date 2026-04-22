@@ -9,34 +9,34 @@
  * luca version
  * ```
  */
-import { defineCommand } from "citty";
+import { defineCommand } from 'citty'
 
-import { logger } from "../utils/logger";
-import { LUCA_VERSION } from "../utils/manifest";
-import { checkPlatform } from "../utils/prerequisites";
-import { checkForUpdates } from "../utils/version-check";
+import { logger } from '../utils/logger'
+import { LUCA_VERSION } from '../utils/manifest'
+import { checkPlatform } from '../utils/prerequisites'
+import { checkForUpdates } from '../utils/version-check'
 
 export const versionCommand = defineCommand({
-  meta: {
-    name: "version",
-    description: "Show Luca version and platform info",
-  },
-  async run() {
-    const platform = checkPlatform();
+    meta: {
+        name: 'version',
+        description: 'Show Luca version and platform info',
+    },
+    async run() {
+        const platform = checkPlatform()
 
-    logger.box(
-      [
-        `Luca CLI v${LUCA_VERSION}`,
-        "",
-        `Platform: ${platform.os} / ${platform.arch}`,
-        `Home:     ${platform.homeDir}`,
-      ].join("\n"),
-    );
+        logger.box(
+            [
+                `Luca CLI v${LUCA_VERSION}`,
+                '',
+                `Platform: ${platform.os} / ${platform.arch}`,
+                `Home:     ${platform.homeDir}`,
+            ].join('\n')
+        )
 
-    try {
-      await checkForUpdates();
-    } catch {
-      // Ignore update-check failures so `luca version` remains reliable
-    }
-  },
-});
+        try {
+            await checkForUpdates()
+        } catch {
+            // Ignore update-check failures so `luca version` remains reliable
+        }
+    },
+})

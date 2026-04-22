@@ -1,15 +1,14 @@
-import { EmptyState } from "~/components/shared/empty-state";
-import { SearchResultCard } from "~/components/semantic-search/search-result-card";
-
-import type { SemanticSearchResult } from "~/hooks/use-semantic-search";
+import { SearchResultCard } from '~/components/semantic-search/search-result-card'
+import { EmptyState } from '~/components/shared/empty-state'
+import type { SemanticSearchResult } from '~/hooks/use-semantic-search'
 
 // -- Types -------------------------------------------------------------------
 
 export interface SearchResultsProps {
-  results: SemanticSearchResult[];
-  totalFound: number;
-  onExplain: (engramId: string) => void;
-  explainLoadingId: string | null;
+    results: SemanticSearchResult[]
+    totalFound: number
+    onExplain: (engramId: string) => void
+    explainLoadingId: string | null
 }
 
 // -- Component ---------------------------------------------------------------
@@ -21,33 +20,33 @@ export interface SearchResultsProps {
  * returned no matches.
  */
 export function SearchResults({
-  results,
-  totalFound,
-  onExplain,
-  explainLoadingId,
+    results,
+    totalFound,
+    onExplain,
+    explainLoadingId,
 }: SearchResultsProps) {
-  if (results.length === 0) {
+    if (results.length === 0) {
+        return (
+            <EmptyState message="No results found. Try different search terms or adjust advanced options." />
+        )
+    }
+
     return (
-      <EmptyState message="No results found. Try different search terms or adjust advanced options." />
-    );
-  }
+        <div className="space-y-3">
+            {/* Summary line */}
+            <p className="font-mono text-sm text-muted-foreground">
+                {totalFound} {totalFound === 1 ? 'result' : 'results'} found
+            </p>
 
-  return (
-    <div className="space-y-3">
-      {/* Summary line */}
-      <p className="font-mono text-sm text-muted-foreground">
-        {totalFound} {totalFound === 1 ? "result" : "results"} found
-      </p>
-
-      {/* Result cards */}
-      {results.map((result) => (
-        <SearchResultCard
-          key={result.id}
-          result={result}
-          onExplain={onExplain}
-          explainLoading={explainLoadingId === result.id}
-        />
-      ))}
-    </div>
-  );
+            {/* Result cards */}
+            {results.map((result) => (
+                <SearchResultCard
+                    key={result.id}
+                    result={result}
+                    onExplain={onExplain}
+                    explainLoading={explainLoadingId === result.id}
+                />
+            ))}
+        </div>
+    )
 }

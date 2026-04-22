@@ -5,10 +5,10 @@
  * concept prefix filtering and zone content parsing that are used
  * across multiple routes and client-side hooks.
  */
-import filter from "lodash/filter";
+import filter from 'lodash/filter'
 
-import type { MuninnClient } from "~/lib/muninn-config";
-import type { MuninnEngram } from "~/lib/muninn-types";
+import type { MuninnClient } from '~/lib/muninn-config'
+import type { MuninnEngram } from '~/lib/muninn-types'
 
 // ---------------------------------------------------------------------------
 // Concept prefix filtering
@@ -44,23 +44,23 @@ import type { MuninnEngram } from "~/lib/muninn-types";
  * ```
  */
 export async function filterByConceptPrefix(
-  client: MuninnClient,
-  vault: string,
-  prefixes: string[],
-  limit: number,
+    client: MuninnClient,
+    vault: string,
+    prefixes: string[],
+    limit: number
 ): Promise<MuninnEngram[]> {
-  // Over-fetch to account for post-filter reduction
-  const fetchLimit = Math.min(limit * 5, 500);
-  const data = await client.listEngrams(vault, fetchLimit, 0);
+    // Over-fetch to account for post-filter reduction
+    const fetchLimit = Math.min(limit * 5, 500)
+    const data = await client.listEngrams(vault, fetchLimit, 0)
 
-  const filtered = filter(
-    data.engrams ?? [],
-    (e: MuninnEngram) =>
-      typeof e.concept === "string" &&
-      prefixes.some((prefix) => e.concept.startsWith(prefix)),
-  );
+    const filtered = filter(
+        data.engrams ?? [],
+        (e: MuninnEngram) =>
+            typeof e.concept === 'string' &&
+            prefixes.some((prefix) => e.concept.startsWith(prefix))
+    )
 
-  return filtered.slice(0, limit);
+    return filtered.slice(0, limit)
 }
 
 // ---------------------------------------------------------------------------
@@ -90,38 +90,40 @@ export async function filterByConceptPrefix(
  * ```
  */
 export function parseZoneContent(content: string): {
-  zone?: string;
-  usage_percent?: number;
-  checked_at?: string;
+    zone?: string
+    usage_percent?: number
+    checked_at?: string
 } {
-  // Try JSON parse first
-  try {
-    const parsed = JSON.parse(content);
-    if (typeof parsed === "object" && parsed !== null) {
-      return {
-        zone: typeof parsed.zone === "string" ? parsed.zone : undefined,
-        usage_percent:
-          typeof parsed.usage_percent === "number"
-            ? parsed.usage_percent
-            : undefined,
-        checked_at:
-          typeof parsed.checked_at === "string" ? parsed.checked_at : undefined,
-      };
+    // Try JSON parse first
+    try {
+        const parsed = JSON.parse(content)
+        if (typeof parsed === 'object' && parsed !== null) {
+            return {
+                zone: typeof parsed.zone === 'string' ? parsed.zone : undefined,
+                usage_percent:
+                    typeof parsed.usage_percent === 'number'
+                        ? parsed.usage_percent
+                        : undefined,
+                checked_at:
+                    typeof parsed.checked_at === 'string'
+                        ? parsed.checked_at
+                        : undefined,
+            }
+        }
+    } catch {
+        /* not JSON -- try regex patterns */
     }
-  } catch {
-    /* not JSON -- try regex patterns */
-  }
 
-  // Try structured text patterns
-  const zoneMatch = content.match(/zone:\s*(\w+)/i);
-  const usageMatch = content.match(/usage:\s*([\d.]+)%?/i);
-  const checkedMatch = content.match(
-    /checked(?:_at)?:\s*(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)/i,
-  );
+    // Try structured text patterns
+    const zoneMatch = content.match(/zone:\s*(\w+)/i)
+    const usageMatch = content.match(/usage:\s*([\d.]+)%?/i)
+    const checkedMatch = content.match(
+        /checked(?:_at)?:\s*(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)/i
+    )
 
-  return {
-    zone: zoneMatch?.[1],
-    usage_percent: usageMatch ? parseFloat(usageMatch[1]!) : undefined,
-    checked_at: checkedMatch?.[1],
-  };
+    return {
+        zone: zoneMatch?.[1],
+        usage_percent: usageMatch ? parseFloat(usageMatch[1]!) : undefined,
+        checked_at: checkedMatch?.[1],
+    }
 }

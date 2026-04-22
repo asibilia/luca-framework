@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { AGENT_DETAIL_CONFIG } from "~/hooks/schemas/entity-hook-config";
-import { useEntityDetail } from "~/hooks/use-entity-detail";
+import { AGENT_DETAIL_CONFIG } from '~/hooks/schemas/entity-hook-config'
+import { useEntityDetail } from '~/hooks/use-entity-detail'
 
 // ---------------------------------------------------------------------------
 // Thin wrapper
@@ -23,5 +23,5 @@ import { useEntityDetail } from "~/hooks/use-entity-detail";
  * ```
  */
 export function useAgentDetail(name: string | null) {
-  return useEntityDetail(name, AGENT_DETAIL_CONFIG);
+    return useEntityDetail(name, AGENT_DETAIL_CONFIG)
 }

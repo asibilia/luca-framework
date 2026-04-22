@@ -1,6 +1,6 @@
-import { atom } from "jotai";
-import { atomFamily } from "jotai/utils";
-import { withHistory } from "jotai-history";
+import { atom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+import { withHistory } from 'jotai-history'
 
 // ---------------------------------------------------------------------------
 // Per-Entity Draft Atoms (Layer 2 -- Entity Drafts)
@@ -16,7 +16,7 @@ import { withHistory } from "jotai-history";
 // ---------------------------------------------------------------------------
 
 /** Shape of an individual entity draft before schemas are locked down. */
-type EntityDraft = Record<string, unknown>;
+type EntityDraft = Record<string, unknown>
 
 /**
  * Per-agent writable draft atom, keyed by agent name.
@@ -30,8 +30,8 @@ type EntityDraft = Record<string, unknown>;
  * ```
  */
 export const agentDraftAtom = atomFamily((name: string) =>
-  atom<EntityDraft>({}),
-);
+    atom<EntityDraft>({})
+)
 
 /**
  * Per-skill writable draft atom, keyed by skill name.
@@ -42,8 +42,8 @@ export const agentDraftAtom = atomFamily((name: string) =>
  * ```
  */
 export const skillDraftAtom = atomFamily((name: string) =>
-  atom<EntityDraft>({}),
-);
+    atom<EntityDraft>({})
+)
 
 /**
  * Per-rule writable draft atom, keyed by rule name.
@@ -53,9 +53,7 @@ export const skillDraftAtom = atomFamily((name: string) =>
  * const draft = useAtom(ruleDraftAtom("no-classes"));
  * ```
  */
-export const ruleDraftAtom = atomFamily((name: string) =>
-  atom<EntityDraft>({}),
-);
+export const ruleDraftAtom = atomFamily((name: string) => atom<EntityDraft>({}))
 
 // ---------------------------------------------------------------------------
 // Per-Entity History Atoms (Undo / Redo)
@@ -72,7 +70,7 @@ export const ruleDraftAtom = atomFamily((name: string) =>
 // ---------------------------------------------------------------------------
 
 /** Max undo/redo entries per entity. */
-const HISTORY_LIMIT = 50;
+const HISTORY_LIMIT = 50
 
 /**
  * Per-agent undo/redo history, keyed by agent name.
@@ -80,8 +78,8 @@ const HISTORY_LIMIT = 50;
  * Wraps `agentDraftAtom(name)` with a 50-entry history stack.
  */
 export const agentHistoryAtom = atomFamily((name: string) =>
-  withHistory(agentDraftAtom(name), HISTORY_LIMIT),
-);
+    withHistory(agentDraftAtom(name), HISTORY_LIMIT)
+)
 
 /**
  * Per-skill undo/redo history, keyed by skill name.
@@ -89,8 +87,8 @@ export const agentHistoryAtom = atomFamily((name: string) =>
  * Wraps `skillDraftAtom(name)` with a 50-entry history stack.
  */
 export const skillHistoryAtom = atomFamily((name: string) =>
-  withHistory(skillDraftAtom(name), HISTORY_LIMIT),
-);
+    withHistory(skillDraftAtom(name), HISTORY_LIMIT)
+)
 
 /**
  * Per-rule undo/redo history, keyed by rule name.
@@ -98,5 +96,5 @@ export const skillHistoryAtom = atomFamily((name: string) =>
  * Wraps `ruleDraftAtom(name)` with a 50-entry history stack.
  */
 export const ruleHistoryAtom = atomFamily((name: string) =>
-  withHistory(ruleDraftAtom(name), HISTORY_LIMIT),
-);
+    withHistory(ruleDraftAtom(name), HISTORY_LIMIT)
+)

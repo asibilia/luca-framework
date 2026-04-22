@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react'
 
-import { useSetAtom } from "jotai";
+import { useSetAtom } from 'jotai'
 
 import {
-  compileStatusAtom,
-  configAtom,
-  configEtagAtom,
-  stateAtom,
-} from "~/stores/config-atoms";
+    compileStatusAtom,
+    configAtom,
+    configEtagAtom,
+    stateAtom,
+} from '~/stores/config-atoms'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,29 +17,29 @@ import {
 
 /** Parsed payload for `file:changed` SSE events. */
 type FileChangedPayload = {
-  type: "add" | "change" | "unlink";
-  path: string;
-  timestamp: string;
-};
+    type: 'add' | 'change' | 'unlink'
+    path: string
+    timestamp: string
+}
 
 /** Parsed payload for `compile:start` SSE events. */
 type CompileStartPayload = {
-  domain: string;
-  name: string;
-};
+    domain: string
+    name: string
+}
 
 /** Parsed payload for `compile:complete` SSE events. */
 type CompileCompletePayload = {
-  domain: string;
-  name: string;
-};
+    domain: string
+    name: string
+}
 
 /** Parsed payload for `compile:error` SSE events. */
 type CompileErrorPayload = {
-  domain: string;
-  name: string;
-  error: string;
-};
+    domain: string
+    name: string
+    error: string
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,9 +47,9 @@ type CompileErrorPayload = {
 
 /** Result from a safe JSON fetch, including an optional ETag header. */
 type FetchJsonResult = {
-  data: Record<string, unknown> | null;
-  etag: string | null;
-};
+    data: Record<string, unknown> | null
+    etag: string | null
+}
 
 /**
  * Fetch JSON from the given URL, returning `null` on any error.
@@ -60,15 +60,15 @@ type FetchJsonResult = {
  * @returns Parsed JSON and ETag, or nulls on failure.
  */
 async function fetchJsonSafe(url: string): Promise<FetchJsonResult> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return { data: null, etag: null };
-    const etag = res.headers.get("ETag");
-    const data = (await res.json()) as Record<string, unknown>;
-    return { data, etag };
-  } catch {
-    return { data: null, etag: null };
-  }
+    try {
+        const res = await fetch(url)
+        if (!res.ok) return { data: null, etag: null }
+        const etag = res.headers.get('ETag')
+        const data = (await res.json()) as Record<string, unknown>
+        return { data, etag }
+    } catch {
+        return { data: null, etag: null }
+    }
 }
 
 /**
@@ -78,11 +78,11 @@ async function fetchJsonSafe(url: string): Promise<FetchJsonResult> {
  * @returns The parsed object, or `null` if parsing fails.
  */
 function safeParseEventData<T>(raw: string): T | null {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+    try {
+        return JSON.parse(raw) as T
+    } catch {
+        return null
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -124,111 +124,114 @@ function safeParseEventData<T>(raw: string): T | null {
  * ```
  */
 export function useSSE(): void {
-  const setConfig = useSetAtom(configAtom);
-  const setConfigEtag = useSetAtom(configEtagAtom);
-  const setState = useSetAtom(stateAtom);
-  const setCompileStatus = useSetAtom(compileStatusAtom);
-  const esRef = useRef<EventSource | null>(null);
+    const setConfig = useSetAtom(configAtom)
+    const setConfigEtag = useSetAtom(configEtagAtom)
+    const setState = useSetAtom(stateAtom)
+    const setCompileStatus = useSetAtom(compileStatusAtom)
+    const esRef = useRef<EventSource | null>(null)
 
-  useEffect(() => {
-    // Prevent duplicate connections in strict-mode double-mount.
-    if (esRef.current) return;
+    useEffect(() => {
+        // Prevent duplicate connections in strict-mode double-mount.
+        if (esRef.current) return
 
-    const es = new EventSource("/api/events");
-    esRef.current = es;
+        const es = new EventSource('/api/events')
+        esRef.current = es
 
-    // -----------------------------------------------------------------
-    // file:changed -- re-fetch atoms when relevant files change on disk
-    // -----------------------------------------------------------------
-    es.addEventListener("file:changed", (msg: MessageEvent<string>) => {
-      const payload = safeParseEventData<FileChangedPayload>(msg.data);
-      if (!payload) return;
+        // -----------------------------------------------------------------
+        // file:changed -- re-fetch atoms when relevant files change on disk
+        // -----------------------------------------------------------------
+        es.addEventListener('file:changed', (msg: MessageEvent<string>) => {
+            const payload = safeParseEventData<FileChangedPayload>(msg.data)
+            if (!payload) return
 
-      const { path } = payload;
+            const { path } = payload
 
-      // config.json changed -> re-hydrate configAtom + configEtagAtom
-      if (path.endsWith("config.json") && path.includes(".planning")) {
-        void fetchJsonSafe("/api/config").then(({ data, etag }) => {
-          if (data) setConfig(data);
-          if (etag) setConfigEtag(etag);
-        });
-      }
+            // config.json changed -> re-hydrate configAtom + configEtagAtom
+            if (path.endsWith('config.json') && path.includes('.planning')) {
+                void fetchJsonSafe('/api/config').then(({ data, etag }) => {
+                    if (data) setConfig(data)
+                    if (etag) setConfigEtag(etag)
+                })
+            }
 
-      // state.json changed -> re-hydrate stateAtom
-      if (path.endsWith("state.json") && path.includes(".planning")) {
-        void fetchJsonSafe("/api/state").then(({ data }) => {
-          if (data) setState(data);
-        });
-      }
-    });
+            // state.json changed -> re-hydrate stateAtom
+            if (path.endsWith('state.json') && path.includes('.planning')) {
+                void fetchJsonSafe('/api/state').then(({ data }) => {
+                    if (data) setState(data)
+                })
+            }
+        })
 
-    // -----------------------------------------------------------------
-    // state:transition -- re-fetch state atom
-    // -----------------------------------------------------------------
-    es.addEventListener("state:transition", (_msg: MessageEvent<string>) => {
-      // Re-fetch state regardless of payload content
-      void fetchJsonSafe("/api/state").then(({ data }) => {
-        if (data) setState(data);
-      });
-    });
+        // -----------------------------------------------------------------
+        // state:transition -- re-fetch state atom
+        // -----------------------------------------------------------------
+        es.addEventListener(
+            'state:transition',
+            (_msg: MessageEvent<string>) => {
+                // Re-fetch state regardless of payload content
+                void fetchJsonSafe('/api/state').then(({ data }) => {
+                    if (data) setState(data)
+                })
+            }
+        )
 
-    // -----------------------------------------------------------------
-    // compile:start -- set compile status to compiling
-    // -----------------------------------------------------------------
-    es.addEventListener("compile:start", (msg: MessageEvent<string>) => {
-      const payload = safeParseEventData<CompileStartPayload>(msg.data);
-      if (!payload) return;
-      setCompileStatus({
-        state: "compiling",
-        domain: payload.domain,
-        name: payload.name,
-      });
-    });
+        // -----------------------------------------------------------------
+        // compile:start -- set compile status to compiling
+        // -----------------------------------------------------------------
+        es.addEventListener('compile:start', (msg: MessageEvent<string>) => {
+            const payload = safeParseEventData<CompileStartPayload>(msg.data)
+            if (!payload) return
+            setCompileStatus({
+                state: 'compiling',
+                domain: payload.domain,
+                name: payload.name,
+            })
+        })
 
-    // -----------------------------------------------------------------
-    // compile:complete -- set compile status to success
-    // -----------------------------------------------------------------
-    es.addEventListener("compile:complete", (msg: MessageEvent<string>) => {
-      const payload = safeParseEventData<CompileCompletePayload>(msg.data);
-      if (!payload) return;
-      setCompileStatus({
-        state: "success",
-        domain: payload.domain,
-        name: payload.name,
-      });
-    });
+        // -----------------------------------------------------------------
+        // compile:complete -- set compile status to success
+        // -----------------------------------------------------------------
+        es.addEventListener('compile:complete', (msg: MessageEvent<string>) => {
+            const payload = safeParseEventData<CompileCompletePayload>(msg.data)
+            if (!payload) return
+            setCompileStatus({
+                state: 'success',
+                domain: payload.domain,
+                name: payload.name,
+            })
+        })
 
-    // -----------------------------------------------------------------
-    // compile:error -- set compile status to error
-    // -----------------------------------------------------------------
-    es.addEventListener("compile:error", (msg: MessageEvent<string>) => {
-      const payload = safeParseEventData<CompileErrorPayload>(msg.data);
-      if (!payload) return;
-      setCompileStatus({
-        state: "error",
-        domain: payload.domain,
-        name: payload.name,
-        error: payload.error ?? "Unknown compile error",
-      });
-    });
+        // -----------------------------------------------------------------
+        // compile:error -- set compile status to error
+        // -----------------------------------------------------------------
+        es.addEventListener('compile:error', (msg: MessageEvent<string>) => {
+            const payload = safeParseEventData<CompileErrorPayload>(msg.data)
+            if (!payload) return
+            setCompileStatus({
+                state: 'error',
+                domain: payload.domain,
+                name: payload.name,
+                error: payload.error ?? 'Unknown compile error',
+            })
+        })
 
-    // -----------------------------------------------------------------
-    // ledger:entry -- placeholder
-    // -----------------------------------------------------------------
-    es.addEventListener("ledger:entry", () => {
-      // Placeholder: ledger entries not yet consumed by UI
-    });
+        // -----------------------------------------------------------------
+        // ledger:entry -- placeholder
+        // -----------------------------------------------------------------
+        es.addEventListener('ledger:entry', () => {
+            // Placeholder: ledger entries not yet consumed by UI
+        })
 
-    // -----------------------------------------------------------------
-    // heartbeat -- no-op (keeps connection alive)
-    // -----------------------------------------------------------------
-    es.addEventListener("heartbeat", () => {
-      // Intentional no-op -- heartbeat events keep the connection alive.
-    });
+        // -----------------------------------------------------------------
+        // heartbeat -- no-op (keeps connection alive)
+        // -----------------------------------------------------------------
+        es.addEventListener('heartbeat', () => {
+            // Intentional no-op -- heartbeat events keep the connection alive.
+        })
 
-    return () => {
-      es.close();
-      esRef.current = null;
-    };
-  }, [setConfig, setConfigEtag, setState, setCompileStatus]);
+        return () => {
+            es.close()
+            esRef.current = null
+        }
+    }, [setConfig, setConfigEtag, setState, setCompileStatus])
 }

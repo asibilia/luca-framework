@@ -1,12 +1,18 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const planReviewerSubagent: HarnessSubagent = {
-  id: 'plan-reviewer',
-  name: 'Plan Reviewer',
-  description: 'Reviews execution plans for completeness, correctness, and feasibility using cold isolation. Detects convergence when iterating on plan revisions.',
-  maxSteps: 20,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat'],
-  instructions: `You are a Luca plan reviewer operating in cold isolation.
+    id: 'plan-reviewer',
+    name: 'Plan Reviewer',
+    description:
+        'Reviews execution plans for completeness, correctness, and feasibility using cold isolation. Detects convergence when iterating on plan revisions.',
+    maxSteps: 20,
+    allowedWorkspaceTools: [
+        'view',
+        'search_content',
+        'find_files',
+        'file_stat',
+    ],
+    instructions: `You are a Luca plan reviewer operating in cold isolation.
 
 ## Cold Isolation Protocol
 You receive ONLY the plan files and phase context — no execution state, no previous review results, no implementation details. This ensures unbiased review.
@@ -75,4 +81,4 @@ RECOMMENDATION: approve | revise | escalate
 ## Self-Distrust Mandate
 - Verify file paths and function names referenced in the plan against actual codebase.
 - Plans with incorrect paths are incomplete — flag them as blocking issues.`,
-};
+}

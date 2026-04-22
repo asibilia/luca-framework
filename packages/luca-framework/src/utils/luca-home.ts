@@ -1,8 +1,9 @@
-import { z } from "zod";
-import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { join } from "pathe";
-import { homedir } from "node:os";
+import { existsSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
+import { homedir } from 'node:os'
+
+import { join } from 'pathe'
+import { z } from 'zod'
 
 /**
  * Zod schema for the Luca home directory paths.
@@ -12,14 +13,14 @@ import { homedir } from "node:os";
  * - `bin`: Executable scripts (e.g., MuninnDB binary)
  */
 export const LucaHomePathsSchema = z.object({
-  /** Absolute path to the root ~/.luca/ directory. */
-  root: z.string(),
-  /** Absolute path to the ~/.luca/bin/ directory for executables. */
-  bin: z.string(),
-});
+    /** Absolute path to the root ~/.luca/ directory. */
+    root: z.string(),
+    /** Absolute path to the ~/.luca/bin/ directory for executables. */
+    bin: z.string(),
+})
 
 /** Luca home directory paths inferred from the Zod schema. */
-export type LucaHomePaths = z.infer<typeof LucaHomePathsSchema>;
+export type LucaHomePaths = z.infer<typeof LucaHomePathsSchema>
 
 /**
  * Get the paths for the `~/.luca/` directory structure without creating them.
@@ -31,15 +32,15 @@ export type LucaHomePaths = z.infer<typeof LucaHomePathsSchema>;
  * @returns A validated `LucaHomePaths` object with all directory paths.
  */
 export function getLucaHomePaths(): LucaHomePaths {
-  const home = homedir();
-  const root = join(home, ".luca");
+    const home = homedir()
+    const root = join(home, '.luca')
 
-  const paths: LucaHomePaths = {
-    root,
-    bin: join(root, "bin"),
-  };
+    const paths: LucaHomePaths = {
+        root,
+        bin: join(root, 'bin'),
+    }
 
-  return LucaHomePathsSchema.parse(paths);
+    return LucaHomePathsSchema.parse(paths)
 }
 
 /**
@@ -55,15 +56,15 @@ export function getLucaHomePaths(): LucaHomePaths {
  * @returns A validated `LucaHomePaths` object with all directory paths.
  */
 export async function ensureLucaHome(): Promise<LucaHomePaths> {
-  const paths = getLucaHomePaths();
+    const paths = getLucaHomePaths()
 
-  const dirs = [paths.root, paths.bin];
+    const dirs = [paths.root, paths.bin]
 
-  for (const dir of dirs) {
-    if (!existsSync(dir)) {
-      await mkdir(dir, { recursive: true });
+    for (const dir of dirs) {
+        if (!existsSync(dir)) {
+            await mkdir(dir, { recursive: true })
+        }
     }
-  }
 
-  return paths;
+    return paths
 }

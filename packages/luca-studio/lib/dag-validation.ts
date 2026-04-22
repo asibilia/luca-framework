@@ -10,8 +10,8 @@
 
 /** Minimal edge shape for cycle detection (source -> target). */
 interface DirectedEdge {
-  source: string;
-  target: string;
+    source: string
+    target: string
 }
 
 // -- Public API ---------------------------------------------------------------
@@ -47,47 +47,47 @@ interface DirectedEdge {
  * ```
  */
 export function hasCycle(nodeIds: string[], edges: DirectedEdge[]): boolean {
-  // Build adjacency list and in-degree map
-  const adjacency = new Map<string, string[]>();
-  const inDegree = new Map<string, number>();
+    // Build adjacency list and in-degree map
+    const adjacency = new Map<string, string[]>()
+    const inDegree = new Map<string, number>()
 
-  for (const id of nodeIds) {
-    adjacency.set(id, []);
-    inDegree.set(id, 0);
-  }
-
-  for (const edge of edges) {
-    const neighbors = adjacency.get(edge.source);
-    if (neighbors) {
-      neighbors.push(edge.target);
+    for (const id of nodeIds) {
+        adjacency.set(id, [])
+        inDegree.set(id, 0)
     }
-    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-  }
 
-  // Initialize queue with zero in-degree nodes
-  const queue: string[] = [];
-  for (const [id, degree] of inDegree) {
-    if (degree === 0) {
-      queue.push(id);
+    for (const edge of edges) {
+        const neighbors = adjacency.get(edge.source)
+        if (neighbors) {
+            neighbors.push(edge.target)
+        }
+        inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
     }
-  }
 
-  // Process nodes in topological order
-  let processedCount = 0;
-  while (queue.length > 0) {
-    const node = queue.shift()!;
-    processedCount++;
-
-    const neighbors = adjacency.get(node) ?? [];
-    for (const neighbor of neighbors) {
-      const newDegree = (inDegree.get(neighbor) ?? 1) - 1;
-      inDegree.set(neighbor, newDegree);
-      if (newDegree === 0) {
-        queue.push(neighbor);
-      }
+    // Initialize queue with zero in-degree nodes
+    const queue: string[] = []
+    for (const [id, degree] of inDegree) {
+        if (degree === 0) {
+            queue.push(id)
+        }
     }
-  }
 
-  // If not all nodes were processed, a cycle exists
-  return processedCount !== nodeIds.length;
+    // Process nodes in topological order
+    let processedCount = 0
+    while (queue.length > 0) {
+        const node = queue.shift()!
+        processedCount++
+
+        const neighbors = adjacency.get(node) ?? []
+        for (const neighbor of neighbors) {
+            const newDegree = (inDegree.get(neighbor) ?? 1) - 1
+            inDegree.set(neighbor, newDegree)
+            if (newDegree === 0) {
+                queue.push(neighbor)
+            }
+        }
+    }
+
+    // If not all nodes were processed, a cycle exists
+    return processedCount !== nodeIds.length
 }

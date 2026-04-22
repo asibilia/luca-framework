@@ -1,24 +1,23 @@
-"use client";
+'use client'
 
-import { SKILL_LIST_CONFIG } from "~/hooks/schemas/entity-hook-config";
-import { useEntityList } from "~/hooks/use-entity-list";
-
-import type { EntitySummary } from "~/lib/entity-route-helpers";
+import { SKILL_LIST_CONFIG } from '~/hooks/schemas/entity-hook-config'
+import { useEntityList } from '~/hooks/use-entity-list'
+import type { EntitySummary } from '~/lib/entity-route-helpers'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type UseSkillListReturn = {
-  /** Array of skill summaries from the API. */
-  skills: EntitySummary[];
-  /** Whether the skill list is currently loading. */
-  loading: boolean;
-  /** Error message if the fetch failed. */
-  error: string | null;
-  /** Manually refetch the skill list. */
-  refresh: () => void;
-};
+    /** Array of skill summaries from the API. */
+    skills: EntitySummary[]
+    /** Whether the skill list is currently loading. */
+    loading: boolean
+    /** Error message if the fetch failed. */
+    error: string | null
+    /** Manually refetch the skill list. */
+    refresh: () => void
+}
 
 // ---------------------------------------------------------------------------
 // Thin wrapper
@@ -38,7 +37,7 @@ type UseSkillListReturn = {
  * ```
  */
 export function useSkillList(): UseSkillListReturn {
-  const { entities, loading, error, refresh } =
-    useEntityList(SKILL_LIST_CONFIG);
-  return { skills: entities, loading, error, refresh };
+    const { entities, loading, error, refresh } =
+        useEntityList(SKILL_LIST_CONFIG)
+    return { skills: entities, loading, error, refresh }
 }

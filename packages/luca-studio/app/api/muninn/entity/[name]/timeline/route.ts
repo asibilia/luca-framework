@@ -1,11 +1,8 @@
+import { muninnProxyHandler, parseQueryParams } from '~/lib/muninn-route-helper'
 import {
-  muninnProxyHandler,
-  parseQueryParams,
-} from "~/lib/muninn-route-helper";
-import {
-  EntityTimelineQuerySchema,
-  EntityTimelineResponseSchema,
-} from "~/lib/muninn-schemas";
+    EntityTimelineQuerySchema,
+    EntityTimelineResponseSchema,
+} from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/entity/[name]/timeline
@@ -18,20 +15,21 @@ import {
  * - limit (default: 50) -- max timeline entries
  */
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ name: string }> },
+    request: Request,
+    { params }: { params: Promise<{ name: string }> }
 ) {
-  const { name } = await params;
+    const { name } = await params
 
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, EntityTimelineQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, EntityTimelineQuerySchema)
+    if (!result.success) return result.response
 
-  const { vault, limit } = result.data;
+    const { vault, limit } = result.data
 
-  return muninnProxyHandler(
-    (client) => client.entityTimeline(vault, decodeURIComponent(name), limit),
-    "Failed to fetch entity timeline from MuninnDB",
-    EntityTimelineResponseSchema,
-  );
+    return muninnProxyHandler(
+        (client) =>
+            client.entityTimeline(vault, decodeURIComponent(name), limit),
+        'Failed to fetch entity timeline from MuninnDB',
+        EntityTimelineResponseSchema
+    )
 }

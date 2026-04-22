@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom } from 'jotai'
 
 // ---------------------------------------------------------------------------
 // Layer 3 -- Dirty Tracking
@@ -27,7 +27,7 @@ import { atom } from "jotai";
  * dirtySet.has("config"); // true if config draft differs from server
  * ```
  */
-export const dirtySetAtom = atom<Set<string>>(new Set<string>());
+export const dirtySetAtom = atom<Set<string>>(new Set<string>())
 
 /**
  * Map of entity keys to their validation error messages.
@@ -41,7 +41,7 @@ export const dirtySetAtom = atom<Set<string>>(new Set<string>());
  * errors.get("agent:lu-router"); // ["name is required"] or undefined
  * ```
  */
-export const validationErrorsAtom = atom<Map<string, string[]>>(new Map());
+export const validationErrorsAtom = atom<Map<string, string[]>>(new Map())
 
 /**
  * Derived read-only atom: `true` when a save operation is permitted.
@@ -53,17 +53,17 @@ export const validationErrorsAtom = atom<Map<string, string[]>>(new Map());
  * This is the single source of truth for enabling/disabling save buttons.
  */
 export const canSaveAtom = atom((get) => {
-  const dirtySet = get(dirtySetAtom);
-  if (dirtySet.size === 0) return false;
+    const dirtySet = get(dirtySetAtom)
+    if (dirtySet.size === 0) return false
 
-  const errors = get(validationErrorsAtom);
-  for (const key of dirtySet) {
-    const keyErrors = errors.get(key);
-    if (keyErrors && keyErrors.length > 0) return false;
-  }
+    const errors = get(validationErrorsAtom)
+    for (const key of dirtySet) {
+        const keyErrors = errors.get(key)
+        if (keyErrors && keyErrors.length > 0) return false
+    }
 
-  return true;
-});
+    return true
+})
 
 // ---------------------------------------------------------------------------
 // Helper Write Atoms
@@ -83,11 +83,11 @@ export const canSaveAtom = atom((get) => {
  * ```
  */
 export const markDirtyAtom = atom(null, (get, set, key: string) => {
-  const prev = get(dirtySetAtom);
-  const next = new Set(prev);
-  next.add(key);
-  set(dirtySetAtom, next);
-});
+    const prev = get(dirtySetAtom)
+    const next = new Set(prev)
+    next.add(key)
+    set(dirtySetAtom, next)
+})
 
 /**
  * Write atom that removes a key from the dirty set.
@@ -101,18 +101,18 @@ export const markDirtyAtom = atom(null, (get, set, key: string) => {
  * ```
  */
 export const markCleanAtom = atom(null, (get, set, key: string) => {
-  const prevDirty = get(dirtySetAtom);
-  const nextDirty = new Set(prevDirty);
-  nextDirty.delete(key);
-  set(dirtySetAtom, nextDirty);
+    const prevDirty = get(dirtySetAtom)
+    const nextDirty = new Set(prevDirty)
+    nextDirty.delete(key)
+    set(dirtySetAtom, nextDirty)
 
-  const prevErrors = get(validationErrorsAtom);
-  if (prevErrors.has(key)) {
-    const nextErrors = new Map(prevErrors);
-    nextErrors.delete(key);
-    set(validationErrorsAtom, nextErrors);
-  }
-});
+    const prevErrors = get(validationErrorsAtom)
+    if (prevErrors.has(key)) {
+        const nextErrors = new Map(prevErrors)
+        nextErrors.delete(key)
+        set(validationErrorsAtom, nextErrors)
+    }
+})
 
 /**
  * Write atom that sets validation errors for a specific entity key.
@@ -126,15 +126,15 @@ export const markCleanAtom = atom(null, (get, set, key: string) => {
  * ```
  */
 export const setValidationErrorsAtom = atom(
-  null,
-  (get, set, payload: { key: string; errors: string[] }) => {
-    const prev = get(validationErrorsAtom);
-    const next = new Map(prev);
-    if (payload.errors.length === 0) {
-      next.delete(payload.key);
-    } else {
-      next.set(payload.key, payload.errors);
+    null,
+    (get, set, payload: { key: string; errors: string[] }) => {
+        const prev = get(validationErrorsAtom)
+        const next = new Map(prev)
+        if (payload.errors.length === 0) {
+            next.delete(payload.key)
+        } else {
+            next.set(payload.key, payload.errors)
+        }
+        set(validationErrorsAtom, next)
     }
-    set(validationErrorsAtom, next);
-  },
-);
+)

@@ -17,24 +17,24 @@
  * ```
  */
 export function LoadingSkeleton({
-  variant,
-  rows,
-  columns,
+    variant,
+    rows,
+    columns,
 }: {
-  variant: "card" | "table" | "chart" | "text";
-  rows?: number;
-  columns?: number;
+    variant: 'card' | 'table' | 'chart' | 'text'
+    rows?: number
+    columns?: number
 }) {
-  return (
-    <div aria-label="Loading" role="status" aria-busy={true}>
-      {variant === "card" && <CardSkeleton />}
-      {variant === "table" && (
-        <TableSkeleton rows={rows ?? 5} columns={columns ?? 4} />
-      )}
-      {variant === "chart" && <ChartSkeleton />}
-      {variant === "text" && <TextSkeleton rows={rows ?? 4} />}
-    </div>
-  );
+    return (
+        <div aria-label="Loading" role="status" aria-busy={true}>
+            {variant === 'card' && <CardSkeleton />}
+            {variant === 'table' && (
+                <TableSkeleton rows={rows ?? 5} columns={columns ?? 4} />
+            )}
+            {variant === 'chart' && <ChartSkeleton />}
+            {variant === 'text' && <TextSkeleton rows={rows ?? 4} />}
+        </div>
+    )
 }
 
 /**
@@ -42,20 +42,20 @@ export function LoadingSkeleton({
  * summary banners, and metric panels.
  */
 function CardSkeleton() {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
-        >
-          <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-6 w-32 animate-pulse rounded bg-muted" />
-          <div className="h-2 w-full animate-pulse rounded bg-muted" />
+    return (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                    key={i}
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
+                >
+                    <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                    <div className="h-6 w-32 animate-pulse rounded bg-muted" />
+                    <div className="h-2 w-full animate-pulse rounded bg-muted" />
+                </div>
+            ))}
         </div>
-      ))}
-    </div>
-  );
+    )
 }
 
 /**
@@ -63,35 +63,40 @@ function CardSkeleton() {
  * with header row and data rows.
  */
 function TableSkeleton({ rows, columns }: { rows: number; columns: number }) {
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full">
-        <thead className="bg-card">
-          <tr className="border-b border-border">
-            {Array.from({ length: columns }).map((_, c) => (
-              <th key={c} className="px-3 py-2">
-                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: rows }).map((_, r) => (
-            <tr key={r} className="border-b border-border last:border-b-0">
-              {Array.from({ length: columns }).map((_, c) => (
-                <td key={c} className="px-3 py-2">
-                  <div
-                    className="h-3 animate-pulse rounded bg-muted"
-                    style={{ width: c === 0 ? "60%" : "40%" }}
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+    return (
+        <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full">
+                <thead className="bg-card">
+                    <tr className="border-b border-border">
+                        {Array.from({ length: columns }).map((_, c) => (
+                            <th key={c} className="px-3 py-2">
+                                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {Array.from({ length: rows }).map((_, r) => (
+                        <tr
+                            key={r}
+                            className="border-b border-border last:border-b-0"
+                        >
+                            {Array.from({ length: columns }).map((_, c) => (
+                                <td key={c} className="px-3 py-2">
+                                    <div
+                                        className="h-3 animate-pulse rounded bg-muted"
+                                        style={{
+                                            width: c === 0 ? '60%' : '40%',
+                                        }}
+                                    />
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    )
 }
 
 /**
@@ -99,21 +104,21 @@ function TableSkeleton({ rows, columns }: { rows: number; columns: number }) {
  * matching the convergence chart and budget gauge areas.
  */
 function ChartSkeleton() {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-      <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-      <div className="flex h-48 items-end gap-2 pt-4">
-        {[30, 50, 40, 65, 55, 75, 60, 80].map((height, i) => (
-          <div
-            key={i}
-            className="flex-1 animate-pulse rounded-t bg-muted"
-            style={{ height: `${height}%` }}
-          />
-        ))}
-      </div>
-      <div className="h-2 w-full animate-pulse rounded bg-muted" />
-    </div>
-  );
+    return (
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            <div className="flex h-48 items-end gap-2 pt-4">
+                {[30, 50, 40, 65, 55, 75, 60, 80].map((height, i) => (
+                    <div
+                        key={i}
+                        className="flex-1 animate-pulse rounded-t bg-muted"
+                        style={{ height: `${height}%` }}
+                    />
+                ))}
+            </div>
+            <div className="h-2 w-full animate-pulse rounded bg-muted" />
+        </div>
+    )
 }
 
 /**
@@ -121,16 +126,16 @@ function ChartSkeleton() {
  * in memory and notes pages.
  */
 function TextSkeleton({ rows }: { rows: number }) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-      {Array.from({ length: rows }).map((_, i) => (
-        <div
-          key={i}
-          className="h-3 animate-pulse rounded bg-muted"
-          style={{ width: `${85 - i * 8}%` }}
-        />
-      ))}
-    </div>
-  );
+    return (
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+            {Array.from({ length: rows }).map((_, i) => (
+                <div
+                    key={i}
+                    className="h-3 animate-pulse rounded bg-muted"
+                    style={{ width: `${85 - i * 8}%` }}
+                />
+            ))}
+        </div>
+    )
 }

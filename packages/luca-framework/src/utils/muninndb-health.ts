@@ -1,18 +1,17 @@
-import { join } from "pathe";
+import { join } from 'pathe'
 
-import { getLucaHomePaths } from "./luca-home";
+import { getLucaHomePaths } from './luca-home'
 import {
-  MuninndbBinaryStatusSchema,
-  MuninndbServiceStatusSchema,
-  MUNINNDB_BINARY_NAME,
-  getCommonBinaryPaths,
-  resolveMuninndbPort,
-} from "./muninndb-schemas";
-
+    MuninndbBinaryStatusSchema,
+    MuninndbServiceStatusSchema,
+    MUNINNDB_BINARY_NAME,
+    getCommonBinaryPaths,
+    resolveMuninndbPort,
+} from './muninndb-schemas'
 import type {
-  MuninndbBinaryStatus,
-  MuninndbServiceStatus,
-} from "./muninndb-schemas";
+    MuninndbBinaryStatus,
+    MuninndbServiceStatus,
+} from './muninndb-schemas'
 
 /**
  * Check whether the MuninnDB binary is installed and executable.
@@ -34,71 +33,71 @@ import type {
  * ```
  */
 export async function checkMuninndbBinary(
-  binaryPath?: string,
+    binaryPath?: string
 ): Promise<MuninndbBinaryStatus> {
-  const preferredPath = join(getLucaHomePaths().bin, MUNINNDB_BINARY_NAME);
-  let resolvedPath = binaryPath ?? preferredPath;
+    const preferredPath = join(getLucaHomePaths().bin, MUNINNDB_BINARY_NAME)
+    let resolvedPath = binaryPath ?? preferredPath
 
-  // Check preferred location first, then fall back to common locations
-  const exists = await Bun.file(resolvedPath).exists();
-  if (!exists) {
-    // Search common install locations before reporting "not found"
-    const candidates = getCommonBinaryPaths();
+    // Check preferred location first, then fall back to common locations
+    const exists = await Bun.file(resolvedPath).exists()
+    if (!exists) {
+        // Search common install locations before reporting "not found"
+        const candidates = getCommonBinaryPaths()
 
-    let found = false;
-    for (const candidate of candidates) {
-      if (await Bun.file(candidate).exists()) {
-        resolvedPath = candidate;
-        found = true;
-        break;
-      }
+        let found = false
+        for (const candidate of candidates) {
+            if (await Bun.file(candidate).exists()) {
+                resolvedPath = candidate
+                found = true
+                break
+            }
+        }
+
+        // Fallback: Bun.which()
+        if (!found) {
+            const whichResult = Bun.which(MUNINNDB_BINARY_NAME)
+            if (whichResult && (await Bun.file(whichResult).exists())) {
+                resolvedPath = whichResult
+                found = true
+            }
+        }
+
+        if (!found) {
+            return MuninndbBinaryStatusSchema.parse({
+                installed: false,
+                path: null,
+                version: null,
+                executable: false,
+            })
+        }
     }
 
-    // Fallback: Bun.which()
-    if (!found) {
-      const whichResult = Bun.which(MUNINNDB_BINARY_NAME);
-      if (whichResult && (await Bun.file(whichResult).exists())) {
-        resolvedPath = whichResult;
-        found = true;
-      }
+    // Check executable permission
+    let executable = false
+    try {
+        const result = await Bun.$`test -x ${resolvedPath}`.quiet().nothrow()
+        executable = result.exitCode === 0
+    } catch {
+        executable = false
     }
 
-    if (!found) {
-      return MuninndbBinaryStatusSchema.parse({
-        installed: false,
-        path: null,
-        version: null,
-        executable: false,
-      });
+    // Try to get version
+    let version: string | null = null
+    try {
+        const result = await Bun.$`${resolvedPath} --version`.quiet().nothrow()
+        if (result.exitCode === 0) {
+            version = result.stdout.toString().trim() || null
+        }
+    } catch {
+        // Binary exists but can't report version — acceptable
     }
-  }
 
-  // Check executable permission
-  let executable = false;
-  try {
-    const result = await Bun.$`test -x ${resolvedPath}`.quiet().nothrow();
-    executable = result.exitCode === 0;
-  } catch {
-    executable = false;
-  }
-
-  // Try to get version
-  let version: string | null = null;
-  try {
-    const result = await Bun.$`${resolvedPath} --version`.quiet().nothrow();
-    if (result.exitCode === 0) {
-      version = result.stdout.toString().trim() || null;
-    }
-  } catch {
-    // Binary exists but can't report version — acceptable
-  }
-
-  return MuninndbBinaryStatusSchema.parse({
-    installed: true,
-    path: resolvedPath,
-    version,
-    executable,
-  });
+    return MuninndbBinaryStatusSchema.parse({
+        installed: true,
+        path: resolvedPath,
+        version,
+        executable,
+    })
 }
 
 /**
@@ -120,65 +119,68 @@ export async function checkMuninndbBinary(
  * ```
  */
 export async function checkMuninndbService(
-  port?: number,
+    port?: number
 ): Promise<MuninndbServiceStatus> {
-  const resolvedPort = resolveMuninndbPort(port);
+    const resolvedPort = resolveMuninndbPort(port)
 
-  // Read PID from pidfile
-  let pid: number | null = null;
-  try {
-    const pidfilePath = join(getLucaHomePaths().root, "muninndb.pid");
-    const pidfileExists = await Bun.file(pidfilePath).exists();
-    if (pidfileExists) {
-      const pidStr = await Bun.file(pidfilePath).text();
-      const parsed = parseInt(pidStr.trim(), 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        pid = parsed;
-      }
+    // Read PID from pidfile
+    let pid: number | null = null
+    try {
+        const pidfilePath = join(getLucaHomePaths().root, 'muninndb.pid')
+        const pidfileExists = await Bun.file(pidfilePath).exists()
+        if (pidfileExists) {
+            const pidStr = await Bun.file(pidfilePath).text()
+            const parsed = parseInt(pidStr.trim(), 10)
+            if (!isNaN(parsed) && parsed > 0) {
+                pid = parsed
+            }
+        }
+    } catch {
+        // Pidfile read failure is non-fatal
     }
-  } catch {
-    // Pidfile read failure is non-fatal
-  }
 
-  // Check HTTP health endpoint
-  let healthy = false;
-  let running = false;
+    // Check HTTP health endpoint
+    let healthy = false
+    let running = false
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 3000)
 
-    const response = await fetch(`http://localhost:${resolvedPort}/health`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+        const response = await fetch(
+            `http://localhost:${resolvedPort}/health`,
+            {
+                signal: controller.signal,
+            }
+        )
+        clearTimeout(timeout)
 
-    healthy = response.ok;
-    running = true;
-  } catch {
-    // Connection refused or timeout — service not running
-    healthy = false;
-    running = false;
-  }
+        healthy = response.ok
+        running = true
+    } catch {
+        // Connection refused or timeout — service not running
+        healthy = false
+        running = false
+    }
 
-  return MuninndbServiceStatusSchema.parse({
-    running,
-    port: resolvedPort,
-    pid,
-    healthy,
-  });
+    return MuninndbServiceStatusSchema.parse({
+        running,
+        port: resolvedPort,
+        pid,
+        healthy,
+    })
 }
 
 /**
  * Options for `waitForMuninndbHealthy()`.
  */
 export interface WaitForHealthyOptions {
-  /** Port to check (default: 8476). */
-  port?: number;
-  /** Maximum time to wait in milliseconds (default: 10000). */
-  timeoutMs?: number;
-  /** Polling interval in milliseconds (default: 500). */
-  intervalMs?: number;
+    /** Port to check (default: 8476). */
+    port?: number
+    /** Maximum time to wait in milliseconds (default: 10000). */
+    timeoutMs?: number
+    /** Polling interval in milliseconds (default: 500). */
+    intervalMs?: number
 }
 
 /**
@@ -199,22 +201,22 @@ export interface WaitForHealthyOptions {
  * ```
  */
 export async function waitForMuninndbHealthy(
-  options: WaitForHealthyOptions = {},
+    options: WaitForHealthyOptions = {}
 ): Promise<MuninndbServiceStatus> {
-  const { port, timeoutMs = 10000, intervalMs = 500 } = options;
+    const { port, timeoutMs = 10000, intervalMs = 500 } = options
 
-  const deadline = Date.now() + timeoutMs;
+    const deadline = Date.now() + timeoutMs
 
-  while (Date.now() < deadline) {
-    const status = await checkMuninndbService(port);
-    if (status.healthy) {
-      return status;
+    while (Date.now() < deadline) {
+        const status = await checkMuninndbService(port)
+        if (status.healthy) {
+            return status
+        }
+
+        // Sleep before next poll
+        await new Promise((resolve) => setTimeout(resolve, intervalMs))
     }
 
-    // Sleep before next poll
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  // Final check after timeout
-  return checkMuninndbService(port);
+    // Final check after timeout
+    return checkMuninndbService(port)
 }

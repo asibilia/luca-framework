@@ -4,14 +4,14 @@
  * Validates the incoming payload against PlannerSectionSchema and merges
  * it into the full config.json. No semantic validators -- schema-only.
  */
-import { createConfigSectionHandler } from "~/lib/config-section-handler";
-import { PlannerSectionSchema } from "~/lib/config-section-schemas";
+import { createConfigSectionHandler } from '~/lib/config-section-handler'
+import { PlannerSectionSchema } from '~/lib/config-section-schemas'
 
 const handler = createConfigSectionHandler({
-  section: "planner",
-  schema: PlannerSectionSchema,
-});
+    section: 'planner',
+    schema: PlannerSectionSchema,
+})
 
 export async function PUT(request: Request) {
-  return handler(request);
+    return handler(request)
 }

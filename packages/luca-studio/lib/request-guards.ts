@@ -26,9 +26,11 @@
  * ```
  */
 export function isLocalhostRequest(request: Request): boolean {
-  const host = request.headers.get("host") ?? "";
-  const hostname = host.replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
-  return (
-    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
-  );
+    const host = request.headers.get('host') ?? ''
+    const hostname = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '')
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '::1'
+    )
 }

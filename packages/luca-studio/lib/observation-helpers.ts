@@ -6,8 +6,8 @@
  * session:observation-* engrams.
  */
 
-import type { MuninnEngram } from "~/lib/muninn-types";
-import { parseZoneContent } from "~/lib/muninn-helpers";
+import { parseZoneContent } from '~/lib/muninn-helpers'
+import type { MuninnEngram } from '~/lib/muninn-types'
 
 // ---------------------------------------------------------------------------
 // Zone classification
@@ -19,7 +19,7 @@ import { parseZoneContent } from "~/lib/muninn-helpers";
  * Used by deriveHitRateFromObservations and derivePrecisionFromObservations
  * to count positive signal observations.
  */
-export const GOOD_ZONES: ReadonlySet<string> = new Set(["peak", "good"]);
+export const GOOD_ZONES: ReadonlySet<string> = new Set(['peak', 'good'])
 
 // ---------------------------------------------------------------------------
 // Observation-derived metric helpers
@@ -43,24 +43,24 @@ export const GOOD_ZONES: ReadonlySet<string> = new Set(["peak", "good"]);
  * ```
  */
 export function deriveHitRateFromObservations(
-  observations: MuninnEngram[],
+    observations: MuninnEngram[]
 ): number | null {
-  if (observations.length === 0) return null;
+    if (observations.length === 0) return null
 
-  let hits = 0;
-  let parseable = 0;
-  for (const obs of observations) {
-    const zone = parseZoneContent(obs.content).zone ?? null;
-    if (zone !== null) {
-      parseable++;
-      if (GOOD_ZONES.has(zone.toLowerCase())) {
-        hits++;
-      }
+    let hits = 0
+    let parseable = 0
+    for (const obs of observations) {
+        const zone = parseZoneContent(obs.content).zone ?? null
+        if (zone !== null) {
+            parseable++
+            if (GOOD_ZONES.has(zone.toLowerCase())) {
+                hits++
+            }
+        }
     }
-  }
 
-  if (parseable === 0) return null;
-  return hits / parseable;
+    if (parseable === 0) return null
+    return hits / parseable
 }
 
 /**
@@ -82,31 +82,31 @@ export function deriveHitRateFromObservations(
  * ```
  */
 export function derivePrecisionFromObservations(
-  observations: MuninnEngram[],
+    observations: MuninnEngram[]
 ): number | null {
-  if (observations.length === 0) return null;
+    if (observations.length === 0) return null
 
-  let goodCount = 0;
-  let totalParseable = 0;
+    let goodCount = 0
+    let totalParseable = 0
 
-  for (const obs of observations) {
-    const zone = parseZoneContent(obs.content).zone ?? null;
-    if (zone !== null) {
-      totalParseable++;
-      if (GOOD_ZONES.has(zone.toLowerCase())) {
-        goodCount++;
-      }
+    for (const obs of observations) {
+        const zone = parseZoneContent(obs.content).zone ?? null
+        if (zone !== null) {
+            totalParseable++
+            if (GOOD_ZONES.has(zone.toLowerCase())) {
+                goodCount++
+            }
+        }
     }
-  }
 
-  if (totalParseable === 0) return null;
+    if (totalParseable === 0) return null
 
-  const goodRatio = goodCount / totalParseable;
+    const goodRatio = goodCount / totalParseable
 
-  // High precision: ≥70% in good zones → scale 0.8–1.0
-  // Low precision: <70% → scale 0.4–0.8
-  if (goodRatio >= 0.7) {
-    return 0.8 + (goodRatio - 0.7) * (0.2 / 0.3);
-  }
-  return 0.4 + goodRatio * (0.4 / 0.7);
+    // High precision: ≥70% in good zones → scale 0.8–1.0
+    // Low precision: <70% → scale 0.4–0.8
+    if (goodRatio >= 0.7) {
+        return 0.8 + (goodRatio - 0.7) * (0.2 / 0.3)
+    }
+    return 0.4 + goodRatio * (0.4 / 0.7)
 }

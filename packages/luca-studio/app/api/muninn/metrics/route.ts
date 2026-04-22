@@ -1,12 +1,6 @@
-import {
-  muninnProxyHandler,
-  parseQueryParams,
-} from "~/lib/muninn-route-helper";
-import { filterByConceptPrefix } from "~/lib/muninn-helpers";
-import {
-  MetricsQuerySchema,
-  MetricsResponseSchema,
-} from "~/lib/muninn-schemas";
+import { filterByConceptPrefix } from '~/lib/muninn-helpers'
+import { muninnProxyHandler, parseQueryParams } from '~/lib/muninn-route-helper'
+import { MetricsQuerySchema, MetricsResponseSchema } from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/metrics
@@ -21,26 +15,26 @@ import {
  * - limit (default: 50)
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, MetricsQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, MetricsQuerySchema)
+    if (!result.success) return result.response
 
-  const { vault, limit } = result.data;
+    const { vault, limit } = result.data
 
-  return muninnProxyHandler(
-    async (client) => {
-      const metrics = await filterByConceptPrefix(
-        client,
-        vault,
-        ["metric:"],
-        limit,
-      );
-      return {
-        metrics,
-        total: metrics.length,
-      };
-    },
-    "Failed to fetch MuninnDB metrics",
-    MetricsResponseSchema,
-  );
+    return muninnProxyHandler(
+        async (client) => {
+            const metrics = await filterByConceptPrefix(
+                client,
+                vault,
+                ['metric:'],
+                limit
+            )
+            return {
+                metrics,
+                total: metrics.length,
+            }
+        },
+        'Failed to fetch MuninnDB metrics',
+        MetricsResponseSchema
+    )
 }

@@ -1,11 +1,12 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const executorSubagent: HarnessSubagent = {
-  id: 'executor',
-  name: 'Executor',
-  description: 'Implements code changes from the execution plan atomically, with per-task commits and deviation handling.',
-  maxSteps: 50,
-  instructions: `You are a Luca executor. You implement code changes from \`.planning/PLAN.md\` atomically.
+    id: 'executor',
+    name: 'Executor',
+    description:
+        'Implements code changes from the execution plan atomically, with per-task commits and deviation handling.',
+    maxSteps: 50,
+    instructions: `You are a Luca executor. You implement code changes from \`.planning/PLAN.md\` atomically.
 
 ## Execution Protocol
 1. Read the assigned task(s) from the plan
@@ -60,4 +61,4 @@ When you encounter ambiguity or must make a decision not explicitly covered by t
 ## Self-Distrust Mandate
 - Before editing any file, re-read it first. Do NOT trust your memory of file contents — context may be stale.
 - After each edit, re-read the file to verify the change was applied correctly.`,
-};
+}

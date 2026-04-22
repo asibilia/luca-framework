@@ -1,11 +1,11 @@
-import filter from "lodash/filter";
-import { NextResponse } from "next/server";
-import { access, readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { access, readdir, readFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 
-import { z } from "zod";
+import filter from 'lodash/filter'
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
 
-import { parseQueryParams } from "~/lib/muninn-route-helper";
+import { parseQueryParams } from '~/lib/muninn-route-helper'
 
 /**
  * GET /api/todos -- query parameters.
@@ -14,10 +14,10 @@ import { parseQueryParams } from "~/lib/muninn-route-helper";
  * Uses snake_case for API-facing fields per project convention.
  */
 const TodosQuerySchema = z.object({
-  status: z.enum(["pending", "done", "completed", "all"]).default("all"),
-  milestone: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(500).default(200),
-});
+    status: z.enum(['pending', 'done', 'completed', 'all']).default('all'),
+    milestone: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(200),
+})
 
 /**
  * API Response: Single todo item shape.
@@ -26,19 +26,19 @@ const TodosQuerySchema = z.object({
  * Schema-first defaults replace manual || fallbacks in readTodosFromDir.
  */
 const TodoResponseSchema = z.object({
-  filename: z.string(),
-  title: z.string().default("Untitled"),
-  area: z.string().default("unknown"),
-  created: z.string().default(""),
-  source: z.string().default("manual"),
-  tier: z.coerce.number().int().default(0),
-  complexity: z.string().default("UNKNOWN"),
-  priority: z.string().default("P3"),
-  milestone: z.string().default(""),
-  state: z.enum(["pending", "done", "completed"]),
-});
+    filename: z.string(),
+    title: z.string().default('Untitled'),
+    area: z.string().default('unknown'),
+    created: z.string().default(''),
+    source: z.string().default('manual'),
+    tier: z.coerce.number().int().default(0),
+    complexity: z.string().default('UNKNOWN'),
+    priority: z.string().default('P3'),
+    milestone: z.string().default(''),
+    state: z.enum(['pending', 'done', 'completed']),
+})
 
-type TodoResponse = z.infer<typeof TodoResponseSchema>;
+type TodoResponse = z.infer<typeof TodoResponseSchema>
 
 /**
  * Parse YAML-like frontmatter from a markdown file.
@@ -47,21 +47,21 @@ type TodoResponse = z.infer<typeof TodoResponseSchema>;
  * Handles quoted values by stripping leading/trailing quotes.
  */
 function parseFrontmatter(content: string): Record<string, string> {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match?.[1]) return {};
-  const pairs: Record<string, string> = {};
-  for (const line of match[1].split("\n")) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      const value = line
-        .slice(colonIndex + 1)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-      pairs[key] = value;
+    const match = content.match(/^---\n([\s\S]*?)\n---/)
+    if (!match?.[1]) return {}
+    const pairs: Record<string, string> = {}
+    for (const line of match[1].split('\n')) {
+        const colonIndex = line.indexOf(':')
+        if (colonIndex > 0) {
+            const key = line.slice(0, colonIndex).trim()
+            const value = line
+                .slice(colonIndex + 1)
+                .trim()
+                .replace(/^["']|["']$/g, '')
+            pairs[key] = value
+        }
     }
-  }
-  return pairs;
+    return pairs
 }
 
 /**
@@ -69,19 +69,19 @@ function parseFrontmatter(content: string): Record<string, string> {
  * looking for a `.planning/todos` directory.
  */
 async function findProjectRoot(startDir: string): Promise<string | null> {
-  let current = resolve(startDir);
-  const root = resolve("/");
-  while (current !== root) {
-    const todosDir = join(current, ".planning", "todos");
-    try {
-      await access(todosDir);
-      return current;
-    } catch {
-      /* not found at this level, keep walking up */
+    let current = resolve(startDir)
+    const root = resolve('/')
+    while (current !== root) {
+        const todosDir = join(current, '.planning', 'todos')
+        try {
+            await access(todosDir)
+            return current
+        } catch {
+            /* not found at this level, keep walking up */
+        }
+        current = resolve(current, '..')
     }
-    current = resolve(current, "..");
-  }
-  return null;
+    return null
 }
 
 /**
@@ -95,40 +95,40 @@ async function findProjectRoot(startDir: string): Promise<string | null> {
  * @returns Array of parsed todo items
  */
 async function readTodosFromDir(
-  dirPath: string,
-  state: "pending" | "done" | "completed",
+    dirPath: string,
+    state: 'pending' | 'done' | 'completed'
 ): Promise<TodoResponse[]> {
-  try {
-    const entries = await readdir(dirPath);
-    const mdFiles = filter(entries, (f: string) => f.endsWith(".md"));
-    const todos: TodoResponse[] = [];
-    for (const file of mdFiles) {
-      try {
-        const content = await readFile(join(dirPath, file), "utf-8");
-        const fm = parseFrontmatter(content);
-        const parseResult = TodoResponseSchema.safeParse({
-          filename: file,
-          title: fm.title || file.replace(/\.md$/, ""),
-          area: fm.area,
-          created: fm.created,
-          source: fm.source,
-          tier: fm.tier,
-          complexity: fm.complexity,
-          priority: fm.priority,
-          milestone: fm.milestone,
-          state,
-        });
-        if (parseResult.success) {
-          todos.push(parseResult.data);
+    try {
+        const entries = await readdir(dirPath)
+        const mdFiles = filter(entries, (f: string) => f.endsWith('.md'))
+        const todos: TodoResponse[] = []
+        for (const file of mdFiles) {
+            try {
+                const content = await readFile(join(dirPath, file), 'utf-8')
+                const fm = parseFrontmatter(content)
+                const parseResult = TodoResponseSchema.safeParse({
+                    filename: file,
+                    title: fm.title || file.replace(/\.md$/, ''),
+                    area: fm.area,
+                    created: fm.created,
+                    source: fm.source,
+                    tier: fm.tier,
+                    complexity: fm.complexity,
+                    priority: fm.priority,
+                    milestone: fm.milestone,
+                    state,
+                })
+                if (parseResult.success) {
+                    todos.push(parseResult.data)
+                }
+            } catch {
+                /* Skip unreadable files */
+            }
         }
-      } catch {
-        /* Skip unreadable files */
-      }
+        return todos
+    } catch {
+        return []
     }
-    return todos;
-  } catch {
-    return [];
-  }
 }
 
 /**
@@ -144,39 +144,39 @@ async function readTodosFromDir(
  * - limit: Max items to return (1-500). Default: 200
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, TodosQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, TodosQuerySchema)
+    if (!result.success) return result.response
 
-  const { status, milestone, limit } = result.data;
+    const { status, milestone, limit } = result.data
 
-  // Priority: LUCA_PROJECT_DIR > WORKSPACE_ROOT > auto-detect from cwd
-  const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
-  const explicitRoot = rawRoot ? resolve(rawRoot) : null;
-  const workspaceRoot =
-    explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
-  const todosBase = join(workspaceRoot, ".planning", "todos");
+    // Priority: LUCA_PROJECT_DIR > WORKSPACE_ROOT > auto-detect from cwd
+    const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT
+    const explicitRoot = rawRoot ? resolve(rawRoot) : null
+    const workspaceRoot =
+        explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd()
+    const todosBase = join(workspaceRoot, '.planning', 'todos')
 
-  // Read all directories in parallel
-  const [pending, done, completed] = await Promise.all([
-    readTodosFromDir(join(todosBase, "pending"), "pending"),
-    readTodosFromDir(join(todosBase, "done"), "done"),
-    readTodosFromDir(join(todosBase, "completed"), "completed"),
-  ]);
+    // Read all directories in parallel
+    const [pending, done, completed] = await Promise.all([
+        readTodosFromDir(join(todosBase, 'pending'), 'pending'),
+        readTodosFromDir(join(todosBase, 'done'), 'done'),
+        readTodosFromDir(join(todosBase, 'completed'), 'completed'),
+    ])
 
-  // Merge and filter
-  let allTodos = [...pending, ...done, ...completed];
+    // Merge and filter
+    let allTodos = [...pending, ...done, ...completed]
 
-  if (status !== "all") {
-    allTodos = filter(allTodos, (t) => t.state === status);
-  }
+    if (status !== 'all') {
+        allTodos = filter(allTodos, (t) => t.state === status)
+    }
 
-  if (milestone) {
-    allTodos = filter(allTodos, (t) => t.milestone === milestone);
-  }
+    if (milestone) {
+        allTodos = filter(allTodos, (t) => t.milestone === milestone)
+    }
 
-  // Apply limit
-  allTodos = allTodos.slice(0, limit);
+    // Apply limit
+    allTodos = allTodos.slice(0, limit)
 
-  return NextResponse.json(allTodos);
+    return NextResponse.json(allTodos)
 }

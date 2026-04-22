@@ -1,8 +1,5 @@
-import {
-  muninnProxyHandler,
-  parseQueryParams,
-} from "~/lib/muninn-route-helper";
-import { EntityQuerySchema, EntityResponseSchema } from "~/lib/muninn-schemas";
+import { muninnProxyHandler, parseQueryParams } from '~/lib/muninn-route-helper'
+import { EntityQuerySchema, EntityResponseSchema } from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/entity/[name]
@@ -15,20 +12,20 @@ import { EntityQuerySchema, EntityResponseSchema } from "~/lib/muninn-schemas";
  * - limit (default: 20) -- max engrams to include
  */
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ name: string }> },
+    request: Request,
+    { params }: { params: Promise<{ name: string }> }
 ) {
-  const { name } = await params;
+    const { name } = await params
 
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, EntityQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, EntityQuerySchema)
+    if (!result.success) return result.response
 
-  const { vault, limit } = result.data;
+    const { vault, limit } = result.data
 
-  return muninnProxyHandler(
-    (client) => client.entity(vault, decodeURIComponent(name), limit),
-    "Failed to fetch entity from MuninnDB",
-    EntityResponseSchema,
-  );
+    return muninnProxyHandler(
+        (client) => client.entity(vault, decodeURIComponent(name), limit),
+        'Failed to fetch entity from MuninnDB',
+        EntityResponseSchema
+    )
 }

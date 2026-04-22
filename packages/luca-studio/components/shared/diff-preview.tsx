@@ -1,33 +1,33 @@
-"use client";
+'use client'
 
+import { ShikiCodeBlock } from '~/components/shared/shiki-code-block'
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { ShikiCodeBlock } from "~/components/shared/shiki-code-block";
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '~/components/ui/alert-dialog'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type DiffPreviewProps = {
-  /** The user's local version of the content. */
-  localContent: string;
-  /** The latest server version of the content. */
-  serverContent: string;
-  /** Called when the user chooses to keep their local changes. */
-  onAcceptLocal: () => void;
-  /** Called when the user chooses to accept the server version. */
-  onAcceptServer: () => void;
-  /** Called when the user dismisses the dialog without choosing. */
-  onDismiss: () => void;
-};
+    /** The user's local version of the content. */
+    localContent: string
+    /** The latest server version of the content. */
+    serverContent: string
+    /** Called when the user chooses to keep their local changes. */
+    onAcceptLocal: () => void
+    /** Called when the user chooses to accept the server version. */
+    onAcceptServer: () => void
+    /** Called when the user dismisses the dialog without choosing. */
+    onDismiss: () => void
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -62,67 +62,68 @@ export type DiffPreviewProps = {
  * ```
  */
 export function DiffPreview({
-  localContent,
-  serverContent,
-  onAcceptLocal,
-  onAcceptServer,
-  onDismiss,
+    localContent,
+    serverContent,
+    onAcceptLocal,
+    onAcceptServer,
+    onDismiss,
 }: DiffPreviewProps) {
-  return (
-    <AlertDialog open onOpenChange={(open) => !open && onDismiss()}>
-      <AlertDialogContent className="max-w-4xl sm:max-w-4xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Content Conflict</AlertDialogTitle>
-          <AlertDialogDescription>
-            The server content has changed while you have unsaved edits. Compare
-            both versions below and choose which to keep.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+    return (
+        <AlertDialog open onOpenChange={(open) => !open && onDismiss()}>
+            <AlertDialogContent className="max-w-4xl sm:max-w-4xl">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Content Conflict</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The server content has changed while you have unsaved
+                        edits. Compare both versions below and choose which to
+                        keep.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Local (user's) version */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Your Changes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="max-h-80 overflow-auto">
-              <ShikiCodeBlock
-                code={localContent}
-                language="json"
-                className="text-xs"
-              />
-            </CardContent>
-          </Card>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* Local (user's) version */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Your Changes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="max-h-80 overflow-auto">
+                            <ShikiCodeBlock
+                                code={localContent}
+                                language="json"
+                                className="text-xs"
+                            />
+                        </CardContent>
+                    </Card>
 
-          {/* Server version */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Server Version
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="max-h-80 overflow-auto">
-              <ShikiCodeBlock
-                code={serverContent}
-                language="json"
-                className="text-xs"
-              />
-            </CardContent>
-          </Card>
-        </div>
+                    {/* Server version */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Server Version
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="max-h-80 overflow-auto">
+                            <ShikiCodeBlock
+                                code={serverContent}
+                                language="json"
+                                className="text-xs"
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
 
-        <AlertDialogFooter>
-          <Button variant="outline" onClick={onDismiss}>
-            Cancel
-          </Button>
-          <Button variant="secondary" onClick={onAcceptServer}>
-            Accept Server Version
-          </Button>
-          <Button onClick={onAcceptLocal}>Keep My Changes</Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
+                <AlertDialogFooter>
+                    <Button variant="outline" onClick={onDismiss}>
+                        Cancel
+                    </Button>
+                    <Button variant="secondary" onClick={onAcceptServer}>
+                        Accept Server Version
+                    </Button>
+                    <Button onClick={onAcceptLocal}>Keep My Changes</Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
 }

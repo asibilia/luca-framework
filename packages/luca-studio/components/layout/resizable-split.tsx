@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react'
 
 import {
-  Group,
-  Panel,
-  Separator as PanelSeparator,
-} from "react-resizable-panels";
+    Group,
+    Panel,
+    Separator as PanelSeparator,
+} from 'react-resizable-panels'
 
-import { cn } from "~/lib/utils";
+import { cn } from '~/lib/utils'
 
 /**
  * Thin wrapper around `react-resizable-panels` (v4) providing consistent
@@ -36,42 +36,45 @@ import { cn } from "~/lib/utils";
  * ```
  */
 export function ResizableSplit({
-  orientation,
-  children,
-  defaultFirstSize,
-  minFirstSize,
-  maxFirstSize,
-  className,
+    orientation,
+    children,
+    defaultFirstSize,
+    minFirstSize,
+    maxFirstSize,
+    className,
 }: {
-  orientation: "horizontal" | "vertical";
-  children: [ReactNode, ReactNode];
-  defaultFirstSize?: number;
-  minFirstSize?: number;
-  maxFirstSize?: number;
-  className?: string;
+    orientation: 'horizontal' | 'vertical'
+    children: [ReactNode, ReactNode]
+    defaultFirstSize?: number
+    minFirstSize?: number
+    maxFirstSize?: number
+    className?: string
 }) {
-  const [first, second] = children;
+    const [first, second] = children
 
-  return (
-    <Group orientation={orientation} className={cn("h-full w-full", className)}>
-      <Panel
-        defaultSize={defaultFirstSize}
-        minSize={minFirstSize}
-        maxSize={maxFirstSize}
-      >
-        {first}
-      </Panel>
+    return (
+        <Group
+            orientation={orientation}
+            className={cn('h-full w-full', className)}
+        >
+            <Panel
+                defaultSize={defaultFirstSize}
+                minSize={minFirstSize}
+                maxSize={maxFirstSize}
+            >
+                {first}
+            </Panel>
 
-      <PanelSeparator
-        className={cn(
-          "group relative flex items-center justify-center",
-          orientation === "horizontal"
-            ? "w-px cursor-col-resize border-l border-border"
-            : "h-px cursor-row-resize border-t border-border",
-        )}
-      />
+            <PanelSeparator
+                className={cn(
+                    'group relative flex items-center justify-center',
+                    orientation === 'horizontal'
+                        ? 'w-px cursor-col-resize border-l border-border'
+                        : 'h-px cursor-row-resize border-t border-border'
+                )}
+            />
 
-      <Panel>{second}</Panel>
-    </Group>
-  );
+            <Panel>{second}</Panel>
+        </Group>
+    )
 }
