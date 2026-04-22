@@ -1,4 +1,4 @@
-# Changesets-driven release pipeline.
+# Changesets-driven release + publish pipeline.
 #
 # Flow:
 #   1. PR with .changeset/*.md merges to main
@@ -7,8 +7,16 @@
 #   3. When that PR merges to main, this workflow runs again — but with no
 #      pending changesets, so it executes the `publish` command instead,
 #      which creates a GitHub Release tagged v<luca-framework version>
-#   4. The Release triggers .github/workflows/publish.yml, which publishes
-#      @alecsibilia/luca-framework to npm
+#   4. Immediately after the release is created, the publish job in this
+#      same workflow publishes @alecsibilia/luca-framework to npm.
+#
+# Note: We publish inline rather than listening for `release: published`
+# because releases created by GITHUB_TOKEN do not trigger downstream
+# workflows (GitHub's recursion-prevention behavior).
+#
+# Requirements:
+#   - NPM_TOKEN repository secret with publish permission for
+#     @alecsibilia/luca-framework.
 
 name: Release
 
@@ -25,6 +33,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -62,6 +72,10 @@ jobs:
           publish: bun .github/scripts/create-release.ts
           title: ${{ steps.pr_title.outputs.value }}
           commit: ${{ steps.pr_title.outputs.value }}
+          # Our create-release.ts script handles GitHub Release creation
+          # with custom tag format (vX.Y.Z) and changelog extraction.
+          # Disable the action's built-in release creation to avoid duplicates.
+          createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,3 +85,30 @@ jobs:
         run: gh pr edit ${{ steps.changesets.outputs.pullRequestNumber }} --add-label automated
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx --bun tsc --noEmit
+
+      - name: Publish to npm
+        run: cd packages/luca-framework && bun publish --access restricted
