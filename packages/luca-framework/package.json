@@ -7,12 +7,16 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.0",
+    "@mastra/core": "catalog:",
+    "@mastra/libsql": "catalog:",
+    "@mastra/memory": "catalog:",
     "citty": "^0.2.0",
     "consola": "^3.4.0",
+    "mastracode": "catalog:",
     "pathe": "^2.0.3",
     "semver": "^7.6.0",
     "update-notifier": "^7.3.1",
-    "zod": "^4.3.6"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/semver": "^7.5.8",

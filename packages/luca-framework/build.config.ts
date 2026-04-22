@@ -1,8 +1,45 @@
-import { readFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
+
+/**
+ * Copy the sibling `luca-mastracode` package — the custom Mastra Code harness
+ * that is the core of the Luca framework — into `dist/mastracode/` so `luca
+ * run` can spawn it from inside the published tarball. The mastracode package
+ * is intentionally private and ships only as part of the framework; this step
+ * is what makes it available to end users.
+ *
+ * Preserves the mastracode layout (src/, commands/, rules/, skills/) because
+ * the harness does runtime `readFileSync` calls relative to `import.meta.url`.
+ */
+function bundleMastracode() {
+    const mastracodeRoot = resolve(__dirname, '../luca-mastracode')
+    const target = resolve(__dirname, 'dist/mastracode')
+
+    if (!existsSync(mastracodeRoot)) {
+        throw new Error(
+            `[luca-framework build] Cannot bundle mastracode: ${mastracodeRoot} does not exist.`
+        )
+    }
+
+    if (existsSync(target)) {
+        rmSync(target, { recursive: true, force: true })
+    }
+    mkdirSync(target, { recursive: true })
+
+    const include = ['src', 'commands', 'rules', 'skills']
+    for (const dir of include) {
+        const from = join(mastracodeRoot, dir)
+        if (!existsSync(from)) continue
+        cpSync(from, join(target, dir), {
+            recursive: true,
+            filter: (src) => !src.includes(`${dir}${sep}__tests__`),
+        })
+    }
+}
 
 export default defineBuildConfig({
     entries: ['src/index'],
@@ -27,4 +64,9 @@ export default defineBuildConfig({
         'zod',
         'update-notifier',
     ],
+    hooks: {
+        'build:done': () => {
+            bundleMastracode()
+        },
+    },
 })

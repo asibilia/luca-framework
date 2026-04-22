@@ -84,7 +84,9 @@ export function ChecksTab() {
                 const currentChecks = [
                     ...(get(currentHarness, 'checks', []) as CheckEntry[]),
                 ]
-                currentChecks[idx] = { ...currentChecks[idx], [field]: value }
+                const existing = currentChecks[idx]
+                if (!existing) return current
+                currentChecks[idx] = { ...existing, [field]: value }
                 currentHarness.checks = currentChecks
                 current.harness = currentHarness
                 return current
