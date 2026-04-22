@@ -13,6 +13,7 @@ import { sessionLedgerTool } from './session-ledger.js';
 import { verificationResultTool } from './verification-result.js';
 import { repoCleanupTool } from './repo-cleanup.js';
 import { writePlanningFileTool } from './write-planning-file.js';
+import { confidenceJournalTool } from './confidence-journal.js';
 
 // ---------------------------------------------------------------------------
 // Tool registry — maps snake_case manifest keys to tool instances and
@@ -38,6 +39,7 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
   verification_result: { tool: verificationResultTool,  record_key: 'verificationResult' },
   repo_cleanup:        { tool: repoCleanupTool,         record_key: 'repoCleanup' },
   write_planning_file: { tool: writePlanningFileTool,   record_key: 'writePlanningFile' },
+  confidence_journal:  { tool: confidenceJournalTool,   record_key: 'confidenceJournal' },
 };
 
 // ---------------------------------------------------------------------------

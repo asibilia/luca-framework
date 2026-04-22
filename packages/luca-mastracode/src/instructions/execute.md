@@ -99,6 +99,33 @@ Read progress with `workflowState(action: "read")` → `currentPhase`, `totalPha
 
 ---
 
+## Confidence Journal
+
+The execution step maintains a running confidence journal at `.planning/CONFIDENCE-JOURNAL.md`.
+
+### When to Log
+
+Log a confidence entry whenever:
+- An executor had to make a decision not explicitly covered by the plan
+- Multiple valid implementation approaches existed with no clear guidance
+- Plan detail was insufficient and required on-the-fly interpretation
+- A dependency or convention was unclear
+- Scope expanded beyond what was planned
+
+### How
+
+Executor subagents log entries via `confidenceJournal(action: "log", entry: {...})`.
+The orchestrator should also log entries when it observes deviations in executor output.
+
+Each entry captures: the phase/wave/task location, a confidence level (`high`/`medium`/`low`), a category (e.g. `plan-gap`, `design-choice`), what was decided, what alternatives were considered, reasoning, risk, affected files, and a review hint.
+
+### After Execution
+
+Read `confidenceJournal(action: "summary")` during the Learn step.
+Include confidence stats in the wave summary. Flag phases with >2 low-confidence entries for human review.
+
+---
+
 ## Step 1: Execute
 
 ### Executor Subagent
@@ -297,6 +324,12 @@ mcp__muninn__muninn_recall(
 ```
 
 Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`. Include recalled learnings in executor's task description.
+
+### Confidence Journal Review
+
+After the learner completes, read `confidenceJournal(action: "summary")` and include confidence distribution in the wave's learning output:
+- If any `low` confidence entries exist, explicitly flag them for human review
+- If a phase accumulates >2 `low`-confidence entries, add a warning to the phase summary
 
 ### Fallback
 

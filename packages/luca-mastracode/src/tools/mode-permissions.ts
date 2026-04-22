@@ -57,6 +57,7 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     run_checks: '*',
     verification_result: '*',
     write_planning_file: ['write', 'read'],
+    confidence_journal: '*',
   },
   "luca:5-review": {
     workflow_state: ['read', 'save-review-results', 'switch-mode'],
@@ -64,6 +65,7 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     verification_result: ['read', 'read-history', 'aggregate'],
     repo_cleanup: ['scan', 'parse-report', 'summary'],
     write_planning_file: ['write', 'read'],
+    confidence_journal: ['read', 'summary'],
   },
   "luca:6-finalize": {
     workflow_state: ['read', 'reset-pipeline', 'switch-mode', 're-enter-pipeline'],
@@ -73,5 +75,6 @@ export const MODE_PERMISSIONS: Record<string, Record<string, readonly string[] |
     verification_result: ['read', 'read-history', 'aggregate'],
     manage_todos: ['list', 'read'],
     repo_cleanup: '*',
+    confidence_journal: ['read', 'summary', 'render'],
   },
 } as const;

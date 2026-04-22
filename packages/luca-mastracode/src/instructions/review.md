@@ -27,6 +27,8 @@ Review receives control from Execute. Determine whether implementation is ready 
 3. Read `workflowState(action: "read")` for complexity, review iteration count, previous reports
 4. Read `verificationResult(action: "read")` for per-criterion pass/fail, convergence, error fingerprints
 5. Get changed files via `git diff --name-only` (executor branch vs main)
+6. Read `confidenceJournal(action: "summary")` for execution confidence overview
+7. Read `confidenceJournal(action: "read")` — prioritize reviewing files/tasks with `low` confidence entries
 
 ### Step 2: Requirements Coverage
 
@@ -72,6 +74,8 @@ Spawn 4 reviewer subagents in parallel:
    - Opportunities to reduce indirection
 
 Each subagent receives: changed files list, project coding standards (if available), relevant acceptance criteria.
+
+**Confidence-guided review**: Reviewers should weight their scrutiny toward areas flagged as `low` or `medium` confidence in the confidence journal. Cross-reference journal entries with code changes to prioritize review where execution certainty was lowest.
 
 ### Step 4.5: Capture Raw Findings
 
