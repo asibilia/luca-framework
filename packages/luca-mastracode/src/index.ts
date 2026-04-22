@@ -11,14 +11,14 @@
  *   bun run mastracode
  */
 import {
-    existsSync,
-    readFileSync,
-    readdirSync,
-    mkdirSync,
     cpSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
     rmSync,
 } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { Agent } from '@mastra/core/agent'
@@ -32,49 +32,45 @@ import {
     writeLucaState,
     type LucaWorkflowState,
 } from './luca-store.js'
-
-// --- Stock mode instruction builders ---
 import {
+    architectMode,
     buildArchitectInstructions,
     resolveArchitectModel,
-    architectMode,
 } from './modes/architect.js'
 import {
     buildBuildInstructions,
-    resolveBuildModel,
     buildMode,
+    resolveBuildModel,
 } from './modes/build.js'
 import {
     buildDiscussInstructions,
-    resolveDiscussModel,
     discussMode,
+    resolveDiscussModel,
 } from './modes/discuss.js'
 import {
     buildExecuteInstructions,
-    resolveExecuteModel,
     executeMode,
+    resolveExecuteModel,
 } from './modes/execute.js'
 import {
     buildFastInstructions,
-    resolveFastModel,
     fastMode,
+    resolveFastModel,
 } from './modes/fast.js'
 import {
     buildFinalizeInstructions,
-    resolveFinalizeModel,
     finalizeMode,
+    resolveFinalizeModel,
 } from './modes/finalize.js'
 import {
     buildPlanInstructions,
-    resolvePlanModel,
     planMode,
+    resolvePlanModel,
 } from './modes/plan.js'
-
-// --- Luca pipeline mode instruction builders ---
 import {
     buildResearchInstructions,
-    resolveResearchModel,
     researchMode,
+    resolveResearchModel,
 } from './modes/research.js'
 import {
     buildReviewInstructions,
@@ -86,14 +82,22 @@ import {
     resolveTriageModel,
     triageMode,
 } from './modes/triage.js'
-
-// --- Tools ---
-
+import * as pipelineGuard from './pipeline-guard.js'
 import {
-    PIPELINE_STEPS_ORDERED,
     buildPipelineProgressHeader,
+    PIPELINE_STEPS_ORDERED,
     wrapInSystemReminder,
 } from './pipeline-tui.js'
+// Mutable refs — wired up after createMastraCode() returns. Extracted to
+// refs.ts to avoid circular imports with tool modules.
+import {
+    contextRefresherRef,
+    followUpRef,
+    mcpManagerRef,
+    resolveModelRef,
+    switchModeRef,
+    tokenBudgetRef,
+} from './refs.js'
 import { discussionSubagent } from './subagents/discussion.js'
 import { executorSubagent } from './subagents/executor.js'
 import { learnerSubagent } from './subagents/learner.js'
@@ -104,11 +108,8 @@ import { reviewerSubagent } from './subagents/reviewer.js'
 import { shadowScannerSubagent } from './subagents/shadow-scanner.js'
 import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
+import { TokenBudgetMonitor } from './token-budget.js'
 import { buildModeTools } from './tools/build-mode-tools.js'
-
-// --- Subagents ---
-
-// --- Pipeline TUI helpers ---
 
 // ---------------------------------------------------------------------------
 // Branding — load from .planning/config.json if present
@@ -135,21 +136,6 @@ function loadBranding(): LucaBranding {
     }
     return { name: 'Luca', tagline: 'AI-powered development workflow' }
 }
-
-// ---------------------------------------------------------------------------
-// Mutable refs — wired up after createMastraCode() returns.
-// Extracted to refs.ts to avoid circular imports with tool modules.
-// ---------------------------------------------------------------------------
-import {
-    resolveModelRef,
-    switchModeRef,
-    followUpRef,
-    mcpManagerRef,
-    tokenBudgetRef,
-    contextRefresherRef,
-} from './refs.js'
-import { TokenBudgetMonitor } from './token-budget.js'
-import * as pipelineGuard from './pipeline-guard.js'
 
 // ---------------------------------------------------------------------------
 // Static agent builder — creates Agent instances with dynamic instructions/model
