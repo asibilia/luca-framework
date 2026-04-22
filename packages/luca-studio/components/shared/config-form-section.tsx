@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { Badge } from "~/components/ui/badge";
-import { Input } from "~/components/ui/input";
-import { Switch } from "~/components/ui/switch";
+import { Badge } from '~/components/ui/badge'
+import { Input } from '~/components/ui/input'
+import { Switch } from '~/components/ui/switch'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,25 +15,25 @@ import { Switch } from "~/components/ui/switch";
  * config forms. Supports text, boolean, and read-only display modes.
  */
 export type ConfigFormSectionProps = {
-  /** Field label text. */
-  label: string;
-  /** Current field value. */
-  value: string | boolean;
-  /** Whether the form is in edit mode. */
-  isEditing?: boolean;
-  /** Callback when the value changes. */
-  onChange: (value: unknown) => void;
-  /** Field type — determines the input widget. Defaults to "text". */
-  type?: "text" | "boolean" | "readonly";
-  /** Whether to render a textarea instead of a single-line input. Defaults to false. */
-  multiline?: boolean;
-  /** HTML `for` attribute for the label. */
-  htmlFor?: string;
-  /** Input placeholder text. */
-  placeholder?: string;
-  /** Whether the field is always read-only (regardless of edit mode). */
-  readOnly?: boolean;
-};
+    /** Field label text. */
+    label: string
+    /** Current field value. */
+    value: string | boolean
+    /** Whether the form is in edit mode. */
+    isEditing?: boolean
+    /** Callback when the value changes. */
+    onChange: (value: unknown) => void
+    /** Field type — determines the input widget. Defaults to "text". */
+    type?: 'text' | 'boolean' | 'readonly'
+    /** Whether to render a textarea instead of a single-line input. Defaults to false. */
+    multiline?: boolean
+    /** HTML `for` attribute for the label. */
+    htmlFor?: string
+    /** Input placeholder text. */
+    placeholder?: string
+    /** Whether the field is always read-only (regardless of edit mode). */
+    readOnly?: boolean
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -84,92 +84,94 @@ export type ConfigFormSectionProps = {
  * ```
  */
 export function ConfigFormSection({
-  label,
-  value,
-  isEditing,
-  onChange,
-  type = "text",
-  multiline,
-  htmlFor,
-  placeholder,
-  readOnly,
+    label,
+    value,
+    isEditing,
+    onChange,
+    type = 'text',
+    multiline,
+    htmlFor,
+    placeholder,
+    readOnly,
 }: ConfigFormSectionProps) {
-  const effectiveEditing = isEditing && !readOnly;
+    const effectiveEditing = isEditing && !readOnly
 
-  // ---------------------------------------------------------------------------
-  // Boolean field
-  // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // Boolean field
+    // ---------------------------------------------------------------------------
 
-  if (type === "boolean") {
-    const boolVal = typeof value === "boolean" ? value : false;
+    if (type === 'boolean') {
+        const boolVal = typeof value === 'boolean' ? value : false
+
+        return (
+            <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                    {label}
+                </label>
+                {effectiveEditing ? (
+                    <div>
+                        <Switch
+                            checked={boolVal}
+                            onCheckedChange={(checked) => onChange(checked)}
+                        />
+                    </div>
+                ) : (
+                    <Badge
+                        variant={boolVal ? 'default' : 'secondary'}
+                        className="text-xs"
+                    >
+                        {boolVal ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                )}
+            </div>
+        )
+    }
+
+    // ---------------------------------------------------------------------------
+    // Text field (single-line or multiline)
+    // ---------------------------------------------------------------------------
+
+    const strVal = typeof value === 'string' ? value : String(value)
 
     return (
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">
-          {label}
-        </label>
-        {effectiveEditing ? (
-          <div>
-            <Switch
-              checked={boolVal}
-              onCheckedChange={(checked) => onChange(checked)}
-            />
-          </div>
-        ) : (
-          <Badge
-            variant={boolVal ? "default" : "secondary"}
-            className="text-xs"
-          >
-            {boolVal ? "Enabled" : "Disabled"}
-          </Badge>
-        )}
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Text field (single-line or multiline)
-  // ---------------------------------------------------------------------------
-
-  const strVal = typeof value === "string" ? value : String(value);
-
-  return (
-    <div className="space-y-1">
-      <label
-        htmlFor={htmlFor}
-        className="text-xs font-medium text-muted-foreground"
-      >
-        {label}
-      </label>
-      {effectiveEditing ? (
-        multiline ? (
-          <textarea
-            id={htmlFor}
-            value={strVal}
-            onChange={(e) => onChange(e.target.value)}
-            rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder={placeholder}
-          />
-        ) : (
-          <Input
-            id={htmlFor}
-            value={strVal}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-8 text-sm"
-            placeholder={placeholder}
-          />
-        )
-      ) : readOnly ? (
-        <Input
-          id={htmlFor}
-          value={strVal}
-          readOnly
-          className="h-8 bg-muted/30 font-mono text-xs"
-        />
-      ) : (
-        <p className="text-sm text-foreground">{strVal || "Not specified"}</p>
-      )}
-    </div>
-  );
+        <div className="space-y-1">
+            <label
+                htmlFor={htmlFor}
+                className="text-xs font-medium text-muted-foreground"
+            >
+                {label}
+            </label>
+            {effectiveEditing ? (
+                multiline ? (
+                    <textarea
+                        id={htmlFor}
+                        value={strVal}
+                        onChange={(e) => onChange(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder={placeholder}
+                    />
+                ) : (
+                    <Input
+                        id={htmlFor}
+                        value={strVal}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="h-8 text-sm"
+                        placeholder={placeholder}
+                    />
+                )
+            ) : readOnly ? (
+                <Input
+                    id={htmlFor}
+                    value={strVal}
+                    readOnly
+                    className="h-8 bg-muted/30 font-mono text-xs"
+                />
+            ) : (
+                <p className="text-sm text-foreground">
+                    {strVal || 'Not specified'}
+                </p>
+            )}
+        </div>
+    )
 }

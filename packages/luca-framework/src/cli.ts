@@ -6,27 +6,28 @@
  * pure (re-exports only).
  */
 
-import { defineCommand, runMain as cittyRunMain } from "citty";
+import { defineCommand, runMain as cittyRunMain } from 'citty'
 
-import { LUCA_VERSION } from "./utils/manifest";
+import { LUCA_VERSION } from './utils/manifest'
 
 const main = defineCommand({
-  meta: {
-    name: "luca",
-    version: LUCA_VERSION,
-    description:
-      "Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness",
-  },
-  subCommands: {
-    init: () => import("./commands/init").then((m) => m.initCommand),
-    "vault:init": () =>
-      import("./commands/vault-init").then((m) => m.vaultInitCommand),
-    run: () => import("./commands/run").then((m) => m.runCommand),
-    doctor: () => import("./commands/doctor").then((m) => m.default),
-    version: () => import("./commands/version").then((m) => m.versionCommand),
-  },
-});
+    meta: {
+        name: 'luca',
+        version: LUCA_VERSION,
+        description:
+            'Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness',
+    },
+    subCommands: {
+        init: () => import('./commands/init').then((m) => m.initCommand),
+        'vault:init': () =>
+            import('./commands/vault-init').then((m) => m.vaultInitCommand),
+        run: () => import('./commands/run').then((m) => m.runCommand),
+        doctor: () => import('./commands/doctor').then((m) => m.default),
+        version: () =>
+            import('./commands/version').then((m) => m.versionCommand),
+    },
+})
 
-export const runMain = () => cittyRunMain(main);
+export const runMain = () => cittyRunMain(main)
 
-export const runInit = () => import("./commands/init").then((m) => m.runInit());
+export const runInit = () => import('./commands/init').then((m) => m.runInit())

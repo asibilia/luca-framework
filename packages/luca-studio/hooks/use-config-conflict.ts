@@ -1,22 +1,22 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { useAtomValue } from "jotai";
+import { useAtomValue } from 'jotai'
 
-import { configEtagAtom } from "~/stores/config-atoms";
-import { dirtySetAtom } from "~/stores/dirty-tracking";
+import { configEtagAtom } from '~/stores/config-atoms'
+import { dirtySetAtom } from '~/stores/dirty-tracking'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type UseConfigConflictReturn = {
-  /** Whether an external change was detected while editing. */
-  hasConflict: boolean;
-  /** Dismiss the conflict warning (user chose to force save or refresh). */
-  dismissConflict: () => void;
-};
+    /** Whether an external change was detected while editing. */
+    hasConflict: boolean
+    /** Dismiss the conflict warning (user chose to force save or refresh). */
+    dismissConflict: () => void
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -44,34 +44,34 @@ type UseConfigConflictReturn = {
  * ```
  */
 export function useConfigConflict(): UseConfigConflictReturn {
-  const etag = useAtomValue(configEtagAtom);
-  const dirtySet = useAtomValue(dirtySetAtom);
-  const [hasConflict, setHasConflict] = useState(false);
+    const etag = useAtomValue(configEtagAtom)
+    const dirtySet = useAtomValue(dirtySetAtom)
+    const [hasConflict, setHasConflict] = useState(false)
 
-  // Track the previous ETag to detect changes
-  const prevEtagRef = useRef<string | null>(null);
+    // Track the previous ETag to detect changes
+    const prevEtagRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    // Skip initial mount (no previous ETag to compare)
-    if (prevEtagRef.current === null) {
-      prevEtagRef.current = etag;
-      return;
-    }
+    useEffect(() => {
+        // Skip initial mount (no previous ETag to compare)
+        if (prevEtagRef.current === null) {
+            prevEtagRef.current = etag
+            return
+        }
 
-    // ETag changed externally
-    if (etag !== prevEtagRef.current) {
-      prevEtagRef.current = etag;
+        // ETag changed externally
+        if (etag !== prevEtagRef.current) {
+            prevEtagRef.current = etag
 
-      // Only flag conflict if user has unsaved config changes
-      if (dirtySet.has("config")) {
-        setHasConflict(true);
-      }
-    }
-  }, [etag, dirtySet]);
+            // Only flag conflict if user has unsaved config changes
+            if (dirtySet.has('config')) {
+                setHasConflict(true)
+            }
+        }
+    }, [etag, dirtySet])
 
-  const dismissConflict = useCallback(() => {
-    setHasConflict(false);
-  }, []);
+    const dismissConflict = useCallback(() => {
+        setHasConflict(false)
+    }, [])
 
-  return { hasConflict, dismissConflict };
+    return { hasConflict, dismissConflict }
 }

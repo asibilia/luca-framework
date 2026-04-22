@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import type { ReactNode } from "react";
+import { useEffect } from 'react'
+import type { ReactNode } from 'react'
 
-import { Provider as JotaiProvider, useAtom, useAtomValue } from "jotai";
+import { Provider as JotaiProvider, useAtom, useAtomValue } from 'jotai'
 
-import { TooltipProvider } from "~/components/ui/tooltip";
-import { useSSE } from "~/hooks/use-sse";
-import { themeAtom } from "~/stores/theme";
-import { vaultAtom } from "~/stores/vault";
+import { TooltipProvider } from '~/components/ui/tooltip'
+import { useSSE } from '~/hooks/use-sse'
+import { themeAtom } from '~/stores/theme'
+import { vaultAtom } from '~/stores/vault'
 
 /**
  * Syncs the Jotai theme atom value to the document's `<html>` className.
@@ -17,18 +17,18 @@ import { vaultAtom } from "~/stores/vault";
  * The `:root` CSS variables apply for light mode by default.
  */
 function ThemeSync() {
-  const theme = useAtomValue(themeAtom);
+    const theme = useAtomValue(themeAtom)
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [theme]);
+    useEffect(() => {
+        const root = document.documentElement
+        if (theme === 'dark') {
+            root.classList.add('dark')
+        } else {
+            root.classList.remove('dark')
+        }
+    }, [theme])
 
-  return null;
+    return null
 }
 
 /**
@@ -39,8 +39,8 @@ function ThemeSync() {
  * `ThemeSync` above.
  */
 function SSESync() {
-  useSSE();
-  return null;
+    useSSE()
+    return null
 }
 
 /**
@@ -53,37 +53,39 @@ function SSESync() {
  * on network errors — "default" remains as the safe fallback.
  */
 function VaultAutoDetect() {
-  const [vault, setVault] = useAtom(vaultAtom);
+    const [vault, setVault] = useAtom(vaultAtom)
 
-  useEffect(() => {
-    if (vault !== "default") return;
+    useEffect(() => {
+        if (vault !== 'default') return
 
-    let cancelled = false;
+        let cancelled = false
 
-    async function detectVault() {
-      try {
-        const res = await fetch("/api/config");
-        if (!res.ok) return;
-        const config = (await res.json()) as Record<string, unknown>;
-        const muninn = config.muninn as Record<string, unknown> | undefined;
-        const repoVault =
-          typeof muninn?.vault === "string" ? muninn.vault : null;
+        async function detectVault() {
+            try {
+                const res = await fetch('/api/config')
+                if (!res.ok) return
+                const config = (await res.json()) as Record<string, unknown>
+                const muninn = config.muninn as
+                    | Record<string, unknown>
+                    | undefined
+                const repoVault =
+                    typeof muninn?.vault === 'string' ? muninn.vault : null
 
-        if (repoVault && repoVault !== "default" && !cancelled) {
-          setVault(repoVault);
+                if (repoVault && repoVault !== 'default' && !cancelled) {
+                    setVault(repoVault)
+                }
+            } catch {
+                // Graceful degradation — keep "default"
+            }
         }
-      } catch {
-        // Graceful degradation — keep "default"
-      }
-    }
 
-    void detectVault();
-    return () => {
-      cancelled = true;
-    };
-  }, [vault, setVault]);
+        void detectVault()
+        return () => {
+            cancelled = true
+        }
+    }, [vault, setVault])
 
-  return null;
+    return null
 }
 
 /**
@@ -96,14 +98,14 @@ function VaultAutoDetect() {
  * - Vault auto-detect for repo vault initialization
  */
 export function Providers({ children }: { children: ReactNode }) {
-  return (
-    <JotaiProvider>
-      <TooltipProvider>
-        <ThemeSync />
-        <SSESync />
-        <VaultAutoDetect />
-        {children}
-      </TooltipProvider>
-    </JotaiProvider>
-  );
+    return (
+        <JotaiProvider>
+            <TooltipProvider>
+                <ThemeSync />
+                <SSESync />
+                <VaultAutoDetect />
+                {children}
+            </TooltipProvider>
+        </JotaiProvider>
+    )
 }

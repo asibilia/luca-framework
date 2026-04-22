@@ -26,16 +26,17 @@
  * }
  * ```
  */
-import { z } from "zod";
-import * as p from "@clack/prompts";
-import { chmodSync, existsSync } from "node:fs";
-import { join, basename } from "pathe";
+import { chmodSync, existsSync } from 'node:fs'
 
-import { resolveMuninndbPort } from "./muninndb-schemas";
-import { checkMuninndbService } from "./muninndb-health";
-import { sanitizeJsonParse } from "./sanitize";
+import * as p from '@clack/prompts'
+import { join, basename } from 'pathe'
+import { z } from 'zod'
 
-import type { ProjectContext } from "../types";
+import { checkMuninndbService } from './muninndb-health'
+import { resolveMuninndbPort } from './muninndb-schemas'
+import { sanitizeJsonParse } from './sanitize'
+
+import type { ProjectContext } from '../types'
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -46,18 +47,18 @@ import type { ProjectContext } from "../types";
  * interactive wizard flow.
  */
 export const VaultConfigSchema = z.object({
-  /** Sanitized vault name in lowercase kebab-case. */
-  vaultName: z.string().min(1),
-  /** MuninnDB API key for authentication. */
-  apiKey: z.string().min(1),
-});
+    /** Sanitized vault name in lowercase kebab-case. */
+    vaultName: z.string().min(1),
+    /** MuninnDB API key for authentication. */
+    apiKey: z.string().min(1),
+})
 
 /** Vault configuration inferred from the Zod schema. */
-export type VaultConfig = z.infer<typeof VaultConfigSchema>;
+export type VaultConfig = z.infer<typeof VaultConfigSchema>
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MUNINNDB_WEB_UI_URL = "http://localhost:8477";
+const MUNINNDB_WEB_UI_URL = 'http://localhost:8477'
 
 // ─── Functions ───────────────────────────────────────────────────────────────
 
@@ -82,11 +83,11 @@ const MUNINNDB_WEB_UI_URL = "http://localhost:8477";
  * ```
  */
 export function suggestVaultName(
-  context: ProjectContext,
-  cwd: string = process.cwd(),
+    context: ProjectContext,
+    cwd: string = process.cwd()
 ): string {
-  const raw = context.projectName ?? basename(cwd);
-  return sanitizeVaultName(raw);
+    const raw = context.projectName ?? basename(cwd)
+    return sanitizeVaultName(raw)
 }
 
 /**
@@ -105,11 +106,11 @@ export function suggestVaultName(
  * ```
  */
 export function sanitizeVaultName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
 }
 
 /**
@@ -145,93 +146,93 @@ export function sanitizeVaultName(name: string): string {
  * ```
  */
 export async function runVaultWizard(
-  context: ProjectContext,
-  cwd: string = process.cwd(),
+    context: ProjectContext,
+    cwd: string = process.cwd()
 ): Promise<VaultConfig | null> {
-  const suggested = suggestVaultName(context, cwd);
+    const suggested = suggestVaultName(context, cwd)
 
-  // Health gate: check if MuninnDB is reachable before prompting for API key (REQ-03)
-  const serviceStatus = await checkMuninndbService();
-  if (!serviceStatus.healthy) {
-    p.log.warn(
-      "MuninnDB is not running. Vault setup requires MuninnDB to be active.",
-    );
-    p.log.info(
-      "Start MuninnDB and run `luca vault:init` to complete vault setup.",
-    );
-    return null;
-  }
+    // Health gate: check if MuninnDB is reachable before prompting for API key (REQ-03)
+    const serviceStatus = await checkMuninndbService()
+    if (!serviceStatus.healthy) {
+        p.log.warn(
+            'MuninnDB is not running. Vault setup requires MuninnDB to be active.'
+        )
+        p.log.info(
+            'Start MuninnDB and run `luca vault:init` to complete vault setup.'
+        )
+        return null
+    }
 
-  p.log.info("MuninnDB Vault Setup");
-  p.log.message(
-    "MuninnDB provides cognitive memory for Luca -- patterns, decisions, and pitfalls persist across sessions.",
-  );
+    p.log.info('MuninnDB Vault Setup')
+    p.log.message(
+        'MuninnDB provides cognitive memory for Luca -- patterns, decisions, and pitfalls persist across sessions.'
+    )
 
-  // Step 1: Vault name
-  const vaultName = await p.text({
-    message: "Vault name",
-    placeholder: suggested,
-    defaultValue: suggested,
-    validate: (value) => {
-      const sanitized = sanitizeVaultName(value ?? "");
-      if (sanitized.length === 0) {
-        return "Vault name must contain at least one alphanumeric character.";
-      }
-    },
-  });
+    // Step 1: Vault name
+    const vaultName = await p.text({
+        message: 'Vault name',
+        placeholder: suggested,
+        defaultValue: suggested,
+        validate: (value) => {
+            const sanitized = sanitizeVaultName(value ?? '')
+            if (sanitized.length === 0) {
+                return 'Vault name must contain at least one alphanumeric character.'
+            }
+        },
+    })
 
-  if (p.isCancel(vaultName)) return null;
+    if (p.isCancel(vaultName)) return null
 
-  const finalVaultName = sanitizeVaultName(String(vaultName));
+    const finalVaultName = sanitizeVaultName(String(vaultName))
 
-  // Step 2: API key guidance
-  p.note(
-    [
-      "To generate an API key, open the MuninnDB Web UI:",
-      "",
-      `  ${MUNINNDB_WEB_UI_URL}`,
-      "",
-      "Navigate to Settings > API Keys and create a new key.",
-      "If MuninnDB is not running, you can set this up later.",
-    ].join("\n"),
-    "API Key",
-  );
+    // Step 2: API key guidance
+    p.note(
+        [
+            'To generate an API key, open the MuninnDB Web UI:',
+            '',
+            `  ${MUNINNDB_WEB_UI_URL}`,
+            '',
+            'Navigate to Settings > API Keys and create a new key.',
+            'If MuninnDB is not running, you can set this up later.',
+        ].join('\n'),
+        'API Key'
+    )
 
-  // Step 3: API key input
-  const apiKey = await p.password({
-    message: "MuninnDB API key (leave empty to skip)",
-  });
+    // Step 3: API key input
+    const apiKey = await p.password({
+        message: 'MuninnDB API key (leave empty to skip)',
+    })
 
-  if (p.isCancel(apiKey)) return null;
+    if (p.isCancel(apiKey)) return null
 
-  const trimmedKey = String(apiKey ?? "").trim();
+    const trimmedKey = String(apiKey ?? '').trim()
 
-  if (trimmedKey.length === 0) {
-    p.log.warn(
-      "No API key provided. You can set MUNINN_API_KEY in .env later.",
-    );
-    return null;
-  }
+    if (trimmedKey.length === 0) {
+        p.log.warn(
+            'No API key provided. You can set MUNINN_API_KEY in .env later.'
+        )
+        return null
+    }
 
-  // Step 4: Confirmation
-  const confirmed = await p.confirm({
-    message: `Set vault "${finalVaultName}" with the provided API key?`,
-    initialValue: true,
-  });
+    // Step 4: Confirmation
+    const confirmed = await p.confirm({
+        message: `Set vault "${finalVaultName}" with the provided API key?`,
+        initialValue: true,
+    })
 
-  if (p.isCancel(confirmed) || !confirmed) return null;
+    if (p.isCancel(confirmed) || !confirmed) return null
 
-  const parseResult = VaultConfigSchema.safeParse({
-    vaultName: finalVaultName,
-    apiKey: trimmedKey,
-  });
+    const parseResult = VaultConfigSchema.safeParse({
+        vaultName: finalVaultName,
+        apiKey: trimmedKey,
+    })
 
-  if (!parseResult.success) {
-    p.log.error("Invalid vault configuration. Please try again.");
-    return null;
-  }
+    if (!parseResult.success) {
+        p.log.error('Invalid vault configuration. Please try again.')
+        return null
+    }
 
-  return parseResult.data;
+    return parseResult.data
 }
 
 /**
@@ -251,29 +252,32 @@ export async function runVaultWizard(
  * ```
  */
 export async function writeVaultConfig(
-  vaultName: string,
-  configPath: string,
+    vaultName: string,
+    configPath: string
 ): Promise<void> {
-  let config: Record<string, unknown> = {};
+    let config: Record<string, unknown> = {}
 
-  const file = Bun.file(configPath);
-  if (await file.exists()) {
-    try {
-      config = sanitizeJsonParse(await file.text()) as Record<string, unknown>;
-    } catch {
-      // Corrupted JSON -- start fresh with just the muninn field
+    const file = Bun.file(configPath)
+    if (await file.exists()) {
+        try {
+            config = sanitizeJsonParse(await file.text()) as Record<
+                string,
+                unknown
+            >
+        } catch {
+            // Corrupted JSON -- start fresh with just the muninn field
+        }
     }
-  }
 
-  // Set muninn.vault, preserving other muninn fields if present
-  const existing =
-    typeof config.muninn === "object" && config.muninn !== null
-      ? (config.muninn as Record<string, unknown>)
-      : {};
+    // Set muninn.vault, preserving other muninn fields if present
+    const existing =
+        typeof config.muninn === 'object' && config.muninn !== null
+            ? (config.muninn as Record<string, unknown>)
+            : {}
 
-  config.muninn = { ...existing, vault: vaultName };
+    config.muninn = { ...existing, vault: vaultName }
 
-  await Bun.write(configPath, JSON.stringify(config, null, 2) + "\n");
+    await Bun.write(configPath, JSON.stringify(config, null, 2) + '\n')
 }
 
 /**
@@ -305,55 +309,55 @@ export async function writeVaultConfig(
  * ```
  */
 export async function writeApiKeyToEnv(
-  apiKey: string,
-  envPath: string,
-  vaultName?: string,
+    apiKey: string,
+    envPath: string,
+    vaultName?: string
 ): Promise<void> {
-  // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
-  // Also write the default vault key and generic fallback for runtime consumers
-  const vaultKey = vaultName
-    ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_API_KEY`
-    : "MUNINN_DB_API_KEY";
-  const envLines = [
-    `${vaultKey}=${apiKey}`,
-    // Default vault key is always needed for cross-cutting memories
-    ...(vaultName && vaultName !== "default"
-      ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
-      : []),
-    `MUNINN_DB_API_KEY=${apiKey}`,
-  ];
+    // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
+    // Also write the default vault key and generic fallback for runtime consumers
+    const vaultKey = vaultName
+        ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_API_KEY`
+        : 'MUNINN_DB_API_KEY'
+    const envLines = [
+        `${vaultKey}=${apiKey}`,
+        // Default vault key is always needed for cross-cutting memories
+        ...(vaultName && vaultName !== 'default'
+            ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
+            : []),
+        `MUNINN_DB_API_KEY=${apiKey}`,
+    ]
 
-  const file = Bun.file(envPath);
+    const file = Bun.file(envPath)
 
-  if (await file.exists()) {
-    let content = await file.text();
+    if (await file.exists()) {
+        let content = await file.text()
 
-    for (const envLine of envLines) {
-      const keyName = envLine.split("=")[0];
-      const lines = content.split("\n");
-      const existingIndex = lines.findIndex((line) =>
-        line.startsWith(`${keyName}=`),
-      );
+        for (const envLine of envLines) {
+            const keyName = envLine.split('=')[0]
+            const lines = content.split('\n')
+            const existingIndex = lines.findIndex((line) =>
+                line.startsWith(`${keyName}=`)
+            )
 
-      if (existingIndex >= 0) {
-        // Replace existing line
-        lines[existingIndex] = envLine;
-        content = lines.join("\n");
-      } else {
-        // Append to end, ensuring newline before the new entry
-        const separator = content.endsWith("\n") ? "" : "\n";
-        content = content + separator + envLine + "\n";
-      }
+            if (existingIndex >= 0) {
+                // Replace existing line
+                lines[existingIndex] = envLine
+                content = lines.join('\n')
+            } else {
+                // Append to end, ensuring newline before the new entry
+                const separator = content.endsWith('\n') ? '' : '\n'
+                content = content + separator + envLine + '\n'
+            }
+        }
+
+        await Bun.write(envPath, content)
+    } else {
+        // Create new .env file
+        await Bun.write(envPath, envLines.join('\n') + '\n')
     }
 
-    await Bun.write(envPath, content);
-  } else {
-    // Create new .env file
-    await Bun.write(envPath, envLines.join("\n") + "\n");
-  }
-
-  // Restrict permissions: owner read/write only (SEC-002)
-  chmodSync(envPath, 0o600);
+    // Restrict permissions: owner read/write only (SEC-002)
+    chmodSync(envPath, 0o600)
 }
 
 /**
@@ -372,27 +376,27 @@ export async function writeApiKeyToEnv(
  * ```
  */
 export async function ensureEnvInGitignore(cwd: string): Promise<void> {
-  const gitignorePath = join(cwd, ".gitignore");
-  const file = Bun.file(gitignorePath);
+    const gitignorePath = join(cwd, '.gitignore')
+    const file = Bun.file(gitignorePath)
 
-  if (await file.exists()) {
-    const content = await file.text();
-    const lines = content.split("\n").map((l) => l.trim());
+    if (await file.exists()) {
+        const content = await file.text()
+        const lines = content.split('\n').map((l) => l.trim())
 
-    // Check for exact .env match (not .env.local, .env.example, etc.)
-    const hasEnvEntry = lines.some((line) => line === ".env");
+        // Check for exact .env match (not .env.local, .env.example, etc.)
+        const hasEnvEntry = lines.some((line) => line === '.env')
 
-    if (!hasEnvEntry) {
-      const separator = content.endsWith("\n") ? "" : "\n";
-      await Bun.write(
-        gitignorePath,
-        content + separator + "\n# Environment secrets\n.env\n",
-      );
+        if (!hasEnvEntry) {
+            const separator = content.endsWith('\n') ? '' : '\n'
+            await Bun.write(
+                gitignorePath,
+                content + separator + '\n# Environment secrets\n.env\n'
+            )
+        }
+    } else {
+        // Create new .gitignore with .env entry
+        await Bun.write(gitignorePath, '# Environment secrets\n.env\n')
     }
-  } else {
-    // Create new .gitignore with .env entry
-    await Bun.write(gitignorePath, "# Environment secrets\n.env\n");
-  }
 }
 
 /**
@@ -419,10 +423,10 @@ export async function ensureEnvInGitignore(cwd: string): Promise<void> {
  * ```
  */
 export async function verifyVaultConnection(
-  vaultName: string,
-  port?: number,
+    vaultName: string,
+    port?: number
 ): Promise<boolean> {
-  const resolvedPort = resolveMuninndbPort(port);
-  const status = await checkMuninndbService(resolvedPort);
-  return status.healthy;
+    const resolvedPort = resolveMuninndbPort(port)
+    const status = await checkMuninndbService(resolvedPort)
+    return status.healthy
 }

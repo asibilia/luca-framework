@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Legacy workflow editor route.
@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * The pipeline page now hosts the workflow editor content.
  */
 export default function WorkflowEditorRedirect() {
-  redirect("/pipeline");
+    redirect('/pipeline')
 }

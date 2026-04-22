@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom } from 'jotai'
 
 // ---------------------------------------------------------------------------
 // Layer 2b -- Settings Page Atoms
@@ -17,4 +17,4 @@ import { atom } from "jotai";
  * Distinct from `configDraftAtom` (which holds a parsed object for
  * structured editing on the Config page).
  */
-export const rawConfigDraftAtom = atom<string | null>(null);
+export const rawConfigDraftAtom = atom<string | null>(null)

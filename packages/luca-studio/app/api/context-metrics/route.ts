@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { access, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { access, readFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 
-import { z } from "zod";
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
 
 /**
  * API Response: Context window metrics from .planning/.context-metrics.json.
@@ -13,27 +13,27 @@ import { z } from "zod";
  * Uses snake_case for API-facing fields per project convention.
  */
 const ContextMetricsSchema = z.object({
-  zone: z.enum(["peak", "good", "degrading", "stop"]),
-  usage_percent: z.number().min(0).max(100),
-  checked_at: z.string(),
-  // Real token data (from statusline — present when source is "statusline")
-  context_window_size: z.number().int().min(0).optional(),
-  total_input_tokens: z.number().int().min(0).optional(),
-  total_output_tokens: z.number().int().min(0).optional(),
-  cache_read_input_tokens: z.number().int().min(0).optional(),
-  // Heuristic data (from transcript byte estimation — present when source is "transcript_heuristic")
-  transcript_bytes: z.number().int().min(0).optional(),
-  // Source discriminator: "statusline" (real) or "transcript_heuristic" (estimated)
-  source: z.enum(["statusline", "transcript_heuristic"]).optional(),
-  // Legacy thresholds (optional — not written by statusline, only by old heuristic)
-  thresholds: z
-    .object({
-      warn_bytes: z.number(),
-      alert_bytes: z.number(),
-      critical_bytes: z.number(),
-    })
-    .optional(),
-});
+    zone: z.enum(['peak', 'good', 'degrading', 'stop']),
+    usage_percent: z.number().min(0).max(100),
+    checked_at: z.string(),
+    // Real token data (from statusline — present when source is "statusline")
+    context_window_size: z.number().int().min(0).optional(),
+    total_input_tokens: z.number().int().min(0).optional(),
+    total_output_tokens: z.number().int().min(0).optional(),
+    cache_read_input_tokens: z.number().int().min(0).optional(),
+    // Heuristic data (from transcript byte estimation — present when source is "transcript_heuristic")
+    transcript_bytes: z.number().int().min(0).optional(),
+    // Source discriminator: "statusline" (real) or "transcript_heuristic" (estimated)
+    source: z.enum(['statusline', 'transcript_heuristic']).optional(),
+    // Legacy thresholds (optional — not written by statusline, only by old heuristic)
+    thresholds: z
+        .object({
+            warn_bytes: z.number(),
+            alert_bytes: z.number(),
+            critical_bytes: z.number(),
+        })
+        .optional(),
+})
 
 /**
  * GET /api/context-metrics
@@ -52,53 +52,57 @@ const ContextMetricsSchema = z.object({
  * Returns the first match, or null if none found.
  */
 async function findProjectRoot(startDir: string): Promise<string | null> {
-  let current = resolve(startDir);
-  const root = resolve("/");
-  while (current !== root) {
-    try {
-      await access(join(current, ".planning"));
-      return current;
-    } catch {
-      /* not found at this level, keep walking up */
+    let current = resolve(startDir)
+    const root = resolve('/')
+    while (current !== root) {
+        try {
+            await access(join(current, '.planning'))
+            return current
+        } catch {
+            /* not found at this level, keep walking up */
+        }
+        current = resolve(current, '..')
     }
-    current = resolve(current, "..");
-  }
-  return null;
+    return null
 }
 
 export async function GET() {
-  const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT;
-  const explicitRoot = rawRoot ? resolve(rawRoot) : null;
-  const workspaceRoot =
-    explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd();
-  const metricsPath = join(workspaceRoot, ".planning", ".context-metrics.json");
+    const rawRoot = process.env.LUCA_PROJECT_DIR || process.env.WORKSPACE_ROOT
+    const explicitRoot = rawRoot ? resolve(rawRoot) : null
+    const workspaceRoot =
+        explicitRoot || (await findProjectRoot(process.cwd())) || process.cwd()
+    const metricsPath = join(
+        workspaceRoot,
+        '.planning',
+        '.context-metrics.json'
+    )
 
-  let content: string;
-  try {
-    content = await readFile(metricsPath, "utf-8");
-  } catch {
-    return NextResponse.json(
-      { error: "Context metrics not available" },
-      { status: 404 },
-    );
-  }
+    let content: string
+    try {
+        content = await readFile(metricsPath, 'utf-8')
+    } catch {
+        return NextResponse.json(
+            { error: 'Context metrics not available' },
+            { status: 404 }
+        )
+    }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(content);
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid metrics format" },
-      { status: 502 },
-    );
-  }
+    let raw: unknown
+    try {
+        raw = JSON.parse(content)
+    } catch {
+        return NextResponse.json(
+            { error: 'Invalid metrics format' },
+            { status: 502 }
+        )
+    }
 
-  const result = ContextMetricsSchema.safeParse(raw);
-  if (!result.success) {
-    return NextResponse.json(
-      { error: "Invalid metrics format" },
-      { status: 502 },
-    );
-  }
-  return NextResponse.json(result.data);
+    const result = ContextMetricsSchema.safeParse(raw)
+    if (!result.success) {
+        return NextResponse.json(
+            { error: 'Invalid metrics format' },
+            { status: 502 }
+        )
+    }
+    return NextResponse.json(result.data)
 }

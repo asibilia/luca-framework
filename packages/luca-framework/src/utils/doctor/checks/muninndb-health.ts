@@ -9,11 +9,10 @@
  */
 
 import {
-  checkMuninndbBinary,
-  checkMuninndbService,
-} from "../../muninndb-health";
-
-import type { CheckResult, DoctorCheck } from "../types";
+    checkMuninndbBinary,
+    checkMuninndbService,
+} from '../../muninndb-health'
+import type { CheckResult, DoctorCheck } from '../types'
 
 /**
  * Doctor check: verify MuninnDB binary is installed and service is healthy.
@@ -33,67 +32,67 @@ import type { CheckResult, DoctorCheck } from "../types";
  * ```
  */
 export const muninndbHealthCheck: DoctorCheck = {
-  name: "MuninnDB",
-  scope: "global",
+    name: 'MuninnDB',
+    scope: 'global',
 
-  async run(): Promise<CheckResult> {
-    // Check 1: Binary installed and executable
-    const binary = await checkMuninndbBinary();
+    async run(): Promise<CheckResult> {
+        // Check 1: Binary installed and executable
+        const binary = await checkMuninndbBinary()
 
-    if (!binary.installed) {
-      return {
-        name: this.name,
-        status: "fail",
-        message: "MuninnDB binary not found",
-        fixCommand: "luca init",
-        details:
-          "MuninnDB binary not installed at ~/.luca/bin/muninndb. Run `luca init` to install it.",
-      };
-    }
+        if (!binary.installed) {
+            return {
+                name: this.name,
+                status: 'fail',
+                message: 'MuninnDB binary not found',
+                fixCommand: 'luca init',
+                details:
+                    'MuninnDB binary not installed at ~/.luca/bin/muninndb. Run `luca init` to install it.',
+            }
+        }
 
-    if (!binary.executable) {
-      return {
-        name: this.name,
-        status: "fail",
-        message: "MuninnDB binary not executable",
-        fixCommand: "chmod +x ~/.luca/bin/muninndb",
-        details: `Binary found at ${binary.path} but lacks executable permissions.`,
-      };
-    }
+        if (!binary.executable) {
+            return {
+                name: this.name,
+                status: 'fail',
+                message: 'MuninnDB binary not executable',
+                fixCommand: 'chmod +x ~/.luca/bin/muninndb',
+                details: `Binary found at ${binary.path} but lacks executable permissions.`,
+            }
+        }
 
-    // Check 2: Service running and healthy
-    const service = await checkMuninndbService();
+        // Check 2: Service running and healthy
+        const service = await checkMuninndbService()
 
-    if (!service.running) {
-      const versionSuffix = binary.version ? ` (${binary.version})` : "";
-      return {
-        name: this.name,
-        status: "warning",
-        message: `Binary installed${versionSuffix}, service not running`,
-        fixCommand: "muninn start",
-        details: `Binary at ${binary.path}. Start the service with: muninn start`,
-      };
-    }
+        if (!service.running) {
+            const versionSuffix = binary.version ? ` (${binary.version})` : ''
+            return {
+                name: this.name,
+                status: 'warning',
+                message: `Binary installed${versionSuffix}, service not running`,
+                fixCommand: 'muninn start',
+                details: `Binary at ${binary.path}. Start the service with: muninn start`,
+            }
+        }
 
-    if (!service.healthy) {
-      return {
-        name: this.name,
-        status: "warning",
-        message: `Service running on port ${service.port} but unhealthy`,
-        fixCommand: "Restart MuninnDB",
-        details:
-          "MuninnDB process is running but failed the health check. Try restarting it.",
-      };
-    }
+        if (!service.healthy) {
+            return {
+                name: this.name,
+                status: 'warning',
+                message: `Service running on port ${service.port} but unhealthy`,
+                fixCommand: 'Restart MuninnDB',
+                details:
+                    'MuninnDB process is running but failed the health check. Try restarting it.',
+            }
+        }
 
-    const versionSuffix = binary.version ? ` (${binary.version})` : "";
-    const pidSuffix = service.pid ? `, PID ${service.pid}` : "";
-    return {
-      name: this.name,
-      status: "pass",
-      message: `Binary installed${versionSuffix}, service healthy (port ${service.port}${pidSuffix})`,
-      fixCommand: null,
-      details: null,
-    };
-  },
-};
+        const versionSuffix = binary.version ? ` (${binary.version})` : ''
+        const pidSuffix = service.pid ? `, PID ${service.pid}` : ''
+        return {
+            name: this.name,
+            status: 'pass',
+            message: `Binary installed${versionSuffix}, service healthy (port ${service.port}${pidSuffix})`,
+            fixCommand: null,
+            details: null,
+        }
+    },
+}

@@ -1,12 +1,19 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const researcherSubagent: HarnessSubagent = {
-  id: 'researcher',
-  name: 'Researcher',
-  description: 'Performs deep codebase research across scope, architecture, implementation, ecosystem, and risk dimensions. Returns structured findings with confidence levels.',
-  maxSteps: 30,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat', 'lsp_inspect'],
-  instructions: `You are a Luca research specialist. You perform focused, deep research on a specific dimension of a development task.
+    id: 'researcher',
+    name: 'Researcher',
+    description:
+        'Performs deep codebase research across scope, architecture, implementation, ecosystem, and risk dimensions. Returns structured findings with confidence levels.',
+    maxSteps: 30,
+    allowedWorkspaceTools: [
+        'view',
+        'search_content',
+        'find_files',
+        'file_stat',
+        'lsp_inspect',
+    ],
+    instructions: `You are a Luca research specialist. You perform focused, deep research on a specific dimension of a development task.
 
 ## Research Dimensions
 You may be asked to research one of these areas:
@@ -28,4 +35,4 @@ Structure your research as markdown with:
 - Evidence-based: Every finding must reference specific files/lines
 - Concise: Stay focused on your assigned dimension
 - Confidence-tagged: Mark each finding as HIGH/MEDIUM/LOW confidence`,
-};
+}

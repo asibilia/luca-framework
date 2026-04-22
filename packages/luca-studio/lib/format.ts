@@ -14,12 +14,12 @@
  * @returns Formatted locale date-time or "--" on empty / invalid input
  */
 export function formatDateTime(ts: string): string {
-  if (!ts) return "--";
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return ts;
-  }
+    if (!ts) return '--'
+    try {
+        return new Date(ts).toLocaleString()
+    } catch {
+        return ts
+    }
 }
 
 /**
@@ -31,16 +31,16 @@ export function formatDateTime(ts: string): string {
  * @returns Formatted time string or "--" on empty / invalid input
  */
 export function formatTime(ts: string): string {
-  if (!ts) return "--";
-  try {
-    return new Date(ts).toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  } catch {
-    return ts;
-  }
+    if (!ts) return '--'
+    try {
+        return new Date(ts).toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        })
+    } catch {
+        return ts
+    }
 }
 
 /**
@@ -52,10 +52,10 @@ export function formatTime(ts: string): string {
  * @returns Compact display string
  */
 export function formatChars(chars: number): string {
-  if (chars === 0) return "0";
-  if (chars < 1000) return chars.toString();
-  if (chars < 100_000) return `${(chars / 1000).toFixed(1)}k`;
-  return `${(chars / 1000).toFixed(0)}k`;
+    if (chars === 0) return '0'
+    if (chars < 1000) return chars.toString()
+    if (chars < 100_000) return `${(chars / 1000).toFixed(1)}k`
+    return `${(chars / 1000).toFixed(0)}k`
 }
 
 /**
@@ -67,9 +67,9 @@ export function formatChars(chars: number): string {
  * @returns Display string with "chars" suffix
  */
 export function formatSize(chars: number): string {
-  if (chars === 0) return "0 chars";
-  if (chars < 1000) return `${chars} chars`;
-  return `${(chars / 1000).toFixed(1)}k chars`;
+    if (chars === 0) return '0 chars'
+    if (chars < 1000) return `${chars} chars`
+    return `${(chars / 1000).toFixed(1)}k chars`
 }
 
 /**
@@ -82,33 +82,33 @@ export function formatSize(chars: number): string {
  * @returns Relative time string or "" if input is falsy
  */
 export function relativeTime(input: number | Date | undefined | null): string {
-  if (!input) return "";
+    if (!input) return ''
 
-  let ms: number;
-  if (input instanceof Date) {
-    ms = input.getTime();
-  } else {
-    // Normalize: if value looks like seconds (< 1e12), convert to ms
-    ms = input < 1e12 ? input * 1000 : input;
-  }
+    let ms: number
+    if (input instanceof Date) {
+        ms = input.getTime()
+    } else {
+        // Normalize: if value looks like seconds (< 1e12), convert to ms
+        ms = input < 1e12 ? input * 1000 : input
+    }
 
-  const diffMs = Date.now() - ms;
-  if (diffMs < 0) return "just now";
+    const diffMs = Date.now() - ms
+    if (diffMs < 0) return 'just now'
 
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 60) return "just now";
+    const seconds = Math.floor(diffMs / 1000)
+    if (seconds < 60) return 'just now'
 
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
 
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
 
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+    const days = Math.floor(hours / 24)
+    if (days < 30) return `${days}d ago`
 
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
+    const months = Math.floor(days / 30)
+    return `${months}mo ago`
 }
 
 /**
@@ -121,18 +121,18 @@ export function relativeTime(input: number | Date | undefined | null): string {
  * @returns CSS color token name (without "var(--color-)" wrapper)
  */
 export function zoneColor(zone: string): string {
-  switch (zone) {
-    case "peak":
-      return "success";
-    case "good":
-      return "info";
-    case "degrading":
-      return "warning";
-    case "stop":
-      return "destructive";
-    default:
-      return "muted-foreground";
-  }
+    switch (zone) {
+        case 'peak':
+            return 'success'
+        case 'good':
+            return 'info'
+        case 'degrading':
+            return 'warning'
+        case 'stop':
+            return 'destructive'
+        default:
+            return 'muted-foreground'
+    }
 }
 
 /**
@@ -144,14 +144,14 @@ export function zoneColor(zone: string): string {
  * @returns Human-readable age string (e.g. "5m ago", "2h ago") or "--"
  */
 export function formatAge(seconds: number | null): string {
-  if (seconds === null) return "--";
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+    if (seconds === null) return '--'
+    if (seconds < 60) return 'just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
 }
 
 /**
@@ -170,10 +170,10 @@ export function formatAge(seconds: number | null): string {
  * @returns CSS color token name (without "var(--color-)" wrapper)
  */
 export function coherenceColor(score: number): string {
-  if (score >= 0.8) return "success";
-  if (score >= 0.5) return "info";
-  if (score >= 0.3) return "warning";
-  return "destructive";
+    if (score >= 0.8) return 'success'
+    if (score >= 0.5) return 'info'
+    if (score >= 0.3) return 'warning'
+    return 'destructive'
 }
 
 /**
@@ -186,18 +186,18 @@ export function coherenceColor(score: number): string {
  * @returns Human-readable size string
  */
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  if (bytes < 0) return "0 B";
+    if (bytes === 0) return '0 B'
+    if (bytes < 0) return '0 B'
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const k = 1024;
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    units.length - 1,
-  );
-  const value = bytes / Math.pow(k, i);
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    const k = 1024
+    const i = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(k)),
+        units.length - 1
+    )
+    const value = bytes / Math.pow(k, i)
 
-  // Use toFixed(1) but strip trailing ".0" for clean display
-  const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
-  return `${formatted} ${units[i]}`;
+    // Use toFixed(1) but strip trailing ".0" for clean display
+    const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)
+    return `${formatted} ${units[i]}`
 }

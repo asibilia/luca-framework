@@ -4,11 +4,11 @@
  * Extracts common boilerplate: client acquisition, error handling (502),
  * response validation, and query parameter parsing with Zod.
  */
-import { NextResponse } from "next/server";
-import type { z } from "zod";
+import { NextResponse } from 'next/server'
+import type { z } from 'zod'
 
-import { getMuninnClient } from "~/lib/muninn-config";
-import type { MuninnClient } from "~/lib/muninn-config";
+import { getMuninnClient } from '~/lib/muninn-config'
+import type { MuninnClient } from '~/lib/muninn-config'
 
 /**
  * Wraps a MuninnDB client call with automatic error handling and optional
@@ -32,30 +32,30 @@ import type { MuninnClient } from "~/lib/muninn-config";
  * ```
  */
 export async function muninnProxyHandler(
-  handler: (client: MuninnClient) => Promise<unknown>,
-  errorMessage: string,
-  responseSchema?: z.ZodType,
+    handler: (client: MuninnClient) => Promise<unknown>,
+    errorMessage: string,
+    responseSchema?: z.ZodType
 ): Promise<NextResponse> {
-  const client = getMuninnClient();
-  try {
-    const data = await handler(client);
-    if (responseSchema) {
-      const parsed = responseSchema.safeParse(data);
-      if (!parsed.success) {
-        console.error(
-          "[muninn-proxy] Response validation failed:",
-          parsed.error.message,
-        );
-        // Validation failed — return raw data to avoid breaking UI on schema evolution
-        return NextResponse.json(data);
-      }
-      // Validation succeeded — return the validated, coerced/stripped shape
-      return NextResponse.json(parsed.data);
+    const client = getMuninnClient()
+    try {
+        const data = await handler(client)
+        if (responseSchema) {
+            const parsed = responseSchema.safeParse(data)
+            if (!parsed.success) {
+                console.error(
+                    '[muninn-proxy] Response validation failed:',
+                    parsed.error.message
+                )
+                // Validation failed — return raw data to avoid breaking UI on schema evolution
+                return NextResponse.json(data)
+            }
+            // Validation succeeded — return the validated, coerced/stripped shape
+            return NextResponse.json(parsed.data)
+        }
+        return NextResponse.json(data)
+    } catch {
+        return NextResponse.json({ error: errorMessage }, { status: 502 })
     }
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: errorMessage }, { status: 502 });
-  }
 }
 
 /**
@@ -73,21 +73,21 @@ export async function muninnProxyHandler(
  * ```
  */
 export function parseQueryParams<T extends z.ZodType>(
-  searchParams: URLSearchParams,
-  schema: T,
+    searchParams: URLSearchParams,
+    schema: T
 ):
-  | { success: true; data: z.output<T> }
-  | { success: false; response: NextResponse } {
-  const raw = Object.fromEntries(searchParams.entries());
-  const result = schema.safeParse(raw);
-  if (!result.success) {
-    return {
-      success: false,
-      response: NextResponse.json(
-        { error: result.error.issues.map((i) => i.message).join("; ") },
-        { status: 400 },
-      ),
-    };
-  }
-  return { success: true, data: result.data };
+    | { success: true; data: z.output<T> }
+    | { success: false; response: NextResponse } {
+    const raw = Object.fromEntries(searchParams.entries())
+    const result = schema.safeParse(raw)
+    if (!result.success) {
+        return {
+            success: false,
+            response: NextResponse.json(
+                { error: result.error.issues.map((i) => i.message).join('; ') },
+                { status: 400 }
+            ),
+        }
+    }
+    return { success: true, data: result.data }
 }

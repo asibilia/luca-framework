@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Decisions page redirect.
@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * Redirects to /sessions for backward compatibility.
  */
 export default function DecisionsPage() {
-  redirect("/sessions");
+    redirect('/sessions')
 }

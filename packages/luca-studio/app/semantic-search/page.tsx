@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Semantic Search page redirect.
@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * Redirects to /memory?tab=search for backward compatibility.
  */
 export default function SemanticSearchPage() {
-  redirect("/memory?tab=search");
+    redirect('/memory?tab=search')
 }

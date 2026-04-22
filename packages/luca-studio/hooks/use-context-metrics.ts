@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { z } from "zod";
+import { z } from 'zod'
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 10_000
 
 /**
  * Zod schema for context window metrics from the API response.
@@ -18,27 +18,27 @@ const POLL_INTERVAL_MS = 10_000;
  * - "transcript_heuristic": Estimated from transcript file size (legacy fallback)
  */
 const ContextMetricsSchema = z.object({
-  zone: z.enum(["peak", "good", "degrading", "stop"]),
-  usage_percent: z.number().min(0).max(100),
-  checked_at: z.string(),
-  // Real token data (from statusline)
-  context_window_size: z.number().int().min(0).optional(),
-  total_input_tokens: z.number().int().min(0).optional(),
-  total_output_tokens: z.number().int().min(0).optional(),
-  cache_read_input_tokens: z.number().int().min(0).optional(),
-  // Heuristic data (from transcript byte estimation)
-  transcript_bytes: z.number().int().min(0).optional(),
-  // Source discriminator
-  source: z.enum(["statusline", "transcript_heuristic"]).optional(),
-  // Legacy thresholds (optional)
-  thresholds: z
-    .object({
-      warn_bytes: z.number(),
-      alert_bytes: z.number(),
-      critical_bytes: z.number(),
-    })
-    .optional(),
-});
+    zone: z.enum(['peak', 'good', 'degrading', 'stop']),
+    usage_percent: z.number().min(0).max(100),
+    checked_at: z.string(),
+    // Real token data (from statusline)
+    context_window_size: z.number().int().min(0).optional(),
+    total_input_tokens: z.number().int().min(0).optional(),
+    total_output_tokens: z.number().int().min(0).optional(),
+    cache_read_input_tokens: z.number().int().min(0).optional(),
+    // Heuristic data (from transcript byte estimation)
+    transcript_bytes: z.number().int().min(0).optional(),
+    // Source discriminator
+    source: z.enum(['statusline', 'transcript_heuristic']).optional(),
+    // Legacy thresholds (optional)
+    thresholds: z
+        .object({
+            warn_bytes: z.number(),
+            alert_bytes: z.number(),
+            critical_bytes: z.number(),
+        })
+        .optional(),
+})
 
 /**
  * Context window metrics parsed from .planning/.context-metrics.json.
@@ -46,7 +46,7 @@ const ContextMetricsSchema = z.object({
  * Matches the shape returned by GET /api/context-metrics.
  * Inferred from ContextMetricsSchema as single source of truth.
  */
-export type ContextMetrics = z.infer<typeof ContextMetricsSchema>;
+export type ContextMetrics = z.infer<typeof ContextMetricsSchema>
 
 /**
  * Hook for polling context window metrics via the /api/context-metrics endpoint.
@@ -59,47 +59,47 @@ export type ContextMetrics = z.infer<typeof ContextMetricsSchema>;
  * @returns metrics (null when unavailable), loading, error, and a refresh function
  */
 export function useContextMetrics() {
-  const [metrics, setMetrics] = useState<ContextMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchingRef = useRef(false);
+    const [metrics, setMetrics] = useState<ContextMetrics | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const fetchingRef = useRef(false)
 
-  const fetchMetrics = useCallback(async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      const res = await fetch("/api/context-metrics");
-      if (!res.ok) {
-        setMetrics(null);
-        if (res.status === 404) {
-          setError(null); // No active session — expected
-        } else {
-          setError(`Server error (${res.status})`);
+    const fetchMetrics = useCallback(async () => {
+        if (fetchingRef.current) return
+        fetchingRef.current = true
+        try {
+            const res = await fetch('/api/context-metrics')
+            if (!res.ok) {
+                setMetrics(null)
+                if (res.status === 404) {
+                    setError(null) // No active session — expected
+                } else {
+                    setError(`Server error (${res.status})`)
+                }
+                return
+            }
+            const raw: unknown = await res.json()
+            const result = ContextMetricsSchema.safeParse(raw)
+            if (result.success) {
+                setMetrics(result.data)
+                setError(null)
+            } else {
+                setMetrics(null)
+                setError('Invalid metrics response')
+            }
+        } catch {
+            setError('Fetch failed')
+        } finally {
+            setLoading(false)
+            fetchingRef.current = false
         }
-        return;
-      }
-      const raw: unknown = await res.json();
-      const result = ContextMetricsSchema.safeParse(raw);
-      if (result.success) {
-        setMetrics(result.data);
-        setError(null);
-      } else {
-        setMetrics(null);
-        setError("Invalid metrics response");
-      }
-    } catch {
-      setError("Fetch failed");
-    } finally {
-      setLoading(false);
-      fetchingRef.current = false;
-    }
-  }, []);
+    }, [])
 
-  useEffect(() => {
-    void fetchMetrics();
-    const id = setInterval(() => void fetchMetrics(), POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [fetchMetrics]);
+    useEffect(() => {
+        void fetchMetrics()
+        const id = setInterval(() => void fetchMetrics(), POLL_INTERVAL_MS)
+        return () => clearInterval(id)
+    }, [fetchMetrics])
 
-  return { metrics, loading, error, refresh: fetchMetrics };
+    return { metrics, loading, error, refresh: fetchMetrics }
 }

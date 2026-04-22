@@ -10,7 +10,7 @@
  * appears in config.json. They are the source of truth for PUT route
  * validation on the Studio side.
  */
-import { z } from "zod";
+import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
 // Workflow section
@@ -23,18 +23,18 @@ import { z } from "zod";
  * code review, UAT, etc.) and tech stack profiles.
  */
 export const WorkflowSectionSchema = z.object({
-  research: z.boolean().default(true),
-  plan_check: z.boolean().default(true),
-  verifier: z.boolean().default(true),
-  code_review: z.boolean().default(true),
-  uat_required: z.boolean().default(true),
-  always_verify: z.boolean().default(true),
-  capture_learnings: z.boolean().default(true),
-  opinionated_guidelines: z.boolean().default(true),
-  tech_stack_profiles: z.array(z.string()).default(["typescript"]),
-});
+    research: z.boolean().default(true),
+    plan_check: z.boolean().default(true),
+    verifier: z.boolean().default(true),
+    code_review: z.boolean().default(true),
+    uat_required: z.boolean().default(true),
+    always_verify: z.boolean().default(true),
+    capture_learnings: z.boolean().default(true),
+    opinionated_guidelines: z.boolean().default(true),
+    tech_stack_profiles: z.array(z.string()).default(['typescript']),
+})
 
-export type WorkflowSection = z.infer<typeof WorkflowSectionSchema>;
+export type WorkflowSection = z.infer<typeof WorkflowSectionSchema>
 
 // ---------------------------------------------------------------------------
 // Gates section
@@ -47,27 +47,27 @@ export type WorkflowSection = z.infer<typeof WorkflowSectionSchema>;
  * Safety-critical gates (confirm_project, confirm_phases) are enforced
  * by the semantic validator, not by the schema itself.
  */
-export const GatesSectionSchema = z.record(z.string(), z.boolean());
+export const GatesSectionSchema = z.record(z.string(), z.boolean())
 
-export type GatesSection = z.infer<typeof GatesSectionSchema>;
+export type GatesSection = z.infer<typeof GatesSectionSchema>
 
 // ---------------------------------------------------------------------------
 // Checks section (mirrors src/checks/__schemas/ for Studio zod v3)
 // ---------------------------------------------------------------------------
 
 const CheckConfigSchema = z.object({
-  name: z.string(),
-  command: z
-    .string()
-    .max(256)
-    .regex(
-      /^[a-zA-Z0-9 _.\-/]+$/,
-      "Command must contain only alphanumeric characters, spaces, dots, hyphens, underscores, and forward slashes",
-    ),
-  enabled: z.boolean(),
-  timeout: z.number().positive(),
-  parser: z.string(),
-});
+    name: z.string(),
+    command: z
+        .string()
+        .max(256)
+        .regex(
+            /^[a-zA-Z0-9 _.\-/]+$/,
+            'Command must contain only alphanumeric characters, spaces, dots, hyphens, underscores, and forward slashes'
+        ),
+    enabled: z.boolean(),
+    timeout: z.number().positive(),
+    parser: z.string(),
+})
 
 /**
  * Schema for the `harness` config section.
@@ -81,13 +81,13 @@ const CheckConfigSchema = z.object({
  * project's snake_case API convention.
  */
 export const ChecksSectionSchema = z.object({
-  enabled: z.boolean(),
-  checks: z.array(CheckConfigSchema),
-  maxFixIterations: z.number().int().positive(),
-  failFast: z.boolean(),
-});
+    enabled: z.boolean(),
+    checks: z.array(CheckConfigSchema),
+    maxFixIterations: z.number().int().positive(),
+    failFast: z.boolean(),
+})
 
-export type ChecksSection = z.infer<typeof ChecksSectionSchema>;
+export type ChecksSection = z.infer<typeof ChecksSectionSchema>
 
 // ---------------------------------------------------------------------------
 // Complexity section
@@ -95,13 +95,13 @@ export type ChecksSection = z.infer<typeof ChecksSectionSchema>;
 
 /** Schema for a single complexity level's loop budgets. */
 const ComplexityLevelSchema = z.object({
-  cognitivePreflight: z.enum(["lite", "full"]),
-  planVerificationIterations: z.number().int().positive(),
-  checksFixIterations: z.number().int().positive(),
-  verifyFixIterations: z.number().int().positive(),
-  verificationMode: z.enum(["quick", "standard", "full", "full+human"]),
-  recallDepth: z.number().int().positive().nullable(),
-});
+    cognitivePreflight: z.enum(['lite', 'full']),
+    planVerificationIterations: z.number().int().positive(),
+    checksFixIterations: z.number().int().positive(),
+    verifyFixIterations: z.number().int().positive(),
+    verificationMode: z.enum(['quick', 'standard', 'full', 'full+human']),
+    recallDepth: z.number().int().positive().nullable(),
+})
 
 /**
  * Schema for the `complexity` config section.
@@ -110,11 +110,11 @@ const ComplexityLevelSchema = z.object({
  * controlling loop budgets and verification depth.
  */
 export const ComplexitySectionSchema = z.object({
-  defaultLevel: z.string().default("auto"),
-  matrix: z.record(z.string(), ComplexityLevelSchema),
-});
+    defaultLevel: z.string().default('auto'),
+    matrix: z.record(z.string(), ComplexityLevelSchema),
+})
 
-export type ComplexitySection = z.infer<typeof ComplexitySectionSchema>;
+export type ComplexitySection = z.infer<typeof ComplexitySectionSchema>
 
 // ---------------------------------------------------------------------------
 // Lu section (mirrors src/shared/__schemas/ for Studio zod v3)
@@ -127,19 +127,19 @@ export type ComplexitySection = z.infer<typeof ComplexitySectionSchema>;
  * UAT gating, gap closure, milestone boundaries, and backlog scanning.
  */
 export const LuSectionSchema = z.object({
-  oversight: z
-    .enum(["full-auto", "flagged", "milestone", "phase"])
-    .default("milestone"),
-  max_phases_per_session: z.number().default(10),
-  auto_plan_phases: z.boolean().default(true),
-  skip_uat: z.boolean().default(true),
-  gap_closure_retries: z.number().default(1),
-  pause_on_critical_review: z.boolean().default(true),
-  cross_milestone: z.boolean().default(false),
-  backlog_scan: z.boolean().default(true),
-});
+    oversight: z
+        .enum(['full-auto', 'flagged', 'milestone', 'phase'])
+        .default('milestone'),
+    max_phases_per_session: z.number().default(10),
+    auto_plan_phases: z.boolean().default(true),
+    skip_uat: z.boolean().default(true),
+    gap_closure_retries: z.number().default(1),
+    pause_on_critical_review: z.boolean().default(true),
+    cross_milestone: z.boolean().default(false),
+    backlog_scan: z.boolean().default(true),
+})
 
-export type LuSection = z.infer<typeof LuSectionSchema>;
+export type LuSection = z.infer<typeof LuSectionSchema>
 
 // ---------------------------------------------------------------------------
 // Planner section
@@ -153,28 +153,28 @@ export type LuSection = z.infer<typeof LuSectionSchema>;
  * costs per complexity level.
  */
 export const PlannerSectionSchema = z.object({
-  session_cap_minutes: z.number().int().positive().default(180),
-  weekly_allocation: z
-    .object({
-      needle_movers: z.number().min(0).max(100).default(60),
-      quick_wins: z.number().min(0).max(100).default(25),
-      maintenance: z.number().min(0).max(100).default(10),
-      reserve: z.number().min(0).max(100).default(5),
-    })
-    .default({}),
-  zone_boundaries: z
-    .object({
-      peak_end: z.number().min(0).max(100).default(30),
-      good_end: z.number().min(0).max(100).default(50),
-      degrading_end: z.number().min(0).max(100).default(70),
-    })
-    .default({}),
-  cold_start_costs: z
-    .record(z.string(), z.number().int().nonnegative())
-    .default({}),
-});
+    session_cap_minutes: z.number().int().positive().default(180),
+    weekly_allocation: z
+        .object({
+            needle_movers: z.number().min(0).max(100).default(60),
+            quick_wins: z.number().min(0).max(100).default(25),
+            maintenance: z.number().min(0).max(100).default(10),
+            reserve: z.number().min(0).max(100).default(5),
+        })
+        .default({}),
+    zone_boundaries: z
+        .object({
+            peak_end: z.number().min(0).max(100).default(30),
+            good_end: z.number().min(0).max(100).default(50),
+            degrading_end: z.number().min(0).max(100).default(70),
+        })
+        .default({}),
+    cold_start_costs: z
+        .record(z.string(), z.number().int().nonnegative())
+        .default({}),
+})
 
-export type PlannerSection = z.infer<typeof PlannerSectionSchema>;
+export type PlannerSection = z.infer<typeof PlannerSectionSchema>
 
 // ---------------------------------------------------------------------------
 // Section registry (maps section key to its schema)
@@ -182,19 +182,19 @@ export type PlannerSection = z.infer<typeof PlannerSectionSchema>;
 
 /** Union of all supported config section keys. */
 export type ConfigSectionKey =
-  | "workflow"
-  | "gates"
-  | "harness"
-  | "complexity"
-  | "lu"
-  | "planner";
+    | 'workflow'
+    | 'gates'
+    | 'harness'
+    | 'complexity'
+    | 'lu'
+    | 'planner'
 
 /** Map of section keys to their Zod schemas. */
 export const CONFIG_SECTION_SCHEMAS: Record<ConfigSectionKey, z.ZodType> = {
-  workflow: WorkflowSectionSchema,
-  gates: GatesSectionSchema,
-  harness: ChecksSectionSchema,
-  complexity: ComplexitySectionSchema,
-  lu: LuSectionSchema,
-  planner: PlannerSectionSchema,
-};
+    workflow: WorkflowSectionSchema,
+    gates: GatesSectionSchema,
+    harness: ChecksSectionSchema,
+    complexity: ComplexitySectionSchema,
+    lu: LuSectionSchema,
+    planner: PlannerSectionSchema,
+}

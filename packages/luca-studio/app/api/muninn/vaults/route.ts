@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server'
 
-const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
+const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? 'http://127.0.0.1:8476'
 
 /**
  * GET /api/muninn/vaults
@@ -12,35 +12,35 @@ const MUNINN_BASE_URL = process.env.MUNINN_DB_URL ?? "http://127.0.0.1:8476";
  * this endpoint is vault-agnostic.
  */
 export async function GET() {
-  const apiKey =
-    process.env.MUNINN_DB_DEFAULT_API_KEY ??
-    process.env.MUNINN_DB_API_KEY ??
-    "";
+    const apiKey =
+        process.env.MUNINN_DB_DEFAULT_API_KEY ??
+        process.env.MUNINN_DB_API_KEY ??
+        ''
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
-  }
-
-  try {
-    const res = await fetch(`${MUNINN_BASE_URL}/api/vaults`, {
-      headers,
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `MuninnDB vaults: ${res.status}` },
-        { status: 502 },
-      );
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
     }
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch MuninnDB vaults" },
-      { status: 502 },
-    );
-  }
+    if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`
+    }
+
+    try {
+        const res = await fetch(`${MUNINN_BASE_URL}/api/vaults`, {
+            headers,
+            signal: AbortSignal.timeout(10_000),
+        })
+        if (!res.ok) {
+            return NextResponse.json(
+                { error: `MuninnDB vaults: ${res.status}` },
+                { status: 502 }
+            )
+        }
+        const data = await res.json()
+        return NextResponse.json(data)
+    } catch {
+        return NextResponse.json(
+            { error: 'Failed to fetch MuninnDB vaults' },
+            { status: 502 }
+        )
+    }
 }

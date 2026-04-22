@@ -48,47 +48,47 @@
  * @property error     - Error message (present only for `compile:error`).
  */
 export type CompileEvent =
-  | { type: "compile:start"; domain: string; name: string; timestamp: string }
-  | {
-      type: "compile:complete";
-      domain: string;
-      name: string;
-      timestamp: string;
-    }
-  | {
-      type: "compile:error";
-      domain: string;
-      name: string;
-      timestamp: string;
-      error: string;
-    };
+    | { type: 'compile:start'; domain: string; name: string; timestamp: string }
+    | {
+          type: 'compile:complete'
+          domain: string
+          name: string
+          timestamp: string
+      }
+    | {
+          type: 'compile:error'
+          domain: string
+          name: string
+          timestamp: string
+          error: string
+      }
 
 /** Callback signature for compile-event subscribers. */
-export type CompileEventListener = (event: CompileEvent) => void;
+export type CompileEventListener = (event: CompileEvent) => void
 
 // ---------------------------------------------------------------------------
 // Singleton state (survives HMR via globalThis)
 // ---------------------------------------------------------------------------
 
 type CompileEventState = {
-  listeners: Set<CompileEventListener>;
-};
+    listeners: Set<CompileEventListener>
+}
 
-const GLOBAL_KEY = "__luca_studio_compile_events__" as const;
+const GLOBAL_KEY = '__luca_studio_compile_events__' as const
 
 /**
  * Retrieve (or create) the module-scoped singleton state attached to
  * `globalThis` so it survives Next.js HMR module re-evaluation.
  */
 function getState(): CompileEventState {
-  const g = globalThis as unknown as Record<
-    string,
-    CompileEventState | undefined
-  >;
-  if (!g[GLOBAL_KEY]) {
-    g[GLOBAL_KEY] = { listeners: new Set() };
-  }
-  return g[GLOBAL_KEY];
+    const g = globalThis as unknown as Record<
+        string,
+        CompileEventState | undefined
+    >
+    if (!g[GLOBAL_KEY]) {
+        g[GLOBAL_KEY] = { listeners: new Set() }
+    }
+    return g[GLOBAL_KEY]
 }
 
 // ---------------------------------------------------------------------------
@@ -104,15 +104,15 @@ function getState(): CompileEventState {
  * @param event - The compile event to broadcast.
  */
 export function publishCompileEvent(event: CompileEvent): void {
-  const state = getState();
-  for (const listener of state.listeners) {
-    try {
-      listener(event);
-    } catch {
-      // Swallow per-listener errors so one broken subscriber cannot
-      // prevent others from receiving the event.
+    const state = getState()
+    for (const listener of state.listeners) {
+        try {
+            listener(event)
+        } catch {
+            // Swallow per-listener errors so one broken subscriber cannot
+            // prevent others from receiving the event.
+        }
     }
-  }
 }
 
 /**
@@ -141,10 +141,10 @@ export function publishCompileEvent(event: CompileEvent): void {
  * ```
  */
 export function subscribeCompile(listener: CompileEventListener): () => void {
-  const state = getState();
-  state.listeners.add(listener);
+    const state = getState()
+    state.listeners.add(listener)
 
-  return () => {
-    state.listeners.delete(listener);
-  };
+    return () => {
+        state.listeners.delete(listener)
+    }
 }

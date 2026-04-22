@@ -4,30 +4,33 @@
  * Full-access mode for implementing changes. This is the default mode
  * when the Luca pipeline is not active.
  */
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
-  return readFileSync(join(__dirname, '..', 'instructions', 'build.md'), 'utf-8');
+    return readFileSync(
+        join(__dirname, '..', 'instructions', 'build.md'),
+        'utf-8'
+    )
 }
 
 export function buildBuildInstructions(): string {
-  return loadInstructions();
+    return loadInstructions()
 }
 
 export function resolveBuildModel(): string {
-  return 'anthropic/claude-opus-4-6';
+    return 'anthropic/claude-opus-4-6'
 }
 
 export const buildMode = {
-  id: 'build' as const,
-  name: 'Build',
-  description: 'Full-access build mode for implementing changes.',
-  color: '#16c858',
-  defaultModelId: 'anthropic/claude-opus-4-6',
-  buildInstructions: buildBuildInstructions,
-  resolveModel: resolveBuildModel,
-};
+    id: 'build' as const,
+    name: 'Build',
+    description: 'Full-access build mode for implementing changes.',
+    color: '#16c858',
+    defaultModelId: 'anthropic/claude-opus-4-6',
+    buildInstructions: buildBuildInstructions,
+    resolveModel: resolveBuildModel,
+}

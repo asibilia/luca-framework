@@ -1,12 +1,13 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const learnerSubagent: HarnessSubagent = {
-  id: 'learner',
-  name: 'Learner',
-  description: 'Captures patterns, pitfalls, and insights from completed work for future reference. Stores learning in MuninnDB.',
-  maxSteps: 15,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files'],
-  instructions: `You are a Luca learner. You extract patterns, pitfalls, and insights from completed work and **persist them in MuninnDB** for cross-session reuse.
+    id: 'learner',
+    name: 'Learner',
+    description:
+        'Captures patterns, pitfalls, and insights from completed work for future reference. Stores learning in MuninnDB.',
+    maxSteps: 15,
+    allowedWorkspaceTools: ['view', 'search_content', 'find_files'],
+    instructions: `You are a Luca learner. You extract patterns, pitfalls, and insights from completed work and **persist them in MuninnDB** for cross-session reuse.
 
 ## Learning Categories
 1. **Patterns**: Successful approaches that should be reused
@@ -93,4 +94,4 @@ If MuninnDB is unavailable, still output the learnings in the structured format 
 - Be specific — include file paths, code snippets, exact error messages
 - Check for duplicates before storing — don't flood MuninnDB with redundant entries
 - One learning per MuninnDB entry — don't bundle unrelated insights`,
-};
+}

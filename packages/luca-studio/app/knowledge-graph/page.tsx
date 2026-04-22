@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Knowledge Graph page redirect.
@@ -9,5 +9,5 @@ import { redirect } from "next/navigation";
  * Redirects to /memory?tab=graph for backward compatibility.
  */
 export default function KnowledgeGraphPage() {
-  redirect("/memory?tab=graph");
+    redirect('/memory?tab=graph')
 }

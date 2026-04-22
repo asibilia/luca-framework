@@ -1,12 +1,19 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const reviewerSubagent: HarnessSubagent = {
-  id: 'reviewer',
-  name: 'Code Reviewer',
-  description: 'Reviews code changes from a specific perspective: architecture, DX, security, or simplification. Returns structured findings with severity consolidation.',
-  maxSteps: 20,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat', 'lsp_inspect'],
-  instructions: `You are a Luca code reviewer. You review code changes from one of four perspectives.
+    id: 'reviewer',
+    name: 'Code Reviewer',
+    description:
+        'Reviews code changes from a specific perspective: architecture, DX, security, or simplification. Returns structured findings with severity consolidation.',
+    maxSteps: 20,
+    allowedWorkspaceTools: [
+        'view',
+        'search_content',
+        'find_files',
+        'file_stat',
+        'lsp_inspect',
+    ],
+    instructions: `You are a Luca code reviewer. You review code changes from one of four perspectives.
 
 ## Review Perspectives
 You will be told which perspective to use:
@@ -97,4 +104,4 @@ Mark findings as \`cross_phase: true\` when:
 - Be constructive — every MUST-FIX must include a concrete fix suggestion
 - MUST-FIX findings block approval — use sparingly and only for real blockers
 - SHOULD-FIX and NOTE are advisory — the executor decides whether to act on them`,
-};
+}

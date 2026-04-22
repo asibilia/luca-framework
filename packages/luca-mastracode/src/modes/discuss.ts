@@ -5,30 +5,33 @@
  * triggering pipeline transitions. Think of it as rubber-ducking with
  * codebase access.
  */
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
-  return readFileSync(join(__dirname, '..', 'instructions', 'discuss.md'), 'utf-8');
+    return readFileSync(
+        join(__dirname, '..', 'instructions', 'discuss.md'),
+        'utf-8'
+    )
 }
 
 export function buildDiscussInstructions(): string {
-  return loadInstructions();
+    return loadInstructions()
 }
 
 export function resolveDiscussModel(): string {
-  return 'anthropic/claude-sonnet-4-6';
+    return 'anthropic/claude-sonnet-4-6'
 }
 
 export const discussMode = {
-  id: 'luca:discuss' as const,
-  name: 'luca: Discuss',
-  description: 'Read-only brainstorming and open-ended discussion.',
-  color: '#f59e0b',
-  defaultModelId: 'anthropic/claude-sonnet-4-6',
-  buildInstructions: buildDiscussInstructions,
-  resolveModel: resolveDiscussModel,
-};
+    id: 'luca:discuss' as const,
+    name: 'luca: Discuss',
+    description: 'Read-only brainstorming and open-ended discussion.',
+    color: '#f59e0b',
+    defaultModelId: 'anthropic/claude-sonnet-4-6',
+    buildInstructions: buildDiscussInstructions,
+    resolveModel: resolveDiscussModel,
+}

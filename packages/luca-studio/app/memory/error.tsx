@@ -1,13 +1,13 @@
-"use client";
+'use client'
 
-import { PageError } from "~/components/shared/page-error";
+import { PageError } from '~/components/shared/page-error'
 
 export default function MemoryError({
-  error,
-  reset,
+    error,
+    reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
+    error: Error & { digest?: string }
+    reset: () => void
 }) {
-  return <PageError pageName="Memory" error={error} reset={reset} />;
+    return <PageError pageName="Memory" error={error} reset={reset} />
 }

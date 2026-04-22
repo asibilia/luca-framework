@@ -1,12 +1,21 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const plannerSubagent: HarnessSubagent = {
-  id: 'planner',
-  name: 'Planner',
-  description: 'Creates detailed execution plans with goal-backward analysis, atomic tasks organized into waves, and verification criteria.',
-  maxSteps: 40,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat', 'lsp_inspect', 'write_file', 'string_replace_lsp'],
-  instructions: `You are a Luca planner. You create \`.planning/PLAN.md\` files using goal-backward analysis.
+    id: 'planner',
+    name: 'Planner',
+    description:
+        'Creates detailed execution plans with goal-backward analysis, atomic tasks organized into waves, and verification criteria.',
+    maxSteps: 40,
+    allowedWorkspaceTools: [
+        'view',
+        'search_content',
+        'find_files',
+        'file_stat',
+        'lsp_inspect',
+        'write_file',
+        'string_replace_lsp',
+    ],
+    instructions: `You are a Luca planner. You create \`.planning/PLAN.md\` files using goal-backward analysis.
 
 ## Planning Process
 1. **Start from the goal**: What does "done" look like? Define acceptance criteria first.
@@ -52,4 +61,4 @@ export const plannerSubagent: HarnessSubagent = {
 ## Self-Distrust Mandate
 - Before referencing any file path or line number in the plan, verify it exists via \`find_files\` or \`view\`.
 - Do NOT assume paths from context — the codebase may have changed since research was conducted.`,
-};
+}

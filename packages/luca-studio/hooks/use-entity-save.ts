@@ -1,26 +1,24 @@
-"use client";
+'use client'
 
-import { useCallback } from "react";
+import { useCallback } from 'react'
 
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from 'jotai'
 
-import { markCleanAtom } from "~/stores/dirty-tracking";
-import { conflictAtom } from "~/stores/config-atoms";
-
-import { mergeFieldOverrides } from "~/hooks/helpers/merge-field-overrides";
-
-import type { EntitySaveConfig } from "~/hooks/schemas/entity-hook-config";
+import { mergeFieldOverrides } from '~/hooks/helpers/merge-field-overrides'
+import type { EntitySaveConfig } from '~/hooks/schemas/entity-hook-config'
+import { conflictAtom } from '~/stores/config-atoms'
+import { markCleanAtom } from '~/stores/dirty-tracking'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type UseEntitySaveReturn = {
-  /** Persist the current draft to the server via PUT. */
-  save: () => Promise<void>;
-  /** Discard draft changes and revert to server state. */
-  discard: () => void;
-};
+    /** Persist the current draft to the server via PUT. */
+    save: () => Promise<void>
+    /** Discard draft changes and revert to server state. */
+    discard: () => void
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -48,87 +46,91 @@ type UseEntitySaveReturn = {
  * ```
  */
 export function useEntitySave(
-  name: string | null,
-  etag: string | null,
-  config: EntitySaveConfig,
+    name: string | null,
+    etag: string | null,
+    config: EntitySaveConfig
 ): UseEntitySaveReturn {
-  const atomKey = name ?? `${config.entityType}:__noop__`;
-  const [draft, setDraft] = useAtom(config.draftAtomFactory(atomKey));
-  const markClean = useSetAtom(markCleanAtom);
-  const setConflict = useSetAtom(conflictAtom);
+    const atomKey = name ?? `${config.entityType}:__noop__`
+    const [draft, setDraft] = useAtom(config.draftAtomFactory(atomKey))
+    const markClean = useSetAtom(markCleanAtom)
+    const setConflict = useSetAtom(conflictAtom)
 
-  const save = useCallback(async () => {
-    if (!name) return;
-    if (!etag) {
-      console.warn(
-        `Cannot save ${config.entitySingular}:${name}: no ETag available. Please reload the entity.`,
-      );
-      return;
-    }
+    const save = useCallback(async () => {
+        if (!name) return
+        if (!etag) {
+            console.warn(
+                `Cannot save ${config.entitySingular}:${name}: no ETag available. Please reload the entity.`
+            )
+            return
+        }
 
-    const entityKey = `${config.entitySingular}:${name}`;
+        const entityKey = `${config.entitySingular}:${name}`
 
-    // Build the PUT payload from the draft, merging form-field overrides
-    // back into rawConfigText so edits are not silently discarded.
-    const rawConfigText = mergeFieldOverrides(draft, config.fieldKeyMap);
-    const metadata = config.extractMetadata(draft);
+        // Build the PUT payload from the draft, merging form-field overrides
+        // back into rawConfigText so edits are not silently discarded.
+        const rawConfigText = mergeFieldOverrides(draft, config.fieldKeyMap)
+        const metadata = config.extractMetadata(draft)
 
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (etag) {
-      headers["If-Match"] = etag;
-    }
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        }
+        if (etag) {
+            headers['If-Match'] = etag
+        }
 
-    const res = await fetch(`${config.endpoint}/${encodeURIComponent(name)}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ rawConfigText, metadata }),
-    });
+        const res = await fetch(
+            `${config.endpoint}/${encodeURIComponent(name)}`,
+            {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ rawConfigText, metadata }),
+            }
+        )
 
-    if (res.status === 409) {
-      // Parse the 409 body to extract current server state for diff preview
-      const conflictBody = await res.json().catch(() => ({}));
-      const serverContent =
-        (conflictBody as { current_content?: string }).current_content ?? null;
-      const serverEtag =
-        (conflictBody as { current_etag?: string }).current_etag ?? null;
+        if (res.status === 409) {
+            // Parse the 409 body to extract current server state for diff preview
+            const conflictBody = await res.json().catch(() => ({}))
+            const serverContent =
+                (conflictBody as { current_content?: string })
+                    .current_content ?? null
+            const serverEtag =
+                (conflictBody as { current_etag?: string }).current_etag ?? null
 
-      if (serverContent && serverEtag) {
-        setConflict({
-          entityKey,
-          localContent: rawConfigText,
-          serverContent,
-          serverEtag,
-        });
-        // Return early -- DiffPreview dialog will handle resolution
-        return;
-      }
+            if (serverContent && serverEtag) {
+                setConflict({
+                    entityKey,
+                    localContent: rawConfigText,
+                    serverContent,
+                    serverEtag,
+                })
+                // Return early -- DiffPreview dialog will handle resolution
+                return
+            }
 
-      // Fallback: if the 409 body is missing expected fields, throw
-      throw new Error(
-        `Conflict: the ${config.entitySingular} has been modified externally. Please refresh and try again.`,
-      );
-    }
+            // Fallback: if the 409 body is missing expected fields, throw
+            throw new Error(
+                `Conflict: the ${config.entitySingular} has been modified externally. Please refresh and try again.`
+            )
+        }
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(
-        (body as { error?: string }).error ??
-          `Save failed with status ${res.status}`,
-      );
-    }
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            throw new Error(
+                (body as { error?: string }).error ??
+                    `Save failed with status ${res.status}`
+            )
+        }
 
-    // Mark entity clean on success
-    markClean(entityKey);
-  }, [name, draft, etag, markClean, setConflict, config]);
+        // Mark entity clean on success
+        markClean(entityKey)
+    }, [name, draft, etag, markClean, setConflict, config])
 
-  const discard = useCallback(() => {
-    if (!name) return;
-    // Reset draft to empty -- will be re-populated by the detail fetch
-    setDraft({});
-    markClean(`${config.entitySingular}:${name}`);
-  }, [name, setDraft, markClean, config]);
+    const discard = useCallback(() => {
+        if (!name) return
+        // Reset draft to empty -- will be re-populated by the detail fetch
+        setDraft({})
+        markClean(`${config.entitySingular}:${name}`)
+    }, [name, setDraft, markClean, config])
 
-  return { save, discard };
+    return { save, discard }
 }

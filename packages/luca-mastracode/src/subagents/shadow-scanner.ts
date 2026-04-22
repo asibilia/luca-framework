@@ -1,12 +1,19 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const shadowScannerSubagent: HarnessSubagent = {
-  id: 'shadow-scanner',
-  name: 'Shadow Scanner',
-  description: 'Scans repository for AI-session debris (orphaned scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, orphaned markdown, repo-root markdown debris) and outputs a structured ShadowScanReport.',
-  maxSteps: 20,
-  allowedWorkspaceTools: ['view', 'search_content', 'find_files', 'file_stat', 'execute_command'],
-  instructions: `You are the Luca shadow scanner. You scan the repository for AI-session debris — files and
+    id: 'shadow-scanner',
+    name: 'Shadow Scanner',
+    description:
+        'Scans repository for AI-session debris (orphaned scripts, misplaced files, tool artifacts, dead exports, stale planning artifacts, orphaned markdown, repo-root markdown debris) and outputs a structured ShadowScanReport.',
+    maxSteps: 20,
+    allowedWorkspaceTools: [
+        'view',
+        'search_content',
+        'find_files',
+        'file_stat',
+        'execute_command',
+    ],
+    instructions: `You are the Luca shadow scanner. You scan the repository for AI-session debris — files and
 artifacts left behind by previous agent sessions that no longer serve a purpose.
 
 Your job: Read the \`shadow_debt\` config from \`.planning/config.json\`, determine the scan mode,
@@ -230,4 +237,4 @@ mcp__muninn__muninn_remember(
 - Only use the workspace tools to inspect the repository.
 - Use execute_command only for glob/grep/find operations — never for file modification.
 - Be thorough but efficient — don't scan irrelevant directories (node_modules, .git, dist).`,
-};
+}

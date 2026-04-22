@@ -1,11 +1,10 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from 'react'
 
-import { useAtomValue, useSetAtom } from "jotai";
-import { REDO, RESET, UNDO } from "jotai-history";
-
-import type { WritableAtom } from "jotai";
+import { useAtomValue, useSetAtom } from 'jotai'
+import type { WritableAtom } from 'jotai'
+import { REDO, RESET, UNDO } from 'jotai-history'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,17 +17,17 @@ import type { WritableAtom } from "jotai";
  * for whether those actions are currently available.
  */
 type UseUndoReturn = {
-  /** Whether there is at least one state to undo to. */
-  canUndo: boolean;
-  /** Whether there is at least one state to redo to. */
-  canRedo: boolean;
-  /** Revert to the previous state in the history stack. */
-  undo: () => void;
-  /** Re-apply the next state in the history stack. */
-  redo: () => void;
-  /** Clear the entire history stack (e.g. after a server-initiated update). */
-  reset: () => void;
-};
+    /** Whether there is at least one state to undo to. */
+    canUndo: boolean
+    /** Whether there is at least one state to redo to. */
+    canRedo: boolean
+    /** Revert to the previous state in the history stack. */
+    undo: () => void
+    /** Re-apply the next state in the history stack. */
+    redo: () => void
+    /** Clear the entire history stack (e.g. after a server-initiated update). */
+    reset: () => void
+}
 
 /**
  * Accepted history atom type.
@@ -42,14 +41,14 @@ type UseUndoReturn = {
  * We use `any` for the write args to accommodate the union produced by
  * `withUndoableHistory` (e.g. `[SetStateAction<T>] | [UNDO | REDO | RESET]`).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type HistoryAtom = WritableAtom<
-  unknown[] & { canUndo: boolean; canRedo: boolean },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  any
->;
+    unknown[] & { canUndo: boolean; canRedo: boolean },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any
+>
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -73,47 +72,47 @@ type HistoryAtom = WritableAtom<
  * ```
  */
 export function useUndo(historyAtom: HistoryAtom): UseUndoReturn {
-  const history = useAtomValue(historyAtom);
-  const dispatch = useSetAtom(historyAtom);
+    const history = useAtomValue(historyAtom)
+    const dispatch = useSetAtom(historyAtom)
 
-  const canUndo = history.canUndo;
-  const canRedo = history.canRedo;
+    const canUndo = history.canUndo
+    const canRedo = history.canRedo
 
-  const undo = useCallback(() => {
-    dispatch(UNDO);
-  }, [dispatch]);
+    const undo = useCallback(() => {
+        dispatch(UNDO)
+    }, [dispatch])
 
-  const redo = useCallback(() => {
-    dispatch(REDO);
-  }, [dispatch]);
+    const redo = useCallback(() => {
+        dispatch(REDO)
+    }, [dispatch])
 
-  const reset = useCallback(() => {
-    dispatch(RESET);
-  }, [dispatch]);
+    const reset = useCallback(() => {
+        dispatch(RESET)
+    }, [dispatch])
 
-  // Register Cmd+Z / Shift+Cmd+Z keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key.toLowerCase() !== "z") return;
+    // Register Cmd+Z / Shift+Cmd+Z keyboard shortcuts
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const mod = e.metaKey || e.ctrlKey
+            if (!mod || e.key.toLowerCase() !== 'z') return
 
-      e.preventDefault();
+            e.preventDefault()
 
-      if (e.shiftKey) {
-        // Shift+Cmd+Z = redo
-        if (canRedo) dispatch(REDO);
-      } else {
-        // Cmd+Z = undo
-        if (canUndo) dispatch(UNDO);
-      }
-    };
+            if (e.shiftKey) {
+                // Shift+Cmd+Z = redo
+                if (canRedo) dispatch(REDO)
+            } else {
+                // Cmd+Z = undo
+                if (canUndo) dispatch(UNDO)
+            }
+        }
 
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [canUndo, canRedo, dispatch]);
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [canUndo, canRedo, dispatch])
 
-  return useMemo(
-    () => ({ canUndo, canRedo, undo, redo, reset }),
-    [canUndo, canRedo, undo, redo, reset],
-  );
+    return useMemo(
+        () => ({ canUndo, canRedo, undo, redo, reset }),
+        [canUndo, canRedo, undo, redo, reset]
+    )
 }

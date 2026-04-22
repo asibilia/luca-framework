@@ -1,12 +1,9 @@
+import { filterByConceptPrefix } from '~/lib/muninn-helpers'
+import { muninnProxyHandler, parseQueryParams } from '~/lib/muninn-route-helper'
 import {
-  muninnProxyHandler,
-  parseQueryParams,
-} from "~/lib/muninn-route-helper";
-import { filterByConceptPrefix } from "~/lib/muninn-helpers";
-import {
-  ObservationsQuerySchema,
-  ObservationsResponseSchema,
-} from "~/lib/muninn-schemas";
+    ObservationsQuerySchema,
+    ObservationsResponseSchema,
+} from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/observations
@@ -21,26 +18,26 @@ import {
  * - limit (default: 50)
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, ObservationsQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, ObservationsQuerySchema)
+    if (!result.success) return result.response
 
-  const { vault, limit } = result.data;
+    const { vault, limit } = result.data
 
-  return muninnProxyHandler(
-    async (client) => {
-      const observations = await filterByConceptPrefix(
-        client,
-        vault,
-        ["session:observation"],
-        limit,
-      );
-      return {
-        observations,
-        total: observations.length,
-      };
-    },
-    "Failed to fetch MuninnDB observations",
-    ObservationsResponseSchema,
-  );
+    return muninnProxyHandler(
+        async (client) => {
+            const observations = await filterByConceptPrefix(
+                client,
+                vault,
+                ['session:observation'],
+                limit
+            )
+            return {
+                observations,
+                total: observations.length,
+            }
+        },
+        'Failed to fetch MuninnDB observations',
+        ObservationsResponseSchema
+    )
 }

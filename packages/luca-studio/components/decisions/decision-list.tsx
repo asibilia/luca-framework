@@ -1,22 +1,21 @@
-"use client";
+'use client'
 
-import { useState } from "react";
+import { useState } from 'react'
 
-import { EmptyState } from "~/components/shared/empty-state";
-import { ErrorBoundary } from "~/components/shared/error-boundary";
+import { DecisionCard } from '~/components/decisions/decision-card'
+import { EmptyState } from '~/components/shared/empty-state'
+import { ErrorBoundary } from '~/components/shared/error-boundary'
+import { Badge } from '~/components/ui/badge'
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardAction,
-} from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
-import { Input } from "~/components/ui/input";
-import { DecisionCard } from "~/components/decisions/decision-card";
-
-import type { DecisionInfo } from "~/hooks/use-decision-trail";
-import type { MuninnEntityEngram } from "~/lib/muninn-types";
+    Card,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+    CardAction,
+} from '~/components/ui/card'
+import { Input } from '~/components/ui/input'
+import type { DecisionInfo } from '~/hooks/use-decision-trail'
+import type { MuninnEntityEngram } from '~/lib/muninn-types'
 
 /**
  * Renders a filterable list of decisions as collapsible cards.
@@ -33,80 +32,87 @@ import type { MuninnEntityEngram } from "~/lib/muninn-types";
  * @param onFetchDetail - Callback passed to each card for detail expansion
  */
 export function DecisionList({
-  decisions,
-  onFetchDetail,
+    decisions,
+    onFetchDetail,
 }: {
-  decisions: DecisionInfo[];
-  onFetchDetail: (concept: string) => Promise<MuninnEntityEngram[]>;
+    decisions: DecisionInfo[]
+    onFetchDetail: (concept: string) => Promise<MuninnEntityEngram[]>
 }) {
-  const [filter, setFilter] = useState("");
+    const [filter, setFilter] = useState('')
 
-  if (decisions.length === 0) {
+    if (decisions.length === 0) {
+        return (
+            <EmptyState
+                title="No Decisions"
+                message="MuninnDB decision data will appear here once decisions are stored."
+            />
+        )
+    }
+
+    const lowerFilter = filter.toLowerCase()
+    const filtered = lowerFilter
+        ? decisions.filter(
+              (d) =>
+                  d.name.toLowerCase().includes(lowerFilter) ||
+                  d.content.toLowerCase().includes(lowerFilter)
+          )
+        : decisions
+
+    const count = decisions.length
+
     return (
-      <EmptyState
-        title="No Decisions"
-        message="MuninnDB decision data will appear here once decisions are stored."
-      />
-    );
-  }
+        <Card
+            role="region"
+            aria-label="Decision trail"
+            className="flex flex-col"
+        >
+            {/* Header */}
+            <CardHeader className="border-b">
+                <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    Decisions
+                </CardTitle>
+                <CardDescription className="font-mono text-xs">
+                    Decision Audit Trail
+                </CardDescription>
+                <CardAction>
+                    <Badge variant="outline" className="font-mono text-xs">
+                        {count} {count === 1 ? 'decision' : 'decisions'}
+                    </Badge>
+                </CardAction>
+            </CardHeader>
 
-  const lowerFilter = filter.toLowerCase();
-  const filtered = lowerFilter
-    ? decisions.filter(
-        (d) =>
-          d.name.toLowerCase().includes(lowerFilter) ||
-          d.content.toLowerCase().includes(lowerFilter),
-      )
-    : decisions;
+            {/* Filter input */}
+            <div className="border-b border-border px-4 py-2">
+                <Input
+                    type="text"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder="Filter decisions by name or content..."
+                    aria-label="Filter decisions"
+                    className="font-mono text-xs"
+                />
+            </div>
 
-  const count = decisions.length;
-
-  return (
-    <Card role="region" aria-label="Decision trail" className="flex flex-col">
-      {/* Header */}
-      <CardHeader className="border-b">
-        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Decisions
-        </CardTitle>
-        <CardDescription className="font-mono text-xs">
-          Decision Audit Trail
-        </CardDescription>
-        <CardAction>
-          <Badge variant="outline" className="font-mono text-xs">
-            {count} {count === 1 ? "decision" : "decisions"}
-          </Badge>
-        </CardAction>
-      </CardHeader>
-
-      {/* Filter input */}
-      <div className="border-b border-border px-4 py-2">
-        <Input
-          type="text"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter decisions by name or content..."
-          aria-label="Filter decisions"
-          className="font-mono text-xs"
-        />
-      </div>
-
-      {/* Card list */}
-      <div className="max-h-[36rem] overflow-y-auto">
-        {filtered.length === 0 ? (
-          <p className="px-4 py-6 text-center font-mono text-xs text-muted-foreground">
-            No decisions match your filter.
-          </p>
-        ) : (
-          filtered.map((decision) => (
-            <ErrorBoundary
-              key={decision.concept}
-              name={`Decision:${decision.decision_id}`}
-            >
-              <DecisionCard decision={decision} onFetchDetail={onFetchDetail} />
-            </ErrorBoundary>
-          ))
-        )}
-      </div>
-    </Card>
-  );
+            {/* Card list */}
+            <div className="max-h-[36rem] overflow-y-auto">
+                {filtered.length === 0 ? (
+                    <p className="px-4 py-6 text-center font-mono text-xs text-muted-foreground">
+                        No decisions match your filter.
+                    </p>
+                ) : (
+                    filtered.map((decision) => (
+                        <ErrorBoundary
+                            key={decision.concept}
+                            name={`Decision:${decision.decision_id}`}
+                        >
+                            <DecisionCard
+                                decision={decision}
+                                onFetchDetail={onFetchDetail}
+                            />
+                        </ErrorBoundary>
+                    ))
+                )}
+            </div>
+        </Card>
+    )
 }

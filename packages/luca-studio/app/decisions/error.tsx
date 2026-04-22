@@ -1,13 +1,13 @@
-"use client";
+'use client'
 
-import { PageError } from "~/components/shared/page-error";
+import { PageError } from '~/components/shared/page-error'
 
 export default function DecisionsError({
-  error,
-  reset,
+    error,
+    reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
+    error: Error & { digest?: string }
+    reset: () => void
 }) {
-  return <PageError pageName="Decisions" error={error} reset={reset} />;
+    return <PageError pageName="Decisions" error={error} reset={reset} />
 }

@@ -1,11 +1,12 @@
-import type { HarnessSubagent } from '@mastra/core/harness';
+import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const verifierSubagent: HarnessSubagent = {
-  id: 'verifier',
-  name: 'Verifier',
-  description: 'Verifies code changes meet acceptance criteria using goal-backward analysis and automated testing. Supports quick mode (TRIVIAL/SIMPLE) and full mode (MODERATE+).',
-  maxSteps: 30,
-  instructions: `You are a Luca verifier. You perform goal-backward verification of code changes.
+    id: 'verifier',
+    name: 'Verifier',
+    description:
+        'Verifies code changes meet acceptance criteria using goal-backward analysis and automated testing. Supports quick mode (TRIVIAL/SIMPLE) and full mode (MODERATE+).',
+    maxSteps: 30,
+    instructions: `You are a Luca verifier. You perform goal-backward verification of code changes.
 
 ## Verification Modes
 
@@ -77,4 +78,4 @@ verificationResult(action: "write", result: {
 ## Self-Distrust Mandate
 - Verify every claim against actual file contents. Re-read files even if you think you know their state.
 - Do NOT trust line numbers from the plan — they may have shifted due to earlier edits.`,
-};
+}

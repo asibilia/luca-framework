@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation'
 
 /**
  * Learning page redirect.
@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
  * Redirects to /memory?tab=learning for backward compatibility.
  */
 export default function LearningPage() {
-  redirect("/memory?tab=learning");
+    redirect('/memory?tab=learning')
 }

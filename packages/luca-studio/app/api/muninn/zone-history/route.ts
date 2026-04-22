@@ -1,14 +1,11 @@
-import orderBy from "lodash/orderBy";
+import orderBy from 'lodash/orderBy'
 
+import { filterByConceptPrefix, parseZoneContent } from '~/lib/muninn-helpers'
+import { muninnProxyHandler, parseQueryParams } from '~/lib/muninn-route-helper'
 import {
-  muninnProxyHandler,
-  parseQueryParams,
-} from "~/lib/muninn-route-helper";
-import { filterByConceptPrefix, parseZoneContent } from "~/lib/muninn-helpers";
-import {
-  ZoneHistoryQuerySchema,
-  ZoneHistoryResponseSchema,
-} from "~/lib/muninn-schemas";
+    ZoneHistoryQuerySchema,
+    ZoneHistoryResponseSchema,
+} from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/zone-history
@@ -28,58 +25,61 @@ import {
  * - limit (default: 100)
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const result = parseQueryParams(searchParams, ZoneHistoryQuerySchema);
-  if (!result.success) return result.response;
+    const { searchParams } = new URL(request.url)
+    const result = parseQueryParams(searchParams, ZoneHistoryQuerySchema)
+    if (!result.success) return result.response
 
-  const { vault, limit } = result.data;
+    const { vault, limit } = result.data
 
-  return muninnProxyHandler(
-    async (client) => {
-      const zoneEngrams = await filterByConceptPrefix(
-        client,
-        vault,
-        ["session:observation"],
-        limit,
-      );
+    return muninnProxyHandler(
+        async (client) => {
+            const zoneEngrams = await filterByConceptPrefix(
+                client,
+                vault,
+                ['session:observation'],
+                limit
+            )
 
-      // Sort by creation time ascending (oldest first) for timeline display
-      const sorted = orderBy(
-        zoneEngrams,
-        (e) => e.created_at as number | undefined,
-        "asc",
-      );
+            // Sort by creation time ascending (oldest first) for timeline display
+            const sorted = orderBy(
+                zoneEngrams,
+                (e) => e.created_at as number | undefined,
+                'asc'
+            )
 
-      // Filter out entries without parseable zone data (e.g. session:observation-work
-      // text summaries that produce zone: "unknown") before building the response.
-      const withZones = sorted
-        .map((e) => {
-          const parsed = parseZoneContent(String(e.content ?? ""));
-          return { engram: e, parsed };
-        })
-        .filter(
-          ({ parsed }) => parsed.zone != null && parsed.zone !== "unknown",
-        );
+            // Filter out entries without parseable zone data (e.g. session:observation-work
+            // text summaries that produce zone: "unknown") before building the response.
+            const withZones = sorted
+                .map((e) => {
+                    const parsed = parseZoneContent(String(e.content ?? ''))
+                    return { engram: e, parsed }
+                })
+                .filter(
+                    ({ parsed }) =>
+                        parsed.zone != null && parsed.zone !== 'unknown'
+                )
 
-      // Transform engram content into zone history entries
-      const entries = withZones.slice(0, limit).map(({ engram: e, parsed }) => {
-        return {
-          zone: parsed.zone as string,
-          usage_percent: parsed.usage_percent,
-          checked_at:
-            parsed.checked_at ??
-            (typeof e.created_at === "number"
-              ? new Date(e.created_at).toISOString()
-              : String(e.created_at)),
-        };
-      });
+            // Transform engram content into zone history entries
+            const entries = withZones
+                .slice(0, limit)
+                .map(({ engram: e, parsed }) => {
+                    return {
+                        zone: parsed.zone as string,
+                        usage_percent: parsed.usage_percent,
+                        checked_at:
+                            parsed.checked_at ??
+                            (typeof e.created_at === 'number'
+                                ? new Date(e.created_at).toISOString()
+                                : String(e.created_at)),
+                    }
+                })
 
-      return {
-        entries,
-        total: entries.length,
-      };
-    },
-    "Failed to fetch MuninnDB zone history",
-    ZoneHistoryResponseSchema,
-  );
+            return {
+                entries,
+                total: entries.length,
+            }
+        },
+        'Failed to fetch MuninnDB zone history',
+        ZoneHistoryResponseSchema
+    )
 }

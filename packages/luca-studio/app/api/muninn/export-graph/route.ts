@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server'
 
-import { muninnProxyHandler } from "~/lib/muninn-route-helper";
+import { muninnProxyHandler } from '~/lib/muninn-route-helper'
 import {
-  ExportGraphRequestSchema,
-  ExportGraphResponseSchema,
-} from "~/lib/muninn-schemas";
+    ExportGraphRequestSchema,
+    ExportGraphResponseSchema,
+} from '~/lib/muninn-schemas'
 
 /**
  * POST /api/muninn/export-graph
@@ -19,26 +19,29 @@ import {
  * - include_engrams: boolean (default: false) -- include engram nodes in graph
  */
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json(
+            { error: 'Invalid JSON body' },
+            { status: 400 }
+        )
+    }
 
-  const parsed = ExportGraphRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues.map((i) => i.message).join("; ") },
-      { status: 400 },
-    );
-  }
+    const parsed = ExportGraphRequestSchema.safeParse(body)
+    if (!parsed.success) {
+        return NextResponse.json(
+            { error: parsed.error.issues.map((i) => i.message).join('; ') },
+            { status: 400 }
+        )
+    }
 
-  const { vault, format, include_engrams } = parsed.data;
+    const { vault, format, include_engrams } = parsed.data
 
-  return muninnProxyHandler(
-    (client) => client.exportGraph(vault, format, include_engrams),
-    "Failed to export graph from MuninnDB",
-    ExportGraphResponseSchema,
-  );
+    return muninnProxyHandler(
+        (client) => client.exportGraph(vault, format, include_engrams),
+        'Failed to export graph from MuninnDB',
+        ExportGraphResponseSchema
+    )
 }

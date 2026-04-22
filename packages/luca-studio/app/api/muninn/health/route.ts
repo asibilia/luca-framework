@@ -1,5 +1,5 @@
-import { muninnProxyHandler } from "~/lib/muninn-route-helper";
-import { HealthResponseSchema } from "~/lib/muninn-schemas";
+import { muninnProxyHandler } from '~/lib/muninn-route-helper'
+import { HealthResponseSchema } from '~/lib/muninn-schemas'
 
 /**
  * GET /api/muninn/health
@@ -8,9 +8,9 @@ import { HealthResponseSchema } from "~/lib/muninn-schemas";
  * health is a global (vault-agnostic) endpoint.
  */
 export async function GET() {
-  return muninnProxyHandler(
-    (client) => client.health(),
-    "Failed to fetch MuninnDB health",
-    HealthResponseSchema,
-  );
+    return muninnProxyHandler(
+        (client) => client.health(),
+        'Failed to fetch MuninnDB health',
+        HealthResponseSchema
+    )
 }

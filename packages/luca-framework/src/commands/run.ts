@@ -13,13 +13,17 @@
  * luca run --dry-run           # Show what would be launched without running
  * ```
  */
-import { defineCommand } from "citty";
-import { existsSync } from "node:fs";
-import { join } from "pathe";
+import { existsSync } from 'node:fs'
 
-import { detectRuntimeContext, resolveMonorepoRoot } from "../utils/runtime-context";
-import { checkForUpdates } from "../utils/version-check";
-import { logger } from "../utils/logger";
+import { defineCommand } from 'citty'
+import { join } from 'pathe'
+
+import { logger } from '../utils/logger'
+import {
+    detectRuntimeContext,
+    resolveMonorepoRoot,
+} from '../utils/runtime-context'
+import { checkForUpdates } from '../utils/version-check'
 
 /**
  * Resolve the path to the luca-mastracode entry point.
@@ -28,77 +32,85 @@ import { logger } from "../utils/logger";
  * In global/workspace mode, resolves to the `luca` bin in `node_modules/.bin/`.
  */
 function resolveHarnessPath(): { command: string; args: string[] } | null {
-  const ctx = detectRuntimeContext();
+    const ctx = detectRuntimeContext()
 
-  if (ctx.mode === "dev") {
-    const monorepoRoot = resolveMonorepoRoot(ctx.packageDir);
-    const devEntry = join(monorepoRoot, "packages/luca-mastracode/src/index.ts");
+    if (ctx.mode === 'dev') {
+        const monorepoRoot = resolveMonorepoRoot(ctx.packageDir)
+        const devEntry = join(
+            monorepoRoot,
+            'packages/luca-mastracode/src/index.ts'
+        )
 
-    if (existsSync(devEntry)) {
-      return { command: "bun", args: ["run", devEntry] };
+        if (existsSync(devEntry)) {
+            return { command: 'bun', args: ['run', devEntry] }
+        }
     }
-  }
 
-  // Workspace/global: resolve the luca-mastracode harness entry point.
-  // The harness package is published as "luca" — resolve its main entry
-  // rather than the bin (which could collide with the CLI's own "luca" bin).
-  const binPaths = [
-    join(process.cwd(), "node_modules/luca/src/index.ts"),
-    join(process.cwd(), "node_modules/luca/dist/index.mjs"),
-  ];
+    // Workspace/global: resolve the luca-mastracode harness entry point.
+    const binPaths = [
+        join(
+            process.cwd(),
+            'node_modules/@alecsibilia/luca-mastracode/src/index.ts'
+        ),
+        join(
+            process.cwd(),
+            'node_modules/@alecsibilia/luca-mastracode/dist/index.mjs'
+        ),
+    ]
 
-  for (const binPath of binPaths) {
-    if (existsSync(binPath)) {
-      return { command: "bun", args: ["run", binPath] };
+    for (const binPath of binPaths) {
+        if (existsSync(binPath)) {
+            return { command: 'bun', args: ['run', binPath] }
+        }
     }
-  }
 
-  return null;
+    return null
 }
 
 export const runCommand = defineCommand({
-  meta: {
-    name: "run",
-    description: "Launch the Luca Mastra Code harness",
-  },
-  args: {
-    "dry-run": {
-      type: "boolean",
-      default: false,
-      description: "Show the resolved harness command without launching it",
+    meta: {
+        name: 'run',
+        description: 'Launch the Luca Mastra Code harness',
     },
-  },
-  async run({ args }) {
-    // Passive update notification — fire-and-forget so harness launch is never delayed
-    void checkForUpdates().catch(() => {});
+    args: {
+        'dry-run': {
+            type: 'boolean',
+            default: false,
+            description:
+                'Show the resolved harness command without launching it',
+        },
+    },
+    async run({ args }) {
+        // Passive update notification — fire-and-forget so harness launch is never delayed
+        void checkForUpdates().catch(() => {})
 
-    const resolved = resolveHarnessPath();
+        const resolved = resolveHarnessPath()
 
-    if (!resolved) {
-      logger.error(
-        "Could not locate luca-mastracode harness.\n" +
-          "  • In monorepo dev mode: ensure packages/luca-mastracode/ exists\n" +
-          '  • As installed package: ensure the `luca` package is in your dependencies\n' +
-          "    (npm install luca / bun add luca)",
-      );
-      process.exit(1);
-    }
+        if (!resolved) {
+            logger.error(
+                'Could not locate luca-mastracode harness.\n' +
+                    '  • In monorepo dev mode: ensure packages/luca-mastracode/ exists\n' +
+                    '  • As installed package: ensure `@alecsibilia/luca-mastracode` is in your dependencies\n' +
+                    '    (bun add @alecsibilia/luca-mastracode)'
+            )
+            process.exit(1)
+        }
 
-    const fullArgs = [...resolved.args];
+        const fullArgs = [...resolved.args]
 
-    if (args["dry-run"]) {
-      logger.info(`Would run: ${resolved.command} ${fullArgs.join(" ")}`);
-      return;
-    }
+        if (args['dry-run']) {
+            logger.info(`Would run: ${resolved.command} ${fullArgs.join(' ')}`)
+            return
+        }
 
-    logger.info("Launching Luca Mastra Code harness...");
+        logger.info('Launching Luca Mastra Code harness...')
 
-    const proc = Bun.spawn([resolved.command, ...fullArgs], {
-      stdio: ["inherit", "inherit", "inherit"],
-      env: { ...process.env },
-    });
+        const proc = Bun.spawn([resolved.command, ...fullArgs], {
+            stdio: ['inherit', 'inherit', 'inherit'],
+            env: { ...process.env },
+        })
 
-    const exitCode = await proc.exited;
-    process.exit(exitCode);
-  },
-});
+        const exitCode = await proc.exited
+        process.exit(exitCode)
+    },
+})

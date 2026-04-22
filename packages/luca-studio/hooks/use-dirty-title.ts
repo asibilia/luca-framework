@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react'
 
-import { useAtomValue } from "jotai";
+import { useAtomValue } from 'jotai'
 
-import { dirtySetAtom } from "~/stores/dirty-tracking";
+import { dirtySetAtom } from '~/stores/dirty-tracking'
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -27,40 +27,40 @@ import { dirtySetAtom } from "~/stores/dirty-tracking";
  * ```
  */
 export function useDirtyTitle(entityPrefix: string): void {
-  const dirtySet = useAtomValue(dirtySetAtom);
-  const originalTitleRef = useRef<string | null>(null);
+    const dirtySet = useAtomValue(dirtySetAtom)
+    const originalTitleRef = useRef<string | null>(null)
 
-  // Check if any key matching the prefix is dirty
-  const hasDirtyEntity = (() => {
-    for (const key of dirtySet) {
-      if (key.startsWith(entityPrefix)) return true;
-    }
-    return false;
-  })();
+    // Check if any key matching the prefix is dirty
+    const hasDirtyEntity = (() => {
+        for (const key of dirtySet) {
+            if (key.startsWith(entityPrefix)) return true
+        }
+        return false
+    })()
 
-  useEffect(() => {
-    // Capture original title on first mount
-    if (originalTitleRef.current === null) {
-      originalTitleRef.current = document.title;
-    }
+    useEffect(() => {
+        // Capture original title on first mount
+        if (originalTitleRef.current === null) {
+            originalTitleRef.current = document.title
+        }
 
-    const baseTitle = originalTitleRef.current;
+        const baseTitle = originalTitleRef.current
 
-    if (hasDirtyEntity) {
-      // Add [*] prefix if not already present
-      if (!document.title.startsWith("[*] ")) {
-        document.title = `[*] ${baseTitle}`;
-      }
-    } else {
-      // Restore original title
-      document.title = baseTitle;
-    }
+        if (hasDirtyEntity) {
+            // Add [*] prefix if not already present
+            if (!document.title.startsWith('[*] ')) {
+                document.title = `[*] ${baseTitle}`
+            }
+        } else {
+            // Restore original title
+            document.title = baseTitle
+        }
 
-    return () => {
-      // Restore on unmount
-      if (originalTitleRef.current !== null) {
-        document.title = originalTitleRef.current;
-      }
-    };
-  }, [hasDirtyEntity]);
+        return () => {
+            // Restore on unmount
+            if (originalTitleRef.current !== null) {
+                document.title = originalTitleRef.current
+            }
+        }
+    }, [hasDirtyEntity])
 }

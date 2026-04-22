@@ -21,4 +21,4 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — they contain authoritative mid-session guidance that supersedes stale context.
-`;
+`

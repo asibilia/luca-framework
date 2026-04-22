@@ -1,16 +1,15 @@
-"use client";
+'use client'
 
-import { EmptyState } from "~/components/shared/empty-state";
+import { EmptyState } from '~/components/shared/empty-state'
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "~/components/ui/card";
-
-import type { TimelinePeriod } from "~/hooks/use-learning-evolution";
+    Card,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+    CardContent,
+    CardFooter,
+} from '~/components/ui/card'
+import type { TimelinePeriod } from '~/hooks/use-learning-evolution'
 
 /**
  * Category colors for stacked bar segments.
@@ -19,21 +18,21 @@ import type { TimelinePeriod } from "~/hooks/use-learning-evolution";
  * the CATEGORY_DISPLAY convention used across the observer.
  */
 const SEGMENT_COLORS: Record<string, string> = {
-  pattern: "var(--color-success)",
-  decision: "var(--color-info)",
-  pitfall: "var(--color-warning)",
-  preference: "var(--color-chart-2)",
-  uncategorized: "var(--color-muted-foreground)",
-};
+    pattern: 'var(--color-success)',
+    decision: 'var(--color-info)',
+    pitfall: 'var(--color-warning)',
+    preference: 'var(--color-chart-2)',
+    uncategorized: 'var(--color-muted-foreground)',
+}
 
 /** Ordered list of categories for consistent stacking order. */
 const CATEGORY_ORDER = [
-  "pattern",
-  "decision",
-  "pitfall",
-  "preference",
-  "uncategorized",
-];
+    'pattern',
+    'decision',
+    'pitfall',
+    'preference',
+    'uncategorized',
+]
 
 /**
  * CSS vertical bar chart showing learning activity over time.
@@ -50,108 +49,112 @@ const CATEGORY_ORDER = [
  * @param timeline - Array of time periods from useLearningEvolution hook
  */
 export function LearningTimeline({ timeline }: { timeline: TimelinePeriod[] }) {
-  if (timeline.length === 0) {
+    if (timeline.length === 0) {
+        return (
+            <Card>
+                <CardHeader className="border-b">
+                    <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                        Learning Timeline
+                    </CardTitle>
+                    <CardDescription className="font-mono text-xs">
+                        Engrams over time
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <EmptyState message="No timeline data available." />
+                </CardContent>
+            </Card>
+        )
+    }
+
+    const maxTotal = Math.max(...timeline.map((p) => p.total), 1)
+
     return (
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Learning Timeline
-          </CardTitle>
-          <CardDescription className="font-mono text-xs">
-            Engrams over time
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmptyState message="No timeline data available." />
-        </CardContent>
-      </Card>
-    );
-  }
+        <Card>
+            <CardHeader className="border-b">
+                <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    Learning Timeline
+                </CardTitle>
+                <CardDescription className="font-mono text-xs">
+                    Engrams over time
+                </CardDescription>
+            </CardHeader>
 
-  const maxTotal = Math.max(...timeline.map((p) => p.total), 1);
+            <CardContent>
+                {/* Chart area */}
+                <div className="flex h-48 items-end gap-1">
+                    {timeline.map((period, idx) => {
+                        const barHeight = (period.total / maxTotal) * 100
 
-  return (
-    <Card>
-      <CardHeader className="border-b">
-        <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Learning Timeline
-        </CardTitle>
-        <CardDescription className="font-mono text-xs">
-          Engrams over time
-        </CardDescription>
-      </CardHeader>
+                        return (
+                            <div
+                                key={idx}
+                                className="flex flex-1 flex-col justify-end"
+                                style={{ height: '100%' }}
+                                title={`${period.label}: ${period.total} engrams`}
+                            >
+                                <div
+                                    className="flex flex-col-reverse overflow-hidden rounded-t"
+                                    style={{ height: `${barHeight}%` }}
+                                >
+                                    {CATEGORY_ORDER.map((cat) => {
+                                        const count = period.counts[cat]
+                                        if (!count) return null
 
-      <CardContent>
-        {/* Chart area */}
-        <div className="flex h-48 items-end gap-1">
-          {timeline.map((period, idx) => {
-            const barHeight = (period.total / maxTotal) * 100;
+                                        const segmentHeight =
+                                            (count / period.total) * 100
 
-            return (
-              <div
-                key={idx}
-                className="flex flex-1 flex-col justify-end"
-                style={{ height: "100%" }}
-                title={`${period.label}: ${period.total} engrams`}
-              >
-                <div
-                  className="flex flex-col-reverse overflow-hidden rounded-t"
-                  style={{ height: `${barHeight}%` }}
-                >
-                  {CATEGORY_ORDER.map((cat) => {
-                    const count = period.counts[cat];
-                    if (!count) return null;
-
-                    const segmentHeight = (count / period.total) * 100;
-
-                    return (
-                      <div
-                        key={cat}
-                        style={{
-                          height: `${segmentHeight}%`,
-                          backgroundColor: SEGMENT_COLORS[cat],
-                          minHeight: "2px",
-                        }}
-                      />
-                    );
-                  })}
+                                        return (
+                                            <div
+                                                key={cat}
+                                                style={{
+                                                    height: `${segmentHeight}%`,
+                                                    backgroundColor:
+                                                        SEGMENT_COLORS[cat],
+                                                    minHeight: '2px',
+                                                }}
+                                            />
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* X-axis labels */}
-        <div className="mt-1 flex gap-1">
-          {timeline.map((period, idx) => (
-            <div
-              key={idx}
-              className="flex-1 overflow-hidden text-center font-mono text-xs text-muted-foreground"
-            >
-              <span className="block truncate">{period.label}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
+                {/* X-axis labels */}
+                <div className="mt-1 flex gap-1">
+                    {timeline.map((period, idx) => (
+                        <div
+                            key={idx}
+                            className="flex-1 overflow-hidden text-center font-mono text-xs text-muted-foreground"
+                        >
+                            <span className="block truncate">
+                                {period.label}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
 
-      {/* Legend */}
-      <CardFooter>
-        <div className="flex flex-wrap gap-3">
-          {CATEGORY_ORDER.filter((cat) =>
-            timeline.some((p) => (p.counts[cat] ?? 0) > 0),
-          ).map((cat) => (
-            <div key={cat} className="flex items-center gap-1.5">
-              <div
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: SEGMENT_COLORS[cat] }}
-              />
-              <span className="font-mono text-xs text-muted-foreground">
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </CardFooter>
-    </Card>
-  );
+            {/* Legend */}
+            <CardFooter>
+                <div className="flex flex-wrap gap-3">
+                    {CATEGORY_ORDER.filter((cat) =>
+                        timeline.some((p) => (p.counts[cat] ?? 0) > 0)
+                    ).map((cat) => (
+                        <div key={cat} className="flex items-center gap-1.5">
+                            <div
+                                className="h-2.5 w-2.5 rounded-sm"
+                                style={{ backgroundColor: SEGMENT_COLORS[cat] }}
+                            />
+                            <span className="font-mono text-xs text-muted-foreground">
+                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </CardFooter>
+        </Card>
+    )
 }

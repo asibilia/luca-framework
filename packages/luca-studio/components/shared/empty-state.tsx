@@ -14,24 +14,24 @@
  * ```
  */
 export function EmptyState({
-  message,
-  title,
+    message,
+    title,
 }: {
-  message: string;
-  title?: string;
+    message: string
+    title?: string
 }) {
-  return (
-    <div className="rounded-lg border border-dashed border-border p-8 text-center">
-      {title && (
-        <p className="font-mono text-lg font-bold text-muted-foreground">
-          {title}
-        </p>
-      )}
-      <p
-        className={`font-mono text-sm text-muted-foreground${title ? " mt-1" : ""}`}
-      >
-        {message}
-      </p>
-    </div>
-  );
+    return (
+        <div className="rounded-lg border border-dashed border-border p-8 text-center">
+            {title && (
+                <p className="font-mono text-lg font-bold text-muted-foreground">
+                    {title}
+                </p>
+            )}
+            <p
+                className={`font-mono text-sm text-muted-foreground${title ? ' mt-1' : ''}`}
+            >
+                {message}
+            </p>
+        </div>
+    )
 }

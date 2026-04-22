@@ -1,32 +1,29 @@
-import { chmodSync } from "node:fs";
-import { join } from "pathe";
+import { chmodSync } from 'node:fs'
 
-import { extractErrorMessage } from "./error-utils";
-import { getLucaHomePaths } from "./luca-home";
-import {
-  MuninndbServiceStatusSchema,
-  MUNINNDB_BINARY_NAME,
-  resolveMuninndbPort,
-} from "./muninndb-schemas";
-import {
-  checkMuninndbService,
-  waitForMuninndbHealthy,
-} from "./muninndb-health";
+import { join } from 'pathe'
 
-import type { MuninndbServiceStatus } from "./muninndb-schemas";
+import { extractErrorMessage } from './error-utils'
+import { getLucaHomePaths } from './luca-home'
+import { checkMuninndbService, waitForMuninndbHealthy } from './muninndb-health'
+import {
+    MuninndbServiceStatusSchema,
+    MUNINNDB_BINARY_NAME,
+    resolveMuninndbPort,
+} from './muninndb-schemas'
+import type { MuninndbServiceStatus } from './muninndb-schemas'
 
 /**
  * Options for `startMuninndb()`.
  */
 export interface StartMuninndbOptions {
-  /** Port to listen on (default: 8476, or `MUNINNDB_PORT` env var). */
-  port?: number;
-  /** Data directory for MuninnDB storage (default: `~/.luca/muninndb-data/`). */
-  dataDir?: string;
-  /** Maximum time to wait for healthy in milliseconds (default: 10000). */
-  timeoutMs?: number;
-  /** Override the binary path (default: `~/.luca/bin/muninndb`). */
-  binaryPath?: string;
+    /** Port to listen on (default: 8476, or `MUNINNDB_PORT` env var). */
+    port?: number
+    /** Data directory for MuninnDB storage (default: `~/.luca/muninndb-data/`). */
+    dataDir?: string
+    /** Maximum time to wait for healthy in milliseconds (default: 10000). */
+    timeoutMs?: number
+    /** Override the binary path (default: `~/.luca/bin/muninndb`). */
+    binaryPath?: string
 }
 
 /**
@@ -51,70 +48,71 @@ export interface StartMuninndbOptions {
  * ```
  */
 export async function startMuninndb(
-  options: StartMuninndbOptions = {},
+    options: StartMuninndbOptions = {}
 ): Promise<MuninndbServiceStatus> {
-  const {
-    port: rawPort,
-    dataDir: rawDataDir,
-    timeoutMs = 10000,
-    binaryPath: rawBinaryPath,
-  } = options;
+    const {
+        port: rawPort,
+        dataDir: rawDataDir,
+        timeoutMs = 10000,
+        binaryPath: rawBinaryPath,
+    } = options
 
-  const port = resolveMuninndbPort(rawPort);
+    const port = resolveMuninndbPort(rawPort)
 
-  const homePaths = getLucaHomePaths();
-  const binaryPath = rawBinaryPath ?? join(homePaths.bin, MUNINNDB_BINARY_NAME);
-  const dataDir =
-    rawDataDir ??
-    process.env.MUNINNDB_DATA_DIR ??
-    join(homePaths.root, "muninndb-data");
-  const pidfilePath = join(homePaths.root, "muninndb.pid");
+    const homePaths = getLucaHomePaths()
+    const binaryPath =
+        rawBinaryPath ?? join(homePaths.bin, MUNINNDB_BINARY_NAME)
+    const dataDir =
+        rawDataDir ??
+        process.env.MUNINNDB_DATA_DIR ??
+        join(homePaths.root, 'muninndb-data')
+    const pidfilePath = join(homePaths.root, 'muninndb.pid')
 
-  // Check if already running
-  const existingStatus = await checkMuninndbService(port);
-  if (existingStatus.healthy) {
-    return existingStatus;
-  }
-
-  // Clean stale pidfile if process is not running
-  await cleanStalePidfile(pidfilePath);
-
-  // Ensure data directory exists
-  try {
-    await Bun.$`mkdir -p ${dataDir}`.quiet();
-  } catch {
-    // Non-fatal — MuninnDB may create it
-  }
-
-  // Spawn detached process
-  try {
-    const proc = Bun.spawn(
-      [binaryPath, "--port", String(port), "--data-dir", dataDir],
-      {
-        stdout: "ignore",
-        stderr: "ignore",
-        stdin: "ignore",
-      },
-    );
-
-    // Write PID to pidfile with restrictive permissions (SEC-004)
-    if (proc.pid) {
-      await Bun.write(pidfilePath, String(proc.pid));
-      chmodSync(pidfilePath, 0o600);
-      // Unref so parent can exit
-      proc.unref();
+    // Check if already running
+    const existingStatus = await checkMuninndbService(port)
+    if (existingStatus.healthy) {
+        return existingStatus
     }
-  } catch {
-    return MuninndbServiceStatusSchema.parse({
-      running: false,
-      port,
-      pid: null,
-      healthy: false,
-    });
-  }
 
-  // Wait for healthy
-  return waitForMuninndbHealthy({ port, timeoutMs });
+    // Clean stale pidfile if process is not running
+    await cleanStalePidfile(pidfilePath)
+
+    // Ensure data directory exists
+    try {
+        await Bun.$`mkdir -p ${dataDir}`.quiet()
+    } catch {
+        // Non-fatal — MuninnDB may create it
+    }
+
+    // Spawn detached process
+    try {
+        const proc = Bun.spawn(
+            [binaryPath, '--port', String(port), '--data-dir', dataDir],
+            {
+                stdout: 'ignore',
+                stderr: 'ignore',
+                stdin: 'ignore',
+            }
+        )
+
+        // Write PID to pidfile with restrictive permissions (SEC-004)
+        if (proc.pid) {
+            await Bun.write(pidfilePath, String(proc.pid))
+            chmodSync(pidfilePath, 0o600)
+            // Unref so parent can exit
+            proc.unref()
+        }
+    } catch {
+        return MuninndbServiceStatusSchema.parse({
+            running: false,
+            port,
+            pid: null,
+            healthy: false,
+        })
+    }
+
+    // Wait for healthy
+    return waitForMuninndbHealthy({ port, timeoutMs })
 }
 
 /**
@@ -135,73 +133,73 @@ export async function startMuninndb(
  * ```
  */
 export async function stopMuninndb(): Promise<{
-  success: boolean;
-  error: string | null;
+    success: boolean
+    error: string | null
 }> {
-  const pidfilePath = join(getLucaHomePaths().root, "muninndb.pid");
+    const pidfilePath = join(getLucaHomePaths().root, 'muninndb.pid')
 
-  try {
-    const pidfileExists = await Bun.file(pidfilePath).exists();
-    if (!pidfileExists) {
-      return { success: true, error: null };
-    }
-
-    const pidStr = await Bun.file(pidfilePath).text();
-    const pid = parseInt(pidStr.trim(), 10);
-
-    if (isNaN(pid) || pid <= 0) {
-      // Invalid pidfile — clean it up
-      await removePidfile(pidfilePath);
-      return { success: true, error: null };
-    }
-
-    // Check if process is actually running
-    if (!isProcessRunning(pid)) {
-      await removePidfile(pidfilePath);
-      return { success: true, error: null };
-    }
-
-    // Verify the process is actually MuninnDB before sending signal (SEC-004)
-    if (!(await verifyProcessIdentity(pid))) {
-      console.warn(
-        `[muninndb-service] PID ${pid} is not a MuninnDB process. Cleaning stale pidfile.`,
-      );
-      await removePidfile(pidfilePath);
-      return { success: true, error: null };
-    }
-
-    // Send SIGTERM
     try {
-      process.kill(pid, "SIGTERM");
-    } catch {
-      // Process may have already exited
-      await removePidfile(pidfilePath);
-      return { success: true, error: null };
-    }
+        const pidfileExists = await Bun.file(pidfilePath).exists()
+        if (!pidfileExists) {
+            return { success: true, error: null }
+        }
 
-    // Wait for process to exit (up to 5 seconds)
-    const deadline = Date.now() + 5000;
-    while (Date.now() < deadline && isProcessRunning(pid)) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
+        const pidStr = await Bun.file(pidfilePath).text()
+        const pid = parseInt(pidStr.trim(), 10)
 
-    // Force kill if still running
-    if (isProcessRunning(pid)) {
-      try {
-        process.kill(pid, "SIGKILL");
-      } catch {
-        // Ignore — may have exited between check and kill
-      }
-    }
+        if (isNaN(pid) || pid <= 0) {
+            // Invalid pidfile — clean it up
+            await removePidfile(pidfilePath)
+            return { success: true, error: null }
+        }
 
-    await removePidfile(pidfilePath);
-    return { success: true, error: null };
-  } catch (err) {
-    return {
-      success: false,
-      error: extractErrorMessage(err, "Failed to stop MuninnDB"),
-    };
-  }
+        // Check if process is actually running
+        if (!isProcessRunning(pid)) {
+            await removePidfile(pidfilePath)
+            return { success: true, error: null }
+        }
+
+        // Verify the process is actually MuninnDB before sending signal (SEC-004)
+        if (!(await verifyProcessIdentity(pid))) {
+            console.warn(
+                `[muninndb-service] PID ${pid} is not a MuninnDB process. Cleaning stale pidfile.`
+            )
+            await removePidfile(pidfilePath)
+            return { success: true, error: null }
+        }
+
+        // Send SIGTERM
+        try {
+            process.kill(pid, 'SIGTERM')
+        } catch {
+            // Process may have already exited
+            await removePidfile(pidfilePath)
+            return { success: true, error: null }
+        }
+
+        // Wait for process to exit (up to 5 seconds)
+        const deadline = Date.now() + 5000
+        while (Date.now() < deadline && isProcessRunning(pid)) {
+            await new Promise((resolve) => setTimeout(resolve, 250))
+        }
+
+        // Force kill if still running
+        if (isProcessRunning(pid)) {
+            try {
+                process.kill(pid, 'SIGKILL')
+            } catch {
+                // Ignore — may have exited between check and kill
+            }
+        }
+
+        await removePidfile(pidfilePath)
+        return { success: true, error: null }
+    } catch (err) {
+        return {
+            success: false,
+            error: extractErrorMessage(err, 'Failed to stop MuninnDB'),
+        }
+    }
 }
 
 /**
@@ -211,12 +209,12 @@ export async function stopMuninndb(): Promise<{
  * @returns `true` if the process exists, `false` otherwise.
  */
 function isProcessRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+    try {
+        process.kill(pid, 0)
+        return true
+    } catch {
+        return false
+    }
 }
 
 /**
@@ -225,11 +223,11 @@ function isProcessRunning(pid: number): boolean {
  * @param pidfilePath - Absolute path to the pidfile.
  */
 async function removePidfile(pidfilePath: string): Promise<void> {
-  try {
-    await Bun.$`rm -f ${pidfilePath}`.quiet();
-  } catch {
-    // Non-fatal
-  }
+    try {
+        await Bun.$`rm -f ${pidfilePath}`.quiet()
+    } catch {
+        // Non-fatal
+    }
 }
 
 /**
@@ -238,28 +236,28 @@ async function removePidfile(pidfilePath: string): Promise<void> {
  * @param pidfilePath - Absolute path to the pidfile.
  */
 async function cleanStalePidfile(pidfilePath: string): Promise<void> {
-  try {
-    const exists = await Bun.file(pidfilePath).exists();
-    if (!exists) return;
+    try {
+        const exists = await Bun.file(pidfilePath).exists()
+        if (!exists) return
 
-    const pidStr = await Bun.file(pidfilePath).text();
-    const pid = parseInt(pidStr.trim(), 10);
+        const pidStr = await Bun.file(pidfilePath).text()
+        const pid = parseInt(pidStr.trim(), 10)
 
-    if (isNaN(pid) || pid <= 0 || !isProcessRunning(pid)) {
-      await removePidfile(pidfilePath);
-      return;
+        if (isNaN(pid) || pid <= 0 || !isProcessRunning(pid)) {
+            await removePidfile(pidfilePath)
+            return
+        }
+
+        // Process is running but may not be MuninnDB (SEC-004)
+        if (!(await verifyProcessIdentity(pid))) {
+            console.warn(
+                `[muninndb-service] PID ${pid} in pidfile is not a MuninnDB process. Removing stale pidfile.`
+            )
+            await removePidfile(pidfilePath)
+        }
+    } catch {
+        // Non-fatal — ignore pidfile issues
     }
-
-    // Process is running but may not be MuninnDB (SEC-004)
-    if (!(await verifyProcessIdentity(pid))) {
-      console.warn(
-        `[muninndb-service] PID ${pid} in pidfile is not a MuninnDB process. Removing stale pidfile.`,
-      );
-      await removePidfile(pidfilePath);
-    }
-  } catch {
-    // Non-fatal — ignore pidfile issues
-  }
 }
 
 /**
@@ -281,12 +279,12 @@ async function cleanStalePidfile(pidfilePath: string): Promise<void> {
  * ```
  */
 async function verifyProcessIdentity(pid: number): Promise<boolean> {
-  try {
-    const result = await Bun.$`ps -p ${pid} -o comm=`.quiet();
-    const comm = result.text().trim().toLowerCase();
-    return comm.includes("muninn");
-  } catch {
-    // ps failed — process may not exist or command unavailable
-    return false;
-  }
+    try {
+        const result = await Bun.$`ps -p ${pid} -o comm=`.quiet()
+        const comm = result.text().trim().toLowerCase()
+        return comm.includes('muninn')
+    } catch {
+        // ps failed — process may not exist or command unavailable
+        return false
+    }
 }
