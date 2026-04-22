@@ -147,10 +147,12 @@ bun run dev:studio       # Run studio UI (dev mode)
 
 ### Release Process
 
-1. Bump version in `packages/luca-mastracode/package.json`
-2. Create PR with title: `type(scope): vX.Y.Z #issue description`
-3. Merge to main → create git tag `vX.Y.Z` → create GitHub release
-4. `publish.yml` workflow auto-publishes `@alecsibilia/luca-framework` to NPM
+Releases are driven by [Changesets](https://github.com/changesets/changesets):
+
+1. Add a changeset with your PR: `bun changeset`
+2. Merge the PR to main
+3. The `release.yml` workflow opens a "Version Packages" PR that bumps versions and updates `CHANGELOG.md`
+4. Merge the Version PR → workflow creates a GitHub Release (`vX.Y.Z`) and publishes `@alecsibilia/luca-framework` to NPM
 
 ## Documentation
 

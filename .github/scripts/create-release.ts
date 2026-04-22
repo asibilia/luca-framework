@@ -5,9 +5,18 @@ const pkg = await Bun.file('packages/luca-framework/package.json').json()
 const tag = `v${pkg.version}`
 const title = `luca-framework@${pkg.version}`
 
+// Emitted for changesets/action's stdout parser — it looks for lines
+// matching /New tag:\s+(@scope\/name|name)@version/ to populate the
+// `published` output that our publish job depends on.
+const new_tag_line = `New tag: ${pkg.name}@${pkg.version}`
+
 const exists = await $`gh release view ${tag}`.quiet().nothrow()
 if (exists.exitCode === 0) {
-  console.log(`Release ${tag} already exists, skipping`)
+  console.log(`Release ${tag} already exists, skipping creation`)
+  // Still emit so the publish job runs. `bun publish` will fail gracefully
+  // if the npm version already exists, which is the correct behavior for
+  // a re-run after a partial failure.
+  console.log(new_tag_line)
   process.exit(0)
 }
 
@@ -27,3 +36,4 @@ try {
   await Bun.file(notes_file).exists() && (await $`rm ${notes_file}`.quiet().nothrow())
 }
 console.log(`Created release ${tag}`)
+console.log(new_tag_line)
