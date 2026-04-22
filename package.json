@@ -33,7 +33,7 @@
     "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
     "release": "changeset publish",
     "release:local": "bun run build && cd packages/luca-framework && bun link",
-    "version": "changeset version"
+    "version": "changeset version && bun install"
   },
   "type": "module",
   "workspaces": [

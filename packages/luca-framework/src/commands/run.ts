@@ -90,8 +90,8 @@ export const runCommand = defineCommand({
             logger.error(
                 'Could not locate luca-mastracode harness.\n' +
                     '  • In monorepo dev mode: ensure packages/luca-mastracode/ exists\n' +
-                    '  • As installed package: ensure the `luca` package is in your dependencies\n' +
-                    '    (npm install luca / bun add luca)'
+                    '  • As installed package: ensure `@alecsibilia/luca-mastracode` is in your dependencies\n' +
+                    '    (bun add @alecsibilia/luca-mastracode)'
             )
             process.exit(1)
         }

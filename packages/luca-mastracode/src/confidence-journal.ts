@@ -108,19 +108,35 @@ export function appendConfidenceEntry(
 
 /**
  * Read all confidence journal entries.
+ * Parses line-by-line so a single malformed entry doesn't discard the whole journal.
  */
 export function readConfidenceJournal(): ConfidenceEntry[] {
     const p = journalPath()
     if (!existsSync(p)) return []
-    try {
-        return readFileSync(p, 'utf-8')
-            .trim()
-            .split('\n')
-            .filter(Boolean)
-            .map((line) => JSON.parse(line) as ConfidenceEntry)
-    } catch {
-        return []
+
+    const content = readFileSync(p, 'utf-8')
+    if (!content.trim()) return []
+
+    const entries: ConfidenceEntry[] = []
+    const invalidLines: number[] = []
+
+    for (const [index, line] of content.split('\n').entries()) {
+        if (!line.trim()) continue
+        try {
+            entries.push(JSON.parse(line) as ConfidenceEntry)
+        } catch {
+            invalidLines.push(index + 1)
+        }
     }
+
+    if (invalidLines.length > 0) {
+        console.warn(
+            `[confidence-journal] Skipped ${invalidLines.length} invalid entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
+                `in ${JOURNAL_FILE} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}.`
+        )
+    }
+
+    return entries
 }
 
 /**
