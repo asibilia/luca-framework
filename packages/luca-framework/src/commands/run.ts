@@ -40,11 +40,9 @@ function resolveHarnessPath(): { command: string; args: string[] } | null {
   }
 
   // Workspace/global: resolve the luca-mastracode harness entry point.
-  // The harness package is published as "luca" — resolve its main entry
-  // rather than the bin (which could collide with the CLI's own "luca" bin).
   const binPaths = [
-    join(process.cwd(), "node_modules/luca/src/index.ts"),
-    join(process.cwd(), "node_modules/luca/dist/index.mjs"),
+    join(process.cwd(), "node_modules/@alecsibilia/luca-mastracode/src/index.ts"),
+    join(process.cwd(), "node_modules/@alecsibilia/luca-mastracode/dist/index.mjs"),
   ];
 
   for (const binPath of binPaths) {

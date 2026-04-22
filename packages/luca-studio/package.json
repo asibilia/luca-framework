@@ -1,6 +1,7 @@
 {
   "name": "@alecsibilia/luca-studio",
   "version": "0.1.0",
+  "private": true,
   "bin": {
     "luca-studio": "./bin/luca-studio.js"
   },
