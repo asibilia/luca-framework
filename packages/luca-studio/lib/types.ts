@@ -38,7 +38,7 @@ export const ObserverEventSchema = z.object({
     event_subtype: z.string().optional(),
     session_id: z.string().optional(),
     timestamp: z.string().optional(),
-    payload: z.record(z.unknown()).optional(),
+    payload: z.record(z.string(), z.unknown()).optional(),
     agent_name: z.string().optional(),
     tool_name: z.string().optional(),
     file_path: z.string().optional(),
@@ -72,7 +72,7 @@ export const SessionRecordSchema = z.object({
     complexity: z.string().optional(),
     status: z.string().default('active'),
     total_events: z.number().default(0),
-    metadata: z.record(z.unknown()).default({}),
+    metadata: z.record(z.string(), z.unknown()).default({}),
 })
 
 export type SessionRecord = z.infer<typeof SessionRecordSchema>
@@ -125,9 +125,9 @@ export const LedgerEntrySchema = z.object({
     previous_state: z.string(),
     current_state: z.string(),
     event_type: z.string(),
-    event_data: z.record(z.unknown()).default({}),
+    event_data: z.record(z.string(), z.unknown()).default({}),
     actions_executed: z.array(z.string()).default([]),
-    context: z.record(z.unknown()).default({}),
+    context: z.record(z.string(), z.unknown()).default({}),
     timestamp: z.string().default(''),
     session_id: z.string().default(''),
     sequence_number: z.number().int().nonnegative(),

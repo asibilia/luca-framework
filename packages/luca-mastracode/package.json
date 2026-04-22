@@ -4,15 +4,15 @@
   "version": "10.4.0",
   "private": true,
   "dependencies": {
-    "@mastra/core": "^1.25.0",
-    "@mastra/libsql": "^1.8.1",
-    "@mastra/memory": "^1.15.1",
-    "mastracode": "^0.14.0",
-    "zod": "^4.3.6"
+    "@mastra/core": "catalog:",
+    "@mastra/libsql": "catalog:",
+    "@mastra/memory": "catalog:",
+    "mastracode": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "catalog:"
   },
   "main": "src/index.ts",
   "scripts": {

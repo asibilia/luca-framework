@@ -161,14 +161,14 @@ export const PlannerSectionSchema = z.object({
             maintenance: z.number().min(0).max(100).default(10),
             reserve: z.number().min(0).max(100).default(5),
         })
-        .default({}),
+        .prefault({}),
     zone_boundaries: z
         .object({
             peak_end: z.number().min(0).max(100).default(30),
             good_end: z.number().min(0).max(100).default(50),
             degrading_end: z.number().min(0).max(100).default(70),
         })
-        .default({}),
+        .prefault({}),
     cold_start_costs: z
         .record(z.string(), z.number().int().nonnegative())
         .default({}),

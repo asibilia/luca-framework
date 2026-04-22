@@ -37,27 +37,27 @@ import { rawConfigDraftAtom } from '~/stores/settings-atoms'
  */
 const FullConfigSchema = z
     .object({
-        branding: z.record(z.unknown()).optional(),
+        branding: z.record(z.string(), z.unknown()).optional(),
         stack: z.string().optional(),
         runtime: z.string().optional(),
         mode: z.string().optional(),
         depth: z.string().optional(),
         model_profile: z.string().optional(),
-        cognitive: z.record(z.unknown()).optional(),
-        workflow: z.record(z.unknown()).optional(),
-        planning: z.record(z.unknown()).optional(),
-        parallelization: z.record(z.unknown()).optional(),
+        cognitive: z.record(z.string(), z.unknown()).optional(),
+        workflow: z.record(z.string(), z.unknown()).optional(),
+        planning: z.record(z.string(), z.unknown()).optional(),
+        parallelization: z.record(z.string(), z.unknown()).optional(),
         gates: z.record(z.string(), z.boolean()).optional(),
-        safety: z.record(z.unknown()).optional(),
-        harness: z.record(z.unknown()).optional(),
-        iteration: z.record(z.unknown()).optional(),
-        complexity: z.record(z.unknown()).optional(),
-        lu: z.record(z.unknown()).optional(),
-        planner: z.record(z.unknown()).optional(),
-        dogfood: z.record(z.unknown()).optional(),
-        muninn: z.record(z.unknown()).optional(),
-        context_management: z.record(z.unknown()).optional(),
-        shadow_debt: z.record(z.unknown()).optional(),
+        safety: z.record(z.string(), z.unknown()).optional(),
+        harness: z.record(z.string(), z.unknown()).optional(),
+        iteration: z.record(z.string(), z.unknown()).optional(),
+        complexity: z.record(z.string(), z.unknown()).optional(),
+        lu: z.record(z.string(), z.unknown()).optional(),
+        planner: z.record(z.string(), z.unknown()).optional(),
+        dogfood: z.record(z.string(), z.unknown()).optional(),
+        muninn: z.record(z.string(), z.unknown()).optional(),
+        context_management: z.record(z.string(), z.unknown()).optional(),
+        shadow_debt: z.record(z.string(), z.unknown()).optional(),
     })
     .passthrough()
 
@@ -139,7 +139,7 @@ export function RawConfigEditor({ readOnly }: { readOnly?: boolean }) {
 
     const containerRef = useRef<HTMLDivElement>(null)
     const viewRef = useRef<EditorView | null>(null)
-    const onChangeRef = useRef<(val: string) => void>()
+    const onChangeRef = useRef<((val: string) => void) | undefined>(undefined)
 
     const [validationState, setValidationState] =
         useState<ValidationState>('idle')

@@ -23,7 +23,7 @@
  */
 import { join, relative } from 'node:path'
 
-import chokidar from 'chokidar'
+import chokidar, { type FSWatcher } from 'chokidar'
 
 import { resolveProjectRoot } from '~/lib/project-root'
 
@@ -49,7 +49,7 @@ export type FileChangeListener = (event: FileChangeEvent) => void
 // ---------------------------------------------------------------------------
 
 interface WatcherState {
-    watcher: chokidar.FSWatcher | null
+    watcher: FSWatcher | null
     listeners: Set<FileChangeListener>
     projectRoot: string | null
 }

@@ -92,7 +92,7 @@ export const TopologyNodeSchema = z.object({
     type: z.string().default('default'),
     parent_id: z.string().optional(),
     extent: z.literal('parent').optional(),
-    style: z.record(z.union([z.string(), z.number()])).optional(),
+    style: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 })
 export type TopologyNode = z.infer<typeof TopologyNodeSchema>
 

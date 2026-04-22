@@ -30,16 +30,32 @@
     "lint": "bun run --filter '*' lint",
     "lint:fix": "bun run --filter '*' lint:fix",
     "mastracode": "bun run packages/luca-mastracode/src/index.ts",
-    "publish:framework": "cd packages/luca-framework && npm publish --access restricted",
+    "publish:framework": "cd packages/luca-framework && bun publish --access restricted",
     "release": "changeset publish",
     "release:local": "bun run build && cd packages/luca-framework && bun link",
     "version": "changeset version && bun install"
   },
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
-  "overrides": {
-    "@mastra/core": "1.25.0"
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "catalog": {
+      "@eslint/js": "^9",
+      "@mastra/core": "^1.26.0",
+      "@mastra/libsql": "^1.8.1",
+      "@mastra/memory": "^1.15.1",
+      "@next/eslint-plugin-next": "^16.2.4",
+      "eslint": "^9",
+      "eslint-import-resolver-typescript": "^4.4.4",
+      "eslint-plugin-import": "^2.32.0",
+      "eslint-plugin-prettier": "^5.5.5",
+      "globals": "^17.5.0",
+      "mastracode": "^0.15.0",
+      "prettier": "^3.8.3",
+      "typescript": "^5.0.0",
+      "typescript-eslint": "^8.59.0",
+      "zod": "^4.3.6"
+    }
   }
 }
