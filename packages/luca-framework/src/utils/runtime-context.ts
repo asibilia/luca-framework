@@ -94,7 +94,7 @@ export function resolveMonorepoRoot(startDir: string): string {
  */
 export function resolveFrameworkPackageRoot(startDir: string): string | null {
     let dir = startDir
-    while (dir !== '/' && dir !== '') {
+    while (dir !== '') {
         const pkgPath = join(dir, 'package.json')
         if (existsSync(pkgPath)) {
             try {
@@ -108,7 +108,12 @@ export function resolveFrameworkPackageRoot(startDir: string): string | null {
                 // Ignore malformed package.json files and keep walking up.
             }
         }
-        dir = dirname(dir)
+        const parent = dirname(dir)
+        // Stop at the filesystem root: on POSIX `dirname('/') === '/'`,
+        // on Windows `dirname('C:\\') === 'C:\\'`. Either way `parent === dir`
+        // signals we've reached the root and should terminate.
+        if (parent === dir) break
+        dir = parent
     }
     return null
 }
