@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.0",
-    "@mastra/core": "^1.25.0",
+    "@mastra/core": "^1.26.0",
     "@mastra/libsql": "^1.8.1",
     "@mastra/memory": "^1.15.1",
     "citty": "^0.2.0",
