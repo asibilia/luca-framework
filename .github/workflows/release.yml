@@ -2,8 +2,8 @@
 #
 # Flow:
 #   1. PR with .changeset/*.md merges to main
-#   2. This workflow opens (or updates) a "Version Packages" PR that bumps
-#      package versions and updates CHANGELOG.md
+#   2. This workflow opens (or updates) a "chore(release): version packages"
+#      PR that bumps package versions and updates CHANGELOG.md
 #   3. When that PR merges to main, this workflow runs again — but with no
 #      pending changesets, so it executes the `publish` command instead,
 #      which creates a GitHub Release tagged v<luca-framework version>
