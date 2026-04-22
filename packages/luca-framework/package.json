@@ -44,6 +44,8 @@
   },
   "scripts": {
     "build": "unbuild",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "prepublishOnly": "bun run build",
     "validate": "bun run scripts/validate-package.ts"
   },

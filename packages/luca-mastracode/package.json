@@ -16,6 +16,8 @@
   },
   "main": "src/index.ts",
   "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "start": "bun run src/index.ts",
     "typecheck": "bunx --bun tsc --noEmit"
   },
