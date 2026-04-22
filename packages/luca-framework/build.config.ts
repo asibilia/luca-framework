@@ -1,5 +1,5 @@
-import { cpSync, existsSync, readFileSync, rmSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
 
@@ -28,6 +28,7 @@ function bundleMastracode() {
     if (existsSync(target)) {
         rmSync(target, { recursive: true, force: true })
     }
+    mkdirSync(target, { recursive: true })
 
     const include = ['src', 'commands', 'rules', 'skills']
     for (const dir of include) {
@@ -35,7 +36,7 @@ function bundleMastracode() {
         if (!existsSync(from)) continue
         cpSync(from, join(target, dir), {
             recursive: true,
-            filter: (src) => !src.includes(`${dir}/__tests__`),
+            filter: (src) => !src.includes(`${dir}${sep}__tests__`),
         })
     }
 }
