@@ -55,13 +55,19 @@ jobs:
           echo "value=$TITLE" >> "$GITHUB_OUTPUT"
 
       - name: Open Version PR or create Release
+        id: changesets
         uses: changesets/action@v1
         with:
           version: bun run version
           publish: bun .github/scripts/create-release.ts
           title: ${{ steps.pr_title.outputs.value }}
           commit: ${{ steps.pr_title.outputs.value }}
-          labels: automated
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply "automated" label to Version PR
+        if: steps.changesets.outputs.pullRequestNumber != ''
+        run: gh pr edit ${{ steps.changesets.outputs.pullRequestNumber }} --add-label automated
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
