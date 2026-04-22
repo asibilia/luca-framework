@@ -10,7 +10,7 @@
  * @returns `{ error }` with 400/500 on failure
  */
 import { execFileSync } from 'node:child_process'
-import { normalize } from 'node:path'
+import { isAbsolute, normalize, resolve, sep } from 'node:path'
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -21,6 +21,7 @@ import { isLocalhostRequest } from '~/lib/request-guards'
 
 /**
  * Check whether a file path belongs to a Studio-tracked entity.
+ * Uses separator-aware prefix matching to avoid sibling directory collisions.
  *
  * @param filePath - Relative file path from the request body
  * @returns true if the file is a Studio-tracked path
@@ -28,8 +29,20 @@ import { isLocalhostRequest } from '~/lib/request-guards'
 function isStudioFile(filePath: string): boolean {
     const trimmed = filePath.trim()
     return STUDIO_PATH_PREFIXES.some(
-        (prefix) => trimmed === prefix || trimmed.startsWith(prefix)
+        (prefix) =>
+            trimmed === prefix ||
+            trimmed.startsWith(prefix.endsWith(sep) ? prefix : prefix + sep)
     )
+}
+
+/**
+ * Validate that a file path is safe: relative, no traversal, and resolves
+ * within the given root directory.
+ */
+function isSafePath(filePath: string, root: string): boolean {
+    if (isAbsolute(filePath)) return false
+    const resolved = resolve(root, filePath)
+    return resolved.startsWith(root + sep) || resolved === root
 }
 
 /**
@@ -78,10 +91,11 @@ export async function POST(request: Request) {
 
         const { file_path, commit_sha } = parseResult.data
 
-        // 2. Normalize path and reject traversal sequences or non-Studio paths
+        // 2. Normalize path and validate safety
         const normalizedPath = normalize(file_path)
+        const root = await resolveProjectRoot()
 
-        if (normalizedPath.includes('..')) {
+        if (!isSafePath(normalizedPath, root)) {
             return NextResponse.json(
                 { error: 'Path not allowed' },
                 { status: 403 }
@@ -94,8 +108,6 @@ export async function POST(request: Request) {
                 { status: 403 }
             )
         }
-
-        const root = await resolveProjectRoot()
 
         // 3. Checkout the file from the given commit
         execFileSync('git', ['checkout', commit_sha, '--', normalizedPath], {

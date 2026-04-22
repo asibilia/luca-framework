@@ -35,10 +35,14 @@ export const sessionLedgerTool = createTool({
         switch (action) {
             case 'read': {
                 const entries = readLedger()
+                const returned = entries.slice(-50)
                 return {
                     success: true,
-                    message: `${entries.length} ledger entries`,
-                    entries: entries.slice(-50), // last 50 entries
+                    message:
+                        entries.length > returned.length
+                            ? `Last ${returned.length} of ${entries.length} ledger entries`
+                            : `${entries.length} ledger entries`,
+                    entries: returned,
                 }
             }
             case 'filter': {

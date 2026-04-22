@@ -73,11 +73,9 @@ export const confidenceJournalTool = createTool({
                     }
                 }
                 const written = appendConfidenceEntry(entry)
-                // Auto-regenerate the Markdown rendering
-                renderConfidenceJournalMarkdown()
                 return {
                     success: true,
-                    message: `Confidence entry logged (${entry.confidence} — ${entry.category}): ${entry.task}`,
+                    message: `Confidence entry logged (${entry.confidence} — ${entry.category}): ${entry.task}. Use action "render" to regenerate CONFIDENCE-JOURNAL.md.`,
                     entry: written as unknown as Record<string, unknown>,
                 }
             }

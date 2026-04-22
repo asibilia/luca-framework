@@ -17,7 +17,8 @@ const sections = changelog.split(/^## /m)
 const latest = sections[1]?.trim() ?? ''
 const notes = latest ? `## ${latest}` : `Release ${tag}`
 
-const notes_file = `${import.meta.dir}/../../.release-notes-tmp.md`
+const run_id = process.env.GITHUB_RUN_ID ?? process.pid
+const notes_file = `${import.meta.dir}/../../.release-notes-${tag}-${run_id}.md`
 await Bun.write(notes_file, notes)
 try {
   await $`gh release create ${tag} --title ${tag} --notes-file ${notes_file}`

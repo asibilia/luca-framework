@@ -12,6 +12,7 @@
  * @returns `{ message }` with 200 if no Studio changes exist
  */
 import { execFileSync } from 'node:child_process'
+import { sep } from 'node:path'
 
 import { NextResponse } from 'next/server'
 
@@ -21,6 +22,7 @@ import { isLocalhostRequest } from '~/lib/request-guards'
 
 /**
  * Check whether a file path belongs to a Studio-tracked entity.
+ * Uses separator-aware prefix matching to avoid sibling directory collisions.
  *
  * @param filePath - Relative file path from git status
  * @returns true if the file is a Studio-tracked path
@@ -28,7 +30,9 @@ import { isLocalhostRequest } from '~/lib/request-guards'
 function isStudioFile(filePath: string): boolean {
     const trimmed = filePath.trim()
     return STUDIO_PATH_PREFIXES.some(
-        (prefix) => trimmed === prefix || trimmed.startsWith(prefix)
+        (prefix) =>
+            trimmed === prefix ||
+            trimmed.startsWith(prefix.endsWith(sep) ? prefix : prefix + sep)
     )
 }
 
