@@ -17,5 +17,11 @@ const sections = changelog.split(/^## /m)
 const latest = sections[1]?.trim() ?? ''
 const notes = latest ? `## ${latest}` : `Release ${tag}`
 
-await $`gh release create ${tag} --title ${tag} --notes ${notes}`
+const notes_file = `${import.meta.dir}/../../.release-notes-tmp.md`
+await Bun.write(notes_file, notes)
+try {
+  await $`gh release create ${tag} --title ${tag} --notes-file ${notes_file}`
+} finally {
+  await Bun.file(notes_file).exists() && (await $`rm ${notes_file}`.quiet().nothrow())
+}
 console.log(`Created release ${tag}`)

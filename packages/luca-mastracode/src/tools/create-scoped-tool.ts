@@ -47,6 +47,13 @@ export function createScopedTool<T extends Tool>({
         return tool
     }
 
+    if (allowed_actions.length === 0) {
+        throw new Error(
+            `createScopedTool: allowed_actions is empty for tool "${tool.id}". ` +
+            `Check mode-permissions.ts — every scoped tool needs at least one allowed action.`,
+        )
+    }
+
     const scoped_schema = base_schema.extend({
         action: z.enum(allowed_actions as [string, ...string[]]),
     })
