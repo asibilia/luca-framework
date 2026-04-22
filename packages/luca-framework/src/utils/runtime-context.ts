@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 
 import { dirname, join } from 'pathe'
@@ -78,4 +78,37 @@ export function resolveMonorepoRoot(startDir: string): string {
         dir = dirname(dir)
     }
     return dir
+}
+
+/**
+ * Walk up from a starting directory to find the root of the
+ * `@alecsibilia/luca-framework` install (the directory containing its
+ * `package.json`).
+ *
+ * Used in global/installed mode to resolve the bundled `dist/mastracode/`
+ * harness relative to the framework's own install location rather than the
+ * user's cwd.
+ *
+ * @param startDir - Directory to start walking up from (typically `import.meta.dir`).
+ * @returns Absolute path to the framework package root, or `null` if not found.
+ */
+export function resolveFrameworkPackageRoot(startDir: string): string | null {
+    let dir = startDir
+    while (dir !== '/' && dir !== '') {
+        const pkgPath = join(dir, 'package.json')
+        if (existsSync(pkgPath)) {
+            try {
+                const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+                    name?: string
+                }
+                if (pkg.name === '@alecsibilia/luca-framework') {
+                    return dir
+                }
+            } catch {
+                // Ignore malformed package.json files and keep walking up.
+            }
+        }
+        dir = dirname(dir)
+    }
+    return null
 }
