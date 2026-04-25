@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca-framework",
   "description": "Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness",
-  "version": "10.0.4",
+  "version": "10.0.5",
   "bin": {
     "luca": "./bin/luca.js"
   },
