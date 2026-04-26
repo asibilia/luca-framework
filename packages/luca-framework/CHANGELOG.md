@@ -1,6 +1,10 @@
 # @alecsibilia/luca-framework
 
-## 10.1.0
+## 11.0.0
+
+### Major Changes
+
+- Version jump from 10.0.5 → 11.0.0 to escape the version namespace collision with old `luca-mastracode`-era releases. Between April 9–18, the old `publish.yml` workflow derived the npm version from the GitHub release tag name. Releases created for the internal `luca-mastracode` package (v10.1.0–v10.3.2) inadvertently published `@alecsibilia/luca-framework` at those same version numbers. Versions 10.1.0 through 10.3.2 are permanently claimed on npm. Starting fresh at 11.0.0 avoids any future collisions.
 
 ### Minor Changes
 
