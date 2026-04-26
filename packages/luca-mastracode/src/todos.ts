@@ -275,14 +275,71 @@ export function removeTodo({
 
 /**
  * Move a batch of todos (by index) to pending status ("assign" them).
+ *
+ * Index-shift safe: resolves every identifier against a single listTodos()
+ * snapshot before performing any filesystem moves, so subsequent moves don't
+ * rebind earlier indices.
  */
 export function assignBatch({ indices }: { indices: number[] }): Todo[] {
-    const assigned: Todo[] = []
-    for (const idx of indices) {
-        const result = moveTodo({ identifier: idx, targetStatus: 'pending' })
-        if (result) assigned.push(result)
+    return moveBatch({
+        items: indices.map((idx) => ({
+            identifier: idx,
+            targetStatus: 'pending',
+        })),
+    }).moved
+}
+
+/**
+ * Move a batch of todos in a single, index-shift-safe pass.
+ *
+ * Indices are user-facing labels assigned by `listTodos()` and shift whenever
+ * a todo changes status (because order = pending → backlog → done). This
+ * helper takes a snapshot of the backlog up front, resolves every identifier
+ * (numeric or slug) against that snapshot, and only then performs the moves.
+ *
+ * Returns both the successfully moved todos and any unresolved identifiers
+ * so the caller can surface partial-success errors.
+ */
+export function moveBatch({
+    items,
+}: {
+    items: Array<{
+        identifier: number | string
+        targetStatus: TodoStatus
+    }>
+}): { moved: Todo[]; missing: Array<number | string> } {
+    if (!items.length) return { moved: [], missing: [] }
+
+    const snapshot = listTodos()
+    const moved: Todo[] = []
+    const missing: Array<number | string> = []
+
+    for (const { identifier, targetStatus } of items) {
+        const todo =
+            typeof identifier === 'number'
+                ? snapshot.find((t) => t.index === identifier)
+                : snapshot.find((t) => t.slug === identifier)
+
+        if (!todo) {
+            missing.push(identifier)
+            continue
+        }
+        if (todo.status === targetStatus) {
+            moved.push(todo)
+            continue
+        }
+
+        const root = todosRoot()
+        const targetDir = join(root, targetStatus)
+        ensureDir(targetDir)
+
+        const newPath = join(targetDir, `${todo.slug}.md`)
+        renameSync(todo.path, newPath)
+
+        moved.push({ ...todo, status: targetStatus, path: newPath })
     }
-    return assigned
+
+    return { moved, missing }
 }
 
 /**

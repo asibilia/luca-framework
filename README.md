@@ -64,7 +64,7 @@ All subagents receive a shared behavioral prefix (~300-400 tokens) with core ope
 |------|---------|
 | `workflowState` | Pipeline state machine — phase transitions, mode switches, triage/plan/review artifact storage |
 | `runChecks` | Convergence-tracked typecheck, lint, and test runner with error fingerprinting |
-| `manageTodos` | Backlog management — add, list, move, remove, batch-assign across pending/backlog/done |
+| `manageTodos` | Backlog management — add, list, move (single or batch), remove, batch-assign across pending/backlog/done |
 | `manageRoadmap` | WSJF-scored phase roadmaps with dependency ordering |
 | `verificationResult` | Per-wave and aggregate verification tracking |
 | `sessionLedger` | Structured audit trail for mode transitions and phase boundaries |
