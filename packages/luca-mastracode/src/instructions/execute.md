@@ -418,7 +418,22 @@ The iteration plan is your task list for this pass. Treat each item as a focused
 
 ### TODO Progress
 
-After completing tasks: `manageTodos(action: "move", identifier: <n>, targetStatus: "done")`
+After completing a single task: `manageTodos(action: "move", identifier: <n>, targetStatus: "done")`
+
+Marking **multiple** todos done at once: use `move-batch`, not a sequence of `move` calls. Indices are reassigned every list, so sequential `move` calls with stale indices will hit the wrong todos.
+
+```
+manageTodos(
+  action: "move-batch",
+  items: [
+    { identifier: 1, targetStatus: "done" },
+    { identifier: 2, targetStatus: "done" },
+    { identifier: 4, targetStatus: "done" }
+  ]
+)
+```
+
+Identifiers may be numeric indices or slug strings (mixing is allowed); slugs are always stable.
 
 ## Tool Coordination
 After each wave: (1) `runChecks` → (2) if fail: fix → re-check → (3) if pass: `workflowState(advance-wave)`. Do NOT advance without passing checks.

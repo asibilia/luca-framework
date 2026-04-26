@@ -5,6 +5,7 @@ import {
     addTodo,
     listTodos,
     moveTodo,
+    moveBatch,
     removeTodo,
     assignBatch,
     readTodoContent,
@@ -16,11 +17,21 @@ export const manageTodosTool = createTool({
     description:
         'Manage the Luca development backlog stored as markdown files in .planning/todos/. ' +
         'Todos live in status directories: pending/, backlog/, done/. ' +
-        'Supports listing, adding, moving between statuses, reading full content, removing, and batch-assigning. ' +
-        "Use 'list' before 'add' to check for duplicates. When moving to 'done', verify the task is actually complete.",
+        'Supports listing, adding, moving between statuses (single or batch), reading full content, removing, and batch-assigning. ' +
+        "Use 'list' before 'add' to check for duplicates. When moving to 'done', verify the task is actually complete. " +
+        "Use 'move-batch' (NOT a sequence of 'move' calls) when changing the status of multiple todos at once — " +
+        "indices are reassigned every list, so sequential 'move' calls with stale indices will hit the wrong todos.",
     inputSchema: z.object({
         action: z
-            .enum(['list', 'add', 'move', 'read', 'remove', 'assign-batch'])
+            .enum([
+                'list',
+                'add',
+                'move',
+                'move-batch',
+                'read',
+                'remove',
+                'assign-batch',
+            ])
             .describe('Operation to perform on the backlog'),
         title: z
             .string()
@@ -66,6 +77,20 @@ export const manageTodosTool = createTool({
             .describe(
                 'Array of todo indices to assign to pending (required for assign-batch)'
             ),
+        items: z
+            .array(
+                z.object({
+                    identifier: z.union([z.number(), z.string()]),
+                    targetStatus: z.enum(['pending', 'backlog', 'done']),
+                })
+            )
+            .optional()
+            .describe(
+                'Array of {identifier, targetStatus} for batch status changes (required for move-batch). ' +
+                    'Identifiers may be numeric indices or slug strings; mixing is allowed. ' +
+                    'All identifiers are resolved against a single backlog snapshot before any moves run, ' +
+                    'so indices captured from a prior `list` call remain valid for the entire batch.'
+            ),
         filterStatus: z
             .enum(['pending', 'backlog', 'done'])
             .optional()
@@ -82,6 +107,7 @@ export const manageTodosTool = createTool({
             identifier,
             targetStatus,
             indices,
+            items,
             filterStatus,
         } = inputData
 
@@ -126,6 +152,21 @@ export const manageTodosTool = createTool({
                 if (!moved) return { error: `Todo not found: ${identifier}` }
                 return {
                     moved: `#${moved.index} ${moved.title} → ${moved.status}`,
+                }
+            }
+            case 'move-batch': {
+                if (!items?.length)
+                    return {
+                        error: 'items array is required for move-batch',
+                    }
+                const result = moveBatch({ items })
+                return {
+                    moved: result.moved.map(
+                        (t) => `#${t.index} ${t.title} → ${t.status}`
+                    ),
+                    movedCount: result.moved.length,
+                    missing: result.missing.map((id) => String(id)),
+                    missingCount: result.missing.length,
                 }
             }
             case 'read': {

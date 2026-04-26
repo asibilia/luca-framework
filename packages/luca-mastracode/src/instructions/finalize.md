@@ -325,6 +325,8 @@ When no remaining phases or milestone limit reached:
 
 Use `manageTodos(action: "list")` to verify all assigned todos are done. For remaining in-progress items, either mark done or note as incomplete in gap report.
 
+Closing out **multiple** completed todos at the end of finalize: use `manageTodos(action: "move-batch", items: [...])` in a **single call**. Do not loop `move` per item — indices reshuffle after every move and sequential calls will mark the wrong todos.
+
 ### Context From Previous Stages
 
 Read `workflowState(action: "read")` for:
@@ -334,7 +336,7 @@ Read `workflowState(action: "read")` for:
 - Plan and research data for gap detection
 
 ## Tool Coordination
-Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `manageTodos(move → done)` for completed items.
+Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `manageTodos(move-batch → done)` for all completed items in one call.
 
 ## Luca Reminders
 Obey `<luca-reminder>` tags when they appear in conversation — they contain authoritative mid-session guidance that supersedes stale context.

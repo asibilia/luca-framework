@@ -275,14 +275,84 @@ export function removeTodo({
 
 /**
  * Move a batch of todos (by index) to pending status ("assign" them).
+ *
+ * Index-shift safe: resolves every identifier against a single listTodos()
+ * snapshot before performing any filesystem moves, so subsequent moves don't
+ * rebind earlier indices.
  */
 export function assignBatch({ indices }: { indices: number[] }): Todo[] {
-    const assigned: Todo[] = []
-    for (const idx of indices) {
-        const result = moveTodo({ identifier: idx, targetStatus: 'pending' })
-        if (result) assigned.push(result)
+    return moveBatch({
+        items: indices.map((idx) => ({
+            identifier: idx,
+            targetStatus: 'pending',
+        })),
+    }).moved
+}
+
+/**
+ * Move a batch of todos in a single, index-shift-safe pass.
+ *
+ * Indices are user-facing labels assigned by `listTodos()` and shift whenever
+ * a todo changes status (because order = pending → backlog → done). This
+ * helper takes a snapshot of the backlog up front, resolves every identifier
+ * (numeric or slug) against that snapshot, and only then performs the moves.
+ *
+ * Returns both the successfully moved todos and any unresolved identifiers
+ * so the caller can surface partial-success errors.
+ */
+export function moveBatch({
+    items,
+}: {
+    items: Array<{
+        identifier: number | string
+        targetStatus: TodoStatus
+    }>
+}): { moved: Todo[]; missing: Array<number | string> } {
+    if (!items.length) return { moved: [], missing: [] }
+
+    const snapshot = listTodos()
+    // Track each todo's current (post-move) state by slug so duplicate
+    // references — e.g. the same identifier listed twice, or an index +
+    // slug that resolve to the same file — see the up-to-date path/status
+    // instead of replaying a stale `renameSync` against a path that was
+    // already moved.
+    const current = new Map<string, Todo>(snapshot.map((t) => [t.slug, t]))
+    const moved: Todo[] = []
+    const missing: Array<number | string> = []
+
+    for (const { identifier, targetStatus } of items) {
+        // Resolve against the snapshot first (indices are snapshot-bound),
+        // then fall back to the live `current` map for the latest state.
+        const fromSnapshot =
+            typeof identifier === 'number'
+                ? snapshot.find((t) => t.index === identifier)
+                : snapshot.find((t) => t.slug === identifier)
+
+        if (!fromSnapshot) {
+            missing.push(identifier)
+            continue
+        }
+
+        const todo = current.get(fromSnapshot.slug) ?? fromSnapshot
+
+        if (todo.status === targetStatus) {
+            moved.push(todo)
+            continue
+        }
+
+        const root = todosRoot()
+        const targetDir = join(root, targetStatus)
+        ensureDir(targetDir)
+
+        const newPath = join(targetDir, `${todo.slug}.md`)
+        renameSync(todo.path, newPath)
+
+        const updated: Todo = { ...todo, status: targetStatus, path: newPath }
+        current.set(todo.slug, updated)
+        moved.push(updated)
     }
-    return assigned
+
+    return { moved, missing }
 }
 
 /**
