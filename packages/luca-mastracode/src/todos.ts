@@ -311,19 +311,30 @@ export function moveBatch({
     if (!items.length) return { moved: [], missing: [] }
 
     const snapshot = listTodos()
+    // Track each todo's current (post-move) state by slug so duplicate
+    // references — e.g. the same identifier listed twice, or an index +
+    // slug that resolve to the same file — see the up-to-date path/status
+    // instead of replaying a stale `renameSync` against a path that was
+    // already moved.
+    const current = new Map<string, Todo>(snapshot.map((t) => [t.slug, t]))
     const moved: Todo[] = []
     const missing: Array<number | string> = []
 
     for (const { identifier, targetStatus } of items) {
-        const todo =
+        // Resolve against the snapshot first (indices are snapshot-bound),
+        // then fall back to the live `current` map for the latest state.
+        const fromSnapshot =
             typeof identifier === 'number'
                 ? snapshot.find((t) => t.index === identifier)
                 : snapshot.find((t) => t.slug === identifier)
 
-        if (!todo) {
+        if (!fromSnapshot) {
             missing.push(identifier)
             continue
         }
+
+        const todo = current.get(fromSnapshot.slug) ?? fromSnapshot
+
         if (todo.status === targetStatus) {
             moved.push(todo)
             continue
@@ -336,7 +347,9 @@ export function moveBatch({
         const newPath = join(targetDir, `${todo.slug}.md`)
         renameSync(todo.path, newPath)
 
-        moved.push({ ...todo, status: targetStatus, path: newPath })
+        const updated: Todo = { ...todo, status: targetStatus, path: newPath }
+        current.set(todo.slug, updated)
+        moved.push(updated)
     }
 
     return { moved, missing }
