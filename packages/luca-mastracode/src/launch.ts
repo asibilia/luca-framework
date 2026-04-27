@@ -128,6 +128,69 @@ const PIPELINE_MODE_MODEL_RESOLVERS: Record<string, () => string> = {
     'luca:6-finalize': resolveFinalizeModel,
 }
 
+/**
+ * Subagent IDs that should inherit MCP tools (firecrawl, muninn, etc.)
+ * from the harness's mcpManager. Excluded subagents (plan-reviewer,
+ * shadow-scanner) operate purely on local files and don't need network /
+ * memory tools — keeping their toolset narrow improves decision quality.
+ *
+ * The actual injection mechanism (a Proxy that forwards to
+ * `mcpManager.getTools()` at subagent execute time) lives in `main()`,
+ * gated on `mcpManager` being non-null.
+ */
+const SUBAGENT_INHERITS_MCP = new Set<string>([
+    'researcher',
+    'discussion',
+    'planner',
+    'executor',
+    'verifier',
+    'reviewer',
+    'learner',
+])
+
+/**
+ * Build a Proxy that, when read, forwards to `mcpManager.getTools()`.
+ *
+ * Used as the `tools` field on each opted-in subagent definition so that
+ * `@mastra/core`'s harness, which materializes `definition.tools` via
+ * `{ ...definition.tools }` at subagent execute time, picks up whatever
+ * MCP tools are connected at that exact moment. The Proxy is stateless
+ * and safely shared across every subagent that opts in.
+ *
+ * Spread relies on `ownKeys` + `getOwnPropertyDescriptor`; the harness
+ * also occasionally indexes the record directly (`tools[id]`), which is
+ * why `get` and `has` are also forwarded.
+ */
+function createMcpToolsProxy(mcpManager: {
+    getTools: () => Record<string, unknown>
+}): Record<string, unknown> {
+    return new Proxy({} as Record<string, unknown>, {
+        ownKeys() {
+            return Reflect.ownKeys(mcpManager.getTools())
+        },
+        getOwnPropertyDescriptor(_, key) {
+            const tools = mcpManager.getTools()
+            if (typeof key === 'string' && key in tools) {
+                return {
+                    enumerable: true,
+                    configurable: true,
+                    writable: false,
+                    value: tools[key],
+                }
+            }
+            return undefined
+        },
+        get(_, key) {
+            if (typeof key !== 'string') return undefined
+            return mcpManager.getTools()[key]
+        },
+        has(_, key) {
+            if (typeof key !== 'string') return false
+            return key in mcpManager.getTools()
+        },
+    })
+}
+
 export async function main(): Promise<void> {
     const branding = loadBranding()
 
@@ -358,6 +421,40 @@ export async function main(): Promise<void> {
     // Wire up mcpManager ref so mode agents can merge MCP tools at request time.
     if (mcpManager) {
         mcpManagerRef.current = mcpManager
+
+        // Install an MCP tool forwarder on each opted-in subagent. The
+        // forwarder is a Proxy that resolves to mcpManager.getTools() at the
+        // moment the harness materializes tools for a subagent invocation —
+        // see @mastra/core's harness, which reads `definition.tools` as
+        // `mergedTools = { ...definition.tools }` at subagent execute time.
+        // Spread invokes the Proxy's `ownKeys` + `getOwnPropertyDescriptor`
+        // traps, materializing whatever MCP tools are connected right then.
+        //
+        // Why a Proxy instead of `definition.tools = { ...static, ...mcpManager.getTools() }`:
+        //
+        //   1. Timing-free: getTools() is only called once a subagent is
+        //      actually invoked, well after both our wire-up and mastracode's
+        //      own `mcpManager.initInBackground()` call inside `tui.init()`.
+        //      No await, no double-init race, no startup delay if servers
+        //      are slow or unreachable.
+        //   2. Mid-session reloads (user reconfigures servers via slash
+        //      command) are reflected automatically — no stale snapshot.
+        //
+        // Why not `HarnessConfig.tools` + `allowedHarnessTools`:
+        // `allowedHarnessTools` is a strict static `string[]` allowlist with
+        // no wildcard support, but MCP tool IDs are discovered at server-
+        // connect time so we can't enumerate them at subagent definition
+        // time.
+        //
+        // The same Proxy instance is shared across all opted-in subagents
+        // because it's stateless (every trap reads `mcpManager.getTools()`
+        // fresh).
+        const mcpToolsProxy = createMcpToolsProxy(mcpManager)
+        for (const sub of subagentList) {
+            if (SUBAGENT_INHERITS_MCP.has(sub.id)) {
+                sub.tools = mcpToolsProxy as typeof sub.tools
+            }
+        }
     }
 
     // Wire up token budget monitor for context window management.
