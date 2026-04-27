@@ -794,6 +794,31 @@ async function main() {
             contextRefresher.setMode(event.modeId)
             // Reset INJECT_REMINDERS threshold so each mode can get its own reminder.
             tokenBudget.clearThreshold('INJECT_REMINDERS')
+            // Force-sync the harness model display to match our mode config.
+            // The TUI persists model IDs per-mode in thread settings, which can
+            // become stale when we upgrade models. Our dynamic model() function
+            // already returns the correct model at API time, but the status bar
+            // reads from the harness's internal state. This ensures the display
+            // stays consistent with what we actually send to the API.
+            const modeModelResolvers: Record<string, () => string> = {
+                build: resolveBuildModel,
+                plan: resolvePlanModel,
+                fast: resolveFastModel,
+                'luca:discuss': resolveDiscussModel,
+                'luca:1-triage': resolveTriageModel,
+                'luca:2-research': resolveResearchModel,
+                'luca:3-architect': resolveArchitectModel,
+                'luca:4-execute': resolveExecuteModel,
+                'luca:5-review': resolveReviewModel,
+                'luca:6-finalize': resolveFinalizeModel,
+            }
+            const resolver = modeModelResolvers[event.modeId]
+            if (resolver) {
+                const targetModel = resolver()
+                harness
+                    .switchModel({ modelId: targetModel })
+                    .catch(() => {})
+            }
         }
     })
 
