@@ -1232,6 +1232,130 @@ async function main() {
         inlineQuestions: true,
     })
 
+    // --- Workaround for upstream mastracode bug (tracked: issue #173) ---
+    //
+    // `AskQuestionInlineComponent` (used by the built-in `ask_user` tool) does
+    // not wrap or truncate option labels. Long labels render past the box's
+    // inner width, which trips pi-tui's per-line width assertion in
+    // `doRender()` and crashes the entire process with:
+    //
+    //   error: Rendered line N exceeds terminal width (X > Y).
+    //
+    // Bug location (installed bundle): `chunk-YEHNNDZZ.js:88-99` and
+    // surrounding branches in `_AskQuestionInlineBorderedBox._render`, where
+    // each option is emitted as `theme.fg("dim", `   ${item.label}`)` with no
+    // wrap/truncate step. The question text on the same component IS wrapped
+    // via `wrapTextWithAnsi(qLine, innerWidth)`, so this is just a missing
+    // wrap on the option labels.
+    //
+    // We monkey-patch `AskQuestionInlineComponent.prototype.updateArgs` and
+    // `.activate` (the two methods that feed option labels into the bordered
+    // box) to truncate any label whose visible width would overflow the
+    // current terminal. We can't import the class directly because mastracode
+    // doesn't re-export it from `mastracode/tui`, so we capture the
+    // constructor lazily the first time mastracode stores an instance into
+    // `state.pendingAskUserComponents`. After the prototype is patched, all
+    // current and future instances pick up the safe behavior.
+    const tuiState = (
+        tui as unknown as {
+            state: {
+                pendingAskUserComponents: Map<string, unknown>
+            }
+        }
+    ).state
+    const askMap = tuiState.pendingAskUserComponents
+    const LUCA_ASK_USER_PATCHED = Symbol.for('luca.ask_user.label_truncate')
+    const originalSet = askMap.set.bind(askMap)
+    askMap.set = function patchedSet(toolCallId: string, instance: unknown) {
+        try {
+            patchAskQuestionPrototype(instance)
+        } catch (err) {
+            // Patching is purely defensive — never let it block the question.
+            console.error('[luca] ask_user prototype patch failed:', err)
+        }
+        return originalSet(toolCallId, instance)
+    } as typeof askMap.set
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function patchAskQuestionPrototype(instance: any) {
+        if (!instance || typeof instance !== 'object') return
+        const proto = Object.getPrototypeOf(instance)
+        if (!proto || proto[LUCA_ASK_USER_PATCHED]) return
+
+        const truncateOptions = (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            options: any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ): any => {
+            if (!Array.isArray(options)) return options
+            // The bordered box renders each option as `   ${label}` inside a
+            // box that consumes 4 columns of frame (`│ ` + ` │`). Pi-tui also
+            // subtracts a 3-column safety buffer (`TERM_WIDTH_BUFFER`) from
+            // `process.stdout.columns`. Match that math, then leave 1 extra
+            // cell of headroom so a stray wide character can't push us over.
+            const cols = process.stdout.columns || 80
+            const innerWidth = Math.max(
+                10,
+                cols - 3 /* TERM_WIDTH_BUFFER */ - 4 /* box */
+            )
+            const labelBudget = Math.max(
+                8,
+                innerWidth - 3 /* "   " prefix */ - 1 /* headroom */
+            )
+            const ELLIPSIS = '…'
+            return options.map((opt: unknown) => {
+                if (!opt || typeof opt !== 'object') return opt
+                const label = (opt as { label?: unknown }).label
+                if (typeof label !== 'string') return opt
+                if (label.length <= labelBudget) return opt
+                return {
+                    ...(opt as object),
+                    label: label.slice(0, labelBudget - 1) + ELLIPSIS,
+                }
+            })
+        }
+
+        const originalUpdateArgs = proto.updateArgs
+        if (typeof originalUpdateArgs === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            proto.updateArgs = function patchedUpdateArgs(args: any) {
+                if (
+                    args &&
+                    typeof args === 'object' &&
+                    Array.isArray((args as { options?: unknown }).options)
+                ) {
+                    args = {
+                        ...args,
+                        options: truncateOptions(
+                            (args as { options: unknown[] }).options
+                        ),
+                    }
+                }
+                return originalUpdateArgs.call(this, args)
+            }
+        }
+
+        const originalActivate = proto.activate
+        if (typeof originalActivate === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            proto.activate = function patchedActivate(options: any) {
+                if (
+                    options &&
+                    typeof options === 'object' &&
+                    Array.isArray(options.options)
+                ) {
+                    options = {
+                        ...options,
+                        options: truncateOptions(options.options),
+                    }
+                }
+                return originalActivate.call(this, options)
+            }
+        }
+
+        proto[LUCA_ASK_USER_PATCHED] = true
+    }
+
     // Stale pipeline state is handled by two explicit guards:
     // 1. reset-pipeline (called by finalize) clears all session-scoped fields
     // 2. switch-mode to triage detects stale state and prompts the user
