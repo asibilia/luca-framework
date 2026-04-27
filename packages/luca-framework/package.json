@@ -19,6 +19,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@alecsibilia/luca-mastracode": "workspace:*",
     "@types/semver": "^7.5.8",
     "@types/update-notifier": "^6.0.8"
   },
