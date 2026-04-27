@@ -21,6 +21,7 @@ import { defineCommand } from 'citty'
 import { join } from 'pathe'
 
 import { logger } from '../utils/logger'
+import { LUCA_VERSION } from '../utils/manifest'
 import {
     detectRuntimeContext,
     resolveFrameworkPackageRoot,
@@ -106,7 +107,7 @@ export const runCommand = defineCommand({
 
         const proc = Bun.spawn([resolved.command, ...fullArgs], {
             stdio: ['inherit', 'inherit', 'inherit'],
-            env: { ...process.env },
+            env: { ...process.env, LUCA_VERSION },
         })
 
         const exitCode = await proc.exited

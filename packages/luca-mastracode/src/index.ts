@@ -160,6 +160,52 @@ function loadBranding(): LucaBranding {
     return { name: 'Luca', tagline: 'AI-powered development workflow' }
 }
 
+/**
+ * Resolve the Luca framework version to display in the TUI.
+ *
+ * Source priority:
+ *   1. `LUCA_VERSION` env var — set by `luca run` from the framework package.
+ *   2. Bundled luca-framework `package.json` — when the harness is launched
+ *      from inside the published tarball (`dist/mastracode/src/index.ts`,
+ *      with framework root two levels up).
+ *   3. Sibling workspace `luca-framework/package.json` — when running from
+ *      the monorepo source.
+ *   4. Local `luca-mastracode/package.json` — last-resort fallback.
+ *
+ * Without this, `MastraTUI` falls back to its built-in default of `0.1.0`,
+ * which makes `/update` print "Could not determine the current version".
+ */
+function resolveLucaVersion(): string {
+    if (process.env.LUCA_VERSION) return process.env.LUCA_VERSION
+
+    const thisDir = dirname(fileURLToPath(import.meta.url))
+    const candidates = [
+        // Installed: <framework-root>/dist/mastracode/src/ -> ../../../package.json
+        join(thisDir, '..', '..', '..', 'package.json'),
+        // Workspace: packages/luca-mastracode/src/ -> ../../luca-framework/package.json
+        join(thisDir, '..', '..', 'luca-framework', 'package.json'),
+        // Last resort: packages/luca-mastracode/src/ -> ../package.json
+        join(thisDir, '..', 'package.json'),
+    ]
+
+    for (const candidate of candidates) {
+        if (!existsSync(candidate)) continue
+        try {
+            const raw = JSON.parse(readFileSync(candidate, 'utf-8'))
+            if (
+                raw.name === '@alecsibilia/luca-framework' ||
+                raw.name === '@alecsibilia/luca-mastracode'
+            ) {
+                if (typeof raw.version === 'string') return raw.version
+            }
+        } catch {
+            // Try next candidate
+        }
+    }
+
+    return '0.0.0-dev'
+}
+
 // ---------------------------------------------------------------------------
 // Static agent builder — creates Agent instances with dynamic instructions/model
 // ---------------------------------------------------------------------------
@@ -551,8 +597,10 @@ function buildContinuationMessage(
 // option labels: ASCII, CJK/emoji, and embedded ANSI styling.
 
 // CSI / OSC / SGR / cursor-control escapes — matches pi-tui's strip pattern.
-// eslint-disable-next-line no-control-regex
-const ANSI_ESCAPE_RE = /\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])/g
+
+const ANSI_ESCAPE_RE =
+    // eslint-disable-next-line no-control-regex
+    /\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[@-Z\\-_])/g
 
 let cachedSegmenter: Intl.Segmenter | null = null
 function getSegmenter(): Intl.Segmenter {
@@ -833,9 +881,24 @@ async function main() {
 
         // Raise OM thresholds to reduce premature compression of subagent outputs
         // in multi-agent workflows (review: 4 parallel, research: 5 parallel).
+        //
+        // Observer/reflector model overrides via env vars:
+        //   LUCA_OBSERVER_MODEL — model ID for observation summarization
+        //   LUCA_REFLECTOR_MODEL — model ID for compressing observations
+        //
+        // Default observer (gemini-2.5-flash) has a 1M context, but Anthropic-only
+        // users with 1M-beta access (tier 4) can override to claude-sonnet-4-6
+        // to avoid Google API key requirements. Standard 200K Anthropic models
+        // (haiku-4-5, opus-4-7) will hit overflow on heavy multi-thread sessions.
         initialState: {
             observationThreshold: 50_000,
             reflectionThreshold: 60_000,
+            ...(process.env.LUCA_OBSERVER_MODEL
+                ? { observerModelId: process.env.LUCA_OBSERVER_MODEL }
+                : {}),
+            ...(process.env.LUCA_REFLECTOR_MODEL
+                ? { reflectorModelId: process.env.LUCA_REFLECTOR_MODEL }
+                : {}),
         },
     })
 
@@ -1345,6 +1408,7 @@ async function main() {
         authStorage,
         mcpManager,
         appName: branding.name,
+        version: resolveLucaVersion(),
         inlineQuestions: true,
     })
 
@@ -1385,9 +1449,7 @@ async function main() {
     })()
 
     if (askMap) {
-        const LUCA_ASK_USER_PATCHED = Symbol.for(
-            'luca.ask_user.label_truncate'
-        )
+        const LUCA_ASK_USER_PATCHED = Symbol.for('luca.ask_user.label_truncate')
         const originalSet = askMap.set.bind(askMap)
         askMap.set = function patchedSet(
             toolCallId: unknown,
@@ -1432,8 +1494,7 @@ async function main() {
             // we degrade to a single-cell ellipsis (or empty) when the budget
             // collapses, which is the only string guaranteed to fit.
             const cols = process.stdout.columns || 80
-            const innerWidth =
-                cols - 3 /* TERM_WIDTH_BUFFER */ - 4 /* box */
+            const innerWidth = cols - 3 /* TERM_WIDTH_BUFFER */ - 4 /* box */
             const labelBudget =
                 innerWidth - 3 /* "   " prefix */ - 1 /* headroom */
             const ELLIPSIS = '…'
@@ -1490,12 +1551,296 @@ async function main() {
         proto[marker] = true
     }
 
+    // --- Workaround for upstream mastracode double-slash bug ---
+    //
+    // mastracode's `setupAutocomplete` registers custom slash commands by
+    // prepending `/` to each command's name (chunk-YEHNNDZZ.js:12399-12404):
+    //
+    //   slashCommands.push({ name: `/${customCmd.name}`, ... })
+    //
+    // Built-in commands are registered without the `/` (e.g. `name: "help"`),
+    // and pi-tui's autocomplete strips the user's leading `/` before fuzzy
+    // matching, then inserts `cmd.name` back. So built-ins round-trip cleanly
+    // (`/h` -> match `help` -> insert `help` -> visible as `/help`), but
+    // custom commands acquire a duplicate slash (`/l` -> match `/lu` ->
+    // insert `/lu` -> visible as `//lu`).
+    //
+    // Fix: intercept the editor's `setAutocompleteProvider` call. When
+    // mastracode wires up the provider (during `init()` -> `setupAutocomplete`),
+    // we rewrite the provider's `commands` array to strip any leading `/`
+    // from each command name. The lookup paths in mastracode that compare
+    // `cmd.name === cmdName` are unaffected because both sides go through
+    // the same trimmed value (custom command dispatch in chunk-YEHNNDZZ.js:7468
+    // strips the user's leading `/` before comparing).
+    //
+    // The patch is purely defensive: if upstream restructures the editor or
+    // provider, we log a warning and let mastracode's behavior pass through
+    // unchanged.
+    const editor = (() => {
+        const tuiState = (tui as unknown as { state?: unknown }).state as
+            | { editor?: unknown }
+            | undefined
+        const candidate = tuiState?.editor
+        if (
+            !candidate ||
+            typeof (candidate as { setAutocompleteProvider?: unknown })
+                .setAutocompleteProvider !== 'function'
+        ) {
+            return undefined
+        }
+        return candidate as {
+            setAutocompleteProvider: (provider: unknown) => void
+        }
+    })()
+
+    if (editor) {
+        const LUCA_AUTOCOMPLETE_PATCHED = Symbol.for(
+            'luca.autocomplete.strip_leading_slash'
+        )
+        const editorRecord = editor as unknown as Record<symbol, unknown>
+        if (!editorRecord[LUCA_AUTOCOMPLETE_PATCHED]) {
+            const originalSet = editor.setAutocompleteProvider.bind(editor)
+            editor.setAutocompleteProvider = (provider: unknown) => {
+                try {
+                    if (
+                        provider &&
+                        typeof provider === 'object' &&
+                        Array.isArray(
+                            (provider as { commands?: unknown }).commands
+                        )
+                    ) {
+                        const commands = (provider as { commands: unknown[] })
+                            .commands
+                        for (const cmd of commands) {
+                            if (
+                                cmd &&
+                                typeof cmd === 'object' &&
+                                typeof (cmd as { name?: unknown }).name ===
+                                    'string' &&
+                                (cmd as { name: string }).name.startsWith('/')
+                            ) {
+                                ;(cmd as { name: string }).name = (
+                                    cmd as { name: string }
+                                ).name.replace(/^\/+/, '')
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error(
+                        '[luca] autocomplete slash-strip patch failed:',
+                        err
+                    )
+                }
+                return originalSet(provider)
+            }
+            editorRecord[LUCA_AUTOCOMPLETE_PATCHED] = true
+        }
+    } else {
+        console.warn(
+            '[luca] autocomplete slash-strip patch skipped: ' +
+                'tui.state.editor.setAutocompleteProvider is not callable ' +
+                '(upstream mastracode internals may have changed).'
+        )
+    }
+
+    // --- Workaround for upstream mastracode model-pack-on-login bug ---
+    //
+    // After a successful login, mastracode's `performLogin` (chunk-YEHNNDZZ.js
+    // around line 13670-13679) calls:
+    //
+    //   const defaultModel = PROVIDER_DEFAULT_MODELS[providerId]
+    //   await harness.switchModel({ modelId: defaultModel })
+    //
+    // This blindly switches to the provider's hard-coded default model and
+    // ignores the user's currently-selected model pack. For Anthropic, that
+    // default is `claude-opus-4-6`, but a user with the Anthropic pack
+    // (resolved to `claude-opus-4-7` via OAuth) will be silently downgraded
+    // every time they log in or refresh credentials. The status bar then
+    // shows the wrong model and `/models` looks out-of-sync with the actual
+    // model the agent uses.
+    //
+    // Fix: wrap `tui.performLogin` so that after the original implementation
+    // resolves, we re-apply the active model pack's model for the current
+    // mode. We read `settings.json` directly (mastracode doesn't re-export
+    // `loadSettings` from the public package entry, so duplicating the read
+    // is the smallest viable patch).
+    //
+    // No-op when:
+    //   - No active pack is set (user hasn't picked one — provider default is fine)
+    //   - The active pack maps the current mode to the same model mastracode
+    //     just selected (already correct)
+    //   - Reading settings fails for any reason (degrade gracefully)
+    {
+        const tuiAny = tui as unknown as {
+            performLogin: (providerId: string) => Promise<void>
+            state?: { harness?: unknown }
+        }
+        const originalPerformLogin = tuiAny.performLogin.bind(tui)
+        tuiAny.performLogin = async (providerId: string) => {
+            await originalPerformLogin(providerId)
+            try {
+                const settingsPath = resolveMastracodeSettingsPath()
+                if (!settingsPath || !existsSync(settingsPath)) return
+                const raw = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+                const activeModelPackId = raw?.models?.activeModelPackId
+                if (typeof activeModelPackId !== 'string') return
+
+                const harnessAny = (
+                    tuiAny.state as { harness?: unknown } | undefined
+                )?.harness as
+                    | {
+                          getCurrentModeId?: () => string
+                          switchModel?: (args: {
+                              modelId: string
+                          }) => Promise<unknown>
+                      }
+                    | undefined
+                if (
+                    !harnessAny ||
+                    typeof harnessAny.getCurrentModeId !== 'function' ||
+                    typeof harnessAny.switchModel !== 'function'
+                ) {
+                    return
+                }
+
+                // Detect OAuth vs API-key access for the provider that was
+                // just authenticated. authStorage.isLoggedIn() returns true
+                // only for OAuth credentials, which is exactly the
+                // distinction `getAvailableModePacks` uses.
+                const isOauth =
+                    typeof (
+                        authStorage as {
+                            isLoggedIn?: (id: string) => boolean
+                        }
+                    ).isLoggedIn === 'function'
+                        ? (
+                              authStorage as {
+                                  isLoggedIn: (id: string) => boolean
+                              }
+                          ).isLoggedIn(providerId)
+                        : false
+
+                const currentModeId = harnessAny.getCurrentModeId()
+                const packModelId = resolvePackModelForMode({
+                    settings: raw,
+                    activeModelPackId,
+                    providerId,
+                    modeId: currentModeId,
+                    isOauth,
+                })
+                if (!packModelId) return
+
+                await harnessAny.switchModel({ modelId: packModelId })
+            } catch (err) {
+                console.error(
+                    '[luca] post-login model-pack restore failed:',
+                    err
+                )
+            }
+        }
+    }
+
     // Stale pipeline state is handled by two explicit guards:
     // 1. reset-pipeline (called by finalize) clears all session-scoped fields
     // 2. switch-mode to triage detects stale state and prompts the user
     // No startup wipe needed — avoids data loss if pipeline was interrupted mid-flight.
 
     await tui.run()
+}
+
+/**
+ * Resolve the path to mastracode's settings.json on the host platform.
+ * Mirrors mastracode's `getAppDataDir()` (chunk-XV4ZDFJA.js:79).
+ */
+function resolveMastracodeSettingsPath(): string | undefined {
+    const platform = process.platform
+    let baseDir: string
+    if (platform === 'darwin') {
+        const home = process.env.HOME
+        if (!home) return undefined
+        baseDir = join(home, 'Library', 'Application Support')
+    } else if (platform === 'win32') {
+        const appData =
+            process.env.APPDATA ??
+            (process.env.USERPROFILE
+                ? join(process.env.USERPROFILE, 'AppData', 'Roaming')
+                : undefined)
+        if (!appData) return undefined
+        baseDir = appData
+    } else {
+        const xdg = process.env.XDG_DATA_HOME
+        const home = process.env.HOME
+        if (xdg) baseDir = xdg
+        else if (home) baseDir = join(home, '.local', 'share')
+        else return undefined
+    }
+    return join(baseDir, 'mastracode', 'settings.json')
+}
+
+/**
+ * Resolve the model ID the active pack maps to for a given mode, mirroring
+ * mastracode's `getAvailableModePacks` (chunk-D6MEBQTC.js:410) for built-in
+ * provider packs and consulting `customModelPacks` for custom ones.
+ *
+ * Returns undefined when:
+ *   - The pack isn't recognised (e.g. user has neither logged into the
+ *     provider nor saved a custom pack with that id)
+ *   - The pack doesn't define a model for the requested mode
+ */
+function resolvePackModelForMode({
+    settings,
+    activeModelPackId,
+    providerId,
+    modeId,
+    isOauth,
+}: {
+    settings: { customModelPacks?: unknown }
+    activeModelPackId: string
+    providerId: string
+    modeId: string
+    isOauth: boolean
+}): string | undefined {
+    if (activeModelPackId === 'anthropic') {
+        // Mirrors `getAvailableModePacks` in chunk-D6MEBQTC.js:414 — the
+        // Anthropic pack's build/plan model differs by access mode.
+        const anthropicBuild = isOauth
+            ? 'anthropic/claude-opus-4-7'
+            : 'anthropic/claude-sonnet-4-6'
+        const anthropicPack: Record<string, string> = {
+            build: anthropicBuild,
+            plan: anthropicBuild,
+            fast: 'anthropic/claude-haiku-4-5',
+        }
+        return anthropicPack[modeId]
+    }
+    if (activeModelPackId === 'openai') {
+        const openaiPack: Record<string, string> = {
+            build: 'openai/gpt-5.4',
+            plan: 'openai/gpt-5.4',
+            fast: 'openai/gpt-5.4-mini',
+        }
+        return openaiPack[modeId]
+    }
+    if (activeModelPackId.startsWith('custom:')) {
+        const name = activeModelPackId.slice('custom:'.length)
+        const customPacks = Array.isArray(settings.customModelPacks)
+            ? (settings.customModelPacks as Array<{
+                  name?: unknown
+                  models?: Record<string, unknown>
+              }>)
+            : []
+        const pack = customPacks.find(
+            (p) => typeof p?.name === 'string' && p.name === name
+        )
+        const modelId = pack?.models?.[modeId]
+        return typeof modelId === 'string' && modelId.length > 0
+            ? modelId
+            : undefined
+    }
+    // Unknown pack id — nothing to do. Reference providerId so eslint stays
+    // quiet about the unused parameter when callers pass it for future use.
+    void providerId
+    return undefined
 }
 
 // --- Suppress Claude Code-format skill loading noise ---
