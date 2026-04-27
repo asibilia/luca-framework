@@ -22,7 +22,7 @@ export function buildBuildInstructions(): string {
 }
 
 export function resolveBuildModel(): string {
-    return 'anthropic/claude-opus-4-6'
+    return 'anthropic/claude-opus-4-7'
 }
 
 export const buildMode = {
@@ -30,7 +30,7 @@ export const buildMode = {
     name: 'Build',
     description: 'Full-access build mode for implementing changes.',
     color: '#16c858',
-    defaultModelId: 'anthropic/claude-opus-4-6',
+    defaultModelId: 'anthropic/claude-opus-4-7',
     buildInstructions: buildBuildInstructions,
     resolveModel: resolveBuildModel,
 }

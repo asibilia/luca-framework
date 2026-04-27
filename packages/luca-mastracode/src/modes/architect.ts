@@ -73,7 +73,7 @@ export const architectMode = {
     description:
         'Git workflow, roadmap creation, .planning/PLAN.md via goal-backward analysis, and plan review.',
     color: '#a855f7',
-    defaultModelId: 'anthropic/claude-opus-4-6',
+    defaultModelId: 'anthropic/claude-opus-4-7',
     buildInstructions: buildArchitectInstructions,
     resolveModel: resolveArchitectModel,
 }

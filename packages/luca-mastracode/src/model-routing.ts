@@ -15,7 +15,7 @@ export type ModelTier = 'fast' | 'balanced' | 'capable'
 const MODEL_IDS: Record<ModelTier, string> = {
     fast: 'anthropic/claude-haiku-4-5',
     balanced: 'anthropic/claude-sonnet-4-6',
-    capable: 'anthropic/claude-opus-4-6',
+    capable: 'anthropic/claude-opus-4-7',
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ function adjustTier({
  *
  * @example
  * resolveModel({ subagentType: 'lu-executor', complexity: 'CRITICAL', profile: 'balanced' })
- * // → 'anthropic/claude-opus-4-6'
+ * // → 'anthropic/claude-opus-4-7'
  */
 export function resolveModel({
     subagentType,
