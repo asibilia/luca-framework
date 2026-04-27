@@ -97,7 +97,7 @@ export const executeMode = {
     description:
         'Implement code changes atomically with automated checks, verification, code review, and learning capture.',
     color: '#10b981',
-    defaultModelId: 'anthropic/claude-opus-4-6',
+    defaultModelId: 'anthropic/claude-opus-4-7',
     buildInstructions: buildExecuteInstructions,
     resolveModel: resolveExecuteModel,
 }
