@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { Agent } from '@mastra/core/agent'
-import { WORKSPACE_TOOLS } from '@mastra/core/workspace'
+import { WORKSPACE_TOOLS, writeFileTool } from '@mastra/core/workspace'
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
@@ -110,6 +110,29 @@ import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
 import { TokenBudgetMonitor } from './token-budget.js'
 import { buildModeTools } from './tools/build-mode-tools.js'
+
+// ---------------------------------------------------------------------------
+// Mode-to-model resolver map
+// ---------------------------------------------------------------------------
+//
+// Maps custom luca pipeline mode IDs to their model resolvers. Used to force-
+// sync the harness's internal model state (and therefore the TUI status bar)
+// to our config when the mode changes.
+//
+// Stock modes (build / plan / fast) are intentionally excluded: those modes
+// participate in mastracode's model-pack system, so users can pick a per-mode
+// model via /models. Forcing switchModel() on those modes would steamroll the
+// user's persisted selection. Custom luca:* modes are not in any pack, which
+// is why they need this sync.
+const PIPELINE_MODE_MODEL_RESOLVERS: Record<string, () => string> = {
+    'luca:discuss': resolveDiscussModel,
+    'luca:1-triage': resolveTriageModel,
+    'luca:2-research': resolveResearchModel,
+    'luca:3-architect': resolveArchitectModel,
+    'luca:4-execute': resolveExecuteModel,
+    'luca:5-review': resolveReviewModel,
+    'luca:6-finalize': resolveFinalizeModel,
+}
 
 // ---------------------------------------------------------------------------
 // Branding — load from .planning/config.json if present
@@ -794,6 +817,31 @@ async function main() {
             contextRefresher.setMode(event.modeId)
             // Reset INJECT_REMINDERS threshold so each mode can get its own reminder.
             tokenBudget.clearThreshold('INJECT_REMINDERS')
+            // Sync the harness's internal model state on mode_changed so the
+            // TUI status bar reflects our mode config for custom luca:* pipeline
+            // modes. Note: this only fires on mode transitions — agent models
+            // are still resolved per-request via createStaticAgent's dynamic
+            // model() function, so the effective model for an API call can
+            // change within a mode (e.g., triage swapping after complexity is
+            // written) without re-firing this handler. Stock modes (build /
+            // plan / fast) are deliberately excluded; they belong to the model
+            // pack system and forcing switchModel here would override the
+            // user's persisted /models selection.
+            const resolver = PIPELINE_MODE_MODEL_RESOLVERS[event.modeId]
+            if (resolver) {
+                const targetModel = resolver()
+                harness
+                    .switchModel({ modelId: targetModel })
+                    .catch((err: unknown) => {
+                        // Fire-and-forget, but surface failures so a stale
+                        // status bar (the original symptom this fix targets)
+                        // is debuggable rather than silently broken.
+                        console.warn(
+                            `[luca] failed to sync harness model for mode "${event.modeId}" (target: ${targetModel}):`,
+                            err instanceof Error ? err.message : err
+                        )
+                    })
+            }
         }
     })
 
@@ -928,6 +976,74 @@ async function main() {
             }
             return workspace
         }
+    }
+
+    // --- Workaround for upstream @mastra/core bug (tracked: issue #173) ---
+    //
+    // `LocalFilesystem.writeFile()` in `@mastra/core@1.28.0` calls `stat()` to
+    // honor the optional `expectedMtime` precheck. When the target file doesn't
+    // yet exist, `stat()` throws a custom `FileNotFoundError` that has no
+    // `code` property, so the surrounding `isEnoentError(err)` check (which
+    // compares `err.code === 'ENOENT'`) returns false and the error is
+    // rethrown — even though "file does not exist" is the normal case for a
+    // new write.
+    //
+    // We wrap the singleton `writeFileTool`'s `execute` to detect the precheck
+    // failure and fall back to calling the workspace filesystem's `writeFile()`
+    // directly, bypassing the broken precheck path entirely. We also create
+    // parent directories first so the fallback behaves like the tool would
+    // have. Idempotent via a Symbol marker. Remove once upstream is fixed.
+    const LUCA_WRITE_FILE_PATCHED = Symbol.for('luca.write_file.patched')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wft = writeFileTool as any
+    if (
+        wft &&
+        typeof wft.execute === 'function' &&
+        !wft[LUCA_WRITE_FILE_PATCHED]
+    ) {
+        const originalExecute = wft.execute
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        wft.execute = async function patchedExecute(input: any, context: any) {
+            try {
+                return await originalExecute.call(this, input, context)
+            } catch (error) {
+                const name = error instanceof Error ? error.name : ''
+                const msg = error instanceof Error ? error.message : ''
+                const isPrecheckFnf =
+                    name === 'FileNotFoundError' || /^File not found:/.test(msg)
+                if (!isPrecheckFnf) throw error
+
+                // Fallback: bypass the broken tool path and call the workspace
+                // filesystem directly. `path` is the only required input; the
+                // tool layer would normally also create parent dirs, so we do
+                // the same here.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const fs = (context as any)?.workspace?.filesystem
+                if (
+                    !fs ||
+                    typeof fs.writeFile !== 'function' ||
+                    typeof fs.mkdir !== 'function'
+                ) {
+                    // No filesystem to fall back to — surface the original
+                    // error rather than silently dropping the write.
+                    throw error
+                }
+                const path = input?.path as string | undefined
+                const content = input?.content as string | undefined
+                if (typeof path !== 'string' || typeof content !== 'string') {
+                    throw error
+                }
+                const dir = path.includes('/')
+                    ? path.slice(0, path.lastIndexOf('/'))
+                    : ''
+                if (dir) {
+                    await fs.mkdir(dir, { recursive: true }).catch(() => {})
+                }
+                await fs.writeFile(path, content)
+                return `Wrote ${Buffer.byteLength(content, 'utf-8')} bytes to ${path}`
+            }
+        }
+        wft[LUCA_WRITE_FILE_PATCHED] = true
     }
 
     // Also enforce on the cached workspace when modes change outside the request
