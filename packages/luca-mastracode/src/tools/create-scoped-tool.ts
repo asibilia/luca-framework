@@ -50,7 +50,7 @@ export function createScopedTool<T extends Tool>({
     if (allowed_actions.length === 0) {
         throw new Error(
             `createScopedTool: allowed_actions is empty for tool "${tool.id}". ` +
-            `Check mode-permissions.ts — every scoped tool needs at least one allowed action.`,
+                `Check mode-permissions.ts — every scoped tool needs at least one allowed action.`
         )
     }
 
