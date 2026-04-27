@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { Agent } from '@mastra/core/agent'
-import { WORKSPACE_TOOLS } from '@mastra/core/workspace'
+import { WORKSPACE_TOOLS, writeFileTool } from '@mastra/core/workspace'
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
@@ -88,7 +88,6 @@ import {
     PIPELINE_STEPS_ORDERED,
     wrapInSystemReminder,
 } from './pipeline-tui.js'
-import { appendLedger } from './session-ledger.js'
 // Mutable refs — wired up after createMastraCode() returns. Extracted to
 // refs.ts to avoid circular imports with tool modules.
 import {
@@ -816,9 +815,7 @@ async function main() {
             const resolver = modeModelResolvers[event.modeId]
             if (resolver) {
                 const targetModel = resolver()
-                harness
-                    .switchModel({ modelId: targetModel })
-                    .catch(() => {})
+                harness.switchModel({ modelId: targetModel }).catch(() => {})
             }
         }
     })
@@ -928,48 +925,6 @@ async function main() {
     // with write/execute tools disabled.
     const READ_ONLY_TOOLS_CONFIG = { ...WS_TOOL_NAMES, ...READ_ONLY_DISABLED }
 
-    // Diagnostic: instrument workspace filesystem to log write_file failures.
-    // Idempotent — uses a Symbol marker so we only patch each filesystem once.
-    // Logs full context (cwd, basePath, allowedPaths, error name/message) to
-    // the session ledger when a write fails, so we can identify the root cause
-    // of the intermittent "File not found" errors users have reported.
-    const LUCA_INSTRUMENTED = Symbol.for('luca.write_file.instrumented')
-    function instrumentFilesystemForDiagnostics(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        filesystem: any
-    ) {
-        if (!filesystem || filesystem[LUCA_INSTRUMENTED]) return
-        const originalWriteFile = filesystem.writeFile
-        if (typeof originalWriteFile !== 'function') return
-        filesystem.writeFile = async function patchedWriteFile(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ...args: any[]
-        ) {
-            const [path] = args
-            try {
-                return await originalWriteFile.apply(this, args)
-            } catch (error) {
-                appendLedger('write_file_failed', {
-                    mode: harness.getCurrentModeId(),
-                    input_path: path,
-                    cwd: process.cwd(),
-                    base_path: filesystem._basePath ?? null,
-                    allowed_paths: filesystem._allowedPaths ?? null,
-                    error_name:
-                        error instanceof Error ? error.name : 'UnknownError',
-                    error_message:
-                        error instanceof Error ? error.message : String(error),
-                    error_code:
-                        error && typeof error === 'object' && 'code' in error
-                            ? (error as { code: unknown }).code
-                            : null,
-                })
-                throw error
-            }
-        }
-        filesystem[LUCA_INSTRUMENTED] = true
-    }
-
     // Intercept the workspace factory to enforce read-only modes.
     // getDynamicWorkspace (called per-message via buildRequestContext) only
     // disables 3 write tools for literal "plan" mode. Our wrapper runs AFTER
@@ -994,14 +949,53 @@ async function main() {
             if (workspace && READ_ONLY_MODES.has(harness.getCurrentModeId())) {
                 workspace.setToolsConfig(READ_ONLY_TOOLS_CONFIG)
             }
-            // Diagnostic: capture write_file failures with full context so we
-            // can identify the root cause if the "File not found" error returns.
-            // Patch is idempotent — guarded by a Symbol marker on the filesystem.
-            if (workspace?.filesystem) {
-                instrumentFilesystemForDiagnostics(workspace.filesystem)
-            }
             return workspace
         }
+    }
+
+    // --- Workaround for upstream @mastra/core bug ---
+    //
+    // LocalFilesystem.writeFile() in @mastra/core@1.28.0 calls stat() to honor
+    // the optional `expectedMtime` precheck. When the target file doesn't yet
+    // exist, stat() throws a custom `FileNotFoundError` that has no `code`
+    // property, so the surrounding `isEnoentError(err)` check (which compares
+    // `err.code === 'ENOENT'`) returns false and the error is rethrown — even
+    // though "file does not exist" is the normal case for a new write.
+    //
+    // We wrap the singleton writeFileTool's `execute` to swallow this specific
+    // error and let the underlying writeFile() proceed. The patch is idempotent
+    // via a Symbol marker. Remove once the upstream bug is fixed.
+    // See: https://github.com/mastra-ai/mastra (file an issue if not already).
+    const LUCA_WRITE_FILE_PATCHED = Symbol.for('luca.write_file.patched')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wft = writeFileTool as any
+    if (
+        wft &&
+        typeof wft.execute === 'function' &&
+        !wft[LUCA_WRITE_FILE_PATCHED]
+    ) {
+        const originalExecute = wft.execute
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        wft.execute = async function patchedExecute(input: any, context: any) {
+            try {
+                return await originalExecute.call(this, input, context)
+            } catch (error) {
+                // Suppress FileNotFoundError from the precheck; new files are
+                // expected not to exist yet. Anything else propagates.
+                const name = error instanceof Error ? error.name : ''
+                const msg = error instanceof Error ? error.message : ''
+                if (
+                    name === 'FileNotFoundError' ||
+                    /^File not found:/.test(msg)
+                ) {
+                    // Retry once with the precheck bypassed — the actual write
+                    // will create the file. If it still fails, propagate.
+                    return await originalExecute.call(this, input, context)
+                }
+                throw error
+            }
+        }
+        wft[LUCA_WRITE_FILE_PATCHED] = true
     }
 
     // Also enforce on the cached workspace when modes change outside the request
