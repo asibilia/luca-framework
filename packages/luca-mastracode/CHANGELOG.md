@@ -1,5 +1,17 @@
 # @alecsibilia/luca-mastracode
 
+## 10.4.1
+
+### Patch Changes
+
+- 6e8e5b7: Upgrade default model from Claude Opus 4.6 to Claude Opus 4.7 across all model routing and mode configurations.
+
+  **Changed files:**
+  - `model-routing.ts` — `capable` tier now resolves to `anthropic/claude-opus-4-7`
+  - `modes/build.ts` — `resolveBuildModel()` and `defaultModelId`
+  - `modes/architect.ts` — `defaultModelId`
+  - `modes/execute.ts` — `defaultModelId`
+
 ## 10.4.0
 
 ### Minor Changes
