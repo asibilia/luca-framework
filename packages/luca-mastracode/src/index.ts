@@ -112,6 +112,29 @@ import { TokenBudgetMonitor } from './token-budget.js'
 import { buildModeTools } from './tools/build-mode-tools.js'
 
 // ---------------------------------------------------------------------------
+// Mode-to-model resolver map
+// ---------------------------------------------------------------------------
+//
+// Maps custom luca pipeline mode IDs to their model resolvers. Used to force-
+// sync the harness's internal model state (and therefore the TUI status bar)
+// to our config when the mode changes.
+//
+// Stock modes (build / plan / fast) are intentionally excluded: those modes
+// participate in mastracode's model-pack system, so users can pick a per-mode
+// model via /models. Forcing switchModel() on those modes would steamroll the
+// user's persisted selection. Custom luca:* modes are not in any pack, which
+// is why they need this sync.
+const PIPELINE_MODE_MODEL_RESOLVERS: Record<string, () => string> = {
+    'luca:discuss': resolveDiscussModel,
+    'luca:1-triage': resolveTriageModel,
+    'luca:2-research': resolveResearchModel,
+    'luca:3-architect': resolveArchitectModel,
+    'luca:4-execute': resolveExecuteModel,
+    'luca:5-review': resolveReviewModel,
+    'luca:6-finalize': resolveFinalizeModel,
+}
+
+// ---------------------------------------------------------------------------
 // Branding — load from .planning/config.json if present
 // ---------------------------------------------------------------------------
 
@@ -794,28 +817,30 @@ async function main() {
             contextRefresher.setMode(event.modeId)
             // Reset INJECT_REMINDERS threshold so each mode can get its own reminder.
             tokenBudget.clearThreshold('INJECT_REMINDERS')
-            // Force-sync the harness model display to match our mode config.
-            // The TUI persists model IDs per-mode in thread settings, which can
-            // become stale when we upgrade models. Our dynamic model() function
-            // already returns the correct model at API time, but the status bar
-            // reads from the harness's internal state. This ensures the display
-            // stays consistent with what we actually send to the API.
-            const modeModelResolvers: Record<string, () => string> = {
-                build: resolveBuildModel,
-                plan: resolvePlanModel,
-                fast: resolveFastModel,
-                'luca:discuss': resolveDiscussModel,
-                'luca:1-triage': resolveTriageModel,
-                'luca:2-research': resolveResearchModel,
-                'luca:3-architect': resolveArchitectModel,
-                'luca:4-execute': resolveExecuteModel,
-                'luca:5-review': resolveReviewModel,
-                'luca:6-finalize': resolveFinalizeModel,
-            }
-            const resolver = modeModelResolvers[event.modeId]
+            // Sync the harness's internal model state on mode_changed so the
+            // TUI status bar reflects our mode config for custom luca:* pipeline
+            // modes. Note: this only fires on mode transitions — agent models
+            // are still resolved per-request via createStaticAgent's dynamic
+            // model() function, so the effective model for an API call can
+            // change within a mode (e.g., triage swapping after complexity is
+            // written) without re-firing this handler. Stock modes (build /
+            // plan / fast) are deliberately excluded; they belong to the model
+            // pack system and forcing switchModel here would override the
+            // user's persisted /models selection.
+            const resolver = PIPELINE_MODE_MODEL_RESOLVERS[event.modeId]
             if (resolver) {
                 const targetModel = resolver()
-                harness.switchModel({ modelId: targetModel }).catch(() => {})
+                harness
+                    .switchModel({ modelId: targetModel })
+                    .catch((err: unknown) => {
+                        // Fire-and-forget, but surface failures so a stale
+                        // status bar (the original symptom this fix targets)
+                        // is debuggable rather than silently broken.
+                        console.warn(
+                            `[luca] failed to sync harness model for mode "${event.modeId}" (target: ${targetModel}):`,
+                            err instanceof Error ? err.message : err
+                        )
+                    })
             }
         }
     })
