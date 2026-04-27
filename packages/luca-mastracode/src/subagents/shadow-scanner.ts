@@ -1,3 +1,7 @@
+/**
+ * shadow-scanner (subagent) — Harness subagent that performs shadow-debt scans.
+ * Schemas, config loading, and scan-mode helpers live in `../shadow-scanner.ts`.
+ */
 import type { HarnessSubagent } from '@mastra/core/harness'
 
 export const shadowScannerSubagent: HarnessSubagent = {

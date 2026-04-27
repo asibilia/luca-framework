@@ -13,6 +13,17 @@ export default [
             prettier,
             import: importPlugin,
         },
+        settings: {
+            'import/resolver': {
+                typescript: {
+                    alwaysTryTypes: true,
+                    project: [
+                        './tsconfig.json',
+                        './packages/*/tsconfig.json',
+                    ],
+                },
+            },
+        },
         rules: {
             'prettier/prettier': [
                 'error',

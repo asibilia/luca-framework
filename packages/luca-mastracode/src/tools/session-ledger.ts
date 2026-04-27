@@ -1,3 +1,7 @@
+/**
+ * session-ledger (tool) — Mastra tool wrapper exposing the session ledger
+ * to agents. Data layer + schemas live in `../session-ledger.ts`.
+ */
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
