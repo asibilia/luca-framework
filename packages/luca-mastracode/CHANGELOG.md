@@ -1,5 +1,38 @@
 # @alecsibilia/luca-mastracode
 
+## 10.5.0
+
+### Minor Changes
+
+- 5aedce5: Subagents now inherit MCP tools from the harness's `mcpManager`.
+
+  Previously, mode agents merged MCP tools (firecrawl, muninn, etc.) at request time via `mcpManagerRef` in `create-static-agent.ts`, but subagents (researcher, executor, planner, …) only saw the static `tools` field on their `HarnessSubagent` definition — which was empty. Skills loaded into the subagent prompt referenced tools the subagent couldn't actually call, so e.g. `firecrawl_search` invocations hung indefinitely and `muninn_*` calls silently no-op'd.
+
+  Each opted-in subagent now exposes a Proxy on `definition.tools` that forwards `ownKeys` / `getOwnPropertyDescriptor` / `get` / `has` to `mcpManager.getTools()`. The harness materializes tools at subagent execute time via `{ ...definition.tools }`, so the Proxy resolves to whatever MCP servers are connected at that moment — no init-timing race with mastracode's own `tui.init()` MCP wire-up, no startup delay, and mid-session MCP reloads are reflected automatically.
+
+  Inheriting subagents: `researcher`, `discussion`, `planner`, `executor`, `verifier`, `reviewer`, `learner`. Filesystem-only subagents (`plan-reviewer`, `shadow-scanner`) keep their narrower toolset.
+
+### Patch Changes
+
+- 5aedce5: Refactor luca-mastracode internal module layout from the DX audit. No behavior changes — pure mechanical extraction.
+
+  `src/index.ts` had grown to 1,869 lines containing nine distinct concerns despite the convention that `index.ts` should only re-export. The entry point is now a 62-line shim (executable boot sequence + public API barrel), with implementation split across:
+  - `branding.ts` — `loadBranding`, `resolveLucaVersion`
+  - `rules-loader.ts` — alwaysApply rule frontmatter parsing/loading
+  - `agent-constraints.ts` — `CORE_OPERATING_RULES`, `HARD_CONSTRAINTS`, `RECENCY_REMINDERS`, `getAgentConstraints`
+  - `create-static-agent.ts` — Mode agent factory
+  - `install-bundled-assets.ts` — `installSlashCommands` / `installSkills` / `installRules`
+  - `continuation-messages.ts` — `buildContinuationMessage`
+  - `mastracode-config.ts` — Settings path + pack-model resolution
+  - `tui-text-helpers.ts` — ANSI / grapheme / visible-width helpers
+  - `launch.ts` — `main()` orchestration + monkey-patches
+
+  Two oversized tools were also split:
+  - `tools/run-checks.ts` (484 → 169 lines) → `check-runner.ts` (subprocess execution), `check-parsers.ts` (fingerprinting), `check-convergence.ts` (iteration state tracking)
+  - `tools/repo-cleanup.ts` (315 → 197 lines) → `cleanup-report.ts` (shadow-scan output validation), `cleanup-fixes.ts` (delete/move/gitignore remediations)
+
+  Finally, the four duplicate-named module pairs (`confidence-journal`, `session-ledger`, `verification-result`, `shadow-scanner`) now carry 2-line header comments on the wrapper file pointing back to the data layer, so it's instantly obvious which side owns the schemas vs. the tool/subagent definition.
+
 ## 10.4.3
 
 ### Patch Changes
