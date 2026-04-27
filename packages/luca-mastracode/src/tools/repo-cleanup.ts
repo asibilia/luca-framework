@@ -1,21 +1,25 @@
-import {
-    existsSync,
-    readFileSync,
-    readdirSync,
-    unlinkSync,
-    renameSync,
-    appendFileSync,
-    mkdirSync,
-} from 'node:fs'
-import { join, dirname } from 'node:path'
+/**
+ * repo-cleanup — Mastra tool that scans and cleans up AI-session debris.
+ *
+ * Orchestrates the shadow-scanner subagent. Five actions:
+ *   • scan              — prepare scan parameters and config summary
+ *   • parse-report      — validate scanner output → cleanup-report.ts
+ *   • apply-fix         — apply remediation → cleanup-fixes.ts
+ *   • summary           — surface current shadow-debt config
+ *   • cleanup-artifacts — remove intermediate capture/convergence files
+ */
+import { existsSync, readdirSync, unlinkSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { applyDelete, applyGitignore, applyMove } from './cleanup-fixes'
+import { parseShadowScanReport } from './cleanup-report'
+
 import {
-    loadShadowDebtConfig,
     determineScanMode,
-    ShadowScanReportSchema,
+    loadShadowDebtConfig,
     SCAN_MODE_CATEGORIES,
     type ScanMode,
 } from '../shadow-scanner.js'
@@ -115,72 +119,7 @@ export const repoCleanupTool = createTool({
                 if (!raw_output) {
                     return { error: 'raw_output is required for parse-report' }
                 }
-
-                // Extract JSON block from the scanner output
-                // Try fenced ```json block first, then raw JSON object
-                let jsonStr: string | undefined
-                const jsonMatch = raw_output.match(
-                    /```json\s*\n([\s\S]*?)\n\s*```/
-                )
-                if (jsonMatch?.[1]) {
-                    jsonStr = jsonMatch[1]
-                } else {
-                    // Try to find a raw JSON object with scan_mode key
-                    const rawMatch = raw_output.match(
-                        /(\{[\s\S]*"scan_mode"[\s\S]*\})\s*$/
-                    )
-                    if (rawMatch?.[1]) {
-                        jsonStr = rawMatch[1]
-                    }
-                }
-
-                if (!jsonStr) {
-                    return {
-                        error: 'No JSON block found in scanner output',
-                        hint: 'The shadow-scanner subagent should emit a ```json block at the end of its response, or the raw_output should contain a JSON object with a scan_mode key.',
-                    }
-                }
-
-                let parsed
-                try {
-                    parsed = JSON.parse(jsonStr)
-                } catch (e) {
-                    return {
-                        error: 'Failed to parse JSON from scanner output',
-                        detail: String(e),
-                    }
-                }
-
-                const result = ShadowScanReportSchema.safeParse(parsed)
-                if (!result.success) {
-                    return {
-                        error: 'Scanner output does not match ShadowScanReport schema',
-                        issues: result.error.issues.map(
-                            (i) => `${i.path.join('.')}: ${i.message}`
-                        ),
-                    }
-                }
-
-                const report = result.data
-                const { summary } = report
-
-                const banner = [
-                    `Shadow Scan Complete — ${report.scan_mode} mode`,
-                    `Categories scanned: ${report.categories_scanned.join(', ')}`,
-                    ``,
-                    `  Total:    ${summary.total}`,
-                    `  Critical: ${summary.critical}`,
-                    `  High:     ${summary.high}`,
-                    `  Medium:   ${summary.medium}`,
-                    `  Low:      ${summary.low}`,
-                ].join('\n')
-
-                return {
-                    report,
-                    banner,
-                    has_critical: summary.critical > 0,
-                    has_actionable: summary.total > 0,
-                }
+                return parseShadowScanReport(raw_output)
             }
 
             case 'apply-fix': {
@@ -190,70 +129,13 @@ export const repoCleanupTool = createTool({
                     }
                 }
 
-                const fullPath = join(process.cwd(), file_path)
-
                 switch (recommended_action) {
-                    case 'delete': {
-                        if (!existsSync(fullPath)) {
-                            return {
-                                status: 'skipped',
-                                message: `File not found: ${file_path}`,
-                            }
-                        }
-                        unlinkSync(fullPath)
-                        return {
-                            status: 'applied',
-                            action: 'delete',
-                            file_path,
-                        }
-                    }
-
-                    case 'move': {
-                        if (!target_path) {
-                            return {
-                                error: 'target_path is required for move action',
-                            }
-                        }
-                        if (!existsSync(fullPath)) {
-                            return {
-                                status: 'skipped',
-                                message: `File not found: ${file_path}`,
-                            }
-                        }
-                        const fullTarget = join(process.cwd(), target_path)
-                        mkdirSync(dirname(fullTarget), { recursive: true })
-                        renameSync(fullPath, fullTarget)
-                        return {
-                            status: 'applied',
-                            action: 'move',
-                            file_path,
-                            target_path,
-                        }
-                    }
-
-                    case 'gitignore': {
-                        const gitignorePath = join(process.cwd(), '.gitignore')
-                        const entry = file_path.endsWith('/')
-                            ? file_path
-                            : `${file_path}\n`
-                        const existing = existsSync(gitignorePath)
-                            ? readFileSync(gitignorePath, 'utf-8')
-                            : ''
-                        if (existing.includes(file_path)) {
-                            return {
-                                status: 'skipped',
-                                message: `Already in .gitignore: ${file_path}`,
-                            }
-                        }
-                        const newline = existing.endsWith('\n') ? '' : '\n'
-                        appendFileSync(gitignorePath, `${newline}${entry}`)
-                        return {
-                            status: 'applied',
-                            action: 'gitignore',
-                            file_path,
-                        }
-                    }
-
+                    case 'delete':
+                        return applyDelete(file_path)
+                    case 'move':
+                        return applyMove(file_path, target_path)
+                    case 'gitignore':
+                        return applyGitignore(file_path)
                     default:
                         return {
                             error: `Unknown action: ${recommended_action}`,

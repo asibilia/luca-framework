@@ -1,3 +1,7 @@
+/**
+ * verification-result (tool) — Mastra tool wrapper exposing the verification
+ * result schema to agents. Data layer + schemas live in `../verification-result.ts`.
+ */
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 

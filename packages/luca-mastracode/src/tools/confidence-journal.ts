@@ -1,3 +1,7 @@
+/**
+ * confidence-journal (tool) — Mastra tool wrapper exposing the confidence
+ * journal to agents. Data layer + schemas live in `../confidence-journal.ts`.
+ */
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
