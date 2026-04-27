@@ -32,6 +32,10 @@ function getSegmenter(): Intl.Segmenter {
 
 // East-Asian Wide / Fullwidth + emoji ranges. Anything in here counts as 2
 // columns; everything else (excluding zero-width / control chars) counts as 1.
+//
+// We err on the side of *over*-reporting width for ambiguous emoji rather than
+// under-reporting: an over-truncated label is ugly, but an under-truncated one
+// re-trips the pi-tui line-width assertion this helper exists to prevent.
 export function graphemeWidth(grapheme: string): number {
     if (grapheme.length === 0) return 0
     const cp = grapheme.codePointAt(0)
@@ -41,9 +45,54 @@ export function graphemeWidth(grapheme: string): number {
     if (cp >= 0x0300 && cp <= 0x036f) return 0 // combining diacriticals
     if (cp === 0x200b || cp === 0x200c || cp === 0x200d) return 0 // ZW(N)J
     if (cp >= 0xfe00 && cp <= 0xfe0f) return 0 // variation selectors
+
+    // Multi-codepoint sequences that render as a single wide glyph:
+    //   * VS16 (U+FE0F) forces emoji presentation — e.g. ❤️, ☀️, ✌️ — for
+    //     base chars in U+2600–U+27BF that we'd otherwise treat as width 1.
+    //   * Keycap sequences (digit/`#`/`*` + FE0F + U+20E3) — e.g. 1️⃣, #️⃣.
+    //   * Regional indicator pairs (🇺🇸 etc.) — covered by the 0x1F1E6 range below.
+    if (grapheme.length > 1) {
+        if (grapheme.includes('\uFE0F')) return 2
+        if (grapheme.includes('\u20E3')) return 2 // combining keycap
+    }
+
     // Wide ranges (CJK, Hangul, fullwidth, emoji blocks).
     if (
         (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+        (cp >= 0x231a && cp <= 0x231b) || // ⌚⌛
+        (cp >= 0x2329 && cp <= 0x232a) || // 〈〉
+        (cp >= 0x23e9 && cp <= 0x23ec) || // ⏩⏪⏫⏬
+        cp === 0x23f0 ||
+        cp === 0x23f3 || // ⏰⏳
+        (cp >= 0x25fd && cp <= 0x25fe) || // ◽◾
+        (cp >= 0x2614 && cp <= 0x2615) || // ☔☕
+        (cp >= 0x2648 && cp <= 0x2653) || // zodiac
+        cp === 0x267f || // ♿
+        cp === 0x2693 || // ⚓
+        cp === 0x26a1 || // ⚡
+        (cp >= 0x26aa && cp <= 0x26ab) || // ⚪⚫
+        (cp >= 0x26bd && cp <= 0x26be) || // ⚽⚾
+        (cp >= 0x26c4 && cp <= 0x26c5) || // ⛄⛅
+        cp === 0x26ce || // ⛎
+        cp === 0x26d4 || // ⛔
+        cp === 0x26ea || // ⛪
+        (cp >= 0x26f2 && cp <= 0x26f3) || // ⛲⛳
+        cp === 0x26f5 || // ⛵
+        cp === 0x26fa || // ⛺
+        cp === 0x26fd || // ⛽
+        cp === 0x2705 || // ✅
+        (cp >= 0x270a && cp <= 0x270b) || // ✊✋
+        cp === 0x2728 || // ✨
+        cp === 0x274c || // ❌
+        cp === 0x274e || // ❎
+        (cp >= 0x2753 && cp <= 0x2755) || // ❓❔❕
+        cp === 0x2757 || // ❗
+        (cp >= 0x2795 && cp <= 0x2797) || // ➕➖➗
+        cp === 0x27b0 || // ➰
+        cp === 0x27bf || // ➿
+        (cp >= 0x2b1b && cp <= 0x2b1c) || // ⬛⬜
+        cp === 0x2b50 || // ⭐
+        cp === 0x2b55 || // ⭕
         (cp >= 0x2e80 && cp <= 0x303e) || // CJK radicals / symbols
         (cp >= 0x3041 && cp <= 0x33ff) || // Hiragana/Katakana/CJK
         (cp >= 0x3400 && cp <= 0x4dbf) || // CJK ext A
@@ -54,7 +103,12 @@ export function graphemeWidth(grapheme: string): number {
         (cp >= 0xfe30 && cp <= 0xfe4f) || // CJK compat forms
         (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth
         (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth signs
-        (cp >= 0x1f300 && cp <= 0x1faff) || // Emoji / pictographs
+        (cp >= 0x1f1e6 && cp <= 0x1f1ff) || // Regional indicators
+        (cp >= 0x1f300 && cp <= 0x1f64f) || // Misc symbols & pictographs / Emoticons
+        (cp >= 0x1f680 && cp <= 0x1f6ff) || // Transport & map
+        (cp >= 0x1f700 && cp <= 0x1f7ff) || // Geometric / alchemical
+        (cp >= 0x1f900 && cp <= 0x1f9ff) || // Supplemental symbols & pictographs
+        (cp >= 0x1fa70 && cp <= 0x1faff) || // Symbols & pictographs ext-A
         (cp >= 0x20000 && cp <= 0x3fffd) // CJK ext B–G
     ) {
         return 2

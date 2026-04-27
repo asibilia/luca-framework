@@ -55,17 +55,24 @@ export function applyMove(filePath: string, targetPath?: string): FixResult {
 
 export function applyGitignore(filePath: string): FixResult {
     const gitignorePath = join(process.cwd(), '.gitignore')
-    const entry = filePath.endsWith('/') ? filePath : `${filePath}\n`
     const existing = existsSync(gitignorePath)
         ? readFileSync(gitignorePath, 'utf-8')
         : ''
-    if (existing.includes(filePath)) {
+    // Compare on whole, trimmed lines so `foo` doesn't match `foobar` and a
+    // commented mention (`# ignore foo`) doesn't suppress a real entry.
+    const alreadyPresent = existing.split('\n').some((line) => {
+        const trimmed = line.trim()
+        return (
+            trimmed !== '' && !trimmed.startsWith('#') && trimmed === filePath
+        )
+    })
+    if (alreadyPresent) {
         return {
             status: 'skipped',
             message: `Already in .gitignore: ${filePath}`,
         }
     }
-    const newline = existing.endsWith('\n') ? '' : '\n'
-    appendFileSync(gitignorePath, `${newline}${entry}`)
+    const newline = existing === '' || existing.endsWith('\n') ? '' : '\n'
+    appendFileSync(gitignorePath, `${newline}${filePath}\n`)
     return { status: 'applied', action: 'gitignore', file_path: filePath }
 }
