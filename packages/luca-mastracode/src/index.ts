@@ -88,6 +88,7 @@ import {
     PIPELINE_STEPS_ORDERED,
     wrapInSystemReminder,
 } from './pipeline-tui.js'
+import { appendLedger } from './session-ledger.js'
 // Mutable refs — wired up after createMastraCode() returns. Extracted to
 // refs.ts to avoid circular imports with tool modules.
 import {
@@ -927,6 +928,48 @@ async function main() {
     // with write/execute tools disabled.
     const READ_ONLY_TOOLS_CONFIG = { ...WS_TOOL_NAMES, ...READ_ONLY_DISABLED }
 
+    // Diagnostic: instrument workspace filesystem to log write_file failures.
+    // Idempotent — uses a Symbol marker so we only patch each filesystem once.
+    // Logs full context (cwd, basePath, allowedPaths, error name/message) to
+    // the session ledger when a write fails, so we can identify the root cause
+    // of the intermittent "File not found" errors users have reported.
+    const LUCA_INSTRUMENTED = Symbol.for('luca.write_file.instrumented')
+    function instrumentFilesystemForDiagnostics(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        filesystem: any
+    ) {
+        if (!filesystem || filesystem[LUCA_INSTRUMENTED]) return
+        const originalWriteFile = filesystem.writeFile
+        if (typeof originalWriteFile !== 'function') return
+        filesystem.writeFile = async function patchedWriteFile(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ...args: any[]
+        ) {
+            const [path] = args
+            try {
+                return await originalWriteFile.apply(this, args)
+            } catch (error) {
+                appendLedger('write_file_failed', {
+                    mode: harness.getCurrentModeId(),
+                    input_path: path,
+                    cwd: process.cwd(),
+                    base_path: filesystem._basePath ?? null,
+                    allowed_paths: filesystem._allowedPaths ?? null,
+                    error_name:
+                        error instanceof Error ? error.name : 'UnknownError',
+                    error_message:
+                        error instanceof Error ? error.message : String(error),
+                    error_code:
+                        error && typeof error === 'object' && 'code' in error
+                            ? (error as { code: unknown }).code
+                            : null,
+                })
+                throw error
+            }
+        }
+        filesystem[LUCA_INSTRUMENTED] = true
+    }
+
     // Intercept the workspace factory to enforce read-only modes.
     // getDynamicWorkspace (called per-message via buildRequestContext) only
     // disables 3 write tools for literal "plan" mode. Our wrapper runs AFTER
@@ -950,6 +993,12 @@ async function main() {
             const workspace = await Promise.resolve(originalWorkspaceFn(args))
             if (workspace && READ_ONLY_MODES.has(harness.getCurrentModeId())) {
                 workspace.setToolsConfig(READ_ONLY_TOOLS_CONFIG)
+            }
+            // Diagnostic: capture write_file failures with full context so we
+            // can identify the root cause if the "File not found" error returns.
+            // Patch is idempotent — guarded by a Symbol marker on the filesystem.
+            if (workspace?.filesystem) {
+                instrumentFilesystemForDiagnostics(workspace.filesystem)
             }
             return workspace
         }
