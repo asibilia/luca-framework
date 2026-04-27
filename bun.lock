@@ -27,7 +27,7 @@
     },
     "packages/luca-framework": {
       "name": "@alecsibilia/luca-framework",
-      "version": "10.0.4",
+      "version": "11.0.0",
       "bin": {
         "luca": "./bin/luca.js",
       },
@@ -45,6 +45,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@alecsibilia/luca-mastracode": "workspace:*",
         "@types/semver": "^7.5.8",
         "@types/update-notifier": "^6.0.8",
       },
