@@ -117,8 +117,11 @@ jobs:
       # an .npmrc, and npm uses any configured `_authToken` in preference
       # to OIDC trusted publishing. Without a real NPM_TOKEN that resolves
       # to setup-node's literal placeholder string and the registry returns
-      # 404. Leaving registry-url unset means no .npmrc, no token auth,
-      # and npm uses OIDC. The default registry is npmjs.org anyway.
+      # 404. Leaving registry-url unset means setup-node writes no .npmrc.
+      # (We also deleted the obsolete `packages/luca-framework/.npmrc` that
+      # carried the same `_authToken=${NODE_AUTH_TOKEN}` line; it would
+      # otherwise be picked up when the publish step cd's into the package
+      # directory.) The default registry is npmjs.org anyway.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
