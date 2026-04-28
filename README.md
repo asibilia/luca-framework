@@ -58,7 +58,7 @@ All subagents receive a shared behavioral prefix (~300-400 tokens) with core ope
 
 ### Tools
 
-10 custom tools power the pipeline:
+11 custom tools power the pipeline:
 
 | Tool | Purpose |
 |------|---------|
@@ -70,6 +70,7 @@ All subagents receive a shared behavioral prefix (~300-400 tokens) with core ope
 | `sessionLedger` | Structured audit trail for mode transitions and phase boundaries |
 | `pipelineLock` | Mutex to prevent concurrent pipeline runs |
 | `classifyComplexity` | TRIVIAL → CRITICAL complexity classification with file/concern estimation |
+| `confidenceJournal` | Tracks execution-time decision confidence and flags blocks needing human re-review |
 | `repoCleanup` | Shadow debt scanning and automated cleanup |
 | `writePlanningFile` | Writes artifacts to `.planning/` directory |
 
@@ -125,15 +126,34 @@ bun install
 ```bash
 luca init          # Set up MuninnDB
 luca vault:init    # Configure vault for your project
+luca doctor        # Run environment diagnostics and health checks
 ```
 
 ### 3. Launch the harness
+
+If you've installed `@alecsibilia/luca-framework` globally (or via `bun link`), run:
 
 ```bash
 luca run
 ```
 
+Inside this monorepo, the equivalent is:
+
+```bash
+bun run mastracode
+```
+
 Or use the `/lu` slash command within the TUI to execute pipeline workflows.
+
+### CLI Reference
+
+| Command | Purpose |
+|---------|---------|
+| `luca init` | Bootstrap MuninnDB |
+| `luca vault:init` | Configure the project vault |
+| `luca run` | Launch the Mastra Code harness |
+| `luca doctor` | Run environment diagnostics and health checks |
+| `luca version` | Print the installed CLI version |
 
 ## Development
 
