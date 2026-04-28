@@ -47,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/alecsibilia/luca-framework.git",
+    "url": "https://github.com/asibilia/luca-framework.git",
     "directory": "packages/luca-framework"
   },
   "scripts": {
