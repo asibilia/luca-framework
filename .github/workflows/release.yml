@@ -93,6 +93,14 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     runs-on: ubuntu-latest
+    # The npm Trusted Publisher for @alecsibilia/luca-framework is
+    # configured with `Environment name: npm-publish`. That makes npm
+    # require the incoming OIDC token to carry an `environment` claim
+    # matching that value. Declaring `environment: npm-publish` here is
+    # what gets that claim onto the token GitHub mints for this job.
+    # Without it the npm token-exchange call fails silently and the npm
+    # CLI surfaces the failure as `ENEEDAUTH` (npm/cli#9088).
+    environment: npm-publish
     # id-token: write is required for npm trusted publishing (OIDC).
     # No NPM_TOKEN is used — npm exchanges this OIDC token for a short-lived
     # publish credential via the trusted publisher configured on npmjs.com.
