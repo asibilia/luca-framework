@@ -6,3 +6,18 @@ find the full documentation for it [in our repository](https://github.com/change
 
 We have a quick list of common questions to get you started engaging with this project in
 [our documentation](https://github.com/changesets/changesets/blob/main/docs/common-questions.md).
+
+## Fixed packages
+
+`@alecsibilia/luca-framework` and `@alecsibilia/luca-mastracode` are configured as a **fixed** pair in
+`config.json`. Any changeset that targets one will version both together at the same new version, even
+if the other package has no changesets of its own.
+
+This is intentional. `luca-mastracode` is `private: true` and is never published to npm — it is bundled
+into the framework tarball at build time (`dist/mastracode/`). Any change to mastracode is therefore a
+runtime change to the framework's published artifact, so the two packages are kept in lockstep even
+though only `@alecsibilia/luca-framework` is published and `luca-mastracode` is bundled within it.
+
+In practice this means you can write a changeset against whichever package the change conceptually lives
+in, and the release tooling will keep both versions in lockstep. You do not need to remember to add the
+framework to every mastracode changeset.
