@@ -6,7 +6,7 @@
     ["@alecsibilia/luca-framework", "@alecsibilia/luca-mastracode"]
   ],
   "linked": [],
-  "access": "restricted",
+  "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": []
