@@ -111,11 +111,18 @@ jobs:
       # Node 24 is the active LTS and bundles npm >= 11.12, which clears
       # the 11.5.1 floor required for npm trusted publishing. Node 22 LTS
       # peaked at npm 10.9.7, so we can't use it without a manual upgrade.
+      #
+      # NOTE: do NOT pass `registry-url` here. setup-node responds by
+      # writing `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
+      # an .npmrc, and npm uses any configured `_authToken` in preference
+      # to OIDC trusted publishing. Without a real NPM_TOKEN that resolves
+      # to setup-node's literal placeholder string and the registry returns
+      # 404. Leaving registry-url unset means no .npmrc, no token auth,
+      # and npm uses OIDC. The default registry is npmjs.org anyway.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
