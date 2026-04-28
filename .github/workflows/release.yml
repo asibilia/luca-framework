@@ -111,4 +111,4 @@ jobs:
         run: bunx --bun tsc --noEmit
 
       - name: Publish to npm
-        run: cd packages/luca-framework && bun publish --access restricted
+        run: cd packages/luca-framework && bun publish --access public
