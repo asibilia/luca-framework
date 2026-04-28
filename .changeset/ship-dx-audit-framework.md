@@ -1,4 +1,5 @@
 ---
+"@alecsibilia/luca-framework": patch
 "@alecsibilia/luca-mastracode": patch
 ---
 
