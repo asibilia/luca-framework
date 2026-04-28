@@ -115,9 +115,17 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       # Trusted publishing requires npm CLI 11.5.1+. The Node 22 image ships
-      # with npm 10.x, so upgrade to the latest npm before publishing.
-      - name: Upgrade npm to support trusted publishing
-        run: npm install -g npm@latest
+      # with npm 10.x. We can't `npm install -g npm@latest` here — the
+      # bundled npm replaces itself in place during the install and the
+      # transient state breaks module resolution
+      # (`Cannot find module 'promise-retry'`). Install npm into a separate
+      # prefix instead, then call its bin directly. The bundled npm handles
+      # the install fine because it isn't overwriting itself.
+      - name: Install npm CLI 11.5.1+ for trusted publishing
+        run: |
+          mkdir -p /tmp/npm-cli
+          npm install --prefix /tmp/npm-cli npm@latest
+          /tmp/npm-cli/node_modules/.bin/npm --version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -136,4 +144,4 @@ jobs:
         run: cd packages/luca-framework && bun pm pack --destination ./.pack
 
       - name: Publish to npm via OIDC trusted publishing
-        run: cd packages/luca-framework && npm publish ./.pack/*.tgz --access public --provenance
+        run: cd packages/luca-framework && /tmp/npm-cli/node_modules/.bin/npm publish ./.pack/*.tgz --access public --provenance
