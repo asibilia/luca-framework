@@ -15,8 +15,11 @@
 # workflows (GitHub's recursion-prevention behavior).
 #
 # Requirements:
-#   - NPM_TOKEN repository secret with publish permission for
-#     @alecsibilia/luca-framework.
+#   - npm Trusted Publisher configured on npmjs.com for
+#     @alecsibilia/luca-framework, pointing at this repository and the
+#     `Release` workflow. No NPM_TOKEN secret is used — the publish job
+#     authenticates via OIDC, which also produces signed provenance
+#     attestations on each release.
 
 name: Release
 
@@ -90,8 +93,12 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     runs-on: ubuntu-latest
+    # id-token: write is required for npm trusted publishing (OIDC).
+    # No NPM_TOKEN is used — npm exchanges this OIDC token for a short-lived
+    # publish credential via the trusted publisher configured on npmjs.com.
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -101,8 +108,16 @@ jobs:
         with:
           bun-version: "1.3"
 
-      - name: Configure npm auth
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing requires npm CLI 11.5.1+. The Node 22 image ships
+      # with npm 10.x, so upgrade to the latest npm before publishing.
+      - name: Upgrade npm to support trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -110,5 +125,15 @@ jobs:
       - name: Typecheck
         run: bunx --bun tsc --noEmit
 
-      - name: Publish to npm
-        run: cd packages/luca-framework && bun publish --access public
+      - name: Build framework
+        run: cd packages/luca-framework && bun run build
+
+      # bun pm pack rewrites catalog: and workspace:* protocols to concrete
+      # semver ranges that npm understands; bun publish itself does the same
+      # rewrite, but bun publish doesn't yet support npm OIDC trusted
+      # publishing (oven-sh/bun#22423), so we hand the tarball to npm.
+      - name: Pack tarball (resolves catalog/workspace protocols)
+        run: cd packages/luca-framework && bun pm pack --destination ./.pack
+
+      - name: Publish to npm via OIDC trusted publishing
+        run: cd packages/luca-framework && npm publish ./.pack/*.tgz --access public --provenance
