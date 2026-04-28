@@ -1,41 +1,48 @@
-# Luca Framework
+# @alecsibilia/luca-framework
 
-The AI-native developer productivity framework for structured, autonomous engineering.
+Luca CLI — bootstrap MuninnDB and launch the [Mastra Code](https://mastra.ai) harness for structured, autonomous AI engineering workflows.
 
-## Overview
+## What it does
 
-Luca Framework provides the scaffolding, state management, and cognitive patterns needed for AI agents to work autonomously within a repository. It bridges the gap between raw LLM capabilities and professional engineering workflows.
-
-## Key Features
-
-- **Structured Planning**: Hierarchical planning from Roadmap to atomic Tasks.
-- **State Management**: Persistent `STATE.md` and `WORKING.md` for session continuity.
-- **Autonomous Execution**: Atomic Git commits per task with automatic deviation handling.
-- **Enterprise Readiness**: Built-in security posture, audit trails, and procurement documentation.
+Luca turns AI coding assistants into structured multi-phase development pipelines. The CLI sets up [MuninnDB](https://github.com/asibilia/muninn) for long-term memory, configures a per-project vault, runs environment diagnostics, and launches the custom Mastra Code harness defined in [`@alecsibilia/luca-mastracode`](https://github.com/asibilia/luca-framework/tree/main/packages/luca-mastracode).
 
 ## Installation
 
 ```bash
-bun x create-luca
+bun add -g @alecsibilia/luca-framework
+# or
+npm install -g @alecsibilia/luca-framework
 ```
 
-## Core Workflow
+## Quickstart
 
-1. **Initialize**: `luca init`
-2. **Plan**: Create structured `PLAN.md` files in `.planning/phases/`
-3. **Execute**: Open a plan in your IDE and use the `/lu` command
-4. **Learn**: Automatic extraction of findings to `MEMORY.md`
+```bash
+luca init          # Bootstrap MuninnDB
+luca vault:init    # Configure vault for your project
+luca doctor        # Run environment diagnostics
+luca run           # Launch the Mastra Code harness
+```
 
-## Security
+Once the harness is running, use the `/lu` slash command to execute the autonomous pipeline.
 
-Security is a core pillar of the Luca Framework. We ensure that AI-driven development doesn't compromise your organization's security posture.
+## CLI Reference
 
-### Security Posture
+| Command | Purpose |
+|---------|---------|
+| `luca init` | Bootstrap MuninnDB |
+| `luca vault:init` | Configure the project vault |
+| `luca run` | Launch the Mastra Code harness |
+| `luca doctor` | Run environment diagnostics and health checks |
+| `luca version` | Print the installed CLI version |
 
-- **Local-First**: All core logic and state reside in your local repository.
-- **Auditability**: Every action is traceable through atomic Git commits and execution summaries.
-- **Supply Chain**: Minimal, pinned dependencies with automated vulnerability scanning.
-- **Transparency**: Clear documentation of data handling and privacy principles.
+## Prerequisites
+
+- [Bun](https://bun.sh) runtime
+- [MuninnDB](https://github.com/asibilia/muninn) (for long-term memory)
+
+## Documentation
+
+Full architecture, modes, subagents, and tools reference: [github.com/asibilia/luca-framework](https://github.com/asibilia/luca-framework).
 
 ## License
 
