@@ -12,6 +12,7 @@ import { prReviewTool } from './pr-review.js'
 import { repoCleanupTool } from './repo-cleanup.js'
 import { runChecksTool } from './run-checks.js'
 import { runPostmortemTool } from './run-postmortem.js'
+import { runRulesTool } from './run-rules.js'
 import { sessionLedgerTool } from './session-ledger.js'
 import { verificationResultTool } from './verification-result.js'
 import { workflowStateTool } from './workflow-state.js'
@@ -67,6 +68,10 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
     pr_review: {
         tool: prReviewTool,
         record_key: 'prReview',
+    },
+    run_rules: {
+        tool: runRulesTool,
+        record_key: 'runRules',
     },
 }
 

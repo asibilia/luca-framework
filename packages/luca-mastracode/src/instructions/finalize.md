@@ -231,6 +231,25 @@ runPostmortem(action: "render")
 
 This writes `.planning/POSTMORTEM.md`. Reference it in the PR body (Step 5) and the Final Summary (Step 7).
 
+## Step 4.5: Recurring-Pitfall Rule Suggestions
+
+Scan all available runs (current + archived) for pitfalls that have recurred at or above the promotion threshold:
+
+```
+runRules(action: "suggest", threshold: 3)
+```
+
+The engine groups violations by `code` across runs, counts the number of *distinct runs* each code appeared in, and renders draft `.luca/rules/*.ts` templates for any code meeting the threshold to `.planning/SUGGESTED-RULES.md`.
+
+Drafts are **not** auto-applied — they are starting templates, not finished rules. The recurrence detection answers "what should we have a machine-checkable rule for?" but the user implements the matcher.
+
+**Result handling:**
+
+- `report.recurring.length === 0` — nothing to suggest. Continue.
+- `report.recurring.length > 0` — `.planning/SUGGESTED-RULES.md` was written. Reference it in the PR body so the user sees the suggestions on review. **Do not block the PR** on suggestions; this is advisory.
+
+The threshold defaults to 3 (a pitfall that has bitten you in 3+ runs). Repos that want stricter or looser promotion can override via `threshold`.
+
 ## Step 5: PR Creation
 
 Only reached if Step 3 (Gap Detection) and Step 4 (Postmortem Gate) both passed.
@@ -432,7 +451,7 @@ Read `workflowState(action: "read")` for:
 - Plan and research data for gap detection
 
 ## Tool Coordination
-Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `runPostmortem(gate)` → (5) write changeset + draft PR body → (6) `claimVerifier(gate)` over changeset + PR body → (7) `manageTodos(move-batch → done)` with `verificationRef` for every item, in one call → (8) `gh pr create`.
+Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `runPostmortem(gate)` → (5) `runRules(suggest)` → (6) write changeset + draft PR body → (7) `claimVerifier(gate)` over changeset + PR body → (8) `manageTodos(move-batch → done)` with `verificationRef` for every item, in one call → (9) `gh pr create`.
 
 **Critical:** `manageTodos` will reject any `move → done` without a valid `verificationRef: { criterionId, wave }` pointing at a PASS criterion in `verification-history.jsonl`. Capture the criterion IDs from your `verificationResult(write)` call and pass them through.
 

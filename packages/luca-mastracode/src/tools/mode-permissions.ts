@@ -22,12 +22,14 @@ export const MODE_PERMISSIONS: Record<
         workflow_state: '*',
         repo_cleanup: '*',
         pr_review: '*',
+        run_rules: '*',
     },
     fast: {
         manage_todos: '*',
         workflow_state: '*',
         repo_cleanup: ['scan', 'parse-report', 'summary'],
         pr_review: '*',
+        run_rules: '*',
     },
     plan: {
         classify_complexity: '*',
@@ -69,6 +71,7 @@ export const MODE_PERMISSIONS: Record<
         manage_todos: ['list', 'read', 'move', 'move-batch'],
         pipeline_lock: ['update'],
         run_checks: '*',
+        run_rules: ['list', 'run', 'gate'],
         verification_result: '*',
         write_planning_file: ['write', 'read'],
         confidence_journal: '*',
@@ -76,6 +79,7 @@ export const MODE_PERMISSIONS: Record<
     'luca:5-review': {
         workflow_state: ['read', 'save-review-results', 'switch-mode'],
         run_checks: '*',
+        run_rules: ['list', 'run'],
         verification_result: ['read', 'read-history', 'aggregate'],
         repo_cleanup: ['scan', 'parse-report', 'summary'],
         write_planning_file: ['write', 'read'],
@@ -99,5 +103,6 @@ export const MODE_PERMISSIONS: Record<
         confidence_journal: ['read', 'summary', 'render'],
         run_postmortem: '*',
         claim_verifier: '*',
+        run_rules: '*',
     },
 } as const
