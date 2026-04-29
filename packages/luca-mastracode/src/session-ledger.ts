@@ -32,8 +32,10 @@ const RUNS_DIR = '.planning/runs'
 // ---------------------------------------------------------------------------
 
 /**
- * Crockford-base32 ULID-style identifier (sufficient for run uniqueness;
- * we don't need true ULID monotonicity here).
+ * Generate a base36 (lowercase a-z + 0-9) run identifier of the form
+ * `run_<timestamp36>_<random36>`. This is intentionally not a real ULID —
+ * we only need uniqueness within a `.planning/` directory, not lexicographic
+ * monotonicity or 128-bit collision resistance.
  */
 function generateRunId(): string {
     const ts = Date.now().toString(36)
@@ -167,6 +169,71 @@ export function listRuns(): Array<{
         eventCount: v.count,
     }))
 }
+
+/**
+ * List runIds for which `.planning/runs/<runId>/` archive directories exist
+ * on disk. Returns an empty array if no archives exist or `.planning/` is
+ * missing. Sort order is unspecified — callers should sort if needed.
+ */
+export function listArchivedRuns(): string[] {
+    const archiveRoot = join(process.cwd(), RUNS_DIR)
+    if (!existsSync(archiveRoot)) return []
+    try {
+        // `readdirSync` is synchronous and good enough here — archive
+        // directories are small (one entry per run).
+        const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs')
+        return readdirSync(archiveRoot).filter((name: string) => {
+            try {
+                return statSync(join(archiveRoot, name)).isDirectory()
+            } catch {
+                return false
+            }
+        })
+    } catch {
+        return []
+    }
+}
+
+/**
+ * Resolve the directory holding JSONL artifacts for a given runId. Returns
+ * `.planning/` if `runId` matches the current run, otherwise
+ * `.planning/runs/<runId>/` if that archive exists, else null.
+ */
+export function resolveRunArtifactDir(runId: string): string | null {
+    const planningRoot = join(process.cwd(), '.planning')
+    const current = readLucaState().runId
+    if (current === runId) {
+        return existsSync(planningRoot) ? planningRoot : null
+    }
+    const archiveDir = join(process.cwd(), RUNS_DIR, runId)
+    return existsSync(archiveDir) ? archiveDir : null
+}
+
+/**
+ * Read JSONL entries from a specific file inside an arbitrary directory.
+ * Used by postmortem to load artifacts from archived run directories.
+ */
+export function readJsonlAt<T>(dir: string, basename: string): T[] {
+    const p = join(dir, basename)
+    if (!existsSync(p)) return []
+    try {
+        return readFileSync(p, 'utf-8')
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line) as T)
+    } catch {
+        return []
+    }
+}
+
+/** Filenames used inside both `.planning/` and `.planning/runs/<id>/` */
+export const ARTIFACT_FILES = {
+    ledger: 'session-ledger.jsonl',
+    routing: 'routing-history.jsonl',
+    verification: 'verification-history.jsonl',
+    confidence: 'confidence-journal.jsonl',
+} as const
 
 /**
  * Compute session metrics from the ledger.

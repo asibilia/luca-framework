@@ -26,6 +26,10 @@ import {
     readLedgerForRun,
     getCurrentRunId,
     listRuns,
+    listArchivedRuns,
+    resolveRunArtifactDir,
+    readJsonlAt,
+    ARTIFACT_FILES,
     type LedgerEntry,
 } from './session-ledger.js'
 import {
@@ -131,10 +135,44 @@ function eventDataString(e: LedgerEntry, key: string): string | undefined {
 
 export function analyzeRun(runId?: string): PostmortemReport {
     const targetRunId = runId ?? getCurrentRunId()
-    const all = readLedger()
-    const entries = runId
-        ? readLedgerForRun(targetRunId)
-        : all.filter((e) => e.runId === targetRunId)
+    const currentRunId = getCurrentRunId()
+    const isCurrentRun = targetRunId === currentRunId
+
+    // For the current run, read live `.planning/*.jsonl` artifacts.
+    // For archived runs, read from `.planning/runs/<runId>/` so we don't
+    // mix in entries from a later run that's now occupying the live files.
+    let entries: LedgerEntry[]
+    let verifications: VerificationResult[]
+    let confidence: ConfidenceEntry[]
+
+    if (isCurrentRun) {
+        const all = readLedger()
+        entries = all.filter((e) => e.runId === targetRunId)
+        verifications = readVerificationHistory()
+        confidence = readConfidenceJournal()
+    } else {
+        const archiveDir = resolveRunArtifactDir(targetRunId)
+        if (archiveDir) {
+            entries = readJsonlAt<LedgerEntry>(
+                archiveDir,
+                ARTIFACT_FILES.ledger
+            ).filter((e) => e.runId === targetRunId)
+            verifications = readJsonlAt<VerificationResult>(
+                archiveDir,
+                ARTIFACT_FILES.verification
+            )
+            confidence = readJsonlAt<ConfidenceEntry>(
+                archiveDir,
+                ARTIFACT_FILES.confidence
+            )
+        } else {
+            // Fall back to filtering the live ledger if no archive exists
+            // (e.g. user passed a runId that's still in the live file).
+            entries = readLedgerForRun(targetRunId)
+            verifications = []
+            confidence = []
+        }
+    }
 
     const startedAt = entries[0]?.timestamp
     const endedAt = entries[entries.length - 1]?.timestamp
@@ -142,9 +180,6 @@ export function analyzeRun(runId?: string): PostmortemReport {
         startedAt && endedAt
             ? new Date(endedAt).getTime() - new Date(startedAt).getTime()
             : undefined
-
-    const verifications = readVerificationHistory()
-    const confidence = readConfidenceJournal()
 
     // ── Group events by phase ─────────────────────────────────────────────
     const phaseMap = new Map<string, PhaseSummary>()
@@ -238,13 +273,19 @@ export function analyzeRun(runId?: string): PostmortemReport {
         }
     }
 
-    // 2. Todos moved to done without verificationRef (or blocked attempts)
+    // 2. Todos moved to done without verificationRef
+    //
+    // Blocked attempts (`todo-move-blocked`) are downgraded to warnings —
+    // the gate already prevented the unsafe transition, so this is just
+    // signal that the agent tried something and got corrected. Only an
+    // actual unsafe transition (todo successfully moved to done without a
+    // verificationRef) is critical.
     const moveBlocked = entries.filter((e) => e.event === 'todo-move-blocked')
     for (const e of moveBlocked) {
         violations.push({
-            severity: 'critical',
+            severity: 'warning',
             code: 'TODO_DONE_NO_VERIFICATION',
-            message: `Blocked attempt to move todo "${eventDataString(e, 'identifier') ?? '?'}" to done without a valid verificationRef.`,
+            message: `Blocked attempt to move todo "${eventDataString(e, 'identifier') ?? '?'}" to done without a valid verificationRef. Tool layer prevented the unsafe transition.`,
             evidence: `reason=${eventDataString(e, 'reason') ?? '?'} at=${e.timestamp}`,
             evidenceFingerprint: fingerprint(
                 `TODO_BLOCKED:${eventDataString(e, 'identifier') ?? ''}:${e.timestamp}`
@@ -252,6 +293,7 @@ export function analyzeRun(runId?: string): PostmortemReport {
         })
     }
     // Belt-and-suspenders: any todos-moved-to-done with falsy verificationRef
+    // are real unsafe transitions and must remain critical.
     for (const p of phases) {
         for (const t of p.todosMovedToDone) {
             if (!t.verificationRef) {
@@ -300,15 +342,17 @@ export function analyzeRun(runId?: string): PostmortemReport {
         })
     }
 
-    // 5. Wave advance blocked
+    // 5. Wave advance blocked — downgraded to warning because the tool
+    // layer already prevented the unsafe transition. The presence of a
+    // block tells us the agent tried, but it didn't actually advance.
     const waveBlocked = entries.filter(
         (e) => e.event === 'wave-advance-blocked'
     )
     for (const e of waveBlocked) {
         violations.push({
-            severity: 'critical',
+            severity: 'warning',
             code: 'WAVE_NO_VERIFICATION',
-            message: `Attempt to advance wave without verification-result.`,
+            message: `Blocked attempt to advance wave without verification-result. Tool layer prevented the unsafe transition.`,
             evidence: `phase=${eventDataString(e, 'phase') ?? '?'} wave=${e.data.wave ?? '?'} at=${e.timestamp}`,
             evidenceFingerprint: fingerprint(
                 `WAVE_BLOCKED:${eventDataString(e, 'phase') ?? ''}:${e.data.wave ?? ''}`

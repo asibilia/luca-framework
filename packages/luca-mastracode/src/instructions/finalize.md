@@ -18,10 +18,13 @@ You receive control from **Review mode**. Read the latest `.planning/REVIEW-*.md
 
 1. **Milestone boundary** — capture learnings, prune patterns, archive session
 2. **Shadow debt scan** — advisory scan for AI-session debris before PR
-3. **PR creation** — create pull request if git workflow was used
-4. **Gap detection** — verify all planned work was completed
-5. **Cross-milestone continuation** — loop back if roadmap has remaining phases
-6. **Session cleanup** — release locks, summarize work
+3. **Gap detection** — verify all planned work was completed
+4. **Postmortem gate** — block on critical pipeline violations before PR
+5. **PR creation** — create pull request if git workflow was used (only after gap + postmortem checks pass)
+6. **Cross-milestone continuation** — loop back if roadmap has remaining phases
+7. **Session cleanup** — release locks, summarize work
+
+> **Ordering matters.** Gap detection and the postmortem gate run *before* PR creation. A failing gate must re-enter the pipeline rather than ship a PR.
 
 ---
 
@@ -31,8 +34,9 @@ You receive control from **Review mode**. Read the latest `.planning/REVIEW-*.md
 task_write(tasks: [
   { content: "Capture milestone learnings", status: "in_progress", activeForm: "Capturing milestone learnings" },
   { content: "Run shadow debt scan", status: "pending", activeForm: "Running shadow debt scan" },
-  { content: "Create pull request", status: "pending", activeForm: "Creating pull request" },
   { content: "Run gap detection audit", status: "pending", activeForm: "Running gap detection audit" },
+  { content: "Run postmortem gate", status: "pending", activeForm: "Running postmortem gate" },
+  { content: "Create pull request", status: "pending", activeForm: "Creating pull request" },
   { content: "Clean up and summarize", status: "pending", activeForm: "Cleaning up session artifacts" }
 ])
 ```
@@ -103,7 +107,7 @@ Also write to `.planning/SESSION-ARCHIVE.md`:
 <top patterns and pitfalls>
 
 ## Metrics
-<quantitative summary — see Step 6>
+<quantitative summary — see Step 7>
 ```
 
 ## Step 2: Shadow Debt Scan
@@ -121,41 +125,9 @@ Advisory scan for AI-session debris before PR:
 
 If `repoCleanup` returns `status: "disabled"`, skip silently.
 
-## Step 3: PR Creation
+## Step 3: Gap Detection
 
-If git workflow was used (issue + branch created):
-
-### 3a. Recall Release Conventions
-
-**Before any PR work**, recall release details from MuninnDB:
-
-```
-mcp__muninn__muninn_recall(
-  vault: "<repo_vault>",
-  context: ["release checklist", "PR title format", "version convention", "naming convention"],
-  mode: "semantic",
-  limit: 5
-)
-```
-
-Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
-
-### 3b. Create PR
-
-1. **Push** feature branch to remote
-2. **Create PR** with:
-   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
-   - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations
-   - **Milestone**: Tag to version milestone
-   - **Labels**: Match issue labels
-   - **Reviewers**: If configured
-3. Store PR URL in `workflow_state`
-
-If `--skip-branch` was set, skip.
-
-## Step 4: Gap Detection
-
-Verify all planned work was completed:
+Verify all planned work was completed **before** opening a PR:
 
 ### Gap Audit
 
@@ -183,7 +155,7 @@ Verify all planned work was completed:
 
 ### Gap Resolution
 
-- **Minor gaps** (missing docs, incomplete tests): flag in PR description as follow-up
+- **Minor gaps** (missing docs, incomplete tests): flag in PR description as follow-up (record now, surface in Step 5)
 - **Major gaps** (missing functionality, failing tests): re-enter pipeline:
   1. Save gap results to workflow state
   2. Re-enter at Review or Execute:
@@ -191,11 +163,11 @@ Verify all planned work was completed:
      workflowState(action: "re-enter-pipeline", targetMode: "luca:5-review", reason: "Post-finalize gap detection found major gaps: <summary>")
      ```
   3. **STOP.** Review mode handles from here, iterating Execute → Review as needed.
-  - If user prefers not to fix: track as follow-up issues, proceed to cleanup
+  - If user prefers not to fix: track as follow-up issues, proceed to the postmortem gate
 
-## Step 4.5: Postmortem Gate
+## Step 4: Postmortem Gate
 
-Before any PR creation, run the postmortem gate. This catches silent-skip incidents (execute mode skipped but todos moved to done), unverified completions, and forced transitions.
+**Always runs before PR creation.** Catches silent-skip incidents (execute mode skipped but todos moved to done), unverified completions, and forced transitions.
 
 ```
 runPostmortem(action: "gate")
@@ -233,9 +205,43 @@ Then render the human-readable report:
 runPostmortem(action: "render")
 ```
 
-This writes `.planning/POSTMORTEM.md`. Reference it in the PR body (Step 3) and the Final Summary (Step 6).
+This writes `.planning/POSTMORTEM.md`. Reference it in the PR body (Step 5) and the Final Summary (Step 7).
 
-## Step 5: Cross-Milestone Continuation
+## Step 5: PR Creation
+
+Only reached if Step 3 (Gap Detection) and Step 4 (Postmortem Gate) both passed.
+
+If git workflow was used (issue + branch created):
+
+### 5a. Recall Release Conventions
+
+**Before any PR work**, recall release details from MuninnDB:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "<repo_vault>",
+  context: ["release checklist", "PR title format", "version convention", "naming convention"],
+  mode: "semantic",
+  limit: 5
+)
+```
+
+Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
+
+### 5b. Create PR
+
+1. **Push** feature branch to remote
+2. **Create PR** with:
+   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
+   - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `.planning/POSTMORTEM.md`
+   - **Milestone**: Tag to version milestone
+   - **Labels**: Match issue labels
+   - **Reviewers**: If configured
+3. Store PR URL in `workflow_state`
+
+If `--skip-branch` was set, skip.
+
+## Step 6: Cross-Milestone Continuation
 
 Check if `.planning/ROADMAP.md` has remaining phases:
 
@@ -256,7 +262,7 @@ else:
 
 Maximum **3 milestones per session**. If more remain: summarize what's left, create issues, note continuation point.
 
-## Step 6: Session Cleanup
+## Step 7: Session Cleanup
 
 ### Release Pipeline Lock
 

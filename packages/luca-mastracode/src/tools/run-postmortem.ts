@@ -20,6 +20,7 @@ import {
     writePostmortem,
     listRuns,
 } from '../postmortem.js'
+import { listArchivedRuns } from '../session-ledger.js'
 
 export const runPostmortemTool = createTool({
     id: 'run-postmortem',
@@ -53,6 +54,7 @@ export const runPostmortemTool = createTool({
                     success: true,
                     message: `Run ${report.runId}: ${report.violations.length} violation(s) (${report.violations.filter((v) => v.severity === 'critical').length} critical)`,
                     report,
+                    pitfalls: report.pitfalls,
                 }
             }
             case 'render': {
@@ -88,10 +90,25 @@ export const runPostmortemTool = createTool({
                 }
             }
             case 'list-runs': {
-                const runs = listRuns()
+                const liveRuns = listRuns()
+                const liveIds = new Set(liveRuns.map((r) => r.runId))
+                const archivedOnly = listArchivedRuns()
+                    .filter((id) => !liveIds.has(id))
+                    .map((runId) => ({
+                        runId,
+                        firstEvent: '',
+                        lastEvent: '',
+                        eventCount: 0,
+                        archived: true as const,
+                    }))
+                const live = liveRuns.map((r) => ({
+                    ...r,
+                    archived: false as const,
+                }))
+                const runs = [...live, ...archivedOnly]
                 return {
                     success: true,
-                    message: `${runs.length} run(s) in ledger`,
+                    message: `${runs.length} run(s) (live: ${live.length}, archived-only: ${archivedOnly.length})`,
                     runs,
                 }
             }

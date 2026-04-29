@@ -776,6 +776,21 @@ export const workflowStateTool = createTool({
                         raw
                     )
                     const justState = readLucaState()
+                    const currentPhaseName = justState.currentPhaseName
+                    if (!currentPhaseName) {
+                        return {
+                            success: false,
+                            code: 'NO_PHASE_IN_PROGRESS',
+                            message: `Cannot justify empty phase: no phase is currently in progress. Call workflowState(action: "start-phase", ...) first.`,
+                        }
+                    }
+                    if (phase !== currentPhaseName) {
+                        return {
+                            success: false,
+                            code: 'PHASE_MISMATCH',
+                            message: `Cannot justify empty phase: provided phase "${phase}" does not match the in-progress phase "${currentPhaseName}". Justifications can only be recorded for the active phase.`,
+                        }
+                    }
                     const existing = justState.emptyPhaseJustifications ?? {}
                     const merged = {
                         ...existing,
@@ -836,6 +851,9 @@ export const workflowStateTool = createTool({
                         phaseResults: undefined,
                         // Phase-diff snapshots (Step 2 of the postmortem plan)
                         currentPhaseStartSnapshot: undefined,
+                        // Empty-phase justifications — must clear so prior-run
+                        // justifications can't unblock complete-phase in a new run
+                        emptyPhaseJustifications: undefined,
                         // Run identity — clear so startNewRun mints a fresh ID
                         runId: undefined,
                     })

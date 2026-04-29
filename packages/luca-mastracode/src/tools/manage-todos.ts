@@ -60,6 +60,12 @@ function validateVerificationRef(ref: VerificationRef | undefined): {
             message: `Criterion "${ref.criterionId}" (wave ${ref.wave}) has empty evidence. Move blocked — re-run verification with concrete evidence (file/line/test).`,
         }
     }
+    if (found.result.status !== 'PASS') {
+        return {
+            code: 'TODO_DONE_UNVERIFIED',
+            message: `Criterion "${ref.criterionId}" (wave ${ref.wave}) belongs to a verification result with status "${found.result.status}", not PASS. Cannot move the todo to done — fix the failing/stalled wave first.`,
+        }
+    }
     return null
 }
 

@@ -18,7 +18,7 @@
  *   bun run packages/luca-mastracode/src/retro.ts --json     # JSON report
  */
 import { analyzeRun, renderPostmortemMarkdown } from './postmortem.js'
-import { listRuns } from './session-ledger.js'
+import { listRuns, listArchivedRuns } from './session-ledger.js'
 
 interface ParsedArgs {
     list: boolean
@@ -70,19 +70,38 @@ if (args.help) {
 }
 
 if (args.list) {
-    const runs = listRuns()
-    if (runs.length === 0) {
-        console.log('No runs recorded in .planning/session-ledger.jsonl.')
+    // Live runs: present in the current `.planning/session-ledger.jsonl`.
+    // Archived runs: directories under `.planning/runs/` from previous
+    // pipeline-reset archival. Both are valid targets for `--run <id>`.
+    const liveRuns = listRuns()
+    const liveIds = new Set(liveRuns.map((r) => r.runId))
+    const archivedOnly = listArchivedRuns().filter((id) => !liveIds.has(id))
+
+    if (liveRuns.length === 0 && archivedOnly.length === 0) {
+        console.log(
+            'No runs recorded in .planning/session-ledger.jsonl or .planning/runs/.'
+        )
         process.exit(0)
     }
-    const sorted = [...runs].sort((a, b) =>
-        a.firstEvent.localeCompare(b.firstEvent)
-    )
-    console.log('Runs:')
-    for (const r of sorted) {
-        console.log(
-            `  ${r.runId}  events=${r.eventCount}  ${r.firstEvent} → ${r.lastEvent}`
+
+    if (liveRuns.length > 0) {
+        const sorted = [...liveRuns].sort((a, b) =>
+            a.firstEvent.localeCompare(b.firstEvent)
         )
+        console.log('Live runs (in current ledger):')
+        for (const r of sorted) {
+            console.log(
+                `  ${r.runId}  events=${r.eventCount}  ${r.firstEvent} → ${r.lastEvent}`
+            )
+        }
+    }
+
+    if (archivedOnly.length > 0) {
+        if (liveRuns.length > 0) console.log('')
+        console.log('Archived runs (in .planning/runs/):')
+        for (const id of [...archivedOnly].sort()) {
+            console.log(`  ${id}`)
+        }
     }
     process.exit(0)
 }

@@ -158,11 +158,18 @@ export function computePhaseDiff(start: PhaseSnapshot | null): PhaseDiff {
         if (!startDirty.has(f)) filesChanged.add(f)
     }
 
+    // If the working tree was already dirty at start-phase, edits to those
+    // pre-dirty files won't show up in either the HEAD..HEAD diff or the
+    // "new dirty files" delta above. Treat that as indeterminate so the
+    // empty-phase guard can't false-block real work on already-dirty files.
+    const baselineDirty = startDirty.size > 0
     const filesChangedArr = Array.from(filesChanged)
     return {
         filesChanged: filesChangedArr,
         commitsAdded,
-        isEmpty: filesChangedArr.length === 0 && commitsAdded.length === 0,
-        indeterminate: false,
+        isEmpty: baselineDirty
+            ? false
+            : filesChangedArr.length === 0 && commitsAdded.length === 0,
+        indeterminate: baselineDirty,
     }
 }
