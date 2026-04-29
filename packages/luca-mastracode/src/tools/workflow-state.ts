@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { MODES } from '../modes/mode-ids.js'
 import { MODE_PERMISSIONS } from './mode-permissions.js'
 
 import {
@@ -46,12 +47,12 @@ const VALID_MODES = Object.keys(MODE_PERMISSIONS)
  * for mode ID renames; update separately if IDs change.
  */
 export const PIPELINE_ORDER: Record<string, string | undefined> = {
-    'luca:1-triage': 'luca:2-research',
-    'luca:2-research': 'luca:3-architect',
-    'luca:3-architect': 'luca:4-execute',
-    'luca:4-execute': 'luca:5-review',
-    'luca:5-review': 'luca:6-finalize',
-    'luca:6-finalize': undefined,
+    [MODES.triage]: MODES.research,
+    [MODES.research]: MODES.architect,
+    [MODES.architect]: MODES.execute,
+    [MODES.execute]: MODES.review,
+    [MODES.review]: MODES.finalize,
+    [MODES.finalize]: undefined,
 }
 
 /**
@@ -61,8 +62,8 @@ export const PIPELINE_ORDER: Record<string, string | undefined> = {
  * - Finalize → Execute:   gap-detected rework (finalize.md Step 4)
  */
 const ALLOWED_BACKWARD_TRANSITIONS: Record<string, Set<string>> = {
-    'luca:5-review': new Set(['luca:4-execute']),
-    'luca:6-finalize': new Set(['luca:3-architect', 'luca:4-execute']),
+    [MODES.review]: new Set([MODES.execute]),
+    [MODES.finalize]: new Set([MODES.architect, MODES.execute]),
 }
 
 /**
@@ -182,7 +183,7 @@ const justifyEmptyPhaseAction = z.object({
         ),
 })
 
-const RE_ENTER_TARGETS = ['luca:4-execute', 'luca:5-review'] as const
+const RE_ENTER_TARGETS = [MODES.execute, MODES.review] as const
 
 const reEnterPipelineAction = z.object({
     action: z.literal('re-enter-pipeline'),
@@ -434,7 +435,7 @@ export const workflowStateTool = createTool({
                     // --- Stale state detection on pipeline entry ---
                     const prevState = readLucaState()
                     if (
-                        targetMode === 'luca:1-triage' &&
+                        targetMode === MODES.triage &&
                         hasStaleState(prevState)
                     ) {
                         return {
@@ -480,8 +481,8 @@ export const workflowStateTool = createTool({
                         if (targetMode !== expectedNext) {
                             // Allow triage → architect skip when skipResearch is set
                             if (
-                                currentStep === 'luca:1-triage' &&
-                                targetMode === 'luca:3-architect' &&
+                                currentStep === MODES.triage &&
+                                targetMode === MODES.architect &&
                                 prevState.skipResearch
                             ) {
                                 // Skip-ahead allowed

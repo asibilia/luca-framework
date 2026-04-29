@@ -7,6 +7,7 @@
  * amber-bordered box in the TUI.
  */
 import type { LucaWorkflowState } from './luca-store.js'
+import { MODES } from './modes/mode-ids.js'
 
 export function buildContinuationMessage(
     modeId: string,
@@ -22,7 +23,7 @@ export function buildContinuationMessage(
         : ''
 
     switch (modeId) {
-        case 'luca:2-research':
+        case MODES.research:
             return [
                 `[Luca Pipeline — auto-continuing from Triage]`,
                 ``,
@@ -37,7 +38,7 @@ export function buildContinuationMessage(
                 .filter(Boolean)
                 .join('\n')
 
-        case 'luca:3-architect':
+        case MODES.architect:
             return [
                 `[Luca Pipeline — auto-continuing from Research]`,
                 ``,
@@ -51,7 +52,7 @@ export function buildContinuationMessage(
                 .filter(Boolean)
                 .join('\n')
 
-        case 'luca:4-execute': {
+        case MODES.execute: {
             const planFile = state.planFile ?? '.planning/PLAN.md'
             const roadmapFile = state.roadmapFile ?? '.planning/ROADMAP.md'
             return [
@@ -71,7 +72,7 @@ export function buildContinuationMessage(
                 .join('\n')
         }
 
-        case 'luca:5-review':
+        case MODES.review:
             return [
                 `[Luca Pipeline — auto-continuing from Execute]`,
                 ``,
@@ -87,7 +88,7 @@ export function buildContinuationMessage(
                 .filter(Boolean)
                 .join('\n')
 
-        case 'luca:6-finalize':
+        case MODES.finalize:
             return [
                 `[Luca Pipeline — auto-continuing from Review]`,
                 ``,
@@ -100,7 +101,7 @@ export function buildContinuationMessage(
                 .filter(Boolean)
                 .join('\n')
 
-        case 'luca:1-triage':
+        case MODES.triage:
             return [
                 `[Luca Pipeline — starting]`,
                 ``,

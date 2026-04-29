@@ -12,6 +12,8 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -67,7 +69,7 @@ export function resolveFinalizeModel(
  * Finalize agent configuration for mode registration.
  */
 export const finalizeMode = {
-    id: 'luca:6-finalize' as const,
+    id: MODES.finalize,
     name: 'luca: Finalize',
     description:
         'Milestone boundaries, gap audit, PR creation, and session cleanup.',

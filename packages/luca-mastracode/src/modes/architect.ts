@@ -14,6 +14,8 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -68,7 +70,7 @@ export function resolveArchitectModel(
  * Architect agent configuration for mode registration.
  */
 export const architectMode = {
-    id: 'luca:3-architect' as const,
+    id: MODES.architect,
     name: 'luca: Architect',
     description:
         'Git workflow, roadmap creation, .planning/PLAN.md via goal-backward analysis, and plan review.',

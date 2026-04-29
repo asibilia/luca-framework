@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { atomicWriteSync } from '../atomic-write.js'
 import { readLucaState } from '../luca-store.js'
+import { MODES } from '../modes/mode-ids.js'
 
 const LOCK_FILE = '.planning/.luca-lock.json'
 
@@ -39,7 +40,7 @@ function determineRecovery(lock: LockInfo): {
     if (!step || step === 'init' || step === 'idle' || step === 'triage') {
         return {
             strategy: 'fresh-start',
-            resumeMode: 'luca:1-triage',
+            resumeMode: MODES.triage,
             reason: 'No meaningful pipeline progress to resume',
         }
     }
@@ -48,7 +49,7 @@ function determineRecovery(lock: LockInfo): {
     if (step === 'research') {
         return {
             strategy: 'restart-step',
-            resumeMode: 'luca:2-research',
+            resumeMode: MODES.research,
             reason: 'Crashed during research — restarting step',
         }
     }
@@ -69,7 +70,7 @@ function determineRecovery(lock: LockInfo): {
     ) {
         return {
             strategy: 'restart-step',
-            resumeMode: 'luca:3-architect',
+            resumeMode: MODES.architect,
             reason: `Crashed during ${step} — restarting architect mode`,
         }
     }
@@ -81,14 +82,14 @@ function determineRecovery(lock: LockInfo): {
         if (phaseName) {
             return {
                 strategy: 'resume-phase',
-                resumeMode: 'luca:4-execute',
+                resumeMode: MODES.execute,
                 resumePhase: phaseName,
                 reason: `Crashed during ${step} in phase "${phaseName}" wave ${wave} — resuming execution`,
             }
         }
         return {
             strategy: 'restart-step',
-            resumeMode: 'luca:4-execute',
+            resumeMode: MODES.execute,
             reason: `Crashed during ${step} — restarting execute mode`,
         }
     }
@@ -97,7 +98,7 @@ function determineRecovery(lock: LockInfo): {
     if (['review', 'review-audit', 'learn'].includes(step)) {
         return {
             strategy: 'resume-phase',
-            resumeMode: 'luca:5-review',
+            resumeMode: MODES.review,
             reason: `Crashed during ${step} — resuming review`,
         }
     }
@@ -106,7 +107,7 @@ function determineRecovery(lock: LockInfo): {
     if (['milestone', 'gap-audit', 'cleanup'].includes(step)) {
         return {
             strategy: 'advance-phase',
-            resumeMode: 'luca:6-finalize',
+            resumeMode: MODES.finalize,
             reason: `Crashed during ${step} — advancing to finalize`,
         }
     }
@@ -114,7 +115,7 @@ function determineRecovery(lock: LockInfo): {
     // Default fallback
     return {
         strategy: 'fresh-start',
-        resumeMode: 'luca:1-triage',
+        resumeMode: MODES.triage,
         reason: `Unknown step "${step}" — starting fresh`,
     }
 }

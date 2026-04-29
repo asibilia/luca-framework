@@ -11,6 +11,7 @@
  * when the workflow-state tool's switch-mode action was invoked.
  */
 import { readLucaState, writeLucaState } from './luca-store.js'
+import { MODES } from './modes/mode-ids.js'
 import { followUpRef, switchModeRef } from './refs.js'
 import { appendLedger } from './session-ledger.js'
 import { PIPELINE_ORDER } from './tools/workflow-state.js'
@@ -157,7 +158,7 @@ export function checkTurnCompletion(reason: string | undefined): {
     }
 
     // Finalize is the last step — no switch-mode needed
-    if (currentTurn.modeId === 'luca:6-finalize') {
+    if (currentTurn.modeId === MODES.finalize) {
         return null
     }
 

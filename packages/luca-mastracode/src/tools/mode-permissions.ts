@@ -13,6 +13,8 @@
  * 2. Register the base tool in build-mode-tools.ts TOOL_REGISTRY.
  * 3. That's it — buildModeTools() handles scoping automatically.
  */
+import { MODES } from '../modes/mode-ids.js'
+
 export const MODE_PERMISSIONS: Record<
     string,
     Record<string, readonly string[] | '*'>
@@ -36,29 +38,29 @@ export const MODE_PERMISSIONS: Record<
         session_ledger: '*',
         workflow_state: ['read'],
     },
-    'luca:discuss': {
+    [MODES.discuss]: {
         session_ledger: '*',
         manage_todos: ['list', 'read'],
         workflow_state: ['read'],
         run_postmortem: ['analyze', 'list-runs'],
     },
-    'luca:1-triage': {
+    [MODES.triage]: {
         classify_complexity: '*',
         workflow_state: ['read', 'save-triage-results', 'switch-mode'],
         pipeline_lock: ['status', 'recover', 'acquire'],
         manage_todos: ['list', 'read'],
     },
-    'luca:2-research': {
+    [MODES.research]: {
         workflow_state: ['read', 'switch-mode'],
         manage_todos: ['list', 'read', 'add'],
         write_planning_file: ['write', 'read'],
     },
-    'luca:3-architect': {
+    [MODES.architect]: {
         manage_roadmap: '*',
         workflow_state: ['read', 'save-plan-artifacts', 'switch-mode'],
         write_planning_file: ['write', 'read'],
     },
-    'luca:4-execute': {
+    [MODES.execute]: {
         workflow_state: [
             'read',
             'start-phase',
@@ -76,7 +78,7 @@ export const MODE_PERMISSIONS: Record<
         write_planning_file: ['write', 'read'],
         confidence_journal: '*',
     },
-    'luca:5-review': {
+    [MODES.review]: {
         workflow_state: ['read', 'save-review-results', 'switch-mode'],
         run_checks: '*',
         run_rules: ['list', 'run'],
@@ -86,7 +88,7 @@ export const MODE_PERMISSIONS: Record<
         confidence_journal: ['read', 'summary'],
         claim_verifier: ['verify-text', 'verify-file'],
     },
-    'luca:6-finalize': {
+    [MODES.finalize]: {
         workflow_state: [
             'read',
             'reset-pipeline',

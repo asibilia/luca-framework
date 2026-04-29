@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url'
 import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -87,7 +89,7 @@ export function resolveTriageModel(
  * Triage agent configuration for mode registration.
  */
 export const triageMode = {
-    id: 'luca:1-triage' as const,
+    id: MODES.triage,
     name: 'luca: Triage',
     description:
         'Parse, classify, and configure the workflow for a development request.',

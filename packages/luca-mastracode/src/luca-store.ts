@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { atomicWriteSync } from './atomic-write.js'
+import { MODES } from './modes/mode-ids.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
 
@@ -121,13 +122,13 @@ export function readLucaState(): LucaWorkflowState {
 
         // Migrate bare mode names to namespaced identifiers
         const BARE_TO_NAMESPACED: Record<string, string> = {
-            discuss: 'luca:discuss',
-            triage: 'luca:1-triage',
-            research: 'luca:2-research',
-            architect: 'luca:3-architect',
-            execute: 'luca:4-execute',
-            review: 'luca:5-review',
-            finalize: 'luca:6-finalize',
+            discuss: MODES.discuss,
+            triage: MODES.triage,
+            research: MODES.research,
+            architect: MODES.architect,
+            execute: MODES.execute,
+            review: MODES.review,
+            finalize: MODES.finalize,
         }
         if (state.pipelineStep && BARE_TO_NAMESPACED[state.pipelineStep]) {
             state.pipelineStep = BARE_TO_NAMESPACED[state.pipelineStep]
