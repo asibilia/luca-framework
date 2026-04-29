@@ -21,11 +21,13 @@ export const MODE_PERMISSIONS: Record<
         manage_todos: '*',
         workflow_state: '*',
         repo_cleanup: '*',
+        pr_review: '*',
     },
     fast: {
         manage_todos: '*',
         workflow_state: '*',
         repo_cleanup: ['scan', 'parse-report', 'summary'],
+        pr_review: '*',
     },
     plan: {
         classify_complexity: '*',

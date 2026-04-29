@@ -8,6 +8,7 @@ import { manageRoadmapTool } from './manage-roadmap.js'
 import { manageTodosTool } from './manage-todos.js'
 import { MODE_PERMISSIONS } from './mode-permissions.js'
 import { pipelineLockTool } from './pipeline-lock.js'
+import { prReviewTool } from './pr-review.js'
 import { repoCleanupTool } from './repo-cleanup.js'
 import { runChecksTool } from './run-checks.js'
 import { runPostmortemTool } from './run-postmortem.js'
@@ -62,6 +63,10 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
     claim_verifier: {
         tool: claimVerifierTool,
         record_key: 'claimVerifier',
+    },
+    pr_review: {
+        tool: prReviewTool,
+        record_key: 'prReview',
     },
 }
 
