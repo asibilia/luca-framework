@@ -1,7 +1,7 @@
 /**
  * run-rules (tool) — Mastra tool wrapper for the repo-local rule pack engine.
  *
- * Three actions:
+ * Four actions:
  *   - list:  discover rules in `.luca/rules/` and return their metadata
  *            without executing them. Useful for confirming what rules a
  *            repo has loaded before running them.
@@ -13,6 +13,10 @@
  *            `code: RULE_VIOLATIONS_DETECTED`) when any finding has
  *            severity `must-fix`. Used by execute-verify before declaring
  *            a wave passing.
+ *   - suggest: scan postmortems for recurring pitfalls and render draft
+ *            rules to `.planning/SUGGESTED-RULES.md`. Promotes pitfalls
+ *            seen in N or more distinct runs (default 3) into rule
+ *            templates the user can finalize.
  *
  * Every call appends a `rules-run` ledger event with totals so the
  * postmortem analyzer can observe rule activity over time.

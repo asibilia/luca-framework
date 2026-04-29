@@ -11,6 +11,9 @@ export { repoCleanupTool } from './repo-cleanup.js'
 export { writePlanningFileTool } from './write-planning-file.js'
 export { confidenceJournalTool } from './confidence-journal.js'
 export { runPostmortemTool } from './run-postmortem.js'
+export { claimVerifierTool } from './claim-verifier.js'
+export { prReviewTool } from './pr-review.js'
+export { runRulesTool } from './run-rules.js'
 
 // Permission system
 export { createScopedTool } from './create-scoped-tool.js'

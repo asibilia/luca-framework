@@ -139,21 +139,27 @@ export function readVerificationHistory(): VerificationResult[] {
  *
  * Used by `manageTodos(move → done)` to verify that a todo's claimed
  * verification reference actually exists and was met.
+ *
+ * Pass a preloaded `history` array when validating many criteria in a row
+ * (e.g. `move-batch`) to avoid re-reading and re-parsing the JSONL file
+ * once per item.
  */
 export function findCriterion({
     criterionId,
     wave,
+    history,
 }: {
     criterionId: string
     wave: number
+    history?: VerificationResult[]
 }): {
     criterion: VerificationCriterion
     result: VerificationResult
 } | null {
-    const history = readVerificationHistory()
+    const records = history ?? readVerificationHistory()
     // Iterate newest → oldest so the most recent verdict wins.
-    for (let i = history.length - 1; i >= 0; i--) {
-        const r = history[i]
+    for (let i = records.length - 1; i >= 0; i--) {
+        const r = records[i]
         if (!r || r.wave !== wave) continue
         const c = r.criteria.find((cc) => cc.criterionId === criterionId)
         if (c) return { criterion: c, result: r }

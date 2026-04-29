@@ -16,6 +16,8 @@ import {
     mkdirSync,
     appendFileSync,
     renameSync,
+    readdirSync,
+    statSync,
 } from 'node:fs'
 import { join } from 'node:path'
 
@@ -181,7 +183,6 @@ export function listArchivedRuns(): string[] {
     try {
         // `readdirSync` is synchronous and good enough here — archive
         // directories are small (one entry per run).
-        const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs')
         return readdirSync(archiveRoot).filter((name: string) => {
             try {
                 return statSync(join(archiveRoot, name)).isDirectory()

@@ -76,9 +76,10 @@ export interface RuleDefinition {
     description: string
     /**
      * Glob (or array of globs) matched against repo-relative paths.
-     * Rule runs once per matching file. Use 'never' to declare a
-     * rule that runs once per repo (scope: 'repo'), with `path: ''`
-     * passed in. Use this only for cross-file invariants.
+     * Rule runs once per matching file. Use the literal string `'repo'`
+     * to declare a rule that runs once per repo with `path: ''` passed
+     * in (the runner synthesizes a single RuleFile rooted at the repo).
+     * Use repo scope only for cross-file invariants.
      */
     scope: string | string[] | 'repo'
     /** Optional category surfaced in findings. */

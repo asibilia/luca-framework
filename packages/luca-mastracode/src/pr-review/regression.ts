@@ -22,6 +22,8 @@
  *
  * Pure data layer. Tool wrapper lives in tools/pr-review.ts.
  */
+import { spawnSync } from 'node:child_process'
+
 import type { ReviewFinding } from './convergence.js'
 
 // ---------------------------------------------------------------------------
@@ -218,10 +220,6 @@ export function diffPaths(
     fromSha: string,
     toSha: string
 ): string[] {
-    // Lazy require so that pure consumers (like tests using only the
-    // data structures above) don't need git on PATH.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { spawnSync } = require('node:child_process') as typeof import('node:child_process')
     const r = spawnSync('git', ['diff', '--name-only', `${fromSha}..${toSha}`], {
         cwd: repoRoot,
         encoding: 'utf8',

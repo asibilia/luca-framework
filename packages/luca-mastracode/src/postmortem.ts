@@ -259,15 +259,21 @@ export function analyzeRun(runId?: string): PostmortemReport {
     const violations: Violation[] = []
 
     // 1. Empty phase without justification
+    //
+    // Only consider phases that *actually completed*. A blocked
+    // `complete-phase` attempt still writes a `phase-diff-summary`
+    // entry, but the phase itself never finished — flagging it as
+    // critical would double-count an already-blocked unsafe action.
     for (const p of phases) {
+        if (!p.completedAt) continue
         if (p.diff?.isEmpty && !p.justification) {
             violations.push({
                 severity: 'critical',
                 code: 'EMPTY_PHASE_NO_JUSTIFICATION',
                 message: `Phase "${p.name}" completed with zero file changes and zero commits but has no phase-empty-justification entry.`,
-                evidence: `phase=${p.name} completedAt=${p.completedAt ?? '?'}`,
+                evidence: `phase=${p.name} completedAt=${p.completedAt}`,
                 evidenceFingerprint: fingerprint(
-                    `EMPTY_PHASE:${p.name}:${p.completedAt ?? ''}`
+                    `EMPTY_PHASE:${p.name}:${p.completedAt}`
                 ),
             })
         }

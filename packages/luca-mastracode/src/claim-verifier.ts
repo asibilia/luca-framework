@@ -16,7 +16,7 @@
  * Pure data layer. Tool wrapper lives in tools/claim-verifier.ts.
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 // ---------------------------------------------------------------------------
@@ -356,9 +356,39 @@ function gitGrepFiles(
 }
 
 /**
- * Filesystem-walk fallback for non-git environments. Slow but correct.
- * Walks repoRoot, skips node_modules + .git + dist, greps each file.
+ * Filesystem-walk fallback for non-git environments. Pure Node — no
+ * shell, no `find`, no `xargs`. Slower than `git grep` but portable
+ * (works on Windows, Alpine without coreutils, etc.).
+ *
+ * Skips common vendor/build directories and binary-looking files.
+ * Honors the timeout budget by checking elapsed time between files.
  */
+const FS_SKIP_DIRS = new Set([
+    'node_modules',
+    '.git',
+    'dist',
+    'build',
+    '.next',
+    '.turbo',
+    'coverage',
+    '.cache',
+])
+const FS_SKIP_EXTENSIONS = new Set([
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.webp',
+    '.ico',
+    '.pdf',
+    '.zip',
+    '.tar',
+    '.gz',
+    '.lock',
+    '.lockb',
+])
+const FS_MAX_FILE_BYTES = 5 * 1024 * 1024 // 5MB — skip larger files
+
 function fsGrepFiles(
     repoRoot: string,
     needle: string,
@@ -366,36 +396,54 @@ function fsGrepFiles(
 ): GrepResult {
     const start = Date.now()
     const matchedFiles: string[] = []
+    const stack: string[] = [repoRoot]
 
-    // Avoid shell injection on the needle: pass via xargs grep -F with the
-    // needle on grep's argv, not interpolated into the command string.
-    const r = spawnSync(
-        'sh',
-        [
-            '-c',
-            // Skip vendor/build dirs, pipe through grep -lF with the needle
-            // delivered via argv ($1) to keep it free of shell quoting.
-            `find "${repoRoot.replace(/"/g, '\\"')}" -type d \\( -name node_modules -o -name .git -o -name dist -o -name build -o -name .next \\) -prune -o -type f -print0 | xargs -0 grep -lF -- "$1" 2>/dev/null`,
-            'sh',
-            needle,
-        ],
-        { encoding: 'utf-8', timeout: timeoutMs }
-    )
-
-    if (r.signal === 'SIGTERM' || r.error?.message?.includes('ETIMEDOUT')) {
-        return { ok: false, matchedFiles: [], timedOut: true }
-    }
-
-    if (r.stdout) {
-        for (const line of r.stdout.split('\n')) {
-            const trimmed = line.trim()
-            if (trimmed) matchedFiles.push(trimmed)
+    while (stack.length > 0) {
+        if (Date.now() - start > timeoutMs) {
+            return { ok: false, matchedFiles, timedOut: true }
+        }
+        const dir = stack.pop()!
+        let entries: string[]
+        try {
+            entries = readdirSync(dir)
+        } catch {
+            continue
+        }
+        for (const name of entries) {
+            const full = join(dir, name)
+            let info
+            try {
+                info = statSync(full)
+            } catch {
+                continue
+            }
+            if (info.isDirectory()) {
+                if (FS_SKIP_DIRS.has(name)) continue
+                stack.push(full)
+                continue
+            }
+            if (!info.isFile()) continue
+            const dotIdx = name.lastIndexOf('.')
+            if (dotIdx >= 0) {
+                const ext = name.slice(dotIdx).toLowerCase()
+                if (FS_SKIP_EXTENSIONS.has(ext)) continue
+            }
+            if (info.size > FS_MAX_FILE_BYTES) continue
+            try {
+                const buf = readFileSync(full)
+                if (buf.includes(needle)) {
+                    matchedFiles.push(full)
+                }
+            } catch {
+                // unreadable — skip
+            }
         }
     }
+
     return {
         ok: true,
         matchedFiles,
-        timedOut: Date.now() - start > timeoutMs,
+        timedOut: false,
     }
 }
 

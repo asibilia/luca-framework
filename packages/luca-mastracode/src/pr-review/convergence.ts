@@ -223,11 +223,18 @@ export function detectConvergence(
     const groups = groupFindings(findings, tolerance)
     const convergentGroups = groups.filter((g) => g.perspectives.length >= 2)
     const promotions: ConvergencePromotion[] = []
-    const promoted: ReviewFinding[] = []
+
+    // Start with a copy of every input finding so non-convergent findings
+    // are never silently dropped from the output. We then overwrite entries
+    // belonging to convergent groups with their (possibly promoted) version.
+    const promoted: ReviewFinding[] = findings.map((f) => ({ ...f }))
+    const indexById = new Map<string, number>()
+    promoted.forEach((f, i) => indexById.set(f.id, i))
 
     for (const g of convergentGroups) {
         for (const f of g.findings) {
             const sev = f.severity.toLowerCase()
+            const idx = indexById.get(f.id)
             if (promotable.has(sev)) {
                 promotions.push({
                     findingId: f.id,
@@ -237,7 +244,9 @@ export function detectConvergence(
                     reason: `Converged with ${g.perspectives.length} perspectives at ${g.path}:${g.minLine}-${g.maxLine}: ${g.perspectives.join(', ')}.`,
                     groupKey: g.key,
                 })
-                promoted.push({ ...f, severity: 'must-fix' })
+                if (idx !== undefined) {
+                    promoted[idx] = { ...f, severity: 'must-fix' }
+                }
             } else if (sev === 'must-fix' || sev === 'must' || sev === 'high' || sev === 'critical') {
                 // Already at or above must-fix; no promotion, but mark it so callers can render the convergence evidence.
                 promotions.push({
@@ -248,9 +257,6 @@ export function detectConvergence(
                     reason: `Already must-fix; converged with ${g.perspectives.length} perspectives at ${g.path}:${g.minLine}-${g.maxLine}: ${g.perspectives.join(', ')}.`,
                     groupKey: g.key,
                 })
-                promoted.push({ ...f })
-            } else {
-                promoted.push({ ...f })
             }
         }
     }

@@ -12,7 +12,11 @@ import {
     readTodoContent,
     type TodoStatus,
 } from '../todos.js'
-import { findCriterion } from '../verification-result.js'
+import {
+    findCriterion,
+    readVerificationHistory,
+    type VerificationResult,
+} from '../verification-result.js'
 
 const verificationRefSchema = z.object({
     criterionId: z
@@ -30,7 +34,10 @@ type VerificationRef = z.infer<typeof verificationRefSchema>
  * Validate a verificationRef points at a real, met, evidence-backed criterion.
  * Returns null on success, or a structured error payload to return to the caller.
  */
-function validateVerificationRef(ref: VerificationRef | undefined): {
+function validateVerificationRef(
+    ref: VerificationRef | undefined,
+    history?: VerificationResult[]
+): {
     code: string
     message: string
 } | null {
@@ -41,7 +48,7 @@ function validateVerificationRef(ref: VerificationRef | undefined): {
                 'verificationRef is required when moving a todo to "done". Provide { criterionId, wave } pointing at a PASS criterion in verification-history.jsonl.',
         }
     }
-    const found = findCriterion(ref)
+    const found = findCriterion({ ...ref, history })
     if (!found) {
         return {
             code: 'TODO_DONE_UNVERIFIED',
@@ -250,15 +257,23 @@ export const manageTodosTool = createTool({
                         error: 'items array is required for move-batch',
                     }
                 // Atomic guard: validate every done item BEFORE any move runs.
+                // Read verification history exactly once and reuse it for every
+                // item — otherwise this is O(items × history) on disk reads.
                 const blocked: Array<{
                     identifier: string
                     code: string
                     message: string
                 }> = []
+                const historyForBatch = items.some(
+                    (it) => it.targetStatus === 'done'
+                )
+                    ? readVerificationHistory()
+                    : undefined
                 for (const it of items) {
                     if (it.targetStatus === 'done') {
                         const violation = validateVerificationRef(
-                            it.verificationRef
+                            it.verificationRef,
+                            historyForBatch
                         )
                         if (violation) {
                             blocked.push({

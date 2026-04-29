@@ -162,10 +162,12 @@ export function renderDraftRule(pitfall: RecurringPitfall): string {
  *   3. Set \`scope\` to the glob of files this rule should run against.
  *   4. Refine the severity (defaults to 'should-fix').
  *   5. Delete this comment block once the rule is real.
+ *
+ * The rule is exported as a plain duck-typed object so it works in any
+ * consumer repo without a runtime dependency on the harness package.
  */
-import { defineRule } from '@alecsibilia/luca-mastracode/rules/define-rule'
 
-export default defineRule({
+export default {
     id: '${pitfall.suggestedRuleId}',
     severity: 'should-fix',
     description: '${pitfall.code}: ${sample.replace(/'/g, "\\'")}',
@@ -190,7 +192,7 @@ export default defineRule({
         //   return findings
         return []
     },
-})
+}
 `
 }
 

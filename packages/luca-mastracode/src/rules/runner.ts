@@ -21,7 +21,7 @@
  *     and any load/runtime errors. Caller decides what to do
  *     (block phase, surface as advisory, etc.).
  */
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -90,7 +90,7 @@ function walkDir(
     if (!existsSync(dir)) return out
     let entries: string[]
     try {
-        entries = require('node:fs').readdirSync(dir)
+        entries = readdirSync(dir)
     } catch {
         return out
     }
@@ -396,12 +396,23 @@ export function runRules(opts: {
         }
 
         for (const relPath of candidates) {
-            const file = makeRuleFile({
-                repoRoot,
-                relPath,
-                contentCache,
-                astCache,
-            })
+            // `scope: 'repo'` produces a single sentinel candidate (`''`). For
+            // repo-scoped rules we synthesize a RuleFile pointing at the repo
+            // root rather than trying to read it as a file.
+            const file =
+                relPath === ''
+                    ? ({
+                          path: '',
+                          absolutePath: repoRoot,
+                          content: '',
+                          ast: () => null,
+                      } satisfies RuleFile)
+                    : makeRuleFile({
+                          repoRoot,
+                          relPath,
+                          contentCache,
+                          astCache,
+                      })
             if (!file) continue
             try {
                 const ruleFindings = rule.check(file)

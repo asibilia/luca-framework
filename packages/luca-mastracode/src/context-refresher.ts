@@ -72,13 +72,10 @@ export class ContextRefresher {
             // followUp failure should not crash the pipeline, but record it
             // so postmortem can attribute missing context refreshes.
             try {
-                appendLedger({
-                    type: 'context-refresher-followup-failed',
-                    payload: {
-                        threshold,
-                        mode: this.currentModeId,
-                        error: err instanceof Error ? err.message : String(err),
-                    },
+                appendLedger('context-refresher-followup-failed', {
+                    threshold,
+                    mode: this.currentModeId,
+                    error: err instanceof Error ? err.message : String(err),
                 })
             } catch {
                 // ledger write itself failed — nothing else to do
