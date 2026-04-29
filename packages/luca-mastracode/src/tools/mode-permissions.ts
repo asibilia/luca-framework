@@ -78,6 +78,7 @@ export const MODE_PERMISSIONS: Record<
         repo_cleanup: ['scan', 'parse-report', 'summary'],
         write_planning_file: ['write', 'read'],
         confidence_journal: ['read', 'summary'],
+        claim_verifier: ['verify-text', 'verify-file'],
     },
     'luca:6-finalize': {
         workflow_state: [
@@ -95,5 +96,6 @@ export const MODE_PERMISSIONS: Record<
         repo_cleanup: '*',
         confidence_journal: ['read', 'summary', 'render'],
         run_postmortem: '*',
+        claim_verifier: '*',
     },
 } as const

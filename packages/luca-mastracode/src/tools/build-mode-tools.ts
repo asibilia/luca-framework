@@ -1,5 +1,6 @@
 import type { Tool } from '@mastra/core/tools'
 
+import { claimVerifierTool } from './claim-verifier.js'
 import { classifyComplexityTool } from './classify-complexity.js'
 import { confidenceJournalTool } from './confidence-journal.js'
 import { createScopedTool } from './create-scoped-tool.js'
@@ -57,6 +58,10 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
     run_postmortem: {
         tool: runPostmortemTool,
         record_key: 'runPostmortem',
+    },
+    claim_verifier: {
+        tool: claimVerifierTool,
+        record_key: 'claimVerifier',
     },
 }
 
