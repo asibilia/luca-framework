@@ -9,6 +9,8 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { getCurrentRunId } from './session-ledger.js'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -40,6 +42,13 @@ export interface CheckResult {
 export interface VerificationResult {
     /** ISO 8601 timestamp */
     timestamp: string
+    /**
+     * Run that produced this result. Stamped on write; validated on read.
+     * A stale result from a prior run (mismatched runId) is treated as
+     * absent so it can't satisfy wave/phase guards in the new run.
+     * Optional for back-compat with results written before runId stamping.
+     */
+    runId?: string
     /** Pipeline phase (e.g. "Phase 1: Setup") */
     phase?: string
     /** Wave/iteration number */
@@ -87,13 +96,27 @@ function ensurePlanningDir(): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Read the latest verification result. Returns null if no result exists.
+ * Read the latest verification result. Returns null if no result exists,
+ * if the file is unparseable, or if the stamped `runId` doesn't match the
+ * current run (defense against a prior run's stale snapshot satisfying
+ * the new run's wave/phase guards). Results without a `runId` field are
+ * treated as legacy and accepted for back-compat.
  */
 export function readVerificationResult(): VerificationResult | null {
     const p = resultPath()
     if (!existsSync(p)) return null
     try {
-        return JSON.parse(readFileSync(p, 'utf-8'))
+        const parsed = JSON.parse(
+            readFileSync(p, 'utf-8'),
+        ) as VerificationResult
+        if (
+            typeof parsed.runId === 'string' &&
+            parsed.runId.length > 0 &&
+            parsed.runId !== getCurrentRunId()
+        ) {
+            return null
+        }
+        return parsed
     } catch {
         return null
     }
@@ -101,12 +124,18 @@ export function readVerificationResult(): VerificationResult | null {
 
 /**
  * Write a verification result (overwrites latest, appends to history).
+ * Stamps the current `runId` so a stale snapshot from a prior run can't
+ * silently satisfy the new run's wave/phase guards.
  */
 export function writeVerificationResult(result: VerificationResult): void {
     ensurePlanningDir()
-    writeFileSync(resultPath(), JSON.stringify(result, null, 2), 'utf-8')
+    const stamped: VerificationResult = {
+        ...result,
+        runId: result.runId ?? getCurrentRunId(),
+    }
+    writeFileSync(resultPath(), JSON.stringify(stamped, null, 2), 'utf-8')
     // Append to history (one JSON object per line)
-    const line = JSON.stringify(result) + '\n'
+    const line = JSON.stringify(stamped) + '\n'
     const hp = historyPath()
     if (existsSync(hp)) {
         const existing = readFileSync(hp, 'utf-8')

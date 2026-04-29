@@ -27,6 +27,7 @@ const LEDGER_FILE = '.planning/session-ledger.jsonl'
 const ROUTING_HISTORY_FILE = '.planning/routing-history.jsonl'
 const VERIFICATION_HISTORY_FILE = '.planning/verification-history.jsonl'
 const CONFIDENCE_JOURNAL_FILE = '.planning/confidence-journal.jsonl'
+const VERIFICATION_RESULT_FILE = '.planning/verification-result.json'
 const RUNS_DIR = '.planning/runs'
 
 // ---------------------------------------------------------------------------
@@ -289,9 +290,14 @@ export function computeSessionMetrics(runId?: string): {
 // ---------------------------------------------------------------------------
 
 /**
- * Move the current run's JSONL artifacts into `.planning/runs/<runId>/`
- * so the new run starts with empty ledger files. Best-effort: missing
- * source files are silently skipped.
+ * Move the current run's artifacts into `.planning/runs/<runId>/`
+ * so the new run starts clean. Best-effort: missing source files are
+ * silently skipped.
+ *
+ * The single-snapshot `verification-result.json` MUST be archived alongside
+ * the JSONL histories. Otherwise a stale wave-1 PASS from a prior run can
+ * satisfy the wave/phase guards in `workflow-state` and silently bypass
+ * verification on the next run.
  */
 export function archivePriorRun(runId: string): void {
     if (!runId) return
@@ -306,6 +312,7 @@ export function archivePriorRun(runId: string): void {
         ROUTING_HISTORY_FILE,
         VERIFICATION_HISTORY_FILE,
         CONFIDENCE_JOURNAL_FILE,
+        VERIFICATION_RESULT_FILE,
     ]
     for (const rel of candidates) {
         const src = join(process.cwd(), rel)
