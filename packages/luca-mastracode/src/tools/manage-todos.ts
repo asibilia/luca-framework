@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { appendLedger } from '../session-ledger.js'
 import {
     addTodo,
     listTodos,
@@ -11,6 +12,56 @@ import {
     readTodoContent,
     type TodoStatus,
 } from '../todos.js'
+import { findCriterion } from '../verification-result.js'
+
+const verificationRefSchema = z.object({
+    criterionId: z
+        .string()
+        .describe('Stable criterion ID from verification-result.json'),
+    wave: z
+        .number()
+        .int()
+        .describe('Wave number whose verification result contains the criterion'),
+})
+
+type VerificationRef = z.infer<typeof verificationRefSchema>
+
+/**
+ * Validate a verificationRef points at a real, met, evidence-backed criterion.
+ * Returns null on success, or a structured error payload to return to the caller.
+ */
+function validateVerificationRef(ref: VerificationRef | undefined): {
+    code: string
+    message: string
+} | null {
+    if (!ref) {
+        return {
+            code: 'TODO_DONE_UNVERIFIED',
+            message:
+                'verificationRef is required when moving a todo to "done". Provide { criterionId, wave } pointing at a PASS criterion in verification-history.jsonl.',
+        }
+    }
+    const found = findCriterion(ref)
+    if (!found) {
+        return {
+            code: 'TODO_DONE_UNVERIFIED',
+            message: `verificationRef { criterionId: "${ref.criterionId}", wave: ${ref.wave} } not found in verification-history.jsonl. Write a verification-result with this criterion before moving the todo.`,
+        }
+    }
+    if (!found.criterion.met) {
+        return {
+            code: 'TODO_DONE_UNVERIFIED',
+            message: `Criterion "${ref.criterionId}" (wave ${ref.wave}) is recorded as NOT met. Cannot move the todo to done.`,
+        }
+    }
+    if (!found.criterion.evidence || !found.criterion.evidence.trim()) {
+        return {
+            code: 'TODO_DONE_UNVERIFIED',
+            message: `Criterion "${ref.criterionId}" (wave ${ref.wave}) has empty evidence. Move blocked — re-run verification with concrete evidence (file/line/test).`,
+        }
+    }
+    return null
+}
 
 export const manageTodosTool = createTool({
     id: 'manage-todos',
@@ -82,14 +133,22 @@ export const manageTodosTool = createTool({
                 z.object({
                     identifier: z.union([z.number(), z.string()]),
                     targetStatus: z.enum(['pending', 'backlog', 'done']),
+                    verificationRef: verificationRefSchema.optional(),
                 })
             )
             .optional()
             .describe(
-                'Array of {identifier, targetStatus} for batch status changes (required for move-batch). ' +
+                'Array of {identifier, targetStatus, verificationRef?} for batch status changes (required for move-batch). ' +
                     'Identifiers may be numeric indices or slug strings; mixing is allowed. ' +
                     'All identifiers are resolved against a single backlog snapshot before any moves run, ' +
-                    'so indices captured from a prior `list` call remain valid for the entire batch.'
+                    'so indices captured from a prior `list` call remain valid for the entire batch. ' +
+                    'verificationRef is REQUIRED for any item whose targetStatus is "done"; the batch is rejected atomically if any done item lacks a valid ref.'
+            ),
+        verificationRef: verificationRefSchema
+            .optional()
+            .describe(
+                'Required when moving a single todo to "done". Points at a PASS criterion in verification-history.jsonl. ' +
+                    'Format: { criterionId: string, wave: number }. The criterion must exist, be met, and have non-empty evidence.'
             ),
         filterStatus: z
             .enum(['pending', 'backlog', 'done'])
@@ -109,7 +168,10 @@ export const manageTodosTool = createTool({
             indices,
             items,
             filterStatus,
-        } = inputData
+            verificationRef,
+        } = inputData as typeof inputData & {
+            verificationRef?: VerificationRef
+        }
 
         switch (action) {
             case 'list': {
@@ -145,11 +207,33 @@ export const manageTodosTool = createTool({
                     return {
                         error: 'identifier and targetStatus are required for move',
                     }
+                if (targetStatus === 'done') {
+                    const violation = validateVerificationRef(verificationRef)
+                    if (violation) {
+                        appendLedger('todo-move-blocked', {
+                            identifier: String(identifier),
+                            targetStatus,
+                            reason: violation.code,
+                            message: violation.message,
+                        })
+                        return {
+                            error: violation.message,
+                            code: violation.code,
+                        }
+                    }
+                }
                 const moved = moveTodo({
                     identifier,
                     targetStatus: targetStatus as TodoStatus,
                 })
                 if (!moved) return { error: `Todo not found: ${identifier}` }
+                if (targetStatus === 'done' && verificationRef) {
+                    appendLedger('todo-moved-to-done', {
+                        slug: moved.slug,
+                        title: moved.title,
+                        verificationRef,
+                    })
+                }
                 return {
                     moved: `#${moved.index} ${moved.title} → ${moved.status}`,
                 }
@@ -159,7 +243,69 @@ export const manageTodosTool = createTool({
                     return {
                         error: 'items array is required for move-batch',
                     }
+                // Atomic guard: validate every done item BEFORE any move runs.
+                const blocked: Array<{
+                    identifier: string
+                    code: string
+                    message: string
+                }> = []
+                for (const it of items) {
+                    if (it.targetStatus === 'done') {
+                        const violation = validateVerificationRef(
+                            it.verificationRef
+                        )
+                        if (violation) {
+                            blocked.push({
+                                identifier: String(it.identifier),
+                                code: violation.code,
+                                message: violation.message,
+                            })
+                        }
+                    }
+                }
+                if (blocked.length > 0) {
+                    for (const b of blocked) {
+                        appendLedger('todo-move-blocked', {
+                            identifier: b.identifier,
+                            targetStatus: 'done',
+                            reason: b.code,
+                            message: b.message,
+                        })
+                    }
+                    return {
+                        error: `move-batch rejected: ${blocked.length} done-move(s) lack a valid verificationRef. The whole batch was atomic; no todos were moved.`,
+                        code: 'TODO_DONE_UNVERIFIED',
+                        blocked,
+                    }
+                }
+
                 const result = moveBatch({ items })
+
+                // Log each successful done move with its ref so postmortem can correlate.
+                const refByIdentifier = new Map<string, VerificationRef>()
+                for (const it of items) {
+                    if (it.targetStatus === 'done' && it.verificationRef) {
+                        refByIdentifier.set(
+                            String(it.identifier),
+                            it.verificationRef
+                        )
+                    }
+                }
+                for (const t of result.moved) {
+                    if (t.status === 'done') {
+                        const ref =
+                            refByIdentifier.get(String(t.index)) ??
+                            refByIdentifier.get(t.slug)
+                        if (ref) {
+                            appendLedger('todo-moved-to-done', {
+                                slug: t.slug,
+                                title: t.title,
+                                verificationRef: ref,
+                            })
+                        }
+                    }
+                }
+
                 return {
                     moved: result.moved.map(
                         (t) => `#${t.index} ${t.title} → ${t.status}`

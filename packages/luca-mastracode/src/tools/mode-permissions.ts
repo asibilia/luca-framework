@@ -36,6 +36,7 @@ export const MODE_PERMISSIONS: Record<
         session_ledger: '*',
         manage_todos: ['list', 'read'],
         workflow_state: ['read'],
+        run_postmortem: ['analyze', 'list-runs'],
     },
     'luca:1-triage': {
         classify_complexity: '*',
@@ -60,6 +61,7 @@ export const MODE_PERMISSIONS: Record<
             'record-iteration',
             'advance-wave',
             'complete-phase',
+            'justify-empty-phase',
             'switch-mode',
         ],
         manage_todos: ['list', 'read', 'move', 'move-batch'],
@@ -83,6 +85,7 @@ export const MODE_PERMISSIONS: Record<
             'reset-pipeline',
             'switch-mode',
             're-enter-pipeline',
+            'justify-empty-phase',
         ],
         run_checks: '*',
         pipeline_lock: ['release'],
@@ -91,5 +94,6 @@ export const MODE_PERMISSIONS: Record<
         manage_todos: ['list', 'read', 'move', 'move-batch'],
         repo_cleanup: '*',
         confidence_journal: ['read', 'summary', 'render'],
+        run_postmortem: '*',
     },
 } as const

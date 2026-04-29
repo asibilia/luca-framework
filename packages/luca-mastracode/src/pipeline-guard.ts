@@ -31,6 +31,8 @@ interface TurnState {
     switchModeCalled: boolean
     /** Consecutive enforcement nudges sent without a successful switch-mode */
     consecutiveMisses: number
+    /** Whether the idle-bypass anomaly has already been logged this turn */
+    idleBypassLogged: boolean
 }
 
 /** Active tool_start → toolName+args mapping for tool_end correlation */
@@ -62,6 +64,7 @@ export function startTurn(modeId: string): void {
         toolCallCount: 0,
         switchModeCalled: false,
         consecutiveMisses: prevMisses,
+        idleBypassLogged: false,
     }
     pendingToolCalls.clear()
 }
@@ -131,8 +134,19 @@ export function checkTurnCompletion(reason: string | undefined): {
 
     // Don't enforce if the pipeline is not actively running — prevents
     // stale guard state from triggering false enforcement after completion.
+    // Log the bypass so retrospective analysis can detect cases where the
+    // guard was disabled by stale or missing pipeline state.
     const state = readLucaState()
     if (!state.pipelineStep || state.pipelineStep === 'idle') {
+        if (!currentTurn.idleBypassLogged) {
+            currentTurn.idleBypassLogged = true
+            appendLedger('pipeline-guard-idle-bypass', {
+                mode: currentTurn.modeId,
+                pipelineStep: state.pipelineStep ?? 'missing',
+                toolCallCount: currentTurn.toolCallCount,
+                switchModeCalled: currentTurn.switchModeCalled,
+            })
+        }
         return null
     }
 

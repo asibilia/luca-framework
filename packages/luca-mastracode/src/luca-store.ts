@@ -16,6 +16,18 @@ import type { ComplexityLevel, ProfileLevel } from './state.js'
 
 const STATE_FILE = '.planning/luca-state.json'
 
+/**
+ * Mirror of `PhaseSnapshot` from `phase-diff.ts`. Inlined here to avoid a
+ * circular import (luca-store ↔ phase-diff via session-ledger).
+ */
+export interface PhaseSnapshotState {
+    phase: string
+    takenAt: string
+    headSha: string | null
+    dirtyFiles: string[]
+    gitAvailable: boolean
+}
+
 export interface PhaseResult {
     /** Phase name from ROADMAP.md */
     name: string
@@ -68,6 +80,16 @@ export interface LucaWorkflowState {
     // --- Session ---
     sessionId?: string
     startedAt?: string
+    runId?: string
+
+    // --- Phase proof (set by start-phase, consumed by complete-phase) ---
+    currentPhaseStartSnapshot?: PhaseSnapshotState
+
+    // --- Empty-phase justification (set by justify-empty-phase) ---
+    emptyPhaseJustifications?: Record<
+        string,
+        { category: string; reasoning: string; at: string }
+    >
 
     // --- Assigned work ---
     assignedTodos?: number[]

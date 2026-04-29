@@ -9,6 +9,7 @@ import { MODE_PERMISSIONS } from './mode-permissions.js'
 import { pipelineLockTool } from './pipeline-lock.js'
 import { repoCleanupTool } from './repo-cleanup.js'
 import { runChecksTool } from './run-checks.js'
+import { runPostmortemTool } from './run-postmortem.js'
 import { sessionLedgerTool } from './session-ledger.js'
 import { verificationResultTool } from './verification-result.js'
 import { workflowStateTool } from './workflow-state.js'
@@ -52,6 +53,10 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
     confidence_journal: {
         tool: confidenceJournalTool,
         record_key: 'confidenceJournal',
+    },
+    run_postmortem: {
+        tool: runPostmortemTool,
+        record_key: 'runPostmortem',
     },
 }
 

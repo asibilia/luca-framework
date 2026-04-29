@@ -193,6 +193,48 @@ Verify all planned work was completed:
   3. **STOP.** Review mode handles from here, iterating Execute → Review as needed.
   - If user prefers not to fix: track as follow-up issues, proceed to cleanup
 
+## Step 4.5: Postmortem Gate
+
+Before any PR creation, run the postmortem gate. This catches silent-skip incidents (execute mode skipped but todos moved to done), unverified completions, and forced transitions.
+
+```
+runPostmortem(action: "gate")
+```
+
+**If it returns `code: POSTMORTEM_VIOLATIONS`:**
+
+1. Forward each pitfall in the response to MuninnDB so future runs can recall the failure mode:
+   ```
+   for pitfall in response.pitfalls:
+     mcp__muninn__muninn_remember(
+       vault: "default",
+       concept: pitfall.concept,
+       type: pitfall.type,
+       content: pitfall.content,
+       tags: pitfall.tags,
+       op_id: pitfall.op_id
+     )
+   ```
+2. Re-enter the pipeline at the appropriate stage:
+   ```
+   workflowState(
+     action: "re-enter-pipeline",
+     targetMode: "luca:4-execute" | "luca:5-review",
+     reason: "<violation summary>"
+   )
+   ```
+3. **STOP.** Do not create a PR. The re-entered pipeline must converge before finalize runs again.
+
+**If the gate passes** (no critical violations), continue to Step 5. Warnings are non-blocking but should be referenced in the PR body.
+
+Then render the human-readable report:
+
+```
+runPostmortem(action: "render")
+```
+
+This writes `.planning/POSTMORTEM.md`. Reference it in the PR body (Step 3) and the Final Summary (Step 6).
+
 ## Step 5: Cross-Milestone Continuation
 
 Check if `.planning/ROADMAP.md` has remaining phases:
@@ -238,7 +280,7 @@ sessionLedger(action: "metrics")
 
 Returns: total events, mode transitions, phases completed, total iterations, session duration.
 
-Also: `verificationResult(action: "aggregate")`
+Also: `verificationResult(action: "aggregate")` and `runPostmortem(action: "render")` (regenerates `.planning/POSTMORTEM.md` with final metrics).
 
 ### Final Summary
 
@@ -336,7 +378,9 @@ Read `workflowState(action: "read")` for:
 - Plan and research data for gap detection
 
 ## Tool Coordination
-Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `manageTodos(move-batch → done)` for all completed items in one call.
+Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `runPostmortem(gate)` → (5) `manageTodos(move-batch → done)` with `verificationRef` for every item, in one call.
+
+**Critical:** `manageTodos` will reject any `move → done` without a valid `verificationRef: { criterionId, wave }` pointing at a PASS criterion in `verification-history.jsonl`. Capture the criterion IDs from your `verificationResult(write)` call and pass them through.
 
 ## Luca Reminders
 Obey `<luca-reminder>` tags when they appear in conversation — they contain authoritative mid-session guidance that supersedes stale context.

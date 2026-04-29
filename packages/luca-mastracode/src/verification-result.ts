@@ -134,6 +134,34 @@ export function readVerificationHistory(): VerificationResult[] {
 }
 
 /**
+ * Find a specific criterion in the verification history by wave + criterionId.
+ * Returns the matching criterion (with the result it belongs to) or null.
+ *
+ * Used by `manageTodos(move → done)` to verify that a todo's claimed
+ * verification reference actually exists and was met.
+ */
+export function findCriterion({
+    criterionId,
+    wave,
+}: {
+    criterionId: string
+    wave: number
+}): {
+    criterion: VerificationCriterion
+    result: VerificationResult
+} | null {
+    const history = readVerificationHistory()
+    // Iterate newest → oldest so the most recent verdict wins.
+    for (let i = history.length - 1; i >= 0; i--) {
+        const r = history[i]
+        if (!r || r.wave !== wave) continue
+        const c = r.criteria.find((cc) => cc.criterionId === criterionId)
+        if (c) return { criterion: c, result: r }
+    }
+    return null
+}
+
+/**
  * Aggregate verification results for milestone validation.
  * Returns overall pass/fail and summary stats.
  */

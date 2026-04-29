@@ -22,6 +22,7 @@ const main = defineCommand({
         'vault:init': () =>
             import('./commands/vault-init').then((m) => m.vaultInitCommand),
         run: () => import('./commands/run').then((m) => m.runCommand),
+        retro: () => import('./commands/retro').then((m) => m.retroCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
