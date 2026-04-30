@@ -145,7 +145,7 @@ Skip if `--no-changeset` flag is provided or if no `.changeset/config.json` exis
 Remember for later recall (by finalize mode, other sessions, or `/gh-prepare` dedup):
 
 ```
-muninn_remember(
+mcp__muninn__muninn_remember(
   vault: "<repo_vault>",
   concept: "gh-prepare",
   content: "GitHub setup: issue #<N> (<url>), branch <name>, PR #<M> (<url>). Work: <description>",
