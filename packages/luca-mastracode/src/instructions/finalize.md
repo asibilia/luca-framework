@@ -18,10 +18,13 @@ You receive control from **Review mode**. Read the latest `.planning/REVIEW-*.md
 
 1. **Milestone boundary** — capture learnings, prune patterns, archive session
 2. **Shadow debt scan** — advisory scan for AI-session debris before PR
-3. **PR creation** — create pull request if git workflow was used
-4. **Gap detection** — verify all planned work was completed
-5. **Cross-milestone continuation** — loop back if roadmap has remaining phases
-6. **Session cleanup** — release locks, summarize work
+3. **Gap detection** — verify all planned work was completed; reconcile PLAN.md against shipped code
+4. **Postmortem gate** — block on critical pipeline violations before PR
+5. **PR creation** — write changeset post-convergence, run claim verifier, then create pull request
+6. **Cross-milestone continuation** — loop back if roadmap has remaining phases
+7. **Session cleanup** — release locks, summarize work
+
+> **Ordering matters.** Gap detection, postmortem gate, and claim verifier all run *before* `gh pr create`. The changeset is written **after** review iteration converges, not before — pre-convergence drafts are the #1 source of doc drift. A failing gate must re-enter the pipeline rather than ship a PR.
 
 ---
 
@@ -31,8 +34,11 @@ You receive control from **Review mode**. Read the latest `.planning/REVIEW-*.md
 task_write(tasks: [
   { content: "Capture milestone learnings", status: "in_progress", activeForm: "Capturing milestone learnings" },
   { content: "Run shadow debt scan", status: "pending", activeForm: "Running shadow debt scan" },
-  { content: "Create pull request", status: "pending", activeForm: "Creating pull request" },
   { content: "Run gap detection audit", status: "pending", activeForm: "Running gap detection audit" },
+  { content: "Run postmortem gate", status: "pending", activeForm: "Running postmortem gate" },
+  { content: "Write changeset and draft PR body", status: "pending", activeForm: "Writing changeset and PR body" },
+  { content: "Run claim verifier gate", status: "pending", activeForm: "Running claim verifier gate" },
+  { content: "Create pull request", status: "pending", activeForm: "Creating pull request" },
   { content: "Clean up and summarize", status: "pending", activeForm: "Cleaning up session artifacts" }
 ])
 ```
@@ -103,7 +109,7 @@ Also write to `.planning/SESSION-ARCHIVE.md`:
 <top patterns and pitfalls>
 
 ## Metrics
-<quantitative summary — see Step 6>
+<quantitative summary — see Step 7>
 ```
 
 ## Step 2: Shadow Debt Scan
@@ -121,41 +127,9 @@ Advisory scan for AI-session debris before PR:
 
 If `repoCleanup` returns `status: "disabled"`, skip silently.
 
-## Step 3: PR Creation
+## Step 3: Gap Detection
 
-If git workflow was used (issue + branch created):
-
-### 3a. Recall Release Conventions
-
-**Before any PR work**, recall release details from MuninnDB:
-
-```
-mcp__muninn__muninn_recall(
-  vault: "<repo_vault>",
-  context: ["release checklist", "PR title format", "version convention", "naming convention"],
-  mode: "semantic",
-  limit: 5
-)
-```
-
-Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
-
-### 3b. Create PR
-
-1. **Push** feature branch to remote
-2. **Create PR** with:
-   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
-   - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations
-   - **Milestone**: Tag to version milestone
-   - **Labels**: Match issue labels
-   - **Reviewers**: If configured
-3. Store PR URL in `workflow_state`
-
-If `--skip-branch` was set, skip.
-
-## Step 4: Gap Detection
-
-Verify all planned work was completed:
+Verify all planned work was completed **before** opening a PR:
 
 ### Gap Audit
 
@@ -183,7 +157,7 @@ Verify all planned work was completed:
 
 ### Gap Resolution
 
-- **Minor gaps** (missing docs, incomplete tests): flag in PR description as follow-up
+- **Minor gaps** (missing docs, incomplete tests): flag in PR description as follow-up (record now, surface in Step 5)
 - **Major gaps** (missing functionality, failing tests): re-enter pipeline:
   1. Save gap results to workflow state
   2. Re-enter at Review or Execute:
@@ -191,9 +165,150 @@ Verify all planned work was completed:
      workflowState(action: "re-enter-pipeline", targetMode: "luca:5-review", reason: "Post-finalize gap detection found major gaps: <summary>")
      ```
   3. **STOP.** Review mode handles from here, iterating Execute → Review as needed.
-  - If user prefers not to fix: track as follow-up issues, proceed to cleanup
+  - If user prefers not to fix: track as follow-up issues, proceed to the postmortem gate
 
-## Step 5: Cross-Milestone Continuation
+### Step 3c — PLAN.md reconciliation
+
+Run the claim verifier against `.planning/PLAN.md`:
+
+```
+claimVerifier(action: "verify-file", path: ".planning/PLAN.md")
+```
+
+Failures here are NOT blocking by themselves — PLAN.md is allowed to contain forward-looking language for incomplete tasks. But:
+
+- **Symbol-not-found** failures cited in tasks marked **complete** → block, re-enter execute (the task references a symbol that doesn't exist in the working tree).
+- **File-not-found** failures cited in tasks marked **complete** → block, re-enter execute.
+- **Count-mismatch** failures → warn only, surface in PR body Follow-Up section.
+
+Cross-reference each failure against PLAN.md task status before deciding to block. A failed claim attached to an incomplete task is expected; a failed claim attached to a completed task is drift.
+
+If blocking:
+
+```
+workflowState(action: "re-enter-pipeline", targetMode: "luca:4-execute", reason: "PLAN.md reconciliation: completed task cites missing symbol/path: <summary>")
+```
+
+## Step 4: Postmortem Gate
+
+**Always runs before PR creation.** Catches silent-skip incidents (execute mode skipped but todos moved to done), unverified completions, and forced transitions.
+
+```
+runPostmortem(action: "gate")
+```
+
+**If it returns `code: POSTMORTEM_VIOLATIONS`:**
+
+1. Forward each pitfall in the response to MuninnDB so future runs can recall the failure mode:
+   ```
+   for pitfall in response.pitfalls:
+     mcp__muninn__muninn_remember(
+       vault: "default",
+       concept: pitfall.concept,
+       type: pitfall.type,
+       content: pitfall.content,
+       tags: pitfall.tags,
+       op_id: pitfall.op_id
+     )
+   ```
+2. Re-enter the pipeline at the appropriate stage:
+   ```
+   workflowState(
+     action: "re-enter-pipeline",
+     targetMode: "luca:4-execute" | "luca:5-review",
+     reason: "<violation summary>"
+   )
+   ```
+3. **STOP.** Do not create a PR. The re-entered pipeline must converge before finalize runs again.
+
+**If the gate passes** (no critical violations), continue to Step 5. Warnings are non-blocking but should be referenced in the PR body.
+
+Then render the human-readable report:
+
+```
+runPostmortem(action: "render")
+```
+
+This writes `.planning/POSTMORTEM.md`. Reference it in the PR body (Step 5) and the Final Summary (Step 7).
+
+## Step 4.5: Recurring-Pitfall Rule Suggestions
+
+Scan all available runs (current + archived) for pitfalls that have recurred at or above the promotion threshold:
+
+```
+runRules(action: "suggest", threshold: 3)
+```
+
+The engine groups violations by `code` across runs, counts the number of *distinct runs* each code appeared in, and renders draft `.luca/rules/*.ts` templates for any code meeting the threshold to `.planning/SUGGESTED-RULES.md`.
+
+Drafts are **not** auto-applied — they are starting templates, not finished rules. The recurrence detection answers "what should we have a machine-checkable rule for?" but the user implements the matcher.
+
+**Result handling:**
+
+- `report.recurring.length === 0` — nothing to suggest. Continue.
+- `report.recurring.length > 0` — `.planning/SUGGESTED-RULES.md` was written. Reference it in the PR body so the user sees the suggestions on review. **Do not block the PR** on suggestions; this is advisory.
+
+The threshold defaults to 3 (a pitfall that has bitten you in 3+ runs). Repos that want stricter or looser promotion can override via `threshold`.
+
+## Step 5: PR Creation
+
+Only reached if Step 3 (Gap Detection) and Step 4 (Postmortem Gate) both passed.
+
+If git workflow was used (issue + branch created):
+
+### 5a. Recall Release Conventions
+
+**Before any PR work**, recall release details from MuninnDB:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "<repo_vault>",
+  context: ["release checklist", "PR title format", "version convention", "naming convention"],
+  mode: "semantic",
+  limit: 5
+)
+```
+
+Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
+
+### 5b.1. Write release artifacts (AFTER review iteration converged)
+
+Now — and only now, after every review iteration is resolved — write the changeset (`.changeset/<slug>.md`) and any release notes. **Writing these before this point is the #1 cause of drift between artifact claims and shipped code.** Symbols rename mid-review, schemas evolve, counts shift; only the post-convergence tree is trustworthy as the source of truth for release artifacts.
+
+If a changeset already exists from earlier in the session: re-read it now, reconcile against the current branch, and rewrite it. Do not assume it's still accurate.
+
+### 5b.2. Verify artifact claims
+
+Run the claim verifier across the changeset and PR body draft **before** calling `gh pr create`:
+
+```
+claimVerifier(action: "gate", paths: [".changeset/<slug>.md"], texts: [<pr_body_draft>])
+```
+
+If it returns `code: CLAIM_VERIFICATION_FAILED`:
+
+- Each failure is a backticked symbol, file path, or quantitative count cited in your draft that doesn't exist in the working tree.
+- For `symbol-not-found` / `file-not-found`: the draft is wrong (renamed/removed since drafting) **or** the code is wrong (the work isn't actually shipped). Inspect both.
+- For `count-mismatch`: numbers drifted. Re-count or rephrase.
+- Fix the draft (or the code) and re-run the gate until it passes.
+- **Do not open the PR with unverified claims.**
+
+After the gate passes, proceed.
+
+### 5b.3. Create PR
+
+1. **Push** feature branch to remote
+2. **Create PR** with:
+   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
+   - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `.planning/POSTMORTEM.md`
+   - **Milestone**: Tag to version milestone
+   - **Labels**: Match issue labels
+   - **Reviewers**: If configured
+3. Store PR URL in `workflow_state`
+
+If `--skip-branch` was set, skip.
+
+## Step 6: Cross-Milestone Continuation
 
 Check if `.planning/ROADMAP.md` has remaining phases:
 
@@ -214,7 +329,7 @@ else:
 
 Maximum **3 milestones per session**. If more remain: summarize what's left, create issues, note continuation point.
 
-## Step 6: Session Cleanup
+## Step 7: Session Cleanup
 
 ### Release Pipeline Lock
 
@@ -238,7 +353,7 @@ sessionLedger(action: "metrics")
 
 Returns: total events, mode transitions, phases completed, total iterations, session duration.
 
-Also: `verificationResult(action: "aggregate")`
+Also: `verificationResult(action: "aggregate")` and `runPostmortem(action: "render")` (regenerates `.planning/POSTMORTEM.md` with final metrics).
 
 ### Final Summary
 
@@ -336,7 +451,11 @@ Read `workflowState(action: "read")` for:
 - Plan and research data for gap detection
 
 ## Tool Coordination
-Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `manageTodos(move-batch → done)` for all completed items in one call.
+Sequence: (1) `runChecks` → (2) spawn shadow-scanner → (3) `verificationResult(write)` → (4) `runPostmortem(gate)` → (5) `runRules(suggest)` → (6) write changeset + draft PR body → (7) `claimVerifier(gate)` over changeset + PR body → (8) `manageTodos(move-batch → done)` with `verificationRef` for every item, in one call → (9) `gh pr create`.
+
+**Critical:** `manageTodos` will reject any `move → done` without a valid `verificationRef: { criterionId, wave }` pointing at a PASS criterion in `verification-history.jsonl`. Capture the criterion IDs from your `verificationResult(write)` call and pass them through.
+
+**Also critical:** `claimVerifier(gate)` runs *after* the changeset is written and *before* `gh pr create`. A failure here means the draft cites symbols/paths/counts that don't exist on the branch — either the draft is stale (rewrite) or the code didn't actually land (re-enter execute).
 
 ## Luca Reminders
 Obey `<luca-reminder>` tags when they appear in conversation — they contain authoritative mid-session guidance that supersedes stale context.

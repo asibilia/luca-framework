@@ -12,6 +12,8 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -66,7 +68,7 @@ export function resolveResearchModel(
  * Research agent configuration for mode registration.
  */
 export const researchMode = {
-    id: 'luca:2-research' as const,
+    id: MODES.research,
     name: 'luca: Research',
     description: 'Deep codebase and ecosystem research before planning.',
     color: '#3b82f6',

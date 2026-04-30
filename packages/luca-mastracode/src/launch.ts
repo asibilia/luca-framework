@@ -75,6 +75,7 @@ import {
     resolveTriageModel,
     triageMode,
 } from './modes/triage.js'
+import { MODES } from './modes/mode-ids.js'
 import * as pipelineGuard from './pipeline-guard.js'
 import {
     buildPipelineProgressHeader,
@@ -119,13 +120,13 @@ import { clipToVisibleWidth, visibleWidth } from './tui-text-helpers.js'
  * is why they need this sync.
  */
 const PIPELINE_MODE_MODEL_RESOLVERS: Record<string, () => string> = {
-    'luca:discuss': resolveDiscussModel,
-    'luca:1-triage': resolveTriageModel,
-    'luca:2-research': resolveResearchModel,
-    'luca:3-architect': resolveArchitectModel,
-    'luca:4-execute': resolveExecuteModel,
-    'luca:5-review': resolveReviewModel,
-    'luca:6-finalize': resolveFinalizeModel,
+    [MODES.discuss]: resolveDiscussModel,
+    [MODES.triage]: resolveTriageModel,
+    [MODES.research]: resolveResearchModel,
+    [MODES.architect]: resolveArchitectModel,
+    [MODES.execute]: resolveExecuteModel,
+    [MODES.review]: resolveReviewModel,
+    [MODES.finalize]: resolveFinalizeModel,
 }
 
 /**
@@ -268,7 +269,7 @@ export async function main(): Promise<void> {
                     defaultModelId: discussMode.defaultModelId,
                     buildInstructions: buildDiscussInstructions,
                     resolveModelFn: resolveDiscussModel,
-                    tools: buildModeTools({ mode_id: 'luca:discuss' }),
+                    tools: buildModeTools({ mode_id: MODES.discuss }),
                 }),
             },
             // --- Luca pipeline modes ---
@@ -283,7 +284,7 @@ export async function main(): Promise<void> {
                     defaultModelId: triageMode.defaultModelId,
                     buildInstructions: buildTriageInstructions,
                     resolveModelFn: resolveTriageModel,
-                    tools: buildModeTools({ mode_id: 'luca:1-triage' }),
+                    tools: buildModeTools({ mode_id: MODES.triage }),
                 }),
             },
             {
@@ -297,7 +298,7 @@ export async function main(): Promise<void> {
                     defaultModelId: researchMode.defaultModelId,
                     buildInstructions: buildResearchInstructions,
                     resolveModelFn: resolveResearchModel,
-                    tools: buildModeTools({ mode_id: 'luca:2-research' }),
+                    tools: buildModeTools({ mode_id: MODES.research }),
                 }),
             },
             {
@@ -311,7 +312,7 @@ export async function main(): Promise<void> {
                     defaultModelId: architectMode.defaultModelId,
                     buildInstructions: buildArchitectInstructions,
                     resolveModelFn: resolveArchitectModel,
-                    tools: buildModeTools({ mode_id: 'luca:3-architect' }),
+                    tools: buildModeTools({ mode_id: MODES.architect }),
                 }),
             },
             {
@@ -325,7 +326,7 @@ export async function main(): Promise<void> {
                     defaultModelId: executeMode.defaultModelId,
                     buildInstructions: buildExecuteInstructions,
                     resolveModelFn: resolveExecuteModel,
-                    tools: buildModeTools({ mode_id: 'luca:4-execute' }),
+                    tools: buildModeTools({ mode_id: MODES.execute }),
                 }),
             },
             {
@@ -339,7 +340,7 @@ export async function main(): Promise<void> {
                     defaultModelId: reviewMode.defaultModelId,
                     buildInstructions: buildReviewInstructions,
                     resolveModelFn: resolveReviewModel,
-                    tools: buildModeTools({ mode_id: 'luca:5-review' }),
+                    tools: buildModeTools({ mode_id: MODES.review }),
                 }),
             },
             {
@@ -353,7 +354,7 @@ export async function main(): Promise<void> {
                     defaultModelId: finalizeMode.defaultModelId,
                     buildInstructions: buildFinalizeInstructions,
                     resolveModelFn: resolveFinalizeModel,
-                    tools: buildModeTools({ mode_id: 'luca:6-finalize' }),
+                    tools: buildModeTools({ mode_id: MODES.finalize }),
                 }),
             },
         ],
@@ -568,12 +569,12 @@ export async function main(): Promise<void> {
     // Since getDynamicWorkspace calls setToolsConfig on every message (line 499),
     // we must intercept workspaceFn to apply our config AFTER the stock function.
 
-    const READ_ONLY_MODES = new Set([
+    const READ_ONLY_MODES = new Set<string>([
         'plan',
-        'luca:discuss',
-        'luca:1-triage',
-        'luca:2-research',
-        'luca:5-review',
+        MODES.discuss,
+        MODES.triage,
+        MODES.research,
+        MODES.review,
     ])
 
     // Tool name overrides matching stock mastracode TOOL_NAME_OVERRIDES.

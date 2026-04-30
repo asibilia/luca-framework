@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { MODES } from '../modes/mode-ids.js'
 import { MODE_PERMISSIONS } from './mode-permissions.js'
 
 import {
@@ -13,7 +14,17 @@ import {
     type LucaWorkflowState,
 } from '../luca-store.js'
 import { switchModeRef, contextRefresherRef } from '../refs.js'
-import { appendLedger } from '../session-ledger.js'
+import {
+    appendLedger,
+    archivePriorRun,
+    startNewRun,
+} from '../session-ledger.js'
+import {
+    snapshotWorkingTree,
+    computePhaseDiff,
+    type PhaseSnapshot,
+} from '../phase-diff.js'
+import { readVerificationResult } from '../verification-result.js'
 
 const VALID_MODES = Object.keys(MODE_PERMISSIONS)
 
@@ -36,12 +47,12 @@ const VALID_MODES = Object.keys(MODE_PERMISSIONS)
  * for mode ID renames; update separately if IDs change.
  */
 export const PIPELINE_ORDER: Record<string, string | undefined> = {
-    'luca:1-triage': 'luca:2-research',
-    'luca:2-research': 'luca:3-architect',
-    'luca:3-architect': 'luca:4-execute',
-    'luca:4-execute': 'luca:5-review',
-    'luca:5-review': 'luca:6-finalize',
-    'luca:6-finalize': undefined,
+    [MODES.triage]: MODES.research,
+    [MODES.research]: MODES.architect,
+    [MODES.architect]: MODES.execute,
+    [MODES.execute]: MODES.review,
+    [MODES.review]: MODES.finalize,
+    [MODES.finalize]: undefined,
 }
 
 /**
@@ -51,8 +62,8 @@ export const PIPELINE_ORDER: Record<string, string | undefined> = {
  * - Finalize → Execute:   gap-detected rework (finalize.md Step 4)
  */
 const ALLOWED_BACKWARD_TRANSITIONS: Record<string, Set<string>> = {
-    'luca:5-review': new Set(['luca:4-execute']),
-    'luca:6-finalize': new Set(['luca:3-architect', 'luca:4-execute']),
+    [MODES.review]: new Set([MODES.execute]),
+    [MODES.finalize]: new Set([MODES.architect, MODES.execute]),
 }
 
 /**
@@ -148,7 +159,31 @@ const saveReviewResultsAction = z.object({
     reviewIteration: z.number().optional().describe('Review iteration number'),
 })
 
-const RE_ENTER_TARGETS = ['luca:4-execute', 'luca:5-review'] as const
+const EMPTY_PHASE_CATEGORIES = [
+    'docs-only-in-muninn',
+    'investigation-confirmed-no-change-needed',
+    'config-only-no-tracked-files',
+    'dependency-bump-via-lockfile-only',
+    'no-op-by-design',
+] as const
+
+const justifyEmptyPhaseAction = z.object({
+    action: z.literal('justify-empty-phase'),
+    phase: z.string().describe('Phase name (must match the in-progress phase).'),
+    category: z
+        .enum(EMPTY_PHASE_CATEGORIES)
+        .describe(
+            'Why this phase legitimately has no diff. Used to unblock the empty-phase guard on complete-phase.'
+        ),
+    reasoning: z
+        .string()
+        .min(20, 'Reasoning must be at least 20 characters')
+        .describe(
+            'Concrete explanation of why no code changed. Surfaces in the postmortem report for human review.'
+        ),
+})
+
+const RE_ENTER_TARGETS = [MODES.execute, MODES.review] as const
 
 const reEnterPipelineAction = z.object({
     action: z.literal('re-enter-pipeline'),
@@ -173,6 +208,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     'record-iteration',
     'advance-wave',
     'complete-phase',
+    'justify-empty-phase',
     'save-triage-results',
     'save-plan-artifacts',
     'save-review-results',
@@ -302,6 +338,26 @@ const workflowStateInputSchema = z.object({
         .describe(
             "Why the pipeline is being re-entered (required for 're-enter-pipeline'). Stored in state as reEntryReason."
         ),
+
+    // justify-empty-phase
+    phase: z
+        .string()
+        .optional()
+        .describe(
+            "Phase name (required for 'justify-empty-phase'). Must match the in-progress phase."
+        ),
+    category: z
+        .enum(EMPTY_PHASE_CATEGORIES)
+        .optional()
+        .describe(
+            "Empty-phase category (required for 'justify-empty-phase'). One of: docs-only-in-muninn | investigation-confirmed-no-change-needed | config-only-no-tracked-files | dependency-bump-via-lockfile-only | no-op-by-design."
+        ),
+    reasoning: z
+        .string()
+        .optional()
+        .describe(
+            "Concrete reasoning for why no code changed (required for 'justify-empty-phase'). Surfaces in postmortem report."
+        ),
 })
 
 export type WorkflowStateInput = z.infer<typeof workflowStateInputSchema>
@@ -379,7 +435,7 @@ export const workflowStateTool = createTool({
                     // --- Stale state detection on pipeline entry ---
                     const prevState = readLucaState()
                     if (
-                        targetMode === 'luca:1-triage' &&
+                        targetMode === MODES.triage &&
                         hasStaleState(prevState)
                     ) {
                         return {
@@ -425,8 +481,8 @@ export const workflowStateTool = createTool({
                         if (targetMode !== expectedNext) {
                             // Allow triage → architect skip when skipResearch is set
                             if (
-                                currentStep === 'luca:1-triage' &&
-                                targetMode === 'luca:3-architect' &&
+                                currentStep === MODES.triage &&
+                                targetMode === MODES.architect &&
                                 prevState.skipResearch
                             ) {
                                 // Skip-ahead allowed
@@ -494,6 +550,18 @@ export const workflowStateTool = createTool({
                     const { phaseName } = parseAction(startPhaseAction, raw)
                     const phaseState = startPhase({ name: phaseName })
                     appendLedger('phase-start', { phase: phaseName })
+
+                    // Snapshot working tree as proof-of-work baseline.
+                    const snapshot: PhaseSnapshot =
+                        snapshotWorkingTree(phaseName)
+                    writeLucaState({ currentPhaseStartSnapshot: snapshot })
+                    appendLedger('phase-snapshot', {
+                        phase: phaseName,
+                        headSha: snapshot.headSha,
+                        dirtyFileCount: snapshot.dirtyFiles.length,
+                        gitAvailable: snapshot.gitAvailable,
+                    })
+
                     return {
                         success: true,
                         message: `Started phase "${phaseName}" (wave 1, iteration 0)`,
@@ -524,6 +592,28 @@ export const workflowStateTool = createTool({
                     }
                 }
                 case 'advance-wave': {
+                    // Guard: refuse to advance unless the current wave has a
+                    // verification result on file. Prevents waves from being
+                    // closed silently without proof of work.
+                    const preWaveState = readLucaState()
+                    const currentWave = preWaveState.currentWave ?? 1
+                    const verification = readVerificationResult()
+                    if (
+                        !verification ||
+                        verification.wave !== currentWave
+                    ) {
+                        appendLedger('wave-advance-blocked', {
+                            phase: preWaveState.currentPhaseName,
+                            wave: currentWave,
+                            reason: 'no verification-result for current wave',
+                        })
+                        return {
+                            success: false,
+                            code: 'WAVE_ADVANCE_NO_VERIFICATION',
+                            message: `Cannot advance wave: no verification-result.json for wave ${currentWave}. Call verificationResult(action: "write", ...) before advance-wave.`,
+                        }
+                    }
+
                     const waveState = advanceWave()
                     appendLedger('wave-advance', {
                         phase: waveState.currentPhaseName,
@@ -550,18 +640,68 @@ export const workflowStateTool = createTool({
                         completePhaseAction,
                         raw
                     )
+
+                    // ── Guard 1: diff-based phase proof ─────────────────────
+                    const preState = readLucaState()
+                    const phaseName = preState.currentPhaseName ?? '<unknown>'
+                    const startSnapshot =
+                        preState.currentPhaseStartSnapshot ?? null
+                    const diff = computePhaseDiff(startSnapshot)
+                    appendLedger('phase-diff-summary', {
+                        phase: phaseName,
+                        filesChanged: diff.filesChanged,
+                        commitsAdded: diff.commitsAdded,
+                        isEmpty: diff.isEmpty,
+                        indeterminate: diff.indeterminate,
+                    })
+
+                    if (diff.isEmpty) {
+                        const justifications =
+                            preState.emptyPhaseJustifications ?? {}
+                        const j = justifications[phaseName]
+                        if (!j) {
+                            return {
+                                success: false,
+                                code: 'EMPTY_PHASE_BLOCKED',
+                                message: `Phase "${phaseName}" has zero file changes and zero commits. Either (a) call workflowState(action: "justify-empty-phase", phase: "${phaseName}", category: <category>, reasoning: "<why>") if this is intentional, or (b) re-enter execute mode to do the work.`,
+                            }
+                        }
+                    }
+
+                    // ── Guard 2: verification result must exist for current wave ──
+                    const verification = readVerificationResult()
+                    const currentWave = preState.currentWave ?? 1
+                    if (
+                        verificationPassed !== false &&
+                        (!verification ||
+                            verification.wave !== currentWave ||
+                            verification.status !== 'PASS')
+                    ) {
+                        return {
+                            success: false,
+                            code: 'PHASE_COMPLETE_NO_VERIFICATION',
+                            message: `Phase "${phaseName}" cannot be completed: no PASS verification-result.json for wave ${currentWave}. Call verificationResult(action: "write", ...) with a PASS verdict before complete-phase, or pass verificationPassed: false to record a failed completion.`,
+                        }
+                    }
+
                     const phaseResult = completePhase({
                         verificationPassed,
                         reviewPassed,
                     })
+
+                    // Clear snapshot now that the phase is closed.
+                    writeLucaState({ currentPhaseStartSnapshot: undefined })
+
                     appendLedger('phase-complete', {
-                        phase: phaseResult.completedPhaseName,
+                        phase: phaseName,
                         verificationPassed: verificationPassed ?? null,
                         reviewPassed: reviewPassed ?? null,
+                        filesChanged: diff.filesChanged.length,
+                        commitsAdded: diff.commitsAdded.length,
                     })
                     return {
                         success: true,
-                        message: `Completed phase "${phaseResult.completedPhaseName}" (${phaseResult.completedPhases}/${phaseResult.totalPhases} phases done)`,
+                        message: `Completed phase "${phaseName}" (${diff.filesChanged.length} files changed, ${diff.commitsAdded.length} commits)`,
                         state: phaseResult,
                     }
                 }
@@ -631,7 +771,59 @@ export const workflowStateTool = createTool({
                         state: reviewState,
                     }
                 }
+                case 'justify-empty-phase': {
+                    const { phase, category, reasoning } = parseAction(
+                        justifyEmptyPhaseAction,
+                        raw
+                    )
+                    const justState = readLucaState()
+                    const currentPhaseName = justState.currentPhaseName
+                    if (!currentPhaseName) {
+                        return {
+                            success: false,
+                            code: 'NO_PHASE_IN_PROGRESS',
+                            message: `Cannot justify empty phase: no phase is currently in progress. Call workflowState(action: "start-phase", ...) first.`,
+                        }
+                    }
+                    if (phase !== currentPhaseName) {
+                        return {
+                            success: false,
+                            code: 'PHASE_MISMATCH',
+                            message: `Cannot justify empty phase: provided phase "${phase}" does not match the in-progress phase "${currentPhaseName}". Justifications can only be recorded for the active phase.`,
+                        }
+                    }
+                    const existing = justState.emptyPhaseJustifications ?? {}
+                    const merged = {
+                        ...existing,
+                        [phase]: {
+                            category,
+                            reasoning,
+                            at: new Date().toISOString(),
+                        },
+                    }
+                    const updatedState = writeLucaState({
+                        emptyPhaseJustifications: merged,
+                    })
+                    appendLedger('phase-empty-justification', {
+                        phase,
+                        category,
+                        reasoning,
+                    })
+                    return {
+                        success: true,
+                        message: `Recorded empty-phase justification for "${phase}" (category: ${category}). complete-phase will now accept this phase.`,
+                        state: updatedState,
+                    }
+                }
                 case 'reset-pipeline': {
+                    // Archive the prior run's ledger artifacts BEFORE wiping
+                    // state, so we don't lose audit trail when starting fresh.
+                    const priorRunId = readLucaState().runId as
+                        | string
+                        | undefined
+                    if (priorRunId) {
+                        archivePriorRun(priorRunId)
+                    }
                     const freshState = writeLucaState({
                         pipelineStep: 'idle',
                         // Triage output — stale intent is the #1 cause of session hijack
@@ -658,12 +850,23 @@ export const workflowStateTool = createTool({
                         startedAt: undefined,
                         assignedTodos: undefined,
                         phaseResults: undefined,
+                        // Phase-diff snapshots (Step 2 of the postmortem plan)
+                        currentPhaseStartSnapshot: undefined,
+                        // Empty-phase justifications — must clear so prior-run
+                        // justifications can't unblock complete-phase in a new run
+                        emptyPhaseJustifications: undefined,
+                        // Run identity — clear so startNewRun mints a fresh ID
+                        runId: undefined,
                     })
-                    appendLedger('pipeline-reset', {})
+                    const newRunId = startNewRun()
+                    appendLedger('pipeline-reset', {
+                        priorRunId: priorRunId ?? null,
+                        newRunId,
+                    })
                     return {
                         success: true,
-                        message: 'Pipeline reset to idle state',
-                        state: freshState,
+                        message: `Pipeline reset to idle state (run ${newRunId})`,
+                        state: { ...freshState, runId: newRunId },
                     }
                 }
                 case 're-enter-pipeline': {

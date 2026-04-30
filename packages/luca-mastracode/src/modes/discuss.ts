@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -27,7 +29,7 @@ export function resolveDiscussModel(): string {
 }
 
 export const discussMode = {
-    id: 'luca:discuss' as const,
+    id: MODES.discuss,
     name: 'luca: Discuss',
     description: 'Read-only brainstorming and open-ended discussion.',
     color: '#f59e0b',

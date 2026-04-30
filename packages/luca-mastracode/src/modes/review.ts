@@ -13,6 +13,8 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -69,7 +71,7 @@ export function resolveReviewModel(
  * Review agent configuration for mode registration.
  */
 export const reviewMode = {
-    id: 'luca:5-review' as const,
+    id: MODES.review,
     name: 'luca: Review',
     description:
         'Read-only code audit: multi-perspective review, structured findings, and iteration routing.',

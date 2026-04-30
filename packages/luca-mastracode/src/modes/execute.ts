@@ -13,6 +13,8 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
+import { MODES } from './mode-ids.js'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadInstructions(): string {
@@ -92,7 +94,7 @@ export function resolveExecuteModel(
  * Execute agent configuration for mode registration.
  */
 export const executeMode = {
-    id: 'luca:4-execute' as const,
+    id: MODES.execute,
     name: 'luca: Execute',
     description:
         'Implement code changes atomically with automated checks, verification, code review, and learning capture.',

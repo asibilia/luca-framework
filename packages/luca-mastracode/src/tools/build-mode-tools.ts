@@ -1,5 +1,6 @@
 import type { Tool } from '@mastra/core/tools'
 
+import { claimVerifierTool } from './claim-verifier.js'
 import { classifyComplexityTool } from './classify-complexity.js'
 import { confidenceJournalTool } from './confidence-journal.js'
 import { createScopedTool } from './create-scoped-tool.js'
@@ -7,8 +8,11 @@ import { manageRoadmapTool } from './manage-roadmap.js'
 import { manageTodosTool } from './manage-todos.js'
 import { MODE_PERMISSIONS } from './mode-permissions.js'
 import { pipelineLockTool } from './pipeline-lock.js'
+import { prReviewTool } from './pr-review.js'
 import { repoCleanupTool } from './repo-cleanup.js'
 import { runChecksTool } from './run-checks.js'
+import { runPostmortemTool } from './run-postmortem.js'
+import { runRulesTool } from './run-rules.js'
 import { sessionLedgerTool } from './session-ledger.js'
 import { verificationResultTool } from './verification-result.js'
 import { workflowStateTool } from './workflow-state.js'
@@ -52,6 +56,22 @@ const TOOL_REGISTRY: Record<string, ToolEntry> = {
     confidence_journal: {
         tool: confidenceJournalTool,
         record_key: 'confidenceJournal',
+    },
+    run_postmortem: {
+        tool: runPostmortemTool,
+        record_key: 'runPostmortem',
+    },
+    claim_verifier: {
+        tool: claimVerifierTool,
+        record_key: 'claimVerifier',
+    },
+    pr_review: {
+        tool: prReviewTool,
+        record_key: 'prReview',
+    },
+    run_rules: {
+        tool: runRulesTool,
+        record_key: 'runRules',
     },
 }
 

@@ -35,6 +35,25 @@ Parse and group comments:
 
 Build a comment map with fields: `commentId, author, body, file, line, inReplyTo, isDuplicate, duplicateGroupId`.
 
+**Snapshot the iteration boundary.** Record the current `git rev-parse HEAD` SHA as `iterationStartSha`. The regression check at Step 7 will use this to compute the set of paths the iteration modified and the before/after finding deltas.
+
+### Step 1.5 — Filter Stale Comments
+
+Comments filed against an earlier commit may already be addressed by subsequent fix commits on the branch. Treating them as actionable wastes iteration cycles and produces confused replies.
+
+Run the stale-comment filter:
+
+```
+prReview(action: "filter-stale", comments: <all comments fetched in Step 1>)
+```
+
+The tool returns three buckets:
+- **`actionable`** — comments whose cited code still exists in the working tree at the same location. Continue with categorization for these.
+- **`stale`** — comments whose cited code has been rewritten, removed, or relocated by more than 5 lines. **Skip categorization for these — they cannot be acted on.** When responding (Step 5), post a reply explaining the comment is stale and pointing at the commit that addressed the underlying code.
+- **`replies`** — comments with `in_reply_to_id` set; pass through, not first-class findings.
+
+Append a note to the comment audit summary at Step 2: `Stale: <n> comments (skipped from categorization)`.
+
 ### Step 2 — Categorize Comments
 
 Unless `--skip-validation` is set, classify each unique comment (deduplicated):
@@ -63,6 +82,37 @@ Total: N unique comments (N duplicates grouped)
 ```
 
 If `--dry-run`, stop here.
+
+### Step 2.5 — Detect Cross-Perspective Convergence
+
+When two or more independent reviewer perspectives flag the same location, that location is materially more likely to be a real issue. Auto-promote severity so converged findings are treated as MUST-FIX rather than as independent SHOULD-FIX items.
+
+Build a `findings` array from the categorized comments — one entry per actionable comment, plus any findings from other perspectives this iteration has access to (e.g. `claim-verifier` output, the reviewer agent's MUST-FIX/SHOULD-FIX entries from `.planning/REVIEW-*.md`). Map each to:
+
+```
+{
+  id:         <stable id, e.g. comment id or "claim-verifier:<n>">,
+  perspective:<who produced it, e.g. "Copilot", "claim-verifier", "reviewer-agent">,
+  path:       <file path>,
+  line:       <line number>,
+  severity:   <"must-fix"|"should-fix"|"nit"|"style"|"improvement"|...>,
+  category:   <"security"|"bug"|"style"|...>,
+  summary:    <short description>,
+}
+```
+
+Run convergence detection:
+
+```
+prReview(action: "detect-convergence", findings: <array>, lineTolerance: 2)
+```
+
+For each promotion the tool returns:
+- Find the corresponding categorized comment in your audit map.
+- Update its category to **must-fix** (regardless of its original category) and add a note: `Promoted via convergence with <other perspectives>`.
+- Surface the promotion in the comment audit summary: `Converged: <n> findings promoted to must-fix via 2+ perspectives`.
+
+Continue to Step 3 with the promoted categorization.
 
 ### Step 3 — Plan Fixes
 
@@ -112,7 +162,35 @@ gh api repos/{owner}/{repo}/issues/<number>/comments -f body="<reply>"
    ```
    Check that every comment thread has a reply. Report any gaps.
 
-### Step 7 — Store Learnings
+### Step 7 — Iteration-N Regression Check
+
+Fix commits sometimes introduce new issues that the original review didn't flag. Without this check, those new findings only surface in the *next* review pass, costing another full iteration. Catch them now.
+
+1. **Snapshot the post-iteration findings.** Re-fetch all PR comments:
+   ```bash
+   gh api repos/{owner}/{repo}/pulls/<number>/comments?per_page=100
+   ```
+   If the PR has automated reviewer hooks (Copilot, CodeRabbit, etc.) configured to re-run on push, allow a brief settle window (~30s) before re-fetching.
+
+2. **Build before/after finding arrays.** The `before` array is the same `findings` array you built at Step 2.5 (pre-iteration state). The `after` array is built the same way from the freshly-fetched comments — but include only comments authored *at or after* `iterationStartSha` to filter out persistent prior findings.
+
+3. **Compute touched paths** between the iteration boundary and the current HEAD:
+   ```
+   prReview(
+     action: "regression-check",
+     before:  <pre-iteration findings>,
+     after:   <post-iteration findings>,
+     fromSha: <iterationStartSha>,
+     toSha:   "HEAD"
+   )
+   ```
+
+4. **Handle the verdict.**
+
+   - `success: true` → iteration complete. Report `<n> resolved, <n> unchanged, <n> new on untouched paths` in the final summary.
+   - `success: false` (`PR_REVIEW_REGRESSION_DETECTED`) → fix commits introduced new findings. **Do not declare the iteration complete.** Re-enter Step 3 (Plan Fixes) with `report.regressions` as the input set. The regression cycle is bounded — if 3 consecutive iterations fail this check, escalate to the user with a summary of what's regressing and pause the loop.
+
+### Step 8 — Store Learnings
 
 Store **recurring patterns** in MuninnDB (skip one-off fixes):
 

@@ -11,10 +11,23 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { atomicWriteSync } from './atomic-write.js'
+import { MODES } from './modes/mode-ids.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
 
 const STATE_FILE = '.planning/luca-state.json'
+
+/**
+ * Mirror of `PhaseSnapshot` from `phase-diff.ts`. Inlined here to avoid a
+ * circular import (luca-store ↔ phase-diff via session-ledger).
+ */
+export interface PhaseSnapshotState {
+    phase: string
+    takenAt: string
+    headSha: string | null
+    dirtyFiles: string[]
+    gitAvailable: boolean
+}
 
 export interface PhaseResult {
     /** Phase name from ROADMAP.md */
@@ -68,6 +81,16 @@ export interface LucaWorkflowState {
     // --- Session ---
     sessionId?: string
     startedAt?: string
+    runId?: string
+
+    // --- Phase proof (set by start-phase, consumed by complete-phase) ---
+    currentPhaseStartSnapshot?: PhaseSnapshotState
+
+    // --- Empty-phase justification (set by justify-empty-phase) ---
+    emptyPhaseJustifications?: Record<
+        string,
+        { category: string; reasoning: string; at: string }
+    >
 
     // --- Assigned work ---
     assignedTodos?: number[]
@@ -99,13 +122,13 @@ export function readLucaState(): LucaWorkflowState {
 
         // Migrate bare mode names to namespaced identifiers
         const BARE_TO_NAMESPACED: Record<string, string> = {
-            discuss: 'luca:discuss',
-            triage: 'luca:1-triage',
-            research: 'luca:2-research',
-            architect: 'luca:3-architect',
-            execute: 'luca:4-execute',
-            review: 'luca:5-review',
-            finalize: 'luca:6-finalize',
+            discuss: MODES.discuss,
+            triage: MODES.triage,
+            research: MODES.research,
+            architect: MODES.architect,
+            execute: MODES.execute,
+            review: MODES.review,
+            finalize: MODES.finalize,
         }
         if (state.pipelineStep && BARE_TO_NAMESPACED[state.pipelineStep]) {
             state.pipelineStep = BARE_TO_NAMESPACED[state.pipelineStep]

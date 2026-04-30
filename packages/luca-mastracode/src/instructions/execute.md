@@ -191,6 +191,25 @@ Spawn **fix** subagent with error details and affected files. Fix subagent addre
 
 **Hard limit**: If `iteration >= 3` and convergence is not `resolved`, stop and escalate.
 
+## Step 2.5: Run Repo-Local Rule Pack
+
+After `runChecks` reports `resolved`, run the repo-local rule pack engine:
+
+```
+runRules(action: "gate")
+```
+
+The engine discovers `.luca/rules/*.ts` files in the repo (zero or more — repos that haven't authored any rules get a no-op). Each rule encodes a project-specific "house rule" that the team has had to flag in PR review repeatedly: Convex anti-patterns, auth invariants, internal API conventions, naming rules, etc.
+
+| Outcome | Meaning | Action |
+|---|---|---|
+| `success: true` | No must-fix rule findings (or no rules loaded). | Proceed to Step 3 (Verify). |
+| `success: false`, `code: RULE_VIOLATIONS_DETECTED` | One or more must-fix findings. | Fix the violations and re-run `runRules(action: "gate")`. Do NOT proceed to verification while must-fix rule findings exist. |
+
+Non-must-fix findings (`should-fix`, `nit`, `info`) are returned but do not block; surface them in the wave's verification report so the reviewer agent can weigh them.
+
+If a rule throws at runtime, it appears in `report.executionErrors`. Surface to the user and proceed — a single broken rule should not block the wave, but the user should know about it so they can fix the rule pack.
+
 ## Step 3: Verify
 
 Spawn a **verifier** subagent after checks pass:
@@ -436,7 +455,7 @@ manageTodos(
 Identifiers may be numeric indices or slug strings (mixing is allowed); slugs are always stable.
 
 ## Tool Coordination
-After each wave: (1) `runChecks` → (2) if fail: fix → re-check → (3) if pass: `workflowState(advance-wave)`. Do NOT advance without passing checks.
+After each wave: (1) `runChecks` → (2) if fail: fix → re-check → (3) if pass: `runRules(gate)` → (4) if rule-violations: fix → re-gate → (5) if pass: spawn verifier → `workflowState(advance-wave)`. Do NOT advance without passing checks AND passing the rule gate.
 After all waves: `workflowState(complete-phase)` → `workflowState(switch-mode, targetMode: "luca:5-review")`.
 
 ## Luca Reminders

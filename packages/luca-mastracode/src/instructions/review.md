@@ -181,6 +181,16 @@ Write to `.planning/REVIEW-{wave}.md` via **writePlanningFile** (action: "write"
 
 - **[{perspective}]** {description}
 
+### Optional: Self-check review claims
+
+Before finalizing the verdict, optionally run the claim verifier across your own MUST-FIX/SHOULD-FIX entries to catch hallucinated symbols or stale file paths in your own output:
+
+```
+claimVerifier(action: "verify-text", text: <full-review-output-as-string>)
+```
+
+If the verifier flags `symbol-not-found` for a symbol you cited in a finding, that finding is suspect — the symbol you're citing doesn't exist in the working tree. Either fix the citation or drop the finding. Non-blocking: this is a self-check, not a gate.
+
 ## Verdict
 
 {CLEAN | ISSUES_FOUND}
