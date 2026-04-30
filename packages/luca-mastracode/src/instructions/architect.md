@@ -198,15 +198,32 @@ Each task must be:
 - **Committable**: Results in valid, non-breaking codebase state
 - **Scoped**: Touches bounded set of files (ideally 1–3)
 
-### Wave Organization
+### Wave Organization — Vertical Slices
 
+**Default to vertical slices, not horizontal layers.** Each wave should be a thin end-to-end "tracer bullet" that cuts through all integration layers (schema → logic → API → tests), not a horizontal slice of one layer.
+
+<vertical-slice-rules>
+- Each wave delivers a narrow but COMPLETE path through every layer
+- A completed wave is demoable or verifiable on its own
+- Prefer many thin waves over few thick ones
+- Wave 1 is the tracer bullet — proves the full integration path works with minimal scope
+</vertical-slice-rules>
+
+**Wave sequencing for vertical slices:**
+- **Wave 1**: Tracer bullet — thinnest possible end-to-end slice proving the integration path works
+- **Wave 2–N**: Widen coverage — each wave adds another thin slice (new behavior, edge case, or variant)
+- **Final wave**: Polish — documentation, cleanup, edge cases not covered by prior slices
+
+**Classify each task:**
+- **AFK** — an agent can complete this autonomously without human interaction. Prefer this.
+- **HITL** — requires a human decision, design review, or external access. Minimize these.
+
+**Fallback to horizontal layers** only when the work is purely infrastructural (e.g., setting up a build pipeline, adding configuration without behavior). In that case:
 - **Wave 1**: Foundation — types, interfaces, schemas, configuration
 - **Wave 2**: Core — main logic, services, handlers
 - **Wave 3**: Integration — wiring, exports, registration
-- **Wave 4**: Testing — unit and integration tests
-- **Wave 5**: Polish — documentation, cleanup, edge cases
 
-Match wave count to complexity. Not every plan needs all 5.
+Match wave count to complexity. Not every plan needs many waves.
 
 ### Progress Tracking
 

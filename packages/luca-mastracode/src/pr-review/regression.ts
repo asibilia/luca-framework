@@ -17,7 +17,7 @@
  *     unchanged (present in both).
  *
  * The "actually re-run the reviewer" part is the orchestration layer's
- * job — pr-address.md tells the harness to snapshot, commit, re-fetch,
+ * job — gh-pr-address.md tells the harness to snapshot, commit, re-fetch,
  * then call this regression check on the delta.
  *
  * Pure data layer. Tool wrapper lives in tools/pr-review.ts.

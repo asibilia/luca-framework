@@ -38,6 +38,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
+# mastracode runtime copies (generated from packages/luca-mastracode/ source files)
+packages/luca-mastracode/.mastracode/
+packages/luca-mastracode/.planning/
+
 # generated output (built by build:all, deployed by deploy — source repo uses ~/.claude/ globally)
 .claude/agents/
 .claude/skills/
