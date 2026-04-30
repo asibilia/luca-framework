@@ -144,6 +144,19 @@ Spawn a fresh **executor** for each wave with:
 - Create only files/changes specified in plan
 - Flag any deviations from plan
 
+### Vertical Slice Execution (Tests + Implementation)
+
+**Do NOT write all tests first, then all implementation.** This is horizontal slicing and produces brittle tests that verify imagined behavior.
+
+For each task: write one test → write the implementation to pass it → repeat. Each test responds to what you learned from the previous cycle.
+
+```
+WRONG (horizontal):  test1, test2, test3 → impl1, impl2, impl3
+RIGHT (vertical):    test1→impl1 → test2→impl2 → test3→impl3
+```
+
+Tests should verify **behavior through public interfaces**, not implementation details. A good test survives an internal refactor. If renaming a private function breaks your test, the test was testing implementation.
+
 ### OVERFLOW Protocol
 
 If executor context exhausted mid-wave:

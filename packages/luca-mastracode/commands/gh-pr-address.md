@@ -1,5 +1,5 @@
 ---
-name: pr-address
+name: gh-pr-address
 description: Address PR review comments — fetch, categorize, fix, and respond
 ---
 Address PR review comments by fetching them, categorizing by severity, implementing fixes, and posting replies.

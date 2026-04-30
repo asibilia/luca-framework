@@ -3,7 +3,7 @@
  *
  * Three actions:
  *   - filter-stale: drop comments whose cited code has been changed since
- *     the comment was filed. Used by pr-address before categorization to
+ *     the comment was filed. Used by gh-pr-address before categorization to
  *     stop the iteration loop from spending cycles on already-fixed issues.
  *   - detect-convergence: group findings by location across reviewer
  *     perspectives; auto-promote severity when >=2 perspectives flag the
