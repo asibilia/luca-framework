@@ -1,7 +1,7 @@
 ---
 name: gh-prepare
 description: >
-  Ship committed work: ensure changeset, push feature branch, open PR.
+  Ship committed work: ensure changeset, push feature branch, open draft PR.
   Works standalone (outside the Luca pipeline) or within it. Use when user says
   "prepare", "ship this", "open a PR", "push and PR", or invokes /gh-prepare.
 ---
@@ -21,14 +21,15 @@ git remote -v                  # confirm GitHub remote exists
 git branch --show-current      # current branch
 git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo main  # default branch
 git status --porcelain         # dirty tree check
-git log --oneline origin/main..HEAD 2>/dev/null  # unpushed commits
+git log --oneline origin/<defaultBranch>..HEAD 2>/dev/null  # commits ahead of default branch
 ```
 
 Gather:
 - `currentBranch` — the branch we're on
 - `defaultBranch` — usually `main`
 - `hasDirtyTree` — uncommitted changes exist
-- `unpushedCommits` — commits ahead of `origin/main`
+- `commitsAheadOfDefault` — commits ahead of `origin/<defaultBranch>`
+- `hasUpstream` — whether the current branch has a tracking upstream (`git rev-parse --abbrev-ref @{u}`)
 - `hasRemote` — GitHub remote exists
 
 If no GitHub remote detected, stop and tell the user.
@@ -36,8 +37,13 @@ If no GitHub remote detected, stop and tell the user.
 If working tree is dirty, warn: "You have uncommitted changes. Commit or stash them first."
 Do not proceed with dirty tree — changeset and PR diffs will be wrong.
 
-If no unpushed commits exist (HEAD matches origin/main), stop: "Nothing to ship — HEAD is
-up to date with origin/main."
+If `hasUpstream` is true and there are no unpushed commits relative to the upstream
+(`@{u}..HEAD` is empty), AND the branch is already pushed, stop: "Nothing to ship — branch
+is up to date with its upstream."
+
+If on the default branch and `commitsAheadOfDefault` is empty (HEAD matches
+`origin/<defaultBranch>`), stop: "Nothing to ship — HEAD is up to date with
+origin/<defaultBranch>."
 
 ### 2. Branch Hygiene
 
@@ -51,8 +57,9 @@ the commits onto it:
 # Parse type from conventional commit prefix (feat, fix, refactor, chore)
 # Slugify the first commit's subject for the branch name
 git checkout -b <type>/<slug>
-# main now needs to be reset to match origin/main
-# But we're already on the new branch with the commits, so main is untouched
+# The commits are now on the new branch; move local defaultBranch back to origin
+git branch -f <defaultBranch> origin/<defaultBranch>
+# This only rewrites the local branch ref; do not force-push
 ```
 
 Check if the branch name already exists on the remote:
@@ -75,7 +82,7 @@ test -f .changeset/config.json
 If yes:
 1. Check if a changeset already exists for this work:
    ```bash
-   ls .changeset/*.md | grep -v README
+   find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md'
    ```
 2. If no changeset exists, create one:
    - Determine bump level from branch prefix or commit types: `feat` → minor, `fix`/`chore`/`refactor` → patch
