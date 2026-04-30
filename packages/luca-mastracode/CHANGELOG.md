@@ -1,5 +1,7 @@
 # @alecsibilia/luca-mastracode
 
+## 11.1.2
+
 ## 11.1.1
 
 ### Patch Changes
