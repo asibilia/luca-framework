@@ -1,98 +1,117 @@
 ---
 name: gh-prepare
 description: >
-  Create a linked GitHub issue, feature branch, and draft PR for the current work — all wired
-  together. Works standalone (outside the Luca pipeline) or within it. Use when user says
-  "prepare", "set up branch and issue", "create issue and PR", "prepare github",
-  "link issue to PR", or invokes /gh-prepare.
+  Ship committed work: ensure changeset, push feature branch, open PR.
+  Works standalone (outside the Luca pipeline) or within it. Use when user says
+  "prepare", "ship this", "open a PR", "push and PR", or invokes /gh-prepare.
 ---
 
 # GH Prepare
 
-Create a linked GitHub issue + feature branch + draft PR in one shot. The PR body references
-`Closes #<issue>` so merging auto-closes the issue. This is the standalone version of what the
-Luca pipeline's architect mode does in Step 1 — use it when working outside the pipeline.
+Ship committed work to GitHub. Handles the mechanical steps between "code is done" and
+"PR is open": branch hygiene, changeset, push, and PR creation. No issue creation — that's
+external ideation handled by `gh-issue-triage`.
 
 ## Process
 
 ### 1. Detect Context
 
 ```bash
-git remote -v              # confirm GitHub remote exists
-git branch --show-current  # current branch
+git remote -v                  # confirm GitHub remote exists
+git branch --show-current      # current branch
 git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo main  # default branch
-git status --porcelain     # dirty tree check
+git status --porcelain         # dirty tree check
+git log --oneline origin/main..HEAD 2>/dev/null  # unpushed commits
 ```
 
-If working tree is dirty, warn but don't block — the user may want to prepare before committing.
+Gather:
+- `currentBranch` — the branch we're on
+- `defaultBranch` — usually `main`
+- `hasDirtyTree` — uncommitted changes exist
+- `unpushedCommits` — commits ahead of `origin/main`
+- `hasRemote` — GitHub remote exists
 
 If no GitHub remote detected, stop and tell the user.
 
-### 2. Parse Arguments
+If working tree is dirty, warn: "You have uncommitted changes. Commit or stash them first."
+Do not proceed with dirty tree — changeset and PR diffs will be wrong.
 
-Accept freeform description from `$ARGUMENTS`. Infer:
+If no unpushed commits exist (HEAD matches origin/main), stop: "Nothing to ship — HEAD is
+up to date with origin/main."
 
-- **Type**: `feat` / `fix` / `refactor` / `chore` (default `feat`)
-- **Title**: concise summary for the issue
-- **Labels**: inferred from type + description (e.g., `bug` for fix, `enhancement` for feat)
+### 2. Branch Hygiene
 
-Optional flags:
-- `--no-pr` — skip PR creation (issue + branch only)
-- `--no-issue` — skip issue creation (branch + PR only, for when issue already exists)
-- `--no-branch` — skip branch creation (issue only)
-- `--type=<type>` — override inferred type
-- `--issue=<number>` — link to an existing issue instead of creating one
+**If on `main` or `defaultBranch`:**
 
-### 3. Check for Existing Work
-
-Before creating anything:
-
-1. If already on a feature branch (e.g., `feat/42-...`), ask: reuse this branch or create a new one?
-2. If `--issue=<N>` provided, verify the issue exists via `gh issue view <N>` and use it directly
-
-### 4. Create GitHub Issue
-
-Skip if `--no-issue` or `--issue=<N>` provided.
+The commits shouldn't have been made directly to main. Create a feature branch and move
+the commits onto it:
 
 ```bash
-gh issue create \
-  --title "<title>" \
-  --label "<labels>" \
-  --body "<body>"
+# Determine branch name from commit messages
+# Parse type from conventional commit prefix (feat, fix, refactor, chore)
+# Slugify the first commit's subject for the branch name
+git checkout -b <type>/<slug>
+# main now needs to be reset to match origin/main
+# But we're already on the new branch with the commits, so main is untouched
 ```
 
-Issue body template:
+Check if the branch name already exists on the remote:
+```bash
+git ls-remote --heads origin <branch-name>
+```
+If it exists, warn and ask the user whether to reuse or pick a different name.
 
-```markdown
-## Problem
+**If already on a feature branch:**
 
-<what needs to change and why, derived from the user's description>
+Use the current branch as-is. No action needed.
 
-## Proposed Solution
+### 3. Changeset (if applicable)
 
-<high-level approach>
-
-## Acceptance Criteria
-
-- [ ] <criterion derived from description>
+Check if the repo uses changesets:
+```bash
+test -f .changeset/config.json
 ```
 
-Capture the issue number from the output.
+If yes:
+1. Check if a changeset already exists for this work:
+   ```bash
+   ls .changeset/*.md | grep -v README
+   ```
+2. If no changeset exists, create one:
+   - Determine bump level from branch prefix or commit types: `feat` → minor, `fix`/`chore`/`refactor` → patch
+   - Read package names from `.changeset/config.json` `"fixed"` groups or workspace `package.json` files
+   - Write `.changeset/<slug>.md` with the appropriate bump level and summary
+   - `git add .changeset/<slug>.md && git commit -m "chore: add changeset"`
+3. If a changeset already exists, verify it looks correct (right packages, right bump level). Don't duplicate.
 
-### 5. Create Feature Branch
+Skip if `--no-changeset` flag is provided or if no `.changeset/config.json` exists.
 
-Skip if `--no-branch`.
+### 4. Push Branch
 
 ```bash
-git checkout -b <type>/<issue-number>-<slug>
-git push -u origin <type>/<issue-number>-<slug>
+git push -u origin <branch-name>
 ```
 
-Branch naming follows project conventions: `feat/42-add-webhook-support`, `fix/17-null-check`.
+If the push fails (e.g., branch already exists with divergent history), report the error
+and stop. Do not force push.
+
+### 5. Discover Linked Issue
+
+Check if this work originated from a triaged GitHub issue:
+
+1. **From todo source field**: Look in `.planning/todos/{pending,backlog,done}/` for a
+   todo whose work matches the current branch. If the todo has `source: gh-issue-#<N>`,
+   that's the linked issue.
+2. **From MuninnDB**: Recall recent `gh-prepare` or pipeline state that references an
+   issue number for this branch.
+3. **From branch name**: If the branch is named `feat/42-something`, extract `#42` as a
+   candidate and verify it exists: `gh issue view 42 --json state`.
+4. **From commit messages**: Scan for `#N` references in commit messages.
+
+If an issue is found, `Closes #<N>` goes in the PR body.
+If no issue is found, that's fine — not all work originates from an issue.
 
 ### 6. Create Draft PR
-
-Skip if `--no-pr`.
 
 ```bash
 gh pr create --draft \
@@ -103,72 +122,73 @@ gh pr create --draft \
 PR body template:
 
 ```markdown
-Closes #<issue-number>
+<Closes #N if linked issue found>
 
 ## What
 
-<summary of the change>
+<summary derived from commit messages — what changed>
 
 ## Why
 
-<problem being solved, links to issue>
+<problem being solved, derived from commit messages and branch context>
 
 ## How
 
-_TBD — will be filled as implementation progresses._
+<brief technical approach, derived from diff stats>
 
 ## Test Plan
 
-_TBD_
+<how to verify — inferred from test files changed, or "Manual verification" if none>
 ```
 
-The `Closes #<issue>` line is **mandatory** — it's the link between PR and issue.
+The title should be a conventional commit format. Derive `type` from the branch prefix
+or dominant commit type. Derive `scope` from the primary package or area changed.
 
-### 7. Changeset (if applicable)
+### 7. Store in MuninnDB
 
-If the repo uses changesets (`.changeset/config.json` exists), create one:
-
-```bash
-# Check for changeset config
-if [ -f .changeset/config.json ]; then
-  # Determine bump level from type: feat → minor, fix → patch, chore → patch
-  # Read package names from config.json "fixed" or workspace package.json files
-fi
-```
-
-Write `.changeset/<slug>.md` with the appropriate bump level and summary. Include it in the commit or amend the branch's first commit.
-
-Skip if `--no-changeset` flag is provided or if no `.changeset/config.json` exists.
-
-### 8. Store in MuninnDB
-
-Remember for later recall (by finalize mode, other sessions, or `/gh-prepare` dedup):
+Remember for later recall (by finalize mode, other sessions, or dedup):
 
 ```
 mcp__muninn__muninn_remember(
   vault: "<repo_vault>",
   concept: "gh-prepare",
-  content: "GitHub setup: issue #<N> (<url>), branch <name>, PR #<M> (<url>). Work: <description>",
-  tags: ["gh-prepare", "issue", "branch", "pr"],
+  content: "Shipped: branch <name>, PR #<M> (<url>). <Closes #N if linked.> Work: <description>",
+  tags: ["gh-prepare", "branch", "pr"],
   entities: [
-    { name: "issue-<N>", type: "github-issue" },
     { name: "pr-<M>", type: "github-pr" },
     { name: "<branch-name>", type: "git-branch" }
   ]
 )
 ```
 
-### 9. Pipeline Integration
+### 8. Pipeline Integration
 
-If `.planning/luca-state.json` exists (Luca pipeline is active), also update workflow state with the issue number and branch name so finalize mode can find them. If not active, skip — the skill works independently.
+If `.planning/luca-state.json` exists (Luca pipeline is active), update workflow state
+with the PR number and branch name so finalize mode can find them. If not active, skip —
+the skill works independently.
 
-### 10. Report
+### 9. Report
 
 Print a clean summary:
 
 ```
-Issue:  #42 — https://github.com/<owner>/<repo>/issues/42
-Branch: feat/42-add-webhook-support
+Branch: feat/42-add-webhook-support (pushed)
 PR:     #43 (draft) — https://github.com/<owner>/<repo>/pull/43
-        PR auto-closes #42 on merge.
+Issue:  Closes #42 on merge
 ```
+
+Or if no linked issue:
+
+```
+Branch: feat/add-webhook-support (pushed)
+PR:     #43 (draft) — https://github.com/<owner>/<repo>/pull/43
+```
+
+## Flags
+
+| Flag | Effect |
+|------|--------|
+| `--no-changeset` | Skip changeset creation even if `.changeset/config.json` exists |
+| `--no-pr` | Push branch only, skip PR creation |
+| `--title="..."` | Override the PR title |
+| `--issue=<N>` | Explicitly link to issue #N instead of auto-discovering |
