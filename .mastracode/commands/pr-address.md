@@ -35,7 +35,7 @@ Parse and group comments:
 
 Build a comment map with fields: `commentId, author, body, file, line, inReplyTo, isDuplicate, duplicateGroupId`.
 
-**Snapshot the iteration boundary.** Record the current `git rev-parse HEAD` SHA as `iterationStartSha`. The regression check at Step 7 will use this to compute the set of paths the iteration modified and the before/after finding deltas.
+**Snapshot the iteration boundary.** Record the current `git rev-parse HEAD` SHA as `iterationStartSha` and the current time as `iterationStartTime` (ISO-8601). The regression check at Step 7 will use the SHA to compute the set of paths the iteration modified and the timestamp to filter post-iteration comments.
 
 ### Step 1.5 — Filter Stale Comments
 
@@ -109,14 +109,14 @@ prReview(action: "detect-convergence", findings: <array>, lineTolerance: 2)
 
 For each promotion the tool returns:
 - Find the corresponding categorized comment in your audit map.
-- Update its category to **must-fix** (regardless of its original category) and add a note: `Promoted via convergence with <other perspectives>`.
-- Surface the promotion in the comment audit summary: `Converged: <n> findings promoted to must-fix via 2+ perspectives`.
+- Promote its severity to **must-fix** while preserving its original category, and add a note: `Promoted via convergence with <other perspectives>`.
+- Surface the promotion in the comment audit summary: `Converged: <n> findings promoted to must-fix severity via 2+ perspectives`.
 
-Continue to Step 3 with the promoted categorization.
+Continue to Step 3 with the promoted severity and original category preserved.
 
 ### Step 3 — Plan Fixes
 
-For comments categorized as **must fix** and **should fix**:
+For comments with severity **must-fix** and **should-fix**:
 1. Group by file for efficient execution
 2. Determine the fix approach for each comment
 3. Order by severity: security → bug → requirement → style → improvement
@@ -166,13 +166,13 @@ gh api repos/{owner}/{repo}/issues/<number>/comments -f body="<reply>"
 
 Fix commits sometimes introduce new issues that the original review didn't flag. Without this check, those new findings only surface in the *next* review pass, costing another full iteration. Catch them now.
 
-1. **Snapshot the post-iteration findings.** Re-fetch all PR comments:
+1. **Snapshot the post-iteration findings.** Re-fetch all PR comments. When you start the iteration, record both `iterationStartSha` **and** `iterationStartTime` (an ISO-8601 timestamp captured at the same moment) so the regression check has both a code boundary and a time boundary:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/<number>/comments?per_page=100
+   gh api repos/{owner}/{repo}/pulls/<number>/comments --paginate
    ```
    If the PR has automated reviewer hooks (Copilot, CodeRabbit, etc.) configured to re-run on push, allow a brief settle window (~30s) before re-fetching.
 
-2. **Build before/after finding arrays.** The `before` array is the same `findings` array you built at Step 2.5 (pre-iteration state). The `after` array is built the same way from the freshly-fetched comments — but include only comments authored *at or after* `iterationStartSha` to filter out persistent prior findings.
+2. **Build before/after finding arrays.** The `before` array is the same `findings` array you built at Step 2.5 (pre-iteration state). The `after` array is built the same way from the freshly-fetched comments — but include only comments whose `created_at` is **at or after** `iterationStartTime` to filter out persistent prior findings.
 
 3. **Compute touched paths** between the iteration boundary and the current HEAD:
    ```
