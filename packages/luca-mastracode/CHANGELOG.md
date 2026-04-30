@@ -1,5 +1,11 @@
 # @alecsibilia/luca-mastracode
 
+## 11.2.0
+
+### Minor Changes
+
+- 6c98787: New skills (gh-prepare, gh-issue-triage, grill-me, bug-diagnose), gh-\* naming consolidation, and vertical slice guidance in architect/execute modes
+
 ## 11.1.2
 
 ## 11.1.1
