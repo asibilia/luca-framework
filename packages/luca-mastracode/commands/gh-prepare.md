@@ -1,6 +1,6 @@
 ---
 name: gh-prepare
-description: Create a linked GitHub issue, feature branch, and draft PR — all wired together
+description: Ship committed work — ensure changeset, push feature branch, open draft PR
 ---
 
 Activate the `gh-prepare` skill with these arguments:

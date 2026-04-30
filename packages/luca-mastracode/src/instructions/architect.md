@@ -225,6 +225,55 @@ Each task must be:
 
 Match wave count to complexity. Not every plan needs many waves.
 
+### Step 4.5: Architectural Quality Check
+
+Before submitting the plan for review, evaluate each planned module/file against these principles. Flag violations inline (as comments in the plan) and revise where possible.
+
+#### Vocabulary
+
+Use these terms precisely in plan descriptions and review feedback:
+
+- **Module** — anything with an interface and implementation (function, class, file, package). Scale-agnostic.
+- **Interface** — what a caller must know: types, invariants, error modes, ordering. Not just the type signature.
+- **Depth** — leverage at the interface. **Deep** = significant behavior behind a small interface. **Shallow** = interface nearly as complex as the implementation.
+- **Seam** — where behavior can be altered without editing in place. A boundary that accepts different adapters.
+- **Deletion test** — imagine deleting the module. Complexity vanishes → pass-through (shallow). Complexity reappears across callers → earning its keep (deep).
+
+#### Principles
+
+**1. Depth over extraction.** Prefer deep modules — small public surface hiding significant complexity. Don't plan file extractions unless the result concentrates complexity behind a simpler interface. A 300-line file with a 3-function public surface is better than 6 files with pass-through wrappers.
+
+**2. Promotion model (deletion test applied).** Code placement follows caller count — start local, promote when real consumers appear:
+
+| Callers | Placement |
+|---------|-----------|
+| 1 | Private to the caller (inline function or local helper) |
+| 2+ within same feature | Shared file within that feature's directory |
+| 2+ across features | Promoted to shared utility/package |
+
+Never preemptively place at a higher tier. When planning a new helper/utility, check: "who calls this today?" If one module → it lives inside that module. Flag planned files that would be pass-throughs under the deletion test.
+
+**3. Concrete first.** Don't plan TypeScript interfaces or abstract types for single implementations. Write the concrete module. Plan the abstraction only when the user explicitly requests multi-backend support, or a second adapter is concretely needed within the same milestone. One adapter = hypothetical seam (don't abstract). Two adapters = real seam (abstract).
+
+**4. Locality of change.** Group related behavior so changes concentrate in one module. If a planned feature touches many files with small edits each, flag it: the plan may need to consolidate related logic into fewer, deeper modules first. Tight locality means bugs, changes, and knowledge live in one place.
+
+**5. Interface-first task boundaries.** Each task delivers a testable public surface — the thing callers actually use. The interface IS the test surface. Task boundary = module's public API = test surface. Internal helpers exist inside the module, not as separate tasks.
+
+- ✅ "Implement `processOrder()` — accepts OrderInput, returns ProcessedOrder" (testable interface)
+- ❌ "Write date formatting helper" then "Wire helper into order processor" (internal plumbing as tasks)
+
+#### Applying the check
+
+For each new file/module the plan creates, ask:
+
+1. **Is it a helper, utility, or extraction?** (exists to serve other code, not to deliver a feature directly)
+   - If yes → apply deletion test. Would deleting it redistribute complexity across callers? If not, inline it.
+   - If no (it's a feature leaf: route, component, command, tool) → skip, it's earning its keep by definition.
+2. **Does it have a single caller today?** → start at tier 1 (private to caller). Don't promote preemptively.
+3. **Does the task produce a testable interface?** If the task's deliverable is "internal wiring" rather than a usable public surface, restructure the task.
+
+Revise the plan to address violations before proceeding to Step 5.
+
 ### Progress Tracking
 
 Use `task_write` for user visibility:
@@ -252,6 +301,7 @@ Spawn a **plan-reviewer** subagent to validate:
 4. **Verification**: Every task has concrete, testable verification criteria?
 5. **Feasibility**: Tasks realistic given codebase state?
 6. **Gap detection**: Anything from research missing?
+7. **Architectural quality**: No shallow extractions, promotion model respected, no premature abstractions, tasks deliver testable interfaces?
 
 ### Step 5.5: Capture Raw Review Findings
 
