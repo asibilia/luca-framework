@@ -1,5 +1,157 @@
 # @alecsibilia/luca-mastracode
 
+## 11.1.0
+
+### Minor Changes
+
+- 9579c69: Defend against doc-claim drift — when changesets, PR bodies, and PLAN.md cite symbols, file paths, or quantitative counts that don't match the shipped code.
+
+  **New `claimVerifier` tool** (`tools/claim-verifier.ts`, `claim-verifier.ts`) — extracts factual claims from any text artifact:
+  - `symbol` — backtick-wrapped identifiers (`` `myFunction` ``)
+  - `file-path` — repo-relative paths matching common project layouts
+  - `quantitative` — `<N> <countable-noun>` patterns from a small allow-list of countable nouns
+
+  For each claim, it greps the working tree (`git grep --untracked` for tracked + new files; filesystem fallback for non-git repos) and reports failures with stable evidence strings. Tolerance ±1 on quantitative counts. 30s total budget, 5s per claim, with timeout failures explicit.
+
+  Three actions:
+  - `verify-text` — verify an inline string (e.g. PR body draft).
+  - `verify-file` — verify a file on disk (resolves to repo root, then `.planning/`).
+  - `gate` — verify multiple inputs; returns `code: "CLAIM_VERIFICATION_FAILED"` if any input has unverifiable claims.
+
+  Every call appends a `claim-verifier-run` ledger event for postmortem visibility.
+
+  **Finalize integration** (`instructions/finalize.md`):
+  - **Step 3c** (PLAN.md reconciliation) — runs `claimVerifier(action: "verify-file", path: ".planning/PLAN.md")` during gap detection; failures attached to _complete_ tasks block re-entry to execute, failures on incomplete tasks are allowed.
+  - **Step 5b.1** (write release artifacts AFTER review iteration converged) — moves changeset/release-note authoring to _after_ the final review iteration. Writing release artifacts before this point is the upstream cause of doc-drift; only the post-convergence tree is a trustworthy source for descriptions of shipped work.
+  - **Step 5b.2** (verify artifact claims) — runs `claimVerifier(action: "gate", paths: [...], texts: [...])` over the changeset and PR body draft before `gh pr create`. The gate blocks the PR until every cited symbol, path, and count is verified against the working tree.
+
+  **Review-mode advisory** (`instructions/review.md`) — non-blocking self-check: reviewers may run `claimVerifier(action: "verify-text", ...)` over their own MUST-FIX/SHOULD-FIX entries to catch hallucinated symbols early.
+
+  **Mode permissions** (`tools/mode-permissions.ts`):
+  - `luca:5-review`: `verify-text`, `verify-file` (advisory).
+  - `luca:6-finalize`: full access (gate before PR).
+
+  Catches the failure class where changesets cite renamed/removed symbols, design docs drift from shipped code, or PR bodies describe quantities that don't match the diff — failure modes that previously were only caught post-merge by reviewers.
+
+- 9579c69: Harden the `/pr-address` command loop against three measured failure modes: stale Copilot comments, missed cross-perspective convergence, and fixes that introduce new regressions.
+
+  **Stale-comment filter** (`pr-review/stale-filter.ts`)
+
+  Across the PR-review corpus, ~57% of inline comments on iterated PRs are stale — they cite code that has already been changed by an earlier fix iteration. Treating them as still-actionable burns iteration cycles and produces confused replies.
+
+  The filter classifies each comment by re-reading the cited file, parsing the `diff_hunk`, and locating the post-state anchor lines in the current working tree. A comment is stale when:
+  - The cited file no longer exists.
+  - The diff hunk's anchor lines (context + added) cannot be found within ±50 lines of the cited line.
+  - The anchor location has drifted by more than 5 lines.
+  - The cited commit_id is older than HEAD AND the path was modified between commit_id and HEAD AND fewer than 85% of anchors match.
+
+  Verified on PR #195 (which had fixes pushed after Copilot's review): correctly classified 9 of 10 comments as stale and left 1 still-actionable.
+
+  **Cross-perspective convergence** (`pr-review/convergence.ts`)
+
+  Today, when Copilot, the reviewer agent, and the project's claim verifier each flag the same line, the harness treats the three findings as independent SHOULD-FIX items. They should be MUST-FIX.
+
+  The detector groups findings by `(path, line ± lineTolerance)`. Findings authored by ≥2 distinct perspectives in the same group get severity promoted to `must-fix`. Findings already at must-fix are tagged with `must-fix-converged` for evidence rendering. Single-perspective groups are pass-through.
+
+  **Iteration-N regression check** (`pr-review/regression.ts`)
+
+  Catches the case where a fix commit introduces a new finding — currently, that's only detected on the _next_ review pass, costing another iteration cycle.
+
+  Given pre-iteration findings, post-iteration findings, and the list of paths the iteration touched (or `fromSha`/`toSha` to compute it), the check returns:
+  - `regressions` — new findings on touched paths, or severity escalations of persistent findings
+  - `resolved` — findings present before, gone after (the iteration's wins)
+  - `unchanged` — present in both
+  - `newButUntouched` — new findings on paths the iteration didn't modify (likely external; not blocking)
+
+  Any regressions block iteration completion and re-enter the fix loop.
+
+  **Tool surface** (`tools/pr-review.ts`)
+
+  New `prReview` Mastra tool with three actions: `filter-stale`, `detect-convergence`, `regression-check`. Every call appends a `pr-review-run` ledger event for postmortem visibility. Available in `build` and `fast` modes (where slash commands run).
+
+  **`/pr-address` integration** (`commands/pr-address.md`)
+  - Step 1.5: filter stale comments before categorization.
+  - Step 2.5: detect convergence and promote severity before planning fixes.
+  - Step 7: regression check after push, blocking iteration completion if fixes introduced new findings. Bounded retry (3 iterations) before escalating to user.
+
+  The command also now snapshots the iteration-start SHA at Step 1 so the regression check can compute the precise iteration delta.
+
+- 9579c69: Add a repo-local rule-pack engine plus recurrence-driven rule suggestion. Closes the gap between "we keep flagging this in PR review" and "we have a machine-checkable invariant."
+
+  **Why**
+
+  Repos accumulate "house rules" that exist only in PR-review folklore — Convex anti-patterns, auth invariants, internal RPC conventions, naming rules. These get caught manually in every PR review, forever, because there is no encoding for them outside of human memory.
+
+  This phase ships the engine. Zero domain rules ship in `luca-mastracode` itself — every rule is repo-local in `.luca/rules/*.ts`.
+
+  **Engine: `defineRule` + runner**
+  - `rules/define-rule.ts` — author API. `defineRule({ id, severity, description, scope, category, exclude, check })`. Schema validates id and check function at definition time.
+  - `rules/runner.ts` — discovery and execution.
+    - Walks `.luca/rules/` recursively for `*.ts`/`*.mts`/`*.js`/`*.mjs` files (skips `.test.ts`, `.spec.ts`, dotfiles, `node_modules`).
+    - Dynamically imports each file and pulls every `RuleDefinition` from default + named exports + arrays.
+    - Resolves `scope` globs via `Bun.Glob`, applies `exclude`, builds one `RuleFile` per candidate.
+    - Calls `rule.check(file)` and collects `RuleFinding[]`.
+  - Hybrid `RuleFile` API: `content: string` for cheap regex checks, lazy `ast(): ts.SourceFile | null` for AST-level matching.
+    - AST parse is cached per file across rules (multiple rules processing the same file pay parse cost once).
+    - `typescript` is loaded via `createRequire` at call time — repos without `typescript` installed get `ast() === null` and regex-only rules keep working.
+  - Resilience: rule throws are caught and reported as `RuleExecutionError`; rule-file syntax errors are caught and reported as `RuleLoadError`. A single broken rule never crashes the run.
+  - Findings are typed compatibly with `pr-review/convergence.ts`'s `ReviewFinding`, so rule output flows through the existing convergence detector as a first-class reviewer perspective.
+
+  **Tool: `runRules`**
+
+  Four actions:
+  - `list` — discover rules and return their metadata without executing them.
+  - `run` — execute all rules; non-blocking; returns the full report.
+  - `gate` — execute and block (`success: false`, `code: RULE_VIOLATIONS_DETECTED`) when any finding has severity `must-fix`.
+  - `suggest` — see "Recurrence-driven promotion" below.
+
+  Every call appends a `rules-run` ledger event. Available in `build`, `fast`, `luca:4-execute`, `luca:5-review`, `luca:6-finalize` modes.
+
+  **Recurrence-driven promotion: `rules/recurrence.ts`**
+
+  The hard part of a rule engine is not running rules — it's deciding what rules to write. This module surfaces candidates.
+  - Iterates every available run (current + archived) via `listRuns()`/`listArchivedRuns()` + `analyzeRun()`.
+  - Groups violations by `ViolationCode`, counts the number of _distinct runs_ each code appeared in (not total occurrences — a single noisy run shouldn't promote a rule).
+  - Codes meeting `threshold` (default 3) are flagged as recurring.
+  - For each, renders a draft `.luca/rules/<slug>.ts` template with the rule scaffolding, sample violation message in a comment, and TODO matcher body.
+  - Renders the full set to a `SUGGESTED-RULES.md` artifact under the planning directory for human review.
+
+  Drafts are **never** auto-applied. Generated rules are inevitably approximate; auto-applying would produce false-positive overload. The user reads the rendered file, decides which patterns are mechanically detectable, fills in the matcher, and commits.
+
+  **Mode integration**
+  - `instructions/execute.md` — new Step 2.5 runs `runRules(gate)` after `runChecks` reports `resolved`, before `Verify`. Must-fix rule findings block wave advance. Tool Coordination updated to reflect the new gate.
+  - `instructions/finalize.md` — new Step 4.5 runs `runRules` with the `suggest` action after the postmortem gate, advisory only. The Tool Coordination sequence numbers up by one.
+
+  **Verification**
+  - Type check clean.
+  - Build clean.
+  - Smoke tests pass:
+    - Two-rule fixture (regex `no-todo`, AST `no-any`): correctly identified findings on dirty fixture, none on clean.
+    - Throwing rule: surfaced in `executionErrors`, did not affect other rules.
+    - Syntax-broken rule file: surfaced in `loadErrors`, runner continued.
+    - Recurrence detection on the framework's own ledger: 0 recurring pitfalls (expected — postmortem is clean), markdown renderer correctly returned the empty-state message.
+
+- 9579c69: Close the silent-skip hole in full-auto pipeline runs (the incident where execute mode didn't fire but finalize moved every todo to `done`).
+
+  **Hard gates** — bad state transitions are now blocked at the tool layer, not just by LLM instructions:
+  - `workflowState(complete-phase)` rejects with `EMPTY_PHASE_BLOCKED` when a phase has zero file changes and zero commits and no `phase-empty-justification` ledger entry exists. New `justify-empty-phase` action lets the agent declare an intentional no-op (e.g. docs-only-in-MuninnDB).
+  - `workflowState(advance-wave)` rejects with `WAVE_ADVANCE_NO_VERIFICATION` when no `verification-result.json` exists for the current wave.
+  - `manageTodos(move|move-batch → done)` requires a `verificationRef` pointing to a passing criterion in `verification-history.jsonl`; rejects with `TODO_DONE_UNVERIFIED` otherwise.
+
+  **Diff-based phase proof** (`phase-diff.ts`) snapshots the working tree at `start-phase` and computes the diff at `complete-phase`, surfacing it via the new `phase-diff-summary` ledger event.
+
+  **Run identity & archiving** (`session-ledger.ts`) — every ledger entry is now stamped with a per-run `runId`. Pipeline reset archives prior `session-ledger.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`, and `routing-history.jsonl` to `.planning/runs/<priorRunId>/`.
+
+  **Postmortem analyzer & gate** (`postmortem.ts`, `tools/run-postmortem.ts`) — new `runPostmortem` Mastra tool with `analyze | render | gate | list-runs` actions. Reads the four append-only JSONL artifacts and produces a structured report covering empty phases, unverified todo completions, forced transitions, low-confidence decisions, missing wave verifications, pipeline re-entries, and idle-bypass anomalies. Returns pre-formatted MuninnDB pitfall payloads for the agent to forward to the `default` vault so future runs can recall recurring failure modes.
+
+  **Finalize wiring** — new Step 4.5 "Postmortem Gate" calls `runPostmortem(action: "gate")` before PR creation; critical violations block the PR and re-enter the pipeline. Step 6 calls `runPostmortem(action: "render")` to write `.planning/POSTMORTEM.md` for the PR body.
+
+  **Pipeline guard idle-bypass logging** (`pipeline-guard.ts`) — when the guard bypasses enforcement because `pipelineStep === 'idle'` or is missing, it now emits a one-time-per-turn `pipeline-guard-idle-bypass` ledger event so postmortem can surface stale-state contamination. Previously this bypass was silent.
+
+  **`luca retro` CLI** — new command prints `.planning/POSTMORTEM.md` (or lists archived runs under `.planning/runs/` with `--list`) so users can inspect retrospective reports without launching the harness.
+
+  **Stale verification-result.json hardening** — `archivePriorRun()` now also moves `.planning/verification-result.json` (not just JSONL histories) so a prior run's PASS snapshot can't satisfy the new run's wave/phase guards. Belt-and-braces: results are now stamped with `runId` on write, and `readVerificationResult()` returns `null` when the stamped runId doesn't match the current run — so the silent-skip hole stays closed even if reset wasn't called between runs.
+
 ## 11.0.10
 
 ### Patch Changes
