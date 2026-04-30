@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 
-import { WORKSPACE_TOOLS, writeFileTool } from '@mastra/core/workspace'
+import { WORKSPACE_TOOLS } from '@mastra/core/workspace'
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
@@ -663,74 +663,6 @@ export async function main(): Promise<void> {
             }
             return workspace
         }
-    }
-
-    // --- Workaround for upstream @mastra/core bug (tracked: issue #173) ---
-    //
-    // `LocalFilesystem.writeFile()` in `@mastra/core@1.28.0` calls `stat()` to
-    // honor the optional `expectedMtime` precheck. When the target file doesn't
-    // yet exist, `stat()` throws a custom `FileNotFoundError` that has no
-    // `code` property, so the surrounding `isEnoentError(err)` check (which
-    // compares `err.code === 'ENOENT'`) returns false and the error is
-    // rethrown — even though "file does not exist" is the normal case for a
-    // new write.
-    //
-    // We wrap the singleton `writeFileTool`'s `execute` to detect the precheck
-    // failure and fall back to calling the workspace filesystem's `writeFile()`
-    // directly, bypassing the broken precheck path entirely. We also create
-    // parent directories first so the fallback behaves like the tool would
-    // have. Idempotent via a Symbol marker. Remove once upstream is fixed.
-    const LUCA_WRITE_FILE_PATCHED = Symbol.for('luca.write_file.patched')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wft = writeFileTool as any
-    if (
-        wft &&
-        typeof wft.execute === 'function' &&
-        !wft[LUCA_WRITE_FILE_PATCHED]
-    ) {
-        const originalExecute = wft.execute
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        wft.execute = async function patchedExecute(input: any, context: any) {
-            try {
-                return await originalExecute.call(this, input, context)
-            } catch (error) {
-                const name = error instanceof Error ? error.name : ''
-                const msg = error instanceof Error ? error.message : ''
-                const isPrecheckFnf =
-                    name === 'FileNotFoundError' || /^File not found:/.test(msg)
-                if (!isPrecheckFnf) throw error
-
-                // Fallback: bypass the broken tool path and call the workspace
-                // filesystem directly. `path` is the only required input; the
-                // tool layer would normally also create parent dirs, so we do
-                // the same here.
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const fs = (context as any)?.workspace?.filesystem
-                if (
-                    !fs ||
-                    typeof fs.writeFile !== 'function' ||
-                    typeof fs.mkdir !== 'function'
-                ) {
-                    // No filesystem to fall back to — surface the original
-                    // error rather than silently dropping the write.
-                    throw error
-                }
-                const path = input?.path as string | undefined
-                const content = input?.content as string | undefined
-                if (typeof path !== 'string' || typeof content !== 'string') {
-                    throw error
-                }
-                const dir = path.includes('/')
-                    ? path.slice(0, path.lastIndexOf('/'))
-                    : ''
-                if (dir) {
-                    await fs.mkdir(dir, { recursive: true }).catch(() => {})
-                }
-                await fs.writeFile(path, content)
-                return `Wrote ${Buffer.byteLength(content, 'utf-8')} bytes to ${path}`
-            }
-        }
-        wft[LUCA_WRITE_FILE_PATCHED] = true
     }
 
     // Also enforce on the cached workspace when modes change outside the request
