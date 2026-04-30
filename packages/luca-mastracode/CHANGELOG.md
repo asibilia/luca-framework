@@ -1,5 +1,11 @@
 # @alecsibilia/luca-mastracode
 
+## 11.2.1
+
+### Patch Changes
+
+- 523448a: Fix gh-prepare skill spec: use defaultBranch variable consistently, add branch-f reset after checkout, replace brittle ls|grep with find, align frontmatter with draft PR behavior
+
 ## 11.2.0
 
 ### Minor Changes
