@@ -39,17 +39,19 @@
 modes, tools, orchestration, and state. It lives in `constants/` (not `modes/`)
 because tools and state shouldn't depend on the modes layer.
 
-### build-mode-tools.ts ↔ mode-permissions.ts
+### tool-manifest.ts
 
-These two files form the tool registry:
+Single source of truth for tool registration and mode access. Each entry in
+`TOOL_MANIFEST` maps a snake_case key to: the tool instance, its camelCase
+record key, and per-mode permissions (`'*'` = all actions, `string[]` = whitelist).
 
-- **`build-mode-tools.ts`** — imports all tool objects, builds the `TOOL_REGISTRY` map,
-  and exports `buildModeTools()` which returns the filtered tool set for a given mode.
-- **`mode-permissions.ts`** — defines which tools are available in which modes, with
-  optional parameter-level restrictions (e.g., "workflow-state" tool can only call
-  "switch-mode" action in pipeline modes).
+`MODE_PERMISSIONS` is derived programmatically from `TOOL_MANIFEST` (keyed by mode
+instead of by tool) for backward compatibility with `workflow-state.ts`.
 
-Adding a new tool requires updating both files (no compile-time guard enforces this).
+`buildModeTools({ mode_id })` reads from the manifest, applies `createScopedTool()`
+for action-restricted entries, and returns the filtered tool set for a given mode.
+
+Adding a new tool requires only one manifest entry — no multi-file sync.
 
 ### Model Resolver Pipeline
 

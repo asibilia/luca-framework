@@ -52,9 +52,29 @@ export const PIPELINE_MODE_IDS: readonly ModeId[] = [
 /**
  * Type guard — narrows an arbitrary string to ModeId.
  */
+/**
+ * Type guard — narrows an arbitrary string to ModeId.
+ */
 export function isModeId(value: unknown): value is ModeId {
     return (
         typeof value === 'string' &&
         (ALL_MODE_IDS as readonly string[]).includes(value)
     )
 }
+
+/**
+ * All registered mode IDs (stock + pipeline).
+ * Used for switch-mode validation in workflow-state.
+ */
+export const ALL_REGISTERED_MODES: readonly string[] = [
+    'build',
+    'plan',
+    'fast',
+    MODES.discuss,
+    MODES.triage,
+    MODES.research,
+    MODES.architect,
+    MODES.execute,
+    MODES.review,
+    MODES.finalize,
+] as const

@@ -68,10 +68,9 @@ markdown-based asset files loaded by the Mastra Code harness at runtime:
 ## How to Add a New Tool
 
 1. Create `src/tools/<tool-name>.ts` with a `createTool()` export
-2. Add an import + entry in `src/tools/build-mode-tools.ts` `TOOL_REGISTRY`
-3. Add per-mode permissions in `src/tools/mode-permissions.ts`
-4. Export from `src/tools/index.ts`
-5. Run `bunx --bun tsc --noEmit` to verify
+2. Add a `TOOL_MANIFEST` entry in `src/tools/tool-manifest.ts` (tool instance, record key, and per-mode permissions — all in one place)
+3. Export from `src/tools/index.ts`
+4. Run `bunx --bun tsc --noEmit` to verify
 
 ## How to Add a New Mode
 

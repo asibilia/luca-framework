@@ -1,8 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { MODES } from '../constants/mode-ids.js'
-import { MODE_PERMISSIONS } from './mode-permissions.js'
+import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
 
 import {
     readLucaState,
@@ -26,7 +25,7 @@ import {
 } from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
 
-const VALID_MODES = Object.keys(MODE_PERMISSIONS)
+const VALID_MODES = ALL_REGISTERED_MODES
 
 /**
  * Pipeline step order and transition map.

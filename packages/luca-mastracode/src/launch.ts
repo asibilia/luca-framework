@@ -99,7 +99,7 @@ import { shadowScannerSubagent } from './subagents/shadow-scanner.js'
 import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
 import { TokenBudgetMonitor } from './util/token-budget.js'
-import { buildModeTools } from './tools/build-mode-tools.js'
+import { buildModeTools } from './tools/tool-manifest.js'
 
 
 /**
