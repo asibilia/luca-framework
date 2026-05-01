@@ -21,7 +21,7 @@ import {
     resolveMastracodeSettingsPath,
     resolvePackModelForMode,
 } from '../integration/mastracode-config.js'
-import { clipToVisibleWidth } from '../util/tui-text-helpers.js'
+import { clipToVisibleWidth, visibleWidth } from '../util/tui-text-helpers.js'
 
 // ---------------------------------------------------------------------------
 // Patch 1: ask_user label truncation
@@ -47,6 +47,10 @@ function patchAskQuestionPrototype(instance: any, marker: symbol) {
             if (!opt || typeof opt !== 'object') return opt
             const label = (opt as { label?: unknown }).label
             if (typeof label !== 'string') return opt
+            // Short-circuit: only clip when the label actually exceeds the
+            // budget. clipToVisibleWidth strips ANSI unconditionally, so
+            // skipping it preserves any upstream styling on labels that fit.
+            if (visibleWidth(label) <= labelBudget) return opt
             return {
                 ...opt,
                 label: clipToVisibleWidth(label, labelBudget, ELLIPSIS),
