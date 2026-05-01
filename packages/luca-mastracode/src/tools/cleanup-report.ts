@@ -5,7 +5,7 @@
  * This module pulls the JSON out (fenced block first, then bare object), runs
  * it through the canonical schema, and formats the human-readable banner.
  */
-import { ShadowScanReportSchema } from '../shadow-scanner.js'
+import { ShadowScanReportSchema } from '../state/shadow-scanner.js'
 
 export type ParseReportResult =
     | {

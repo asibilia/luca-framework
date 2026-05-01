@@ -10,7 +10,7 @@ import {
     writeVerificationResult,
     readVerificationHistory,
     aggregateVerificationResults,
-} from '../verification-result.js'
+} from '../state/verification-result.js'
 
 const criterionSchema = z.object({
     criterionId: z.string().describe('Stable identifier (e.g. "ac-01")'),

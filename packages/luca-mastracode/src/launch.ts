@@ -11,20 +11,20 @@ import { WORKSPACE_TOOLS } from '@mastra/core/workspace'
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
-import { loadBranding, resolveLucaVersion } from './branding.js'
-import { ContextRefresher } from './context-refresher.js'
-import { buildContinuationMessage } from './continuation-messages.js'
+import { loadBranding, resolveLucaVersion } from './integration/branding.js'
+import { ContextRefresher } from './orchestration/context-refresher.js'
+import { buildContinuationMessage } from './orchestration/continuation-messages.js'
 import { createStaticAgent } from './create-static-agent.js'
 import {
     installRules,
     installSkills,
     installSlashCommands,
-} from './install-bundled-assets.js'
-import { readLucaState, writeLucaState } from './luca-store.js'
+} from './integration/install-bundled-assets.js'
+import { readLucaState, writeLucaState } from './state/luca-store.js'
 import {
     resolveMastracodeSettingsPath,
     resolvePackModelForMode,
-} from './mastracode-config.js'
+} from './integration/mastracode-config.js'
 import {
     architectMode,
     buildArchitectInstructions,
@@ -76,12 +76,12 @@ import {
     triageMode,
 } from './modes/triage.js'
 import { MODES } from './constants/mode-ids.js'
-import * as pipelineGuard from './pipeline-guard.js'
+import * as pipelineGuard from './orchestration/pipeline-guard.js'
 import {
     buildPipelineProgressHeader,
     PIPELINE_STEPS_ORDERED,
     wrapInSystemReminder,
-} from './pipeline-tui.js'
+} from './orchestration/pipeline-tui.js'
 // Mutable refs — wired up after createMastraCode() returns. Extracted to
 // refs.ts to avoid circular imports with tool modules.
 import {
@@ -91,7 +91,7 @@ import {
     resolveModelRef,
     switchModeRef,
     tokenBudgetRef,
-} from './refs.js'
+} from './util/refs.js'
 import { discussionSubagent } from './subagents/discussion.js'
 import { executorSubagent } from './subagents/executor.js'
 import { learnerSubagent } from './subagents/learner.js'
@@ -102,9 +102,9 @@ import { reviewerSubagent } from './subagents/reviewer.js'
 import { shadowScannerSubagent } from './subagents/shadow-scanner.js'
 import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
-import { TokenBudgetMonitor } from './token-budget.js'
+import { TokenBudgetMonitor } from './util/token-budget.js'
 import { buildModeTools } from './tools/build-mode-tools.js'
-import { clipToVisibleWidth, visibleWidth } from './tui-text-helpers.js'
+import { clipToVisibleWidth, visibleWidth } from './util/tui-text-helpers.js'
 
 /**
  * Mode-to-model resolver map.

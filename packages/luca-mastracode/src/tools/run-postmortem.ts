@@ -19,8 +19,8 @@ import {
     analyzeRun,
     writePostmortem,
     listRuns,
-} from '../postmortem.js'
-import { listArchivedRuns } from '../session-ledger.js'
+} from '../analysis/postmortem.js'
+import { listArchivedRuns } from '../state/session-ledger.js'
 
 export const runPostmortemTool = createTool({
     id: 'run-postmortem',

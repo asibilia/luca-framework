@@ -18,7 +18,7 @@
  *   bun run packages/luca-mastracode/src/retro.ts --json     # JSON report
  */
 import { analyzeRun, renderPostmortemMarkdown } from './postmortem.js'
-import { listRuns, listArchivedRuns } from './session-ledger.js'
+import { listRuns, listArchivedRuns } from '../state/session-ledger.js'
 
 interface ParsedArgs {
     list: boolean

@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { atomicWriteSync } from '../atomic-write.js'
-import { readLucaState } from '../luca-store.js'
+import { atomicWriteSync } from '../util/atomic-write.js'
+import { readLucaState } from '../state/luca-store.js'
 import { MODES } from '../constants/mode-ids.js'
 
 const LOCK_FILE = '.planning/.luca-lock.json'

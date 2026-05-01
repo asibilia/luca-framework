@@ -1,4 +1,8 @@
-// Convergence detection
+/**
+ * Review analysis — pure data-layer primitives for PR review hardening.
+ *
+ * Tool wrapper: `tools/pr-review.ts`
+ */
 export {
     detectConvergence,
     type ConvergenceGroup,
@@ -8,7 +12,6 @@ export {
     type ReviewFinding,
 } from './convergence.js'
 
-// Regression detection
 export {
     checkRegression,
     diffPaths,
@@ -19,7 +22,6 @@ export {
     type RegressionReport,
 } from './regression.js'
 
-// Stale-comment filtering
 export {
     extractHunkAnchorLines,
     filterStaleComments,

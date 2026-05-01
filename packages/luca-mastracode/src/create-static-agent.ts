@@ -18,7 +18,7 @@ import {
     CORE_OPERATING_RULES,
     getAgentConstraints,
 } from './agent-constraints.js'
-import { mcpManagerRef, resolveModelRef } from './refs.js'
+import { mcpManagerRef, resolveModelRef } from './util/refs.js'
 
 export function createStaticAgent({
     id,

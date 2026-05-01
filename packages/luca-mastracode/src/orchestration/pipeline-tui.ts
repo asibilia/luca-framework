@@ -6,12 +6,12 @@
  * on wiring and make these pure functions independently testable.
  */
 
-import { architectMode } from './modes/architect.js'
-import { executeMode } from './modes/execute.js'
-import { finalizeMode } from './modes/finalize.js'
-import { researchMode } from './modes/research.js'
-import { reviewMode } from './modes/review.js'
-import { triageMode } from './modes/triage.js'
+import { architectMode } from '../modes/architect.js'
+import { executeMode } from '../modes/execute.js'
+import { finalizeMode } from '../modes/finalize.js'
+import { researchMode } from '../modes/research.js'
+import { reviewMode } from '../modes/review.js'
+import { triageMode } from '../modes/triage.js'
 
 // ---------------------------------------------------------------------------
 // Canonical pipeline step registry (display-oriented)

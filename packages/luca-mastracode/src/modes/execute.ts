@@ -9,9 +9,9 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readLucaState } from '../luca-store.js'
-import { resolveModel } from '../model-routing.js'
-import type { ComplexityLevel, ProfileLevel } from '../state.js'
+import { readLucaState } from '../state/luca-store.js'
+import { resolveModel } from '../integration/model-routing.js'
+import type { ComplexityLevel, ProfileLevel } from '../state/state.js'
 
 import { MODES } from '../constants/mode-ids.js'
 

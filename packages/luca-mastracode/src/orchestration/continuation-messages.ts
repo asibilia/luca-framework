@@ -6,8 +6,8 @@
  * are wrapped in `<system-reminder>` by the caller so they render as an
  * amber-bordered box in the TUI.
  */
-import type { LucaWorkflowState } from './luca-store.js'
-import { MODES } from './constants/mode-ids.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
+import { MODES } from '../constants/mode-ids.js'
 
 export function buildContinuationMessage(
     modeId: string,

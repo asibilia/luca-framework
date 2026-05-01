@@ -12,19 +12,19 @@ import {
     advanceWave,
     completePhase,
     type LucaWorkflowState,
-} from '../luca-store.js'
-import { switchModeRef, contextRefresherRef } from '../refs.js'
+} from '../state/luca-store.js'
+import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 import {
     appendLedger,
     archivePriorRun,
     startNewRun,
-} from '../session-ledger.js'
+} from '../state/session-ledger.js'
 import {
     snapshotWorkingTree,
     computePhaseDiff,
     type PhaseSnapshot,
-} from '../phase-diff.js'
-import { readVerificationResult } from '../verification-result.js'
+} from '../analysis/phase-diff.js'
+import { readVerificationResult } from '../state/verification-result.js'
 
 const VALID_MODES = Object.keys(MODE_PERMISSIONS)
 

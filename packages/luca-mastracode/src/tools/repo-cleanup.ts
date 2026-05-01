@@ -22,7 +22,7 @@ import {
     loadShadowDebtConfig,
     SCAN_MODE_CATEGORIES,
     type ScanMode,
-} from '../shadow-scanner.js'
+} from '../state/shadow-scanner.js'
 
 export const repoCleanupTool = createTool({
     id: 'repo-cleanup',

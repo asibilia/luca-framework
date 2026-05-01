@@ -18,7 +18,7 @@ import { verificationResultTool } from './verification-result.js'
 import { workflowStateTool } from './workflow-state.js'
 import { writePlanningFileTool } from './write-planning-file.js'
 
-import { appendLedger } from '../session-ledger.js'
+import { appendLedger } from '../state/session-ledger.js'
 
 // ---------------------------------------------------------------------------
 // Tool registry — maps snake_case manifest keys to tool instances and

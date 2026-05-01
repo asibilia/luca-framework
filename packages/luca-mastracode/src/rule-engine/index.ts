@@ -1,23 +1,25 @@
-// Rule definition schema + factory
+/**
+ * Rule engine — discovery, loading, and execution of repo-local rule packs.
+ *
+ * Tool wrapper: `tools/run-rules.ts`
+ */
 export {
     defineRule,
     type RuleDefinition,
-    type RuleFinding,
     type RuleFile,
+    type RuleFinding,
     type RuleSeverity,
 } from './define-rule.js'
 
-// Recurring-pitfall detection
 export {
     detectRecurringPitfalls,
     renderDraftRule,
     renderSuggestedRulesMarkdown,
     writeSuggestedRules,
-    type RecurrenceReport,
     type RecurringPitfall,
+    type RecurrenceReport,
 } from './recurrence.js'
 
-// Rule discovery + execution engine
 export {
     discoverAndRun,
     loadRules,

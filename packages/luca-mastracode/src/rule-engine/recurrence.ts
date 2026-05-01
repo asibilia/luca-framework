@@ -22,9 +22,9 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { analyzeRun } from '../postmortem.js'
-import { listArchivedRuns, listRuns } from '../session-ledger.js'
-import type { ViolationCode } from '../postmortem.js'
+import { analyzeRun } from '../analysis/postmortem.js'
+import { listArchivedRuns, listRuns } from '../state/session-ledger.js'
+import type { ViolationCode } from '../analysis/postmortem.js'
 
 export interface RecurringPitfall {
     /** ViolationCode that recurred. */

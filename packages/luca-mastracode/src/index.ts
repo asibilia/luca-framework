@@ -16,26 +16,26 @@
 import { main } from './launch.js'
 
 // --- Public API re-exports ---
-export { loadBranding, resolveLucaVersion } from './branding.js'
-export { buildContinuationMessage } from './continuation-messages.js'
+export { loadBranding, resolveLucaVersion } from './integration/branding.js'
+export { buildContinuationMessage } from './orchestration/continuation-messages.js'
 export { createStaticAgent } from './create-static-agent.js'
 export {
     installRules,
     installSkills,
     installSlashCommands,
-} from './install-bundled-assets.js'
+} from './integration/install-bundled-assets.js'
 export { main } from './launch.js'
 export {
     resolveMastracodeSettingsPath,
     resolvePackModelForMode,
-} from './mastracode-config.js'
+} from './integration/mastracode-config.js'
 export { loadAlwaysApplyRules, parseRuleFrontmatter } from './rules-loader.js'
 export {
     ANSI_ESCAPE_RE,
     clipToVisibleWidth,
     graphemeWidth,
     visibleWidth,
-} from './tui-text-helpers.js'
+} from './util/tui-text-helpers.js'
 
 // --- Boot ---
 //

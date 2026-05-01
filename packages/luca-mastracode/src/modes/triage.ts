@@ -8,8 +8,8 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readLucaState } from '../luca-store.js'
-import { resolveModel } from '../model-routing.js'
+import { readLucaState } from '../state/luca-store.js'
+import { resolveModel } from '../integration/model-routing.js'
 
 import { MODES } from '../constants/mode-ids.js'
 

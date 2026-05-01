@@ -20,8 +20,8 @@ import {
     verifyFile,
     verifyTextArtifact,
     type ClaimVerificationReport,
-} from '../claim-verifier.js'
-import { appendLedger } from '../session-ledger.js'
+} from '../state/claim-verifier.js'
+import { appendLedger } from '../state/session-ledger.js'
 
 const PLANNING_DIR = '.planning'
 
