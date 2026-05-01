@@ -23,15 +23,15 @@ import { appendLedger } from '../session-ledger.js'
 import {
     filterStaleComments,
     type PrReviewComment,
-} from '../pr-review/stale-filter.js'
+} from '../review-analysis/stale-filter.js'
 import {
     detectConvergence,
     type ReviewFinding,
-} from '../pr-review/convergence.js'
+} from '../review-analysis/convergence.js'
 import {
     checkRegression,
     diffPaths,
-} from '../pr-review/regression.js'
+} from '../review-analysis/regression.js'
 
 const reviewCommentSchema = z.object({
     id: z.number(),

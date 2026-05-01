@@ -7,7 +7,7 @@
  * runs each rule against every file matching its `scope` glob.
  *
  * Rules return `RuleFinding[]` whose shape is intentionally compatible
- * with the `ReviewFinding` type in `pr-review/convergence.ts` so the
+ * with the `ReviewFinding` type in `review-analysis/convergence.ts` so the
  * convergence detector can treat rule findings as a first-class
  * reviewer perspective.
  *

@@ -6,7 +6,7 @@
  * 2. Bare: error: message (no file location)
  */
 
-import type { ParsedError, OutputParser } from '../__schemas/checks.schemas'
+import type { ParsedError, OutputParser } from '../checks-schemas.js'
 
 const GENERIC_ERROR_REGEX =
     /^(.+?):(\d+)(?::(\d+))?:\s*(?:error|Error|ERROR)[:\s]+(.+)$/
