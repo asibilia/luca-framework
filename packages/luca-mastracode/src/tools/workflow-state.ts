@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { MODES } from '../modes/mode-ids.js'
+import { MODES } from '../constants/mode-ids.js'
 import { MODE_PERMISSIONS } from './mode-permissions.js'
 
 import {

@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 import { atomicWriteSync } from '../atomic-write.js'
 import { readLucaState } from '../luca-store.js'
-import { MODES } from '../modes/mode-ids.js'
+import { MODES } from '../constants/mode-ids.js'
 
 const LOCK_FILE = '.planning/.luca-lock.json'
 

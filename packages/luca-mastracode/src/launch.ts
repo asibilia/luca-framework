@@ -75,7 +75,7 @@ import {
     resolveTriageModel,
     triageMode,
 } from './modes/triage.js'
-import { MODES } from './modes/mode-ids.js'
+import { MODES } from './constants/mode-ids.js'
 import * as pipelineGuard from './pipeline-guard.js'
 import {
     buildPipelineProgressHeader,

@@ -6,7 +6,7 @@
  * and uses followUpRef to inject reminders into the conversation.
  */
 
-import { MODES } from './modes/mode-ids.js'
+import { MODES } from './constants/mode-ids.js'
 import { appendLedger } from './session-ledger.js'
 import type { ThresholdName, BudgetState } from './token-budget.js'
 

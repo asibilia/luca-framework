@@ -14,8 +14,8 @@ import { join } from 'node:path'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { applyDelete, applyGitignore, applyMove } from './cleanup-fixes'
-import { parseShadowScanReport } from './cleanup-report'
+import { applyDelete, applyGitignore, applyMove } from './cleanup-fixes.js'
+import { parseShadowScanReport } from './cleanup-report.js'
 
 import {
     determineScanMode,

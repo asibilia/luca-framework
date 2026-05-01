@@ -7,7 +7,7 @@
  * amber-bordered box in the TUI.
  */
 import type { LucaWorkflowState } from './luca-store.js'
-import { MODES } from './modes/mode-ids.js'
+import { MODES } from './constants/mode-ids.js'
 
 export function buildContinuationMessage(
     modeId: string,

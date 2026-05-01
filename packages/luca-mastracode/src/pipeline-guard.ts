@@ -11,7 +11,7 @@
  * when the workflow-state tool's switch-mode action was invoked.
  */
 import { readLucaState, writeLucaState } from './luca-store.js'
-import { MODES } from './modes/mode-ids.js'
+import { MODES } from './constants/mode-ids.js'
 import { followUpRef, switchModeRef } from './refs.js'
 import { appendLedger } from './session-ledger.js'
 import { PIPELINE_ORDER } from './tools/workflow-state.js'

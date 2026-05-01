@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { atomicWriteSync } from './atomic-write.js'
-import { MODES } from './modes/mode-ids.js'
+import { MODES } from './constants/mode-ids.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
 

@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { MODES } from './mode-ids.js'
+import { MODES } from '../constants/mode-ids.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 

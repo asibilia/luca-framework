@@ -13,7 +13,7 @@
  * 2. Register the base tool in build-mode-tools.ts TOOL_REGISTRY.
  * 3. That's it — buildModeTools() handles scoping automatically.
  */
-import { MODES } from '../modes/mode-ids.js'
+import { MODES } from '../constants/mode-ids.js'
 
 export const MODE_PERMISSIONS: Record<
     string,

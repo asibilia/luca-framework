@@ -14,7 +14,7 @@ import { readLucaState } from '../luca-store.js'
 import { resolveModel } from '../model-routing.js'
 import type { ComplexityLevel, ProfileLevel } from '../state.js'
 
-import { MODES } from './mode-ids.js'
+import { MODES } from '../constants/mode-ids.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
