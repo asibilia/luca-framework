@@ -6,7 +6,7 @@
  * 2. Default human-readable ESLint output (regex fallback)
  */
 
-import type { ParsedError, OutputParser } from '../__schemas/checks.schemas'
+import type { ParsedError, OutputParser } from '../checks-schemas.js'
 
 const ESLINT_DEFAULT_REGEX =
     /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}(\S+)\s*$/

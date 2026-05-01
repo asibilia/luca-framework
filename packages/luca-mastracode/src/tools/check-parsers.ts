@@ -6,8 +6,8 @@
  */
 import { createHash } from 'node:crypto'
 
-import type { ParsedError } from './__schemas/checks.schemas'
-import { parserRegistry } from './parsers/parser-registry'
+import type { ParsedError } from './checks-schemas.js'
+import { parserRegistry } from './parsers/parser-registry.js'
 
 export interface FingerprintedError extends ParsedError {
     fingerprint: string

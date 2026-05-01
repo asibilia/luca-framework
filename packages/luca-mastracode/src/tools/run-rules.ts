@@ -28,9 +28,9 @@ import {
     detectRecurringPitfalls,
     renderSuggestedRulesMarkdown,
     writeSuggestedRules,
-} from '../rules/recurrence.js'
-import { discoverAndRun, loadRules } from '../rules/runner.js'
-import { appendLedger } from '../session-ledger.js'
+} from '../rule-engine/recurrence.js'
+import { discoverAndRun, loadRules } from '../rule-engine/runner.js'
+import { appendLedger } from '../state/session-ledger.js'
 
 export const runRulesTool = createTool({
     id: 'run-rules',

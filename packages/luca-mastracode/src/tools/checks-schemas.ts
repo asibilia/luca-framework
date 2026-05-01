@@ -1,8 +1,8 @@
 /**
  * Minimal check-runner types used by output parsers.
  *
- * Extracted from the former root src/checks/__schemas/checks.schemas.ts
- * so luca-mastracode is fully self-contained.
+ * Shared schema for check-runner output parsers. Co-located with
+ * tools/ since all consumers live in tools/ and tools/parsers/.
  */
 
 import { z } from 'zod'

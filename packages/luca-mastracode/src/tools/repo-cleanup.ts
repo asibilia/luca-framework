@@ -14,15 +14,15 @@ import { join } from 'node:path'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { applyDelete, applyGitignore, applyMove } from './cleanup-fixes'
-import { parseShadowScanReport } from './cleanup-report'
+import { applyDelete, applyGitignore, applyMove } from './cleanup-fixes.js'
+import { parseShadowScanReport } from './cleanup-report.js'
 
 import {
     determineScanMode,
     loadShadowDebtConfig,
     SCAN_MODE_CATEGORIES,
     type ScanMode,
-} from '../shadow-scanner.js'
+} from '../state/shadow-scanner.js'
 
 export const repoCleanupTool = createTool({
     id: 'repo-cleanup',

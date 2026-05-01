@@ -10,7 +10,7 @@ import {
     readConfidenceJournal,
     getConfidenceSummary,
     renderConfidenceJournalMarkdown,
-} from '../confidence-journal.js'
+} from '../state/confidence-journal.js'
 
 export const confidenceJournalTool = createTool({
     id: 'confidence-journal',

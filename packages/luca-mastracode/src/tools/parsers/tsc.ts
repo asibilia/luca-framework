@@ -5,7 +5,7 @@
  *   src/foo.ts(42,5): error TS2345: Argument of type 'string' is not assignable ...
  */
 
-import type { ParsedError, OutputParser } from '../__schemas/checks.schemas'
+import type { ParsedError, OutputParser } from '../checks-schemas.js'
 
 const TSC_ERROR_REGEX =
     /^(.+)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.+)$/

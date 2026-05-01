@@ -14,14 +14,14 @@ import {
     assessConvergence,
     readConvergence,
     writeConvergence,
-} from './check-convergence'
-import { parseAndFingerprint, type FingerprintedError } from './check-parsers'
+} from './check-convergence.js'
+import { parseAndFingerprint, type FingerprintedError } from './check-parsers.js'
 import {
     buildCommand,
     detectCheck,
     detectRunner,
     runWithTimeout,
-} from './check-runner'
+} from './check-runner.js'
 
 export const runChecksTool = createTool({
     id: 'run-checks',

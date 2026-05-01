@@ -1,8 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { MODES } from '../modes/mode-ids.js'
-import { MODE_PERMISSIONS } from './mode-permissions.js'
+import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
 
 import {
     readLucaState,
@@ -12,21 +11,21 @@ import {
     advanceWave,
     completePhase,
     type LucaWorkflowState,
-} from '../luca-store.js'
-import { switchModeRef, contextRefresherRef } from '../refs.js'
+} from '../state/luca-store.js'
+import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 import {
     appendLedger,
     archivePriorRun,
     startNewRun,
-} from '../session-ledger.js'
+} from '../state/session-ledger.js'
 import {
     snapshotWorkingTree,
     computePhaseDiff,
     type PhaseSnapshot,
-} from '../phase-diff.js'
-import { readVerificationResult } from '../verification-result.js'
+} from '../analysis/phase-diff.js'
+import { readVerificationResult } from '../state/verification-result.js'
 
-const VALID_MODES = Object.keys(MODE_PERMISSIONS)
+const VALID_MODES = ALL_REGISTERED_MODES
 
 /**
  * Pipeline step order and transition map.

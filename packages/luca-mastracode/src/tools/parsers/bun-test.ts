@@ -5,7 +5,7 @@
  * and file header lines from bun test output.
  */
 
-import type { ParsedError, OutputParser } from '../__schemas/checks.schemas'
+import type { ParsedError, OutputParser } from '../checks-schemas.js'
 
 // Match failed test name: "✗ test name [timing]" or "✘ test name [timing]"
 const FAIL_MARKER_REGEX = /^\s*[✗✘×]\s+(.+?)(?:\s+\[[\d.]+(?:ms|s)\])?\s*$/

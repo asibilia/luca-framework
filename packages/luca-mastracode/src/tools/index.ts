@@ -17,5 +17,4 @@ export { runRulesTool } from './run-rules.js'
 
 // Permission system
 export { createScopedTool } from './create-scoped-tool.js'
-export { MODE_PERMISSIONS } from './mode-permissions.js'
-export { buildModeTools } from './build-mode-tools.js'
+export { MODE_PERMISSIONS, buildModeTools } from './tool-manifest.js'

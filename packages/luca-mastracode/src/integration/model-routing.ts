@@ -4,7 +4,7 @@
  * Ported from `src/complexity/__helpers/model-routing.ts`.
  * Maps (subagent type, complexity level, profile) → Mastra model ID string.
  */
-import type { ComplexityLevel, ProfileLevel } from './state.js'
+import type { ComplexityLevel, ProfileLevel } from '../state/state.js'
 
 // ---------------------------------------------------------------------------
 // Model tier → Mastra model ID mapping

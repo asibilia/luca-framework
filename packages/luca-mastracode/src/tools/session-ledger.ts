@@ -10,7 +10,7 @@ import {
     getLedgerByEvent,
     computeSessionMetrics,
     readRoutingHistory,
-} from '../session-ledger.js'
+} from '../state/session-ledger.js'
 
 export const sessionLedgerTool = createTool({
     id: 'session-ledger',
