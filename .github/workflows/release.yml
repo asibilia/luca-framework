@@ -151,5 +151,20 @@ jobs:
       - name: Pack tarball (resolves catalog/workspace protocols)
         run: cd packages/luca-framework && bun pm pack --destination ./.pack
 
+      - name: Determine npm dist-tag
+        id: dist_tag
+        run: |
+          VERSION=$(jq -r .version packages/luca-framework/package.json)
+          if [[ "$VERSION" == *-alpha.* ]]; then
+            echo "tag=alpha" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *-beta.* ]]; then
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *-* ]]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Publishing $VERSION with dist-tag: $(grep tag= "$GITHUB_OUTPUT" | cut -d= -f2)"
+
       - name: Publish to npm via OIDC trusted publishing
-        run: cd packages/luca-framework && npm publish ./.pack/*.tgz --access public --provenance
+        run: cd packages/luca-framework && npm publish ./.pack/*.tgz --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
