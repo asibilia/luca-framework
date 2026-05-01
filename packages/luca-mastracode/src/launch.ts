@@ -5,7 +5,7 @@
  * subagents, hooks, MCP, the TUI, and a battery of upstream-bug workarounds.
  * Exposed as `main()` and invoked by the CLI entry point in `index.ts`.
  */
-import { existsSync, readFileSync } from 'node:fs'
+
 
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
@@ -14,6 +14,7 @@ import { loadBranding, resolveLucaVersion } from './integration/branding.js'
 import { ContextRefresher } from './orchestration/context-refresher.js'
 import { buildContinuationMessage } from './orchestration/continuation-messages.js'
 import { enforceReadOnlyModes } from './orchestration/read-only-enforcement.js'
+import { applyUpstreamPatches } from './orchestration/upstream-patches.js'
 import { createStaticAgent } from './create-static-agent.js'
 import {
     installRules,
@@ -21,10 +22,7 @@ import {
     installSlashCommands,
 } from './integration/install-bundled-assets.js'
 import { readLucaState, writeLucaState } from './state/luca-store.js'
-import {
-    resolveMastracodeSettingsPath,
-    resolvePackModelForMode,
-} from './integration/mastracode-config.js'
+
 import {
     architectMode,
     buildArchitectInstructions,
@@ -104,7 +102,7 @@ import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
 import { TokenBudgetMonitor } from './util/token-budget.js'
 import { buildModeTools } from './tools/build-mode-tools.js'
-import { clipToVisibleWidth, visibleWidth } from './util/tui-text-helpers.js'
+
 
 /**
  * Mode-to-model resolver map.
@@ -689,253 +687,9 @@ export async function main(): Promise<void> {
         inlineQuestions: true,
     })
 
-    // --- Workaround for upstream mastracode bug (tracked: issue #173) ---
-    //
-    // `AskQuestionInlineComponent` (used by the built-in `ask_user` tool) does
-    // not wrap or truncate option labels. Long labels render past the box's
-    // inner width, which trips pi-tui's per-line width assertion in
-    // `doRender()` and crashes the entire process with:
-    //
-    //   error: Rendered line N exceeds terminal width (X > Y).
-    //
-    // Bug location (installed bundle): `chunk-YEHNNDZZ.js:88-99` and
-    // surrounding branches in `_AskQuestionInlineBorderedBox._render`, where
-    // each option is emitted as `theme.fg("dim", `   ${item.label}`)` with no
-    // wrap/truncate step. The question text on the same component IS wrapped
-    // via `wrapTextWithAnsi(qLine, innerWidth)`, so this is just a missing
-    // wrap on the option labels.
-    //
-    // We monkey-patch `AskQuestionInlineComponent.prototype.updateArgs` and
-    // `.activate` (the two methods that feed option labels into the bordered
-    // box) to truncate any label whose visible width would overflow the
-    // current terminal. We can't import the class directly because mastracode
-    // doesn't re-export it from `mastracode/tui`, so we capture the
-    // constructor lazily the first time mastracode stores an instance into
-    // `state.pendingAskUserComponents`. After the prototype is patched, all
-    // current and future instances pick up the safe behavior.
-    //
-    // The patch is purely defensive: every internal access is guarded so that
-    // if upstream changes shape (rename, drop the Map, swap the methods) we
-    // log a warning and no-op rather than crashing startup.
-    const askMap = (() => {
-        const tuiState = (tui as unknown as { state?: unknown }).state as
-            | { pendingAskUserComponents?: unknown }
-            | undefined
-        const candidate = tuiState?.pendingAskUserComponents
-        return candidate instanceof Map ? candidate : undefined
-    })()
-
-    if (askMap) {
-        const LUCA_ASK_USER_PATCHED = Symbol.for('luca.ask_user.label_truncate')
-        const originalSet = askMap.set.bind(askMap)
-        askMap.set = function patchedSet(
-            toolCallId: unknown,
-            instance: unknown
-        ) {
-            try {
-                patchAskQuestionPrototype(instance, LUCA_ASK_USER_PATCHED)
-            } catch (err) {
-                // Patching is purely defensive — never let it block the question.
-                console.error('[luca] ask_user prototype patch failed:', err)
-            }
-            return originalSet(toolCallId, instance)
-        } as typeof askMap.set
-    } else {
-        console.warn(
-            '[luca] ask_user label-truncation patch skipped: ' +
-                'tui.state.pendingAskUserComponents is not a Map ' +
-                '(upstream mastracode internals may have changed).'
-        )
-    }
-
-    // --- Workaround for upstream mastracode double-slash bug ---
-    //
-    // mastracode's `setupAutocomplete` registers custom slash commands by
-    // prepending `/` to each command's name (chunk-YEHNNDZZ.js:12399-12404):
-    //
-    //   slashCommands.push({ name: `/${customCmd.name}`, ... })
-    //
-    // Built-in commands are registered without the `/` (e.g. `name: "help"`),
-    // and pi-tui's autocomplete strips the user's leading `/` before fuzzy
-    // matching, then inserts `cmd.name` back. So built-ins round-trip cleanly
-    // (`/h` -> match `help` -> insert `help` -> visible as `/help`), but
-    // custom commands acquire a duplicate slash (`/l` -> match `/lu` ->
-    // insert `/lu` -> visible as `//lu`).
-    //
-    // Fix: intercept the editor's `setAutocompleteProvider` call. When
-    // mastracode wires up the provider (during `init()` -> `setupAutocomplete`),
-    // we rewrite the provider's `commands` array to strip any leading `/`
-    // from each command name. The lookup paths in mastracode that compare
-    // `cmd.name === cmdName` are unaffected because both sides go through
-    // the same trimmed value (custom command dispatch in chunk-YEHNNDZZ.js:7468
-    // strips the user's leading `/` before comparing).
-    //
-    // The patch is purely defensive: if upstream restructures the editor or
-    // provider, we log a warning and let mastracode's behavior pass through
-    // unchanged.
-    const editor = (() => {
-        const tuiState = (tui as unknown as { state?: unknown }).state as
-            | { editor?: unknown }
-            | undefined
-        const candidate = tuiState?.editor
-        if (
-            !candidate ||
-            typeof (candidate as { setAutocompleteProvider?: unknown })
-                .setAutocompleteProvider !== 'function'
-        ) {
-            return undefined
-        }
-        return candidate as {
-            setAutocompleteProvider: (provider: unknown) => void
-        }
-    })()
-
-    if (editor) {
-        const LUCA_AUTOCOMPLETE_PATCHED = Symbol.for(
-            'luca.autocomplete.strip_leading_slash'
-        )
-        const editorRecord = editor as unknown as Record<symbol, unknown>
-        if (!editorRecord[LUCA_AUTOCOMPLETE_PATCHED]) {
-            const originalSet = editor.setAutocompleteProvider.bind(editor)
-            editor.setAutocompleteProvider = (provider: unknown) => {
-                try {
-                    if (
-                        provider &&
-                        typeof provider === 'object' &&
-                        Array.isArray(
-                            (provider as { commands?: unknown }).commands
-                        )
-                    ) {
-                        const commands = (provider as { commands: unknown[] })
-                            .commands
-                        for (const cmd of commands) {
-                            if (
-                                cmd &&
-                                typeof cmd === 'object' &&
-                                typeof (cmd as { name?: unknown }).name ===
-                                    'string' &&
-                                (cmd as { name: string }).name.startsWith('/')
-                            ) {
-                                ;(cmd as { name: string }).name = (
-                                    cmd as { name: string }
-                                ).name.replace(/^\/+/, '')
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error(
-                        '[luca] autocomplete slash-strip patch failed:',
-                        err
-                    )
-                }
-                return originalSet(provider)
-            }
-            editorRecord[LUCA_AUTOCOMPLETE_PATCHED] = true
-        }
-    } else {
-        console.warn(
-            '[luca] autocomplete slash-strip patch skipped: ' +
-                'tui.state.editor.setAutocompleteProvider is not callable ' +
-                '(upstream mastracode internals may have changed).'
-        )
-    }
-
-    // --- Workaround for upstream mastracode model-pack-on-login bug ---
-    //
-    // After a successful login, mastracode's `performLogin` (chunk-YEHNNDZZ.js
-    // around line 13670-13679) calls:
-    //
-    //   const defaultModel = PROVIDER_DEFAULT_MODELS[providerId]
-    //   await harness.switchModel({ modelId: defaultModel })
-    //
-    // This blindly switches to the provider's hard-coded default model and
-    // ignores the user's currently-selected model pack. For Anthropic, that
-    // default is `claude-opus-4-6`, but a user with the Anthropic pack
-    // (resolved to `claude-opus-4-7` via OAuth) will be silently downgraded
-    // every time they log in or refresh credentials. The status bar then
-    // shows the wrong model and `/models` looks out-of-sync with the actual
-    // model the agent uses.
-    //
-    // Fix: wrap `tui.performLogin` so that after the original implementation
-    // resolves, we re-apply the active model pack's model for the current
-    // mode. We read `settings.json` directly (mastracode doesn't re-export
-    // `loadSettings` from the public package entry, so duplicating the read
-    // is the smallest viable patch).
-    //
-    // No-op when:
-    //   - No active pack is set (user hasn't picked one — provider default is fine)
-    //   - The active pack maps the current mode to the same model mastracode
-    //     just selected (already correct)
-    //   - Reading settings fails for any reason (degrade gracefully)
-    {
-        const tuiAny = tui as unknown as {
-            performLogin: (providerId: string) => Promise<void>
-            state?: { harness?: unknown }
-        }
-        const originalPerformLogin = tuiAny.performLogin.bind(tui)
-        tuiAny.performLogin = async (providerId: string) => {
-            await originalPerformLogin(providerId)
-            try {
-                const settingsPath = resolveMastracodeSettingsPath()
-                if (!settingsPath || !existsSync(settingsPath)) return
-                const raw = JSON.parse(readFileSync(settingsPath, 'utf-8'))
-                const activeModelPackId = raw?.models?.activeModelPackId
-                if (typeof activeModelPackId !== 'string') return
-
-                const harnessAny = (
-                    tuiAny.state as { harness?: unknown } | undefined
-                )?.harness as
-                    | {
-                          getCurrentModeId?: () => string
-                          switchModel?: (args: {
-                              modelId: string
-                          }) => Promise<unknown>
-                      }
-                    | undefined
-                if (
-                    !harnessAny ||
-                    typeof harnessAny.getCurrentModeId !== 'function' ||
-                    typeof harnessAny.switchModel !== 'function'
-                ) {
-                    return
-                }
-
-                // Detect OAuth vs API-key access for the provider that was
-                // just authenticated. authStorage.isLoggedIn() returns true
-                // only for OAuth credentials, which is exactly the
-                // distinction `getAvailableModePacks` uses.
-                const isOauth =
-                    typeof (
-                        authStorage as {
-                            isLoggedIn?: (id: string) => boolean
-                        }
-                    ).isLoggedIn === 'function'
-                        ? (
-                              authStorage as {
-                                  isLoggedIn: (id: string) => boolean
-                              }
-                          ).isLoggedIn(providerId)
-                        : false
-
-                const currentModeId = harnessAny.getCurrentModeId()
-                const packModelId = resolvePackModelForMode({
-                    settings: raw,
-                    activeModelPackId,
-                    providerId,
-                    modeId: currentModeId,
-                    isOauth,
-                })
-                if (!packModelId) return
-
-                await harnessAny.switchModel({ modelId: packModelId })
-            } catch (err) {
-                console.error(
-                    '[luca] post-login model-pack restore failed:',
-                    err
-                )
-            }
-        }
-    }
+    // --- Upstream workaround patches (ask_user truncation, double-slash,
+    // model-pack-on-login). See orchestration/upstream-patches.ts for details.
+    applyUpstreamPatches({ tui, authStorage })
 
     // Stale pipeline state is handled by two explicit guards:
     // 1. reset-pipeline (called by finalize) clears all session-scoped fields
@@ -943,83 +697,4 @@ export async function main(): Promise<void> {
     // No startup wipe needed — avoids data loss if pipeline was interrupted mid-flight.
 
     await tui.run()
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function patchAskQuestionPrototype(instance: any, marker: symbol) {
-    if (!instance || typeof instance !== 'object') return
-    const proto = Object.getPrototypeOf(instance)
-    if (!proto || proto[marker]) return
-
-    const truncateOptions = (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        options: any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ): any => {
-        if (!Array.isArray(options)) return options
-        // The bordered box renders each option as `   ${label}` inside a
-        // box that consumes 4 columns of frame (`│ ` + ` │`). Pi-tui also
-        // subtracts a 3-column safety buffer (`TERM_WIDTH_BUFFER`) from
-        // `process.stdout.columns`. Match that math, then leave 1 extra
-        // cell of headroom so a stray wide character can't push us over.
-        //
-        // No floor clamps: on a tiny terminal the budget can be ≤ 0, and
-        // any positive minimum we invent would itself overflow. Instead
-        // we degrade to a single-cell ellipsis (or empty) when the budget
-        // collapses, which is the only string guaranteed to fit.
-        const cols = process.stdout.columns || 80
-        const innerWidth = cols - 3 /* TERM_WIDTH_BUFFER */ - 4 /* box */
-        const labelBudget = innerWidth - 3 /* "   " prefix */ - 1 /* headroom */
-        const ELLIPSIS = '…'
-        return options.map((opt: unknown) => {
-            if (!opt || typeof opt !== 'object') return opt
-            const label = (opt as { label?: unknown }).label
-            if (typeof label !== 'string') return opt
-            if (visibleWidth(label) <= labelBudget) return opt
-            return {
-                ...(opt as object),
-                label: clipToVisibleWidth(label, labelBudget, ELLIPSIS),
-            }
-        })
-    }
-
-    const originalUpdateArgs = proto.updateArgs
-    if (typeof originalUpdateArgs === 'function') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        proto.updateArgs = function patchedUpdateArgs(args: any) {
-            if (
-                args &&
-                typeof args === 'object' &&
-                Array.isArray((args as { options?: unknown }).options)
-            ) {
-                args = {
-                    ...args,
-                    options: truncateOptions(
-                        (args as { options: unknown[] }).options
-                    ),
-                }
-            }
-            return originalUpdateArgs.call(this, args)
-        }
-    }
-
-    const originalActivate = proto.activate
-    if (typeof originalActivate === 'function') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        proto.activate = function patchedActivate(options: any) {
-            if (
-                options &&
-                typeof options === 'object' &&
-                Array.isArray(options.options)
-            ) {
-                options = {
-                    ...options,
-                    options: truncateOptions(options.options),
-                }
-            }
-            return originalActivate.call(this, options)
-        }
-    }
-
-    proto[marker] = true
 }

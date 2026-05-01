@@ -6,20 +6,28 @@
  * log a warning and no-op rather than crashing startup.
  *
  * Patches:
- *   1. ask_user label truncation (issue #173)
- *   2. Double-slash autocomplete prefix
- *   3. Model-pack-on-login override
+ *   1. ask_user label truncation — truncate long option labels to prevent
+ *      pi-tui width assertion crashes (issue #173)
+ *   2. Double-slash autocomplete prefix — strip leading `/` from custom
+ *      command names to prevent `//command` rendering
+ *   3. Model-pack-on-login override — re-apply user's active model pack
+ *      after login resets to provider default
+ *
+ * Extracted from launch.ts for maintainability — no behavioral changes.
  */
 import { existsSync, readFileSync } from 'node:fs'
 
-import { clipToVisibleWidth } from '../util/tui-text-helpers.js'
 import {
     resolveMastracodeSettingsPath,
     resolvePackModelForMode,
 } from '../integration/mastracode-config.js'
+import {
+    clipToVisibleWidth,
+    visibleWidth,
+} from '../util/tui-text-helpers.js'
 
 // ---------------------------------------------------------------------------
-// Patch 1: ask_user label truncation
+// Patch 1 helper: ask_user label truncation
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,6 +47,11 @@ function patchAskQuestionPrototype(instance: any, marker: symbol) {
         // subtracts a 3-column safety buffer (`TERM_WIDTH_BUFFER`) from
         // `process.stdout.columns`. Match that math, then leave 1 extra
         // cell of headroom so a stray wide character can't push us over.
+        //
+        // No floor clamps: on a tiny terminal the budget can be ≤ 0, and
+        // any positive minimum we invent would itself overflow. Instead
+        // we degrade to a single-cell ellipsis (or empty) when the budget
+        // collapses, which is the only string guaranteed to fit.
         const cols = process.stdout.columns || 80
         const innerWidth = cols - 3 /* TERM_WIDTH_BUFFER */ - 4 /* box */
         const labelBudget = innerWidth - 3 /* "   " prefix */ - 1 /* headroom */
@@ -47,8 +60,9 @@ function patchAskQuestionPrototype(instance: any, marker: symbol) {
             if (!opt || typeof opt !== 'object') return opt
             const label = (opt as { label?: unknown }).label
             if (typeof label !== 'string') return opt
+            if (visibleWidth(label) <= labelBudget) return opt
             return {
-                ...opt,
+                ...(opt as object),
                 label: clipToVisibleWidth(label, labelBudget, ELLIPSIS),
             }
         })
@@ -95,7 +109,30 @@ function patchAskQuestionPrototype(instance: any, marker: symbol) {
     proto[marker] = true
 }
 
-function patchAskUserLabelTruncation(tui: unknown): void {
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply all upstream mastracode monkey-patches to the TUI and harness.
+ *
+ * Call this after `new MastraTUI(...)` but before `tui.run()`.
+ */
+export function applyUpstreamPatches({
+    tui,
+    authStorage,
+}: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tui: any
+    authStorage:
+        | { isLoggedIn?: (id: string) => boolean }
+        | undefined
+}): void {
+    // --- Patch 1: ask_user label truncation ---
+    //
+    // AskQuestionInlineComponent does not wrap or truncate option labels.
+    // Long labels render past the box's inner width, tripping pi-tui's
+    // per-line width assertion in doRender().
     const askMap = (() => {
         const tuiState = (tui as unknown as { state?: unknown }).state as
             | { pendingAskUserComponents?: unknown }
@@ -126,13 +163,12 @@ function patchAskUserLabelTruncation(tui: unknown): void {
                 '(upstream mastracode internals may have changed).'
         )
     }
-}
 
-// ---------------------------------------------------------------------------
-// Patch 2: Double-slash autocomplete prefix
-// ---------------------------------------------------------------------------
-
-function patchDoubleSlashAutocomplete(tui: unknown): void {
+    // --- Patch 2: Double-slash autocomplete prefix ---
+    //
+    // mastracode prepends `/` to custom command names, but pi-tui strips
+    // the user's leading `/` before fuzzy matching and re-inserts cmd.name.
+    // Custom commands end up as `//command`.
     const editor = (() => {
         const tuiState = (tui as unknown as { state?: unknown }).state as
             | { editor?: unknown }
@@ -199,103 +235,70 @@ function patchDoubleSlashAutocomplete(tui: unknown): void {
                 '(upstream mastracode internals may have changed).'
         )
     }
-}
 
-// ---------------------------------------------------------------------------
-// Patch 3: Model-pack-on-login
-// ---------------------------------------------------------------------------
+    // --- Patch 3: Model-pack-on-login override ---
+    //
+    // After login, mastracode switches to the provider's hard-coded default
+    // model, ignoring the user's active model pack.
+    {
+        const tuiAny = tui as unknown as {
+            performLogin: (providerId: string) => Promise<void>
+            state?: { harness?: unknown }
+        }
+        const originalPerformLogin = tuiAny.performLogin.bind(tui)
+        tuiAny.performLogin = async (providerId: string) => {
+            await originalPerformLogin(providerId)
+            try {
+                const settingsPath = resolveMastracodeSettingsPath()
+                if (!settingsPath || !existsSync(settingsPath)) return
+                const raw = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+                const activeModelPackId = raw?.models?.activeModelPackId
+                if (typeof activeModelPackId !== 'string') return
 
-function patchModelPackOnLogin({
-    tui,
-    authStorage,
-}: {
-    tui: unknown
-    authStorage: unknown
-}): void {
-    const tuiAny = tui as unknown as {
-        performLogin: (providerId: string) => Promise<void>
-        state?: { harness?: unknown }
-    }
-    const originalPerformLogin = tuiAny.performLogin.bind(tui)
-    tuiAny.performLogin = async (providerId: string) => {
-        await originalPerformLogin(providerId)
-        try {
-            const settingsPath = resolveMastracodeSettingsPath()
-            if (!settingsPath || !existsSync(settingsPath)) return
-            const raw = JSON.parse(readFileSync(settingsPath, 'utf-8'))
-            const activeModelPackId = raw?.models?.activeModelPackId
-            if (typeof activeModelPackId !== 'string') return
+                const harnessAny = (
+                    tuiAny.state as { harness?: unknown } | undefined
+                )?.harness as
+                    | {
+                          getCurrentModeId?: () => string
+                          switchModel?: (args: {
+                              modelId: string
+                          }) => Promise<unknown>
+                      }
+                    | undefined
+                if (
+                    !harnessAny ||
+                    typeof harnessAny.getCurrentModeId !== 'function' ||
+                    typeof harnessAny.switchModel !== 'function'
+                ) {
+                    return
+                }
 
-            const harnessAny = (
-                tuiAny.state as { harness?: unknown } | undefined
-            )?.harness as
-                | {
-                      getCurrentModeId?: () => string
-                      switchModel?: (args: {
-                          modelId: string
-                      }) => Promise<unknown>
-                  }
-                | undefined
-            if (
-                !harnessAny ||
-                typeof harnessAny.getCurrentModeId !== 'function' ||
-                typeof harnessAny.switchModel !== 'function'
-            ) {
-                return
+                // Detect OAuth vs API-key access for the provider that was
+                // just authenticated. authStorage.isLoggedIn() returns true
+                // only for OAuth credentials, which is exactly the
+                // distinction `getAvailableModePacks` uses.
+                const isOauth =
+                    typeof authStorage?.isLoggedIn === 'function'
+                        ? authStorage.isLoggedIn(providerId)
+                        : false
+
+                const currentModeId = harnessAny.getCurrentModeId()
+                const packModelId = resolvePackModelForMode({
+                    settings: raw,
+                    activeModelPackId,
+                    providerId,
+                    modeId: currentModeId,
+                    isOauth,
+                })
+                if (!packModelId) return
+
+                await harnessAny.switchModel({ modelId: packModelId })
+            } catch (err) {
+                console.error(
+                    '[luca] post-login model-pack restore failed:',
+                    err
+                )
             }
-
-            // Detect OAuth vs API-key access for the provider that was
-            // just authenticated. authStorage.isLoggedIn() returns true
-            // only for OAuth credentials, which is exactly the
-            // distinction `getAvailableModePacks` uses.
-            const isOauth =
-                typeof (
-                    authStorage as {
-                        isLoggedIn?: (id: string) => boolean
-                    }
-                ).isLoggedIn === 'function'
-                    ? (
-                          authStorage as {
-                              isLoggedIn: (id: string) => boolean
-                          }
-                      ).isLoggedIn(providerId)
-                    : false
-
-            const currentModeId = harnessAny.getCurrentModeId()
-            const packModelId = resolvePackModelForMode({
-                settings: raw,
-                activeModelPackId,
-                providerId,
-                modeId: currentModeId,
-                isOauth,
-            })
-            if (!packModelId) return
-
-            await harnessAny.switchModel({ modelId: packModelId })
-        } catch (err) {
-            console.error(
-                '[luca] post-login model-pack restore failed:',
-                err
-            )
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Public entry point
-// ---------------------------------------------------------------------------
-
-/**
- * Apply all upstream workaround patches. Call after TUI is created.
- */
-export function applyUpstreamPatches({
-    tui,
-    authStorage,
-}: {
-    tui: unknown
-    authStorage: unknown
-}): void {
-    patchAskUserLabelTruncation(tui)
-    patchDoubleSlashAutocomplete(tui)
-    patchModelPackOnLogin({ tui, authStorage })
 }
