@@ -1,91 +1,141 @@
 # Architecture
 
-## Dependency layers
+## Dependency Layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  launch.ts  (orchestrator — wires everything together)  │
-├────────────────────────┬────────────────────────────────┤
-│  orchestration/        │  analysis/                     │
-│  - pipeline-guard      │  - postmortem                  │
-│  - context-refresher   │  - phase-diff                  │
-│  - pipeline-tui        │  - retro                       │
-│  - continuation-msgs   │                                │
-│  - read-only-enforce   │                                │
-│  - upstream-patches    │                                │
-├────────────────────────┴────────────────────────────────┤
-│  modes/  (10 mode definitions)                          │
-│  subagents/  (10 subagent definitions)                  │
-├─────────────────────────────────────────────────────────┤
-│  tools/  (16 tool wrappers + permission system)         │
-│  - build-mode-tools.ts   (tool registry)                │
-│  - mode-permissions.ts   (per-mode access matrix)       │
-│  - create-scoped-tool.ts (action-level restriction)     │
-├─────────────────────────────────────────────────────────┤
-│  state/  (pure data models, schemas, persistence)       │
-│  review-analysis/  (PR review primitives)               │
-│  rule-engine/  (rule discovery + execution)             │
-├─────────────────────────────────────────────────────────┤
-│  constants/  (mode-ids)                                 │
-│  util/  (atomic-write, refs, token-budget, tui-text)    │
-│  integration/  (branding, config, model-routing)        │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         launch.ts                                │
+│         (orchestrator — wires everything, starts TUI)            │
+├─────────────────────────────────────────────────────────────────┤
+│   orchestration/         │   modes/        │   subagents/        │
+│   (pipeline guard,       │   (mode defs,   │   (delegated        │
+│    continuation,         │    instructions) │    agents)          │
+│    read-only, patches)   │                 │                     │
+├──────────────────────────┼─────────────────┼─────────────────────┤
+│                         tools/                                   │
+│   (tool wrappers, registry, permissions, parsers)               │
+├─────────────────────────────────────────────────────────────────┤
+│   state/          │   analysis/      │   review-analysis/        │
+│   (data models,   │   (postmortem,   │   (convergence,           │
+│    persistence)   │    retro, diff)  │    regression, staleness) │
+├───────────────────┼──────────────────┼───────────────────────────┤
+│   integration/         │   rule-engine/   │   util/              │
+│   (config, branding,   │   (define, run,  │   (atomic-write,     │
+│    assets, model)      │    recurrence)   │    refs, budget, tui)│
+├────────────────────────┼──────────────────┼──────────────────────┤
+│                       constants/                                 │
+│                    (mode-ids — shared enum)                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Import rules:**
-- Lower layers never import from higher layers
-- `tools/` → `state/` ✓ (tool wrappers call data layer functions)
-- `tools/` → `constants/` ✓ (mode-ids for permission keys)
-- `modes/` → `state/`, `constants/`, `integration/` ✓
-- `orchestration/` → `state/`, `tools/`, `constants/` ✓
-- No circular dependencies between layers
+**Rule:** Each layer may import from layers below it, never above.
+`constants/` sits at the bottom — imported by everything, imports nothing.
 
-## mode-ids.ts: the shared hub
+## Key Patterns
 
-`src/constants/mode-ids.ts` defines all pipeline mode IDs as a `const` object. It is imported by **15 files** across modes, tools, and orchestration. It imports nothing, making it a safe leaf dependency.
+### mode-ids.ts Hub
 
-```typescript
-export const MODES = {
-    discuss: 'luca:discuss',
-    triage: 'luca:1-triage',
-    research: 'luca:2-research',
-    architect: 'luca:3-architect',
-    execute: 'luca:4-execute',
-    review: 'luca:5-review',
-    finalize: 'luca:6-finalize',
-} as const
+`src/constants/mode-ids.ts` exports the `MODES` constant used by 15+ files across
+modes, tools, orchestration, and state. It lives in `constants/` (not `modes/`)
+because tools and state shouldn't depend on the modes layer.
+
+### build-mode-tools.ts ↔ mode-permissions.ts
+
+These two files form the tool registry:
+
+- **`build-mode-tools.ts`** — imports all tool objects, builds the `TOOL_REGISTRY` map,
+  and exports `buildModeTools()` which returns the filtered tool set for a given mode.
+- **`mode-permissions.ts`** — defines which tools are available in which modes, with
+  optional parameter-level restrictions (e.g., "workflow-state" tool can only call
+  "switch-mode" action in pipeline modes).
+
+Adding a new tool requires updating both files (no compile-time guard enforces this).
+
+### Model Resolver Pipeline
+
+Each mode file exports a `resolve<Name>Model()` function. In `launch.ts`:
+
+```
+PIPELINE_MODE_MODEL_RESOLVERS = {
+    [MODES.triage]: resolveTriageModel,
+    [MODES.research]: resolveResearchModel,
+    ...
+}
 ```
 
-## Tool registry + permission system
+On mode switch, the resolver for the new mode is called to determine which model
+should be activated (based on user's model pack settings).
 
-Two files work together to manage tool access per mode:
+### Pipeline Guard
 
-**`tools/build-mode-tools.ts`** — The `TOOL_REGISTRY` maps snake_case manifest keys to tool instances and camelCase record keys. `buildModeTools({ mode_id })` reads from the registry and applies per-mode permission scoping.
+The pipeline guard (`orchestration/pipeline-guard.ts`) tracks tool calls during
+pipeline mode turns and detects when an agent finishes without calling
+`switch-mode`. Uses escalating enforcement: nudge → force.
 
-**`tools/mode-permissions.ts`** — The `MODE_PERMISSIONS` matrix defines which tools each mode receives and which actions are allowed. `'*'` means full access; an array restricts to specific actions.
+### Read-Only Enforcement
 
-These two files must be kept in sync: every key in `MODE_PERMISSIONS` must have a corresponding entry in `TOOL_REGISTRY`, and vice versa. `buildModeTools()` throws at startup if a permission references an unknown tool.
+`orchestration/read-only-enforcement.ts` disables write/execute workspace tools
+in read-only modes (plan, discuss, triage, research, review) by intercepting
+`harness.workspaceFn` and calling `workspace.setToolsConfig({ enabled: false })`
+for write tools.
 
-## Model resolution pipeline
+### Upstream Patches
 
-1. Each mode file exports a `resolve<Mode>Model()` function
-2. `launch.ts` builds `PIPELINE_MODE_MODEL_RESOLVERS` — a map from mode ID to resolver
-3. On mode change, the harness calls `switchModel()` with the resolved model ID
-4. `integration/model-routing.ts` maps complexity tiers to model names for subagents
-5. `integration/mastracode-config.ts` resolves model packs from upstream settings
+`orchestration/upstream-patches.ts` contains monkey-patches for known mastracode bugs:
+1. Ask-user label truncation (pi-tui width assertion crash)
+2. Double-slash autocomplete prefix
+3. Model-pack-on-login override
 
-## Upstream patches
+All patches are defensive — they log warnings and no-op if upstream internals change.
 
-`orchestration/upstream-patches.ts` contains monkey-patches for known mastracode bugs. All patches are defensive — they log warnings and no-op if upstream changes shape. Current patches:
+## File Categorization
 
-1. **ask_user label truncation** — Prevents pi-tui width assertion crashes from long option labels
-2. **Double-slash autocomplete** — Strips duplicate `/` prefix from custom slash command names
-3. **Model-pack-on-login** — Re-applies the user's active model pack after login resets to provider default
+### constants/ (1 file)
+| File | Purpose |
+|------|---------|
+| `mode-ids.ts` | `MODES` enum + `PIPELINE_STEPS_ORDERED` array |
 
-## Key design decisions
+### state/ (8 files)
+| File | Lines | Purpose |
+|------|-------|---------|
+| `claim-verifier.ts` | 632 | Claim verification engine |
+| `confidence-journal.ts` | 271 | Confidence score tracking |
+| `luca-store.ts` | 292 | Pipeline state persistence |
+| `session-ledger.ts` | 384 | JSONL event ledger |
+| `shadow-scanner.ts` | 194 | Dead code / shadow file detection |
+| `state.ts` | 299 | Core state types + read/write |
+| `todos.ts` | 376 | Todo list management |
+| `verification-result.ts` | 241 | Verification result storage |
 
-**File-based state over harness state.** Luca stores workflow state in `.planning/luca-state.json` rather than `harness.setState()` because the built-in Zod `stateSchema` uses strip mode, which silently removes unknown keys.
+### orchestration/ (6 files)
+| File | Purpose |
+|------|---------|
+| `context-refresher.ts` | Refreshes agent context on budget thresholds |
+| `continuation-messages.ts` | Builds kick-off messages for mode transitions |
+| `pipeline-guard.ts` | Detects incomplete pipeline turns |
+| `pipeline-tui.ts` | Pipeline progress header for TUI |
+| `read-only-enforcement.ts` | Disables write tools in read-only modes |
+| `upstream-patches.ts` | Monkey-patches for upstream mastracode bugs |
 
-**Mutable refs for circular dependency breaking.** `util/refs.ts` holds mutable `{ current: ... }` refs that are wired up after `createMastraCode()` returns. This avoids circular imports between the harness (which creates refs) and tools/modes (which consume them).
+### analysis/ (3 files)
+| File | Purpose |
+|------|---------|
+| `phase-diff.ts` | Diff pipeline phases for progress tracking |
+| `postmortem.ts` | Post-pipeline analysis report generation |
+| `retro.ts` | Retrospective summary generation |
 
-**Read-only enforcement via workspace patching.** The `permissionRules` + `yolo: false` approach doesn't work because `yolo=true` (default) bypasses tool approval entirely. The only reliable mechanism is `Workspace.setToolsConfig({ enabled: false })` which removes tools from the AI SDK toolset.
+### integration/ (4 files)
+| File | Purpose |
+|------|---------|
+| `branding.ts` | App name, version resolution |
+| `install-bundled-assets.ts` | Copies commands/skills/rules to project |
+| `mastracode-config.ts` | Settings path resolution, model pack config |
+| `model-routing.ts` | Per-mode model selection logic |
+
+### util/ (4 files)
+| File | Purpose |
+|------|---------|
+| `atomic-write.ts` | Atomic file write helper |
+| `refs.ts` | Mutable ref pattern for cross-module state sharing |
+| `token-budget.ts` | Token usage monitoring |
+| `tui-text-helpers.ts` | Terminal text width/clipping utilities |

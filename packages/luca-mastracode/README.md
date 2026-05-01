@@ -1,77 +1,97 @@
 # @alecsibilia/luca-mastracode
 
-Custom [Mastra Code](https://mastra.ai/) harness that powers the **Luca** AI development workflow — structured pipeline modes, specialized subagents, and domain-specific tools on top of any repository.
+Custom [Mastra Code](https://github.com/mastra-ai/mastra) distribution that powers Luca's structured AI coding workflows.
 
-## What this package does
+## What This Package Does
 
-- Registers **10 modes** (build, fast, plan, discuss + 6 pipeline modes: triage → research → architect → execute → review → finalize)
-- Wires **10 subagents** (researcher, planner, executor, verifier, reviewer, learner, etc.)
-- Provides **16 custom tools** (workflow state, PR review, rule engine, claim verifier, etc.)
-- Manages pipeline transitions, token budgets, and read-only enforcement
-- Bundles slash commands, skills, and rules into `.mastracode/` at startup
+Rewires Luca's multi-step development pipeline into Mastra-native primitives:
+- **10 modes** (3 stock + 7 pipeline) with per-mode tool permissions and model routing
+- **10 subagent types** for parallel delegation (planning, research, review, execution, etc.)
+- **16+ custom tools** for pipeline state, checks, verification, and repository management
+- **Structured orchestration** — automatic mode transitions, pipeline guards, and read-only enforcement
 
-## Directory layout
+## Package Structure
 
 ```
-├── commands/           Mastra Code slash command definitions (.md)
-├── rules/              Mastra Code alwaysApply rules (.md)
-├── skills/             Mastra Code skill bundles (SKILL.md + assets)
+packages/luca-mastracode/
+├── commands/           # Slash command .md files (Mastra Code harness asset)
+├── skills/             # Skill .md files (Mastra Code harness asset)
+├── rules/              # Always-apply rule .md files (Mastra Code harness asset)
 └── src/
-    ├── constants/      Shared constants (mode IDs)
-    ├── state/          Data models, schemas, persistence (8 files)
-    ├── orchestration/  Pipeline lifecycle, guards, TUI, read-only enforcement
-    ├── analysis/       Post-pipeline analysis (postmortem, phase-diff, retro)
-    ├── integration/    External system glue (branding, config, model routing)
-    ├── util/           Shared helpers (atomic-write, refs, token-budget, TUI text)
-    ├── review-analysis/  PR review primitives (convergence, regression, stale-filter)
-    ├── rule-engine/    Rule discovery, loading, and execution engine
-    ├── modes/          Mode definitions (one file per mode)
-    ├── subagents/      Subagent definitions (one file per subagent)
-    ├── tools/          Mastra tool wrappers + permission system
-    ├── instructions/   LLM instruction prompts for each mode (.md)
-    ├── index.ts        Package entry point + public API barrel
-    ├── launch.ts       Main orchestrator — wires harness, modes, hooks
-    ├── create-static-agent.ts  Agent factory with dynamic instructions/model
-    ├── agent-constraints.ts    Universal hard constraints for all modes
-    └── rules-loader.ts         Load bundled .md rules from rules/ directory
+    ├── constants/      # Shared constants (mode IDs)
+    ├── state/          # Pure data models, schemas, persistence (8 files)
+    ├── orchestration/  # Pipeline lifecycle, mode switching, guards (6 files)
+    ├── analysis/       # Post-pipeline analysis and reporting (3 files)
+    ├── integration/    # External system glue — config, assets, branding (4 files)
+    ├── util/           # Shared helpers with no domain knowledge (4 files)
+    ├── review-analysis/# PR review primitives — convergence, regression, staleness (4 files)
+    ├── rule-engine/    # Rule discovery, loading, and execution (4 files)
+    ├── instructions/   # Per-mode instruction .md templates
+    ├── modes/          # Mode definitions (10 files)
+    ├── subagents/      # Subagent definitions (10 files)
+    ├── tools/          # Tool wrappers and registry (26 files)
+    │   └── parsers/    # Check output parsers (bun-test, tsc, eslint, generic)
+    ├── index.ts        # Public API barrel + boot
+    ├── launch.ts       # Main orchestrator — wires harness, TUI, all systems
+    ├── create-static-agent.ts  # Agent factory for subagent creation
+    ├── agent-constraints.ts    # Constraint definitions for agent behavior
+    └── rules-loader.ts         # Loads bundled .md rule files at startup
 ```
 
-## Dual-layer pattern
+### The Dual-Layer Pattern
 
-Core logic is separated from framework wrappers:
+Data-intensive modules follow a two-layer pattern:
 
-| Data layer (`state/`)        | Tool wrapper (`tools/`)         |
-|------------------------------|---------------------------------|
-| `claim-verifier.ts`          | `tools/claim-verifier.ts`       |
-| `session-ledger.ts`          | `tools/session-ledger.ts`       |
-| `confidence-journal.ts`      | `tools/confidence-journal.ts`   |
-| `verification-result.ts`     | `tools/verification-result.ts`  |
-| `shadow-scanner.ts`          | `subagents/shadow-scanner.ts`   |
+1. **Data layer** (`src/state/<name>.ts`) — pure functions, Zod schemas, file I/O.
+   No tool framework dependencies.
+2. **Tool wrapper** (`src/tools/<name>.ts`) — thin Mastra `createTool()` wrapper that
+   exposes the data layer as a callable tool action.
 
-Data layer files are pure functions with no Mastra dependencies — they can be tested and used independently. Tool wrappers in `tools/` create Mastra `createTool()` wrappers that expose the data layer to agents.
+This separation allows the data layer to be tested and reused independently of the tool framework.
 
-## Adding a new mode
+**Files that follow this pattern:**
+- `state/claim-verifier.ts` ↔ `tools/claim-verifier.ts`
+- `state/session-ledger.ts` ↔ `tools/session-ledger.ts`
+- `state/confidence-journal.ts` ↔ `tools/confidence-journal.ts`
+- `state/verification-result.ts` ↔ `tools/verification-result.ts`
+- `state/shadow-scanner.ts` ↔ `subagents/shadow-scanner.ts`
 
-1. Create `src/modes/your-mode.ts` — export mode definition + model resolver + instruction builder
-2. Create `src/instructions/your-mode.md` — LLM prompt for the mode
-3. Add mode registration in `src/launch.ts` (inside the `modes: [...]` array)
-4. If the mode uses custom tools, add entries to `src/tools/mode-permissions.ts`
+### Root-Level Asset Directories
 
-## Adding a new tool
+`commands/`, `skills/`, and `rules/` at the package root are **not source code**. They're
+markdown-based asset files loaded by the Mastra Code harness at runtime:
 
-1. Create `src/tools/your-tool.ts` — export a `createTool()` instance
-2. Register it in `src/tools/build-mode-tools.ts` (import + `TOOL_REGISTRY` entry)
+- **`commands/`** — Custom slash commands (e.g., `/lu`, `/gh-prepare`)
+- **`skills/`** — Skill definitions with `SKILL.md` files
+- **`rules/`** — Always-apply rules injected into every agent turn
+
+## How to Add a New Tool
+
+1. Create `src/tools/<tool-name>.ts` with a `createTool()` export
+2. Add an import + entry in `src/tools/build-mode-tools.ts` `TOOL_REGISTRY`
 3. Add per-mode permissions in `src/tools/mode-permissions.ts`
 4. Export from `src/tools/index.ts`
+5. Run `bunx --bun tsc --noEmit` to verify
+
+## How to Add a New Mode
+
+1. Create `src/modes/<mode-name>.ts` exporting `{ <name>Mode, build<Name>Instructions, resolve<Name>Model }`
+2. Add the mode ID to `src/constants/mode-ids.ts`
+3. Create `src/instructions/<mode-name>.md` with the mode's system prompt
+4. Register the mode in `src/launch.ts` `createMastraCode()` config
+5. Add the model resolver to `PIPELINE_MODE_MODEL_RESOLVERS` in `src/launch.ts`
+6. Run `bunx --bun tsc --noEmit` to verify
 
 ## Commands
 
-```bash
-bun run start        # Run the harness (equivalent to `bun run mastracode`)
-bun run typecheck    # Type-check with tsc --noEmit
-```
+| Action | Command |
+|--------|---------|
+| Type check | `bunx --bun tsc --noEmit` |
+| Start harness | `bun run mastracode` (from monorepo root) |
+| Run tests | `bun test` (from this package) |
 
-## See also
+## Dependencies
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — dependency layers, file categorization, design decisions
-- [docs/guides/coding-standards.md](../../docs/guides/coding-standards.md) — project-wide coding standards
+- `mastracode` — Base Mastra Code harness (TUI, workspace, tools)
+- `@mastra/core` — Core framework (tools, agents, workspace)
+- `zod` — Schema validation
