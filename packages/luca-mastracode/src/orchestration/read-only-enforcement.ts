@@ -172,24 +172,28 @@ export function enforceReadOnlyModes({
     })
 
     // Secondary layer: permissionRules via setState.
-    harness.subscribe(async (event) => {
+    // harness.subscribe expects a sync handler — fire-and-forget the promise
+    // and catch rejections explicitly to avoid unhandled promise rejections.
+    harness.subscribe((event) => {
         if (event.type !== 'mode_changed') return
-        if (READ_ONLY_MODES.has(event.modeId)) {
-            await harness.setState({
-                permissionRules: {
-                    categories: {
-                        read: 'allow',
-                        edit: 'deny',
-                        execute: 'deny',
-                        mcp: 'allow',
-                    },
-                    tools: READ_ONLY_DENY_TOOLS,
-                },
-            })
-        } else {
-            await harness.setState({
-                permissionRules: { categories: {}, tools: {} },
-            })
-        }
+
+        const permissionRules = READ_ONLY_MODES.has(event.modeId)
+            ? {
+                  categories: {
+                      read: 'allow',
+                      edit: 'deny',
+                      execute: 'deny',
+                      mcp: 'allow',
+                  },
+                  tools: READ_ONLY_DENY_TOOLS,
+              }
+            : { categories: {}, tools: {} }
+
+        void harness.setState({ permissionRules }).catch((error: unknown) => {
+            console.warn(
+                '[luca] Failed to update permission rules for mode change.',
+                error
+            )
+        })
     })
 }

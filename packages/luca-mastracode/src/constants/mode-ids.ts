@@ -52,9 +52,6 @@ export const PIPELINE_MODE_IDS: readonly ModeId[] = [
 /**
  * Type guard — narrows an arbitrary string to ModeId.
  */
-/**
- * Type guard — narrows an arbitrary string to ModeId.
- */
 export function isModeId(value: unknown): value is ModeId {
     return (
         typeof value === 'string' &&
