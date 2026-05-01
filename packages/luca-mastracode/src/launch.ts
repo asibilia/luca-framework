@@ -5,8 +5,6 @@
  * subagents, hooks, MCP, the TUI, and a battery of upstream-bug workarounds.
  * Exposed as `main()` and invoked by the CLI entry point in `index.ts`.
  */
-
-
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
