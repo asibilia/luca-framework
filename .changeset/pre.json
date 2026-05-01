@@ -6,5 +6,7 @@
     "@alecsibilia/luca-mastracode": "11.2.1",
     "@alecsibilia/luca-studio": "0.1.0"
   },
-  "changesets": []
+  "changesets": [
+    "mastracode-structure-and-deps"
+  ]
 }
