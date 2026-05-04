@@ -1,0 +1,33 @@
+{
+  "currentWave": 1,
+  "currentIteration": 0,
+  "currentPhase": 1,
+  "totalPhases": 0,
+  "pipelineStep": "luca:6-finalize",
+  "iterationPlan": [],
+  "runId": "run_mokgzlwb_yj5pxjg2",
+  "intent": "Fix bundled skills/commands/rules race condition in launch.ts: move installSkills, installSlashCommands, installRules before createMastraCode so harness sees bundled assets on first run. #213 (in-place scan) deferred pending upstream mastracode API.",
+  "complexity": "SIMPLE",
+  "oversight": "full-auto",
+  "profile": "balanced",
+  "affectedAreas": [
+    "packages/luca-mastracode/src/launch.ts",
+    "packages/luca-mastracode/src/__tests__"
+  ],
+  "skipResearch": true,
+  "planFile": ".planning/PLAN.md",
+  "roadmapFile": ".planning/ROADMAP.md",
+  "phaseResults": [
+    {
+      "name": "Phase 1: Fix install ordering race condition",
+      "status": "complete",
+      "iterations": 0,
+      "wavesCompleted": 2,
+      "startedAt": "2026-05-04T20:18:21.321Z",
+      "completedAt": "2026-05-04T20:32:16.636Z",
+      "verificationPassed": true,
+      "reviewPassed": true
+    }
+  ],
+  "reviewIteration": 1
+}
