@@ -15,8 +15,13 @@
  *   `<cwd>/.mastracode/commands  →  <pkg>/commands`
  *   `<cwd>/.mastracode/skills    →  <pkg>/skills`
  *
- * Updates are automatic — `npm update -g @alecsibilia/luca-framework`
- * changes the link target. Total footprint in user repo: 2 symlinks.
+ * Updates propagate automatically as long as the package manager updates
+ * the package in-place at the same install path: the symlink keeps its
+ * stored target, and that target's contents change with the new package
+ * version. (If a package manager installs to a fresh path on update, the
+ * symlink would need to be re-created — which the next `luca run` does
+ * by removing the dead link and re-linking.) Total footprint in user
+ * repo: 2 symlinks.
  *
  * **Rules deliberately omitted:** `rules-loader.ts` already falls back to
  * `<pkg>/rules/` when `.mastracode/rules/` doesn't exist, so rules require
@@ -28,17 +33,18 @@
  * `'junction'` on Windows and `'dir'` elsewhere.
  *
  * **Migration:** If a previous luca version installed real (non-symlink)
- * directories at `.mastracode/{commands,skills}/`, we replace them with
- * symlinks on next launch. Pre-existing user files in those dirs would
- * be lost — but the only thing that ever lived there was framework
- * files, so this is safe.
+ * directories at `.mastracode/{commands,skills}/`, we leave them alone
+ * and warn — replacing them automatically would silently delete any
+ * user content. The user can `rm -rf .mastracode/commands` (and
+ * `skills`) themselves to opt into the symlinked layout. The warning
+ * tells them how.
  *
  * Each function accepts an optional `assetsRoot` override for testing.
  * In production the root is resolved from `import.meta.url` — two levels
  * up from `src/integration/` lands at the package root, where `commands/`
  * and `skills/` live as siblings to `src/`.
  */
-import { existsSync, lstatSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -68,10 +74,15 @@ const SYMLINK_TYPE: 'junction' | 'dir' =
  * - If the target is already a symlink (any target): leave it. The next
  *   `npm update` will repoint it via the package's new install path.
  *   Re-pointing on every launch would cause unnecessary inode churn.
- * - If the target is a real directory or file (legacy install or user-
- *   placed content): remove it and symlink in its place. Framework
- *   files are the only things that ever lived at this path, so this is
- *   safe.
+ * - If the target is a real directory or file: leave it alone and warn
+ *   with cleanup instructions. We don't auto-replace because we can't
+ *   distinguish a legacy install from intentional user content (e.g. a
+ *   user override or hand-curated commands). Forcing a symlink here
+ *   would silently nuke their work.
+ *
+ * Every filesystem call is wrapped in try/catch and downgraded to a
+ * warning. Asset linking is best-effort — luca must still start even
+ * on read-only or permission-restricted filesystems.
  *
  * @param assetName - Subdirectory name in both source and target
  *   (e.g. `'commands'`, `'skills'`).
@@ -90,8 +101,16 @@ function linkAssetDir(assetName: string, assetsRoot?: string): void {
     }
 
     const mastracodeDir = join(process.cwd(), '.mastracode')
-    if (!existsSync(mastracodeDir)) {
-        mkdirSync(mastracodeDir, { recursive: true })
+    try {
+        if (!existsSync(mastracodeDir)) {
+            mkdirSync(mastracodeDir, { recursive: true })
+        }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(
+            `[luca] failed to create ${mastracodeDir} — skipping ${assetName} link: ${message}`
+        )
+        return
     }
 
     const targetPath = join(mastracodeDir, assetName)
@@ -112,9 +131,17 @@ function linkAssetDir(assetName: string, assetsRoot?: string): void {
             // target via filesystem path, not via the link node itself.
             return
         }
-        // Real dir or file from a legacy install — remove it before
-        // creating the symlink.
-        rmSync(targetPath, { recursive: true, force: true })
+        // Real directory or file. Could be a legacy install or
+        // intentional user content — we can't tell. Don't touch it; warn
+        // with cleanup instructions and let the user decide.
+        console.warn(
+            `[luca] ${targetPath} is a real directory, not a symlink. ` +
+                `If this is leftover from an older luca install, remove it ` +
+                `(rm -rf "${targetPath}") and re-run to switch to the ` +
+                `symlinked bundled-asset layout. Otherwise leave it alone — ` +
+                `your custom content will continue to be used.`
+        )
+        return
     }
 
     try {
