@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@alecsibilia/luca-framework": "11.3.0",
+    "@alecsibilia/luca-mastracode": "11.3.0",
+    "@alecsibilia/luca-studio": "0.1.0"
+  },
+  "changesets": []
+}
