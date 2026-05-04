@@ -190,14 +190,18 @@ function createMcpToolsProxy(mcpManager: {
 export async function main(): Promise<void> {
     const branding = loadBranding()
 
-    // Install bundled commands and skills into .mastracode/{commands,skills}
+    // Symlink bundled commands and skills into .mastracode/{commands,skills}
     // BEFORE createMastraCode(). The harness scans these dirs during
-    // construction; running these after means the scanner sees an empty cwd
-    // on first launch and commands/skills are missing until restart.
+    // construction; on a fresh cwd the symlinks must exist before scanning
+    // happens, otherwise commands/skills are missing until next launch.
     //
-    // Rules deliberately omitted: rules-loader.ts already falls back to the
-    // bundled <pkg>/rules/ directory when .mastracode/rules/ doesn't exist,
-    // so no install step is needed.
+    // Symlinks (not copies) keep the user's repo clean — only 2 symlinks
+    // land in .mastracode/, never the 60+ bundled framework files. Updates
+    // are automatic via npm package updates.
+    //
+    // Rules deliberately omitted: rules-loader.ts already reads directly
+    // from <pkg>/rules/ when .mastracode/rules/ doesn't exist, so no
+    // install step is needed for rules at all.
     installSlashCommands()
     installSkills()
 
