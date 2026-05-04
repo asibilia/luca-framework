@@ -15,7 +15,6 @@ import { enforceReadOnlyModes } from './orchestration/read-only-enforcement.js'
 import { applyUpstreamPatches } from './orchestration/upstream-patches.js'
 import { createStaticAgent } from './create-static-agent.js'
 import {
-    installRules,
     installSkills,
     installSlashCommands,
 } from './integration/install-bundled-assets.js'
@@ -191,13 +190,16 @@ function createMcpToolsProxy(mcpManager: {
 export async function main(): Promise<void> {
     const branding = loadBranding()
 
-    // Install bundled assets BEFORE createMastraCode(). The harness scans
-    // .mastracode/{commands,skills,rules} during construction; running these
-    // after means the scanner sees an empty cwd on first launch and
-    // commands/skills are missing until restart. Fixes #212.
+    // Install bundled commands and skills into .mastracode/{commands,skills}
+    // BEFORE createMastraCode(). The harness scans these dirs during
+    // construction; running these after means the scanner sees an empty cwd
+    // on first launch and commands/skills are missing until restart.
+    //
+    // Rules deliberately omitted: rules-loader.ts already falls back to the
+    // bundled <pkg>/rules/ directory when .mastracode/rules/ doesn't exist,
+    // so no install step is needed.
     installSlashCommands()
     installSkills()
-    installRules()
 
     // Build subagent list up-front so MCP tools can be injected into the
     // same objects the harness holds (not stale pre-.map() originals).
