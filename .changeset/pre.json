@@ -6,5 +6,8 @@
     "@alecsibilia/luca-mastracode": "11.3.0",
     "@alecsibilia/luca-studio": "0.1.0"
   },
-  "changesets": []
+  "changesets": [
+    "bundled-assets-install-ordering",
+    "zero-footprint-bundled-assets"
+  ]
 }
