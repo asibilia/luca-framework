@@ -20,7 +20,6 @@ export { loadBranding, resolveLucaVersion } from './integration/branding.js'
 export { buildContinuationMessage } from './orchestration/continuation-messages.js'
 export { createStaticAgent } from './create-static-agent.js'
 export {
-    installRules,
     installSkills,
     installSlashCommands,
 } from './integration/install-bundled-assets.js'

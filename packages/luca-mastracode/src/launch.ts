@@ -15,7 +15,6 @@ import { enforceReadOnlyModes } from './orchestration/read-only-enforcement.js'
 import { applyUpstreamPatches } from './orchestration/upstream-patches.js'
 import { createStaticAgent } from './create-static-agent.js'
 import {
-    installRules,
     installSkills,
     installSlashCommands,
 } from './integration/install-bundled-assets.js'
@@ -190,6 +189,21 @@ function createMcpToolsProxy(mcpManager: {
 
 export async function main(): Promise<void> {
     const branding = loadBranding()
+
+    // Symlink bundled commands and skills into .mastracode/{commands,skills}
+    // BEFORE createMastraCode(). The harness scans these dirs during
+    // construction; on a fresh cwd the symlinks must exist before scanning
+    // happens, otherwise commands/skills are missing until next launch.
+    //
+    // Symlinks (not copies) keep the user's repo clean — only 2 symlinks
+    // land in .mastracode/, never the 60+ bundled framework files. Updates
+    // are automatic via npm package updates.
+    //
+    // Rules deliberately omitted: rules-loader.ts already reads directly
+    // from <pkg>/rules/ when .mastracode/rules/ doesn't exist, so no
+    // install step is needed for rules at all.
+    installSlashCommands()
+    installSkills()
 
     // Build subagent list up-front so MCP tools can be injected into the
     // same objects the harness holds (not stale pre-.map() originals).
@@ -668,11 +682,6 @@ export async function main(): Promise<void> {
     if (storageWarning) {
         console.info(`\u26A0 ${storageWarning}`)
     }
-
-    // --- Install bundled assets into project .mastracode/* ---
-    installSlashCommands()
-    installSkills()
-    installRules()
 
     // --- Launch TUI ---
     const tui = new MastraTUI({
