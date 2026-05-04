@@ -191,6 +191,14 @@ function createMcpToolsProxy(mcpManager: {
 export async function main(): Promise<void> {
     const branding = loadBranding()
 
+    // Install bundled assets BEFORE createMastraCode(). The harness scans
+    // .mastracode/{commands,skills,rules} during construction; running these
+    // after means the scanner sees an empty cwd on first launch and
+    // commands/skills are missing until restart. Fixes #212.
+    installSlashCommands()
+    installSkills()
+    installRules()
+
     // Build subagent list up-front so MCP tools can be injected into the
     // same objects the harness holds (not stale pre-.map() originals).
     const subagentList = [
@@ -668,11 +676,6 @@ export async function main(): Promise<void> {
     if (storageWarning) {
         console.info(`\u26A0 ${storageWarning}`)
     }
-
-    // --- Install bundled assets into project .mastracode/* ---
-    installSlashCommands()
-    installSkills()
-    installRules()
 
     // --- Launch TUI ---
     const tui = new MastraTUI({
