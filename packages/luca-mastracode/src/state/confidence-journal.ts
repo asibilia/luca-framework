@@ -11,12 +11,18 @@
  */
 import {
     existsSync,
-    readFileSync,
     mkdirSync,
+    readFileSync,
     appendFileSync,
     writeFileSync,
 } from 'node:fs'
-import { join } from 'node:path'
+import { dirname } from 'node:path'
+
+import {
+    CONFIDENCE_JOURNAL_PATH,
+    phasePath,
+} from '../util/phase-paths.js'
+import { readLucaState } from './luca-store.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,20 +77,20 @@ export interface ConfidenceSummary {
 // File paths
 // ---------------------------------------------------------------------------
 
-const JOURNAL_FILE = '.planning/confidence-journal.jsonl'
-const MARKDOWN_FILE = '.planning/CONFIDENCE-JOURNAL.md'
-
+/** `.planning/confidence-journal.jsonl` — root, append-only (Decision #4). */
 function journalPath(): string {
-    return join(process.cwd(), JOURNAL_FILE)
+    return CONFIDENCE_JOURNAL_PATH()
 }
 
+/**
+ * Resolve the per-phase rendered Markdown path.
+ *
+ * Read at call time so it tracks the live `currentPhaseSlug`. When slug is
+ * absent (legacy in-flight runs), `phasePath` falls back to `.planning/` root.
+ */
 function markdownPath(): string {
-    return join(process.cwd(), MARKDOWN_FILE)
-}
-
-function ensurePlanningDir(): void {
-    const dir = join(process.cwd(), '.planning')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    const slug = readLucaState().currentPhaseSlug
+    return phasePath('CONFIDENCE-JOURNAL.md', slug)
 }
 
 // ---------------------------------------------------------------------------
@@ -97,12 +103,16 @@ function ensurePlanningDir(): void {
 export function appendConfidenceEntry(
     entry: Omit<ConfidenceEntry, 'timestamp'>
 ): ConfidenceEntry {
-    ensurePlanningDir()
     const full: ConfidenceEntry = {
         ...entry,
         timestamp: new Date().toISOString(),
     }
-    appendFileSync(journalPath(), JSON.stringify(full) + '\n', 'utf-8')
+    const p = journalPath()
+    // CONFIDENCE_JOURNAL_PATH() returns `.planning/confidence-journal.jsonl`
+    // but does not create the parent dir. Ensure it here so appendFileSync
+    // works on a fresh workspace.
+    mkdirSync(dirname(p), { recursive: true })
+    appendFileSync(p, JSON.stringify(full) + '\n', 'utf-8')
     return full
 }
 
@@ -132,7 +142,7 @@ export function readConfidenceJournal(): ConfidenceEntry[] {
     if (invalidLines.length > 0) {
         console.warn(
             `[confidence-journal] Skipped ${invalidLines.length} invalid entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
-                `in ${JOURNAL_FILE} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}.`
+                `in ${journalPath()} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}.`
         )
     }
 
@@ -171,7 +181,8 @@ export function renderConfidenceJournalMarkdown(): string {
 
     if (entries.length === 0) {
         const md = '# Confidence Journal\n\nNo entries recorded yet.\n'
-        ensurePlanningDir()
+        // markdownPath() routes through phasePath() which ensures the parent
+        // dir exists, so no separate ensurePlanningDir() call is required.
         writeFileSync(markdownPath(), md, 'utf-8')
         return md
     }
@@ -264,7 +275,8 @@ export function renderConfidenceJournalMarkdown(): string {
     }
 
     const md = lines.join('\n')
-    ensurePlanningDir()
+    // markdownPath() routes through phasePath() which ensures the parent
+    // dir exists, so no separate ensurePlanningDir() call is required.
     writeFileSync(markdownPath(), md, 'utf-8')
     return md
 }
