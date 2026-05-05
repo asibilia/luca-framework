@@ -10,7 +10,13 @@
  *      pi-tui width assertion crashes (issue #173)
  *   2. Double-slash autocomplete prefix — strip leading `/` from custom
  *      command names to prevent `//command` rendering
- *   3. Model-pack-on-login override — re-apply user's active model pack
+ *   3. Multiline slash-command parsing — collapse any whitespace run that
+ *      spans a newline (anywhere in the input) into a single space, so
+ *      `/cmd <pasted multi-line text>` doesn't produce "Unknown command:
+ *      /cmd". Upstream's `/^(\/\/?)(.*)$/` regex (no `s` flag) fails on
+ *      multiline input, leaving the literal `/cmd` as the command name and
+ *      falling through to the unknown-command branch.
+ *   4. Model-pack-on-login override — re-apply user's active model pack
  *      after login resets to provider default
  *
  * Extracted from launch.ts for maintainability — no behavioral changes.
@@ -206,7 +212,81 @@ function patchDoubleSlashAutocomplete(tui: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
-// Patch 3: Model-pack-on-login
+// Patch 3: Multiline slash-command parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalize a slash-command input so upstream's single-line regex parser
+ * can recognize the command name when the user pastes multi-line text after
+ * it (e.g. `/lu some\ncopied\ntext`).
+ *
+ * Upstream parses with `/^(\/\/?)(.*)$/` (no `s` flag), so any newline in
+ * the input causes the regex to fail; the dispatcher then treats the
+ * entire blob as the command name and reports "Unknown command: /lu".
+ *
+ * Behavior:
+ *   - Inputs that don't start with `/` (after leading whitespace) pass
+ *     through unchanged — non-slash messages are not our concern.
+ *   - Inputs without newlines pass through unchanged — preserves all
+ *     existing single-line semantics byte-for-byte.
+ *   - Multiline slash inputs have any run of whitespace containing at
+ *     least one newline collapsed to a single space. This matches what
+ *     `processSlashCommand` does anyway: it splits args on spaces and
+ *     joins them back with `args.join(' ')` for `$ARGUMENTS` substitution,
+ *     so newlines were never preserved past arg parsing.
+ *
+ * Exported for unit testing.
+ */
+export function normalizeMultilineSlashCommand(input: string): string {
+    if (!input.includes('\n')) return input
+    // Only act on inputs that look like a slash command after trimming
+    // leading whitespace. We don't trim the actual input — upstream still
+    // calls `.trim()` itself.
+    if (!/^\s*\/\/?/.test(input)) return input
+    // Collapse any whitespace run that spans a newline into a single space.
+    // Tabs, CRs, and inner spaces in such runs are all swallowed together.
+    return input.replace(/[ \t]*(?:\r?\n[ \t]*)+/g, ' ')
+}
+
+function patchMultilineSlashCommand(tui: unknown): void {
+    const tuiAny = tui as unknown as {
+        handleSlashCommand?: (input: string) => Promise<boolean>
+    }
+    if (typeof tuiAny.handleSlashCommand !== 'function') {
+        console.warn(
+            '[luca] multiline slash-command patch skipped: ' +
+                'tui.handleSlashCommand is not a function ' +
+                '(upstream mastracode internals may have changed).'
+        )
+        return
+    }
+
+    const LUCA_MULTILINE_SLASH_PATCHED = Symbol.for(
+        'luca.slash_command.multiline_normalize'
+    )
+    const tuiRecord = tuiAny as unknown as Record<symbol, unknown>
+    if (tuiRecord[LUCA_MULTILINE_SLASH_PATCHED]) return
+
+    const original = tuiAny.handleSlashCommand.bind(tui)
+    tuiAny.handleSlashCommand = async (input: string) => {
+        let normalized = input
+        try {
+            normalized = normalizeMultilineSlashCommand(input)
+        } catch (err) {
+            // Defensive: never block command dispatch on a normalization bug.
+            console.error(
+                '[luca] multiline slash-command normalize failed:',
+                err
+            )
+            normalized = input
+        }
+        return original(normalized)
+    }
+    tuiRecord[LUCA_MULTILINE_SLASH_PATCHED] = true
+}
+
+// ---------------------------------------------------------------------------
+// Patch 4: Model-pack-on-login
 // ---------------------------------------------------------------------------
 
 function patchModelPackOnLogin({
@@ -296,5 +376,6 @@ export function applyUpstreamPatches({
 }): void {
     patchAskUserLabelTruncation(tui)
     patchDoubleSlashAutocomplete(tui)
+    patchMultilineSlashCommand(tui)
     patchModelPackOnLogin({ tui, authStorage })
 }

@@ -200,6 +200,16 @@ export const initCommand = defineCommand({
             '  To set up a project vault: cd <project> && luca vault:init'
         )
         readout.push('  To launch the harness:     luca run')
+        readout.push(
+            '  To expose MuninnDB to the harness: add an MCP server entry to'
+        )
+        readout.push(
+            '    <home>/.mastracode/mcp.json (macOS/Linux: ~/.mastracode/mcp.json;'
+        )
+        readout.push(
+            '    Windows: %USERPROFILE%\\.mastracode\\mcp.json) — see README →'
+        )
+        readout.push('    "Wiring MuninnDB into the Mastracode harness".')
 
         p.note(readout.join('\n'), 'Setup Complete')
 
