@@ -177,13 +177,13 @@ export function phasePath(filename: string, slug?: string | undefined): string {
     if (
         filename.includes('/') ||
         filename.includes('\\') ||
-        filename.split(/[\\/]/).some((seg) => seg === '..') ||
         filename === '..' ||
         filename === '.' ||
         filename.length === 0
     ) {
         throw new Error(
-            'phasePath filename must be a bare filename, not a path',
+            'phasePath filename must be a non-empty bare filename ' +
+                '(no path separators, no "." or "..")',
         )
     }
     const dir = phaseDir(slug)
