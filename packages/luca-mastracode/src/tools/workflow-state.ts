@@ -212,6 +212,13 @@ const reEnterPipelineAction = z.object({
         ),
 })
 
+// archive-loose has no extra fields — the action discriminator alone is
+// sufficient. Defined for completeness and future-proofing in case the
+// action gains options (e.g. dry-run / explicit slug override).
+const archiveLooseAction = z.object({
+    action: z.literal('archive-loose'),
+})
+
 // ── All valid actions (exported for createScopedTool) ──────────────
 export const WORKFLOW_STATE_ACTIONS = [
     'read',
@@ -227,6 +234,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     'save-review-results',
     'reset-pipeline',
     're-enter-pipeline',
+    'archive-loose',
 ] as const
 
 export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
@@ -245,7 +253,7 @@ const workflowStateInputSchema = z.object({
     action: z
         .enum(WORKFLOW_STATE_ACTIONS)
         .describe(
-            "Which action to perform. read: check state before acting. switch-mode: only after current mode's work is complete. start-phase/complete-phase: bracket each phase. advance-wave: only after checks pass."
+            "Which action to perform. read: check state before acting. switch-mode: only after current mode's work is complete. start-phase/complete-phase: bracket each phase. advance-wave: only after checks pass. archive-loose: migrate root stragglers under .planning/ into the active phase dir (refused if pipeline lock is held by another live session)."
         ),
 
     // write
@@ -997,6 +1005,45 @@ export const workflowStateTool = createTool({
                         return {
                             success: false,
                             message: `Re-entered state but mode switch failed: ${err instanceof Error ? err.message : String(err)}`,
+                        }
+                    }
+                }
+                case 'archive-loose': {
+                    // Validate the action shape (no extra fields). Keeps
+                    // future option additions cheap and gives a precise
+                    // ActionValidationError on misuse.
+                    parseAction(archiveLooseAction, raw)
+
+                    // Delegate to repo-cleanup's archiveLoose() which
+                    // performs the full guard set:
+                    //   1. Refuses if .luca-lock.json is held by another
+                    //      live PID (own PID is fine).
+                    //   2. Refuses if currentPhaseSlug is not set (cannot
+                    //      determine target phase directory).
+                    //   3. Skips files whose target already exists.
+                    try {
+                        const { archived, skipped } = archiveLoose()
+                        appendLedger('archive-loose', {
+                            archivedCount: archived.length,
+                            skippedCount: skipped.length,
+                        })
+                        const summary =
+                            archived.length === 0 && skipped.length === 0
+                                ? 'No root stragglers found — nothing to archive.'
+                                : `Archived ${archived.length} file(s) into the active phase dir${skipped.length > 0 ? ` (${skipped.length} skipped)` : ''}.`
+                        return {
+                            success: true,
+                            message: summary,
+                            archived,
+                            skipped,
+                        }
+                    } catch (err) {
+                        return {
+                            success: false,
+                            error:
+                                err instanceof Error
+                                    ? err.message
+                                    : String(err),
                         }
                     }
                 }

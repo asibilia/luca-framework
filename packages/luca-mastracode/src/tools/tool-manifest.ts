@@ -111,6 +111,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'switch-mode',
                 're-enter-pipeline',
                 'justify-empty-phase',
+                'archive-loose',
             ],
         },
     },
