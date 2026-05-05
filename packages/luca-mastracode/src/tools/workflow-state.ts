@@ -24,6 +24,7 @@ import {
     type PhaseSnapshot,
 } from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
+import { deriveSlug, resolveAvailableSlug } from '../util/phase-paths.js'
 
 const VALID_MODES = ALL_REGISTERED_MODES
 
@@ -706,14 +707,26 @@ export const workflowStateTool = createTool({
                 }
                 case 'save-triage-results': {
                     const triage = parseAction(saveTriageResultsAction, raw)
-                    const triageState = writeLucaState({
+                    const updates: Partial<LucaWorkflowState> = {
                         intent: triage.intent,
                         complexity: triage.complexity,
                         oversight: triage.oversight,
                         profile: triage.profile ?? 'balanced',
                         affectedAreas: triage.affectedAreas,
                         skipResearch: triage.skipResearch,
-                    })
+                    }
+
+                    // Derive session-scoped phase slug if not already set
+                    // (re-entry idempotency). Slug is IMMUTABLE: once
+                    // persisted by triage, never recomputed. See #220.
+                    const current = readLucaState()
+                    if (!current.currentPhaseSlug && triage.intent) {
+                        const baseSlug = deriveSlug(triage.intent)
+                        updates.currentPhaseSlug =
+                            resolveAvailableSlug(baseSlug)
+                    }
+
+                    const triageState = writeLucaState(updates)
                     appendLedger('triage-complete', {
                         intent: triage.intent,
                         complexity: triage.complexity,
