@@ -1,165 +1,128 @@
-# Research: Prompt Engineering Hardening & Context Window Architecture Milestone
+# Research: Pipeline Artifact Storage Refactor (`.planning/phases/<slug>/`)
 
 ## Summary
 
-This milestone touches 18 todos across `packages/luca-mastracode` — a self-contained CLI binary with zero cross-package dependencies. The changes span 10 instruction `.md` files (hot-reloadable, no compilation), 9 subagent `.ts` files (inline instructions, require recompilation), 1 core orchestration file (`index.ts`, 969 lines), 10 tool definitions, and ~5 new TypeScript files. The instruction assembly is a simple string concatenation pipeline (`md_file + state_block + constraints`) with a lazy-cached constraint singleton. There are ZERO automated tests, no drift detection, and no existing token management infrastructure. The highest risks are behavioral regression from constraint relocation and the lazy cache footgun for mid-conversation injection.
+Refactor moves all session artifacts from top-level `.planning/` into per-phase subdirectory `.planning/phases/<phaseSlug>/`. Triage derives slug, persists in `luca-state.json`, all 6 pipeline phases (and their tools) consume it. Cross-phase state (`luca-state.json`, `ROADMAP.md`, `todos/`, JSONL audit logs, `runs/<runId>/`) stays at root. Finalize verifies cleanup; migration helper handles legacy repos.
+
+**Mechanically feasible but high diffusion**: 42 files / 177 hardcoded `.planning/<file>` references in `packages/luca-mastracode/src/`. **No shared path-resolution helper exists.** Refactor must introduce one and migrate every consumer.
 
 ## Scope
 
-### Files Affected
+**Core target:** `packages/luca-mastracode/src/`
 
-**Instruction Files (10 — prompt engineering targets, hot-reloadable):**
+**Tools that write to `.planning/`** (must route via helper):
+- `write-planning-file.ts` — generic writer (lines 61-64 contain canonical `planningDir`)
+- `manage-roadmap.ts:94-97` — direct `node:fs` bypass writes ROADMAP.md (stays at root, but bypass is debt)
+- `pipeline-lock.ts:11`, `check-convergence.ts:11`, `confidence-journal.ts`, `run-postmortem.ts`, `run-rules.ts`, `repo-cleanup.ts:165-166`, `manage-todos.ts:82`, `claim-verifier.ts:31,69`, `verification-result.ts`, `session-ledger.ts`, `workflow-state.ts:312,318`
 
-| File | Lines | Notes |
-|------|-------|-------|
-| `src/instructions/build.md` | 63 | Simple; no state injection |
-| `src/instructions/plan.md` | 45 | Simple; no state injection |
-| `src/instructions/fast.md` | 31 | Minimal; no state injection |
-| `src/instructions/discuss.md` | 42 | Simple; no state injection |
-| `src/instructions/triage.md` | ~155 | Complex; has CRITICAL CONSTRAINT block |
-| `src/instructions/research.md` | ~280 | Complex; has quality thresholds |
-| `src/instructions/architect.md` | ~320 | Complex; WSJF, discussion, plan review |
-| `src/instructions/execute.md` | ~405 | Largest; full execution loop |
-| `src/instructions/review.md` | ~275 | Complex; parallel review |
-| `src/instructions/finalize.md` | ~315 | Complex; milestone, shadow scan |
+**State modules:** `state/luca-store.ts:18`, `state/session-ledger.ts:26-31`, `state/verification-result.ts:79`, `state/confidence-journal.ts`, `state/todos.ts:59`
 
-Loading mechanism: Each mode's `buildInstructions()` calls `readFileSync(join(__dirname, '..', 'instructions', '<name>.md'), 'utf-8')` — changes to `.md` files take effect immediately without recompilation.
+**Instruction `.md` prompts** (LLM cannot import constants — text-update needed): `instructions/{triage,research,architect,execute,review,finalize,build}.md`
 
-**Subagent Files (9 — shared prefix + anti-sycophancy targets, require recompilation):**
+**Subagents:** `subagents/shadow-scanner.ts:23,41` (config.json reads — root, no change)
 
-| File | Lines | Has MCP tools |
-|------|-------|---------------|
-| `src/subagents/researcher.ts` | 31 | No |
-| `src/subagents/planner.ts` | 51 | No |
-| `src/subagents/plan-reviewer.ts` | 74 | No |
-| `src/subagents/executor.ts` | 40 | No |
-| `src/subagents/verifier.ts` | 76 | No |
-| `src/subagents/reviewer.ts` | 95 | No |
-| `src/subagents/learner.ts` | 96 | Yes (MuninnDB) |
-| `src/subagents/discussion.ts` | 101 | Yes (MuninnDB) |
-| `src/subagents/shadow-scanner.ts` | ~275 | Yes (MuninnDB) |
+**Docs:** `AGENTS.md`, `CLAUDE.md`, `docs/getting-started.md`, `docs/troubleshooting.md`, package READMEs
 
-Critical: Subagent instructions are inline string literals — no shared prefix mechanism exists today.
-
-**Core Assembly (`src/index.ts` — 969 lines, highest-risk single file):**
-- `HARD_CONSTRAINTS` constant: lines 157-163 (3 bullets)
-- `getAgentConstraints()`: lines 228-236 (lazy singleton, cached after first call)
-- `createStaticAgent()`: lines 238-277 (instruction + tool assembly)
-- `buildContinuationMessage()`: lines 353-457 (mid-conversation injection point)
-- MCP injection: lines 664-675 (3 subagents get MCP tools mutated in)
-- Subagent registration: lines 614-624
-- Harness events: lines 765-914 (5 subscribers)
-
-**Tool Files (10 — behavioral guidance enrichment targets):**
-- `src/tools/workflow-state.ts` (570 lines, most complex)
-- `src/tools/manage-todos.ts`, `manage-roadmap.ts`, `classify-complexity.ts`
-- `src/tools/run-checks.ts` (12KB), `pipeline-lock.ts`, `session-ledger.ts`
-- `src/tools/verification-result.ts`, `repo-cleanup.ts`, `write-planning-file.ts`
-
-**New Files (context-window architecture):**
-
-| Proposed File | Purpose |
-|---------------|---------|
-| `src/subagents/shared-prefix.ts` | Shared ~300-400 token prefix for all subagents |
-| `src/token-budget.ts` | Token budget monitoring with threshold interventions |
-| `src/context-refresher.ts` | Mid-conversation injection / luca-reminder system |
-| `src/context-pipeline.ts` | Progressive 3-level context compaction |
-
-### Blast Radius
-
-- `src/index.ts` — fan-in: 0 (entrypoint), changes affect entire runtime
-- `src/luca-store.ts` — fan-in: 10+ (highest of any utility module)
-- `src/refs.ts` — fan-in: 3 (new refs needed for token budget)
-- `src/tools/mode-permissions.ts` — fan-in: 2 (new tool registrations)
-- Instruction `.md` files — fan-in: 1 each (loaded by one mode each)
-- Subagent `.ts` files — fan-in: 1 each (imported only by index.ts)
-- Exception: `shadow-scanner.ts` has fan-in 2 (also imported by `repo-cleanup.ts`)
-
-### Cross-Package Dependencies
-None. `luca-mastracode` is a standalone CLI binary. No other packages in the monorepo import from it.
+**Blast radius: HIGH** — diffuse string literals, no abstraction, instruction prompts can't be DRY'd.
 
 ## Architecture
 
-### Instruction Assembly Pipeline
+**Current (no abstraction):** Every module computes `join(process.cwd(), '.planning', ...)` independently.
 
+**Proposed:** New module `packages/luca-mastracode/src/util/phase-paths.ts`:
+
+```typescript
+planningRoot(): string                                 // .planning/
+slugifyPhaseName(name: string): string                 // "Phase 1: Setup" → "phase-1-setup"
+parseTicketId(intent: string): string | null           // extract PT-11089 etc.
+deriveSlug(intent: string, phaseName?: string): string // ticket-id-kebab OR YYYYMMDD-HHmm-kebab
+phaseDir(slug?: string): string                        // root if slug undef, else phases/<slug>/
+phasePath(filename: string, slug?: string): string     // mkdir + join
+const STATE_PATH, LOCK_PATH, ROADMAP_PATH, TODOS_ROOT, LEDGER_PATH, RUNS_ROOT
 ```
-Mode .md file (readFileSync at request time)
-  + Dynamic state block (readLucaState() -> luca-state.json)
-  + getAgentConstraints() [lazy singleton]:
-      "\n\n---\n"
-      + HARD_CONSTRAINTS (3 bullets, lines 157-163)
-      + loadAlwaysApplyRules() (.mastracode/rules/*.md with alwaysApply: true)
-= Final instructions string
-```
 
-Key architectural facts:
-1. `instructions` callback in `createStaticAgent()` is called per-request — state changes always reflected
-2. `getAgentConstraints()` is a lazy singleton — computed once, never invalidated
-3. Instruction `.md` files are hot-reloadable (no compilation)
-4. Subagent instructions are inline template literals (require TypeScript recompilation)
-5. `HARD_CONSTRAINTS` only applied to mode agents, NOT subagents
+**`luca-state.json` schema** (luca-store.ts:51-103) is **extensible** (`[key:string]: unknown`). Adding `currentPhaseSlug?: string` is non-breaking. Existing fields `planFile?`, `roadmapFile?` already store path strings — same indirection pattern.
 
-### Mid-Conversation Injection Points
+**Run vs Phase** (orthogonal):
+- `runId` (`run_<ts>_<rand>`): pipeline invocation; stamps JSONL; `runs/<runId>/` archive
+- `phaseSlug`: ROADMAP delivery unit within a run; multiple per run
 
-Two mechanisms already exist:
-1. `harness.sendMessage({ content })` — injects a new user turn (used for auto-continuation)
-2. `harness.followUp({ content })` — appends to current turn (used by pipeline guard)
-3. `wrapInSystemReminder()` — wraps content in `<system-reminder>` tags
+**Slug derivation point:** Per issue #220, **triage** derives slug. But ROADMAP phases (and thus per-phase slugs) only exist after architect runs. Decision needed: one slug per *session* (derived from intent at triage time) vs one slug per *ROADMAP phase* (derived at start-phase time).
 
-### MCP Integration
-
-- MCP tools merged at request time for mode agents: `{ ...tools, ...mcpManagerRef.current?.getTools() }`
-- MCP tools mutated into 3 subagents at startup: discussion, learner, shadow-scanner
-- No mode-based MCP filtering exists — all MCP tools injected into all modes uniformly
-- Conditional MCP loading would save ~15K tokens when MuninnDB not needed
-
-### Harness Event System
-
-5 event subscribers on `harness.subscribe`:
-1. Read-only mode enforcement (`mode_changed`)
-2. Permission rules (`mode_changed`)
-3. Pipeline guard redirect (`mode_changed`)
-4. Auto-continuation message injection (`mode_changed`)
-5. Pipeline enforcement watchdog (`tool_start`, `tool_end`, `agent_end`)
+→ **Recommendation:** **Session-scoped slug** at triage. Single phaseSlug per pipeline invocation captures all artifacts for that session. Multi-phase ROADMAP runs share the slug (artifacts namespaced by filename: `REVIEW-1.md`, `REVIEW-2.md` etc.). This matches issue #220 wording: triage derives slug, all phases use it.
 
 ## Patterns
 
-### Instruction File Structure
-All 10 `.md` files follow canonical structure: H1 title → Blockquote subtitle → `## Role` → `---` separators → `## Pipeline Orchestration` always last
+**Reusable:** `packages/luca-framework/src/utils/vault-setup.ts:108` `sanitizeVaultName()` — exact slug semantics needed (lowercase, non-alphanum→dash, collapse, trim). Either re-export or copy.
 
-### Mode Module Pattern
-Exports: `build<Name>Instructions()`, `resolve<Name>Model()`, `<name>Mode`
+**Missing:** No ticket-ID parser. Add `parseTicketId(intent: string)` regex `/\b([A-Z]{2,}-\d+)\b/`.
 
-### Subagent Definition Pattern
-Plain `HarnessSubagent` object literals with inline template literal instructions
+**Missing:** No date format helper. Native `Date` works:
+`${YYYY}${MM}${DD}-${HH}${mm}` via `getFullYear()/padStart(2,'0')`.
 
-### TypeScript Conventions
-Named exports only, `.js` extensions, `SCREAMING_SNAKE_CASE` constants, mutable refs pattern
+**fs:** Native `node:fs` sync APIs. `mkdirSync({recursive:true})` standard.
+
+**State field naming:** camelCase. Existing: `currentPhase`, `currentPhaseName`, `currentWave`. **New:** `currentPhaseSlug` (consistent prefix).
+
+**Tool error pattern:** `{success: bool, message: string}`. Catch fs errors via `code` (EACCES/EPERM/EISDIR/ENOENT).
+
+## Dependencies
+
+**Cross-package:** luca-mastracode depends on @luca-framework (vault-setup reusable). luca-studio likely reads luca-state.json and todos/ for UI but probably not phase artifacts (verify).
+
+**Config:** `.planning/config.json` (per-repo; **stays at root**) read by triage.md, finalize.md, shadow-scanner.ts.
+
+**Skills coupling:** `.mastracode/skills/gh-prepare/` likely references PR-BODY.md / POSTMORTEM.md. `.mastracode/skills/gh-issue-triage/` references `.planning/todos/` (root, no change).
+
+**MCP tools:** All defined via `@mastra/core/tools` `createTool()`. Schema changes propagate to tool descriptors automatically.
+
+**gitignore:** Verify `.planning/phases/` handling (likely covered by existing `.planning/` ignore).
 
 ## Risks
 
-### 1. Zero Test Coverage — HIGH
-No test files exist. All behavioral validation is manual.
+**Top 5 (severity × confidence):**
 
-### 2. Behavioral Regression from Constraint Relocation — HIGH
-Three collision points: heading duplication, recency displacement, quantified limit conflicts.
+1. **Hardcoded path string missed** in one of 42 files → artifact writes to root → finalize stragglers detector blocks lock release. **HIGH/HIGH.** Mitigation: chokepoint helper, exhaustive grep, test fixture asserting no `.planning/<KNOWN-ARTIFACT>` literals remain in src/.
+2. **Unsafe slug** (path traversal) from raw intent. **HIGH/HIGH.** Mitigation: reuse `sanitizeVaultName()` pattern; alphanum+dash only.
+3. **Finalize stragglers false positives** — `luca-state.json`, lock, JSONL files at root are valid runtime state, not stragglers. **HIGH/HIGH.** Mitigation: explicit whitelist of root-permitted filenames + extensions.
+4. **In-flight runs at upgrade** lack phaseSlug → consumers must tolerate undefined. **HIGH/HIGH.** Mitigation: `phasePath(file, undefined) === planningRoot/file` fallback. Finalize lenient when slug absent.
+5. **manageRoadmap fs bypass** — must update separately or path helper won't catch it. **MED/HIGH.** Mitigation: explicit task to refactor manageRoadmap.
 
-### 3. Lazy Cache Footgun — MEDIUM
-Mid-conversation injection cannot use instruction assembly path — must use event system.
-
-### 4. Sprint Dependency Order — MEDIUM
-Sprint 4 depends on Sprint 2's luca-reminder convention. Sprint 5 depends on Sprint 4.
-
-### 5. Mastra API Uncertainty — MEDIUM
-Cache boundary requires array-form system prompts (unknown support). Progressive compaction requires tool result interception (unknown support).
-
-### 6. Token Budget Spike — LOW (net positive)
-Net with MuninnDB absent: -10,500 tokens. Net with MuninnDB present: +4,500 tokens.
+**Other risks (med):** slug instability across re-entry; concurrent migration helper vs active pipeline (lock check); repoCleanup flat-only scan; instruction `.md` prompts have hardcoded strings.
 
 ## Recommendations
 
-### Implementation Order
-1. Sprint 1-2: Prompt engineering (all 12 items, zero Mastra API risk)
-2. Sprint 3: Shared subagent prefix
-3. Sprint 4: Mid-conversation injection
-4. Sprint 5: Context window architecture (token budget, conditional MCP, cache boundary)
+**For Architect:**
+
+1. **Create helper module first** (`util/phase-paths.ts`) — single source of truth.
+2. **Add `currentPhaseSlug` field** to LucaWorkflowState; populate in `save-triage-results` action.
+3. **Slug derivation algorithm:**
+   ```
+   1. Try parseTicketId(intent) → "PT-11089"
+   2. Append slugify(short-intent up to ~40 chars)
+   3. If no ticket: prefix YYYYMMDD-HHmm + slugify(short-intent)
+   4. Sanitize result via vault-setup pattern
+   5. Check `.planning/phases/<slug>/` collision; append `-2/-3` if occupied
+   ```
+4. **Migrate consumers in topological order:** writePlanningFile → state modules → tools → instructions. Each consumer accepts optional slug from state, falls back to root.
+5. **Finalize stragglers detector:** whitelist `luca-state.json`, `.luca-lock.json`, `config.json`, `ROADMAP.md`, `todos/`, `*.jsonl`, `runs/`, `phases/`, `config.json` at root. Anything else = straggler.
+6. **Migration helper** `luca archive-loose` (or new tool action): scan root for stragglers, derive retro slug from latest state, move files. Refuse if pipeline lock active.
+7. **Documentation updates:** `AGENTS.md`, `CLAUDE.md`, instructions, package README.
+8. **Test plan:** unit tests for phase-paths (slug, sanitization, collision); integration test for full pipeline with slug present; integration test with `phaseSlug` undefined (legacy compat); finalize stragglers detector tests.
+9. **Phased rollout:** ship in waves — (W1) helper + state field; (W2) writer/state migration; (W3) tools; (W4) instructions + docs; (W5) migration helper + finalize detector.
+
+## Open Questions
+
+1. **Session-slug vs phase-slug** — Issue #220 says "triage derives phaseSlug". Is one slug per pipeline session sufficient (recommended), or one per ROADMAP phase? Multi-phase ROADMAPs would produce e.g. `phases/PT-11089-feature-x/` with `REVIEW-1.md`, `REVIEW-2.md` namespaced by filename. **Recommend: session-scoped.**
+2. **Slug immutability** — once written to state, never recompute. Confirm with architect.
+3. **runs/<runId>/ vs phases/<slug>/** — both per-session. Should `runs/<runId>/` move under `phases/<slug>/runs/<runId>/` (issue #220 ASCII tree shows this) or stay at root? Issue's tree shows it nested under phase. **Recommend: nest under phase.**
+4. **luca-studio coupling** — does Studio render phase artifacts? If yes, needs slug-aware paths.
+5. **Skills** — gh-prepare PR body. Does it cite POSTMORTEM.md path? Update if so.
+
+## Quality Self-Assessment
+
+- **Accuracy:** Architecture findings verified against actual file:line references. Patterns/scope/deps/risk supplemented from primary-agent grep where subagents returned only progress narration.
+- **Completeness:** All 5 dimensions covered. Open questions explicitly flagged.
+- **Actionability:** Concrete helper module proposal, ordered rollout, slug algorithm spec, test plan.
+
+**Status:** GRADUATE — pass on all 3 dimensions. Iteration 1/N. No additional research needed; remaining unknowns are architect decisions.
