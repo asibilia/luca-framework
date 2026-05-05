@@ -24,6 +24,7 @@ import {
     type PhaseSnapshot,
 } from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
+import { archiveLoose, detectStragglers } from './repo-cleanup.js'
 import {
     deriveSlug,
     phasePath,
@@ -711,10 +712,40 @@ export const workflowStateTool = createTool({
                         filesChanged: diff.filesChanged.length,
                         commitsAdded: diff.commitsAdded.length,
                     })
+
+                    // ── Advisory: detect cross-phase stragglers under .planning/ ──
+                    // Non-blocking: phase completion always succeeds even when
+                    // stragglers exist. Surfaces a warning payload so the
+                    // caller (typically the finalize gate) can prompt the
+                    // operator to migrate via the archive-loose action before
+                    // opening a PR. See #220.
+                    let stragglerWarning:
+                        | {
+                              count: number
+                              files: string[]
+                              suggestion: string
+                          }
+                        | undefined
+                    try {
+                        const { rootStragglers } = detectStragglers()
+                        if (rootStragglers.length > 0) {
+                            stragglerWarning = {
+                                count: rootStragglers.length,
+                                files: rootStragglers,
+                                suggestion:
+                                    'Run workflowState({action:"archive-loose"}) to migrate these into the active phase dir before opening a PR.',
+                            }
+                        }
+                    } catch {
+                        // detectStragglers is best-effort advisory; never
+                        // fail complete-phase because of a scan glitch.
+                    }
+
                     return {
                         success: true,
                         message: `Completed phase "${phaseName}" (${diff.filesChanged.length} files changed, ${diff.commitsAdded.length} commits)`,
                         state: phaseResult,
+                        stragglerWarning,
                     }
                 }
                 case 'save-triage-results': {
