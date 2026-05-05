@@ -1,13 +1,15 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { ROADMAP_PATH } from '../util/phase-paths.js'
+
 export const manageRoadmapTool = createTool({
     id: 'manage-roadmap',
     description:
-        "Manage the .planning/ROADMAP.md file: create, read, update phase status, and compute execution order via topological sort with WSJF scoring. Always 'read' before 'update-status' to verify current state. Use 'compute-order' after creating phases to validate dependency graph.",
+        "Manage the .planning/ROADMAP.md file (cross-phase: ROADMAP.md is always at .planning/ root, independent of currentPhaseSlug — it tracks all phases in the workspace). Create, read, update phase status, and compute execution order via topological sort with WSJF scoring. Always 'read' before 'update-status' to verify current state. Use 'compute-order' after creating phases to validate dependency graph.",
     inputSchema: z.object({
         action: z
             .enum(['create', 'read', 'update-status', 'compute-order'])
@@ -91,10 +93,10 @@ export const manageRoadmapTool = createTool({
                         ((p.businessValue ?? 5) + (p.timeCriticality ?? 5)) /
                         (p.effort ?? 5),
                 }))
-                // Write ROADMAP.md to .planning/ so it persists across mode switches
-                const planningDir = join(process.cwd(), '.planning')
-                mkdirSync(planningDir, { recursive: true })
-                const roadmapPath = join(planningDir, 'ROADMAP.md')
+                // Write ROADMAP.md to .planning/ root so it persists across
+                // mode switches and is shared across phases.
+                const roadmapPath = ROADMAP_PATH()
+                mkdirSync(dirname(roadmapPath), { recursive: true })
                 const lines = [
                     '# Roadmap',
                     '',
@@ -159,11 +161,7 @@ export const manageRoadmapTool = createTool({
                             'phaseName and newStatus required for update-status',
                     }
                 }
-                const roadmapPath = join(
-                    process.cwd(),
-                    '.planning',
-                    'ROADMAP.md'
-                )
+                const roadmapPath = ROADMAP_PATH()
                 if (!existsSync(roadmapPath)) {
                     return {
                         success: false,
@@ -191,11 +189,7 @@ export const manageRoadmapTool = createTool({
                 }
             }
             case 'read': {
-                const roadmapPath = join(
-                    process.cwd(),
-                    '.planning',
-                    'ROADMAP.md'
-                )
+                const roadmapPath = ROADMAP_PATH()
                 if (!existsSync(roadmapPath)) {
                     return {
                         success: false,

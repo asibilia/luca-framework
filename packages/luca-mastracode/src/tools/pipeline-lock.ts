@@ -1,5 +1,4 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
-import { join } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
@@ -7,8 +6,7 @@ import { z } from 'zod'
 import { atomicWriteSync } from '../util/atomic-write.js'
 import { readLucaState } from '../state/luca-store.js'
 import { MODES } from '../constants/mode-ids.js'
-
-const LOCK_FILE = '.planning/.luca-lock.json'
+import { LOCK_PATH } from '../util/phase-paths.js'
 
 interface LockInfo {
     sessionId: string
@@ -123,7 +121,7 @@ function determineRecovery(lock: LockInfo): {
 export const pipelineLockTool = createTool({
     id: 'pipeline-lock',
     description:
-        'Manage pipeline lock for crash recovery. Prevents concurrent Luca sessions and enables resumption after crashes. Always update lock when entering a new pipeline step.',
+        'Manage pipeline lock for crash recovery. The lock file (.planning/.luca-lock.json) is cross-phase and cross-pipeline — a single mutex shared by every Luca session in the workspace, regardless of currentPhaseSlug. Prevents concurrent Luca sessions and enables resumption after crashes. Always update lock when entering a new pipeline step.',
     inputSchema: z.object({
         action: z
             .enum(['status', 'acquire', 'release', 'update', 'recover'])
@@ -142,7 +140,7 @@ export const pipelineLockTool = createTool({
     }),
     execute: async (inputData) => {
         const { action, sessionId, pipelineStep, phaseStep } = inputData
-        const lockPath = join(process.cwd(), LOCK_FILE)
+        const lockPath = LOCK_PATH()
 
         switch (action) {
             case 'status': {

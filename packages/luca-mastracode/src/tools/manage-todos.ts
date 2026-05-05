@@ -79,7 +79,7 @@ function validateVerificationRef(
 export const manageTodosTool = createTool({
     id: 'manage-todos',
     description:
-        'Manage the Luca development backlog stored as markdown files in .planning/todos/. ' +
+        'Manage the Luca development backlog stored as markdown files in .planning/todos/ (cross-phase: the backlog is a single workspace-level queue independent of currentPhaseSlug). ' +
         'Todos live in status directories: pending/, backlog/, done/. ' +
         'Supports listing, adding, moving between statuses (single or batch), reading full content, removing, and batch-assigning. ' +
         "Use 'list' before 'add' to check for duplicates. When moving to 'done', verify the task is actually complete. " +
