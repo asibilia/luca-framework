@@ -8,14 +8,12 @@
  * This file survives mode switches, process restarts, and TUI reconnections.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 
 import { atomicWriteSync } from '../util/atomic-write.js'
 import { MODES } from '../constants/mode-ids.js'
+import { STATE_PATH } from '../util/phase-paths.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
-
-const STATE_FILE = '.planning/luca-state.json'
 
 /**
  * Mirror of `PhaseSnapshot` from `phase-diff.ts`. Inlined here to avoid a
@@ -116,7 +114,7 @@ export interface LucaWorkflowState {
 }
 
 function statePath(): string {
-    return join(process.cwd(), STATE_FILE)
+    return STATE_PATH()
 }
 
 /**
