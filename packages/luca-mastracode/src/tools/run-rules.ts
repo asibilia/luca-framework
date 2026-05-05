@@ -14,9 +14,11 @@
  *            severity `must-fix`. Used by execute-verify before declaring
  *            a wave passing.
  *   - suggest: scan postmortems for recurring pitfalls and render draft
- *            rules to `.planning/SUGGESTED-RULES.md`. Promotes pitfalls
- *            seen in N or more distinct runs (default 3) into rule
- *            templates the user can finalize.
+ *            rules to SUGGESTED-RULES.md (under
+ *            `.planning/phases/<currentPhaseSlug>/` when a phase is active,
+ *            otherwise `.planning/`). Promotes pitfalls seen in N or more
+ *            distinct runs (default 3) into rule templates the user can
+ *            finalize.
  *
  * Every call appends a `rules-run` ledger event with totals so the
  * postmortem analyzer can observe rule activity over time.
@@ -45,7 +47,7 @@ export const runRulesTool = createTool({
         action: z
             .enum(['list', 'run', 'gate', 'suggest'])
             .describe(
-                'list: discover and return rule metadata only | run: execute all rules, return findings | gate: execute and block on must-fix findings | suggest: scan postmortems for recurring pitfalls and render draft rules to .planning/SUGGESTED-RULES.md'
+                'list: discover and return rule metadata only | run: execute all rules, return findings | gate: execute and block on must-fix findings | suggest: scan postmortems for recurring pitfalls and render draft rules to SUGGESTED-RULES.md (under .planning/phases/<slug>/ when a phase is active)'
             ),
         rulesDir: z
             .string()
@@ -63,7 +65,7 @@ export const runRulesTool = createTool({
             .boolean()
             .optional()
             .describe(
-                'suggest: when true (default), write SUGGESTED-RULES.md to .planning/. When false, return the rendered markdown without writing.'
+                'suggest: when true (default), write SUGGESTED-RULES.md under the active phase directory (.planning/phases/<slug>/, or .planning/ if no phase is active). When false, return the rendered markdown without writing.'
             ),
     }),
     execute: async (inputData) => {

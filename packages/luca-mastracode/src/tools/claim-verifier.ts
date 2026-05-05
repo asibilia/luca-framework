@@ -21,20 +21,30 @@ import {
     verifyTextArtifact,
     type ClaimVerificationReport,
 } from '../state/claim-verifier.js'
+import { readLucaState } from '../state/luca-store.js'
 import { appendLedger } from '../state/session-ledger.js'
-
-const PLANNING_DIR = '.planning'
+import { phaseDir, planningRoot } from '../util/phase-paths.js'
 
 /**
- * Resolve an artifact path. Tries:
+ * Resolve an artifact path. Tries (in order):
  *   1. The path as-is (absolute or repo-relative).
- *   2. The path under .planning/ as a fallback.
+ *   2. The path under the active phase dir (`.planning/phases/<slug>/`)
+ *      when `currentPhaseSlug` is set in luca-state.
+ *   3. The path under `.planning/` (root fallback for legacy artifacts).
+ *   4. The repo-relative path as a last resort (preserves prior behaviour
+ *      where the resolved path is returned even when the file is missing,
+ *      so the verifier can surface a missing-file claim failure).
  */
 function resolveArtifactPath(repoRoot: string, p: string): string {
     if (isAbsolute(p)) return p
     const direct = join(repoRoot, p)
     if (existsSync(direct)) return direct
-    const planning = join(repoRoot, PLANNING_DIR, p)
+    const slug = readLucaState().currentPhaseSlug
+    if (slug) {
+        const phaseScoped = join(phaseDir(slug), p)
+        if (existsSync(phaseScoped)) return phaseScoped
+    }
+    const planning = join(planningRoot(), p)
     if (existsSync(planning)) return planning
     return direct
 }
@@ -66,7 +76,7 @@ export const claimVerifierTool = createTool({
             .string()
             .optional()
             .describe(
-                'Path to verify (verify-file only). Resolved relative to repo root, then .planning/.'
+                'Path to verify (verify-file only). Resolved relative to repo root, then the active phase dir (.planning/phases/<slug>/), then .planning/.'
             ),
         paths: z
             .array(z.string())

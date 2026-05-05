@@ -13,14 +13,9 @@
  *   - An optional list of `pitfall` payloads the agent should forward to
  *     MuninnDB (default vault) so future runs can recall recurring failures.
  */
-import {
-    existsSync,
-    writeFileSync,
-    mkdirSync,
-    readFileSync,
-} from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, writeFileSync, readFileSync } from 'node:fs'
 
+import { readLucaState } from '../state/luca-store.js'
 import {
     readLedger,
     readLedgerForRun,
@@ -32,6 +27,7 @@ import {
     ARTIFACT_FILES,
     type LedgerEntry,
 } from '../state/session-ledger.js'
+import { phasePath } from '../util/phase-paths.js'
 import {
     readVerificationHistory,
     type VerificationResult,
@@ -464,11 +460,16 @@ function mostRecentPhaseAt(
 // Render
 // ---------------------------------------------------------------------------
 
-const POSTMORTEM_FILE = '.planning/POSTMORTEM.md'
+const POSTMORTEM_FILENAME = 'POSTMORTEM.md'
 
-function ensurePlanningDir(): void {
-    const dir = join(process.cwd(), '.planning')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+/**
+ * Resolve POSTMORTEM.md under the active phase dir
+ * (`.planning/phases/<currentPhaseSlug>/`) or `.planning/` (root fallback)
+ * when no phase is active. `phasePath` ensures the parent dir exists.
+ */
+function postmortemFilePath(): string {
+    const slug = readLucaState().currentPhaseSlug
+    return phasePath(POSTMORTEM_FILENAME, slug)
 }
 
 export function renderPostmortemMarkdown(report: PostmortemReport): string {
@@ -573,15 +574,14 @@ export function writePostmortem(report: PostmortemReport): {
     path: string
     bytes: number
 } {
-    ensurePlanningDir()
     const md = renderPostmortemMarkdown(report)
-    const p = join(process.cwd(), POSTMORTEM_FILE)
+    const p = postmortemFilePath()
     writeFileSync(p, md, 'utf-8')
-    return { path: POSTMORTEM_FILE, bytes: md.length }
+    return { path: p, bytes: md.length }
 }
 
 export function readPostmortem(): string | null {
-    const p = join(process.cwd(), POSTMORTEM_FILE)
+    const p = postmortemFilePath()
     if (!existsSync(p)) return null
     try {
         return readFileSync(p, 'utf-8')

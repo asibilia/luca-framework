@@ -177,32 +177,56 @@ export function listRuns(): Array<{
 }
 
 /**
- * List runIds for which `.planning/runs/<runId>/` archive directories exist
- * on disk. Returns an empty array if no archives exist or `.planning/` is
- * missing. Sort order is unspecified — callers should sort if needed.
+ * Yield candidate run-archive root directories in lookup order:
+ *   1. `.planning/phases/<currentPhaseSlug>/runs/` when a phase is active.
+ *   2. `.planning/runs/` (legacy / pre-triage layout).
+ *
+ * Issue #220: archives now live under the active phase dir, but legacy
+ * runs predate the migration and stay at root. Callers iterate this list
+ * and use the first match.
+ */
+function candidateArchiveRoots(): string[] {
+    const slug = readLucaState().currentPhaseSlug
+    const roots: string[] = []
+    if (slug) {
+        roots.push(join(phaseDir(slug), 'runs'))
+    }
+    roots.push(RUNS_ROOT())
+    return roots
+}
+
+/**
+ * List runIds for which an archive directory exists on disk. Searches both
+ * the active phase's runs dir (`.planning/phases/<slug>/runs/<runId>/`)
+ * and the legacy root (`.planning/runs/<runId>/`). Returns the union;
+ * sort order is unspecified — callers should sort if needed.
  */
 export function listArchivedRuns(): string[] {
-    const archiveRoot = RUNS_ROOT()
-    if (!existsSync(archiveRoot)) return []
-    try {
-        // `readdirSync` is synchronous and good enough here — archive
-        // directories are small (one entry per run).
-        return readdirSync(archiveRoot).filter((name: string) => {
-            try {
-                return statSync(join(archiveRoot, name)).isDirectory()
-            } catch {
-                return false
+    const seen = new Set<string>()
+    for (const archiveRoot of candidateArchiveRoots()) {
+        if (!existsSync(archiveRoot)) continue
+        try {
+            for (const name of readdirSync(archiveRoot)) {
+                try {
+                    if (statSync(join(archiveRoot, name)).isDirectory()) {
+                        seen.add(name)
+                    }
+                } catch {
+                    // ignore unreadable entries
+                }
             }
-        })
-    } catch {
-        return []
+        } catch {
+            // ignore unreadable archive root
+        }
     }
+    return Array.from(seen)
 }
 
 /**
  * Resolve the directory holding JSONL artifacts for a given runId. Returns
- * `.planning/` if `runId` matches the current run, otherwise
- * `.planning/runs/<runId>/` if that archive exists, else null.
+ * `.planning/` if `runId` matches the current run, otherwise tries (in
+ * order) `.planning/phases/<currentPhaseSlug>/runs/<runId>/` and
+ * `.planning/runs/<runId>/`, returning the first that exists, else null.
  */
 export function resolveRunArtifactDir(runId: string): string | null {
     const root = planningRoot()
@@ -210,8 +234,11 @@ export function resolveRunArtifactDir(runId: string): string | null {
     if (current === runId) {
         return existsSync(root) ? root : null
     }
-    const archiveDir = join(RUNS_ROOT(), runId)
-    return existsSync(archiveDir) ? archiveDir : null
+    for (const archiveRoot of candidateArchiveRoots()) {
+        const archiveDir = join(archiveRoot, runId)
+        if (existsSync(archiveDir)) return archiveDir
+    }
+    return null
 }
 
 /**

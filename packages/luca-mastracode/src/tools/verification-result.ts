@@ -32,7 +32,7 @@ const checkResultSchema = z.object({
 export const verificationResultTool = createTool({
     id: 'verification-result',
     description:
-        'Read or write structured verification results (JSON). Replaces prose-based verification with deterministic output for orchestrator consumption. Always write results after verification — never skip this step.',
+        'Read or write structured verification results (JSON). Latest result is stored as verification-result.json under the active phase dir (.planning/phases/<slug>/ when a phase is active, otherwise .planning/); the cross-wave history (verification-history.jsonl) is always appended at the .planning/ root. Replaces prose-based verification with deterministic output for orchestrator consumption. Always write results after verification — never skip this step.',
     inputSchema: z.object({
         action: z
             .enum(['write', 'read', 'read-history', 'aggregate'])
