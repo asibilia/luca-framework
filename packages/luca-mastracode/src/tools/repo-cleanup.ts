@@ -473,12 +473,17 @@ export const repoCleanupTool = createTool({
                 } catch (err) {
                     const message =
                         err instanceof Error ? err.message : String(err)
-                    return { error: message }
+                    // Normalize to {success:false, error} so the action's
+                    // return shape matches workflowStateTool's archive-loose
+                    // (#220 review) — agents that gate on result.success
+                    // can detect refusals (lock-held, missing slug) without
+                    // a parallel `if (result.error)` check.
+                    return { success: false, error: message }
                 }
             }
 
             default:
-                return { error: `Unknown action: ${action}` }
+                return { success: false, error: `Unknown action: ${action}` }
         }
     },
 })

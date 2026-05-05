@@ -178,7 +178,9 @@ export function phasePath(filename: string, slug?: string | undefined): string {
         filename.includes('/') ||
         filename.includes('\\') ||
         filename.split(/[\\/]/).some((seg) => seg === '..') ||
-        filename === '..'
+        filename === '..' ||
+        filename === '.' ||
+        filename.length === 0
     ) {
         throw new Error(
             'phasePath filename must be a bare filename, not a path',

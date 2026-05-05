@@ -12,6 +12,7 @@ import { readLucaState } from '../state/luca-store.js'
 import { resolveModel } from '../integration/model-routing.js'
 
 import { MODES } from '../constants/mode-ids.js'
+import { LOCK_PATH } from '../util/phase-paths.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -35,7 +36,7 @@ export function buildTriageInstructions(
     // Only inject workflow state context if there's an active pipeline lock.
     // Without a lock, any persisted state is stale from a previous session
     // and should not cause the agent to skip classification.
-    const lockPath = join(process.cwd(), '.planning', '.luca-lock.json')
+    const lockPath = LOCK_PATH()
     if (!existsSync(lockPath)) return base
 
     const state = readLucaState()

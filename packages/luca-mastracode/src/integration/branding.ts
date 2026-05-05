@@ -8,13 +8,15 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { CONFIG_PATH } from '../util/phase-paths.js'
+
 export interface LucaBranding {
     name: string
     tagline: string
 }
 
 export function loadBranding(): LucaBranding {
-    const configPath = join(process.cwd(), '.planning', 'config.json')
+    const configPath = CONFIG_PATH()
     if (existsSync(configPath)) {
         try {
             const raw = JSON.parse(readFileSync(configPath, 'utf-8'))

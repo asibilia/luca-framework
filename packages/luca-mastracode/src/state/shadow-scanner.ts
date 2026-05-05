@@ -6,9 +6,10 @@
  * resolution.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 
 import { z } from 'zod'
+
+import { CONFIG_PATH } from '../util/phase-paths.js'
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -153,7 +154,7 @@ export const SCAN_MODE_CATEGORIES: Record<ScanMode, readonly number[]> = {
  * Returns schema defaults if the file or section is missing.
  */
 export function loadShadowDebtConfig(): ShadowDebtConfig {
-    const configPath = join(process.cwd(), '.planning', 'config.json')
+    const configPath = CONFIG_PATH()
     if (!existsSync(configPath)) {
         return ShadowDebtConfigSchema.parse({})
     }
