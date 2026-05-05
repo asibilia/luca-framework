@@ -1,5 +1,7 @@
 # @alecsibilia/luca-framework
 
+## 11.4.1
+
 ## 11.4.0
 
 ### Minor Changes
