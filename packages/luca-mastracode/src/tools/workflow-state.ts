@@ -24,7 +24,14 @@ import {
     type PhaseSnapshot,
 } from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
-import { deriveSlug, resolveAvailableSlug } from '../util/phase-paths.js'
+import {
+    deriveSlug,
+    phasePath,
+    planningRoot,
+    resolveAvailableSlug,
+    ROADMAP_PATH,
+} from '../util/phase-paths.js'
+import { join, relative } from 'node:path'
 
 const VALID_MODES = ALL_REGISTERED_MODES
 
@@ -143,11 +150,16 @@ const savePlanArtifactsAction = z.object({
     action: z.literal('save-plan-artifacts'),
     planFile: z
         .string()
-        .describe('Path to plan file (default: .planning/PLAN.md)'),
+        .optional()
+        .describe(
+            'Path to plan file. Defaults to .planning/phases/<slug>/PLAN.md when slug is set, else .planning/PLAN.md.'
+        ),
     roadmapFile: z
         .string()
         .optional()
-        .describe('Path to roadmap file (default: .planning/ROADMAP.md)'),
+        .describe(
+            'Path to roadmap file. Always at .planning/ROADMAP.md (cross-phase).'
+        ),
 })
 
 const saveReviewResultsAction = z.object({
@@ -310,13 +322,13 @@ const workflowStateInputSchema = z.object({
         .string()
         .optional()
         .describe(
-            "Path to plan file, default .planning/PLAN.md (required for 'save-plan-artifacts')."
+            'Path to plan file. Defaults to .planning/phases/<slug>/PLAN.md when slug is set, else .planning/PLAN.md.'
         ),
     roadmapFile: z
         .string()
         .optional()
         .describe(
-            'Path to roadmap file, default .planning/ROADMAP.md (save-plan-artifacts only).'
+            'Path to roadmap file. Always at .planning/ROADMAP.md (cross-phase).'
         ),
 
     // save-review-results
@@ -741,15 +753,50 @@ export const workflowStateTool = createTool({
                 case 'save-plan-artifacts': {
                     const { planFile: rawPlan, roadmapFile: rawRoadmap } =
                         parseAction(savePlanArtifactsAction, raw)
-                    // Normalize bare filenames to .planning/ directory
-                    const planFile = rawPlan.startsWith('.planning/')
-                        ? rawPlan
-                        : `.planning/${rawPlan}`
-                    const roadmapFile = rawRoadmap
-                        ? rawRoadmap.startsWith('.planning/')
-                            ? rawRoadmap
-                            : `.planning/${rawRoadmap}`
-                        : undefined
+
+                    // Per-phase scope per #220: PLAN.md, CONTEXT.md, RESEARCH.md
+                    // resolve under phaseDir(slug); ROADMAP.md is always root.
+                    // Read slug at exec time; absent slug falls back to root
+                    // (see `phasePath` semantics).
+                    const slug = readLucaState().currentPhaseSlug
+                    const toRepoRelative = (abs: string): string =>
+                        relative(process.cwd(), abs)
+
+                    // planFile resolution:
+                    //  - omitted              → phasePath('PLAN.md', slug)
+                    //  - bare filename ("X")  → phasePath('X', slug)
+                    //  - explicit .planning/* → preserved as-is (caller knows)
+                    //  - any other path       → preserved as-is
+                    let planFile: string
+                    if (rawPlan === undefined) {
+                        planFile = toRepoRelative(phasePath('PLAN.md', slug))
+                    } else if (
+                        !rawPlan.includes('/') &&
+                        !rawPlan.includes('\\')
+                    ) {
+                        planFile = toRepoRelative(phasePath(rawPlan, slug))
+                    } else {
+                        planFile = rawPlan
+                    }
+
+                    // roadmapFile resolution:
+                    //  - omitted              → ROADMAP_PATH() (root)
+                    //  - bare filename        → planningRoot()/<filename>
+                    //  - explicit path        → preserved as-is
+                    let roadmapFile: string
+                    if (rawRoadmap === undefined) {
+                        roadmapFile = toRepoRelative(ROADMAP_PATH())
+                    } else if (
+                        !rawRoadmap.includes('/') &&
+                        !rawRoadmap.includes('\\')
+                    ) {
+                        roadmapFile = toRepoRelative(
+                            join(planningRoot(), rawRoadmap)
+                        )
+                    } else {
+                        roadmapFile = rawRoadmap
+                    }
+
                     const planState = writeLucaState({
                         planFile,
                         roadmapFile,
@@ -760,7 +807,7 @@ export const workflowStateTool = createTool({
                     })
                     return {
                         success: true,
-                        message: `Plan artifacts saved: planFile=${planFile}${roadmapFile ? `, roadmapFile=${roadmapFile}` : ''}`,
+                        message: `Plan artifacts saved: planFile=${planFile}, roadmapFile=${roadmapFile}`,
                         state: planState,
                     }
                 }
