@@ -55,6 +55,7 @@ packages/luca-mastracode/.planning/
 # context monitoring (runtime artifacts)
 .planning/.context-metrics.json
 .planning/.context-checkpoint.json
+.planning/.luca-lock.json
 .planning/session-ledger.jsonl
 .planning/verification-history.jsonl
 .planning/verification-result.json

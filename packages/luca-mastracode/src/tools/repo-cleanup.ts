@@ -86,19 +86,35 @@ export const PHASE_WHITELIST_STRICT: ReadonlySet<string> = new Set([
 // Extra files tolerated at `.planning/` root in lenient mode (no slug yet —
 // pre-#220 layout). These only appear here as legacy stragglers; once a slug
 // is set the strict mode treats their root presence as cleanup targets.
+//
+// Lenient mode mirrors the full PHASE_WHITELIST_STRICT set so that legacy
+// in-flight runs (which keep PLAN/CONTEXT/RESEARCH/POSTMORTEM at root before
+// a slug is derived) are not flagged as stragglers — keeping the documented
+// upgrade path workable (PR #222 review).
 export const PHASE_WHITELIST_LENIENT_EXTRA: ReadonlySet<string> = new Set([
+    'PLAN.md',
+    'CONTEXT.md',
+    'RESEARCH.md',
+    'POSTMORTEM.md',
+    'SESSION-ARCHIVE.md',
+    'SUGGESTED-RULES.md',
     'CONFIDENCE-JOURNAL.md',
     'verification-result.json',
     'checks-convergence.json',
 ])
 
-// Glob-style patterns matched at `.planning/` root that are always considered
-// stragglers (intermediate capture / review artifacts from earlier modes).
-function isCaptureOrReviewArtifact(filename: string): boolean {
-    return (
-        (/-capture-/.test(filename) && filename.endsWith('.md')) ||
-        (filename.startsWith('REVIEW-') && filename.endsWith('.md'))
-    )
+// Capture artifacts (intermediate `*-capture-*.md` files) at `.planning/`
+// root are always stragglers: they're per-iteration scratch and `cleanup-
+// artifacts` removes them outright.
+function isCaptureArtifact(filename: string): boolean {
+    return /-capture-/.test(filename) && filename.endsWith('.md')
+}
+
+// `REVIEW-<n>.md` files at `.planning/` root are migration targets —
+// `archive-loose` should move them into `phases/<slug>/`. They are NOT
+// removable scratch like capture artifacts (PR #222 review).
+function isReviewArtifact(filename: string): boolean {
+    return filename.startsWith('REVIEW-') && filename.endsWith('.md')
 }
 
 interface LockInfo {
@@ -110,24 +126,34 @@ interface LockInfo {
 /**
  * Detect cross-phase stragglers under `.planning/`.
  *
- * Walks `.planning/` and reports files at root that are not in
- * `ROOT_WHITELIST` and not capture/review artifacts already handled by
- * `cleanup-artifacts`. When `currentPhaseSlug` is set in luca-state.json,
- * runs in strict mode (per-phase artifacts at root are stragglers). When no
- * slug is set, runs in lenient mode (per-phase artifacts at root are
- * tolerated as legacy pre-#220 layout).
+ * Walks `.planning/` and reports:
+ *   - `rootStragglers`: files at root not in `ROOT_WHITELIST`. Includes
+ *     `REVIEW-*.md` files (which `archive-loose` migrates), and excludes
+ *     capture artifacts (`*-capture-*.md`) which `cleanup-artifacts`
+ *     handles separately.
+ *   - `unknownRootDirs`: directories at root not in `ROOT_WHITELIST_DIRS`.
+ *     `archive-loose` only migrates files, so unknown dirs surface here so
+ *     the finalize gate can prompt the operator.
+ *   - `orphanedPhaseDirs`: reserved (always empty today; finalize gate may
+ *     opt in later for orphan-phase detection).
  *
- * `orphanedPhaseDirs` lists `phases/<x>/` directories not associated with
- * the active slug — currently always empty (any `phases/<x>` is acceptable;
- * left as a future-use return for the finalize gate).
+ * When `currentPhaseSlug` is set in luca-state.json, runs in strict mode
+ * (per-phase artifacts at root are stragglers). When no slug is set, runs
+ * in lenient mode (the full PHASE_WHITELIST_STRICT set is tolerated at root
+ * as legacy pre-#220 layout — see PR #222 review).
  */
 export function detectStragglers(): {
     rootStragglers: string[]
     orphanedPhaseDirs: string[]
+    unknownRootDirs: string[]
 } {
     const root = planningRoot()
     if (!existsSync(root)) {
-        return { rootStragglers: [], orphanedPhaseDirs: [] }
+        return {
+            rootStragglers: [],
+            orphanedPhaseDirs: [],
+            unknownRootDirs: [],
+        }
     }
 
     let slug: string | undefined
@@ -145,29 +171,46 @@ export function detectStragglers(): {
     const strict = typeof slug === 'string' && slug.length > 0
 
     const rootStragglers: string[] = []
+    const unknownRootDirs: string[] = []
     let entries: import('node:fs').Dirent[] = []
     try {
         entries = readdirSync(root, { withFileTypes: true })
     } catch {
-        return { rootStragglers: [], orphanedPhaseDirs: [] }
+        return {
+            rootStragglers: [],
+            orphanedPhaseDirs: [],
+            unknownRootDirs: [],
+        }
     }
 
     for (const entry of entries) {
+        const name = entry.name
         if (entry.isDirectory()) {
-            // Directories at root are checked against ROOT_WHITELIST_DIRS,
-            // but unknown dirs are not currently flagged — finalize gate
-            // can opt in later. Keep rootStragglers file-only for now.
+            // Unknown directories at root are flagged so the finalize gate
+            // can surface them — `archive-loose` only moves files, so stray
+            // dirs must be cleaned up manually (PR #222 review).
+            if (!ROOT_WHITELIST_DIRS.has(name)) {
+                unknownRootDirs.push(name)
+            }
             continue
         }
         if (!entry.isFile()) continue
-        const name = entry.name
         if (ROOT_WHITELIST.has(name)) continue
-        if (isCaptureOrReviewArtifact(name)) continue
-        if (!strict && PHASE_WHITELIST_LENIENT_EXTRA.has(name)) continue
+        // Capture artifacts are scratch — `cleanup-artifacts` removes them,
+        // they are not migration targets.
+        if (isCaptureArtifact(name)) continue
+        // REVIEW-*.md files ARE migration targets — fall through into
+        // rootStragglers so `archive-loose` picks them up.
+        if (!strict && !isReviewArtifact(name)) {
+            // Lenient mode (no slug yet): tolerate legacy phase artifacts at
+            // root, but still flag REVIEW-*.md so they migrate when a slug
+            // is finally set.
+            if (PHASE_WHITELIST_LENIENT_EXTRA.has(name)) continue
+        }
         rootStragglers.push(name)
     }
 
-    return { rootStragglers, orphanedPhaseDirs: [] }
+    return { rootStragglers, orphanedPhaseDirs: [], unknownRootDirs }
 }
 
 /**
@@ -458,17 +501,31 @@ export const repoCleanupTool = createTool({
             case 'archive-loose': {
                 try {
                     const result = archiveLoose()
+                    // Three outcomes (PR #222 review):
+                    //   - `archived` non-empty: at least one file moved.
+                    //   - `archived` empty + `skipped` non-empty: every
+                    //     straggler was skipped (target exists or rename
+                    //     failed). Migration is incomplete; surface a
+                    //     distinct status so callers don't mistake this
+                    //     for a clean root.
+                    //   - both empty: genuinely nothing to do.
+                    const status =
+                        result.archived.length > 0
+                            ? 'archived'
+                            : result.skipped.length > 0
+                              ? 'skipped-only'
+                              : 'nothing-to-archive'
+                    const message =
+                        result.archived.length > 0
+                            ? `Archived ${result.archived.length} loose file(s) into the active phase dir; ${result.skipped.length} skipped.`
+                            : result.skipped.length > 0
+                              ? `No files migrated — all ${result.skipped.length} straggler(s) were skipped (target already exists or rename failed). Resolve manually before re-running.`
+                              : 'No loose files at .planning/ root to archive.'
                     return {
-                        status:
-                            result.archived.length > 0
-                                ? 'archived'
-                                : 'nothing-to-archive',
+                        status,
                         archived: result.archived,
                         skipped: result.skipped,
-                        message:
-                            result.archived.length > 0
-                                ? `Archived ${result.archived.length} loose file(s) into the active phase dir; ${result.skipped.length} skipped.`
-                                : 'No loose files at .planning/ root to archive.',
+                        message,
                     }
                 } catch (err) {
                     const message =

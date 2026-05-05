@@ -21,6 +21,8 @@ import {
 } from 'node:fs'
 import { basename, join } from 'node:path'
 
+import { readLucaState, writeLucaState } from './luca-store.js'
+
 import {
     CONFIDENCE_JOURNAL_PATH,
     LEDGER_PATH,
@@ -31,7 +33,6 @@ import {
     phasePath,
     planningRoot,
 } from '../util/phase-paths.js'
-import { readLucaState, writeLucaState } from './luca-store.js'
 
 // ---------------------------------------------------------------------------
 // Run identity
@@ -102,11 +103,7 @@ export function appendLedger(
         event,
         data,
     }
-    appendFileSync(
-        LEDGER_PATH(),
-        JSON.stringify(entry) + '\n',
-        'utf-8'
-    )
+    appendFileSync(LEDGER_PATH(), JSON.stringify(entry) + '\n', 'utf-8')
 }
 
 /**
@@ -136,10 +133,7 @@ export function readLedgerForRun(runId: string): LedgerEntry[] {
 /**
  * Get ledger entries filtered by event type (optionally scoped to a run).
  */
-export function getLedgerByEvent(
-    event: string,
-    runId?: string
-): LedgerEntry[] {
+export function getLedgerByEvent(event: string, runId?: string): LedgerEntry[] {
     const entries = readLedger().filter((e) => e.event === event)
     return runId ? entries.filter((e) => e.runId === runId) : entries
 }
@@ -179,19 +173,46 @@ export function listRuns(): Array<{
 /**
  * Yield candidate run-archive root directories in lookup order:
  *   1. `.planning/phases/<currentPhaseSlug>/runs/` when a phase is active.
- *   2. `.planning/runs/` (legacy / pre-triage layout).
+ *   2. `.planning/phases/<other-slug>/runs/` for every other phase dir
+ *      that exists on disk (so historical runs from prior phases stay
+ *      visible after a new phase starts — PR #222 review).
+ *   3. `.planning/runs/` (legacy / pre-triage layout).
  *
  * Issue #220: archives now live under the active phase dir, but legacy
  * runs predate the migration and stay at root. Callers iterate this list
- * and use the first match.
+ * and use the first match for a given runId; `listArchivedRuns()` unions
+ * across all roots.
  */
 function candidateArchiveRoots(): string[] {
     const slug = readLucaState().currentPhaseSlug
     const roots: string[] = []
-    if (slug) {
-        roots.push(join(phaseDir(slug), 'runs'))
+    const seen = new Set<string>()
+    const add = (p: string) => {
+        if (!seen.has(p)) {
+            seen.add(p)
+            roots.push(p)
+        }
     }
-    roots.push(RUNS_ROOT())
+    if (slug) {
+        add(join(phaseDir(slug), 'runs'))
+    }
+    // Discover all sibling phase dirs and include their runs/ subdirs so
+    // recurrence detection and postmortem listing keep seeing archived runs
+    // from earlier phases after the active slug changes.
+    const phasesRoot = join(planningRoot(), 'phases')
+    if (existsSync(phasesRoot)) {
+        try {
+            for (const entry of readdirSync(phasesRoot, {
+                withFileTypes: true,
+            })) {
+                if (!entry.isDirectory()) continue
+                add(join(phasesRoot, entry.name, 'runs'))
+            }
+        } catch {
+            // ignore unreadable phases/ root
+        }
+    }
+    add(RUNS_ROOT())
     return roots
 }
 
@@ -398,11 +419,7 @@ export function appendRoutingHistory(
         runId: getCurrentRunId(),
         timestamp: new Date().toISOString(),
     }
-    appendFileSync(
-        ROUTING_HISTORY_PATH(),
-        JSON.stringify(full) + '\n',
-        'utf-8'
-    )
+    appendFileSync(ROUTING_HISTORY_PATH(), JSON.stringify(full) + '\n', 'utf-8')
 }
 
 /**
@@ -420,7 +437,9 @@ export function readRoutingHistory({
             .split('\n')
             .filter(Boolean)
             .map((line) => JSON.parse(line) as RoutingEntry)
-        const scoped = runId ? entries.filter((e) => e.runId === runId) : entries
+        const scoped = runId
+            ? entries.filter((e) => e.runId === runId)
+            : entries
         return scoped.slice(-limit)
     } catch {
         return []

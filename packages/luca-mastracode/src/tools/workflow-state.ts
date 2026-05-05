@@ -706,6 +706,41 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // ── Guard 3: cross-phase stragglers under .planning/ ──
+                    // The PR description and changeset for #220 commit to
+                    // BLOCKING when root stragglers are present, so callers
+                    // cannot proceed to finalize with legacy artifacts at the
+                    // root. Returns a structured error with the straggler list
+                    // and a runnable suggestion (PR #222 review).
+                    //
+                    // Skipped on `verificationPassed === false` so failed
+                    // completions still record cleanly without spurious
+                    // straggler errors layered on top.
+                    if (verificationPassed !== false) {
+                        try {
+                            const { rootStragglers, unknownRootDirs } =
+                                detectStragglers()
+                            if (
+                                rootStragglers.length > 0 ||
+                                unknownRootDirs.length > 0
+                            ) {
+                                return {
+                                    success: false,
+                                    code: 'PHASE_COMPLETE_STRAGGLERS_AT_ROOT',
+                                    message: `Phase "${phaseName}" cannot be completed: ${rootStragglers.length} straggler file(s) and ${unknownRootDirs.length} unknown dir(s) at .planning/ root. Run workflowState({action:"archive-loose"}) to migrate stragglers into the active phase dir, then re-run complete-phase. (Unknown dirs must be cleaned up manually.)`,
+                                    stragglers: {
+                                        files: rootStragglers,
+                                        unknownDirs: unknownRootDirs,
+                                    },
+                                }
+                            }
+                        } catch {
+                            // detectStragglers is best-effort: a scan glitch
+                            // should not permanently block phase completion.
+                            // Fall through to completePhase().
+                        }
+                    }
+
                     const phaseResult = completePhase({
                         verificationPassed,
                         reviewPassed,
@@ -765,39 +800,12 @@ export const workflowStateTool = createTool({
                         // Best-effort advisory; never fail complete-phase.
                     }
 
-                    // ── Advisory: detect cross-phase stragglers under .planning/ ──
-                    // Non-blocking: phase completion always succeeds even when
-                    // stragglers exist. Surfaces a warning payload so the
-                    // caller (typically the finalize gate) can prompt the
-                    // operator to migrate via the archive-loose action before
-                    // opening a PR. See #220.
-                    let stragglerWarning:
-                        | {
-                              count: number
-                              files: string[]
-                              suggestion: string
-                          }
-                        | undefined
-                    try {
-                        const { rootStragglers } = detectStragglers()
-                        if (rootStragglers.length > 0) {
-                            stragglerWarning = {
-                                count: rootStragglers.length,
-                                files: rootStragglers,
-                                suggestion:
-                                    'Run workflowState({action:"archive-loose"}) to migrate these into the active phase dir before opening a PR.',
-                            }
-                        }
-                    } catch {
-                        // detectStragglers is best-effort advisory; never
-                        // fail complete-phase because of a scan glitch.
-                    }
-
+                    // Stragglers are now blocked at Guard 3 above; the success
+                    // path here implies a clean root.
                     return {
                         success: true,
                         message: `Completed phase "${phaseName}" (${diff.filesChanged.length} files changed, ${diff.commitsAdded.length} commits)`,
                         state: phaseResult,
-                        stragglerWarning,
                         planTickResult,
                     }
                 }

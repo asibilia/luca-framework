@@ -89,7 +89,9 @@ export function formatTimestampSlug(date?: Date): string {
  * Derive a deterministic phase slug from a triage intent string.
  *
  * - When the intent contains a ticket id, the slug is
- *   `<TICKET>-<slugified-intent[:48]>`.
+ *   `<TICKET>-<slugified-intent-minus-ticket[:48]>`. The ticket is stripped
+ *   from the intent before slugifying so we don't produce duplicate prefixes
+ *   like `PT-220-pt-220-...` (PR #222 review).
  * - Otherwise the slug is `<YYYYMMDD-HHmm>-<slugified-intent[:48]>`.
  *
  * The slug is **never empty**: if both the ticket and the slugified intent
@@ -98,14 +100,23 @@ export function formatTimestampSlug(date?: Date): string {
  *
  * @example
  * deriveSlug('PT-220 refactor planning paths')
- *   // 'PT-220-pt-220-refactor-planning-paths'  (ticket retained verbatim)
+ *   // 'PT-220-refactor-planning-paths'
+ *
+ * deriveSlug('PT-220')
+ *   // 'PT-220'
  *
  * deriveSlug('add darkmode toggle', { now: new Date('2026-05-05T17:23:00') })
  *   // '20260505-1723-add-darkmode-toggle'
  */
 export function deriveSlug(intent: string, opts?: { now?: Date }): string {
     const ticket = parseTicketId(intent)
-    const intentSlug = slugifySegment(intent.slice(0, 48))
+    // Strip the ticket id from the intent before slugifying to avoid producing
+    // duplicate prefixes (e.g. ticket `PT-220` + intent `PT-220 refactor` →
+    // `PT-220-pt-220-refactor`). If no ticket was found, leave intent intact.
+    const intentForSlug = ticket
+        ? intent.replace(new RegExp(`\\b${ticket}\\b`, 'g'), ' ')
+        : intent
+    const intentSlug = slugifySegment(intentForSlug.slice(0, 48))
 
     if (ticket) {
         if (intentSlug.length > 0) {
@@ -183,7 +194,7 @@ export function phasePath(filename: string, slug?: string | undefined): string {
     ) {
         throw new Error(
             'phasePath filename must be a non-empty bare filename ' +
-                '(no path separators, no "." or "..")',
+                '(no path separators, no "." or "..")'
         )
     }
     const dir = phaseDir(slug)
