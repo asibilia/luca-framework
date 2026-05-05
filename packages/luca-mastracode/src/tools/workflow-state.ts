@@ -1,8 +1,16 @@
+import { join, relative } from 'node:path'
+
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
+import { archiveLoose, detectStragglers } from './repo-cleanup.js'
 
+import {
+    snapshotWorkingTree,
+    computePhaseDiff,
+    type PhaseSnapshot,
+} from '../analysis/phase-diff.js'
+import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
 import {
     readLucaState,
     writeLucaState,
@@ -12,19 +20,12 @@ import {
     completePhase,
     type LucaWorkflowState,
 } from '../state/luca-store.js'
-import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 import {
     appendLedger,
     archivePriorRun,
     startNewRun,
 } from '../state/session-ledger.js'
-import {
-    snapshotWorkingTree,
-    computePhaseDiff,
-    type PhaseSnapshot,
-} from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
-import { archiveLoose, detectStragglers } from './repo-cleanup.js'
 import {
     deriveSlug,
     phasePath,
@@ -32,7 +33,8 @@ import {
     resolveAvailableSlug,
     ROADMAP_PATH,
 } from '../util/phase-paths.js'
-import { join, relative } from 'node:path'
+import { tickPhaseTasks } from '../util/plan-checkboxes.js'
+import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 
 const VALID_MODES = ALL_REGISTERED_MODES
 
@@ -182,7 +184,9 @@ const EMPTY_PHASE_CATEGORIES = [
 
 const justifyEmptyPhaseAction = z.object({
     action: z.literal('justify-empty-phase'),
-    phase: z.string().describe('Phase name (must match the in-progress phase).'),
+    phase: z
+        .string()
+        .describe('Phase name (must match the in-progress phase).'),
     category: z
         .enum(EMPTY_PHASE_CATEGORIES)
         .describe(
@@ -619,10 +623,7 @@ export const workflowStateTool = createTool({
                     const preWaveState = readLucaState()
                     const currentWave = preWaveState.currentWave ?? 1
                     const verification = readVerificationResult()
-                    if (
-                        !verification ||
-                        verification.wave !== currentWave
-                    ) {
+                    if (!verification || verification.wave !== currentWave) {
                         appendLedger('wave-advance-blocked', {
                             phase: preWaveState.currentPhaseName,
                             wave: currentWave,
@@ -721,6 +722,49 @@ export const workflowStateTool = createTool({
                         commitsAdded: diff.commitsAdded.length,
                     })
 
+                    // ── Advisory: tick PLAN.md checkboxes for this phase ──
+                    // Runs AFTER both guards (diff + verification) have passed,
+                    // so a tick reflects independently-attested completion —
+                    // not the executor's self-claim. Failures (file missing,
+                    // heading mismatch, write error) are advisory only and
+                    // never block phase completion. See #220 follow-up.
+                    let planTickResult:
+                        | {
+                              success: boolean
+                              tickedCount: number
+                              alreadyTickedCount: number
+                              tickedLines: number[]
+                              planFile: string
+                              reason?: string
+                          }
+                        | undefined
+                    try {
+                        const planFile =
+                            preState.planFile ??
+                            phasePath('PLAN.md', preState.currentPhaseSlug)
+                        if (verificationPassed !== false) {
+                            const result = tickPhaseTasks(planFile, phaseName)
+                            planTickResult = {
+                                success: result.success,
+                                tickedCount: result.tickedCount,
+                                alreadyTickedCount: result.alreadyTickedCount,
+                                tickedLines: result.tickedLines,
+                                planFile: result.planFile,
+                                reason: result.reason,
+                            }
+                            appendLedger('plan-tick-result', {
+                                phase: phaseName,
+                                planFile: result.planFile,
+                                success: result.success,
+                                tickedCount: result.tickedCount,
+                                alreadyTickedCount: result.alreadyTickedCount,
+                                reason: result.reason ?? null,
+                            })
+                        }
+                    } catch {
+                        // Best-effort advisory; never fail complete-phase.
+                    }
+
                     // ── Advisory: detect cross-phase stragglers under .planning/ ──
                     // Non-blocking: phase completion always succeeds even when
                     // stragglers exist. Surfaces a warning payload so the
@@ -754,6 +798,7 @@ export const workflowStateTool = createTool({
                         message: `Completed phase "${phaseName}" (${diff.filesChanged.length} files changed, ${diff.commitsAdded.length} commits)`,
                         state: phaseResult,
                         stragglerWarning,
+                        planTickResult,
                     }
                 }
                 case 'save-triage-results': {
