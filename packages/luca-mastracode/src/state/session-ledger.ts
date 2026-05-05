@@ -19,16 +19,19 @@ import {
     readdirSync,
     statSync,
 } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
+import {
+    CONFIDENCE_JOURNAL_PATH,
+    LEDGER_PATH,
+    ROUTING_HISTORY_PATH,
+    RUNS_ROOT,
+    VERIFICATION_HISTORY_PATH,
+    phaseDir,
+    phasePath,
+    planningRoot,
+} from '../util/phase-paths.js'
 import { readLucaState, writeLucaState } from './luca-store.js'
-
-const LEDGER_FILE = '.planning/session-ledger.jsonl'
-const ROUTING_HISTORY_FILE = '.planning/routing-history.jsonl'
-const VERIFICATION_HISTORY_FILE = '.planning/verification-history.jsonl'
-const CONFIDENCE_JOURNAL_FILE = '.planning/confidence-journal.jsonl'
-const VERIFICATION_RESULT_FILE = '.planning/verification-result.json'
-const RUNS_DIR = '.planning/runs'
 
 // ---------------------------------------------------------------------------
 // Run identity
@@ -81,7 +84,7 @@ export interface LedgerEntry {
 }
 
 function ensurePlanningDir(): void {
-    const dir = join(process.cwd(), '.planning')
+    const dir = planningRoot()
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 }
 
@@ -100,7 +103,7 @@ export function appendLedger(
         data,
     }
     appendFileSync(
-        join(process.cwd(), LEDGER_FILE),
+        LEDGER_PATH(),
         JSON.stringify(entry) + '\n',
         'utf-8'
     )
@@ -110,7 +113,7 @@ export function appendLedger(
  * Read all ledger entries for the current session.
  */
 export function readLedger(): LedgerEntry[] {
-    const p = join(process.cwd(), LEDGER_FILE)
+    const p = LEDGER_PATH()
     if (!existsSync(p)) return []
     try {
         return readFileSync(p, 'utf-8')
@@ -179,7 +182,7 @@ export function listRuns(): Array<{
  * missing. Sort order is unspecified — callers should sort if needed.
  */
 export function listArchivedRuns(): string[] {
-    const archiveRoot = join(process.cwd(), RUNS_DIR)
+    const archiveRoot = RUNS_ROOT()
     if (!existsSync(archiveRoot)) return []
     try {
         // `readdirSync` is synchronous and good enough here — archive
@@ -202,12 +205,12 @@ export function listArchivedRuns(): string[] {
  * `.planning/runs/<runId>/` if that archive exists, else null.
  */
 export function resolveRunArtifactDir(runId: string): string | null {
-    const planningRoot = join(process.cwd(), '.planning')
+    const root = planningRoot()
     const current = readLucaState().runId
     if (current === runId) {
-        return existsSync(planningRoot) ? planningRoot : null
+        return existsSync(root) ? root : null
     }
-    const archiveDir = join(process.cwd(), RUNS_DIR, runId)
+    const archiveDir = join(RUNS_ROOT(), runId)
     return existsSync(archiveDir) ? archiveDir : null
 }
 
@@ -290,35 +293,50 @@ export function computeSessionMetrics(runId?: string): {
 // ---------------------------------------------------------------------------
 
 /**
- * Move the current run's artifacts into `.planning/runs/<runId>/`
- * so the new run starts clean. Best-effort: missing source files are
+ * Archive end-of-session telemetry for a run.
+ *
+ * When a phase slug is set on luca-state, the archive directory is
+ *   .planning/phases/<slug>/runs/<runId>/
+ * matching the per-phase artifact tree. When no slug is set (legacy or
+ * pre-triage state), the archive falls back to .planning/runs/<runId>/.
+ *
+ * Source files (cross-run JSONL audit logs at .planning/ root) are MOVED
+ * by basename into the archive dir via renameSync — preserving the prior
+ * "clear root for next run" semantic. The single-snapshot
+ * verification-result.json (per-phase) is moved from
+ * .planning/phases/<slug>/verification-result.json when present; this
+ * matters because a stale wave-1 PASS from a prior run can otherwise
+ * silently satisfy the wave/phase guards in workflow-state and bypass
+ * verification on the next run.
+ *
+ * Best-effort: missing source files and cross-device rename failures are
  * silently skipped.
  *
- * The single-snapshot `verification-result.json` MUST be archived alongside
- * the JSONL histories. Otherwise a stale wave-1 PASS from a prior run can
- * satisfy the wave/phase guards in `workflow-state` and silently bypass
- * verification on the next run.
+ * @see issue #220
  */
 export function archivePriorRun(runId: string): void {
     if (!runId) return
-    const planningRoot = join(process.cwd(), '.planning')
-    if (!existsSync(planningRoot)) return
+    if (!existsSync(planningRoot())) return
 
-    const targetDir = join(process.cwd(), RUNS_DIR, runId)
+    const slug = readLucaState().currentPhaseSlug
+    const archiveBase = slug ? join(phaseDir(slug), 'runs') : RUNS_ROOT()
+    const targetDir = join(archiveBase, runId)
     if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true })
 
-    const candidates = [
-        LEDGER_FILE,
-        ROUTING_HISTORY_FILE,
-        VERIFICATION_HISTORY_FILE,
-        CONFIDENCE_JOURNAL_FILE,
-        VERIFICATION_RESULT_FILE,
+    // Cross-run JSONL audit logs live at .planning/ root (Decision #4).
+    const sources: string[] = [
+        LEDGER_PATH(),
+        ROUTING_HISTORY_PATH(),
+        VERIFICATION_HISTORY_PATH(),
+        CONFIDENCE_JOURNAL_PATH(),
     ]
-    for (const rel of candidates) {
-        const src = join(process.cwd(), rel)
+    // Per-phase single-snapshot verification result. When slug is absent,
+    // phasePath() falls back to root — same legacy location as before.
+    sources.push(phasePath('verification-result.json', slug))
+
+    for (const src of sources) {
         if (!existsSync(src)) continue
-        const base = rel.split('/').pop() ?? rel
-        const dest = join(targetDir, base)
+        const dest = join(targetDir, basename(src))
         try {
             renameSync(src, dest)
         } catch {
@@ -354,7 +372,7 @@ export function appendRoutingHistory(
         timestamp: new Date().toISOString(),
     }
     appendFileSync(
-        join(process.cwd(), ROUTING_HISTORY_FILE),
+        ROUTING_HISTORY_PATH(),
         JSON.stringify(full) + '\n',
         'utf-8'
     )
@@ -367,7 +385,7 @@ export function readRoutingHistory({
     limit = 20,
     runId,
 }: { limit?: number; runId?: string } = {}): RoutingEntry[] {
-    const p = join(process.cwd(), ROUTING_HISTORY_FILE)
+    const p = ROUTING_HISTORY_PATH()
     if (!existsSync(p)) return []
     try {
         const entries = readFileSync(p, 'utf-8')
