@@ -96,7 +96,32 @@ Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persiste
 - **Release conventions** — versioning, PR format, publish procedures
 - **Entity graph** — named entities and relationships across the codebase
 
-MuninnDB tools are available in all modes via MCP integration.
+#### Wiring MuninnDB into the Mastracode harness
+
+MuninnDB tools (`mcp__muninn__*`) reach the harness via MCP — and Mastracode does **not** auto-configure this. After `luca init` installs and starts MuninnDB, you have to add an MCP server entry yourself.
+
+Mastracode loads MCP config from three locations, highest priority first:
+
+1. `<project>/.mastracode/mcp.json` — project-scoped
+2. `~/.mastracode/mcp.json` — user-global (recommended for MuninnDB)
+3. `<project>/.claude/settings.local.json` — Claude Code compat
+
+For most users, configure once globally and every project picks it up. Create `~/.mastracode/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "muninn": {
+      "url": "http://localhost:8750/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-muninn-api-key>"
+      }
+    }
+  }
+}
+```
+
+Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart the harness, then run `/mcp` inside the TUI to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to mode agents and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
 
 ### Prompt Engineering
 
