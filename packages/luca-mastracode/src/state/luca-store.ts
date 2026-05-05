@@ -66,6 +66,19 @@ export interface LucaWorkflowState {
     // --- Phase tracking ---
     phaseResults?: PhaseResult[]
     currentPhaseName?: string
+    /**
+     * Session-scoped slug for the .planning/phases/<slug>/ artifact directory.
+     *
+     * Derived during triage from the user intent (ticket-id when present, else
+     * timestamp + intent kebab). IMMUTABLE once persisted — re-entry into the
+     * pipeline must NOT recompute the slug. Consumers that resolve artifact
+     * paths via `phaseDir(slug)` / `phasePath(file, slug)` from
+     * `util/phase-paths.ts` will fall back to root .planning/ when this is
+     * undefined (legacy in-flight runs at upgrade time).
+     *
+     * @see issue #220
+     */
+    currentPhaseSlug?: string
     currentWave?: number
     currentIteration?: number
     milestoneCount?: number
