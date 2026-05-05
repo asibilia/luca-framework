@@ -26,6 +26,17 @@ Default to using Bun instead of Node.js.
   - Bun is required (repo uses `bun.lock` and `bunfig.toml`). If Bun is missing, install it before running any commands.
   - No `.env` is required for core development.
 
+## `.planning/` Artifact Layout
+
+Luca's pipeline uses a two-tier directory contract under `.planning/` (post-#220):
+
+- **Root** = cross-phase state: `luca-state.json`, `.luca-lock.json`, `ROADMAP.md`, `config.json`, `todos/`, JSONL audit logs (`session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`).
+- **`.planning/phases/<currentPhaseSlug>/`** = session-scoped artifacts: `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`, `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`, `CONFIDENCE-JOURNAL.md`, `verification-result.json`, `checks-convergence.json`, `*-capture-*.md`, and `runs/<runId>/` (archived prior runs).
+
+Triage derives the slug from the work intent and persists it in state. `writePlanningFile`, `manageRoadmap`, and the state modules auto-route based on `currentPhaseSlug` — pass a bare basename and the writer resolves the directory.
+
+**Migration**: legacy repos with loose root artifacts can run `workflowState({action:"archive-loose"})` to migrate them into `phases/<currentPhaseSlug>/`. The action refuses if the pipeline lock is held by another live PID or if no slug is set. See `docs/troubleshooting.md` → "Migrating a legacy `.planning/` layout".
+
 ## Response approach
 
 See "Intent-First Response" in `AGENTS.md`. In short: think about what the user actually needs, not just what they asked. Suggest follow-up questions only when the request is ambiguous, has meaningful trade-offs, or hints at a deeper problem — not on every response.

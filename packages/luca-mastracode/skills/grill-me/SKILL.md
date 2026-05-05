@@ -19,7 +19,7 @@ If a question can be answered by exploring the codebase, explore the codebase in
 
 ### Challenge against the glossary
 
-If `CONTEXT.md` or `.planning/CONTEXT.md` exists, read it first. When the user uses a term that conflicts with the existing language, call it out immediately: "Your glossary defines 'X' as Y, but you seem to mean Z — which is it?"
+If a `CONTEXT.md` exists, read it first. Inside an active Luca pipeline it lives at `.planning/phases/<currentPhaseSlug>/CONTEXT.md` (slug from `.planning/luca-state.json`); otherwise check `.planning/CONTEXT.md` and the repo root as fallbacks. When the user uses a term that conflicts with the existing language, call it out immediately: "Your glossary defines 'X' as Y, but you seem to mean Z — which is it?"
 
 ### Sharpen fuzzy language
 
@@ -35,7 +35,7 @@ When the user states how something works, check whether the code agrees. If you 
 
 ### Update CONTEXT.md inline
 
-When a term is resolved, update `CONTEXT.md` (or `.planning/CONTEXT.md`) right there — don't batch these up. Create the file lazily if it doesn't exist.
+When a term is resolved, update `CONTEXT.md` right there — don't batch these up. Create the file lazily if it doesn't exist. Write to the phase-scoped path (`.planning/phases/<currentPhaseSlug>/CONTEXT.md`) when a Luca pipeline is active; otherwise update the existing `CONTEXT.md` in place wherever you found it.
 
 Don't couple CONTEXT.md to implementation details. Only include terms meaningful to domain experts.
 

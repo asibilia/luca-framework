@@ -46,6 +46,24 @@ This guide covers common issues you might encounter while using Luca and how to 
 - **Issue**: Adapters (like GitHub) fail due to missing credentials.
 - **Solution**: Luca uses the GitHub CLI for authentication. Run `gh auth login` to authenticate. For Jira, ensure your `JIRA_API_TOKEN` is defined in your `.env` file.
 
+### Migrating a legacy `.planning/` layout
+
+- **Issue**: Project predates #220 and has session artifacts (`PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`, `REVIEW-*.md`, `*-capture-*.md`, `verification-result.json`, etc.) loose at the `.planning/` root instead of under `.planning/phases/<currentPhaseSlug>/`.
+- **Symptom**: When the pipeline reaches **finalize**, it emits a `stragglerWarning` listing the loose files and refuses to mark the phase complete cleanly.
+- **Fix**: From inside an active pipeline session, call:
+
+  ```
+  workflowState({ action: "archive-loose" })
+  ```
+
+  The action moves recognized stragglers into `.planning/phases/<currentPhaseSlug>/`, skipping any file whose target already exists. Cross-phase files (`ROADMAP.md`, `todos/`, `luca-state.json`, `config.json`, JSONL audit logs) are left at the root.
+
+- **Guard rails** — the action refuses to run if:
+  - `.luca-lock.json` is held by another live PID (run from the session that owns the lock).
+  - `currentPhaseSlug` is unset in `luca-state.json` (run triage first so a target phase dir exists).
+
+  Files whose destination already exists are reported under `skipped` rather than overwritten — resolve those manually.
+
 ## Common Errors
 
 | Error                          | Cause                           | Resolution                                                                         |

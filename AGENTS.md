@@ -78,6 +78,27 @@ Key patterns:
 3. Format: `type(scope): #issue description` (lowercase, present tense verb)
 4. Branch naming: `{issue_number}--{dash-cased-description}`
 
+## `.planning/` Artifact Layout
+
+Luca's pipeline writes artifacts under `.planning/`. As of #220 the directory follows a **two-tier contract**:
+
+- **Root `.planning/` — cross-phase state** (one set per project, mutated across every phase):
+  - `luca-state.json`, `.luca-lock.json`
+  - `ROADMAP.md`, `config.json`
+  - `todos/{pending,backlog,done}/`
+  - JSONL audit logs: `session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`
+
+- **`.planning/phases/<currentPhaseSlug>/` — session-scoped artifacts** (one directory per pipeline run; slug derived by triage from the work intent and persisted in `luca-state.json`):
+  - `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`
+  - `POSTMORTEM.md`, `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`
+  - `CONFIDENCE-JOURNAL.md`, `verification-result.json`, `checks-convergence.json`
+  - `*-capture-*.md` (plan-review captures, research captures)
+  - `runs/<runId>/` (archived prior runs)
+
+Pipeline tools (`writePlanningFile`, `manageRoadmap`, state modules) auto-route by reading `currentPhaseSlug` from state — pass a bare basename (e.g. `"PLAN.md"`) and the writer resolves the correct directory. `scope:"root"` is only needed when bypassing auto-routing.
+
+**Migrating a legacy `.planning/` layout** (loose root artifacts from before #220): run `workflowState({action:"archive-loose"})` from inside an active pipeline session. The action moves stragglers into `phases/<currentPhaseSlug>/`. It refuses if the lock is held by another live PID or if `currentPhaseSlug` is unset. See `docs/troubleshooting.md` for details.
+
 ## Related Files
 
 - [docs/guides/coding-standards.md](docs/guides/coding-standards.md) - Complete coding standards

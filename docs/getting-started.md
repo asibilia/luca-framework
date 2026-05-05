@@ -39,6 +39,24 @@ All Luca projects have a `.planning/` directory at the root. This is where your 
 - Memory is stored in **MuninnDB** (via MCP tools): brain tree for project identity, engrams for long-term learnings (patterns, decisions, pitfalls), and session engrams for active task context.
 - `phases/`: Contains your development plans and summaries.
 
+#### Artifact layout
+
+The pipeline organizes files into two tiers:
+
+- **`.planning/` (root)** — **cross-phase state**, persists across every pipeline run:
+  - `luca-state.json`, `.luca-lock.json`, `ROADMAP.md`, `config.json`
+  - `todos/{pending,backlog,done}/`
+  - JSONL audit logs: `session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`
+- **`.planning/phases/<currentPhaseSlug>/`** — **session-scoped artifacts** for the active phase:
+  - `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`
+  - `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`, `CONFIDENCE-JOURNAL.md`
+  - `verification-result.json`, `checks-convergence.json`, `*-capture-*.md`
+  - `runs/<runId>/` (archived prior runs of this phase)
+
+Triage derives `currentPhaseSlug` from the work intent (e.g. issue title) and persists it in `luca-state.json`. Pipeline tools (`writePlanningFile`, `manageRoadmap`, state modules) read the slug and auto-route writes to the correct directory.
+
+If you have a pre-#220 project with loose artifacts at the root, run `workflowState({action:"archive-loose"})` from inside an active pipeline session to migrate them. See [Troubleshooting → Migrating a legacy `.planning/` layout](troubleshooting.md#migrating-a-legacy-planning-layout).
+
 ### 2. Plans (`PLAN.md`)
 
 A plan is a structured markdown file that defines a specific set of tasks to be executed. It includes:
@@ -55,15 +73,17 @@ The Luca CLI executes these plans, handling git commits for each task and managi
 
 ### Step 1: Define a Phase
 
-Create a directory for your first phase:
+When you start a pipeline run, the **triage** stage derives a phase slug from your work intent (typically an issue title or branch name) and creates the directory automatically — for example `.planning/phases/123-add-webhook-support/` for issue `#123`. You normally don't `mkdir` this yourself.
+
+If you're working outside the pipeline (e.g. drafting a plan by hand), you can create a directory manually:
 
 ```bash
-mkdir -p .planning/phases/01-init
+mkdir -p .planning/phases/<your-slug>
 ```
 
 ### Step 2: Create a Plan
 
-Create `.planning/phases/01-init/01-01-PLAN.md`. You can use the templates in the framework directory as a starting point.
+Create `PLAN.md` inside the phase directory (e.g. `.planning/phases/<your-slug>/PLAN.md`). Inside the pipeline, the **architect** stage writes this for you via `writePlanningFile` — pass a bare basename and the tool routes to the active phase dir.
 
 ### Step 3: Execute the Plan
 
