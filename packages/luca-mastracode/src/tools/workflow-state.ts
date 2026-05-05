@@ -955,6 +955,15 @@ export const workflowStateTool = createTool({
                         emptyPhaseJustifications: undefined,
                         // Run identity — clear so startNewRun mints a fresh ID
                         runId: undefined,
+                        // Phase slug — clear so the next save-triage-results
+                        // re-derives a fresh slug from the new intent. Otherwise
+                        // the stale slug short-circuits the
+                        // `if (!current.currentPhaseSlug && triage.intent)`
+                        // guard and the new session writes into the prior
+                        // session's phases/<old-slug>/ tree (#220 review).
+                        // archivePriorRun above runs first, so it can still
+                        // resolve the prior slug for archival routing.
+                        currentPhaseSlug: undefined,
                     })
                     const newRunId = startNewRun()
                     appendLedger('pipeline-reset', {
