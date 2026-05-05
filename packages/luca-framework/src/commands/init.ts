@@ -204,9 +204,12 @@ export const initCommand = defineCommand({
             '  To expose MuninnDB to the harness: add an MCP server entry to'
         )
         readout.push(
-            '    ~/.mastracode/mcp.json — see README → "Wiring MuninnDB into'
+            '    <home>/.mastracode/mcp.json (macOS/Linux: ~/.mastracode/mcp.json;'
         )
-        readout.push('    the Mastracode harness".')
+        readout.push(
+            '    Windows: %USERPROFILE%\\.mastracode\\mcp.json) — see README →'
+        )
+        readout.push('    "Wiring MuninnDB into the Mastracode harness".')
 
         p.note(readout.join('\n'), 'Setup Complete')
 

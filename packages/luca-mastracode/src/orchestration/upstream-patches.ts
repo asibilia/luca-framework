@@ -10,11 +10,12 @@
  *      pi-tui width assertion crashes (issue #173)
  *   2. Double-slash autocomplete prefix — strip leading `/` from custom
  *      command names to prevent `//command` rendering
- *   3. Multiline slash-command parsing — collapse trailing newlines to
- *      spaces so `/cmd <pasted multi-line text>` doesn't produce
- *      "Unknown command: /cmd". Upstream's `/^(\/\/?)(.*)$/` regex (no `s`
- *      flag) fails on multiline input, leaving the literal `/cmd` as the
- *      command name and falling through to the unknown-command branch.
+ *   3. Multiline slash-command parsing — collapse any whitespace run that
+ *      spans a newline (anywhere in the input) into a single space, so
+ *      `/cmd <pasted multi-line text>` doesn't produce "Unknown command:
+ *      /cmd". Upstream's `/^(\/\/?)(.*)$/` regex (no `s` flag) fails on
+ *      multiline input, leaving the literal `/cmd` as the command name and
+ *      falling through to the unknown-command branch.
  *   4. Model-pack-on-login override — re-apply user's active model pack
  *      after login resets to provider default
  *
@@ -237,7 +238,6 @@ function patchDoubleSlashAutocomplete(tui: unknown): void {
  * Exported for unit testing.
  */
 export function normalizeMultilineSlashCommand(input: string): string {
-    if (typeof input !== 'string') return input
     if (!input.includes('\n')) return input
     // Only act on inputs that look like a slash command after trimming
     // leading whitespace. We don't trim the actual input — upstream still

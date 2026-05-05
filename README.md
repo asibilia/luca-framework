@@ -100,13 +100,15 @@ Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persiste
 
 MuninnDB tools (`mcp__muninn__*`) reach the harness via MCP — and Mastracode does **not** auto-configure this. After `luca init` installs and starts MuninnDB, you have to add an MCP server entry yourself.
 
-Mastracode loads MCP config from three locations, highest priority first:
+Mastracode loads MCP config from three locations, highest priority first (where `<home>` is `$HOME` on macOS/Linux and `%USERPROFILE%` on Windows):
 
 1. `<project>/.mastracode/mcp.json` — project-scoped
-2. `~/.mastracode/mcp.json` — user-global (recommended for MuninnDB)
+2. `<home>/.mastracode/mcp.json` — user-global (recommended for MuninnDB)
+   - macOS/Linux: `~/.mastracode/mcp.json`
+   - Windows: `%USERPROFILE%\.mastracode\mcp.json`
 3. `<project>/.claude/settings.local.json` — Claude Code compat
 
-For most users, configure once globally and every project picks it up. Create `~/.mastracode/mcp.json`:
+For most users, configure once globally and every project picks it up. Create the user-global file at `<home>/.mastracode/mcp.json`:
 
 ```json
 {
