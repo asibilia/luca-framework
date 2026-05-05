@@ -39,6 +39,22 @@ function resolveArtifactPath(repoRoot: string, p: string): string {
     if (isAbsolute(p)) return p
     const direct = join(repoRoot, p)
     if (existsSync(direct)) return direct
+
+    // Path-traversal guard: only safe basenames may fall through to the
+    // phase / planning-root fallbacks. Inputs containing `/`, `\`, or any
+    // `..` segment are restricted to the repo-root resolution above —
+    // letting downstream verifyFile surface a normal ENOENT instead of
+    // following a `../../../etc/hosts`-style escape out of the phase dir
+    // (mirrors the rejection logic in phase-paths.ts:177-186; #220 review).
+    const segments = p.split(/[\\/]/)
+    if (
+        p.includes('/') ||
+        p.includes('\\') ||
+        segments.some((s) => s === '..')
+    ) {
+        return direct
+    }
+
     const slug = readLucaState().currentPhaseSlug
     if (slug) {
         const phaseScoped = join(phaseDir(slug), p)
