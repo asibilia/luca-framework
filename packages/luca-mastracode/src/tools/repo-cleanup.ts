@@ -50,15 +50,38 @@ import {
 //
 // Files allowed at `.planning/` root — cross-phase / cross-run artifacts that
 // must persist independent of the active phase slug.
+//
+// Includes both Luca framework files and bridge files used by the framework
+// state layer and context-monitor hooks (e.g. `state.json`,
+// `.context-metrics.json`, `.context-checkpoint.json`). Repos using either
+// the framework state bridge or the context-monitor will produce these at
+// `.planning/` root in normal operation, so omitting them would falsely
+// flag healthy workspaces and block phase completion (PR #222 review).
 export const ROOT_WHITELIST: ReadonlySet<string> = new Set([
+    // Core Luca state + locks.
     'luca-state.json',
     '.luca-lock.json',
     'config.json',
+    // Multi-phase plan + JSONL audit logs.
     'ROADMAP.md',
     'session-ledger.jsonl',
     'routing-history.jsonl',
     'verification-history.jsonl',
     'confidence-journal.jsonl',
+    // Framework state bridge (luca-framework consumers expose `state.json`
+    // alongside `luca-state.json`).
+    'state.json',
+    // Context-monitor hooks emit these at root in normal operation; they
+    // are gitignored runtime artifacts but must not be treated as
+    // stragglers when present on disk during a session.
+    '.context-metrics.json',
+    '.context-checkpoint.json',
+    // Legacy multi-phase planning artifacts kept by some downstream repos
+    // (mirrors the broader shadow-scanner planning_root_allowlist).
+    'PROJECT.md',
+    'CANONICAL-DECISIONS.md',
+    'MILESTONE-AUDIT.md',
+    'checks-result.json',
 ])
 
 // Directories allowed at `.planning/` root.
@@ -279,22 +302,40 @@ export function archiveLoose(): {
     }
 
     const { rootStragglers } = detectStragglers()
-    const targetDir = phaseDir(slug)
-    // phaseDir() does not mkdir; ensure target exists by piggybacking on
-    // any straggler write. If there are no stragglers, nothing to do.
-    if (rootStragglers.length === 0) {
+
+    // Also collect `*-capture-*.md` files at root. These are skipped from
+    // detectStragglers because `cleanup-artifacts` removes them outright,
+    // but the migration docs (#220) document `archive-loose` as the
+    // migration helper for legacy root layouts — including capture files.
+    // Migrating preserves them as part of phase history; users can still
+    // run `cleanup-artifacts` afterwards if they want to discard scratch.
+    const root = planningRoot()
+    const captureFiles: string[] = []
+    try {
+        for (const entry of readdirSync(root, { withFileTypes: true })) {
+            if (!entry.isFile()) continue
+            if (isCaptureArtifact(entry.name)) {
+                captureFiles.push(entry.name)
+            }
+        }
+    } catch {
+        // ignore unreadable root
+    }
+
+    const allTargets = [...rootStragglers, ...captureFiles]
+    if (allTargets.length === 0) {
         return { archived: [], skipped: [] }
     }
 
+    const targetDir = phaseDir(slug)
     // Lazy mkdir: phaseDir is created when the first move happens, but we
     // create it up-front so an empty-slug-dir is consistent.
     const archived: string[] = []
     const skipped: string[] = []
-    const root = planningRoot()
     // Ensure phase dir exists before moves.
     mkdirSync(targetDir, { recursive: true })
 
-    for (const name of rootStragglers) {
+    for (const name of allTargets) {
         const src = join(root, name)
         const dst = join(targetDir, basename(name))
         if (existsSync(dst)) {

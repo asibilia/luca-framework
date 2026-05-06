@@ -758,11 +758,18 @@ export const workflowStateTool = createTool({
                     })
 
                     // ── Advisory: tick PLAN.md checkboxes for this phase ──
-                    // Runs AFTER both guards (diff + verification) have passed,
-                    // so a tick reflects independently-attested completion —
-                    // not the executor's self-claim. Failures (file missing,
-                    // heading mismatch, write error) are advisory only and
-                    // never block phase completion. See #220 follow-up.
+                    // Runs AFTER all three guards (diff + verification +
+                    // stragglers) have passed AND the review pass has
+                    // confirmed completion. We gate on `reviewPassed ===
+                    // true` (not `!== false`) so the Execute-side
+                    // complete-phase call — which runs BEFORE Review hands
+                    // back — does NOT tick prematurely. If Review comes
+                    // back MUST-FIX, the phase reopens and PLAN.md stays
+                    // unticked. Finalize re-invokes complete-phase with
+                    // `reviewPassed: true` once Review has approved, which
+                    // is when the tick actually happens. Failures (file
+                    // missing, heading mismatch, write error) are advisory
+                    // only and never block phase completion (PR #222 review).
                     let planTickResult:
                         | {
                               success: boolean
@@ -777,7 +784,10 @@ export const workflowStateTool = createTool({
                         const planFile =
                             preState.planFile ??
                             phasePath('PLAN.md', preState.currentPhaseSlug)
-                        if (verificationPassed !== false) {
+                        if (
+                            verificationPassed !== false &&
+                            reviewPassed === true
+                        ) {
                             const result = tickPhaseTasks(planFile, phaseName)
                             planTickResult = {
                                 success: result.success,
@@ -1089,8 +1099,28 @@ export const workflowStateTool = createTool({
                             archivedCount: archived.length,
                             skippedCount: skipped.length,
                         })
+                        // Three outcomes (PR #222 review):
+                        //   1. archived > 0          → migration progressed.
+                        //   2. archived = 0, skipped > 0 → migration is
+                        //      INCOMPLETE: every candidate was skipped
+                        //      because its target already existed (or
+                        //      rename failed). Return success:false so
+                        //      Finalize doesn't treat this as remediation
+                        //      and `complete-phase` will keep blocking
+                        //      until the operator resolves manually.
+                        //   3. archived = 0, skipped = 0 → genuinely
+                        //      clean; no stragglers found.
+                        if (archived.length === 0 && skipped.length > 0) {
+                            return {
+                                success: false,
+                                code: 'ARCHIVE_LOOSE_SKIPPED_ONLY',
+                                message: `No files migrated — all ${skipped.length} root straggler(s) were skipped (target already exists or rename failed). Resolve manually before re-running.`,
+                                archived,
+                                skipped,
+                            }
+                        }
                         const summary =
-                            archived.length === 0 && skipped.length === 0
+                            archived.length === 0
                                 ? 'No root stragglers found — nothing to archive.'
                                 : `Archived ${archived.length} file(s) into the active phase dir${skipped.length > 0 ? ` (${skipped.length} skipped)` : ''}.`
                         return {

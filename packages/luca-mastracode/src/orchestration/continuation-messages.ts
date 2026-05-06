@@ -6,8 +6,8 @@
  * are wrapped in `<system-reminder>` by the caller so they render as an
  * amber-bordered box in the TUI.
  */
-import type { LucaWorkflowState } from '../state/luca-store.js'
 import { MODES } from '../constants/mode-ids.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
 
 export function buildContinuationMessage(
     modeId: string,
@@ -88,7 +88,20 @@ export function buildContinuationMessage(
                 .filter(Boolean)
                 .join('\n')
 
-        case MODES.finalize:
+        case MODES.finalize: {
+            // REVIEW-*.md files live under `.planning/phases/<slug>/`
+            // (issue #220). Surface the phase-scoped path here so the
+            // Finalize agent reads the right file on first try; fall
+            // back to the legacy root location only when no slug is
+            // set (PR #222 review).
+            const finalizeSlug =
+                typeof state.currentPhaseSlug === 'string' &&
+                state.currentPhaseSlug.length > 0
+                    ? state.currentPhaseSlug
+                    : undefined
+            const reviewGlob = finalizeSlug
+                ? `.planning/phases/${finalizeSlug}/REVIEW-*.md`
+                : '.planning/REVIEW-*.md (legacy: no currentPhaseSlug in state)'
             return [
                 `[Luca Pipeline — auto-continuing from Review]`,
                 ``,
@@ -96,10 +109,11 @@ export function buildContinuationMessage(
                 `Complexity: ${complexity}`,
                 todos,
                 ``,
-                `Begin finalization. Run final checks, perform gap audit, create PR if appropriate, and complete the session with final metrics. Read the latest .planning/REVIEW-*.md report for context on what was reviewed.`,
+                `Begin finalization. Run final checks, perform gap audit, create PR if appropriate, and complete the session with final metrics. Read the latest ${reviewGlob} report for context on what was reviewed.`,
             ]
                 .filter(Boolean)
                 .join('\n')
+        }
 
         case MODES.triage:
             return [

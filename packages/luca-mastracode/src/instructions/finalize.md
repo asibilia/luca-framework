@@ -129,9 +129,11 @@ Advisory scan for AI-session debris before PR:
 
 If `repoCleanup` returns `status: "disabled"`, skip silently.
 
-### Step 2.5: Stragglers gate (per #220)
+### Step 2.5: Stragglers gate (per #220, hardened in #222)
 
-When the most recently completed phase reports a `stragglerWarning` in its return payload (root files that should live under `.planning/phases/<currentPhaseSlug>/`), migrate them before opening a PR:
+`complete-phase` now **hard-fails** with `success: false` and `code: "PHASE_COMPLETE_STRAGGLERS_AT_ROOT"` when any cross-phase stragglers (loose files or unknown directories) remain at `.planning/` root. The error payload includes a `stragglers: { files, unknownDirs }` object. There is **no `stragglerWarning` field** anymore — the gate is blocking, not advisory.
+
+When you receive that error, migrate before re-running `complete-phase`:
 
 ```
 workflowState(action: "archive-loose")
@@ -140,10 +142,14 @@ workflowState(action: "archive-loose")
 Behavior:
 - Refuses if another live session holds the pipeline lock.
 - Refuses if `currentPhaseSlug` is not set in `luca-state.json`.
-- Skips on collision (won't overwrite existing files in the phase dir).
-- Idempotent — safe to re-run.
+- Three outcomes via `success` / `code`:
+  - `success: true` with `archived: [...]` — files moved into the active phase dir.
+  - `success: false`, `code: "ARCHIVE_LOOSE_SKIPPED_ONLY"` — every candidate was skipped because the target already exists or a rename failed. Migration is **incomplete**; resolve manually before re-running.
+  - `success: true` with `archived: []` and `skipped: []` — no stragglers found (clean root).
+- `unknownDirs` from the `complete-phase` error are **not** moved by `archive-loose` (it only handles files). Resolve those manually.
+- Idempotent — safe to re-run after manual cleanup.
 
-If the action errors with a lock-held or missing-slug message, report to the user and stop. Otherwise continue to Step 3.
+If the action errors with a lock-held or missing-slug message, report to the user and stop. After a successful migration, re-run `workflowState(action: "complete-phase", verificationPassed: true, reviewPassed: true)` and continue to Step 3.
 
 ## Step 3: Gap Detection
 

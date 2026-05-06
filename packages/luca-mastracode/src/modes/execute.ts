@@ -9,11 +9,10 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readLucaState } from '../state/luca-store.js'
-import { resolveModel } from '../integration/model-routing.js'
-import type { ComplexityLevel, ProfileLevel } from '../state/state.js'
-
 import { MODES } from '../constants/mode-ids.js'
+import { resolveModel } from '../integration/model-routing.js'
+import { readLucaState } from '../state/luca-store.js'
+import type { ComplexityLevel, ProfileLevel } from '../state/state.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -54,10 +53,22 @@ export function buildExecuteInstructions(
         .filter(Boolean)
         .join('\n')
 
-    // Inject review iteration context when re-entering from Review mode
+    // Inject review iteration context when re-entering from Review mode.
+    // The REVIEW-*.md files live under `.planning/phases/<currentPhaseSlug>/`
+    // (issue #220), so we surface the phase-scoped glob in the prompt and
+    // fall back to the legacy root location only when no slug is set
+    // (PR #222 review).
     const rawPlan = state.iterationPlan
     const iterationPlan = Array.isArray(rawPlan) ? rawPlan : undefined
     const reviewIteration = state.reviewIteration
+    const slug =
+        typeof state.currentPhaseSlug === 'string' &&
+        state.currentPhaseSlug.length > 0
+            ? state.currentPhaseSlug
+            : undefined
+    const reviewGlob = slug
+        ? `.planning/phases/${slug}/REVIEW-*.md`
+        : '.planning/REVIEW-*.md (legacy: no currentPhaseSlug in state)'
     const reviewContext = iterationPlan?.length
         ? [
               '',
@@ -67,7 +78,7 @@ export function buildExecuteInstructions(
               '**Iteration plan (your task list for this pass):**',
               ...iterationPlan.map((fix, i) => `${i + 1}. ${fix}`),
               '',
-              `Read the latest \`.planning/REVIEW-*.md\` for full context (file paths, evidence, fix suggestions).`,
+              `Read the latest \`${reviewGlob}\` for full context (file paths, evidence, fix suggestions).`,
               'Scope your work to these items ONLY — do not re-execute the full plan.',
           ].join('\n')
         : ''

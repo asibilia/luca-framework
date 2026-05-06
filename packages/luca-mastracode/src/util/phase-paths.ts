@@ -133,12 +133,54 @@ export function deriveSlug(intent: string, opts?: { now?: Date }): string {
 }
 
 /**
+ * Validate a slug for safe use as a phase-dir path component.
+ *
+ * Slugs flow through `luca-state.json` and are then trusted by `phaseDir`,
+ * `phasePath`, `archive-loose`, the verifier, and several state modules.
+ * A tampered slug like `../../../tmp` would, after `path.join()` normalises
+ * the parent segments, escape `.planning/phases/` and grant read/write
+ * access outside the planning directory (PR #222 review).
+ *
+ * Allowed: `[A-Za-z0-9._-]+` (1..128 chars), no path separators, no `..`,
+ * no leading `.`. Rejects empty strings, traversal segments, and any
+ * platform path separator on Windows or POSIX.
+ */
+export function isValidSlug(slug: string): boolean {
+    if (typeof slug !== 'string') return false
+    if (slug.length === 0 || slug.length > 128) return false
+    if (slug === '.' || slug === '..') return false
+    if (slug.startsWith('.')) return false
+    if (slug.includes('/') || slug.includes('\\')) return false
+    if (slug.includes('\0')) return false
+    // Reject any segment that is `..` even when no separator (already
+    // handled), and reject embedded null/control bytes.
+    return /^[A-Za-z0-9._-]+$/.test(slug)
+}
+
+/**
+ * Throw a uniform error when a slug fails validation. Centralised so every
+ * caller surfaces the same message and the same error class.
+ */
+function assertValidSlug(slug: string): void {
+    if (!isValidSlug(slug)) {
+        throw new Error(
+            `Invalid phase slug: ${JSON.stringify(slug)}. ` +
+                'Slug must match /^[A-Za-z0-9._-]+$/ (1..128 chars), not equal "." or "..", ' +
+                'and not start with "." (PR #222 traversal hardening).'
+        )
+    }
+}
+
+/**
  * Resolve the directory holding per-phase artifacts for `slug`.
  *
  * - `phaseDir(undefined)` (or empty slug) returns `planningRoot()` — the
  *   backward-compatibility fallback for in-flight runs upgraded mid-stream
  *   without a `currentPhaseSlug` (issue #220 decision 8).
- * - Otherwise returns `<planningRoot>/phases/<slug>`.
+ * - Otherwise returns `<planningRoot>/phases/<slug>` after validating the
+ *   slug. Tampered slugs (e.g. `../../../tmp`) are rejected so a writable
+ *   `luca-state.json` cannot be turned into arbitrary read/write access
+ *   outside `.planning/` (PR #222 review).
  *
  * Does **not** create the directory; use `ensurePhaseDir` or `phasePath`
  * when the directory must exist.
@@ -146,11 +188,13 @@ export function deriveSlug(intent: string, opts?: { now?: Date }): string {
  * @example
  * phaseDir(undefined)   // '<cwd>/.planning'
  * phaseDir('foo')       // '<cwd>/.planning/phases/foo'
+ * phaseDir('../etc')    // throws — invalid slug
  */
 export function phaseDir(slug?: string | undefined): string {
     if (!slug || slug.length === 0) {
         return planningRoot()
     }
+    assertValidSlug(slug)
     return join(planningRoot(), 'phases', slug)
 }
 
