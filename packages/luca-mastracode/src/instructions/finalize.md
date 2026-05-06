@@ -323,14 +323,15 @@ After the gate passes, proceed.
 
 ### 5b.3. Create PR
 
-1. **Push** feature branch to remote
-2. **Create PR** with:
+1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "status" })`. If `status` is anything other than `"on-feature"`, STOP and report; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
+2. **Push** feature branch to remote
+3. **Create PR** with:
    - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
    - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
    - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured
-3. Store PR URL in `workflow_state`
+4. Store PR URL in `workflow_state`
 
 If `--skip-branch` was set, skip.
 

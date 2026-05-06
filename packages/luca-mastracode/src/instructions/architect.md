@@ -32,11 +32,25 @@ You are **Luca's architect agent**. Create detailed, reviewable execution plans 
 Unless `--skip-branch` is set:
 
 1. **Create GitHub issue** (title, description, labels, complexity)
-2. **Create feature branch** from default branch:
-   - `feat/<issue-number>-<short-description>` for features
-   - `fix/<issue-number>-<short-description>` for fixes
-   - `refactor/<issue-number>-<short-description>` for refactors
-3. Store issue number and branch name in `workflow_state`
+2. **Create feature branch** via `ensureFeatureBranch` tool (do NOT shell out to `git switch -c` directly — the tool persists `branchName`/`issueNumber` to `luca-state.json` and validates non-collision):
+
+   ```
+   ensureFeatureBranch({
+     action: "create",
+     type: "feat" | "fix" | "refactor" | "chore" | "docs" | "test" | "style",
+     issueNumber: <issue-number>,         // optional but strongly recommended
+     slug: "<short-kebab-description>",   // will be slugified defensively
+   })
+   ```
+
+   Returned `status` values:
+   - `"created"` — switched to new branch from default. Proceed.
+   - `"already-on-feature"` — repo was already on a feature branch matching the recorded state. Proceed.
+   - `"branch-mismatch"` / `"local-collision"` / `"remote-collision"` — STOP. Report to user; do not retry blindly.
+   - `"on-default"` (only seen via action="status") — must call `action: "create"` first.
+   - `"detached"` / `"no-git"` / `"git-error"` — STOP. Report to user.
+
+3. The tool already persists `branchName` and `issueNumber` to `workflow_state`. No second `workflowState write` is required for those fields.
 
 If `--skip-branch` is set, skip entirely and note in plan.
 

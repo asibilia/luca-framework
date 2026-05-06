@@ -14,6 +14,7 @@ export { runPostmortemTool } from './run-postmortem.js'
 export { claimVerifierTool } from './claim-verifier.js'
 export { prReviewTool } from './pr-review.js'
 export { runRulesTool } from './run-rules.js'
+export { ensureFeatureBranchTool } from './ensure-feature-branch.js'
 
 // Permission system
 export { createScopedTool } from './create-scoped-tool.js'
