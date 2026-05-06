@@ -68,10 +68,10 @@ packages/luca-mastracode/.planning/
 # Eval results (generated, per-run)
 .planning/evals/
 
-# tests (removed wholesale — see src/rules/general/no-tests.rule.ts)
-__tests__/
-*.test.ts
-*.spec.ts
+# tests — only the throwaway tmp files are ignored. The luca-mastracode
+# package keeps its unit tests in src/__tests__/ (run via `bun test`); the
+# previous wholesale exclusion (tied to a since-retired no-tests rule)
+# meant Copilot/reviewers never saw the test files in PR diffs.
 .tmp-test-*
 
 # next.js

@@ -15,28 +15,50 @@ interface GitResult {
     stderr: string
 }
 
-function git(args: readonly string[]): GitResult {
+interface GitOptions {
+    /** Timeout in milliseconds. Pass to bound network-touching commands. */
+    timeoutMs?: number
+}
+
+function git(args: readonly string[], opts: GitOptions = {}): GitResult {
     try {
         const stdout = execFileSync('git', args, {
             encoding: 'utf-8',
             stdio: ['ignore', 'pipe', 'pipe'],
+            ...(opts.timeoutMs !== undefined
+                ? { timeout: opts.timeoutMs, killSignal: 'SIGTERM' as const }
+                : {}),
         })
         return { ok: true, stdout: stdout.trim(), stderr: '' }
     } catch (err) {
-        const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string }
+        const e = err as {
+            stdout?: Buffer
+            stderr?: Buffer
+            message?: string
+            code?: string
+            signal?: string
+        }
+        const timedOut =
+            e.code === 'ETIMEDOUT' ||
+            e.signal === 'SIGTERM' ||
+            e.signal === 'SIGKILL'
         return {
             ok: false,
             stdout: e.stdout?.toString().trim() ?? '',
             stderr:
                 e.stderr?.toString().trim() ??
                 e.message ??
-                'git command failed',
+                (timedOut ? 'git command timed out' : 'git command failed'),
         }
     }
 }
 
 function isInsideGitRepo(): boolean {
-    return git(['rev-parse', '--is-inside-work-tree']).ok
+    // `git rev-parse --is-inside-work-tree` can exit 0 while printing "false"
+    // when run inside a `.git/` directory or a bare repo. Validate the stdout
+    // so non-worktrees are correctly rejected before we touch any branch state.
+    const r = git(['rev-parse', '--is-inside-work-tree'])
+    return r.ok && r.stdout === 'true'
 }
 
 function currentBranch(): string {
@@ -64,8 +86,17 @@ function branchExistsLocal(name: string): boolean {
     return git(['show-ref', '--verify', `refs/heads/${name}`]).ok
 }
 
+/**
+ * Check whether `<name>` exists on `origin`. Bounded by a timeout so an
+ * unreachable remote can't hang the pipeline for ~75 s on TCP retries.
+ * Returns `false` on timeout — callers see "no remote collision" rather than
+ * a hang. The local-collision check still fires, so this fail-open is safe.
+ */
 function branchExistsRemote(name: string): boolean {
-    const r = git(['ls-remote', '--heads', 'origin', name])
+    const REMOTE_LS_TIMEOUT_MS = 5_000
+    const r = git(['ls-remote', '--heads', 'origin', name], {
+        timeoutMs: REMOTE_LS_TIMEOUT_MS,
+    })
     return r.ok && r.stdout.length > 0
 }
 
@@ -219,6 +250,19 @@ export const ensureFeatureBranchTool = createTool({
                 }
             }
 
+            // Detached HEAD is a hard stop — never create branches off an
+            // unintended commit. Documented in architect.md as a stop condition.
+            if (current === '') {
+                return {
+                    ok: false as const,
+                    status: 'detached' as const,
+                    currentBranch: '',
+                    defaultBranch: def,
+                    message:
+                        'HEAD is detached — cannot create a feature branch from an unintended commit. Check out the default branch first.',
+                }
+            }
+
             // Already on a feature branch and not forcing → idempotent no-op.
             if (current !== '' && current !== def && !force) {
                 // Persist whatever state we can infer, but don't overwrite
@@ -272,8 +316,24 @@ export const ensureFeatureBranchTool = createTool({
                 }
             }
 
-            // Create from default branch (or from current HEAD if current
-            // is the default — same thing).
+            // Always create from the default branch. If we're somewhere else
+            // (force=true on a non-default feature branch), switch to default
+            // first so the new branch has a clean base — never the prior
+            // feature branch's commits — matching the documented contract.
+            if (current !== def) {
+                const toDefault = git(['switch', def])
+                if (!toDefault.ok) {
+                    return {
+                        ok: false as const,
+                        status: 'git-error' as const,
+                        currentBranch: current,
+                        defaultBranch: def,
+                        proposedBranch: target,
+                        message: `git switch ${def} failed (could not return to default before branching): ${toDefault.stderr}`,
+                    }
+                }
+            }
+
             const switched = git(['switch', '-c', target])
             if (!switched.ok) {
                 return {
@@ -313,13 +373,23 @@ export const ensureFeatureBranchTool = createTool({
                         'action="rename" requires both `type` and `slug`. Optional: `issueNumber`.',
                 }
             }
-            if (current === '' || current === def) {
+            if (current === '') {
                 return {
                     ok: false as const,
-                    status: 'cannot-rename' as const,
+                    status: 'detached' as const,
+                    currentBranch: '',
+                    defaultBranch: def,
+                    message:
+                        'Cannot rename: HEAD is detached. Check out a feature branch first.',
+                }
+            }
+            if (current === def) {
+                return {
+                    ok: false as const,
+                    status: 'on-default' as const,
                     currentBranch: current,
                     defaultBranch: def,
-                    message: `Cannot rename '${current || '(detached)'}'. Must be on a feature branch.`,
+                    message: `Cannot rename '${current}'. The default branch must never be renamed; create a feature branch first.`,
                 }
             }
             const target = buildBranchName({ type, issueNumber, slug })
@@ -332,14 +402,24 @@ export const ensureFeatureBranchTool = createTool({
                     message: `Branch already named '${target}'.`,
                 }
             }
-            if (branchExistsLocal(target) || branchExistsRemote(target)) {
+            if (branchExistsLocal(target)) {
                 return {
                     ok: false as const,
-                    status: 'collision' as const,
+                    status: 'local-collision' as const,
                     currentBranch: current,
                     defaultBranch: def,
                     proposedBranch: target,
-                    message: `Cannot rename: '${target}' already exists locally or on origin.`,
+                    message: `Cannot rename: local branch '${target}' already exists.`,
+                }
+            }
+            if (branchExistsRemote(target)) {
+                return {
+                    ok: false as const,
+                    status: 'remote-collision' as const,
+                    currentBranch: current,
+                    defaultBranch: def,
+                    proposedBranch: target,
+                    message: `Cannot rename: remote branch '${target}' already exists on origin.`,
                 }
             }
             const renamed = git(['branch', '-m', target])
