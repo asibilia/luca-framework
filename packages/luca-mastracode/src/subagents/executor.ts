@@ -28,7 +28,19 @@ export const executorSubagent: HarnessSubagent = {
 2. Read relevant existing code — understand conventions before writing
 3. Implement the change following existing patterns
 4. Verify the change works (run the task's verification command)
-5. Stage and commit with a descriptive message
+5. **Pre-commit MuninnDB recall** — before staging, query MuninnDB for prior learnings that could change *what* gets committed (commit-message conventions, sign-off trailers, scope rules, files we've previously committed by mistake). Vault from \`.planning/config.json\` → \`muninn.vault\`, fallback \`"default"\`:
+
+   \`\`\`
+   mcp__muninn__muninn_recall({
+     vault: "<repo_vault>",
+     context: ["commit conventions", "pre-commit pitfalls", "<scope of this task>"],
+     mode: "semantic",
+     limit: 5,
+   })
+   \`\`\`
+
+   Apply any directly relevant learnings (trailer format, files to exclude, message structure). If MuninnDB is unreachable, log and proceed — never block on a recall failure.
+6. Stage and commit with a descriptive message
 
 ## Commit Format
 \`\`\`

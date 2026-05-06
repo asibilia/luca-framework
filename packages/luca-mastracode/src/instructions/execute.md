@@ -373,6 +373,19 @@ If MuninnDB unavailable, learner outputs structured text. Include in execution s
 
 After verification and review pass for each task:
 
+0. **Pre-commit MuninnDB recall** (once per wave, before the first commit of the wave). Query MuninnDB for commit-related learnings — message conventions, trailer formats, files repeatedly committed by mistake, scope-naming rules. Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`:
+
+   ```
+   mcp__muninn__muninn_recall(
+     vault: "<repo_vault>",
+     context: ["commit conventions", "pre-commit pitfalls", "<wave scope>"],
+     mode: "semantic",
+     limit: 5,
+   )
+   ```
+
+   Apply directly relevant findings to the commit messages and staging set. If MuninnDB is unreachable, log and continue — never block.
+
 1. Stage only files changed by that task
 2. Atomic commit:
    ```

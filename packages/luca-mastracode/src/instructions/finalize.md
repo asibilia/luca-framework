@@ -303,6 +303,19 @@ Now — and only now, after every review iteration is resolved — write the cha
 
 If a changeset already exists from earlier in the session: re-read it now, reconcile against the current branch, and rewrite it. Do not assume it's still accurate.
 
+**Pre-changeset MuninnDB recall** — before writing the changeset, query MuninnDB for changeset-related learnings (bump-level conventions, frontmatter format, package-name rules, per-package release notes patterns, recurring drift modes). This complements the release-conventions recall in Step 5b but targets *artifact authoring* rather than PR titling:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "<repo_vault>",
+  context: ["changeset format", "version bump conventions", "release-note pitfalls", "<affected packages>"],
+  mode: "semantic",
+  limit: 5,
+)
+```
+
+Apply any directly relevant learnings (correct frontmatter shape, when to split into multiple changesets, which package names are canonical). If MuninnDB is unreachable, log and proceed — never block.
+
 ### 5b.2. Verify artifact claims
 
 Run the claim verifier across the changeset and PR body draft **before** calling `gh pr create`:
