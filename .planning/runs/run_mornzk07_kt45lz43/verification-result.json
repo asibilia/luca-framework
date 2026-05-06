@@ -1,0 +1,48 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "review-iter1-mustfix-1-reset-slug",
+      "description": "reset-pipeline freshState clears currentPhaseSlug; archivePriorRun runs first; new save-triage-results derives fresh slug from new intent",
+      "met": true,
+      "evidence": "commit 0e28e3066; manual verification: seeded slug=old-stale-slug, after reset slug=undefined, after new triage slug=20260505-1513-new-different-feature (fresh, distinct, derived from new intent)",
+      "blocking": true
+    },
+    {
+      "criterionId": "review-iter1-mustfix-2-claim-verifier-traversal",
+      "description": "claim-verifier resolveArtifactPath rejects '/' / '\\\\' / '..' segments before phase/planning fallbacks; downstream verifyFile surfaces ENOENT instead of reading escaped files",
+      "met": true,
+      "evidence": "commit d62427879; manual verification: planted secret at tmp/evil.txt, called verify-file path='../../../evil.txt', report did not contain SECRET content (file not read); legitimate basename inputs unchanged",
+      "blocking": true
+    },
+    {
+      "criterionId": "review-iter1-shouldfix-trio",
+      "description": "branding.ts/shadow-scanner.ts/triage.ts hardcoded paths routed through CONFIG_PATH/LOCK_PATH; repoCleanup archive-loose error shape normalized to {success:false, error}; phasePath rejects '.' and empty filenames",
+      "met": true,
+      "evidence": "commit ab5d8ad5f; manual phasePath test cases: '.', '', '..', 'a/b' all throw; 'PLAN.md' resolves correctly",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Review iteration 1 complete: 2 MUST-FIX + 3 SHOULD-FIX in 3 atomic commits. tsc clean, 101/101 tests pass. Transitioning back to review.",
+  "timestamp": "2026-05-05T19:15:37.669Z",
+  "runId": "run_mornzk07_kt45lz43"
+}

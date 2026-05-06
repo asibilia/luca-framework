@@ -21,6 +21,8 @@ import {
 } from 'node:fs'
 import { join, basename } from 'node:path'
 
+import { TODOS_ROOT } from '../util/phase-paths.js'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -56,7 +58,7 @@ export interface Todo {
 const STATUS_DIRS: TodoStatus[] = ['pending', 'backlog', 'done']
 
 function todosRoot(): string {
-    return join(process.cwd(), '.planning', 'todos')
+    return TODOS_ROOT()
 }
 
 function ensureDir(dir: string): void {

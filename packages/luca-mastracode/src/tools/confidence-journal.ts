@@ -15,7 +15,7 @@ import {
 export const confidenceJournalTool = createTool({
     id: 'confidence-journal',
     description:
-        'Track execution-time decision confidence. Log entries when the executor encounters ambiguity, makes on-the-fly decisions, or lacks sufficient plan detail. Produces a reviewable `.planning/CONFIDENCE-JOURNAL.md` that highlights blocks needing human re-review.',
+        'Track execution-time decision confidence. Log entries when the executor encounters ambiguity, makes on-the-fly decisions, or lacks sufficient plan detail. Produces a reviewable CONFIDENCE-JOURNAL.md (under .planning/phases/<slug>/ when a phase is active, otherwise .planning/) that highlights blocks needing human re-review.',
     inputSchema: z.object({
         action: z
             .enum(['log', 'read', 'summary', 'render'])

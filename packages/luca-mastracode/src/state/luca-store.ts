@@ -8,14 +8,12 @@
  * This file survives mode switches, process restarts, and TUI reconnections.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 
 import { atomicWriteSync } from '../util/atomic-write.js'
 import { MODES } from '../constants/mode-ids.js'
+import { STATE_PATH } from '../util/phase-paths.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
-
-const STATE_FILE = '.planning/luca-state.json'
 
 /**
  * Mirror of `PhaseSnapshot` from `phase-diff.ts`. Inlined here to avoid a
@@ -66,6 +64,19 @@ export interface LucaWorkflowState {
     // --- Phase tracking ---
     phaseResults?: PhaseResult[]
     currentPhaseName?: string
+    /**
+     * Session-scoped slug for the .planning/phases/<slug>/ artifact directory.
+     *
+     * Derived during triage from the user intent (ticket-id when present, else
+     * timestamp + intent kebab). IMMUTABLE once persisted — re-entry into the
+     * pipeline must NOT recompute the slug. Consumers that resolve artifact
+     * paths via `phaseDir(slug)` / `phasePath(file, slug)` from
+     * `util/phase-paths.ts` will fall back to root .planning/ when this is
+     * undefined (legacy in-flight runs at upgrade time).
+     *
+     * @see issue #220
+     */
+    currentPhaseSlug?: string
     currentWave?: number
     currentIteration?: number
     milestoneCount?: number
@@ -103,7 +114,7 @@ export interface LucaWorkflowState {
 }
 
 function statePath(): string {
-    return join(process.cwd(), STATE_FILE)
+    return STATE_PATH()
 }
 
 /**

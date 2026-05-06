@@ -1,8 +1,16 @@
+import { join, relative } from 'node:path'
+
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
+import { archiveLoose, detectStragglers } from './repo-cleanup.js'
 
+import {
+    snapshotWorkingTree,
+    computePhaseDiff,
+    type PhaseSnapshot,
+} from '../analysis/phase-diff.js'
+import { MODES, ALL_REGISTERED_MODES } from '../constants/mode-ids.js'
 import {
     readLucaState,
     writeLucaState,
@@ -12,18 +20,21 @@ import {
     completePhase,
     type LucaWorkflowState,
 } from '../state/luca-store.js'
-import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 import {
     appendLedger,
     archivePriorRun,
     startNewRun,
 } from '../state/session-ledger.js'
-import {
-    snapshotWorkingTree,
-    computePhaseDiff,
-    type PhaseSnapshot,
-} from '../analysis/phase-diff.js'
 import { readVerificationResult } from '../state/verification-result.js'
+import {
+    deriveSlug,
+    phasePath,
+    planningRoot,
+    resolveAvailableSlug,
+    ROADMAP_PATH,
+} from '../util/phase-paths.js'
+import { tickPhaseTasks } from '../util/plan-checkboxes.js'
+import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 
 const VALID_MODES = ALL_REGISTERED_MODES
 
@@ -142,11 +153,16 @@ const savePlanArtifactsAction = z.object({
     action: z.literal('save-plan-artifacts'),
     planFile: z
         .string()
-        .describe('Path to plan file (default: .planning/PLAN.md)'),
+        .optional()
+        .describe(
+            'Path to plan file. Defaults to .planning/phases/<slug>/PLAN.md when slug is set, else .planning/PLAN.md.'
+        ),
     roadmapFile: z
         .string()
         .optional()
-        .describe('Path to roadmap file (default: .planning/ROADMAP.md)'),
+        .describe(
+            'Path to roadmap file. Always at .planning/ROADMAP.md (cross-phase).'
+        ),
 })
 
 const saveReviewResultsAction = z.object({
@@ -168,7 +184,9 @@ const EMPTY_PHASE_CATEGORIES = [
 
 const justifyEmptyPhaseAction = z.object({
     action: z.literal('justify-empty-phase'),
-    phase: z.string().describe('Phase name (must match the in-progress phase).'),
+    phase: z
+        .string()
+        .describe('Phase name (must match the in-progress phase).'),
     category: z
         .enum(EMPTY_PHASE_CATEGORIES)
         .describe(
@@ -198,6 +216,13 @@ const reEnterPipelineAction = z.object({
         ),
 })
 
+// archive-loose has no extra fields — the action discriminator alone is
+// sufficient. Defined for completeness and future-proofing in case the
+// action gains options (e.g. dry-run / explicit slug override).
+const archiveLooseAction = z.object({
+    action: z.literal('archive-loose'),
+})
+
 // ── All valid actions (exported for createScopedTool) ──────────────
 export const WORKFLOW_STATE_ACTIONS = [
     'read',
@@ -213,6 +238,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     'save-review-results',
     'reset-pipeline',
     're-enter-pipeline',
+    'archive-loose',
 ] as const
 
 export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
@@ -231,7 +257,7 @@ const workflowStateInputSchema = z.object({
     action: z
         .enum(WORKFLOW_STATE_ACTIONS)
         .describe(
-            "Which action to perform. read: check state before acting. switch-mode: only after current mode's work is complete. start-phase/complete-phase: bracket each phase. advance-wave: only after checks pass."
+            "Which action to perform. read: check state before acting. switch-mode: only after current mode's work is complete. start-phase/complete-phase: bracket each phase. advance-wave: only after checks pass. archive-loose: migrate root stragglers under .planning/ into the active phase dir (refused if pipeline lock is held by another live session)."
         ),
 
     // write
@@ -309,13 +335,13 @@ const workflowStateInputSchema = z.object({
         .string()
         .optional()
         .describe(
-            "Path to plan file, default .planning/PLAN.md (required for 'save-plan-artifacts')."
+            'Path to plan file. Defaults to .planning/phases/<slug>/PLAN.md when slug is set, else .planning/PLAN.md.'
         ),
     roadmapFile: z
         .string()
         .optional()
         .describe(
-            'Path to roadmap file, default .planning/ROADMAP.md (save-plan-artifacts only).'
+            'Path to roadmap file. Always at .planning/ROADMAP.md (cross-phase).'
         ),
 
     // save-review-results
@@ -597,10 +623,7 @@ export const workflowStateTool = createTool({
                     const preWaveState = readLucaState()
                     const currentWave = preWaveState.currentWave ?? 1
                     const verification = readVerificationResult()
-                    if (
-                        !verification ||
-                        verification.wave !== currentWave
-                    ) {
+                    if (!verification || verification.wave !== currentWave) {
                         appendLedger('wave-advance-blocked', {
                             phase: preWaveState.currentPhaseName,
                             wave: currentWave,
@@ -683,6 +706,41 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // ── Guard 3: cross-phase stragglers under .planning/ ──
+                    // The PR description and changeset for #220 commit to
+                    // BLOCKING when root stragglers are present, so callers
+                    // cannot proceed to finalize with legacy artifacts at the
+                    // root. Returns a structured error with the straggler list
+                    // and a runnable suggestion (PR #222 review).
+                    //
+                    // Skipped on `verificationPassed === false` so failed
+                    // completions still record cleanly without spurious
+                    // straggler errors layered on top.
+                    if (verificationPassed !== false) {
+                        try {
+                            const { rootStragglers, unknownRootDirs } =
+                                detectStragglers()
+                            if (
+                                rootStragglers.length > 0 ||
+                                unknownRootDirs.length > 0
+                            ) {
+                                return {
+                                    success: false,
+                                    code: 'PHASE_COMPLETE_STRAGGLERS_AT_ROOT',
+                                    message: `Phase "${phaseName}" cannot be completed: ${rootStragglers.length} straggler file(s) and ${unknownRootDirs.length} unknown dir(s) at .planning/ root. Run workflowState({action:"archive-loose"}) to migrate stragglers into the active phase dir, then re-run complete-phase. (Unknown dirs must be cleaned up manually.)`,
+                                    stragglers: {
+                                        files: rootStragglers,
+                                        unknownDirs: unknownRootDirs,
+                                    },
+                                }
+                            }
+                        } catch {
+                            // detectStragglers is best-effort: a scan glitch
+                            // should not permanently block phase completion.
+                            // Fall through to completePhase().
+                        }
+                    }
+
                     const phaseResult = completePhase({
                         verificationPassed,
                         reviewPassed,
@@ -698,22 +756,91 @@ export const workflowStateTool = createTool({
                         filesChanged: diff.filesChanged.length,
                         commitsAdded: diff.commitsAdded.length,
                     })
+
+                    // ── Advisory: tick PLAN.md checkboxes for this phase ──
+                    // Runs AFTER all three guards (diff + verification +
+                    // stragglers) have passed AND the review pass has
+                    // confirmed completion. We gate on `reviewPassed ===
+                    // true` (not `!== false`) so the Execute-side
+                    // complete-phase call — which runs BEFORE Review hands
+                    // back — does NOT tick prematurely. If Review comes
+                    // back MUST-FIX, the phase reopens and PLAN.md stays
+                    // unticked. Finalize re-invokes complete-phase with
+                    // `reviewPassed: true` once Review has approved, which
+                    // is when the tick actually happens. Failures (file
+                    // missing, heading mismatch, write error) are advisory
+                    // only and never block phase completion (PR #222 review).
+                    let planTickResult:
+                        | {
+                              success: boolean
+                              tickedCount: number
+                              alreadyTickedCount: number
+                              tickedLines: number[]
+                              planFile: string
+                              reason?: string
+                          }
+                        | undefined
+                    try {
+                        const planFile =
+                            preState.planFile ??
+                            phasePath('PLAN.md', preState.currentPhaseSlug)
+                        if (
+                            verificationPassed !== false &&
+                            reviewPassed === true
+                        ) {
+                            const result = tickPhaseTasks(planFile, phaseName)
+                            planTickResult = {
+                                success: result.success,
+                                tickedCount: result.tickedCount,
+                                alreadyTickedCount: result.alreadyTickedCount,
+                                tickedLines: result.tickedLines,
+                                planFile: result.planFile,
+                                reason: result.reason,
+                            }
+                            appendLedger('plan-tick-result', {
+                                phase: phaseName,
+                                planFile: result.planFile,
+                                success: result.success,
+                                tickedCount: result.tickedCount,
+                                alreadyTickedCount: result.alreadyTickedCount,
+                                reason: result.reason ?? null,
+                            })
+                        }
+                    } catch {
+                        // Best-effort advisory; never fail complete-phase.
+                    }
+
+                    // Stragglers are now blocked at Guard 3 above; the success
+                    // path here implies a clean root.
                     return {
                         success: true,
                         message: `Completed phase "${phaseName}" (${diff.filesChanged.length} files changed, ${diff.commitsAdded.length} commits)`,
                         state: phaseResult,
+                        planTickResult,
                     }
                 }
                 case 'save-triage-results': {
                     const triage = parseAction(saveTriageResultsAction, raw)
-                    const triageState = writeLucaState({
+                    const updates: Partial<LucaWorkflowState> = {
                         intent: triage.intent,
                         complexity: triage.complexity,
                         oversight: triage.oversight,
                         profile: triage.profile ?? 'balanced',
                         affectedAreas: triage.affectedAreas,
                         skipResearch: triage.skipResearch,
-                    })
+                    }
+
+                    // Derive session-scoped phase slug if not already set
+                    // (re-entry idempotency). Slug is IMMUTABLE: once
+                    // persisted by triage, never recomputed. See #220.
+                    const current = readLucaState()
+                    if (!current.currentPhaseSlug && triage.intent) {
+                        const baseSlug = deriveSlug(triage.intent)
+                        updates.currentPhaseSlug =
+                            resolveAvailableSlug(baseSlug)
+                    }
+
+                    const triageState = writeLucaState(updates)
                     appendLedger('triage-complete', {
                         intent: triage.intent,
                         complexity: triage.complexity,
@@ -728,15 +855,50 @@ export const workflowStateTool = createTool({
                 case 'save-plan-artifacts': {
                     const { planFile: rawPlan, roadmapFile: rawRoadmap } =
                         parseAction(savePlanArtifactsAction, raw)
-                    // Normalize bare filenames to .planning/ directory
-                    const planFile = rawPlan.startsWith('.planning/')
-                        ? rawPlan
-                        : `.planning/${rawPlan}`
-                    const roadmapFile = rawRoadmap
-                        ? rawRoadmap.startsWith('.planning/')
-                            ? rawRoadmap
-                            : `.planning/${rawRoadmap}`
-                        : undefined
+
+                    // Per-phase scope per #220: PLAN.md, CONTEXT.md, RESEARCH.md
+                    // resolve under phaseDir(slug); ROADMAP.md is always root.
+                    // Read slug at exec time; absent slug falls back to root
+                    // (see `phasePath` semantics).
+                    const slug = readLucaState().currentPhaseSlug
+                    const toRepoRelative = (abs: string): string =>
+                        relative(process.cwd(), abs)
+
+                    // planFile resolution:
+                    //  - omitted              → phasePath('PLAN.md', slug)
+                    //  - bare filename ("X")  → phasePath('X', slug)
+                    //  - explicit .planning/* → preserved as-is (caller knows)
+                    //  - any other path       → preserved as-is
+                    let planFile: string
+                    if (rawPlan === undefined) {
+                        planFile = toRepoRelative(phasePath('PLAN.md', slug))
+                    } else if (
+                        !rawPlan.includes('/') &&
+                        !rawPlan.includes('\\')
+                    ) {
+                        planFile = toRepoRelative(phasePath(rawPlan, slug))
+                    } else {
+                        planFile = rawPlan
+                    }
+
+                    // roadmapFile resolution:
+                    //  - omitted              → ROADMAP_PATH() (root)
+                    //  - bare filename        → planningRoot()/<filename>
+                    //  - explicit path        → preserved as-is
+                    let roadmapFile: string
+                    if (rawRoadmap === undefined) {
+                        roadmapFile = toRepoRelative(ROADMAP_PATH())
+                    } else if (
+                        !rawRoadmap.includes('/') &&
+                        !rawRoadmap.includes('\\')
+                    ) {
+                        roadmapFile = toRepoRelative(
+                            join(planningRoot(), rawRoadmap)
+                        )
+                    } else {
+                        roadmapFile = rawRoadmap
+                    }
+
                     const planState = writeLucaState({
                         planFile,
                         roadmapFile,
@@ -747,7 +909,7 @@ export const workflowStateTool = createTool({
                     })
                     return {
                         success: true,
-                        message: `Plan artifacts saved: planFile=${planFile}${roadmapFile ? `, roadmapFile=${roadmapFile}` : ''}`,
+                        message: `Plan artifacts saved: planFile=${planFile}, roadmapFile=${roadmapFile}`,
                         state: planState,
                     }
                 }
@@ -856,6 +1018,15 @@ export const workflowStateTool = createTool({
                         emptyPhaseJustifications: undefined,
                         // Run identity — clear so startNewRun mints a fresh ID
                         runId: undefined,
+                        // Phase slug — clear so the next save-triage-results
+                        // re-derives a fresh slug from the new intent. Otherwise
+                        // the stale slug short-circuits the
+                        // `if (!current.currentPhaseSlug && triage.intent)`
+                        // guard and the new session writes into the prior
+                        // session's phases/<old-slug>/ tree (#220 review).
+                        // archivePriorRun above runs first, so it can still
+                        // resolve the prior slug for archival routing.
+                        currentPhaseSlug: undefined,
                     })
                     const newRunId = startNewRun()
                     appendLedger('pipeline-reset', {
@@ -906,6 +1077,65 @@ export const workflowStateTool = createTool({
                         return {
                             success: false,
                             message: `Re-entered state but mode switch failed: ${err instanceof Error ? err.message : String(err)}`,
+                        }
+                    }
+                }
+                case 'archive-loose': {
+                    // Validate the action shape (no extra fields). Keeps
+                    // future option additions cheap and gives a precise
+                    // ActionValidationError on misuse.
+                    parseAction(archiveLooseAction, raw)
+
+                    // Delegate to repo-cleanup's archiveLoose() which
+                    // performs the full guard set:
+                    //   1. Refuses if .luca-lock.json is held by another
+                    //      live PID (own PID is fine).
+                    //   2. Refuses if currentPhaseSlug is not set (cannot
+                    //      determine target phase directory).
+                    //   3. Skips files whose target already exists.
+                    try {
+                        const { archived, skipped } = archiveLoose()
+                        appendLedger('archive-loose', {
+                            archivedCount: archived.length,
+                            skippedCount: skipped.length,
+                        })
+                        // Three outcomes (PR #222 review):
+                        //   1. archived > 0          → migration progressed.
+                        //   2. archived = 0, skipped > 0 → migration is
+                        //      INCOMPLETE: every candidate was skipped
+                        //      because its target already existed (or
+                        //      rename failed). Return success:false so
+                        //      Finalize doesn't treat this as remediation
+                        //      and `complete-phase` will keep blocking
+                        //      until the operator resolves manually.
+                        //   3. archived = 0, skipped = 0 → genuinely
+                        //      clean; no stragglers found.
+                        if (archived.length === 0 && skipped.length > 0) {
+                            return {
+                                success: false,
+                                code: 'ARCHIVE_LOOSE_SKIPPED_ONLY',
+                                message: `No files migrated — all ${skipped.length} root straggler(s) were skipped (target already exists or rename failed). Resolve manually before re-running.`,
+                                archived,
+                                skipped,
+                            }
+                        }
+                        const summary =
+                            archived.length === 0
+                                ? 'No root stragglers found — nothing to archive.'
+                                : `Archived ${archived.length} file(s) into the active phase dir${skipped.length > 0 ? ` (${skipped.length} skipped)` : ''}.`
+                        return {
+                            success: true,
+                            message: summary,
+                            archived,
+                            skipped,
+                        }
+                    } catch (err) {
+                        return {
+                            success: false,
+                            error:
+                                err instanceof Error
+                                    ? err.message
+                                    : String(err),
                         }
                     }
                 }

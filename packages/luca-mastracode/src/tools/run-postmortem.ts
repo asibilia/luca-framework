@@ -3,7 +3,9 @@
  *
  * Three actions:
  *   - analyze: return the structured PostmortemReport.
- *   - render:  write `.planning/POSTMORTEM.md` and return the path + violation count.
+ *   - render:  write POSTMORTEM.md (under `.planning/phases/<slug>/` when a
+ *              phase is active, otherwise `.planning/`) and return the path
+ *              + violation count.
  *   - gate:    same as analyze, but returns success=false with code POSTMORTEM_VIOLATIONS
  *              if any critical violations exist. Used by finalize as the last
  *              gate before PR creation.
@@ -27,7 +29,7 @@ export const runPostmortemTool = createTool({
     description:
         'Analyze a Luca pipeline run for silent skips, unverified todo completions, and other gaps. ' +
         "Use 'gate' as the last call in finalize before PR creation — critical violations block the PR. " +
-        "Use 'render' to write a human-readable .planning/POSTMORTEM.md report. " +
+        "Use 'render' to write a human-readable POSTMORTEM.md report (under .planning/phases/<slug>/ when a phase is active, otherwise .planning/). " +
         "Use 'analyze' for read-only inspection. " +
         "Use 'list-runs' to enumerate archived runs in the ledger. " +
         'The tool returns a `pitfalls` array of pre-formatted MuninnDB payloads (default vault) — forward each via mcp__muninn__muninn_remember.',
@@ -35,7 +37,7 @@ export const runPostmortemTool = createTool({
         action: z
             .enum(['analyze', 'render', 'gate', 'list-runs'])
             .describe(
-                'analyze: structured report | render: write .planning/POSTMORTEM.md | gate: block on critical violations | list-runs: enumerate archived runs'
+                'analyze: structured report | render: write POSTMORTEM.md under the active phase dir (.planning/phases/<slug>/, or .planning/ if no phase is active) | gate: block on critical violations | list-runs: enumerate archived runs'
             ),
         runId: z
             .string()

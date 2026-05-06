@@ -11,7 +11,7 @@
  * the postmortem analyzer can observe verifier activity over time.
  */
 import { existsSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { basename, isAbsolute, join, resolve, sep } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
@@ -21,20 +21,88 @@ import {
     verifyTextArtifact,
     type ClaimVerificationReport,
 } from '../state/claim-verifier.js'
+import { readLucaState } from '../state/luca-store.js'
 import { appendLedger } from '../state/session-ledger.js'
-
-const PLANNING_DIR = '.planning'
+import { phaseDir, planningRoot } from '../util/phase-paths.js'
 
 /**
- * Resolve an artifact path. Tries:
- *   1. The path as-is (absolute or repo-relative).
- *   2. The path under .planning/ as a fallback.
+ * Resolve an artifact path. Tries (in order):
+ *   1. Absolute inputs: normalised via `resolve()` and containment-checked
+ *      against repoRoot. Out-of-repo absolutes (incl. those that normalise
+ *      out, e.g. `${repoRoot}/../x`) are redirected to a guaranteed-missing
+ *      sentinel path so `verifyFile()` surfaces ENOENT instead of reading
+ *      arbitrary host files.
+ *   2. Relative inputs with path separators or `..` segments: resolved
+ *      against repoRoot via `resolve()` and containment-checked. The guard
+ *      runs BEFORE existsSync so normalised traversal escapes are caught
+ *      even when the target exists on disk. Out-of-repo escapes redirect
+ *      to the sentinel path. Phase/planning fallbacks are skipped.
+ *   3. Safe bare filenames (no separators, not `..`): tried at repoRoot,
+ *      then phase dir, then `.planning/` root, then repoRoot as last resort.
+ *
+ * Security properties:
+ *   - No file outside repoRoot is returned for any input (post-normalisation).
+ *   - Traversal-normalised escapes cannot bypass via existsSync (guard first).
+ *   - Phase/planning fallbacks only reachable by bare, safe filenames.
+ *   (#220 security review — extended in #222 to use `resolve()` so raw-prefix
+ *   bypasses like `${repoRoot}/../secrets.txt` are caught.)
  */
 function resolveArtifactPath(repoRoot: string, p: string): string {
-    if (isAbsolute(p)) return p
+    // Normalised repoRoot prefix used for all containment checks below.
+    // `resolve()` collapses any `..` segments before comparison so inputs like
+    // `${repoRoot}/../secrets.txt` (PR #222 review) cannot bypass via raw
+    // prefix-equality.
+    const normRoot = resolve(repoRoot)
+    const normRootWithSep = normRoot.endsWith(sep) ? normRoot : normRoot + sep
+    // Sentinel directory that does not exist on disk. Returning a path under
+    // it guarantees `verifyFile()` surfaces ENOENT/artifact-unreadable rather
+    // than reading an out-of-repo file. We sanitise the basename so traversal
+    // tokens like `..` don't collapse the join back into the parent dir
+    // (PR #222 review hardening).
+    const outOfRepoSentinel = (orig: string): string => {
+        const b = basename(orig)
+        const safe = b && b !== '.' && b !== '..' ? b : 'x'
+        return join(repoRoot, '.claim-verifier-out-of-repo', safe)
+    }
+
+    // 1. Absolute paths: constrain to repo boundary AFTER normalisation.
+    //    Out-of-repo absolutes (incl. `${repoRoot}/../x`) → sentinel path.
+    if (isAbsolute(p)) {
+        const resolved = resolve(p)
+        if (!resolved.startsWith(normRootWithSep) && resolved !== normRoot) {
+            return outOfRepoSentinel(p)
+        }
+        // Within-repo absolute — return the normalised form.
+        return resolved
+    }
+
+    // 2. Traversal guard (runs BEFORE existsSync to catch normalised escapes).
+    //    A relative path is unsafe if it contains any separator or equals '..'.
+    if (p.includes('/') || p.includes('\\') || p === '..') {
+        // Resolve relative to repoRoot then containment-check the normalised
+        // result. `resolve()` collapses `../` sequences so escapes are caught
+        // even when the target exists on disk.
+        const resolved = resolve(repoRoot, p)
+        if (!resolved.startsWith(normRootWithSep) && resolved !== normRoot) {
+            // Out-of-repo escape → sentinel path (ENOENT) instead of raw
+            // traversal string, which `readFileSync` would otherwise resolve
+            // against `process.cwd()` and read outside the workspace
+            // (PR #222 review).
+            return outOfRepoSentinel(p)
+        }
+        return resolved
+    }
+
+    // 3. Safe bare filename: try repo-root → phase dir → .planning/ root.
     const direct = join(repoRoot, p)
     if (existsSync(direct)) return direct
-    const planning = join(repoRoot, PLANNING_DIR, p)
+
+    const slug = readLucaState().currentPhaseSlug
+    if (slug) {
+        const phaseScoped = join(phaseDir(slug), p)
+        if (existsSync(phaseScoped)) return phaseScoped
+    }
+    const planning = join(planningRoot(), p)
     if (existsSync(planning)) return planning
     return direct
 }
@@ -66,7 +134,7 @@ export const claimVerifierTool = createTool({
             .string()
             .optional()
             .describe(
-                'Path to verify (verify-file only). Resolved relative to repo root, then .planning/.'
+                'Path to verify (verify-file only). Resolved relative to repo root, then the active phase dir (.planning/phases/<slug>/), then .planning/.'
             ),
         paths: z
             .array(z.string())

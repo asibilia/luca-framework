@@ -32,7 +32,7 @@ mcp__muninn__muninn_recall(
 
 Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`.
 
-If `.planning/CONTEXT.md` exists, read it for project constraints and domain terminology.
+If a `CONTEXT.md` exists, read it for project constraints and domain terminology. Inside an active Luca pipeline it lives at `.planning/phases/<currentPhaseSlug>/CONTEXT.md` (slug from `.planning/luca-state.json`); otherwise check `.planning/CONTEXT.md` and the repo root as fallbacks.
 
 **Guard**: if a past decision explicitly rejected a refactor you'd otherwise suggest, skip it. Only resurface if friction has materially worsened since the decision was recorded.
 

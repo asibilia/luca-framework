@@ -6,9 +6,13 @@
  * mode reads them for audit aggregation; finalize mode reads them for
  * milestone validation.
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
+import {
+    VERIFICATION_HISTORY_PATH,
+    phasePath,
+} from '../util/phase-paths.js'
+import { readLucaState } from './luca-store.js'
 import { getCurrentRunId } from './session-ledger.js'
 
 // ---------------------------------------------------------------------------
@@ -75,20 +79,22 @@ export interface VerificationResult {
 // File path
 // ---------------------------------------------------------------------------
 
-const RESULT_FILE = '.planning/verification-result.json'
-const HISTORY_FILE = '.planning/verification-history.jsonl'
-
+/**
+ * Resolve the per-phase `verification-result.json` path.
+ *
+ * Read at call time (not module load) so it tracks the live
+ * `currentPhaseSlug` — which is set during triage and referenced from this
+ * point until phase teardown. When slug is absent (legacy in-flight runs),
+ * `phasePath` falls back to `.planning/` root.
+ */
 function resultPath(): string {
-    return join(process.cwd(), RESULT_FILE)
+    const slug = readLucaState().currentPhaseSlug
+    return phasePath('verification-result.json', slug)
 }
 
+/** `.planning/verification-history.jsonl` — root, cross-wave (Decision #4). */
 function historyPath(): string {
-    return join(process.cwd(), HISTORY_FILE)
-}
-
-function ensurePlanningDir(): void {
-    const dir = join(process.cwd(), '.planning')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    return VERIFICATION_HISTORY_PATH()
 }
 
 // ---------------------------------------------------------------------------
@@ -128,11 +134,13 @@ export function readVerificationResult(): VerificationResult | null {
  * silently satisfy the new run's wave/phase guards.
  */
 export function writeVerificationResult(result: VerificationResult): void {
-    ensurePlanningDir()
     const stamped: VerificationResult = {
         ...result,
         runId: result.runId ?? getCurrentRunId(),
     }
+    // resultPath() routes through phasePath() which ensures the parent dir
+    // exists (creating .planning/phases/<slug>/ or .planning/ as needed),
+    // so no separate ensurePlanningDir() call is required here.
     writeFileSync(resultPath(), JSON.stringify(stamped, null, 2), 'utf-8')
     // Append to history (one JSON object per line)
     const line = JSON.stringify(stamped) + '\n'

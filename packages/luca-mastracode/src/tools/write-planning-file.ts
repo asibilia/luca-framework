@@ -1,19 +1,22 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join, resolve, dirname, sep, isAbsolute } from 'node:path'
+import { resolve, dirname, sep, isAbsolute } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { readLucaState } from '../state/luca-store.js'
+import { phaseDir, planningRoot } from '../util/phase-paths.js'
+
 export const writePlanningFileTool = createTool({
     id: 'write-planning-file',
     description:
-        'Read or write files inside the .planning/ directory. Allows read-only pipeline modes to persist planning artifacts (research captures, review notes, etc.) using direct filesystem access. Paths are relative to .planning/ (e.g., "RESEARCH.md", not ".planning/RESEARCH.md").',
+        'Read or write files inside .planning/. Phase-scoped by default: writes go to .planning/phases/<currentPhaseSlug>/ when a slug is set in luca-state.json, falling back to .planning/ root when slug is absent (legacy/in-flight runs). Pass scope:"root" for cross-phase artifacts. Paths must be bare relative paths (e.g., "RESEARCH.md", not ".planning/RESEARCH.md", not "phases/foo/RESEARCH.md" — the slug routing is handled automatically).',
     inputSchema: z.object({
         action: z.enum(['write', 'read']).describe('Operation to perform'),
         path: z
             .string()
             .describe(
-                'File path relative to .planning/ directory (e.g., "RESEARCH.md" or "review-capture-dx-1.md")'
+                'File path relative to the resolved planning directory (e.g., "RESEARCH.md" or "review-capture-dx-1.md"). Do NOT include "phases/<slug>/" — the tool resolves that from state.'
             ),
         content: z
             .string()
@@ -25,6 +28,13 @@ export const writePlanningFileTool = createTool({
             .describe(
                 'File content (REQUIRED for "write" action, ignored for "read"; max 512 KB)'
             ),
+        scope: z
+            .enum(['phase', 'root'])
+            .optional()
+            .default('phase')
+            .describe(
+                'Where to resolve the path: "phase" (default) writes under .planning/phases/<currentPhaseSlug>/ when slug is set, otherwise root; "root" forces .planning/ root (used for cross-phase artifacts like ROADMAP.md, todos/).'
+            ),
     }),
     outputSchema: z.object({
         success: z.boolean(),
@@ -32,7 +42,7 @@ export const writePlanningFileTool = createTool({
         content: z.string().optional(),
     }),
     execute: async (inputData) => {
-        const { action, path: userPath, content } = inputData
+        const { action, path: userPath, content, scope } = inputData
 
         // Reject null bytes (defense-in-depth — Node.js ≥18.17 rejects them in fs ops)
         if (userPath.includes('\0')) {
@@ -57,8 +67,17 @@ export const writePlanningFileTool = createTool({
             }
         }
 
-        // Canonical path containment check (lexical — catches ../ traversal)
-        const planningDir = join(process.cwd(), '.planning')
+        // Resolve target dir based on scope + current phase slug from state.
+        // - scope:"root" → always .planning/ root
+        // - scope:"phase" (default) → .planning/phases/<slug>/ when slug set,
+        //   else .planning/ root (phaseDir(undefined) fallback for legacy runs).
+        const state = readLucaState()
+        const slug = state.currentPhaseSlug as string | undefined
+        const planningDir = scope === 'root' ? planningRoot() : phaseDir(slug)
+
+        // Canonical path containment check (lexical — catches ../ traversal).
+        // Containment applies to the resolved dir (root or phase subdir) so
+        // traversal cannot escape *either* boundary.
         const resolved = resolve(planningDir, userPath)
         // Append sep so ".planning/" doesn't match a sibling dir like ".planning-extra/"
         if (!resolved.startsWith(planningDir + sep)) {
@@ -68,12 +87,18 @@ export const writePlanningFileTool = createTool({
             }
         }
 
+        // Display path mirrors the on-disk layout for human-readable messages.
+        const displayPath =
+            scope === 'phase' && slug
+                ? `.planning/phases/${slug}/${userPath}`
+                : `.planning/${userPath}`
+
         switch (action) {
             case 'write': {
                 if (content === undefined) {
                     return {
                         success: false,
-                        message: `content is required when action is "write" — provide the file content to write to .planning/${userPath}`,
+                        message: `content is required when action is "write" — provide the file content to write to ${displayPath}`,
                     }
                 }
                 mkdirSync(dirname(resolved), { recursive: true })
@@ -87,20 +112,20 @@ export const writePlanningFileTool = createTool({
                     if (code === 'EACCES' || code === 'EPERM') {
                         return {
                             success: false,
-                            message: `Permission denied writing to .planning/${userPath}`,
+                            message: `Permission denied writing to ${displayPath}`,
                         }
                     }
                     if (code === 'EISDIR') {
                         return {
                             success: false,
-                            message: `Path .planning/${userPath} is a directory, not a file`,
+                            message: `Path ${displayPath} is a directory, not a file`,
                         }
                     }
                     throw err
                 }
                 return {
                     success: true,
-                    message: `Written to .planning/${userPath}`,
+                    message: `Written to ${displayPath}`,
                 }
             }
             case 'read': {
@@ -108,7 +133,7 @@ export const writePlanningFileTool = createTool({
                     const fileContent = readFileSync(resolved, 'utf-8')
                     return {
                         success: true,
-                        message: `Read .planning/${userPath} (${fileContent.length} chars)`,
+                        message: `Read ${displayPath} (${fileContent.length} chars)`,
                         content: fileContent,
                     }
                 } catch (err: unknown) {
@@ -119,7 +144,7 @@ export const writePlanningFileTool = createTool({
                     if (code === 'ENOENT') {
                         return {
                             success: false,
-                            message: `File not found: .planning/${userPath}`,
+                            message: `File not found: ${displayPath}`,
                         }
                     }
                     throw err

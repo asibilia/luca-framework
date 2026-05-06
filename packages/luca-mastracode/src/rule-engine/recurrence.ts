@@ -4,7 +4,9 @@
  * Counts how often the same postmortem pitfall has appeared across runs.
  * When recurrence_count >= threshold (default 3), generates a *draft*
  * `.luca/rules/<concept-slug>.ts` rule template and renders the full
- * suggestion set to `.planning/SUGGESTED-RULES.md` for human review.
+ * suggestion set to `SUGGESTED-RULES.md` (under
+ * `.planning/phases/<currentPhaseSlug>/` when a phase is active, otherwise
+ * `.planning/`) for human review.
  *
  * Drafts are NEVER auto-applied. The harness's job is to surface a
  * "this pitfall has bitten you 3+ times — here's a starting point for
@@ -19,11 +21,12 @@
  *     (not total occurrences — we don't want a single noisy run
  *     to spuriously promote a rule).
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { writeFileSync } from 'node:fs'
 
 import { analyzeRun } from '../analysis/postmortem.js'
+import { readLucaState } from '../state/luca-store.js'
 import { listArchivedRuns, listRuns } from '../state/session-ledger.js'
+import { phasePath } from '../util/phase-paths.js'
 import type { ViolationCode } from '../analysis/postmortem.js'
 
 export interface RecurringPitfall {
@@ -240,15 +243,22 @@ ${sections.join('\n---\n\n')}`
 }
 
 /**
- * Write SUGGESTED-RULES.md to .planning/. Creates the directory if missing.
+ * Write SUGGESTED-RULES.md under the active phase directory.
+ *
+ * Reads `currentPhaseSlug` from luca-state at call-time and resolves via
+ * `phasePath()` — so artifacts land in `.planning/phases/<slug>/` when a
+ * phase is active, or fall back to `.planning/` for legacy in-flight runs.
+ * The `repoRoot` argument is preserved for API compatibility but no longer
+ * consulted (paths anchor on `process.cwd()` via `phasePath`). `phasePath`
+ * also creates the parent dir so no explicit mkdir is required.
  */
 export function writeSuggestedRules(opts: {
     repoRoot: string
     report: RecurrenceReport
 }): { path: string; bytes: number } {
-    const planningDir = join(opts.repoRoot, '.planning')
-    if (!existsSync(planningDir)) mkdirSync(planningDir, { recursive: true })
-    const path = join(planningDir, 'SUGGESTED-RULES.md')
+    void opts.repoRoot // kept for backwards-compatible call sites
+    const slug = readLucaState().currentPhaseSlug
+    const path = phasePath('SUGGESTED-RULES.md', slug)
     const md = renderSuggestedRulesMarkdown(opts.report)
     writeFileSync(path, md, 'utf-8')
     return { path, bytes: md.length }

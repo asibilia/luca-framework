@@ -2,13 +2,18 @@
  * check-convergence — track whether successive run-checks invocations are
  * making progress, stalling on the same errors, or have resolved everything.
  *
- * Persists state to `.planning/checks-convergence.json` between runs so the
- * tool can warn the agent when it's spinning on the same set of errors.
+ * Persists state to `checks-convergence.json` between runs so the tool can
+ * warn the agent when it's spinning on the same set of errors. Resolved at
+ * call-time via `phasePath()` so writes land under
+ * `.planning/phases/<currentPhaseSlug>/` when a phase is active, or under
+ * `.planning/` (root fallback) otherwise.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-const CONVERGENCE_FILE = '.planning/checks-convergence.json'
+import { readLucaState } from '../state/luca-store.js'
+import { phasePath } from '../util/phase-paths.js'
+
+const CONVERGENCE_FILENAME = 'checks-convergence.json'
 
 export interface ConvergenceState {
     /** Fingerprints from the last run */
@@ -19,8 +24,13 @@ export interface ConvergenceState {
     totalIterations: number
 }
 
+function convergenceFile(): string {
+    const slug = readLucaState().currentPhaseSlug
+    return phasePath(CONVERGENCE_FILENAME, slug)
+}
+
 export function readConvergence(): ConvergenceState {
-    const p = join(process.cwd(), CONVERGENCE_FILE)
+    const p = convergenceFile()
     if (!existsSync(p))
         return {
             previousFingerprints: [],
@@ -39,13 +49,8 @@ export function readConvergence(): ConvergenceState {
 }
 
 export function writeConvergence(state: ConvergenceState): void {
-    const dir = join(process.cwd(), '.planning')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    writeFileSync(
-        join(process.cwd(), CONVERGENCE_FILE),
-        JSON.stringify(state, null, 2),
-        'utf-8'
-    )
+    // phasePath() already creates the parent dir.
+    writeFileSync(convergenceFile(), JSON.stringify(state, null, 2), 'utf-8')
 }
 
 export function assessConvergence(
