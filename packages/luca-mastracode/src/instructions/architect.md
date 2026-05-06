@@ -50,9 +50,15 @@ Unless `--skip-branch` is set:
    - `"on-default"` (only seen via action="status") — must call `action: "create"` first.
    - `"detached"` / `"no-git"` / `"git-error"` — STOP. Report to user.
 
-3. The tool already persists `branchName` and `issueNumber` to `workflow_state`. No second `workflowState write` is required for those fields.
+3. The tool already persists `branchName` and `issueNumber` to `.planning/luca-state.json` (via `writeLucaState`). No second `workflowState write` is required for those fields.
 
-If `--skip-branch` is set, skip entirely and note in plan.
+If `--skip-branch` is set, skip the `ensureFeatureBranch` call entirely **and** persist `skipBranch: true` to state via `workflowState write` so the executor's pre-commit guard can distinguish "intentional skip" from "Step 1 was missed":
+
+```
+workflowState({ action: "write", updates: { skipBranch: true } })
+```
+
+Note in the plan that branch creation was skipped.
 
 ## Step 1.5: Historical Context (Optional)
 

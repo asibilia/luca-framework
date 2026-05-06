@@ -11,7 +11,13 @@ export const executorSubagent: HarnessSubagent = {
 ## Execution Protocol
 0. **Pre-commit branch guard** (run ONCE per session, before the first \`git commit\`):
 
-   Call \`ensureFeatureBranch({ action: "status" })\`. Decide based on returned \`status\`:
+   First, check whether the user opted out of branch management. Read state:
+   \`\`\`
+   workflowState({ action: "read" })
+   \`\`\`
+   If \`skipBranch === true\`, the orchestrator intentionally skipped feature-branch creation (\`--skip-branch\` was passed). Skip this guard and proceed with execution.
+
+   Otherwise call \`ensureFeatureBranch({ action: "status" })\`. Decide based on returned \`status\`:
    - \`"on-feature"\` — proceed with execution.
    - \`"on-default"\` — STOP. Do NOT commit. Report exactly:
      \`\`\`
@@ -31,12 +37,12 @@ export const executorSubagent: HarnessSubagent = {
 5. **Pre-commit MuninnDB recall** — before staging, query MuninnDB for prior learnings that could change *what* gets committed (commit-message conventions, sign-off trailers, scope rules, files we've previously committed by mistake). Vault from \`.planning/config.json\` → \`muninn.vault\`, fallback \`"default"\`:
 
    \`\`\`
-   mcp__muninn__muninn_recall({
+   mcp__muninn__muninn_recall(
      vault: "<repo_vault>",
      context: ["commit conventions", "pre-commit pitfalls", "<scope of this task>"],
      mode: "semantic",
      limit: 5,
-   })
+   )
    \`\`\`
 
    Apply any directly relevant learnings (trailer format, files to exclude, message structure). If MuninnDB is unreachable, log and proceed — never block on a recall failure.
