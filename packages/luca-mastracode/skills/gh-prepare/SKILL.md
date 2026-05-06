@@ -84,12 +84,24 @@ If yes:
    ```bash
    find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md'
    ```
-2. If no changeset exists, create one:
+2. **Before writing a new changeset**, recall MuninnDB for changeset-authoring learnings (frontmatter conventions, bump-level rules, package-name canonicalisation, per-package release-note patterns). Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`:
+
+   ```
+   mcp__muninn__muninn_recall(
+     vault: "<repo_vault>",
+     context: ["changeset format", "version bump conventions", "release-note pitfalls"],
+     mode: "semantic",
+     limit: 5,
+   )
+   ```
+
+   Apply directly relevant findings. If MuninnDB is unreachable, log and continue — never block.
+3. If no changeset exists, create one:
    - Determine bump level from branch prefix or commit types: `feat` → minor, `fix`/`chore`/`refactor` → patch
    - Read package names from `.changeset/config.json` `"fixed"` groups or workspace `package.json` files
    - Write `.changeset/<slug>.md` with the appropriate bump level and summary
    - `git add .changeset/<slug>.md && git commit -m "chore: add changeset"`
-3. If a changeset already exists, verify it looks correct (right packages, right bump level). Don't duplicate.
+4. If a changeset already exists, verify it looks correct (right packages, right bump level). Don't duplicate.
 
 Skip if `--no-changeset` flag is provided or if no `.changeset/config.json` exists.
 

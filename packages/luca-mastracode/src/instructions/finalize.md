@@ -303,6 +303,19 @@ Now — and only now, after every review iteration is resolved — write the cha
 
 If a changeset already exists from earlier in the session: re-read it now, reconcile against the current branch, and rewrite it. Do not assume it's still accurate.
 
+**Pre-changeset MuninnDB recall** — before writing the changeset, query MuninnDB for changeset-related learnings (bump-level conventions, frontmatter format, package-name rules, per-package release notes patterns, recurring drift modes). This complements the release-conventions recall in Step 5b but targets *artifact authoring* rather than PR titling:
+
+```
+mcp__muninn__muninn_recall(
+  vault: "<repo_vault>",
+  context: ["changeset format", "version bump conventions", "release-note pitfalls", "<affected packages>"],
+  mode: "semantic",
+  limit: 5,
+)
+```
+
+Apply any directly relevant learnings (correct frontmatter shape, when to split into multiple changesets, which package names are canonical). If MuninnDB is unreachable, log and proceed — never block.
+
 ### 5b.2. Verify artifact claims
 
 Run the claim verifier across the changeset and PR body draft **before** calling `gh pr create`:
@@ -323,14 +336,15 @@ After the gate passes, proceed.
 
 ### 5b.3. Create PR
 
-1. **Push** feature branch to remote
-2. **Create PR** with:
+1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "status" })`. If `status` is anything other than `"on-feature"`, STOP and report; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
+2. **Push** feature branch to remote
+3. **Create PR** with:
    - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
    - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
    - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured
-3. Store PR URL in `workflow_state`
+4. Store PR URL in `workflow_state`
 
 If `--skip-branch` was set, skip.
 

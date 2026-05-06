@@ -24,6 +24,7 @@ import { claimVerifierTool } from './claim-verifier.js'
 import { classifyComplexityTool } from './classify-complexity.js'
 import { confidenceJournalTool } from './confidence-journal.js'
 import { createScopedTool } from './create-scoped-tool.js'
+import { ensureFeatureBranchTool } from './ensure-feature-branch.js'
 import { manageRoadmapTool } from './manage-roadmap.js'
 import { manageTodosTool } from './manage-todos.js'
 import { pipelineLockTool } from './pipeline-lock.js'
@@ -213,6 +214,22 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
             [MODES.execute]: ['list', 'run', 'gate'],
             [MODES.review]: ['list', 'run'],
             [MODES.finalize]: '*',
+        },
+    },
+    ensure_feature_branch: {
+        tool: ensureFeatureBranchTool,
+        record_key: 'ensureFeatureBranch',
+        modes: {
+            // Architect creates the branch in Step 1.
+            [MODES.architect]: '*',
+            // Execute checks status before its first commit (pre-commit guard).
+            [MODES.execute]: ['status'],
+            // Finalize verifies status before push + PR.
+            [MODES.finalize]: ['status'],
+            // Build/fast keep full access for ad-hoc workflows + the
+            // gh-prepare skill that retroactively moves commits to a branch.
+            build: '*',
+            fast: '*',
         },
     },
 }

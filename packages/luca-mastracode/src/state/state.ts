@@ -102,6 +102,12 @@ export const lucaStateSchema = z.object({
     // --- Git ---
     branchName: z.string().optional(),
     issueNumber: z.number().optional(),
+    /**
+     * When `--skip-branch` is passed, architect Step 1 skips
+     * `ensureFeatureBranch` and the executor's pre-commit guard reads this
+     * flag to distinguish intentional skip from a missed Step 1.
+     */
+    skipBranch: z.boolean().optional(),
 
     // --- Iteration tracking ---
     checksFixIteration: z.number().default(0),
