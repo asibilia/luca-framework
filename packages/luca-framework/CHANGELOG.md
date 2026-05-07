@@ -1,5 +1,114 @@
 # @alecsibilia/luca-framework
 
+## 11.7.0
+
+### Patch Changes
+
+- 5dff46a: Project preferences foundation: consult conventions instead of hardcoded defaults
+
+  ## What's new
+  - **projectPreferences Mastra tool** — actions: `consult`, `consult-section`, `seed`, `update` for reading and seeding project conventions (branching strategy, commit convention, PR title format, release tool, issue tracker kind) to local cache.
+  - **luca-init skill** — probing wizard that runs on first triage when preferences not yet seeded. Detects branching/commit/release conventions from git history, asks user to confirm, seeds to local cache and MuninnDB.
+  - **ProjectPreferencesSchema (Zod)** — structured type with sections: branching (types, template, default, guarded branches), commits (convention, scopes), pr (titleFormat, baseBranch), release (tool, versionBump), tracker (kind, issuePrefix). All fields optional with sensible defaults.
+  - **Triage sentinel (Step 1.6)** — new early step in triage mode calls `projectPreferences(action: 'consult', fallback: false)`. If prefs missing and `preferencesSeeded !== true`, invokes `/luca-init` skill. Otherwise proceeds to complexity classification.
+  - **Vault helper** — moved `sanitizeVaultName()` to shared mastracode package, both packages import from there. `resolveProjectVault()` reads vault name from config with fallback.
+
+  ## Key design decisions
+  1. **Loop-safe consult**: after successful seed, `preferencesSeeded: true` flag ensures that if the on-disk preferences file is removed or unparseable, consult returns `DEFAULT_PREFERENCES` instead of `null`, preventing infinite re-init loops.
+  2. **Tool vs skill division**: Tool manages local cache and `preferencesSeeded` state flag (TS layer). Skill handles all MuninnDB I/O and user interaction (agent layer), since tools cannot invoke MCP.
+  3. **Backward compat**: `DEFAULT_PREFERENCES.branching.types` matches existing `BRANCH_TYPES` array from ensure-feature-branch.ts; `consult(fallback: true)` returns these defaults when no prefs file exists, so existing repos continue to work.
+  4. **Security**: all free-form preference fields (branching template, commit scopes, PR title format, etc.) that flow into agent instructions are validated against allowlist regex (alphanumeric + whitespace + structural punctuation, max 64 chars). Prevents prompt injection from malicious git history in cloned repos.
+
+  ## Files changed
+
+  New:
+  - `packages/luca-mastracode/src/state/vault.ts` — vault resolution helpers
+  - `packages/luca-mastracode/src/state/project-preferences.ts` — schema, defaults, load/write
+  - `packages/luca-mastracode/src/tools/project-preferences.ts` — consult/seed/update actions
+  - `packages/luca-mastracode/skills/luca-init/SKILL.md` — detection and seeding skill
+  - `packages/luca-mastracode/src/__tests__/project-preferences.test.ts` — comprehensive test coverage including sentinel-loop safety
+
+  Modified:
+  - `packages/luca-framework/src/utils/vault-setup.ts` — re-export sanitizeVaultName from mastracode
+  - `packages/luca-mastracode/src/tools/tool-manifest.ts` — register projectPreferences with mode-scoped permissions
+  - `packages/luca-mastracode/src/tools/index.ts` — export projectPreferences tool
+  - `packages/luca-mastracode/src/instructions/triage.md` — inject Step 1.6 sentinel
+  - `packages/luca-mastracode/src/state/luca-store.ts` — add preferencesSeeded field to LucaWorkflowState
+  - `packages/luca-framework/src/commands/init.ts` — document /luca-init skill in help text
+  - `README.md` — add /luca-init reference
+
+  ## Review notes
+
+  Phase A passed 2 code review iterations:
+  - Iteration 1: 5 MUST-FIX findings (prompt-injection hardening, type safety, runtime scope guard). All resolved in commit 5443aad92.
+  - Iteration 2: clean gate, all MUST-FIX verified resolved, no regressions.
+
+  Tests: 133/133 pass, tsc clean, rule gate clean. Phase B (branching policy refactor) and Phase C (PR/release/commit conventions) build on this foundation.
+
+- 5dff46a: Phase B — branching policy refactor (consult preferences + PT-12458 fix)
+
+  This PR builds on the Phase A "project preferences foundation" and supersedes
+  PR #227 (which is closed in favor of this combined PR). All Phase A changes
+  are included plus the Phase B refactor.
+
+  ## Phase A (foundation, included)
+  - `projectPreferences` Mastra tool — consult / consult-section / seed / update
+    backed by `.planning/preferences.json` and `state.preferencesSeeded`.
+  - Zod schema (`ProjectPreferencesSchema`) covering branching, commits, pr,
+    release, tracker sections with sealed `schemaVersion` and tightened
+    `SAFE_FREEFORM` allowlist (no quote chars, no line terminators).
+  - Vault helpers (`sanitizeVaultName`, `resolveProjectVault`) consolidated in
+    mastracode; framework re-exports for backward compatibility.
+  - Triage Step 1.6 sentinel — when preferences are unseeded, agent invokes the
+    `/luca-init` skill before classifying.
+  - `/luca-init` skill — probing wizard that detects branching/commit/PR
+    conventions from the local repo, confirms with the user, and seeds both the
+    local preferences file AND a MuninnDB memory via JSON-blob handoff (avoids
+    prompt-injection from re-interpolation).
+  - Includes PR #227 Copilot review fixes: plain-object guard in
+    `mergePreferences`, doc accuracy in skill, defensive runtime validation in
+    `consult-section`.
+
+  ## Phase B (branching policy refactor)
+  - **4 new ensureFeatureBranch actions** — `assert-not-default` (read-only
+    guard), `consult` (read preferences), `resolve` (pure multi-rule resolver),
+    `apply` (git-first branch creation + state write).
+  - **Multi-rule branch resolver** — `resolveBranching()` pure function dispatches
+    against `projectPreferences.branching.branchTypes[]` ordered first-match,
+    with fallback rule support. Three base-resolution kinds: `static` (hardcoded
+    default branch), `current-branch-if-matches` (release-branch-aware), `ask`
+    (requires user confirmation). Fixes PT-12458 root cause where the old
+    `status` action returned `"on-feature"` for any non-default branch and
+    conflated feature work onto release branches.
+  - **Schema extensions** — `BranchingSection` adds `RegexSource` validation
+    (with nested-quantifier ReDoS guard), `BaseRule`, `BranchTypeRule`, optional
+    `branchTypes[]`, fallback rule, `confirmBaseBeforeCreate`, and
+    `guardedBranches.min(1)`. All additive; `schemaVersion` stays at `1`.
+  - **State persistence** — `baseBranch` and `prBase` fields added to
+    `LucaWorkflowState`, written by `apply`, read by finalize for PR-base
+    resolution.
+  - **Instruction rewrites** — `architect.md` Step 1 consults preferences and
+    applies a resolve→ask_user→apply flow (no hardcoded branch type enum);
+    executor switches from `status` to `assert-not-default` pre-commit guard;
+    `finalize.md` computes PR base from `state.prBase ?? state.baseBranch ??
+'main'` (no hardcoded `--base main`).
+  - **Test fixtures** — two preferences fixtures: luca-framework (single-rule)
+    and ENG/PT (multi-rule with release-branch base resolution, the PT-12458
+    setup). Two-surface PT-12458 regression: `resolve` returns the correct
+    release-branch base AND `assert-not-default` correctly identifies the
+    release branch as guarded.
+  - **Security hardening** — `SafeRefName` validation on git-ref args passed to
+    `execFileSync`, `RegexSource` ReDoS guard, input length caps on `ticketId`
+    / `intent`.
+
+  ## Review summary
+
+  Phase A: 2 review iterations + PR #227 Copilot fixes folded in.
+  Phase B: 2 review iterations, 0 MUST-FIX remaining.
+  Tests: 175/175 pass (133 Phase A + 42 Phase B-specific).
+  TypeScript: clean.
+  Rule gate: clean.
+
 ## 11.6.0
 
 ## 11.5.0
