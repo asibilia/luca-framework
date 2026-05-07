@@ -88,6 +88,10 @@ describe('tool surface', () => {
             'status',
             'create',
             'rename',
+            'assert-not-default',
+            'consult',
+            'resolve',
+            'apply',
         ])
     })
 

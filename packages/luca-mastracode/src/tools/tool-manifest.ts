@@ -221,12 +221,13 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
         tool: ensureFeatureBranchTool,
         record_key: 'ensureFeatureBranch',
         modes: {
-            // Architect creates the branch in Step 1.
+            // Architect drives the full resolve → consult → apply cycle in Step 1.
             [MODES.architect]: '*',
-            // Execute checks status before its first commit (pre-commit guard).
-            [MODES.execute]: ['status'],
-            // Finalize verifies status before push + PR.
-            [MODES.finalize]: ['status'],
+            // Execute checks status / asserts non-default before its first commit
+            // (pre-commit guard). Read-only access only — never mutates branches.
+            [MODES.execute]: ['status', 'assert-not-default'],
+            // Finalize verifies status / asserts non-default before push + PR.
+            [MODES.finalize]: ['status', 'assert-not-default'],
             // Build/fast keep full access for ad-hoc workflows + the
             // gh-prepare skill that retroactively moves commits to a branch.
             build: '*',
