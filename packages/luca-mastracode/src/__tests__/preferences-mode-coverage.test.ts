@@ -20,12 +20,15 @@ describe('projectPreferences — mode-coverage invariant', () => {
     for (const mode of ALL_REGISTERED_MODES) {
         test(`mode "${mode}" has projectPreferences access`, () => {
             const perms = MODE_PERMISSIONS[mode]
-            expect(perms, `mode "${mode}" has no MODE_PERMISSIONS entry`).toBeDefined()
+            expect(
+                perms,
+                `mode "${mode}" has no MODE_PERMISSIONS entry`
+            ).toBeDefined()
 
             const prefsActions = perms!['project_preferences']
             expect(
                 prefsActions,
-                `mode "${mode}" has no projectPreferences access — pr-title-format.md will graceful-degrade in this mode`,
+                `mode "${mode}" has no projectPreferences access — pr-title-format.md will graceful-degrade in this mode`
             ).toBeDefined()
 
             if (prefsActions === '*') {

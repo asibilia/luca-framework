@@ -57,7 +57,7 @@ const payload = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const result = await (projectPreferencesTool.execute as any)(
     { action: 'seed', payload, fallback: false },
-    {} as any,
+    {} as any
 )
 
 console.log(JSON.stringify(result, null, 2))
