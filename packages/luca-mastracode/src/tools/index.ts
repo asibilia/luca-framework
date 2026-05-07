@@ -15,6 +15,7 @@ export { claimVerifierTool } from './claim-verifier.js'
 export { prReviewTool } from './pr-review.js'
 export { runRulesTool } from './run-rules.js'
 export { ensureFeatureBranchTool } from './ensure-feature-branch.js'
+export { projectPreferencesTool } from './project-preferences.js'
 
 // Permission system
 export { createScopedTool } from './create-scoped-tool.js'

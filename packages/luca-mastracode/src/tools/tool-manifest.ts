@@ -29,6 +29,7 @@ import { manageRoadmapTool } from './manage-roadmap.js'
 import { manageTodosTool } from './manage-todos.js'
 import { pipelineLockTool } from './pipeline-lock.js'
 import { prReviewTool } from './pr-review.js'
+import { projectPreferencesTool } from './project-preferences.js'
 import { repoCleanupTool } from './repo-cleanup.js'
 import { runChecksTool } from './run-checks.js'
 import { runPostmortemTool } from './run-postmortem.js'
@@ -228,6 +229,24 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
             [MODES.finalize]: ['status'],
             // Build/fast keep full access for ad-hoc workflows + the
             // gh-prepare skill that retroactively moves commits to a branch.
+            build: '*',
+            fast: '*',
+        },
+    },
+    project_preferences: {
+        tool: projectPreferencesTool,
+        record_key: 'projectPreferences',
+        modes: {
+            // Triage runs the sentinel and may seed/update via luca-init.
+            [MODES.triage]: ['consult', 'consult-section', 'seed', 'update'],
+            // Read-only consumers across the rest of the pipeline.
+            [MODES.research]: ['consult', 'consult-section'],
+            [MODES.architect]: ['consult', 'consult-section'],
+            [MODES.execute]: ['consult', 'consult-section'],
+            [MODES.review]: ['consult', 'consult-section'],
+            [MODES.finalize]: ['consult', 'consult-section'],
+            [MODES.discuss]: ['consult', 'consult-section'],
+            // Stock modes get full access for ad-hoc reads/writes.
             build: '*',
             fast: '*',
         },
