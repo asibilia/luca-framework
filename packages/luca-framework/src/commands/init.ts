@@ -201,6 +201,15 @@ export const initCommand = defineCommand({
         )
         readout.push('  To launch the harness:     luca run')
         readout.push(
+            '  To seed project conventions:        invoke /luca-init inside `luca run`'
+        )
+        readout.push(
+            '    (probes branching/commits/PR/release/tracker conventions and'
+        )
+        readout.push(
+            '     stores them in MuninnDB; downstream pipeline modes consult them)'
+        )
+        readout.push(
             '  To expose MuninnDB to the harness: add an MCP server entry to'
         )
         readout.push(
