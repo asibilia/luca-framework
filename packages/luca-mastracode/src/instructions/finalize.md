@@ -282,20 +282,35 @@ Only reached if Step 3 (Gap Detection) and Step 4 (Postmortem Gate) both passed.
 
 If git workflow was used (issue + branch created):
 
-### 5a. Recall Release Conventions
+### 5a. Consult Release Conventions
 
-**Before any PR work**, recall release details from MuninnDB:
+**Before any PR work**, consult structured project preferences for PR/release/tracker conventions:
 
 ```
-mcp__muninn__muninn_recall(
-  vault: "<repo_vault>",
-  context: ["release checklist", "PR title format", "version convention", "naming convention"],
+projectPreferences({ action: "consult-section", section: "pr",      fallback: true })
+projectPreferences({ action: "consult-section", section: "release", fallback: true })
+projectPreferences({ action: "consult-section", section: "tracker", fallback: true })
+```
+
+Use the consulted values to determine:
+
+- **Title template**: `pr.titleTemplate` (preferred) or `pr.titleFormat` (legacy). Tokens are project-defined — render from the consulted values.
+- **Bump level**: `release.versionBump[<commit-type>]`. Default to `'patch'` if the type is unmapped.
+- **Issue-link format**: `tracker.linkFormat` (e.g. `Closes #{issue}`).
+- **Body template key**: `pr.bodyTemplate` (e.g. `'what-why-how-testplan'`).
+- **Draft default**: `pr.draftByDefault`.
+
+**Supplement** the structured preferences with historical recall — the preferences are deterministic but a free-form recall surfaces pitfalls and per-package nuances:
+
+```
+mcp__muninn__muninn_recall({
+  context: ["release checklist", "naming convention", "<affected packages>"],
   mode: "semantic",
-  limit: 5
-)
+  limit: 5,
+})
 ```
 
-Use recalled conventions to determine: version number, title format (`type(scope): vX.Y.Z #issue description`), milestone linkage, and PR body structure. If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump.
+If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump from `release.versionBump`.
 
 ### 5b.1. Write release artifacts (AFTER review iteration converged)
 
@@ -303,18 +318,17 @@ Now — and only now, after every review iteration is resolved — write the cha
 
 If a changeset already exists from earlier in the session: re-read it now, reconcile against the current branch, and rewrite it. Do not assume it's still accurate.
 
-**Pre-changeset MuninnDB recall** — before writing the changeset, query MuninnDB for changeset-related learnings (bump-level conventions, frontmatter format, package-name rules, per-package release notes patterns, recurring drift modes). This complements the release-conventions recall in Step 5b but targets *artifact authoring* rather than PR titling:
+**Pre-changeset recall** — `release.versionBump` and `release.tool` are already consulted in Step 5a, so bump-level/tool decisions are settled. Use MuninnDB recall here for *artifact-authoring pitfalls* not captured in the structured preferences (frontmatter shape edge cases, package-name canonicalisation, per-package release-note patterns):
 
 ```
-mcp__muninn__muninn_recall(
-  vault: "<repo_vault>",
-  context: ["changeset format", "version bump conventions", "release-note pitfalls", "<affected packages>"],
+mcp__muninn__muninn_recall({
+  context: ["changeset format", "release-note pitfalls", "<affected packages>"],
   mode: "semantic",
   limit: 5,
-)
+})
 ```
 
-Apply any directly relevant learnings (correct frontmatter shape, when to split into multiple changesets, which package names are canonical). If MuninnDB is unreachable, log and proceed — never block.
+Apply any directly relevant learnings. If MuninnDB is unreachable, log and proceed — never block.
 
 ### 5b.2. Verify artifact claims
 
@@ -344,9 +358,10 @@ After the gate passes, proceed.
    ```
    Compute `const base = state.prBase ?? state.baseBranch ?? 'main'` and pass that value as `--base` to `gh pr create`. The `'main'` literal is the conservative fallback when state is missing — architect Step 1's apply has already populated `state.baseBranch` / `state.prBase`, so the literal is a recovery path only. Do NOT call `ensureFeatureBranch({ action: "consult" })` here; consult is not in finalize's tool-manifest scope (`['status', 'assert-not-default']`) and will be rejected at runtime.
 4. **Create PR** with:
-   - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
+   - **Title**: Render from `pr.titleTemplate ?? pr.titleFormat` (consulted in Step 5a). Substitute the project's tokens (e.g. `{type}`, `{scope}`, `{version}`, `{issue}`, `{description}`) with values derived from the branch and commits. Reject the title if it matches any pattern in `pr.forbidden[]`.
+   - **Draft flag**: Pass `--draft` if `pr.draftByDefault === true`.
    - **Base**: Resolved per step 3 (`--base <resolved>`)
-   - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
+   - **Description**: Summary, the issue-link line rendered via `tracker.linkFormat` (e.g. `Closes #{issue}` → `Closes #42`), key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
    - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured

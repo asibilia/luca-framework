@@ -125,7 +125,7 @@ For comments with severity **must fix** and **should fix**:
 
 Spawn **executor** subagents per file group. Each subagent receives:
 - The file path and relevant comment details (body, line, category)
-- Instructions to fix each issue and commit with a conventional commit message referencing the PR number (the executor subagent will add the Co-Authored-By trailer automatically)
+- Instructions to fix each issue and commit using the project's commit convention (consult `projectPreferences({ action: "consult-section", section: "commits", fallback: true })` for `convention`, `types`, `scopes`, `trailers`, `subjectMaxLength`). Reference the PR number per `commits.trailers.issueRef` when set; the executor subagent will add the Co-Authored-By trailer automatically when `commits.trailers.coAuthor === true`.
 
 After all executor subagents complete, run a type check:
 ```bash

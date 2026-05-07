@@ -74,7 +74,14 @@ Use the current branch as-is. No action needed.
 
 ### 3. Changeset (if applicable)
 
-Check if the repo uses changesets:
+**At skill start**, consult project preferences once and reuse the result:
+
+```
+const { preferences } = await projectPreferences({ action: "consult", fallback: true })
+const { release, pr, tracker, commits } = preferences
+```
+
+Check if the repo uses changesets (`release.tool === 'changesets'` AND `.changeset/config.json` exists):
 ```bash
 test -f .changeset/config.json
 ```
@@ -84,22 +91,21 @@ If yes:
    ```bash
    find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md'
    ```
-2. **Before writing a new changeset**, recall MuninnDB for changeset-authoring learnings (frontmatter conventions, bump-level rules, package-name canonicalisation, per-package release-note patterns). Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`:
+2. **Before writing a new changeset**, recall MuninnDB for changeset-authoring learnings (frontmatter conventions, package-name canonicalisation, per-package release-note patterns) — supplements the structured `release` preferences with historical pitfalls:
 
    ```
-   mcp__muninn__muninn_recall(
-     vault: "<repo_vault>",
-     context: ["changeset format", "version bump conventions", "release-note pitfalls"],
+   mcp__muninn__muninn_recall({
+     context: ["changeset format", "release-note pitfalls"],
      mode: "semantic",
      limit: 5,
-   )
+   })
    ```
 
    Apply directly relevant findings. If MuninnDB is unreachable, log and continue — never block.
 3. If no changeset exists, create one:
-   - Determine bump level from branch prefix or commit types: `feat` → minor, `fix`/`chore`/`refactor` → patch
+   - Determine bump level from `release.versionBump[<commit-type>]` (the consulted `versionBump` map). Commit type comes from branch prefix or dominant commit type.
    - Read package names from `.changeset/config.json` `"fixed"` groups or workspace `package.json` files
-   - Write `.changeset/<slug>.md` with the appropriate bump level and summary
+   - Write `.changeset/<slug>.md` with the resolved bump level and summary
    - `git add .changeset/<slug>.md && git commit -m "chore: add changeset"`
 4. If a changeset already exists, verify it looks correct (right packages, right bump level). Don't duplicate.
 
@@ -127,21 +133,27 @@ Check if this work originated from a triaged GitHub issue:
    candidate and verify it exists: `gh issue view 42 --json state`.
 4. **From commit messages**: Scan for `#N` references in commit messages.
 
-If an issue is found, `Closes #<N>` goes in the PR body.
-If no issue is found, that's fine — not all work originates from an issue.
+If an issue is found, build the issue-link line via `tracker.linkFormat` (e.g. `Closes #{issue}` → `Closes #42`).
+If no issue is found, that's fine — not all work originates from an issue. Omit the line.
 
 ### 6. Create Draft PR
 
+Render the PR title from `pr.titleTemplate ?? pr.titleFormat` (consulted at Step 3). Substitute the project's tokens (e.g. `{type}`, `{scope}`, `{version}`, `{issue}`, `{description}`) with values derived from the branch and commits. If `pr.forbidden[]` is set, reject any title that matches one of those patterns.
+
+The `--draft` flag is governed by `pr.draftByDefault`:
+
 ```bash
-gh pr create --draft \
-  --title "<type>(scope): <short description>" \
+DRAFT_FLAG=""
+if [ "<pr.draftByDefault>" = "true" ]; then DRAFT_FLAG="--draft"; fi
+gh pr create $DRAFT_FLAG \
+  --title "<rendered title>" \
   --body "<body>"
 ```
 
-PR body template:
+PR body template (rendered from `pr.bodyTemplate` when present; default template below):
 
 ```markdown
-<Closes #N if linked issue found>
+<tracker.linkFormat-rendered line if linked issue found>
 
 ## What
 
@@ -160,8 +172,7 @@ PR body template:
 <how to verify — inferred from test files changed, or "Manual verification" if none>
 ```
 
-The title should be a conventional commit format. Derive `type` from the branch prefix
-or dominant commit type. Derive `scope` from the primary package or area changed.
+Derive `type` from the branch prefix or dominant commit type (validated against `commits.types ?? branching.types`). Derive `scope` from the primary package or area changed (must appear in `commits.scopes` if that allowlist is set).
 
 ### 7. Store in MuninnDB
 
