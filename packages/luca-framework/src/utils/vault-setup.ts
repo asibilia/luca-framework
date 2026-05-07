@@ -28,6 +28,7 @@
  */
 import { chmodSync, existsSync } from 'node:fs'
 
+import { sanitizeVaultName } from '@alecsibilia/luca-mastracode'
 import * as p from '@clack/prompts'
 import { join, basename } from 'pathe'
 import { z } from 'zod'
@@ -35,6 +36,9 @@ import { z } from 'zod'
 import { checkMuninndbService } from './muninndb-health'
 import { resolveMuninndbPort } from './muninndb-schemas'
 import { sanitizeJsonParse } from './sanitize'
+
+// Re-export for backward compatibility with framework consumers.
+export { sanitizeVaultName }
 
 import type { ProjectContext } from '../types'
 
@@ -88,29 +92,6 @@ export function suggestVaultName(
 ): string {
     const raw = context.projectName ?? basename(cwd)
     return sanitizeVaultName(raw)
-}
-
-/**
- * Sanitize a string into a valid vault name (lowercase kebab-case).
- *
- * Converts to lowercase, replaces non-alphanumeric characters with dashes,
- * collapses consecutive dashes, and trims leading/trailing dashes.
- *
- * @param name - Raw input string to sanitize.
- * @returns A cleaned vault name.
- *
- * @example
- * ```typescript
- * sanitizeVaultName("My Cool App!")  // "my-cool-app"
- * sanitizeVaultName("@scope/pkg")    // "scope-pkg"
- * ```
- */
-export function sanitizeVaultName(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
 }
 
 /**

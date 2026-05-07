@@ -17,18 +17,12 @@ export const executorSubagent: HarnessSubagent = {
    \`\`\`
    If \`skipBranch === true\`, the orchestrator intentionally skipped feature-branch creation (\`--skip-branch\` was passed). Skip this guard and proceed with execution.
 
-   Otherwise call \`ensureFeatureBranch({ action: "status" })\`. Decide based on returned \`status\`:
-   - \`"on-feature"\` — proceed with execution.
-   - \`"on-default"\` — STOP. Do NOT commit. Report exactly:
-     \`\`\`
-     BRANCH_NOT_CREATED: refusing to commit on default branch.
-     Architect Step 1 (feature-branch creation) was skipped or failed.
-     \`\`\`
-     The orchestrator must run \`ensureFeatureBranch({ action: "create", ... })\` before invoking the executor again.
-   - \`"detached"\` — STOP. Report \`BRANCH_NOT_CREATED: detached HEAD\`.
-   - \`"no-git"\` — STOP. Report \`BRANCH_NOT_CREATED: not a git repo\`.
+   Otherwise call \`ensureFeatureBranch({ action: "assert-not-default" })\`. This is a hard guard: the tool returns \`ok: false\` if the current branch is the default branch OR appears in \`projectPreferences.branching.guardedBranches[]\` (runtime fallback \`['main']\` when missing).
 
-   Do NOT shell out to \`git branch --show-current\` for this check — the tool encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) and writes nothing on \`status\`.
+   - \`ok: true\` — proceed with execution.
+   - \`ok: false\` — STOP. Do NOT commit. Report the returned \`status\` and \`message\` exactly. The orchestrator must run the consult → resolve → apply flow (architect Step 1) before invoking the executor again.
+
+   Do NOT shell out to \`git branch --show-current\` for this check — the tool encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) and writes nothing on \`assert-not-default\`.
 
 1. Read the assigned task(s) from the plan
 2. Read relevant existing code — understand conventions before writing

@@ -94,6 +94,7 @@ Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persiste
 - **Learnings** — patterns, pitfalls, and insights from completed milestones
 - **Decisions** — architectural decisions with rationale and alternatives considered
 - **Release conventions** — versioning, PR format, publish procedures
+- **Project preferences** — branching, commits, PR titles, release tooling, tracker (seeded by `/luca-init` inside `luca run`)
 - **Entity graph** — named entities and relationships across the codebase
 
 #### Wiring MuninnDB into the Mastracode harness

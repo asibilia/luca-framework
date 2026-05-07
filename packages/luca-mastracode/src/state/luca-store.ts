@@ -109,6 +109,22 @@ export interface LucaWorkflowState {
     // --- Budget enforcement (advisory) ---
     budgetExceeded?: boolean
 
+    // --- Branching policy ---
+    /** Base branch the feature was created from (written by ensureFeatureBranch.apply). */
+    baseBranch?: string
+    /** Target base for PR (written by ensureFeatureBranch.apply, read by finalize). */
+    prBase?: string
+
+    // --- Project preferences (set by projectPreferences tool / luca-init skill) ---
+    /**
+     * Loop-safety flag for the triage Step 1.6 sentinel. Set to `true` once
+     * preferences have been seeded (via `projectPreferences(action: "seed")`)
+     * or back-filled by `consult` when the file is found. Sentinel re-checks
+     * this flag before invoking /luca-init to prevent seed → consult → null
+     * infinite loops. See C1 in PLAN.md and project-preferences.test.ts.
+     */
+    preferencesSeeded?: boolean
+
     // Allow arbitrary extension
     [key: string]: unknown
 }

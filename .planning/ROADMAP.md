@@ -2,22 +2,17 @@
 
 ## Phases
 
-### Phase 1: Foundation — phase-paths helper + state schema
-- **Status**: pending
+### Phase 1: Phase A — Project preferences foundation
+- **Status**: complete
 - **Dependencies**: None
-- **WSJF Score**: 4.5
+- **WSJF Score**: 3.2
 
-### Phase 2: Tool & state-module migration to helper
-- **Status**: pending
-- **Dependencies**: Foundation — phase-paths helper + state schema
-- **WSJF Score**: 2.3
+### Phase 2: Phase B — Branching policy refactor
+- **Status**: in-progress
+- **Dependencies**: Phase A — Project preferences foundation
+- **WSJF Score**: 3.3
 
-### Phase 3: Finalize stragglers detector + archive-loose migration action
+### Phase 3: Phase C — PR/release/commit conventions
 - **Status**: pending
-- **Dependencies**: Tool & state-module migration to helper
-- **WSJF Score**: 2.3
-
-### Phase 4: Instructions + docs + skills + dogfood
-- **Status**: pending
-- **Dependencies**: Tool & state-module migration to helper
-- **WSJF Score**: 3.0
+- **Dependencies**: Phase A — Project preferences foundation
+- **WSJF Score**: 2.2

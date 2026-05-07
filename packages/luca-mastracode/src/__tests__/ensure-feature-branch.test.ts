@@ -1,10 +1,14 @@
 import { describe, test, expect } from 'bun:test'
 
+import { ProjectPreferencesSchema } from '../state/project-preferences.js'
 import {
     ENSURE_FEATURE_BRANCH_ACTIONS,
     ensureFeatureBranchTool,
+    resolveBranching,
     __testing,
 } from '../tools/ensure-feature-branch.js'
+import { LUCA_FRAMEWORK_PREFERENCES } from './fixtures/preferences-luca-framework.js'
+import { ENG_PT_PREFERENCES } from './fixtures/preferences-eng-pt.js'
 
 const { slugify, buildBranchName } = __testing
 
@@ -88,6 +92,10 @@ describe('tool surface', () => {
             'status',
             'create',
             'rename',
+            'assert-not-default',
+            'consult',
+            'resolve',
+            'apply',
         ])
     })
 
@@ -181,5 +189,190 @@ describe('isInsideGitRepo / create from default (source-level guards)', () => {
         )
         const src = await fs.readFile(toolPath, 'utf-8')
         expect(src).toMatch(/timeoutMs:\s*REMOTE_LS_TIMEOUT_MS/)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// Phase B Wave 4 — fixture parse + pure resolveBranching coverage
+// ---------------------------------------------------------------------------
+
+describe('fixtures parse via ProjectPreferencesSchema', () => {
+    test('LUCA_FRAMEWORK_PREFERENCES is schema-valid', () => {
+        const r = ProjectPreferencesSchema.safeParse(LUCA_FRAMEWORK_PREFERENCES)
+        expect(r.success).toBe(true)
+    })
+
+    test('ENG_PT_PREFERENCES is schema-valid', () => {
+        const r = ProjectPreferencesSchema.safeParse(ENG_PT_PREFERENCES)
+        expect(r.success).toBe(true)
+    })
+})
+
+describe('resolveBranching (pure)', () => {
+    test('ENG-* match → role=release, base/prBase=main, branchName=ENG-1428--release', () => {
+        const result = resolveBranching({
+            ticketId: 'ENG-1428',
+            currentBranch: 'main',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        expect(result.role).toBe('release')
+        expect(result.base).toBe('main')
+        expect(result.prBase).toBe('main')
+        expect(result.branchName).toBe('ENG-1428--release')
+        expect(result.matchedRule).toBe('branchType')
+        expect(result.matchedIndex).toBe(0)
+    })
+
+    test('PT-* on ENG-1428--release → base=ENG-1428--release, needsConfirmation=false', () => {
+        const result = resolveBranching({
+            ticketId: 'PT-12458',
+            intent: 'fix order book loading flash',
+            currentBranch: 'ENG-1428--release',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        expect(result.role).toBe('feature')
+        expect(result.base).toBe('ENG-1428--release')
+        expect(result.prBase).toBe('ENG-1428--release')
+        expect(result.needsConfirmation).toBe(false)
+        expect(result.matchedRule).toBe('branchType')
+        expect(result.matchedIndex).toBe(1)
+    })
+
+    test('PT-* on main (no current-branch match) → fallback="ask" forces needsConfirmation=true', () => {
+        const result = resolveBranching({
+            ticketId: 'PT-12458',
+            intent: 'fix order book loading flash',
+            currentBranch: 'main',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        expect(result.needsConfirmation).toBe(true)
+        // fallback='ask' → resolver returns undefined value (no silent default).
+        expect(result.base).toBeUndefined()
+        expect(result.prBase).toBeUndefined()
+        expect(result.role).toBe('feature')
+    })
+
+    test('fallback rule applied for unmatched ticket prefix', () => {
+        const result = resolveBranching({
+            ticketId: 'JIRA-1',
+            intent: 'misc work',
+            currentBranch: 'feat/other',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        expect(result.matchedRule).toBe('fallback')
+        expect(result.base).toBe('main')
+        expect(result.prBase).toBe('main')
+        // Fallback template '{type}/{slug}' has no {issue}.
+        expect(result.branchName).toMatch(/^feat\/[a-z0-9-]+$/)
+        expect(result.branchName).not.toContain('JIRA-1')
+    })
+
+    test('preferences null → built-in tool defaults (matchedRule="tool-default")', () => {
+        const result = resolveBranching({
+            ticketId: 'PT-1',
+            intent: 'add widget',
+            currentBranch: 'feat/x',
+            defaultBranch: 'main',
+            preferences: null,
+        })
+        expect(result.matchedRule).toBe('tool-default')
+        expect(result.base).toBe('main')
+        expect(result.prBase).toBe('main')
+        expect(result.role).toBe('feature')
+        expect(result.needsConfirmation).toBe(false)
+        expect(result.branchName).toMatch(/^feat\/PT-1-/)
+    })
+
+    test('confirmBaseBeforeCreate=true forces needsConfirmation even on static base', () => {
+        const prefs = {
+            ...ENG_PT_PREFERENCES,
+            branching: {
+                ...ENG_PT_PREFERENCES.branching,
+                confirmBaseBeforeCreate: true,
+            },
+        }
+        const result = resolveBranching({
+            ticketId: 'ENG-1428',
+            currentBranch: 'main',
+            defaultBranch: 'main',
+            preferences: prefs,
+        })
+        // base is still resolved (static 'main'), but the flag forces confirmation.
+        expect(result.base).toBe('main')
+        expect(result.needsConfirmation).toBe(true)
+    })
+
+    test('multi-rule order: catch-all "^.*$" placed first hijacks specific rules (first-match-wins)', () => {
+        const prefs = {
+            ...ENG_PT_PREFERENCES,
+            branching: {
+                ...ENG_PT_PREFERENCES.branching,
+                branchTypes: [
+                    {
+                        match: '^.*$',
+                        template: '{type}/catchall-{slug}',
+                        base: { kind: 'static' as const, value: 'main' },
+                        prBase: { kind: 'static' as const, value: 'main' },
+                        role: 'feature' as const,
+                    },
+                    // The specific ENG rule below is now unreachable.
+                    {
+                        match: '^ENG-\\d+$',
+                        template: '{issue}--release',
+                        base: { kind: 'static' as const, value: 'main' },
+                        prBase: { kind: 'static' as const, value: 'main' },
+                        role: 'release' as const,
+                    },
+                ],
+            },
+        }
+        const result = resolveBranching({
+            ticketId: 'ENG-1428',
+            intent: 'cut release',
+            currentBranch: 'main',
+            defaultBranch: 'main',
+            preferences: prefs,
+        })
+        expect(result.matchedRule).toBe('branchType')
+        expect(result.matchedIndex).toBe(0)
+        expect(result.role).toBe('feature')
+        expect(result.branchName).toMatch(/^feat\/catchall-/)
+    })
+
+    test('renderTemplate + slugifySegment integration: PT branch uses fixture template + intent-derived slug', () => {
+        const result = resolveBranching({
+            ticketId: 'PT-12458',
+            intent: 'Fix Order Book LOADING flash!',
+            currentBranch: 'ENG-1428--release',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        // template '{type}/{issue}-{slug}' + slugifySegment lowercases & dasherizes.
+        expect(result.branchName).toBe('feat/PT-12458-fix-order-book-loading-flash')
+    })
+})
+
+describe('PT-12458 regression — release-branch base resolution (resolve path)', () => {
+    // The original PT-12458 incident: commits landed on ENG-1428--release because
+    // the original status() returned 'on-feature' for any non-default branch — the
+    // resolver now correctly identifies ENG-1428--release as the intended base for
+    // a PT-* feature branch instead of skipping branch creation.
+    test('PT-12458 from ENG-1428--release resolves base/prBase to the release branch', () => {
+        const result = resolveBranching({
+            ticketId: 'PT-12458',
+            intent: 'fix order book loading flash',
+            currentBranch: 'ENG-1428--release',
+            defaultBranch: 'main',
+            preferences: ENG_PT_PREFERENCES,
+        })
+        expect(result.branchName).toMatch(/^feat\/PT-12458-/)
+        expect(result.base).toBe('ENG-1428--release')
+        expect(result.prBase).toBe('ENG-1428--release')
+        expect(result.role).toBe('feature')
+        expect(result.needsConfirmation).toBe(false)
     })
 })

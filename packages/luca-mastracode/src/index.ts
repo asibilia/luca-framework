@@ -29,6 +29,16 @@ export {
     resolvePackModelForMode,
 } from './integration/mastracode-config.js'
 export { loadAlwaysApplyRules, parseRuleFrontmatter } from './rules-loader.js'
+export { sanitizeVaultName, resolveProjectVault } from './state/vault.js'
+export {
+    ProjectPreferencesSchema,
+    SectionName,
+    DEFAULT_PREFERENCES,
+    PREFERENCES_PATH,
+    loadProjectPreferences,
+    writeProjectPreferences,
+} from './state/project-preferences.js'
+export type { ProjectPreferences } from './state/project-preferences.js'
 export {
     ANSI_ESCAPE_RE,
     clipToVisibleWidth,

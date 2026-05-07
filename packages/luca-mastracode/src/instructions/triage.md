@@ -72,6 +72,21 @@ mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<parsed intent summa
 
 If results found, factor prior complexity levels and learnings into classification. If MuninnDB unavailable, skip — never delay triage.
 
+## Step 1.6: Project Preferences Sentinel
+
+Check whether this repo has seeded project preferences (branching, commits, PR, release, tracker conventions):
+
+```
+result = projectPreferences(action: "consult", fallback: false)
+```
+
+Single-call decision tree:
+
+- If `result.preferences === null` → invoke the `/luca-init` skill to seed preferences before continuing. After luca-init completes (Approve, Edit-section, or Abort), proceed to Step 2.
+- Otherwise → proceed to Step 2.
+
+Rationale: only triage runs the sentinel. The `consult` action already encodes C1 internally — when `preferencesSeeded === true` and the file is missing it returns `DEFAULT_PREFERENCES` (not `null`), so a single tool call distinguishes "needs init" (`null`) from every other state. Downstream phases call `consult(fallback: true)` and never trigger init — this prevents wizard prompts from interrupting headless execution.
+
 ## Step 2: Classify Complexity
 
 Use the `classifyComplexity` tool with the parsed intent:

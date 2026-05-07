@@ -336,15 +336,21 @@ After the gate passes, proceed.
 
 ### 5b.3. Create PR
 
-1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "status" })`. If `status` is anything other than `"on-feature"`, STOP and report; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
+1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "assert-not-default" })`. On `ok: false`, STOP and report the returned `status`/`message`; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
 2. **Push** feature branch to remote
-3. **Create PR** with:
+3. **Resolve PR base** — read state directly to determine `--base`:
+   ```
+   workflowState({ action: "read" })  // → state.prBase, state.baseBranch
+   ```
+   Compute `const base = state.prBase ?? state.baseBranch ?? 'main'` and pass that value as `--base` to `gh pr create`. The `'main'` literal is the conservative fallback when state is missing — architect Step 1's apply has already populated `state.baseBranch` / `state.prBase`, so the literal is a recovery path only. Do NOT call `ensureFeatureBranch({ action: "consult" })` here; consult is not in finalize's tool-manifest scope (`['status', 'assert-not-default']`) and will be rejected at runtime.
+4. **Create PR** with:
    - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
+   - **Base**: Resolved per step 3 (`--base <resolved>`)
    - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
    - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured
-4. Store PR URL in `workflow_state`
+5. Store PR URL in `workflow_state`
 
 If `--skip-branch` was set, skip.
 
