@@ -27,7 +27,8 @@ const PKG_ROOT = join(__dirname, '..', '..')
 const SCAN_ROOTS = ['rules', 'skills', 'src/instructions']
 const ALLOWLIST = [/__tests__\//, /fixtures\//, /CHANGELOG\.md$/]
 
-const PATTERN_SCOPE_LIST = /\b(framework\|mastracode\|studio\|config\|docs\|repo)\b/
+const PATTERN_SCOPE_LIST =
+    /\b(framework\|mastracode\|studio\|config\|docs\|repo)\b/
 const PATTERN_TITLE_EXAMPLE = /feat\(mastracode\):\s*v\d+\.\d+\.\d+\s*#\d+/
 const PATTERN_BUMP_PROSE =
     /\bfeat\b\s*(?:→|-->)?\s*\bminor\b.*\bfix\b\s*(?:→|-->)?\s*\bpatch\b/i
@@ -67,15 +68,15 @@ describe('no luca-framework conventions leak into rules/skills/instructions', ()
                 const body = readFileSync(file, 'utf8')
                 expect(
                     PATTERN_SCOPE_LIST.test(body),
-                    `${rel}: literal scope-list 'framework|mastracode|...' found — replace with consult-section(pr) reference`,
+                    `${rel}: literal scope-list 'framework|mastracode|...' found — replace with consult-section(pr) reference`
                 ).toBe(false)
                 expect(
                     PATTERN_TITLE_EXAMPLE.test(body),
-                    `${rel}: hardcoded title example 'feat(mastracode): vX.Y.Z #N' found — render via pr.titleTemplate instead`,
+                    `${rel}: hardcoded title example 'feat(mastracode): vX.Y.Z #N' found — render via pr.titleTemplate instead`
                 ).toBe(false)
                 expect(
                     PATTERN_BUMP_PROSE.test(body),
-                    `${rel}: hardcoded bump prose 'feat → minor … fix → patch' found — read from release.versionBump instead`,
+                    `${rel}: hardcoded bump prose 'feat → minor … fix → patch' found — read from release.versionBump instead`
                 ).toBe(false)
             })
         }

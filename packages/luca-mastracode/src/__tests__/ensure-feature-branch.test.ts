@@ -1,5 +1,8 @@
 import { describe, test, expect } from 'bun:test'
 
+import { ENG_PT_PREFERENCES } from './fixtures/preferences-eng-pt.js'
+import { LUCA_FRAMEWORK_PREFERENCES } from './fixtures/preferences-luca-framework.js'
+
 import { ProjectPreferencesSchema } from '../state/project-preferences.js'
 import {
     ENSURE_FEATURE_BRANCH_ACTIONS,
@@ -7,8 +10,6 @@ import {
     resolveBranching,
     __testing,
 } from '../tools/ensure-feature-branch.js'
-import { LUCA_FRAMEWORK_PREFERENCES } from './fixtures/preferences-luca-framework.js'
-import { ENG_PT_PREFERENCES } from './fixtures/preferences-eng-pt.js'
 
 const { slugify, buildBranchName } = __testing
 
@@ -352,7 +353,9 @@ describe('resolveBranching (pure)', () => {
             preferences: ENG_PT_PREFERENCES,
         })
         // template '{type}/{issue}-{slug}' + slugifySegment lowercases & dasherizes.
-        expect(result.branchName).toBe('feat/PT-12458-fix-order-book-loading-flash')
+        expect(result.branchName).toBe(
+            'feat/PT-12458-fix-order-book-loading-flash'
+        )
     })
 })
 

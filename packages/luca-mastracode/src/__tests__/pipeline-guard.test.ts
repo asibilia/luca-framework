@@ -1,6 +1,5 @@
 import { describe, test, expect, beforeEach, mock, spyOn } from 'bun:test'
 
-import * as lucaStore from '../state/luca-store.js'
 import {
     startTurn,
     resetTurn,
@@ -12,8 +11,9 @@ import {
     PIPELINE_MODES,
     PIPELINE_ORDER,
 } from '../orchestration/pipeline-guard.js'
-import { followUpRef, switchModeRef } from '../util/refs.js'
+import * as lucaStore from '../state/luca-store.js'
 import * as sessionLedger from '../state/session-ledger.js'
+import { followUpRef, switchModeRef } from '../util/refs.js'
 
 // ---------------------------------------------------------------------------
 // Mocks

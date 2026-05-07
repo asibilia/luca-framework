@@ -21,7 +21,12 @@ export const LUCA_FRAMEWORK_PREFERENCES: ProjectPreferences = {
     pr: { titleFormat: '{type}({scope}): {description}', baseBranch: 'main' },
     release: {
         tool: 'changesets',
-        versionBump: { feat: 'minor', fix: 'patch', chore: 'patch', refactor: 'patch' },
+        versionBump: {
+            feat: 'minor',
+            fix: 'patch',
+            chore: 'patch',
+            refactor: 'patch',
+        },
     },
     tracker: { kind: 'github', issuePrefix: '' },
 }
