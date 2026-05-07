@@ -173,7 +173,7 @@ PR body template (rendered from `pr.bodyTemplate` when present; default template
 <how to verify — inferred from test files changed, or "Manual verification" if none>
 ```
 
-Derive `type` from the branch prefix or dominant commit type (validated against `commits.types ?? branching.types`). Derive `scope` from the primary package or area changed (must appear in `commits.scopes` if that allowlist is set).
+Derive `type` from the branch prefix or dominant commit type (validated against `commits.types ?? branching.types`). Derive `scope` from the primary package or area changed. Apply scope allowlist validation only when `commits.scopes.length > 0` — an empty array means "no allowlist enforced" (any scope permitted), not "no scopes allowed".
 
 ### 7. Store in MuninnDB
 

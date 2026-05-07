@@ -393,7 +393,7 @@ After verification and review pass for each task:
 
    Use the consulted values for:
    - **Commit type allowlist**: `commits.types ?? branching.types` (fall back to `branching.types` when `commits.types` is unset)
-   - **Scope allowlist**: `commits.scopes` (if set)
+   - **Scope allowlist**: `commits.scopes` — apply allowlist validation only when `commits.scopes.length > 0`. An empty array means "no allowlist enforced" (any scope permitted), not "no scopes allowed".
    - **Subject max length**: `commits.subjectMaxLength` (default 72)
    - **Trailer prefix for issue refs**: `commits.trailers.issueRef` (e.g. `'Closes #'`) — the issue trailer is `<issueRef><issue-number>`
    - **Co-author trailer**: include `Co-authored-by: ...` if `commits.trailers.coAuthor === true`
