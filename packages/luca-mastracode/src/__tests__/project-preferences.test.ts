@@ -14,6 +14,7 @@ import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 import * as lucaStore from '../state/luca-store.js'
 import * as prefsState from '../state/project-preferences.js'
 import { DEFAULT_PREFERENCES } from '../state/project-preferences.js'
+import { ProjectPreferencesSchema } from '../state/project-preferences.js'
 import { projectPreferencesTool } from '../tools/project-preferences.js'
 
 const mockReadLucaState = spyOn(lucaStore, 'readLucaState')
@@ -225,5 +226,53 @@ describe('projectPreferences:update', () => {
         expect(result.success).toBe(true)
         expect(result.preferences.schemaVersion).toBe(1)
         expect(result.preferences.commits.convention).toBe('none')
+    })
+})
+
+describe('Phase B schema additions', () => {
+    test('rejects empty guardedBranches', () => {
+        const result = ProjectPreferencesSchema.safeParse({
+            branching: { guardedBranches: [] },
+        })
+        expect(result.success).toBe(false)
+    })
+
+    test('parses branchTypes with valid RegexSource', () => {
+        const result = ProjectPreferencesSchema.safeParse({
+            branching: {
+                branchTypes: [
+                    {
+                        match: 'PT-\\d+',
+                        template: '{type}/{issue}-{slug}',
+                        base: { kind: 'static', value: 'main' },
+                        prBase: { kind: 'static', value: 'main' },
+                    },
+                ],
+            },
+        })
+        expect(result.success).toBe(true)
+    })
+
+    test('rejects branchTypes with invalid regex', () => {
+        const result = ProjectPreferencesSchema.safeParse({
+            branching: {
+                branchTypes: [
+                    {
+                        match: '[',
+                        template: '{type}/{slug}',
+                        base: { kind: 'static', value: 'main' },
+                        prBase: { kind: 'static', value: 'main' },
+                    },
+                ],
+            },
+        })
+        expect(result.success).toBe(false)
+    })
+
+    test('confirmBaseBeforeCreate defaults to false', () => {
+        const result = ProjectPreferencesSchema.safeParse({})
+        expect(result.success).toBe(true)
+        if (!result.success) return
+        expect(result.data.branching.confirmBaseBeforeCreate).toBe(false)
     })
 })

@@ -33,6 +33,42 @@ export type SectionName = z.infer<typeof SectionName>
  */
 const SAFE_FREEFORM = z.string().max(64).regex(/^[\w\s{}/,.():\-]*$/)
 
+/**
+ * Zod refinement: source string must compile as a JS RegExp.
+ * Used for branchTypes[].match and BaseRule.pattern.
+ */
+const RegexSource = z.string().min(1).max(128).refine(
+    (v) => { try { new RegExp(v); return true } catch { return false } },
+    { message: 'must be a valid regex source' },
+)
+
+/**
+ * BaseRule: how to resolve a base or PR-base branch for a branch-type rule.
+ *  - kind: 'static'                       → use `value`
+ *  - kind: 'current-branch-if-matches'    → use currentBranch if it matches `pattern`, else `fallback`
+ *  - kind: 'ask'                          → user must confirm at apply time; resolver sets needsConfirmation=true and uses `fallback` if present
+ */
+const BaseRule = z.object({
+    kind: z.enum(['static', 'current-branch-if-matches', 'ask']),
+    value: SAFE_FREEFORM.optional(),
+    pattern: RegexSource.optional(),
+    fallback: z.union([SAFE_FREEFORM, z.literal('ask')]).optional(),
+})
+
+/**
+ * BranchTypeRule: one entry in `branchTypes[]`.
+ * NOTE: rules are evaluated in declared order, first-match wins.
+ *       A catch-all `^.*$` at index 0 hijacks all tickets — author rules
+ *       most-specific-first.
+ */
+const BranchTypeRule = z.object({
+    match: RegexSource,
+    template: SAFE_FREEFORM,
+    base: BaseRule,
+    prBase: BaseRule,
+    role: z.enum(['feature', 'release', 'rc']).optional(),
+})
+
 const BranchingSection = z
     .object({
         types: z.array(SAFE_FREEFORM).default([
@@ -40,7 +76,10 @@ const BranchingSection = z
         ]),
         template: SAFE_FREEFORM.default('{type}/{issue}-{slug}'),
         defaultBranch: SAFE_FREEFORM.default('main'),
-        guardedBranches: z.array(SAFE_FREEFORM).default(['main']),
+        guardedBranches: z.array(SAFE_FREEFORM).min(1).default(['main']),
+        branchTypes: z.array(BranchTypeRule).optional(),
+        fallback: BranchTypeRule.optional(),
+        confirmBaseBeforeCreate: z.boolean().default(false),
     })
     .prefault({})
 
@@ -86,6 +125,14 @@ export const ProjectPreferencesSchema = z
     .prefault({})
 
 export type ProjectPreferences = z.infer<typeof ProjectPreferencesSchema>
+
+/**
+ * Re-exports for fixture/test use. Suffix convention matches
+ * `ProjectPreferencesSchema` so consumers can spot Zod schemas at a glance.
+ */
+export const RegexSourceSchema = RegexSource
+export const BaseRuleSchema = BaseRule
+export const BranchTypeRuleSchema = BranchTypeRule
 
 /** Hardcoded defaults matching today's behavior. Returned by consult() when fallback:true and no prefs file. */
 export const DEFAULT_PREFERENCES: ProjectPreferences = ProjectPreferencesSchema.parse({})
