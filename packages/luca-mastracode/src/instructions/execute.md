@@ -388,6 +388,7 @@ After verification and review pass for each task:
    ```
    projectPreferences({ action: "consult-section", section: "commits", fallback: true })
    projectPreferences({ action: "consult-section", section: "tracker", fallback: true })
+   projectPreferences({ action: "consult-section", section: "branching", fallback: true })
    ```
 
    Use the consulted values for:
@@ -401,6 +402,7 @@ After verification and review pass for each task:
 
    ```
    mcp__muninn__muninn_recall({
+     vault: "<repo_vault>",
      context: ["commit conventions", "pre-commit pitfalls", "<wave scope>"],
      mode: "semantic",
      limit: 5,

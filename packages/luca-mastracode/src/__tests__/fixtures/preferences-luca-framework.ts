@@ -17,7 +17,7 @@ export const LUCA_FRAMEWORK_PREFERENCES: ProjectPreferences = {
         confirmBaseBeforeCreate: false,
         // No branchTypes[] — exercises the tool-default path.
     },
-    commits: { convention: 'conventional', scopes: [] },
+    commits: { convention: 'conventional', scopes: [], subjectMaxLength: 72 },
     pr: { titleFormat: '{type}({scope}): {description}', baseBranch: 'main' },
     release: {
         tool: 'changesets',

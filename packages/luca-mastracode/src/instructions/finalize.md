@@ -304,6 +304,7 @@ Use the consulted values to determine:
 
 ```
 mcp__muninn__muninn_recall({
+  vault: "<repo_vault>",
   context: ["release checklist", "naming convention", "<affected packages>"],
   mode: "semantic",
   limit: 5,
@@ -322,6 +323,7 @@ If a changeset already exists from earlier in the session: re-read it now, recon
 
 ```
 mcp__muninn__muninn_recall({
+  vault: "<repo_vault>",
   context: ["changeset format", "release-note pitfalls", "<affected packages>"],
   mode: "semantic",
   limit: 5,

@@ -135,7 +135,7 @@ const CommitsSection = z
             })
             .optional(),
         /** Conventional max length for the commit subject line (default 72). */
-        subjectMaxLength: z.number().int().min(20).max(200).optional(),
+        subjectMaxLength: z.number().int().min(20).max(200).default(72),
     })
     .prefault({})
 

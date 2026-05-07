@@ -78,7 +78,7 @@ Use the current branch as-is. No action needed.
 
 ```
 const { preferences } = await projectPreferences({ action: "consult", fallback: true })
-const { release, pr, tracker, commits } = preferences
+const { release, pr, tracker, commits, branching } = preferences
 ```
 
 Check if the repo uses changesets (`release.tool === 'changesets'` AND `.changeset/config.json` exists):
@@ -95,6 +95,7 @@ If yes:
 
    ```
    mcp__muninn__muninn_recall({
+     vault: "<repo_vault>",
      context: ["changeset format", "release-note pitfalls"],
      mode: "semantic",
      limit: 5,
