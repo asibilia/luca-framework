@@ -137,8 +137,14 @@ describe('projectPreferences:seed', () => {
         expect(result.muninnInstruction).toContain(
             'mcp__muninn__muninn_remember'
         )
+        // C3: op_id baked into JSON blob (idempotency key for muninn_remember).
         expect(result.muninnInstruction).toContain(
-            'op_id: "project-preferences:'
+            '"op_id":"project-preferences:'
+        )
+        // The instruction must not interpolate raw free-form preference values
+        // outside the JSON blob — verify the directive line is present.
+        expect(result.muninnInstruction).toContain(
+            'do NOT interpolate the raw string'
         )
     })
 
@@ -201,5 +207,23 @@ describe('projectPreferences:update', () => {
         const result = await call({ action: 'update' })
         expect(result.success).toBe(false)
         expect(result.message).toContain('payload is required')
+    })
+
+    test('schemaVersion in payload is ignored (sealed to schema literal)', async () => {
+        // REVIEW-1.md MUST-FIX-4: caller-supplied schemaVersion must NOT
+        // overwrite the locked z.literal(1). Migrations belong in a future
+        // dedicated migrate() helper, not in mergePreferences.
+        mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
+        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        const result = await call({
+            action: 'update',
+            payload: {
+                schemaVersion: 2,
+                commits: { convention: 'none' },
+            },
+        })
+        expect(result.success).toBe(true)
+        expect(result.preferences.schemaVersion).toBe(1)
+        expect(result.preferences.commits.convention).toBe('none')
     })
 })

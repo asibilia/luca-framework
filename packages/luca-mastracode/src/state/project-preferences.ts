@@ -1,9 +1,17 @@
 /**
  * Project preferences schema.
  *
- * SECURITY NOTE: Content of this file is trusted (repo-local).
- * Written verbatim into MuninnDB summaries by the luca-init skill.
- * Do not include user-supplied untrusted strings without sanitization.
+ * SECURITY NOTE: Content of this file is repo-local but is DERIVED FROM GIT
+ * OUTPUT during luca-init probe (branch names, commit messages, PR titles).
+ * In repos cloned from external sources, those strings are UNTRUSTED.
+ *
+ * The schema enforces a character allowlist on every free-form field that
+ * flows into the `muninnInstruction` string consumed by the LLM agent (see
+ * tools/project-preferences.ts buildMuninnInstruction). Do not relax these
+ * regexes / max-lengths without a security review — they are the blast-radius
+ * cap on prompt-injection from a malicious git history.
+ *
+ * See REVIEW-1.md MUST-FIX-2/3 for the original finding.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,28 +24,37 @@ import { planningRoot } from '../util/phase-paths.js'
 export const SectionName = z.enum(['branching', 'commits', 'pr', 'release', 'tracker'])
 export type SectionName = z.infer<typeof SectionName>
 
+/**
+ * Character allowlist for free-form preference strings that flow into the
+ * `muninnInstruction` text consumed by the LLM agent. Permits letters,
+ * digits, whitespace, and the structural punctuation needed for branch /
+ * commit / PR title templates. Excludes quote chars, backticks, control
+ * chars, and shell metacharacters.
+ */
+const SAFE_FREEFORM = z.string().max(64).regex(/^[\w\s{}/,.():\-]*$/)
+
 const BranchingSection = z
     .object({
-        types: z
-            .array(z.string())
-            .default(['feat', 'fix', 'refactor', 'chore', 'docs', 'test', 'style']),
-        template: z.string().default('{type}/{issue}-{slug}'),
-        defaultBranch: z.string().default('main'),
-        guardedBranches: z.array(z.string()).default(['main']),
+        types: z.array(SAFE_FREEFORM).default([
+            'feat', 'fix', 'refactor', 'chore', 'docs', 'test', 'style',
+        ]),
+        template: SAFE_FREEFORM.default('{type}/{issue}-{slug}'),
+        defaultBranch: SAFE_FREEFORM.default('main'),
+        guardedBranches: z.array(SAFE_FREEFORM).default(['main']),
     })
     .prefault({})
 
 const CommitsSection = z
     .object({
         convention: z.enum(['conventional', 'none']).default('conventional'),
-        scopes: z.array(z.string()).default([]),
+        scopes: z.array(SAFE_FREEFORM).default([]),
     })
     .prefault({})
 
 const PrSection = z
     .object({
-        titleFormat: z.string().default('{type}({scope}): {description}'),
-        baseBranch: z.string().default('main'),
+        titleFormat: SAFE_FREEFORM.default('{type}({scope}): {description}'),
+        baseBranch: SAFE_FREEFORM.default('main'),
     })
     .prefault({})
 
@@ -53,7 +70,7 @@ const ReleaseSection = z
 const TrackerSection = z
     .object({
         kind: z.enum(['github', 'linear', 'jira', 'none']).default('github'),
-        issuePrefix: z.string().default(''),
+        issuePrefix: SAFE_FREEFORM.default(''),
     })
     .prefault({})
 

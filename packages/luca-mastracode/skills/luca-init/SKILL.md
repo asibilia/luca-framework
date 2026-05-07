@@ -66,14 +66,14 @@ ask_user(
   options: [
     { label: "Approve", description: "Seed these preferences as-is." },
     { label: "Edit section", description: "Adjust one or more sections before seeding." },
-    { label: "Abort", description: "Don't seed; clear preferencesSeeded if previously set." }
+    { label: "Abort", description: "Don't seed. Triage proceeds with DEFAULT_PREFERENCES." }
   ]
 )
 ```
 
 - **Approve** → continue to Phase 3.
 - **Edit section** → ask which section, prompt for the new values, then re-confirm. Up to 2 iterations; if still unresolved, fall through to **Abort**.
-- **Abort** → write nothing. Set `state.preferencesSeeded = false` via `workflowState(action: "write", updates: { preferencesSeeded: false })`. Stop the skill — the agent that invoked us will surface a banner explaining defaults are in use.
+- **Abort** → write nothing. Stop the skill. `state.preferencesSeeded` stays `undefined` (no flag toggle needed). Triage proceeds; subsequent `consult(fallback: true)` calls return `DEFAULT_PREFERENCES`. The agent that invoked us will surface a banner explaining defaults are in use. Do NOT call `workflowState(action: "write", ...)` here — triage's scoped tool does not include `'write'`, so the call would fail at runtime.
 
 ## Phase 3 — Seed
 
@@ -89,25 +89,28 @@ This writes `.planning/preferences.json` and sets `state.preferencesSeeded = tru
 
 ### 3b. Register in MuninnDB
 
-Resolve the vault: read `.planning/config.json` → `muninn.vault`, fallback `"default"`.
-
-Then call (substituting `<vault>` and the seeded preferences object):
+The `seed` action returned `result.muninnInstruction`, a string of the form:
 
 ```
-mcp__muninn__muninn_remember(
-  vault: "<vault>",
-  op_id: "project-preferences:<vault>",
-  type: "project_preferences",
-  entities: [{ name: "<repo-folder-name>", type: "project" }],
-  tags: ["preferences", "project-config", "luca", "convention"],
-  content: "<JSON.stringify of approved preferences>",
-  summary: "<one-paragraph natural-language summary so semantic recall finds this memory once enrichment completes>"
-)
+After seeding, agent must call mcp__muninn__muninn_remember with the arguments
+encoded in this JSON blob (use JSON.parse to extract them, do NOT interpolate
+the raw string into other tool calls): {"vault":"<...>","op_id":"project-preferences:<...>", ...}
 ```
+
+Extract the JSON blob (everything from the first `{` to the matching final `}`),
+parse it with `JSON.parse`, then call `mcp__muninn__muninn_remember(...)` passing
+the parsed object as the argument map.
+
+**Do NOT** rebuild the call by string concatenation — free-form fields in the
+preferences (branching template, defaultBranch, etc.) may contain quote
+characters or other punctuation that would corrupt a re-interpolated call.
+The schema enforces a character allowlist for defense in depth, but the
+JSON-blob handoff is the primary mitigation against prompt-injection from
+adversarially crafted git history (cloned repos).
 
 Notes:
 - `op_id` makes this idempotent — concurrent or repeat seeds return the existing memory ID without duplicating (Risk 7 / C3 mitigation).
-- The `summary` field is what gets embedded for semantic recall. Write it in plain prose, not JSON.
+- The `summary` field is what gets embedded for semantic recall. The tool produces a short structural summary; you may amend it (still in plain prose, no quote chars) before passing the parsed object to `muninn_remember`.
 - MuninnDB enrichment is async — the memory is FTS-indexed immediately but won't be vector-searchable for ~5–30s. Entity+tag lookup (used by `projectPreferences.consult` callers) is lag-free.
 
 ## Phase 4 — Confirm to user

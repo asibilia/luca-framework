@@ -1,11 +1,11 @@
 /**
  * Vault helpers — project-scoped MuninnDB vault resolution.
  *
- * `sanitizeVaultName` mirrors the regex from
- * `packages/luca-framework/src/utils/vault-setup.ts:108-114` (lowercase,
- * `[^a-z0-9-]` → `-`, collapse runs, trim ends). The framework re-exports
- * this function so existing consumers continue to import it from
- * `@alecsibilia/luca-framework`.
+ * `sanitizeVaultName` is an alias for `slugifySegment` from
+ * `util/phase-paths.ts` (lowercase, `[^a-z0-9-]` → `-`, collapse runs, trim
+ * ends). Single source of truth in `phase-paths.ts`; this module re-exports
+ * under the vault-specific name. The framework re-exports `sanitizeVaultName`
+ * so existing consumers continue to import it from `@alecsibilia/luca-framework`.
  *
  * `resolveProjectVault` reads `.planning/config.json` via `CONFIG_PATH()` and
  * extracts `muninn.vault`, applying `sanitizeVaultName` and falling back to
@@ -13,7 +13,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 
-import { CONFIG_PATH } from '../util/phase-paths.js'
+import { CONFIG_PATH, slugifySegment } from '../util/phase-paths.js'
 
 /**
  * Sanitize a string into a valid vault name (lowercase kebab-case).
@@ -26,11 +26,7 @@ import { CONFIG_PATH } from '../util/phase-paths.js'
  * sanitizeVaultName("@scope/pkg")    // "scope-pkg"
  */
 export function sanitizeVaultName(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
+    return slugifySegment(name)
 }
 
 /**

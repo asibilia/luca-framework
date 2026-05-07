@@ -77,15 +77,15 @@ If results found, factor prior complexity levels and learnings into classificati
 Check whether this repo has seeded project preferences (branching, commits, PR, release, tracker conventions):
 
 ```
-projectPreferences(action: "consult", fallback: false)
+result = projectPreferences(action: "consult", fallback: false)
 ```
 
-Then read `state.preferencesSeeded` from `workflowState(action: "read")`.
+Single-call decision tree:
 
-- If `result.preferences === null` AND `state.preferencesSeeded !== true` → invoke the `/luca-init` skill to seed preferences before continuing. After luca-init completes, proceed to Step 2.
-- Otherwise (preferences present, or `preferencesSeeded === true`) → proceed to Step 2.
+- If `result.preferences === null` → invoke the `/luca-init` skill to seed preferences before continuing. After luca-init completes (Approve, Edit-section, or Abort), proceed to Step 2.
+- Otherwise → proceed to Step 2.
 
-Rationale: only triage runs the sentinel. Downstream phases call `consult(fallback: true)` and never trigger init — this prevents wizard prompts from interrupting headless execution. Risk-coverage: C1 (preferencesSeeded flag prevents seed→consult→null infinite loop), C2 (`fallback: false` here is the only place null can surface).
+Rationale: only triage runs the sentinel. The `consult` action already encodes C1 internally — when `preferencesSeeded === true` and the file is missing it returns `DEFAULT_PREFERENCES` (not `null`), so a single tool call distinguishes "needs init" (`null`) from every other state. Downstream phases call `consult(fallback: true)` and never trigger init — this prevents wizard prompts from interrupting headless execution.
 
 ## Step 2: Classify Complexity
 

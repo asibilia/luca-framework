@@ -24,27 +24,60 @@ import {
 import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { resolveProjectVault } from '../state/vault.js'
 
-type SectionKey = z.infer<typeof SectionName>
-const SECTION_KEYS = SectionName.options
+/**
+ * Resolve the effective preferences for read actions (consult, consult-section).
+ *
+ * Encapsulates the C1 / C2 decision tree:
+ * - file present → return parsed prefs; back-fill `preferencesSeeded:true` if
+ *   the flag wasn't already set.
+ * - file missing AND `preferencesSeeded === true` (loop-safe C1) → return
+ *   `DEFAULT_PREFERENCES`. Prevents seed → consult → null infinite loops when
+ *   the on-disk file is removed or unparseable after a successful seed.
+ * - file missing AND not seeded AND `fallback:true` (C2) → return defaults.
+ * - file missing AND not seeded AND `fallback:false` → return `null` (signal
+ *   to triage Step 1.6 sentinel that init is needed).
+ */
+function resolvePrefs(fallback?: boolean): ProjectPreferences | null {
+    const seeded = readLucaState().preferencesSeeded === true
+    const prefs = loadProjectPreferences()
+    if (prefs !== null) {
+        if (!seeded) writeLucaState({ preferencesSeeded: true })
+        return prefs
+    }
+    return seeded || fallback === true ? DEFAULT_PREFERENCES : null
+}
 
+/**
+ * Build the deterministic agent instruction that the luca-init skill executes
+ * after `seed`. Emits a SINGLE JSON-stringified blob argument so the agent
+ * `JSON.parse`s it instead of pattern-matching an interpolated pseudo-call.
+ * This eliminates the prompt-injection vector documented in REVIEW-1.md
+ * MUST-FIX-2/3 — no free-form preference field is ever interpolated into the
+ * instruction string. The Zod allowlist on `state/project-preferences.ts`
+ * provides defense in depth at the schema layer.
+ */
 function buildMuninnInstruction(prefs: ProjectPreferences): string {
     const vault = resolveProjectVault()
-    const content = JSON.stringify(prefs)
     const summary =
         `Project preferences (schema v${prefs.schemaVersion}): ` +
-        `branching=${prefs.branching.template} on default ${prefs.branching.defaultBranch}; ` +
+        `branching template+default; ` +
         `commits=${prefs.commits.convention}; ` +
         `release=${prefs.release.tool}; ` +
         `tracker=${prefs.tracker.kind}.`
+    const blob = {
+        vault,
+        op_id: `project-preferences:${vault}`,
+        type: 'project_preferences',
+        entities: [{ name: vault, type: 'project' }],
+        tags: ['preferences', 'project-config', 'luca', 'convention'],
+        content: JSON.stringify(prefs),
+        summary,
+    }
     return (
-        `After seeding, agent must call mcp__muninn__muninn_remember(` +
-        `vault: "${vault}", ` +
-        `op_id: "project-preferences:${vault}", ` +
-        `type: "project_preferences", ` +
-        `entities: [{name: "${vault}", type: "project"}], ` +
-        `tags: ["preferences","project-config","luca","convention"], ` +
-        `content: ${content}, ` +
-        `summary: "${summary}") to register in MuninnDB.`
+        `After seeding, agent must call mcp__muninn__muninn_remember with the ` +
+        `arguments encoded in this JSON blob (use JSON.parse to extract them, ` +
+        `do NOT interpolate the raw string into other tool calls): ` +
+        JSON.stringify(blob)
     )
 }
 
@@ -57,16 +90,17 @@ function mergePreferences(
     existing: ProjectPreferences,
     payload: Record<string, unknown>
 ): Record<string, unknown> {
+    // schemaVersion is sealed to the Zod literal — caller-supplied values are
+    // intentionally ignored here. Migrations belong in a dedicated migrate()
+    // helper gated on the stored value, NOT in mergePreferences. See
+    // REVIEW-1.md MUST-FIX-4.
     const merged: Record<string, unknown> = {
         schemaVersion: existing.schemaVersion,
     }
-    for (const key of SECTION_KEYS) {
+    for (const key of SectionName.options) {
         const existingSection = existing[key] as Record<string, unknown>
         const payloadSection = (payload[key] as Record<string, unknown> | undefined) ?? {}
         merged[key] = { ...existingSection, ...payloadSection }
-    }
-    if (typeof payload.schemaVersion === 'number') {
-        merged.schemaVersion = payload.schemaVersion
     }
     return merged
 }
@@ -105,8 +139,15 @@ export const projectPreferencesTool = createTool({
     }),
     outputSchema: z.object({
         success: z.boolean(),
-        preferences: z.unknown().optional(),
-        section: z.unknown().optional(),
+        // Typed contract: full document (consult) or null when init needed.
+        preferences: ProjectPreferencesSchema.nullable().optional(),
+        // section is the value of one keyed section; runtime-validated as a
+        // record (specific section types are erased here because the keys are
+        // dynamic and Mastra's tool generic does not support union outputs
+        // cleanly — callers should narrow via the `section` input).
+        section: z
+            .union([z.record(z.string(), z.unknown()), z.null()])
+            .optional(),
         message: z.string().optional(),
         muninnInstruction: z.string().optional(),
     }),
@@ -120,47 +161,25 @@ export const projectPreferencesTool = createTool({
 
         switch (action) {
             case 'consult': {
-                const state = readLucaState()
-                const seeded = state.preferencesSeeded === true
-                const prefs = loadProjectPreferences()
-                if (prefs !== null) {
-                    if (!seeded) writeLucaState({ preferencesSeeded: true })
-                    return { success: true, preferences: prefs }
-                }
-                // prefs === null
-                if (seeded) {
-                    // C1 LOOP-SAFE: previously seeded but file missing/invalid —
-                    // return defaults so callers don't loop on a missing file.
-                    return { success: true, preferences: DEFAULT_PREFERENCES }
-                }
-                if (fallback === true) {
-                    return { success: true, preferences: DEFAULT_PREFERENCES }
-                }
-                return { success: true, preferences: null }
+                return { success: true, preferences: resolvePrefs(fallback) }
             }
 
             case 'consult-section': {
-                if (!section || !SECTION_KEYS.includes(section as SectionKey)) {
+                if (
+                    !section ||
+                    !SectionName.options.includes(section as SectionName)
+                ) {
                     return {
                         success: false,
                         message: `Unknown section "${section}". Must be one of: branching, commits, pr, release, tracker.`,
                     }
                 }
-                const key = section as SectionKey
-                const state = readLucaState()
-                const seeded = state.preferencesSeeded === true
-                const prefs = loadProjectPreferences()
-                if (prefs !== null) {
-                    if (!seeded) writeLucaState({ preferencesSeeded: true })
-                    return { success: true, section: prefs[key] }
+                const key = section as SectionName
+                const prefs = resolvePrefs(fallback)
+                return {
+                    success: true,
+                    section: prefs ? (prefs[key] as Record<string, unknown>) : null,
                 }
-                if (seeded) {
-                    return { success: true, section: DEFAULT_PREFERENCES[key] }
-                }
-                if (fallback === true) {
-                    return { success: true, section: DEFAULT_PREFERENCES[key] }
-                }
-                return { success: true, section: null }
             }
 
             case 'seed': {
