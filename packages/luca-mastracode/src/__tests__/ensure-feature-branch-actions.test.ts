@@ -250,6 +250,67 @@ describe('apply', () => {
         expect(mockWriteState).not.toHaveBeenCalled()
     })
 
+    // ── SafeRefName validation (SEC-1) ─────────────────────────────────
+    // Apply input flows directly into execFileSync git args. Even with the
+    // array form (no shell), git itself parses leading '-' as a flag, '..'
+    // as parent traversal, '@{' as reflog. The schema rejects these at the
+    // tool boundary (Mastra runtime validates inputSchema before execute).
+    // We validate directly via the inputSchema since execute() in tests
+    // bypasses Mastra's runtime validation.
+
+    // The inputSchema is a Zod object at runtime but Mastra exposes it via
+    // the StandardSchema type, which doesn't surface .safeParse(). Cast to
+    // any so tests can validate the schema directly.
+    const inputSchema = ensureFeatureBranchTool.inputSchema as any
+
+    test('SafeRefName rejects branchName starting with "-" (CLI-flag injection)', () => {
+        const r = inputSchema.safeParse({
+            action: 'apply',
+            resolution: { branchName: '-C main', needsConfirmation: false },
+        })
+        expect(r.success).toBe(false)
+        if (r.success) return
+        const messages = r.error.issues
+            .map((i: { message: string }) => i.message)
+            .join(' | ')
+        expect(messages).toMatch(/must not start with "-"|must contain only/)
+    })
+
+    test('SafeRefName rejects branchName containing ".." and "@{"', () => {
+        const r = inputSchema.safeParse({
+            action: 'apply',
+            resolution: { branchName: '..@{0}', needsConfirmation: false },
+        })
+        expect(r.success).toBe(false)
+        if (r.success) return
+        const messages = r.error.issues
+            .map((i: { message: string }) => i.message)
+            .join(' | ')
+        expect(messages).toMatch(/must not contain "\.\."|must not contain "@\{"|must contain only/)
+    })
+
+    test('SafeRefName rejects branchName containing whitespace', () => {
+        const r = inputSchema.safeParse({
+            action: 'apply',
+            resolution: { branchName: 'name with space', needsConfirmation: false },
+        })
+        expect(r.success).toBe(false)
+    })
+
+    test('SafeRefName accepts canonical feat/PT-12458-fix', () => {
+        const r = inputSchema.safeParse({
+            action: 'apply',
+            resolution: {
+                branchName: 'feat/PT-12458-fix',
+                base: 'main',
+                prBase: 'main',
+                needsConfirmation: false,
+                role: 'feature',
+            },
+        })
+        expect(r.success).toBe(true)
+    })
+
     test('success path → ok:true; writeLucaState called with branchName, baseBranch, prBase, issueNumber', async () => {
         gitState.currentBranch = 'ENG-1428--release'
         gitState.defaultBranch = 'main'

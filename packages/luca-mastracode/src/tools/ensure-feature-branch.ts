@@ -4,12 +4,35 @@ import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
 import {
+    DEFAULT_PREFERENCES,
     loadProjectPreferences,
     type ProjectPreferences,
 } from '../state/project-preferences.js'
 import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { renderTemplate } from '../util/branch-template.js'
 import { slugifySegment } from '../util/phase-paths.js'
+
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * Strict git ref-name validator. Rejects characters/sequences that abuse
+ * git's own argument parsing even when invoked via execFileSync array form
+ * (no shell). See git-check-ref-format(1) for the canonical rules.
+ *
+ * Allowlist: ASCII letters, digits, dot, underscore, hyphen, slash.
+ * Forbidden: leading hyphen (would be parsed as a CLI flag), '..' sequence,
+ * '@{' (reflog selector), and any character outside the allowlist.
+ */
+const SafeRefName = z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[a-zA-Z0-9._\-\/]+$/, 'must contain only [a-zA-Z0-9._\\-/]')
+    .refine((v) => !v.startsWith('-'), { message: 'must not start with "-"' })
+    .refine((v) => !v.includes('..'), { message: 'must not contain ".."' })
+    .refine((v) => !v.includes('@{'), { message: 'must not contain "@{"' })
 
 // ---------------------------------------------------------------------------
 // Git helpers — thin, sync, never throw above this layer
@@ -168,7 +191,12 @@ type BranchTypeRulePref = NonNullable<
 
 interface ResolvedBaseRule {
     value: string | undefined
-    kindUsed: 'static' | 'matched' | 'static-fallback' | 'ask'
+    /**
+     * True only when the rule resolved to an `ask` outcome (i.e. the human
+     * must confirm before apply runs). Replaces the previous 4-value
+     * `kindUsed` discriminant which was only ever consumed via `=== 'ask'`.
+     */
+    isAsk: boolean
 }
 
 /**
@@ -184,36 +212,38 @@ function resolveBaseRule(
     defaultBranch: string,
 ): ResolvedBaseRule {
     if (!rule) {
-        return { value: defaultBranch, kindUsed: 'static' }
+        return { value: defaultBranch, isAsk: false }
     }
     if (rule.kind === 'static') {
-        return { value: rule.value ?? defaultBranch, kindUsed: 'static' }
+        return { value: rule.value ?? defaultBranch, isAsk: false }
     }
     if (rule.kind === 'current-branch-if-matches') {
         if (rule.pattern) {
             try {
                 if (new RegExp(rule.pattern).test(currentBranch)) {
-                    return { value: currentBranch, kindUsed: 'matched' }
+                    return { value: currentBranch, isAsk: false }
                 }
             } catch {
                 // Schema validates regex source, but be defensive at runtime.
             }
         }
         if (rule.fallback === 'ask') {
-            return { value: undefined, kindUsed: 'ask' }
+            return { value: undefined, isAsk: true }
         }
         if (typeof rule.fallback === 'string') {
-            return { value: rule.fallback, kindUsed: 'static-fallback' }
+            return { value: rule.fallback, isAsk: false }
         }
         // No fallback declared → force confirmation rather than silently
         // defaulting; the human must pick a base.
-        return { value: undefined, kindUsed: 'ask' }
+        return { value: undefined, isAsk: true }
     }
     // kind === 'ask'
     if (typeof rule.fallback === 'string' && rule.fallback !== 'ask') {
-        return { value: rule.fallback, kindUsed: 'ask' }
+        // Static fallback present, but original rule.kind is 'ask' so the
+        // human still must confirm before apply commits.
+        return { value: rule.fallback, isAsk: true }
     }
-    return { value: undefined, kindUsed: 'ask' }
+    return { value: undefined, isAsk: true }
 }
 
 /** Built-in fallback rule when preferences are absent. Mirrors legacy create-action behavior. */
@@ -313,11 +343,13 @@ export function resolveBranching(input: ResolveInput): ResolveResult {
     }
     if (slug.length === 0) slug = 'work'
 
-    // Type computation: explicit override > role-mapped > 'feat'.
+    // Type computation: explicit override > 'feat'.
+    // NOTE: role does not currently differentiate the conventional-commit type prefix.
+    // All roles default to 'feat' since 'release' and 'rc' branch names already
+    // carry their semantics in the template (e.g. '{issue}--release'). If a future
+    // project wants 'release/...' or 'rc/...' prefixes, override input.type explicitly.
     const role = rule.role
-    const inferredType =
-        role === 'feature' ? 'feat' : role === 'release' || role === 'rc' ? 'feat' : 'feat'
-    const type = input.type ?? inferredType
+    const type = input.type ?? 'feat'
 
     let branchName: string
     try {
@@ -346,8 +378,7 @@ export function resolveBranching(input: ResolveInput): ResolveResult {
         input.defaultBranch,
     )
 
-    const askTriggered =
-        baseResolved.kindUsed === 'ask' || prBaseResolved.kindUsed === 'ask'
+    const askTriggered = baseResolved.isAsk || prBaseResolved.isAsk
     const confirmFlag = branching?.confirmBaseBeforeCreate === true
     const needsConfirmation = confirmFlag || askTriggered
 
@@ -424,12 +455,15 @@ export const ensureFeatureBranchTool = createTool({
         // Resolve inputs.
         ticketId: z
             .string()
+            .max(64)
+            .regex(/^[A-Za-z0-9_\-./]+$/)
             .optional()
             .describe(
                 'For "resolve": ticket id (e.g. PT-12458) used to match `branching.branchTypes[].match` regexes. Also embedded in the branch template as {issue}.'
             ),
         intent: z
             .string()
+            .max(256)
             .optional()
             .describe(
                 'For "resolve": free-form intent string used to derive the branch slug when `slug` is not provided.'
@@ -437,9 +471,9 @@ export const ensureFeatureBranchTool = createTool({
         // Apply inputs.
         resolution: z
             .object({
-                branchName: z.string(),
-                base: z.string().optional(),
-                prBase: z.string().optional(),
+                branchName: SafeRefName,
+                base: SafeRefName.optional(),
+                prBase: SafeRefName.optional(),
                 needsConfirmation: z.boolean(),
                 role: z.enum(['feature', 'release', 'rc']).optional(),
             })
@@ -448,14 +482,12 @@ export const ensureFeatureBranchTool = createTool({
             .describe(
                 'For "apply": the result of a prior "resolve" call. Must include branchName/base/prBase/needsConfirmation.'
             ),
-        confirmedBase: z
-            .string()
+        confirmedBase: SafeRefName
             .optional()
             .describe(
                 'For "apply": user-confirmed base branch when resolution.needsConfirmation=true.'
             ),
-        confirmedPrBase: z
-            .string()
+        confirmedPrBase: SafeRefName
             .optional()
             .describe(
                 'For "apply": user-confirmed PR base branch (defaults to confirmedBase ?? resolution.prBase).'
@@ -596,20 +628,13 @@ export const ensureFeatureBranchTool = createTool({
         // ── consult ─────────────────────────────────────────────────
         if (action === 'consult') {
             const prefs = loadProjectPreferences()
+            // Drift-free defaults: re-use DEFAULT_PREFERENCES.branching so a
+            // schema change in project-preferences.ts auto-propagates here.
+            // The live-git defaultBranch override stays — the schema default
+            // is 'main' but the actual repo may differ.
             const merged = prefs?.branching ?? {
-                types: [
-                    'feat',
-                    'fix',
-                    'refactor',
-                    'chore',
-                    'docs',
-                    'test',
-                    'style',
-                ],
-                template: '{type}/{issue}-{slug}',
+                ...DEFAULT_PREFERENCES.branching,
                 defaultBranch: def,
-                guardedBranches: ['main'],
-                confirmBaseBeforeCreate: false,
             }
             return {
                 ok: true as const,

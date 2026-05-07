@@ -34,13 +34,33 @@ export type SectionName = z.infer<typeof SectionName>
 const SAFE_FREEFORM = z.string().max(64).regex(/^[\w\s{}/,.():\-]*$/)
 
 /**
- * Zod refinement: source string must compile as a JS RegExp.
+ * Zod refinement: source string must compile as a JS RegExp AND must not
+ * contain nested quantifiers, which can produce catastrophic backtracking
+ * (ReDoS) when iterated against attacker-controlled input.
+ *
+ * NOTE: nested quantifiers prohibited (ReDoS guard). Patterns like
+ * `(a+)+`, `(.+)*`, `(\\d{2,}){2,}` are rejected. Length cap alone is
+ * insufficient — worst-case patterns are short.
+ *
  * Used for branchTypes[].match and BaseRule.pattern.
  */
-const RegexSource = z.string().min(1).max(128).refine(
-    (v) => { try { new RegExp(v); return true } catch { return false } },
-    { message: 'must be a valid regex source' },
-)
+const RegexSource = z
+    .string()
+    .min(1)
+    .max(128)
+    .refine(
+        (v) => { try { new RegExp(v); return true } catch { return false } },
+        { message: 'must be a valid regex source' },
+    )
+    .refine(
+        // Detects a quantifier-terminator (+ * }) immediately followed by ')'
+        // and then another quantifier-starter (+ * {). This catches the
+        // canonical catastrophic-backtracking shapes `(a+)+`, `(.+)*`,
+        // `(\d{2,}){2,}` while leaving non-nested patterns like `\d+`,
+        // `.*`, and `\d{2,}` untouched.
+        (v) => !/[+*}]\)[+*{]/.test(v),
+        { message: 'nested quantifiers prohibited (ReDoS guard)' },
+    )
 
 /**
  * BaseRule: how to resolve a base or PR-base branch for a branch-type rule.

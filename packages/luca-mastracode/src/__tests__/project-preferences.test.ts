@@ -275,4 +275,56 @@ describe('Phase B schema additions', () => {
         if (!result.success) return
         expect(result.data.branching.confirmBaseBeforeCreate).toBe(false)
     })
+
+    // ── RegexSource ReDoS guard (SEC-2) ────────────────────────────────
+    // Patterns with nested quantifiers (e.g. `(a+)+`) can cause catastrophic
+    // backtracking when matched against attacker-controlled input. The
+    // schema rejects them at preference-load time so they can never reach
+    // the resolveBranching loop.
+
+    function buildBranchTypeWithMatch(match: string) {
+        return {
+            branching: {
+                branchTypes: [
+                    {
+                        match,
+                        template: '{type}/{slug}',
+                        base: { kind: 'static' as const, value: 'main' },
+                        prBase: { kind: 'static' as const, value: 'main' },
+                    },
+                ],
+            },
+        }
+    }
+
+    test('rejects nested quantifier (a+)+ with ReDoS guard message', () => {
+        const result = ProjectPreferencesSchema.safeParse(
+            buildBranchTypeWithMatch('(a+)+'),
+        )
+        expect(result.success).toBe(false)
+        if (result.success) return
+        const messages = result.error.issues.map((i) => i.message).join(' | ')
+        expect(messages).toContain('ReDoS guard')
+    })
+
+    test('rejects nested quantifier (.+)*', () => {
+        const result = ProjectPreferencesSchema.safeParse(
+            buildBranchTypeWithMatch('(.+)*'),
+        )
+        expect(result.success).toBe(false)
+    })
+
+    test('rejects nested quantifier (\\d{2,}){2,}', () => {
+        const result = ProjectPreferencesSchema.safeParse(
+            buildBranchTypeWithMatch('(\\d{2,}){2,}'),
+        )
+        expect(result.success).toBe(false)
+    })
+
+    test('accepts non-nested ^PT-\\d+$', () => {
+        const result = ProjectPreferencesSchema.safeParse(
+            buildBranchTypeWithMatch('^PT-\\d+$'),
+        )
+        expect(result.success).toBe(true)
+    })
 })

@@ -1,0 +1,89 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "arch-1",
+      "description": "finalize.md reads base from state without consult call",
+      "met": true,
+      "evidence": "finalize.md:345; only mention of consult is explicit forbid",
+      "blocking": true
+    },
+    {
+      "criterionId": "sec-1",
+      "description": "SafeRefName applied to apply input branchName/base/prBase/confirmedBase/confirmedPrBase",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:28 def + 5 usages :474,475,476,485,490",
+      "blocking": true
+    },
+    {
+      "criterionId": "sec-2",
+      "description": "RegexSource ReDoS guard rejects nested quantifiers",
+      "met": true,
+      "evidence": "project-preferences.ts:39-62; 4 ReDoS rejection tests pass",
+      "blocking": true
+    },
+    {
+      "criterionId": "simp-1",
+      "description": "inferredType ternary collapsed to const type = input.type ?? 'feat'",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:352; 0 inferredType references",
+      "blocking": true
+    },
+    {
+      "criterionId": "sec-3-fold",
+      "description": "SEC-3 ticketId .max(64).regex applied",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:458-459",
+      "blocking": false
+    },
+    {
+      "criterionId": "sec-5-fold",
+      "description": "SEC-5 intent .max(256) applied",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:466",
+      "blocking": false
+    },
+    {
+      "criterionId": "simp-2-fold",
+      "description": "consult uses DEFAULT_PREFERENCES.branching",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:7,631-636",
+      "blocking": false
+    },
+    {
+      "criterionId": "simp-3-fold",
+      "description": "ResolvedBaseRule kindUsed renamed to isAsk: boolean",
+      "met": true,
+      "evidence": "ensure-feature-branch.ts:199 + 4 usages",
+      "blocking": false
+    },
+    {
+      "criterionId": "tests-pass",
+      "description": "tsc clean, 173/173 tests pass (165 baseline + 8 new), rule gate clean",
+      "met": true,
+      "evidence": "runChecks resolved; runRules 0 findings",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 2
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "timestamp": "2026-05-07T16:12:23.249Z",
+  "runId": "run_movm8pfg_5yb4znva"
+}
