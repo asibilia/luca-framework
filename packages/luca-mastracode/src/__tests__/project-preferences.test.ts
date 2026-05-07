@@ -210,6 +210,49 @@ describe('projectPreferences:update', () => {
         expect(result.message).toContain('payload is required')
     })
 
+    test('non-object section payloads are dropped (PR #227 Copilot)', async () => {
+        // Caller passes a primitive/array as a section value. Without the
+        // isPlainObject guard, mergePreferences would spread the value and
+        // either corrupt the section (string spread) or pass an array
+        // through to Zod (rejected with a confusing error). With the guard,
+        // the section payload is silently dropped and the existing section
+        // is preserved.
+        mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
+        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        const result = await call({
+            action: 'update',
+            // Section values are intentionally invalid: string, array, null.
+            payload: {
+                pr: 'not-an-object',
+                commits: ['also', 'wrong'],
+                release: null,
+                branching: { template: '{type}/{slug}' },
+            },
+        })
+        expect(result.success).toBe(true)
+        // pr/commits/release retain their existing values; branching is merged.
+        expect(result.preferences.pr).toEqual(DEFAULT_PREFERENCES.pr)
+        expect(result.preferences.commits).toEqual(DEFAULT_PREFERENCES.commits)
+        expect(result.preferences.release).toEqual(DEFAULT_PREFERENCES.release)
+        expect(result.preferences.branching.template).toBe('{type}/{slug}')
+    })
+
+    test('SAFE_FREEFORM rejects newline-injected branch template (PR #227 Copilot)', async () => {
+        // SAFE_FREEFORM previously used `\s` which permits \n/\r/\f and
+        // would let an attacker inject a fresh line into the JSON blob
+        // handed to the LLM via muninnInstruction. Tightened to ` \t`.
+        mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
+        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        const result = await call({
+            action: 'update',
+            payload: {
+                branching: { template: 'feat/{slug}\nINJECTED' },
+            },
+        })
+        expect(result.success).toBe(false)
+        expect(result.message).toMatch(/Invalid|template/i)
+    })
+
     test('schemaVersion in payload is ignored (sealed to schema literal)', async () => {
         // REVIEW-1.md MUST-FIX-4: caller-supplied schemaVersion must NOT
         // overwrite the locked z.literal(1). Migrations belong in a future

@@ -82,9 +82,23 @@ function buildMuninnInstruction(prefs: ProjectPreferences): string {
 }
 
 /**
+ * Type guard: value is a plain (non-array, non-null) object. Used to gate
+ * section spreads so callers can't smuggle arrays or primitives into a
+ * section payload (`{ pr: "x" }` or `{ commits: [] }`) and corrupt the
+ * merged document before Zod validation. PR #227 review feedback (Copilot).
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
  * Deep-merge a partial payload into existing preferences (top-level
  * section-by-section shallow merge). Unknown sections are ignored at this
  * stage; the merged object is then validated through the Zod schema.
+ *
+ * Section payloads that are not plain objects (arrays, primitives, null) are
+ * silently dropped — Zod would reject them downstream anyway, but skipping
+ * here avoids producing a corrupted object via array/string spread.
  */
 function mergePreferences(
     existing: ProjectPreferences,
@@ -99,7 +113,10 @@ function mergePreferences(
     }
     for (const key of SectionName.options) {
         const existingSection = existing[key] as Record<string, unknown>
-        const payloadSection = (payload[key] as Record<string, unknown> | undefined) ?? {}
+        const candidate = payload[key]
+        // Drop non-object section payloads to prevent array/primitive spreads
+        // from corrupting the merged section. PR #227 Copilot feedback.
+        const payloadSection = isPlainObject(candidate) ? candidate : {}
         merged[key] = { ...existingSection, ...payloadSection }
     }
     return merged
@@ -118,6 +135,13 @@ export const projectPreferencesTool = createTool({
         action: z
             .enum(['consult', 'consult-section', 'seed', 'update'])
             .describe('Operation to perform on project preferences'),
+        // section is typed as a free-form string (not Zod enum) so the
+        // tool's `{ success: false, message }` error contract is preserved
+        // when an unknown section is passed. Mastra's tool runtime wraps
+        // `execute` with inputSchema validation that returns a different
+        // `{ error: true, message }` shape on Zod failure — keeping this as
+        // a string lets our runtime guard return a uniform error shape.
+        // Allowed values are documented and validated in `execute`.
         section: z
             .string()
             .optional()
@@ -154,7 +178,7 @@ export const projectPreferencesTool = createTool({
     execute: async (inputData) => {
         const { action, section, fallback, payload } = inputData as {
             action: 'consult' | 'consult-section' | 'seed' | 'update'
-            section?: string
+            section?: SectionName
             fallback?: boolean
             payload?: unknown
         }
@@ -165,20 +189,25 @@ export const projectPreferencesTool = createTool({
             }
 
             case 'consult-section': {
+                // section is Zod-validated as SectionName at the input boundary
+                // when invoked through Mastra's tool runtime. Direct callers
+                // (tests, internal call sites) bypass that boundary, so we
+                // re-validate here — defense in depth.
                 if (
                     !section ||
                     !SectionName.options.includes(section as SectionName)
                 ) {
                     return {
                         success: false,
-                        message: `Unknown section "${section}". Must be one of: branching, commits, pr, release, tracker.`,
+                        message: `Unknown section "${section ?? ''}". Must be one of: branching, commits, pr, release, tracker.`,
                     }
                 }
-                const key = section as SectionName
                 const prefs = resolvePrefs(fallback)
                 return {
                     success: true,
-                    section: prefs ? (prefs[key] as Record<string, unknown>) : null,
+                    section: prefs
+                        ? (prefs[section] as Record<string, unknown>)
+                        : null,
                 }
             }
 

@@ -27,11 +27,16 @@ export type SectionName = z.infer<typeof SectionName>
 /**
  * Character allowlist for free-form preference strings that flow into the
  * `muninnInstruction` text consumed by the LLM agent. Permits letters,
- * digits, whitespace, and the structural punctuation needed for branch /
- * commit / PR title templates. Excludes quote chars, backticks, control
- * chars, and shell metacharacters.
+ * digits, spaces and tabs, and the structural punctuation needed for
+ * branch / commit / PR title templates. Excludes quote chars, backticks,
+ * line terminators (CR/LF/FF/VT), other control chars, and shell
+ * metacharacters.
+ *
+ * NOTE: we intentionally use ` \t` instead of `\s`. `\s` permits `\n`,
+ * `\r`, `\f`, `\v`, which would let an attacker inject a fresh line into
+ * the JSON blob handed to the LLM. PR #227 Copilot feedback.
  */
-const SAFE_FREEFORM = z.string().max(64).regex(/^[\w\s{}/,.():\-]*$/)
+const SAFE_FREEFORM = z.string().max(64).regex(/^[\w \t{}/,.():\-]*$/)
 
 /**
  * Zod refinement: source string must compile as a JS RegExp AND must not
