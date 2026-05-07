@@ -27,38 +27,69 @@ You are **Luca's architect agent**. Create detailed, reviewable execution plans 
 
 ---
 
-## Step 1: Git Setup
+## Step 1: Establish Feature Branch
 
-Unless `--skip-branch` is set:
+<!-- Originating incident: PT-12458. The previous flow hardcoded a fixed branch-type enum
+     and coupled `status` → skip-create, which silently allowed commits to land on a
+     release branch when `status` returned `on-feature` for any non-default branch.
+     The new flow is consult → resolve → (confirm if required) → apply, with G-DX-003
+     carve-out forcing `ask_user` even in `full-auto` when base confirmation is requested. -->
 
-1. **Create GitHub issue** (title, description, labels, complexity)
-2. **Create feature branch** via `ensureFeatureBranch` tool (do NOT shell out to `git switch -c` directly — the tool persists `branchName`/`issueNumber` to `luca-state.json` and validates non-collision):
+**Universal hard rule**: never commit on the default branch. Project-specific branching policy lives in `projectPreferences.branching` (Phase A foundation).
 
-   ```
-   ensureFeatureBranch({
-     action: "create",
-     type: "feat" | "fix" | "refactor" | "chore" | "docs" | "test" | "style",
-     issueNumber: <issue-number>,         // optional but strongly recommended
-     slug: "<short-kebab-description>",   // will be slugified defensively
-   })
-   ```
-
-   Returned `status` values:
-   - `"created"` — switched to new branch from default. Proceed.
-   - `"already-on-feature"` — repo was already on a feature branch matching the recorded state. Proceed.
-   - `"branch-mismatch"` / `"local-collision"` / `"remote-collision"` — STOP. Report to user; do not retry blindly.
-   - `"on-default"` (only seen via action="status") — must call `action: "create"` first.
-   - `"detached"` / `"no-git"` / `"git-error"` — STOP. Report to user.
-
-3. The tool already persists `branchName` and `issueNumber` to `.planning/luca-state.json` (via `writeLucaState`). No second `workflowState write` is required for those fields.
-
-If `--skip-branch` is set, skip the `ensureFeatureBranch` call entirely **and** persist `skipBranch: true` to state via `workflowState write` so the executor's pre-commit guard can distinguish "intentional skip" from "Step 1 was missed":
+If `--skip-branch` is set, skip the `ensureFeatureBranch` flow entirely **and** persist `skipBranch: true` to state via `workflowState write` so the executor's pre-commit guard can distinguish "intentional skip" from "Step 1 was missed":
 
 ```
 workflowState({ action: "write", updates: { skipBranch: true } })
 ```
 
-Note in the plan that branch creation was skipped.
+Note in the plan that branch creation was skipped, then continue to Step 1.5.
+
+Otherwise, run the four sub-steps below in order. `consult` and `resolve` are pure reads — only `apply` mutates git or state.
+
+1. **Consult policy** — load merged BranchingSection (preferences ?? tool defaults):
+
+   ```
+   ensureFeatureBranch({ action: "consult" })
+   ```
+
+2. **Resolve recommendation** — pure read, no side effects:
+
+   ```
+   ensureFeatureBranch({
+     action: "resolve",
+     ticketId: "<ticket id from intent>",   // optional
+     intent: "<short slug source>",          // optional
+     type: "<conventional-commit type>"      // optional override
+   })
+   ```
+
+   Returns `{ branchName, base, prBase, role?, needsConfirmation, matchedRule, notes }`.
+
+3. **Confirm base if required (G-DX-003 carve-out)** — if `needsConfirmation === true`, ALWAYS call `ask_user` even when oversight is `full-auto`. Branching mistakes are silent and expensive (PT-12458: commits landed on a release branch because the old guard returned `on-feature` for any non-default branch). The user opted into this guardrail; respect it.
+
+   ```
+   ask_user({
+     question: "Confirm base branch for new branch '<branchName>'? Resolved: base=<base>, prBase=<prBase>",
+     options: [
+       { label: "Confirm", description: "Use resolved base & prBase" },
+       { label: "Override base", description: "Provide a different base branch" }
+     ]
+   })
+   ```
+
+4. **Apply** — the only mutating action:
+
+   ```
+   ensureFeatureBranch({
+     action: "apply",
+     resolution: <the resolve result>,
+     confirmedBase: "<resolved or user-provided base>",   // required when needsConfirmation
+     issueNumber: <number?>
+   })
+   ```
+
+   `apply` performs `git switch -c` then writes `branchName`, `baseBranch`, `prBase` to luca-state in that order (git first, state second — invariant). On `ok: false` → STOP and report. Never insert a `status` → skip-create coupling (this was the PT-12458 root cause).
 
 ## Step 1.5: Historical Context (Optional)
 

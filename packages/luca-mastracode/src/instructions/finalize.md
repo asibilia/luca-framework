@@ -336,15 +336,22 @@ After the gate passes, proceed.
 
 ### 5b.3. Create PR
 
-1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "status" })`. If `status` is anything other than `"on-feature"`, STOP and report; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
+1. **Pre-push branch guard** — call `ensureFeatureBranch({ action: "assert-not-default" })`. On `ok: false`, STOP and report the returned `status`/`message`; do NOT push to the default branch and do NOT open a PR. (`--skip-branch` runs bypass this guard intentionally.)
 2. **Push** feature branch to remote
-3. **Create PR** with:
+3. **Resolve PR base** — read state and consult policy to determine `--base`:
+   ```
+   workflowState({ action: "read" })            // → state.prBase, state.baseBranch
+   ensureFeatureBranch({ action: "consult" })   // → defaultBranch from merged BranchingSection
+   ```
+   Choose `state.prBase ?? state.baseBranch ?? <defaultBranch from consult>` and pass that value as `--base` to `gh pr create`. Never hardcode `main` — release-train repos branch off non-default bases and an incorrect base silently lands work in the wrong release.
+4. **Create PR** with:
    - **Title**: Per recalled convention — `type(scope): vX.Y.Z #issue description`
+   - **Base**: Resolved per step 3 (`--base <resolved>`)
    - **Description**: Summary, `Closes #<issue-number>`, key changes by phase, testing summary, known limitations, link to `POSTMORTEM.md` (under `.planning/phases/<currentPhaseSlug>/`)
    - **Milestone**: Tag to version milestone
    - **Labels**: Match issue labels
    - **Reviewers**: If configured
-4. Store PR URL in `workflow_state`
+5. Store PR URL in `workflow_state`
 
 If `--skip-branch` was set, skip.
 

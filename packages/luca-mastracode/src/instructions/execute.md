@@ -371,6 +371,16 @@ If MuninnDB unavailable, learner outputs structured text. Include in execution s
 
 ## Step 6: Commit
 
+### Pre-commit guard
+
+Before the first commit of every wave, the executor subagent calls:
+
+```
+ensureFeatureBranch({ action: "assert-not-default" })
+```
+
+This is a HARD GUARD: returns `ok: false` if the current branch is the default branch OR appears in `projectPreferences.branching.guardedBranches[]` (runtime fallback `['main']` when missing). If `ok: false`, STOP — do NOT attempt recovery. OVERFLOW executors must run this on their first commit even if a prior session already passed; "once per session" is a hint, not a guarantee across resumes.
+
 After verification and review pass for each task:
 
 0. **Pre-commit MuninnDB recall** (once per wave, before the first commit of the wave). Query MuninnDB for commit-related learnings — message conventions, trailer formats, files repeatedly committed by mistake, scope-naming rules. Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`:
