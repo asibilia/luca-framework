@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "branching": {
+    "types": [
+      "feat",
+      "fix",
+      "refactor",
+      "chore",
+      "docs",
+      "test",
+      "style"
+    ],
+    "template": "{type}/{issue}-{slug}",
+    "defaultBranch": "main",
+    "guardedBranches": [
+      "main"
+    ],
+    "confirmBaseBeforeCreate": false
+  },
+  "commits": {
+    "convention": "conventional",
+    "scopes": [
+      "framework",
+      "mastracode",
+      "studio",
+      "config",
+      "docs",
+      "repo"
+    ],
+    "types": [
+      "feat",
+      "fix",
+      "refactor",
+      "chore",
+      "docs",
+      "test",
+      "style"
+    ],
+    "trailers": {
+      "coAuthor": true,
+      "issueRef": "Closes #"
+    },
+    "subjectMaxLength": 72
+  },
+  "pr": {
+    "titleFormat": "{type}({scope}): {description}",
+    "baseBranch": "main",
+    "titleTemplate": "{type}({scope}): {version} #{issue} {description}",
+    "titleExamples": [
+      "feat(mastracode): v10.2.0 #143 bundled skills system",
+      "fix(framework): v9.4.1 #178 handle null vault config"
+    ],
+    "forbidden": [
+      {
+        "pattern": "\\(#\\d+\\)",
+        "reason": "use trailer not title"
+      }
+    ],
+    "bodyTemplate": "what-why-how-testplan",
+    "draftByDefault": true
+  },
+  "release": {
+    "tool": "changesets",
+    "versionBump": {
+      "feat": "minor",
+      "fix": "patch",
+      "chore": "patch",
+      "refactor": "patch",
+      "docs": "patch",
+      "test": "patch",
+      "style": "patch"
+    }
+  },
+  "tracker": {
+    "kind": "github",
+    "issuePrefix": "",
+    "linkFormat": "Closes #{issue}"
+  }
+}

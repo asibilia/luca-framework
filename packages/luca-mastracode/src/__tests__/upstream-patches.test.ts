@@ -68,5 +68,4 @@ describe('normalizeMultilineSlashCommand', () => {
         const input = '  /lu first\nsecond'
         expect(normalizeMultilineSlashCommand(input)).toBe('  /lu first second')
     })
-
 })

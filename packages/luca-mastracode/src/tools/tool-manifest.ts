@@ -250,6 +250,13 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
             // Stock modes get full access for ad-hoc reads/writes.
             build: '*',
             fast: '*',
+            // `plan` is read-only by definition: it cannot mutate state, so
+            // it gets only consult/consult-section. Without this entry,
+            // `pr-title-format.md` (alwaysApply: true) fires in plan mode
+            // with no projectPreferences tool registered → graceful-degrade
+            // path triggers every time. This entry makes the rule first-class
+            // in plan mode.
+            plan: ['consult', 'consult-section'],
         },
     },
 }

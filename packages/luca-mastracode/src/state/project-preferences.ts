@@ -35,8 +35,14 @@ export type SectionName = z.infer<typeof SectionName>
  * NOTE: we intentionally use ` \t` instead of `\s`. `\s` permits `\n`,
  * `\r`, `\f`, `\v`, which would let an attacker inject a fresh line into
  * the JSON blob handed to the LLM. PR #227 Copilot feedback.
+ *
+ * Phase C addition: `#` is allowed because issue-link templates
+ * (`Closes #{issue}`, `Refs #N`) and conventional commit-trailer
+ * prefixes (`Closes #`) require it. `#` is not a control char nor a
+ * shell metachar that closes the JSON blob — it stays inside string
+ * literals and the 64-char cap bounds blast radius.
  */
-const SAFE_FREEFORM = z.string().max(64).regex(/^[\w \t{}/,.():\-]*$/)
+const SAFE_FREEFORM = z.string().max(64).regex(/^[\w #\t{}/,.():\-]*$/)
 
 /**
  * Zod refinement: source string must compile as a JS RegExp AND must not
@@ -112,6 +118,24 @@ const CommitsSection = z
     .object({
         convention: z.enum(['conventional', 'none']).default('conventional'),
         scopes: z.array(SAFE_FREEFORM).default([]),
+        /**
+         * Allowed commit-message types (e.g. ['feat','fix','refactor',...]).
+         * Distinct from `branching.types` which governs branch-name prefix:
+         * branching.types and commits.types MAY differ for squash-merge repos
+         * where every PR squashes to a single `feat:` commit regardless of
+         * branch type. When commits.types is unset, prose may fall back to
+         * branching.types.
+         */
+        types: z.array(SAFE_FREEFORM).max(20).optional(),
+        /** Commit-message trailer conventions. */
+        trailers: z
+            .object({
+                coAuthor: z.boolean(),
+                issueRef: SAFE_FREEFORM,
+            })
+            .optional(),
+        /** Conventional max length for the commit subject line (default 72). */
+        subjectMaxLength: z.number().int().min(20).max(200).default(72),
     })
     .prefault({})
 
@@ -119,6 +143,33 @@ const PrSection = z
     .object({
         titleFormat: SAFE_FREEFORM.default('{type}({scope}): {description}'),
         baseBranch: SAFE_FREEFORM.default('main'),
+        /**
+         * Preferred PR title template — supersedes `titleFormat` when present.
+         * `titleFormat` is retained for backward compatibility; consumers may
+         * still set only `titleFormat`. When both are set, `titleTemplate`
+         * wins. Renaming `titleFormat → titleTemplate` is a future cleanup.
+         *
+         * Tokens are consumer-defined (e.g. {type}, {scope}, {version},
+         * {issue}, {description}). The framework does not interpret them;
+         * skills/instructions render them in their own template engine.
+         */
+        titleTemplate: SAFE_FREEFORM.optional(),
+        /** Up to 5 example titles for the agent to pattern-match against. */
+        titleExamples: z.array(SAFE_FREEFORM).max(5).optional(),
+        /** Patterns rejected in PR titles (e.g. (#issue) misuse). */
+        forbidden: z
+            .array(
+                z.object({
+                    pattern: RegexSource,
+                    reason: SAFE_FREEFORM,
+                }),
+            )
+            .max(10)
+            .optional(),
+        /** PR body template key (e.g. 'what-why-how-testplan'). Skill renders. */
+        bodyTemplate: SAFE_FREEFORM.optional(),
+        /** Whether PRs default to draft status. */
+        draftByDefault: z.boolean().optional(),
     })
     .prefault({})
 
@@ -135,6 +186,13 @@ const TrackerSection = z
     .object({
         kind: z.enum(['github', 'linear', 'jira', 'none']).default('github'),
         issuePrefix: SAFE_FREEFORM.default(''),
+        /**
+         * Issue-link template used in PR bodies (e.g. 'Closes #{issue}',
+         * 'Fixes JIRA-{issue}'). Distinct from `commits.trailers.issueRef`
+         * which is the commit-message trailer prefix; consumers may use the
+         * same string for both, but they are conceptually independent.
+         */
+        linkFormat: SAFE_FREEFORM.optional(),
     })
     .prefault({})
 

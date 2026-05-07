@@ -15,7 +15,7 @@ describe('renderTemplate', () => {
                 type: 'feat',
                 issue: '123',
                 slug: 'foo',
-            }),
+            })
         ).toBe('feat/123-foo')
     })
 
@@ -24,7 +24,7 @@ describe('renderTemplate', () => {
             renderTemplate('{type}/{issue}-{slug}', {
                 type: 'feat',
                 slug: 'foo',
-            }),
+            })
         ).toBe('feat/-foo')
     })
 
@@ -33,13 +33,13 @@ describe('renderTemplate', () => {
             renderTemplate('{type}/{ticket}', {
                 type: 'feat',
                 slug: 'foo',
-            }),
+            })
         ).toThrow(/\{ticket\}/)
     })
 
     it('expands repeated variables', () => {
         expect(
-            renderTemplate('{type}-{type}', { type: 'feat', slug: 'x' }),
+            renderTemplate('{type}-{type}', { type: 'feat', slug: 'x' })
         ).toBe('feat-feat')
     })
 
@@ -48,8 +48,6 @@ describe('renderTemplate', () => {
     })
 
     it('renders type-only template', () => {
-        expect(renderTemplate('{type}', { type: 'fix', slug: 'x' })).toBe(
-            'fix',
-        )
+        expect(renderTemplate('{type}', { type: 'fix', slug: 'x' })).toBe('fix')
     })
 })

@@ -383,30 +383,48 @@ This is a HARD GUARD: returns `ok: false` if the current branch is the default b
 
 After verification and review pass for each task:
 
-0. **Pre-commit MuninnDB recall** (once per wave, before the first commit of the wave). Query MuninnDB for commit-related learnings — message conventions, trailer formats, files repeatedly committed by mistake, scope-naming rules. Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`:
+0a. **Consult commits preferences** (once per wave, before the first commit of the wave). Read structured commit conventions:
 
    ```
-   mcp__muninn__muninn_recall(
+   projectPreferences({ action: "consult-section", section: "commits", fallback: true })
+   projectPreferences({ action: "consult-section", section: "tracker", fallback: true })
+   projectPreferences({ action: "consult-section", section: "branching", fallback: true })
+   ```
+
+   Use the consulted values for:
+   - **Commit type allowlist**: `commits.types ?? branching.types` (fall back to `branching.types` when `commits.types` is unset)
+   - **Scope allowlist**: `commits.scopes` — apply allowlist validation only when `commits.scopes.length > 0`. An empty array means "no allowlist enforced" (any scope permitted), not "no scopes allowed".
+   - **Subject max length**: `commits.subjectMaxLength` (default 72)
+   - **Trailer prefix for issue refs**: `commits.trailers.issueRef` (e.g. `'Closes #'`) — the issue trailer is `<issueRef><issue-number>`
+   - **Co-author trailer**: include `Co-authored-by: ...` if `commits.trailers.coAuthor === true`
+
+0b. **Supplement with MuninnDB recall** (same trigger). The structured preferences are deterministic; recall surfaces historical pitfalls not in the schema (files repeatedly committed by mistake, repo-specific scope-naming nuances, recurring squash-merge edge cases):
+
+   ```
+   mcp__muninn__muninn_recall({
      vault: "<repo_vault>",
      context: ["commit conventions", "pre-commit pitfalls", "<wave scope>"],
      mode: "semantic",
      limit: 5,
-   )
+   })
    ```
 
    Apply directly relevant findings to the commit messages and staging set. If MuninnDB is unreachable, log and continue — never block.
 
 1. Stage only files changed by that task
-2. Atomic commit:
+2. Atomic commit, rendered against the consulted preferences:
    ```
    <type>(<scope>): <description>
 
    - <what changed>
    - <what changed>
 
-   Refs: #<issue-number>
+   <commits.trailers.issueRef><issue-number>
    ```
-3. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+   - `<type>` must appear in `commits.types ?? branching.types`.
+   - `<scope>` must appear in `commits.scopes` (if that allowlist is set).
+   - Subject (first line) must be ≤ `commits.subjectMaxLength` characters.
+   - The issue-trailer line uses `commits.trailers.issueRef` as prefix (e.g. `Closes #42`). When `commits.trailers.issueRef` is unset, omit the trailer.
 
 ---
 

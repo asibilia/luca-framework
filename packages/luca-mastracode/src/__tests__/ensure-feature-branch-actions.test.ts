@@ -12,10 +12,10 @@
  */
 import { describe, test, expect, mock, spyOn, beforeEach } from 'bun:test'
 
-import * as prefsState from '../state/project-preferences.js'
-import * as lucaStore from '../state/luca-store.js'
-
 import { ENG_PT_PREFERENCES } from './fixtures/preferences-eng-pt.js'
+
+import * as lucaStore from '../state/luca-store.js'
+import * as prefsState from '../state/project-preferences.js'
 
 // ---------------------------------------------------------------------------
 // Mutable git mock router. Tests configure `gitState` per-test and the mock
@@ -79,7 +79,10 @@ mock.module('node:child_process', () => ({
         if (args[0] === 'show-ref' && args[1] === '--verify') {
             const ref = args[2] ?? ''
             const name = ref.replace(/^refs\/heads\//, '')
-            if (gitState.localBranches.has(name) || name === gitState.defaultBranch) {
+            if (
+                gitState.localBranches.has(name) ||
+                name === gitState.defaultBranch
+            ) {
                 return ''
             }
             const err: any = new Error('not found')
@@ -113,9 +116,8 @@ mock.module('node:child_process', () => ({
 }))
 
 // Dynamic import — must run AFTER mock.module install.
-const {
-    ensureFeatureBranchTool,
-} = await import('../tools/ensure-feature-branch.js')
+const { ensureFeatureBranchTool } =
+    await import('../tools/ensure-feature-branch.js')
 
 // ---------------------------------------------------------------------------
 // Spies for preferences + state.
@@ -286,13 +288,18 @@ describe('apply', () => {
         const messages = r.error.issues
             .map((i: { message: string }) => i.message)
             .join(' | ')
-        expect(messages).toMatch(/must not contain "\.\."|must not contain "@\{"|must contain only/)
+        expect(messages).toMatch(
+            /must not contain "\.\."|must not contain "@\{"|must contain only/
+        )
     })
 
     test('SafeRefName rejects branchName containing whitespace', () => {
         const r = inputSchema.safeParse({
             action: 'apply',
-            resolution: { branchName: 'name with space', needsConfirmation: false },
+            resolution: {
+                branchName: 'name with space',
+                needsConfirmation: false,
+            },
         })
         expect(r.success).toBe(false)
     })

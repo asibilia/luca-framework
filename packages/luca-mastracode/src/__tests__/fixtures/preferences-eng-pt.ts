@@ -50,11 +50,16 @@ export const ENG_PT_PREFERENCES: ProjectPreferences = {
             role: 'feature',
         },
     },
-    commits: { convention: 'conventional', scopes: [] },
+    commits: { convention: 'conventional', scopes: [], subjectMaxLength: 72 },
     pr: { titleFormat: '{type}({scope}): {description}', baseBranch: 'main' },
     release: {
         tool: 'changesets',
-        versionBump: { feat: 'minor', fix: 'patch', chore: 'patch', refactor: 'patch' },
+        versionBump: {
+            feat: 'minor',
+            fix: 'patch',
+            chore: 'patch',
+            refactor: 'patch',
+        },
     },
     tracker: { kind: 'github', issuePrefix: '' },
 }

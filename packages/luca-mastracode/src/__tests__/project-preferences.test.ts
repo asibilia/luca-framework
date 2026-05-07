@@ -24,9 +24,7 @@ const mockWrite = spyOn(prefsState, 'writeProjectPreferences')
 
 beforeEach(() => {
     mockReadLucaState.mockReset().mockReturnValue({} as any)
-    mockWriteLucaState
-        .mockReset()
-        .mockImplementation((updates: any) => updates)
+    mockWriteLucaState.mockReset().mockImplementation((updates: any) => updates)
     mockLoad.mockReset()
     mockWrite.mockReset().mockImplementation(() => undefined)
 })
@@ -342,7 +340,7 @@ describe('Phase B schema additions', () => {
 
     test('rejects nested quantifier (a+)+ with ReDoS guard message', () => {
         const result = ProjectPreferencesSchema.safeParse(
-            buildBranchTypeWithMatch('(a+)+'),
+            buildBranchTypeWithMatch('(a+)+')
         )
         expect(result.success).toBe(false)
         if (result.success) return
@@ -352,22 +350,81 @@ describe('Phase B schema additions', () => {
 
     test('rejects nested quantifier (.+)*', () => {
         const result = ProjectPreferencesSchema.safeParse(
-            buildBranchTypeWithMatch('(.+)*'),
+            buildBranchTypeWithMatch('(.+)*')
         )
         expect(result.success).toBe(false)
     })
 
     test('rejects nested quantifier (\\d{2,}){2,}', () => {
         const result = ProjectPreferencesSchema.safeParse(
-            buildBranchTypeWithMatch('(\\d{2,}){2,}'),
+            buildBranchTypeWithMatch('(\\d{2,}){2,}')
         )
         expect(result.success).toBe(false)
     })
 
     test('accepts non-nested ^PT-\\d+$', () => {
         const result = ProjectPreferencesSchema.safeParse(
-            buildBranchTypeWithMatch('^PT-\\d+$'),
+            buildBranchTypeWithMatch('^PT-\\d+$')
         )
         expect(result.success).toBe(true)
+    })
+
+    test('parses payload with all extended optional fields (canonical luca-framework values)', () => {
+        const payload = {
+            pr: {
+                titleTemplate:
+                    '{type}({scope}): {version} #{issue} {description}',
+                titleExamples: [
+                    'feat(core): v10.2.0 #143 add widget',
+                    'fix(api): v9.4.1 #178 handle null',
+                ],
+                forbidden: [
+                    { pattern: '\\(#\\d+\\)', reason: 'use trailer not title' },
+                ],
+                bodyTemplate: 'what-why-how-testplan',
+                draftByDefault: true,
+            },
+            commits: {
+                types: ['feat', 'fix', 'refactor', 'chore'],
+                trailers: { coAuthor: true, issueRef: 'Closes #' },
+                subjectMaxLength: 72,
+            },
+            tracker: {
+                linkFormat: 'Closes #{issue}',
+            },
+        }
+        const parsed = ProjectPreferencesSchema.parse(payload)
+        expect(parsed.pr.titleTemplate).toBe(
+            '{type}({scope}): {version} #{issue} {description}'
+        )
+        expect(parsed.pr.titleExamples).toEqual([
+            'feat(core): v10.2.0 #143 add widget',
+            'fix(api): v9.4.1 #178 handle null',
+        ])
+        expect(parsed.pr.forbidden).toEqual([
+            { pattern: '\\(#\\d+\\)', reason: 'use trailer not title' },
+        ])
+        expect(parsed.pr.bodyTemplate).toBe('what-why-how-testplan')
+        expect(parsed.pr.draftByDefault).toBe(true)
+        expect(parsed.commits.types).toEqual([
+            'feat',
+            'fix',
+            'refactor',
+            'chore',
+        ])
+        expect(parsed.commits.trailers).toEqual({
+            coAuthor: true,
+            issueRef: 'Closes #',
+        })
+        expect(parsed.commits.subjectMaxLength).toBe(72)
+        expect(parsed.tracker.linkFormat).toBe('Closes #{issue}')
+    })
+
+    test('SAFE_FREEFORM rejects # outside string body (newline injection still blocked)', () => {
+        // # is now allowed in string body, but \n still rejected.
+        const result = ProjectPreferencesSchema.safeParse({
+            pr: { titleTemplate: 'feat({scope}):\n#{issue}' },
+        })
+        expect(result.success).toBe(false)
     })
 })

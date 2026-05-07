@@ -23,7 +23,11 @@ import { loadAlwaysApplyRules } from '../rules-loader.js'
 // The bundled asset dirs live at the package root (one level above src/).
 // Pass this as assetsRoot so the install fns find them when running from
 // the source tree (where import.meta.url would resolve to src/integration/).
-const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const PACKAGE_ROOT = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..'
+)
 
 let tmpRoot: string
 let originalCwd: string

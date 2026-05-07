@@ -2,10 +2,10 @@ import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 import { z } from 'zod'
 
 import * as lucaStore from '../state/luca-store.js'
-import { switchModeRef } from '../util/refs.js'
 import * as sessionLedger from '../state/session-ledger.js'
 import { createScopedTool } from '../tools/create-scoped-tool.js'
 import { workflowStateTool, PIPELINE_ORDER } from '../tools/workflow-state.js'
+import { switchModeRef } from '../util/refs.js'
 
 // ---------------------------------------------------------------------------
 // Mocks

@@ -1,18 +1,25 @@
 ---
-description: "PR title format convention — recall release details from MuninnDB before every PR"
+description: "PR title format convention — consult projectPreferences before every PR"
 alwaysApply: true
 ---
 
-**Before creating any PR**, recall release conventions from MuninnDB:
+**Before creating any PR**, consult project preferences (works in every registered Luca mode):
 
 ```
-mcp__muninn__muninn_recall(context: ["release checklist", "PR title format", "version convention"], mode: "semantic", limit: 5)
+projectPreferences({ action: "consult-section", section: "pr",      fallback: true })
+projectPreferences({ action: "consult-section", section: "tracker", fallback: true })
 ```
 
-Apply the recalled conventions to determine: version number, title format, milestone linkage, and PR body structure.
+Apply `pr.titleTemplate` (preferred) or `pr.titleFormat` (legacy) as the title template. Tokens (e.g. `{type}`, `{scope}`, `{version}`, `{issue}`, `{description}`) are project-defined — render them from the consulted preference values, never invent your own.
 
-**Title format**: `type(scope): <version> #issue description`
-Types: feat|fix|docs|style|refactor|test|chore. Scopes: framework|mastracode|studio|config|docs|repo.
-Example: `feat(mastracode): v10.2.0 #143 bundled skills and rules system`
+Build issue references in PR titles **and** PR bodies via `tracker.linkFormat` (e.g. `Closes #{issue}`).
 
-**Never** use `(#issue)` as scope. **Never** create a PR without recalling release conventions first.
+Reject the PR title if it matches any pattern in `pr.forbidden[]`.
+
+**If `projectPreferences` is unavailable** (custom consumer mode without the tool registered): consult MuninnDB for release/PR conventions before opening the PR. Never invent a title format.
+
+```
+mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["PR title format", "release checklist"], mode: "semantic", limit: 5 })
+```
+
+**Never** open a PR without consulting these conventions first.
