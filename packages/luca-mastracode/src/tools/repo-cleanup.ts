@@ -62,6 +62,8 @@ export const ROOT_WHITELIST: ReadonlySet<string> = new Set([
     'luca-state.json',
     '.luca-lock.json',
     'config.json',
+    // Project preferences cache (Phase A foundation; Phase C committed it).
+    'preferences.json',
     // Multi-phase plan + JSONL audit logs.
     'ROADMAP.md',
     'session-ledger.jsonl',
