@@ -92,6 +92,8 @@ export const ROOT_WHITELIST_DIRS: ReadonlySet<string> = new Set([
     'todos',
     // Legacy fallback for archives written before currentPhaseSlug existed.
     'runs',
+    // Per-run reports + cursor state from `/memory-audit` skill.
+    'audits',
 ])
 
 // Files allowed under `phases/<slug>/` when a slug is active (strict mode).
