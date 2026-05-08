@@ -164,6 +164,8 @@ Next step: /lu <describe first phase work>
 ```
 
 Store the milestone initialization in MuninnDB:
+
+<!-- Tier: verified -->
 ```
 mcp__muninn__muninn_remember(
   vault: <repo_vault>,
@@ -171,6 +173,11 @@ mcp__muninn__muninn_remember(
   content: "Milestone v<version> '<name>' initialized with <N> requirements across <N> phases. Goals: <brief summary>",
   tags: ["milestone", "v<version>"]
 )
+```
+
+Promote this user-confirmed milestone to verified tier (capture the returned id):
+```
+mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>)
 ```
 
 Determine the repo vault name from `.planning/config.json` → `muninn.vault` field, or fall back to `"default"`.

@@ -6,6 +6,7 @@
  * universal hard constraints + bundled `alwaysApply` rules in between.
  * This module owns those constants and the assembly helper.
  */
+import { MEMORY_TIER_DISCIPLINE } from './memory-tier-discipline.js'
 import { loadAlwaysApplyRules } from './rules-loader.js'
 
 /**
@@ -42,7 +43,13 @@ export const RECENCY_REMINDERS = `## Reminders (re-read before every tool call)
  */
 export function getAgentConstraints(): string {
     const alwaysApplyRules = loadAlwaysApplyRules()
-    return ['\n\n---\n', HARD_CONSTRAINTS, alwaysApplyRules, RECENCY_REMINDERS]
+    return [
+        '\n\n---\n',
+        HARD_CONSTRAINTS,
+        alwaysApplyRules,
+        MEMORY_TIER_DISCIPLINE,
+        RECENCY_REMINDERS,
+    ]
         .filter(Boolean)
         .join('\n\n')
 }
