@@ -124,6 +124,7 @@ If matches found, note **recurring issues** (increases severity signal) and refe
 
 After producing audit report, store notable findings (MUST-FIX and recurring SHOULD-FIX):
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember_batch(
   vault: "<repo_vault>",

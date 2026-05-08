@@ -32,6 +32,7 @@ export const runPostmortemTool = createTool({
         "Use 'render' to write a human-readable POSTMORTEM.md report (under .planning/phases/<slug>/ when a phase is active, otherwise .planning/). " +
         "Use 'analyze' for read-only inspection. " +
         "Use 'list-runs' to enumerate archived runs in the ledger. " +
+        // Tier: inferred — pitfalls are AI-derived from postmortem analysis.
         'The tool returns a `pitfalls` array of pre-formatted MuninnDB payloads (default vault) — forward each via mcp__muninn__muninn_remember.',
     inputSchema: z.object({
         action: z

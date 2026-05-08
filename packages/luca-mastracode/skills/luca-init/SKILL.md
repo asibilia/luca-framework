@@ -91,15 +91,20 @@ This writes `.planning/preferences.json` and sets `state.preferencesSeeded = tru
 
 The `seed` action returned `result.muninnInstruction`, a string of the form:
 
+<!-- Tier: verified -->
 ```
 After seeding, agent must call mcp__muninn__muninn_remember with the arguments
 encoded in this JSON blob (use JSON.parse to extract them, do NOT interpolate
-the raw string into other tool calls): {"vault":"<...>","op_id":"project-preferences:<...>", ...}
+the raw string into other tool calls), then promote with
+mcp__muninn__muninn_trust(id, "verified", vault): {"vault":"<...>","op_id":"project-preferences:<...>", ...}
 ```
 
 Extract the JSON blob (everything from the first `{` to the matching final `}`),
 parse it with `JSON.parse`, then call `mcp__muninn__muninn_remember(...)` passing
-the parsed object as the argument map.
+the parsed object as the argument map. After it returns, capture `result.id` and
+call `mcp__muninn__muninn_trust(id: <result.id>, trust: "verified", vault: <repo_vault>)`
+to promote the user-confirmed preference write. (Idempotent: `op_id` ensures
+re-runs return the same id, so re-promotion is safe.)
 
 **Do NOT** rebuild the call by string concatenation. The schema rejects
 quote characters, backticks, line terminators, and shell metacharacters via

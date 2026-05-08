@@ -74,9 +74,14 @@ function buildMuninnInstruction(prefs: ProjectPreferences): string {
         summary,
     }
     return (
+        // Tier: verified — preferences are user-confirmed by the luca-init skill.
+        // The agent invoking the seeded muninn_remember should follow up with
+        // mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>).
+        // Idempotent: op_id ensures re-runs return the same id.
         `After seeding, agent must call mcp__muninn__muninn_remember with the ` +
         `arguments encoded in this JSON blob (use JSON.parse to extract them, ` +
-        `do NOT interpolate the raw string into other tool calls): ` +
+        `do NOT interpolate the raw string into other tool calls), then promote ` +
+        `with mcp__muninn__muninn_trust(id, "verified", vault): ` +
         JSON.stringify(blob)
     )
 }
