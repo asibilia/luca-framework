@@ -1,5 +1,5 @@
 ---
-title: "finalize.md:231 postmortem pitfall storage hardcodes vault: "default" — should use repo vault"
+title: 'finalize.md:231 postmortem pitfall storage hardcodes vault: "default" — should use repo vault'
 area: memory
 created: 2026-05-08
 priority: low

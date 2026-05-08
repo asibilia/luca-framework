@@ -143,11 +143,18 @@ describe('projectPreferences:seed', () => {
         // The instruction must disambiguate which call the JSON blob is for
         // (muninn_remember only, not muninn_trust). Verify the directive is present.
         expect(result.muninnInstruction).toContain(
-            'argument set for muninn_remember ONLY'
+            'argument map for muninn_remember ONLY'
         )
         expect(result.muninnInstruction).toContain(
             'do NOT pass it to muninn_trust'
         )
+        // Must not imply JS spread syntax (PR #234 Copilot review).
+        expect(result.muninnInstruction).not.toContain('...parsedBlob')
+        // Must direct agent to use named-argument form for both calls.
+        expect(result.muninnInstruction).toContain(
+            'passing the parsed object as'
+        )
+        expect(result.muninnInstruction).toContain('named args')
     })
 
     test('rejects payload missing entirely', async () => {
