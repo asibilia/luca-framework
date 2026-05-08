@@ -18,6 +18,6 @@
 - **WSJF Score**: 1.7
 
 ### Phase 4: Memory Tier-Promotion Contract
-- **Status**: in-progress
+- **Status**: complete
 - **Dependencies**: None
 - **WSJF Score**: 2.3

@@ -1,0 +1,69 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "mf-1",
+      "description": "Vault drift detection always-on + pre-flight --apply gate",
+      "met": true,
+      "evidence": "SKILL.md:104-109 'Vault drift guard (always-on)' + Step 2 'Pre-apply confirmation gate'; tests in 'vault drift guard (MF-1)' describe block",
+      "blocking": true
+    },
+    {
+      "criterionId": "mf-2",
+      "description": "lastRunAt set explicitly + seed empty + gate gated",
+      "met": true,
+      "evidence": "SKILL.md schema: \"lastRunAt\": \"<ISO-timestamp-or-empty>\"; Step 1.5 gate 'state.lastRunAt !== \"\"'; Step 6.2 'Set state.lastRunAt'; tests in 'lastRunAt set-time invariant (MF-2)' block",
+      "blocking": true
+    },
+    {
+      "criterionId": "mf-3",
+      "description": "--auto flag replaces undefined full-auto branch",
+      "met": true,
+      "evidence": "SKILL.md Arguments section documents --auto; Steps 2/4 use 'if --auto is set'; test '--auto flag is documented (MF-3)'",
+      "blocking": true
+    },
+    {
+      "criterionId": "mf-4",
+      "description": "Prohibition extended to 11 tools, all tested",
+      "met": true,
+      "evidence": "SKILL.md lines 27-37 (11 tools listed); test FORBIDDEN_TOOLS array has 10 tools + bare-remember test = 11 distinct identifiers asserted absent outside fences",
+      "blocking": true
+    },
+    {
+      "criterionId": "mf-5",
+      "description": "Bare-remember regex switched to identifier-form negative-lookahead",
+      "met": true,
+      "evidence": "memory-audit.test.ts: /mcp__muninn__muninn_remember(?!_batch)/",
+      "blocking": true
+    },
+    {
+      "criterionId": "sf-cluster",
+      "description": "Pre-flight arg validation + totalsByTier split + drop runId + hoist readFileSync",
+      "met": true,
+      "evidence": "Pre-flight section in Arguments; judgedByTier vs appliedByTier in schema; runId removed; SKILL/COMMAND consts at module scope",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 2
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "All 5 MUST-FIX + SF cluster applied. Skill grew from 10755 to 14833 bytes. Test file grew to 8520 bytes with new MF describe blocks. Suite green.",
+  "timestamp": "2026-05-08T18:19:33.625Z",
+  "runId": "run_mox7pte0_bxfd8tt3"
+}
