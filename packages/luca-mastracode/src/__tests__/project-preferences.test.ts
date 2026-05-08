@@ -140,11 +140,21 @@ describe('projectPreferences:seed', () => {
         expect(result.muninnInstruction).toContain(
             '"op_id":"project-preferences:'
         )
-        // The instruction must not interpolate raw free-form preference values
-        // outside the JSON blob — verify the directive line is present.
+        // The instruction must disambiguate which call the JSON blob is for
+        // (muninn_remember only, not muninn_trust). Verify the directive is present.
         expect(result.muninnInstruction).toContain(
-            'do NOT interpolate the raw string'
+            'argument map for muninn_remember ONLY'
         )
+        expect(result.muninnInstruction).toContain(
+            'do NOT pass it to muninn_trust'
+        )
+        // Must not imply JS spread syntax (PR #234 Copilot review).
+        expect(result.muninnInstruction).not.toContain('...parsedBlob')
+        // Must direct agent to use named-argument form for both calls.
+        expect(result.muninnInstruction).toContain(
+            'passing the parsed object as'
+        )
+        expect(result.muninnInstruction).toContain('named args')
     })
 
     test('rejects payload missing entirely', async () => {

@@ -36,10 +36,14 @@ If no flags, default to standard mode with interactive review.
    - **Interactive mode** (default) → Present each finding sorted by severity (critical first), and for each one offer three choices:
 
      - **Fix**: Call `repoCleanup(action: "apply-fix", file_path: ..., recommended_action: ..., target_path: ...)`.
-     - **Keep**: Call `mcp__muninn__muninn_remember(vault: <repo_vault>, concept: "shadow-debt:kept:<file_path>", content: "User approved keeping <file_path>. Recorded: <ISO timestamp>")`. This prevents the file from being re-flagged in future scans.
+     - **Keep**: <!-- Tier: verified -->
+       Call `mcp__muninn__muninn_remember(vault: <repo_vault>, concept: "shadow-debt:kept:<file_path>", content: "User approved keeping <file_path>. Recorded: <ISO timestamp>")`. This prevents the file from being re-flagged in future scans.
+       Then promote: `mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>)` — this is a user-confirmed decision.
      - **Skip**: No action — the file will be flagged again next scan.
 
 5. **Store metrics**: After processing all findings, store a scan summary in MuninnDB:
+
+   <!-- Tier: inferred -->
    ```
    mcp__muninn__muninn_remember(
      vault: <repo_vault>,

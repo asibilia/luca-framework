@@ -227,6 +227,7 @@ The JSON MUST be valid and parseable. No comments inside the JSON block. If no f
 
 After generating the report, store a summary metric in MuninnDB:
 
+<!-- Tier: inferred -->
 \`\`\`
 mcp__muninn__muninn_remember(
   vault: <repo_vault>,

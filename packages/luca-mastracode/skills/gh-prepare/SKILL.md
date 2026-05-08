@@ -179,6 +179,7 @@ Derive `type` from the branch prefix or dominant commit type (validated against 
 
 Remember for later recall (by finalize mode, other sessions, or dedup):
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember(
   vault: "<repo_vault>",

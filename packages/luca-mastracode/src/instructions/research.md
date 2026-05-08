@@ -192,6 +192,7 @@ Store significant findings as atomic memories. Vault from `.planning/config.json
 
 **What to store:** architecture insights, dependency compatibility, risk assessments, decision rationale, implementation patterns, gotchas/edge cases.
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember_batch(
   vault: "<repo_vault>",

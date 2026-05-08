@@ -83,6 +83,7 @@ Review results:
 
 Store milestone summary in MuninnDB:
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember(
   vault: "<repo_vault>",
@@ -125,6 +126,7 @@ Advisory scan for AI-session debris before PR:
 3. Call `repoCleanup(action: "parse-report", raw_output: <scanner response>)`
 4. **Critical** findings: fix via `repoCleanup(action: "apply-fix", ...)` or report to user
 5. **High/medium/low** findings: log in session archive, don't block
+<!-- Tier: inferred -->
 6. Store metrics: `mcp__muninn__muninn_remember(vault: <repo_vault>, concept: "metric:shadow-debt-scan-<timestamp>", content: <summary>)`
 
 If `repoCleanup` returns `status: "disabled"`, skip silently.
@@ -226,6 +228,8 @@ runPostmortem(action: "gate")
 **If it returns `code: POSTMORTEM_VIOLATIONS`:**
 
 1. Forward each pitfall in the response to MuninnDB so future runs can recall the failure mode:
+
+   <!-- Tier: inferred -->
    ```
    for pitfall in response.pitfalls:
      mcp__muninn__muninn_remember(

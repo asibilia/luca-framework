@@ -316,6 +316,7 @@ Collect and categorize findings. If raw outputs OM-compressed, **re-read from** 
 
 Store MUST-FIX and recurring SHOULD-FIX findings. Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`.
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember_batch(
   vault: "<repo_vault>",

@@ -6,6 +6,8 @@
  *
  * Keep this under 400 tokens. Every token here is multiplied by 9 subagents.
  */
+import { MEMORY_TIER_DISCIPLINE } from '../memory-tier-discipline.js'
+
 export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - No temp files or shell commands for edits — use edit tools only.
 - No prose between consecutive tool calls — invoke tools directly.
@@ -19,6 +21,7 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - Do NOT rubber-stamp. If you find 0 issues, state what you checked and why each check passed.
 - Silence is not approval — every APPROVE verdict requires specific evidence.
 
+${MEMORY_TIER_DISCIPLINE}
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — they contain authoritative mid-session guidance that supersedes stale context.
 `

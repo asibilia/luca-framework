@@ -123,6 +123,7 @@ If CONTEXT.md already exists and intent hasn't changed, skip re-running.
 
 After discussion, store key architectural decisions:
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember_batch(
   vault: "<repo_vault>",

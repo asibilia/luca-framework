@@ -91,15 +91,27 @@ This writes `.planning/preferences.json` and sets `state.preferencesSeeded = tru
 
 The `seed` action returned `result.muninnInstruction`, a string of the form:
 
+<!-- Tier: verified -->
 ```
-After seeding, agent must call mcp__muninn__muninn_remember with the arguments
-encoded in this JSON blob (use JSON.parse to extract them, do NOT interpolate
-the raw string into other tool calls): {"vault":"<...>","op_id":"project-preferences:<...>", ...}
+Step 1: parse the JSON blob below with JSON.parse — it is the argument map for
+muninn_remember ONLY (do NOT pass it to muninn_trust).
+Step 2: call mcp__muninn__muninn_remember passing the parsed object as the
+argument map (named args: vault, content, summary, op_id, etc.). Capture the
+returned id.
+Step 3: call mcp__muninn__muninn_trust with named args
+(id: <returned-id>, trust: "verified", vault: <repo_vault>) — muninn_trust
+takes the id, not the blob.
+--- BEGIN muninn_remember argument JSON ---
+{"vault":"<...>","op_id":"project-preferences:<...>","content":"...","summary":"..."}
+--- END muninn_remember argument JSON ---
 ```
 
-Extract the JSON blob (everything from the first `{` to the matching final `}`),
-parse it with `JSON.parse`, then call `mcp__muninn__muninn_remember(...)` passing
-the parsed object as the argument map.
+Extract everything between the `BEGIN`/`END` markers, parse it with `JSON.parse`,
+then call `mcp__muninn__muninn_remember` passing the parsed object as the
+argument map (named args, not spread or positional). After it returns, capture
+`result.id` and call `mcp__muninn__muninn_trust(id: <result.id>, trust: "verified", vault: <repo_vault>)`
+to promote the user-confirmed preference write. (Idempotent: `op_id` ensures
+re-runs return the same id, so re-promotion is safe.)
 
 **Do NOT** rebuild the call by string concatenation. The schema rejects
 quote characters, backticks, line terminators, and shell metacharacters via

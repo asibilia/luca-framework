@@ -39,6 +39,7 @@ Determine the vault name from \`.planning/config.json\` → \`muninn.vault\`, or
 
 Store all HIGH and MEDIUM confidence learnings in MuninnDB as atomic memories:
 
+<!-- Tier: inferred -->
 \`\`\`
 mcp__muninn__muninn_remember_batch(
   vault: "<repo_vault>",

@@ -112,6 +112,8 @@ For the candidate the user selects:
 After the user decides, store the result in MuninnDB:
 
 **If refactor is accepted:**
+
+<!-- Tier: verified -->
 ```
 mcp__muninn__muninn_remember(
   vault: "<repo_vault>",
@@ -120,8 +122,14 @@ mcp__muninn__muninn_remember(
   tags: ["decision", "architecture", "refactor"]
 )
 ```
+Promote this user-confirmed decision to verified tier:
+```
+mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>)
+```
 
 **If refactor is rejected:**
+
+<!-- Tier: verified -->
 ```
 mcp__muninn__muninn_remember(
   vault: "<repo_vault>",
@@ -129,6 +137,10 @@ mcp__muninn__muninn_remember(
   content: "Rejected deepening of <module>. Reason: <user's reason>. Friction level at time of rejection: <description>. Re-evaluate if: <conditions that would change the decision>.",
   tags: ["decision", "architecture", "rejected"]
 )
+```
+Promote this user-confirmed decision to verified tier:
+```
+mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>)
 ```
 
 The rejected decision prevents re-suggestion on future runs (Step 1 guard).

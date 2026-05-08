@@ -194,6 +194,7 @@ Fix commits sometimes introduce new issues that the original review didn't flag.
 
 Store **recurring patterns** in MuninnDB (skip one-off fixes):
 
+<!-- Tier: inferred -->
 ```
 mcp__muninn__muninn_remember_batch(
   vault: <repo_vault>,
