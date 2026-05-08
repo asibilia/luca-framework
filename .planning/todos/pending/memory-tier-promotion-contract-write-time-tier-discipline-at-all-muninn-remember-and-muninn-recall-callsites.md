@@ -14,7 +14,7 @@ memory tier-promotion contract: write-time tier discipline at all muninn_remembe
 
 Establish a discipline contract — enforced via instruction prose loaded once per mode swap — that every `muninn_remember` callsite explicitly selects a trust tier before writing, and every `muninn_recall` callsite prefers `verified` results.
 
-## The decision rule (lives in MODE_SHARED_PREFIX)
+## The decision rule (lives in `src/memory-tier-discipline.ts`, injected via `src/agent-constraints.ts` for modes and `src/subagents/shared-prefix.ts` for subagents)
 
 ```
 verified — content cites a specific source (file:line+SHA, PR-id, user-message-id, external URL) AND claim is testable from that source AND content is factual not interpretive.
@@ -26,19 +26,20 @@ untrusted — never assigned by an agent.
 ## Deliverables
 
 ### Prose changes
-- Add tier-decision rule + write-time contract to `src/util/mode-shared-prefix.ts` (`MODE_SHARED_PREFIX`).
-- Mirror in `src/util/subagent-prefix.ts` (`SUBAGENT_SHARED_PREFIX`) so subagents follow the same contract.
+- Add tier-decision rule + write-time contract as a single source-of-truth constant in `src/memory-tier-discipline.ts` (`MEMORY_TIER_DISCIPLINE`).
+- Inject via `src/agent-constraints.ts` (mode agents) and `src/subagents/shared-prefix.ts` (subagents) so both execution contexts pick up the same rule.
+  > Note: there is NO `src/util/mode-shared-prefix.ts` or `src/util/subagent-prefix.ts` — those paths were a misnomer in earlier scaffolding; the actual injection points are `agent-constraints.ts` (modes) and `subagents/shared-prefix.ts` (subagents).
 - Update all 11 `muninn_remember` callsites in instruction prose (across mode files, skill SKILL.md files, and command files) to:
-  - Add a comment line preceding the call: `# Decide tier per MODE_SHARED_PREFIX rule`
-  - Add a follow-up line after the call: `# IF tier === "verified": muninn_trust(id: <returned-id>, trust: "verified")`
+  - Add a comment line preceding the call: `<!-- Tier: inferred -->` (or `verified`/`external` per the rule)
+  - For `verified` writes, add a follow-up: `mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>)`
 - Update `muninn_recall` callsites to filter/prefer `verified` results in-context (since `muninn_recall` doesn't take a trust filter).
 
 ### Optional rule-engine backstop (nice-to-have, can be split into follow-up todo)
 - Add `.luca/rules/memory-tier-discipline.md` — gate at finalize time, scans recent ledger for `muninn_remember` calls without `muninn_trust` follow-up when content cites a source.
 
 ### Tests
-- Prose-snapshot tests on the 11 callsites confirming they include the tier-decision comment and (where applicable) the trust-promotion follow-up.
-- Snapshot test on `MODE_SHARED_PREFIX` containing the tier rule.
+- Prose-snapshot tests on all callsites confirming they include the tier-decision comment and (where applicable) the trust-promotion follow-up.
+- Snapshot test on `getAgentConstraints()` (mode prefix) containing the tier rule.
 - Snapshot test on `SUBAGENT_SHARED_PREFIX` containing the tier rule.
 
 ## Audit mapping

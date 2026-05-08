@@ -16,20 +16,21 @@ Recall is currently blind to trust tier. After tier-promotion lands, every `muni
 
 ## Deliverables
 
-- Add recall-filtering prose to `MODE_SHARED_PREFIX` and `SUBAGENT_SHARED_PREFIX`:
+- Add recall-filtering prose to the source-of-truth constant in `src/memory-tier-discipline.ts` (`MEMORY_TIER_DISCIPLINE`); the existing injection paths (`src/agent-constraints.ts` for modes, `src/subagents/shared-prefix.ts` for subagents) propagate it to both contexts:
   ```
   When processing muninn_recall results: prefer trust:verified engrams.
   Fall back to trust:inferred only when zero verified engrams match the query.
   Treat trust:external as verified for factual grounding.
   Ignore trust:untrusted unless explicitly debugging the audit pipeline.
   ```
-- Audit all `muninn_recall` callsites and add a one-line comment referencing the prefix rule:
-  `# Filter results per MODE_SHARED_PREFIX recall-tier rule`
+  > Note: there is NO `MODE_SHARED_PREFIX` constant. The mode-agent prefix is built by `getAgentConstraints()` in `src/agent-constraints.ts`. Recall-side rules belong in `MEMORY_TIER_DISCIPLINE` so a single edit reaches both injection paths.
+- Audit all `muninn_recall` callsites and add a one-line comment referencing the rule:
+  `<!-- Filter results per MEMORY_TIER_DISCIPLINE recall-tier rule -->`
 - Update post-recall handling examples in skills (luca-init, gh-prepare, finalize-pr, claim-verify, run-checks, manage-todos, shadow-scan, research-similar, review-capture, wave-verify) to demonstrate the verified-first preference.
 
 ## Tests
 
-- Prose-snapshot test on `MODE_SHARED_PREFIX` containing the recall-tier rule.
+- Prose-snapshot test on `getAgentConstraints()` runtime output containing the recall-tier rule.
 - Audit test scanning all instruction prose: every `muninn_recall(` callsite is preceded or followed by the filter comment OR is in an allowlist (e.g. debugging utilities).
 
 ## Dependency

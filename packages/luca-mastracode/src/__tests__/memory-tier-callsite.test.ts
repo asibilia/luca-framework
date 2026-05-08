@@ -2,8 +2,8 @@
  * Memory Tier Callsite — Pattern 1 (filesystem walk + regex scan).
  *
  * For every `muninn_remember` / `muninn_remember_batch` invocation in
- * instruction prose, asserts a `Tier: (verified|inferred)` marker appears
- * within 30 lines preceding the call.
+ * instruction prose, asserts a `Tier: (verified|inferred|external|untrusted)`
+ * marker appears within 30 lines preceding the call.
  *
  * 30-line window chosen to accommodate fenced-block intro headers (~5 lines)
  * + bullet/list-item context (~25 lines) without false negatives. If a
@@ -40,7 +40,10 @@ const ALLOWLIST = [
 ]
 
 const REMEMBER_RE = /mcp__muninn__muninn_remember(?:_batch)?\s*\(/
-const TIER_RE = /Tier:\s*(verified|inferred)/
+// Accept all four tiers from MEMORY_TIER_DISCIPLINE so legitimate `external`
+// markers (e.g. seeded preferences) and `untrusted` markers (debug-only) pass
+// the scan. See `src/memory-tier-discipline.ts` for the canonical tier list.
+const TIER_RE = /Tier:\s*(verified|inferred|external|untrusted)/
 
 const TIER_LOOKBACK_LINES = 30
 
@@ -120,7 +123,7 @@ describe('Memory Tier — every muninn_remember callsite has a tier marker withi
             test(`${rel}:${lineNo} ${line.trim().slice(0, 60)}`, () => {
                 expect(
                     tierMarkerNearby(body, lineIdx),
-                    `Expected 'Tier: verified' or 'Tier: inferred' within ${TIER_LOOKBACK_LINES} lines preceding ${rel}:${lineNo}`,
+                    `Expected 'Tier: verified|inferred|external|untrusted' within ${TIER_LOOKBACK_LINES} lines preceding ${rel}:${lineNo}`,
                 ).toBe(true)
             })
         }

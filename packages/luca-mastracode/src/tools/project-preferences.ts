@@ -78,11 +78,16 @@ function buildMuninnInstruction(prefs: ProjectPreferences): string {
         // The agent invoking the seeded muninn_remember should follow up with
         // mcp__muninn__muninn_trust(id: <returned-id>, trust: "verified", vault: <repo_vault>).
         // Idempotent: op_id ensures re-runs return the same id.
-        `After seeding, agent must call mcp__muninn__muninn_remember with the ` +
-        `arguments encoded in this JSON blob (use JSON.parse to extract them, ` +
-        `do NOT interpolate the raw string into other tool calls), then promote ` +
-        `with mcp__muninn__muninn_trust(id, "verified", vault): ` +
-        JSON.stringify(blob)
+        `Step 1: parse this JSON blob with JSON.parse (the blob below is the ` +
+        `argument set for muninn_remember ONLY — do NOT pass it to muninn_trust). ` +
+        `Step 2: call mcp__muninn__muninn_remember(...parsedBlob) and capture the ` +
+        `returned id. ` +
+        `Step 3: call mcp__muninn__muninn_trust(id: <returned-id>, ` +
+        `trust: "verified", vault: <repo_vault>) — muninn_trust takes the id, ` +
+        `not the blob.\n` +
+        `--- BEGIN muninn_remember argument JSON ---\n` +
+        JSON.stringify(blob) +
+        `\n--- END muninn_remember argument JSON ---`
     )
 }
 

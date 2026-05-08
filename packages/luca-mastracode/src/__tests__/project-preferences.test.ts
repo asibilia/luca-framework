@@ -140,10 +140,13 @@ describe('projectPreferences:seed', () => {
         expect(result.muninnInstruction).toContain(
             '"op_id":"project-preferences:'
         )
-        // The instruction must not interpolate raw free-form preference values
-        // outside the JSON blob — verify the directive line is present.
+        // The instruction must disambiguate which call the JSON blob is for
+        // (muninn_remember only, not muninn_trust). Verify the directive is present.
         expect(result.muninnInstruction).toContain(
-            'do NOT interpolate the raw string'
+            'argument set for muninn_remember ONLY'
+        )
+        expect(result.muninnInstruction).toContain(
+            'do NOT pass it to muninn_trust'
         )
     })
 

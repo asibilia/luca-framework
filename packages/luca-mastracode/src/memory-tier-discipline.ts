@@ -5,7 +5,10 @@
  *
  * Single source of truth: change here once; both injection paths pick it up.
  *
- * Keep this under ~800 chars (token budget headroom for both prefixes).
+ * Token budget: enforced ceiling is 1600 chars (~400 tokens) — see
+ * `__tests__/memory-tier-prefix.test.ts`. Aim to keep under ~800 chars
+ * for headroom; the 1600-char test bound exists so additions force an
+ * explicit review rather than silently bloating both prefixes.
  */
 export const MEMORY_TIER_DISCIPLINE = `## Memory Tier Discipline
 

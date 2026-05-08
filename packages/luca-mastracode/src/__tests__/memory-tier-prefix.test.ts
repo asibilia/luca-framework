@@ -4,7 +4,7 @@
  * Asserts:
  *   1. memory-tier-discipline.ts source contains the rule + 4 tier names + muninn_trust.
  *   2. agent-constraints.ts and subagents/shared-prefix.ts both reference MEMORY_TIER_DISCIPLINE.
- *   3. The constant fits the token budget (< 800 chars).
+ *   3. The constant fits the token budget (< 1600 chars / ~400 tokens).
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -26,11 +26,11 @@ describe('Memory Tier Discipline — prefix integration', () => {
         expect(MEMORY_TIER_DISCIPLINE).toContain('muninn_remember')
     })
 
-    test('MEMORY_TIER_DISCIPLINE fits token budget (< 800 chars)', () => {
+    test('MEMORY_TIER_DISCIPLINE fits token budget (< 1600 chars / ~400 tokens)', () => {
+        // Enforced ceiling: 1600 chars (~400 tokens). Aim for ~800 chars in
+        // practice for headroom; the 1600 bound forces additions to surface
+        // via test failure rather than silently bloating both prefixes.
         expect(MEMORY_TIER_DISCIPLINE.length).toBeLessThan(1600)
-        // 800 chars ≈ 200 tokens; keep generous bound 1600 chars (~400 tokens) so
-        // additions to the rule body don't cause silent budget creep without
-        // an explicit test failure forcing review.
     })
 
     test('memory-tier-discipline.ts source file is present', async () => {
