@@ -7,6 +7,7 @@
     "@alecsibilia/luca-studio": "0.1.0"
   },
   "changesets": [
+    "memory-audit-skill",
     "memory-tier-promotion-contract"
   ]
 }
