@@ -100,7 +100,7 @@ Before Step 1, validate arguments:
 Field semantics:
 
 - `vault` — pinned at first call. Compared against the resolved vault on every resume; mismatch aborts the run.
-- `lastRunAt` — empty string `""` on fresh seed. Set to the current ISO timestamp in Step 5 immediately before persisting state. The 24-hour idempotency guard reads this field and skips when it is `""`.
+- `lastRunAt` — empty string `""` on fresh seed. Set to the current ISO timestamp in Step 6.2 immediately before persisting state. The 24-hour idempotency guard in Step 1.5 reads this field and only fires when it is non-empty (`lastRunAt !== ""`); a fresh seed with `""` always proceeds.
 - `judgedByTier` — count of judgments emitted (incremented for every engram processed, regardless of mode).
 - `appliedByTier` — count of `mcp__muninn__muninn_trust` calls that returned successfully (only `verified`/`inferred` tiers are mutated, so only those keys exist).
 - `totalProcessed` — running total of engrams visited.
@@ -154,7 +154,7 @@ For each batch, judge each engram against the tier rule above. Produce per-memor
   "id": "<ULID>",
   "concept": "<short label>",
   "previousTrust": "verified|inferred|external|untrusted",
-  "proposedTrust": "verified|inferred",
+  "proposedTrust": "verified|inferred|external|untrusted",
   "rationale": "<one-sentence explanation citing the rule>"
 }
 ```
@@ -166,7 +166,7 @@ Rules:
 - If the engram passes the citation-presence check: `proposedTrust: "verified"`.
 - Otherwise: `proposedTrust: "inferred"`.
 
-Increment `state.judgedByTier[proposedTrust] += 1` for every emitted judgment (regardless of mode).
+Increment `state.judgedByTier[proposedTrust] += 1` for every emitted judgment (regardless of mode). Note: `judgedByTier` tracks all four tiers; `appliedByTier` tracks only `verified` and `inferred` because Step 5 only calls `mcp__muninn__muninn_trust` when `proposedTrust !== previousTrust` AND `proposedTrust ∈ {verified, inferred}` — `external`/`untrusted` judgments are no-ops by construction.
 
 When `--apply` is set AND `--auto` is NOT set, before applying a `verified` promotion OR a `verified → inferred` demotion, prompt:
 

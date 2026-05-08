@@ -8,4 +8,4 @@ Add `/memory-audit` skill — paginated LLM-judged retro pass over MuninnDB vaul
 - New `commands/memory-audit.md` slash command shim with `--dry-run` (default), `--apply`, `--vault`, `--resume`, `--limit`, `--auto` flags.
 - Resumable cursor state at `.planning/audits/memory/state.json`; per-run reports at `.planning/audits/memory/<ISO>.md`.
 - `repo-cleanup.ts` ROOT_WHITELIST_DIRS now includes `audits` so complete-phase doesn't flag the audit directory.
-- Hard prohibition on `muninn_remember`/`muninn_forget`/`muninn_consolidate`/`muninn_evolve` and 12 other write tools — audit only mutates trust tier.
+- Hard prohibition on 11 MuninnDB write/mutation tools (`muninn_remember`, `muninn_remember_batch`, `muninn_forget`, `muninn_consolidate`, `muninn_evolve`, `muninn_link`, `muninn_state`, `muninn_decide`, `muninn_add_child`, `muninn_remember_tree`, `muninn_restore`) enforced by a fenced block and asserted by tests — audit only mutates trust tier via `muninn_trust`.
