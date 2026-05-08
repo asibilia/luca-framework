@@ -1,5 +1,7 @@
 # @alecsibilia/luca-framework
 
+## 11.8.2-alpha.0
+
 ## 11.8.1
 
 ## 11.8.0
