@@ -1,0 +1,21 @@
+{"timestamp":"2026-05-08T16:05:01.988Z","runId":"run_mox3w04j_ybsyiwgt","event":"pipeline-reset","data":{"priorRunId":"run_movovw33_d6rp8pqb","newRunId":"run_mox3w04j_ybsyiwgt"}}
+{"timestamp":"2026-05-08T16:05:08.098Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"idle","to":"luca:1-triage"}}
+{"timestamp":"2026-05-08T16:05:31.225Z","runId":"run_mox3w04j_ybsyiwgt","event":"triage-complete","data":{"intent":"Add write-time trust-tier discipline at all muninn_remember callsites: tier-decision rule in MODE_SHARED_PREFIX and SUBAGENT_SHARED_PREFIX, muninn_trust follow-up for verified writes, prose-snapshot tests across mode + skill instruction files","complexity":"COMPLEX","oversight":"full-auto"}}
+{"timestamp":"2026-05-08T16:05:33.418Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"luca:1-triage","to":"luca:2-research"}}
+{"timestamp":"2026-05-08T16:11:53.926Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"luca:2-research","to":"luca:3-architect"}}
+{"timestamp":"2026-05-08T16:19:27.152Z","runId":"run_mox3w04j_ybsyiwgt","event":"plan-artifacts-saved","data":{"planFile":".planning/phases/20260508-1205-add-write-time-trust-tier-discipline-at-all-muni/PLAN.md","roadmapFile":".planning/ROADMAP.md"}}
+{"timestamp":"2026-05-08T16:19:34.671Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"luca:3-architect","to":"luca:4-execute"}}
+{"timestamp":"2026-05-08T16:21:25.443Z","runId":"run_mox3w04j_ybsyiwgt","event":"rules-run","data":{"action":"gate","filesDiscovered":0,"rulesLoaded":0,"findings":0,"mustFix":0,"loadErrors":0,"executionErrors":0}}
+{"timestamp":"2026-05-08T16:25:33.575Z","runId":"run_mox3w04j_ybsyiwgt","event":"rules-run","data":{"action":"gate","filesDiscovered":0,"rulesLoaded":0,"findings":0,"mustFix":0,"loadErrors":0,"executionErrors":0}}
+{"timestamp":"2026-05-08T16:26:11.429Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"luca:4-execute","to":"luca:5-review"}}
+{"timestamp":"2026-05-08T16:27:48.397Z","runId":"run_mox3w04j_ybsyiwgt","event":"rules-run","data":{"action":"run","filesDiscovered":0,"rulesLoaded":0,"findings":0,"mustFix":0,"loadErrors":0,"executionErrors":0}}
+{"timestamp":"2026-05-08T16:32:56.371Z","runId":"run_mox3w04j_ybsyiwgt","event":"review-results-saved","data":{"iterationPlan":[],"reviewIteration":1}}
+{"timestamp":"2026-05-08T16:32:59.928Z","runId":"run_mox3w04j_ybsyiwgt","event":"mode-transition","data":{"from":"luca:5-review","to":"luca:6-finalize"}}
+{"timestamp":"2026-05-08T16:35:54.674Z","runId":"run_mox3w04j_ybsyiwgt","event":"claim-verifier-run","data":{"action":"verify-file","totalClaims":25,"failureCount":12,"paths":[".planning/phases/20260508-1205-add-write-time-trust-tier-discipline-at-all-muni/PLAN.md"]}}
+{"timestamp":"2026-05-08T16:36:53.057Z","runId":"run_mox3w04j_ybsyiwgt","event":"claim-verifier-run","data":{"action":"gate","totalClaims":1,"failureCount":1,"paths":[]}}
+{"timestamp":"2026-05-08T16:36:57.308Z","runId":"run_mox3w04j_ybsyiwgt","event":"claim-verifier-run","data":{"action":"gate","totalClaims":1,"failureCount":1,"paths":[]}}
+{"timestamp":"2026-05-08T16:37:01.738Z","runId":"run_mox3w04j_ybsyiwgt","event":"claim-verifier-run","data":{"action":"gate","totalClaims":0,"failureCount":0,"paths":[]}}
+{"timestamp":"2026-05-08T17:11:59.542Z","runId":"run_mox3w04j_ybsyiwgt","event":"pr-review-run","data":{"action":"filter-stale","inputCount":7,"actionableCount":0,"staleCount":7,"repliesCount":0}}
+{"timestamp":"2026-05-08T17:16:14.758Z","runId":"run_mox3w04j_ybsyiwgt","event":"pr-review-run","data":{"action":"regression-check","beforeCount":7,"afterCount":0,"touchedPathCount":8,"regressionCount":0,"resolvedCount":7}}
+{"timestamp":"2026-05-08T17:33:25.250Z","runId":"run_mox3w04j_ybsyiwgt","event":"pr-review-run","data":{"action":"filter-stale","inputCount":4,"actionableCount":0,"staleCount":4,"repliesCount":0}}
+{"timestamp":"2026-05-08T17:36:26.765Z","runId":"run_mox3w04j_ybsyiwgt","event":"pr-review-run","data":{"action":"regression-check","beforeCount":4,"afterCount":0,"touchedPathCount":4,"regressionCount":0,"resolvedCount":4}}
