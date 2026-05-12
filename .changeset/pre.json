@@ -8,6 +8,7 @@
   },
   "changesets": [
     "memory-audit-skill",
-    "memory-tier-promotion-contract"
+    "memory-tier-promotion-contract",
+    "wave-duration-telemetry"
   ]
 }
