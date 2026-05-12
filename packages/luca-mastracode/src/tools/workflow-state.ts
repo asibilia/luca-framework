@@ -569,6 +569,17 @@ export const workflowStateTool = createTool({
                         if (userRequest) {
                             stateUpdates.intent = userRequest
                         }
+                        // Capture pre-mutation context for mode.end telemetry.
+                        // Must read BEFORE writeLucaState() — after mutation,
+                        // readLucaState() reflects new pipelineStep/phase/slug/wave.
+                        const priorMode = prevState.pipelineStep ?? null
+                        const priorPhase = prevState.currentPhaseName ?? null
+                        const priorSlug = prevState.currentPhaseSlug ?? null
+                        const priorWave = prevState.currentWave ?? null
+                        const priorModeStartedAt =
+                            prevState.currentModeStartedAt as
+                                | string
+                                | undefined
                         writeLucaState(stateUpdates)
                         appendLedger('mode-transition', {
                             from: prevState.pipelineStep,
@@ -578,6 +589,35 @@ export const workflowStateTool = createTool({
                         // Notify context refresher of mode change AFTER successful switch
                         // so it doesn't get stuck in the wrong mode if switch fails.
                         contextRefresherRef.current?.setMode(targetMode)
+
+                        // Persist currentModeStartedAt AFTER successful switch.
+                        // Writing here (not in stateUpdates above) ensures a failed
+                        // switch never records a timestamp without a matching mode.start
+                        // telemetry record — keeping the durationMs invariant clean.
+                        const modeStartedAt = new Date().toISOString()
+                        writeLucaState({ currentModeStartedAt: modeStartedAt })
+
+                        // Telemetry: outer pipeline loop durations.
+                        // appendTelemetry is fail-safe — never throws.
+                        // mode.end closes the outgoing mode; mode.start opens the new one.
+                        const modeDurationMs = priorModeStartedAt
+                            ? finiteOrNull(
+                                  Date.now() -
+                                      new Date(priorModeStartedAt).getTime()
+                              )
+                            : null
+                        appendTelemetry(
+                            'mode.end',
+                            { from: priorMode },
+                            {
+                                phase: priorPhase,
+                                slug: priorSlug,
+                                wave: priorWave,
+                                durationMs: modeDurationMs,
+                            }
+                        )
+                        appendTelemetry('mode.start', { to: targetMode })
+
                         return {
                             success: true,
                             message: `Switched to "${targetMode}" mode.`,
@@ -1132,6 +1172,10 @@ export const workflowStateTool = createTool({
                         // Session metadata
                         sessionId: undefined,
                         startedAt: undefined,
+                        // Mode-transition telemetry — clear so a new run's
+                        // first switch-mode emits mode.end with durationMs=null
+                        // instead of bleeding the prior run's mode duration.
+                        currentModeStartedAt: undefined,
                         assignedTodos: undefined,
                         phaseResults: undefined,
                         // Phase-diff snapshots (Step 2 of the postmortem plan)
