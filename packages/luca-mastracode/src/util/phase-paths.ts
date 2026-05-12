@@ -387,15 +387,52 @@ export function TELEMETRY_DIR(): string {
  * Rejects: empty string, absolute paths (`/abs`), traversal (`../foo`),
  *          path separators, null bytes, and anything that fails the regex.
  */
+/**
+ * Render a `runId` value for inclusion in error messages without risking
+ * memory/CPU blowup on tampered state.
+ *
+ * `runId` originates from `luca-state.json` (user-editable). A maliciously
+ * large value would otherwise produce a multi-megabyte error string via
+ * `JSON.stringify(runId)` *before* `sanitizeLogMessage` (in telemetry.ts)
+ * has a chance to truncate it for console output, and would also propagate
+ * verbatim through any caller that catches the thrown Error and logs
+ * `err.stack` or `err.message` without sanitisation.
+ *
+ * Strategy: for strings ≤ 80 chars, return `JSON.stringify(value)` verbatim
+ * for full debuggability. For longer strings, return a bounded summary of
+ * the form `"<first40>…<last8> (len=<n>)"`. For non-strings, fall back to
+ * `JSON.stringify` with a hard length cap (objects/arrays from a tampered
+ * file could nest arbitrarily; `JSON.stringify` itself is O(size) but
+ * cheap relative to the downstream cost of carrying the long string
+ * through the error chain).
+ *
+ * Copilot PR #239 review #3229046575.
+ */
+function displayRunId(runId: unknown): string {
+    if (typeof runId !== 'string') {
+        try {
+            const s = JSON.stringify(runId)
+            if (s === undefined) return '(unrepresentable)'
+            return s.length > 120 ? `${s.slice(0, 80)}…(len=${s.length})` : s
+        } catch {
+            return '(unrepresentable)'
+        }
+    }
+    if (runId.length <= 80) return JSON.stringify(runId)
+    const head = runId.slice(0, 40)
+    const tail = runId.slice(-8)
+    return `${JSON.stringify(head)}…${JSON.stringify(tail)} (len=${runId.length})`
+}
+
 export function assertValidRunId(runId: unknown): asserts runId is string {
     if (typeof runId !== 'string' || runId.length === 0) {
         throw new Error(
-            `Invalid runId: ${JSON.stringify(runId)} (must be non-empty string).`
+            `Invalid runId: ${displayRunId(runId)} (must be non-empty string).`
         )
     }
     if (runId.length > 64) {
         throw new Error(
-            `Invalid runId: ${JSON.stringify(runId)} (exceeds 64 chars).`
+            `Invalid runId: ${displayRunId(runId)} (exceeds 64 chars).`
         )
     }
     if (
@@ -405,12 +442,12 @@ export function assertValidRunId(runId: unknown): asserts runId is string {
         runId.includes('..')
     ) {
         throw new Error(
-            `Invalid runId: ${JSON.stringify(runId)} (path-shaped or contains traversal).`
+            `Invalid runId: ${displayRunId(runId)} (path-shaped or contains traversal).`
         )
     }
     if (!/^run_[a-z0-9]+_[a-z0-9]+$/.test(runId)) {
         throw new Error(
-            `Invalid runId: ${JSON.stringify(runId)} ` +
+            `Invalid runId: ${displayRunId(runId)} ` +
                 '(must match /^run_<ts36>_<rand36>$/).'
         )
     }

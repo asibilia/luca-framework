@@ -327,6 +327,29 @@ describe('phase-paths — assertValidRunId (strict canonical)', () => {
         expect(p.startsWith(TELEMETRY_DIR())).toBe(true)
         expect(p.endsWith('run_test_xyz.jsonl')).toBe(true)
     })
+
+    test('error message is bounded for very long tampered runId values', () => {
+        // Regression: Copilot PR #239 review #3229046575. A maliciously
+        // large `runId` in luca-state.json must not produce a multi-MB
+        // error string via JSON.stringify. assertValidRunId now routes
+        // user-controlled strings through `displayRunId`, which truncates
+        // to a bounded summary (`<head>…<tail> (len=N)`) for strings > 80.
+        const huge = 'x'.repeat(10_000)
+        let err: Error | undefined
+        try {
+            assertValidRunId(huge)
+        } catch (e) {
+            err = e as Error
+        }
+        expect(err).toBeDefined()
+        // The error message must be bounded — well under the raw input
+        // length. Cap at 500 chars as a generous ceiling that proves the
+        // string is summarized, not echoed verbatim.
+        expect(err!.message.length).toBeLessThan(500)
+        // And must include the actual length so debuggers know they are
+        // looking at a truncated representation.
+        expect(err!.message).toContain('len=10000')
+    })
 })
 
 describe('telemetry — invalid runId is dropped, not thrown', () => {
