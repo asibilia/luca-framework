@@ -721,6 +721,100 @@ describe('telemetry instrumentation', () => {
         expect(pOverrides?.durationMs).toBeGreaterThan(0)
     })
 
+    test('advance-wave emits wave.end with durationMs:null when waveStartedAt is malformed', async () => {
+        // Regression: Copilot PR #239 review #3228846363. A corrupted /
+        // user-edited waveStartedAt that fails Date parsing would produce
+        // NaN; Zod rejects NaN, silently dropping the entire wave.end event.
+        // The finiteOrNull guard must convert NaN to null so the event is
+        // still emitted (just without a duration).
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Test',
+            currentPhaseSlug: 'test-slug',
+            currentWave: 1,
+            runId: 'run_test_nan',
+            phaseResults: [
+                {
+                    name: 'Phase 1: Test',
+                    status: 'in-progress',
+                    iterations: 0,
+                    wavesCompleted: 0,
+                    waveStartedAt: 'not-an-iso-date', // → new Date(...).getTime() = NaN
+                },
+            ],
+        } as any)
+        mockReadVerificationResult.mockReturnValue({
+            wave: 1,
+            status: 'PASS',
+            mode: 'quick',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({ action: 'advance-wave' })
+        expect(result.success).toBe(true)
+
+        const waveEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const overrides = waveEnd?.[2] as any
+        expect(overrides?.durationMs).toBeNull()
+    })
+
+    test('complete-phase emits wave.end + phase.end with durationMs:null when timestamps malformed', async () => {
+        // Regression: Copilot PR #239 review #3228846383. Same NaN trap as
+        // advance-wave, applied to both closing events at complete-phase.
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Closing',
+            currentPhaseSlug: 'closing-slug',
+            currentWave: 2,
+            runId: 'run_test_nan_close',
+            currentPhaseStartSnapshot: {
+                headSha: 'deadbeef',
+                dirtyFiles: [],
+                gitAvailable: true,
+            },
+            phaseResults: [
+                {
+                    name: 'Phase 1: Closing',
+                    status: 'in-progress',
+                    iterations: 1,
+                    wavesCompleted: 1,
+                    startedAt: 'garbage', // → NaN
+                    waveStartedAt: 'also-garbage', // → NaN
+                },
+            ],
+        } as any)
+        mockReadVerificationResult.mockReturnValue({
+            wave: 2,
+            status: 'PASS',
+            mode: 'full',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({
+            action: 'complete-phase',
+            verificationPassed: true,
+            reviewPassed: true,
+        })
+        expect(result.success).toBe(true)
+
+        const waveEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const phaseEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'phase.end'
+        )
+        expect((waveEnd?.[2] as any)?.durationMs).toBeNull()
+        expect((phaseEnd?.[2] as any)?.durationMs).toBeNull()
+    })
+
     // Note: A "start-phase survives appendTelemetry throw" test previously
     // lived here. It was deleted in review iter-2 (MF-2) for two reasons:
     //

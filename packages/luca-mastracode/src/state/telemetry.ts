@@ -28,8 +28,16 @@
  * `PIPE_BUF` (~4096 bytes); a single telemetry line is well under that.
  * Single-process append safety is assumed.
  */
-import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import * as fs from 'node:fs'
 import { dirname } from 'node:path'
+
+// NOTE: `appendFileSync` is intentionally accessed via the `fs` namespace
+// (`fs.appendFileSync(...)`) rather than as a named import. ESM named-import
+// bindings are immutable from the consumer's side, so `spyOn(fs, 'appendFileSync')`
+// in tests cannot intercept a name-imported call — see telemetry.test.ts
+// "does NOT throw when appendFileSync throws" (Copilot PR #239 review). Keeping
+// this as `fs.appendFileSync` makes the disk-failure path properly testable.
 
 import { z } from 'zod'
 
@@ -215,7 +223,8 @@ export function appendTelemetry(
         }
         const p = TELEMETRY_PATH(parsed.data.runId)
         mkdirSync(dirname(p), { recursive: true })
-        appendFileSync(p, JSON.stringify(parsed.data) + '\n', 'utf-8')
+        // Namespace access (`fs.appendFileSync`) — see top-of-file note.
+        fs.appendFileSync(p, JSON.stringify(parsed.data) + '\n', 'utf-8')
     } catch (err) {
         console.warn(`[telemetry] write failed: ${sanitizeLogMessage(err)}`)
     }
@@ -242,40 +251,52 @@ export function readTelemetry(runId: string): TelemetryRecord[] {
     const p = TELEMETRY_PATH(runId)
     if (!existsSync(p)) return []
 
-    const content = readFileSync(p, 'utf-8')
-    if (!content.trim()) return []
+    // Wrap the read + parse loop in a single try/catch to honor the no-throw
+    // read contract. The file may disappear between `existsSync` and
+    // `readFileSync` (TOCTOU), be unreadable (EACCES/EPERM), or live on a
+    // filesystem that errors mid-iteration — none of which should propagate
+    // to callers (Copilot PR #239 review #3228846315).
+    try {
+        const content = readFileSync(p, 'utf-8')
+        if (!content.trim()) return []
 
-    const records: TelemetryRecord[] = []
-    const invalidLines: number[] = []
-    let firstError: string | undefined
+        const records: TelemetryRecord[] = []
+        const invalidLines: number[] = []
+        let firstError: string | undefined
 
-    for (const [index, line] of content.split('\n').entries()) {
-        if (!line.trim()) continue
-        try {
-            const parsed = JSON.parse(line)
-            const validated = TelemetryRecordSchema.safeParse(parsed)
-            if (validated.success) {
-                records.push(validated.data)
-            } else {
+        for (const [index, line] of content.split('\n').entries()) {
+            if (!line.trim()) continue
+            try {
+                const parsed = JSON.parse(line)
+                const validated = TelemetryRecordSchema.safeParse(parsed)
+                if (validated.success) {
+                    records.push(validated.data)
+                } else {
+                    invalidLines.push(index + 1)
+                    if (!firstError)
+                        firstError = sanitizeLogMessage(validated.error.message)
+                }
+            } catch (err) {
                 invalidLines.push(index + 1)
-                if (!firstError)
-                    firstError = sanitizeLogMessage(validated.error.message)
+                if (!firstError) firstError = sanitizeLogMessage(err)
             }
-        } catch (err) {
-            invalidLines.push(index + 1)
-            if (!firstError) firstError = sanitizeLogMessage(err)
         }
-    }
 
-    if (invalidLines.length > 0) {
+        if (invalidLines.length > 0) {
+            console.warn(
+                `[telemetry] Skipped ${invalidLines.length} invalid ` +
+                    `entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
+                    `in ${sanitizeLogMessage(p)} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}` +
+                    (firstError ? ` (first error: ${firstError})` : '') +
+                    '.'
+            )
+        }
+
+        return records
+    } catch (err) {
         console.warn(
-            `[telemetry] Skipped ${invalidLines.length} invalid ` +
-                `entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
-                `in ${sanitizeLogMessage(p)} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}` +
-                (firstError ? ` (first error: ${firstError})` : '') +
-                '.'
+            `[telemetry] read failed for ${sanitizeLogMessage(p)}: ${sanitizeLogMessage(err)}`
         )
+        return []
     }
-
-    return records
 }

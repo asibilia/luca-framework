@@ -88,6 +88,24 @@ function hasStaleState(state: LucaWorkflowState): boolean {
     return false
 }
 
+/**
+ * Coerce a computed duration into a finite millisecond count or `null`.
+ *
+ * `new Date(<malformed-string>).getTime()` returns `NaN`, and arithmetic with
+ * `NaN` propagates. `TelemetryRecordSchema` rejects non-finite numbers, so an
+ * unguarded NaN would silently drop the entire `wave.end` / `phase.end` event
+ * during Zod validation (Copilot PR #239 review #3228846363, #3228846383).
+ *
+ * Treat unparseable / negative / non-finite durations as missing — emit `null`
+ * so the closing event is still recorded.
+ */
+function finiteOrNull(n: number | null | undefined): number | null {
+    if (typeof n !== 'number') return null
+    if (!Number.isFinite(n)) return null
+    if (n < 0) return null
+    return n
+}
+
 // ── Per-action Zod schemas ──────────────────────────────────────────
 // Used for runtime validation + type narrowing in the execute handler.
 // Actions with no extra fields (read, record-iteration, advance-wave,
@@ -655,8 +673,13 @@ export const workflowStateTool = createTool({
                         (r) => r.name === priorPhase
                     )
                     const priorWaveStartedAt = priorEntry?.waveStartedAt
+                    // Guard against NaN from malformed/corrupted timestamps —
+                    // see finiteOrNull JSDoc.
                     const priorDurationMs = priorWaveStartedAt
-                        ? Date.now() - new Date(priorWaveStartedAt).getTime()
+                        ? finiteOrNull(
+                              Date.now() -
+                                  new Date(priorWaveStartedAt).getTime()
+                          )
                         : null
 
                     const waveState = advanceWave()
@@ -824,9 +847,15 @@ export const workflowStateTool = createTool({
                                 wave: tPriorWave,
                                 phase: tPriorPhase,
                                 slug: tPriorSlug,
+                                // Guard against NaN from malformed timestamps
+                                // (see finiteOrNull JSDoc).
                                 durationMs: tPriorWaveStartedAt
-                                    ? now -
-                                      new Date(tPriorWaveStartedAt).getTime()
+                                    ? finiteOrNull(
+                                          now -
+                                              new Date(
+                                                  tPriorWaveStartedAt
+                                              ).getTime()
+                                      )
                                     : null,
                             }
                         )
@@ -837,9 +866,15 @@ export const workflowStateTool = createTool({
                                 wave: tPriorWave,
                                 phase: tPriorPhase,
                                 slug: tPriorSlug,
+                                // Guard against NaN from malformed timestamps
+                                // (see finiteOrNull JSDoc).
                                 durationMs: tPriorPhaseStartedAt
-                                    ? now -
-                                      new Date(tPriorPhaseStartedAt).getTime()
+                                    ? finiteOrNull(
+                                          now -
+                                              new Date(
+                                                  tPriorPhaseStartedAt
+                                              ).getTime()
+                                      )
                                     : null,
                             }
                         )

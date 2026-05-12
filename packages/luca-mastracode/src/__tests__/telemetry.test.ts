@@ -23,6 +23,7 @@ import {
     buildTelemetryRecord,
     readTelemetry,
     TelemetryRecordSchema,
+    type TelemetryRecord,
 } from '../state/telemetry.js'
 import { writeLucaState } from '../state/luca-store.js'
 import {
@@ -250,6 +251,31 @@ describe('telemetry — readTelemetry', () => {
         expect(records[0]!.kind).toBe('phase.start')
         expect(records[1]!.kind).toBe('phase.end')
         expect(warn).toHaveBeenCalled()
+        warn.mockRestore()
+    })
+
+    test('returns [] when readFileSync throws (TOCTOU / EACCES)', () => {
+        // Regression: Copilot PR #239 review #3228846315. readTelemetry must
+        // honor a no-throw read contract even if the file is unreadable or
+        // disappears between existsSync and readFileSync.
+        seedState('run_test_unreadable')
+        appendTelemetry('phase.start') // ensure the file exists so existsSync passes
+        const warn = spyOn(console, 'warn').mockReturnValue(undefined)
+        const readSpy = spyOn(fs, 'readFileSync').mockImplementation(() => {
+            throw new Error('EACCES: permission denied')
+        })
+
+        // Must not throw — must return [].
+        let result: TelemetryRecord[] | undefined
+        expect(() => {
+            result = readTelemetry('run_test_unreadable')
+        }).not.toThrow()
+        expect(result).toEqual([])
+        expect(warn).toHaveBeenCalled()
+        const callArg = warn.mock.calls[0]?.[0] ?? ''
+        expect(callArg).toContain('[telemetry] read failed')
+
+        readSpy.mockRestore()
         warn.mockRestore()
     })
 })
