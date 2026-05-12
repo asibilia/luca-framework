@@ -53,6 +53,10 @@ Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`. Use
 
 ### Milestone-Level Learning
 
+> **Subagent Telemetry**: Call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: "<role>-<ts>")` before each spawn and `event: "complete"` after. Parse `<!-- usage: ... -->` from last 256 chars for token counts.
+
+// → record-subagent invoke (role: "learner") before spawn
+
 Spawn a **learner** subagent for milestone synthesis:
 - Aggregate wave-level learnings from execution
 - Identify **cross-cutting patterns** spanning multiple waves
@@ -60,6 +64,8 @@ Spawn a **learner** subagent for milestone synthesis:
 - Compare initial estimates vs actual outcomes
 
 Learner stores findings in MuninnDB. Verify storage succeeded. If MuninnDB unavailable, write to `SESSION-ARCHIVE.md` only (auto-routed to `.planning/phases/<currentPhaseSlug>/SESSION-ARCHIVE.md`).
+
+// → record-subagent complete (role: "learner") — parse usage block after the subagent returns
 
 ### Pattern Pruning
 
@@ -123,6 +129,8 @@ Advisory scan for AI-session debris before PR:
    - `"quick"` = staged files only, `"standard"` = all tracked, `"full"` = including untracked
    - Use `"standard"` normally; `"full"` only if many new files created
 2. Spawn **shadow-scanner** subagent with scan parameters
+   - // → record-subagent invoke (role: "shadow-scanner") before spawn
+   - // → record-subagent complete (role: "shadow-scanner") — parse usage block after
 3. Call `repoCleanup(action: "parse-report", raw_output: <scanner response>)`
 4. **Critical** findings: fix via `repoCleanup(action: "apply-fix", ...)` or report to user
 5. **High/medium/low** findings: log in session archive, don't block

@@ -108,12 +108,18 @@ If results found, note past decisions, patterns, and pitfalls. Include relevant 
 
 ## Step 2: Discussion (NEVER SKIP)
 
+> **Subagent Telemetry**: Call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: "<role>-<ts>")` before each subagent spawn and `event: "complete"` after. Parse `<!-- usage: ... -->` from the last 256 chars of output for token counts.
+
+// → record-subagent invoke (role: "discussion") before spawn
+
 Spawn the **discussion** subagent before creating any plan:
 
 1. Subagent identifies architectural decisions, scope boundaries, priority trade-offs, technical constraints
 2. In `human-in-loop`: presents questions to user, waits for answers
 3. In `full-auto`: makes reasonable defaults, documents them
 4. Produces `CONTEXT.md` (auto-routed to `.planning/phases/<currentPhaseSlug>/CONTEXT.md`) with structured decisions table
+
+// → record-subagent complete (role: "discussion") — parse usage block after
 
 This step is **mandatory** — NEVER merged into planning, NEVER skipped. The planner reads CONTEXT.md as input.
 
@@ -345,7 +351,11 @@ Update status as you progress through steps 3–6.
 
 ## Step 5: Plan Review
 
+// → record-subagent invoke (role: "plan-reviewer") before spawn
+
 Spawn a **plan-reviewer** subagent to validate:
+
+// → record-subagent complete (role: "plan-reviewer") — parse usage block after, once the subagent returns
 
 ### Review Criteria
 
