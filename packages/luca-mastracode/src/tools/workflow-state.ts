@@ -25,6 +25,7 @@ import {
     archivePriorRun,
     startNewRun,
 } from '../state/session-ledger.js'
+import { appendTelemetry } from '../state/telemetry.js'
 import { readVerificationResult } from '../state/verification-result.js'
 import {
     deriveSlug,
@@ -587,6 +588,18 @@ export const workflowStateTool = createTool({
                         gitAvailable: snapshot.gitAvailable,
                     })
 
+                    // Telemetry: emit phase.start + wave.start.
+                    // State is now post-mutation (wave 1, new phase, new slug)
+                    // → no overrides needed; appendTelemetry reads state itself.
+                    // Fail-safe: appendTelemetry never throws; outer try is
+                    // defense-in-depth following established codebase pattern.
+                    try {
+                        appendTelemetry('phase.start')
+                        appendTelemetry('wave.start')
+                    } catch {
+                        // never block pipeline on telemetry
+                    }
+
                     return {
                         success: true,
                         message: `Started phase "${phaseName}" (wave 1, iteration 0)`,
@@ -636,12 +649,48 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // Capture pre-mutation context BEFORE advanceWave().
+                    // Producer uses `.find(r => r.name === currentPhaseName)`;
+                    // consumer MUST match — never `.at(-1)` (resumed phases
+                    // mutate in place, not at end of phaseResults).
+                    const priorPhase = preWaveState.currentPhaseName ?? null
+                    const priorSlug = preWaveState.currentPhaseSlug ?? null
+                    const priorWaveNum = preWaveState.currentWave ?? null
+                    const priorEntry = preWaveState.phaseResults?.find(
+                        (r) => r.name === priorPhase
+                    )
+                    const priorWaveStartedAt = priorEntry?.waveStartedAt
+                    const priorDurationMs = priorWaveStartedAt
+                        ? Date.now() - new Date(priorWaveStartedAt).getTime()
+                        : null
+
                     const waveState = advanceWave()
                     appendLedger('wave-advance', {
                         phase: waveState.currentPhaseName,
                         wave: waveState.currentWave,
                         budgetExceeded: waveState.budgetExceeded ?? false,
                     })
+
+                    // Telemetry: emit wave.end for the closing wave, then
+                    // wave.start for the new wave. wave.end MUST use overrides
+                    // because readLucaState() now returns the post-mutation
+                    // state (new wave number).
+                    try {
+                        appendTelemetry(
+                            'wave.end',
+                            {},
+                            {
+                                wave: priorWaveNum,
+                                phase: priorPhase,
+                                slug: priorSlug,
+                                durationMs: priorDurationMs,
+                            }
+                        )
+                        appendTelemetry('wave.start')
+                    } catch {
+                        // never block pipeline on telemetry
+                    }
+
                     let waveMsg = `Advanced to wave ${waveState.currentWave} in phase "${waveState.currentPhaseName}"`
                     if (waveState.budgetExceeded) {
                         waveMsg += ` ⚠ Budget limit exceeded (maxPhases). Consider completing the phase or reporting remaining work.`
@@ -741,6 +790,20 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // Capture pre-mutation telemetry context BEFORE completePhase().
+                    // preState is in scope from L667 (confirmed pre-mutation snapshot).
+                    // completePhase() will mutate currentPhaseName (→ next phase
+                    // or undefined) and reset currentWave to 1 — so reading state
+                    // after the mutation would tag records with the WRONG phase/wave.
+                    const tPriorPhase = preState.currentPhaseName ?? null
+                    const tPriorSlug = preState.currentPhaseSlug ?? null
+                    const tPriorWave = preState.currentWave ?? null
+                    const tPriorEntry = preState.phaseResults?.find(
+                        (r) => r.name === tPriorPhase
+                    )
+                    const tPriorWaveStartedAt = tPriorEntry?.waveStartedAt
+                    const tPriorPhaseStartedAt = tPriorEntry?.startedAt
+
                     const phaseResult = completePhase({
                         verificationPassed,
                         reviewPassed,
@@ -756,6 +819,39 @@ export const workflowStateTool = createTool({
                         filesChanged: diff.filesChanged.length,
                         commitsAdded: diff.commitsAdded.length,
                     })
+
+                    // Telemetry: emit final wave.end + phase.end with pre-mutation context.
+                    try {
+                        const now = Date.now()
+                        appendTelemetry(
+                            'wave.end',
+                            {},
+                            {
+                                wave: tPriorWave,
+                                phase: tPriorPhase,
+                                slug: tPriorSlug,
+                                durationMs: tPriorWaveStartedAt
+                                    ? now -
+                                      new Date(tPriorWaveStartedAt).getTime()
+                                    : null,
+                            }
+                        )
+                        appendTelemetry(
+                            'phase.end',
+                            {},
+                            {
+                                wave: tPriorWave,
+                                phase: tPriorPhase,
+                                slug: tPriorSlug,
+                                durationMs: tPriorPhaseStartedAt
+                                    ? now -
+                                      new Date(tPriorPhaseStartedAt).getTime()
+                                    : null,
+                            }
+                        )
+                    } catch {
+                        // never block pipeline on telemetry
+                    }
 
                     // ── Advisory: tick PLAN.md checkboxes for this phase ──
                     // Runs AFTER all three guards (diff + verification +

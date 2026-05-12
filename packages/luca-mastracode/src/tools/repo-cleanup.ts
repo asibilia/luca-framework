@@ -94,6 +94,9 @@ export const ROOT_WHITELIST_DIRS: ReadonlySet<string> = new Set([
     'runs',
     // Per-run reports + cursor state from `/memory-audit` skill.
     'audits',
+    // Per-run wave duration telemetry JSONL files (src/state/telemetry.ts).
+    // Straggler-detection allowlist only — NOT a permissions grant.
+    'telemetry',
 ])
 
 // Files allowed under `phases/<slug>/` when a slug is active (strict mode).
