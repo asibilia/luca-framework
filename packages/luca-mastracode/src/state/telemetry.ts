@@ -4,7 +4,18 @@
  * Data layer: `.planning/telemetry/<runId>.jsonl` (machine-readable, append-only).
  *
  * Produced by `workflowState` action handlers (`start-phase`, `advance-wave`,
- * `complete-phase`) and consumed by a future aggregator skill (`/luca-telemetry-report`).
+ * `complete-phase`, `switch-mode`) and consumed by a future aggregator skill
+ * (`/luca-telemetry-report`).
+ *
+ * ## Two-tier event hierarchy
+ *
+ * **Pipeline modes** (outer loop) — one pair per `switch-mode` call:
+ * - `mode.start` / `mode.end` — captures duration of each pipeline mode
+ *   (triage, research, architect, execute, review, finalize).
+ *
+ * **PLAN.md phases** (inner loop, execute-only) — emitted by `start-phase`,
+ * `advance-wave`, `complete-phase`:
+ * - `phase.start` / `wave.start` / `wave.end` / `phase.end`
  *
  * ## Schema contract (v1 — LOCKED)
  *
@@ -69,6 +80,8 @@ export type TelemetryKind =
     | 'phase.end'
     | 'wave.start'
     | 'wave.end'
+    | 'mode.start'
+    | 'mode.end'
     | (string & {})
 
 export interface TelemetryRecord {

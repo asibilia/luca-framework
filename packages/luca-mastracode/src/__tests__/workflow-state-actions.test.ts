@@ -846,3 +846,158 @@ describe('ROOT_WHITELIST_DIRS regression', () => {
         expect(ROOT_WHITELIST_DIRS.has('telemetry')).toBe(true)
     })
 })
+
+// ---------------------------------------------------------------------------
+// switch-mode telemetry
+// ---------------------------------------------------------------------------
+
+describe('switch-mode telemetry', () => {
+    test('(a) emits mode.end with populated durationMs for prior mode', async () => {
+        switchModeRef.current = async () => {}
+        const priorModeStartedAt = new Date(Date.now() - 100).toISOString()
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'luca:1-triage',
+            currentModeStartedAt: priorModeStartedAt,
+            currentPhaseName: null,
+            currentPhaseSlug: null,
+            currentWave: null,
+        } as any)
+
+        const result = await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:2-research',
+        })
+
+        expect(result.success).toBe(true)
+        const modeEndCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'mode.end'
+        )
+        expect(modeEndCall).toBeDefined()
+        const overrides = modeEndCall![2] as any
+        expect(typeof overrides?.durationMs).toBe('number')
+        expect(overrides?.durationMs).toBeGreaterThan(0)
+    })
+
+    test('(b) emits mode.start with durationMs: null for incoming mode', async () => {
+        switchModeRef.current = async () => {}
+        const priorModeStartedAt = new Date(Date.now() - 100).toISOString()
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'luca:1-triage',
+            currentModeStartedAt: priorModeStartedAt,
+        } as any)
+
+        await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:2-research',
+        })
+
+        const modeStartCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'mode.start'
+        )
+        expect(modeStartCall).toBeDefined()
+        const overrides = modeStartCall![2] as any
+        expect(overrides?.durationMs ?? null).toBeNull()
+        const meta = modeStartCall![1] as any
+        expect(meta?.to).toBe('luca:2-research')
+    })
+
+    test('(c) first switch (no prior currentModeStartedAt) emits mode.end with durationMs: null', async () => {
+        switchModeRef.current = async () => {}
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'idle',
+            // no currentModeStartedAt
+        } as any)
+
+        const result = await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:1-triage',
+        })
+
+        expect(result.success).toBe(true)
+        const modeEndCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'mode.end'
+        )
+        expect(modeEndCall).toBeDefined()
+        const overrides = modeEndCall![2] as any
+        expect(overrides?.durationMs).toBeNull()
+    })
+
+    test('(d) malformed currentModeStartedAt → durationMs: null (NaN guard)', async () => {
+        switchModeRef.current = async () => {}
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'luca:1-triage',
+            currentModeStartedAt: 'not-a-valid-date',
+        } as any)
+
+        await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:2-research',
+        })
+
+        const modeEndCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'mode.end'
+        )
+        expect(modeEndCall).toBeDefined()
+        const overrides = modeEndCall![2] as any
+        expect(overrides?.durationMs).toBeNull()
+    })
+
+    test('(e) failed switch (switchModeRef throws) → no telemetry emitted', async () => {
+        switchModeRef.current = async () => {
+            throw new Error('switch failed')
+        }
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'luca:1-triage',
+            currentModeStartedAt: new Date().toISOString(),
+        } as any)
+
+        const result = await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:2-research',
+        })
+
+        expect(result.success).toBe(false)
+        // appendTelemetry must NOT have been called — switch failed before hook
+        const modeCalls = mockAppendTelemetry.mock.calls.filter(
+            (c) => c[0] === 'mode.end' || c[0] === 'mode.start'
+        )
+        expect(
+            modeCalls,
+            'switch failed but telemetry leaked — hook must be AFTER switchModeRef.current() resolves'
+        ).toHaveLength(0)
+    })
+
+    test('(f) reset-pipeline clears currentModeStartedAt → next mode.end has durationMs: null', async () => {
+        // First: perform a reset-pipeline to clear session state
+        await callAction({ action: 'reset-pipeline' })
+
+        // Verify writeLucaState was called with currentModeStartedAt: undefined
+        const resetCalls = mockWriteLucaState.mock.calls
+        const resetStateCall = resetCalls.find(
+            (c) => c[0] && 'currentModeStartedAt' in (c[0] as any)
+        )
+        expect(resetStateCall).toBeDefined()
+        expect((resetStateCall![0] as any).currentModeStartedAt).toBeUndefined()
+
+        // Simulate the state after reset: currentModeStartedAt is gone
+        mockWriteLucaState.mockClear()
+        mockAppendTelemetry.mockClear()
+        switchModeRef.current = async () => {}
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'idle',
+            // currentModeStartedAt deliberately absent — simulates post-reset state
+        } as any)
+
+        await callAction({
+            action: 'switch-mode',
+            targetMode: 'luca:1-triage',
+        })
+
+        const modeEndCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'mode.end'
+        )
+        expect(modeEndCall).toBeDefined()
+        const overrides = modeEndCall![2] as any
+        expect(overrides?.durationMs).toBeNull()
+    })
+})
