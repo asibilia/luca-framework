@@ -340,3 +340,21 @@ export function RUNS_ROOT(): string {
 export function CONFIG_PATH(): string {
     return join(planningRoot(), 'config.json')
 }
+
+/**
+ * `.planning/telemetry/` — per-run wave duration telemetry directory.
+ *
+ * Each pipeline run produces a single JSONL file at
+ * `.planning/telemetry/<runId>.jsonl` containing structured records for
+ * phase/wave boundary events (phase.start / phase.end / wave.start /
+ * wave.end). Filenames are runId-keyed → self-archiving across pipeline
+ * resets. See `src/state/telemetry.ts`.
+ */
+export function TELEMETRY_DIR(): string {
+    return join(planningRoot(), 'telemetry')
+}
+
+/** `.planning/telemetry/<runId>.jsonl` — per-run telemetry log. */
+export function TELEMETRY_PATH(runId: string): string {
+    return join(TELEMETRY_DIR(), `${runId}.jsonl`)
+}

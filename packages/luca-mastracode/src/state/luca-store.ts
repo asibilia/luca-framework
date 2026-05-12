@@ -44,6 +44,19 @@ export interface PhaseResult {
     verificationPassed?: boolean
     /** Whether review passed */
     reviewPassed?: boolean
+    /**
+     * Timestamp when the current wave started (ISO 8601).
+     *
+     * - Set on `startPhase` (new-phase branch) — wave 1 starts.
+     * - **Reset** on `startPhase` (RESUME branch) — `currentWave` resets to 1,
+     *   so wave timing must reset too.
+     * - Updated on each `advanceWave` — new wave begins.
+     *
+     * Consumed by the telemetry writer to compute `wave.end` durationMs.
+     * Always look up the entry via `.find(r => r.name === currentPhaseName)`
+     * — NEVER `.at(-1)` (resumed phases mutate in place, not at end).
+     */
+    waveStartedAt?: string
 }
 
 export interface LucaWorkflowState {
@@ -206,16 +219,20 @@ export function startPhase({ name }: { name: string }): LucaWorkflowState {
 
     // Check if phase already exists (resuming)
     const existing = results.find((r) => r.name === name)
+    const now = new Date().toISOString()
     if (existing && existing.status !== 'complete') {
         existing.status = 'in-progress'
         existing.iterations = existing.iterations ?? 0
+        // Reset wave timer — currentWave resets to 1 below; wave timing too.
+        existing.waveStartedAt = now
     } else if (!existing) {
         results.push({
             name,
             status: 'in-progress',
             iterations: 0,
             wavesCompleted: 0,
-            startedAt: new Date().toISOString(),
+            startedAt: now,
+            waveStartedAt: now,
         })
     }
 
@@ -265,6 +282,8 @@ export function advanceWave(): LucaWorkflowState {
     const current = results.find((r) => r.name === state.currentPhaseName)
     if (current) {
         current.wavesCompleted = (current.wavesCompleted ?? 0) + 1
+        // Stamp new wave start so telemetry's wave.end (next advance) can derive durationMs.
+        current.waveStartedAt = new Date().toISOString()
     }
     const nextWave = (state.currentWave ?? 1) + 1
 
