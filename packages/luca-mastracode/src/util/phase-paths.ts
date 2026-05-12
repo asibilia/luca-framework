@@ -354,7 +354,81 @@ export function TELEMETRY_DIR(): string {
     return join(planningRoot(), 'telemetry')
 }
 
-/** `.planning/telemetry/<runId>.jsonl` — per-run telemetry log. */
+/**
+ * Validate a runId for safe use as a filename component.
+ *
+ * `runId` originates from `luca-state.json` (user-editable JSON). Without
+ * validation, a tampered state file with `runId: "../../../tmp/evil"` would
+ * cause TELEMETRY_PATH to escape `.planning/telemetry/`. Mirrors the
+ * `isValidSlug`/`assertValidSlug` guard used by every other path builder.
+ *
+ * Generator contract (session-ledger.ts:47-51): `run_<ts36>_<rand36>`.
+ * This validator accepts the canonical form plus a small superset to
+ * tolerate legacy/test runIds while rejecting anything with path-relevant
+ * characters or unreasonable length.
+ */
+export function isValidRunId(runId: unknown): runId is string {
+    if (typeof runId !== 'string') return false
+    if (runId.length === 0 || runId.length > 64) return false
+    // Reject path separators, traversal, and null bytes.
+    if (runId.includes('/') || runId.includes('\\') || runId.includes('\0'))
+        return false
+    if (runId.includes('..')) return false
+    // Only allow safe characters: alphanumeric, underscore, hyphen, dot.
+    return /^[A-Za-z0-9._-]+$/.test(runId)
+}
+
+/**
+ * Strict assertion for runIds — enforces the canonical generator contract
+ * `run_<ts36>_<rand36>` (session-ledger.ts:47-51).
+ *
+ * `isValidRunId` accepts a permissive superset (legacy + test fixtures);
+ * `assertValidRunId` is the hard guard used by `TELEMETRY_PATH` so that any
+ * tampered or path-shaped runId surfaces as a thrown error rather than
+ * silently building an escape path. Callers that must be fail-safe (e.g.
+ * `appendTelemetry`) should pre-check via `isValidRunId` and drop+warn.
+ *
+ * Accepts: `run_<ts36>_<rand36>` (lower-case alphanumerics, two underscored
+ *          segments, each non-empty, total length ≤ 64).
+ * Rejects: empty string, absolute paths (`/abs`), traversal (`../foo`),
+ *          path separators, null bytes, and anything that fails the regex.
+ */
+export function assertValidRunId(runId: unknown): asserts runId is string {
+    if (typeof runId !== 'string' || runId.length === 0) {
+        throw new Error(
+            `Invalid runId: ${JSON.stringify(runId)} (must be non-empty string).`
+        )
+    }
+    if (runId.length > 64) {
+        throw new Error(
+            `Invalid runId: ${JSON.stringify(runId)} (exceeds 64 chars).`
+        )
+    }
+    if (
+        runId.includes('/') ||
+        runId.includes('\\') ||
+        runId.includes('\0') ||
+        runId.includes('..')
+    ) {
+        throw new Error(
+            `Invalid runId: ${JSON.stringify(runId)} (path-shaped or contains traversal).`
+        )
+    }
+    if (!/^run_[a-z0-9]+_[a-z0-9]+$/.test(runId)) {
+        throw new Error(
+            `Invalid runId: ${JSON.stringify(runId)} ` +
+                '(must match /^run_<ts36>_<rand36>$/).'
+        )
+    }
+}
+
+/** `.planning/telemetry/<runId>.jsonl` — per-run telemetry log.
+ *
+ * Throws on invalid runId via `assertValidRunId`. Callers that need
+ * fail-safe behaviour should pre-validate via `isValidRunId` and skip on
+ * false.
+ */
 export function TELEMETRY_PATH(runId: string): string {
+    assertValidRunId(runId)
     return join(TELEMETRY_DIR(), `${runId}.jsonl`)
 }

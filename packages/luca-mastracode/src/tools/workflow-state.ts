@@ -591,14 +591,9 @@ export const workflowStateTool = createTool({
                     // Telemetry: emit phase.start + wave.start.
                     // State is now post-mutation (wave 1, new phase, new slug)
                     // → no overrides needed; appendTelemetry reads state itself.
-                    // Fail-safe: appendTelemetry never throws; outer try is
-                    // defense-in-depth following established codebase pattern.
-                    try {
-                        appendTelemetry('phase.start')
-                        appendTelemetry('wave.start')
-                    } catch {
-                        // never block pipeline on telemetry
-                    }
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    appendTelemetry('phase.start')
+                    appendTelemetry('wave.start')
 
                     return {
                         success: true,
@@ -675,21 +670,18 @@ export const workflowStateTool = createTool({
                     // wave.start for the new wave. wave.end MUST use overrides
                     // because readLucaState() now returns the post-mutation
                     // state (new wave number).
-                    try {
-                        appendTelemetry(
-                            'wave.end',
-                            {},
-                            {
-                                wave: priorWaveNum,
-                                phase: priorPhase,
-                                slug: priorSlug,
-                                durationMs: priorDurationMs,
-                            }
-                        )
-                        appendTelemetry('wave.start')
-                    } catch {
-                        // never block pipeline on telemetry
-                    }
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    appendTelemetry(
+                        'wave.end',
+                        {},
+                        {
+                            wave: priorWaveNum,
+                            phase: priorPhase,
+                            slug: priorSlug,
+                            durationMs: priorDurationMs,
+                        }
+                    )
+                    appendTelemetry('wave.start')
 
                     let waveMsg = `Advanced to wave ${waveState.currentWave} in phase "${waveState.currentPhaseName}"`
                     if (waveState.budgetExceeded) {
@@ -791,7 +783,8 @@ export const workflowStateTool = createTool({
                     }
 
                     // Capture pre-mutation telemetry context BEFORE completePhase().
-                    // preState is in scope from L667 (confirmed pre-mutation snapshot).
+                    // `preState` was read at the top of this case (~L708) as
+                    // the diff-based phase-proof snapshot — reuse it here.
                     // completePhase() will mutate currentPhaseName (→ next phase
                     // or undefined) and reset currentWave to 1 — so reading state
                     // after the mutation would tag records with the WRONG phase/wave.
@@ -821,7 +814,8 @@ export const workflowStateTool = createTool({
                     })
 
                     // Telemetry: emit final wave.end + phase.end with pre-mutation context.
-                    try {
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    {
                         const now = Date.now()
                         appendTelemetry(
                             'wave.end',
@@ -849,8 +843,6 @@ export const workflowStateTool = createTool({
                                     : null,
                             }
                         )
-                    } catch {
-                        // never block pipeline on telemetry
                     }
 
                     // ── Advisory: tick PLAN.md checkboxes for this phase ──

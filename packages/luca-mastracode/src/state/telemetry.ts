@@ -33,8 +33,18 @@ import { dirname } from 'node:path'
 
 import { z } from 'zod'
 
-import { TELEMETRY_PATH } from '../util/phase-paths.js'
+import { TELEMETRY_PATH, assertValidRunId } from '../util/phase-paths.js'
 import { readLucaState } from './luca-store.js'
+
+/**
+ * Sanitize a string for safe inclusion in a single-line `console.warn`.
+ * Strips CR/LF (log-injection defense, CWE-117) and caps length.
+ */
+function sanitizeLogMessage(input: unknown): string {
+    return String(input instanceof Error ? input.message : input)
+        .replace(/[\r\n\t]/g, ' ')
+        .slice(0, 200)
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,7 +94,8 @@ export interface TelemetryRecord {
 
 export const TelemetryRecordSchema: z.ZodType<TelemetryRecord> = z.object({
     v: z.literal(1),
-    ts: z.string(),
+    // ISO 8601 datetime — aggregator consumers parse durationMs from these.
+    ts: z.iso.datetime(),
     runId: z.string(),
     kind: z.string(),
     phase: z.string().nullable(),
@@ -162,7 +173,7 @@ export function appendTelemetry(
         const parsed = TelemetryRecordSchema.safeParse(record)
         if (!parsed.success) {
             console.warn(
-                `[telemetry] dropped malformed record: ${parsed.error.message}`
+                `[telemetry] dropped malformed record: ${sanitizeLogMessage(parsed.error.message)}`
             )
             return
         }
@@ -171,13 +182,26 @@ export function appendTelemetry(
             // happens pre-triage when the pipeline hasn't minted a runId yet.
             return
         }
+        // Defense-in-depth path-traversal guard. Producer is well-behaved,
+        // but `runId` originates from user-editable luca-state.json — a
+        // tampered file with `runId: "../../tmp/evil"` would otherwise
+        // escape `.planning/telemetry/`. Drop+warn, never throw. We use the
+        // strict canonical assertion (`assertValidRunId`) so anything that
+        // doesn't match `run_<ts36>_<rand36>` is rejected here rather than
+        // surfacing as a generic "write failed" further down.
+        try {
+            assertValidRunId(parsed.data.runId)
+        } catch (err) {
+            console.warn(
+                `[telemetry] dropped record with invalid runId: ${sanitizeLogMessage(err)}`
+            )
+            return
+        }
         const p = TELEMETRY_PATH(parsed.data.runId)
         mkdirSync(dirname(p), { recursive: true })
         appendFileSync(p, JSON.stringify(parsed.data) + '\n', 'utf-8')
     } catch (err) {
-        console.warn(
-            `[telemetry] write failed: ${err instanceof Error ? err.message : String(err)}`
-        )
+        console.warn(`[telemetry] write failed: ${sanitizeLogMessage(err)}`)
     }
 }
 
@@ -187,10 +211,18 @@ export function appendTelemetry(
 
 /**
  * Read all telemetry records for a given runId.
- * Returns `[]` if the file does not exist or is empty.
- * Skips malformed lines with a `console.warn`.
+ * Returns `[]` if the file does not exist, is empty, or runId is invalid.
+ * Skips malformed lines with a `console.warn` that includes the first error.
  */
 export function readTelemetry(runId: string): TelemetryRecord[] {
+    // Defense-in-depth: TELEMETRY_PATH would throw on invalid runId via
+    // assertValidRunId. Return [] here to preserve a no-throw read contract.
+    try {
+        assertValidRunId(runId)
+    } catch {
+        return []
+    }
+
     const p = TELEMETRY_PATH(runId)
     if (!existsSync(p)) return []
 
@@ -199,6 +231,7 @@ export function readTelemetry(runId: string): TelemetryRecord[] {
 
     const records: TelemetryRecord[] = []
     const invalidLines: number[] = []
+    let firstError: string | undefined
 
     for (const [index, line] of content.split('\n').entries()) {
         if (!line.trim()) continue
@@ -209,9 +242,12 @@ export function readTelemetry(runId: string): TelemetryRecord[] {
                 records.push(validated.data)
             } else {
                 invalidLines.push(index + 1)
+                if (!firstError)
+                    firstError = sanitizeLogMessage(validated.error.message)
             }
-        } catch {
+        } catch (err) {
             invalidLines.push(index + 1)
+            if (!firstError) firstError = sanitizeLogMessage(err)
         }
     }
 
@@ -219,7 +255,9 @@ export function readTelemetry(runId: string): TelemetryRecord[] {
         console.warn(
             `[telemetry] Skipped ${invalidLines.length} invalid ` +
                 `entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
-                `in ${p} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}.`
+                `in ${p} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}` +
+                (firstError ? ` (first error: ${firstError})` : '') +
+                '.'
         )
     }
 

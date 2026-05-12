@@ -25,7 +25,11 @@ import {
     TelemetryRecordSchema,
 } from '../state/telemetry.js'
 import { writeLucaState } from '../state/luca-store.js'
-import { TELEMETRY_PATH, TELEMETRY_DIR } from '../util/phase-paths.js'
+import {
+    TELEMETRY_PATH,
+    TELEMETRY_DIR,
+    assertValidRunId,
+} from '../util/phase-paths.js'
 
 let tmpRoot: string
 let originalCwd: string
@@ -235,5 +239,77 @@ describe('telemetry — readTelemetry', () => {
         expect(records[1]!.kind).toBe('phase.end')
         expect(warn).toHaveBeenCalled()
         warn.mockRestore()
+    })
+})
+
+describe('phase-paths — assertValidRunId (strict canonical)', () => {
+    test('rejects "../foo" (traversal)', () => {
+        expect(() => assertValidRunId('../foo')).toThrow()
+    })
+
+    test('rejects "/abs" (absolute path)', () => {
+        expect(() => assertValidRunId('/abs')).toThrow()
+    })
+
+    test('rejects empty string', () => {
+        expect(() => assertValidRunId('')).toThrow()
+    })
+
+    test('rejects non-string input', () => {
+        expect(() => assertValidRunId(42 as any)).toThrow()
+        expect(() => assertValidRunId(null as any)).toThrow()
+        expect(() => assertValidRunId(undefined as any)).toThrow()
+    })
+
+    test('accepts canonical "run_<ts36>_<rand36>"', () => {
+        expect(() => assertValidRunId('run_mox3w04j_ybsyiwgt')).not.toThrow()
+        expect(() => assertValidRunId('run_abc_def')).not.toThrow()
+    })
+
+    test('rejects backslash + null byte + length > 64', () => {
+        expect(() => assertValidRunId('run_a\\b')).toThrow()
+        expect(() => assertValidRunId('run_a\0b')).toThrow()
+        expect(() => assertValidRunId('run_' + 'a'.repeat(80))).toThrow()
+    })
+
+    test('TELEMETRY_PATH throws for an invalid runId', () => {
+        expect(() => TELEMETRY_PATH('../escape')).toThrow()
+        expect(() => TELEMETRY_PATH('')).toThrow()
+    })
+
+    test('TELEMETRY_PATH returns a path inside telemetry/ for a canonical runId', () => {
+        const p = TELEMETRY_PATH('run_test_xyz')
+        expect(p.startsWith(TELEMETRY_DIR())).toBe(true)
+        expect(p.endsWith('run_test_xyz.jsonl')).toBe(true)
+    })
+})
+
+describe('telemetry — invalid runId is dropped, not thrown', () => {
+    test('appendTelemetry drops with warn when state.runId is invalid', () => {
+        // Seed state with a tampered runId. appendTelemetry must not throw,
+        // must not write any file, and must warn.
+        writeLucaState({
+            runId: '../../etc/passwd',
+            currentPhaseName: 'Phase 1: Test',
+            currentPhaseSlug: '20260512-test-slug',
+            currentWave: 1,
+            complexity: 'COMPLEX',
+            oversight: 'full-auto',
+        })
+        const warn = spyOn(console, 'warn').mockReturnValue(undefined)
+
+        expect(() => appendTelemetry('phase.start')).not.toThrow()
+        expect(warn).toHaveBeenCalled()
+        const callArg = warn.mock.calls[0]?.[0] ?? ''
+        expect(callArg).toContain('invalid runId')
+
+        // Nothing should have been written to telemetry/.
+        expect(existsSync(TELEMETRY_DIR())).toBe(false)
+        warn.mockRestore()
+    })
+
+    test('readTelemetry returns [] for an invalid runId', () => {
+        expect(readTelemetry('../escape')).toEqual([])
+        expect(readTelemetry('')).toEqual([])
     })
 })
