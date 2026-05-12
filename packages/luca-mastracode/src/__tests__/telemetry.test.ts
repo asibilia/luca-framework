@@ -210,8 +210,20 @@ describe('telemetry — TelemetryRecordSchema validation', () => {
 })
 
 describe('telemetry — readTelemetry', () => {
-    test('returns [] for missing file', () => {
-        expect(readTelemetry('run_does_not_exist')).toEqual([])
+    test('returns [] for missing file (valid canonical runId, no file written)', () => {
+        // run_missing_file matches /^run_[a-z0-9]+_[a-z0-9]+$/ so this
+        // exercises the file-not-found path (existsSync false), not the
+        // invalid-runId guard. See "returns [] for invalid runId" below
+        // for the guard branch.
+        expect(readTelemetry('run_missing_file')).toEqual([])
+    })
+
+    test('returns [] for invalid runId (does not throw)', () => {
+        // Exercises the assertValidRunId try/catch in readTelemetry. Both
+        // a traversal-shaped string and a multi-underscore non-canonical
+        // form must return [] silently.
+        expect(readTelemetry('../../etc/passwd')).toEqual([])
+        expect(readTelemetry('run_three_underscored_id')).toEqual([])
     })
 
     test('parses records line-by-line', () => {
@@ -243,22 +255,26 @@ describe('telemetry — readTelemetry', () => {
 })
 
 describe('phase-paths — assertValidRunId (strict canonical)', () => {
-    test('rejects "../foo" (traversal)', () => {
-        expect(() => assertValidRunId('../foo')).toThrow()
+    // Path-shaped string inputs — one test per case for unambiguous failure
+    // output. Grouped here via test.each for consistency with the
+    // character-level rejection table below.
+    test.each([
+        ['../foo', 'traversal'],
+        ['/abs', 'absolute path'],
+        ['', 'empty string'],
+    ])('rejects %p (%s)', (input) => {
+        expect(() => assertValidRunId(input)).toThrow()
     })
 
-    test('rejects "/abs" (absolute path)', () => {
-        expect(() => assertValidRunId('/abs')).toThrow()
-    })
-
-    test('rejects empty string', () => {
-        expect(() => assertValidRunId('')).toThrow()
-    })
-
-    test('rejects non-string input', () => {
-        expect(() => assertValidRunId(42 as any)).toThrow()
-        expect(() => assertValidRunId(null as any)).toThrow()
-        expect(() => assertValidRunId(undefined as any)).toThrow()
+    // Non-string inputs. test.each splits each value into its own reported
+    // test, so a regression on (say) `null` does not get masked by an
+    // earlier `42` failure.
+    test.each([
+        [42, 'number'],
+        [null, 'null'],
+        [undefined, 'undefined'],
+    ])('rejects %p (%s)', (input) => {
+        expect(() => assertValidRunId(input as any)).toThrow()
     })
 
     test('accepts canonical "run_<ts36>_<rand36>"', () => {
@@ -266,10 +282,13 @@ describe('phase-paths — assertValidRunId (strict canonical)', () => {
         expect(() => assertValidRunId('run_abc_def')).not.toThrow()
     })
 
-    test('rejects backslash + null byte + length > 64', () => {
-        expect(() => assertValidRunId('run_a\\b')).toThrow()
-        expect(() => assertValidRunId('run_a\0b')).toThrow()
-        expect(() => assertValidRunId('run_' + 'a'.repeat(80))).toThrow()
+    // Character-level rejection cases (control chars, separators, length).
+    test.each([
+        ['run_a\\b', 'backslash in segment'],
+        ['run_a\0b', 'null byte in segment'],
+        ['run_' + 'a'.repeat(80), 'length > 64'],
+    ])('rejects %p (%s)', (input) => {
+        expect(() => assertValidRunId(input)).toThrow()
     })
 
     test('TELEMETRY_PATH throws for an invalid runId', () => {

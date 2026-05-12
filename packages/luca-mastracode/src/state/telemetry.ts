@@ -167,6 +167,22 @@ export function appendTelemetry(
     meta: Record<string, unknown> = {},
     overrides: Overrides = {}
 ): void {
+    // Two distinct exception layers in this function — they serve different
+    // purposes and must not be conflated:
+    //
+    //   • OUTER try/catch (this one) — I/O *recovery*. Catches mkdirSync /
+    //     appendFileSync / unexpected throws from helpers. Fail-safe by
+    //     contract: never propagate an error to the caller, only warn.
+    //
+    //   • INNER try/catch (around assertValidRunId below) — *validation
+    //     pre-check*. Converts a throw-on-invalid helper into a drop+warn
+    //     pattern, with the rich rejection reason in the warn message. NOT
+    //     I/O recovery — by the time control reaches it, no disk operation
+    //     has been attempted.
+    //
+    // Removing the inner try/catch would re-route invalid-runId rejections
+    // through the outer catch with a generic "write failed" message,
+    // losing the precise rejection reason.
     try {
         const record = buildTelemetryRecord(kind, meta, overrides)
         // Validate before write. Drop+warn on malformed records — never throw.
@@ -255,7 +271,7 @@ export function readTelemetry(runId: string): TelemetryRecord[] {
         console.warn(
             `[telemetry] Skipped ${invalidLines.length} invalid ` +
                 `entr${invalidLines.length === 1 ? 'y' : 'ies'} ` +
-                `in ${p} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}` +
+                `in ${sanitizeLogMessage(p)} at line${invalidLines.length === 1 ? '' : 's'} ${invalidLines.join(', ')}` +
                 (firstError ? ` (first error: ${firstError})` : '') +
                 '.'
         )

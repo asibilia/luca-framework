@@ -355,38 +355,32 @@ export function TELEMETRY_DIR(): string {
 }
 
 /**
- * Validate a runId for safe use as a filename component.
- *
- * `runId` originates from `luca-state.json` (user-editable JSON). Without
- * validation, a tampered state file with `runId: "../../../tmp/evil"` would
- * cause TELEMETRY_PATH to escape `.planning/telemetry/`. Mirrors the
- * `isValidSlug`/`assertValidSlug` guard used by every other path builder.
- *
- * Generator contract (session-ledger.ts:47-51): `run_<ts36>_<rand36>`.
- * This validator accepts the canonical form plus a small superset to
- * tolerate legacy/test runIds while rejecting anything with path-relevant
- * characters or unreasonable length.
- */
-export function isValidRunId(runId: unknown): runId is string {
-    if (typeof runId !== 'string') return false
-    if (runId.length === 0 || runId.length > 64) return false
-    // Reject path separators, traversal, and null bytes.
-    if (runId.includes('/') || runId.includes('\\') || runId.includes('\0'))
-        return false
-    if (runId.includes('..')) return false
-    // Only allow safe characters: alphanumeric, underscore, hyphen, dot.
-    return /^[A-Za-z0-9._-]+$/.test(runId)
-}
-
-/**
  * Strict assertion for runIds — enforces the canonical generator contract
  * `run_<ts36>_<rand36>` (session-ledger.ts:47-51).
  *
- * `isValidRunId` accepts a permissive superset (legacy + test fixtures);
- * `assertValidRunId` is the hard guard used by `TELEMETRY_PATH` so that any
- * tampered or path-shaped runId surfaces as a thrown error rather than
- * silently building an escape path. Callers that must be fail-safe (e.g.
- * `appendTelemetry`) should pre-check via `isValidRunId` and drop+warn.
+ * **When to use**:
+ * - Reach for `assertValidRunId` whenever you build a path from a runId.
+ *   `TELEMETRY_PATH` calls it internally; new path-builders should follow
+ *   suit. Throws on invalid input.
+ * - Callers that must remain fail-safe (e.g. `appendTelemetry`) wrap this
+ *   in a `try/catch` and drop+warn on rejection rather than letting the
+ *   throw propagate. This is the *only* recommended fail-safe pattern;
+ *   there is no permissive boolean predicate.
+ *
+ * **Threat model**:
+ * `runId` originates from `luca-state.json` (user-editable JSON). Without
+ * validation, a tampered state file with `runId: "../../../tmp/evil"` would
+ * cause `TELEMETRY_PATH` to escape `.planning/telemetry/`. Mirrors the
+ * `isValidSlug`/`assertValidSlug` guard used by every other path builder.
+ *
+ * **Defence-in-depth layering**:
+ * The anchored regex `/^run_[a-z0-9]+_[a-z0-9]+$/` is the definitive guard
+ * — it rejects every character outside lower-case alphanumerics, which
+ * includes `/`, `\`, `\0`, `..`, `%`, `.`, and all non-ASCII. The early
+ * pre-checks (type, length, separator, null-byte, `..`) reject obvious
+ * traversal shapes cheaply with precise error messages but are *not*
+ * relied upon for correctness; loosening the regex without auditing the
+ * pre-checks would silently weaken the guard.
  *
  * Accepts: `run_<ts36>_<rand36>` (lower-case alphanumerics, two underscored
  *          segments, each non-empty, total length ≤ 64).
@@ -425,8 +419,9 @@ export function assertValidRunId(runId: unknown): asserts runId is string {
 /** `.planning/telemetry/<runId>.jsonl` — per-run telemetry log.
  *
  * Throws on invalid runId via `assertValidRunId`. Callers that need
- * fail-safe behaviour should pre-validate via `isValidRunId` and skip on
- * false.
+ * fail-safe behaviour should wrap this in a `try/catch` (see
+ * `appendTelemetry`/`readTelemetry` in `src/state/telemetry.ts` for the
+ * canonical pattern).
  */
 export function TELEMETRY_PATH(runId: string): string {
     assertValidRunId(runId)

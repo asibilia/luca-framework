@@ -643,6 +643,17 @@ describe('telemetry instrumentation', () => {
         // readVerificationResult to allow action through. Assert both
         // wave.end AND phase.end are emitted with overrides carrying the
         // closing phase + numeric durationMs.
+        //
+        // Mock chain required for complete-phase happy path (4 spies):
+        //   readLucaState          → overridden below (phaseResults with timestamps)
+        //   readVerificationResult → overridden below (PASS for wave 2)
+        //   computePhaseDiff       → beforeEach default
+        //                            ({ filesChanged, commitsAdded }) — bypasses
+        //                            the `if (diff.isEmpty)` PHASE_NO_CHANGES guard
+        //   detectStragglers       → beforeEach default
+        //                            ({ rootStragglers: [], unknownRootDirs: [] }) —
+        //                            bypasses the straggler-blocking guard
+        // If any future guard is added before the telemetry hook, mock it here.
         const waveStarted = new Date(Date.now() - 3000).toISOString()
         const phaseStarted = new Date(Date.now() - 9000).toISOString()
         mockReadLucaState.mockReturnValue({
@@ -710,31 +721,26 @@ describe('telemetry instrumentation', () => {
         expect(pOverrides?.durationMs).toBeGreaterThan(0)
     })
 
-    test('start-phase succeeds even when telemetry writer encounters an error', async () => {
-        // Contract: appendTelemetry is fail-safe — it never throws (errors
-        // are caught + warn'd internally — see telemetry.ts). The action's
-        // outer try/catch was removed (review SF-5). We assert the real
-        // contract by simulating a no-op writer (the production case for
-        // pre-triage runs with no runId) and confirming the action still
-        // completes successfully.
-        mockReadLucaState.mockReturnValue({
-            currentPhaseName: 'Phase 1: Test',
-            currentPhaseSlug: 'test-slug',
-            currentWave: 1,
-            runId: 'run_test_safe',
-        } as any)
-        mockAppendTelemetry.mockReturnValue(undefined)
-
-        const result = await callAction({
-            action: 'start-phase',
-            phaseName: 'Phase 1: Test',
-        })
-
-        expect(result.success).toBe(true)
-        // Telemetry hook still fired despite the no-op writer.
-        const kinds = mockAppendTelemetry.mock.calls.map((c) => c[0])
-        expect(kinds).toContain('phase.start')
-    })
+    // Note: A "start-phase survives appendTelemetry throw" test previously
+    // lived here. It was deleted in review iter-2 (MF-2) for two reasons:
+    //
+    //   1. With SF-5 (outer try/catch wrappers removed at hook sites), the
+    //      action no longer has an integration-level guard around
+    //      appendTelemetry. Mocking the writer to throw would correctly
+    //      propagate to the outer execute() guard — surfacing as a generic
+    //      error, NOT success — which contradicts the fail-safe contract.
+    //
+    //   2. The genuine fail-safe contract — "appendTelemetry never throws"
+    //      — is proven against a real failure mode (appendFileSync
+    //      throwing ENOSPC) in telemetry.test.ts:149-164:
+    //         "does NOT throw when appendFileSync throws (disk full / permission)"
+    //      That unit test is the source of truth. Duplicating it as an
+    //      integration test by mocking the writer to violate its own
+    //      contract would test nothing useful.
+    //
+    // If the contract regresses in the future (e.g. someone adds a `throw`
+    // path inside appendTelemetry that bypasses its outer try/catch), the
+    // failing test will be telemetry.test.ts, not this file.
 })
 
 // ---------------------------------------------------------------------------
