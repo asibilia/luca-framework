@@ -106,6 +106,14 @@ export interface LucaWorkflowState {
     sessionId?: string
     startedAt?: string
     runId?: string
+    /**
+     * Timestamp (ISO 8601) when the current pipeline mode was entered via a
+     * successful `switch-mode` call. Written AFTER `switchModeRef.current()`
+     * resolves so a failed switch never poisons this field. Consumed by
+     * `switch-mode` telemetry to compute `mode.end` durationMs.
+     * Cleared by `reset-pipeline` to prevent cross-run duration bleed.
+     */
+    currentModeStartedAt?: string
 
     // --- Phase proof (set by start-phase, consumed by complete-phase) ---
     currentPhaseStartSnapshot?: PhaseSnapshotState
