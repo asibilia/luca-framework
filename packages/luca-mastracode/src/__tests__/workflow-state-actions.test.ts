@@ -3,8 +3,13 @@ import { z } from 'zod'
 
 import * as lucaStore from '../state/luca-store.js'
 import * as sessionLedger from '../state/session-ledger.js'
+import * as telemetry from '../state/telemetry.js'
+import * as verificationResult from '../state/verification-result.js'
+import * as phaseDiff from '../analysis/phase-diff.js'
 import { createScopedTool } from '../tools/create-scoped-tool.js'
 import { workflowStateTool, PIPELINE_ORDER } from '../tools/workflow-state.js'
+import * as repoCleanup from '../tools/repo-cleanup.js'
+import { ROOT_WHITELIST_DIRS } from '../tools/repo-cleanup.js'
 import { switchModeRef } from '../util/refs.js'
 
 // ---------------------------------------------------------------------------
@@ -21,11 +26,38 @@ const mockWriteLucaState = spyOn(
 const mockAppendLedger = spyOn(sessionLedger, 'appendLedger').mockReturnValue(
     undefined
 )
+const mockAppendTelemetry = spyOn(telemetry, 'appendTelemetry').mockReturnValue(
+    undefined
+)
+const mockReadVerificationResult = spyOn(
+    verificationResult,
+    'readVerificationResult'
+).mockReturnValue(null)
+const mockComputePhaseDiff = spyOn(
+    phaseDiff,
+    'computePhaseDiff'
+).mockReturnValue({
+    filesChanged: ['src/foo.ts'],
+    commitsAdded: ['abc123'],
+} as any)
+const mockDetectStragglers = spyOn(
+    repoCleanup,
+    'detectStragglers'
+).mockReturnValue({ rootStragglers: [], unknownRootDirs: [] } as any)
 
 beforeEach(() => {
     mockReadLucaState.mockReturnValue({} as any)
     mockWriteLucaState.mockClear().mockImplementation((updates: any) => updates)
     mockAppendLedger.mockClear()
+    mockAppendTelemetry.mockClear().mockReturnValue(undefined)
+    mockReadVerificationResult.mockClear().mockReturnValue(null)
+    mockComputePhaseDiff.mockClear().mockReturnValue({
+        filesChanged: ['src/foo.ts'],
+        commitsAdded: ['abc123'],
+    } as any)
+    mockDetectStragglers
+        .mockClear()
+        .mockReturnValue({ rootStragglers: [], unknownRootDirs: [] } as any)
     switchModeRef.current = null
 })
 
@@ -534,5 +566,283 @@ describe('scoped tool enforcement', () => {
         expect(
             schema.safeParse({ action: 'save-triage-results' }).success
         ).toBe(false)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// Telemetry instrumentation (Wave 2 hook sites)
+// ---------------------------------------------------------------------------
+
+describe('telemetry instrumentation', () => {
+    test('start-phase emits phase.start + wave.start', async () => {
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Test',
+            currentPhaseSlug: 'test-slug',
+            currentWave: 1,
+            runId: 'run_test_start',
+        } as any)
+
+        await callAction({ action: 'start-phase', phaseName: 'Phase 1: Test' })
+
+        const kinds = mockAppendTelemetry.mock.calls.map((c) => c[0])
+        expect(kinds).toContain('phase.start')
+        expect(kinds).toContain('wave.start')
+    })
+
+    test('advance-wave emits wave.end (prior wave) + wave.start (new wave)', async () => {
+        // Seed pre-wave state with a phaseResult containing waveStartedAt.
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Test',
+            currentPhaseSlug: 'test-slug',
+            currentWave: 1,
+            runId: 'run_test_adv',
+            phaseResults: [
+                {
+                    name: 'Phase 1: Test',
+                    status: 'in-progress',
+                    iterations: 0,
+                    wavesCompleted: 0,
+                    waveStartedAt: new Date(Date.now() - 5000).toISOString(),
+                },
+            ],
+        } as any)
+        // Mock the verification gate so the happy-path runs (not the
+        // vacuous "no verification → blocked" branch). The verifier
+        // contract for advance-wave is `verification.wave === currentWave`.
+        mockReadVerificationResult.mockReturnValue({
+            wave: 1,
+            status: 'PASS',
+            mode: 'quick',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({ action: 'advance-wave' })
+
+        expect(result.success).toBe(true)
+        const kinds = mockAppendTelemetry.mock.calls.map((c) => c[0])
+        expect(kinds).toContain('wave.end')
+        expect(kinds).toContain('wave.start')
+        // wave.end must carry the PRIOR wave number via override.
+        const waveEndCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const overrides = waveEndCall?.[2] as any
+        expect(overrides?.wave).toBe(1)
+        expect(overrides?.phase).toBe('Phase 1: Test')
+        expect(typeof overrides?.durationMs).toBe('number')
+        expect(overrides?.durationMs).toBeGreaterThan(0)
+    })
+
+    test('complete-phase emits wave.end + phase.end with pre-mutation context', async () => {
+        // MF-2: complete-phase telemetry hook test. Mock readLucaState with
+        // phaseResults containing startedAt + waveStartedAt; mock
+        // readVerificationResult to allow action through. Assert both
+        // wave.end AND phase.end are emitted with overrides carrying the
+        // closing phase + numeric durationMs.
+        //
+        // Mock chain required for complete-phase happy path (4 spies):
+        //   readLucaState          → overridden below (phaseResults with timestamps)
+        //   readVerificationResult → overridden below (PASS for wave 2)
+        //   computePhaseDiff       → beforeEach default
+        //                            ({ filesChanged, commitsAdded }) — bypasses
+        //                            the `if (diff.isEmpty)` PHASE_NO_CHANGES guard
+        //   detectStragglers       → beforeEach default
+        //                            ({ rootStragglers: [], unknownRootDirs: [] }) —
+        //                            bypasses the straggler-blocking guard
+        // If any future guard is added before the telemetry hook, mock it here.
+        const waveStarted = new Date(Date.now() - 3000).toISOString()
+        const phaseStarted = new Date(Date.now() - 9000).toISOString()
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Closing',
+            currentPhaseSlug: 'closing-slug',
+            currentWave: 2,
+            runId: 'run_test_close',
+            currentPhaseStartSnapshot: {
+                headSha: 'deadbeef',
+                dirtyFiles: [],
+                gitAvailable: true,
+            },
+            phaseResults: [
+                {
+                    name: 'Phase 1: Closing',
+                    status: 'in-progress',
+                    iterations: 1,
+                    wavesCompleted: 1,
+                    startedAt: phaseStarted,
+                    waveStartedAt: waveStarted,
+                },
+            ],
+        } as any)
+        mockReadVerificationResult.mockReturnValue({
+            wave: 2,
+            status: 'PASS',
+            mode: 'full',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({
+            action: 'complete-phase',
+            verificationPassed: true,
+            reviewPassed: true,
+        })
+
+        expect(result.success).toBe(true)
+        const kinds = mockAppendTelemetry.mock.calls.map((c) => c[0])
+        expect(kinds).toContain('wave.end')
+        expect(kinds).toContain('phase.end')
+
+        const waveEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const phaseEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'phase.end'
+        )
+
+        const wOverrides = waveEnd?.[2] as any
+        expect(wOverrides?.wave).toBe(2)
+        expect(wOverrides?.phase).toBe('Phase 1: Closing')
+        expect(wOverrides?.slug).toBe('closing-slug')
+        expect(typeof wOverrides?.durationMs).toBe('number')
+        expect(wOverrides?.durationMs).toBeGreaterThan(0)
+
+        const pOverrides = phaseEnd?.[2] as any
+        expect(pOverrides?.wave).toBe(2)
+        expect(pOverrides?.phase).toBe('Phase 1: Closing')
+        expect(pOverrides?.slug).toBe('closing-slug')
+        expect(typeof pOverrides?.durationMs).toBe('number')
+        expect(pOverrides?.durationMs).toBeGreaterThan(0)
+    })
+
+    test('advance-wave emits wave.end with durationMs:null when waveStartedAt is malformed', async () => {
+        // Regression: Copilot PR #239 review #3228846363. A corrupted /
+        // user-edited waveStartedAt that fails Date parsing would produce
+        // NaN; Zod rejects NaN, silently dropping the entire wave.end event.
+        // The finiteOrNull guard must convert NaN to null so the event is
+        // still emitted (just without a duration).
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Test',
+            currentPhaseSlug: 'test-slug',
+            currentWave: 1,
+            runId: 'run_test_nan',
+            phaseResults: [
+                {
+                    name: 'Phase 1: Test',
+                    status: 'in-progress',
+                    iterations: 0,
+                    wavesCompleted: 0,
+                    waveStartedAt: 'not-an-iso-date', // → new Date(...).getTime() = NaN
+                },
+            ],
+        } as any)
+        mockReadVerificationResult.mockReturnValue({
+            wave: 1,
+            status: 'PASS',
+            mode: 'quick',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({ action: 'advance-wave' })
+        expect(result.success).toBe(true)
+
+        const waveEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const overrides = waveEnd?.[2] as any
+        expect(overrides?.durationMs).toBeNull()
+    })
+
+    test('complete-phase emits wave.end + phase.end with durationMs:null when timestamps malformed', async () => {
+        // Regression: Copilot PR #239 review #3228846383. Same NaN trap as
+        // advance-wave, applied to both closing events at complete-phase.
+        mockReadLucaState.mockReturnValue({
+            currentPhaseName: 'Phase 1: Closing',
+            currentPhaseSlug: 'closing-slug',
+            currentWave: 2,
+            runId: 'run_test_nan_close',
+            currentPhaseStartSnapshot: {
+                headSha: 'deadbeef',
+                dirtyFiles: [],
+                gitAvailable: true,
+            },
+            phaseResults: [
+                {
+                    name: 'Phase 1: Closing',
+                    status: 'in-progress',
+                    iterations: 1,
+                    wavesCompleted: 1,
+                    startedAt: 'garbage', // → NaN
+                    waveStartedAt: 'also-garbage', // → NaN
+                },
+            ],
+        } as any)
+        mockReadVerificationResult.mockReturnValue({
+            wave: 2,
+            status: 'PASS',
+            mode: 'full',
+            criteria: [],
+            checks: [],
+            convergence: 'resolved',
+            errorFingerprints: [],
+            recommendation: 'proceed',
+        } as any)
+
+        const result = await callAction({
+            action: 'complete-phase',
+            verificationPassed: true,
+            reviewPassed: true,
+        })
+        expect(result.success).toBe(true)
+
+        const waveEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'wave.end'
+        )
+        const phaseEnd = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'phase.end'
+        )
+        expect((waveEnd?.[2] as any)?.durationMs).toBeNull()
+        expect((phaseEnd?.[2] as any)?.durationMs).toBeNull()
+    })
+
+    // Note: A "start-phase survives appendTelemetry throw" test previously
+    // lived here. It was deleted in review iter-2 (MF-2) for two reasons:
+    //
+    //   1. With SF-5 (outer try/catch wrappers removed at hook sites), the
+    //      action no longer has an integration-level guard around
+    //      appendTelemetry. Mocking the writer to throw would correctly
+    //      propagate to the outer execute() guard — surfacing as a generic
+    //      error, NOT success — which contradicts the fail-safe contract.
+    //
+    //   2. The genuine fail-safe contract — "appendTelemetry never throws"
+    //      — is proven against a real failure mode (appendFileSync
+    //      throwing ENOSPC) in telemetry.test.ts:149-164:
+    //         "does NOT throw when appendFileSync throws (disk full / permission)"
+    //      That unit test is the source of truth. Duplicating it as an
+    //      integration test by mocking the writer to violate its own
+    //      contract would test nothing useful.
+    //
+    // If the contract regresses in the future (e.g. someone adds a `throw`
+    // path inside appendTelemetry that bypasses its outer try/catch), the
+    // failing test will be telemetry.test.ts, not this file.
+})
+
+// ---------------------------------------------------------------------------
+// ROOT_WHITELIST_DIRS regression
+// ---------------------------------------------------------------------------
+
+describe('ROOT_WHITELIST_DIRS regression', () => {
+    test('contains "telemetry" (per-run telemetry dir at .planning/ root)', () => {
+        expect(ROOT_WHITELIST_DIRS.has('telemetry')).toBe(true)
     })
 })

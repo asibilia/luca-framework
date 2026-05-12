@@ -25,6 +25,7 @@ import {
     archivePriorRun,
     startNewRun,
 } from '../state/session-ledger.js'
+import { appendTelemetry } from '../state/telemetry.js'
 import { readVerificationResult } from '../state/verification-result.js'
 import {
     deriveSlug,
@@ -85,6 +86,24 @@ function hasStaleState(state: LucaWorkflowState): boolean {
     if (state.pipelineStep && state.pipelineStep !== 'idle') return true
     if (state.intent) return true
     return false
+}
+
+/**
+ * Coerce a computed duration into a finite millisecond count or `null`.
+ *
+ * `new Date(<malformed-string>).getTime()` returns `NaN`, and arithmetic with
+ * `NaN` propagates. `TelemetryRecordSchema` rejects non-finite numbers, so an
+ * unguarded NaN would silently drop the entire `wave.end` / `phase.end` event
+ * during Zod validation (Copilot PR #239 review #3228846363, #3228846383).
+ *
+ * Treat unparseable / negative / non-finite durations as missing — emit `null`
+ * so the closing event is still recorded.
+ */
+function finiteOrNull(n: number | null | undefined): number | null {
+    if (typeof n !== 'number') return null
+    if (!Number.isFinite(n)) return null
+    if (n < 0) return null
+    return n
 }
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
@@ -587,6 +606,13 @@ export const workflowStateTool = createTool({
                         gitAvailable: snapshot.gitAvailable,
                     })
 
+                    // Telemetry: emit phase.start + wave.start.
+                    // State is now post-mutation (wave 1, new phase, new slug)
+                    // → no overrides needed; appendTelemetry reads state itself.
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    appendTelemetry('phase.start')
+                    appendTelemetry('wave.start')
+
                     return {
                         success: true,
                         message: `Started phase "${phaseName}" (wave 1, iteration 0)`,
@@ -636,12 +662,50 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // Capture pre-mutation context BEFORE advanceWave().
+                    // Producer uses `.find(r => r.name === currentPhaseName)`;
+                    // consumer MUST match — never `.at(-1)` (resumed phases
+                    // mutate in place, not at end of phaseResults).
+                    const priorPhase = preWaveState.currentPhaseName ?? null
+                    const priorSlug = preWaveState.currentPhaseSlug ?? null
+                    const priorWaveNum = preWaveState.currentWave ?? null
+                    const priorEntry = preWaveState.phaseResults?.find(
+                        (r) => r.name === priorPhase
+                    )
+                    const priorWaveStartedAt = priorEntry?.waveStartedAt
+                    // Guard against NaN from malformed/corrupted timestamps —
+                    // see finiteOrNull JSDoc.
+                    const priorDurationMs = priorWaveStartedAt
+                        ? finiteOrNull(
+                              Date.now() -
+                                  new Date(priorWaveStartedAt).getTime()
+                          )
+                        : null
+
                     const waveState = advanceWave()
                     appendLedger('wave-advance', {
                         phase: waveState.currentPhaseName,
                         wave: waveState.currentWave,
                         budgetExceeded: waveState.budgetExceeded ?? false,
                     })
+
+                    // Telemetry: emit wave.end for the closing wave, then
+                    // wave.start for the new wave. wave.end MUST use overrides
+                    // because readLucaState() now returns the post-mutation
+                    // state (new wave number).
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    appendTelemetry(
+                        'wave.end',
+                        {},
+                        {
+                            wave: priorWaveNum,
+                            phase: priorPhase,
+                            slug: priorSlug,
+                            durationMs: priorDurationMs,
+                        }
+                    )
+                    appendTelemetry('wave.start')
+
                     let waveMsg = `Advanced to wave ${waveState.currentWave} in phase "${waveState.currentPhaseName}"`
                     if (waveState.budgetExceeded) {
                         waveMsg += ` ⚠ Budget limit exceeded (maxPhases). Consider completing the phase or reporting remaining work.`
@@ -741,6 +805,21 @@ export const workflowStateTool = createTool({
                         }
                     }
 
+                    // Capture pre-mutation telemetry context BEFORE completePhase().
+                    // `preState` was read at the top of this case (~L708) as
+                    // the diff-based phase-proof snapshot — reuse it here.
+                    // completePhase() will mutate currentPhaseName (→ next phase
+                    // or undefined) and reset currentWave to 1 — so reading state
+                    // after the mutation would tag records with the WRONG phase/wave.
+                    const tPriorPhase = preState.currentPhaseName ?? null
+                    const tPriorSlug = preState.currentPhaseSlug ?? null
+                    const tPriorWave = preState.currentWave ?? null
+                    const tPriorEntry = preState.phaseResults?.find(
+                        (r) => r.name === tPriorPhase
+                    )
+                    const tPriorWaveStartedAt = tPriorEntry?.waveStartedAt
+                    const tPriorPhaseStartedAt = tPriorEntry?.startedAt
+
                     const phaseResult = completePhase({
                         verificationPassed,
                         reviewPassed,
@@ -756,6 +835,50 @@ export const workflowStateTool = createTool({
                         filesChanged: diff.filesChanged.length,
                         commitsAdded: diff.commitsAdded.length,
                     })
+
+                    // Telemetry: emit final wave.end + phase.end with pre-mutation context.
+                    // appendTelemetry never throws — see telemetry.ts contract.
+                    {
+                        const now = Date.now()
+                        appendTelemetry(
+                            'wave.end',
+                            {},
+                            {
+                                wave: tPriorWave,
+                                phase: tPriorPhase,
+                                slug: tPriorSlug,
+                                // Guard against NaN from malformed timestamps
+                                // (see finiteOrNull JSDoc).
+                                durationMs: tPriorWaveStartedAt
+                                    ? finiteOrNull(
+                                          now -
+                                              new Date(
+                                                  tPriorWaveStartedAt
+                                              ).getTime()
+                                      )
+                                    : null,
+                            }
+                        )
+                        appendTelemetry(
+                            'phase.end',
+                            {},
+                            {
+                                wave: tPriorWave,
+                                phase: tPriorPhase,
+                                slug: tPriorSlug,
+                                // Guard against NaN from malformed timestamps
+                                // (see finiteOrNull JSDoc).
+                                durationMs: tPriorPhaseStartedAt
+                                    ? finiteOrNull(
+                                          now -
+                                              new Date(
+                                                  tPriorPhaseStartedAt
+                                              ).getTime()
+                                      )
+                                    : null,
+                            }
+                        )
+                    }
 
                     // ── Advisory: tick PLAN.md checkboxes for this phase ──
                     // Runs AFTER all three guards (diff + verification +

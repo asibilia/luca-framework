@@ -10,14 +10,19 @@
 ### Phase 2: Phase B — Branching policy refactor
 - **Status**: complete
 - **Dependencies**: Phase A — Project preferences foundation
-- **WSJF Score**: 2.7
+- **WSJF Score**: 2.5
 
 ### Phase 3: Phase C — PR/release/commit conventions
 - **Status**: complete
 - **Dependencies**: Phase A — Project preferences foundation
-- **WSJF Score**: 1.7
+- **WSJF Score**: 2.0
 
 ### Phase 4: Memory Tier-Promotion Contract
 - **Status**: complete
 - **Dependencies**: None
 - **WSJF Score**: 2.3
+
+### Phase 5: Wave Duration Telemetry (foundation)
+- **Status**: in-progress
+- **Dependencies**: None
+- **WSJF Score**: 2.7
