@@ -1,5 +1,11 @@
 # @alecsibilia/luca-mastracode
 
+## 11.9.0-alpha.3
+
+### Patch Changes
+
+- 60f5b25: Add `mode.start` / `mode.end` telemetry records emitted from `switch-mode` in `workflow-state.ts`. Captures outer pipeline loop durations (triage, research, architect, execute, review, finalize) that were missing from the v1 telemetry foundation (PR #239). Extends `TelemetryRecord.kind` union, adds `currentModeStartedAt` to `LucaWorkflowState`.
+
 ## 11.9.0-alpha.2
 
 ### Minor Changes
