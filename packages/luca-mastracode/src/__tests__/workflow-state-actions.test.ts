@@ -961,7 +961,10 @@ describe('switch-mode telemetry', () => {
         const modeCalls = mockAppendTelemetry.mock.calls.filter(
             (c) => c[0] === 'mode.end' || c[0] === 'mode.start'
         )
-        expect(modeCalls).toHaveLength(0)
+        expect(
+            modeCalls,
+            'switch failed but telemetry leaked — hook must be AFTER switchModeRef.current() resolves'
+        ).toHaveLength(0)
     })
 
     test('(f) reset-pipeline clears currentModeStartedAt → next mode.end has durationMs: null', async () => {

@@ -582,7 +582,7 @@ export const workflowStateTool = createTool({
                                 | undefined
                         writeLucaState(stateUpdates)
                         appendLedger('mode-transition', {
-                            from: prevState.pipelineStep,
+                            from: priorMode,
                             to: targetMode,
                         })
                         await switchModeRef.current(targetMode)
@@ -591,9 +591,15 @@ export const workflowStateTool = createTool({
                         contextRefresherRef.current?.setMode(targetMode)
 
                         // Persist currentModeStartedAt AFTER successful switch.
-                        // Writing here (not in stateUpdates above) ensures a failed
-                        // switch never records a timestamp without a matching mode.start
-                        // telemetry record — keeping the durationMs invariant clean.
+                        // Intentional two-write design: the first write (pipelineStep/
+                        // nextMode above) runs BEFORE switchModeRef.current() so the new
+                        // mode reads correct state on entry. This second write runs AFTER
+                        // a successful switch — a failed switch (throw at line above) skips
+                        // this block entirely, ensuring currentModeStartedAt is never set
+                        // without a matching mode.start telemetry record.
+                        // Trade-off: a process crash between the two writes leaves pipelineStep
+                        // updated but currentModeStartedAt stale — the next mode.end will emit
+                        // durationMs: null (no prior timestamp), which is safe and recoverable.
                         const modeStartedAt = new Date().toISOString()
                         writeLucaState({ currentModeStartedAt: modeStartedAt })
 
@@ -606,6 +612,11 @@ export const workflowStateTool = createTool({
                                       new Date(priorModeStartedAt).getTime()
                               )
                             : null
+                        // `mode.end` overrides phase/slug/wave with pre-mutation
+                        // values because writeLucaState above only mutated
+                        // pipelineStep/nextMode/intent — complexity, oversight, runId
+                        // are NOT mutated by switch-mode and safely flow through
+                        // readLucaState() inside buildTelemetryRecord.
                         appendTelemetry(
                             'mode.end',
                             { from: priorMode },

@@ -112,6 +112,10 @@ export interface LucaWorkflowState {
      * resolves so a failed switch never poisons this field. Consumed by
      * `switch-mode` telemetry to compute `mode.end` durationMs.
      * Cleared by `reset-pipeline` to prevent cross-run duration bleed.
+     *
+     * Treated as an opaque string by the consumer — `finiteOrNull` guards
+     * against malformed or legacy values (e.g. non-date strings left by
+     * a corrupted state file). Do not remove that guard as "defensive cruft".
      */
     currentModeStartedAt?: string
 
