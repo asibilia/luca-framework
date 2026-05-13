@@ -257,8 +257,19 @@ const archiveLooseAction = z.object({
 const recordSubagentAction = z.object({
     action: z.literal('record-subagent'),
     event: z.enum(['invoke', 'complete']),
-    role: z.string().min(1).max(64),
-    correlationId: z.string().min(1).max(128),
+    role: z
+        .string()
+        .min(1)
+        .max(64)
+        .regex(/^[^\r\n\t]+$/, 'role must not contain CR/LF/tab'),
+    correlationId: z
+        .string()
+        .min(1)
+        .max(128)
+        .regex(
+            /^[^\r\n\t]+$/,
+            'correlationId must not contain CR/LF/tab'
+        ),
     inputTokens: z.number().int().nonnegative().nullable().optional(),
     outputTokens: z.number().int().nonnegative().nullable().optional(),
     durationMs: z.number().nullable().optional(),
@@ -1428,15 +1439,18 @@ export const workflowStateTool = createTool({
                         event === 'invoke'
                             ? 'subagent.invoke'
                             : 'subagent.complete'
-                    appendTelemetry(kind, {
-                        role,
-                        correlationId,
-                        inputTokens: clampTokens(inputTokens),
-                        outputTokens: clampTokens(outputTokens),
-                        durationMs: finiteOrNull(durationMs),
-                        success: success ?? null,
-                        model: model ?? null,
-                    })
+                    appendTelemetry(
+                        kind,
+                        {
+                            role,
+                            correlationId,
+                            inputTokens: clampTokens(inputTokens),
+                            outputTokens: clampTokens(outputTokens),
+                            success: success ?? null,
+                            model: model ?? null,
+                        },
+                        { durationMs: finiteOrNull(durationMs) }
+                    )
                     return {
                         success: true,
                         message: `Telemetry emitted: ${kind} (role=${role}, correlationId=${correlationId})`,

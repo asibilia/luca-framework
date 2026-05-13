@@ -59,7 +59,7 @@ function listArchivedRunIds(planningDir: string): string[] {
             // ignore unreadable archive root
         }
     }
-    return Array.from(seen)
+    return Array.from(seen).sort()
 }
 
 export const retroCommand = defineCommand({
