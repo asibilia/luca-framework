@@ -88,9 +88,7 @@ CONSOLIDATED:
   CROSS_PHASE_COUNT: <n>
 \`\`\`
 
-After your CONSOLIDATED block, append on its own line exactly:
-\`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>"} -->\`
-Replace <N> with actual token counts and <id> with the model identifier.
+The usage comment (see Core Operating Rules) is required. For this subagent, place it immediately after the closing \`\`\` of the output block — that IS the last line of your response.
 
 ## Cross-Phase Flag
 Mark findings as \`cross_phase: true\` when:
