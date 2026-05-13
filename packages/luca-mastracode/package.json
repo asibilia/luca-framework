@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca-mastracode",
   "description": "Luca workflow as a custom Mastra Code distribution — custom modes, agents, subagents, and tools",
-  "version": "11.9.0-alpha.3",
+  "version": "11.9.0-alpha.4",
   "private": true,
   "dependencies": {
     "@mastra/core": "catalog:",

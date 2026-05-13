@@ -10,6 +10,7 @@
     "memory-audit-skill",
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
+    "subagent-invocation-telemetry",
     "wave-duration-telemetry"
   ]
 }
