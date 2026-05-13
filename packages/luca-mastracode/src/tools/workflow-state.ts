@@ -257,13 +257,13 @@ const archiveLooseAction = z.object({
 const recordSubagentAction = z.object({
     action: z.literal('record-subagent'),
     event: z.enum(['invoke', 'complete']),
-    role: z.string().min(1),
-    correlationId: z.string().min(1),
+    role: z.string().min(1).max(64),
+    correlationId: z.string().min(1).max(128),
     inputTokens: z.number().int().nonnegative().nullable().optional(),
     outputTokens: z.number().int().nonnegative().nullable().optional(),
     durationMs: z.number().nullable().optional(),
     success: z.boolean().nullable().optional(),
-    model: z.string().nullable().optional(),
+    model: z.string().max(64).nullable().optional(),
 })
 
 // ── All valid actions (exported for createScopedTool) ──────────────
@@ -437,12 +437,14 @@ const workflowStateInputSchema = z.object({
         ),
     role: z
         .string()
+        .max(64)
         .optional()
         .describe(
             "Subagent role identifier, e.g. 'executor', 'reviewer' (required for 'record-subagent')."
         ),
     correlationId: z
         .string()
+        .max(128)
         .optional()
         .describe(
             "Correlation ID pairing invoke/complete events for the same subagent call (required for 'record-subagent')."
@@ -481,6 +483,7 @@ const workflowStateInputSchema = z.object({
         ),
     model: z
         .string()
+        .max(64)
         .nullable()
         .optional()
         .describe(

@@ -1111,4 +1111,17 @@ describe('record-subagent telemetry', () => {
         expect(kinds).toContain('subagent.invoke')
         expect(kinds).toContain('subagent.complete')
     })
+
+    test('(g) role > 64 chars → ActionValidationError (success: false)', async () => {
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'invoke',
+            role: 'x'.repeat(65),
+            correlationId: 'x-123',
+        })
+        // Rejected either by Mastra inputSchema validation ({ error: true, ... })
+        // or by per-action parseAction ({ success: false, ... }). Both paths
+        // prove the .max(64) cap is enforced before telemetry emission.
+        expect(result.success !== true).toBe(true)
+    })
 })
