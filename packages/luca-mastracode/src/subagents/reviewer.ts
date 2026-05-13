@@ -88,6 +88,10 @@ CONSOLIDATED:
   CROSS_PHASE_COUNT: <n>
 \`\`\`
 
+After your CONSOLIDATED block, append on its own line exactly:
+\`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>"} -->\`
+Replace <N> with actual token counts and <id> with the model identifier.
+
 ## Cross-Phase Flag
 Mark findings as \`cross_phase: true\` when:
 - The issue affects files outside the current wave's scope
