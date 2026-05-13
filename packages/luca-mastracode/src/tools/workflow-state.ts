@@ -25,7 +25,7 @@ import {
     archivePriorRun,
     startNewRun,
 } from '../state/session-ledger.js'
-import { appendTelemetry } from '../state/telemetry.js'
+import { appendTelemetry, type TelemetryKind } from '../state/telemetry.js'
 import { readVerificationResult } from '../state/verification-result.js'
 import {
     deriveSlug,
@@ -104,6 +104,18 @@ function finiteOrNull(n: number | null | undefined): number | null {
     if (!Number.isFinite(n)) return null
     if (n < 0) return null
     return n
+}
+
+/**
+ * Clamp a token count to a safe integer or null.
+ * Rejects non-finite, negative, or unreasonably large values (>10_000_000).
+ */
+function clampTokens(n: number | null | undefined): number | null {
+    if (typeof n !== 'number') return null
+    if (!Number.isFinite(n)) return null
+    if (n < 0) return null
+    if (n > 10_000_000) return null
+    return Math.floor(n)
 }
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
@@ -242,6 +254,29 @@ const archiveLooseAction = z.object({
     action: z.literal('archive-loose'),
 })
 
+const recordSubagentAction = z.object({
+    action: z.literal('record-subagent'),
+    event: z.enum(['invoke', 'complete']),
+    role: z
+        .string()
+        .min(1)
+        .max(64)
+        .regex(/^[^\r\n\t]+$/, 'role must not contain CR/LF/tab'),
+    correlationId: z
+        .string()
+        .min(1)
+        .max(128)
+        .regex(
+            /^[^\r\n\t]+$/,
+            'correlationId must not contain CR/LF/tab'
+        ),
+    inputTokens: z.number().int().nonnegative().nullable().optional(),
+    outputTokens: z.number().int().nonnegative().nullable().optional(),
+    durationMs: z.number().nullable().optional(),
+    success: z.boolean().nullable().optional(),
+    model: z.string().max(64).nullable().optional(),
+})
+
 // ── All valid actions (exported for createScopedTool) ──────────────
 export const WORKFLOW_STATE_ACTIONS = [
     'read',
@@ -258,6 +293,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     'reset-pipeline',
     're-enter-pipeline',
     'archive-loose',
+    'record-subagent',
 ] as const
 
 export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
@@ -401,6 +437,68 @@ const workflowStateInputSchema = z.object({
         .optional()
         .describe(
             "Concrete reasoning for why no code changed (required for 'justify-empty-phase'). Surfaces in postmortem report."
+        ),
+
+    // record-subagent
+    event: z
+        .enum(['invoke', 'complete'])
+        .optional()
+        .describe(
+            "Subagent lifecycle event (required for 'record-subagent'). 'invoke' emits subagent.invoke; 'complete' emits subagent.complete."
+        ),
+    role: z
+        .string()
+        .max(64)
+        .optional()
+        .describe(
+            "Subagent role identifier, e.g. 'executor', 'reviewer' (required for 'record-subagent')."
+        ),
+    correlationId: z
+        .string()
+        .max(128)
+        .optional()
+        .describe(
+            "Correlation ID pairing invoke/complete events for the same subagent call (required for 'record-subagent')."
+        ),
+    inputTokens: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional()
+        .describe(
+            'Input token count for the subagent call (record-subagent only). Clamped to safe integer or null.'
+        ),
+    outputTokens: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional()
+        .describe(
+            'Output token count for the subagent call (record-subagent only). Clamped to safe integer or null.'
+        ),
+    durationMs: z
+        .number()
+        .nullable()
+        .optional()
+        .describe(
+            'Duration in milliseconds for the subagent call (record-subagent only, typically on complete events).'
+        ),
+    success: z
+        .boolean()
+        .nullable()
+        .optional()
+        .describe(
+            'Whether the subagent call succeeded (record-subagent only, typically on complete events).'
+        ),
+    model: z
+        .string()
+        .max(64)
+        .nullable()
+        .optional()
+        .describe(
+            'Model identifier used by the subagent (record-subagent only).'
         ),
 })
 
@@ -1315,6 +1413,47 @@ export const workflowStateTool = createTool({
                                     ? err.message
                                     : String(err),
                         }
+                    }
+                }
+                case 'record-subagent': {
+                    const parsed = recordSubagentAction.safeParse(raw)
+                    if (!parsed.success) {
+                        throw new ActionValidationError(
+                            'record-subagent',
+                            parsed.error.issues
+                                .map((i) => i.message)
+                                .join('; ')
+                        )
+                    }
+                    const {
+                        event,
+                        role,
+                        correlationId,
+                        inputTokens,
+                        outputTokens,
+                        durationMs,
+                        success,
+                        model,
+                    } = parsed.data
+                    const kind: TelemetryKind =
+                        event === 'invoke'
+                            ? 'subagent.invoke'
+                            : 'subagent.complete'
+                    appendTelemetry(
+                        kind,
+                        {
+                            role,
+                            correlationId,
+                            inputTokens: clampTokens(inputTokens),
+                            outputTokens: clampTokens(outputTokens),
+                            success: success ?? null,
+                            model: model ?? null,
+                        },
+                        { durationMs: finiteOrNull(durationMs) }
+                    )
+                    return {
+                        success: true,
+                        message: `Telemetry emitted: ${kind} (role=${role}, correlationId=${correlationId})`,
                     }
                 }
                 default: {

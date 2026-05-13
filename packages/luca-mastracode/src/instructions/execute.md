@@ -132,11 +132,35 @@ Include confidence stats in the wave summary. Flag phases with >2 low-confidence
 
 ### Executor Subagent
 
+// → record-subagent invoke (role: "executor") before spawn
+
 Spawn a fresh **executor** for each wave with:
 - Specific tasks from the per-phase `PLAN.md` (`.planning/phases/<currentPhaseSlug>/PLAN.md`)
 - Relevant context from the per-phase `RESEARCH.md` (scoped to this wave)
 - Learnings from previous waves
 - Current state of affected files
+
+// → record-subagent complete (role: "executor") — parse usage block after
+
+### Subagent Telemetry
+
+Before spawning each subagent, emit `subagent.invoke`. After it returns, emit `subagent.complete`. Use `workflowState(action: "record-subagent", ...)`.
+
+**correlationId**: Generate as `<role>-<Date.now()>` before spawn. Reuse the same id for the matching complete.
+
+**Token parsing**: Take the last 256 chars of subagent output. Match `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`. JSON-parse the capture. Validate `inputTokens`/`outputTokens` are non-negative integers ≤ 10_000_000. Pass `null` if absent or malformed.
+
+**Parallel batches**: Generate N distinct correlationIds before the batch call. Emit N `invoke` records sequentially, then spawn. After batch returns, emit N `complete` records reusing the matching correlationIds.
+
+Example — single spawn:
+```
+// Before:
+workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: "executor-1747097200000" })
+// After (success):
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
+// After (error):
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", success: false })
+```
 
 ### Executor Guidelines
 
@@ -204,6 +228,8 @@ Returns structured results with convergence tracking:
 
 Spawn **fix** subagent with error details and affected files. Fix subagent addresses errors without introducing new ones.
 
+// → record-subagent invoke (role: "fix") before spawn; record-subagent complete (role: "fix") — parse usage block after. See "Subagent Telemetry" above.
+
 **Hard limit**: If `iteration >= 3` and convergence is not `resolved`, stop and escalate.
 
 ## Step 2.5: Run Repo-Local Rule Pack
@@ -228,6 +254,8 @@ If a rule throws at runtime, it appears in `report.executionErrors`. Surface to 
 ## Step 3: Verify
 
 Spawn a **verifier** subagent after checks pass:
+
+// → record-subagent invoke (role: "verifier") before spawn; record-subagent complete (role: "verifier") — parse usage block after. See "Subagent Telemetry" above.
 
 1. Re-read the plan's acceptance criteria for this wave
 2. Verify each criterion against actual implementation
@@ -262,6 +290,8 @@ If verification fails, loop back to executor before proceeding.
 ## Step 4: Code Review
 
 Spawn **4 reviewer subagents in parallel**:
+
+// → emit 4 record-subagent invoke (roles: "reviewer") with distinct correlationIds (e.g. "reviewer-arch-<ts>", "reviewer-dx-<ts>", "reviewer-sec-<ts>", "reviewer-simpl-<ts>") before the batch call; emit 4 record-subagent complete after the batch returns. See "Subagent Telemetry" above.
 
 ### 1. Architecture Reviewer
 - Respects existing architecture? Abstractions correct?
@@ -336,6 +366,8 @@ Only store findings representing **reusable knowledge** (systemic patterns). If 
 ## Step 5: Learn
 
 Spawn a **learner** subagent after each wave.
+
+// → record-subagent invoke (role: "learner") before spawn; record-subagent complete (role: "learner") — parse usage block after. See "Subagent Telemetry" above.
 
 ### What to Capture
 

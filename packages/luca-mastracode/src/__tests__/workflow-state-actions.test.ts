@@ -1001,3 +1001,150 @@ describe('switch-mode telemetry', () => {
         expect(overrides?.durationMs).toBeNull()
     })
 })
+
+// ---------------------------------------------------------------------------
+// record-subagent telemetry
+// ---------------------------------------------------------------------------
+
+describe('record-subagent telemetry', () => {
+    test('(a) invoke emits subagent.invoke with correlationId + role in meta', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'invoke',
+            role: 'executor',
+            correlationId: 'executor-1747097200000',
+        })
+        expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
+        const [kind, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('subagent.invoke')
+        expect(meta).toMatchObject({
+            role: 'executor',
+            correlationId: 'executor-1747097200000',
+        })
+    })
+
+    test('(b) complete emits subagent.complete with tokens + durationMs + success', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'verifier',
+            correlationId: 'verifier-1747097200000',
+            inputTokens: 5000,
+            outputTokens: 1200,
+            durationMs: 30000,
+            success: true,
+            model: 'claude-opus-4-5',
+        })
+        expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
+        const [kind, meta, overrides] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('subagent.complete')
+        expect(meta).toMatchObject({
+            role: 'verifier',
+            correlationId: 'verifier-1747097200000',
+            inputTokens: 5000,
+            outputTokens: 1200,
+            success: true,
+            model: 'claude-opus-4-5',
+        })
+        // durationMs travels in overrides (3rd arg) so appendTelemetry routes
+        // it to TelemetryRecord top-level durationMs, matching the convention
+        // used by wave.end / phase.end / mode.end events.
+        expect((meta as Record<string, unknown>).durationMs).toBeUndefined()
+        expect((overrides as Record<string, unknown>)?.durationMs).toBe(30000)
+    })
+
+    test('(c) missing role → ActionValidationError surfaces as failure result', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'invoke',
+            // role missing
+            correlationId: 'x-123',
+        })
+        expect(result.success).toBe(false)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test('(d) null tokens accepted — record still emitted', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'learner',
+            correlationId: 'learner-123',
+            inputTokens: null,
+            outputTokens: null,
+            success: true,
+        })
+        expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
+        const [kind, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('subagent.complete')
+        expect((meta as Record<string, unknown>).inputTokens).toBeNull()
+        expect((meta as Record<string, unknown>).outputTokens).toBeNull()
+    })
+
+    test('(e) token > 10_000_000 clamped to null', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-123',
+            inputTokens: 99_999_999,
+            outputTokens: 11_000_000,
+            success: true,
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).inputTokens).toBeNull()
+        expect((meta as Record<string, unknown>).outputTokens).toBeNull()
+    })
+
+    test('(f) event=invoke → kind subagent.invoke; event=complete → kind subagent.complete', async () => {
+        mockAppendTelemetry.mockClear()
+        for (const event of ['invoke', 'complete'] as const) {
+            await callAction({
+                action: 'record-subagent',
+                event,
+                role: 'reviewer',
+                correlationId: `reviewer-${event}-123`,
+            })
+        }
+        const kinds = mockAppendTelemetry.mock.calls.map((c) => c[0])
+        expect(kinds).toContain('subagent.invoke')
+        expect(kinds).toContain('subagent.complete')
+    })
+
+    test('(g) role > 64 chars → ActionValidationError (success: false)', async () => {
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'invoke',
+            role: 'x'.repeat(65),
+            correlationId: 'x-123',
+        })
+        // Rejected either by Mastra inputSchema validation ({ error: true, ... })
+        // or by per-action parseAction ({ success: false, ... }). Both paths
+        // prove the .max(64) cap is enforced before telemetry emission.
+        expect(result.success !== true).toBe(true)
+    })
+
+    test('(h) role/correlationId containing CR/LF/tab rejected (CWE-117 log injection guard)', async () => {
+        mockAppendTelemetry.mockClear()
+        const cases: Array<{ role: string; correlationId: string }> = [
+            { role: 'rev\niewer', correlationId: 'x-1' },
+            { role: 'reviewer', correlationId: 'x\r\n-2' },
+            { role: 'rev\tiewer', correlationId: 'x-3' },
+        ]
+        for (const c of cases) {
+            const result = await callAction({
+                action: 'record-subagent',
+                event: 'invoke',
+                role: c.role,
+                correlationId: c.correlationId,
+            })
+            expect(result.success !== true).toBe(true)
+        }
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+})

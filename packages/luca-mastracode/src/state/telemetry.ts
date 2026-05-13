@@ -82,6 +82,8 @@ export type TelemetryKind =
     | 'wave.end'
     | 'mode.start'
     | 'mode.end'
+    | 'subagent.invoke'
+    | 'subagent.complete'
     | (string & {})
 
 export interface TelemetryRecord {
