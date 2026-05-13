@@ -3,8 +3,10 @@
  *
  * Inspect the most recent Luca pipeline postmortem. Prints the cached
  * `.planning/POSTMORTEM.md` if it exists. With `--list`, enumerates
- * archived runs under `.planning/runs/`. Generating a fresh postmortem
- * for the live run is done from inside the harness via `runPostmortem`.
+ * archived runs across both `.planning/phases/<slug>/runs/` (current
+ * layout per issue #220) and the legacy `.planning/runs/` location.
+ * Generating a fresh postmortem for the live run is done from inside
+ * the harness via `runPostmortem`.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 
@@ -12,6 +14,53 @@ import { defineCommand } from 'citty'
 import { join, resolve } from 'pathe'
 
 import { logger } from '../utils/logger'
+
+/**
+ * Yield directories that may hold archived run subdirectories, in priority
+ * order: every `phases/<slug>/runs/` directory on disk, followed by the
+ * legacy `.planning/runs/` root. Mirrors the lookup used by
+ * `luca-mastracode`'s `listArchivedRuns()` so the CLI stays consistent
+ * with postmortem/recurrence analysis after issue #220.
+ */
+function candidateArchiveRoots(planningDir: string): string[] {
+    const roots: string[] = []
+    const phasesRoot = join(planningDir, 'phases')
+    if (existsSync(phasesRoot)) {
+        try {
+            for (const entry of readdirSync(phasesRoot, {
+                withFileTypes: true,
+            })) {
+                if (!entry.isDirectory()) continue
+                roots.push(join(phasesRoot, entry.name, 'runs'))
+            }
+        } catch {
+            // ignore unreadable phases/ root
+        }
+    }
+    roots.push(join(planningDir, 'runs'))
+    return roots
+}
+
+function listArchivedRunIds(planningDir: string): string[] {
+    const seen = new Set<string>()
+    for (const archiveRoot of candidateArchiveRoots(planningDir)) {
+        if (!existsSync(archiveRoot)) continue
+        try {
+            for (const name of readdirSync(archiveRoot)) {
+                try {
+                    if (statSync(join(archiveRoot, name)).isDirectory()) {
+                        seen.add(name)
+                    }
+                } catch {
+                    // ignore unreadable entries
+                }
+            }
+        } catch {
+            // ignore unreadable archive root
+        }
+    }
+    return Array.from(seen)
+}
 
 export const retroCommand = defineCommand({
     meta: {
@@ -22,31 +71,21 @@ export const retroCommand = defineCommand({
     args: {
         list: {
             type: 'boolean',
-            description: 'List archived runs under .planning/runs/',
+            description:
+                'List archived runs under .planning/phases/<slug>/runs/ and .planning/runs/',
             required: false,
         },
     },
     async run({ args }) {
         const planningDir = resolve(process.cwd(), '.planning')
-        const runsDir = join(planningDir, 'runs')
 
         if (args.list) {
-            if (!existsSync(runsDir)) {
-                logger.info('No archived runs found in .planning/runs/')
+            const runIds = listArchivedRunIds(planningDir)
+            if (runIds.length === 0) {
+                logger.info('No archived runs found.')
                 return
             }
-            const entries = readdirSync(runsDir).filter((name) => {
-                try {
-                    return statSync(join(runsDir, name)).isDirectory()
-                } catch {
-                    return false
-                }
-            })
-            if (entries.length === 0) {
-                logger.info('No archived runs found in .planning/runs/')
-                return
-            }
-            for (const runId of entries) {
+            for (const runId of runIds) {
                 logger.info(runId)
             }
             return
