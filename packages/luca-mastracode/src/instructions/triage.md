@@ -70,6 +70,10 @@ Query MuninnDB for historical context (≤1 tool call, vault from `.planning/con
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<parsed intent summary>", tags: ["milestone"])
 ```
 
+After the recall returns, emit `record-recall` telemetry so the aggregator can compute hit/miss rates and verified-tier hit rate per mode:
+
+// → record-recall { query: "<parsed intent summary>", resultCount: <results.length ?? null>, verifiedCount: <results.filter(r => r.trust === "verified").length ?? null>, vault: "<repo_vault>", mode: "semantic", durationMs: <Date.now() - tRecall> }
+
 If results found, factor prior complexity levels and learnings into classification. If MuninnDB unavailable, skip — never delay triage.
 
 ## Step 1.6: Project Preferences Sentinel

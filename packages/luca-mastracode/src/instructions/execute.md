@@ -291,7 +291,7 @@ If verification fails, loop back to executor before proceeding.
 
 Spawn **4 reviewer subagents in parallel**:
 
-// → emit 4 record-subagent invoke (roles: "reviewer") with distinct correlationIds (e.g. "reviewer-arch-<ts>", "reviewer-dx-<ts>", "reviewer-sec-<ts>", "reviewer-simpl-<ts>") before the batch call; emit 4 record-subagent complete after the batch returns. See "Subagent Telemetry" above.
+// → emit 4 record-subagent invoke (roles: "reviewer") with distinct correlationIds — generate via `const ts = Date.now()` then build `` `reviewer-arch-${ts}` ``, `` `reviewer-dx-${ts}` ``, `` `reviewer-sec-${ts}` ``, `` `reviewer-simpl-${ts}` `` (NOT `<ts>` placeholder, NOT compact-ISO) — before the batch call; emit 4 record-subagent complete after the batch returns. See "Subagent Telemetry" above.
 
 ### 1. Architecture Reviewer
 - Respects existing architecture? Abstractions correct?
@@ -390,6 +390,8 @@ mcp__muninn__muninn_recall(
 )
 ```
 
+// → record-recall { query: "<what this wave is doing>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`. Include recalled learnings in executor's task description.
 
 ### Confidence Journal Review
@@ -441,6 +443,8 @@ After verification and review pass for each task:
      limit: 5,
    })
    ```
+
+   // → record-recall { query: "commit conventions / pre-commit pitfalls / <wave scope>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
 
    Apply directly relevant findings to the commit messages and staging set. If MuninnDB is unreachable, log and continue — never block.
 

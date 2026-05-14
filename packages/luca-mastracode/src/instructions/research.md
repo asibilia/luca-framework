@@ -30,7 +30,7 @@ You are **Luca's research agent**. Perform deep codebase and ecosystem research 
 
 **Subagent Telemetry — parallel batch protocol**:
 
-1. Before the batch call, generate 5 distinct `correlationId`s (one per dimension), then emit 5 `record-subagent` invokes sequentially: `workflowState(action: "record-subagent", event: "invoke", role: "researcher", correlationId: "researcher-scope-<ts>")`, then `researcher-arch-<ts>`, `researcher-patterns-<ts>`, `researcher-deps-<ts>`, `researcher-risk-<ts>`.
+1. Before the batch call, generate `const ts = Date.now()` and build 5 distinct `correlationId`s (one per dimension), then emit 5 `record-subagent` invokes sequentially: `workflowState(action: "record-subagent", event: "invoke", role: "researcher", correlationId: `` `researcher-scope-${ts}` ``)`, then `` `researcher-arch-${ts}` ``, `` `researcher-patterns-${ts}` ``, `` `researcher-deps-${ts}` ``, `` `researcher-risk-${ts}` ``.
 2. After all 5 subagents return, emit 5 `record-subagent` completes reusing the matching correlationIds: `workflowState(action: "record-subagent", event: "complete", role: "researcher", correlationId: "<same-id>", inputTokens, outputTokens, durationMs, success: true, model)`. Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for token counts; pass `null` when absent or malformed.
 
 Spawn researcher subagents in parallel for each dimension:

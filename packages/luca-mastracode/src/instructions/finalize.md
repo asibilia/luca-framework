@@ -53,7 +53,7 @@ Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`. Use
 
 ### Milestone-Level Learning
 
-> **Subagent Telemetry**: Call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: "<role>-<ts>")` before each spawn and `event: "complete"` after. Parse `<!-- usage: ... -->` from last 256 chars for token counts.
+> **Subagent Telemetry**: Generate `const ts = Date.now()` then call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: `` `<role>-${ts}` ``)` before each spawn and `event: "complete"` after (reusing the same id). Parse `<!-- usage: ... -->` from last 256 chars for token counts.
 
 // → record-subagent invoke (role: "learner") before spawn
 
@@ -78,6 +78,8 @@ mcp__muninn__muninn_recall(
   tags: ["learning"]
 )
 ```
+
+// → record-recall { query: "learning patterns from current session", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
 
 Review results:
 - **Remove duplicates**: use `mcp__muninn__muninn_forget` for less specific overlapping patterns
@@ -241,7 +243,7 @@ runPostmortem(action: "gate")
    ```
    for pitfall in response.pitfalls:
      mcp__muninn__muninn_remember(
-       vault: "default",
+       vault: "<vault from .planning/config.json → muninn.vault, fallback \"default\">",
        concept: pitfall.concept,
        type: pitfall.type,
        content: pitfall.content,
@@ -323,6 +325,8 @@ mcp__muninn__muninn_recall({
 })
 ```
 
+// → record-recall { query: "release checklist / naming convention / <affected packages>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 If no version memory exists, check `packages/luca-mastracode/package.json` for current version and determine the appropriate bump from `release.versionBump`.
 
 ### 5b.1. Write release artifacts (AFTER review iteration converged)
@@ -341,6 +345,8 @@ mcp__muninn__muninn_recall({
   limit: 5,
 })
 ```
+
+// → record-recall { query: "changeset format / release-note pitfalls / <affected packages>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
 
 Apply any directly relevant learnings. If MuninnDB is unreachable, log and proceed — never block.
 
