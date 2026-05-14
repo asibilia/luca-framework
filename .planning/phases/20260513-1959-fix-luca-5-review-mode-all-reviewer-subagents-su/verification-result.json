@@ -1,0 +1,74 @@
+{
+  "wave": 1,
+  "mode": "quick",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bun test passes",
+      "met": true,
+      "evidence": "343/343 pass",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "tsc passes",
+      "met": true,
+      "evidence": "0 errors",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "review.md Step 4 uses inline directive, NOT fenced block",
+      "met": true,
+      "evidence": "src/instructions/review.md: fenced block removed, replaced with 5-line // → inline directive. grep record-subagent shows 0 occurrences inside ``` fences.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "review.md correlationId references Date.now()",
+      "met": true,
+      "evidence": "src/instructions/review.md: inline directive uses reviewer-arch-${ts} where ts = Date.now(). Test asserts content contains 'Date.now()'.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "Regression tests catch fenced-block reintroduction",
+      "met": true,
+      "evidence": "src/__tests__/subagent-telemetry-prose.test.ts: fence-split test splits review.md on ``` and asserts odd-indexed (inside-fence) segments do not contain 'record-subagent'. Date.now() reference test asserts presence of Date.now() in review.md. Both tests pass.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "reviewer.ts:107 ambiguous referent fixed",
+      "met": true,
+      "evidence": "src/subagents/reviewer.ts:107 now reads 'of the output block above' (was 'of your output') — disambiguates between the two closing ``` fences in the file.",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "eslint",
+      "status": "skip",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "timestamp": "2026-05-14T00:17:39.346Z",
+  "runId": "run_mp4q0nj5_f5qrby74"
+}
