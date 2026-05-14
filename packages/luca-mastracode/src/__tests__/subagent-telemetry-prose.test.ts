@@ -54,6 +54,62 @@ describe('review.md contains record-subagent prose', () => {
     })
 })
 
+describe('review.md Step 4 record-subagent is outside fenced code blocks', () => {
+    test('record-subagent directive is NOT inside a ``` fence (fence-split regression)', () => {
+        // If record-subagent calls are wrapped in a fenced block, the agent treats them
+        // as illustrative documentation and skips execution. This caused all 4 outer
+        // reviewer subagents to return success:false (confirmed in two consecutive runs).
+        // Algorithm: split by ``` delimiters; odd-indexed segments are inside fences.
+        // record-subagent must only appear in even-indexed (outside-fence) segments.
+        const content = readInstruction('review.md')
+        const segments = content.split('```')
+        const insideFenceSegments = segments.filter((_, i) => i % 2 === 1)
+        for (const segment of insideFenceSegments) {
+            expect(segment).not.toContain('record-subagent')
+        }
+    })
+
+    test('review.md Step 4 correlationId directive uses ${ts} template, not <ts> placeholder or literal epoch', () => {
+        // <ts> placeholder caused agents to emit literal string "reviewer-arch-<ts>" —
+        // all correlationIds identical, making invoke<->complete join undefined.
+        // A hardcoded numeric epoch (e.g. "reviewer-arch-1747180880") would have the
+        // same effect. This test scopes to the Step 4 directive region (between
+        // "### Step 4" and the next "### Step" or end of file) and asserts:
+        //   (1) `const ts = Date.now()` appears in the directive
+        //   (2) correlationIds use the `${ts}` template, not <ts> or a raw epoch
+        //   (3) no static 10+ digit timestamp directly suffixes `reviewer-<perspective>-`
+        const content = readInstruction('review.md')
+        const step4Start = content.indexOf('### Step 4')
+        expect(step4Start).toBeGreaterThan(-1)
+        const remainder = content.slice(step4Start + '### Step 4'.length)
+        const nextStepIdx = remainder.search(/\n### Step \d/)
+        const step4Region =
+            nextStepIdx >= 0 ? remainder.slice(0, nextStepIdx) : remainder
+
+        // (1) ts captured via Date.now()
+        expect(step4Region).toContain('const ts = Date.now()')
+
+        // (2) Template-literal interpolation of ts is present in correlationIds.
+        // We look for the canonical reviewer-<role>-${ts} shape on at least one perspective.
+        expect(step4Region).toMatch(/reviewer-arch-\$\{ts\}/)
+
+        // (3) Regressed forms must be absent in the operational directive (the
+        // backtick-fenced correlationId list). We strip illustrative example
+        // strings — quoted forms like "reviewer-arch-1747185300123" that follow
+        // `e.g.` — before scanning, so legitimate documentation doesn't trip the
+        // hardcoded-epoch guard.
+        const directiveBody = step4Region
+            // drop `e.g. "..."` example clauses
+            .replace(/e\.g\.\s*"[^"]*"/g, 'e.g. <example>')
+        //     a) literal <ts> placeholder (any reviewer-<role>-<ts>)
+        expect(directiveBody).not.toMatch(/reviewer-(arch|dx|sec|simpl)-<ts>/)
+        //     b) hardcoded epoch (10+ contiguous digits after reviewer-<role>-)
+        expect(directiveBody).not.toMatch(
+            /reviewer-(arch|dx|sec|simpl)-\d{10,}/,
+        )
+    })
+})
+
 describe('finalize.md contains record-subagent prose', () => {
     test('file includes record-subagent', () => {
         expect(readInstruction('finalize.md')).toContain('record-subagent')
@@ -77,11 +133,10 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
     })
 
     test('reviewer-specific usage clarification appears after CONSOLIDATED block', () => {
-        // The reviewer.ts clarification prose (not the literal <!-- usage: string)
-        // references "Core Operating Rules" and anchors placement to the CONSOLIDATED block.
+        // The reviewer.ts clarification prose anchors placement to the CONSOLIDATED block.
         // Check it appears after CONSOLIDATED: in the assembled prompt.
         const consolidatedPos = assembled.indexOf('CONSOLIDATED:')
-        const clarificationPos = assembled.indexOf('Core Operating Rules) is required')
+        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
         expect(consolidatedPos).toBeGreaterThan(-1)
         expect(clarificationPos).toBeGreaterThan(-1)
         expect(
@@ -95,7 +150,7 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         // in reviewer.ts. No `## ` section heading may follow it. This is the structural
         // root cause of the original drift — when clarification was followed by other
         // sections, attention burial caused reviewer-dx/simpl to skip usage emission.
-        const clarificationPos = assembled.indexOf('Core Operating Rules) is required')
+        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
         expect(clarificationPos).toBeGreaterThan(-1)
         const tail = assembled.slice(clarificationPos)
         // No `## ` (markdown H2) section heading may appear after the clarification.
