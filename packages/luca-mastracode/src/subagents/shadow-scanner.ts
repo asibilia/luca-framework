@@ -45,7 +45,7 @@ Read \`.planning/config.json\` and extract the \`shadow_debt\` section. Use thes
 - \`known_artifact_dirs\`: [".playwright-cli", ".next", ".turbo", ".cache", "coverage"]
 - \`allowlist\`: ["scripts/", ".planning/", "docs/", "packages/"]
 - \`planning_root_allowlist\`: ["config.json", "state.json", "session-ledger.jsonl", "PLAN.md", "ROADMAP.md", "RESEARCH.md", "PROJECT.md", "CANONICAL-DECISIONS.md", "MILESTONE-AUDIT.md", ".context-metrics.json", "checks-result.json"]
-- \`planning_root_dirs\`: ["phases/", "milestones/", "todos/", "summaries/", "research/", "notes/", "codebase/", "checkpoints/", "checks-runs/", "migration/", "done/", "plans/"]
+- \`planning_root_dirs\`: ["phases/", "milestones/", "todos/", "summaries/", "research/", "notes/", "codebase/", "checkpoints/", "checks-runs/", "migration/", "done/", "plans/", "telemetry/"]
 - \`planning_root_versioned_patterns\`: ["v*-MILESTONE-AUDIT*.md"]
 - \`repo_root_markdown_allowlist\`: ["README.md", "CLAUDE.md", "AGENTS.md", "SECURITY.md", "LICENSE.md", "CONTRIBUTING.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md"]
 

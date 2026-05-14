@@ -464,3 +464,28 @@ export function TELEMETRY_PATH(runId: string): string {
     assertValidRunId(runId)
     return join(TELEMETRY_DIR(), `${runId}.jsonl`)
 }
+
+/**
+ * `.planning/telemetry/archive/` — janitor archive directory for prior-run
+ * telemetry JSONLs. Populated by the `reset-pipeline` janitor (best-effort
+ * `renameSync` from `<TELEMETRY_DIR>/<runId>.jsonl` →
+ * `<TELEMETRY_DIR>/archive/<runId>.jsonl`). Reads are consumer-friendly:
+ * the aggregator skill (`/luca-telemetry-report`) can scan both the active
+ * dir and the archive subdir.
+ */
+export function TELEMETRY_ARCHIVE_DIR(): string {
+    return join(TELEMETRY_DIR(), 'archive')
+}
+
+/**
+ * `.planning/telemetry/archive/<runId>.jsonl` — archived per-run telemetry.
+ *
+ * Throws on invalid runId via `assertValidRunId` (same defence-in-depth
+ * guard as `TELEMETRY_PATH`). Janitor callers wrap this in `try/catch`
+ * and drop+warn on rejection so a tampered `runId` can never escape the
+ * `.planning/telemetry/archive/` directory.
+ */
+export function TELEMETRY_ARCHIVE_PATH(runId: string): string {
+    assertValidRunId(runId)
+    return join(TELEMETRY_ARCHIVE_DIR(), `${runId}.jsonl`)
+}

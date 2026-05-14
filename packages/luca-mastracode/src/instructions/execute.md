@@ -152,14 +152,15 @@ Before spawning each subagent, emit `subagent.invoke`. After it returns, emit `s
 
 **Parallel batches**: Generate N distinct correlationIds before the batch call. Emit N `invoke` records sequentially, then spawn. After batch returns, emit N `complete` records reusing the matching correlationIds.
 
-Example — single spawn:
+Example — single spawn (use `const ts = Date.now()` so the same `${ts}` value pairs invoke/complete):
 ```
+const ts = Date.now()
 // Before:
-workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: "executor-1747097200000" })
+workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: `executor-${ts}` })
 // After (success):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
 // After (error):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", success: false })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, success: false })
 ```
 
 ### Executor Guidelines
@@ -291,7 +292,7 @@ If verification fails, loop back to executor before proceeding.
 
 Spawn **4 reviewer subagents in parallel**:
 
-// → emit 4 record-subagent invoke (roles: "reviewer") with distinct correlationIds (e.g. "reviewer-arch-<ts>", "reviewer-dx-<ts>", "reviewer-sec-<ts>", "reviewer-simpl-<ts>") before the batch call; emit 4 record-subagent complete after the batch returns. See "Subagent Telemetry" above.
+// → emit 4 record-subagent invoke (roles: "reviewer") with distinct correlationIds — generate via `const ts = Date.now()` then build `` `reviewer-arch-${ts}` ``, `` `reviewer-dx-${ts}` ``, `` `reviewer-sec-${ts}` ``, `` `reviewer-simpl-${ts}` `` (NOT `<ts>` placeholder, NOT compact-ISO) — before the batch call; emit 4 record-subagent complete after the batch returns. See "Subagent Telemetry" above.
 
 ### 1. Architecture Reviewer
 - Respects existing architecture? Abstractions correct?
@@ -390,6 +391,8 @@ mcp__muninn__muninn_recall(
 )
 ```
 
+// → record-recall { query: "<what this wave is doing>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 Vault from `.planning/config.json` → `muninn.vault`, fallback `"default"`. Include recalled learnings in executor's task description.
 
 ### Confidence Journal Review
@@ -441,6 +444,8 @@ After verification and review pass for each task:
      limit: 5,
    })
    ```
+
+   // → record-recall { query: "commit conventions / pre-commit pitfalls / <wave scope>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
 
    Apply directly relevant findings to the commit messages and staging set. If MuninnDB is unreachable, log and continue — never block.
 

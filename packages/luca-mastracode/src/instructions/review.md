@@ -128,6 +128,8 @@ mcp__muninn__muninn_recall(
 )
 ```
 
+// → record-recall { query: "code review issues: <brief>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 If matches found, note **recurring issues** (increases severity signal) and reference prior occurrence.
 
 After producing audit report, store notable findings (MUST-FIX and recurring SHOULD-FIX):
@@ -238,7 +240,7 @@ In `full-auto`, route automatically based on findings.
 1. Check iteration count against `maxReviewIterations`
 2. Within budget: write iteration plan, save report, transition to Execute:
    ```
-   workflowState(action: "save-review-results", iterationPlan: [...], reviewIteration: <n+1>)
+   workflowState(action: "save-review-results", iterationPlan: [...], reviewIteration: <n+1>, perspectives: ["architecture", "security", "simplification", "dx"])
    workflowState(action: "switch-mode", targetMode: "luca:4-execute")
    ```
 3. At budget limit: save report with remaining issues, transition to Finalize with warning

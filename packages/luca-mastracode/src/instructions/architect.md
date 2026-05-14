@@ -99,16 +99,20 @@ Query MuninnDB for architectural context. Vault from `.planning/config.json` →
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<task intent and affected areas>", tags: ["decision"])
 ```
 
+// → record-recall { query: "<task intent and affected areas>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 Also check milestone archives:
 ```
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<task intent>", tags: ["milestone"])
 ```
 
+// → record-recall { query: "<task intent>", resultCount: <results.length>, verifiedCount: <verified subset>, vault: "<repo_vault>", mode: "semantic", durationMs: <ms> }
+
 If results found, note past decisions, patterns, and pitfalls. Include relevant context for discussion subagent. If unavailable, proceed normally. **Budget**: ≤2 tool calls.
 
 ## Step 2: Discussion (NEVER SKIP)
 
-> **Subagent Telemetry**: Call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: "<role>-<ts>")` before each subagent spawn and `event: "complete"` after. Parse `<!-- usage: ... -->` from the last 256 chars of output for token counts.
+> **Subagent Telemetry**: Generate `const ts = Date.now()` then call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: `` `<role>-${ts}` ``)` before each subagent spawn and `event: "complete"` after (reusing the same id). Parse `<!-- usage: ... -->` from the last 256 chars of output for token counts.
 
 // → record-subagent invoke (role: "discussion") before spawn
 

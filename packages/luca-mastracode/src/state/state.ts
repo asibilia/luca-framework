@@ -124,6 +124,9 @@ export const lucaStateSchema = z.object({
     maxReviewIterations: z.number().default(2),
     maxPhases: z.number().default(5),
 
+    // --- Review-mode entry timestamp (consumed by review.iteration telemetry) ---
+    reviewStartedAt: z.string().optional(),
+
     // --- Crash recovery ---
     lockPid: z.number().optional(),
     lockAcquiredAt: z.string().optional(),

@@ -84,6 +84,9 @@ export type TelemetryKind =
     | 'mode.end'
     | 'subagent.invoke'
     | 'subagent.complete'
+    | 'recall.hit'
+    | 'recall.miss'
+    | 'review.iteration'
     | (string & {})
 
 export interface TelemetryRecord {
