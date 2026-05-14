@@ -69,11 +69,44 @@ describe('review.md Step 4 record-subagent is outside fenced code blocks', () =>
         }
     })
 
-    test('review.md Step 4 correlationId directive references Date.now() not a literal epoch', () => {
+    test('review.md Step 4 correlationId directive uses ${ts} template, not <ts> placeholder or literal epoch', () => {
         // <ts> placeholder caused agents to emit literal string "reviewer-arch-<ts>" —
         // all correlationIds identical, making invoke<->complete join undefined.
+        // A hardcoded numeric epoch (e.g. "reviewer-arch-1747180880") would have the
+        // same effect. This test scopes to the Step 4 directive region (between
+        // "### Step 4" and the next "### Step" or end of file) and asserts:
+        //   (1) `const ts = Date.now()` appears in the directive
+        //   (2) correlationIds use the `${ts}` template, not <ts> or a raw epoch
+        //   (3) no static 10+ digit timestamp directly suffixes `reviewer-<perspective>-`
         const content = readInstruction('review.md')
-        expect(content).toContain('Date.now()')
+        const step4Start = content.indexOf('### Step 4')
+        expect(step4Start).toBeGreaterThan(-1)
+        const remainder = content.slice(step4Start + '### Step 4'.length)
+        const nextStepIdx = remainder.search(/\n### Step \d/)
+        const step4Region =
+            nextStepIdx >= 0 ? remainder.slice(0, nextStepIdx) : remainder
+
+        // (1) ts captured via Date.now()
+        expect(step4Region).toContain('const ts = Date.now()')
+
+        // (2) Template-literal interpolation of ts is present in correlationIds.
+        // We look for the canonical reviewer-<role>-${ts} shape on at least one perspective.
+        expect(step4Region).toMatch(/reviewer-arch-\$\{ts\}/)
+
+        // (3) Regressed forms must be absent in the operational directive (the
+        // backtick-fenced correlationId list). We strip illustrative example
+        // strings — quoted forms like "reviewer-arch-1747185300123" that follow
+        // `e.g.` — before scanning, so legitimate documentation doesn't trip the
+        // hardcoded-epoch guard.
+        const directiveBody = step4Region
+            // drop `e.g. "..."` example clauses
+            .replace(/e\.g\.\s*"[^"]*"/g, 'e.g. <example>')
+        //     a) literal <ts> placeholder (any reviewer-<role>-<ts>)
+        expect(directiveBody).not.toMatch(/reviewer-(arch|dx|sec|simpl)-<ts>/)
+        //     b) hardcoded epoch (10+ contiguous digits after reviewer-<role>-)
+        expect(directiveBody).not.toMatch(
+            /reviewer-(arch|dx|sec|simpl)-\d{10,}/,
+        )
     })
 })
 
