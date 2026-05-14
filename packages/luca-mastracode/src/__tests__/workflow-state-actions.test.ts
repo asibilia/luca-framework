@@ -1,15 +1,15 @@
 import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 import { z } from 'zod'
 
+import * as phaseDiff from '../analysis/phase-diff.js'
 import * as lucaStore from '../state/luca-store.js'
 import * as sessionLedger from '../state/session-ledger.js'
 import * as telemetry from '../state/telemetry.js'
 import * as verificationResult from '../state/verification-result.js'
-import * as phaseDiff from '../analysis/phase-diff.js'
 import { createScopedTool } from '../tools/create-scoped-tool.js'
-import { workflowStateTool, PIPELINE_ORDER } from '../tools/workflow-state.js'
 import * as repoCleanup from '../tools/repo-cleanup.js'
 import { ROOT_WHITELIST_DIRS } from '../tools/repo-cleanup.js'
+import { workflowStateTool, PIPELINE_ORDER } from '../tools/workflow-state.js'
 import { switchModeRef } from '../util/refs.js'
 
 // ---------------------------------------------------------------------------
@@ -1146,5 +1146,310 @@ describe('record-subagent telemetry', () => {
             expect(result.success !== true).toBe(true)
         }
         expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+})
+
+// ---------------------------------------------------------------------------
+// record-recall telemetry
+// ---------------------------------------------------------------------------
+
+describe('record-recall telemetry', () => {
+    test('(a) resultCount > 0 emits recall.hit', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'similar tasks',
+            resultCount: 3,
+            verifiedCount: 1,
+            vault: 'default',
+            mode: 'semantic',
+            durationMs: 42,
+        })
+        expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
+        const [kind] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('recall.hit')
+    })
+
+    test('(b) resultCount = 0 emits recall.miss', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'no matches',
+            resultCount: 0,
+            verifiedCount: 0,
+            vault: 'default',
+            mode: 'semantic',
+        })
+        const [kind] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('recall.miss')
+    })
+
+    test('(c) verifiedCount clamped to resultCount', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'over-reported verified',
+            resultCount: 2,
+            verifiedCount: 99, // exceeds resultCount
+            vault: 'default',
+            mode: 'semantic',
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).verifiedCount).toBe(2)
+    })
+
+    test('(d) malformed query (empty) rejected', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: '',
+            resultCount: 1,
+        })
+        expect(result.success !== true).toBe(true)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test('(e) CR/LF in query rejected (CWE-117 log injection)', async () => {
+        mockAppendTelemetry.mockClear()
+        const cases = ['line1\nline2', 'tab\there', 'cr\rret']
+        for (const q of cases) {
+            const result = await callAction({
+                action: 'record-recall',
+                query: q,
+                resultCount: 1,
+            })
+            expect(result.success !== true).toBe(true)
+        }
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test('(f) durationMs in overrides (3rd arg), not meta', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'check duration routing',
+            resultCount: 1,
+            durationMs: 150,
+        })
+        const [, meta, overrides] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).durationMs).toBeUndefined()
+        expect((overrides as Record<string, unknown>)?.durationMs).toBe(150)
+    })
+
+    test('(g) null resultCount → null verifiedCount', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'unknown total',
+            resultCount: null,
+            verifiedCount: 5, // ignored because resultCount is null
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).verifiedCount).toBeNull()
+    })
+
+    test('(h) vault regex enforced', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'bad vault',
+            resultCount: 1,
+            vault: 'BAD VAULT NAME!',
+        })
+        expect(result.success !== true).toBe(true)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+})
+
+// ---------------------------------------------------------------------------
+// review.iteration telemetry
+// ---------------------------------------------------------------------------
+
+describe('review.iteration telemetry', () => {
+    test('(a) save-review-results emits review.iteration with meta fields', async () => {
+        mockAppendTelemetry.mockClear()
+        mockReadLucaState.mockReturnValue({
+            reviewIteration: 1,
+            reviewStartedAt: new Date(Date.now() - 5000).toISOString(),
+        } as any)
+        await callAction({
+            action: 'save-review-results',
+            iterationPlan: ['fix x'],
+            reviewIteration: 2,
+            perspectives: ['architecture', 'security', 'simplification', 'dx'],
+            mustFixCount: 1,
+            shouldFixCount: 2,
+            noteCount: 3,
+            verdict: 'changes_requested',
+        })
+        const reviewCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'review.iteration'
+        )
+        expect(reviewCall).toBeDefined()
+        const meta = reviewCall![1] as Record<string, unknown>
+        expect(meta.mustFixCount).toBe(1)
+        expect(meta.shouldFixCount).toBe(2)
+        expect(meta.noteCount).toBe(3)
+        expect(meta.verdict).toBe('changes_requested')
+        expect(meta.perspectives).toEqual([
+            'architecture',
+            'security',
+            'simplification',
+            'dx',
+        ])
+    })
+
+    test('(b) priorIteration captured before increment (fallback when reviewIteration omitted)', async () => {
+        mockAppendTelemetry.mockClear()
+        mockReadLucaState.mockReturnValue({
+            reviewIteration: 1,
+            reviewStartedAt: new Date().toISOString(),
+        } as any)
+        await callAction({
+            action: 'save-review-results',
+            iterationPlan: [],
+            // reviewIteration intentionally omitted — meta.iteration should fall
+            // back to priorIteration captured from state.reviewIteration (= 1).
+            mustFixCount: 0,
+            shouldFixCount: 0,
+            noteCount: 0,
+            verdict: 'approved',
+        })
+        const reviewCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'review.iteration'
+        )
+        const meta = reviewCall![1] as Record<string, unknown>
+        expect(meta.iteration).toBe(1)
+    })
+
+    test('(c) perspectives field propagates to meta', async () => {
+        mockAppendTelemetry.mockClear()
+        mockReadLucaState.mockReturnValue({} as any)
+        await callAction({
+            action: 'save-review-results',
+            iterationPlan: [],
+            reviewIteration: 1,
+            perspectives: ['architecture'],
+            mustFixCount: 0,
+            shouldFixCount: 0,
+            noteCount: 0,
+            verdict: 'approved',
+        })
+        const reviewCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'review.iteration'
+        )
+        const meta = reviewCall![1] as Record<string, unknown>
+        expect(meta.perspectives).toEqual(['architecture'])
+    })
+
+    test('(d) malformed reviewStartedAt → durationMs:null (NaN guard)', async () => {
+        mockAppendTelemetry.mockClear()
+        mockReadLucaState.mockReturnValue({
+            reviewIteration: 1,
+            reviewStartedAt: 'not-a-date',
+        } as any)
+        await callAction({
+            action: 'save-review-results',
+            iterationPlan: [],
+            reviewIteration: 2,
+            mustFixCount: 0,
+            shouldFixCount: 0,
+            noteCount: 0,
+            verdict: 'approved',
+        })
+        const reviewCall = mockAppendTelemetry.mock.calls.find(
+            (c) => c[0] === 'review.iteration'
+        )
+        const overrides = reviewCall![2] as Record<string, unknown> | undefined
+        expect(overrides?.durationMs ?? null).toBeNull()
+    })
+})
+
+// ---------------------------------------------------------------------------
+// record-subagent outcome enum
+// ---------------------------------------------------------------------------
+
+describe('record-subagent outcome enum', () => {
+    test('(a) valid outcome stored in meta', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-1747200000000',
+            outcome: 'crashed',
+            success: false,
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).outcome).toBe('crashed')
+    })
+
+    test('(b) missing outcome accepted (backward compat — null in meta)', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'reviewer',
+            correlationId: 'reviewer-1747200000000',
+            success: true,
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        // outcome is optional → null in meta (backward compat for v:1 records)
+        expect((meta as Record<string, unknown>).outcome ?? null).toBeNull()
+    })
+
+    test('(c) invalid outcome rejected', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'verifier',
+            correlationId: 'verifier-1747200000000',
+            outcome: 'not-a-real-outcome',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// telemetry janitor (reset-pipeline archive side-effect)
+// ---------------------------------------------------------------------------
+
+describe('telemetry janitor', () => {
+    test('(a) reset-pipeline with runId completes without throwing (archive best-effort)', async () => {
+        mockAppendTelemetry.mockClear()
+        mockReadLucaState.mockReturnValue({
+            runId: 'run_test_archive_a',
+        } as any)
+        const result = await callAction({ action: 'reset-pipeline' })
+        expect(result.success).toBe(true)
+    })
+
+    test('(b) reset-pipeline with no runId skips archive cleanly', async () => {
+        mockReadLucaState.mockReturnValue({} as any)
+        const result = await callAction({ action: 'reset-pipeline' })
+        expect(result.success).toBe(true)
+    })
+
+    test('(c) reset-pipeline with invalid runId still resets state (try/catch swallows)', async () => {
+        // Invalid runId would fail assertValidRunId — janitor's try/catch must
+        // swallow so state-reset completes regardless.
+        const warnSpy = spyOn(console, 'warn').mockImplementation(() => {})
+        mockReadLucaState.mockReturnValue({
+            runId: '../../etc/passwd', // would fail assertValidRunId
+        } as any)
+        const result = await callAction({ action: 'reset-pipeline' })
+        expect(result.success).toBe(true)
+        warnSpy.mockRestore()
+    })
+
+    test('(d) reset-pipeline clears reviewStartedAt so next run starts clean', async () => {
+        mockReadLucaState.mockReturnValue({
+            runId: 'run_test_clear_d',
+            reviewStartedAt: '2026-05-14T13:00:00.000Z',
+        } as any)
+        await callAction({ action: 'reset-pipeline' })
+        const written = mockWriteLucaState.mock.calls[0]![0]
+        expect(written.reviewStartedAt).toBeUndefined()
     })
 })

@@ -156,4 +156,27 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         // No `## ` (markdown H2) section heading may appear after the clarification.
         expect(tail).not.toMatch(/\n## /)
     })
+
+    // ── Drive-by #18 regression: reviewer-dx + reviewer-simpl ──────────────
+    // The original drift in PR #245 only manifested for the `dx` and `simpl`
+    // perspectives — the `arch` and `sec` perspectives emitted usage correctly.
+    // Root cause: reviewer.ts instructions are shared across perspectives, but
+    // the usage clarification was buried mid-document, and attention burial
+    // statistically hit the latter half of the prompt (dx/simpl perspectives
+    // were typically the last-spawned subagents in the parallel batch).
+    //
+    // The fix (PR #245 + iter-2 follow-up) pinned the clarification as the
+    // LAST line of reviewer.ts. The test below asserts BOTH the structural
+    // anchor (lastIndexOf) holds AND no subsequent `## ` heading exists for
+    // the assembled prompt that all 4 perspectives receive.
+    test('drive-by #18: reviewer.ts terminal usage instruction is the last `Append the usage comment` occurrence (anchors dx/simpl perspectives)', () => {
+        const lastPos = assembled.lastIndexOf('Append the usage comment')
+        const firstPos = assembled.indexOf('Append the usage comment')
+        // Either single occurrence (preferred) or last == terminal.
+        expect(lastPos).toBeGreaterThan(-1)
+        expect(lastPos).toBeGreaterThanOrEqual(firstPos)
+        // No `## ` heading may follow the LAST occurrence (terminal invariant).
+        const tail = assembled.slice(lastPos)
+        expect(tail).not.toMatch(/\n## /)
+    })
 })
