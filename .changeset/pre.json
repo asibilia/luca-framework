@@ -13,6 +13,7 @@
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
     "subagent-invocation-telemetry",
+    "telemetry-batch-completion",
     "wave-duration-telemetry"
   ]
 }
