@@ -58,7 +58,7 @@ Run `runChecks` for TypeScript compilation, linting, and tests. Record results f
 // → Before spawning: const ts = Date.now()
 // → Emit 4 record-subagent invoke records (role: "reviewer") with correlationIds: "reviewer-arch-${ts}", "reviewer-dx-${ts}", "reviewer-sec-${ts}", "reviewer-simpl-${ts}"
 // → Spawn 4 reviewer subagents in parallel (see spawn list below)
-// → After batch returns: emit 4 record-subagent complete records reusing matching correlationIds. Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. Pass `success: true` if result has content, `success: false` if subagent errored.
+// → After batch returns: emit 4 record-subagent complete records reusing matching correlationIds. Measure `durationMs = Date.now() - ts` per reviewer (or per-reviewer end timestamp if available). Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. Pass `success: true` if result has content, `success: false` if subagent errored.
 // → correlationId format: `<role>-<Date.now()>` e.g. "reviewer-arch-1747185300123". See "Subagent Telemetry" in execute.md for the full token-parsing pattern.
 
 Spawn 4 reviewer subagents in parallel:
