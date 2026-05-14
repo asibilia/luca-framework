@@ -110,6 +110,7 @@ export const ShadowDebtConfigSchema = z.object({
             'migration/',
             'done/',
             'plans/',
+            'telemetry/',
         ]),
     planning_root_versioned_patterns: z
         .array(z.string())

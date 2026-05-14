@@ -119,6 +119,18 @@ export interface LucaWorkflowState {
      */
     currentModeStartedAt?: string
 
+    /**
+     * Timestamp (ISO 8601) when the current review mode (luca:5-review) was
+     * entered via a successful `switch-mode` call. Consumed by the
+     * `save-review-results` action to compute the `review.iteration` event's
+     * `durationMs`. Cleared by `reset-pipeline` and on `re-enter-pipeline`
+     * to prevent cross-run duration bleed.
+     *
+     * Treated as opaque — `finiteOrNull` guards against malformed values
+     * (Copilot PR #239 NaN-guard pattern). Do not remove that guard.
+     */
+    reviewStartedAt?: string
+
     // --- Phase proof (set by start-phase, consumed by complete-phase) ---
     currentPhaseStartSnapshot?: PhaseSnapshotState
 

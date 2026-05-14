@@ -1,4 +1,5 @@
-import { join, relative } from 'node:path'
+import { existsSync, mkdirSync, renameSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
@@ -33,6 +34,9 @@ import {
     planningRoot,
     resolveAvailableSlug,
     ROADMAP_PATH,
+    TELEMETRY_PATH,
+    TELEMETRY_ARCHIVE_PATH,
+    assertValidRunId,
 } from '../util/phase-paths.js'
 import { tickPhaseTasks } from '../util/plan-checkboxes.js'
 import { switchModeRef, contextRefresherRef } from '../util/refs.js'
@@ -116,6 +120,20 @@ function clampTokens(n: number | null | undefined): number | null {
     if (n < 0) return null
     if (n > 10_000_000) return null
     return Math.floor(n)
+}
+
+/**
+ * Strip CR/LF/tab from a string and cap length for safe inclusion in
+ * single-line `console.warn` messages and telemetry meta fields.
+ * Defence-in-depth against CWE-117 (log injection); the per-action Zod
+ * schemas already reject CR/LF/tab at the input boundary, but consumers
+ * may pass an already-validated value through this helper before storing
+ * it alongside untrusted state.
+ */
+function sanitizeLogMessage(input: unknown): string {
+    return String(input instanceof Error ? input.message : input)
+        .replace(/[\r\n\t]/g, ' ')
+        .slice(0, 200)
 }
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
@@ -203,6 +221,32 @@ const saveReviewResultsAction = z.object({
         .optional()
         .describe('Focused list of fixes for next execute iteration'),
     reviewIteration: z.number().optional().describe('Review iteration number'),
+    /**
+     * Review perspectives covered this iteration (e.g. ['architecture',
+     * 'security', 'simplification', 'dx']). Stored in `meta.perspectives`
+     * on the emitted `review.iteration` telemetry. Each entry capped at
+     * 64 chars + regex; array capped at 10 to prevent meta-field bloat.
+     */
+    perspectives: z
+        .array(
+            z
+                .string()
+                .max(64)
+                .regex(
+                    /^[a-z0-9_-]+$/,
+                    'perspective must be lowercase alnum + _ -'
+                )
+        )
+        .max(10)
+        .optional(),
+    /** Optional severity counts for richer telemetry. */
+    mustFixCount: z.number().int().nonnegative().optional(),
+    shouldFixCount: z.number().int().nonnegative().optional(),
+    noteCount: z.number().int().nonnegative().optional(),
+    /** Reviewer verdict — surfaces in meta.verdict for convergence analysis. */
+    verdict: z
+        .enum(['approved', 'changes_requested', 'issues_found'])
+        .optional(),
 })
 
 const EMPTY_PHASE_CATEGORIES = [
@@ -275,6 +319,67 @@ const recordSubagentAction = z.object({
     durationMs: z.number().nullable().optional(),
     success: z.boolean().nullable().optional(),
     model: z.string().max(64).nullable().optional(),
+    /**
+     * Failure-mode disambiguation for `complete` events. Lets callers
+     * distinguish crashed / killed / timed-out / partial-parse cases
+     * instead of conflating all as `success: false`. Stored in
+     * `meta.outcome` on emit (NOT top-level — keeps the v:1 TelemetryRecord
+     * schema additive-safe).
+     */
+    outcome: z
+        .enum([
+            'completed',
+            'completed_no_usage',
+            'completed_partial_parse',
+            'crashed',
+            'killed',
+            'timeout',
+        ])
+        .nullable()
+        .optional(),
+})
+
+const recordRecallAction = z.object({
+    action: z.literal('record-recall'),
+    /**
+     * Caller's recall query string (free-form). Capped at 512 chars and
+     * stripped of CR/LF/tab before storage to defuse log-injection
+     * (CWE-117); telemetry.ts then `sanitizeLogMessage`s the return
+     * message a second time.
+     */
+    query: z
+        .string()
+        .min(1)
+        .max(512)
+        .regex(/^[^\r\n\t]+$/, 'query must not contain CR/LF/tab'),
+    /** Number of matches returned by muninn_recall (null when unknown). */
+    resultCount: z.number().int().nonnegative().nullable().optional(),
+    /**
+     * Number of matches with trust=verified. Clamped against `resultCount`
+     * server-side — if `resultCount` is null, `verifiedCount` is forced null
+     * to prevent meaningless ratios in the aggregator.
+     */
+    verifiedCount: z.number().int().nonnegative().nullable().optional(),
+    /** Vault scope (e.g. 'luca-framework'). */
+    vault: z
+        .string()
+        .max(64)
+        .regex(/^[a-z0-9_-]+$/, 'vault must be lowercase alnum + _ -')
+        .nullable()
+        .optional(),
+    /**
+     * Recall mode (semantic/recent/balanced/deep). Stored in
+     * `meta.callerMode` to avoid colliding with the top-level
+     * `oversight` mode resolved server-side.
+     */
+    mode: z
+        .string()
+        .max(64)
+        .regex(/^[a-z0-9:_-]+$/, 'mode must be lowercase alnum + :_-')
+        .nullable()
+        .optional(),
+    /** Recall round-trip duration. Travels in `overrides` (top-level field). */
+    durationMs: z.number().nullable().optional(),
 })
 
 // ── All valid actions (exported for createScopedTool) ──────────────
@@ -294,6 +399,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     're-enter-pipeline',
     'archive-loose',
     'record-subagent',
+    'record-recall',
 ] as const
 
 export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
@@ -410,6 +516,43 @@ const workflowStateInputSchema = z.object({
         .number()
         .optional()
         .describe('Review iteration number (save-review-results only).'),
+    perspectives: z
+        .array(z.string().max(64))
+        .max(10)
+        .optional()
+        .describe(
+            'Review perspectives covered (save-review-results only). Surfaces in review.iteration telemetry meta.'
+        ),
+    mustFixCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe(
+            'Count of must-fix findings (save-review-results only). Meta-only.'
+        ),
+    shouldFixCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe(
+            'Count of should-fix findings (save-review-results only). Meta-only.'
+        ),
+    noteCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe(
+            'Count of note findings (save-review-results only). Meta-only.'
+        ),
+    verdict: z
+        .enum(['approved', 'changes_requested', 'issues_found'])
+        .optional()
+        .describe(
+            'Reviewer verdict (save-review-results only). Meta-only.'
+        ),
 
     // re-enter-pipeline
     reason: z
@@ -500,6 +643,66 @@ const workflowStateInputSchema = z.object({
         .describe(
             'Model identifier used by the subagent (record-subagent only).'
         ),
+    outcome: z
+        .enum([
+            'completed',
+            'completed_no_usage',
+            'completed_partial_parse',
+            'crashed',
+            'killed',
+            'timeout',
+        ])
+        .nullable()
+        .optional()
+        .describe(
+            'Failure-mode disambiguation for record-subagent complete events. Stored in meta.outcome.'
+        ),
+
+    // record-recall
+    query: z
+        .string()
+        .max(512)
+        .optional()
+        .describe(
+            "Recall query string (required for 'record-recall'). Capped at 512 chars; CR/LF/tab rejected."
+        ),
+    resultCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional()
+        .describe(
+            'Number of matches returned by muninn_recall (record-recall only).'
+        ),
+    verifiedCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .optional()
+        .describe(
+            'Verified-tier subset of resultCount (record-recall only). Clamped server-side.'
+        ),
+    vault: z
+        .string()
+        .max(64)
+        .nullable()
+        .optional()
+        .describe('Vault scope (record-recall only).'),
+    // `mode` is the recall mode (semantic/recent/balanced/deep) — distinct
+    // from `targetMode` (switch-mode) and the pipeline `oversight` mode.
+    mode: z
+        .string()
+        .max(64)
+        .nullable()
+        .optional()
+        .describe(
+            'Recall mode: semantic | recent | balanced | deep (record-recall only). Stored as meta.callerMode.'
+        ),
+    // `durationMs` is already declared above for record-subagent; reused
+    // for record-recall — same field, different action semantics. The
+    // per-action schema is the source of truth.
 })
 
 export type WorkflowStateInput = z.infer<typeof workflowStateInputSchema>
@@ -699,7 +902,17 @@ export const workflowStateTool = createTool({
                         // updated but currentModeStartedAt stale — the next mode.end will emit
                         // durationMs: null (no prior timestamp), which is safe and recoverable.
                         const modeStartedAt = new Date().toISOString()
-                        writeLucaState({ currentModeStartedAt: modeStartedAt })
+                        const postSwitchUpdates: Record<string, unknown> = {
+                            currentModeStartedAt: modeStartedAt,
+                        }
+                        // Stamp reviewStartedAt on review-mode entry so
+                        // save-review-results can compute durationMs. Cleared
+                        // on reset-pipeline + re-enter-pipeline (review-loop
+                        // resumes via re-enter-pipeline, not switch-mode).
+                        if (targetMode === MODES.review) {
+                            postSwitchUpdates.reviewStartedAt = modeStartedAt
+                        }
+                        writeLucaState(postSwitchUpdates)
 
                         // Telemetry: outer pipeline loop durations.
                         // appendTelemetry is fail-safe — never throws.
@@ -1186,10 +1399,25 @@ export const workflowStateTool = createTool({
                     }
                 }
                 case 'save-review-results': {
-                    const { iterationPlan, reviewIteration } = parseAction(
-                        saveReviewResultsAction,
-                        raw
-                    )
+                    const {
+                        iterationPlan,
+                        reviewIteration,
+                        perspectives,
+                        mustFixCount,
+                        shouldFixCount,
+                        noteCount,
+                        verdict,
+                    } = parseAction(saveReviewResultsAction, raw)
+                    // Capture priorIteration BEFORE writeLucaState() so the
+                    // telemetry record reports the iteration whose findings
+                    // are being saved — not the post-increment value.
+                    const preReviewState = readLucaState()
+                    const priorIteration =
+                        (preReviewState.reviewIteration as number | undefined) ??
+                        0
+                    const reviewStartedAt = preReviewState.reviewStartedAt as
+                        | string
+                        | undefined
                     const reviewState = writeLucaState({
                         iterationPlan: iterationPlan ?? undefined,
                         reviewIteration: reviewIteration ?? undefined,
@@ -1198,6 +1426,29 @@ export const workflowStateTool = createTool({
                         iterationPlan,
                         reviewIteration,
                     })
+                    // Telemetry: emit review.iteration with severity counts +
+                    // perspectives + durationMs (computed from reviewStartedAt
+                    // when present; null fallback otherwise).
+                    // appendTelemetry is fail-safe — never throws.
+                    const reviewDurationMs = reviewStartedAt
+                        ? finiteOrNull(
+                              Date.now() -
+                                  new Date(reviewStartedAt).getTime()
+                          )
+                        : null
+                    appendTelemetry(
+                        'review.iteration',
+                        {
+                            iteration:
+                                reviewIteration ?? priorIteration,
+                            verdict: verdict ?? null,
+                            mustFixCount: mustFixCount ?? null,
+                            shouldFixCount: shouldFixCount ?? null,
+                            noteCount: noteCount ?? null,
+                            perspectives: perspectives ?? null,
+                        },
+                        { durationMs: reviewDurationMs }
+                    )
                     return {
                         success: true,
                         message: `Review results saved${reviewIteration != null ? ` (iteration ${reviewIteration})` : ''}${iterationPlan?.length ? `, ${iterationPlan.length} fixes planned` : ''}`,
@@ -1256,6 +1507,24 @@ export const workflowStateTool = createTool({
                         | undefined
                     if (priorRunId) {
                         archivePriorRun(priorRunId)
+                        // Telemetry janitor — best-effort archive of the prior
+                        // run's JSONL into .planning/telemetry/archive/. Never
+                        // throws: a corrupted runId, missing file, EACCES, or
+                        // cross-device rename all drop to a sanitized warn so
+                        // reset-pipeline can complete its mutation regardless.
+                        try {
+                            assertValidRunId(priorRunId)
+                            const src = TELEMETRY_PATH(priorRunId)
+                            const dest = TELEMETRY_ARCHIVE_PATH(priorRunId)
+                            if (existsSync(src)) {
+                                mkdirSync(dirname(dest), { recursive: true })
+                                renameSync(src, dest)
+                            }
+                        } catch (err) {
+                            console.warn(
+                                `[telemetry-janitor] skipped archival: ${sanitizeLogMessage(err)}`
+                            )
+                        }
                     }
                     const freshState = writeLucaState({
                         pipelineStep: 'idle',
@@ -1285,6 +1554,9 @@ export const workflowStateTool = createTool({
                         // first switch-mode emits mode.end with durationMs=null
                         // instead of bleeding the prior run's mode duration.
                         currentModeStartedAt: undefined,
+                        // Review-iteration telemetry — same rationale as
+                        // currentModeStartedAt: prevent cross-run duration bleed.
+                        reviewStartedAt: undefined,
                         assignedTodos: undefined,
                         phaseResults: undefined,
                         // Phase-diff snapshots (Step 2 of the postmortem plan)
@@ -1327,13 +1599,22 @@ export const workflowStateTool = createTool({
                     }
 
                     // Preserve existing state, update pipeline position and reset review counters
-                    const reEntryState = writeLucaState({
+                    const reEntryUpdates: Record<string, unknown> = {
                         pipelineStep: reEntryTarget,
                         nextMode: reEntryTarget,
                         reEntryReason,
                         reviewIteration: 0,
                         budgetExceeded: false,
-                    })
+                    }
+                    // Stamp reviewStartedAt on review re-entry so the next
+                    // save-review-results call computes durationMs correctly.
+                    // Clear it when re-entering execute (review-loop cycled back).
+                    if (reEntryTarget === MODES.review) {
+                        reEntryUpdates.reviewStartedAt = new Date().toISOString()
+                    } else {
+                        reEntryUpdates.reviewStartedAt = undefined
+                    }
+                    const reEntryState = writeLucaState(reEntryUpdates)
                     appendLedger('pipeline-re-entered', {
                         targetMode: reEntryTarget,
                         reason: reEntryReason,
@@ -1448,12 +1729,62 @@ export const workflowStateTool = createTool({
                             outputTokens: clampTokens(outputTokens),
                             success: success ?? null,
                             model: model ?? null,
+                            outcome: parsed.data.outcome ?? null,
                         },
                         { durationMs: finiteOrNull(durationMs) }
                     )
                     return {
                         success: true,
                         message: `Telemetry emitted: ${kind} (role=${role}, correlationId=${correlationId})`,
+                    }
+                }
+                case 'record-recall': {
+                    const parsed = recordRecallAction.safeParse(raw)
+                    if (!parsed.success) {
+                        throw new ActionValidationError(
+                            'record-recall',
+                            parsed.error.issues
+                                .map((i) => i.message)
+                                .join('; ')
+                        )
+                    }
+                    const {
+                        query,
+                        resultCount,
+                        verifiedCount,
+                        vault,
+                        mode: callerMode,
+                        durationMs,
+                    } = parsed.data
+                    // Clamp verifiedCount: null-propagate when resultCount is
+                    // null (meaningless verified/total ratio without a total),
+                    // else cap at resultCount so an over-reported value can't
+                    // poison aggregate stats.
+                    const clampedVerified =
+                        resultCount == null
+                            ? null
+                            : Math.min(verifiedCount ?? 0, resultCount)
+                    // Dispatch hit vs miss by resultCount. Null counts (caller
+                    // didn't measure) default to miss — aggregator can ignore.
+                    const kind: TelemetryKind =
+                        (resultCount ?? 0) > 0 ? 'recall.hit' : 'recall.miss'
+                    appendTelemetry(
+                        kind,
+                        {
+                            query: sanitizeLogMessage(query),
+                            resultCount: resultCount ?? null,
+                            verifiedCount: clampedVerified,
+                            vault: vault ?? null,
+                            // user-supplied recall mode lives in meta.callerMode
+                            // to avoid colliding with the pipeline-level mode
+                            // resolved server-side from luca-state.json.
+                            callerMode: callerMode ?? null,
+                        },
+                        { durationMs: finiteOrNull(durationMs) }
+                    )
+                    return {
+                        success: true,
+                        message: `Telemetry emitted: ${kind} (query="${sanitizeLogMessage(query)}", resultCount=${resultCount ?? 'null'})`,
                     }
                 }
                 default: {
