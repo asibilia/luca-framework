@@ -77,11 +77,10 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
     })
 
     test('reviewer-specific usage clarification appears after CONSOLIDATED block', () => {
-        // The reviewer.ts clarification prose (not the literal <!-- usage: string)
-        // references "Core Operating Rules" and anchors placement to the CONSOLIDATED block.
+        // The reviewer.ts clarification prose anchors placement to the CONSOLIDATED block.
         // Check it appears after CONSOLIDATED: in the assembled prompt.
         const consolidatedPos = assembled.indexOf('CONSOLIDATED:')
-        const clarificationPos = assembled.indexOf('Core Operating Rules) is required')
+        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
         expect(consolidatedPos).toBeGreaterThan(-1)
         expect(clarificationPos).toBeGreaterThan(-1)
         expect(
@@ -95,7 +94,7 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         // in reviewer.ts. No `## ` section heading may follow it. This is the structural
         // root cause of the original drift — when clarification was followed by other
         // sections, attention burial caused reviewer-dx/simpl to skip usage emission.
-        const clarificationPos = assembled.indexOf('Core Operating Rules) is required')
+        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
         expect(clarificationPos).toBeGreaterThan(-1)
         const tail = assembled.slice(clarificationPos)
         // No `## ` (markdown H2) section heading may appear after the clarification.
