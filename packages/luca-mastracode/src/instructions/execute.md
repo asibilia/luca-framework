@@ -152,14 +152,15 @@ Before spawning each subagent, emit `subagent.invoke`. After it returns, emit `s
 
 **Parallel batches**: Generate N distinct correlationIds before the batch call. Emit N `invoke` records sequentially, then spawn. After batch returns, emit N `complete` records reusing the matching correlationIds.
 
-Example — single spawn:
+Example — single spawn (use `const ts = Date.now()` so the same `${ts}` value pairs invoke/complete):
 ```
+const ts = Date.now()
 // Before:
-workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: "executor-1747097200000" })
+workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: `executor-${ts}` })
 // After (success):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
 // After (error):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: "executor-1747097200000", success: false })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, success: false })
 ```
 
 ### Executor Guidelines

@@ -72,4 +72,13 @@ describe.each(FILES)('correlationId format in %s', (filename) => {
     test('negative: no hardcoded compact-ISO 14-digit timestamp (e.g. 20260514135050)', () => {
         expect(region).not.toMatch(/\b\d{14}\b/)
     })
+
+    test('negative: no hardcoded 10+ digit epoch timestamp outside example clauses (e.g. 1747100816781)', () => {
+        // `stripExamples` (applied to `region` above) already replaces
+        // explanatory `e.g. ... <digits> ...` clauses with `[example]` so
+        // this assertion catches a hardcoded epoch number that escapes the
+        // example context and would silently regress the spawn-site
+        // directive away from a live `Date.now()` call.
+        expect(region).not.toMatch(/\b\d{10,}\b/)
+    })
 })

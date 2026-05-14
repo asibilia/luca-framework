@@ -11,7 +11,7 @@ description: >
   telemetry summary", "luca-telemetry-report", or invokes
   `/luca-telemetry-report`.
 
-  Arguments: `--runs <N>` (default 10), `--since <ISO-date>`, `--vault <name>`.
+  Arguments: `--runs <N>` (default 10), `--since <ISO-date>`, `--vault <name>`, `--no-archive` (exclude `archive/` subdir; archive is included by default).
 ---
 
 # luca-telemetry-report Skill
@@ -64,6 +64,7 @@ Treat the union as **open**: aggregator must tolerate unknown kinds (count them 
 | `--runs N` | integer | 10 | `N >= 1 && N <= 1000` |
 | `--since <ISO>` | string | unset | `^\d{4}-\d{2}-\d{2}` (date-only or full ISO accepted) |
 | `--vault <name>` | string | unset | `^[a-z0-9_-]+$`, max 64 chars |
+| `--no-archive` | flag | unset | boolean — when set, exclude `.planning/telemetry/archive/` from enumeration |
 
 If validation fails, abort with a clear error message — do not silently continue with defaults.
 
@@ -75,7 +76,19 @@ If validation fails, abort with a clear error message — do not silently contin
 
 ## Step 2: Enumerate JSONL files
 
-Use `find .planning/telemetry -maxdepth 1 -name '*.jsonl' -print 2>/dev/null` (NOT shell glob — handles empty dir and nested subdirs gracefully). Each file = one run. The `archive/` subdirectory is intentionally excluded by `-maxdepth 1`; only active+completed runs at the dir root are aggregated.
+By default, enumerate **both** the active run dir and the `archive/` subdir so cross-run aggregation includes historical runs that `reset-pipeline` archived. This is critical: without archive inclusion the report would only see runs from the current session.
+
+Use:
+
+```bash
+# default: include archive (cross-run aggregation needs history)
+find .planning/telemetry -maxdepth 2 -name '*.jsonl' -print 2>/dev/null
+
+# when --no-archive is set: root-level only (current/in-flight runs)
+find .planning/telemetry -maxdepth 1 -name '*.jsonl' -print 2>/dev/null
+```
+
+NOT shell glob — handles empty dir and nested subdirs gracefully. Each file = one run; `archive/<runId>.jsonl` files are treated identically to root-level `<runId>.jsonl` files. Pass `--no-archive` to restrict to in-flight runs only (e.g. for debugging a live session).
 
 Sort by file mtime descending. Take the first `--runs N` files. If `--since <ISO>` is supplied, filter further by reading the first non-empty JSONL line and dropping files whose first `ts` is older than the threshold.
 

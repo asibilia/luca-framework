@@ -1259,6 +1259,32 @@ describe('record-recall telemetry', () => {
         expect(result.success !== true).toBe(true)
         expect(mockAppendTelemetry).not.toHaveBeenCalled()
     })
+
+    test('(i) null verifiedCount with non-null resultCount stays null (unknown ≠ zero)', async () => {
+        // Regression for PR #249 Copilot review (comment 3243491520):
+        // `verifiedCount ?? 0` previously collapsed "caller did not measure"
+        // into "zero verified" and biased verified-tier hit-rate aggregates.
+        // The new clamp must null-propagate when verifiedCount itself is
+        // null/undefined, regardless of resultCount.
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'unknown verified',
+            resultCount: 3,
+            // verifiedCount omitted entirely
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).verifiedCount).toBeNull()
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'record-recall',
+            query: 'explicit null verified',
+            resultCount: 3,
+            verifiedCount: null,
+        })
+        const [, meta2] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta2 as Record<string, unknown>).verifiedCount).toBeNull()
+    })
 })
 
 // ---------------------------------------------------------------------------

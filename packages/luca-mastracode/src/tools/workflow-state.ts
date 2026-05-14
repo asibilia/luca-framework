@@ -124,16 +124,34 @@ function clampTokens(n: number | null | undefined): number | null {
 
 /**
  * Strip CR/LF/tab from a string and cap length for safe inclusion in
- * single-line `console.warn` messages and telemetry meta fields.
+ * single-line `console.warn` messages.
  * Defence-in-depth against CWE-117 (log injection); the per-action Zod
  * schemas already reject CR/LF/tab at the input boundary, but consumers
- * may pass an already-validated value through this helper before storing
- * it alongside untrusted state.
+ * may pass an already-validated value through this helper before logging.
+ *
+ * NOTE: 200-char cap is for console legibility only. Do NOT use for
+ * persisting fields that have higher schema max() — use
+ * `sanitizeTelemetryValue` instead to preserve the full schema-allowed
+ * value (otherwise telemetry meta is silently truncated below schema max).
  */
 function sanitizeLogMessage(input: unknown): string {
     return String(input instanceof Error ? input.message : input)
         .replace(/[\r\n\t]/g, ' ')
         .slice(0, 200)
+}
+
+/**
+ * Strip CR/LF/tab from a string for safe inclusion in telemetry meta
+ * fields, WITHOUT truncating. Use this for values whose per-action Zod
+ * schema permits lengths >200 chars (e.g. record-recall `query` is
+ * `.max(512)`). The schema-level cap is the source of truth for the
+ * stored size; this helper only normalises whitespace control chars.
+ */
+function sanitizeTelemetryValue(input: unknown): string {
+    return String(input instanceof Error ? input.message : input).replace(
+        /[\r\n\t]/g,
+        ' '
+    )
 }
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
@@ -1756,14 +1774,21 @@ export const workflowStateTool = createTool({
                         mode: callerMode,
                         durationMs,
                     } = parsed.data
-                    // Clamp verifiedCount: null-propagate when resultCount is
-                    // null (meaningless verified/total ratio without a total),
-                    // else cap at resultCount so an over-reported value can't
-                    // poison aggregate stats.
+                    // Clamp verifiedCount.
+                    // - null-propagate when resultCount is null (no total → ratio
+                    //   undefined)
+                    // - null-propagate when verifiedCount itself is null/undefined
+                    //   so aggregators can distinguish "unknown / not measured"
+                    //   from "zero verified" (`?? 0` would bias verified-tier
+                    //   hit-rate stats by collapsing both signals to 0).
+                    // - else cap at resultCount so an over-reported value can't
+                    //   poison aggregate stats.
                     const clampedVerified =
                         resultCount == null
                             ? null
-                            : Math.min(verifiedCount ?? 0, resultCount)
+                            : verifiedCount == null
+                              ? null
+                              : Math.min(verifiedCount, resultCount)
                     // Dispatch hit vs miss by resultCount. Null counts (caller
                     // didn't measure) default to miss — aggregator can ignore.
                     const kind: TelemetryKind =
@@ -1771,7 +1796,11 @@ export const workflowStateTool = createTool({
                     appendTelemetry(
                         kind,
                         {
-                            query: sanitizeLogMessage(query),
+                            // Preserve full query up to schema .max(512); only
+                            // strip CR/LF/tab. sanitizeLogMessage's 200-char cap
+                            // would silently truncate telemetry storage below
+                            // the schema-allowed size.
+                            query: sanitizeTelemetryValue(query),
                             resultCount: resultCount ?? null,
                             verifiedCount: clampedVerified,
                             vault: vault ?? null,

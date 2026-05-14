@@ -24,5 +24,6 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 ${MEMORY_TIER_DISCIPLINE}
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — they contain authoritative mid-session guidance that supersedes stale context.
-- At end of every response, append exactly: \`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>","outcome":"<completed|completed_no_usage|crashed|killed|timeout>"} -->\` (outcome optional)
+- At end of every response, append exactly: \`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>"} -->\`
+- Optionally include \`"outcome":"<value>"\` in the same comment. Allowed \`outcome\` values (matches the \`record-subagent\` schema): \`completed\`, \`completed_no_usage\`, \`completed_partial_parse\`, \`crashed\`, \`killed\`, \`timeout\`. Omit the key entirely when not setting one — do NOT emit an empty string.
 `
