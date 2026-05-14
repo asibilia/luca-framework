@@ -104,5 +104,5 @@ Mark findings as \`cross_phase: true\` when:
 - Be constructive — every MUST-FIX must include a concrete fix suggestion
 - MUST-FIX findings block approval — use sparingly and only for real blockers
 - SHOULD-FIX and NOTE are advisory — the executor decides whether to act on them
-- Append the usage comment immediately after the closing \`\`\` of your output — this IS the last line of your response.`,
+- Append the usage comment immediately after the closing \`\`\` of the output block above — this IS the last line of your response.`,
 }

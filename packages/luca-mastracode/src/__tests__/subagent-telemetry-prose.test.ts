@@ -54,6 +54,29 @@ describe('review.md contains record-subagent prose', () => {
     })
 })
 
+describe('review.md Step 4 record-subagent is outside fenced code blocks', () => {
+    test('record-subagent directive is NOT inside a ``` fence (fence-split regression)', () => {
+        // If record-subagent calls are wrapped in a fenced block, the agent treats them
+        // as illustrative documentation and skips execution. This caused all 4 outer
+        // reviewer subagents to return success:false (confirmed in two consecutive runs).
+        // Algorithm: split by ``` delimiters; odd-indexed segments are inside fences.
+        // record-subagent must only appear in even-indexed (outside-fence) segments.
+        const content = readInstruction('review.md')
+        const segments = content.split('```')
+        const insideFenceSegments = segments.filter((_, i) => i % 2 === 1)
+        for (const segment of insideFenceSegments) {
+            expect(segment).not.toContain('record-subagent')
+        }
+    })
+
+    test('review.md Step 4 correlationId directive references Date.now() not a literal epoch', () => {
+        // <ts> placeholder caused agents to emit literal string "reviewer-arch-<ts>" —
+        // all correlationIds identical, making invoke<->complete join undefined.
+        const content = readInstruction('review.md')
+        expect(content).toContain('Date.now()')
+    })
+})
+
 describe('finalize.md contains record-subagent prose', () => {
     test('file includes record-subagent', () => {
         expect(readInstruction('finalize.md')).toContain('record-subagent')

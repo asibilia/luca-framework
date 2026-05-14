@@ -55,23 +55,11 @@ Run `runChecks` for TypeScript compilation, linting, and tests. Record results f
 
 **Subagent Telemetry — parallel batch protocol**:
 
-Before the batch call, generate 4 distinct `correlationId`s (one per perspective) and emit 4 `record-subagent` invoke records sequentially. After the batch returns, emit 4 `record-subagent` complete records reusing the matching correlationIds. Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for token counts; pass `null` when absent or malformed.
-
-```
-// Before batch:
-workflowState({ action: "record-subagent", event: "invoke", role: "reviewer", correlationId: "reviewer-arch-<ts>" })
-workflowState({ action: "record-subagent", event: "invoke", role: "reviewer", correlationId: "reviewer-dx-<ts>" })
-workflowState({ action: "record-subagent", event: "invoke", role: "reviewer", correlationId: "reviewer-sec-<ts>" })
-workflowState({ action: "record-subagent", event: "invoke", role: "reviewer", correlationId: "reviewer-simpl-<ts>" })
-
-// ... spawn 4 reviewer subagents in parallel ...
-
-// After batch returns (per-reviewer, reuse matching correlationId):
-workflowState({ action: "record-subagent", event: "complete", role: "reviewer", correlationId: "reviewer-arch-<ts>", inputTokens, outputTokens, durationMs, success: true, model })
-workflowState({ action: "record-subagent", event: "complete", role: "reviewer", correlationId: "reviewer-dx-<ts>", inputTokens, outputTokens, durationMs, success: true, model })
-workflowState({ action: "record-subagent", event: "complete", role: "reviewer", correlationId: "reviewer-sec-<ts>", inputTokens, outputTokens, durationMs, success: true, model })
-workflowState({ action: "record-subagent", event: "complete", role: "reviewer", correlationId: "reviewer-simpl-<ts>", inputTokens, outputTokens, durationMs, success: true, model })
-```
+// → Before spawning: const ts = Date.now()
+// → Emit 4 record-subagent invoke records (role: "reviewer") with correlationIds: "reviewer-arch-${ts}", "reviewer-dx-${ts}", "reviewer-sec-${ts}", "reviewer-simpl-${ts}"
+// → Spawn 4 reviewer subagents in parallel (see spawn list below)
+// → After batch returns: emit 4 record-subagent complete records reusing matching correlationIds. Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. Pass `success: true` if result has content, `success: false` if subagent errored.
+// → correlationId format: `<role>-<Date.now()>` e.g. "reviewer-arch-1747185300123". See "Subagent Telemetry" in execute.md for the full token-parsing pattern.
 
 Spawn 4 reviewer subagents in parallel:
 
