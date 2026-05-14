@@ -1,2 +1,14 @@
 # Test configuration intentionally removed.
 # Tests were removed wholesale to prevent memory exhaustion.
+
+[install]
+# Refuse package versions newer than 7 days. Defends against fresh
+# supply-chain compromises (e.g. Shai-Hulud TanStack wave, May 2026)
+# by skipping releases before the ecosystem has had time to flag them.
+# 7 days = 60 * 60 * 24 * 7 = 604800
+minimumReleaseAge = 604800
+
+# Block transitive deps installed via git/tarball/etc. The TanStack
+# attack used `"@tanstack/setup": "github:tanstack/router#<sha>"` as
+# its entrypoint dependency — this setting prevents that vector.
+blockExoticSubdeps = true
