@@ -1,0 +1,47 @@
+{
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-w3-all",
+      "description": "Wave 3 tests + changeset complete; all iteration plan items satisfied; bun test 401/401 (+58 from baseline 343); tsc + eslint clean on changed files",
+      "met": true,
+      "evidence": "commit 0cb76fe7b — 6 files, 604 insertions; .changeset/telemetry-batch-completion.md (minor bump); NEW correlationid-format-prose.test.ts (12 tests), NEW recall-prose.test.ts (21 tests), NEW aggregator-skill-presence.test.ts (4 tests); extended workflow-state-actions.test.ts (+19 lettered sub-tests across record-recall/review.iteration/outcome/janitor); drive-by #18 reviewer-dx/simpl terminal-usage regression in subagent-telemetry-prose.test.ts",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-checks-final",
+      "description": "All checks pass on final commit",
+      "met": true,
+      "evidence": "bun tsc --noEmit clean; bun test 401 pass 0 fail; bunx eslint on 5 changed test files: 0 errors (54 pre-existing warnings unrelated)",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "eslint",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 54
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Iteration plan items 1–6 all addressed. Branch feat/telemetry-batch-completion has 3 commits (Waves 1+2+3) ready for PR. Closes #43 #44 #45 #46 #29 #11 #17 #18 #10.",
+  "timestamp": "2026-05-14T17:55:25.276Z",
+  "runId": "run_mp4r42w1_03llzawf"
+}
