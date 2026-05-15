@@ -77,6 +77,34 @@ describe('Memory Tier Discipline — prefix integration', () => {
         }
     })
 
+    test('SUBAGENT_SHARED_PREFIX runtime contains pre-invoke recall directive', async () => {
+        const { SUBAGENT_SHARED_PREFIX } = await import(
+            '../subagents/shared-prefix.js'
+        )
+        expect(SUBAGENT_SHARED_PREFIX).toContain('Pre-Invoke Memory Recall')
+        expect(SUBAGENT_SHARED_PREFIX).toContain('muninn_recall')
+        // Hedge prevents dead-weight instruction for non-MCP subagents.
+        expect(SUBAGENT_SHARED_PREFIX).toContain(
+            'If MuninnDB MCP tools are available',
+        )
+    })
+
+    test('SUBAGENT_SHARED_PREFIX total size stays under 3000 chars', async () => {
+        // Budget rationale: shared-prefix.ts docstring asks "<400 tokens"
+        // (≈1600 chars) for the *static* boilerplate portion. The runtime
+        // string also interpolates MEMORY_TIER_DISCIPLINE (~1590 chars), so
+        // the realistic total target is ~2700 chars. 3000 leaves ~300 chars
+        // of headroom; further growth must trim discipline blocks or be
+        // justified by an updated budget comment in shared-prefix.ts.
+        // 9× multiplier across all spawned subagents makes this guard
+        // non-negotiable — bloat here cascades into every research/review
+        // batch.
+        const { SUBAGENT_SHARED_PREFIX } = await import(
+            '../subagents/shared-prefix.js'
+        )
+        expect(SUBAGENT_SHARED_PREFIX.length).toBeLessThan(3000)
+    })
+
     test('getAgentConstraints() runtime contains the tier rule', async () => {
         const { getAgentConstraints } = await import(
             '../agent-constraints.js'

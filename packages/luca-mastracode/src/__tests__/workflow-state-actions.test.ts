@@ -1392,6 +1392,89 @@ describe('review.iteration telemetry', () => {
 })
 
 // ---------------------------------------------------------------------------
+// record-recall flat-schema regex guards (defense-in-depth)
+//
+// CAVEAT — TEST PATH NOTE:
+// These tests invoke `callAction` which calls `workflowStateTool.execute!`
+// directly. That path bypasses Mastra's outer `workflowStateInputSchema`
+// (the *flat* schema) and only exercises the per-action discriminated schema
+// (`recordRecallAction`). The per-action schema already carried these
+// regexes, so a failing assertion here would catch a *per-action* regression,
+// not a flat-schema regression.
+//
+// The flat-schema regexes are defense-in-depth at Mastra's tool-invocation
+// boundary (when invoked via Anthropic tool-use). They protect callers that
+// hit the input schema before reaching the action dispatcher. Independently
+// asserting them requires a Mastra integration test (not yet wired). Until
+// then, the per-action schema is the binding enforcement gate and these
+// assertions are sufficient for regression protection.
+// ---------------------------------------------------------------------------
+
+describe('record-recall flat-schema field guards', () => {
+    test.each([
+        ['carriage-return', 'find\rbreak'],
+        ['line-feed', 'find\nbreak'],
+        ['tab', 'find\tbreak'],
+    ])('(a) query with %s rejected at flat schema', async (_label, query) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query,
+            resultCount: 1,
+            vault: 'default',
+            mode: 'semantic',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test.each([
+        ['uppercase', 'Default'],
+        ['path-traversal', '../evil'],
+        ['injected-newline', 'valid\nevil'],
+        ['space', 'evil space'],
+    ])('(b) vault with %s rejected', async (_label, vault) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find',
+            resultCount: 1,
+            vault,
+            mode: 'semantic',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test.each([
+        ['uppercase', 'Semantic'],
+        ['injected-newline', 'semantic\nevil'],
+        ['space', 'evil mode'],
+    ])('(c) mode with %s rejected', async (_label, mode) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find',
+            resultCount: 1,
+            vault: 'default',
+            mode,
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test('(d) canonical valid record-recall passes flat schema', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find existing memories',
+            resultCount: 3,
+            verifiedCount: 1,
+            vault: 'default',
+            mode: 'semantic',
+        })
+        expect(result.success).toBe(true)
+    })
+})
+
+// ---------------------------------------------------------------------------
 // record-subagent outcome enum
 // ---------------------------------------------------------------------------
 
@@ -1432,6 +1515,68 @@ describe('record-subagent outcome enum', () => {
             role: 'verifier',
             correlationId: 'verifier-1747200000000',
             outcome: 'not-a-real-outcome',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    // Parametric guard — guarantees no enum value is accidentally removed.
+    // If the enum shrinks, one of these subtests will fail loudly.
+    const ALL_OUTCOMES: string[] = [
+        'completed',
+        'completed_no_usage',
+        'completed_partial_parse',
+        'crashed',
+        'killed',
+        'timeout',
+    ]
+    test.each(ALL_OUTCOMES)(
+        '(d) all 6 enum values accepted: %s',
+        async (outcome) => {
+            mockAppendTelemetry.mockClear()
+            await callAction({
+                action: 'record-subagent',
+                event: 'complete',
+                role: 'researcher',
+                correlationId: `researcher-${outcome}-1747200000000`,
+                outcome,
+            })
+            const [, meta] = mockAppendTelemetry.mock.calls[0]!
+            expect((meta as Record<string, unknown>).outcome).toBe(outcome)
+        }
+    )
+})
+
+// ---------------------------------------------------------------------------
+// record-subagent model field CR/LF guard
+// ---------------------------------------------------------------------------
+
+describe('record-subagent model field CR/LF guard', () => {
+    test('(a) valid model accepted', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-model-1747200000000',
+            model: 'anthropic/claude-opus-4-7',
+            success: true,
+        })
+        expect(result.success).toBe(true)
+    })
+
+    test.each([
+        ['carriage-return', 'anthropic/claude-opus-4-7\r'],
+        ['line-feed', 'anthropic/claude-opus-4-7\n'],
+        ['tab', 'anthropic/claude-opus-4-7\t'],
+        ['injected-newline-payload', 'valid\nevil-payload'],
+    ])('(b) model with %s rejected', async (_label, model) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-bad-model-1747200000000',
+            model,
         })
         expect(result.success !== true).toBe(true)
     })

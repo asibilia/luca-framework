@@ -336,7 +336,12 @@ const recordSubagentAction = z.object({
     outputTokens: z.number().int().nonnegative().nullable().optional(),
     durationMs: z.number().nullable().optional(),
     success: z.boolean().nullable().optional(),
-    model: z.string().max(64).nullable().optional(),
+    model: z
+        .string()
+        .max(64)
+        .regex(/^[^\r\n\t]+$/, 'model must not contain CR/LF/tab')
+        .nullable()
+        .optional(),
     /**
      * Failure-mode disambiguation for `complete` events. Lets callers
      * distinguish crashed / killed / timed-out / partial-parse cases
@@ -656,6 +661,7 @@ const workflowStateInputSchema = z.object({
     model: z
         .string()
         .max(64)
+        .regex(/^[^\r\n\t]+$/, 'model must not contain CR/LF/tab')
         .nullable()
         .optional()
         .describe(
@@ -680,6 +686,7 @@ const workflowStateInputSchema = z.object({
     query: z
         .string()
         .max(512)
+        .regex(/^[^\r\n\t]+$/, 'query must not contain CR/LF/tab')
         .optional()
         .describe(
             "Recall query string (required for 'record-recall'). Capped at 512 chars; CR/LF/tab rejected."
@@ -705,6 +712,7 @@ const workflowStateInputSchema = z.object({
     vault: z
         .string()
         .max(64)
+        .regex(/^[a-z0-9_-]+$/, 'vault must be lowercase alnum + _ -')
         .nullable()
         .optional()
         .describe('Vault scope (record-recall only).'),
@@ -713,6 +721,7 @@ const workflowStateInputSchema = z.object({
     mode: z
         .string()
         .max(64)
+        .regex(/^[a-z0-9:_-]+$/, 'mode must be lowercase alnum + :_-')
         .nullable()
         .optional()
         .describe(
