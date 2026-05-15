@@ -2,8 +2,9 @@
 title: "record-subagent failure-mode disambiguation — distinguish crashed / killed / empty-output / partial-parse instead of conflating all as success:false"
 area: telemetry
 created: 2026-05-14
-priority: medium
-source: run-mp5jq8br-analysis
+updated: 2026-05-15
+priority: high
+source: run-mp5jq8br-analysis, run-mp706uzq-analysis
 ---
 
 ## Task
@@ -11,9 +12,9 @@ source: run-mp5jq8br-analysis
 record-subagent failure-mode disambiguation — distinguish crashed / killed / empty-output / partial-parse instead of conflating all as success:false
 
 ---
-confidence: medium
+confidence: high
 externalResearch: false
-priority: 3
+priority: 2
 ---
 
 ## Problem
