@@ -46,6 +46,16 @@ describe('research.md contains record-subagent prose', () => {
     test('file includes record-subagent', () => {
         expect(readInstruction('research.md')).toContain('record-subagent')
     })
+
+    test('hang-timeout directive present', () => {
+        const src = readInstruction('research.md')
+        // The orchestrator must emit outcome:'timeout' for hung subagents.
+        expect(src).toContain('outcome: "timeout"')
+        // Elapsed-time check uses Date.now() (no harness timeout API).
+        expect(src).toContain('Date.now()')
+        // 60s wall-clock floor documented.
+        expect(src).toMatch(/60[_]?000|60s|60 seconds/)
+    })
 })
 
 describe('review.md contains record-subagent prose', () => {

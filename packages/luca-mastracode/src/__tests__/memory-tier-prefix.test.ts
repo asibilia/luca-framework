@@ -77,6 +77,28 @@ describe('Memory Tier Discipline — prefix integration', () => {
         }
     })
 
+    test('SUBAGENT_SHARED_PREFIX runtime contains pre-invoke recall directive', async () => {
+        const { SUBAGENT_SHARED_PREFIX } = await import(
+            '../subagents/shared-prefix.js'
+        )
+        expect(SUBAGENT_SHARED_PREFIX).toContain('Pre-Invoke Memory Recall')
+        expect(SUBAGENT_SHARED_PREFIX).toContain('muninn_recall')
+        // Hedge prevents dead-weight instruction for non-MCP subagents.
+        expect(SUBAGENT_SHARED_PREFIX).toContain(
+            'If MuninnDB MCP tools are available',
+        )
+    })
+
+    test('SUBAGENT_SHARED_PREFIX total size stays under 4000 chars', async () => {
+        // No prior total-prefix size assertion existed; this guard catches
+        // future bloat that would otherwise silently inflate every subagent
+        // context (9× multiplier).
+        const { SUBAGENT_SHARED_PREFIX } = await import(
+            '../subagents/shared-prefix.js'
+        )
+        expect(SUBAGENT_SHARED_PREFIX.length).toBeLessThan(4000)
+    })
+
     test('getAgentConstraints() runtime contains the tier rule', async () => {
         const { getAgentConstraints } = await import(
             '../agent-constraints.js'

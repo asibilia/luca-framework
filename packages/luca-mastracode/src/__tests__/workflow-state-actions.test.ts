@@ -1435,6 +1435,68 @@ describe('record-subagent outcome enum', () => {
         })
         expect(result.success !== true).toBe(true)
     })
+
+    // Parametric guard — guarantees no enum value is accidentally removed.
+    // If the enum shrinks, one of these subtests will fail loudly.
+    const ALL_OUTCOMES: string[] = [
+        'completed',
+        'completed_no_usage',
+        'completed_partial_parse',
+        'crashed',
+        'killed',
+        'timeout',
+    ]
+    test.each(ALL_OUTCOMES)(
+        '(d) all 6 enum values accepted: %s',
+        async (outcome) => {
+            mockAppendTelemetry.mockClear()
+            await callAction({
+                action: 'record-subagent',
+                event: 'complete',
+                role: 'researcher',
+                correlationId: `researcher-${outcome}-1747200000000`,
+                outcome,
+            })
+            const [, meta] = mockAppendTelemetry.mock.calls[0]!
+            expect((meta as Record<string, unknown>).outcome).toBe(outcome)
+        }
+    )
+})
+
+// ---------------------------------------------------------------------------
+// record-subagent model field CR/LF guard
+// ---------------------------------------------------------------------------
+
+describe('record-subagent model field CR/LF guard', () => {
+    test('(a) valid model accepted', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-model-1747200000000',
+            model: 'anthropic/claude-opus-4-7',
+            success: true,
+        })
+        expect(result.success).toBe(true)
+    })
+
+    test.each([
+        ['carriage-return', 'anthropic/claude-opus-4-7\r'],
+        ['line-feed', 'anthropic/claude-opus-4-7\n'],
+        ['tab', 'anthropic/claude-opus-4-7\t'],
+        ['injected-newline-payload', 'valid\nevil-payload'],
+    ])('(b) model with %s rejected', async (_label, model) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-subagent',
+            event: 'complete',
+            role: 'researcher',
+            correlationId: 'researcher-bad-model-1747200000000',
+            model,
+        })
+        expect(result.success !== true).toBe(true)
+    })
 })
 
 // ---------------------------------------------------------------------------
