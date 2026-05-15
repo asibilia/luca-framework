@@ -686,6 +686,7 @@ const workflowStateInputSchema = z.object({
     query: z
         .string()
         .max(512)
+        .regex(/^[^\r\n\t]+$/, 'query must not contain CR/LF/tab')
         .optional()
         .describe(
             "Recall query string (required for 'record-recall'). Capped at 512 chars; CR/LF/tab rejected."
@@ -711,6 +712,7 @@ const workflowStateInputSchema = z.object({
     vault: z
         .string()
         .max(64)
+        .regex(/^[a-z0-9_-]+$/, 'vault must be lowercase alnum + _ -')
         .nullable()
         .optional()
         .describe('Vault scope (record-recall only).'),
@@ -719,6 +721,7 @@ const workflowStateInputSchema = z.object({
     mode: z
         .string()
         .max(64)
+        .regex(/^[a-z0-9:_-]+$/, 'mode must be lowercase alnum + :_-')
         .nullable()
         .optional()
         .describe(

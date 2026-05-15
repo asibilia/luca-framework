@@ -1392,6 +1392,74 @@ describe('review.iteration telemetry', () => {
 })
 
 // ---------------------------------------------------------------------------
+// record-recall flat-schema regex guards (defense-in-depth)
+// ---------------------------------------------------------------------------
+
+describe('record-recall flat-schema field guards', () => {
+    test.each([
+        ['carriage-return', 'find\rbreak'],
+        ['line-feed', 'find\nbreak'],
+        ['tab', 'find\tbreak'],
+    ])('(a) query with %s rejected at flat schema', async (_label, query) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query,
+            resultCount: 1,
+            vault: 'default',
+            mode: 'semantic',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test.each([
+        ['uppercase', 'Default'],
+        ['path-traversal', '../evil'],
+        ['injected-newline', 'valid\nevil'],
+        ['space', 'evil space'],
+    ])('(b) vault with %s rejected', async (_label, vault) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find',
+            resultCount: 1,
+            vault,
+            mode: 'semantic',
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test.each([
+        ['uppercase', 'Semantic'],
+        ['injected-newline', 'semantic\nevil'],
+        ['space', 'evil mode'],
+    ])('(c) mode with %s rejected', async (_label, mode) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find',
+            resultCount: 1,
+            vault: 'default',
+            mode,
+        })
+        expect(result.success !== true).toBe(true)
+    })
+
+    test('(d) canonical valid record-recall passes flat schema', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'record-recall',
+            query: 'find existing memories',
+            resultCount: 3,
+            verifiedCount: 1,
+            vault: 'default',
+            mode: 'semantic',
+        })
+        expect(result.success).toBe(true)
+    })
+})
+
+// ---------------------------------------------------------------------------
 // record-subagent outcome enum
 // ---------------------------------------------------------------------------
 
