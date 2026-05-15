@@ -13,6 +13,7 @@
     "memory-audit-skill",
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
+    "recall-timeout-outcome-flag-model-crlf",
     "subagent-invocation-telemetry",
     "telemetry-batch-completion",
     "wave-duration-telemetry"
