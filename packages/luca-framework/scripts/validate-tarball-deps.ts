@@ -19,12 +19,17 @@
  * Usage: bun run scripts/validate-tarball-deps.ts [path/to/tarball.tgz]
  *        (defaults to packages/luca-framework/.pack/*.tgz)
  */
-import { readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
 const PINNED_PREFIXES = ['mastracode', '@mastra/']
 const EXACT_VERSION_RE = /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/
+
+const isMastraFamilyDep = (name: string): boolean =>
+    PINNED_PREFIXES.some(
+        (p) => name === p.replace(/\/$/, '') || name.startsWith(p)
+    )
 
 const pkgDir = resolve(import.meta.dir, '..')
 const tarballArg = process.argv[2]
@@ -34,6 +39,13 @@ if (tarballArg) {
     tarball = resolve(tarballArg)
 } else {
     const packDir = resolve(pkgDir, '.pack')
+    if (!existsSync(packDir)) {
+        console.error(
+            `[validate-tarball-deps] No tarball directory at ${packDir}. ` +
+                `Run \`bun pm pack --destination ./.pack\` first.`
+        )
+        process.exit(1)
+    }
     const tgz = readdirSync(packDir).filter((f) => f.endsWith('.tgz'))
     if (tgz.length === 0) {
         console.error(
@@ -55,38 +67,46 @@ if (tarballArg) {
 const result = spawnSync('tar', ['-xzOf', tarball, 'package/package.json'], {
     encoding: 'utf-8',
 })
+if (result.error || result.status === null) {
+    console.error(
+        `[validate-tarball-deps] Failed to spawn \`tar\` for ${tarball}: ` +
+            `${result.error?.message ?? 'process did not exit normally'}`
+    )
+    process.exit(1)
+}
 if (result.status !== 0) {
     console.error(
-        `[validate-tarball-deps] Failed to read package.json from ${tarball}: ${result.stderr}`
+        `[validate-tarball-deps] \`tar\` exited ${result.status} reading ${tarball}: ` +
+            `${result.stderr || '(no stderr)'}`
     )
     process.exit(1)
 }
 
-const pkg = JSON.parse(result.stdout)
-const deps: Record<string, string> = pkg.dependencies ?? {}
-
-const violations: { name: string; spec: string }[] = []
-for (const [name, spec] of Object.entries(deps)) {
-    const isPinned = PINNED_PREFIXES.some(
-        (p) => name === p.replace(/\/$/, '') || name.startsWith(p)
+let pkg: { dependencies?: Record<string, string> }
+try {
+    pkg = JSON.parse(result.stdout)
+} catch (err) {
+    console.error(
+        `[validate-tarball-deps] Failed to parse package.json from ${tarball}: ` +
+            `${(err as Error).message}`
     )
-    if (!isPinned) continue
-    if (!EXACT_VERSION_RE.test(spec)) {
-        violations.push({ name, spec })
-    }
+    process.exit(1)
 }
+const deps: Record<string, string> = pkg.dependencies ?? {}
 
 console.log(
     `[validate-tarball-deps] Inspecting ${tarball}\n` +
         `  Mastra deps must be exact-pinned (no ^, no ~, no ranges).`
 )
+
+const violations: { name: string; spec: string }[] = []
 for (const [name, spec] of Object.entries(deps)) {
-    const isPinned = PINNED_PREFIXES.some(
-        (p) => name === p.replace(/\/$/, '') || name.startsWith(p)
-    )
-    if (!isPinned) continue
+    if (!isMastraFamilyDep(name)) continue
     const ok = EXACT_VERSION_RE.test(spec)
     console.log(`  ${ok ? '✔' : '✘'} ${name}@${spec}`)
+    if (!ok) {
+        violations.push({ name, spec })
+    }
 }
 
 if (violations.length > 0) {

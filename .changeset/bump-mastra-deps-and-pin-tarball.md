@@ -17,8 +17,9 @@ and friends. We were publishing the framework with caret ranges
 paired with whatever caret-resolved core happened to be hoisted —
 producing
 `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
-because the new `mastracode` emits a `role: "signal"` message
-that older `@mastra/core` provider adapters reject.
+because `@mastra/core@1.34` introduced a new `role: "signal"`
+message type that older provider adapters (still resolved via the
+caret range against the previous, hoisted core) do not recognise.
 
 Changes:
 
