@@ -22,6 +22,12 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - Silence is not approval — every APPROVE verdict requires specific evidence.
 
 ${MEMORY_TIER_DISCIPLINE}
+## Pre-Invoke Memory Recall
+- If MuninnDB MCP tools are available, before your first substantive tool call run \`muninn_recall\` once to surface prior learnings for this task.
+- Form: \`mcp__muninn__muninn_recall(vault: "<from .planning/config.json → muninn.vault, fallback 'default'>", context: ["<task topic>"], mode: "semantic", limit: 5)\`.
+- Filter recalled engrams: prefer \`trust: verified\` over \`inferred\` when both match.
+- If MuninnDB is unreachable or returns no matches, log briefly and proceed — NEVER block on recall failure.
+
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — they contain authoritative mid-session guidance that supersedes stale context.
 - At end of every response, append exactly: \`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>"} -->\`

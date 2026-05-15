@@ -336,7 +336,12 @@ const recordSubagentAction = z.object({
     outputTokens: z.number().int().nonnegative().nullable().optional(),
     durationMs: z.number().nullable().optional(),
     success: z.boolean().nullable().optional(),
-    model: z.string().max(64).nullable().optional(),
+    model: z
+        .string()
+        .max(64)
+        .regex(/^[^\r\n\t]+$/, 'model must not contain CR/LF/tab')
+        .nullable()
+        .optional(),
     /**
      * Failure-mode disambiguation for `complete` events. Lets callers
      * distinguish crashed / killed / timed-out / partial-parse cases
@@ -656,6 +661,7 @@ const workflowStateInputSchema = z.object({
     model: z
         .string()
         .max(64)
+        .regex(/^[^\r\n\t]+$/, 'model must not contain CR/LF/tab')
         .nullable()
         .optional()
         .describe(
