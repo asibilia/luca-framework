@@ -30,6 +30,14 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
+# Force JavaScript-based actions (actions/checkout, oven-sh/setup-bun, etc.)
+# to run on Node.js 24 instead of the deprecated Node.js 20. Node 20 is
+# scheduled for removal from runners on 2026-09-16; this opt-in flag
+# moves us to Node 24 immediately. Once GitHub flips the default on
+# 2026-06-02, this env can be removed.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -79,6 +87,12 @@ jobs:
           # with custom tag format (vX.Y.Z) and changelog extraction.
           # Disable the action's built-in release creation to avoid duplicates.
           createGithubReleases: false
+          # Author the Version PR's commits via the GitHub Contents API
+          # instead of `git commit` from the runner. API-authored commits
+          # are signed by GitHub's web-flow key, which satisfies the
+          # `required_signatures` ruleset on `main`. Without this, the
+          # Version PR's commits are unsigned and the merge is blocked.
+          commitMode: github-api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -150,6 +164,19 @@ jobs:
       # publishing (oven-sh/bun#22423), so we hand the tarball to npm.
       - name: Pack tarball (resolves catalog/workspace protocols)
         run: cd packages/luca-framework && bun pm pack --destination ./.pack
+
+      # The Mastra family (`mastracode`, `@mastra/core`, etc.) ships in
+      # lockstep — `mastracode@X.Y.Z` is built against an exact pin of
+      # `@mastra/core` and friends. If we publish with caret ranges, npm
+      # will silently swap in a newer `@mastra/core` at user install time,
+      # which has produced runtime breakage like
+      #   `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
+      # (mastracode 0.19 → @mastra/core 1.34 introduced a `signal` message
+      #  role that older provider adapters did not handle). This step
+      # fails the publish if any Mastra dep in the packed package.json
+      # uses a non-exact spec.
+      - name: Validate exact-pinned Mastra deps in tarball
+        run: cd packages/luca-framework && bun run scripts/validate-tarball-deps.ts
 
       - name: Determine npm dist-tag
         id: dist_tag

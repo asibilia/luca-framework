@@ -8,6 +8,29 @@
 # 7 days = 60 * 60 * 24 * 7 = 604800
 minimumReleaseAge = 604800
 
+# Trusted Mastra ecosystem packages that can bypass the age gate.
+# These are direct or transitive deps of `mastracode` that are
+# version-pinned exactly by the upstream package (so npm has no
+# leeway to silently swap them) and that we deliberately track
+# alongside `mastracode` itself. Without these, every fresh
+# `mastracode` minor bump blocks `bun install` for ~7 days because
+# Mastra publishes the whole family in lockstep.
+minimumReleaseAgeExcludes = [
+    "mastracode",
+    "@mastra/core",
+    "@mastra/libsql",
+    "@mastra/memory",
+    "@mastra/observability",
+    "@mastra/schema-compat",
+    "@mastra/mcp",
+    "@mastra/agent-browser",
+    "@mastra/duckdb",
+    "@mastra/fastembed",
+    "@mastra/pg",
+    "@mastra/stagehand",
+    "@mastra/tavily",
+]
+
 # Block transitive deps installed via git/tarball/etc. The TanStack
 # attack used `"@tanstack/setup": "github:tanstack/router#<sha>"` as
 # its entrypoint dependency — this setting prevents that vector.
