@@ -158,7 +158,7 @@ const ts = Date.now()
 // Before:
 workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: `executor-${ts}` })
 // After (success):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "claude-opus-4-5" })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "anthropic/claude-opus-4-7" })
 // After (error):
 workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, success: false })
 ```

@@ -119,7 +119,7 @@ Table: runId | start ts | end ts | complexity | oversight | total durationMs | p
 Per-mode totals (`triage` / `research` / `architect` / `execute` / `review` / `finalize`). Show mean + p50 + p95 across selected runs. Flag any mode where >20% of records have `durationMs:null`.
 
 ### Subagent Costs
-Per-role breakdown: invocations, input/output token sums, mean tokens/call. List top 5 most expensive single calls. Flag rows where `success:false` or `outcome` in `{crashed, killed}`.
+Per-role breakdown: invocations, input/output token sums, mean tokens/call. List top 5 most expensive single calls. Flag rows where `success:false` or `outcome` in `{crashed, killed, timeout, completed_no_usage, completed_partial_parse}` (any non-clean terminal state — only `completed` is fully successful). When grouping, treat `crashed`/`killed`/`timeout` as hard failures and `completed_no_usage`/`completed_partial_parse` as soft failures (subagent finished but usage telemetry is missing or malformed).
 
 ### Recall Stats
 Per-mode hit-rate (hit / (hit+miss)). Verified-tier hit-rate (sum(verifiedCount) / sum(resultCount)). Flag modes with hit-rate < 0.4.
