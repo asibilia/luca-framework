@@ -1,0 +1,61 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "iter1-query-regex",
+      "description": "Flat schema query field has CR/LF/tab regex",
+      "met": true,
+      "evidence": "workflow-state.ts:689 .regex(/^[^\\r\\n\\t]+$/) added",
+      "blocking": true
+    },
+    {
+      "criterionId": "iter1-vault-regex",
+      "description": "Flat schema vault field has pattern regex",
+      "met": true,
+      "evidence": "workflow-state.ts:713 .regex(/^[a-z0-9_-]+$/) added",
+      "blocking": true
+    },
+    {
+      "criterionId": "iter1-mode-regex",
+      "description": "Flat schema mode field has pattern regex",
+      "met": true,
+      "evidence": "workflow-state.ts:722 .regex(/^[a-z0-9:_-]+$/) added",
+      "blocking": true
+    },
+    {
+      "criterionId": "iter1-tests",
+      "description": "Regression tests added for all 3 fields",
+      "met": true,
+      "evidence": "workflow-state-actions.test.ts: new 'record-recall flat-schema field guards' describe block with 4 test groups (a,b,c,d)",
+      "blocking": true
+    },
+    {
+      "criterionId": "iter1-checks-green",
+      "description": "All checks pass",
+      "met": true,
+      "evidence": "tsc clean, bun-test pass, rule gate clean",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "timestamp": "2026-05-15T17:26:26.928Z",
+  "runId": "run_mp5t215k_1gw0p37b"
+}
