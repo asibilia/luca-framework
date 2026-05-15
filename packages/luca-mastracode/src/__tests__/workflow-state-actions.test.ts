@@ -1393,6 +1393,21 @@ describe('review.iteration telemetry', () => {
 
 // ---------------------------------------------------------------------------
 // record-recall flat-schema regex guards (defense-in-depth)
+//
+// CAVEAT — TEST PATH NOTE:
+// These tests invoke `callAction` which calls `workflowStateTool.execute!`
+// directly. That path bypasses Mastra's outer `workflowStateInputSchema`
+// (the *flat* schema) and only exercises the per-action discriminated schema
+// (`recordRecallAction`). The per-action schema already carried these
+// regexes, so a failing assertion here would catch a *per-action* regression,
+// not a flat-schema regression.
+//
+// The flat-schema regexes are defense-in-depth at Mastra's tool-invocation
+// boundary (when invoked via Anthropic tool-use). They protect callers that
+// hit the input schema before reaching the action dispatcher. Independently
+// asserting them requires a Mastra integration test (not yet wired). Until
+// then, the per-action schema is the binding enforcement gate and these
+// assertions are sufficient for regression protection.
 // ---------------------------------------------------------------------------
 
 describe('record-recall flat-schema field guards', () => {

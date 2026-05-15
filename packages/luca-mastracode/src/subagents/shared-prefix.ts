@@ -4,7 +4,11 @@
  *   1. Claude prompt cache reuse across subagents (~92% prefix overlap)
  *   2. Single source of truth for cross-cutting behavioral constraints
  *
- * Keep this under 400 tokens. Every token here is multiplied by 9 subagents.
+ * Budget: keep the boilerplate portion of this template under ~400 tokens
+ * (~1600 chars). The runtime string also interpolates MEMORY_TIER_DISCIPLINE
+ * (~1590 chars), so the realistic full-string ceiling is ~3000 chars — see
+ * the `SUBAGENT_SHARED_PREFIX total size` test in memory-tier-prefix.test.ts.
+ * Every char here is multiplied by 9 subagents.
  */
 import { MEMORY_TIER_DISCIPLINE } from '../memory-tier-discipline.js'
 
