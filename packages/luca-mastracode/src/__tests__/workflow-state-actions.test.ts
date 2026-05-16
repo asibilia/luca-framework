@@ -1013,14 +1013,14 @@ describe('record-subagent telemetry', () => {
             action: 'record-subagent',
             event: 'invoke',
             role: 'executor',
-            correlationId: 'executor-1747097200000',
+            correlationId: 'executor-1747097200456',
         })
         expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
         const [kind, meta] = mockAppendTelemetry.mock.calls[0]!
         expect(kind).toBe('subagent.invoke')
         expect(meta).toMatchObject({
             role: 'executor',
-            correlationId: 'executor-1747097200000',
+            correlationId: 'executor-1747097200456',
         })
     })
 
@@ -1030,7 +1030,7 @@ describe('record-subagent telemetry', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'verifier',
-            correlationId: 'verifier-1747097200000',
+            correlationId: 'verifier-1747097200456',
             inputTokens: 5000,
             outputTokens: 1200,
             durationMs: 30000,
@@ -1042,7 +1042,7 @@ describe('record-subagent telemetry', () => {
         expect(kind).toBe('subagent.complete')
         expect(meta).toMatchObject({
             role: 'verifier',
-            correlationId: 'verifier-1747097200000',
+            correlationId: 'verifier-1747097200456',
             inputTokens: 5000,
             outputTokens: 1200,
             success: true,
@@ -1485,7 +1485,7 @@ describe('record-subagent outcome enum', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'researcher',
-            correlationId: 'researcher-1747200000000',
+            correlationId: 'researcher-1747200000123',
             outcome: 'crashed',
             success: false,
         })
@@ -1499,7 +1499,7 @@ describe('record-subagent outcome enum', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'reviewer',
-            correlationId: 'reviewer-1747200000000',
+            correlationId: 'reviewer-1747200000123',
             success: true,
         })
         const [, meta] = mockAppendTelemetry.mock.calls[0]!
@@ -1513,7 +1513,7 @@ describe('record-subagent outcome enum', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'verifier',
-            correlationId: 'verifier-1747200000000',
+            correlationId: 'verifier-1747200000123',
             outcome: 'not-a-real-outcome',
         })
         expect(result.success !== true).toBe(true)
@@ -1537,7 +1537,7 @@ describe('record-subagent outcome enum', () => {
                 action: 'record-subagent',
                 event: 'complete',
                 role: 'researcher',
-                correlationId: `researcher-${outcome}-1747200000000`,
+                correlationId: `researcher-${outcome}-1747200000123`,
                 outcome,
             })
             const [, meta] = mockAppendTelemetry.mock.calls[0]!
@@ -1557,7 +1557,7 @@ describe('record-subagent model field CR/LF guard', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'researcher',
-            correlationId: 'researcher-model-1747200000000',
+            correlationId: 'researcher-model-1747200000123',
             model: 'anthropic/claude-opus-4-7',
             success: true,
         })
@@ -1575,7 +1575,7 @@ describe('record-subagent model field CR/LF guard', () => {
             action: 'record-subagent',
             event: 'complete',
             role: 'researcher',
-            correlationId: 'researcher-bad-model-1747200000000',
+            correlationId: 'researcher-bad-model-1747200000123',
             model,
         })
         expect(result.success !== true).toBe(true)

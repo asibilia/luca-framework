@@ -148,7 +148,7 @@ Before spawning each subagent, emit `subagent.invoke`. After it returns, emit `s
 
 **correlationId**: Generate as `<role>-<Date.now()>` before spawn. Reuse the same id for the matching complete.
 
-**Token parsing**: Take the last 256 chars of subagent output. Match `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`. JSON-parse the capture. Validate `inputTokens`/`outputTokens` are non-negative integers ≤ 10_000_000. Pass `null` if absent or malformed.
+**Token parsing**: Take the last 256 chars of subagent output. Match `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`. JSON-parse the capture. Validate `inputTokens`/`outputTokens` are non-negative integers ≤ 10_000_000. Pass `null` if absent or malformed. If model or all token counts are unknown, **omit** the entire usage comment — never emit null or 0 as placeholder values.
 
 **Parallel batches**: Generate N distinct correlationIds before the batch call. Emit N `invoke` records sequentially, then spawn. After batch returns, emit N `complete` records reusing the matching correlationIds.
 
@@ -158,7 +158,7 @@ const ts = Date.now()
 // Before:
 workflowState({ action: "record-subagent", event: "invoke", role: "executor", correlationId: `executor-${ts}` })
 // After (success):
-workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 12000, outputTokens: 3400, durationMs: 45000, success: true, model: "anthropic/claude-opus-4-7" })
+workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, inputTokens: 8743, outputTokens: 2156, durationMs: Date.now() - ts, success: true, model: "anthropic/claude-sonnet-4-5" })
 // After (error):
 workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, success: false })
 ```

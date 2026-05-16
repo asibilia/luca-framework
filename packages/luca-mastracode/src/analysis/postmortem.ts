@@ -93,7 +93,15 @@ export interface PostmortemReport {
         forcedTransitions: number
         moveBlockedCount: number
     }
-    /** Pre-formatted MuninnDB pitfall payloads (default vault). */
+    /**
+     * Pre-formatted MuninnDB pitfall payloads.
+     *
+     * Pitfalls are always written to the canonical `default` vault for
+     * cross-project aggregation, regardless of the per-repo `muninn.vault`
+     * setting in `.planning/config.json`. This is intentional — do not
+     * thread per-repo vault here. Postmortem patterns must aggregate
+     * across all luca pipelines to surface systemic regressions.
+     */
     pitfalls: Array<{
         vault: 'default'
         concept: string
@@ -409,7 +417,10 @@ export function analyzeRun(runId?: string): PostmortemReport {
         moveBlockedCount: moveBlocked.length,
     }
 
-    // ── Pitfall payloads (default vault) ──────────────────────────────────
+    // ── Pitfall payloads (canonical `default` vault) ──────────────────────
+    // Intentional: pitfalls always go to the `default` vault for
+    // cross-project aggregation, never the per-repo vault. Do not thread
+    // per-repo vault here — see PostmortemReport.pitfalls JSDoc above.
     const critical = violations.filter((v) => v.severity === 'critical')
     const pitfalls = critical.map((v) => ({
         vault: 'default' as const,
