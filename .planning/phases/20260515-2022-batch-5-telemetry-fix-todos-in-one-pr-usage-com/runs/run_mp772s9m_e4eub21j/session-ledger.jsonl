@@ -1,0 +1,6 @@
+{"timestamp":"2026-05-16T00:52:52.754Z","runId":"run_mp772s9m_e4eub21j","event":"mode-transition","data":{"from":"luca:4-execute","to":"luca:5-review"}}
+{"timestamp":"2026-05-16T00:54:27.334Z","runId":"run_mp772s9m_e4eub21j","event":"review-results-saved","data":{"reviewIteration":2}}
+{"timestamp":"2026-05-16T00:54:32.349Z","runId":"run_mp772s9m_e4eub21j","event":"mode-transition","data":{"from":"luca:5-review","to":"luca:6-finalize"}}
+{"timestamp":"2026-05-16T00:56:10.431Z","runId":"run_mp772s9m_e4eub21j","event":"claim-verifier-run","data":{"action":"gate","totalClaims":12,"failureCount":2,"paths":[".changeset/fix-telemetry-batch-5-quality-regressions.md"]}}
+{"timestamp":"2026-05-16T00:56:27.013Z","runId":"run_mp772s9m_e4eub21j","event":"claim-verifier-run","data":{"action":"gate","totalClaims":10,"failureCount":1,"paths":[".changeset/fix-telemetry-batch-5-quality-regressions.md"]}}
+{"timestamp":"2026-05-16T00:56:31.298Z","runId":"run_mp772s9m_e4eub21j","event":"claim-verifier-run","data":{"action":"gate","totalClaims":10,"failureCount":1,"paths":[".changeset/fix-telemetry-batch-5-quality-regressions.md"]}}
