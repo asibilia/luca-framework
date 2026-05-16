@@ -112,7 +112,7 @@ If results found, note past decisions, patterns, and pitfalls. Include relevant 
 
 ## Step 2: Discussion (NEVER SKIP)
 
-> **Subagent Telemetry**: Generate `const ts = Date.now()` then call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: `` `<role>-${ts}` ``)` before each subagent spawn and `event: "complete"` after (reusing the same id). Parse `<!-- usage: ... -->` from the last 256 chars of output for token counts.
+> **Subagent Telemetry**: Generate `const ts = Date.now()` then call `workflowState(action: "record-subagent", event: "invoke", role: "<role>", correlationId: `` `<role>-${ts}` ``)` before each subagent spawn and `event: "complete"` after (reusing the same id). Parse `<!-- usage: ... -->` from the last 256 chars using regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`. Extract `inputTokens`, `outputTokens`, `model` (non-negative integers ≤ 10_000_000). Pass `null` for any unknown field; if all unknown, **omit** the usage fields entirely. Set `success: true` for `completed*` outcomes, `false` for `crashed`/`killed`/`timeout` — never `null`.
 
 // → record-subagent invoke (role: "discussion") before spawn
 
