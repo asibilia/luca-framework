@@ -10,6 +10,7 @@
     "bump-mastra-deps-and-pin-tarball",
     "fix-luca-5-review-outer-reviewer-fanout",
     "fix-reviewer-usage-self-report",
+    "fix-telemetry-batch-5-quality-regressions",
     "memory-audit-skill",
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
