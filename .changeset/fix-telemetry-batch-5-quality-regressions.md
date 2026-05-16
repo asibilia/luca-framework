@@ -32,3 +32,15 @@ Tests:
 - New `shared-prefix-semantics.test.ts` (5 runtime invariants on
   `SUBAGENT_SHARED_PREFIX`).
 - New `spawn-site-invariant.test.ts` (5 mode files × 7 assertions each).
+  **Deviation from plan**: the plan named this artifact
+  `usage-comment-completeness.test.ts` with 20 assertions (5 × 4 required
+  substrings). The shipped test file is renamed to
+  `spawn-site-invariant.test.ts` and expanded to 35 assertions (5 × 7) —
+  the additional 15 assertions cover `success:` enumeration and reject
+  fabricated round-number `durationMs` examples (`45000`, `60000`,
+  `75000`, `90000`, `120000`). The expansion is a strict superset of the
+  plan's coverage; the rename better reflects the test's scope (whole
+  spawn-site region invariants, not just the usage comment).
+- New `postmortem-vault-comment.test.ts` (3 invariants guarding the two
+  `intentional` comments documenting the cross-project `default` vault
+  literal — JSDoc + inline construction-site comment).
