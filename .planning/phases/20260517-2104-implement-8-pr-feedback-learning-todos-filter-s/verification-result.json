@@ -1,0 +1,54 @@
+{
+  "wave": 1,
+  "mode": "quick",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-iter1-mf1-flat-regex",
+      "description": "Flat schema role/correlationId/perspectives carry regex constraints matching per-action",
+      "met": true,
+      "evidence": "workflow-state.ts lines 490 (perspectives regex), 565 (role regex+min), 575 (correlationId regex+min); drift test 50/50 pass",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-iter1-mf1-detector",
+      "description": "Drift detector introspects regex parity AND injected-drift smoke test proves helper fails on drift",
+      "met": true,
+      "evidence": "dual-layer-schema-drift.test.ts missingRegexPatterns helper + 4 injected-drift tests; round-trip negative case verified (test FAILS when regex stripped, PASSES when restored)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-iter1-mf2-jsdoc",
+      "description": "verdictFor and FilterResult.unknown have 3-state JSDoc",
+      "met": true,
+      "evidence": "stale-filter.ts:268 JSDoc above verdictFor with 3-state contract; :79 unknown field comment cross-references sentinel",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-iter1-full-suite",
+      "description": "Full suite green",
+      "met": true,
+      "evidence": "564/564 pass (was 538, +26 from strengthened drift test). tsc clean.",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun-test",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "timestamp": "2026-05-18T01:48:54.731Z",
+  "runId": "run_mp7mz53d_zhbby8kj"
+}
