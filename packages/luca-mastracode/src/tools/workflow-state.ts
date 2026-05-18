@@ -488,7 +488,15 @@ export const workflowStateInputSchema = z.object({
         .optional()
         .describe('Review iteration number (save-review-results only).'),
     perspectives: z
-        .array(z.string().max(64))
+        .array(
+            z
+                .string()
+                .max(64)
+                .regex(
+                    /^[a-z0-9_-]+$/,
+                    'perspective must be lowercase alnum + _ -'
+                )
+        )
         .max(10)
         .optional()
         .describe(
@@ -562,14 +570,18 @@ export const workflowStateInputSchema = z.object({
         ),
     role: z
         .string()
+        .min(1)
         .max(64)
+        .regex(/^[^\r\n\t]+$/, 'role must not contain CR/LF/tab')
         .optional()
         .describe(
             "Subagent role identifier, e.g. 'executor', 'reviewer' (required for 'record-subagent')."
         ),
     correlationId: z
         .string()
+        .min(1)
         .max(128)
+        .regex(/^[^\r\n\t]+$/, 'correlationId must not contain CR/LF/tab')
         .optional()
         .describe(
             "Correlation ID pairing invoke/complete events for the same subagent call (required for 'record-subagent')."

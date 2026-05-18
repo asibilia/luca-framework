@@ -75,7 +75,11 @@ export interface FilterResult {
     stale: Array<{ comment: PrReviewComment; verdict: StaleVerdict }>
     /** Replies (in_reply_to_id !== null) — pass through, not first-class findings. */
     replies: PrReviewComment[]
-    /** Comments that cannot be classified (e.g. empty diff_hunk). Not actionable, not stale. */
+    /**
+     * Comments whose verdict is `stale: false, reason: 'empty-diff-hunk'` — routed
+     * here because the sentinel reason means UNKNOWN, not actionable. Callers MUST
+     * NOT treat `stale === false` alone as "actionable"; route by reason instead.
+     */
     unknown: PrReviewComment[]
     /** Audit verdicts for every input comment, keyed by commentId. */
     verdicts: Record<number, StaleVerdict>
@@ -265,6 +269,16 @@ export interface VerdictOptions {
     maxDriftLines?: number
 }
 
+/**
+ * Classify a single comment as actionable, stale, or unknown.
+ *
+ * Returns a `StaleVerdict` with three possible interpretations:
+ *  • `stale: true` — comment is stale (one of four reasons)
+ *  • `stale: false, reason: undefined` — ACTIONABLE: anchor found, drift acceptable, commit not outdated
+ *  • `stale: false, reason: 'empty-diff-hunk'` — UNKNOWN: cannot classify (e.g. Copilot comment with no diff_hunk).
+ *    Callers MUST route this verdict to `FilterResult.unknown`, NOT to `actionable`.
+ *    Checking `stale === false` alone is NOT sufficient to identify actionable comments.
+ */
 export function verdictFor(
     comment: PrReviewComment,
     opts: VerdictOptions
