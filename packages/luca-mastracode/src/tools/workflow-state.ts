@@ -38,8 +38,10 @@ import {
     TELEMETRY_ARCHIVE_PATH,
     assertValidRunId,
 } from '../util/phase-paths.js'
+import { clampTokens, finiteOrNull } from '../util/numeric.js'
 import { tickPhaseTasks } from '../util/plan-checkboxes.js'
 import { switchModeRef, contextRefresherRef } from '../util/refs.js'
+import { sanitizeForLog, sanitizeForStorage } from '../util/sanitize.js'
 
 const VALID_MODES = ALL_REGISTERED_MODES
 
@@ -92,67 +94,13 @@ function hasStaleState(state: LucaWorkflowState): boolean {
     return false
 }
 
-/**
- * Coerce a computed duration into a finite millisecond count or `null`.
- *
- * `new Date(<malformed-string>).getTime()` returns `NaN`, and arithmetic with
- * `NaN` propagates. `TelemetryRecordSchema` rejects non-finite numbers, so an
- * unguarded NaN would silently drop the entire `wave.end` / `phase.end` event
- * during Zod validation (Copilot PR #239 review #3228846363, #3228846383).
- *
- * Treat unparseable / negative / non-finite durations as missing — emit `null`
- * so the closing event is still recorded.
- */
-function finiteOrNull(n: number | null | undefined): number | null {
-    if (typeof n !== 'number') return null
-    if (!Number.isFinite(n)) return null
-    if (n < 0) return null
-    return n
-}
-
-/**
- * Clamp a token count to a safe integer or null.
- * Rejects non-finite, negative, or unreasonably large values (>10_000_000).
- */
-function clampTokens(n: number | null | undefined): number | null {
-    if (typeof n !== 'number') return null
-    if (!Number.isFinite(n)) return null
-    if (n < 0) return null
-    if (n > 10_000_000) return null
-    return Math.floor(n)
-}
-
-/**
- * Strip CR/LF/tab from a string and cap length for safe inclusion in
- * single-line `console.warn` messages.
- * Defence-in-depth against CWE-117 (log injection); the per-action Zod
- * schemas already reject CR/LF/tab at the input boundary, but consumers
- * may pass an already-validated value through this helper before logging.
- *
- * NOTE: 200-char cap is for console legibility only. Do NOT use for
- * persisting fields that have higher schema max() — use
- * `sanitizeTelemetryValue` instead to preserve the full schema-allowed
- * value (otherwise telemetry meta is silently truncated below schema max).
- */
-function sanitizeLogMessage(input: unknown): string {
-    return String(input instanceof Error ? input.message : input)
-        .replace(/[\r\n\t]/g, ' ')
-        .slice(0, 200)
-}
-
-/**
- * Strip CR/LF/tab from a string for safe inclusion in telemetry meta
- * fields, WITHOUT truncating. Use this for values whose per-action Zod
- * schema permits lengths >200 chars (e.g. record-recall `query` is
- * `.max(512)`). The schema-level cap is the source of truth for the
- * stored size; this helper only normalises whitespace control chars.
- */
-function sanitizeTelemetryValue(input: unknown): string {
-    return String(input instanceof Error ? input.message : input).replace(
-        /[\r\n\t]/g,
-        ' '
-    )
-}
+// `finiteOrNull`, `clampTokens`, `sanitizeLogMessage` (→ sanitizeForLog), and
+// `sanitizeTelemetryValue` (→ sanitizeForStorage) were extracted to
+// `../util/numeric.js` and `../util/sanitize.js` so `telemetry.ts` and other
+// callers can share the same implementations. Aliases below preserve the
+// original local names at all 9 callsites in this file.
+const sanitizeLogMessage = sanitizeForLog
+const sanitizeTelemetryValue = sanitizeForStorage
 
 // ── Per-action Zod schemas ──────────────────────────────────────────
 // Used for runtime validation + type narrowing in the execute handler.
