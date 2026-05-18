@@ -45,6 +45,12 @@ export {
     graphemeWidth,
     visibleWidth,
 } from './util/tui-text-helpers.js'
+export {
+    sanitizeForLog,
+    sanitizeForStorage,
+    displayBounded,
+} from './util/sanitize.js'
+export { finiteOrNull, clampTokens } from './util/numeric.js'
 
 // --- Boot ---
 //

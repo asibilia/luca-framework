@@ -53,17 +53,14 @@ import { dirname } from 'node:path'
 import { z } from 'zod'
 
 import { TELEMETRY_PATH, assertValidRunId } from '../util/phase-paths.js'
+import { sanitizeForLog } from '../util/sanitize.js'
 import { readLucaState } from './luca-store.js'
 
-/**
- * Sanitize a string for safe inclusion in a single-line `console.warn`.
- * Strips CR/LF (log-injection defense, CWE-117) and caps length.
- */
-function sanitizeLogMessage(input: unknown): string {
-    return String(input instanceof Error ? input.message : input)
-        .replace(/[\r\n\t]/g, ' ')
-        .slice(0, 200)
-}
+// `sanitizeLogMessage` was extracted to `../util/sanitize.js` (as
+// `sanitizeForLog`) so `workflow-state.ts` and other callers share the
+// same implementation. Alias preserves the original local name at all
+// 7 callsites below.
+const sanitizeLogMessage = sanitizeForLog
 
 // ---------------------------------------------------------------------------
 // Types

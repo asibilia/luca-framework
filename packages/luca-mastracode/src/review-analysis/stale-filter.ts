@@ -57,6 +57,7 @@ export type StaleReason =
     | 'line-out-of-range'
     | 'content-mismatch'
     | 'commit-outdated-and-path-modified'
+    | 'empty-diff-hunk'
 
 export interface StaleVerdict {
     commentId: number
@@ -74,6 +75,12 @@ export interface FilterResult {
     stale: Array<{ comment: PrReviewComment; verdict: StaleVerdict }>
     /** Replies (in_reply_to_id !== null) — pass through, not first-class findings. */
     replies: PrReviewComment[]
+    /**
+     * Comments whose verdict is `stale: false, reason: 'empty-diff-hunk'` — routed
+     * here because the sentinel reason means UNKNOWN, not actionable. Callers MUST
+     * NOT treat `stale === false` alone as "actionable"; route by reason instead.
+     */
+    unknown: PrReviewComment[]
     /** Audit verdicts for every input comment, keyed by commentId. */
     verdicts: Record<number, StaleVerdict>
 }
@@ -262,12 +269,35 @@ export interface VerdictOptions {
     maxDriftLines?: number
 }
 
+/**
+ * Classify a single comment as actionable, stale, or unknown.
+ *
+ * Returns a `StaleVerdict` with three possible interpretations:
+ *  • `stale: true` — comment is stale (one of four reasons)
+ *  • `stale: false, reason: undefined` — ACTIONABLE: anchor found, drift acceptable, commit not outdated
+ *  • `stale: false, reason: 'empty-diff-hunk'` — UNKNOWN: cannot classify (e.g. Copilot comment with no diff_hunk).
+ *    Callers MUST route this verdict to `FilterResult.unknown`, NOT to `actionable`.
+ *    Checking `stale === false` alone is NOT sufficient to identify actionable comments.
+ */
 export function verdictFor(
     comment: PrReviewComment,
     opts: VerdictOptions
 ): StaleVerdict {
     const { repoRoot } = opts
     const maxDrift = opts.maxDriftLines ?? 5
+
+    // 0. Empty diff_hunk → unclassifiable. Cannot anchor the comment without
+    // diff context, so we refuse to mark it stale (avoids Copilot-style
+    // false positives) and refuse to mark it actionable (avoids surfacing
+    // noise to executors).
+    if (comment.diff_hunk === '') {
+        return {
+            commentId: comment.id,
+            stale: false,
+            reason: 'empty-diff-hunk',
+            evidence: 'empty diff_hunk — cannot classify',
+        }
+    }
 
     // 1. File missing → stale.
     const fileLines = readFileLines(repoRoot, comment.path)
@@ -362,6 +392,7 @@ export function filterStaleComments(
     const actionable: PrReviewComment[] = []
     const stale: FilterResult['stale'] = []
     const replies: PrReviewComment[] = []
+    const unknown: PrReviewComment[] = []
     const verdicts: Record<number, StaleVerdict> = {}
 
     for (const c of comments) {
@@ -373,10 +404,12 @@ export function filterStaleComments(
         verdicts[c.id] = v
         if (v.stale) {
             stale.push({ comment: c, verdict: v })
+        } else if (v.reason === 'empty-diff-hunk') {
+            unknown.push(c)
         } else {
             actionable.push(c)
         }
     }
 
-    return { actionable, stale, replies, verdicts }
+    return { actionable, stale, replies, unknown, verdicts }
 }

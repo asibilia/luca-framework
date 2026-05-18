@@ -5,5 +5,9 @@
 ### Phase 1: 4-todo-batch
 - **Status**: complete
 - **Dependencies**: None
-- **WSJF Score**: 2.3
-- **Notes**: Shipped in PR #253 (merged). Covered pre-invoke MuninnDB recall directive, researcher hang-timeout fast-fail, record-subagent outcome enum aggregator flag, Anthropic model ID CR/LF guard.
+- **WSJF Score**: 2.0
+
+### Phase 2: pr-feedback-batch-8-todos
+- **Status**: in-progress
+- **Dependencies**: 4-todo-batch
+- **WSJF Score**: 2.1
