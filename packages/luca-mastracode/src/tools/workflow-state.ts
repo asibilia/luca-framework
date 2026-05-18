@@ -353,6 +353,25 @@ export const recordRecallAction = z.object({
     durationMs: z.number().nullable().optional(),
 })
 
+/**
+ * Registry of per-action Zod schemas — the source of truth for the
+ * dual-layer drift detector test (`dual-layer-schema-drift.test.ts`).
+ *
+ * When adding a new per-action schema with constraint-bearing fields
+ * (regex / min / max) that must be mirrored in `workflowStateInputSchema`,
+ * register it here so the drift detector iterates over it automatically.
+ * The list of constrained per-action schemas is small (currently 3); the
+ * remaining actions in `WORKFLOW_STATE_ACTIONS` either take no extra fields
+ * or have no constrained string fields requiring flat-schema mirroring.
+ *
+ * @internal — exported for testing only.
+ */
+export const WORKFLOW_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> = {
+    'record-subagent': recordSubagentAction,
+    'record-recall': recordRecallAction,
+    'save-review-results': saveReviewResultsAction,
+}
+
 // ── All valid actions (exported for createScopedTool) ──────────────
 export const WORKFLOW_STATE_ACTIONS = [
     'read',

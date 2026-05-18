@@ -89,21 +89,36 @@ describe('spawn-site field-enumeration invariant', () => {
         })
     }
 
-    test('FILES list is complete relative to mode files with record-subagent references', () => {
+    test('FILES list is complete relative to mode files with record-subagent spawn directives', () => {
         // Catch the case where a new mode file is added that documents
-        // `record-subagent` but is missing from FILES — its spawn site
-        // would silently escape the field-enumeration invariant above.
+        // `record-subagent` spawn calls but is missing from FILES — its
+        // spawn site would silently escape the field-enumeration invariant.
+        //
+        // We match the SPAWN-DIRECTIVE protocol header — not the bare string
+        // `record-subagent` — so changelogs / notes / examples / casual
+        // mentions inside non-instruction `.md` files don't false-positive
+        // this list onto FILES.
+        //
+        // Accepted directive shapes (any one matches):
+        //   • `// → record-subagent`         (inline arrow directive)
+        //   • `record-subagent invoke`       (protocol invocation header)
+        //   • `record-subagent complete`     (protocol completion header)
+        //   • `action: "record-subagent"`    (literal action value in JSON-ish)
+        //   • `action: 'record-subagent'`    (single-quoted variant)
+        const SPAWN_DIRECTIVE_RE =
+            /(?:\/\/\s*→\s*record-subagent|record-subagent\s+(?:invoke|complete)|action:\s*['"]record-subagent['"])/
+
         const allMdFiles = readdirSync(INSTRUCTIONS_DIR).filter((f) =>
             f.endsWith('.md'),
         )
         const filesWithSpawnSites = allMdFiles.filter((f) => {
             const content = readFileSync(join(INSTRUCTIONS_DIR, f), 'utf-8')
-            return content.includes('record-subagent')
+            return SPAWN_DIRECTIVE_RE.test(content)
         })
         for (const f of filesWithSpawnSites) {
             expect(
                 FILES,
-                `Mode file "${f}" contains 'record-subagent' but is missing from FILES list — its spawn site is not covered by the field-enumeration invariant.`,
+                `Mode file "${f}" contains a record-subagent spawn directive but is missing from FILES list — its spawn site is not covered by the field-enumeration invariant.`,
             ).toContain(f)
         }
     })

@@ -20,17 +20,16 @@ import { describe, test, expect } from 'bun:test'
 import { z } from 'zod'
 
 import {
-    recordSubagentAction,
-    recordRecallAction,
-    saveReviewResultsAction,
+    WORKFLOW_ACTION_SCHEMAS,
     workflowStateInputSchema,
 } from '../tools/workflow-state.js'
 
-const PER_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> = {
-    'record-subagent': recordSubagentAction,
-    'record-recall': recordRecallAction,
-    'save-review-results': saveReviewResultsAction,
-}
+// Consume the live registry from workflow-state.ts — the source of truth.
+// Adding a new constraint-bearing per-action schema to that registry
+// automatically extends this drift guard's coverage; a hand-curated list
+// here would recreate the very class of drift the test exists to prevent.
+const PER_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> =
+    WORKFLOW_ACTION_SCHEMAS
 
 // The `action` key is the discriminator on per-action schemas — the flat
 // schema represents it as a z.enum(WORKFLOW_STATE_ACTIONS) so it is
@@ -192,6 +191,38 @@ describe('dual-layer schema drift', () => {
             const a = z.string().max(64).optional()
             const b = z.string().optional()
             expect(missingRegexPatterns(a, b)).toEqual([])
+        })
+
+        // ───────────────────────────────────────────────────────────────────
+        // Zod-internals canary.
+        //
+        // The introspection helpers (`unwrapToString`, `regexPatterns`) reach
+        // into Zod v4's `_zod.def.checks` shape. If Zod v5+ relocates these
+        // internals (or `_zod?.def ?? _def` resolves to `null`), every call
+        // to `regexPatterns()` would return [] and the parametric drift loop
+        // above would pass vacuously — degrading silently to a no-op.
+        //
+        // This canary asserts that introspection of a known regex-bearing
+        // schema produces a NON-EMPTY pattern list. If Zod internals shift,
+        // this test fails loudly and points at the helpers needing an
+        // upgrade — instead of letting drift detection rot in the dark.
+        // ───────────────────────────────────────────────────────────────────
+        test('canary: introspection of a known regex-bearing schema returns non-empty patterns', () => {
+            const canary = z
+                .string()
+                .regex(/^canary-[a-z]+$/, 'canary literal')
+                .optional()
+            const patterns = missingRegexPatterns(
+                canary,
+                z.string().optional(), // flat side has NO regex
+            )
+            expect(
+                patterns,
+                'Zod internals canary: helpers returned [] for a schema that DEFINITELY has a regex. ' +
+                    'This means `_zod.def.checks` (or the fallback `_def`) no longer exposes regex checks — ' +
+                    'the drift detector is silently degraded. Update `unwrapToString` / `regexPatterns` in this file.',
+            ).not.toEqual([])
+            expect(patterns).toContain('^canary-[a-z]+$')
         })
     })
 })
