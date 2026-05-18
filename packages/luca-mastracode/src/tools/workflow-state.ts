@@ -180,7 +180,7 @@ const savePlanArtifactsAction = z.object({
         ),
 })
 
-const saveReviewResultsAction = z.object({
+export const saveReviewResultsAction = z.object({
     action: z.literal('save-review-results'),
     iterationPlan: z
         .array(z.string())
@@ -264,7 +264,7 @@ const archiveLooseAction = z.object({
     action: z.literal('archive-loose'),
 })
 
-const recordSubagentAction = z.object({
+export const recordSubagentAction = z.object({
     action: z.literal('record-subagent'),
     event: z.enum(['invoke', 'complete']),
     role: z
@@ -310,7 +310,7 @@ const recordSubagentAction = z.object({
         .optional(),
 })
 
-const recordRecallAction = z.object({
+export const recordRecallAction = z.object({
     action: z.literal('record-recall'),
     /**
      * Caller's recall query string (free-form). Capped at 512 chars and
@@ -385,7 +385,7 @@ export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
  * Action-specific fields are optional here; the execute handler validates
  * required fields per-action using the strict per-action schemas above.
  */
-const workflowStateInputSchema = z.object({
+export const workflowStateInputSchema = z.object({
     action: z
         .enum(WORKFLOW_STATE_ACTIONS)
         .describe(

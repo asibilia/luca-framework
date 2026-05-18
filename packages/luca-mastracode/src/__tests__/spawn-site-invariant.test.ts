@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -88,4 +88,23 @@ describe('spawn-site field-enumeration invariant', () => {
             })
         })
     }
+
+    test('FILES list is complete relative to mode files with record-subagent references', () => {
+        // Catch the case where a new mode file is added that documents
+        // `record-subagent` but is missing from FILES — its spawn site
+        // would silently escape the field-enumeration invariant above.
+        const allMdFiles = readdirSync(INSTRUCTIONS_DIR).filter((f) =>
+            f.endsWith('.md'),
+        )
+        const filesWithSpawnSites = allMdFiles.filter((f) => {
+            const content = readFileSync(join(INSTRUCTIONS_DIR, f), 'utf-8')
+            return content.includes('record-subagent')
+        })
+        for (const f of filesWithSpawnSites) {
+            expect(
+                FILES,
+                `Mode file "${f}" contains 'record-subagent' but is missing from FILES list — its spawn site is not covered by the field-enumeration invariant.`,
+            ).toContain(f)
+        }
+    })
 })
