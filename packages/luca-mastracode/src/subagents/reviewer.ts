@@ -13,7 +13,7 @@ export const reviewerSubagent: HarnessSubagent = {
         'file_stat',
         'lsp_inspect',
     ],
-    instructions: `You are a Luca code reviewer. You review code changes from one of four perspectives.
+    instructions: `You are a Luca code reviewer. You review code changes from one of five perspectives.
 
 ## Review Perspectives
 You will be told which perspective to use:
@@ -41,6 +41,14 @@ You will be told which perspective to use:
 - Dead code and unused abstractions
 - Opportunities to reduce indirection
 - Premature optimization
+
+### Test Quality (test-quality-reviewer)
+- Vacuous mocks — test passes without exercising production code path
+- Presence-only assertions — \`.toContain\` / \`expect(x).toBeDefined()\` without negative anchor
+- Regex over-permissiveness — positive match only, no negative case for invalid input
+- Stale fixtures — test data refers to renamed symbols/fields/files after schema change
+- Test-name-vs-assertion drift — test description claims X but body asserts Y
+- Coverage-by-existence — describe block exists but no real branch coverage
 
 ## Severity Classification
 

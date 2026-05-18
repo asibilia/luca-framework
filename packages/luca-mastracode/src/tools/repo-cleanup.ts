@@ -140,6 +140,31 @@ function isCaptureArtifact(filename: string): boolean {
     return /-capture-/.test(filename) && filename.endsWith('.md')
 }
 
+/**
+ * Scan text content for placeholder markers (e.g. `<TODO>`, `<TBD>`, `XXX`)
+ * left behind by drafters. Returns a list of matches with line numbers so
+ * callers can surface them in cleanup reports or block finalize when found.
+ */
+export function hasPlaceholderText(content: string): { found: boolean; matches: Array<{ pattern: string; line: number }> } {
+    const patterns: Array<{ name: string; regex: RegExp }> = [
+        { name: '<TODO>', regex: /<TODO>/i },
+        { name: '<TBD>', regex: /<TBD>/i },
+        { name: '<placeholder>', regex: /<placeholder>/i },
+        { name: '<FIXME>', regex: /<FIXME>/i },
+        { name: 'XXX (3+)', regex: /XXX+/ },
+    ]
+    const matches: Array<{ pattern: string; line: number }> = []
+    const lines = content.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+        for (const { name, regex } of patterns) {
+            if (regex.test(lines[i]!)) {
+                matches.push({ pattern: name, line: i + 1 })
+            }
+        }
+    }
+    return { found: matches.length > 0, matches }
+}
+
 // `REVIEW-<n>.md` files at `.planning/` root are migration targets —
 // `archive-loose` should move them into `phases/<slug>/`. They are NOT
 // removable scratch like capture artifacts (PR #222 review).

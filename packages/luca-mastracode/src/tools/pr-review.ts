@@ -159,13 +159,16 @@ export const prReviewTool = createTool({
                     actionableCount: result.actionable.length,
                     staleCount: result.stale.length,
                     repliesCount: result.replies.length,
+                    unknownCount: result.unknown.length,
                 })
                 return {
                     success: true,
-                    message: `Filtered ${comments.length} comment(s): ${result.actionable.length} actionable, ${result.stale.length} stale, ${result.replies.length} replies.`,
+                    message: `Filtered ${comments.length} comment(s): ${result.actionable.length} actionable, ${result.stale.length} stale, ${result.replies.length} replies, ${result.unknown.length} unknown.`,
                     actionable: result.actionable,
                     stale: result.stale,
                     replies: result.replies,
+                    unknown: result.unknown,
+                    unknownCount: result.unknown.length,
                     verdicts: result.verdicts,
                 }
             }

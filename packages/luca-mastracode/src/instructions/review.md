@@ -56,12 +56,12 @@ Run `runChecks` for TypeScript compilation, linting, and tests. Record results f
 **Subagent Telemetry — parallel batch protocol**:
 
 // → Before spawning: const ts = Date.now()
-// → Emit 4 record-subagent invoke records (role: "reviewer") with correlationIds: "reviewer-arch-${ts}", "reviewer-dx-${ts}", "reviewer-sec-${ts}", "reviewer-simpl-${ts}"
-// → Spawn 4 reviewer subagents in parallel (see spawn list below)
-// → After batch returns: emit 4 record-subagent complete records reusing matching correlationIds. Measure `durationMs = Date.now() - ts` per reviewer (never a guess). Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. If `model` or all token fields are unknown, **omit** the entire usage comment — never emit `null` or `0` placeholder values. Pass `success: true` if result has content, `success: false` if subagent errored — never `null`.
+// → Emit 5 record-subagent invoke records (role: "reviewer") with correlationIds: "reviewer-arch-${ts}", "reviewer-dx-${ts}", "reviewer-sec-${ts}", "reviewer-simpl-${ts}", "reviewer-test-${ts}"
+// → Spawn 5 reviewer subagents in parallel (see spawn list below)
+// → After batch returns: emit 5 record-subagent complete records reusing matching correlationIds. Measure `durationMs = Date.now() - ts` per reviewer (never a guess). Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. If `model` or all token fields are unknown, **omit** the entire usage comment — never emit `null` or `0` placeholder values. Pass `success: true` if result has content, `success: false` if subagent errored — never `null`.
 // → correlationId format: `<role>-<Date.now()>` e.g. "reviewer-arch-1747185300123". See "Subagent Telemetry" in execute.md for the full token-parsing pattern.
 
-Spawn 4 reviewer subagents in parallel:
+Spawn 5 reviewer subagents in parallel:
 
 1. **Architecture** (`reviewer` subagent with perspective: "architecture")
    - Structural correctness and design pattern adherence
@@ -83,13 +83,18 @@ Spawn 4 reviewer subagents in parallel:
    - Dead code and unused abstractions
    - Opportunities to reduce indirection
 
+5. **Test Quality** (`reviewer` subagent with perspective: "test-quality")
+   - Vacuous mocks and presence-only assertions
+   - Regex over-permissiveness (no negative case)
+   - Stale fixtures and test-name-vs-assertion drift
+
 Each subagent receives: changed files list, project coding standards (if available), relevant acceptance criteria.
 
 **Confidence-guided review**: Reviewers should weight their scrutiny toward areas flagged as `low` or `medium` confidence in the confidence journal. Cross-reference journal entries with code changes to prioritize review where execution certainty was lowest.
 
 ### Step 4.5: Capture Raw Findings
 
-**IMMEDIATELY** after all 4 return, persist raw output to `review-capture-{perspective}-{wave}.md` **before** consolidation. Use **writePlanningFile** (action: "write") with the bare basename — it auto-routes to `.planning/phases/<currentPhaseSlug>/`. These files are cleaned up during finalize.
+**IMMEDIATELY** after all 5 return, persist raw output to `review-capture-{perspective}-{wave}.md` **before** consolidation. Use **writePlanningFile** (action: "write") with the bare basename — it auto-routes to `.planning/phases/<currentPhaseSlug>/`. These files are cleaned up during finalize.
 
 Template:
 ```markdown
@@ -104,7 +109,7 @@ Template:
 {raw subagent output, preserved verbatim}
 ```
 
-Files: `review-capture-architecture-{wave}.md`, `review-capture-dx-{wave}.md`, `review-capture-security-{wave}.md`, `review-capture-simplification-{wave}.md`
+Files: `review-capture-architecture-{wave}.md`, `review-capture-dx-{wave}.md`, `review-capture-security-{wave}.md`, `review-capture-simplification-{wave}.md`, `review-capture-test-quality-{wave}.md`
 
 Wave number from `workflowState(action: "read")` → `reviewIteration` (default `1`).
 
@@ -240,7 +245,7 @@ In `full-auto`, route automatically based on findings.
 1. Check iteration count against `maxReviewIterations`
 2. Within budget: write iteration plan, save report, transition to Execute:
    ```
-   workflowState(action: "save-review-results", iterationPlan: [...], reviewIteration: <n+1>, perspectives: ["architecture", "security", "simplification", "dx"])
+   workflowState(action: "save-review-results", iterationPlan: [...], reviewIteration: <n+1>, perspectives: ["architecture", "security", "simplification", "dx", "test-quality"])
    workflowState(action: "switch-mode", targetMode: "luca:4-execute")
    ```
 3. At budget limit: save report with remaining issues, transition to Finalize with warning
@@ -293,7 +298,7 @@ Read `workflowState(action: "read")` for:
 - `intent` — original user intent
 
 ## Tool Coordination
-Sequence: (1) Spawn 4 reviewer subagents → (2) capture raw findings via `writePlanningFile` (bare basenames; phase-routed automatically) → (3) consolidate & write audit report to `REVIEW-{wave}.md` (resolves under `.planning/phases/<currentPhaseSlug>/`) → (4) `workflowState(action: "save-review-results")` with iteration plan → (5) if must-fix: `workflowState(action: "switch-mode", targetMode: "luca:4-execute")`, else: `workflowState(action: "switch-mode", targetMode: "luca:6-finalize")`.
+Sequence: (1) Spawn 5 reviewer subagents → (2) capture raw findings via `writePlanningFile` (bare basenames; phase-routed automatically) → (3) consolidate & write audit report to `REVIEW-{wave}.md` (resolves under `.planning/phases/<currentPhaseSlug>/`) → (4) `workflowState(action: "save-review-results")` with iteration plan → (5) if must-fix: `workflowState(action: "switch-mode", targetMode: "luca:4-execute")`, else: `workflowState(action: "switch-mode", targetMode: "luca:6-finalize")`.
 
 > **Note**: Review does NOT write verification results. The `verificationResult` tool is read-only in this mode — use it to read what the executor/verifier produced. Review's output is the audit report and iteration plan.
 

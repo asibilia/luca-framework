@@ -84,3 +84,9 @@ packages/luca-mastracode/.planning/
 
 #Playwright CLI
 .playwright-cli/
+
+# Luca transient phase artifacts (per-iteration scratch, archived telemetry)
+.planning/telemetry/archive/
+.planning/**/checks-convergence.json
+.planning/**/*-capture-*.md
+.planning/audits/memory/state.json
