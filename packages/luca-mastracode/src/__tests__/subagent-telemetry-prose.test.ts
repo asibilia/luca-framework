@@ -190,3 +190,52 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         expect(tail).not.toMatch(/\n## /)
     })
 })
+
+// ---------------------------------------------------------------------------
+// cancel-subagent prose — orchestrator-facing cancellation directive
+// ---------------------------------------------------------------------------
+//
+// Hung subagents that the user kills manually must NOT be reported as a faked
+// `subagent.complete`. Instead the parent agent emits `cancel-subagent`, which
+// produces a `subagent.cancelled` telemetry record with `outcome:
+// cancelled_by_user`. Without explicit prose, agents would invent a complete
+// record with `success: false` and lie about the call returning — making real
+// hangs indistinguishable from genuine subagent failures in aggregator output.
+//
+// These tests guard the prose against regression on the two files where
+// hung-subagent kills are most likely to happen in practice (execute.md inner
+// review loop + review.md outer review pass — both observed killing hung
+// subagents in run_mpct9yy0_qfn0vsy5).
+describe('cancel-subagent directive present in execute.md', () => {
+    test('execute.md documents the cancel-subagent action shape', () => {
+        const src = readInstruction('execute.md')
+        expect(src).toContain('cancel-subagent')
+        // The directive must mention cancelReason so the agent knows the
+        // call requires a free-form reason string.
+        expect(src).toContain('cancelReason')
+        // The directive must explicitly forbid faking subagent.complete.
+        expect(src).toMatch(/do NOT emit `subagent\.complete`/i)
+    })
+})
+
+describe('cancel-subagent directive present in review.md', () => {
+    test('review.md Step 4 spawn directive mentions cancel-subagent', () => {
+        const src = readInstruction('review.md')
+        const step4Start = src.indexOf('### Step 4')
+        expect(step4Start).toBeGreaterThan(-1)
+        const remainder = src.slice(step4Start)
+        const nextStepIdx = remainder.search(/\n### Step \d/)
+        const step4Region =
+            nextStepIdx >= 0 ? remainder.slice(0, nextStepIdx) : remainder
+        expect(step4Region).toContain('cancel-subagent')
+    })
+})
+
+describe('shared-prefix outcome enum includes cancelled_by_user', () => {
+    test('SUBAGENT_SHARED_PREFIX lists cancelled_by_user as a valid outcome', () => {
+        // If a subagent self-reports outcome via the usage comment, the prose
+        // must explicitly allow `cancelled_by_user` so the value is not
+        // dropped at the orchestrator parse step.
+        expect(SUBAGENT_SHARED_PREFIX).toContain('cancelled_by_user')
+    })
+})
