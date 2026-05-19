@@ -311,6 +311,57 @@ export const recordSubagentAction = z.object({
         .optional(),
 })
 
+/**
+ * Self-reported retroactive cancellation event.
+ *
+ * Emitted by the orchestrator (parent agent or user-facing build mode) when
+ * it detects a hung subagent and kills it manually — fills the diagnostic
+ * gap where a user-cancelled subagent looks identical to a pipeline stall
+ * in the JSONL telemetry (only a long mode.start→mode.end delta with no
+ * matching subagent.complete record).
+ *
+ * Emits a `subagent.cancelled` TelemetryRecord with:
+ *   - meta.role, meta.correlationId — pair to the original `subagent.invoke`
+ *   - meta.cancelReason — short human-readable reason (sanitized to telemetry)
+ *   - meta.outcome: 'cancelled_by_user' — fixed sentinel for aggregator filtering
+ *   - durationMs (top-level) — partial elapsed ms from invoke to kill
+ *
+ * NOTE: there is no `subagent.complete` for cancelled calls. Aggregators must
+ * treat `subagent.invoke` + `subagent.cancelled` as a complete pair instead
+ * of an orphan invoke.
+ */
+export const cancelSubagentAction = z.object({
+    action: z.literal('cancel-subagent'),
+    role: z
+        .string()
+        .min(1)
+        .max(64)
+        .regex(/^[^\r\n\t]+$/, 'role must not contain CR/LF/tab'),
+    correlationId: z
+        .string()
+        .min(1)
+        .max(128)
+        .regex(
+            /^[^\r\n\t]+$/,
+            'correlationId must not contain CR/LF/tab'
+        ),
+    /**
+     * Short human-readable reason for the kill (e.g. "stuck >10m without
+     * any tool calls", "user requested cancel via TUI hotkey"). Free-form,
+     * sanitized for storage. Max 512 chars to match query field convention.
+     */
+    cancelReason: z
+        .string()
+        .min(1)
+        .max(512)
+        .regex(
+            /^[^\r\n\t]+$/,
+            'cancelReason must not contain CR/LF/tab'
+        ),
+    /** Partial elapsed duration from invoke to kill. Travels in `overrides`. */
+    partialDurationMs: z.number().nonnegative().nullable().optional(),
+})
+
 export const recordRecallAction = z.object({
     action: z.literal('record-recall'),
     /**
@@ -370,6 +421,7 @@ export const recordRecallAction = z.object({
 export const WORKFLOW_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> = {
     'record-subagent': recordSubagentAction,
     'record-recall': recordRecallAction,
+    'cancel-subagent': cancelSubagentAction,
     'save-review-results': saveReviewResultsAction,
 }
 
@@ -391,6 +443,7 @@ export const WORKFLOW_STATE_ACTIONS = [
     'archive-loose',
     'record-subagent',
     'record-recall',
+    'cancel-subagent',
 ] as const
 
 export type WorkflowStateAction = (typeof WORKFLOW_STATE_ACTIONS)[number]
@@ -711,6 +764,28 @@ export const workflowStateInputSchema = z.object({
     // `durationMs` is already declared above for record-subagent; reused
     // for record-recall — same field, different action semantics. The
     // per-action schema is the source of truth.
+
+    // cancel-subagent
+    cancelReason: z
+        .string()
+        .min(1)
+        .max(512)
+        .regex(
+            /^[^\r\n\t]+$/,
+            'cancelReason must not contain CR/LF/tab'
+        )
+        .optional()
+        .describe(
+            "Short human-readable reason for cancellation (required for 'cancel-subagent'). Sanitized for storage; max 512 chars."
+        ),
+    partialDurationMs: z
+        .number()
+        .nonnegative()
+        .nullable()
+        .optional()
+        .describe(
+            "Partial elapsed ms from invoke to kill (cancel-subagent only). Travels in telemetry overrides as top-level durationMs."
+        ),
 })
 
 export type WorkflowStateInput = z.infer<typeof workflowStateInputSchema>
@@ -1804,6 +1879,46 @@ export const workflowStateTool = createTool({
                     return {
                         success: true,
                         message: `Telemetry emitted: ${kind} (query="${sanitizeLogMessage(query)}", resultCount=${resultCount ?? 'null'})`,
+                    }
+                }
+                case 'cancel-subagent': {
+                    const parsed = cancelSubagentAction.safeParse(raw)
+                    if (!parsed.success) {
+                        throw new ActionValidationError(
+                            'cancel-subagent',
+                            parsed.error.issues
+                                .map((i) => i.message)
+                                .join('; ')
+                        )
+                    }
+                    const { role, correlationId, cancelReason, partialDurationMs } =
+                        parsed.data
+                    appendTelemetry(
+                        'subagent.cancelled',
+                        {
+                            role,
+                            correlationId,
+                            // Preserve cancelReason up to schema .max(512); only
+                            // strip CR/LF/tab. Same rationale as `query` in
+                            // record-recall — sanitizeLogMessage's 200-char cap
+                            // would silently truncate telemetry storage.
+                            cancelReason: sanitizeTelemetryValue(cancelReason),
+                            // Fixed sentinel — aggregators filter on
+                            // outcome === 'cancelled_by_user' to surface
+                            // user-cancelled hangs without needing to
+                            // correlate orphan invoke/complete pairs.
+                            outcome: 'cancelled_by_user',
+                            // Cancelled calls have no matching subagent.complete,
+                            // so success is explicitly false to keep the
+                            // {success,outcome} pair consistent with the
+                            // per-action recordSubagentAction contract.
+                            success: false,
+                        },
+                        { durationMs: finiteOrNull(partialDurationMs) }
+                    )
+                    return {
+                        success: true,
+                        message: `Telemetry emitted: subagent.cancelled (role=${role}, correlationId=${correlationId}, reason="${sanitizeLogMessage(cancelReason)}")`,
                     }
                 }
                 default: {
