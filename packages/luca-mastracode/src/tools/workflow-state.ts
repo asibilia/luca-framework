@@ -305,6 +305,7 @@ export const recordSubagentAction = z.object({
             'crashed',
             'killed',
             'timeout',
+            'cancelled_by_user',
         ])
         .nullable()
         .optional(),
@@ -654,6 +655,7 @@ export const workflowStateInputSchema = z.object({
             'crashed',
             'killed',
             'timeout',
+            'cancelled_by_user',
         ])
         .nullable()
         .optional()
