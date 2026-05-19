@@ -35,6 +35,6 @@ ${MEMORY_TIER_DISCIPLINE}
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — mid-session guidance supersedes stale context.
 - End every response with exactly: \`<!-- usage: {"inputTokens":<N>,"outputTokens":<N>,"model":"<id>"} -->\`. If \`model\` or token counts are unknown, **omit** the entire comment — never \`null\` or \`0\` placeholders.
-- Optionally include \`"outcome":"<value>"\` (enum: \`completed\`, \`completed_no_usage\`, \`completed_partial_parse\`, \`crashed\`, \`killed\`, \`timeout\`). Omit key entirely when unset — never empty string.
+- Optionally include \`"outcome":"<value>"\` (enum: \`completed\`, \`completed_no_usage\`, \`completed_partial_parse\`, \`crashed\`, \`killed\`, \`timeout\`, \`cancelled_by_user\`). Omit key entirely when unset — never empty string.
 - \`record-subagent\` complete: \`success: true\` for any \`completed*\` outcome; \`false\` for \`crashed\`/\`killed\`/\`timeout\`. never emit \`null\`. \`durationMs\` MUST be \`Date.now() - ts\`; omit if unmeasurable, never a guess.
 `

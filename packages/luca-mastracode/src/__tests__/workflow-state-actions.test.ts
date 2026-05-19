@@ -1583,6 +1583,152 @@ describe('record-subagent model field CR/LF guard', () => {
 })
 
 // ---------------------------------------------------------------------------
+// cancel-subagent telemetry — user-cancellation surface
+// ---------------------------------------------------------------------------
+
+describe('cancel-subagent telemetry', () => {
+    test('(a) valid call emits subagent.cancelled with role + correlationId + reason in meta', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'cancel-subagent',
+            role: 'executor',
+            correlationId: 'executor-1747097200456',
+            cancelReason: 'hung >10m without any tool calls',
+            partialDurationMs: 615000,
+        })
+        expect(result.success).toBe(true)
+        expect(mockAppendTelemetry).toHaveBeenCalledTimes(1)
+        const [kind, meta, overrides] = mockAppendTelemetry.mock.calls[0]!
+        expect(kind).toBe('subagent.cancelled')
+        expect(meta).toMatchObject({
+            role: 'executor',
+            correlationId: 'executor-1747097200456',
+            cancelReason: 'hung >10m without any tool calls',
+            outcome: 'cancelled_by_user',
+            success: false,
+        })
+        // partialDurationMs travels in overrides → top-level durationMs,
+        // matching the wave.end / phase.end / subagent.complete convention.
+        expect((overrides as Record<string, unknown>)?.durationMs).toBe(615000)
+    })
+
+    test('(b) outcome sentinel is fixed at cancelled_by_user (not caller-overridable)', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'cancel-subagent',
+            role: 'reviewer',
+            correlationId: 'reviewer-arch-1747200000123',
+            cancelReason: 'TUI cancel hotkey',
+            // outcome is NOT in cancelSubagentAction schema — even if a future
+            // caller mistakenly passes it, the handler emits the sentinel.
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).outcome).toBe(
+            'cancelled_by_user'
+        )
+    })
+
+    test('(c) success is fixed at false (no fake subagent.complete contract)', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'cancel-subagent',
+            role: 'researcher',
+            correlationId: 'researcher-arch-1747200000123',
+            cancelReason: 'stuck on read_file with no response',
+        })
+        const [, meta] = mockAppendTelemetry.mock.calls[0]!
+        expect((meta as Record<string, unknown>).success).toBe(false)
+    })
+
+    test('(d) missing cancelReason rejected (free-form but required)', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'cancel-subagent',
+            role: 'executor',
+            correlationId: 'executor-1747200000123',
+            // cancelReason missing
+        })
+        expect(result.success !== true).toBe(true)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test('(e) empty cancelReason rejected (must be ≥1 char)', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'cancel-subagent',
+            role: 'executor',
+            correlationId: 'executor-1747200000123',
+            cancelReason: '',
+        })
+        expect(result.success !== true).toBe(true)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test.each([
+        ['carriage-return', 'kill reason\rwith CR'],
+        ['line-feed', 'kill reason\nwith LF'],
+        ['tab', 'kill reason\twith TAB'],
+    ])(
+        '(f) cancelReason with %s rejected (CWE-117 log-injection guard)',
+        async (_label, cancelReason) => {
+            mockAppendTelemetry.mockClear()
+            const result = await callAction({
+                action: 'cancel-subagent',
+                role: 'executor',
+                correlationId: 'executor-1747200000123',
+                cancelReason,
+            })
+            expect(result.success !== true).toBe(true)
+        }
+    )
+
+    test('(g) partialDurationMs omitted → durationMs override is null', async () => {
+        mockAppendTelemetry.mockClear()
+        await callAction({
+            action: 'cancel-subagent',
+            role: 'verifier',
+            correlationId: 'verifier-1747200000123',
+            cancelReason: 'unmeasurable wall time — orchestrator restart',
+        })
+        const [, , overrides] = mockAppendTelemetry.mock.calls[0]!
+        expect((overrides as Record<string, unknown>)?.durationMs).toBeNull()
+    })
+
+    test('(h) NaN partialDurationMs rejected by Zod schema (defense-in-depth)', async () => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'cancel-subagent',
+            role: 'learner',
+            correlationId: 'learner-1747200000123',
+            cancelReason: 'malformed timestamp upstream',
+            // Zod .number() rejects NaN — schema is the binding gate.
+            // finiteOrNull in the handler is a defense-in-depth fallback
+            // for any future runtime path that bypasses the schema.
+            partialDurationMs: Number.NaN,
+        })
+        // Tolerate both rejection paths: per-action schema validation OR
+        // outer flat-schema validation (Mastra-level).
+        expect(result.success !== true).toBe(true)
+        expect(mockAppendTelemetry).not.toHaveBeenCalled()
+    })
+
+    test.each([
+        ['CR in role', { role: 'executor\r' }],
+        ['LF in correlationId', { correlationId: 'executor-1747\n200000123' }],
+    ])('(i) %s rejected (CR/LF/tab guard parity)', async (_label, overrides) => {
+        mockAppendTelemetry.mockClear()
+        const result = await callAction({
+            action: 'cancel-subagent',
+            role: 'executor',
+            correlationId: 'executor-1747200000123',
+            cancelReason: 'valid reason',
+            ...overrides,
+        })
+        expect(result.success !== true).toBe(true)
+    })
+})
+
+// ---------------------------------------------------------------------------
 // telemetry janitor (reset-pipeline archive side-effect)
 // ---------------------------------------------------------------------------
 

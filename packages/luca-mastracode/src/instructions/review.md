@@ -60,6 +60,7 @@ Run `runChecks` for TypeScript compilation, linting, and tests. Record results f
 // → Spawn 5 reviewer subagents in parallel (see spawn list below)
 // → After batch returns: emit 5 record-subagent complete records reusing matching correlationIds. Measure `durationMs = Date.now() - ts` per reviewer (never a guess). Parse `<!-- usage: ... -->` from each result's last 256 chars (regex `/<!--\s*usage:\s*(\{[^}]+\})\s*-->/`) for inputTokens/outputTokens/model; pass `null` when absent or malformed. If `model` or all token fields are unknown, **omit** the entire usage comment — never emit `null` or `0` placeholder values. Pass `success: true` if result has content, `success: false` if subagent errored — never `null`.
 // → correlationId format: `<role>-<Date.now()>` e.g. "reviewer-arch-1747185300123". See "Subagent Telemetry" in execute.md for the full token-parsing pattern.
+// → If a reviewer hangs and you abort it, emit `cancel-subagent` (role: "reviewer", same correlationId, cancelReason, partialDurationMs) — never fake a `subagent.complete`. Aggregator pairs `invoke + cancelled` cleanly.
 
 Spawn 5 reviewer subagents in parallel:
 

@@ -105,6 +105,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'switch-mode',
                 'record-subagent',
                 'record-recall',
+                'cancel-subagent',
             ],
             [MODES.architect]: [
                 'read',
@@ -112,6 +113,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'switch-mode',
                 'record-subagent',
                 'record-recall',
+                'cancel-subagent',
             ],
             [MODES.execute]: [
                 'read',
@@ -123,6 +125,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'switch-mode',
                 'record-subagent',
                 'record-recall',
+                'cancel-subagent',
             ],
             [MODES.review]: [
                 'read',
@@ -130,6 +133,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'switch-mode',
                 'record-subagent',
                 'record-recall',
+                'cancel-subagent',
             ],
             [MODES.finalize]: [
                 'read',
@@ -140,6 +144,7 @@ const TOOL_MANIFEST: Record<string, ToolManifestEntry> = {
                 'archive-loose',
                 'record-subagent',
                 'record-recall',
+                'cancel-subagent',
             ],
         },
     },

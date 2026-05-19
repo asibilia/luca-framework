@@ -81,6 +81,7 @@ export type TelemetryKind =
     | 'mode.end'
     | 'subagent.invoke'
     | 'subagent.complete'
+    | 'subagent.cancelled'
     | 'recall.hit'
     | 'recall.miss'
     | 'review.iteration'
