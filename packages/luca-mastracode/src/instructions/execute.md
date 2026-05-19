@@ -163,6 +163,14 @@ workflowState({ action: "record-subagent", event: "complete", role: "executor", 
 workflowState({ action: "record-subagent", event: "complete", role: "executor", correlationId: `executor-${ts}`, success: false })
 ```
 
+**Cancellation**: If a subagent hangs and you (or the user) decide to kill it before it returns, do NOT emit `subagent.complete` — that would lie about the call finishing. Instead emit `cancel-subagent`:
+
+```
+workflowState({ action: "cancel-subagent", role: "executor", correlationId: `executor-${ts}`, cancelReason: "no tool calls for >10m, terminating", partialDurationMs: Date.now() - ts })
+```
+
+This produces a `subagent.cancelled` telemetry record with `outcome: cancelled_by_user`, pairing cleanly with the original `subagent.invoke`. Aggregators treat `invoke + cancelled` as a closed pair (no orphan invoke), letting you distinguish hung-and-killed subagents from real pipeline stalls.
+
 ### Executor Guidelines
 
 - Implement **one task at a time**, in order
