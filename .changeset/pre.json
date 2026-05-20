@@ -16,6 +16,7 @@
     "mode-transition-telemetry",
     "pr-feedback-batch-8-todos",
     "recall-timeout-outcome-flag-model-crlf",
+    "subagent-hang-cancel-telemetry",
     "subagent-invocation-telemetry",
     "telemetry-batch-completion",
     "wave-duration-telemetry"
