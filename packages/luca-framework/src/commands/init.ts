@@ -1,12 +1,13 @@
 /**
  * CLI command: luca init
  *
- * Global setup orchestrator for first-time Luca installation.
- * Runs a 3-step flow:
+ * Bootstrap orchestrator. Runs a 4-step flow that's idempotent at every
+ * step, so re-running in the same project is safe:
  *
- * 1. **Prerequisites** — Bun runtime check
- * 2. **Luca home** — Ensure ~/.luca/ directory exists
- * 3. **MuninnDB** — Binary download + service start
+ * 1. **Prerequisites** — Bun runtime check (global)
+ * 2. **Luca home** — Ensure ~/.luca/ directory exists (global)
+ * 3. **MuninnDB** — Binary download + service start (global)
+ * 4. **Project skeleton** — Write .luca/ + .claude/ stage-gate wiring (per-project)
  *
  * Per-project vault wiring (vault name + API key) is handled
  * separately by `luca vault:init`.
@@ -21,11 +22,15 @@
  *
  * # Skip MuninnDB setup (manage it separately)
  * luca init --skip-muninndb
+ *
+ * # Skip per-project skeleton (only do global setup)
+ * luca init --skip-project
  * ```
  */
 import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 
+import { wireClaudeHooks, writeProjectSkeleton } from '../init'
 import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
@@ -50,6 +55,12 @@ export const initCommand = defineCommand({
         'skip-muninndb': {
             type: 'boolean',
             description: 'Skip MuninnDB binary download and service setup',
+            default: false,
+        },
+        'skip-project': {
+            type: 'boolean',
+            description:
+                'Skip per-project setup (.luca/ skeleton + .claude/ stage-gate hook)',
             default: false,
         },
     },
@@ -164,6 +175,25 @@ export const initCommand = defineCommand({
             p.log.info('Step 3/3: MuninnDB (skipped)')
         }
 
+        // ── Step 4: Per-project skeleton ─────────────────────────────────────
+        let projectSetupRan = false
+        if (!args['skip-project']) {
+            p.log.step('Step 4/4: Project skeleton (.luca/ + .claude/)')
+            const projectCwd = process.cwd()
+            await writeProjectSkeleton({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
+            await wireClaudeHooks({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
+            projectSetupRan = true
+            p.log.success(`Per-project skeleton written to ${projectCwd}`)
+        } else {
+            p.log.info('Step 4/4: Project skeleton (skipped)')
+        }
+
         // ── Post-init readout ────────────────────────────────────────────────
         const readout: string[] = []
 
@@ -193,6 +223,10 @@ export const initCommand = defineCommand({
         readout.push('Directories:')
         readout.push(`  ${homePaths.root}/`)
         readout.push(`  ${homePaths.bin}/`)
+        if (projectSetupRan) {
+            readout.push(`  ${process.cwd()}/.luca/`)
+            readout.push(`  ${process.cwd()}/.claude/`)
+        }
 
         readout.push('')
         readout.push('Next steps:')

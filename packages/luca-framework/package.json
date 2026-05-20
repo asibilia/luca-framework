@@ -6,6 +6,7 @@
     "luca": "./bin/luca.js"
   },
   "dependencies": {
+    "@alecsibilia/luca-core": "workspace:*",
     "@clack/prompts": "^1.0.0",
     "@mastra/core": "catalog:",
     "@mastra/libsql": "catalog:",
