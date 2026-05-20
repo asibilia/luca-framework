@@ -107,6 +107,44 @@ Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defin
 
 **Migrating from `.planning/`** (legacy layout): run `luca migrate-planning [--dry-run] [--force]`. Moves root files, deletes ephemeral files (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration.
 
+## Claude Code-first Architecture (v12+)
+
+`luca init` wires three layers into the project:
+
+1. **`.luca/` directory** — the workflow state, schema-validated by `@alecsibilia/luca-core`.
+2. **Stage-gate hook** (`.claude/hooks/stage-gate.sh` + `.claude/settings.json` PreToolUse registration) — `luca hook stage-gate` enforces a coarse-phase × tool-category matrix on every Edit/Write/Bash. Always-denied paths (.git/, ~/.claude/, /etc/, …) are blocked regardless of phase. Bash commands are tokenized via shell-quote AST so output redirects + cp/mv targets are checked against the path matrix — defeating the temp-file exfiltration pattern.
+3. **MCP server** (`luca mcp serve` registered in `.claude/settings.json` mcpServers) — exposes deterministic `luca_*` tools that mediate every write to `.luca/`. The LLM never picks a path; it expresses intent and the server computes the destination. Phase preconditions are enforced server-side: `luca_phase_write_plan` only works when `pipelineStep === "plan"`.
+
+**Two-layer enforcement.** The hook blocks the *attempt*; the MCP server blocks the *out-of-phase request*. Together they make the workflow discipline impossible to bypass without `--dangerously-skip-permissions`.
+
+### Phase skills + subagents
+
+Bundled with the npm package under `packages/luca-framework/skills/`:
+
+- `commands/phase-{discuss,plan,execute}.md` — slash commands the user invokes; orchestrate state advances + MCP tool calls + subagent delegation.
+- `agents/luca-{executor,planner,reviewer}.md` — Claude Code subagent definitions that do the cognitive/code-writing work.
+
+`luca init` copies these into `<project>/.claude/commands/` and `.claude/agents/`. **Re-running `luca init` always overwrites with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones).
+
+### Adding a new MCP tool
+
+1. Create `packages/luca-framework/src/mcp/helpers/tools/luca-<name>.ts` exporting a `ToolDescriptor` with name + description + inputSchema (Zod) + `allowedPhases` (if write-class) + handler.
+2. Add it to `packages/luca-framework/src/mcp/helpers/tool-registry.ts` `TOOL_REGISTRY`.
+3. Write a `*.test.ts` covering the happy path + at least one error path.
+4. Run `bun test src/mcp` to verify.
+
+The hook + server pair will refuse to land any tool that doesn't declare its phase scope. Be explicit; the matrix is the contract.
+
+### Adding a new phase skill
+
+1. Write `packages/luca-framework/skills/commands/<name>.md` with frontmatter (name, description) and instructions that call the right MCP tools.
+2. Skills are markdown — they're prompts, not code. The discipline is in the MCP tool layer they delegate to, not the markdown.
+3. `luca init` will pick the new skill up automatically (re-run it in your project to install).
+
+### Mastracode coexistence
+
+`luca-mastracode` is still in the tree and `luca run` still spawns it the old way. The new Claude Code-first path runs through the bundled skills + MCP server. The two paths are independent; you can use either in a given project. Mastracode-resident skills + subagents will be ported individually in follow-up PRs.
+
 ## Related Files
 
 - [docs/guides/coding-standards.md](docs/guides/coding-standards.md) - Complete coding standards

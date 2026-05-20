@@ -31,6 +31,7 @@ import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 
 import {
+    installSkills,
     wireClaudeHooks,
     wireMcpServer,
     writeProjectSkeleton,
@@ -193,6 +194,10 @@ export const initCommand = defineCommand({
                 log: (msg) => p.log.info(msg),
             })
             await wireMcpServer({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
+            await installSkills({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
