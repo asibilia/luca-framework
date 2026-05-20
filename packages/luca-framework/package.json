@@ -16,12 +16,14 @@
     "mastracode": "catalog:",
     "pathe": "^2.0.3",
     "semver": "^7.6.0",
+    "shell-quote": "^1.8.3",
     "update-notifier": "^7.3.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@alecsibilia/luca-mastracode": "workspace:*",
     "@types/semver": "^7.5.8",
+    "@types/shell-quote": "^1.7.5",
     "@types/update-notifier": "^6.0.8"
   },
   "exports": {

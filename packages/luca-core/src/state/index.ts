@@ -26,3 +26,8 @@ export { PIPELINE_STEP_TO_COARSE_PHASE } from './configs/coarse-phase-map.ts'
 // Helpers
 export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
 export { coarsePhaseOf } from './helpers/coarse-phase-of.ts'
+export { isToolAllowed } from './helpers/is-tool-allowed.ts'
+export type { ToolCategory } from './helpers/is-tool-allowed.ts'
+
+// Stage-gate matrix
+export { STAGE_TOOL_MATRIX } from './configs/stage-tool-matrix.ts'
