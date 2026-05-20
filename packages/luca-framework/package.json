@@ -11,6 +11,7 @@
     "@mastra/core": "catalog:",
     "@mastra/libsql": "catalog:",
     "@mastra/memory": "catalog:",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "citty": "^0.2.0",
     "consola": "^3.4.0",
     "mastracode": "catalog:",

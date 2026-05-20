@@ -30,7 +30,11 @@
 import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 
-import { wireClaudeHooks, writeProjectSkeleton } from '../init'
+import {
+    wireClaudeHooks,
+    wireMcpServer,
+    writeProjectSkeleton,
+} from '../init'
 import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
@@ -185,6 +189,10 @@ export const initCommand = defineCommand({
                 log: (msg) => p.log.info(msg),
             })
             await wireClaudeHooks({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
+            await wireMcpServer({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })

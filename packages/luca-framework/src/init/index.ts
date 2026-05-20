@@ -6,3 +6,9 @@ export {
     mergeStageGateRegistration,
 } from './helpers/wire-claude-hooks.ts'
 export type { WireClaudeHooksOptions } from './helpers/wire-claude-hooks.ts'
+
+export {
+    wireMcpServer,
+    mergeMcpServerRegistration,
+} from './helpers/wire-mcp-server.ts'
+export type { WireMcpServerOptions } from './helpers/wire-mcp-server.ts'

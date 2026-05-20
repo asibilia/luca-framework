@@ -31,3 +31,9 @@ export type { ToolCategory } from './helpers/is-tool-allowed.ts'
 
 // Stage-gate matrix
 export { STAGE_TOOL_MATRIX } from './configs/stage-tool-matrix.ts'
+
+// Pipeline transitions
+export {
+    PIPELINE_TRANSITIONS,
+    isLegalTransition,
+} from './configs/pipeline-transitions.ts'
