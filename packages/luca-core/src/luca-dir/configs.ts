@@ -79,6 +79,12 @@ export const LUCA_DIR_CONTRACT = {
                 },
                 { file: 'verify.json', writtenBy: 'REVIEWING (verify step)' },
                 { file: 'learn.md', writtenBy: 'REVIEWING (learn step)' },
+                {
+                    file: 'confidence.jsonl',
+                    purpose:
+                        'Append-only per-phase confidence journal (one JSON object per line)',
+                    writtenBy: 'any phase (executor/verifier/reviewer logs)',
+                },
             ],
         },
         milestones: {

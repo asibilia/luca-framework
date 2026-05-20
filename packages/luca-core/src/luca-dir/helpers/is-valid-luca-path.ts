@@ -35,6 +35,7 @@ const PHASE_FILE_KINDS: Record<string, LucaArtifactKind> = {
     'plan-review.md': 'phase.plan-review',
     'verify.json': 'phase.verify',
     'learn.md': 'phase.learn',
+    'confidence.jsonl': 'phase.confidence',
 }
 
 /**

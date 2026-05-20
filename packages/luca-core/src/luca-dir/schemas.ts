@@ -33,6 +33,7 @@ export const LucaArtifactKind = z.enum([
     'phase.audit',
     'phase.verify',
     'phase.learn',
+    'phase.confidence',
     // Milestones
     'milestone.roadmap',
     'milestone.backlog-snapshot-json',

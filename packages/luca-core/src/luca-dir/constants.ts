@@ -45,6 +45,7 @@ export const PHASE_FILE_PATHS = {
     'plan-review': 'plan-review.md',
     verify: 'verify.json',
     learn: 'learn.md',
+    confidence: 'confidence.jsonl',
     'execute/summary': 'execute/summary.md',
     'execute/progress': 'execute/progress.jsonl',
 } as const
