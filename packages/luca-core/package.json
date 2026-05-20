@@ -12,7 +12,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./state": "./src/state/index.ts",
-    "./luca-dir": "./src/luca-dir/index.ts"
+    "./luca-dir": "./src/luca-dir/index.ts",
+    "./preferences": "./src/preferences/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
