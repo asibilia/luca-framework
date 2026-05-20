@@ -41,6 +41,51 @@ function bundleMastracode() {
     }
 }
 
+/**
+ * Bundle the sibling `luca-core` package into `dist/node_modules/@alecsibilia/
+ * luca-core/` so the bundled mastracode (which imports `@alecsibilia/luca-core`)
+ * can resolve the dependency at runtime inside the published tarball.
+ *
+ * Node's resolution algorithm walks up from the requiring file looking for
+ * `node_modules/<pkg>/`. Placing luca-core under `dist/node_modules/` means
+ * any bundled mastracode file resolves the package without needing it to be
+ * published to npm separately.
+ *
+ * luca-core is intentionally private and ships only as part of the
+ * luca-framework tarball.
+ */
+function bundleLucaCore() {
+    const lucaCoreRoot = resolve(__dirname, '../luca-core')
+    const target = resolve(
+        __dirname,
+        'dist/node_modules/@alecsibilia/luca-core'
+    )
+
+    if (!existsSync(lucaCoreRoot)) {
+        throw new Error(
+            `[luca-framework build] Cannot bundle luca-core: ${lucaCoreRoot} does not exist.`
+        )
+    }
+
+    if (existsSync(target)) {
+        rmSync(target, { recursive: true, force: true })
+    }
+    mkdirSync(target, { recursive: true })
+
+    // Copy package.json so the `exports` map + `main` field resolve.
+    cpSync(join(lucaCoreRoot, 'package.json'), join(target, 'package.json'))
+
+    // Copy src/, excluding tests.
+    const srcFrom = join(lucaCoreRoot, 'src')
+    if (existsSync(srcFrom)) {
+        cpSync(srcFrom, join(target, 'src'), {
+            recursive: true,
+            filter: (src) =>
+                !src.endsWith('.test.ts') && !src.endsWith('.spec.ts'),
+        })
+    }
+}
+
 export default defineBuildConfig({
     entries: ['src/index'],
     clean: true,
@@ -66,6 +111,7 @@ export default defineBuildConfig({
     ],
     hooks: {
         'build:done': () => {
+            bundleLucaCore()
             bundleMastracode()
         },
     },
