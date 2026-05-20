@@ -10,11 +10,11 @@
  * correlates tool_start → tool_end events via toolCallId to accurately detect
  * when the workflow-state tool's switch-mode action was invoked.
  */
-import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { MODES } from '../constants/mode-ids.js'
-import { followUpRef, switchModeRef } from '../util/refs.js'
+import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { appendLedger } from '../state/session-ledger.js'
 import { PIPELINE_ORDER } from '../tools/workflow-state.js'
+import { followUpRef, switchModeRef } from '../util/refs.js'
 
 export { PIPELINE_ORDER }
 export const PIPELINE_MODES = new Set(Object.keys(PIPELINE_ORDER))

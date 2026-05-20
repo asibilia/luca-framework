@@ -33,6 +33,7 @@
     "publish:framework": "cd packages/luca-framework && bun publish --access restricted",
     "release": "changeset publish",
     "release:local": "bun run build && cd packages/luca-framework && bun link",
+    "test": "bun run --filter '*' test",
     "version": "changeset version && bun install"
   },
   "type": "module",

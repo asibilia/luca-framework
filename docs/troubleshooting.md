@@ -48,34 +48,38 @@ This guide covers common issues you might encounter while using Luca and how to 
 
 ### Migrating a legacy `.planning/` layout
 
-- **Issue**: Project predates #220 and has session artifacts (`PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`, `REVIEW-*.md`, `*-capture-*.md`, `verification-result.json`, etc.) loose at the `.planning/` root instead of under `.planning/phases/<currentPhaseSlug>/`.
-- **Symptom**: `workflowState({ action: "complete-phase" })` returns `success: false` with `code: "PHASE_COMPLETE_STRAGGLERS_AT_ROOT"` and a `stragglers: { files, unknownDirs }` payload. The gate runs at `complete-phase` time (not when Finalize starts) so the failure surfaces at the boundary between Execute and Review/Finalize, not later in the pipeline.
-- **Fix**: From inside an active pipeline session, call:
+- **Issue**: Project still uses the legacy `.planning/` directory but is moving to the new `.luca/` contract.
+- **Fix**: Run from the project root:
 
+  ```bash
+  # Preview what will move/delete
+  luca migrate-planning --dry-run
+
+  # Execute the migration
+  luca migrate-planning
+
+  # Proceed even when .planning/ has uncommitted changes (use cautiously)
+  luca migrate-planning --force
   ```
-  workflowState({ action: "archive-loose" })
-  ```
 
-  The action moves recognized stragglers (`PLAN.md`, `CONTEXT.md`, `RESEARCH.md`, `POSTMORTEM.md`, `REVIEW-*.md`, `*-capture-*.md`, `verification-result.json`, `checks-convergence.json`, `CONFIDENCE-JOURNAL.md`, `SUGGESTED-RULES.md`, `SESSION-ARCHIVE.md`) into `.planning/phases/<currentPhaseSlug>/`, skipping any file whose target already exists. Cross-phase files (`ROADMAP.md`, `todos/`, `luca-state.json`, `state.json`, `config.json`, JSONL audit logs, context-monitor artifacts) are left at the root.
+  The command:
+  - Moves root files: `.planning/luca-state.json` → `.luca/state.json`, `.planning/.luca-lock.json` → `.luca/lock.json`, `.planning/ROADMAP.md` → `.luca/roadmap.md`, `.planning/config.json` → `.luca/config.json`, `.planning/session-ledger.jsonl` → `.luca/ledger.jsonl`.
+  - Deletes ephemeral files: `.planning/.context-metrics.json`, `.planning/harness-result.json`.
+  - Preserves git history via `git mv` (falls back to plain rename for untracked files — there's no history to preserve there).
+  - Is **idempotent** — re-running skips already-migrated destinations.
+  - **Refuses** to run when `.planning/` has uncommitted changes (unless `--force`).
 
-  After a successful migration, re-run `workflowState({ action: "complete-phase", verificationPassed: true, reviewPassed: true })`.
+- **Phase directories** (`.planning/phases/<slug>/`) are intentionally **not** migrated by this command — the legacy layout used arbitrary numbering (single-digit, triple-digit, collisions) that doesn't fit the new `<NN-slug>` allowlist. A follow-up command will handle slug normalization once the collision strategy is set. Until then, the old `.planning/phases/` directories remain in place for reference.
 
-- **Guard rails** — the action refuses to run if:
-  - `.luca-lock.json` is held by another live PID (run from the session that owns the lock).
-  - `currentPhaseSlug` is unset in `luca-state.json` (run triage first so a target phase dir exists).
+- **Todos** (`.planning/todos/`) are likewise not migrated — the new workflow stores backlog in MuninnDB (per-milestone snapshots are exported to `.luca/milestones/v<SEMVER>-backlog-snapshot.{json,md}`). Use `luca todo from-issue <#>` to triage GitHub issues into the MuninnDB backlog when those tools land.
 
-- **Outcome codes**:
-  - `success: true` with `archived: [...]` — migration progressed.
-  - `success: false`, `code: "ARCHIVE_LOOSE_SKIPPED_ONLY"` — every candidate was skipped because the destination already exists (or a rename failed). Migration is **incomplete** — resolve the conflicts manually (e.g. delete the stale phase-dir copy or merge the two files), then re-run.
-  - `success: true` with empty `archived` and `skipped` — clean root, nothing to do.
-
-- **Unknown root directories** from the `complete-phase` error are NOT moved by `archive-loose` (it only handles files). Inspect them manually and either delete or move them under `.planning/phases/<slug>/` before re-running `complete-phase`.
+- **`.gitignore`**: after migration, the legacy `.planning/*` patterns are still listed but won't match anything (the files are gone). New `.luca/*` runtime files (state.json, lock.json, ledger.jsonl, telemetry/) are ignored by the updated rules; everything else under `.luca/` is committed.
 
 ## Common Errors
 
 | Error                          | Cause                           | Resolution                                                                         |
 | ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------- |
-| `Error: Not a Luca project`    | Missing `.planning` directory   | Run `luca init` to initialize the project                                          |
+| `Error: Not a Luca project`    | Missing `.luca` directory       | Run `luca init` to initialize the project                                          |
 | `Error: Plan already executed` | SUMMARY.md exists for this plan | Delete the SUMMARY.md if you need to re-run (not recommended)                      |
 | `Error: Authentication failed` | Invalid or expired tokens       | Run `gh auth login` for GitHub, or check your `.env` file for other service tokens |
 

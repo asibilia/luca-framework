@@ -55,6 +55,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prepublishOnly": "bun run build",
+    "test": "bun test",
+    "typecheck": "bunx --bun tsc --noEmit",
     "validate": "bun run scripts/validate-package.ts"
   },
   "type": "module",

@@ -28,6 +28,7 @@ import {
 } from '../state/session-ledger.js'
 import { appendTelemetry, type TelemetryKind } from '../state/telemetry.js'
 import { readVerificationResult } from '../state/verification-result.js'
+import { clampTokens, finiteOrNull } from '../util/numeric.js'
 import {
     deriveSlug,
     phasePath,
@@ -38,7 +39,6 @@ import {
     TELEMETRY_ARCHIVE_PATH,
     assertValidRunId,
 } from '../util/phase-paths.js'
-import { clampTokens, finiteOrNull } from '../util/numeric.js'
 import { tickPhaseTasks } from '../util/plan-checkboxes.js'
 import { switchModeRef, contextRefresherRef } from '../util/refs.js'
 import { sanitizeForLog, sanitizeForStorage } from '../util/sanitize.js'
@@ -276,10 +276,7 @@ export const recordSubagentAction = z.object({
         .string()
         .min(1)
         .max(128)
-        .regex(
-            /^[^\r\n\t]+$/,
-            'correlationId must not contain CR/LF/tab'
-        ),
+        .regex(/^[^\r\n\t]+$/, 'correlationId must not contain CR/LF/tab'),
     inputTokens: z.number().int().nonnegative().nullable().optional(),
     outputTokens: z.number().int().nonnegative().nullable().optional(),
     durationMs: z.number().nullable().optional(),
@@ -341,10 +338,7 @@ export const cancelSubagentAction = z.object({
         .string()
         .min(1)
         .max(128)
-        .regex(
-            /^[^\r\n\t]+$/,
-            'correlationId must not contain CR/LF/tab'
-        ),
+        .regex(/^[^\r\n\t]+$/, 'correlationId must not contain CR/LF/tab'),
     /**
      * Short human-readable reason for the kill (e.g. "stuck >10m without
      * any tool calls", "user requested cancel via TUI hotkey"). Free-form,
@@ -354,10 +348,7 @@ export const cancelSubagentAction = z.object({
         .string()
         .min(1)
         .max(512)
-        .regex(
-            /^[^\r\n\t]+$/,
-            'cancelReason must not contain CR/LF/tab'
-        ),
+        .regex(/^[^\r\n\t]+$/, 'cancelReason must not contain CR/LF/tab'),
     /** Partial elapsed duration from invoke to kill. Travels in `overrides`. */
     partialDurationMs: z.number().nonnegative().nullable().optional(),
 })
@@ -602,9 +593,7 @@ export const workflowStateInputSchema = z.object({
     verdict: z
         .enum(['approved', 'changes_requested', 'issues_found'])
         .optional()
-        .describe(
-            'Reviewer verdict (save-review-results only). Meta-only.'
-        ),
+        .describe('Reviewer verdict (save-review-results only). Meta-only.'),
 
     // re-enter-pipeline
     reason: z
@@ -770,10 +759,7 @@ export const workflowStateInputSchema = z.object({
         .string()
         .min(1)
         .max(512)
-        .regex(
-            /^[^\r\n\t]+$/,
-            'cancelReason must not contain CR/LF/tab'
-        )
+        .regex(/^[^\r\n\t]+$/, 'cancelReason must not contain CR/LF/tab')
         .optional()
         .describe(
             "Short human-readable reason for cancellation (required for 'cancel-subagent'). Sanitized for storage; max 512 chars."
@@ -784,7 +770,7 @@ export const workflowStateInputSchema = z.object({
         .nullable()
         .optional()
         .describe(
-            "Partial elapsed ms from invoke to kill (cancel-subagent only). Travels in telemetry overrides as top-level durationMs."
+            'Partial elapsed ms from invoke to kill (cancel-subagent only). Travels in telemetry overrides as top-level durationMs.'
         ),
 })
 
@@ -961,9 +947,7 @@ export const workflowStateTool = createTool({
                         const priorSlug = prevState.currentPhaseSlug ?? null
                         const priorWave = prevState.currentWave ?? null
                         const priorModeStartedAt =
-                            prevState.currentModeStartedAt as
-                                | string
-                                | undefined
+                            prevState.currentModeStartedAt as string | undefined
                         writeLucaState(stateUpdates)
                         appendLedger('mode-transition', {
                             from: priorMode,
@@ -1496,8 +1480,9 @@ export const workflowStateTool = createTool({
                     // are being saved — not the post-increment value.
                     const preReviewState = readLucaState()
                     const priorIteration =
-                        (preReviewState.reviewIteration as number | undefined) ??
-                        0
+                        (preReviewState.reviewIteration as
+                            | number
+                            | undefined) ?? 0
                     const reviewStartedAt = preReviewState.reviewStartedAt as
                         | string
                         | undefined
@@ -1515,15 +1500,13 @@ export const workflowStateTool = createTool({
                     // appendTelemetry is fail-safe — never throws.
                     const reviewDurationMs = reviewStartedAt
                         ? finiteOrNull(
-                              Date.now() -
-                                  new Date(reviewStartedAt).getTime()
+                              Date.now() - new Date(reviewStartedAt).getTime()
                           )
                         : null
                     appendTelemetry(
                         'review.iteration',
                         {
-                            iteration:
-                                reviewIteration ?? priorIteration,
+                            iteration: reviewIteration ?? priorIteration,
                             verdict: verdict ?? null,
                             mustFixCount: mustFixCount ?? null,
                             shouldFixCount: shouldFixCount ?? null,
@@ -1693,7 +1676,8 @@ export const workflowStateTool = createTool({
                     // save-review-results call computes durationMs correctly.
                     // Clear it when re-entering execute (review-loop cycled back).
                     if (reEntryTarget === MODES.review) {
-                        reEntryUpdates.reviewStartedAt = new Date().toISOString()
+                        reEntryUpdates.reviewStartedAt =
+                            new Date().toISOString()
                     } else {
                         reEntryUpdates.reviewStartedAt = undefined
                     }
@@ -1784,9 +1768,7 @@ export const workflowStateTool = createTool({
                     if (!parsed.success) {
                         throw new ActionValidationError(
                             'record-subagent',
-                            parsed.error.issues
-                                .map((i) => i.message)
-                                .join('; ')
+                            parsed.error.issues.map((i) => i.message).join('; ')
                         )
                     }
                     const {
@@ -1826,9 +1808,7 @@ export const workflowStateTool = createTool({
                     if (!parsed.success) {
                         throw new ActionValidationError(
                             'record-recall',
-                            parsed.error.issues
-                                .map((i) => i.message)
-                                .join('; ')
+                            parsed.error.issues.map((i) => i.message).join('; ')
                         )
                     }
                     const {
@@ -1886,13 +1866,15 @@ export const workflowStateTool = createTool({
                     if (!parsed.success) {
                         throw new ActionValidationError(
                             'cancel-subagent',
-                            parsed.error.issues
-                                .map((i) => i.message)
-                                .join('; ')
+                            parsed.error.issues.map((i) => i.message).join('; ')
                         )
                     }
-                    const { role, correlationId, cancelReason, partialDurationMs } =
-                        parsed.data
+                    const {
+                        role,
+                        correlationId,
+                        cancelReason,
+                        partialDurationMs,
+                    } = parsed.data
                     appendTelemetry(
                         'subagent.cancelled',
                         {

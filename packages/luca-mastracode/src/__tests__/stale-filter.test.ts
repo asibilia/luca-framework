@@ -6,8 +6,9 @@
  * call, so it can be tested in isolation. Non-empty paths use this test
  * file itself as the cited path (it exists in the working tree).
  */
-import { describe, test, expect } from 'bun:test'
 import { join } from 'node:path'
+
+import { describe, test, expect } from 'bun:test'
 
 import {
     filterStaleComments,

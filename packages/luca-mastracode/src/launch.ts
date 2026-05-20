@@ -8,18 +8,13 @@
 import { createMastraCode } from 'mastracode'
 import { MastraTUI } from 'mastracode/tui'
 
-import { loadBranding, resolveLucaVersion } from './integration/branding.js'
-import { ContextRefresher } from './orchestration/context-refresher.js'
-import { buildContinuationMessage } from './orchestration/continuation-messages.js'
-import { enforceReadOnlyModes } from './orchestration/read-only-enforcement.js'
-import { applyUpstreamPatches } from './orchestration/upstream-patches.js'
+import { MODES } from './constants/mode-ids.js'
 import { createStaticAgent } from './create-static-agent.js'
+import { loadBranding, resolveLucaVersion } from './integration/branding.js'
 import {
     installSkills,
     installSlashCommands,
 } from './integration/install-bundled-assets.js'
-import { readLucaState, writeLucaState } from './state/luca-store.js'
-
 import {
     architectMode,
     buildArchitectInstructions,
@@ -70,23 +65,19 @@ import {
     resolveTriageModel,
     triageMode,
 } from './modes/triage.js'
-import { MODES } from './constants/mode-ids.js'
+import { ContextRefresher } from './orchestration/context-refresher.js'
+import { buildContinuationMessage } from './orchestration/continuation-messages.js'
 import * as pipelineGuard from './orchestration/pipeline-guard.js'
 import {
     buildPipelineProgressHeader,
     PIPELINE_STEPS_ORDERED,
     wrapInSystemReminder,
 } from './orchestration/pipeline-tui.js'
+import { enforceReadOnlyModes } from './orchestration/read-only-enforcement.js'
+import { applyUpstreamPatches } from './orchestration/upstream-patches.js'
+import { readLucaState, writeLucaState } from './state/luca-store.js'
 // Mutable refs — wired up after createMastraCode() returns. Extracted to
 // refs.ts to avoid circular imports with tool modules.
-import {
-    contextRefresherRef,
-    followUpRef,
-    mcpManagerRef,
-    resolveModelRef,
-    switchModeRef,
-    tokenBudgetRef,
-} from './util/refs.js'
 import { discussionSubagent } from './subagents/discussion.js'
 import { executorSubagent } from './subagents/executor.js'
 import { learnerSubagent } from './subagents/learner.js'
@@ -97,9 +88,16 @@ import { reviewerSubagent } from './subagents/reviewer.js'
 import { shadowScannerSubagent } from './subagents/shadow-scanner.js'
 import { SUBAGENT_SHARED_PREFIX } from './subagents/shared-prefix.js'
 import { verifierSubagent } from './subagents/verifier.js'
-import { TokenBudgetMonitor } from './util/token-budget.js'
 import { buildModeTools } from './tools/tool-manifest.js'
-
+import {
+    contextRefresherRef,
+    followUpRef,
+    mcpManagerRef,
+    resolveModelRef,
+    switchModeRef,
+    tokenBudgetRef,
+} from './util/refs.js'
+import { TokenBudgetMonitor } from './util/token-budget.js'
 
 /**
  * Mode-to-model resolver map.

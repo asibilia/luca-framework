@@ -28,8 +28,10 @@ import {
 // Adding a new constraint-bearing per-action schema to that registry
 // automatically extends this drift guard's coverage; a hand-curated list
 // here would recreate the very class of drift the test exists to prevent.
-const PER_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> =
-    WORKFLOW_ACTION_SCHEMAS
+const PER_ACTION_SCHEMAS: Record<
+    string,
+    z.ZodObject<any>
+> = WORKFLOW_ACTION_SCHEMAS
 
 // The `action` key is the discriminator on per-action schemas — the flat
 // schema represents it as a z.enum(WORKFLOW_STATE_ACTIONS) so it is
@@ -75,9 +77,8 @@ function unwrapToString(node: unknown): unknown | null {
 function regexPatterns(node: unknown): string[] {
     const str = unwrapToString(node)
     if (!str) return []
-    const checks: any[] = (str as any)._zod?.def?.checks
-        ?? (str as any)._def?.checks
-        ?? []
+    const checks: any[] =
+        (str as any)._zod?.def?.checks ?? (str as any)._def?.checks ?? []
     const out: string[] = []
     for (const c of checks) {
         const def = c?._zod?.def ?? c
@@ -180,7 +181,12 @@ describe('dual-layer schema drift', () => {
 
         test('missingRegexPatterns inspects array element regex', () => {
             const perAction = z
-                .array(z.string().regex(/^[a-z0-9_-]+$/, 'kebab').max(64))
+                .array(
+                    z
+                        .string()
+                        .regex(/^[a-z0-9_-]+$/, 'kebab')
+                        .max(64)
+                )
                 .optional()
             const flat = z.array(z.string().max(64)).optional() // element regex dropped
             const missing = missingRegexPatterns(perAction, flat)
@@ -214,13 +220,13 @@ describe('dual-layer schema drift', () => {
                 .optional()
             const patterns = missingRegexPatterns(
                 canary,
-                z.string().optional(), // flat side has NO regex
+                z.string().optional() // flat side has NO regex
             )
             expect(
                 patterns,
                 'Zod internals canary: helpers returned [] for a schema that DEFINITELY has a regex. ' +
                     'This means `_zod.def.checks` (or the fallback `_def`) no longer exposes regex checks — ' +
-                    'the drift detector is silently degraded. Update `unwrapToString` / `regexPatterns` in this file.',
+                    'the drift detector is silently degraded. Update `unwrapToString` / `regexPatterns` in this file.'
             ).not.toEqual([])
             expect(patterns).toContain('^canary-[a-z]+$')
         })

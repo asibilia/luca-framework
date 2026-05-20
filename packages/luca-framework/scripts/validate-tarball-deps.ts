@@ -19,9 +19,9 @@
  * Usage: bun run scripts/validate-tarball-deps.ts [path/to/tarball.tgz]
  *        (defaults to packages/luca-framework/.pack/*.tgz)
  */
+import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { spawnSync } from 'node:child_process'
 
 const PINNED_PREFIXES = ['mastracode', '@mastra/']
 const EXACT_VERSION_RE = /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/
@@ -114,7 +114,9 @@ if (violations.length > 0) {
         `\n[validate-tarball-deps] FAIL: ${violations.length} Mastra dep(s) are not exact-pinned:`
     )
     for (const v of violations) {
-        console.error(`  - ${v.name}: "${v.spec}" (must be exact, e.g. "1.34.0")`)
+        console.error(
+            `  - ${v.name}: "${v.spec}" (must be exact, e.g. "1.34.0")`
+        )
     }
     console.error(
         `\nFix: update the catalog in the root package.json to use exact versions ` +

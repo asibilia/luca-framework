@@ -53,9 +53,11 @@ No `.env` is required for core development.
 | ------ | ------- |
 | Install deps | `bun install` |
 | Type check | `bunx --bun tsc --noEmit` |
+| Run tests (on-demand only — not in pre-commit) | `bun run --filter '*' test` |
 | Build luca-framework | `bun run build` |
 | Run mastracode harness | `bun run mastracode` |
 | Luca CLI | `bun run packages/luca-framework/bin/luca.js <command>` |
+| Migrate `.planning/` → `.luca/` | `luca migrate-planning [--dry-run] [--force]` |
 | Release locally | `bun run release:local` |
 
 ## Coding Standards
@@ -78,26 +80,32 @@ Key patterns:
 3. Format: `type(scope): #issue description` (lowercase, present tense verb)
 4. Branch naming: `{issue_number}--{dash-cased-description}`
 
-## `.planning/` Artifact Layout
+## `.luca/` Artifact Layout
 
-Luca's pipeline writes artifacts under `.planning/`. As of #220 the directory follows a **two-tier contract**:
+Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defined in `@alecsibilia/luca-core` (`packages/luca-core/src/luca-dir/configs.ts`):
 
-- **Root `.planning/` — cross-phase state** (one set per project, mutated across every phase):
-  - `luca-state.json`, `.luca-lock.json`
-  - `ROADMAP.md`, `config.json`
-  - `todos/{pending,backlog,done}/`
-  - JSONL audit logs: `session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`
+- **Root files** (cross-phase state):
+  - `state.json` — workflow state (pipelineStep, currentPhase, iteration counters)
+  - `config.json` — project config (vault, oversight defaults)
+  - `lock.json` — pipeline lock (PID + acquired_at)
+  - `roadmap.md` — **generated** from MuninnDB-backed roadmap
+  - `ledger.jsonl` — append-only session events
 
-- **`.planning/phases/<currentPhaseSlug>/` — session-scoped artifacts** (one directory per pipeline run; slug derived by triage from the work intent and persisted in `luca-state.json`):
-  - `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`
-  - `POSTMORTEM.md`, `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`
-  - `CONFIDENCE-JOURNAL.md`, `verification-result.json`, `checks-convergence.json`
-  - `*-capture-*.md` (plan-review captures, research captures)
-  - `runs/<runId>/` (archived prior runs)
+- **`phases/<NN-slug>/`** — one directory per work phase. Slug is zero-padded NN plus kebab-case description (derived from roadmap order, **not** LLM-named). Allowed files:
+  - `research.md`, `context.md`, `plan.md`, `plan-review.md`
+  - `verify.json`, `learn.md`
+  - `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`
+  - `audits/<reviewer>.md` (reviewer = `code-review`, `security`, `architect`, `ux`, etc.)
 
-Pipeline tools (`writePlanningFile`, `manageRoadmap`, state modules) auto-route by reading `currentPhaseSlug` from state — pass a bare basename (e.g. `"PLAN.md"`) and the writer resolves the correct directory. `scope:"root"` is only needed when bypassing auto-routing.
+- **`milestones/`** — versioned snapshot files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
 
-**Migrating a legacy `.planning/` layout** (loose root artifacts from before #220): run `workflowState({action:"archive-loose"})` from inside an active pipeline session. The action moves stragglers into `phases/<currentPhaseSlug>/`. It refuses if the lock is held by another live PID or if `currentPhaseSlug` is unset. See `docs/troubleshooting.md` for details.
+- **`telemetry/<runId>.jsonl`** — per-run event logs.
+
+- **`archive/<NN-slug>/`** — phase directories closed at milestone (frozen, never resurfaces).
+
+**Strict allowlist.** Anything not in the contract is a violation. Backlog/todos no longer live on disk — they're in MuninnDB (per-milestone snapshots are exported to `milestones/v<SEMVER>-backlog-snapshot.{json,md}`). Path validation is exposed via `isValidLucaPath` in `@alecsibilia/luca-core/luca-dir`.
+
+**Migrating from `.planning/`** (legacy layout): run `luca migrate-planning [--dry-run] [--force]`. Moves root files, deletes ephemeral files (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration.
 
 ## Related Files
 

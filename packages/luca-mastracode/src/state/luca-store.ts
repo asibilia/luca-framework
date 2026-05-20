@@ -9,11 +9,12 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 
-import { atomicWriteSync } from '../util/atomic-write.js'
-import { MODES } from '../constants/mode-ids.js'
-import { STATE_PATH } from '../util/phase-paths.js'
 import { resolveBudgetLimits } from './state.js'
 import type { ComplexityLevel, ProfileLevel } from './state.js'
+
+import { MODES } from '../constants/mode-ids.js'
+import { atomicWriteSync } from '../util/atomic-write.js'
+import { STATE_PATH } from '../util/phase-paths.js'
 
 /**
  * Mirror of `PhaseSnapshot` from `phase-diff.ts`. Inlined here to avoid a

@@ -3,12 +3,12 @@ import { execFileSync } from 'node:child_process'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import {
     DEFAULT_PREFERENCES,
     loadProjectPreferences,
     type ProjectPreferences,
 } from '../state/project-preferences.js'
-import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { renderTemplate } from '../util/branch-template.js'
 import { slugifySegment } from '../util/phase-paths.js'
 
@@ -209,7 +209,7 @@ interface ResolvedBaseRule {
 function resolveBaseRule(
     rule: BaseRulePref | undefined,
     currentBranch: string,
-    defaultBranch: string,
+    defaultBranch: string
 ): ResolvedBaseRule {
     if (!rule) {
         return { value: defaultBranch, isAsk: false }
@@ -311,13 +311,13 @@ export function resolveBranching(input: ResolveInput): ResolveResult {
                     matchedRule = 'branchType'
                     matchedIndex = i
                     notes.push(
-                        `branchTypes[${i}] matched ticketId='${input.ticketId}' (pattern=${candidate.match})`,
+                        `branchTypes[${i}] matched ticketId='${input.ticketId}' (pattern=${candidate.match})`
                     )
                     break
                 }
             } catch {
                 notes.push(
-                    `branchTypes[${i}] regex compile failed; skipped (pattern=${candidate.match})`,
+                    `branchTypes[${i}] regex compile failed; skipped (pattern=${candidate.match})`
                 )
             }
         }
@@ -360,7 +360,7 @@ export function resolveBranching(input: ResolveInput): ResolveResult {
         })
     } catch (err) {
         notes.push(
-            `template render failed (${(err as Error).message}); falling back to '<type>/<issue>-<slug>'`,
+            `template render failed (${(err as Error).message}); falling back to '<type>/<issue>-<slug>'`
         )
         branchName = input.ticketId
             ? `${type}/${input.ticketId}-${slug}`
@@ -370,12 +370,12 @@ export function resolveBranching(input: ResolveInput): ResolveResult {
     const baseResolved = resolveBaseRule(
         rule.base,
         input.currentBranch,
-        input.defaultBranch,
+        input.defaultBranch
     )
     const prBaseResolved = resolveBaseRule(
         rule.prBase,
         input.currentBranch,
-        input.defaultBranch,
+        input.defaultBranch
     )
 
     const askTriggered = baseResolved.isAsk || prBaseResolved.isAsk
@@ -482,16 +482,12 @@ export const ensureFeatureBranchTool = createTool({
             .describe(
                 'For "apply": the result of a prior "resolve" call. Must include branchName/base/prBase/needsConfirmation.'
             ),
-        confirmedBase: SafeRefName
-            .optional()
-            .describe(
-                'For "apply": user-confirmed base branch when resolution.needsConfirmation=true.'
-            ),
-        confirmedPrBase: SafeRefName
-            .optional()
-            .describe(
-                'For "apply": user-confirmed PR base branch (defaults to confirmedBase ?? resolution.prBase).'
-            ),
+        confirmedBase: SafeRefName.optional().describe(
+            'For "apply": user-confirmed base branch when resolution.needsConfirmation=true.'
+        ),
+        confirmedPrBase: SafeRefName.optional().describe(
+            'For "apply": user-confirmed PR base branch (defaults to confirmedBase ?? resolution.prBase).'
+        ),
     }),
     execute: async (inputData) => {
         const {
@@ -871,7 +867,11 @@ export const ensureFeatureBranchTool = createTool({
             }
 
             // Build the target name and validate non-collision.
-            const target = buildBranchName({ type: branchType, issueNumber, slug })
+            const target = buildBranchName({
+                type: branchType,
+                issueNumber,
+                slug,
+            })
 
             if (branchExistsLocal(target)) {
                 return {
@@ -980,7 +980,11 @@ export const ensureFeatureBranchTool = createTool({
                     message: `Cannot rename '${current}'. The default branch must never be renamed; create a feature branch first.`,
                 }
             }
-            const target = buildBranchName({ type: renameType, issueNumber, slug })
+            const target = buildBranchName({
+                type: renameType,
+                issueNumber,
+                slug,
+            })
             if (target === current) {
                 return {
                     ok: true as const,

@@ -9,7 +9,7 @@
  */
 export function renderTemplate(
     tpl: string,
-    vars: { type: string; issue?: string; slug: string },
+    vars: { type: string; issue?: string; slug: string }
 ): string {
     const allowed = new Set(['type', 'issue', 'slug'])
     return tpl.replace(/\{([^}]+)\}/g, (_match, name: string) => {

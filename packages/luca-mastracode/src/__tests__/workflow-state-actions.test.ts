@@ -1715,17 +1715,20 @@ describe('cancel-subagent telemetry', () => {
     test.each([
         ['CR in role', { role: 'executor\r' }],
         ['LF in correlationId', { correlationId: 'executor-1747\n200000123' }],
-    ])('(i) %s rejected (CR/LF/tab guard parity)', async (_label, overrides) => {
-        mockAppendTelemetry.mockClear()
-        const result = await callAction({
-            action: 'cancel-subagent',
-            role: 'executor',
-            correlationId: 'executor-1747200000123',
-            cancelReason: 'valid reason',
-            ...overrides,
-        })
-        expect(result.success !== true).toBe(true)
-    })
+    ])(
+        '(i) %s rejected (CR/LF/tab guard parity)',
+        async (_label, overrides) => {
+            mockAppendTelemetry.mockClear()
+            const result = await callAction({
+                action: 'cancel-subagent',
+                role: 'executor',
+                correlationId: 'executor-1747200000123',
+                cancelReason: 'valid reason',
+                ...overrides,
+            })
+            expect(result.success !== true).toBe(true)
+        }
+    )
 })
 
 // ---------------------------------------------------------------------------

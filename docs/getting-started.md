@@ -31,31 +31,38 @@ bun install
 
 ## Core Concepts
 
-### 1. The `.planning` Directory
+### 1. The `.luca/` Directory
 
-All Luca projects have a `.planning/` directory at the root. This is where your project's "brain" lives.
+All Luca projects have a `.luca/` directory at the root. This is where your project's workflow data lives.
 
-- `config.json`: Project configuration and settings.
+- `state.json`: Workflow state — pipeline step, current phase, iteration counters.
+- `config.json`: Project configuration (MuninnDB vault, oversight defaults, complexity defaults).
 - Memory is stored in **MuninnDB** (via MCP tools): brain tree for project identity, engrams for long-term learnings (patterns, decisions, pitfalls), and session engrams for active task context.
-- `phases/`: Contains your development plans and summaries.
+- Backlog/todos live in **MuninnDB** (not on disk). Per-milestone snapshots export to `milestones/v<SEMVER>-backlog-snapshot.{json,md}` for portability + disaster recovery.
+- `phases/`: One directory per work phase, named `<NN-slug>` (zero-padded NN + kebab-case description).
 
 #### Artifact layout
 
-The pipeline organizes files into two tiers:
+The strict allowlist (defined in `@alecsibilia/luca-core/luca-dir`):
 
-- **`.planning/` (root)** — **cross-phase state**, persists across every pipeline run:
-  - `luca-state.json`, `.luca-lock.json`, `ROADMAP.md`, `config.json`
-  - `todos/{pending,backlog,done}/`
-  - JSONL audit logs: `session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`
-- **`.planning/phases/<currentPhaseSlug>/`** — **session-scoped artifacts** for the active phase:
-  - `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`
-  - `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`, `CONFIDENCE-JOURNAL.md`
-  - `verification-result.json`, `checks-convergence.json`, `*-capture-*.md`
-  - `runs/<runId>/` (archived prior runs of this phase)
+- **`.luca/` (root files)** — cross-phase state:
+  - `state.json` — workflow state
+  - `config.json` — project config
+  - `lock.json` — pipeline lock (PID + acquired_at)
+  - `roadmap.md` — **generated** view of MuninnDB-backed roadmap
+  - `ledger.jsonl` — append-only session event log
+- **`.luca/phases/<NN-slug>/`** — one directory per phase. Slug is derived from roadmap order, **not LLM-named**. Allowed files:
+  - `research.md`, `context.md`, `plan.md`, `plan-review.md`
+  - `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`
+  - `audits/<reviewer>.md` (one per reviewer: `code-review`, `security`, `architect`, `ux`, …)
+  - `verify.json`, `learn.md`
+- **`.luca/milestones/`** — versioned snapshot files (`v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`).
+- **`.luca/telemetry/<runId>.jsonl`** — per-run event logs.
+- **`.luca/archive/<NN-slug>/`** — phase directories closed at milestone.
 
-Triage derives `currentPhaseSlug` from the work intent (e.g. issue title) and persists it in `luca-state.json`. Pipeline tools (`writePlanningFile`, `manageRoadmap`, state modules) read the slug and auto-route writes to the correct directory.
+Anything not in this allowlist is a violation. The LLM never picks a filename — write tools (MCP server, forthcoming) compute paths from intent.
 
-If you have a pre-#220 project with loose artifacts at the root, run `workflowState({action:"archive-loose"})` from inside an active pipeline session to migrate them. See [Troubleshooting → Migrating a legacy `.planning/` layout](troubleshooting.md#migrating-a-legacy-planning-layout).
+If you have a project on the legacy `.planning/` layout, run `luca migrate-planning [--dry-run] [--force]`. See [Troubleshooting → Migrating a legacy `.planning/` layout](troubleshooting.md#migrating-a-legacy-planning-layout).
 
 ### 2. Plans (`PLAN.md`)
 
@@ -73,17 +80,11 @@ The Luca CLI executes these plans, handling git commits for each task and managi
 
 ### Step 1: Define a Phase
 
-When you start a pipeline run, the **triage** stage derives a phase slug from your work intent (typically an issue title or branch name) and creates the directory automatically — for example `.planning/phases/123-add-webhook-support/` for issue `#123`. You normally don't `mkdir` this yourself.
-
-If you're working outside the pipeline (e.g. drafting a plan by hand), you can create a directory manually:
-
-```bash
-mkdir -p .planning/phases/<your-slug>
-```
+When you start a pipeline run, the **triage** stage derives a phase slug from your work intent and the next zero-padded NN from roadmap order, creating the directory automatically — for example `.luca/phases/07-add-webhook-support/` for the 7th phase. You normally don't `mkdir` this yourself.
 
 ### Step 2: Create a Plan
 
-Create `PLAN.md` inside the phase directory (e.g. `.planning/phases/<your-slug>/PLAN.md`). Inside the pipeline, the **architect** stage writes this for you via `writePlanningFile` — pass a bare basename and the tool routes to the active phase dir.
+The **architect** stage writes `plan.md` inside the active phase directory (e.g. `.luca/phases/07-add-webhook-support/plan.md`). The MCP write tools compute the path — you express intent, the tool resolves the destination.
 
 ### Step 3: Execute the Plan
 

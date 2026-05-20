@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+import { describe, expect, test } from 'bun:test'
 
 /**
  * Postmortem vault literal — intentional-comment invariant.
@@ -23,7 +24,7 @@ describe('postmortem.ts intentional-vault comments', () => {
         import.meta.dir,
         '..',
         'analysis',
-        'postmortem.ts',
+        'postmortem.ts'
     )
 
     test('contains the `intentional` substring at least twice (JSDoc + inline)', () => {
@@ -38,7 +39,7 @@ describe('postmortem.ts intentional-vault comments', () => {
         expect(pitfallsDeclIdx).toBeGreaterThan(-1)
         const jsdocRegion = source.slice(
             Math.max(0, pitfallsDeclIdx - 600),
-            pitfallsDeclIdx,
+            pitfallsDeclIdx
         )
         expect(jsdocRegion).toContain('intentional')
         expect(jsdocRegion).toContain('default')
@@ -50,7 +51,7 @@ describe('postmortem.ts intentional-vault comments', () => {
         expect(constructionIdx).toBeGreaterThan(-1)
         const commentRegion = source.slice(
             Math.max(0, constructionIdx - 400),
-            constructionIdx,
+            constructionIdx
         )
         // Case-insensitive: the inline block uses "Intentional:" (capital
         // I as sentence start), the JSDoc uses lowercase "intentional".

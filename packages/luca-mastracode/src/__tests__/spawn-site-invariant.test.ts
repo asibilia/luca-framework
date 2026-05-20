@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'bun:test'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+import { describe, expect, test } from 'bun:test'
 
 /**
  * Spawn-site invariant: every mode file that documents `record-subagent`
@@ -22,11 +23,7 @@ import { join } from 'node:path'
  * than omit-on-unknown. See PR description for empirical drift evidence.
  */
 
-const INSTRUCTIONS_DIR = join(
-    import.meta.dir,
-    '..',
-    'instructions',
-)
+const INSTRUCTIONS_DIR = join(import.meta.dir, '..', 'instructions')
 
 const FILES = [
     'execute.md',
@@ -83,7 +80,7 @@ describe('spawn-site field-enumeration invariant', () => {
                 // 45000, 60000, 90000, 120000 — all multiples of 5000s.
                 // Allow `Date.now() - ts` directive itself which is the fix.
                 expect(region!).not.toMatch(
-                    /durationMs:\s*(45000|60000|75000|90000|120000)\b/,
+                    /durationMs:\s*(45000|60000|75000|90000|120000)\b/
                 )
             })
         })
@@ -109,7 +106,7 @@ describe('spawn-site field-enumeration invariant', () => {
             /(?:\/\/\s*→\s*record-subagent|record-subagent\s+(?:invoke|complete)|action:\s*['"]record-subagent['"])/
 
         const allMdFiles = readdirSync(INSTRUCTIONS_DIR).filter((f) =>
-            f.endsWith('.md'),
+            f.endsWith('.md')
         )
         const filesWithSpawnSites = allMdFiles.filter((f) => {
             const content = readFileSync(join(INSTRUCTIONS_DIR, f), 'utf-8')
@@ -118,7 +115,7 @@ describe('spawn-site field-enumeration invariant', () => {
         for (const f of filesWithSpawnSites) {
             expect(
                 FILES,
-                `Mode file "${f}" contains a record-subagent spawn directive but is missing from FILES list — its spawn site is not covered by the field-enumeration invariant.`,
+                `Mode file "${f}" contains a record-subagent spawn directive but is missing from FILES list — its spawn site is not covered by the field-enumeration invariant.`
             ).toContain(f)
         }
     })

@@ -31,7 +31,9 @@ describe('luca-store — waveStartedAt lifecycle', () => {
     test('startPhase (new-phase branch) sets waveStartedAt on new phaseResult', () => {
         startPhase({ name: 'Phase 1: Test' })
         const state = readLucaState()
-        const phase = state.phaseResults?.find((r) => r.name === 'Phase 1: Test')
+        const phase = state.phaseResults?.find(
+            (r) => r.name === 'Phase 1: Test'
+        )
         expect(phase).toBeDefined()
         expect(phase!.waveStartedAt).toBeDefined()
         expect(phase!.waveStartedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)

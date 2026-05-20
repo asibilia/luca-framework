@@ -19,19 +19,16 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-import { appendLedger } from '../state/session-ledger.js'
-import {
-    filterStaleComments,
-    type PrReviewComment,
-} from '../review-analysis/stale-filter.js'
 import {
     detectConvergence,
     type ReviewFinding,
 } from '../review-analysis/convergence.js'
+import { checkRegression, diffPaths } from '../review-analysis/regression.js'
 import {
-    checkRegression,
-    diffPaths,
-} from '../review-analysis/regression.js'
+    filterStaleComments,
+    type PrReviewComment,
+} from '../review-analysis/stale-filter.js'
+import { appendLedger } from '../state/session-ledger.js'
 
 const reviewCommentSchema = z.object({
     id: z.number(),
@@ -96,7 +93,9 @@ export const prReviewTool = createTool({
         findings: z
             .array(reviewFindingSchema)
             .optional()
-            .describe('Combined findings across perspectives (detect-convergence only).'),
+            .describe(
+                'Combined findings across perspectives (detect-convergence only).'
+            ),
         lineTolerance: z
             .number()
             .optional()
@@ -107,11 +106,15 @@ export const prReviewTool = createTool({
         before: z
             .array(reviewFindingSchema)
             .optional()
-            .describe('Pre-iteration findings snapshot (regression-check only).'),
+            .describe(
+                'Pre-iteration findings snapshot (regression-check only).'
+            ),
         after: z
             .array(reviewFindingSchema)
             .optional()
-            .describe('Post-iteration findings snapshot (regression-check only).'),
+            .describe(
+                'Post-iteration findings snapshot (regression-check only).'
+            ),
         touchedPaths: z
             .array(z.string())
             .optional()
@@ -121,11 +124,15 @@ export const prReviewTool = createTool({
         fromSha: z
             .string()
             .optional()
-            .describe('Iteration-start SHA (regression-check, optional alternative to touchedPaths).'),
+            .describe(
+                'Iteration-start SHA (regression-check, optional alternative to touchedPaths).'
+            ),
         toSha: z
             .string()
             .optional()
-            .describe('Iteration-end SHA (regression-check, optional alternative to touchedPaths).'),
+            .describe(
+                'Iteration-end SHA (regression-check, optional alternative to touchedPaths).'
+            ),
     }),
     execute: async (inputData) => {
         const repoRoot = process.cwd()
@@ -148,11 +155,14 @@ export const prReviewTool = createTool({
                         replies: [],
                     }
                 }
-                const result = filterStaleComments(comments as PrReviewComment[], {
-                    repoRoot,
-                    headSha: inputData.headSha,
-                    maxDriftLines: inputData.maxDriftLines,
-                })
+                const result = filterStaleComments(
+                    comments as PrReviewComment[],
+                    {
+                        repoRoot,
+                        headSha: inputData.headSha,
+                        maxDriftLines: inputData.maxDriftLines,
+                    }
+                )
                 appendLedger('pr-review-run', {
                     action,
                     inputCount: comments.length,

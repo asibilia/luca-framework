@@ -8,12 +8,10 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-import {
-    VERIFICATION_HISTORY_PATH,
-    phasePath,
-} from '../util/phase-paths.js'
 import { readLucaState } from './luca-store.js'
 import { getCurrentRunId } from './session-ledger.js'
+
+import { VERIFICATION_HISTORY_PATH, phasePath } from '../util/phase-paths.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -113,7 +111,7 @@ export function readVerificationResult(): VerificationResult | null {
     if (!existsSync(p)) return null
     try {
         const parsed = JSON.parse(
-            readFileSync(p, 'utf-8'),
+            readFileSync(p, 'utf-8')
         ) as VerificationResult
         if (
             typeof parsed.runId === 'string' &&

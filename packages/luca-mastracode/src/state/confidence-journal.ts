@@ -18,11 +18,9 @@ import {
 } from 'node:fs'
 import { dirname } from 'node:path'
 
-import {
-    CONFIDENCE_JOURNAL_PATH,
-    phasePath,
-} from '../util/phase-paths.js'
 import { readLucaState } from './luca-store.js'
+
+import { CONFIDENCE_JOURNAL_PATH, phasePath } from '../util/phase-paths.js'
 
 // ---------------------------------------------------------------------------
 // Types

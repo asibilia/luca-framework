@@ -22,18 +22,13 @@
  *     (block phase, surface as advisory, etc.).
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { createRequire } from 'node:module'
-
 import type ts from 'typescript'
 
-import type {
-    RuleDefinition,
-    RuleFile,
-    RuleFinding,
-} from './define-rule.js'
+import type { RuleDefinition, RuleFile, RuleFinding } from './define-rule.js'
 
 // TypeScript is a devDependency of this package, but rule consumers
 // might invoke the runner from a project that doesn't have `typescript`
@@ -164,9 +159,7 @@ function extractRules(module: unknown): RuleDefinition[] {
 /**
  * Discover and load all rule definitions from a directory.
  */
-export async function loadRules(opts: {
-    rulesDir: string
-}): Promise<{
+export async function loadRules(opts: { rulesDir: string }): Promise<{
     rules: RuleDefinition[]
     filesDiscovered: number
     loadErrors: RuleLoadError[]
@@ -358,10 +351,7 @@ function makeRuleFile(opts: {
 /**
  * Run a set of loaded rules against the working tree.
  */
-export function runRules(opts: {
-    repoRoot: string
-    rules: RuleDefinition[]
-}): {
+export function runRules(opts: { repoRoot: string; rules: RuleDefinition[] }): {
     timings: Record<string, number>
     findings: RuleFinding[]
     executionErrors: RuleExecutionError[]
@@ -429,8 +419,7 @@ export function runRules(opts: {
                 executionErrors.push({
                     ruleId: rule.id,
                     path: relPath,
-                    message:
-                        err instanceof Error ? err.message : String(err),
+                    message: err instanceof Error ? err.message : String(err),
                 })
             }
         }
@@ -457,11 +446,7 @@ export async function discoverAndRun(opts: {
             : resolve(repoRoot, opts.rulesDir)
         : join(repoRoot, '.luca', 'rules')
 
-    const {
-        rules,
-        filesDiscovered,
-        loadErrors,
-    } = await loadRules({ rulesDir })
+    const { rules, filesDiscovered, loadErrors } = await loadRules({ rulesDir })
 
     const { timings, findings, executionErrors } = runRules({
         repoRoot,

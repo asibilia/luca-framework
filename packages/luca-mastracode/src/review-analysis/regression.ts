@@ -96,12 +96,20 @@ const DEFAULT_SEVERITY_RANK: ReadonlyArray<string> = [
  * regenerates them. Instead, identity is `(perspective, path, anchor-line, summary-prefix)`.
  */
 export function findingIdentity(f: ReviewFinding): string {
-    const summaryPrefix = (f.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 80)
+    const summaryPrefix = (f.summary ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80)
     const anchor = f.line == null ? '?' : String(f.line)
-    return [f.perspective, f.path ?? '<no-path>', anchor, summaryPrefix].join('::')
+    return [f.perspective, f.path ?? '<no-path>', anchor, summaryPrefix].join(
+        '::'
+    )
 }
 
-function severityIndex(severity: string, ranking: ReadonlyArray<string>): number {
+function severityIndex(
+    severity: string,
+    ranking: ReadonlyArray<string>
+): number {
     const idx = ranking.indexOf(severity.toLowerCase())
     return idx === -1 ? 0 : idx
 }
@@ -220,11 +228,15 @@ export function diffPaths(
     fromSha: string,
     toSha: string
 ): string[] {
-    const r = spawnSync('git', ['diff', '--name-only', `${fromSha}..${toSha}`], {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        timeout: 5000,
-    })
+    const r = spawnSync(
+        'git',
+        ['diff', '--name-only', `${fromSha}..${toSha}`],
+        {
+            cwd: repoRoot,
+            encoding: 'utf8',
+            timeout: 5000,
+        }
+    )
     if (r.status !== 0) return []
     return (r.stdout ?? '')
         .split('\n')

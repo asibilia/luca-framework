@@ -15,6 +15,10 @@
  */
 import { existsSync, writeFileSync, readFileSync } from 'node:fs'
 
+import {
+    readConfidenceJournal,
+    type ConfidenceEntry,
+} from '../state/confidence-journal.js'
 import { readLucaState } from '../state/luca-store.js'
 import {
     readLedger,
@@ -27,15 +31,11 @@ import {
     ARTIFACT_FILES,
     type LedgerEntry,
 } from '../state/session-ledger.js'
-import { phasePath } from '../util/phase-paths.js'
 import {
     readVerificationHistory,
     type VerificationResult,
 } from '../state/verification-result.js'
-import {
-    readConfidenceJournal,
-    type ConfidenceEntry,
-} from '../state/confidence-journal.js'
+import { phasePath } from '../util/phase-paths.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -394,9 +394,7 @@ export function analyzeRun(runId?: string): PostmortemReport {
             code: 'PIPELINE_GUARD_IDLE_BYPASS',
             message: `Pipeline-guard skipped enforcement because pipelineStep was idle. May indicate stale state contamination.`,
             evidence: `at=${e.timestamp}`,
-            evidenceFingerprint: fingerprint(
-                `IDLE_BYPASS:${e.timestamp}`
-            ),
+            evidenceFingerprint: fingerprint(`IDLE_BYPASS:${e.timestamp}`),
         })
     }
 
@@ -410,8 +408,9 @@ export function analyzeRun(runId?: string): PostmortemReport {
         emptyPhasesJustified: entries.filter(
             (e) => e.event === 'phase-empty-justification'
         ).length,
-        todosMovedToDone: entries.filter((e) => e.event === 'todo-moved-to-done')
-            .length,
+        todosMovedToDone: entries.filter(
+            (e) => e.event === 'todo-moved-to-done'
+        ).length,
         lowConfidenceCount: lowConfidence.length,
         forcedTransitions: forced.length,
         moveBlockedCount: moveBlocked.length,

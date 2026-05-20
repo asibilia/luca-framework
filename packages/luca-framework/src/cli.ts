@@ -24,6 +24,10 @@ const main = defineCommand({
         run: () => import('./commands/run').then((m) => m.runCommand),
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
+        'migrate-planning': () =>
+            import('./commands/migrate-planning').then(
+                (m) => m.migratePlanningCommand,
+            ),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
     },

@@ -9,15 +9,9 @@ import * as fs from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import {
-    describe,
-    test,
-    expect,
-    beforeEach,
-    afterEach,
-    spyOn,
-} from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test'
 
+import { writeLucaState } from '../state/luca-store.js'
 import {
     appendTelemetry,
     buildTelemetryRecord,
@@ -25,7 +19,6 @@ import {
     TelemetryRecordSchema,
     type TelemetryRecord,
 } from '../state/telemetry.js'
-import { writeLucaState } from '../state/luca-store.js'
 import {
     TELEMETRY_PATH,
     TELEMETRY_DIR,

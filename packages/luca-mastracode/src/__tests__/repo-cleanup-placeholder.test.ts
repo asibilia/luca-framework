@@ -36,7 +36,8 @@ describe('hasPlaceholderText', () => {
     })
 
     test('returns found: false and empty matches for clean text', () => {
-        const content = 'this is a perfectly clean document\nno placeholders here'
+        const content =
+            'this is a perfectly clean document\nno placeholders here'
         const result = hasPlaceholderText(content)
         expect(result.found).toBe(false)
         expect(result.matches).toEqual([])
@@ -64,7 +65,7 @@ describe('hasPlaceholderText', () => {
         expect(result.found).toBe(true)
         expect(result.matches).toHaveLength(3)
         const byPattern = Object.fromEntries(
-            result.matches.map((m) => [m.pattern, m.line]),
+            result.matches.map((m) => [m.pattern, m.line])
         )
         expect(byPattern['<TODO>']).toBe(2)
         expect(byPattern['<FIXME>']).toBe(4)

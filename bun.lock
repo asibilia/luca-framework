@@ -25,9 +25,20 @@
         "unbuild": "^3.5.0",
       },
     },
+    "packages/luca-core": {
+      "name": "@alecsibilia/luca-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "catalog:",
+      },
+    },
     "packages/luca-framework": {
       "name": "@alecsibilia/luca-framework",
-      "version": "11.9.0-alpha.7",
+      "version": "11.9.0-alpha.11",
       "bin": {
         "luca": "./bin/luca.js",
       },
@@ -52,8 +63,9 @@
     },
     "packages/luca-mastracode": {
       "name": "@alecsibilia/luca-mastracode",
-      "version": "11.9.0-alpha.7",
+      "version": "11.9.0-alpha.11",
       "dependencies": {
+        "@alecsibilia/luca-core": "workspace:*",
         "@mastra/core": "catalog:",
         "@mastra/libsql": "catalog:",
         "@mastra/memory": "catalog:",
@@ -183,6 +195,8 @@
     "@ai-sdk/xai": ["@ai-sdk/xai@2.0.69", "", { "dependencies": { "@ai-sdk/openai-compatible": "1.0.37", "@ai-sdk/provider": "2.0.2", "@ai-sdk/provider-utils": "3.0.24" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-xnbMYsbqBawFP/fbqCswcHXaU3GB3EcuENc+EpCCTEZi6yRj4XgRs2RFRkgmmb6Pwl2XcohCj/7+SMf/VeZnGA=="],
 
     "@alecsibilia/commit": ["@alecsibilia/commit@1.0.8", "", { "dependencies": { "@clack/prompts": "0.11.0", "chalk": "^5.3.0", "commander": "^14.0.0", "zod": "^3.24.1" }, "bin": { "commit": "dist/index.js" } }, "sha512-/h9gveB7HUw+2j0bORsyiM2sfVZbCj8GIIueBTxiXlIV9mYa3wAMC6XUse2r/OuukvE9ndIgfmJW3Ifn2hzu6A=="],
+
+    "@alecsibilia/luca-core": ["@alecsibilia/luca-core@workspace:packages/luca-core"],
 
     "@alecsibilia/luca-framework": ["@alecsibilia/luca-framework@workspace:packages/luca-framework"],
 

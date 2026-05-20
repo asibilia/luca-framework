@@ -1,34 +1,43 @@
 /**
- * Workflow state schema for the Luca pipeline.
+ * Workflow state schema for the Luca pipeline (mastracode harness build).
  *
- * Replaces XState v5 + luca-bridge CLI + /tmp/lu-context.json with
- * Mastra Code's built-in Zod-validated persistent state.
+ * Shared primitives (ComplexityLevel, OversightMode, PhaseStatus,
+ * RoadmapPhaseSchema) are imported from @alecsibilia/luca-core. Mastracode-
+ * specific extensions — ProfileLevel, the 22-value PipelineStep, the 2D
+ * (complexity × profile) BUDGET_MATRIX, plus the deprecated `profile`,
+ * `workflowVersion`, and `skipBranch` state fields — live here. These are
+ * retained until mastracode retires (Phase 5).
  */
 import { z } from 'zod'
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
+import {
+    ComplexityLevel,
+    OversightMode,
+    PhaseStatus,
+    RoadmapPhaseSchema,
+} from '@alecsibilia/luca-core'
+import type { RoadmapPhase } from '@alecsibilia/luca-core'
 
-export const ComplexityLevel = z.enum([
-    'TRIVIAL',
-    'SIMPLE',
-    'MODERATE',
-    'COMPLEX',
-    'CRITICAL',
-])
-export type ComplexityLevel = z.infer<typeof ComplexityLevel>
+// Re-export shared primitives so existing `import ... from './state.js'`
+// callers continue to work without modification.
+export {
+    ComplexityLevel,
+    OversightMode,
+    PhaseStatus,
+    RoadmapPhaseSchema,
+}
+export type { RoadmapPhase }
+
+// ---------------------------------------------------------------------------
+// Mastracode-only enums (deprecated; retiring with mastracode)
+// ---------------------------------------------------------------------------
 
 export const ProfileLevel = z.enum(['budget', 'balanced', 'quality'])
 export type ProfileLevel = z.infer<typeof ProfileLevel>
 
-export const OversightMode = z.enum([
-    'full-auto',
-    'checkpoint',
-    'human-in-loop',
-])
-export type OversightMode = z.infer<typeof OversightMode>
-
+// Mastracode's 22-value pipelineStep. luca-core's trimmed PipelineStep (14
+// values) auto-maps the dropped values via z.preprocess on read, so state.json
+// written by mastracode parses cleanly when read by luca-core consumers.
 export const PipelineStep = z.enum([
     'idle',
     'triage',
@@ -40,7 +49,7 @@ export const PipelineStep = z.enum([
     'research',
     'discuss',
     'architect',
-    'plan', // sub-step: creating the plan document (within Architect mode)
+    'plan',
     'plan-review',
     'execute',
     'checks',
@@ -55,29 +64,8 @@ export const PipelineStep = z.enum([
 ])
 export type PipelineStep = z.infer<typeof PipelineStep>
 
-export const PhaseStatus = z.enum([
-    'pending',
-    'in-progress',
-    'complete',
-    'skipped',
-    'blocked',
-])
-export type PhaseStatus = z.infer<typeof PhaseStatus>
-
 // ---------------------------------------------------------------------------
-// Roadmap phase entry
-// ---------------------------------------------------------------------------
-
-export const RoadmapPhaseSchema = z.object({
-    name: z.string(),
-    deps: z.array(z.string()).default([]),
-    status: PhaseStatus.default('pending'),
-    complexity: ComplexityLevel.optional(),
-})
-export type RoadmapPhase = z.infer<typeof RoadmapPhaseSchema>
-
-// ---------------------------------------------------------------------------
-// Main state schema — passed to Harness as `stateSchema`
+// Mastracode lucaStateSchema (with legacy fields)
 // ---------------------------------------------------------------------------
 
 export const lucaStateSchema = z.object({
@@ -138,7 +126,9 @@ export const lucaStateSchema = z.object({
 export type LucaState = z.infer<typeof lucaStateSchema>
 
 // ---------------------------------------------------------------------------
-// Budget matrix — maps (complexity × profile) to iteration limits
+// Budget matrix — maps (complexity × profile) to iteration limits.
+// Mastracode-only because the 2D dimension depends on the deprecated
+// profile field. luca-core ships a 1D balanced-only fallback table.
 // ---------------------------------------------------------------------------
 
 interface BudgetLimits {

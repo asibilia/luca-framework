@@ -13,6 +13,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
+import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import {
     DEFAULT_PREFERENCES,
     loadProjectPreferences,
@@ -21,7 +22,6 @@ import {
     writeProjectPreferences,
     type ProjectPreferences,
 } from '../state/project-preferences.js'
-import { readLucaState, writeLucaState } from '../state/luca-store.js'
 import { resolveProjectVault } from '../state/vault.js'
 
 /**
@@ -142,7 +142,7 @@ export const projectPreferencesTool = createTool({
         "Use 'consult' to read the whole document, 'consult-section' to read a single section, " +
         "'seed' to write the initial document (called once by the luca-init skill), " +
         "and 'update' to patch sections in place. " +
-        "Pass fallback:true to consult/consult-section to receive hardcoded defaults when no preferences file exists.",
+        'Pass fallback:true to consult/consult-section to receive hardcoded defaults when no preferences file exists.',
     inputSchema: z.object({
         action: z
             .enum(['consult', 'consult-section', 'seed', 'update'])

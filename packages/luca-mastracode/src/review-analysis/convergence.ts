@@ -247,7 +247,12 @@ export function detectConvergence(
                 if (idx !== undefined) {
                     promoted[idx] = { ...f, severity: 'must-fix' }
                 }
-            } else if (sev === 'must-fix' || sev === 'must' || sev === 'high' || sev === 'critical') {
+            } else if (
+                sev === 'must-fix' ||
+                sev === 'must' ||
+                sev === 'high' ||
+                sev === 'critical'
+            ) {
                 // Already at or above must-fix; no promotion, but mark it so callers can render the convergence evidence.
                 promotions.push({
                     findingId: f.id,

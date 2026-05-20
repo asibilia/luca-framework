@@ -145,7 +145,10 @@ function isCaptureArtifact(filename: string): boolean {
  * left behind by drafters. Returns a list of matches with line numbers so
  * callers can surface them in cleanup reports or block finalize when found.
  */
-export function hasPlaceholderText(content: string): { found: boolean; matches: Array<{ pattern: string; line: number }> } {
+export function hasPlaceholderText(content: string): {
+    found: boolean
+    matches: Array<{ pattern: string; line: number }>
+} {
     const patterns: Array<{ name: string; regex: RegExp }> = [
         { name: '<TODO>', regex: /<TODO>/i },
         { name: '<TBD>', regex: /<TBD>/i },

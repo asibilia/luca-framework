@@ -2,8 +2,8 @@
   "name": "@alecsibilia/luca-mastracode",
   "description": "Luca workflow as a custom Mastra Code distribution — custom modes, agents, subagents, and tools",
   "version": "11.9.0-alpha.11",
-  "private": true,
   "dependencies": {
+    "@alecsibilia/luca-core": "workspace:*",
     "@mastra/core": "catalog:",
     "@mastra/libsql": "catalog:",
     "@mastra/memory": "catalog:",
@@ -15,6 +15,7 @@
     "typescript": "catalog:"
   },
   "main": "src/index.ts",
+  "private": true,
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

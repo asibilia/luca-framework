@@ -25,7 +25,9 @@ const verificationRefSchema = z.object({
     wave: z
         .number()
         .int()
-        .describe('Wave number whose verification result contains the criterion'),
+        .describe(
+            'Wave number whose verification result contains the criterion'
+        ),
 })
 
 type VerificationRef = z.infer<typeof verificationRefSchema>

@@ -52,7 +52,7 @@ packages/luca-mastracode/.planning/
 .claude/.session-lock
 .claude/.build-manifest.json
 
-# context monitoring (runtime artifacts)
+# context monitoring (runtime artifacts) — legacy .planning/ layout
 .planning/.context-metrics.json
 .planning/.context-checkpoint.json
 .planning/.luca-lock.json
@@ -67,6 +67,14 @@ packages/luca-mastracode/.planning/
 
 # Eval results (generated, per-run)
 .planning/evals/
+
+# Luca workflow runtime state under the new .luca/ contract.
+# Committed: config.json, roadmap.md (generated view), milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}
+# Ignored: per-run state, lock, ledger, telemetry
+.luca/state.json
+.luca/lock.json
+.luca/ledger.jsonl
+.luca/telemetry/
 
 # tests — only the throwaway tmp files are ignored. The luca-mastracode
 # package keeps its unit tests in src/__tests__/ (run via `bun test`); the

@@ -58,7 +58,7 @@ describe('slugifySegment', () => {
 describe('parseTicketId', () => {
     test("'PT-11089 order book loading flash' → 'PT-11089'", () => {
         expect(parseTicketId('PT-11089 order book loading flash')).toBe(
-            'PT-11089',
+            'PT-11089'
         )
     })
 
@@ -119,34 +119,34 @@ describe('phasePath', () => {
 
     test("rejects '..' parent-traversal filenames", () => {
         expect(() => phasePath('../etc', 'foo')).toThrow(
-            'phasePath filename must be a non-empty bare filename',
+            'phasePath filename must be a non-empty bare filename'
         )
     })
 
     test("rejects filenames containing '/'", () => {
         expect(() => phasePath('a/b', 'foo')).toThrow(
-            'phasePath filename must be a non-empty bare filename',
+            'phasePath filename must be a non-empty bare filename'
         )
     })
 
     test("rejects filenames containing '\\'", () => {
         expect(() => phasePath('a\\b', 'foo')).toThrow(
-            'phasePath filename must be a non-empty bare filename',
+            'phasePath filename must be a non-empty bare filename'
         )
     })
 })
 
 describe('resolveAvailableSlug', () => {
-    test("returns base slug when phases/<slug> is absent", () => {
+    test('returns base slug when phases/<slug> is absent', () => {
         expect(resolveAvailableSlug('alpha')).toBe('alpha')
     })
 
-    test("returns base slug when phases/<slug> exists but is empty (re-entry)", () => {
+    test('returns base slug when phases/<slug> exists but is empty (re-entry)', () => {
         mkdirSync(join(planningRoot(), 'phases', 'alpha'), { recursive: true })
         expect(resolveAvailableSlug('alpha')).toBe('alpha')
     })
 
-    test("appends -2 when phases/<slug> exists with content", () => {
+    test('appends -2 when phases/<slug> exists with content', () => {
         const occupied = join(planningRoot(), 'phases', 'alpha')
         mkdirSync(occupied, { recursive: true })
         writeFileSync(join(occupied, 'PLAN.md'), '# stub\n')
@@ -165,7 +165,7 @@ describe('resolveAvailableSlug', () => {
         expect(existsSync(join(planningRoot(), 'phases', 'alpha-3'))).toBe(true)
         // Sanity: claim is empty (not polluting upstream content checks).
         expect(readdirSync(join(planningRoot(), 'phases', 'alpha-3'))).toEqual(
-            [],
+            []
         )
     })
 })
