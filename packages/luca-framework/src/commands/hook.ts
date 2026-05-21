@@ -5,8 +5,9 @@
  * scripts that `luca init` writes are thin shell wrappers that exec into
  * these subcommands.
  *
- * Phase 2 ships only the stage-gate handler in plumbing mode (returns 0
- * for everything). Phase 3 turns enforcement on.
+ * The stage-gate handler is enforcing: it parses the PreToolUse payload,
+ * classifies the tool call against the phase/tool matrix, and exits
+ * non-zero to block any call disallowed in the current phase.
  */
 import { defineCommand } from 'citty'
 

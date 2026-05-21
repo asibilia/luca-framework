@@ -12,6 +12,12 @@ export interface RunRepairOptions {
 export interface RunRepairResult {
     /** Human-readable actions actually taken (e.g. "cleared stale lock"). */
     actions: string[]
+    /**
+     * Informational diagnostics where inspection ran but no repair was
+     * needed (e.g. "lock is held by a running PID"). Distinct from
+     * `actions`, which records only changes that were actually applied.
+     */
+    notes: string[]
     /** Problems diagnosed but NOT auto-fixed (e.g. invalid state.json). */
     errors: string[]
 }
@@ -39,10 +45,11 @@ export async function runRepair(
     const lucaDir = join(opts.cwd, '.luca')
 
     if (!existsSync(lucaDir)) {
-        return { actions: [], errors: [] }
+        return { actions: [], notes: [], errors: [] }
     }
 
     const actions: string[] = []
+    const notes: string[] = []
     const errors: string[] = []
 
     // ── Lock handling ────────────────────────────────────────────────────────
@@ -53,8 +60,9 @@ export async function runRepair(
             const lock = JSON.parse(raw) as LockFile
 
             if (typeof lock.pid === 'number' && isPidRunning(lock.pid)) {
+                // No repair: an active PID still owns the lock.
                 const msg = `lock is held by running PID ${lock.pid}`
-                actions.push(msg)
+                notes.push(msg)
                 log(msg)
             } else {
                 await rm(lockPath, { force: true })
@@ -89,7 +97,7 @@ export async function runRepair(
         }
     }
 
-    return { actions, errors }
+    return { actions, notes, errors }
 }
 
 /**

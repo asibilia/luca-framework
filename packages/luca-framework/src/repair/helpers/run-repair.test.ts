@@ -56,7 +56,10 @@ describe('runRepair', () => {
         const result = await runRepair({ cwd })
 
         expect(existsSync(join(cwd, '.luca/lock.json'))).toBe(true)
-        expect(result.actions.some((a) => a.includes('held by'))).toBe(true)
+        // "held by running PID" is informational — it belongs in `notes`,
+        // not `actions` (no repair was applied).
+        expect(result.notes.some((a) => a.includes('held by'))).toBe(true)
+        expect(result.actions).toEqual([])
     })
 
     test('reports state.json validation errors without auto-fixing', async () => {

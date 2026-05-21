@@ -35,5 +35,5 @@ The checks step is its own skill; `/phase-execute` is done once the executor rep
 ## What you must NOT do
 
 - Do NOT advance to `checks` until the executor reports that the plan is implemented.
-- Do NOT skip writing the execute summary — the executor produces one and writes it via `luca_phase_write_execute_summary` (Phase 4+ MCP tool) or the hook will block direct writes.
+- Do NOT skip writing the execute summary — the executor produces one and writes it via `luca_phase_write_summary` (Phase 4+ MCP tool) or the hook will block direct writes.
 - Do NOT commit on behalf of the user during execute. Commits are FINALIZING-only and the hook blocks them here.

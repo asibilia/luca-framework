@@ -32,7 +32,11 @@ export const repairCommand = defineCommand({
             },
         })
 
-        if (result.actions.length === 0 && result.errors.length === 0) {
+        if (
+            result.actions.length === 0 &&
+            result.notes.length === 0 &&
+            result.errors.length === 0
+        ) {
             console.log('Nothing to repair.')
             return
         }
@@ -41,6 +45,13 @@ export const repairCommand = defineCommand({
             console.log('\n== Actions taken ==')
             for (const action of result.actions) {
                 console.log(`  ${action}`)
+            }
+        }
+
+        if (result.notes.length > 0) {
+            console.log('\n== Notes (no repair needed) ==')
+            for (const note of result.notes) {
+                console.log(`  ${note}`)
             }
         }
 
