@@ -1,9 +1,9 @@
+import { z, type ToolDescriptor } from '../../schemas.ts'
 import {
     checkRegression,
     diffPaths,
     type ReviewFinding,
 } from '../review-analysis/index.ts'
-import { z, type ToolDescriptor } from '../../schemas.ts'
 
 const findingSchema = z.object({
     id: z.string(),
@@ -26,7 +26,7 @@ const inputSchema = z.object({
         .array(z.string())
         .default([])
         .describe(
-            'Repo-relative paths modified by fix commits in this iteration. If empty and from_sha/to_sha are given, computed via git diff.',
+            'Repo-relative paths modified by fix commits in this iteration. If empty and from_sha/to_sha are given, computed via git diff.'
         ),
     from_sha: z
         .string()
@@ -56,11 +56,7 @@ export const lucaPrReviewRegressionCheckTool: ToolDescriptor<
     inputSchema,
     async handler(args, ctx) {
         let touchedPaths = args.touched_paths
-        if (
-            touchedPaths.length === 0 &&
-            args.from_sha &&
-            args.to_sha
-        ) {
+        if (touchedPaths.length === 0 && args.from_sha && args.to_sha) {
             touchedPaths = diffPaths(ctx.cwd, args.from_sha, args.to_sha)
         }
 
@@ -86,9 +82,7 @@ export const lucaPrReviewRegressionCheckTool: ToolDescriptor<
 
         const hasRegressions = report.regressions.length > 0
         return {
-            content: [
-                { type: 'text', text: JSON.stringify(summary, null, 2) },
-            ],
+            content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
             isError: hasRegressions,
         }
     },

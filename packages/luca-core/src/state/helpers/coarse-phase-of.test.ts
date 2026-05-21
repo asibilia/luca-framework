@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { CoarsePhase, PipelineStep } from '../schemas.ts'
 import { coarsePhaseOf } from './coarse-phase-of.ts'
+
+import type { CoarsePhase, PipelineStep } from '../schemas.ts'
 
 describe('coarsePhaseOf', () => {
     // Table-driven: every pipelineStep maps to exactly one coarse phase.

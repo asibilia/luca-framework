@@ -35,14 +35,12 @@ export const migratePlanningCommand = defineCommand({
     args: {
         'dry-run': {
             type: 'boolean',
-            description:
-                'Print the migration plan without moving anything',
+            description: 'Print the migration plan without moving anything',
             default: false,
         },
         force: {
             type: 'boolean',
-            description:
-                'Proceed even when .planning/ has uncommitted changes',
+            description: 'Proceed even when .planning/ has uncommitted changes',
             default: false,
         },
     },

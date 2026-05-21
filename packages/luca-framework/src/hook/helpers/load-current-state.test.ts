@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { loadCurrentState } from './load-current-state.ts'
 
@@ -38,7 +39,7 @@ describe('loadCurrentState', () => {
         await mkdir(join(cwd, '.luca'), { recursive: true })
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'execute', currentPhase: 1 }),
+            JSON.stringify({ pipelineStep: 'execute', currentPhase: 1 })
         )
         const state = await loadCurrentState({ cwd })
         expect(state.pipelineStep).toBe('execute')
@@ -53,7 +54,7 @@ describe('loadCurrentState', () => {
                 pipelineStep: 'plan',
                 profile: 'balanced', // legacy
                 workflowVersion: 'v2', // legacy
-            }),
+            })
         )
         const state = await loadCurrentState({ cwd })
         expect(state.pipelineStep).toBe('plan')
@@ -63,7 +64,7 @@ describe('loadCurrentState', () => {
         await mkdir(join(cwd, '.luca'), { recursive: true })
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'classify' }),
+            JSON.stringify({ pipelineStep: 'classify' })
         )
         const state = await loadCurrentState({ cwd })
         expect(state.pipelineStep).toBe('triage')

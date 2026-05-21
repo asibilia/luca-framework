@@ -1,4 +1,3 @@
-import type { ToolDescriptor } from '../schemas.ts'
 import { lucaBranchGuardTool } from './tools/luca-branch-guard.ts'
 import { lucaChecksRunTool } from './tools/luca-checks-run.ts'
 import { lucaConfidenceLogTool } from './tools/luca-confidence-log.ts'
@@ -26,6 +25,8 @@ import { lucaTodoAddTool } from './tools/luca-todo-add.ts'
 import { lucaTodoListTool } from './tools/luca-todo-list.ts'
 import { lucaTodoUpdateTool } from './tools/luca-todo-update.ts'
 import { lucaWorkflowResetTool } from './tools/luca-workflow-reset.ts'
+
+import type { ToolDescriptor } from '../schemas.ts'
 
 /**
  * Central catalog of every MCP tool the luca server exposes. Importing

@@ -28,7 +28,7 @@ export const PIPELINE_TRANSITIONS: Record<PipelineStep, PipelineStep[]> = {
 
 export function isLegalTransition(
     from: PipelineStep,
-    to: PipelineStep,
+    to: PipelineStep
 ): boolean {
     return PIPELINE_TRANSITIONS[from].includes(to)
 }

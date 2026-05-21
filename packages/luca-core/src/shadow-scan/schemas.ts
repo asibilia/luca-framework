@@ -12,12 +12,7 @@
  */
 import { z } from 'zod'
 
-export const ShadowScanSeverity = z.enum([
-    'critical',
-    'high',
-    'medium',
-    'low',
-])
+export const ShadowScanSeverity = z.enum(['critical', 'high', 'medium', 'low'])
 export type ShadowScanSeverity = z.infer<typeof ShadowScanSeverity>
 
 export const ShadowScanAction = z.enum(['delete', 'move', 'gitignore'])

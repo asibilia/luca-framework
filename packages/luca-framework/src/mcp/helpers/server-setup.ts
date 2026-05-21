@@ -1,13 +1,9 @@
+import { coarsePhaseOf, type PipelineStep } from '@alecsibilia/luca-core'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-
-import {
-    coarsePhaseOf,
-    type PipelineStep,
-} from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../hook/helpers/load-current-state.ts'
 import type { ToolContext, ToolDescriptor, ToolResult } from '../schemas.ts'
@@ -39,7 +35,7 @@ export function createLucaMcpServer(opts: CreateServerOptions): Server {
         },
         {
             capabilities: { tools: {} },
-        },
+        }
     )
 
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -64,19 +60,21 @@ export function createLucaMcpServer(opts: CreateServerOptions): Server {
             if (!tool.allowedPhases.includes(state.pipelineStep)) {
                 return errorResult(
                     `tool '${tool.name}' is only available in phases [${tool.allowedPhases.join(
-                        ', ',
-                    )}]; current pipelineStep is '${state.pipelineStep}' (phase=${coarsePhaseOf(state.pipelineStep)})`,
+                        ', '
+                    )}]; current pipelineStep is '${state.pipelineStep}' (phase=${coarsePhaseOf(state.pipelineStep)})`
                 )
             }
         }
 
         // Validate args via the tool's Zod schema.
-        const parsed = tool.inputSchema.safeParse(request.params.arguments ?? {})
+        const parsed = tool.inputSchema.safeParse(
+            request.params.arguments ?? {}
+        )
         if (!parsed.success) {
             return errorResult(
                 `invalid arguments for '${tool.name}': ${parsed.error.issues
                     .map((i) => `${i.path.join('.')}: ${i.message}`)
-                    .join('; ')}`,
+                    .join('; ')}`
             )
         }
 
@@ -85,7 +83,7 @@ export function createLucaMcpServer(opts: CreateServerOptions): Server {
             return await tool.handler(parsed.data, ctx)
         } catch (err) {
             return errorResult(
-                `tool '${tool.name}' threw: ${(err as Error).message}`,
+                `tool '${tool.name}' threw: ${(err as Error).message}`
             )
         }
     })
@@ -109,9 +107,7 @@ function errorResult(message: string): ToolResult {
  * → JSON Schema converter (e.g. zod-to-json-schema) can replace this
  * later if the LLM needs richer hints.
  */
-function zodToInputSchema(
-    _schema: unknown,
-): {
+function zodToInputSchema(_schema: unknown): {
     type: 'object'
     properties: Record<string, unknown>
 } {

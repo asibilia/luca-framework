@@ -113,7 +113,7 @@ function distinctPerspectives(findings: ReviewFinding[]): string[] {
  */
 function groupFindings(
     findings: ReviewFinding[],
-    lineTolerance: number,
+    lineTolerance: number
 ): ConvergenceGroup[] {
     const byPath = new Map<string, ReviewFinding[]>()
     const orphaned: ReviewFinding[] = []
@@ -179,7 +179,7 @@ function groupFindings(
  */
 export function detectConvergence(
     findings: ReviewFinding[],
-    opts: DetectOptions = {},
+    opts: DetectOptions = {}
 ): ConvergenceReport {
     const tolerance = opts.lineTolerance ?? DEFAULT_LINE_TOLERANCE
     const promotable = opts.promotableSeverities

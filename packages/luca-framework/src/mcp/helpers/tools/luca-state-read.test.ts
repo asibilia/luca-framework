@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaStateReadTool } from './luca-state-read.ts'
 
@@ -26,7 +27,7 @@ describe('luca_state_read', () => {
         await mkdir(join(cwd, '.luca'), { recursive: true })
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'plan', currentPhase: 2 }),
+            JSON.stringify({ pipelineStep: 'plan', currentPhase: 2 })
         )
 
         const result = await lucaStateReadTool.handler({}, { cwd })

@@ -58,14 +58,12 @@ describe('SAFE_FREEFORM — security regex', () => {
 })
 
 describe('REGEX_SOURCE — ReDoS guard', () => {
-    test.each([
-        '^feat$',
-        '\\d{2,}',
-        '\\d+',
-        '[A-Z]{2,4}-\\d+',
-    ])('accepts non-pathological pattern %p', (p) => {
-        expect(REGEX_SOURCE_SCHEMA.safeParse(p).success).toBe(true)
-    })
+    test.each(['^feat$', '\\d{2,}', '\\d+', '[A-Z]{2,4}-\\d+'])(
+        'accepts non-pathological pattern %p',
+        (p) => {
+            expect(REGEX_SOURCE_SCHEMA.safeParse(p).success).toBe(true)
+        }
+    )
 
     test.each([
         ['nested + +', '(a+)+'],
@@ -125,17 +123,17 @@ describe('commits section', () => {
         expect(
             ProjectPreferencesSchema.safeParse({
                 commits: { subjectMaxLength: 19 },
-            }).success,
+            }).success
         ).toBe(false)
         expect(
             ProjectPreferencesSchema.safeParse({
                 commits: { subjectMaxLength: 201 },
-            }).success,
+            }).success
         ).toBe(false)
         expect(
             ProjectPreferencesSchema.safeParse({
                 commits: { subjectMaxLength: 100 },
-            }).success,
+            }).success
         ).toBe(true)
     })
 })
@@ -148,7 +146,7 @@ describe('tracker section', () => {
                 tracker: { kind },
             })
             expect(r.success).toBe(true)
-        },
+        }
     )
 
     test('rejects unknown kind', () => {

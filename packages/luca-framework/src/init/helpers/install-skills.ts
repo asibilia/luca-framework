@@ -26,15 +26,13 @@ export interface InstallSkillsOptions {
  *
  * Designed to be called from `luca init` Step 4, idempotent on re-run.
  */
-export async function installSkills(
-    opts: InstallSkillsOptions,
-): Promise<void> {
+export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
     const log = opts.log ?? (() => {})
     const skillsSource = opts.skillsSource ?? resolveDefaultSkillsSource()
 
     if (!existsSync(skillsSource)) {
         log(
-            `  skip:  skills source not found at ${skillsSource} (running from a non-bundled dev tree?)`,
+            `  skip:  skills source not found at ${skillsSource} (running from a non-bundled dev tree?)`
         )
         return
     }
@@ -83,10 +81,7 @@ async function copySkillTree(args: {
         const files = await readdir(skillFrom, { withFileTypes: true })
         for (const file of files) {
             if (!file.isFile()) continue
-            await copyFile(
-                join(skillFrom, file.name),
-                join(skillTo, file.name),
-            )
+            await copyFile(join(skillFrom, file.name), join(skillTo, file.name))
             args.log(`  write: ${join(skillTo, file.name)}`)
         }
     }
@@ -106,10 +101,7 @@ async function copyDir(args: {
     const entries = await readdir(args.from, { withFileTypes: true })
     for (const entry of entries) {
         if (!entry.isFile() || !entry.name.endsWith('.md')) continue
-        await copyFile(
-            join(args.from, entry.name),
-            join(args.to, entry.name),
-        )
+        await copyFile(join(args.from, entry.name), join(args.to, entry.name))
         args.log(`  write: ${join(args.to, entry.name)}`)
     }
 }

@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaTodoUpdateTool } from './luca-todo-update.ts'
 
@@ -13,7 +14,7 @@ const baseState = {
 
 async function setupProject(
     cwd: string,
-    opts: { verify?: unknown; vault?: string } = {},
+    opts: { verify?: unknown; vault?: string } = {}
 ): Promise<void> {
     await mkdir(join(cwd, '.luca/phases/01-auth-rewrite'), {
         recursive: true,
@@ -22,13 +23,13 @@ async function setupProject(
     if (opts.vault) {
         await writeFile(
             join(cwd, '.luca/config.json'),
-            JSON.stringify({ muninn: { vault: opts.vault } }),
+            JSON.stringify({ muninn: { vault: opts.vault } })
         )
     }
     if (opts.verify) {
         await writeFile(
             join(cwd, '.luca/phases/01-auth-rewrite/verify.json'),
-            JSON.stringify(opts.verify),
+            JSON.stringify(opts.verify)
         )
     }
 }
@@ -56,9 +57,7 @@ describe('luca_todo_update', () => {
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
 
         expect(r.isError).toBeFalsy()
-        const instruction = JSON.parse(
-            (r.content[0] as { text: string }).text,
-        )
+        const instruction = JSON.parse((r.content[0] as { text: string }).text)
         expect(instruction.tool).toBe('mcp__muninn__muninn_remember')
         const args = JSON.parse(instruction.argsJson)
         expect(args.vault).toBe('my-project')
@@ -80,7 +79,7 @@ describe('luca_todo_update', () => {
 
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
-            'verificationRef',
+            'verificationRef'
         )
     })
 
@@ -108,9 +107,7 @@ describe('luca_todo_update', () => {
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
 
         expect(r.isError).toBeFalsy()
-        const instruction = JSON.parse(
-            (r.content[0] as { text: string }).text,
-        )
+        const instruction = JSON.parse((r.content[0] as { text: string }).text)
         const todo = JSON.parse(JSON.parse(instruction.argsJson).content)
         expect(todo.status).toBe('done')
         expect(todo.verificationRef.criterionId).toBe('ac-01')
@@ -141,7 +138,7 @@ describe('luca_todo_update', () => {
 
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
-            'CRITERION_UNMET',
+            'CRITERION_UNMET'
         )
     })
 
@@ -158,7 +155,7 @@ describe('luca_todo_update', () => {
 
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
-            'VERIFY_FILE_MISSING',
+            'VERIFY_FILE_MISSING'
         )
     })
 

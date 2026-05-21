@@ -1,7 +1,6 @@
+import type { PipelineStep } from '@alecsibilia/luca-core'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-
-import type { PipelineStep } from '@alecsibilia/luca-core'
 
 export interface ToolContext {
     cwd: string

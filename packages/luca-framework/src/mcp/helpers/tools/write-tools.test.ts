@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPhaseWriteAuditTool } from './luca-phase-write-audit.ts'
 import { lucaPhaseWriteContextTool } from './luca-phase-write-context.ts'
@@ -11,7 +12,7 @@ import { lucaPhaseWriteResearchTool } from './luca-phase-write-research.ts'
 
 async function setupProject(
     cwd: string,
-    state: Record<string, unknown>,
+    state: Record<string, unknown>
 ): Promise<void> {
     await mkdir(join(cwd, '.luca'), { recursive: true })
     await writeFile(join(cwd, '.luca/state.json'), JSON.stringify(state))
@@ -37,7 +38,7 @@ describe('luca_phase_write_plan', () => {
 
         const result = await lucaPhaseWritePlanTool.handler(
             { content: '# Plan\n\nSteps...' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
@@ -55,7 +56,7 @@ describe('luca_phase_write_plan', () => {
 
         const result = await lucaPhaseWritePlanTool.handler(
             { content: 'x' },
-            { cwd },
+            { cwd }
         )
         expect(result.isError).toBe(true)
     })
@@ -85,13 +86,13 @@ describe('luca_phase_write_research', () => {
 
         const result = await lucaPhaseWriteResearchTool.handler(
             { content: '## Findings' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/research.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toBe('## Findings')
     })
@@ -121,13 +122,13 @@ describe('luca_phase_write_context', () => {
 
         const result = await lucaPhaseWriteContextTool.handler(
             { content: 'User said yes' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth/context.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toBe('User said yes')
     })
@@ -157,13 +158,13 @@ describe('luca_phase_write_audit', () => {
 
         const result = await lucaPhaseWriteAuditTool.handler(
             { reviewer: 'code-review', content: '## Findings\n\nLooks good.' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth/audits/code-review.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toContain('Findings')
     })

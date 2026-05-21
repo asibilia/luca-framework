@@ -26,9 +26,7 @@ export type ResolveActiveSlugResult =
  * result (rather than throwing) so MCP tool handlers can surface a clean
  * isError result to the LLM.
  */
-export function resolveActiveSlug(
-    state: LucaState,
-): ResolveActiveSlugResult {
+export function resolveActiveSlug(state: LucaState): ResolveActiveSlugResult {
     if (state.currentPhase === 0) {
         return {
             ok: false,

@@ -19,7 +19,7 @@ export interface LoadCurrentConfigOptions {
  * schema. The .luca/config.json file itself has no top-level schema.
  */
 export async function loadCurrentConfig(
-    opts: LoadCurrentConfigOptions,
+    opts: LoadCurrentConfigOptions
 ): Promise<Record<string, unknown>> {
     const configPath = join(opts.cwd, '.luca', 'config.json')
     if (!existsSync(configPath)) return {}

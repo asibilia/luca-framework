@@ -1,11 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import type { PrReviewComment } from '../review-analysis/index.ts'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewFilterStaleTool } from './luca-pr-review-filter-stale.ts'
+
+import type { PrReviewComment } from '../review-analysis/index.ts'
 
 const FIXTURE_PATH = 'src/sample.ts'
 const FIXTURE_CONTENT = [
@@ -54,14 +55,12 @@ describe('luca_pr_review_filter_stale', () => {
                     comment({ id: 4, in_reply_to_id: 2 }),
                 ],
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse((r.content[0] as { text: string }).text)
-        expect(parsed.actionable.map((c: { id: number }) => c.id)).toEqual([
-            2,
-        ])
+        expect(parsed.actionable.map((c: { id: number }) => c.id)).toEqual([2])
         expect(parsed.unknown.map((c: { id: number }) => c.id)).toEqual([1])
         expect(parsed.replies.map((c: { id: number }) => c.id)).toEqual([4])
     })
@@ -69,7 +68,7 @@ describe('luca_pr_review_filter_stale', () => {
     test('handles an empty comment list', async () => {
         const r = await lucaPrReviewFilterStaleTool.handler(
             { comments: [] },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse((r.content[0] as { text: string }).text)

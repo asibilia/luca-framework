@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPhaseCurrentTool } from './luca-phase-current.ts'
 
@@ -20,7 +21,7 @@ describe('luca_phase_current', () => {
     test('reports active:false when currentPhase is 0', async () => {
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'plan', currentPhase: 0 }),
+            JSON.stringify({ pipelineStep: 'plan', currentPhase: 0 })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })
@@ -43,7 +44,7 @@ describe('luca_phase_current', () => {
                         status: 'in-progress',
                     },
                 ],
-            }),
+            })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })
@@ -68,7 +69,7 @@ describe('luca_phase_current', () => {
                         deps: [],
                         status: 'pending',
                     })),
-            }),
+            })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })
@@ -85,7 +86,7 @@ describe('luca_phase_current', () => {
                 roadmap: [
                     { name: 'Auth Rewrite', deps: [], status: 'pending' },
                 ],
-            }),
+            })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })
@@ -96,7 +97,7 @@ describe('luca_phase_current', () => {
     test('errors when currentPhase > 99 (out of slug range)', async () => {
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ currentPhase: 100 }),
+            JSON.stringify({ currentPhase: 100 })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })
@@ -106,7 +107,7 @@ describe('luca_phase_current', () => {
     test('errors when currentPhase has no matching roadmap entry', async () => {
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ currentPhase: 1, roadmap: [] }),
+            JSON.stringify({ currentPhase: 1, roadmap: [] })
         )
 
         const r = await lucaPhaseCurrentTool.handler({}, { cwd })

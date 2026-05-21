@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewDetectConvergenceTool } from './luca-pr-review-detect-convergence.ts'
 
@@ -38,7 +39,7 @@ describe('luca_pr_review_detect_convergence', () => {
                     },
                 ],
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -62,7 +63,7 @@ describe('luca_pr_review_detect_convergence', () => {
                     },
                 ],
             },
-            { cwd },
+            { cwd }
         )
 
         const parsed = JSON.parse((r.content[0] as { text: string }).text)
@@ -72,7 +73,7 @@ describe('luca_pr_review_detect_convergence', () => {
     test('handles an empty findings list', async () => {
         const r = await lucaPrReviewDetectConvergenceTool.handler(
             { findings: [] },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse((r.content[0] as { text: string }).text)
@@ -80,8 +81,6 @@ describe('luca_pr_review_detect_convergence', () => {
     })
 
     test('has no allowedPhases (callable in any pipelineStep)', () => {
-        expect(
-            lucaPrReviewDetectConvergenceTool.allowedPhases,
-        ).toBeUndefined()
+        expect(lucaPrReviewDetectConvergenceTool.allowedPhases).toBeUndefined()
     })
 })

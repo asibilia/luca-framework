@@ -5,13 +5,13 @@ import { wavePathFor } from './wave-path-for.ts'
 describe('wavePathFor', () => {
     test('zero-pads wave number to two digits', () => {
         expect(wavePathFor('01-x', 0)).toBe(
-            '.luca/phases/01-x/execute/waves/00.md',
+            '.luca/phases/01-x/execute/waves/00.md'
         )
         expect(wavePathFor('01-x', 5)).toBe(
-            '.luca/phases/01-x/execute/waves/05.md',
+            '.luca/phases/01-x/execute/waves/05.md'
         )
         expect(wavePathFor('01-x', 42)).toBe(
-            '.luca/phases/01-x/execute/waves/42.md',
+            '.luca/phases/01-x/execute/waves/42.md'
         )
     })
 

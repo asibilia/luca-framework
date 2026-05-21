@@ -73,7 +73,7 @@ export const lucaPhaseCurrentTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                         text: JSON.stringify(
                             { active: true, NN, slug, dir },
                             null,
-                            2,
+                            2
                         ),
                     },
                 ],

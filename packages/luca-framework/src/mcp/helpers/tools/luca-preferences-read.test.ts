@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPreferencesReadTool } from './luca-preferences-read.ts'
 
@@ -30,7 +31,7 @@ describe('luca_preferences_read', () => {
     test('returns schema defaults when config.json has no preferences key', async () => {
         await writeFile(
             join(cwd, '.luca/config.json'),
-            JSON.stringify({ lucaVersion: '12.0.0', vault: null }),
+            JSON.stringify({ lucaVersion: '12.0.0', vault: null })
         )
 
         const r = await lucaPreferencesReadTool.handler({}, { cwd })
@@ -48,7 +49,7 @@ describe('luca_preferences_read', () => {
                     branching: { defaultBranch: 'trunk' },
                     tracker: { kind: 'linear' },
                 },
-            }),
+            })
         )
 
         const r = await lucaPreferencesReadTool.handler({}, { cwd })
@@ -69,7 +70,7 @@ describe('luca_preferences_read', () => {
                     // Newlines are blocked by SAFE_FREEFORM.
                     branching: { defaultBranch: 'bad\nname' },
                 },
-            }),
+            })
         )
 
         const r = await lucaPreferencesReadTool.handler({}, { cwd })

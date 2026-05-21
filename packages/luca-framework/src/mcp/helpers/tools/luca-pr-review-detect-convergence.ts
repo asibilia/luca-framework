@@ -1,8 +1,8 @@
+import { z, type ToolDescriptor } from '../../schemas.ts'
 import {
     detectConvergence,
     type ReviewFinding,
 } from '../review-analysis/index.ts'
-import { z, type ToolDescriptor } from '../../schemas.ts'
 
 const findingSchema = z.object({
     id: z.string(),
@@ -18,7 +18,7 @@ const inputSchema = z.object({
     findings: z
         .array(findingSchema)
         .describe(
-            'Combined review findings across every perspective (PR comments, claim-verifier, reviewer subagents, CI annotations).',
+            'Combined review findings across every perspective (PR comments, claim-verifier, reviewer subagents, CI annotations).'
         ),
     line_tolerance: z
         .number()
@@ -26,7 +26,7 @@ const inputSchema = z.object({
         .min(0)
         .optional()
         .describe(
-            'Lines within +/- this distance count as the same location (default 2).',
+            'Lines within +/- this distance count as the same location (default 2).'
         ),
 })
 
@@ -47,10 +47,9 @@ export const lucaPrReviewDetectConvergenceTool: ToolDescriptor<
         'Group review findings by location and auto-promote severity to must-fix when 2+ distinct perspectives flag the same line. Returns the convergence report plus promoted findings. Read-only.',
     inputSchema,
     async handler(args, _ctx) {
-        const report = detectConvergence(
-            args.findings as ReviewFinding[],
-            { lineTolerance: args.line_tolerance },
-        )
+        const report = detectConvergence(args.findings as ReviewFinding[], {
+            lineTolerance: args.line_tolerance,
+        })
 
         const summary = {
             counts: {
@@ -63,9 +62,7 @@ export const lucaPrReviewDetectConvergenceTool: ToolDescriptor<
         }
 
         return {
-            content: [
-                { type: 'text', text: JSON.stringify(summary, null, 2) },
-            ],
+            content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
         }
     },
 }

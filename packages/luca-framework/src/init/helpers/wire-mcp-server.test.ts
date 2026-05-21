@@ -1,13 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import {
-    mergeMcpServerRegistration,
-    wireMcpServer,
-} from './wire-mcp-server.ts'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+
+import { mergeMcpServerRegistration, wireMcpServer } from './wire-mcp-server.ts'
 
 describe('wireMcpServer', () => {
     let cwd: string
@@ -44,13 +42,13 @@ describe('wireMcpServer', () => {
                 mcpServers: {
                     other: { command: 'other-mcp' },
                 },
-            }),
+            })
         )
 
         await wireMcpServer({ cwd })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8'),
+            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
         )
         expect(settings.someOtherKey).toBe('preserved')
         expect(settings.mcpServers.other.command).toBe('other-mcp')
@@ -62,7 +60,7 @@ describe('wireMcpServer', () => {
         await wireMcpServer({ cwd })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8'),
+            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
         )
         // Only one luca entry
         expect(settings.mcpServers.luca).toBeDefined()
@@ -91,10 +89,7 @@ describe('mergeMcpServerRegistration (pure helper)', () => {
         const next = mergeMcpServerRegistration({
             mcpServers: { luca: { command: 'stale-old-command' } },
         })
-        const servers = next.mcpServers as Record<
-            string,
-            { command: string }
-        >
+        const servers = next.mcpServers as Record<string, { command: string }>
         expect(servers.luca!.command).toBe('luca')
     })
 })

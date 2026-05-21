@@ -111,7 +111,7 @@ interface GitInvokeResult {
 function git(
     repoRoot: string,
     args: string[],
-    timeoutMs = 5000,
+    timeoutMs = 5000
 ): GitInvokeResult {
     try {
         const r = spawnSync('git', args, {
@@ -135,7 +135,7 @@ function pathChangedBetween(
     repoRoot: string,
     fromSha: string,
     toSha: string,
-    path: string,
+    path: string
 ): boolean {
     const r = git(repoRoot, [
         'diff',
@@ -165,7 +165,7 @@ function getHeadSha(repoRoot: string): string | undefined {
 export function findAnchorInFile(
     fileLines: string[],
     anchors: string[],
-    expectedLine: number | null,
+    expectedLine: number | null
 ): { line: number; matchedRatio: number } | undefined {
     const meaningfulAnchors = anchors.filter((a) => a.trim().length > 0)
     if (meaningfulAnchors.length === 0) return undefined
@@ -250,7 +250,7 @@ export interface VerdictOptions {
  */
 export function verdictFor(
     comment: PrReviewComment,
-    opts: VerdictOptions,
+    opts: VerdictOptions
 ): StaleVerdict {
     const { repoRoot } = opts
     const maxDrift = opts.maxDriftLines ?? 5
@@ -341,7 +341,7 @@ export interface FilterOptions {
  */
 export function filterStaleComments(
     comments: PrReviewComment[],
-    opts: FilterOptions,
+    opts: FilterOptions
 ): FilterResult {
     const headSha = opts.headSha ?? getHeadSha(opts.repoRoot)
     const verdictOpts: VerdictOptions = {

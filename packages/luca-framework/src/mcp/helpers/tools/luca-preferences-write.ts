@@ -1,9 +1,6 @@
 import { join } from 'node:path'
 
-import {
-    lucaRootPaths,
-    ProjectPreferencesSchema,
-} from '@alecsibilia/luca-core'
+import { lucaRootPaths, ProjectPreferencesSchema } from '@alecsibilia/luca-core'
 
 import { loadCurrentConfig } from '../../../hook/helpers/load-current-config.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
@@ -13,7 +10,7 @@ const inputSchema = z.object({
     preferences: z
         .record(z.string(), z.unknown())
         .describe(
-            'Partial preferences object. Top-level sections (branching, commits, pr, release, tracker, schemaVersion) overlay the existing ones; unspecified sections are left unchanged. The merged result is re-validated against ProjectPreferencesSchema before write.',
+            'Partial preferences object. Top-level sections (branching, commits, pr, release, tracker, schemaVersion) overlay the existing ones; unspecified sections are left unchanged. The merged result is re-validated against ProjectPreferencesSchema before write.'
         ),
 })
 
@@ -79,7 +76,7 @@ export const lucaPreferencesWriteTool: ToolDescriptor<
         const absPath = join(ctx.cwd, lucaRootPaths.config)
         await writeAtomicFile(
             absPath,
-            JSON.stringify(nextConfig, null, 2) + '\n',
+            JSON.stringify(nextConfig, null, 2) + '\n'
         )
 
         return {

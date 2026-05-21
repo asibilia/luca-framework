@@ -1,11 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import type { ReviewFinding } from '../review-analysis/index.ts'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewRegressionCheckTool } from './luca-pr-review-regression-check.ts'
+
+import type { ReviewFinding } from '../review-analysis/index.ts'
 
 function finding(over: Partial<ReviewFinding>): ReviewFinding {
     return {
@@ -37,7 +38,7 @@ describe('luca_pr_review_regression_check', () => {
                 after: [finding({ id: 'a', path: 'src/a.ts' })],
                 touched_paths: ['src/a.ts'],
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
@@ -53,7 +54,7 @@ describe('luca_pr_review_regression_check', () => {
                 after: [],
                 touched_paths: ['src/a.ts'],
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -69,7 +70,7 @@ describe('luca_pr_review_regression_check', () => {
                 after: [finding({ id: 'a', path: 'src/other.ts' })],
                 touched_paths: ['src/a.ts'],
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -78,8 +79,6 @@ describe('luca_pr_review_regression_check', () => {
     })
 
     test('has no allowedPhases (callable in any pipelineStep)', () => {
-        expect(
-            lucaPrReviewRegressionCheckTool.allowedPhases,
-        ).toBeUndefined()
+        expect(lucaPrReviewRegressionCheckTool.allowedPhases).toBeUndefined()
     })
 })

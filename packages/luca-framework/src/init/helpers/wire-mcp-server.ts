@@ -28,7 +28,7 @@ const LUCA_SERVER_ENTRY: McpServerEntry = {
  * so re-running `luca init` always produces the current canonical command.
  */
 export function mergeMcpServerRegistration(
-    settings: ClaudeSettings,
+    settings: ClaudeSettings
 ): ClaudeSettings {
     const next: ClaudeSettings = { ...settings }
     next.mcpServers = { ...(settings.mcpServers ?? {}) }
@@ -44,9 +44,7 @@ export function mergeMcpServerRegistration(
  * server is started via `luca mcp serve` and provides the deterministic
  * write tools that mediate .luca/ writes.
  */
-export async function wireMcpServer(
-    opts: WireMcpServerOptions,
-): Promise<void> {
+export async function wireMcpServer(opts: WireMcpServerOptions): Promise<void> {
     const log = opts.log ?? (() => {})
     const claudeDir = join(opts.cwd, '.claude')
     const settingsPath = join(claudeDir, 'settings.json')
@@ -55,7 +53,7 @@ export async function wireMcpServer(
 
     const existing = existsSync(settingsPath)
         ? ((JSON.parse(
-              await readFile(settingsPath, 'utf-8'),
+              await readFile(settingsPath, 'utf-8')
           ) as ClaudeSettings) ?? {})
         : {}
 

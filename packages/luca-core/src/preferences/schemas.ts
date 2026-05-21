@@ -38,7 +38,7 @@ import { z } from 'zod'
 export const SAFE_FREEFORM_SCHEMA = z
     .string()
     .max(64)
-    .regex(/^[\w #\t{}/,.():\-]*$/)
+    .regex(/^[\w #\t{}/,.():-]*$/)
 
 /**
  * Zod refinement: source string must compile as a JS RegExp AND must not
@@ -64,7 +64,7 @@ export const REGEX_SOURCE_SCHEMA = z
                 return false
             }
         },
-        { message: 'must be a valid regex source' },
+        { message: 'must be a valid regex source' }
     )
     .refine((v) => !/[+*}]\)[+*{]/.test(v), {
         message: 'nested quantifiers prohibited (ReDoS guard)',
@@ -114,10 +114,7 @@ const BranchingSectionSchema = z
             ]),
         template: SAFE_FREEFORM_SCHEMA.default('{type}/{issue}-{slug}'),
         defaultBranch: SAFE_FREEFORM_SCHEMA.default('main'),
-        guardedBranches: z
-            .array(SAFE_FREEFORM_SCHEMA)
-            .min(1)
-            .default(['main']),
+        guardedBranches: z.array(SAFE_FREEFORM_SCHEMA).min(1).default(['main']),
         branchTypes: z.array(BranchTypeRuleSchema).optional(),
         fallback: BranchTypeRuleSchema.optional(),
         confirmBaseBeforeCreate: z.boolean().default(false),
@@ -150,7 +147,7 @@ const CommitsSectionSchema = z
 const PrSectionSchema = z
     .object({
         titleFormat: SAFE_FREEFORM_SCHEMA.default(
-            '{type}({scope}): {description}',
+            '{type}({scope}): {description}'
         ),
         baseBranch: SAFE_FREEFORM_SCHEMA.default('main'),
         /**
@@ -165,7 +162,7 @@ const PrSectionSchema = z
                 z.object({
                     pattern: REGEX_SOURCE_SCHEMA,
                     reason: SAFE_FREEFORM_SCHEMA,
-                }),
+                })
             )
             .max(10)
             .optional(),

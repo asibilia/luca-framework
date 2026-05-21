@@ -242,8 +242,9 @@ function classifySubcommand(sub: Subcommand): {
     }
 
     // 2. Output redirect — automatic mutate, target = redirect.target
-    const targetsFromRedirect: string[] =
-        sub.redirect?.target ? [sub.redirect.target] : []
+    const targetsFromRedirect: string[] = sub.redirect?.target
+        ? [sub.redirect.target]
+        : []
 
     // 3. git <subcommand> classification
     if (cmd === 'git' && rest.length > 0) {
@@ -277,12 +278,14 @@ function classifySubcommand(sub: Subcommand): {
     // 4. gh <subcommand> <subsubcommand> classification
     if (cmd === 'gh' && rest.length >= 2) {
         const pair: [string, string] = [rest[0]!, rest[1]!]
-        if (GH_COMMIT_PATTERNS.some((p) => p[0] === pair[0] && p[1] === pair[1])) {
+        if (
+            GH_COMMIT_PATTERNS.some((p) => p[0] === pair[0] && p[1] === pair[1])
+        ) {
             return { category: 'bash-commit', targetPaths: targetsFromRedirect }
         }
         if (
             GH_READONLY_PATTERNS.some(
-                (p) => p[0] === pair[0] && p[1] === pair[1],
+                (p) => p[0] === pair[0] && p[1] === pair[1]
             )
         ) {
             return {
@@ -297,7 +300,11 @@ function classifySubcommand(sub: Subcommand): {
     // 5. Read-only multi-token patterns checked BEFORE generic mutate
     //    patterns so e.g. `bunx --bun tsc --noEmit` isn't conflated with
     //    arbitrary bunx invocations.
-    if (cmd === 'bunx' && tokens.includes('tsc') && tokens.includes('--noEmit')) {
+    if (
+        cmd === 'bunx' &&
+        tokens.includes('tsc') &&
+        tokens.includes('--noEmit')
+    ) {
         return {
             category: sub.redirect ? 'bash-mutate' : 'bash-readonly',
             targetPaths: targetsFromRedirect,
@@ -318,14 +325,16 @@ function classifySubcommand(sub: Subcommand): {
     if (MUTATE_COMMANDS.has(cmd)) {
         // For cp/mv/ln, target = last positional arg.
         const lastArg =
-            cmd === 'cp' || cmd === 'mv' || cmd === 'ln' ? lastNonFlag(rest) : undefined
+            cmd === 'cp' || cmd === 'mv' || cmd === 'ln'
+                ? lastNonFlag(rest)
+                : undefined
         // For sed -i FILE, target = file after -i
         const sedTarget =
             cmd === 'sed' && rest.includes('-i')
                 ? rest[rest.length - 1]
                 : undefined
         const additionalTargets = [lastArg, sedTarget].filter(
-            (x): x is string => Boolean(x),
+            (x): x is string => Boolean(x)
         )
         return {
             category: 'bash-mutate',
@@ -383,9 +392,13 @@ function detectPipeToShell(subcommands: Subcommand[]): string | undefined {
                 upstreamCmd === 'wget' ||
                 (upstreamCmd === 'base64' && sub.tokens.includes('-d')) ||
                 (upstreamCmd === 'echo' &&
-                    subcommands.slice(0, i + 1).some((s) =>
-                        s.tokens.some((t) => /^[A-Za-z0-9+/=]{16,}$/.test(t)),
-                    ))
+                    subcommands
+                        .slice(0, i + 1)
+                        .some((s) =>
+                            s.tokens.some((t) =>
+                                /^[A-Za-z0-9+/=]{16,}$/.test(t)
+                            )
+                        ))
             ) {
                 return `pipe-to-${nextCmd} pattern (${upstreamCmd} | … | ${nextCmd})`
             }

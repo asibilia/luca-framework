@@ -3,15 +3,15 @@ import { join } from 'node:path'
 import { phasePathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
-import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { writeAtomicFile } from '../write-atomic.ts'
 
 const inputSchema = z.object({
     result: z
         .record(z.string(), z.unknown())
         .describe(
-            'Structured verification result. Common fields: status (pass|fail), typecheck (bool), tests ({passed, failed}), lint (...). Written verbatim to .luca/phases/<active-slug>/verify.json.',
+            'Structured verification result. Common fields: status (pass|fail), typecheck (bool), tests ({passed, failed}), lint (...). Written verbatim to .luca/phases/<active-slug>/verify.json.'
         ),
 })
 

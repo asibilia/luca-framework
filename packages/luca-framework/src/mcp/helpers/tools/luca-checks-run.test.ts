@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaChecksRunTool } from './luca-checks-run.ts'
 
@@ -32,17 +33,15 @@ describe('luca_checks_run', () => {
     test('runs a passing command and reports passed=true', async () => {
         const r = await lucaChecksRunTool.handler(
             {
-                commands: [
-                    { argv: ['true'], label: 'noop' },
-                ],
+                commands: [{ argv: ['true'], label: 'noop' }],
                 timeout_ms: 5000,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse(
-            (r.content[0] as { text: string }).text,
+            (r.content[0] as { text: string }).text
         ) as RunResult
         expect(parsed.passed).toBe(true)
         expect(parsed.summary[0]!.ok).toBe(true)
@@ -61,12 +60,12 @@ describe('luca_checks_run', () => {
                 ],
                 timeout_ms: 5000,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
         const parsed = JSON.parse(
-            (r.content[0] as { text: string }).text,
+            (r.content[0] as { text: string }).text
         ) as RunResult
         expect(parsed.passed).toBe(false)
         expect(parsed.summary[0]!.ok).toBe(false)
@@ -78,12 +77,10 @@ describe('luca_checks_run', () => {
         const start = Date.now()
         const r = await lucaChecksRunTool.handler(
             {
-                commands: [
-                    { argv: ['sleep', '30'], label: 'hang' },
-                ],
+                commands: [{ argv: ['sleep', '30'], label: 'hang' }],
                 timeout_ms: 250,
             },
-            { cwd },
+            { cwd }
         )
         const elapsed = Date.now() - start
 
@@ -91,7 +88,7 @@ describe('luca_checks_run', () => {
         expect(elapsed).toBeLessThan(5000)
         expect(r.isError).toBe(true)
         const parsed = JSON.parse(
-            (r.content[0] as { text: string }).text,
+            (r.content[0] as { text: string }).text
         ) as RunResult
         expect(parsed.summary[0]!.timedOut).toBe(true)
         expect(parsed.summary[0]!.ok).toBe(false)
@@ -106,19 +103,16 @@ describe('luca_checks_run', () => {
                 ],
                 timeout_ms: 5000,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse(
-            (r.content[0] as { text: string }).text,
+            (r.content[0] as { text: string }).text
         ) as RunResult
         expect(parsed.passed).toBe(true)
         expect(parsed.summary).toHaveLength(2)
-        expect(parsed.summary.map((s) => s.label)).toEqual([
-            'first',
-            'second',
-        ])
+        expect(parsed.summary.map((s) => s.label)).toEqual(['first', 'second'])
     })
 
     test('marks overall failed when any command fails', async () => {
@@ -133,12 +127,12 @@ describe('luca_checks_run', () => {
                 ],
                 timeout_ms: 5000,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
         const parsed = JSON.parse(
-            (r.content[0] as { text: string }).text,
+            (r.content[0] as { text: string }).text
         ) as RunResult
         expect(parsed.passed).toBe(false)
         expect(parsed.summary[0]!.ok).toBe(true)

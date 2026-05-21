@@ -5,14 +5,14 @@ const commandSchema = z.object({
         .array(z.string().min(1))
         .min(1)
         .describe(
-            'Argv array passed directly to the spawn. First element is the executable, remaining elements are arguments. No shell interpolation.',
+            'Argv array passed directly to the spawn. First element is the executable, remaining elements are arguments. No shell interpolation.'
         ),
     label: z
         .string()
         .min(1)
         .optional()
         .describe(
-            'Optional human-friendly label for this command in the summary output. Defaults to the argv joined by spaces.',
+            'Optional human-friendly label for this command in the summary output. Defaults to the argv joined by spaces.'
         ),
 })
 
@@ -21,7 +21,7 @@ const inputSchema = z.object({
         .array(commandSchema)
         .min(1)
         .describe(
-            'Ordered list of commands to run sequentially. Each command runs only if the previous one is still within budget; failures do NOT stop the sequence.',
+            'Ordered list of commands to run sequentially. Each command runs only if the previous one is still within budget; failures do NOT stop the sequence.'
         ),
     timeout_ms: z
         .number()
@@ -30,7 +30,7 @@ const inputSchema = z.object({
         .max(600_000)
         .default(90_000)
         .describe(
-            'Per-command timeout in milliseconds (range 100–600000, default 90000). On timeout the process is killed (SIGTERM then SIGKILL) and reported as timedOut=true.',
+            'Per-command timeout in milliseconds (range 100–600000, default 90000). On timeout the process is killed (SIGTERM then SIGKILL) and reported as timedOut=true.'
         ),
 })
 
@@ -62,7 +62,7 @@ async function runOne(
     argv: string[],
     label: string,
     cwd: string,
-    timeoutMs: number,
+    timeoutMs: number
 ): Promise<CommandResult> {
     const [cmd, ...rest] = argv
     if (!cmd) {
@@ -152,12 +152,7 @@ export const lucaChecksRunTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
         const results: CommandResult[] = []
         for (const cmd of args.commands) {
             const label = cmd.label ?? cmd.argv.join(' ')
-            const r = await runOne(
-                cmd.argv,
-                label,
-                ctx.cwd,
-                args.timeout_ms,
-            )
+            const r = await runOne(cmd.argv, label, ctx.cwd, args.timeout_ms)
             results.push(r)
         }
 
@@ -165,9 +160,7 @@ export const lucaChecksRunTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
         const payload: RunResult = { passed, summary: results }
 
         return {
-            content: [
-                { type: 'text', text: JSON.stringify(payload, null, 2) },
-            ],
+            content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
             isError: !passed,
         }
     },

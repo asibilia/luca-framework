@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaStateAdvanceTool } from './luca-state-advance.ts'
 
@@ -13,7 +14,7 @@ describe('luca_state_advance', () => {
         await mkdir(join(cwd, '.luca'), { recursive: true })
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'plan' }),
+            JSON.stringify({ pipelineStep: 'plan' })
         )
     })
 
@@ -24,12 +25,12 @@ describe('luca_state_advance', () => {
     test('advances legally and writes the new step', async () => {
         const result = await lucaStateAdvanceTool.handler(
             { toStep: 'plan-review' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const state = JSON.parse(
-            await readFile(join(cwd, '.luca/state.json'), 'utf-8'),
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('plan-review')
     })
@@ -37,7 +38,7 @@ describe('luca_state_advance', () => {
     test('rejects illegal jumps with isError', async () => {
         const result = await lucaStateAdvanceTool.handler(
             { toStep: 'milestone' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBe(true)
@@ -46,7 +47,7 @@ describe('luca_state_advance', () => {
 
         // state.json unchanged
         const state = JSON.parse(
-            await readFile(join(cwd, '.luca/state.json'), 'utf-8'),
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('plan')
     })
@@ -54,17 +55,17 @@ describe('luca_state_advance', () => {
     test('allows loop-back (plan-review → plan)', async () => {
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'plan-review' }),
+            JSON.stringify({ pipelineStep: 'plan-review' })
         )
 
         const result = await lucaStateAdvanceTool.handler(
             { toStep: 'plan' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const state = JSON.parse(
-            await readFile(join(cwd, '.luca/state.json'), 'utf-8'),
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('plan')
     })
@@ -76,13 +77,13 @@ describe('luca_state_advance', () => {
                 pipelineStep: 'plan',
                 currentPhase: 3,
                 branchName: 'feat/x',
-            }),
+            })
         )
 
         await lucaStateAdvanceTool.handler({ toStep: 'plan-review' }, { cwd })
 
         const state = JSON.parse(
-            await readFile(join(cwd, '.luca/state.json'), 'utf-8'),
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('plan-review')
         expect(state.currentPhase).toBe(3)
@@ -95,12 +96,12 @@ describe('luca_state_advance', () => {
 
         const result = await lucaStateAdvanceTool.handler(
             { toStep: 'triage' },
-            { cwd },
+            { cwd }
         )
 
         expect(result.isError).toBeFalsy()
         const state = JSON.parse(
-            await readFile(join(cwd, '.luca/state.json'), 'utf-8'),
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('triage')
     })
@@ -108,7 +109,7 @@ describe('luca_state_advance', () => {
     test('returns from + to in result text', async () => {
         const result = await lucaStateAdvanceTool.handler(
             { toStep: 'plan-review' },
-            { cwd },
+            { cwd }
         )
         const text = (result.content[0] as { text: string }).text
         expect(text).toContain('plan')

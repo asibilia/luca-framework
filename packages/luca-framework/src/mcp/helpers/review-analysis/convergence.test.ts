@@ -21,10 +21,7 @@ describe('detectConvergence — grouping', () => {
             finding({ id: 'b', perspective: 'reviewer', line: 11 }),
         ])
         expect(report.groups).toHaveLength(1)
-        expect(report.groups[0]!.perspectives).toEqual([
-            'copilot',
-            'reviewer',
-        ])
+        expect(report.groups[0]!.perspectives).toEqual(['copilot', 'reviewer'])
     })
 
     test('separates findings beyond line tolerance', () => {

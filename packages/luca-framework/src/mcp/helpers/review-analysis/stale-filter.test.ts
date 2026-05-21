@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
     extractHunkAnchorLines,
@@ -63,7 +64,7 @@ describe('filterStaleComments — bucket routing', () => {
     test('empty diff_hunk routes to the unknown bucket', () => {
         const result = filterStaleComments(
             [makeComment({ id: 100, diff_hunk: '' })],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.unknown.map((c) => c.id)).toEqual([100])
         expect(result.actionable).toHaveLength(0)
@@ -79,7 +80,7 @@ describe('filterStaleComments — bucket routing', () => {
         ].join('\n')
         const result = filterStaleComments(
             [makeComment({ id: 200, diff_hunk: hunk, line: 1 })],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.actionable.map((c) => c.id)).toEqual([200])
         expect(result.stale).toHaveLength(0)
@@ -94,7 +95,7 @@ describe('filterStaleComments — bucket routing', () => {
         ].join('\n')
         const result = filterStaleComments(
             [makeComment({ id: 300, diff_hunk: hunk, line: 1 })],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.stale.map((s) => s.comment.id)).toEqual([300])
         expect(result.actionable).toHaveLength(0)
@@ -109,7 +110,7 @@ describe('filterStaleComments — bucket routing', () => {
                     diff_hunk: '@@ -1 +1 @@\n+x',
                 }),
             ],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.stale).toHaveLength(1)
         expect(result.stale[0]!.verdict.reason).toBe('file-missing')
@@ -118,7 +119,7 @@ describe('filterStaleComments — bucket routing', () => {
     test('reply routes to the replies bucket and is not verdict-evaluated', () => {
         const result = filterStaleComments(
             [makeComment({ id: 400, in_reply_to_id: 399 })],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.replies.map((c) => c.id)).toEqual([400])
         expect(result.verdicts[400]).toBeUndefined()
@@ -142,7 +143,7 @@ describe('filterStaleComments — bucket routing', () => {
                 makeComment({ id: 3, diff_hunk: nonMatching }),
                 makeComment({ id: 4, in_reply_to_id: 2 }),
             ],
-            { repoRoot: cwd },
+            { repoRoot: cwd }
         )
         expect(result.unknown.map((c) => c.id)).toEqual([1])
         expect(result.actionable.map((c) => c.id)).toEqual([2])

@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { migratePlanningHandler } from './migrate-planning-handler.ts'
 
@@ -15,7 +16,7 @@ async function initGitRepo(dir: string): Promise<void> {
 async function commitFile(
     dir: string,
     relPath: string,
-    content: string,
+    content: string
 ): Promise<void> {
     const full = join(dir, relPath)
     const parent = full.slice(0, full.lastIndexOf('/'))

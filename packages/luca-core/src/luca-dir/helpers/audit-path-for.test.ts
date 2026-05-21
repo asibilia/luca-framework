@@ -5,10 +5,10 @@ import { auditPathFor } from './audit-path-for.ts'
 describe('auditPathFor', () => {
     test('builds path for valid slug + reviewer', () => {
         expect(auditPathFor('01-auth', 'code-review')).toBe(
-            '.luca/phases/01-auth/audits/code-review.md',
+            '.luca/phases/01-auth/audits/code-review.md'
         )
         expect(auditPathFor('07-fix', 'security')).toBe(
-            '.luca/phases/07-fix/audits/security.md',
+            '.luca/phases/07-fix/audits/security.md'
         )
     })
 

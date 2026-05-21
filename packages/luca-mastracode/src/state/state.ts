@@ -8,7 +8,6 @@
  * `workflowVersion`, and `skipBranch` state fields — live here. These are
  * retained until mastracode retires (Phase 5).
  */
-import { z } from 'zod'
 
 import {
     ComplexityLevel,
@@ -17,15 +16,11 @@ import {
     RoadmapPhaseSchema,
 } from '@alecsibilia/luca-core'
 import type { RoadmapPhase } from '@alecsibilia/luca-core'
+import { z } from 'zod'
 
 // Re-export shared primitives so existing `import ... from './state.js'`
 // callers continue to work without modification.
-export {
-    ComplexityLevel,
-    OversightMode,
-    PhaseStatus,
-    RoadmapPhaseSchema,
-}
+export { ComplexityLevel, OversightMode, PhaseStatus, RoadmapPhaseSchema }
 export type { RoadmapPhase }
 
 // ---------------------------------------------------------------------------

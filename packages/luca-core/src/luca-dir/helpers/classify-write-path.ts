@@ -39,11 +39,14 @@ const AUDIT_PATH_PATTERN =
  */
 export function classifyWritePath(
     path: string,
-    opts: ClassifyOptions = {},
+    opts: ClassifyOptions = {}
 ): ClassifyResult {
     // 1. Always-denied: .git/ anywhere in the path
     if (GIT_DIR_PATTERN.test(path)) {
-        return { class: 'denied', reason: 'writes under .git/ are never allowed' }
+        return {
+            class: 'denied',
+            reason: 'writes under .git/ are never allowed',
+        }
     }
 
     // 2. Always-denied: system dirs

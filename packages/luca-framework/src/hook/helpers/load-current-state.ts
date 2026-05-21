@@ -2,10 +2,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import {
-    lucaStateSchemaTolerant,
-    type LucaState,
-} from '@alecsibilia/luca-core'
+import { lucaStateSchemaTolerant, type LucaState } from '@alecsibilia/luca-core'
 
 export interface LoadCurrentStateOptions {
     cwd: string
@@ -24,7 +21,7 @@ export interface LoadCurrentStateOptions {
  * configure, cleanup, etc.) parse cleanly during the migration window.
  */
 export async function loadCurrentState(
-    opts: LoadCurrentStateOptions,
+    opts: LoadCurrentStateOptions
 ): Promise<LucaState> {
     const statePath = join(opts.cwd, '.luca', 'state.json')
     if (!existsSync(statePath)) {

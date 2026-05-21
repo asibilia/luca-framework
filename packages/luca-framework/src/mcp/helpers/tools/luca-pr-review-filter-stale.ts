@@ -1,8 +1,8 @@
+import { z, type ToolDescriptor } from '../../schemas.ts'
 import {
     filterStaleComments,
     type PrReviewComment,
 } from '../review-analysis/index.ts'
-import { z, type ToolDescriptor } from '../../schemas.ts'
 
 const commentSchema = z.object({
     id: z.number(),
@@ -26,13 +26,13 @@ const inputSchema = z.object({
     comments: z
         .array(commentSchema)
         .describe(
-            'PR review comments (gh api pulls/<n>/comments shape). Each is classified against the current working tree.',
+            'PR review comments (gh api pulls/<n>/comments shape). Each is classified against the current working tree.'
         ),
     head_sha: z
         .string()
         .optional()
         .describe(
-            'Override HEAD SHA used for stale detection. Defaults to current git HEAD.',
+            'Override HEAD SHA used for stale detection. Defaults to current git HEAD.'
         ),
     max_drift_lines: z
         .number()
@@ -40,7 +40,7 @@ const inputSchema = z.object({
         .min(0)
         .optional()
         .describe(
-            'Max line drift before a relocated anchor is treated as stale (default 5).',
+            'Max line drift before a relocated anchor is treated as stale (default 5).'
         ),
 })
 
@@ -60,14 +60,11 @@ export const lucaPrReviewFilterStaleTool: ToolDescriptor<
         'Partition PR review comments into actionable / stale / replies / unknown buckets by re-anchoring each comment against the current working tree. Drops comments whose cited code was rewritten. Read-only.',
     inputSchema,
     async handler(args, ctx) {
-        const result = filterStaleComments(
-            args.comments as PrReviewComment[],
-            {
-                repoRoot: ctx.cwd,
-                headSha: args.head_sha,
-                maxDriftLines: args.max_drift_lines,
-            },
-        )
+        const result = filterStaleComments(args.comments as PrReviewComment[], {
+            repoRoot: ctx.cwd,
+            headSha: args.head_sha,
+            maxDriftLines: args.max_drift_lines,
+        })
 
         const summary = {
             counts: {
@@ -85,9 +82,7 @@ export const lucaPrReviewFilterStaleTool: ToolDescriptor<
         }
 
         return {
-            content: [
-                { type: 'text', text: JSON.stringify(summary, null, 2) },
-            ],
+            content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
         }
     },
 }

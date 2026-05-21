@@ -14,25 +14,25 @@ const inputSchema = z.object({
         .min(0)
         .max(1)
         .describe(
-            'Confidence score in [0,1]: 0 = no confidence, 1 = certain. Subjective per-agent estimate.',
+            'Confidence score in [0,1]: 0 = no confidence, 1 = certain. Subjective per-agent estimate.'
         ),
     stage: z
         .string()
         .min(1)
         .describe(
-            'Pipeline stage at which this confidence was recorded (e.g. "plan", "execute", "verify", "review").',
+            'Pipeline stage at which this confidence was recorded (e.g. "plan", "execute", "verify", "review").'
         ),
     rationale: z
         .string()
         .min(1)
         .describe(
-            'Free-text justification for the score — what raised or lowered confidence.',
+            'Free-text justification for the score — what raised or lowered confidence.'
         ),
     metadata: z
         .record(z.string(), z.unknown())
         .optional()
         .describe(
-            'Optional structured fields the caller wants to capture alongside the score.',
+            'Optional structured fields the caller wants to capture alongside the score.'
         ),
 })
 

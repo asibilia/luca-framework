@@ -5,51 +5,51 @@ import { classifyWritePath } from './classify-write-path.ts'
 describe('classifyWritePath — .luca/ paths', () => {
     test('classifies .luca/ root files as planning-general', () => {
         expect(classifyWritePath('.luca/state.json').class).toBe(
-            'planning-general',
+            'planning-general'
         )
         expect(classifyWritePath('.luca/config.json').class).toBe(
-            'planning-general',
+            'planning-general'
         )
         expect(classifyWritePath('.luca/roadmap.md').class).toBe(
-            'planning-general',
+            'planning-general'
         )
     })
 
     test('classifies phase artifacts as planning-general', () => {
+        expect(classifyWritePath('.luca/phases/01-auth/plan.md').class).toBe(
+            'planning-general'
+        )
         expect(
-            classifyWritePath('.luca/phases/01-auth/plan.md').class,
+            classifyWritePath('.luca/phases/01-auth/research.md').class
         ).toBe('planning-general')
         expect(
-            classifyWritePath('.luca/phases/01-auth/research.md').class,
-        ).toBe('planning-general')
-        expect(
-            classifyWritePath('.luca/phases/01-auth/execute/summary.md').class,
+            classifyWritePath('.luca/phases/01-auth/execute/summary.md').class
         ).toBe('planning-general')
     })
 
     test('classifies audit files as planning-audit', () => {
         expect(
             classifyWritePath('.luca/phases/01-auth/audits/code-review.md')
-                .class,
+                .class
         ).toBe('planning-audit')
         expect(
-            classifyWritePath('.luca/phases/12-x/audits/security.md').class,
+            classifyWritePath('.luca/phases/12-x/audits/security.md').class
         ).toBe('planning-audit')
         expect(
-            classifyWritePath('.luca/phases/01-x/audits/architect.md').class,
+            classifyWritePath('.luca/phases/01-x/audits/architect.md').class
         ).toBe('planning-audit')
     })
 
     test('milestones + telemetry + archive are planning-general', () => {
         expect(
-            classifyWritePath('.luca/milestones/v12.0.0-roadmap.md').class,
+            classifyWritePath('.luca/milestones/v12.0.0-roadmap.md').class
         ).toBe('planning-general')
-        expect(
-            classifyWritePath('.luca/telemetry/run-abc.jsonl').class,
-        ).toBe('planning-general')
-        expect(
-            classifyWritePath('.luca/archive/01-old/plan.md').class,
-        ).toBe('planning-general')
+        expect(classifyWritePath('.luca/telemetry/run-abc.jsonl').class).toBe(
+            'planning-general'
+        )
+        expect(classifyWritePath('.luca/archive/01-old/plan.md').class).toBe(
+            'planning-general'
+        )
     })
 })
 
@@ -86,7 +86,7 @@ describe('classifyWritePath — always-denied paths', () => {
 
     test('denies ~/.claude/* even when written as tilde-prefixed', () => {
         expect(classifyWritePath('~/.claude/settings.json').class).toBe(
-            'denied',
+            'denied'
         )
         expect(classifyWritePath('~/.luca/foo').class).toBe('denied')
     })
@@ -96,12 +96,12 @@ describe('classifyWritePath — always-denied paths', () => {
         expect(
             classifyWritePath('/Users/alec/.claude/settings.json', {
                 homedir,
-            }).class,
+            }).class
         ).toBe('denied')
         expect(
             classifyWritePath('/Users/alec/.luca/global-state.json', {
                 homedir,
-            }).class,
+            }).class
         ).toBe('denied')
     })
 })

@@ -33,7 +33,7 @@ interface LockFile {
  * Does not throw — accumulates findings in the returned result.
  */
 export async function runRepair(
-    opts: RunRepairOptions,
+    opts: RunRepairOptions
 ): Promise<RunRepairResult> {
     const log = opts.log ?? (() => {})
     const lucaDir = join(opts.cwd, '.luca')
@@ -84,7 +84,7 @@ export async function runRepair(
             }
         } catch (err) {
             errors.push(
-                `state.json could not be parsed as JSON: ${(err as Error).message}`,
+                `state.json could not be parsed as JSON: ${(err as Error).message}`
             )
         }
     }

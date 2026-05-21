@@ -28,10 +28,9 @@ const main = defineCommand({
         mcp: () => import('./commands/mcp').then((m) => m.mcpCommand),
         'migrate-planning': () =>
             import('./commands/migrate-planning').then(
-                (m) => m.migratePlanningCommand,
+                (m) => m.migratePlanningCommand
             ),
-        repair: () =>
-            import('./commands/repair').then((m) => m.repairCommand),
+        repair: () => import('./commands/repair').then((m) => m.repairCommand),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
     },

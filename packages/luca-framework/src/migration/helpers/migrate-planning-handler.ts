@@ -13,7 +13,7 @@ export interface MigratePlanningHandlerOptions extends MigrationOptions {
  * subprocess.
  */
 export async function migratePlanningHandler(
-    opts: MigratePlanningHandlerOptions,
+    opts: MigratePlanningHandlerOptions
 ): Promise<void> {
     const log = opts.log ?? (() => {})
 

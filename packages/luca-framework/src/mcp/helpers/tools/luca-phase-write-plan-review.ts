@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { phasePathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
-import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { writeAtomicFile } from '../write-atomic.ts'
 
 const inputSchema = z.object({
@@ -12,7 +12,7 @@ const inputSchema = z.object({
         .string()
         .min(1)
         .describe(
-            'Markdown plan-review output (APPROVED | NEEDS_REVISION | ESCALATE + findings). Written to .luca/phases/<active-slug>/plan-review.md.',
+            'Markdown plan-review output (APPROVED | NEEDS_REVISION | ESCALATE + findings). Written to .luca/phases/<active-slug>/plan-review.md.'
         ),
 })
 

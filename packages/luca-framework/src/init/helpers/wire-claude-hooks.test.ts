@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync, statSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { wireClaudeHooks } from './wire-claude-hooks.ts'
 
@@ -33,7 +34,7 @@ describe('wireClaudeHooks', () => {
 
         const script = await readFile(
             join(cwd, '.claude/hooks/stage-gate.sh'),
-            'utf-8',
+            'utf-8'
         )
         expect(script).toContain('luca hook stage-gate')
     })
@@ -51,9 +52,7 @@ describe('wireClaudeHooks', () => {
         // The stage-gate registration must be present.
         const stageGateRegistration = settings.hooks.PreToolUse.find(
             (entry: { hooks?: Array<{ command?: string }> }) =>
-                entry.hooks?.some((h) =>
-                    h.command?.includes('stage-gate.sh'),
-                ),
+                entry.hooks?.some((h) => h.command?.includes('stage-gate.sh'))
         )
         expect(stageGateRegistration).toBeDefined()
     })
@@ -81,14 +80,14 @@ describe('wireClaudeHooks', () => {
                     someOtherUserKey: 'preserved',
                 },
                 null,
-                2,
-            ),
+                2
+            )
         )
 
         await wireClaudeHooks({ cwd })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8'),
+            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
         )
 
         // Pre-existing user key preserved
@@ -105,10 +104,10 @@ describe('wireClaudeHooks', () => {
         await wireClaudeHooks({ cwd })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8'),
+            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
         )
         const matches = JSON.stringify(settings.hooks.PreToolUse).match(
-            /stage-gate\.sh/g,
+            /stage-gate\.sh/g
         )
         expect(matches?.length).toBe(1)
     })

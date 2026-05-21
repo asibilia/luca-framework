@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPhaseWriteLearnTool } from './luca-phase-write-learn.ts'
 import { lucaPhaseWritePlanReviewTool } from './luca-phase-write-plan-review.ts'
@@ -12,7 +13,7 @@ import { lucaPhaseWriteWaveTool } from './luca-phase-write-wave.ts'
 
 async function setupProject(
     cwd: string,
-    state: Record<string, unknown>,
+    state: Record<string, unknown>
 ): Promise<void> {
     await mkdir(join(cwd, '.luca'), { recursive: true })
     await writeFile(join(cwd, '.luca/state.json'), JSON.stringify(state))
@@ -36,12 +37,12 @@ describe('luca_phase_write_summary', () => {
         await setupProject(cwd, { ...baseState, pipelineStep: 'execute' })
         const r = await lucaPhaseWriteSummaryTool.handler(
             { content: '## Summary\n\nDone.' },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/execute/summary.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toContain('Done')
     })
@@ -64,13 +65,13 @@ describe('luca_phase_write_wave', () => {
         await setupProject(cwd, { ...baseState, pipelineStep: 'execute' })
         const r = await lucaPhaseWriteWaveTool.handler(
             { waveNumber: 3, content: '## Wave 3' },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         expect(
             existsSync(
-                join(cwd, '.luca/phases/01-auth-rewrite/execute/waves/03.md'),
-            ),
+                join(cwd, '.luca/phases/01-auth-rewrite/execute/waves/03.md')
+            )
         ).toBe(true)
     })
 
@@ -106,14 +107,14 @@ describe('luca_phase_write_verify', () => {
                     tests: { passed: 105, failed: 0 },
                 },
             },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const parsed = JSON.parse(
             await readFile(
                 join(cwd, '.luca/phases/01-auth-rewrite/verify.json'),
-                'utf-8',
-            ),
+                'utf-8'
+            )
         )
         expect(parsed.status).toBe('pass')
         expect(parsed.tests.passed).toBe(105)
@@ -137,12 +138,12 @@ describe('luca_phase_write_learn', () => {
         await setupProject(cwd, { ...baseState, pipelineStep: 'learn' })
         const r = await lucaPhaseWriteLearnTool.handler(
             { content: '## Learnings\n\n- pattern: ...' },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/learn.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toContain('Learnings')
     })
@@ -168,12 +169,12 @@ describe('luca_phase_write_plan_review', () => {
         })
         const r = await lucaPhaseWritePlanReviewTool.handler(
             { content: '## Plan review\n\nApproved.' },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/plan-review.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).toContain('Approved')
     })
@@ -192,7 +193,7 @@ describe('phase write tools — common contract', () => {
 
         const r = await lucaPhaseWriteSummaryTool.handler(
             { content: 'x' },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBe(true)
 

@@ -29,30 +29,15 @@ describe('isValidLucaPath — phase files', () => {
         ['.luca/phases/01-auth/plan-review.md', 'phase.plan-review'],
         ['.luca/phases/01-auth/verify.json', 'phase.verify'],
         ['.luca/phases/01-auth/learn.md', 'phase.learn'],
-        [
-            '.luca/phases/01-auth/execute/summary.md',
-            'phase.execute.summary',
-        ],
+        ['.luca/phases/01-auth/execute/summary.md', 'phase.execute.summary'],
         [
             '.luca/phases/01-auth/execute/progress.jsonl',
             'phase.execute.progress',
         ],
-        [
-            '.luca/phases/01-auth/execute/waves/00.md',
-            'phase.execute.wave',
-        ],
-        [
-            '.luca/phases/01-auth/execute/waves/42.md',
-            'phase.execute.wave',
-        ],
-        [
-            '.luca/phases/01-auth/audits/code-review.md',
-            'phase.audit',
-        ],
-        [
-            '.luca/phases/01-auth/audits/security.md',
-            'phase.audit',
-        ],
+        ['.luca/phases/01-auth/execute/waves/00.md', 'phase.execute.wave'],
+        ['.luca/phases/01-auth/execute/waves/42.md', 'phase.execute.wave'],
+        ['.luca/phases/01-auth/audits/code-review.md', 'phase.audit'],
+        ['.luca/phases/01-auth/audits/security.md', 'phase.audit'],
     ])('%s → %s', (path, kind) => {
         const r = isValidLucaPath(path)
         expect(r.valid).toBe(true)
@@ -61,26 +46,24 @@ describe('isValidLucaPath — phase files', () => {
 
     test('rejects malformed phase slug', () => {
         expect(isValidLucaPath('.luca/phases/auth/plan.md').valid).toBe(false)
-        expect(isValidLucaPath('.luca/phases/1-auth/plan.md').valid).toBe(
-            false,
-        )
+        expect(isValidLucaPath('.luca/phases/1-auth/plan.md').valid).toBe(false)
     })
 
     test('rejects unknown phase file', () => {
-        expect(
-            isValidLucaPath('.luca/phases/01-auth/something.md').valid,
-        ).toBe(false)
+        expect(isValidLucaPath('.luca/phases/01-auth/something.md').valid).toBe(
+            false
+        )
     })
 
     test('rejects wave file without zero-padding', () => {
         expect(
-            isValidLucaPath('.luca/phases/01-auth/execute/waves/1.md').valid,
+            isValidLucaPath('.luca/phases/01-auth/execute/waves/1.md').valid
         ).toBe(false)
     })
 
     test('rejects audit file with bad reviewer name', () => {
         expect(
-            isValidLucaPath('.luca/phases/01-auth/audits/CodeReview.md').valid,
+            isValidLucaPath('.luca/phases/01-auth/audits/CodeReview.md').valid
         ).toBe(false)
     })
 
@@ -101,10 +84,7 @@ describe('isValidLucaPath — milestones', () => {
             '.luca/milestones/v12.0.0-backlog-snapshot.md',
             'milestone.backlog-snapshot-md',
         ],
-        [
-            '.luca/milestones/v12.0.0-alpha.0-roadmap.md',
-            'milestone.roadmap',
-        ],
+        ['.luca/milestones/v12.0.0-alpha.0-roadmap.md', 'milestone.roadmap'],
     ])('%s → %s', (path, kind) => {
         const r = isValidLucaPath(path)
         expect(r.valid).toBe(true)
@@ -113,20 +93,20 @@ describe('isValidLucaPath — milestones', () => {
 
     test('rejects subdirectories under milestones/', () => {
         expect(
-            isValidLucaPath('.luca/milestones/v12.0.0/nested.md').valid,
+            isValidLucaPath('.luca/milestones/v12.0.0/nested.md').valid
         ).toBe(false)
     })
 
     test('rejects file without SemVer prefix', () => {
-        expect(isValidLucaPath('.luca/milestones/roadmap.md').valid).toBe(
-            false,
-        )
+        expect(isValidLucaPath('.luca/milestones/roadmap.md').valid).toBe(false)
     })
 })
 
 describe('isValidLucaPath — telemetry', () => {
     test('accepts <runId>.jsonl', () => {
-        const r = isValidLucaPath('.luca/telemetry/01ARZ3NDEKTSV4RRFFQ69G5FAV.jsonl')
+        const r = isValidLucaPath(
+            '.luca/telemetry/01ARZ3NDEKTSV4RRFFQ69G5FAV.jsonl'
+        )
         expect(r.valid).toBe(true)
         if (r.valid) expect(r.kind).toBe('telemetry.run')
     })
@@ -137,7 +117,7 @@ describe('isValidLucaPath — telemetry', () => {
 
     test('rejects subdirectory under telemetry/', () => {
         expect(isValidLucaPath('.luca/telemetry/sub/foo.jsonl').valid).toBe(
-            false,
+            false
         )
     })
 })

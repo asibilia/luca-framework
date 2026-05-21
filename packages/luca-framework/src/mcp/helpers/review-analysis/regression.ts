@@ -77,13 +77,13 @@ export function findingIdentity(f: ReviewFinding): string {
         .slice(0, 80)
     const anchor = f.line == null ? '?' : String(f.line)
     return [f.perspective, f.path ?? '<no-path>', anchor, summaryPrefix].join(
-        '::',
+        '::'
     )
 }
 
 function severityIndex(
     severity: string,
-    ranking: ReadonlyArray<string>,
+    ranking: ReadonlyArray<string>
 ): number {
     const idx = ranking.indexOf(severity.toLowerCase())
     return idx === -1 ? 0 : idx
@@ -91,7 +91,7 @@ function severityIndex(
 
 function pathIsTouched(
     findingPath: string | undefined,
-    touched: ReadonlySet<string>,
+    touched: ReadonlySet<string>
 ): boolean {
     if (!findingPath) return false
     return touched.has(findingPath)
@@ -102,7 +102,7 @@ function pathIsTouched(
  */
 export function checkRegression(
     inputs: RegressionInputs,
-    opts: RegressionOptions = {},
+    opts: RegressionOptions = {}
 ): RegressionReport {
     const ranking = opts.severityRank ?? DEFAULT_SEVERITY_RANK
     const touched = new Set(inputs.touchedPaths)
@@ -181,13 +181,17 @@ export function checkRegression(
 export function diffPaths(
     repoRoot: string,
     fromSha: string,
-    toSha: string,
+    toSha: string
 ): string[] {
-    const r = spawnSync('git', ['diff', '--name-only', `${fromSha}..${toSha}`], {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        timeout: 5000,
-    })
+    const r = spawnSync(
+        'git',
+        ['diff', '--name-only', `${fromSha}..${toSha}`],
+        {
+            cwd: repoRoot,
+            encoding: 'utf8',
+            timeout: 5000,
+        }
+    )
     if (r.status !== 0) return []
     return (r.stdout ?? '')
         .split('\n')

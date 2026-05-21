@@ -65,16 +65,14 @@ function buildPlan(cwd: string): MigrationPlan {
 async function hasUncommittedPlanningChanges(cwd: string): Promise<boolean> {
     // `git status --porcelain` lists modified/staged/untracked entries scoped
     // to a path. Any non-empty output means dirty.
-    const out = await Bun.$`git status --porcelain -- .planning`
-        .cwd(cwd)
-        .text()
+    const out = await Bun.$`git status --porcelain -- .planning`.cwd(cwd).text()
     return out.trim().length > 0
 }
 
 async function executePlan(
     cwd: string,
     plan: MigrationPlan,
-    force: boolean,
+    force: boolean
 ): Promise<void> {
     for (const move of plan.moves) {
         const destAbs = join(cwd, move.to)
@@ -91,14 +89,14 @@ async function executePlan(
 }
 
 export async function runMigration(
-    opts: MigrationOptions,
+    opts: MigrationOptions
 ): Promise<MigrationResult> {
     const plan = buildPlan(opts.cwd)
 
     if (!opts.dryRun) {
         if (!opts.force && (await hasUncommittedPlanningChanges(opts.cwd))) {
             throw new Error(
-                'Refusing to migrate: .planning/ has uncommitted changes. Commit, stash, or re-run with --force.',
+                'Refusing to migrate: .planning/ has uncommitted changes. Commit, stash, or re-run with --force.'
             )
         }
         await executePlan(opts.cwd, plan, opts.force ?? false)

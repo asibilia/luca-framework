@@ -47,7 +47,7 @@ export interface HandleStageGateHookResult {
  * /sbin/) are blocked regardless of phase.
  */
 export async function handleStageGateHook(
-    opts: HandleStageGateHookOptions,
+    opts: HandleStageGateHookOptions
 ): Promise<HandleStageGateHookResult> {
     const log = opts.log ?? (() => {})
 
@@ -66,7 +66,7 @@ export async function handleStageGateHook(
         log(
             `stage-gate: could not parse stdin as JSON — allowing (${
                 (err as Error).message
-            })`,
+            })`
         )
         return { exitCode: 0, decision: 'allow' }
     }
@@ -89,7 +89,7 @@ export async function handleStageGateHook(
         log(
             `stage-gate: pipelineStep=idle (phase=IDLE) — allowing ${
                 toolName ?? '(unknown tool)'
-            }`,
+            }`
         )
         return { exitCode: 0, toolName, toolInput, decision: 'allow' }
     }
@@ -143,7 +143,7 @@ export async function handleStageGateHook(
     } else {
         // Other tools (Read, Grep, Glob, Task, etc.) — read-only, allow.
         log(
-            `stage-gate: ${toolName ?? '(unknown)'} is not write-class — allowing`,
+            `stage-gate: ${toolName ?? '(unknown)'} is not write-class — allowing`
         )
         return { exitCode: 0, toolName, toolInput, decision: 'allow' }
     }
@@ -184,7 +184,7 @@ export async function handleStageGateHook(
     }
 
     log(
-        `stage-gate: ${toolName} (category=${category}) allowed in phase=${phase}`,
+        `stage-gate: ${toolName} (category=${category}) allowed in phase=${phase}`
     )
     return { exitCode: 0, toolName, toolInput, decision: 'allow' }
 }

@@ -180,7 +180,7 @@ describe('lucaStateSchemaTolerant', () => {
         // Passthrough preserves unknown keys on the parsed object.
         expect((parsed as { profile?: unknown }).profile).toBe('balanced')
         expect((parsed as { workflowVersion?: unknown }).workflowVersion).toBe(
-            'v2',
+            'v2'
         )
         expect((parsed as { skipBranch?: unknown }).skipBranch).toBe(true)
     })

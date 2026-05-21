@@ -12,7 +12,7 @@ const inputSchema = z.object({
         .boolean()
         .default(false)
         .describe(
-            'Must be true to actually perform the reset. Default false so accidental invocations are refused.',
+            'Must be true to actually perform the reset. Default false so accidental invocations are refused.'
         ),
 })
 
@@ -52,7 +52,7 @@ export const lucaWorkflowResetTool: ToolDescriptor<
 
         await writeAtomicFile(
             statePath,
-            JSON.stringify(defaultState, null, 2) + '\n',
+            JSON.stringify(defaultState, null, 2) + '\n'
         )
 
         if (existsSync(lockPath)) {

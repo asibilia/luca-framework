@@ -1,11 +1,12 @@
-import { describe, expect, test } from 'bun:test'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { describe, expect, test } from 'bun:test'
+
 const SKILLS_ROOT = join(
     dirname(fileURLToPath(import.meta.url)),
-    '../../../skills',
+    '../../../skills'
 )
 
 // Tokens that indicate stale mastracode references that should NOT appear
@@ -72,9 +73,7 @@ async function listSkillFiles(skillsDir: string): Promise<string[]> {
 
 describe('bundled skill markdown — structural validation', () => {
     test('commands/ and agents/ exist with at least one .md each', async () => {
-        const commands = await listMarkdownFiles(
-            join(SKILLS_ROOT, 'commands'),
-        )
+        const commands = await listMarkdownFiles(join(SKILLS_ROOT, 'commands'))
         const agents = await listMarkdownFiles(join(SKILLS_ROOT, 'agents'))
         expect(commands.length).toBeGreaterThan(0)
         expect(agents.length).toBeGreaterThan(0)
@@ -130,10 +129,13 @@ describe('bundled skill markdown — structural validation', () => {
         }
         if (violations.length > 0) {
             const detail = violations
-                .map((v) => `${v.file.split('/').slice(-2).join('/')} → "${v.token}"`)
+                .map(
+                    (v) =>
+                        `${v.file.split('/').slice(-2).join('/')} → "${v.token}"`
+                )
                 .join('\n')
             throw new Error(
-                `Found ${violations.length} stale mastracode reference(s):\n${detail}`,
+                `Found ${violations.length} stale mastracode reference(s):\n${detail}`
             )
         }
         expect(violations.length).toBe(0)

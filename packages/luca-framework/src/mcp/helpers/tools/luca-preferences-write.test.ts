@@ -1,7 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import type { ProjectPreferences } from '@alecsibilia/luca-core'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPreferencesWriteTool } from './luca-preferences-write.ts'
 
@@ -28,12 +30,12 @@ describe('luca_preferences_write', () => {
                     branching: { defaultBranch: 'trunk' },
                 },
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         const config = await readConfig(cwd)
-        const prefs = config.preferences as Record<string, any>
+        const prefs = config.preferences as ProjectPreferences
         expect(prefs.branching.defaultBranch).toBe('trunk')
         // Defaults applied to unspecified sections.
         expect(prefs.commits.convention).toBe('conventional')
@@ -50,7 +52,7 @@ describe('luca_preferences_write', () => {
                     },
                     tracker: { kind: 'linear' },
                 },
-            }),
+            })
         )
 
         const r = await lucaPreferencesWriteTool.handler(
@@ -59,14 +61,11 @@ describe('luca_preferences_write', () => {
                     branching: { defaultBranch: 'trunk' },
                 },
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
-        const prefs = (await readConfig(cwd)).preferences as Record<
-            string,
-            any
-        >
+        const prefs = (await readConfig(cwd)).preferences as ProjectPreferences
         expect(prefs.branching.defaultBranch).toBe('trunk')
         // tracker section unchanged.
         expect(prefs.tracker.kind).toBe('linear')
@@ -79,12 +78,12 @@ describe('luca_preferences_write', () => {
                 lucaVersion: '12.0.0',
                 vault: 'my-project',
                 oversight: 'checkpoint',
-            }),
+            })
         )
 
         const r = await lucaPreferencesWriteTool.handler(
             { preferences: { tracker: { kind: 'github' } } },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -92,7 +91,9 @@ describe('luca_preferences_write', () => {
         expect(config.lucaVersion).toBe('12.0.0')
         expect(config.vault).toBe('my-project')
         expect(config.oversight).toBe('checkpoint')
-        expect((config.preferences as any).tracker.kind).toBe('github')
+        expect((config.preferences as ProjectPreferences).tracker.kind).toBe(
+            'github'
+        )
     })
 
     test('rejects unsafe free-form values via schema', async () => {
@@ -102,7 +103,7 @@ describe('luca_preferences_write', () => {
                     branching: { defaultBranch: 'bad\nname' },
                 },
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
@@ -124,7 +125,7 @@ describe('luca_preferences_write', () => {
                     },
                 },
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)

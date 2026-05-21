@@ -18,8 +18,7 @@ const STAGE_GATE_SCRIPT = `#!/usr/bin/env bash
 exec luca hook stage-gate
 `
 
-const STAGE_GATE_COMMAND =
-    '"$CLAUDE_PROJECT_DIR"/.claude/hooks/stage-gate.sh'
+const STAGE_GATE_COMMAND = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/stage-gate.sh'
 
 interface HookEntry {
     type: 'command'
@@ -49,7 +48,7 @@ interface ClaudeSettings {
  * Idempotent — re-running won't duplicate the hook entry.
  */
 export async function wireClaudeHooks(
-    opts: WireClaudeHooksOptions,
+    opts: WireClaudeHooksOptions
 ): Promise<void> {
     const log = opts.log ?? (() => {})
     const claudeDir = join(opts.cwd, '.claude')
@@ -67,7 +66,7 @@ export async function wireClaudeHooks(
     // 2. Read existing settings.json (if any) and merge.
     const existing = existsSync(settingsPath)
         ? ((JSON.parse(
-              await readFile(settingsPath, 'utf-8'),
+              await readFile(settingsPath, 'utf-8')
           ) as ClaudeSettings) ?? {})
         : {}
 
@@ -85,7 +84,7 @@ export async function wireClaudeHooks(
  * Pure function — exported for testability.
  */
 export function mergeStageGateRegistration(
-    settings: ClaudeSettings,
+    settings: ClaudeSettings
 ): ClaudeSettings {
     const next: ClaudeSettings = { ...settings }
     next.hooks = { ...(settings.hooks ?? {}) }
@@ -94,7 +93,7 @@ export function mergeStageGateRegistration(
     // Idempotency: if any existing entry already references stage-gate.sh,
     // leave the settings untouched.
     const alreadyRegistered = preToolUse.some((entry) =>
-        entry.hooks?.some((h) => h.command?.includes('stage-gate.sh')),
+        entry.hooks?.some((h) => h.command?.includes('stage-gate.sh'))
     )
     if (alreadyRegistered) {
         next.hooks.PreToolUse = preToolUse

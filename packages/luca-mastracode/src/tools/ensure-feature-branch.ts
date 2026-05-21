@@ -29,7 +29,7 @@ const SafeRefName = z
     .string()
     .min(1)
     .max(128)
-    .regex(/^[a-zA-Z0-9._\-\/]+$/, 'must contain only [a-zA-Z0-9._\\-/]')
+    .regex(/^[a-zA-Z0-9._\-/]+$/, 'must contain only [a-zA-Z0-9._\\-/]')
     .refine((v) => !v.startsWith('-'), { message: 'must not start with "-"' })
     .refine((v) => !v.includes('..'), { message: 'must not contain ".."' })
     .refine((v) => !v.includes('@{'), { message: 'must not contain "@{"' })

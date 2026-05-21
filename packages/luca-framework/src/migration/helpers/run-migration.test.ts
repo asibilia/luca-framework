@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { runMigration } from './run-migration.ts'
 
@@ -17,7 +18,7 @@ async function initGitRepo(dir: string): Promise<void> {
 async function commitFile(
     dir: string,
     relPath: string,
-    content: string,
+    content: string
 ): Promise<void> {
     const full = join(dir, relPath)
     const parent = full.slice(0, full.lastIndexOf('/'))
@@ -105,10 +106,13 @@ describe('runMigration', () => {
     test('refuses to run when .planning/ has uncommitted changes', async () => {
         await commitFile(cwd, '.planning/luca-state.json', '{}')
         // Introduce a dirty change in .planning/
-        await writeFile(join(cwd, '.planning/luca-state.json'), '{"dirty":true}')
+        await writeFile(
+            join(cwd, '.planning/luca-state.json'),
+            '{"dirty":true}'
+        )
 
         await expect(runMigration({ cwd, dryRun: false })).rejects.toThrow(
-            /uncommitted/i,
+            /uncommitted/i
         )
         // File should remain untouched
         expect(existsSync(join(cwd, '.planning/luca-state.json'))).toBe(true)
@@ -117,7 +121,10 @@ describe('runMigration', () => {
 
     test('--force overrides the dirty refusal', async () => {
         await commitFile(cwd, '.planning/luca-state.json', '{}')
-        await writeFile(join(cwd, '.planning/luca-state.json'), '{"dirty":true}')
+        await writeFile(
+            join(cwd, '.planning/luca-state.json'),
+            '{"dirty":true}'
+        )
 
         // With --force, the dirty changes get committed-or-stashed implicitly;
         // for our migration we expect it to proceed (the user owns the risk).
@@ -128,12 +135,13 @@ describe('runMigration', () => {
 
     test('dirty check does NOT apply when dryRun is true', async () => {
         await commitFile(cwd, '.planning/luca-state.json', '{}')
-        await writeFile(join(cwd, '.planning/luca-state.json'), '{"dirty":true}')
+        await writeFile(
+            join(cwd, '.planning/luca-state.json'),
+            '{"dirty":true}'
+        )
 
         // Dry-run is read-only; safe even when .planning/ is dirty.
-        await expect(
-            runMigration({ cwd, dryRun: true }),
-        ).resolves.toBeDefined()
+        await expect(runMigration({ cwd, dryRun: true })).resolves.toBeDefined()
     })
 
     test.each(['.context-metrics.json', 'harness-result.json'])(
@@ -145,7 +153,7 @@ describe('runMigration', () => {
             const result = await runMigration({ cwd, dryRun: true })
 
             expect(result.plan.deletes).toContain(`.planning/${filename}`)
-        },
+        }
     )
 
     test('removes ephemeral files when dryRun is false', async () => {
@@ -154,11 +162,11 @@ describe('runMigration', () => {
 
         await runMigration({ cwd, dryRun: false })
 
-        expect(
-            existsSync(join(cwd, '.planning/.context-metrics.json')),
-        ).toBe(false)
+        expect(existsSync(join(cwd, '.planning/.context-metrics.json'))).toBe(
+            false
+        )
         expect(existsSync(join(cwd, '.planning/harness-result.json'))).toBe(
-            false,
+            false
         )
     })
 
@@ -181,7 +189,7 @@ describe('runMigration', () => {
         await commitFile(
             cwd,
             '.planning/luca-state.json',
-            '{"would_overwrite":true}',
+            '{"would_overwrite":true}'
         )
 
         const second = await runMigration({ cwd, dryRun: false })

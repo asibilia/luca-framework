@@ -15,7 +15,7 @@ const inputSchema = z.object({
         .array(RoadmapPhaseSchema)
         .min(1)
         .describe(
-            'Ordered list of roadmap phases. Each entry: { name, deps?, status?, complexity? }. Defaults: deps=[], status=pending.',
+            'Ordered list of roadmap phases. Each entry: { name, deps?, status?, complexity? }. Defaults: deps=[], status=pending.'
         ),
 })
 

@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
+import { resolveBudgetLimits } from './resolve-budget-limits.ts'
+
 import {
     BUDGET_BY_COMPLEXITY,
     DEFAULT_BUDGET,
 } from '../configs/budget-matrix.ts'
 import type { ComplexityLevel } from '../schemas.ts'
-import { resolveBudgetLimits } from './resolve-budget-limits.ts'
 
 describe('resolveBudgetLimits', () => {
     test('returns DEFAULT_BUDGET when complexity is undefined', () => {
@@ -14,7 +15,7 @@ describe('resolveBudgetLimits', () => {
 
     test('returns DEFAULT_BUDGET when complexity is explicitly undefined', () => {
         expect(resolveBudgetLimits({ complexity: undefined })).toEqual(
-            DEFAULT_BUDGET,
+            DEFAULT_BUDGET
         )
     })
 
@@ -28,15 +29,13 @@ describe('resolveBudgetLimits', () => {
     for (const level of levels) {
         test(`returns BUDGET_BY_COMPLEXITY[${level}] for ${level}`, () => {
             expect(resolveBudgetLimits({ complexity: level })).toEqual(
-                BUDGET_BY_COMPLEXITY[level],
+                BUDGET_BY_COMPLEXITY[level]
             )
         })
     }
 
     test('budget limits increase monotonically along the complexity scale (maxPhases)', () => {
-        const phases = levels.map(
-            (l) => BUDGET_BY_COMPLEXITY[l].maxPhases,
-        )
+        const phases = levels.map((l) => BUDGET_BY_COMPLEXITY[l].maxPhases)
         for (let i = 1; i < phases.length; i += 1) {
             expect(phases[i]!).toBeGreaterThanOrEqual(phases[i - 1]!)
         }

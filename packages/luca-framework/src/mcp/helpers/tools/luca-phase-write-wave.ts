@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { wavePathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
-import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { writeAtomicFile } from '../write-atomic.ts'
 
 const inputSchema = z.object({
@@ -14,13 +14,13 @@ const inputSchema = z.object({
         .min(0)
         .max(99)
         .describe(
-            'Wave number (0–99). Zero-padded to two digits in the filename (e.g. wave 3 → 03.md).',
+            'Wave number (0–99). Zero-padded to two digits in the filename (e.g. wave 3 → 03.md).'
         ),
     content: z
         .string()
         .min(1)
         .describe(
-            'Markdown content for this wave. Written to .luca/phases/<active-slug>/execute/waves/NN.md.',
+            'Markdown content for this wave. Written to .luca/phases/<active-slug>/execute/waves/NN.md.'
         ),
 })
 

@@ -4,23 +4,24 @@ import { dirname, join } from 'node:path'
 import { auditPathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
-import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 
 const inputSchema = z.object({
     reviewer: z
         .string()
         .regex(/^[a-z][a-z0-9-]*[a-z0-9]?$/, {
-            message: 'reviewer must be kebab-case (e.g. "code-review", "security")',
+            message:
+                'reviewer must be kebab-case (e.g. "code-review", "security")',
         })
         .describe(
-            'Reviewer name (kebab-case). Examples: "code-review", "security", "architect", "ux".',
+            'Reviewer name (kebab-case). Examples: "code-review", "security", "architect", "ux".'
         ),
     content: z
         .string()
         .min(1)
         .describe(
-            'Markdown audit content. Written to .luca/phases/<active-slug>/audits/<reviewer>.md.',
+            'Markdown audit content. Written to .luca/phases/<active-slug>/audits/<reviewer>.md.'
         ),
 })
 

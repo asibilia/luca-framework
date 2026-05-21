@@ -24,7 +24,7 @@ describe('findingIdentity', () => {
 
     test('differs when path or line differ', () => {
         expect(findingIdentity(finding({ line: 10 }))).not.toBe(
-            findingIdentity(finding({ line: 20 })),
+            findingIdentity(finding({ line: 20 }))
         )
     })
 })

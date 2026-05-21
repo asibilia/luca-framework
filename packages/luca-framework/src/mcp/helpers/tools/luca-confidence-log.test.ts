@@ -1,13 +1,14 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaConfidenceLogTool } from './luca-confidence-log.ts'
 
 async function setupProject(
     cwd: string,
-    state: Record<string, unknown>,
+    state: Record<string, unknown>
 ): Promise<void> {
     await mkdir(join(cwd, '.luca'), { recursive: true })
     await writeFile(join(cwd, '.luca/state.json'), JSON.stringify(state))
@@ -39,13 +40,13 @@ describe('luca_confidence_log', () => {
                 stage: 'verify',
                 rationale: 'all tests green, no regressions',
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/confidence.jsonl'),
-            'utf-8',
+            'utf-8'
         )
         const lines = content.trim().split('\n')
         expect(lines).toHaveLength(1)
@@ -61,20 +62,20 @@ describe('luca_confidence_log', () => {
 
         await lucaConfidenceLogTool.handler(
             { score: 0.5, stage: 'plan', rationale: 'initial estimate' },
-            { cwd },
+            { cwd }
         )
         await lucaConfidenceLogTool.handler(
             { score: 0.7, stage: 'execute', rationale: 'wave 1 done' },
-            { cwd },
+            { cwd }
         )
         await lucaConfidenceLogTool.handler(
             { score: 0.9, stage: 'verify', rationale: 'all green' },
-            { cwd },
+            { cwd }
         )
 
         const content = await readFile(
             join(cwd, '.luca/phases/01-auth-rewrite/confidence.jsonl'),
-            'utf-8',
+            'utf-8'
         )
         const entries = content
             .trim()
@@ -108,7 +109,7 @@ describe('luca_confidence_log', () => {
 
         const r = await lucaConfidenceLogTool.handler(
             { score: 0.5, stage: 'plan', rationale: 'x' },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)

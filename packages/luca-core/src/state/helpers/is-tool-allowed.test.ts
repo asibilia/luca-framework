@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { CoarsePhase } from '../schemas.ts'
 import { isToolAllowed, type ToolCategory } from './is-tool-allowed.ts'
+
+import type { CoarsePhase } from '../schemas.ts'
 
 describe('isToolAllowed — matrix coverage', () => {
     // IDLE is permissive — no enforcement. Every category allowed.
@@ -32,7 +33,7 @@ describe('isToolAllowed — matrix coverage', () => {
                 isToolAllowed({
                     phase: 'PLANNING',
                     category: cat as ToolCategory,
-                }),
+                })
             ).toBe(expected)
         })
     }
@@ -52,7 +53,7 @@ describe('isToolAllowed — matrix coverage', () => {
                 isToolAllowed({
                     phase: 'EXECUTING',
                     category: cat as ToolCategory,
-                }),
+                })
             ).toBe(expected)
         })
     }
@@ -73,7 +74,7 @@ describe('isToolAllowed — matrix coverage', () => {
                 isToolAllowed({
                     phase: 'REVIEWING',
                     category: cat as ToolCategory,
-                }),
+                })
             ).toBe(expected)
         })
     }
@@ -93,7 +94,7 @@ describe('isToolAllowed — matrix coverage', () => {
                 isToolAllowed({
                     phase: 'FINALIZING',
                     category: cat as ToolCategory,
-                }),
+                })
             ).toBe(expected)
         })
     }

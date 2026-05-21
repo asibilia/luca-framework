@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaRoadmapReadTool } from './luca-roadmap-read.ts'
 
@@ -49,7 +50,7 @@ describe('luca_roadmap_read', () => {
                         status: 'pending',
                     },
                 ],
-            }),
+            })
         )
 
         const r = await lucaRoadmapReadTool.handler({}, { cwd })

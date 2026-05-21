@@ -5,25 +5,25 @@ import { phasePathFor } from './phase-path-for.ts'
 describe('phasePathFor', () => {
     test('returns phase directory when file is omitted', () => {
         expect(phasePathFor('01-auth-rewrite')).toBe(
-            '.luca/phases/01-auth-rewrite',
+            '.luca/phases/01-auth-rewrite'
         )
     })
 
     test('returns specific file paths', () => {
         expect(phasePathFor('01-auth-rewrite', 'plan')).toBe(
-            '.luca/phases/01-auth-rewrite/plan.md',
+            '.luca/phases/01-auth-rewrite/plan.md'
         )
         expect(phasePathFor('12-ws-reconnect', 'research')).toBe(
-            '.luca/phases/12-ws-reconnect/research.md',
+            '.luca/phases/12-ws-reconnect/research.md'
         )
         expect(phasePathFor('05-x', 'execute/summary')).toBe(
-            '.luca/phases/05-x/execute/summary.md',
+            '.luca/phases/05-x/execute/summary.md'
         )
         expect(phasePathFor('05-x', 'execute/progress')).toBe(
-            '.luca/phases/05-x/execute/progress.jsonl',
+            '.luca/phases/05-x/execute/progress.jsonl'
         )
         expect(phasePathFor('05-x', 'verify')).toBe(
-            '.luca/phases/05-x/verify.json',
+            '.luca/phases/05-x/verify.json'
         )
     })
 

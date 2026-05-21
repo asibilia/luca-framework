@@ -8,7 +8,7 @@ import { dirname } from 'node:path'
  */
 export async function writeAtomicFile(
     absPath: string,
-    content: string,
+    content: string
 ): Promise<void> {
     await mkdir(dirname(absPath), { recursive: true })
     const tmp = `${absPath}.tmp`

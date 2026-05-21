@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaRoadmapCreateTool } from './luca-roadmap-create.ts'
 
@@ -28,7 +29,7 @@ describe('luca_roadmap_create', () => {
                 pipelineStep: 'triage',
                 currentPhase: 0,
                 roadmap: [],
-            }),
+            })
         )
 
         const parsed = lucaRoadmapCreateTool.inputSchema.parse({
@@ -65,7 +66,7 @@ describe('luca_roadmap_create', () => {
                 sessionId: 'sess-123',
                 oversight: 'checkpoint',
                 checksFixIteration: 0,
-            }),
+            })
         )
 
         const parsed = lucaRoadmapCreateTool.inputSchema.parse({

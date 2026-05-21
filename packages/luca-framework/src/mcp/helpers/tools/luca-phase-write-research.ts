@@ -4,15 +4,15 @@ import { dirname, join } from 'node:path'
 import { phasePathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
-import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 
 const inputSchema = z.object({
     content: z
         .string()
         .min(1)
         .describe(
-            'Markdown content of phase research notes. Written verbatim to .luca/phases/<active-slug>/research.md.',
+            'Markdown content of phase research notes. Written verbatim to .luca/phases/<active-slug>/research.md.'
         ),
 })
 

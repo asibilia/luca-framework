@@ -8,13 +8,13 @@ import { z, type ToolDescriptor } from '../../schemas.ts'
 
 const inputSchema = z.object({
     finding: ShadowScanFindingSchema.describe(
-        'A single finding from a luca-shadow-scanner ShadowScanReport. recommended_action drives what gets applied.',
+        'A single finding from a luca-shadow-scanner ShadowScanReport. recommended_action drives what gets applied.'
     ),
     confirm: z
         .boolean()
         .default(false)
         .describe(
-            'Must be true to actually apply the remediation. Default false so a stray call cannot delete/move files.',
+            'Must be true to actually apply the remediation. Default false so a stray call cannot delete/move files.'
         ),
 })
 
@@ -191,7 +191,7 @@ export const lucaRepoCleanupApplyTool: ToolDescriptor<
                     existing === '' || existing.endsWith('\n') ? '' : '\n'
                 await appendFile(
                     gitignorePath,
-                    `${newline}${finding.file_path}\n`,
+                    `${newline}${finding.file_path}\n`
                 )
                 return {
                     content: [

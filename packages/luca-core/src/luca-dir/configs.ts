@@ -20,7 +20,8 @@ export const LUCA_DIR_CONTRACT = {
         },
         {
             file: 'lock.json',
-            purpose: 'Pipeline lock (PID, acquired_at) — prevents concurrent runs',
+            purpose:
+                'Pipeline lock (PID, acquired_at) — prevents concurrent runs',
         },
         {
             file: 'roadmap.md',

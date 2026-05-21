@@ -373,7 +373,7 @@ export async function downloadMuninndbBinary(
                 const sourceFile = Bun.file(foundPath)
                 await Bun.write(preferredPath, sourceFile)
                 await Bun.$`chmod 755 ${preferredPath}`.quiet()
-            } catch (copyErr) {
+            } catch {
                 // Binary exists at foundPath but we could not copy it -- still usable
                 spinner?.stop(`MuninnDB installed at ${foundPath}`)
                 return MuninndbInstallResultSchema.parse({

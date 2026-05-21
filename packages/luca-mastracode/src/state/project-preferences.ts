@@ -51,7 +51,7 @@ export type SectionName = z.infer<typeof SectionName>
 const SAFE_FREEFORM = z
     .string()
     .max(64)
-    .regex(/^[\w #\t{}/,.():\-]*$/)
+    .regex(/^[\w #\t{}/,.():-]*$/)
 
 /**
  * Zod refinement: source string must compile as a JS RegExp AND must not

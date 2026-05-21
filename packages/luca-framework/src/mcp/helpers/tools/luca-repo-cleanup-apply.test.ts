@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import type { ShadowScanFinding } from '@alecsibilia/luca-core'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaRepoCleanupApplyTool } from './luca-repo-cleanup-apply.ts'
 
@@ -37,7 +37,7 @@ describe('luca_repo_cleanup_apply', () => {
 
         const r = await lucaRepoCleanupApplyTool.handler(
             { finding: finding({}), confirm: false },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
@@ -50,7 +50,7 @@ describe('luca_repo_cleanup_apply', () => {
 
         const r = await lucaRepoCleanupApplyTool.handler(
             { finding: finding({}), confirm: true },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -69,14 +69,12 @@ describe('luca_repo_cleanup_apply', () => {
                 }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
         expect(existsSync(join(cwd, 'SUMMARY-3.md'))).toBe(false)
-        expect(
-            existsSync(join(cwd, 'docs/archive/summary-3.md')),
-        ).toBe(true)
+        expect(existsSync(join(cwd, 'docs/archive/summary-3.md'))).toBe(true)
     })
 
     test('move action errors when target_path is missing', async () => {
@@ -90,7 +88,7 @@ describe('luca_repo_cleanup_apply', () => {
                 }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
@@ -105,7 +103,7 @@ describe('luca_repo_cleanup_apply', () => {
                 }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -124,7 +122,7 @@ describe('luca_repo_cleanup_apply', () => {
                 }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -138,7 +136,7 @@ describe('luca_repo_cleanup_apply', () => {
                 finding: finding({ file_path: '../escape.ts' }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBe(true)
     })
@@ -152,7 +150,7 @@ describe('luca_repo_cleanup_apply', () => {
                 finding: finding({ file_path: '.git/config' }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBe(true)
         expect(existsSync(join(cwd, '.git/config'))).toBe(true)
@@ -170,7 +168,7 @@ describe('luca_repo_cleanup_apply', () => {
                 }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
         expect(r.isError).toBe(true)
     })
@@ -181,7 +179,7 @@ describe('luca_repo_cleanup_apply', () => {
                 finding: finding({ file_path: 'never-existed.ts' }),
                 confirm: true,
             },
-            { cwd },
+            { cwd }
         )
         // Not an error — just nothing to do.
         expect(r.isError).toBeFalsy()

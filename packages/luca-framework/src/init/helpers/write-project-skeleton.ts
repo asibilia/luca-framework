@@ -20,7 +20,7 @@ export interface WriteProjectSkeletonOptions {
  * the output is guaranteed to parse cleanly under strict validation.
  */
 export async function writeProjectSkeleton(
-    opts: WriteProjectSkeletonOptions,
+    opts: WriteProjectSkeletonOptions
 ): Promise<void> {
     const log = opts.log ?? (() => {})
     const lucaDir = join(opts.cwd, '.luca')
@@ -43,7 +43,7 @@ export async function writeProjectSkeleton(
                     oversight: 'full-auto',
                 },
                 null,
-                2,
+                2
             ) + '\n',
         force: opts.force ?? false,
         log,

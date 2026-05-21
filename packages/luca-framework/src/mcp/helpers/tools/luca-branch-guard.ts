@@ -6,7 +6,7 @@ const inputSchema = z.object({
         .min(1)
         .default('main')
         .describe(
-            'Branch name that must NOT equal the current branch (typically the repository default branch).',
+            'Branch name that must NOT equal the current branch (typically the repository default branch).'
         ),
 })
 

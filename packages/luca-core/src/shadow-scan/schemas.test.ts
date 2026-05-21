@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import {
-    ShadowScanFindingSchema,
-    ShadowScanReportSchema,
-} from './schemas.ts'
+import { ShadowScanFindingSchema, ShadowScanReportSchema } from './schemas.ts'
 
 const validFinding = {
     category: 'orphaned-temp-script',
@@ -45,9 +42,9 @@ describe('ShadowScanFindingSchema', () => {
                 ShadowScanFindingSchema.safeParse({
                     ...validFinding,
                     severity,
-                }).success,
+                }).success
             ).toBe(true)
-        },
+        }
     )
 
     test('rejects unknown severity', () => {
@@ -55,7 +52,7 @@ describe('ShadowScanFindingSchema', () => {
             ShadowScanFindingSchema.safeParse({
                 ...validFinding,
                 severity: 'blocker',
-            }).success,
+            }).success
         ).toBe(false)
     })
 
@@ -66,9 +63,9 @@ describe('ShadowScanFindingSchema', () => {
                 ShadowScanFindingSchema.safeParse({
                     ...validFinding,
                     recommended_action: action,
-                }).success,
+                }).success
             ).toBe(true)
-        },
+        }
     )
 
     test('rejects unknown recommended_action', () => {
@@ -76,7 +73,7 @@ describe('ShadowScanFindingSchema', () => {
             ShadowScanFindingSchema.safeParse({
                 ...validFinding,
                 recommended_action: 'archive',
-            }).success,
+            }).success
         ).toBe(false)
     })
 
@@ -85,7 +82,7 @@ describe('ShadowScanFindingSchema', () => {
             ShadowScanFindingSchema.safeParse({
                 ...validFinding,
                 file_path: '',
-            }).success,
+            }).success
         ).toBe(false)
     })
 })
@@ -105,24 +102,21 @@ describe('ShadowScanReportSchema', () => {
         expect(r.success).toBe(true)
     })
 
-    test.each(['quick', 'standard', 'full'])(
-        'accepts scan_mode %p',
-        (mode) => {
-            expect(
-                ShadowScanReportSchema.safeParse({
-                    ...validReport,
-                    scan_mode: mode,
-                }).success,
-            ).toBe(true)
-        },
-    )
+    test.each(['quick', 'standard', 'full'])('accepts scan_mode %p', (mode) => {
+        expect(
+            ShadowScanReportSchema.safeParse({
+                ...validReport,
+                scan_mode: mode,
+            }).success
+        ).toBe(true)
+    })
 
     test('rejects unknown scan_mode', () => {
         expect(
             ShadowScanReportSchema.safeParse({
                 ...validReport,
                 scan_mode: 'deep',
-            }).success,
+            }).success
         ).toBe(false)
     })
 
@@ -131,7 +125,7 @@ describe('ShadowScanReportSchema', () => {
             ShadowScanReportSchema.safeParse({
                 ...validReport,
                 scanned_at: '2026-05-20',
-            }).success,
+            }).success
         ).toBe(false)
     })
 })

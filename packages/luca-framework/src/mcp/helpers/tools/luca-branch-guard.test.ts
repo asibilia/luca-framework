@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaBranchGuardTool } from './luca-branch-guard.ts'
 
@@ -41,7 +42,7 @@ describe('luca_branch_guard', () => {
 
         const r = await lucaBranchGuardTool.handler(
             { default_branch: 'main' },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBeFalsy()
@@ -56,7 +57,7 @@ describe('luca_branch_guard', () => {
 
         const r = await lucaBranchGuardTool.handler(
             { default_branch: 'main' },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)
@@ -80,7 +81,7 @@ describe('luca_branch_guard', () => {
     test('returns isError when not a git repo', async () => {
         const r = await lucaBranchGuardTool.handler(
             { default_branch: 'main' },
-            { cwd },
+            { cwd }
         )
 
         expect(r.isError).toBe(true)

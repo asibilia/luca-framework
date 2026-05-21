@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { installSkills } from './install-skills.ts'
 
@@ -20,15 +21,15 @@ describe('installSkills', () => {
         })
         await writeFile(
             join(skillsSource, 'commands/phase-plan.md'),
-            '---\nname: phase-plan\n---\nbody',
+            '---\nname: phase-plan\n---\nbody'
         )
         await writeFile(
             join(skillsSource, 'agents/luca-executor.md'),
-            '---\nname: luca-executor\n---\nbody',
+            '---\nname: luca-executor\n---\nbody'
         )
         await writeFile(
             join(skillsSource, 'skills/luca-init/SKILL.md'),
-            '---\nname: luca-init\ndescription: seed prefs\n---\nbody',
+            '---\nname: luca-init\ndescription: seed prefs\n---\nbody'
         )
     })
 
@@ -66,23 +67,25 @@ describe('installSkills', () => {
         await installSkills({ cwd, skillsSource })
         await installSkills({ cwd, skillsSource })
 
-        expect(existsSync(join(cwd, '.claude/commands/phase-plan.md'))).toBe(true)
+        expect(existsSync(join(cwd, '.claude/commands/phase-plan.md'))).toBe(
+            true
+        )
     })
 
     test('preserves user-authored files in .claude/commands/ that are not part of the install set', async () => {
         await mkdir(join(cwd, '.claude/commands'), { recursive: true })
         await writeFile(
             join(cwd, '.claude/commands/my-custom-command.md'),
-            'user content',
+            'user content'
         )
 
         await installSkills({ cwd, skillsSource })
 
         expect(
-            existsSync(join(cwd, '.claude/commands/my-custom-command.md')),
+            existsSync(join(cwd, '.claude/commands/my-custom-command.md'))
         ).toBe(true)
         expect(existsSync(join(cwd, '.claude/commands/phase-plan.md'))).toBe(
-            true,
+            true
         )
     })
 
@@ -90,14 +93,14 @@ describe('installSkills', () => {
         await mkdir(join(cwd, '.claude/commands'), { recursive: true })
         await writeFile(
             join(cwd, '.claude/commands/phase-plan.md'),
-            'STALE OLD CONTENT',
+            'STALE OLD CONTENT'
         )
 
         await installSkills({ cwd, skillsSource })
 
         const content = await readFile(
             join(cwd, '.claude/commands/phase-plan.md'),
-            'utf-8',
+            'utf-8'
         )
         expect(content).not.toContain('STALE')
         expect(content).toContain('phase-plan')

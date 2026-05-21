@@ -5,7 +5,7 @@ import { telemetryPathFor } from './telemetry-path-for.ts'
 describe('telemetryPathFor', () => {
     test('builds JSONL path for an alphanumeric runId', () => {
         expect(telemetryPathFor('run-abc-123')).toBe(
-            '.luca/telemetry/run-abc-123.jsonl',
+            '.luca/telemetry/run-abc-123.jsonl'
         )
     })
 
