@@ -12,8 +12,12 @@ import { lucaPhaseWriteResearchTool } from './tools/luca-phase-write-research.ts
 import { lucaPhaseWriteSummaryTool } from './tools/luca-phase-write-summary.ts'
 import { lucaPhaseWriteVerifyTool } from './tools/luca-phase-write-verify.ts'
 import { lucaPhaseWriteWaveTool } from './tools/luca-phase-write-wave.ts'
+import { lucaPrReviewDetectConvergenceTool } from './tools/luca-pr-review-detect-convergence.ts'
+import { lucaPrReviewFilterStaleTool } from './tools/luca-pr-review-filter-stale.ts'
+import { lucaPrReviewRegressionCheckTool } from './tools/luca-pr-review-regression-check.ts'
 import { lucaPreferencesReadTool } from './tools/luca-preferences-read.ts'
 import { lucaPreferencesWriteTool } from './tools/luca-preferences-write.ts'
+import { lucaRepoCleanupApplyTool } from './tools/luca-repo-cleanup-apply.ts'
 import { lucaRoadmapCreateTool } from './tools/luca-roadmap-create.ts'
 import { lucaRoadmapReadTool } from './tools/luca-roadmap-read.ts'
 import { lucaStateAdvanceTool } from './tools/luca-state-advance.ts'
@@ -29,8 +33,10 @@ import { lucaWorkflowResetTool } from './tools/luca-workflow-reset.ts'
  * tools (summary, wave, verify, learn, plan-review); Phase 5B.2 added 4
  * workflow + verification tools (branch-guard, confidence-log,
  * workflow-reset, checks-run); Phase 5B.3 added 4 preferences + roadmap
- * tools; Phase 5B.4 adds 3 todo delegation tools (add, list, update)
- * that emit muninn_remember/recall instructions for the agent to run.
+ * tools; Phase 5B.4 added 3 todo delegation tools (add, list, update)
+ * that emit muninn_remember/recall instructions for the agent to run;
+ * Phase 5B.5 adds 3 PR-review hardening tools + 1 repo-cleanup apply
+ * tool (the write half of the read-only shadow-scanner subagent).
  */
 export const TOOL_REGISTRY: ToolDescriptor[] = [
     // Read tools (available in every phase)
@@ -39,10 +45,16 @@ export const TOOL_REGISTRY: ToolDescriptor[] = [
     lucaBranchGuardTool as ToolDescriptor,
     lucaPreferencesReadTool as ToolDescriptor,
     lucaRoadmapReadTool as ToolDescriptor,
+    // PR-review hardening (read-only analysis)
+    lucaPrReviewFilterStaleTool as ToolDescriptor,
+    lucaPrReviewDetectConvergenceTool as ToolDescriptor,
+    lucaPrReviewRegressionCheckTool as ToolDescriptor,
     // Todo delegation (emit muninn_* instructions; no allowedPhases)
     lucaTodoAddTool as ToolDescriptor,
     lucaTodoListTool as ToolDescriptor,
     lucaTodoUpdateTool as ToolDescriptor,
+    // Repo cleanup (destructive apply, confirm-gated)
+    lucaRepoCleanupApplyTool as ToolDescriptor,
     // State transitions (validated against pipeline-transitions table)
     lucaStateAdvanceTool as ToolDescriptor,
     // Workflow lifecycle (destructive, allowed in any phase)
