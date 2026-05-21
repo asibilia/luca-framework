@@ -51,11 +51,22 @@ export async function wireMcpServer(opts: WireMcpServerOptions): Promise<void> {
 
     await mkdir(claudeDir, { recursive: true })
 
-    const existing = existsSync(settingsPath)
-        ? ((JSON.parse(
-              await readFile(settingsPath, 'utf-8')
-          ) as ClaudeSettings) ?? {})
-        : {}
+    let existing: ClaudeSettings = {}
+    if (existsSync(settingsPath)) {
+        try {
+            existing =
+                (JSON.parse(
+                    await readFile(settingsPath, 'utf-8')
+                ) as ClaudeSettings) ?? {}
+        } catch (err) {
+            // A corrupt settings.json must not make `luca init`
+            // unrecoverable — fall back to an empty object and rewrite.
+            log(
+                `  warn:  ${settingsPath} is not valid JSON — ignoring it and writing fresh settings (${(err as Error).message})`
+            )
+            existing = {}
+        }
+    }
 
     const next = mergeMcpServerRegistration(existing)
 

@@ -30,9 +30,11 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
     const log = opts.log ?? (() => {})
     const skillsSource = opts.skillsSource ?? resolveDefaultSkillsSource()
 
-    if (!existsSync(skillsSource)) {
+    if (!skillsSource || !existsSync(skillsSource)) {
         log(
-            `  skip:  skills source not found at ${skillsSource} (running from a non-bundled dev tree?)`
+            skillsSource
+                ? `  skip:  skills source not found at ${skillsSource} (running from a non-bundled dev tree?)`
+                : '  skip:  could not locate the luca-framework package root — skills not installed (running from a non-bundled dev tree?)'
         )
         return
     }
@@ -115,8 +117,12 @@ async function copyDir(args: {
  * luca-framework/dist/). In both cases, walking up from import.meta.url
  * eventually finds the luca-framework package.json, and `skills/` is
  * a sibling of that file.
+ *
+ * Returns `null` (not an empty string) when the package root can't be
+ * located, so the caller can guard explicitly rather than relying on
+ * `existsSync('')`/`join('', …)` quirks.
  */
-function resolveDefaultSkillsSource(): string {
+function resolveDefaultSkillsSource(): string | null {
     let dir = dirname(fileURLToPath(import.meta.url))
     // Bound the walk so we don't run forever in odd environments.
     for (let i = 0; i < 20; i += 1) {
@@ -137,5 +143,5 @@ function resolveDefaultSkillsSource(): string {
         if (parent === dir) break
         dir = parent
     }
-    return ''
+    return null
 }
