@@ -11,11 +11,41 @@
  * imported dynamically (top-level await) AFTER the module mock is installed.
  */
 import { describe, test, expect, mock, spyOn, beforeEach } from 'bun:test'
+import { z } from 'zod'
 
 import { ENG_PT_PREFERENCES } from './fixtures/preferences-eng-pt.js'
 
 import * as lucaStore from '../state/luca-store.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
 import * as prefsState from '../state/project-preferences.js'
+
+/**
+ * Shape of the ensureFeatureBranch tool output exercised by these tests.
+ * The tool has no outputSchema, so its runtime return is `unknown`; this
+ * interface captures the fields the assertions read.
+ */
+interface BranchingResult {
+    types?: string[]
+    template?: string
+    defaultBranch?: string
+    guardedBranches?: string[]
+    [key: string]: unknown
+}
+
+interface EnsureBranchResult {
+    ok?: boolean
+    success?: boolean
+    created?: boolean
+    status?: string
+    source?: string
+    role?: string
+    error?: string
+    branchName?: string
+    baseBranch?: string
+    prBase?: string
+    guardedBranches?: string[]
+    branching?: BranchingResult
+}
 
 // ---------------------------------------------------------------------------
 // Mutable git mock router. Tests configure `gitState` per-test and the mock
@@ -57,7 +87,10 @@ mock.module('node:child_process', () => ({
         // rev-parse --is-inside-work-tree
         if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
             if (!gitState.insideRepo) {
-                const err: any = new Error('not a git repo')
+                const err = new Error('not a git repo') as Error & {
+                    stdout: Buffer
+                    stderr: Buffer
+                }
                 err.stdout = Buffer.from('false\n')
                 err.stderr = Buffer.from('')
                 throw err
@@ -85,7 +118,10 @@ mock.module('node:child_process', () => ({
             ) {
                 return ''
             }
-            const err: any = new Error('not found')
+            const err = new Error('not found') as Error & {
+                stdout: Buffer
+                stderr: Buffer
+            }
             err.stdout = Buffer.from('')
             err.stderr = Buffer.from('')
             throw err
@@ -100,7 +136,10 @@ mock.module('node:child_process', () => ({
         // git switch <branch>  OR  git switch -c <branch>
         if (args[0] === 'switch') {
             if (!gitState.switchOk) {
-                const err: any = new Error('switch failed')
+                const err = new Error('switch failed') as Error & {
+                    stdout: Buffer
+                    stderr: Buffer
+                }
                 err.stdout = Buffer.from('')
                 err.stderr = Buffer.from('switch failed')
                 throw err
@@ -130,12 +169,23 @@ const mockReadState = spyOn(lucaStore, 'readLucaState')
 beforeEach(() => {
     resetGitState()
     mockLoadPrefs.mockReset().mockReturnValue(null)
-    mockWriteState.mockReset().mockImplementation((updates: any) => updates)
-    mockReadState.mockReset().mockReturnValue({} as any)
+    mockWriteState
+        .mockReset()
+        .mockImplementation((updates: Partial<LucaWorkflowState>) => updates)
+    mockReadState.mockReset().mockReturnValue({} as LucaWorkflowState)
 })
 
-async function call(input: Record<string, unknown>): Promise<any> {
-    return ensureFeatureBranchTool.execute!(input as any, {} as any)
+async function call(
+    input: Record<string, unknown>
+): Promise<EnsureBranchResult> {
+    return ensureFeatureBranchTool.execute!(
+        input as Parameters<
+            NonNullable<(typeof ensureFeatureBranchTool)['execute']>
+        >[0],
+        {} as Parameters<
+            NonNullable<(typeof ensureFeatureBranchTool)['execute']>
+        >[1]
+    ) as Promise<EnsureBranchResult>
 }
 
 // ---------------------------------------------------------------------------
@@ -200,8 +250,8 @@ describe('consult', () => {
         expect(r.ok).toBe(true)
         expect(r.status).toBe('consulted')
         expect(r.source).toBe('tool-defaults')
-        expect(r.branching.defaultBranch).toBe('main')
-        expect(r.branching.guardedBranches).toEqual(['main'])
+        expect(r.branching!.defaultBranch).toBe('main')
+        expect(r.branching!.guardedBranches).toEqual(['main'])
     })
 })
 
@@ -262,8 +312,9 @@ describe('apply', () => {
 
     // The inputSchema is a Zod object at runtime but Mastra exposes it via
     // the StandardSchema type, which doesn't surface .safeParse(). Cast to
-    // any so tests can validate the schema directly.
-    const inputSchema = ensureFeatureBranchTool.inputSchema as any
+    // ZodObject so tests can validate the schema directly.
+    const inputSchema =
+        ensureFeatureBranchTool.inputSchema as z.ZodObject<z.ZodRawShape>
 
     test('SafeRefName rejects branchName starting with "-" (CLI-flag injection)', () => {
         const r = inputSchema.safeParse({

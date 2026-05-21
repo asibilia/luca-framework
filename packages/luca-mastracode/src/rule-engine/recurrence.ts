@@ -24,10 +24,10 @@
 import { writeFileSync } from 'node:fs'
 
 import { analyzeRun } from '../analysis/postmortem.js'
+import type { ViolationCode } from '../analysis/postmortem.js'
 import { readLucaState } from '../state/luca-store.js'
 import { listArchivedRuns, listRuns } from '../state/session-ledger.js'
 import { phasePath } from '../util/phase-paths.js'
-import type { ViolationCode } from '../analysis/postmortem.js'
 
 export interface RecurringPitfall {
     /** ViolationCode that recurred. */
@@ -203,9 +203,7 @@ export default {
  * Render the full SUGGESTED-RULES.md report — one section per recurring
  * pitfall with a code block of the draft rule.
  */
-export function renderSuggestedRulesMarkdown(
-    report: RecurrenceReport
-): string {
+export function renderSuggestedRulesMarkdown(report: RecurrenceReport): string {
     if (report.recurring.length === 0) {
         return `# Suggested Rules
 

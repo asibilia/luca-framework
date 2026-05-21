@@ -17,9 +17,6 @@
  */
 import type { Tool } from '@mastra/core/tools'
 
-import { MODES } from '../constants/mode-ids.js'
-import { appendLedger } from '../state/session-ledger.js'
-
 import { claimVerifierTool } from './claim-verifier.js'
 import { classifyComplexityTool } from './classify-complexity.js'
 import { confidenceJournalTool } from './confidence-journal.js'
@@ -38,6 +35,9 @@ import { sessionLedgerTool } from './session-ledger.js'
 import { verificationResultTool } from './verification-result.js'
 import { workflowStateTool } from './workflow-state.js'
 import { writePlanningFileTool } from './write-planning-file.js'
+
+import { MODES } from '../constants/mode-ids.js'
+import { appendLedger } from '../state/session-ledger.js'
 
 // ---------------------------------------------------------------------------
 // Manifest types

@@ -11,7 +11,6 @@ import {
     configEtagAtom,
 } from '~/stores/config-atoms'
 import { markCleanAtom } from '~/stores/dirty-tracking'
-import { pipelineNodesAtom, pipelineEdgesAtom } from '~/stores/pipeline-atoms'
 
 // -- Types --------------------------------------------------------------------
 
@@ -30,8 +29,10 @@ interface PipelineSaveActions {
  *
  * - **Save**: PUTs the workflow section of `configDraftAtom` to
  *   `/api/config/workflow`, then clears dirty tracking.
- * - **Discard**: Resets `configDraftAtom` to the server state and
- *   re-initializes pipeline nodes/edges from the original topology.
+ * - **Discard**: Resets `configDraftAtom` to the server state and clears
+ *   config dirty tracking. Pipeline nodes/edges are intentionally NOT
+ *   reset — their topology comes from a separate API and a full page
+ *   reload is the path to a complete reset.
  *
  * @returns Object with `handleSave` and `handleDiscard` callbacks.
  *
@@ -47,8 +48,6 @@ export function usePipelineSave(): PipelineSaveActions {
     const [, markClean] = useAtom(markCleanAtom)
     const [, setConfigDraft] = useAtom(configDraftAtom)
     const [configEtag, setConfigEtag] = useAtom(configEtagAtom)
-    const [, setNodes] = useAtom(pipelineNodesAtom)
-    const [, setEdges] = useAtom(pipelineEdgesAtom)
 
     const handleSave = useCallback(async () => {
         if (!configDraft) return

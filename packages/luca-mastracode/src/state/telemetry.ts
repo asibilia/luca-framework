@@ -52,9 +52,10 @@ import { dirname } from 'node:path'
 
 import { z } from 'zod'
 
+import { readLucaState } from './luca-store.js'
+
 import { TELEMETRY_PATH, assertValidRunId } from '../util/phase-paths.js'
 import { sanitizeForLog } from '../util/sanitize.js'
-import { readLucaState } from './luca-store.js'
 
 // `sanitizeLogMessage` was extracted to `../util/sanitize.js` (as
 // `sanitizeForLog`) so `workflow-state.ts` and other callers share the
@@ -135,9 +136,7 @@ export const TelemetryRecordSchema: z.ZodType<TelemetryRecord> = z.object({
 // Builder (pure)
 // ---------------------------------------------------------------------------
 
-type Overrides = Partial<
-    Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
->
+type Overrides = Partial<Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>>
 
 /**
  * Build a `TelemetryRecord` by reading current pipeline state and applying

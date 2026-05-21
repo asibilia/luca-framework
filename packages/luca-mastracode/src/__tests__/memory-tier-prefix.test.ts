@@ -9,6 +9,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import url from 'node:url'
+
 import { describe, expect, test } from 'bun:test'
 
 import { MEMORY_TIER_DISCIPLINE } from '../memory-tier-discipline.js'
@@ -36,7 +37,7 @@ describe('Memory Tier Discipline — prefix integration', () => {
     test('memory-tier-discipline.ts source file is present', async () => {
         const src = await readFile(
             path.join(SRC_ROOT, 'memory-tier-discipline.ts'),
-            'utf-8',
+            'utf-8'
         )
         expect(src).toContain('export const MEMORY_TIER_DISCIPLINE')
         expect(src).toContain('## Memory Tier Discipline')
@@ -45,11 +46,9 @@ describe('Memory Tier Discipline — prefix integration', () => {
     test('agent-constraints.ts imports and uses MEMORY_TIER_DISCIPLINE', async () => {
         const src = await readFile(
             path.join(SRC_ROOT, 'agent-constraints.ts'),
-            'utf-8',
+            'utf-8'
         )
-        expect(src).toContain(
-            "from './memory-tier-discipline.js'",
-        )
+        expect(src).toContain("from './memory-tier-discipline.js'")
         expect(src).toContain('MEMORY_TIER_DISCIPLINE')
         // Two references: one import, one use inside getAgentConstraints array.
         const matches = src.match(/MEMORY_TIER_DISCIPLINE/g) ?? []
@@ -59,18 +58,15 @@ describe('Memory Tier Discipline — prefix integration', () => {
     test('subagents/shared-prefix.ts imports and interpolates MEMORY_TIER_DISCIPLINE', async () => {
         const src = await readFile(
             path.join(SRC_ROOT, 'subagents', 'shared-prefix.ts'),
-            'utf-8',
+            'utf-8'
         )
-        expect(src).toContain(
-            "from '../memory-tier-discipline.js'",
-        )
+        expect(src).toContain("from '../memory-tier-discipline.js'")
         expect(src).toContain('${MEMORY_TIER_DISCIPLINE}')
     })
 
     test('SUBAGENT_SHARED_PREFIX runtime contains the tier rule', async () => {
-        const { SUBAGENT_SHARED_PREFIX } = await import(
-            '../subagents/shared-prefix.js'
-        )
+        const { SUBAGENT_SHARED_PREFIX } =
+            await import('../subagents/shared-prefix.js')
         expect(SUBAGENT_SHARED_PREFIX).toContain('Memory Tier Discipline')
         for (const tier of ['verified', 'inferred', 'external', 'untrusted']) {
             expect(SUBAGENT_SHARED_PREFIX).toContain(tier)
@@ -78,14 +74,13 @@ describe('Memory Tier Discipline — prefix integration', () => {
     })
 
     test('SUBAGENT_SHARED_PREFIX runtime contains pre-invoke recall directive', async () => {
-        const { SUBAGENT_SHARED_PREFIX } = await import(
-            '../subagents/shared-prefix.js'
-        )
+        const { SUBAGENT_SHARED_PREFIX } =
+            await import('../subagents/shared-prefix.js')
         expect(SUBAGENT_SHARED_PREFIX).toContain('Pre-Invoke Memory Recall')
         expect(SUBAGENT_SHARED_PREFIX).toContain('muninn_recall')
         // Hedge prevents dead-weight instruction for non-MCP subagents.
         expect(SUBAGENT_SHARED_PREFIX).toContain(
-            'If MuninnDB MCP tools are available',
+            'If MuninnDB MCP tools are available'
         )
     })
 
@@ -99,16 +94,13 @@ describe('Memory Tier Discipline — prefix integration', () => {
         // 9× multiplier across all spawned subagents makes this guard
         // non-negotiable — bloat here cascades into every research/review
         // batch.
-        const { SUBAGENT_SHARED_PREFIX } = await import(
-            '../subagents/shared-prefix.js'
-        )
+        const { SUBAGENT_SHARED_PREFIX } =
+            await import('../subagents/shared-prefix.js')
         expect(SUBAGENT_SHARED_PREFIX.length).toBeLessThan(3000)
     })
 
     test('getAgentConstraints() runtime contains the tier rule', async () => {
-        const { getAgentConstraints } = await import(
-            '../agent-constraints.js'
-        )
+        const { getAgentConstraints } = await import('../agent-constraints.js')
         const out = getAgentConstraints()
         expect(out).toContain('Memory Tier Discipline')
         for (const tier of ['verified', 'inferred', 'external', 'untrusted']) {

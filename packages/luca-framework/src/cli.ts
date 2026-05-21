@@ -24,6 +24,13 @@ const main = defineCommand({
         run: () => import('./commands/run').then((m) => m.runCommand),
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
+        hook: () => import('./commands/hook').then((m) => m.hookCommand),
+        mcp: () => import('./commands/mcp').then((m) => m.mcpCommand),
+        'migrate-planning': () =>
+            import('./commands/migrate-planning').then(
+                (m) => m.migratePlanningCommand
+            ),
+        repair: () => import('./commands/repair').then((m) => m.repairCommand),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
     },

@@ -110,11 +110,10 @@ export const runRulesTool = createTool({
         }
 
         if (action === 'list') {
-            const rulesDir =
-                inputData.rulesDir ?? `${repoRoot}/.luca/rules`
-            const { rules, filesDiscovered, loadErrors } = await loadRules(
-                { rulesDir }
-            )
+            const rulesDir = inputData.rulesDir ?? `${repoRoot}/.luca/rules`
+            const { rules, filesDiscovered, loadErrors } = await loadRules({
+                rulesDir,
+            })
             appendLedger('rules-run', {
                 action,
                 filesDiscovered,

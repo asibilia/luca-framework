@@ -21,7 +21,13 @@ import { z } from 'zod'
 import { atomicWriteSync } from '../util/atomic-write.js'
 import { planningRoot } from '../util/phase-paths.js'
 
-export const SectionName = z.enum(['branching', 'commits', 'pr', 'release', 'tracker'])
+export const SectionName = z.enum([
+    'branching',
+    'commits',
+    'pr',
+    'release',
+    'tracker',
+])
 export type SectionName = z.infer<typeof SectionName>
 
 /**
@@ -42,7 +48,10 @@ export type SectionName = z.infer<typeof SectionName>
  * shell metachar that closes the JSON blob — it stays inside string
  * literals and the 64-char cap bounds blast radius.
  */
-const SAFE_FREEFORM = z.string().max(64).regex(/^[\w #\t{}/,.():\-]*$/)
+const SAFE_FREEFORM = z
+    .string()
+    .max(64)
+    .regex(/^[\w #\t{}/,.():-]*$/)
 
 /**
  * Zod refinement: source string must compile as a JS RegExp AND must not
@@ -60,8 +69,15 @@ const RegexSource = z
     .min(1)
     .max(128)
     .refine(
-        (v) => { try { new RegExp(v); return true } catch { return false } },
-        { message: 'must be a valid regex source' },
+        (v) => {
+            try {
+                new RegExp(v)
+                return true
+            } catch {
+                return false
+            }
+        },
+        { message: 'must be a valid regex source' }
     )
     .refine(
         // Detects a quantifier-terminator (+ * }) immediately followed by ')'
@@ -70,7 +86,7 @@ const RegexSource = z
         // `(\d{2,}){2,}` while leaving non-nested patterns like `\d+`,
         // `.*`, and `\d{2,}` untouched.
         (v) => !/[+*}]\)[+*{]/.test(v),
-        { message: 'nested quantifiers prohibited (ReDoS guard)' },
+        { message: 'nested quantifiers prohibited (ReDoS guard)' }
     )
 
 /**
@@ -102,9 +118,17 @@ const BranchTypeRule = z.object({
 
 const BranchingSection = z
     .object({
-        types: z.array(SAFE_FREEFORM).default([
-            'feat', 'fix', 'refactor', 'chore', 'docs', 'test', 'style',
-        ]),
+        types: z
+            .array(SAFE_FREEFORM)
+            .default([
+                'feat',
+                'fix',
+                'refactor',
+                'chore',
+                'docs',
+                'test',
+                'style',
+            ]),
         template: SAFE_FREEFORM.default('{type}/{issue}-{slug}'),
         defaultBranch: SAFE_FREEFORM.default('main'),
         guardedBranches: z.array(SAFE_FREEFORM).min(1).default(['main']),
@@ -162,7 +186,7 @@ const PrSection = z
                 z.object({
                     pattern: RegexSource,
                     reason: SAFE_FREEFORM,
-                }),
+                })
             )
             .max(10)
             .optional(),
@@ -175,10 +199,17 @@ const PrSection = z
 
 const ReleaseSection = z
     .object({
-        tool: z.enum(['changesets', 'none', 'semantic-release']).default('none'),
+        tool: z
+            .enum(['changesets', 'none', 'semantic-release'])
+            .default('none'),
         versionBump: z
             .record(z.string(), z.enum(['major', 'minor', 'patch']))
-            .default({ feat: 'minor', fix: 'patch', chore: 'patch', refactor: 'patch' }),
+            .default({
+                feat: 'minor',
+                fix: 'patch',
+                chore: 'patch',
+                refactor: 'patch',
+            }),
     })
     .prefault({})
 
@@ -218,7 +249,8 @@ export const BaseRuleSchema = BaseRule
 export const BranchTypeRuleSchema = BranchTypeRule
 
 /** Hardcoded defaults matching today's behavior. Returned by consult() when fallback:true and no prefs file. */
-export const DEFAULT_PREFERENCES: ProjectPreferences = ProjectPreferencesSchema.parse({})
+export const DEFAULT_PREFERENCES: ProjectPreferences =
+    ProjectPreferencesSchema.parse({})
 
 /** `.planning/preferences.json` — repo-local cache of project preferences. */
 export function PREFERENCES_PATH(): string {

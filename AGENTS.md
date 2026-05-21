@@ -53,9 +53,11 @@ No `.env` is required for core development.
 | ------ | ------- |
 | Install deps | `bun install` |
 | Type check | `bunx --bun tsc --noEmit` |
+| Run tests (on-demand only — not in pre-commit) | `bun run --filter '*' test` |
 | Build luca-framework | `bun run build` |
 | Run mastracode harness | `bun run mastracode` |
 | Luca CLI | `bun run packages/luca-framework/bin/luca.js <command>` |
+| Migrate `.planning/` → `.luca/` | `luca migrate-planning [--dry-run] [--force]` |
 | Release locally | `bun run release:local` |
 
 ## Coding Standards
@@ -78,26 +80,70 @@ Key patterns:
 3. Format: `type(scope): #issue description` (lowercase, present tense verb)
 4. Branch naming: `{issue_number}--{dash-cased-description}`
 
-## `.planning/` Artifact Layout
+## `.luca/` Artifact Layout
 
-Luca's pipeline writes artifacts under `.planning/`. As of #220 the directory follows a **two-tier contract**:
+Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defined in `@alecsibilia/luca-core` (`packages/luca-core/src/luca-dir/configs.ts`):
 
-- **Root `.planning/` — cross-phase state** (one set per project, mutated across every phase):
-  - `luca-state.json`, `.luca-lock.json`
-  - `ROADMAP.md`, `config.json`
-  - `todos/{pending,backlog,done}/`
-  - JSONL audit logs: `session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`
+- **Root files** (cross-phase state):
+  - `state.json` — workflow state (pipelineStep, currentPhase, iteration counters)
+  - `config.json` — project config (vault, oversight defaults)
+  - `lock.json` — pipeline lock (PID + acquired_at)
+  - `roadmap.md` — **generated** from MuninnDB-backed roadmap
+  - `ledger.jsonl` — append-only session events
 
-- **`.planning/phases/<currentPhaseSlug>/` — session-scoped artifacts** (one directory per pipeline run; slug derived by triage from the work intent and persisted in `luca-state.json`):
-  - `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`
-  - `POSTMORTEM.md`, `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`
-  - `CONFIDENCE-JOURNAL.md`, `verification-result.json`, `checks-convergence.json`
-  - `*-capture-*.md` (plan-review captures, research captures)
-  - `runs/<runId>/` (archived prior runs)
+- **`phases/<NN-slug>/`** — one directory per work phase. Slug is zero-padded NN plus kebab-case description (derived from roadmap order, **not** LLM-named). Allowed files:
+  - `research.md`, `context.md`, `plan.md`, `plan-review.md`
+  - `verify.json`, `learn.md`
+  - `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`
+  - `audits/<reviewer>.md` (reviewer = `code-review`, `security`, `architect`, `ux`, etc.)
 
-Pipeline tools (`writePlanningFile`, `manageRoadmap`, state modules) auto-route by reading `currentPhaseSlug` from state — pass a bare basename (e.g. `"PLAN.md"`) and the writer resolves the correct directory. `scope:"root"` is only needed when bypassing auto-routing.
+- **`milestones/`** — versioned snapshot files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
 
-**Migrating a legacy `.planning/` layout** (loose root artifacts from before #220): run `workflowState({action:"archive-loose"})` from inside an active pipeline session. The action moves stragglers into `phases/<currentPhaseSlug>/`. It refuses if the lock is held by another live PID or if `currentPhaseSlug` is unset. See `docs/troubleshooting.md` for details.
+- **`telemetry/<runId>.jsonl`** — per-run event logs.
+
+- **`archive/<NN-slug>/`** — phase directories closed at milestone (frozen, never resurfaces).
+
+**Strict allowlist.** Anything not in the contract is a violation. Backlog/todos no longer live on disk — they're in MuninnDB (per-milestone snapshots are exported to `milestones/v<SEMVER>-backlog-snapshot.{json,md}`). Path validation is exposed via `isValidLucaPath` in `@alecsibilia/luca-core/luca-dir`.
+
+**Migrating from `.planning/`** (legacy layout): run `luca migrate-planning [--dry-run] [--force]`. Moves root files, deletes ephemeral files (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration.
+
+## Claude Code-first Architecture (v12+)
+
+`luca init` wires three layers into the project:
+
+1. **`.luca/` directory** — the workflow state, schema-validated by `@alecsibilia/luca-core`.
+2. **Stage-gate hook** (`.claude/hooks/stage-gate.sh` + `.claude/settings.json` PreToolUse registration) — `luca hook stage-gate` enforces a coarse-phase × tool-category matrix on every Edit/Write/Bash. Always-denied paths (.git/, ~/.claude/, /etc/, …) are blocked regardless of phase. Bash commands are tokenized via shell-quote AST so output redirects + cp/mv targets are checked against the path matrix — defeating the temp-file exfiltration pattern.
+3. **MCP server** (`luca mcp serve` registered in `.claude/settings.json` mcpServers) — exposes deterministic `luca_*` tools that mediate every write to `.luca/`. The LLM never picks a path; it expresses intent and the server computes the destination. Phase preconditions are enforced server-side: `luca_phase_write_plan` only works when `pipelineStep === "plan"`.
+
+**Two-layer enforcement.** The hook blocks the *attempt*; the MCP server blocks the *out-of-phase request*. Together they make the workflow discipline impossible to bypass without `--dangerously-skip-permissions`.
+
+### Phase skills + subagents
+
+Bundled with the npm package under `packages/luca-framework/skills/`:
+
+- `commands/phase-{discuss,plan,execute}.md` — slash commands the user invokes; orchestrate state advances + MCP tool calls + subagent delegation.
+- `agents/luca-{executor,planner,reviewer}.md` — Claude Code subagent definitions that do the cognitive/code-writing work.
+
+`luca init` copies these into `<project>/.claude/commands/` and `.claude/agents/`. **Re-running `luca init` always overwrites with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones).
+
+### Adding a new MCP tool
+
+1. Create `packages/luca-framework/src/mcp/helpers/tools/luca-<name>.ts` exporting a `ToolDescriptor` with name + description + inputSchema (Zod) + `allowedPhases` (if write-class) + handler.
+2. Add it to `packages/luca-framework/src/mcp/helpers/tool-registry.ts` `TOOL_REGISTRY`.
+3. Write a `*.test.ts` covering the happy path + at least one error path.
+4. Run `bun test src/mcp` to verify.
+
+The hook + server pair will refuse to land any tool that doesn't declare its phase scope. Be explicit; the matrix is the contract.
+
+### Adding a new phase skill
+
+1. Write `packages/luca-framework/skills/commands/<name>.md` with frontmatter (name, description) and instructions that call the right MCP tools.
+2. Skills are markdown — they're prompts, not code. The discipline is in the MCP tool layer they delegate to, not the markdown.
+3. `luca init` will pick the new skill up automatically (re-run it in your project to install).
+
+### Mastracode coexistence
+
+`luca-mastracode` is still in the tree and `luca run` still spawns it the old way. The new Claude Code-first path runs through the bundled skills + MCP server. The two paths are independent; you can use either in a given project. Mastracode-resident skills + subagents will be ported individually in follow-up PRs.
 
 ## Related Files
 

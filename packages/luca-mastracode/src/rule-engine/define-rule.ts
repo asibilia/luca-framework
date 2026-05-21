@@ -18,11 +18,7 @@
  */
 import type ts from 'typescript'
 
-export type RuleSeverity =
-    | 'must-fix'
-    | 'should-fix'
-    | 'nit'
-    | 'info'
+export type RuleSeverity = 'must-fix' | 'should-fix' | 'nit' | 'info'
 
 export interface RuleFinding {
     /** Stable id — typically `<rule.id>:<path>:<line>`. */

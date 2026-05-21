@@ -21,21 +21,25 @@ Default to using Bun instead of Node.js.
   - Build luca-framework: `bun run build`
   - Run mastracode: `bun run mastracode`
 - The local `.claude/` in this repo contains only `settings.local.json` and `plans/` — not generated artifacts.
+- The `.luca/` directory (new) is the workflow data dir; the `.planning/` directory (legacy) still exists during the migration window — see the section below.
 - **High-leverage gotchas**:
   - There is **no ESLint configuration**; linting is effectively TypeScript type checking.
   - Bun is required (repo uses `bun.lock` and `bunfig.toml`). If Bun is missing, install it before running any commands.
   - No `.env` is required for core development.
 
-## `.planning/` Artifact Layout
+## `.luca/` Artifact Layout
 
-Luca's pipeline uses a two-tier directory contract under `.planning/` (post-#220):
+Luca's pipeline writes artifacts under `.luca/` (replaces the legacy `.planning/` layout). The canonical contract lives in `@alecsibilia/luca-core` (`packages/luca-core/src/luca-dir/configs.ts`):
 
-- **Root** = cross-phase state: `luca-state.json`, `.luca-lock.json`, `ROADMAP.md`, `config.json`, `todos/`, JSONL audit logs (`session-ledger.jsonl`, `routing-history.jsonl`, `verification-history.jsonl`, `confidence-journal.jsonl`).
-- **`.planning/phases/<currentPhaseSlug>/`** = session-scoped artifacts: `PLAN.md`, `RESEARCH.md`, `CONTEXT.md`, `POSTMORTEM.md`, `REVIEW-{n}.md`, `SESSION-ARCHIVE.md`, `SUGGESTED-RULES.md`, `CONFIDENCE-JOURNAL.md`, `verification-result.json`, `checks-convergence.json`, `*-capture-*.md`, and `runs/<runId>/` (archived prior runs).
+- **Root files**: `state.json`, `config.json`, `lock.json`, `roadmap.md` (generated), `ledger.jsonl`.
+- **`phases/<NN-slug>/`** — one directory per work phase, slug is zero-padded NN plus kebab-case description. Allowed files: `research.md`, `context.md`, `plan.md`, `plan-review.md`, `verify.json`, `learn.md`, `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`, `audits/<reviewer>.md`.
+- **`milestones/`** — versioned files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
+- **`telemetry/<runId>.jsonl`** — per-run event logs.
+- **`archive/<NN-slug>/`** — phase directories closed at milestone.
 
-Triage derives the slug from the work intent and persists it in state. `writePlanningFile`, `manageRoadmap`, and the state modules auto-route based on `currentPhaseSlug` — pass a bare basename and the writer resolves the directory.
+**Strict allowlist**: anything outside this contract is a violation. Filenames are derived (NN order, fixed reviewer names, zero-padded waves) — the LLM never picks a path. The MCP server (forthcoming) is the positive write surface; the stage-gate hook (forthcoming) blocks direct writes outside the contract.
 
-**Migration**: legacy repos with loose root artifacts can run `workflowState({action:"archive-loose"})` to migrate them into `phases/<currentPhaseSlug>/`. The action refuses if the pipeline lock is held by another live PID or if no slug is set. See `docs/troubleshooting.md` → "Migrating a legacy `.planning/` layout".
+**Migrating from `.planning/`**: run `luca migrate-planning [--dry-run] [--force]`. It moves root files (state, lock, roadmap, config, ledger), deletes ephemerals (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`, and refuses on uncommitted `.planning/` changes unless `--force`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration — a follow-up command handles slug normalization once the collision strategy is set.
 
 ## Response approach
 

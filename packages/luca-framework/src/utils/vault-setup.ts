@@ -26,7 +26,7 @@
  * }
  * ```
  */
-import { chmodSync, existsSync } from 'node:fs'
+import { chmodSync } from 'node:fs'
 
 import { sanitizeVaultName } from '@alecsibilia/luca-mastracode'
 import * as p from '@clack/prompts'

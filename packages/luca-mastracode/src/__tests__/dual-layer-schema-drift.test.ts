@@ -24,12 +24,39 @@ import {
     workflowStateInputSchema,
 } from '../tools/workflow-state.js'
 
+// ---------------------------------------------------------------------------
+// Minimal structural types for Zod v4 internal schema nodes.
+// These capture only the properties accessed by unwrapToString / regexPatterns.
+// ---------------------------------------------------------------------------
+
+interface ZodInternalCheck {
+    _zod?: { def?: { format?: string; pattern?: unknown } }
+    format?: string
+    pattern?: unknown
+}
+
+interface ZodInternalDef {
+    type?: string
+    innerType?: ZodInternalNode
+    inner?: ZodInternalNode
+    schema?: ZodInternalNode
+    element?: ZodInternalNode
+    checks?: ZodInternalCheck[]
+}
+
+interface ZodInternalNode {
+    _zod?: { def?: ZodInternalDef }
+    _def?: ZodInternalDef
+}
+
 // Consume the live registry from workflow-state.ts — the source of truth.
 // Adding a new constraint-bearing per-action schema to that registry
 // automatically extends this drift guard's coverage; a hand-curated list
 // here would recreate the very class of drift the test exists to prevent.
-const PER_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> =
-    WORKFLOW_ACTION_SCHEMAS
+const PER_ACTION_SCHEMAS: Record<
+    string,
+    z.ZodObject<z.ZodRawShape>
+> = WORKFLOW_ACTION_SCHEMAS
 
 // The `action` key is the discriminator on per-action schemas — the flat
 // schema represents it as a z.enum(WORKFLOW_STATE_ACTIONS) so it is
@@ -46,7 +73,7 @@ const SKIP_KEYS = new Set(['action'])
  * compared. Returns `null` if the field is not (or does not contain) a string.
  */
 function unwrapToString(node: unknown): unknown | null {
-    let cur = node as any
+    let cur = node as ZodInternalNode | null | undefined
     // Defensive cap on unwrap depth so a cyclic/unknown wrapper can't loop.
     for (let i = 0; i < 10; i++) {
         if (!cur || typeof cur !== 'object') return null
@@ -59,7 +86,11 @@ function unwrapToString(node: unknown): unknown | null {
             continue
         }
         if (type === 'array') {
-            cur = def.element ?? def.type?.element
+            const nodeOrStr = def as {
+                element?: ZodInternalNode
+                type?: { element?: ZodInternalNode }
+            }
+            cur = nodeOrStr.element ?? nodeOrStr.type?.element
             continue
         }
         return null
@@ -75,9 +106,10 @@ function unwrapToString(node: unknown): unknown | null {
 function regexPatterns(node: unknown): string[] {
     const str = unwrapToString(node)
     if (!str) return []
-    const checks: any[] = (str as any)._zod?.def?.checks
-        ?? (str as any)._def?.checks
-        ?? []
+    const checks: ZodInternalCheck[] =
+        (str as ZodInternalNode)._zod?.def?.checks ??
+        (str as ZodInternalNode)._def?.checks ??
+        []
     const out: string[] = []
     for (const c of checks) {
         const def = c?._zod?.def ?? c
@@ -180,7 +212,12 @@ describe('dual-layer schema drift', () => {
 
         test('missingRegexPatterns inspects array element regex', () => {
             const perAction = z
-                .array(z.string().regex(/^[a-z0-9_-]+$/, 'kebab').max(64))
+                .array(
+                    z
+                        .string()
+                        .regex(/^[a-z0-9_-]+$/, 'kebab')
+                        .max(64)
+                )
                 .optional()
             const flat = z.array(z.string().max(64)).optional() // element regex dropped
             const missing = missingRegexPatterns(perAction, flat)
@@ -214,13 +251,13 @@ describe('dual-layer schema drift', () => {
                 .optional()
             const patterns = missingRegexPatterns(
                 canary,
-                z.string().optional(), // flat side has NO regex
+                z.string().optional() // flat side has NO regex
             )
             expect(
                 patterns,
                 'Zod internals canary: helpers returned [] for a schema that DEFINITELY has a regex. ' +
                     'This means `_zod.def.checks` (or the fallback `_def`) no longer exposes regex checks — ' +
-                    'the drift detector is silently degraded. Update `unwrapToString` / `regexPatterns` in this file.',
+                    'the drift detector is silently degraded. Update `unwrapToString` / `regexPatterns` in this file.'
             ).not.toEqual([])
             expect(patterns).toContain('^canary-[a-z]+$')
         })

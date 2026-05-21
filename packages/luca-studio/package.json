@@ -1,7 +1,6 @@
 {
   "name": "@alecsibilia/luca-studio",
   "version": "0.1.0",
-  "private": true,
   "bin": {
     "luca-studio": "./bin/luca-studio.js"
   },
@@ -50,6 +49,7 @@
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
   },
+  "private": true,
   "scripts": {
     "build": "next build",
     "css:build": "bunx @tailwindcss/cli -i ./tailwind/base.css -o ./app/globals.css --minify",

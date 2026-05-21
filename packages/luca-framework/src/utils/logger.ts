@@ -1,4 +1,4 @@
-import { consola, createConsola } from 'consola'
+import { consola } from 'consola'
 
 // Create tagged logger for Luca
 export const log = consola.withTag('luca')

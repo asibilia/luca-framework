@@ -16,6 +16,7 @@ import type { Dirent } from 'node:fs'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
+
 import { describe, expect, test } from 'bun:test'
 
 const here = url.fileURLToPath(import.meta.url)
@@ -29,11 +30,7 @@ const SCAN_ROOTS = [
     'commands',
 ]
 
-const ALLOWLIST = [
-    /__tests__\//,
-    /memory-tier-discipline\.ts$/,
-    /dist\//,
-]
+const ALLOWLIST = [/__tests__\//, /memory-tier-discipline\.ts$/, /dist\//]
 
 const VERIFIED_RE = /Tier:\s*verified/
 const TRUST_RE = /mcp__muninn__muninn_trust\s*\(/
@@ -65,11 +62,7 @@ function gatherCandidateFiles(): string[] {
             continue
         }
         for (const f of walk(abs)) {
-            if (
-                f.endsWith('.md') ||
-                f.endsWith('.ts') ||
-                f.endsWith('.tsx')
-            ) {
+            if (f.endsWith('.md') || f.endsWith('.ts') || f.endsWith('.tsx')) {
                 out.push(f)
             }
         }
@@ -90,7 +83,7 @@ function trustFollowupNearby(body: string, markerLineIdx: number): boolean {
     const lines = body.split('\n')
     const end = Math.min(
         lines.length,
-        markerLineIdx + 1 + TRUST_LOOKAHEAD_LINES,
+        markerLineIdx + 1 + TRUST_LOOKAHEAD_LINES
     )
     for (let i = markerLineIdx + 1; i < end; i++) {
         if (TRUST_RE.test(lines[i] ?? '')) return true
@@ -112,7 +105,7 @@ describe('Memory Tier — every Tier: verified marker has muninn_trust follow-up
             test(`${rel}:${lineNo} verified-marker has trust follow-up`, () => {
                 expect(
                     trustFollowupNearby(body, lineIdx),
-                    `Expected 'mcp__muninn__muninn_trust(' within ${TRUST_LOOKAHEAD_LINES} lines following Tier: verified marker at ${rel}:${lineNo}`,
+                    `Expected 'mcp__muninn__muninn_trust(' within ${TRUST_LOOKAHEAD_LINES} lines following Tier: verified marker at ${rel}:${lineNo}`
                 ).toBe(true)
             })
         }

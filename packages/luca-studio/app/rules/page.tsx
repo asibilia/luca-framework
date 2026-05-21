@@ -57,7 +57,7 @@ export default function RulesPage() {
     const { detail, loading: detailLoading, etag } = useRuleDetail(selectedName)
 
     // Undo/redo for the selected rule's draft
-    const { undo, redo } = useUndo(ruleHistoryAtom(selectedName ?? '__noop__'))
+    useUndo(ruleHistoryAtom(selectedName ?? '__noop__'))
 
     // Map API summaries to EntityTree items
     // CRITICAL: Rules use profiles/{language}/ subdirectories that need two-level extraction

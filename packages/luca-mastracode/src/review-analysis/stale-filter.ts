@@ -146,7 +146,11 @@ interface GitInvokeResult {
     stdout: string
 }
 
-function git(repoRoot: string, args: string[], timeoutMs = 5000): GitInvokeResult {
+function git(
+    repoRoot: string,
+    args: string[],
+    timeoutMs = 5000
+): GitInvokeResult {
     try {
         const r = spawnSync('git', args, {
             cwd: repoRoot,
@@ -171,7 +175,13 @@ function pathChangedBetween(
     toSha: string,
     path: string
 ): boolean {
-    const r = git(repoRoot, ['diff', '--name-only', `${fromSha}..${toSha}`, '--', path])
+    const r = git(repoRoot, [
+        'diff',
+        '--name-only',
+        `${fromSha}..${toSha}`,
+        '--',
+        path,
+    ])
     if (!r.ok) return false
     return r.stdout.split('\n').some((l) => l.trim() === path)
 }
@@ -215,7 +225,11 @@ export function findAnchorInFile(
         for (const anchor of meaningfulAnchors) {
             // Search forward up to 3 lines for this anchor.
             let found = -1
-            for (let probe = 0; probe < 4 && cursor + probe < fileLines.length; probe++) {
+            for (
+                let probe = 0;
+                probe < 4 && cursor + probe < fileLines.length;
+                probe++
+            ) {
                 if (fileLines[cursor + probe] === anchor) {
                     found = probe
                     break
@@ -239,7 +253,11 @@ export function findAnchorInFile(
     for (let i = windowStart; i < windowEnd; i++) {
         const c = scoreAt(i)
         if (!c) continue
-        if (!best || c.matchedRatio > best.matchedRatio || Math.abs(c.line - expected) < Math.abs(best.line - expected)) {
+        if (
+            !best ||
+            c.matchedRatio > best.matchedRatio ||
+            Math.abs(c.line - expected) < Math.abs(best.line - expected)
+        ) {
             best = c
         }
     }

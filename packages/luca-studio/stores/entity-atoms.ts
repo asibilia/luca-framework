@@ -29,7 +29,7 @@ type EntityDraft = Record<string, unknown>
  * const draft = useAtom(agentDraftAtom("lu-router"));
  * ```
  */
-export const agentDraftAtom = atomFamily((name: string) =>
+export const agentDraftAtom = atomFamily((_name: string) =>
     atom<EntityDraft>({})
 )
 
@@ -41,7 +41,7 @@ export const agentDraftAtom = atomFamily((name: string) =>
  * const draft = useAtom(skillDraftAtom("git-commit"));
  * ```
  */
-export const skillDraftAtom = atomFamily((name: string) =>
+export const skillDraftAtom = atomFamily((_name: string) =>
     atom<EntityDraft>({})
 )
 
@@ -53,7 +53,9 @@ export const skillDraftAtom = atomFamily((name: string) =>
  * const draft = useAtom(ruleDraftAtom("no-classes"));
  * ```
  */
-export const ruleDraftAtom = atomFamily((name: string) => atom<EntityDraft>({}))
+export const ruleDraftAtom = atomFamily((_name: string) =>
+    atom<EntityDraft>({})
+)
 
 // ---------------------------------------------------------------------------
 // Per-Entity History Atoms (Undo / Redo)

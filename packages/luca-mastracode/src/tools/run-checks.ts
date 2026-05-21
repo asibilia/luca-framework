@@ -15,7 +15,10 @@ import {
     readConvergence,
     writeConvergence,
 } from './check-convergence.js'
-import { parseAndFingerprint, type FingerprintedError } from './check-parsers.js'
+import {
+    parseAndFingerprint,
+    type FingerprintedError,
+} from './check-parsers.js'
 import {
     buildCommand,
     detectCheck,

@@ -77,7 +77,7 @@ describe('memory-audit skill — fenced prohibition block (G-DX-001, MF-4)', () 
         const endIdx = content.indexOf(endMarker)
         if (startIdx === -1 || endIdx === -1) {
             throw new Error(
-                'forbidden-tools fence markers missing from SKILL.md',
+                'forbidden-tools fence markers missing from SKILL.md'
             )
         }
         return (
@@ -130,7 +130,7 @@ describe('memory-audit skill — policy contracts', () => {
 
     test('skill never assigns untrusted or modifies external (G-SCOPE-001)', () => {
         expect(SKILL).toMatch(
-            /never\s+`untrusted`;\s+`external`\s+is left untouched/,
+            /never\s+`untrusted`;\s+`external`\s+is left untouched/
         )
     })
 
@@ -144,9 +144,7 @@ describe('memory-audit skill — policy contracts', () => {
     })
 
     test('hybrid pagination strategy referenced (get_enrichment_candidates + recall)', () => {
-        expect(SKILL).toContain(
-            'mcp__muninn__muninn_get_enrichment_candidates',
-        )
+        expect(SKILL).toContain('mcp__muninn__muninn_get_enrichment_candidates')
         expect(SKILL).toContain('mcp__muninn__muninn_recall')
     })
 })
@@ -160,9 +158,7 @@ describe('memory-audit skill — vault drift guard (MF-1)', () => {
         // Must say the check fires regardless of how the vault was resolved.
         expect(SKILL).toMatch(/Vault drift guard \(always-on\)/)
         expect(SKILL).toMatch(/Vault mismatch:/)
-        expect(SKILL).toMatch(
-            /regardless of how the vault was resolved/,
-        )
+        expect(SKILL).toMatch(/regardless of how the vault was resolved/)
     })
 
     test('pre-flight --apply confirmation gate documented', () => {
@@ -174,14 +170,12 @@ describe('memory-audit skill — vault drift guard (MF-1)', () => {
 
 describe('memory-audit skill — lastRunAt set-time invariant (MF-2)', () => {
     test('schema seeds lastRunAt as empty string', () => {
-        expect(SKILL).toMatch(
-            /"lastRunAt":\s*"<ISO-timestamp-or-empty>"/,
-        )
+        expect(SKILL).toMatch(/"lastRunAt":\s*"<ISO-timestamp-or-empty>"/)
     })
 
     test('Step 6 explicitly sets lastRunAt before persist', () => {
         expect(SKILL).toMatch(
-            /Set `state\.lastRunAt` to the current ISO timestamp/,
+            /Set `state\.lastRunAt` to the current ISO timestamp/
         )
     })
 
@@ -199,7 +193,7 @@ describe('memory-audit skill — totalsByTier split (SF-2)', () => {
     test('appliedByTier only contains verified and inferred keys', () => {
         // SF-2: external/untrusted are never applied; their counters were dead.
         expect(SKILL).toMatch(
-            /"appliedByTier":\s*\{\s*"verified":\s*0,\s*"inferred":\s*0\s*\}/,
+            /"appliedByTier":\s*\{\s*"verified":\s*0,\s*"inferred":\s*0\s*\}/
         )
     })
 })

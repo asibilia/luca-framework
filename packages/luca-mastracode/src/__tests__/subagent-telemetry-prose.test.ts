@@ -15,11 +15,13 @@
  * for anti-patterns that must NOT be present).
  */
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, test, expect } from 'bun:test'
-import { SUBAGENT_SHARED_PREFIX } from '../subagents/shared-prefix.js'
+
 import { reviewerSubagent } from '../subagents/reviewer.js'
+import { SUBAGENT_SHARED_PREFIX } from '../subagents/shared-prefix.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const INSTRUCTIONS_DIR = join(__dirname, '..', 'instructions')
@@ -115,7 +117,7 @@ describe('review.md Step 4 record-subagent is outside fenced code blocks', () =>
         expect(directiveBody).not.toMatch(/reviewer-(arch|dx|sec|simpl)-<ts>/)
         //     b) hardcoded epoch (10+ contiguous digits after reviewer-<role>-)
         expect(directiveBody).not.toMatch(
-            /reviewer-(arch|dx|sec|simpl)-\d{10,}/,
+            /reviewer-(arch|dx|sec|simpl)-\d{10,}/
         )
     })
 })
@@ -129,7 +131,8 @@ describe('finalize.md contains record-subagent prose', () => {
 describe('reviewer subagent runtime-composed instructions contain usage self-report', () => {
     // Compose as launch.ts does: SUBAGENT_SHARED_PREFIX + '\n\n' + sub.instructions
     // This validates the actual prompt structure the model receives, not raw source text.
-    const assembled = SUBAGENT_SHARED_PREFIX + '\n\n' + reviewerSubagent.instructions
+    const assembled =
+        SUBAGENT_SHARED_PREFIX + '\n\n' + reviewerSubagent.instructions
 
     // Guard: positional asserts below rely on 'CONSOLIDATED:' appearing only in
     // reviewer.ts output format (not in SUBAGENT_SHARED_PREFIX). If shared-prefix
@@ -146,7 +149,9 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         // The reviewer.ts clarification prose anchors placement to the CONSOLIDATED block.
         // Check it appears after CONSOLIDATED: in the assembled prompt.
         const consolidatedPos = assembled.indexOf('CONSOLIDATED:')
-        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
+        const clarificationPos = assembled.indexOf(
+            'Append the usage comment immediately after the closing'
+        )
         expect(consolidatedPos).toBeGreaterThan(-1)
         expect(clarificationPos).toBeGreaterThan(-1)
         expect(
@@ -160,7 +165,9 @@ describe('reviewer subagent runtime-composed instructions contain usage self-rep
         // in reviewer.ts. No `## ` section heading may follow it. This is the structural
         // root cause of the original drift — when clarification was followed by other
         // sections, attention burial caused reviewer-dx/simpl to skip usage emission.
-        const clarificationPos = assembled.indexOf('Append the usage comment immediately after the closing')
+        const clarificationPos = assembled.indexOf(
+            'Append the usage comment immediately after the closing'
+        )
         expect(clarificationPos).toBeGreaterThan(-1)
         const tail = assembled.slice(clarificationPos)
         // No `## ` (markdown H2) section heading may appear after the clarification.

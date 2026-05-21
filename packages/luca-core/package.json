@@ -1,0 +1,27 @@
+{
+  "name": "@alecsibilia/luca-core",
+  "description": "Core types, schemas, and deterministic contracts shared by the luca toolchain (state machine, .luca/ directory contract, coarse-phase mapping)",
+  "version": "0.1.0",
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./state": "./src/state/index.ts",
+    "./luca-dir": "./src/luca-dir/index.ts",
+    "./preferences": "./src/preferences/index.ts",
+    "./todos": "./src/todos/index.ts",
+    "./shadow-scan": "./src/shadow-scan/index.ts"
+  },
+  "main": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx --bun tsc --noEmit"
+  },
+  "type": "module"
+}

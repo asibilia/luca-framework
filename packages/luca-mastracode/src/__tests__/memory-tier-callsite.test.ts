@@ -20,6 +20,7 @@ import type { Dirent } from 'node:fs'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
+
 import { describe, expect, test } from 'bun:test'
 
 const here = url.fileURLToPath(import.meta.url)
@@ -33,11 +34,7 @@ const SCAN_ROOTS = [
     'commands',
 ]
 
-const ALLOWLIST = [
-    /__tests__\//,
-    /memory-tier-discipline\.ts$/,
-    /dist\//,
-]
+const ALLOWLIST = [/__tests__\//, /memory-tier-discipline\.ts$/, /dist\//]
 
 const REMEMBER_RE = /mcp__muninn__muninn_remember(?:_batch)?\s*\(/
 // Accept all four tiers from MEMORY_TIER_DISCIPLINE so legitimate `external`
@@ -72,11 +69,7 @@ function gatherCandidateFiles(): string[] {
             continue
         }
         for (const f of walk(abs)) {
-            if (
-                f.endsWith('.md') ||
-                f.endsWith('.ts') ||
-                f.endsWith('.tsx')
-            ) {
+            if (f.endsWith('.md') || f.endsWith('.ts') || f.endsWith('.tsx')) {
                 out.push(f)
             }
         }
@@ -85,7 +78,7 @@ function gatherCandidateFiles(): string[] {
 }
 
 function findRememberCallsites(
-    body: string,
+    body: string
 ): { lineIdx: number; line: string }[] {
     const lines = body.split('\n')
     const hits: { lineIdx: number; line: string }[] = []
@@ -123,7 +116,7 @@ describe('Memory Tier — every muninn_remember callsite has a tier marker withi
             test(`${rel}:${lineNo} ${line.trim().slice(0, 60)}`, () => {
                 expect(
                     tierMarkerNearby(body, lineIdx),
-                    `Expected 'Tier: verified|inferred|external|untrusted' within ${TIER_LOOKBACK_LINES} lines preceding ${rel}:${lineNo}`,
+                    `Expected 'Tier: verified|inferred|external|untrusted' within ${TIER_LOOKBACK_LINES} lines preceding ${rel}:${lineNo}`
                 ).toBe(true)
             })
         }

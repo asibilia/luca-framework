@@ -12,6 +12,7 @@ import {
     PIPELINE_ORDER,
 } from '../orchestration/pipeline-guard.js'
 import * as lucaStore from '../state/luca-store.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
 import * as sessionLedger from '../state/session-ledger.js'
 import { followUpRef, switchModeRef } from '../util/refs.js'
 
@@ -22,9 +23,9 @@ import { followUpRef, switchModeRef } from '../util/refs.js'
 // Mock file-system-dependent modules
 const mockReadLucaState = spyOn(lucaStore, 'readLucaState').mockReturnValue({
     pipelineStep: 'luca:1-triage',
-} as any)
+} as LucaWorkflowState)
 const mockWriteLucaState = spyOn(lucaStore, 'writeLucaState').mockReturnValue(
-    {} as any
+    {} as LucaWorkflowState
 )
 const mockAppendLedger = spyOn(sessionLedger, 'appendLedger').mockReturnValue(
     undefined
@@ -34,7 +35,9 @@ beforeEach(() => {
     resetTurn()
     followUpRef.current = null
     switchModeRef.current = null
-    mockReadLucaState.mockReturnValue({ pipelineStep: 'luca:1-triage' } as any)
+    mockReadLucaState.mockReturnValue({
+        pipelineStep: 'luca:1-triage',
+    } as LucaWorkflowState)
     mockWriteLucaState.mockClear()
     mockAppendLedger.mockClear()
 })
@@ -161,7 +164,7 @@ describe('checkTurnCompletion', () => {
     })
 
     test('returns null for non-pipeline modes', () => {
-        startTurn('build' as any)
+        startTurn('build')
         // Manually set up — build isn't a pipeline mode so startTurn
         // would still track it, but checkTurnCompletion should skip
         expect(checkTurnCompletion('complete')).toBeNull()
@@ -184,7 +187,9 @@ describe('checkTurnCompletion', () => {
     })
 
     test('returns null when pipeline is idle (prevents stale guard enforcement)', () => {
-        mockReadLucaState.mockReturnValue({ pipelineStep: 'idle' } as any)
+        mockReadLucaState.mockReturnValue({
+            pipelineStep: 'idle',
+        } as LucaWorkflowState)
         startTurn('luca:1-triage')
         recordToolStart('tc-1', 'classifyComplexity', { action: 'classify' })
         recordToolEnd('tc-1')
@@ -192,7 +197,7 @@ describe('checkTurnCompletion', () => {
     })
 
     test('returns null when pipelineStep is unset', () => {
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         startTurn('luca:1-triage')
         expect(checkTurnCompletion('complete')).toBeNull()
     })

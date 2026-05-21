@@ -9,7 +9,9 @@
  * index.ts and tool modules.
  */
 
-type ResolveModelFn = (modelId: string) => any
+import type { MastraModelConfig } from '@mastra/core/llm'
+
+type ResolveModelFn = (modelId: string) => MastraModelConfig
 type SwitchModeFn = (modeId: string) => Promise<void>
 
 /**
@@ -45,7 +47,7 @@ export const followUpRef: { current: FollowUpFn | null } = {
  * Used by mode agent dynamic tools to merge MCP tools at request time,
  * and by subagent definitions for MCP-aware subagents.
  */
-type McpManagerLike = { getTools(): Record<string, any> }
+type McpManagerLike = { getTools(): Record<string, unknown> }
 export const mcpManagerRef: { current: McpManagerLike | null } = {
     current: null,
 }
