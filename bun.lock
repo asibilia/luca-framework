@@ -38,12 +38,11 @@
     },
     "packages/luca-framework": {
       "name": "@alecsibilia/luca-framework",
-      "version": "11.9.0-alpha.11",
+      "version": "12.0.0-alpha.14",
       "bin": {
         "luca": "./bin/luca.js",
       },
       "dependencies": {
-        "@alecsibilia/luca-core": "workspace:*",
         "@clack/prompts": "^1.0.0",
         "@mastra/core": "catalog:",
         "@mastra/libsql": "catalog:",
@@ -59,6 +58,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@alecsibilia/luca-core": "workspace:*",
         "@alecsibilia/luca-mastracode": "workspace:*",
         "@types/semver": "^7.5.8",
         "@types/shell-quote": "^1.7.5",
@@ -67,7 +67,7 @@
     },
     "packages/luca-mastracode": {
       "name": "@alecsibilia/luca-mastracode",
-      "version": "11.9.0-alpha.11",
+      "version": "12.0.0-alpha.14",
       "dependencies": {
         "@alecsibilia/luca-core": "workspace:*",
         "@mastra/core": "catalog:",
