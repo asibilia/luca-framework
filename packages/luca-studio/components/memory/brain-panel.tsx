@@ -12,7 +12,6 @@ import {
     CardTitle,
     CardDescription,
     CardAction,
-    CardContent,
 } from '~/components/ui/card'
 import type { ActivationItem } from '~/hooks/use-memory'
 

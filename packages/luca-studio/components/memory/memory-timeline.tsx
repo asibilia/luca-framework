@@ -11,7 +11,7 @@ import {
     CardDescription,
     CardContent,
 } from '~/components/ui/card'
-import type { CheckpointData, ZoneHistoryEntry } from '~/hooks/use-checkpoint'
+import type { CheckpointData } from '~/hooks/use-checkpoint'
 import type { ObservationsData } from '~/hooks/use-observations'
 import { relativeTime, zoneColor } from '~/lib/format'
 

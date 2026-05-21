@@ -3,10 +3,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 
 import { cn } from '~/lib/utils'
-import {
-    WorkflowNodeDataSchema,
-    type WorkflowNodeData,
-} from '~/lib/workflow-types'
+import { WorkflowNodeDataSchema } from '~/lib/workflow-types'
 
 // -- Stage color palette (hex for SVG reliability) ----------------------------
 

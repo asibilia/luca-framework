@@ -11,7 +11,6 @@ import {
     configEtagAtom,
 } from '~/stores/config-atoms'
 import { markCleanAtom } from '~/stores/dirty-tracking'
-import { pipelineNodesAtom, pipelineEdgesAtom } from '~/stores/pipeline-atoms'
 
 // -- Types --------------------------------------------------------------------
 
@@ -47,8 +46,6 @@ export function usePipelineSave(): PipelineSaveActions {
     const [, markClean] = useAtom(markCleanAtom)
     const [, setConfigDraft] = useAtom(configDraftAtom)
     const [configEtag, setConfigEtag] = useAtom(configEtagAtom)
-    const [, setNodes] = useAtom(pipelineNodesAtom)
-    const [, setEdges] = useAtom(pipelineEdgesAtom)
 
     const handleSave = useCallback(async () => {
         if (!configDraft) return
