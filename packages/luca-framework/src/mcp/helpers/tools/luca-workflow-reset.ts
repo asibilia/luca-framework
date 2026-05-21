@@ -1,5 +1,4 @@
-import { existsSync } from 'node:fs'
-import { unlink } from 'node:fs/promises'
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { lucaRootPaths, lucaStateSchema } from '@alecsibilia/luca-core'
@@ -55,9 +54,10 @@ export const lucaWorkflowResetTool: ToolDescriptor<
             JSON.stringify(defaultState, null, 2) + '\n'
         )
 
-        if (existsSync(lockPath)) {
-            await unlink(lockPath)
-        }
+        // Tolerant delete: `force` ignores a missing file, so the reset is
+        // idempotent and immune to a TOCTOU race if the lock is cleared
+        // concurrently.
+        await rm(lockPath, { force: true })
 
         return {
             content: [
