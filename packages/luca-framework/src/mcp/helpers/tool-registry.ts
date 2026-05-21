@@ -18,6 +18,9 @@ import { lucaRoadmapCreateTool } from './tools/luca-roadmap-create.ts'
 import { lucaRoadmapReadTool } from './tools/luca-roadmap-read.ts'
 import { lucaStateAdvanceTool } from './tools/luca-state-advance.ts'
 import { lucaStateReadTool } from './tools/luca-state-read.ts'
+import { lucaTodoAddTool } from './tools/luca-todo-add.ts'
+import { lucaTodoListTool } from './tools/luca-todo-list.ts'
+import { lucaTodoUpdateTool } from './tools/luca-todo-update.ts'
 import { lucaWorkflowResetTool } from './tools/luca-workflow-reset.ts'
 
 /**
@@ -25,8 +28,9 @@ import { lucaWorkflowResetTool } from './tools/luca-workflow-reset.ts'
  * this module gets you the full set. Phase 5B.1 added 5 phase-write
  * tools (summary, wave, verify, learn, plan-review); Phase 5B.2 added 4
  * workflow + verification tools (branch-guard, confidence-log,
- * workflow-reset, checks-run); Phase 5B.3 adds 4 preferences + roadmap
- * tools.
+ * workflow-reset, checks-run); Phase 5B.3 added 4 preferences + roadmap
+ * tools; Phase 5B.4 adds 3 todo delegation tools (add, list, update)
+ * that emit muninn_remember/recall instructions for the agent to run.
  */
 export const TOOL_REGISTRY: ToolDescriptor[] = [
     // Read tools (available in every phase)
@@ -35,6 +39,10 @@ export const TOOL_REGISTRY: ToolDescriptor[] = [
     lucaBranchGuardTool as ToolDescriptor,
     lucaPreferencesReadTool as ToolDescriptor,
     lucaRoadmapReadTool as ToolDescriptor,
+    // Todo delegation (emit muninn_* instructions; no allowedPhases)
+    lucaTodoAddTool as ToolDescriptor,
+    lucaTodoListTool as ToolDescriptor,
+    lucaTodoUpdateTool as ToolDescriptor,
     // State transitions (validated against pipeline-transitions table)
     lucaStateAdvanceTool as ToolDescriptor,
     // Workflow lifecycle (destructive, allowed in any phase)
