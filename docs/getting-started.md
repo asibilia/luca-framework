@@ -60,7 +60,7 @@ The strict allowlist (defined in `@alecsibilia/luca-core/luca-dir`):
 - **`.luca/telemetry/<runId>.jsonl`** — per-run event logs.
 - **`.luca/archive/<NN-slug>/`** — phase directories closed at milestone.
 
-Anything not in this allowlist is a violation. The LLM never picks a filename — write tools (MCP server, forthcoming) compute paths from intent.
+Anything not in this allowlist is a violation. The LLM never picks a filename — the stage-gate hook computes the canonical path for the current pipeline step and allows only an exact match.
 
 If you have a project on the legacy `.planning/` layout, run `luca migrate-planning [--dry-run] [--force]`. See [Troubleshooting → Migrating a legacy `.planning/` layout](troubleshooting.md#migrating-a-legacy-planning-layout).
 
@@ -84,7 +84,7 @@ When you start a pipeline run, the **triage** stage derives a phase slug from yo
 
 ### Step 2: Create a Plan
 
-The **architect** stage writes `plan.md` inside the active phase directory (e.g. `.luca/phases/07-add-webhook-support/plan.md`). The MCP write tools compute the path — you express intent, the tool resolves the destination.
+The **architect** stage writes `plan.md` inside the active phase directory (e.g. `.luca/phases/07-add-webhook-support/plan.md`). The artifact is written with the native `Write` tool to the canonical path, and the stage-gate hook verifies that path is the legal artifact for the current pipeline step.
 
 ### Step 3: Execute the Plan
 

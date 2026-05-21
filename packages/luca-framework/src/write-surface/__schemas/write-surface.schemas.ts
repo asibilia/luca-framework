@@ -13,10 +13,6 @@ export interface ToolContext {
 
 /**
  * A single text block in a {@link WriteResult}.
- *
- * Structurally identical to the MCP SDK's text content block, so a
- * `WriteResult` is also a valid `CallToolResult` — the MCP transport
- * shell can return one with a no-op cast.
  */
 export interface WriteResultContent {
     type: 'text'
@@ -26,10 +22,9 @@ export interface WriteResultContent {
 /**
  * Result of a write-surface handler invocation.
  *
- * Local replacement for the former `ToolResult = CallToolResult` alias
- * (v13 plan D4) — this type is defined here so handlers no longer import
- * from `@modelcontextprotocol/sdk`. Its shape is a structural subset of
- * the SDK's `CallToolResult`, so the MCP server can return it directly.
+ * Local result type (v13 plan D4) — defined here so handlers depend
+ * only on runtime-neutral code. Consumed by the `luca` CLI commands
+ * that front the write-surface handlers.
  *
  * @example
  * ```typescript

@@ -14,7 +14,7 @@ description: >
 
 Seed repo-level project conventions so the Luca pipeline branches, commits, and ships PRs the way this team already does.
 
-This skill manages the `preferences` section of `.luca/config.json`. It does not wire hooks or register the MCP server — that is the `luca init` CLI's job, run earlier.
+This skill manages the `preferences` section of `.luca/config.json`. It does not wire hooks or write the project skeleton — that is the `luca init` CLI's job, run earlier.
 
 ## When to run
 

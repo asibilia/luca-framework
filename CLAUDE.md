@@ -37,7 +37,7 @@ Luca's pipeline writes artifacts under `.luca/` (replaces the legacy `.planning/
 - **`telemetry/<runId>.jsonl`** — per-run event logs.
 - **`archive/<NN-slug>/`** — phase directories closed at milestone.
 
-**Strict allowlist**: anything outside this contract is a violation. Filenames are derived (NN order, fixed reviewer names, zero-padded waves) — the LLM never picks a path. The MCP server (forthcoming) is the positive write surface; the stage-gate hook (forthcoming) blocks direct writes outside the contract.
+**Strict allowlist**: anything outside this contract is a violation. Filenames are derived (NN order, fixed reviewer names, zero-padded waves) — the LLM never picks a path. The write surface is two tracks: freeform artifact files are written with the native `Write` tool to the canonical path, and structured/operational mutations go through the `luca` CLI. The stage-gate hook gates both — for an artifact write it allows only the legal path for the current `pipelineStep`, and it blocks direct writes outside the contract.
 
 **Migrating from `.planning/`**: run `luca migrate-planning [--dry-run] [--force]`. It moves root files (state, lock, roadmap, config, ledger), deletes ephemerals (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`, and refuses on uncommitted `.planning/` changes unless `--force`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration — a follow-up command handles slug normalization once the collision strategy is set.
 

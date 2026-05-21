@@ -25,7 +25,6 @@ const main = defineCommand({
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
-        mcp: () => import('./commands/mcp').then((m) => m.mcpCommand),
         'migrate-planning': () =>
             import('./commands/migrate-planning').then(
                 (m) => m.migratePlanningCommand

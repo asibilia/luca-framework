@@ -1,5 +1,5 @@
 // Barrel for the write-surface domain — runtime-agnostic write logic
-// relocated out of src/mcp/ (v13 plan, Phase A). Re-exports only.
+// consumed by the `luca` CLI commands (v13 plan). Re-exports only.
 
 // Schemas + types
 export type {
