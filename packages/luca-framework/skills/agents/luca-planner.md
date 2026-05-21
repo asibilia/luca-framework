@@ -1,6 +1,6 @@
 ---
 name: luca-planner
-description: Creates detailed execution plans using goal-backward analysis. Tasks organized into waves with explicit verification criteria. Invoked during the plan step. Output gets persisted by the orchestrator via luca_phase_write_plan.
+description: Creates detailed execution plans using goal-backward analysis. Tasks organized into waves with explicit verification criteria. Invoked during the plan step. Output gets persisted by the orchestrator, which writes plan.md with the Write tool.
 tools: Read, Grep, Glob
 model: opus
 ---
@@ -14,7 +14,7 @@ You are running inside the `PLANNING` coarse phase, which means:
 - Bash mutations are BLOCKED
 - Read tools are allowed
 
-You don't write files directly — you return the plan as markdown and the orchestrator persists it via `luca_phase_write_plan` (MCP, only valid when `pipelineStep === "plan"`).
+You don't write files directly — you return the plan as markdown and the orchestrator persists it by writing `plan.md` with the `Write` tool to the canonical phase path (the stage-gate hook only permits that write when `pipelineStep === "plan"`).
 
 ## Planning process — goal-backward
 

@@ -1,0 +1,14 @@
+{
+  "currentWave": 1,
+  "currentIteration": 0,
+  "currentPhase": 0,
+  "totalPhases": 0,
+  "branchName": "feat/subagent-hang-watchdog-cancel-telemetry",
+  "preferencesSeeded": true,
+  "baseBranch": "main",
+  "prBase": "main",
+  "issueNumber": 43,
+  "pipelineStep": "idle",
+  "budgetExceeded": false,
+  "runId": "run_mpakapoe_ekz61f80"
+}

@@ -1,0 +1,32 @@
+{
+  "lucaVersion": "12.0.0-alpha.14",
+  "vault": "luca-framework",
+  "oversight": "full-auto",
+  "preferences": {
+    "schemaVersion": 1,
+    "branching": {
+      "types": ["feat", "fix", "refactor", "chore", "docs", "test", "style"],
+      "template": "{type}/{slug}",
+      "defaultBranch": "main",
+      "guardedBranches": ["main"],
+      "confirmBaseBeforeCreate": false
+    },
+    "commits": {
+      "convention": "conventional",
+      "scopes": ["luca-framework", "mastracode", "luca-core", "deps", "release", "mcp", "repo"],
+      "subjectMaxLength": 72
+    },
+    "pr": {
+      "titleFormat": "{type}({scope}): {description}",
+      "baseBranch": "main"
+    },
+    "release": {
+      "tool": "changesets",
+      "versionBump": { "feat": "minor", "fix": "patch", "chore": "patch", "refactor": "patch" }
+    },
+    "tracker": {
+      "kind": "github",
+      "issuePrefix": ""
+    }
+  }
+}

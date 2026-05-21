@@ -26,6 +26,7 @@ describe('isToolAllowed — matrix coverage', () => {
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': false,
+        'luca-write': true,
     }
     for (const [cat, expected] of Object.entries(planningExpect)) {
         test(`PLANNING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -46,6 +47,7 @@ describe('isToolAllowed — matrix coverage', () => {
         'bash-readonly': true,
         'bash-mutate': true,
         'bash-commit': false,
+        'luca-write': true,
     }
     for (const [cat, expected] of Object.entries(executingExpect)) {
         test(`EXECUTING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -67,6 +69,7 @@ describe('isToolAllowed — matrix coverage', () => {
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': false,
+        'luca-write': true,
     }
     for (const [cat, expected] of Object.entries(reviewingExpect)) {
         test(`REVIEWING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -87,6 +90,7 @@ describe('isToolAllowed — matrix coverage', () => {
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': true,
+        'luca-write': true,
     }
     for (const [cat, expected] of Object.entries(finalizingExpect)) {
         test(`FINALIZING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {

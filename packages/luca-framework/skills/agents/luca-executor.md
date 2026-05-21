@@ -23,14 +23,14 @@ You are running inside the `EXECUTING` coarse phase, which means:
 
 ## Step 0 — Pre-commit branch guard (once per session)
 
-Before any work that could lead to a commit, assert that the current git branch is NOT the repository default. Call:
+Before any work that could lead to a commit, assert that the current git branch is NOT the repository default. Run via Bash:
 
 ```
-luca_branch_guard({ default_branch: "main" })
+luca branch guard --default-branch main
 ```
 
-- `ok: true` — proceed.
-- `ok: false` (tool returns isError) — STOP. Do NOT write or stage. Report the returned `message` exactly. The orchestrator must create or switch to a feature branch before invoking you again.
+- Exit `0` — proceed.
+- Exit `1` — STOP. Do NOT write or stage. Report the printed message exactly. The orchestrator must create or switch to a feature branch before invoking you again.
 
 If the project default branch is not `main` (e.g. `master`, `trunk`), the orchestrator will pass the correct name; default to `main` when unspecified.
 
@@ -56,16 +56,15 @@ For each task in the assigned wave:
 1. **Read the existing code.** Don't trust your memory of file contents — context may be stale. Look before you touch.
 2. **Implement** the change. Match existing style: file naming (kebab-case), import grouping, error handling patterns.
 3. **TDD if tests exist.** Write a failing test first when adding behavior, then make it pass.
-4. **Verify** with the task's verification command, run via `luca_checks_run`:
+4. **Verify** with the task's verification command, run via the `luca checks run` CLI. Stage the commands array in a JSON file first, then pass it with `--file`:
 
    ```
-   luca_checks_run({
-     commands: [{ argv: ["bunx", "--bun", "tsc", "--noEmit"], label: "typecheck" }],
-     timeout_ms: 90000
-   })
+   # Write the commands payload to a temp JSON file (e.g. /tmp/luca-checks.json):
+   # [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+   luca checks run --file /tmp/luca-checks.json --timeout-ms 90000
    ```
 
-   Inspect the structured `summary` for failures. Fix and re-run until the task passes.
+   Inspect the printed summary for failures. Fix and re-run until the task passes.
 5. **Stage** the changes with `git add <specific paths>` if the plan instructs. Do NOT use `git add -A`/`git add .`.
 6. **Re-read each edited file** after the edit to verify the change applied as intended.
 
@@ -73,35 +72,29 @@ For each task in the assigned wave:
 
 After all tasks in the wave are done:
 
-1. **Confidence log** — record your subjective confidence in the wave:
+1. **Confidence log** — record your subjective confidence in the wave, via Bash. Stage any structured metadata in a JSON file and pass it with `--metadata-file`:
 
    ```
-   luca_confidence_log({
-     score: 0.0-1.0,
-     stage: "execute",
-     rationale: "what raised or lowered confidence",
-     metadata: { wave: <wave-number>, task_count: <N> }
-   })
+   luca confidence log --score <0.0-1.0> --stage execute \
+     --rationale "what raised or lowered confidence" \
+     --metadata-file /tmp/luca-confidence-meta.json
    ```
 
-   Score honestly: 0.9+ when the plan was unambiguous, 0.6–0.8 when you had to make small inferences, ≤0.5 when you chose between alternatives with no clear winner.
-2. **Wave file** — write a per-wave summary via:
+   The metadata file holds e.g. `{ "wave": <wave-number>, "task_count": <N> }`. Score honestly: 0.9+ when the plan was unambiguous, 0.6–0.8 when you had to make small inferences, ≤0.5 when you chose between alternatives with no clear winner.
+2. **Wave file** — use the `Write` tool to write a per-wave summary to the canonical wave artifact path. Get the active phase directory by running `luca phase current` (returns `{ active, NN, slug, dir }`); the wave path is `<dir>/execute/waves/<NN>.md` where `<NN>` is the zero-padded wave number:
 
    ```
-   luca_phase_write_wave({
-     waveNumber: <N>,
-     content: "<wave markdown — what changed, deviations, follow-ups>"
-   })
+   Write tool → <dir>/execute/waves/<NN>.md
+   content: "<wave markdown — what changed, deviations, follow-ups>"
    ```
 
 ## Step 4 — End-of-phase summary
 
-After the LAST wave only, write the execute summary:
+After the LAST wave only, use the `Write` tool to write the execute summary to the canonical summary artifact path. Get `<dir>` from `luca phase current`; the summary path is `<dir>/execute/summary.md`:
 
 ```
-luca_phase_write_summary({
-  content: "<phase-level summary markdown — objective, what shipped, deviations, open follow-ups>"
-})
+Write tool → <dir>/execute/summary.md
+content: "<phase-level summary markdown — objective, what shipped, deviations, open follow-ups>"
 ```
 
 ## Deviation handling
@@ -131,4 +124,4 @@ If the plan turns out to be wrong or incomplete:
 - Do NOT attempt to advance the pipelineStep yourself. The orchestrator does that after you return.
 - Do NOT write planning artifacts (research, plan, context). Those belong to PLANNING phases.
 - Do NOT use bash redirects (`>`, `>>`, `tee`) to write code to source files — use `Edit` or `Write` directly.
-- Do NOT call `luca_workflow_reset`. That's a manual recovery tool, never part of an execute flow.
+- Do NOT run `luca workflow reset`. That's a manual recovery tool, never part of an execute flow.

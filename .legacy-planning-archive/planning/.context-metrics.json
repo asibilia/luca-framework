@@ -1,0 +1,10 @@
+{
+  "zone": "good",
+  "usage_percent": 31,
+  "context_window_size": 1000000,
+  "total_input_tokens": 2995,
+  "total_output_tokens": 192724,
+  "cache_read_input_tokens": 314081,
+  "checked_at": "2026-04-02T16:04:45.903Z",
+  "source": "statusline"
+}

@@ -4,6 +4,7 @@ export type BashCategory =
     | 'bash-readonly'
     | 'bash-mutate'
     | 'bash-commit'
+    | 'luca-write'
     | 'denied'
 
 export interface ClassifyBashResult {
@@ -139,11 +140,94 @@ const PKG_MUTATE_PATTERNS: Array<[string, ...string[]]> = [
 const ALWAYS_DENIED_COMMANDS = new Set(['eval', 'source', '.'])
 
 // ---------------------------------------------------------------------------
+// `luca` CLI command recognition (v13 write-surface, Phase C)
+//
+// The `luca` CLI is the structured/operational write surface. The hook
+// recognises `luca <noun> <verb>` invocations so they classify as a
+// dedicated category instead of falling through to the generic
+// unknown-command → bash-mutate path (which the stage-gate matrix would
+// block in restrictive phases).
+//
+// The matrix allows `luca-write` in every non-IDLE phase; the CLI itself
+// self-enforces each verb's per-step phase precondition (WRITE_COMMAND_PHASES),
+// so the hook only needs to NOT block genuine `luca` subcommands.
+//
+// LUCA_NOUN_VERBS is the precise allowlist of every (noun → verbs) pair on
+// the v13 CLI surface. The guard is exact:
+//   - the command word must be exactly `luca` (not `luca-bridge`, etc.)
+//   - the second token must be a known noun
+//   - the third token, when present, is matched against that noun's verbs
+// Read verbs classify as `bash-readonly`; write verbs as `luca-write`.
+// ---------------------------------------------------------------------------
+
+// Read-only `luca` verbs — these do not mutate state.
+const LUCA_READ_VERBS = new Set([
+    'read',
+    'current',
+    'list',
+    'guard',
+    'filter-stale',
+    'detect-convergence',
+    'regression-check',
+])
+
+// Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
+// noun-group commands registered in src/cli.ts and their leaf subcommands.
+const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
+    state: new Set(['read', 'advance']),
+    phase: new Set(['current']),
+    roadmap: new Set(['read', 'create']),
+    preferences: new Set(['read', 'write']),
+    todo: new Set(['add', 'list', 'update']),
+    'pr-review': new Set([
+        'filter-stale',
+        'detect-convergence',
+        'regression-check',
+    ]),
+    repo: new Set(['cleanup-apply']),
+    checks: new Set(['run']),
+    branch: new Set(['guard']),
+    workflow: new Set(['reset']),
+    confidence: new Set(['log']),
+}
+
+/**
+ * Classify a `luca` CLI invocation (the command word is already known to
+ * be exactly `luca`). Returns a BashCategory, or `undefined` when the
+ * token sequence is not a recognised `luca` subcommand (the caller then
+ * falls through to the generic command classification).
+ */
+function classifyLucaCommand(rest: string[]): BashCategory | undefined {
+    const noun = rest.find((t) => !t.startsWith('-'))
+    if (!noun) return undefined
+    const verbs = LUCA_NOUN_VERBS[noun]
+    if (!verbs) return undefined
+    // Second non-flag token after the noun is the verb.
+    const afterNoun = rest.slice(rest.indexOf(noun) + 1)
+    const verb = afterNoun.find((t) => !t.startsWith('-'))
+    if (!verb || !verbs.has(verb)) {
+        // Known noun but no/unknown verb (e.g. `luca state` with no verb,
+        // or `luca state --help`). Treat conservatively as a write — it is
+        // still a genuine `luca` subcommand, so it must not be blocked as
+        // an unknown bash command, and erring toward `luca-write` is safe
+        // (the matrix allows it in every non-IDLE phase and the CLI
+        // self-enforces). Read intent can't be assumed here.
+        return 'luca-write'
+    }
+    return LUCA_READ_VERBS.has(verb) ? 'bash-readonly' : 'luca-write'
+}
+
+// ---------------------------------------------------------------------------
 // Severity ordering for max-merge across subcommands
 // ---------------------------------------------------------------------------
 
 const SEVERITY: Record<BashCategory, number> = {
     'bash-readonly': 0,
+    // `luca-write` and `bash-mutate` share a tier: both are "mutating" but
+    // neither escalates past a commit. In a mixed pipeline `maxCategory`
+    // keeps the first-seen at equal severity — acceptable, mixed
+    // `luca`+mutate command strings are not a real pattern.
+    'luca-write': 1,
     'bash-mutate': 1,
     'bash-commit': 2,
     denied: 3,
@@ -295,6 +379,26 @@ function classifySubcommand(sub: Subcommand): {
         }
         // Unknown gh subcommand — conservative mutate
         return { category: 'bash-mutate', targetPaths: targetsFromRedirect }
+    }
+
+    // 4b. `luca` CLI commands (v13 write-surface). The command word must
+    //     be exactly `luca` — `luca-bridge` and other `luca`-prefixed
+    //     binaries do NOT match here and fall through to generic handling.
+    if (cmd === 'luca') {
+        const lucaCategory = classifyLucaCommand(rest)
+        if (lucaCategory) {
+            // An output redirect on a `luca` invocation is still a write to
+            // the redirect target — keep that path classified as a mutate.
+            if (sub.redirect) {
+                return {
+                    category: 'bash-mutate',
+                    targetPaths: targetsFromRedirect,
+                }
+            }
+            return { category: lucaCategory, targetPaths: [] }
+        }
+        // cmd === 'luca' but not a recognised subcommand — fall through to
+        // generic classification (conservative bash-mutate).
     }
 
     // 5. Read-only multi-token patterns checked BEFORE generic mutate

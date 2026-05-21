@@ -11,15 +11,15 @@ List the development backlog. Todos live in **MuninnDB** (concept `todo:*`, repo
 
 1. **Parse the filter.** Check `$ARGUMENTS` for an optional status filter — one of `pending`, `backlog`, or `done`.
 
-2. **List the todos.** Call `luca_todo_list`:
+2. **List the todos.** Run the `luca todo list` CLI:
 
    ```
-   luca_todo_list({})
+   luca todo list
    ```
 
-   Pass `status: "<filter>"` if a filter was given.
+   Pass `--status <filter>` if a filter was given.
 
-3. **Execute the returned instruction.** `luca_todo_list` returns a `mcp__muninn__muninn_recall` instruction blob (delegation pattern). Execute it **exactly as returned** to recall the todos.
+3. **Execute the returned instruction.** `luca todo list` prints a `mcp__muninn__muninn_recall` instruction blob (delegation pattern). Execute it **exactly as returned** to recall the todos.
 
 4. **Parse each entry.** Each recalled memory's `content` is JSON conforming to `TodoSchema` (`id`, `title`, `body?`, `status`, `source?`, `updatedAt`). Parse every entry. If a status filter was requested, keep only todos whose `content.status` matches it.
 

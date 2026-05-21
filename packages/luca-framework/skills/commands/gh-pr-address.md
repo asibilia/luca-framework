@@ -47,13 +47,14 @@ Build a comment map with fields: `commentId, author, body, file, line, inReplyTo
 
 Comments filed against an earlier commit may already be addressed by later fix commits on the branch. Acting on them wastes iteration cycles.
 
-Run the stale-comment filter on the **review comments** (the raw `gh api pulls/<n>/comments` objects — each carries `id, path, line, original_line, commit_id, original_commit_id, diff_hunk, body, in_reply_to_id?, user?`):
+Run the stale-comment filter on the **review comments** (the raw `gh api pulls/<n>/comments` objects — each carries `id, path, line, original_line, commit_id, original_commit_id, diff_hunk, body, in_reply_to_id?, user?`). Stage the review comments array in a JSON file, then run `luca pr-review filter-stale --file`:
 
 ```
-luca_pr_review_filter_stale({ comments: <review comments from Step 1> })
+# /tmp/luca-pr-comments.json holds the review comments array from Step 1
+luca pr-review filter-stale --file /tmp/luca-pr-comments.json
 ```
 
-The tool partitions them into four buckets:
+The command partitions them into four buckets:
 
 - **`actionable`** — cited code still exists at the same location. Continue with categorization for these.
 - **`stale`** — cited code was rewritten, removed, or relocated beyond the drift tolerance. **Skip categorization.** When responding (Step 5), reply that the comment is stale and point at the commit that addressed the underlying code.
@@ -111,10 +112,11 @@ Build a `findings` array — one entry per actionable comment, plus any findings
 }
 ```
 
-Run convergence detection:
+Run convergence detection. Stage the findings array in a JSON file, then run `luca pr-review detect-convergence --file`:
 
 ```
-luca_pr_review_detect_convergence({ findings: <array>, line_tolerance: 2 })
+# /tmp/luca-pr-findings.json holds the findings array
+luca pr-review detect-convergence --file /tmp/luca-pr-findings.json --line-tolerance 2
 ```
 
 For each entry in the returned `report.promotions`:
@@ -138,7 +140,7 @@ For comments with severity **must fix** and **should fix**:
 Spawn **`luca-executor`** subagents (one per file group) via the `Agent` tool. Each subagent receives:
 
 - The file path and the relevant comment details (body, line, category).
-- Instructions to fix each issue and commit using the project's commit convention. Read it first by calling `luca_preferences_read({})` and using the `commits` section (`convention`, `types`, `scopes`, `trailers`, `subjectMaxLength`). Reference the PR number per `commits.trailers.issueRef` when set; the executor adds the `Co-Authored-By` trailer automatically when `commits.trailers.coAuthor === true`.
+- Instructions to fix each issue and commit using the project's commit convention. Read it first by running `luca preferences read` and using the `commits` section (`convention`, `types`, `scopes`, `trailers`, `subjectMaxLength`). Reference the PR number per `commits.trailers.issueRef` when set; the executor adds the `Co-Authored-By` trailer automatically when `commits.trailers.coAuthor === true`.
 
 After all executor subagents complete, run a type check:
 
@@ -195,21 +197,23 @@ Fix commits sometimes introduce new issues the original review didn't flag. Catc
 
 2. **Build before/after finding arrays.** The `before` array is the `findings` array from Step 2.5 (pre-iteration state). The `after` array is built the same way from the freshly-fetched comments — include only comments with `created_at >= iterationStartTime` to filter out persistent prior findings.
 
-3. **Run the regression check** (it computes touched paths from the SHA range via `git diff`):
+3. **Run the regression check** (it computes touched paths from the SHA range via `git diff`). Stage the full payload object in a JSON file, then run `luca pr-review regression-check --file`:
 
    ```
-   luca_pr_review_regression_check({
-     before:   <pre-iteration findings>,
-     after:    <post-iteration findings>,
-     from_sha: <iterationStartSha>,
-     to_sha:   "HEAD"
-   })
+   # /tmp/luca-pr-regression.json holds:
+   # {
+   #   "before":   <pre-iteration findings>,
+   #   "after":    <post-iteration findings>,
+   #   "from_sha": "<iterationStartSha>",
+   #   "to_sha":   "HEAD"
+   # }
+   luca pr-review regression-check --file /tmp/luca-pr-regression.json
    ```
 
 4. **Handle the verdict.**
 
-   - No regressions (the tool returns no error, `report.regressions` empty) → iteration complete. Report `<n> resolved, <n> unchanged, <n> new on untouched paths` in the final summary.
-   - Regressions present (the tool returns an error, `report.regressions` non-empty) → fix commits introduced new findings. **Do not declare the iteration complete.** Re-enter Step 3 (Plan fixes) with `report.regressions` as the input set. The regression cycle is bounded — if 3 consecutive iterations fail this check, escalate to the user with a summary of what's regressing and pause the loop.
+   - No regressions (exit `0`, `report.regressions` empty) → iteration complete. Report `<n> resolved, <n> unchanged, <n> new on untouched paths` in the final summary.
+   - Regressions present (exit `1`, `report.regressions` non-empty) → fix commits introduced new findings. **Do not declare the iteration complete.** Re-enter Step 3 (Plan fixes) with `report.regressions` as the input set. The regression cycle is bounded — if 3 consecutive iterations fail this check, escalate to the user with a summary of what's regressing and pause the loop.
 
 ## Step 8 — Store learnings
 

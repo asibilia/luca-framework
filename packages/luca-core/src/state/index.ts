@@ -28,6 +28,16 @@ export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
 export { coarsePhaseOf } from './helpers/coarse-phase-of.ts'
 export { isToolAllowed } from './helpers/is-tool-allowed.ts'
 export type { ToolCategory } from './helpers/is-tool-allowed.ts'
+export { loadCurrentState } from './helpers/load-current-state.ts'
+export type { LoadCurrentStateOptions } from './helpers/load-current-state.ts'
+export { loadCurrentConfig } from './helpers/load-current-config.ts'
+export type { LoadCurrentConfigOptions } from './helpers/load-current-config.ts'
+export { resolveActiveSlug } from './helpers/resolve-active-slug.ts'
+export type {
+    ResolveActiveSlugFail,
+    ResolveActiveSlugOk,
+    ResolveActiveSlugResult,
+} from './helpers/resolve-active-slug.ts'
 
 // Stage-gate matrix
 export { STAGE_TOOL_MATRIX } from './configs/stage-tool-matrix.ts'
@@ -37,3 +47,10 @@ export {
     PIPELINE_TRANSITIONS,
     isLegalTransition,
 } from './configs/pipeline-transitions.ts'
+
+// Per-step artifact map + write-command phase table (v13 plan, D3)
+export {
+    STEP_ARTIFACTS,
+    WRITE_COMMAND_PHASES,
+} from './configs/step-artifacts.ts'
+export type { StepArtifact } from './configs/step-artifacts.ts'

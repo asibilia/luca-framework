@@ -17,6 +17,12 @@ export type ToolCategory =
     | 'bash-readonly'
     | 'bash-mutate'
     | 'bash-commit'
+    // v13 write-surface: a Bash `luca <noun> <write-verb>` invocation. The
+    // `luca` CLI self-enforces each verb's per-step phase precondition
+    // (see WRITE_COMMAND_PHASES), so the matrix only needs to NOT block it
+    // in non-IDLE phases — it is allowed everywhere except, trivially,
+    // IDLE (which is permissive anyway).
+    | 'luca-write'
 
 /**
  * Coarse-phase → tool-category allow matrix.
@@ -36,6 +42,7 @@ export const STAGE_TOOL_MATRIX: Record<
         'bash-readonly': true,
         'bash-mutate': true,
         'bash-commit': true,
+        'luca-write': true,
     },
     PLANNING: {
         'code-write': false,
@@ -44,6 +51,7 @@ export const STAGE_TOOL_MATRIX: Record<
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': false,
+        'luca-write': true,
     },
     EXECUTING: {
         'code-write': true,
@@ -52,6 +60,7 @@ export const STAGE_TOOL_MATRIX: Record<
         'bash-readonly': true,
         'bash-mutate': true,
         'bash-commit': false,
+        'luca-write': true,
     },
     REVIEWING: {
         'code-write': false,
@@ -62,6 +71,7 @@ export const STAGE_TOOL_MATRIX: Record<
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': false,
+        'luca-write': true,
     },
     FINALIZING: {
         'code-write': false,
@@ -70,5 +80,6 @@ export const STAGE_TOOL_MATRIX: Record<
         'bash-readonly': true,
         'bash-mutate': false,
         'bash-commit': true,
+        'luca-write': true,
     },
 }

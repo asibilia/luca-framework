@@ -11,9 +11,9 @@ You are running the **discuss** step of the luca pipeline. The current phase has
 
 Before doing anything, confirm we're in the right state:
 
-1. Call the MCP tool `luca_state_read` and verify `pipelineStep` is either `research` (transitioning forward) or `discuss` (already advanced).
-2. If `pipelineStep` is `research`, call `luca_state_advance({ toStep: "discuss" })` to enter this step.
-3. Call `luca_phase_current` to get the active phase slug. If `active` is false, abort and ask the user to set the roadmap first.
+1. Run `luca state read` and verify `pipelineStep` is either `research` (transitioning forward) or `discuss` (already advanced).
+2. If `pipelineStep` is `research`, run `luca state advance --to-step discuss` to enter this step.
+3. Run `luca phase current` to get the active phase slug and directory. If `active` is false, abort and ask the user to set the roadmap first.
 
 If the state is anything else, surface a clear error to the user instead of guessing.
 
@@ -25,20 +25,21 @@ Use the `AskUserQuestion` tool when there are concrete choices with trade-offs. 
 
 ## Persist context
 
-When the user has answered, write the consolidated context via:
+When the user has answered, write the consolidated context with the `Write` tool to the canonical path. Use the `dir` field from `luca phase current`; the context path is `<dir>/context.md`:
 
 ```
-luca_phase_write_context({ content: "<markdown summary of decisions>" })
+Write tool → <dir>/context.md
+content: "<markdown summary of decisions>"
 ```
 
-The MCP server enforces that this call only works when `pipelineStep === "discuss"`. The stage-gate hook prevents you from `Edit`-ing `.luca/phases/<slug>/context.md` directly — always go through the tool.
+The stage-gate hook only permits this `Write` to `<dir>/context.md` while `pipelineStep === "discuss"` — any other path or step is blocked.
 
 ## Advance
 
-When context.md is written, call `luca_state_advance({ toStep: "architect" })` so the next step can begin.
+When context.md is written, run `luca state advance --to-step architect` so the next step can begin.
 
 ## What you must NOT do
 
-- Do NOT write `context.md` via `Edit` or `Write` — use the MCP tool. The hook will block direct writes.
+- Do NOT write `context.md` to any path other than `<dir>/context.md`, or via `Edit` — the hook blocks every other `.luca/` write.
 - Do NOT skip the question-asking step just because you have an opinion. The point of `/phase-discuss` is to surface user decisions, not yours.
 - Do NOT write code in this step. Code writes are blocked by the stage-gate in PLANNING phases.

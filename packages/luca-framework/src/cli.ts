@@ -25,7 +25,6 @@ const main = defineCommand({
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
-        mcp: () => import('./commands/mcp').then((m) => m.mcpCommand),
         'migrate-planning': () =>
             import('./commands/migrate-planning').then(
                 (m) => m.migratePlanningCommand
@@ -33,6 +32,50 @@ const main = defineCommand({
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
+
+        // v13 write-surface noun-group commands (structured/operational
+        // mutations). The 9 freeform artifact writes are NOT here — they
+        // use the native Write tool (v13 plan, Phase C).
+        state: () =>
+            import('./commands/write-surface/state').then(
+                (m) => m.stateCommand
+            ),
+        phase: () =>
+            import('./commands/write-surface/phase').then(
+                (m) => m.phaseCommand
+            ),
+        roadmap: () =>
+            import('./commands/write-surface/roadmap').then(
+                (m) => m.roadmapCommand
+            ),
+        preferences: () =>
+            import('./commands/write-surface/preferences').then(
+                (m) => m.preferencesCommand
+            ),
+        todo: () =>
+            import('./commands/write-surface/todo').then((m) => m.todoCommand),
+        'pr-review': () =>
+            import('./commands/write-surface/pr-review').then(
+                (m) => m.prReviewCommand
+            ),
+        repo: () =>
+            import('./commands/write-surface/repo').then((m) => m.repoCommand),
+        checks: () =>
+            import('./commands/write-surface/checks').then(
+                (m) => m.checksCommand
+            ),
+        branch: () =>
+            import('./commands/write-surface/branch').then(
+                (m) => m.branchCommand
+            ),
+        workflow: () =>
+            import('./commands/write-surface/workflow').then(
+                (m) => m.workflowCommand
+            ),
+        confidence: () =>
+            import('./commands/write-surface/confidence').then(
+                (m) => m.confidenceCommand
+            ),
     },
 })
 

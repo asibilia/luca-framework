@@ -7,7 +7,7 @@ description: Scan the repository for AI-session debris and optionally clean it u
 
 Scan the repository for AI-session debris — orphaned scripts, misplaced source files, tool artifacts, dead exports, `.luca/` contract violations, repo-root markdown debris — and optionally apply the remediations.
 
-The scan is performed by the **`luca-shadow-scanner`** subagent (strictly read-only). This command drives that scan and applies fixes through **`luca_repo_cleanup_apply`** (the destructive write half).
+The scan is performed by the **`luca-shadow-scanner`** subagent (strictly read-only). This command drives that scan and applies fixes through the **`luca repo cleanup-apply`** CLI (the destructive write half).
 
 ## Parse arguments
 
@@ -44,17 +44,18 @@ Display the findings banner: total count plus the per-severity breakdown from `s
 
 - **`--dry-run`** → display all findings grouped by severity (critical first) and stop. Apply nothing.
 
-- **`--fix`** → for every finding where `auto_fixable === true`, call:
+- **`--fix`** → for every finding where `auto_fixable === true`, stage that single finding object in a JSON file and run:
 
   ```
-  luca_repo_cleanup_apply({ finding: <the finding object>, confirm: true })
+  # /tmp/luca-cleanup-finding.json holds the single finding object
+  luca repo cleanup-apply --file /tmp/luca-cleanup-finding.json --confirm
   ```
 
   Findings with `auto_fixable === false` (e.g. repo-root markdown, SUMMARY moves) are listed for the user but not auto-applied.
 
 - **Interactive mode** (default) → present each finding sorted by severity (critical first). For each one, offer three choices:
 
-  - **Fix** → call `luca_repo_cleanup_apply({ finding: <the finding object>, confirm: true })`. For a `move`, the finding must carry `target_path`; if it does not, ask the user where it should go and add `target_path` before calling.
+  - **Fix** → stage the single finding object in a JSON file and run `luca repo cleanup-apply --file <path> --confirm`. For a `move`, the finding must carry `target_path`; if it does not, ask the user where it should go and add `target_path` to the file before running.
   - **Keep** → record the user's decision so the file is not re-flagged next scan:
 
     First call `mcp__muninn__muninn_remember` with `vault: "<repo_vault>"`, `concept: "shadow-debt:kept:<file_path>"`, and content noting the user approved keeping `<file_path>` with an ISO timestamp. Then promote it: `mcp__muninn__muninn_trust({ id: <returned id>, trust: "verified", vault: "<repo_vault>" })` — this is a user-confirmed decision. The `luca-shadow-scanner` recalls `shadow-debt:kept` entries and excludes them from future scans.

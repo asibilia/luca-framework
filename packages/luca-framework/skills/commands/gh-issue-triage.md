@@ -5,7 +5,7 @@ description: Pull open GitHub issues into the MuninnDB todo backlog for pipeline
 
 # /gh-issue-triage
 
-Activate the `gh-issue-triage` skill to pull open GitHub issues into the todo backlog. Each issue becomes a `todo:*` memory in the repo vault (via `luca_todo_add` with `source: "gh-issue-#<N>"`), so the finalizing flow can add `Closes #<N>` to the PR. Issues labeled `skip-triage` are filtered out.
+Activate the `gh-issue-triage` skill to pull open GitHub issues into the todo backlog. Each issue becomes a `todo:*` memory in the repo vault (via the `luca todo add` CLI with `--source gh-issue-#<N>`), so the finalizing flow can add `Closes #<N>` to the PR. Issues labeled `skip-triage` are filtered out.
 
 Flow: GitHub Issues → gh-issue-triage → todos → `/lu` pipeline → PR.
 

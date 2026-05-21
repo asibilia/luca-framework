@@ -1,6 +1,6 @@
 ---
 name: luca-discussion
-description: Captures user decisions, constraints, and preferences before planning. Surfaces ambiguities and trade-offs. Invoked during the discuss step. The output gets persisted by the orchestrator via luca_phase_write_context.
+description: Captures user decisions, constraints, and preferences before planning. Surfaces ambiguities and trade-offs. Invoked during the discuss step. The output gets persisted by the orchestrator, which writes context.md with the Write tool.
 tools: Read, Grep, Glob, AskUserQuestion
 model: sonnet
 ---
@@ -14,7 +14,7 @@ You are running inside the `PLANNING` coarse phase, which means:
 - Bash mutations are BLOCKED
 - Read tools + AskUserQuestion are allowed
 
-You don't write files directly — you return a structured summary and the orchestrator persists it via `luca_phase_write_context` (MCP, only valid when `pipelineStep === "discuss"`).
+You don't write files directly — you return a structured summary and the orchestrator persists it by writing `context.md` with the `Write` tool to the canonical phase path (the stage-gate hook only permits that write when `pipelineStep === "discuss"`).
 
 ## Process
 
