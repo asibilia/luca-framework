@@ -4,13 +4,15 @@
   "initialVersions": {
     "@alecsibilia/luca-framework": "11.8.1",
     "@alecsibilia/luca-mastracode": "11.8.1",
-    "@alecsibilia/luca-studio": "0.1.0"
+    "@alecsibilia/luca-studio": "0.1.0",
+    "@alecsibilia/luca-core": "0.1.0"
   },
   "changesets": [
     "bump-mastra-deps-and-pin-tarball",
     "fix-luca-5-review-outer-reviewer-fanout",
     "fix-reviewer-usage-self-report",
     "fix-telemetry-batch-5-quality-regressions",
+    "luca-core-phase-1",
     "memory-audit-skill",
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
