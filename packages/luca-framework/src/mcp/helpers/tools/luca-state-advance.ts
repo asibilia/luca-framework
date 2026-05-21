@@ -1,4 +1,3 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
@@ -9,6 +8,7 @@ import {
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
+import { writeAtomicFile } from '../write-atomic.ts'
 
 const inputSchema = z.object({
     toStep: PipelineStep.describe(
@@ -41,12 +41,8 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             }
 
             const next = { ...state, pipelineStep: to }
-            const lucaDir = join(ctx.cwd, '.luca')
-            await mkdir(lucaDir, { recursive: true })
-            const path = join(lucaDir, 'state.json')
-            const tmp = `${path}.tmp`
-            await writeFile(tmp, JSON.stringify(next, null, 2) + '\n')
-            await rename(tmp, path)
+            const path = join(ctx.cwd, '.luca', 'state.json')
+            await writeAtomicFile(path, JSON.stringify(next, null, 2) + '\n')
 
             return {
                 content: [

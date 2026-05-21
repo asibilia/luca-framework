@@ -1,21 +1,10 @@
 import { phasePathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
+import { resolveActiveSlug } from '../resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
 
 const inputSchema = z.object({})
-
-/**
- * Convert a free-form name (e.g. "Auth Rewrite") into a kebab-case slug
- * suffix compatible with PHASE_SLUG_RE.
- */
-function kebabCase(s: string): string {
-    return s
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-}
 
 export const lucaPhaseCurrentTool: ToolDescriptor<z.infer<typeof inputSchema>> =
     {
@@ -37,41 +26,30 @@ export const lucaPhaseCurrentTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                 }
             }
 
-            if (state.currentPhase < 1 || state.currentPhase > 99) {
+            // Reuse the shared slug resolver — it owns range checks, roadmap
+            // lookup, and slug validation, so this tool can't drift from the
+            // write tools' slug logic or hand an invalid slug to phasePathFor.
+            const resolved = resolveActiveSlug(state)
+            if (!resolved.ok) {
                 return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `currentPhase=${state.currentPhase} is out of range for the .luca/phases/<NN-slug>/ contract (1–99).`,
-                        },
-                    ],
+                    content: [{ type: 'text', text: resolved.error }],
                     isError: true,
                 }
             }
 
-            const roadmapEntry = state.roadmap[state.currentPhase - 1]
-            if (!roadmapEntry) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `currentPhase=${state.currentPhase} has no matching entry in state.roadmap (length=${state.roadmap.length}). Update the roadmap before advancing.`,
-                        },
-                    ],
-                    isError: true,
-                }
-            }
-
-            const NN = String(state.currentPhase).padStart(2, '0')
-            const slug = `${NN}-${kebabCase(roadmapEntry.name)}`
-            const dir = phasePathFor(slug)
+            const dir = phasePathFor(resolved.slug)
 
             return {
                 content: [
                     {
                         type: 'text',
                         text: JSON.stringify(
-                            { active: true, NN, slug, dir },
+                            {
+                                active: true,
+                                NN: resolved.NN,
+                                slug: resolved.slug,
+                                dir,
+                            },
                             null,
                             2
                         ),

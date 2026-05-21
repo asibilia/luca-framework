@@ -1,4 +1,4 @@
-import type { LucaState } from '@alecsibilia/luca-core'
+import { PhaseSlugSchema, type LucaState } from '@alecsibilia/luca-core'
 
 function kebabCase(s: string): string {
     return s
@@ -48,5 +48,17 @@ export function resolveActiveSlug(state: LucaState): ResolveActiveSlugResult {
     }
     const NN = String(state.currentPhase).padStart(2, '0')
     const slug = `${NN}-${kebabCase(entry.name)}`
+
+    // The roadmap entry name is unconstrained (z.string()), so a name that
+    // kebab-cases to an empty string would yield an out-of-contract slug
+    // like "01-". Validate before returning so callers never hand an
+    // invalid slug to phasePathFor() (which throws).
+    if (!PhaseSlugSchema.safeParse(slug).success) {
+        return {
+            ok: false,
+            error: `roadmap entry name "${entry.name}" produced an invalid phase slug "${slug}". The name must contain at least one letter/digit so it slugifies to <NN-kebab-case>.`,
+        }
+    }
+
     return { ok: true, NN, slug }
 }

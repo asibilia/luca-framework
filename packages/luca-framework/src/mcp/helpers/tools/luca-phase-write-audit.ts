@@ -1,11 +1,11 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 
 import { auditPathFor } from '@alecsibilia/luca-core'
 
 import { loadCurrentState } from '../../../hook/helpers/load-current-state.ts'
 import { z, type ToolDescriptor } from '../../schemas.ts'
 import { resolveActiveSlug } from '../resolve-active-slug.ts'
+import { writeAtomicFile } from '../write-atomic.ts'
 
 const inputSchema = z.object({
     reviewer: z
@@ -44,11 +44,7 @@ export const lucaPhaseWriteAuditTool: ToolDescriptor<
         }
 
         const relPath = auditPathFor(slug.slug, args.reviewer)
-        const absPath = join(ctx.cwd, relPath)
-        await mkdir(dirname(absPath), { recursive: true })
-        const tmp = `${absPath}.tmp`
-        await writeFile(tmp, args.content)
-        await rename(tmp, absPath)
+        await writeAtomicFile(join(ctx.cwd, relPath), args.content)
 
         return {
             content: [

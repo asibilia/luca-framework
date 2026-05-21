@@ -49,13 +49,21 @@ export const lucaPreferencesWriteTool: ToolDescriptor<
                 ? (config.preferences as Record<string, unknown>)
                 : {}
 
-        // Section-level shallow merge.
+        // Section-level shallow merge — only KNOWN_SECTIONS are applied.
         const mergedPrefs: Record<string, unknown> = { ...currentPrefs }
+        const mergedSections: string[] = []
         for (const section of KNOWN_SECTIONS) {
             if (section in args.preferences) {
                 mergedPrefs[section] = args.preferences[section]
+                mergedSections.push(section)
             }
         }
+
+        // Any other top-level keys are silently ignored — surface them so a
+        // typo'd section name doesn't look like a successful no-op write.
+        const ignoredKeys = Object.keys(args.preferences).filter(
+            (k) => !(KNOWN_SECTIONS as readonly string[]).includes(k)
+        )
 
         const result = ProjectPreferencesSchema.safeParse(mergedPrefs)
         if (!result.success) {
@@ -79,11 +87,16 @@ export const lucaPreferencesWriteTool: ToolDescriptor<
             JSON.stringify(nextConfig, null, 2) + '\n'
         )
 
+        const ignoredNote =
+            ignoredKeys.length > 0
+                ? `; ignored ${ignoredKeys.length} unknown key(s): ${ignoredKeys.join(', ')}`
+                : ''
+
         return {
             content: [
                 {
                     type: 'text',
-                    text: `wrote .luca/config.json (preferences section updated; ${Object.keys(args.preferences).length} sections merged)`,
+                    text: `wrote .luca/config.json (preferences section updated; ${mergedSections.length} section(s) merged${ignoredNote})`,
                 },
             ],
         }
