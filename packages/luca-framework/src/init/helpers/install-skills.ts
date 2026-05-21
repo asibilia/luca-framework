@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export interface InstallSkillsOptions {
-    /** Project root where .claude/{commands,agents}/ live. */
+    /** Project root where .claude/{commands,agents,skills}/ live. */
     cwd: string
     /**
      * Path to the luca-framework's bundled skills/ directory. Defaults to the
@@ -15,10 +15,14 @@ export interface InstallSkillsOptions {
 }
 
 /**
- * Copy bundled luca skills (slash commands + subagents) into the project's
- * .claude/ directory. Always overwrites files of the same name (the bundled
- * versions are the canonical source) but preserves user-authored files that
- * the install set doesn't touch.
+ * Copy bundled luca skills into the project's .claude/ directory:
+ *   - commands/*.md          → .claude/commands/ (slash commands)
+ *   - agents/*.md            → .claude/agents/   (subagents)
+ *   - skills/<name>/SKILL.md → .claude/skills/   (auto-triggerable skills)
+ *
+ * Always overwrites files of the same name (the bundled versions are the
+ * canonical source) but preserves user-authored files the install set
+ * doesn't touch.
  *
  * Designed to be called from `luca init` Step 4, idempotent on re-run.
  */
@@ -48,6 +52,44 @@ export async function installSkills(
         log,
         label: 'agent',
     })
+
+    await copySkillTree({
+        from: join(skillsSource, 'skills'),
+        to: join(opts.cwd, '.claude/skills'),
+        log,
+    })
+}
+
+/**
+ * Copy a tree of `<name>/SKILL.md` skill directories. Each bundled skill
+ * is a directory containing a SKILL.md (and possibly supporting files);
+ * the whole directory is mirrored into .claude/skills/<name>/.
+ */
+async function copySkillTree(args: {
+    from: string
+    to: string
+    log: (msg: string) => void
+}): Promise<void> {
+    if (!existsSync(args.from)) {
+        args.log(`  skip:  skills source missing (${args.from})`)
+        return
+    }
+    const entries = await readdir(args.from, { withFileTypes: true })
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const skillFrom = join(args.from, entry.name)
+        const skillTo = join(args.to, entry.name)
+        await mkdir(skillTo, { recursive: true })
+        const files = await readdir(skillFrom, { withFileTypes: true })
+        for (const file of files) {
+            if (!file.isFile()) continue
+            await copyFile(
+                join(skillFrom, file.name),
+                join(skillTo, file.name),
+            )
+            args.log(`  write: ${join(skillTo, file.name)}`)
+        }
+    }
 }
 
 async function copyDir(args: {

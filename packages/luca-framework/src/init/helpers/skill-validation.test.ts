@@ -55,6 +55,21 @@ async function listMarkdownFiles(dir: string): Promise<string[]> {
         .map((e) => join(dir, e.name))
 }
 
+/**
+ * List every bundled skill's SKILL.md — skills/ holds one directory per
+ * skill, each containing a SKILL.md.
+ */
+async function listSkillFiles(skillsDir: string): Promise<string[]> {
+    const entries = await readdir(skillsDir, { withFileTypes: true })
+    const files: string[] = []
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const skillFile = join(skillsDir, entry.name, 'SKILL.md')
+        files.push(skillFile)
+    }
+    return files
+}
+
 describe('bundled skill markdown — structural validation', () => {
     test('commands/ and agents/ exist with at least one .md each', async () => {
         const commands = await listMarkdownFiles(
@@ -85,10 +100,21 @@ describe('bundled skill markdown — structural validation', () => {
         }
     })
 
+    test('every bundled SKILL.md has frontmatter with name + description', async () => {
+        const files = await listSkillFiles(join(SKILLS_ROOT, 'skills'))
+        for (const file of files) {
+            const content = await readFile(file, 'utf-8')
+            expect(hasFrontmatter(content)).toBe(true)
+            expect(hasFrontmatterField(content, 'name')).toBe(true)
+            expect(hasFrontmatterField(content, 'description')).toBe(true)
+        }
+    })
+
     test('no bundled skill references stale mastracode tools or paths', async () => {
         const files = [
             ...(await listMarkdownFiles(join(SKILLS_ROOT, 'commands'))),
             ...(await listMarkdownFiles(join(SKILLS_ROOT, 'agents'))),
+            ...(await listSkillFiles(join(SKILLS_ROOT, 'skills'))),
         ]
         const violations: Array<{
             file: string

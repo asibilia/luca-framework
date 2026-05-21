@@ -15,6 +15,9 @@ describe('installSkills', () => {
         skillsSource = await mkdtemp(join(tmpdir(), 'luca-skills-source-'))
         await mkdir(join(skillsSource, 'commands'), { recursive: true })
         await mkdir(join(skillsSource, 'agents'), { recursive: true })
+        await mkdir(join(skillsSource, 'skills/luca-init'), {
+            recursive: true,
+        })
         await writeFile(
             join(skillsSource, 'commands/phase-plan.md'),
             '---\nname: phase-plan\n---\nbody',
@@ -22,6 +25,10 @@ describe('installSkills', () => {
         await writeFile(
             join(skillsSource, 'agents/luca-executor.md'),
             '---\nname: luca-executor\n---\nbody',
+        )
+        await writeFile(
+            join(skillsSource, 'skills/luca-init/SKILL.md'),
+            '---\nname: luca-init\ndescription: seed prefs\n---\nbody',
         )
     })
 
@@ -44,6 +51,15 @@ describe('installSkills', () => {
 
         const target = join(cwd, '.claude/agents/luca-executor.md')
         expect(existsSync(target)).toBe(true)
+    })
+
+    test('copies skill directories to .claude/skills/<name>/', async () => {
+        await installSkills({ cwd, skillsSource })
+
+        const target = join(cwd, '.claude/skills/luca-init/SKILL.md')
+        expect(existsSync(target)).toBe(true)
+        const content = await readFile(target, 'utf-8')
+        expect(content).toContain('luca-init')
     })
 
     test('is idempotent — re-running does not duplicate or error', async () => {
