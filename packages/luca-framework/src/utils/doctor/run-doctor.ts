@@ -26,10 +26,12 @@ export async function executeDoctor(
     // Import all checks
     const { bunRuntimeCheck } = await import('./checks/bun-runtime')
     const { muninndbHealthCheck } = await import('./checks/muninndb-health')
+    const { staleMcpServerCheck } = await import('./checks/stale-mcp-server')
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites
         bunRuntimeCheck,
+        staleMcpServerCheck,
         // Global
         muninndbHealthCheck,
     ]
@@ -86,17 +88,18 @@ export async function executeDoctor(
         `Results: ${passCount} passing, ${failCount} failing, ${warningCount} warning(s)`
     )
 
-    // Show fix suggestions for failed checks
-    const failedChecks = results.filter(
-        (r) => r.status === 'fail' && r.fixCommand
+    // Show fix suggestions for any check (failed or warning) with one.
+    const fixableChecks = results.filter(
+        (r) =>
+            (r.status === 'fail' || r.status === 'warning') && r.fixCommand
     )
 
-    if (failedChecks.length > 0) {
+    if (fixableChecks.length > 0) {
         logger.info('')
         logger.info('Suggested fixes:')
         logger.info('-'.repeat(50))
 
-        for (const check of failedChecks) {
+        for (const check of fixableChecks) {
             if (check.fixCommand) {
                 logger.info(`  ${check.name}:`)
                 logger.info(`  ${check.fixCommand}`)
