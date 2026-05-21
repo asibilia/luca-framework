@@ -1,4 +1,5 @@
-import { PhaseSlugSchema, type LucaState } from '@alecsibilia/luca-core'
+import { PhaseSlugSchema } from '../../luca-dir/schemas.ts'
+import type { LucaState } from '../schemas.ts'
 
 function kebabCase(s: string): string {
     return s
@@ -23,8 +24,13 @@ export type ResolveActiveSlugResult =
 
 /**
  * Derive the active phase slug from workflow state. Returns an error
- * result (rather than throwing) so MCP tool handlers can surface a clean
- * isError result to the LLM.
+ * result (rather than throwing) so callers (write-surface handlers, the
+ * stage-gate hook, the `luca` CLI) can surface a clean failure to the LLM.
+ *
+ * Lives in `luca-core` beside `phasePathFor`: it is a pure
+ * `state -> slug` derivation with no runtime coupling, and several
+ * domains outside `write-surface` now need it (notably the v13
+ * stage-gate hook's artifact-path gate).
  */
 export function resolveActiveSlug(state: LucaState): ResolveActiveSlugResult {
     if (state.currentPhase === 0) {

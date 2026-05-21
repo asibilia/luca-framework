@@ -32,6 +32,12 @@ export { loadCurrentState } from './helpers/load-current-state.ts'
 export type { LoadCurrentStateOptions } from './helpers/load-current-state.ts'
 export { loadCurrentConfig } from './helpers/load-current-config.ts'
 export type { LoadCurrentConfigOptions } from './helpers/load-current-config.ts'
+export { resolveActiveSlug } from './helpers/resolve-active-slug.ts'
+export type {
+    ResolveActiveSlugFail,
+    ResolveActiveSlugOk,
+    ResolveActiveSlugResult,
+} from './helpers/resolve-active-slug.ts'
 
 // Stage-gate matrix
 export { STAGE_TOOL_MATRIX } from './configs/stage-tool-matrix.ts'

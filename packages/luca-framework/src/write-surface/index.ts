@@ -11,12 +11,16 @@ export type {
 export { z } from './__schemas/write-surface.schemas.ts'
 
 // Helpers
-export { resolveActiveSlug } from './helpers/resolve-active-slug.ts'
-export type {
-    ResolveActiveSlugFail,
-    ResolveActiveSlugOk,
-    ResolveActiveSlugResult,
-} from './helpers/resolve-active-slug.ts'
+//
+// resolveActiveSlug moved to @alecsibilia/luca-core (v13 Phase C) — it is a
+// pure state -> slug derivation now consumed by the stage-gate hook. The
+// write-surface barrel re-exports it so existing importers keep working.
+export {
+    resolveActiveSlug,
+    type ResolveActiveSlugFail,
+    type ResolveActiveSlugOk,
+    type ResolveActiveSlugResult,
+} from '@alecsibilia/luca-core'
 export { resolveRepoVault } from './helpers/resolve-repo-vault.ts'
 export type { ResolveRepoVaultOptions } from './helpers/resolve-repo-vault.ts'
 export { writeAtomicFile } from './helpers/write-atomic.ts'

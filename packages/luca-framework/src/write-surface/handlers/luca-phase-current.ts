@@ -1,6 +1,9 @@
-import { phasePathFor, loadCurrentState } from '@alecsibilia/luca-core'
+import {
+    phasePathFor,
+    loadCurrentState,
+    resolveActiveSlug,
+} from '@alecsibilia/luca-core'
 
-import { resolveActiveSlug } from '../helpers/resolve-active-slug.ts'
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 
 const inputSchema = z.object({})

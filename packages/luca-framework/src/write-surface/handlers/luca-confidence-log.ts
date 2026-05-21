@@ -2,10 +2,13 @@ import { existsSync } from 'node:fs'
 import { appendFile, mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { phasePathFor, loadCurrentState } from '@alecsibilia/luca-core'
+import {
+    phasePathFor,
+    loadCurrentState,
+    resolveActiveSlug,
+} from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { resolveActiveSlug } from '../helpers/resolve-active-slug.ts'
 
 const inputSchema = z.object({
     score: z

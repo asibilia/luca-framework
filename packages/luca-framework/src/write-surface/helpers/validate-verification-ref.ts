@@ -5,10 +5,9 @@ import { join } from 'node:path'
 import {
     loadCurrentState,
     phasePathFor,
+    resolveActiveSlug,
     type VerificationRef,
 } from '@alecsibilia/luca-core'
-
-import { resolveActiveSlug } from './resolve-active-slug.ts'
 
 export interface ValidateVerificationRefOptions {
     cwd: string

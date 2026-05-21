@@ -1,9 +1,12 @@
 import { join } from 'node:path'
 
-import { wavePathFor, loadCurrentState } from '@alecsibilia/luca-core'
+import {
+    wavePathFor,
+    loadCurrentState,
+    resolveActiveSlug,
+} from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { resolveActiveSlug } from '../helpers/resolve-active-slug.ts'
 import { writeAtomicFile } from '../helpers/write-atomic.ts'
 
 const inputSchema = z.object({

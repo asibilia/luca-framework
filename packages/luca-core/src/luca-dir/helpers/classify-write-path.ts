@@ -31,7 +31,14 @@ const HOME_DENIED_SUBDIRS = ['.claude', '.luca']
 const reAnchorless = (re: RegExp): string =>
     re.source.replace(/^\^/, '').replace(/\$$/, '')
 
-const AUDIT_PATH_PATTERN = new RegExp(
+/**
+ * Canonical audit-file path pattern: `.luca/phases/<NN-slug>/audits/<reviewer>.md`.
+ *
+ * Exported so the v13 stage-gate hook's artifact-path gate can recognise
+ * the variable audit-file path for the `review` step (audit filenames are
+ * per-reviewer, so they have no single fixed canonical path).
+ */
+export const AUDIT_PATH_PATTERN = new RegExp(
     `^\\.luca/phases/${reAnchorless(PHASE_SLUG_RE)}/audits/${reAnchorless(
         REVIEWER_NAME_RE
     )}\\.md$`

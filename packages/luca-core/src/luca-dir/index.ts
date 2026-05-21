@@ -36,7 +36,10 @@ export { milestoneAuditPathFor } from './helpers/milestone-audit-path-for.ts'
 export { telemetryPathFor } from './helpers/telemetry-path-for.ts'
 export { archivedPhasePathFor } from './helpers/archived-phase-path-for.ts'
 export { isValidLucaPath } from './helpers/is-valid-luca-path.ts'
-export { classifyWritePath } from './helpers/classify-write-path.ts'
+export {
+    classifyWritePath,
+    AUDIT_PATH_PATTERN,
+} from './helpers/classify-write-path.ts'
 
 export type { ValidationResult } from './helpers/is-valid-luca-path.ts'
 export type {
