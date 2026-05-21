@@ -1,3 +1,5 @@
+import { PHASE_SLUG_RE, REVIEWER_NAME_RE } from '../constants.ts'
+
 export type WritePathClass =
     | 'code'
     | 'planning-general'
@@ -21,8 +23,19 @@ const GIT_DIR_PATTERN = /(^|\/)\.git(\/|$)/
 const HOME_DENIED_SUBDIRS = ['.claude', '.luca']
 
 // Audit file pattern: .luca/phases/<NN-slug>/audits/<reviewer>.md
-const AUDIT_PATH_PATTERN =
-    /^\.luca\/phases\/[0-9]{2}-[a-z][a-z0-9-]*\/audits\/[a-z][a-z0-9-]*\.md$/
+//
+// Built from the canonical PHASE_SLUG_RE + REVIEWER_NAME_RE (anchors
+// stripped) so this pattern can never drift looser than the .luca/
+// contract — e.g. it rejects trailing dashes that a hand-written
+// `[a-z0-9-]*` would have allowed.
+const reAnchorless = (re: RegExp): string =>
+    re.source.replace(/^\^/, '').replace(/\$$/, '')
+
+const AUDIT_PATH_PATTERN = new RegExp(
+    `^\\.luca/phases/${reAnchorless(PHASE_SLUG_RE)}/audits/${reAnchorless(
+        REVIEWER_NAME_RE
+    )}\\.md$`
+)
 
 /**
  * Classify a write-target path into one of four classes used by the

@@ -15,7 +15,7 @@ Both packages import the canonical state schema, `pipelineStep` enum, coarse-pha
 
 | Subpath | Contents |
 |---|---|
-| `@alecsibilia/luca-core/state` | `lucaStateSchema`, `pipelineStepEnum`, `coarsePhaseOf()` |
+| `@alecsibilia/luca-core/state` | `lucaStateSchema`, `PipelineStep`, `coarsePhaseOf()` |
 | `@alecsibilia/luca-core/luca-dir` | `.luca/` path allowlist, `isValidLucaPath()`, `phasePathFor()`, etc. |
 
 ## What lives here vs. elsewhere

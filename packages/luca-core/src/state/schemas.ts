@@ -72,8 +72,10 @@ export type RoadmapPhase = z.infer<typeof RoadmapPhaseSchema>
 //   - workflowVersion (no v1 path needed)
 //   - skipBranch     (replaced by no-bypass policy)
 //
-// Strict on the trimmed shape. Use lucaStateSchemaTolerant for migration
-// reads that should silently drop unknown legacy fields.
+// lucaStateSchema strips unknown keys (default Zod object behavior), so
+// the dropped legacy fields above never survive a parse. Use
+// lucaStateSchemaTolerant for migration reads that must instead PRESERVE
+// unknown legacy fields verbatim.
 // ---------------------------------------------------------------------------
 
 export const lucaStateSchema = z.object({
@@ -125,6 +127,7 @@ export const lucaStateSchema = z.object({
 
 export type LucaState = z.infer<typeof lucaStateSchema>
 
-// Tolerant schema for reading legacy state.json files: drops unknown fields
-// silently and applies pipelineStep legacy mapping.
+// Tolerant schema for reading legacy state.json files: PRESERVES unknown
+// fields via `.passthrough()` (so legacy mastracode fields survive a
+// migration-window read) and applies the pipelineStep legacy mapping.
 export const lucaStateSchemaTolerant = lucaStateSchema.passthrough()
