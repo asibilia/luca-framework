@@ -1,15 +1,23 @@
+import type { Tool, ToolExecutionContext } from '@mastra/core/tools'
 import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 import { z } from 'zod'
 
 import * as phaseDiff from '../analysis/phase-diff.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
 import * as lucaStore from '../state/luca-store.js'
 import * as sessionLedger from '../state/session-ledger.js'
+import type { TelemetryRecord } from '../state/telemetry.js'
 import * as telemetry from '../state/telemetry.js'
+import type { VerificationResult } from '../state/verification-result.js'
 import * as verificationResult from '../state/verification-result.js'
 import { createScopedTool } from '../tools/create-scoped-tool.js'
 import * as repoCleanup from '../tools/repo-cleanup.js'
 import { ROOT_WHITELIST_DIRS } from '../tools/repo-cleanup.js'
-import { workflowStateTool, PIPELINE_ORDER } from '../tools/workflow-state.js'
+import {
+    workflowStateTool,
+    PIPELINE_ORDER,
+    type WorkflowStateInput,
+} from '../tools/workflow-state.js'
 import { switchModeRef } from '../util/refs.js'
 
 // ---------------------------------------------------------------------------
@@ -17,12 +25,14 @@ import { switchModeRef } from '../util/refs.js'
 // ---------------------------------------------------------------------------
 
 const mockReadLucaState = spyOn(lucaStore, 'readLucaState').mockReturnValue(
-    {} as any
+    {} as LucaWorkflowState
 )
 const mockWriteLucaState = spyOn(
     lucaStore,
     'writeLucaState'
-).mockImplementation((updates: any) => updates)
+).mockImplementation(
+    (updates: Partial<LucaWorkflowState>) => updates as LucaWorkflowState
+)
 const mockAppendLedger = spyOn(sessionLedger, 'appendLedger').mockReturnValue(
     undefined
 )
@@ -39,31 +49,51 @@ const mockComputePhaseDiff = spyOn(
 ).mockReturnValue({
     filesChanged: ['src/foo.ts'],
     commitsAdded: ['abc123'],
-} as any)
+    isEmpty: false,
+    indeterminate: false,
+})
 const mockDetectStragglers = spyOn(
     repoCleanup,
     'detectStragglers'
-).mockReturnValue({ rootStragglers: [], unknownRootDirs: [] } as any)
+).mockReturnValue({
+    rootStragglers: [],
+    orphanedPhaseDirs: [],
+    unknownRootDirs: [],
+})
 
 beforeEach(() => {
-    mockReadLucaState.mockReturnValue({} as any)
-    mockWriteLucaState.mockClear().mockImplementation((updates: any) => updates)
+    mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
+    mockWriteLucaState
+        .mockClear()
+        .mockImplementation(
+            (updates: Partial<LucaWorkflowState>) =>
+                updates as LucaWorkflowState
+        )
     mockAppendLedger.mockClear()
     mockAppendTelemetry.mockClear().mockReturnValue(undefined)
     mockReadVerificationResult.mockClear().mockReturnValue(null)
     mockComputePhaseDiff.mockClear().mockReturnValue({
         filesChanged: ['src/foo.ts'],
         commitsAdded: ['abc123'],
-    } as any)
-    mockDetectStragglers
-        .mockClear()
-        .mockReturnValue({ rootStragglers: [], unknownRootDirs: [] } as any)
+        isEmpty: false,
+        indeterminate: false,
+    })
+    mockDetectStragglers.mockClear().mockReturnValue({
+        rootStragglers: [],
+        orphanedPhaseDirs: [],
+        unknownRootDirs: [],
+    })
     switchModeRef.current = null
 })
 
 // Helper to call the tool's execute function directly
-async function callAction(input: Record<string, unknown>): Promise<any> {
-    return workflowStateTool.execute!(input as any, {} as any)
+async function callAction(
+    input: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+    return workflowStateTool.execute!(
+        input as WorkflowStateInput,
+        {} as ToolExecutionContext
+    ) as Promise<Record<string, unknown>>
 }
 
 // ---------------------------------------------------------------------------
@@ -359,7 +389,9 @@ describe('stale state detection on switch-mode to triage', () => {
         expect(result.success).toBe(false)
         expect(result.message).toContain('Stale pipeline state')
         expect(result.message).toContain('old intent from previous run')
-        expect(result.staleState.intent).toBe('old intent from previous run')
+        expect((result.staleState as Record<string, unknown>).intent).toBe(
+            'old intent from previous run'
+        )
     })
 
     test('rejects with stale state warning when pipelineStep is non-idle', async () => {
@@ -374,7 +406,9 @@ describe('stale state detection on switch-mode to triage', () => {
 
         expect(result.success).toBe(false)
         expect(result.message).toContain('Stale pipeline state')
-        expect(result.staleState.pipelineStep).toBe('luca:3-architect')
+        expect(
+            (result.staleState as Record<string, unknown>).pipelineStep
+        ).toBe('luca:3-architect')
     })
 
     test('allows switch-mode to triage when state is clean', async () => {
@@ -450,7 +484,7 @@ describe('generic write action', () => {
 describe('scoped tool enforcement', () => {
     test("triage-scoped tool rejects 'write' action", () => {
         const triageTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: ['read', 'save-triage-results', 'switch-mode'],
         })
 
@@ -464,7 +498,7 @@ describe('scoped tool enforcement', () => {
 
     test("triage-scoped tool accepts 'save-triage-results' action", () => {
         const triageTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: ['read', 'save-triage-results', 'switch-mode'],
         })
 
@@ -480,7 +514,7 @@ describe('scoped tool enforcement', () => {
 
     test("review-scoped tool rejects 'save-triage-results' action", () => {
         const reviewTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: ['read', 'save-review-results', 'switch-mode'],
         })
 
@@ -496,7 +530,7 @@ describe('scoped tool enforcement', () => {
 
     test("execute-scoped tool rejects 'write' and 'reset-pipeline'", () => {
         const executeTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: [
                 'read',
                 'start-phase',
@@ -522,7 +556,7 @@ describe('scoped tool enforcement', () => {
 
     test('execute-scoped tool accepts its allowed actions', () => {
         const executeTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: [
                 'read',
                 'start-phase',
@@ -551,7 +585,7 @@ describe('scoped tool enforcement', () => {
 
     test('finalize-scoped tool only has reset-pipeline, not write', () => {
         const finalizeTool = createScopedTool({
-            tool: workflowStateTool as any,
+            tool: workflowStateTool as Tool,
             allowed_actions: ['read', 'reset-pipeline', 'switch-mode'],
         })
 
@@ -580,7 +614,7 @@ describe('telemetry instrumentation', () => {
             currentPhaseSlug: 'test-slug',
             currentWave: 1,
             runId: 'run_test_start',
-        } as any)
+        } as LucaWorkflowState)
 
         await callAction({ action: 'start-phase', phaseName: 'Phase 1: Test' })
 
@@ -605,7 +639,7 @@ describe('telemetry instrumentation', () => {
                     waveStartedAt: new Date(Date.now() - 5000).toISOString(),
                 },
             ],
-        } as any)
+        } as LucaWorkflowState)
         // Mock the verification gate so the happy-path runs (not the
         // vacuous "no verification → blocked" branch). The verifier
         // contract for advance-wave is `verification.wave === currentWave`.
@@ -618,7 +652,8 @@ describe('telemetry instrumentation', () => {
             convergence: 'resolved',
             errorFingerprints: [],
             recommendation: 'proceed',
-        } as any)
+            timestamp: new Date().toISOString(),
+        } as VerificationResult)
 
         const result = await callAction({ action: 'advance-wave' })
 
@@ -630,7 +665,9 @@ describe('telemetry instrumentation', () => {
         const waveEndCall = mockAppendTelemetry.mock.calls.find(
             (c) => c[0] === 'wave.end'
         )
-        const overrides = waveEndCall?.[2] as any
+        const overrides = waveEndCall?.[2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.wave).toBe(1)
         expect(overrides?.phase).toBe('Phase 1: Test')
         expect(typeof overrides?.durationMs).toBe('number')
@@ -662,6 +699,8 @@ describe('telemetry instrumentation', () => {
             currentWave: 2,
             runId: 'run_test_close',
             currentPhaseStartSnapshot: {
+                phase: 'Phase 1: Closing',
+                takenAt: new Date().toISOString(),
                 headSha: 'deadbeef',
                 dirtyFiles: [],
                 gitAvailable: true,
@@ -676,7 +715,7 @@ describe('telemetry instrumentation', () => {
                     waveStartedAt: waveStarted,
                 },
             ],
-        } as any)
+        } as LucaWorkflowState)
         mockReadVerificationResult.mockReturnValue({
             wave: 2,
             status: 'PASS',
@@ -686,7 +725,8 @@ describe('telemetry instrumentation', () => {
             convergence: 'resolved',
             errorFingerprints: [],
             recommendation: 'proceed',
-        } as any)
+            timestamp: new Date().toISOString(),
+        } as VerificationResult)
 
         const result = await callAction({
             action: 'complete-phase',
@@ -706,14 +746,18 @@ describe('telemetry instrumentation', () => {
             (c) => c[0] === 'phase.end'
         )
 
-        const wOverrides = waveEnd?.[2] as any
+        const wOverrides = waveEnd?.[2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(wOverrides?.wave).toBe(2)
         expect(wOverrides?.phase).toBe('Phase 1: Closing')
         expect(wOverrides?.slug).toBe('closing-slug')
         expect(typeof wOverrides?.durationMs).toBe('number')
         expect(wOverrides?.durationMs).toBeGreaterThan(0)
 
-        const pOverrides = phaseEnd?.[2] as any
+        const pOverrides = phaseEnd?.[2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(pOverrides?.wave).toBe(2)
         expect(pOverrides?.phase).toBe('Phase 1: Closing')
         expect(pOverrides?.slug).toBe('closing-slug')
@@ -741,7 +785,7 @@ describe('telemetry instrumentation', () => {
                     waveStartedAt: 'not-an-iso-date', // → new Date(...).getTime() = NaN
                 },
             ],
-        } as any)
+        } as LucaWorkflowState)
         mockReadVerificationResult.mockReturnValue({
             wave: 1,
             status: 'PASS',
@@ -751,7 +795,8 @@ describe('telemetry instrumentation', () => {
             convergence: 'resolved',
             errorFingerprints: [],
             recommendation: 'proceed',
-        } as any)
+            timestamp: new Date().toISOString(),
+        } as VerificationResult)
 
         const result = await callAction({ action: 'advance-wave' })
         expect(result.success).toBe(true)
@@ -759,7 +804,9 @@ describe('telemetry instrumentation', () => {
         const waveEnd = mockAppendTelemetry.mock.calls.find(
             (c) => c[0] === 'wave.end'
         )
-        const overrides = waveEnd?.[2] as any
+        const overrides = waveEnd?.[2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.durationMs).toBeNull()
     })
 
@@ -772,6 +819,8 @@ describe('telemetry instrumentation', () => {
             currentWave: 2,
             runId: 'run_test_nan_close',
             currentPhaseStartSnapshot: {
+                phase: 'Phase 1: Closing',
+                takenAt: new Date().toISOString(),
                 headSha: 'deadbeef',
                 dirtyFiles: [],
                 gitAvailable: true,
@@ -786,7 +835,7 @@ describe('telemetry instrumentation', () => {
                     waveStartedAt: 'also-garbage', // → NaN
                 },
             ],
-        } as any)
+        } as LucaWorkflowState)
         mockReadVerificationResult.mockReturnValue({
             wave: 2,
             status: 'PASS',
@@ -796,7 +845,8 @@ describe('telemetry instrumentation', () => {
             convergence: 'resolved',
             errorFingerprints: [],
             recommendation: 'proceed',
-        } as any)
+            timestamp: new Date().toISOString(),
+        } as VerificationResult)
 
         const result = await callAction({
             action: 'complete-phase',
@@ -811,8 +861,11 @@ describe('telemetry instrumentation', () => {
         const phaseEnd = mockAppendTelemetry.mock.calls.find(
             (c) => c[0] === 'phase.end'
         )
-        expect((waveEnd?.[2] as any)?.durationMs).toBeNull()
-        expect((phaseEnd?.[2] as any)?.durationMs).toBeNull()
+        type TelemetryOverrides = Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
+        expect((waveEnd?.[2] as TelemetryOverrides)?.durationMs).toBeNull()
+        expect((phaseEnd?.[2] as TelemetryOverrides)?.durationMs).toBeNull()
     })
 
     // Note: A "start-phase survives appendTelemetry throw" test previously
@@ -858,10 +911,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'luca:1-triage',
             currentModeStartedAt: priorModeStartedAt,
-            currentPhaseName: null,
-            currentPhaseSlug: null,
-            currentWave: null,
-        } as any)
+        } as LucaWorkflowState)
 
         const result = await callAction({
             action: 'switch-mode',
@@ -873,7 +923,9 @@ describe('switch-mode telemetry', () => {
             (c) => c[0] === 'mode.end'
         )
         expect(modeEndCall).toBeDefined()
-        const overrides = modeEndCall![2] as any
+        const overrides = modeEndCall![2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(typeof overrides?.durationMs).toBe('number')
         expect(overrides?.durationMs).toBeGreaterThan(0)
     })
@@ -884,7 +936,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'luca:1-triage',
             currentModeStartedAt: priorModeStartedAt,
-        } as any)
+        } as LucaWorkflowState)
 
         await callAction({
             action: 'switch-mode',
@@ -895,9 +947,11 @@ describe('switch-mode telemetry', () => {
             (c) => c[0] === 'mode.start'
         )
         expect(modeStartCall).toBeDefined()
-        const overrides = modeStartCall![2] as any
+        const overrides = modeStartCall![2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.durationMs ?? null).toBeNull()
-        const meta = modeStartCall![1] as any
+        const meta = modeStartCall![1] as Record<string, unknown>
         expect(meta?.to).toBe('luca:2-research')
     })
 
@@ -906,7 +960,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'idle',
             // no currentModeStartedAt
-        } as any)
+        } as LucaWorkflowState)
 
         const result = await callAction({
             action: 'switch-mode',
@@ -918,7 +972,9 @@ describe('switch-mode telemetry', () => {
             (c) => c[0] === 'mode.end'
         )
         expect(modeEndCall).toBeDefined()
-        const overrides = modeEndCall![2] as any
+        const overrides = modeEndCall![2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.durationMs).toBeNull()
     })
 
@@ -927,7 +983,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'luca:1-triage',
             currentModeStartedAt: 'not-a-valid-date',
-        } as any)
+        } as LucaWorkflowState)
 
         await callAction({
             action: 'switch-mode',
@@ -938,7 +994,9 @@ describe('switch-mode telemetry', () => {
             (c) => c[0] === 'mode.end'
         )
         expect(modeEndCall).toBeDefined()
-        const overrides = modeEndCall![2] as any
+        const overrides = modeEndCall![2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.durationMs).toBeNull()
     })
 
@@ -949,7 +1007,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'luca:1-triage',
             currentModeStartedAt: new Date().toISOString(),
-        } as any)
+        } as LucaWorkflowState)
 
         const result = await callAction({
             action: 'switch-mode',
@@ -974,10 +1032,12 @@ describe('switch-mode telemetry', () => {
         // Verify writeLucaState was called with currentModeStartedAt: undefined
         const resetCalls = mockWriteLucaState.mock.calls
         const resetStateCall = resetCalls.find(
-            (c) => c[0] && 'currentModeStartedAt' in (c[0] as any)
+            (c) => c[0] && 'currentModeStartedAt' in (c[0] as LucaWorkflowState)
         )
         expect(resetStateCall).toBeDefined()
-        expect((resetStateCall![0] as any).currentModeStartedAt).toBeUndefined()
+        expect(
+            (resetStateCall![0] as LucaWorkflowState).currentModeStartedAt
+        ).toBeUndefined()
 
         // Simulate the state after reset: currentModeStartedAt is gone
         mockWriteLucaState.mockClear()
@@ -986,7 +1046,7 @@ describe('switch-mode telemetry', () => {
         mockReadLucaState.mockReturnValue({
             pipelineStep: 'idle',
             // currentModeStartedAt deliberately absent — simulates post-reset state
-        } as any)
+        } as LucaWorkflowState)
 
         await callAction({
             action: 'switch-mode',
@@ -997,7 +1057,9 @@ describe('switch-mode telemetry', () => {
             (c) => c[0] === 'mode.end'
         )
         expect(modeEndCall).toBeDefined()
-        const overrides = modeEndCall![2] as any
+        const overrides = modeEndCall![2] as Partial<
+            Omit<TelemetryRecord, 'v' | 'ts' | 'kind' | 'meta'>
+        >
         expect(overrides?.durationMs).toBeNull()
     })
 })
@@ -1297,7 +1359,7 @@ describe('review.iteration telemetry', () => {
         mockReadLucaState.mockReturnValue({
             reviewIteration: 1,
             reviewStartedAt: new Date(Date.now() - 5000).toISOString(),
-        } as any)
+        } as LucaWorkflowState)
         await callAction({
             action: 'save-review-results',
             iterationPlan: ['fix x'],
@@ -1330,7 +1392,7 @@ describe('review.iteration telemetry', () => {
         mockReadLucaState.mockReturnValue({
             reviewIteration: 1,
             reviewStartedAt: new Date().toISOString(),
-        } as any)
+        } as LucaWorkflowState)
         await callAction({
             action: 'save-review-results',
             iterationPlan: [],
@@ -1350,7 +1412,7 @@ describe('review.iteration telemetry', () => {
 
     test('(c) perspectives field propagates to meta', async () => {
         mockAppendTelemetry.mockClear()
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         await callAction({
             action: 'save-review-results',
             iterationPlan: [],
@@ -1373,7 +1435,7 @@ describe('review.iteration telemetry', () => {
         mockReadLucaState.mockReturnValue({
             reviewIteration: 1,
             reviewStartedAt: 'not-a-date',
-        } as any)
+        } as LucaWorkflowState)
         await callAction({
             action: 'save-review-results',
             iterationPlan: [],
@@ -1740,13 +1802,13 @@ describe('telemetry janitor', () => {
         mockAppendTelemetry.mockClear()
         mockReadLucaState.mockReturnValue({
             runId: 'run_test_archive_a',
-        } as any)
+        } as LucaWorkflowState)
         const result = await callAction({ action: 'reset-pipeline' })
         expect(result.success).toBe(true)
     })
 
     test('(b) reset-pipeline with no runId skips archive cleanly', async () => {
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         const result = await callAction({ action: 'reset-pipeline' })
         expect(result.success).toBe(true)
     })
@@ -1757,7 +1819,7 @@ describe('telemetry janitor', () => {
         const warnSpy = spyOn(console, 'warn').mockImplementation(() => {})
         mockReadLucaState.mockReturnValue({
             runId: '../../etc/passwd', // would fail assertValidRunId
-        } as any)
+        } as LucaWorkflowState)
         const result = await callAction({ action: 'reset-pipeline' })
         expect(result.success).toBe(true)
         warnSpy.mockRestore()
@@ -1767,7 +1829,7 @@ describe('telemetry janitor', () => {
         mockReadLucaState.mockReturnValue({
             runId: 'run_test_clear_d',
             reviewStartedAt: '2026-05-14T13:00:00.000Z',
-        } as any)
+        } as LucaWorkflowState)
         await callAction({ action: 'reset-pipeline' })
         const written = mockWriteLucaState.mock.calls[0]![0]
         expect(written.reviewStartedAt).toBeUndefined()

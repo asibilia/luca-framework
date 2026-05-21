@@ -12,9 +12,11 @@
 import { describe, test, expect, beforeEach, spyOn } from 'bun:test'
 
 import * as lucaStore from '../state/luca-store.js'
+import type { LucaWorkflowState } from '../state/luca-store.js'
 import * as prefsState from '../state/project-preferences.js'
 import { DEFAULT_PREFERENCES } from '../state/project-preferences.js'
 import { ProjectPreferencesSchema } from '../state/project-preferences.js'
+import type { ProjectPreferences } from '../state/project-preferences.js'
 import { projectPreferencesTool } from '../tools/project-preferences.js'
 
 const mockReadLucaState = spyOn(lucaStore, 'readLucaState')
@@ -22,21 +24,40 @@ const mockWriteLucaState = spyOn(lucaStore, 'writeLucaState')
 const mockLoad = spyOn(prefsState, 'loadProjectPreferences')
 const mockWrite = spyOn(prefsState, 'writeProjectPreferences')
 
+type ToolOutput = {
+    success: boolean
+    preferences?: ProjectPreferences | null
+    section?: Record<string, unknown> | null
+    message?: string
+    muninnInstruction?: string
+}
+
+type ExecuteParams = Parameters<
+    NonNullable<typeof projectPreferencesTool.execute>
+>
+
 beforeEach(() => {
-    mockReadLucaState.mockReset().mockReturnValue({} as any)
-    mockWriteLucaState.mockReset().mockImplementation((updates: any) => updates)
+    mockReadLucaState.mockReset().mockReturnValue({} as LucaWorkflowState)
+    mockWriteLucaState
+        .mockReset()
+        .mockImplementation((updates: Partial<LucaWorkflowState>) => updates)
     mockLoad.mockReset()
     mockWrite.mockReset().mockImplementation(() => undefined)
 })
 
-async function call(input: Record<string, unknown>): Promise<any> {
-    return projectPreferencesTool.execute!(input as any, {} as any)
+async function call(input: Record<string, unknown>): Promise<ToolOutput> {
+    return projectPreferencesTool.execute!(
+        input as ExecuteParams[0],
+        {} as ExecuteParams[1]
+    ) as Promise<ToolOutput>
 }
 
 describe('projectPreferences:consult', () => {
     test('returns preferences when file present', async () => {
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({ action: 'consult' })
         expect(result.success).toBe(true)
         expect(result.preferences).toEqual(DEFAULT_PREFERENCES)
@@ -44,7 +65,7 @@ describe('projectPreferences:consult', () => {
 
     test('back-fills preferencesSeeded flag when file present but flag missing', async () => {
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         const result = await call({ action: 'consult' })
         expect(result.success).toBe(true)
         expect(mockWriteLucaState).toHaveBeenCalledWith({
@@ -54,7 +75,9 @@ describe('projectPreferences:consult', () => {
 
     test('C1 LOOP-SAFE: seeded flag true + missing file → returns defaults, not null', async () => {
         mockLoad.mockReturnValue(null)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({ action: 'consult' })
         expect(result.success).toBe(true)
         expect(result.preferences).toEqual(DEFAULT_PREFERENCES)
@@ -62,7 +85,7 @@ describe('projectPreferences:consult', () => {
 
     test('not seeded + no file + fallback:false → preferences:null (sentinel signal)', async () => {
         mockLoad.mockReturnValue(null)
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         const result = await call({ action: 'consult', fallback: false })
         expect(result.success).toBe(true)
         expect(result.preferences).toBeNull()
@@ -70,7 +93,7 @@ describe('projectPreferences:consult', () => {
 
     test('not seeded + no file + fallback:true → DEFAULT_PREFERENCES (C2)', async () => {
         mockLoad.mockReturnValue(null)
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         const result = await call({ action: 'consult', fallback: true })
         expect(result.success).toBe(true)
         expect(result.preferences).toEqual(DEFAULT_PREFERENCES)
@@ -80,7 +103,9 @@ describe('projectPreferences:consult', () => {
 describe('projectPreferences:consult-section', () => {
     test('returns the requested section when file present', async () => {
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'consult-section',
             section: 'branching',
@@ -100,7 +125,9 @@ describe('projectPreferences:consult-section', () => {
 
     test('C1 LOOP-SAFE: seeded + missing file → returns default section', async () => {
         mockLoad.mockReturnValue(null)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'consult-section',
             section: 'commits',
@@ -111,7 +138,7 @@ describe('projectPreferences:consult-section', () => {
 
     test('fallback:true returns default section when not seeded', async () => {
         mockLoad.mockReturnValue(null)
-        mockReadLucaState.mockReturnValue({} as any)
+        mockReadLucaState.mockReturnValue({} as LucaWorkflowState)
         const result = await call({
             action: 'consult-section',
             section: 'pr',
@@ -182,25 +209,29 @@ describe('projectPreferences:update', () => {
                 defaultBranch: 'develop',
             },
         })
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'update',
             payload: { branching: { template: '{type}/{slug}' } },
         })
         expect(result.success).toBe(true)
-        expect(result.preferences.branching.defaultBranch).toBe('develop')
-        expect(result.preferences.branching.template).toBe('{type}/{slug}')
+        expect(result.preferences!.branching.defaultBranch).toBe('develop')
+        expect(result.preferences!.branching.template).toBe('{type}/{slug}')
     })
 
     test('does not toggle off preferencesSeeded', async () => {
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         await call({
             action: 'update',
             payload: { commits: { convention: 'none' } },
         })
         // update must NOT call writeLucaState({preferencesSeeded:false}).
-        const wroteFalse = mockWriteLucaState.mock.calls.some((c: any) =>
+        const wroteFalse = mockWriteLucaState.mock.calls.some((c) =>
             JSON.stringify(c).includes('"preferencesSeeded":false')
         )
         expect(wroteFalse).toBe(false)
@@ -226,7 +257,9 @@ describe('projectPreferences:update', () => {
         // the section payload is silently dropped and the existing section
         // is preserved.
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'update',
             // Section values are intentionally invalid: string, array, null.
@@ -239,10 +272,10 @@ describe('projectPreferences:update', () => {
         })
         expect(result.success).toBe(true)
         // pr/commits/release retain their existing values; branching is merged.
-        expect(result.preferences.pr).toEqual(DEFAULT_PREFERENCES.pr)
-        expect(result.preferences.commits).toEqual(DEFAULT_PREFERENCES.commits)
-        expect(result.preferences.release).toEqual(DEFAULT_PREFERENCES.release)
-        expect(result.preferences.branching.template).toBe('{type}/{slug}')
+        expect(result.preferences!.pr).toEqual(DEFAULT_PREFERENCES.pr)
+        expect(result.preferences!.commits).toEqual(DEFAULT_PREFERENCES.commits)
+        expect(result.preferences!.release).toEqual(DEFAULT_PREFERENCES.release)
+        expect(result.preferences!.branching.template).toBe('{type}/{slug}')
     })
 
     test('SAFE_FREEFORM rejects newline-injected branch template (PR #227 Copilot)', async () => {
@@ -250,7 +283,9 @@ describe('projectPreferences:update', () => {
         // would let an attacker inject a fresh line into the JSON blob
         // handed to the LLM via muninnInstruction. Tightened to ` \t`.
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'update',
             payload: {
@@ -266,7 +301,9 @@ describe('projectPreferences:update', () => {
         // overwrite the locked z.literal(1). Migrations belong in a future
         // dedicated migrate() helper, not in mergePreferences.
         mockLoad.mockReturnValue(DEFAULT_PREFERENCES)
-        mockReadLucaState.mockReturnValue({ preferencesSeeded: true } as any)
+        mockReadLucaState.mockReturnValue({
+            preferencesSeeded: true,
+        } as LucaWorkflowState)
         const result = await call({
             action: 'update',
             payload: {
@@ -275,8 +312,8 @@ describe('projectPreferences:update', () => {
             },
         })
         expect(result.success).toBe(true)
-        expect(result.preferences.schemaVersion).toBe(1)
-        expect(result.preferences.commits.convention).toBe('none')
+        expect(result.preferences!.schemaVersion).toBe(1)
+        expect(result.preferences!.commits.convention).toBe('none')
     })
 })
 

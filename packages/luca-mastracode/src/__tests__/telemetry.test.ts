@@ -293,7 +293,7 @@ describe('phase-paths — assertValidRunId (strict canonical)', () => {
         [null, 'null'],
         [undefined, 'undefined'],
     ])('rejects %p (%s)', (input) => {
-        expect(() => assertValidRunId(input as any)).toThrow()
+        expect(() => assertValidRunId(input)).toThrow()
     })
 
     test('accepts canonical "run_<ts36>_<rand36>"', () => {

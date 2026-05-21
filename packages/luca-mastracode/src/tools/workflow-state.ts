@@ -409,7 +409,10 @@ export const recordRecallAction = z.object({
  *
  * @internal — exported for testing only.
  */
-export const WORKFLOW_ACTION_SCHEMAS: Record<string, z.ZodObject<any>> = {
+export const WORKFLOW_ACTION_SCHEMAS: Record<
+    string,
+    z.ZodObject<z.ZodRawShape>
+> = {
     'record-subagent': recordSubagentAction,
     'record-recall': recordRecallAction,
     'cancel-subagent': cancelSubagentAction,

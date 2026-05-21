@@ -4,6 +4,8 @@
 //
 // Outputs the tool result (JSON). The seed action also writes
 // .planning/preferences.json and sets state.preferencesSeeded=true.
+import type { ToolExecutionContext } from '@mastra/core/tools'
+
 import { projectPreferencesTool } from '../src/tools/project-preferences.ts'
 
 const payload = {
@@ -54,10 +56,9 @@ const payload = {
     },
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const result = await (projectPreferencesTool.execute as any)(
+const result = await projectPreferencesTool.execute!(
     { action: 'seed', payload, fallback: false },
-    {} as any
+    {} as ToolExecutionContext
 )
 
 console.log(JSON.stringify(result, null, 2))

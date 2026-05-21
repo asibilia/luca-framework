@@ -25,7 +25,6 @@ import {
     readLedgerForRun,
     getCurrentRunId,
     listRuns,
-    listArchivedRuns,
     resolveRunArtifactDir,
     readJsonlAt,
     ARTIFACT_FILES,
