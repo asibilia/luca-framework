@@ -18,7 +18,7 @@ Parse `$ARGUMENTS` for:
 
 1. Recall project identity from MuninnDB: `mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["brain:project-identity"], mode: "semantic" })`.
 2. Recall prior milestones: `mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["milestone:"], mode: "recent" })`.
-3. Call `luca_state_read` to check the pipeline status.
+3. Run `luca state read` to check the pipeline status.
 
 Resolve `<repo_vault>` from `.luca/config.json` → `muninn.vault`, falling back to `"default"`.
 
@@ -75,16 +75,18 @@ Let the user adjust. Fold the agreed requirement list into the milestone memory 
 
 ## Step 7 — Build the roadmap
 
-Organize the requirements into ordered phases by dependency and priority, then call:
+Organize the requirements into ordered phases by dependency and priority. Stage the phases array in a JSON file, then run `luca roadmap create --file`:
 
 ```
-luca_roadmap_create({ phases: [
-  { name: "<phase name>", deps: [...], complexity: "<TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL>" },
-  ...
-] })
+# /tmp/luca-roadmap.json:
+# [
+#   { "name": "<phase name>", "deps": [...], "complexity": "<TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL>" },
+#   ...
+# ]
+luca roadmap create --file /tmp/luca-roadmap.json
 ```
 
-`luca_roadmap_create` is only legal in `idle`/`triage`; it resets `currentPhase` to 0 and sets `totalPhases`. If the pipeline was mid-flight and the user confirmed the reset in Step 1, call `luca_workflow_reset({ confirm: true })` first to return to a clean idle state.
+`luca roadmap create` is only legal in `idle`/`triage`; it resets `currentPhase` to 0 and sets `totalPhases`. If the pipeline was mid-flight and the user confirmed the reset in Step 1, run `luca workflow reset --confirm` first to return to a clean idle state.
 
 ## Step 8 — GitHub tracking
 

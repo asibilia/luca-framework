@@ -9,9 +9,9 @@ You are running the **plan** step. Research is done, user decisions are captured
 
 ## Preconditions
 
-1. Call `luca_state_read`. The `pipelineStep` must be `architect` (entering plan) or `plan` (already advanced).
-2. If currently `architect`, call `luca_state_advance({ toStep: "plan" })`.
-3. Call `luca_phase_current` to get the active slug. If no active phase, abort.
+1. Run `luca state read`. The `pipelineStep` must be `architect` (entering plan) or `plan` (already advanced).
+2. If currently `architect`, run `luca state advance --to-step plan`.
+3. Run `luca phase current` to get the active slug and directory. If no active phase, abort.
 
 ## Read inputs
 
@@ -33,20 +33,21 @@ The subagent does the cognitive work; this skill is just orchestration.
 
 ## Persist the plan
 
-When the planner returns, write the plan via:
+When the planner returns, write the plan with the `Write` tool to the canonical path. Use the `dir` field from `luca phase current`; the plan path is `<dir>/plan.md`:
 
 ```
-luca_phase_write_plan({ content: "<plan markdown>" })
+Write tool → <dir>/plan.md
+content: "<plan markdown>"
 ```
 
-The MCP server allows this only when `pipelineStep === "plan"`. Direct `Edit` is blocked by the hook.
+The stage-gate hook only permits this `Write` to `<dir>/plan.md` while `pipelineStep === "plan"` — any other path or step is blocked.
 
 ## Advance
 
-Call `luca_state_advance({ toStep: "plan-review" })` to hand off to plan-review.
+Run `luca state advance --to-step plan-review` to hand off to plan-review.
 
 ## What you must NOT do
 
 - Do NOT write code. Code writes are blocked in PLANNING.
 - Do NOT bypass the planner subagent by writing the plan yourself unless the user explicitly asks. The subagent is where the conceptual work happens.
-- Do NOT call `Edit` on `plan.md` — use the MCP tool.
+- Do NOT write `plan.md` to any path other than `<dir>/plan.md`, or via `Edit` — the hook blocks every other `.luca/` write.

@@ -20,11 +20,11 @@ The `luca` CLI is the **structured / operational** track of the Luca write
 surface. It is invoked via `Bash` and mutates `.luca/` through validated,
 deterministic handlers — never a raw file write.
 
-This skill covers the **18 CLI commands only**. The 9 freeform phase
-artifact files (research, context, plan, plan-review, summary, wave, verify,
-audit, learn) have **no CLI command** — they are written with the native
-`Write` tool to their canonical path. That convention is documented
-separately.
+The 9 freeform phase artifact files (research, context, plan, plan-review,
+summary, wave, verify, audit, learn) have **no CLI command** — they are
+written with the native `Write` tool to their canonical path. That
+convention is documented in the "Artifact files" section below; the CLI
+commands are documented after it.
 
 ## Invocation shape
 
@@ -51,6 +51,71 @@ is not allowed. Pure reads have no restriction.
 | `roadmap create` | `idle`, `triage` |
 | `checks run` | `execute`, `checks` |
 | all other commands | any (pure reads or phase-agnostic mutations) |
+
+## Artifact files — the `Write`-tool track
+
+The 9 freeform phase artifacts are **not** mutated through the CLI. They
+are written with the agent's native **`Write` tool**, directly to a
+canonical path under the active phase directory. Content travels in
+`Write`'s structured `content` field and never touches the shell.
+
+### Get the phase directory
+
+The canonical path is computed from the active phase directory. Obtain it
+by running:
+
+```
+luca phase current
+```
+
+which prints `{ active, NN, slug, dir }` (or `{ active: false }` when no
+phase is active). Use the `dir` field as the base path — e.g.
+`.luca/phases/03-ws-reconnect`. Never hand-construct the slug.
+
+### The 9 canonical artifact paths
+
+Given `<dir>` from `luca phase current`:
+
+| Artifact | Canonical path | Written during step |
+|---|---|---|
+| research | `<dir>/research.md` | `research` |
+| context | `<dir>/context.md` | `discuss` |
+| plan | `<dir>/plan.md` | `plan` |
+| plan-review | `<dir>/plan-review.md` | `plan-review` |
+| summary | `<dir>/execute/summary.md` | `execute` |
+| wave | `<dir>/execute/waves/<NN>.md` | `execute` |
+| verify | `<dir>/verify.json` | `verify` |
+| audit | `<dir>/audits/<reviewer>.md` | `review` |
+| learn | `<dir>/learn.md` | `learn` |
+
+- `<NN>` in the wave path is the **zero-padded** wave number (`00.md`,
+  `03.md`, `42.md`).
+- `<reviewer>` in the audit path is the reviewer perspective in
+  kebab-case (`code-review`, `architect`, `dx`, `security`,
+  `simplification`, `test-quality`).
+- `verify.json` is **JSON**, not markdown — write the verification
+  result object as a JSON string.
+
+### Phase gating — the stage-gate hook
+
+The Phase C stage-gate hook (PreToolUse) computes the legal artifact
+path(s) for the current `pipelineStep` and allows a `Write` **only** when
+the path is an exact match for that step. Each artifact has exactly one
+legal `pipelineStep` (the "Written during step" column above):
+
+- A `Write` to `<dir>/plan.md` is allowed only while
+  `pipelineStep === "plan"`; the same write is **blocked** in any other
+  step.
+- A `Write` to any other `.luca/` path — including `.luca/` root files
+  (`state.json`, `config.json`, `roadmap.md`, `ledger.jsonl`) — is
+  **always blocked**. Root files are mutated only through the `luca` CLI.
+- A `Write` to a code file or any non-contract path is blocked
+  (unchanged behavior).
+
+This makes the native `Write` tool the safe content channel: the agent
+*proposes* the path, the hook *computes* the canonical path for the
+current step and rejects anything else. Do not attempt to work around a
+block — advance the pipeline to the correct step first.
 
 ## Commands
 

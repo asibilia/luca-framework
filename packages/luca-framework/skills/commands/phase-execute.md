@@ -9,9 +9,9 @@ You are running the **execute** step. The plan exists and has been reviewed. You
 
 ## Preconditions
 
-1. Call `luca_state_read`. The `pipelineStep` must be `plan-review` (entering execute) or `execute` (already advanced).
-2. If currently `plan-review`, call `luca_state_advance({ toStep: "execute" })`.
-3. Call `luca_phase_current` to get the active slug.
+1. Run `luca state read`. The `pipelineStep` must be `plan-review` (entering execute) or `execute` (already advanced).
+2. If currently `plan-review`, run `luca state advance --to-step execute`.
+3. Run `luca phase current` to get the active slug.
 
 ## Read the plan
 
@@ -28,12 +28,12 @@ The subagent does the actual code-writing work. **You are orchestration only** �
 
 ## Verification gate
 
-When the executor returns, call `luca_state_advance({ toStep: "checks" })` to enter the mechanical verification step (typecheck + tests).
+When the executor returns, run `luca state advance --to-step checks` to enter the mechanical verification step (typecheck + tests).
 
 The checks step is its own skill; `/phase-execute` is done once the executor reports completion.
 
 ## What you must NOT do
 
 - Do NOT advance to `checks` until the executor reports that the plan is implemented.
-- Do NOT skip writing the execute summary — the executor produces one and writes it via `luca_phase_write_summary` (Phase 4+ MCP tool) or the hook will block direct writes.
+- Do NOT skip writing the execute summary — the executor produces one and writes it with the `Write` tool to `<dir>/execute/summary.md` (the canonical path); the hook blocks any other `.luca/` write.
 - Do NOT commit on behalf of the user during execute. Commits are FINALIZING-only and the hook blocks them here.

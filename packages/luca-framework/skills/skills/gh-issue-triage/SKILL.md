@@ -24,7 +24,7 @@ If no GitHub remote is detected, stop and tell the user.
 
 ### 2. Load existing todos (for dedup)
 
-Call `luca_todo_list({})`. It returns a `mcp__muninn__muninn_recall` instruction blob — execute it exactly as returned. Each recalled memory's `content` is JSON conforming to `TodoSchema`; collect every existing todo's `source` field. This is the dedup set for step 5.
+Run `luca todo list`. It prints a `mcp__muninn__muninn_recall` instruction blob — execute it exactly as returned. Each recalled memory's `content` is JSON conforming to `TodoSchema`; collect every existing todo's `source` field. This is the dedup set for step 5.
 
 ### 3. Filter
 
@@ -60,22 +60,25 @@ Wait for the user to confirm which issues to import. Accept "all" or a comma-sep
 
 ### 5. Create todos
 
-For each approved issue, call `luca_todo_add`:
+For each approved issue, stage the `metadata` object in a JSON file and run `luca todo add`:
 
 ```
-luca_todo_add({
-  title: "<issue title>",
-  body: "> GitHub Issue: #<N> — <url>\n\n<issue body, trimmed to essentials>",
-  source: "gh-issue-#<N>",
-  metadata: { priority: "<high|medium|low>", area: "<ui|api|infra|...>" }
-})
+# /tmp/luca-todo-meta.json:
+# { "priority": "<high|medium|low>", "area": "<ui|api|infra|...>" }
+luca todo add \
+  --title "<issue title>" \
+  --body "> GitHub Issue: #<N> — <url>
+
+<issue body, trimmed to essentials>" \
+  --source "gh-issue-#<N>" \
+  --metadata-file /tmp/luca-todo-meta.json
 ```
 
-- **`source`** is `gh-issue-#<N>` — the link back to the originating issue. It carries the issue number through the entire pipeline.
-- **`priority`** is inferred from labels (`critical`/`bug` → `high`, `enhancement` → `medium`, unlabeled → `medium`) and goes in `metadata`.
-- **`area`** is inferred from labels when recognizable (`ui`, `api`, `infra`) and goes in `metadata`.
+- **`--source`** is `gh-issue-#<N>` — the link back to the originating issue. It carries the issue number through the entire pipeline.
+- **`priority`** is inferred from labels (`critical`/`bug` → `high`, `enhancement` → `medium`, unlabeled → `medium`) and goes in the metadata file.
+- **`area`** is inferred from labels when recognizable (`ui`, `api`, `infra`) and goes in the metadata file.
 
-`luca_todo_add` validates the input server-side and returns a `mcp__muninn__muninn_remember` instruction blob — execute that instruction **exactly as returned** to persist the todo. The todo `id` is derived from the title (kebab-slug).
+`luca todo add` validates the input and prints a `mcp__muninn__muninn_remember` instruction blob — execute that instruction **exactly as returned** to persist the todo. The todo `id` is derived from the title (kebab-slug).
 
 ### 6. Report
 

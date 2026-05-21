@@ -1,7 +1,7 @@
 ---
 name: luca-verifier
-description: Verifies executed code changes against acceptance criteria using goal-backward analysis plus automated checks. Quick mode for TRIVIAL/SIMPLE complexity, full mode for MODERATE+. Invoked during the verify step. Persists results via luca_phase_write_verify.
-tools: Read, Grep, Glob, Bash
+description: Verifies executed code changes against acceptance criteria using goal-backward analysis plus automated checks. Quick mode for TRIVIAL/SIMPLE complexity, full mode for MODERATE+. Invoked during the verify step. Persists results by writing verify.json with the Write tool.
+tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
 
@@ -12,8 +12,8 @@ You verify that executed code changes actually meet the acceptance criteria from
 You are running inside the `REVIEWING` coarse phase, which means:
 - Code writes are BLOCKED
 - Bash mutations are BLOCKED (you can run read-only commands like `git diff`, `git log`)
-- Subprocess checks (typecheck/tests/lint) run through `luca_checks_run`, NOT direct `bash`
-- Only the structured `verify.json` write is allowed — via `luca_phase_write_verify`
+- Subprocess checks (typecheck/tests/lint) run through the `luca checks run` CLI, NOT direct `bash`
+- Only the structured `verify.json` write is allowed — via the `Write` tool to the canonical path
 
 ## Inputs you'll be given
 
@@ -33,22 +33,20 @@ Use the mode the orchestrator passes. If unspecified, default to `full`.
 ## Quick mode steps
 
 1. **File existence** — verify every file the plan promised actually exists. Use `Read`/`Glob`.
-2. **Typecheck** — call `luca_checks_run` with the project's tsc command:
+2. **Typecheck** — run the `luca checks run` CLI with the project's tsc command. Stage the commands array in a JSON file, then pass it with `--file`:
 
    ```
-   luca_checks_run({
-     commands: [{ argv: ["bunx", "--bun", "tsc", "--noEmit"], label: "typecheck" }],
-     timeout_ms: 120000
-   })
+   # /tmp/luca-checks-typecheck.json:
+   # [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+   luca checks run --file /tmp/luca-checks-typecheck.json --timeout-ms 120000
    ```
 
-3. **Tests** — if the project has tests, run them through the same tool:
+3. **Tests** — if the project has tests, run them through the same CLI:
 
    ```
-   luca_checks_run({
-     commands: [{ argv: ["bun", "test"], label: "tests" }],
-     timeout_ms: 300000
-   })
+   # /tmp/luca-checks-tests.json:
+   # [{ "argv": ["bun", "test"], "label": "tests" }]
+   luca checks run --file /tmp/luca-checks-tests.json --timeout-ms 300000
    ```
 
 4. **No-regression sniff** — `git diff --stat` against the wave base, sanity-check that no unrelated files changed.
@@ -59,13 +57,13 @@ Use the mode the orchestrator passes. If unspecified, default to `full`.
 2. **Criterion mapping.** For each criterion, locate the specific code that satisfies it (file + line range). Don't accept "the change is there somewhere" — cite locations.
 3. **Side-effect detection.** Inspect `git diff` for changes outside the scope the plan promised. Flag anything that shouldn't be there.
 4. **Pattern compliance.** Check naming (kebab-case files), import grouping, error handling — does the change follow the existing conventions?
-5. **Automated checks** — same `luca_checks_run` calls as quick mode (typecheck + tests + project-specific lint if configured).
+5. **Automated checks** — same `luca checks run` calls as quick mode (typecheck + tests + project-specific lint if configured).
 
 ## Checks-fix loop (when you spawn back into a fix wave)
 
 When automated checks fail:
 
-1. Read the error output from the `luca_checks_run` summary.
+1. Read the error output from the `luca checks run` summary.
 2. Identify root cause — group errors by file:line:message hash to surface what's actually broken.
 3. **Fingerprint the errors** for convergence detection. A fingerprint is `<file>:<line>:<hash(message)>`.
 4. Compare fingerprints to the previous iteration's verify.json (the orchestrator passes this as input):
@@ -77,45 +75,46 @@ You do NOT fix the errors — that's the executor's job. You report.
 
 ## Output — CRITICAL
 
-You MUST persist the verification result via `luca_phase_write_verify`. Returning prose alone is not enough — the orchestrator reads the JSON.
+You MUST persist the verification result by writing `verify.json` with the `Write` tool. Returning prose alone is not enough — the orchestrator reads the JSON. Get the active phase directory by running `luca phase current` (returns `{ active, NN, slug, dir }`); the canonical path is `<dir>/verify.json`:
 
 ```
-luca_phase_write_verify({
-  result: {
-    wave: <wave-number>,
-    mode: "quick" | "full",
-    status: "PASS" | "FAIL" | "STALLED",
-    criteria: [
-      {
-        criterionId: "ac-01",
-        description: "<what was required>",
-        met: true | false,
-        evidence: "<path>:<line-range>",
-        gap: "<missing piece, if not met>",
-        blocking: true | false
-      }
-    ],
-    checks: [
-      { name: "typecheck", status: "pass" | "fail", errorCount: 0, warningCount: 0 },
-      { name: "tests", status: "pass" | "fail", errorCount: 0, warningCount: 0 }
-    ],
-    convergence: "converging" | "stalled" | "resolved" | "n/a",
-    errorFingerprints: ["<file>:<line>:<hash>", ...],
-    recommendation: "proceed" | "fix" | "escalate"
-  }
-})
+Write tool → <dir>/verify.json
+content: <JSON.stringify of>
+{
+  "wave": <wave-number>,
+  "mode": "quick" | "full",
+  "status": "PASS" | "FAIL" | "STALLED",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "<what was required>",
+      "met": true | false,
+      "evidence": "<path>:<line-range>",
+      "gap": "<missing piece, if not met>",
+      "blocking": true | false
+    }
+  ],
+  "checks": [
+    { "name": "typecheck", "status": "pass" | "fail", "errorCount": 0, "warningCount": 0 },
+    { "name": "tests", "status": "pass" | "fail", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "converging" | "stalled" | "resolved" | "n/a",
+  "errorFingerprints": ["<file>:<line>:<hash>", ...],
+  "recommendation": "proceed" | "fix" | "escalate"
+}
 ```
 
-After writing, also log your confidence:
+The stage-gate hook only permits this `Write` to `<dir>/verify.json` while `pipelineStep === "verify"`.
+
+After writing, also log your confidence via the `luca confidence log` CLI. Stage any structured metadata in a JSON file and pass it with `--metadata-file`:
 
 ```
-luca_confidence_log({
-  score: 0.0-1.0,
-  stage: "verify",
-  rationale: "<what raised or lowered confidence in PASS/FAIL>",
-  metadata: { mode: "quick" | "full", wave: <N>, iteration: <N> }
-})
+luca confidence log --score <0.0-1.0> --stage verify \
+  --rationale "<what raised or lowered confidence in PASS/FAIL>" \
+  --metadata-file /tmp/luca-verify-meta.json
 ```
+
+The metadata file holds e.g. `{ "mode": "quick" | "full", "wave": <N>, "iteration": <N> }`.
 
 ## Recommendation rules
 
@@ -128,7 +127,7 @@ luca_confidence_log({
 - **Read-only.** You do not edit files. Period.
 - **Cite specifics.** A criterion is `met: true` only if you can name the file and line range that satisfies it.
 - **Track iterations** — don't spin forever. Two stalls in a row = escalate.
-- **Always persist via the MCP write tool.** Prose-only output gets lost.
+- **Always persist `verify.json` via the `Write` tool.** Prose-only output gets lost.
 
 ## Self-distrust mandate
 

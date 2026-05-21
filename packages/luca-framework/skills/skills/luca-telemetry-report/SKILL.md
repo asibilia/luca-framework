@@ -21,9 +21,10 @@ Aggregate Luca pipeline telemetry across recent runs. Emits a single markdown re
 
 This skill is **read-only over the telemetry directory**. It does not mutate workflow state and does not call any MuninnDB write API — it aggregates telemetry already on disk.
 
-The following tools are FORBIDDEN inside this skill. Do not call them under any circumstance:
+The following operations are FORBIDDEN inside this skill. Do not perform them under any circumstance:
 
-- Any `luca_*` write tool (`luca_state_advance`, `luca_phase_write_*`, `luca_roadmap_create`, `luca_workflow_reset`, `luca_confidence_log`, `luca_todo_*`, `luca_repo_cleanup_apply`, `luca_preferences_write`)
+- Any `luca` CLI write/mutation command (`luca state advance`, `luca roadmap create`, `luca workflow reset`, `luca confidence log`, `luca todo add/update`, `luca repo cleanup-apply`, `luca preferences write`, `luca checks run`)
+- Any `Write` to a `.luca/` phase artifact file (research, context, plan, plan-review, summary, wave, verify, audit, learn)
 - `mcp__muninn__muninn_remember`, `mcp__muninn__muninn_remember_batch`
 - `mcp__muninn__muninn_forget`, `mcp__muninn__muninn_evolve`
 - `mcp__muninn__muninn_state`, `mcp__muninn__muninn_consolidate`

@@ -155,7 +155,7 @@ Detect `SUMMARY-*.md` and `*-SUMMARY.md` files anywhere outside `.luca/phases/<s
 3. Flag.
 
 **Severity:** `high`.
-**Recommendation:** `"Move to .luca/phases/<NN-slug>/execute/summary.md (via luca_phase_write_summary), or delete if obsolete."`
+**Recommendation:** `"Move to .luca/phases/<NN-slug>/execute/summary.md (write it with the Write tool to the canonical path), or delete if obsolete."`
 **Action:** `move`, `auto_fixable: false`.
 
 ## Deduplication

@@ -4,7 +4,7 @@ description: >
   Repo-probing wizard that seeds project preferences into .luca/config.json.
   Detects branching conventions, commit format, PR title format, release
   tooling, and issue tracker from the local repo, confirms with the user, then
-  writes the preferences section via luca_preferences_write.
+  writes the preferences section via the `luca preferences write` CLI.
 
   Use when the user says "init luca", "set up preferences", "luca-init",
   "configure conventions", or invokes /luca-init.
@@ -46,11 +46,11 @@ Run each heuristic, failing soft if a signal is unavailable:
 
 Build a candidate preferences object from the probe results. Leave any field you cannot infer unset — `ProjectPreferencesSchema` fills it with a safe default.
 
-The candidate must respect the schema's free-form character allowlist: branch/commit/PR template strings permit letters, digits, spaces/tabs, and `{}/#,.():-` only. No quotes, backticks, or newlines. Regex fields (`branchTypes[].match`) must not contain nested quantifiers. `luca_preferences_write` rejects violations — surface any rejection to the user rather than working around it.
+The candidate must respect the schema's free-form character allowlist: branch/commit/PR template strings permit letters, digits, spaces/tabs, and `{}/#,.():-` only. No quotes, backticks, or newlines. Regex fields (`branchTypes[].match`) must not contain nested quantifiers. `luca preferences write` rejects violations — surface any rejection to the user rather than working around it.
 
 ## Phase 2 — Confirm
 
-Call `luca_state_read` and read `oversight`.
+Run `luca state read` and read `oversight`.
 
 ### Headless path
 
@@ -62,19 +62,20 @@ Otherwise, show the detected values and ask once with `AskUserQuestion`:
 
 - **Approve** — seed these preferences as-is → Phase 3.
 - **Edit a section** — ask which section (branching, commits, pr, release, tracker), collect new values, re-confirm. Up to 2 iterations; if still unresolved, treat as Abort.
-- **Abort** — write nothing, stop. The pipeline proceeds with `ProjectPreferencesSchema` defaults (a `luca_preferences_read` with no stored preferences returns the defaults).
+- **Abort** — write nothing, stop. The pipeline proceeds with `ProjectPreferencesSchema` defaults (a `luca preferences read` with no stored preferences returns the defaults).
 
 ## Phase 3 — Seed
 
-Write the approved candidate:
+Write the approved candidate. Stage the partial preferences object in a JSON file, then run `luca preferences write --file`:
 
 ```
-luca_preferences_write({ preferences: <approved candidate object> })
+# /tmp/luca-preferences.json holds the approved candidate preferences object
+luca preferences write --file /tmp/luca-preferences.json
 ```
 
-This validates the merged result against `ProjectPreferencesSchema` and atomically rewrites `.luca/config.json`, preserving every other config key (`lucaVersion`, `vault`, `oversight`, …). `.luca/config.json#preferences` is the single source of truth — `luca_preferences_read` reads it deterministically, so no separate MuninnDB registration is needed.
+This validates the merged result against `ProjectPreferencesSchema` and atomically rewrites `.luca/config.json`, preserving every other config key (`lucaVersion`, `vault`, `oversight`, …). `.luca/config.json#preferences` is the single source of truth — `luca preferences read` reads it deterministically, so no separate MuninnDB registration is needed.
 
-If `luca_preferences_write` returns `isError`, surface the validation message verbatim. The most common cause is an unsafe free-form value picked up from git history in a cloned repo — re-probe or ask the user for a clean value.
+If `luca preferences write` exits non-zero, surface the validation message verbatim. The most common cause is an unsafe free-form value picked up from git history in a cloned repo — re-probe or ask the user for a clean value.
 
 ## Phase 4 — Confirm to user
 
@@ -91,4 +92,4 @@ Edit later with /luca-init.
 |---|---|
 | `git` unavailable | Use schema defaults for branching/commits; warn the user. |
 | `gh` not authenticated | Skip the PR-title probe; the schema default `{type}({scope}): {description}` applies. |
-| `luca_preferences_write` rejects the payload | Surface the validation error verbatim; re-probe or ask for a corrected value. Nothing is written on rejection. |
+| `luca preferences write` rejects the payload | Surface the validation error verbatim; re-probe or ask for a corrected value. Nothing is written on rejection. |

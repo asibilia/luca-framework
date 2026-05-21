@@ -69,10 +69,10 @@ Use the current branch as-is. No action needed.
 **At skill start**, read project preferences once and reuse the result:
 
 ```
-luca_preferences_read({})
+luca preferences read
 ```
 
-This returns the project's `ProjectPreferences` object (`.luca/config.json#preferences`, with `ProjectPreferencesSchema` defaults applied to unset sections). Destructure `{ release, pr, tracker, commits, branching }` and reuse them throughout this skill.
+This prints the project's `ProjectPreferences` object (`.luca/config.json#preferences`, with `ProjectPreferencesSchema` defaults applied to unset sections). Destructure `{ release, pr, tracker, commits, branching }` and reuse them throughout this skill.
 
 ### 4. Changeset (if applicable)
 
@@ -119,7 +119,7 @@ If the push fails (e.g. the branch already exists with divergent history), repor
 
 Check whether this work originated from a triaged GitHub issue:
 
-1. **From the todo backlog**: call `luca_todo_list({})`, execute the returned `mcp__muninn__muninn_recall` instruction, and look for a todo whose work matches the current branch. If that todo has `source: "gh-issue-#<N>"`, that's the linked issue.
+1. **From the todo backlog**: run `luca todo list`, execute the printed `mcp__muninn__muninn_recall` instruction, and look for a todo whose work matches the current branch. If that todo has `source: "gh-issue-#<N>"`, that's the linked issue.
 2. **From MuninnDB**: recall recent `gh-prepare` memories or pipeline state that reference an issue number for this branch.
 3. **From the branch name**: if the branch is named `feat/42-something`, extract `#42` as a candidate and verify it exists: `gh issue view 42 --json state`.
 4. **From commit messages**: scan for `#N` references.
@@ -183,7 +183,7 @@ mcp__muninn__muninn_remember({
 
 ### 9. Pipeline integration
 
-Call `luca_state_read`. If a Luca pipeline is active (`pipelineStep` is not `idle`/`complete`), later pipeline steps discover this PR by recalling the `gh-prepare` memory from Step 8 — no separate workflow-state write is needed. If no pipeline is active, skip — the skill works standalone.
+Run `luca state read`. If a Luca pipeline is active (`pipelineStep` is not `idle`/`complete`), later pipeline steps discover this PR by recalling the `gh-prepare` memory from Step 8 — no separate workflow-state write is needed. If no pipeline is active, skip — the skill works standalone.
 
 ### 10. Report
 

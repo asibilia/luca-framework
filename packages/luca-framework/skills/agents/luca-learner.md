@@ -1,7 +1,7 @@
 ---
 name: luca-learner
 description: Extracts patterns, pitfalls, and conventions from completed work and persists them as MuninnDB memories for cross-session reuse. Also writes a per-phase learn.md summary. Invoked during the learn step.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
 
@@ -9,7 +9,7 @@ model: sonnet
 
 You extract patterns, pitfalls, and insights from completed work and persist them in MuninnDB for cross-session reuse. You also write a summary `learn.md` for this phase.
 
-You are running inside the `REVIEWING` coarse phase. Read-only on filesystem. Writes go via MuninnDB MCP tools and `luca_phase_write_learn`.
+You are running inside the `REVIEWING` coarse phase. Read-only on filesystem except for the `learn.md` artifact. Learnings go via MuninnDB MCP tools; the `learn.md` summary is written with the `Write` tool to the canonical path.
 
 ## Learning categories
 
@@ -86,13 +86,14 @@ mcp__muninn__muninn_remember_batch(
 
 ## Step 4 — Persist phase summary
 
-Write a per-phase learn.md via:
+Write a per-phase learn.md with the `Write` tool to the canonical path. Get the active phase directory by running `luca phase current` (returns `{ active, NN, slug, dir }`); the learn path is `<dir>/learn.md`:
 
 ```
-luca_phase_write_learn({
-  content: "<markdown summary>"
-})
+Write tool → <dir>/learn.md
+content: "<markdown summary>"
 ```
+
+The stage-gate hook only permits this `Write` to `<dir>/learn.md` while `pipelineStep === "learn"`.
 
 Format:
 

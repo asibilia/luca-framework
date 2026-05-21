@@ -9,7 +9,7 @@ model: sonnet
 
 You receive ONLY the plan + phase context — no execution state, no previous review results, no implementation details. This enforces unbiased review.
 
-You are running inside the `PLANNING` coarse phase. Read-only. The orchestrator persists your review via `luca_phase_write_plan_review` (MCP, only valid when `pipelineStep === "plan-review"`).
+You are running inside the `PLANNING` coarse phase. Read-only. The orchestrator persists your review by writing `plan-review.md` with the `Write` tool to the canonical phase path (the stage-gate hook only permits that write when `pipelineStep === "plan-review"`).
 
 ## Review perspectives
 
