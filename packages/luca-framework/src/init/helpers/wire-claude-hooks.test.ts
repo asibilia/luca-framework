@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,41 +8,20 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { wireClaudeHooks } from './wire-claude-hooks.ts'
 
 describe('wireClaudeHooks', () => {
-    let cwd: string
+    let claudeHome: string
 
     beforeEach(async () => {
-        cwd = await mkdtemp(join(tmpdir(), 'luca-hooks-'))
+        claudeHome = await mkdtemp(join(tmpdir(), 'luca-claude-home-'))
     })
 
     afterEach(async () => {
-        await rm(cwd, { recursive: true, force: true })
+        await rm(claudeHome, { recursive: true, force: true })
     })
 
-    test('creates .claude/hooks/stage-gate.sh and makes it executable', async () => {
-        await wireClaudeHooks({ cwd })
+    test('creates settings.json with a PreToolUse stage-gate registration', async () => {
+        await wireClaudeHooks({ claudeHome })
 
-        const hookPath = join(cwd, '.claude/hooks/stage-gate.sh')
-        expect(existsSync(hookPath)).toBe(true)
-
-        // chmod +x — owner-execute bit set
-        const mode = statSync(hookPath).mode & 0o111
-        expect(mode).toBeGreaterThan(0)
-    })
-
-    test('stage-gate.sh delegates to the luca CLI', async () => {
-        await wireClaudeHooks({ cwd })
-
-        const script = await readFile(
-            join(cwd, '.claude/hooks/stage-gate.sh'),
-            'utf-8'
-        )
-        expect(script).toContain('luca hook stage-gate')
-    })
-
-    test('creates .claude/settings.json with PreToolUse stage-gate registration', async () => {
-        await wireClaudeHooks({ cwd })
-
-        const settingsPath = join(cwd, '.claude/settings.json')
+        const settingsPath = join(claudeHome, 'settings.json')
         expect(existsSync(settingsPath)).toBe(true)
 
         const settings = JSON.parse(await readFile(settingsPath, 'utf-8'))
@@ -52,16 +31,27 @@ describe('wireClaudeHooks', () => {
         // The stage-gate registration must be present.
         const stageGateRegistration = settings.hooks.PreToolUse.find(
             (entry: { hooks?: Array<{ command?: string }> }) =>
-                entry.hooks?.some((h) => h.command?.includes('stage-gate.sh'))
+                entry.hooks?.some((h) => h.command?.includes('stage-gate'))
         )
         expect(stageGateRegistration).toBeDefined()
     })
 
-    test('merges into existing .claude/settings.json without clobbering', async () => {
+    test('registers the bare `luca hook stage-gate` command', async () => {
+        await wireClaudeHooks({ claudeHome })
+
+        const settings = JSON.parse(
+            await readFile(join(claudeHome, 'settings.json'), 'utf-8')
+        )
+        expect(JSON.stringify(settings.hooks.PreToolUse)).toContain(
+            'luca hook stage-gate'
+        )
+    })
+
+    test('merges into existing settings.json without clobbering', async () => {
         // Set up a pre-existing settings.json with another hook
-        await mkdir(join(cwd, '.claude'), { recursive: true })
+        await mkdir(claudeHome, { recursive: true })
         await writeFile(
-            join(cwd, '.claude/settings.json'),
+            join(claudeHome, 'settings.json'),
             JSON.stringify(
                 {
                     hooks: {
@@ -84,10 +74,10 @@ describe('wireClaudeHooks', () => {
             )
         )
 
-        await wireClaudeHooks({ cwd })
+        await wireClaudeHooks({ claudeHome })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
+            await readFile(join(claudeHome, 'settings.json'), 'utf-8')
         )
 
         // Pre-existing user key preserved
@@ -96,18 +86,18 @@ describe('wireClaudeHooks', () => {
         const json = JSON.stringify(settings.hooks.PreToolUse)
         expect(json).toContain('existing-hook.sh')
         // Stage-gate now also present
-        expect(json).toContain('stage-gate.sh')
+        expect(json).toContain('luca hook stage-gate')
     })
 
     test('is idempotent — re-running does not duplicate the stage-gate entry', async () => {
-        await wireClaudeHooks({ cwd })
-        await wireClaudeHooks({ cwd })
+        await wireClaudeHooks({ claudeHome })
+        await wireClaudeHooks({ claudeHome })
 
         const settings = JSON.parse(
-            await readFile(join(cwd, '.claude/settings.json'), 'utf-8')
+            await readFile(join(claudeHome, 'settings.json'), 'utf-8')
         )
         const matches = JSON.stringify(settings.hooks.PreToolUse).match(
-            /stage-gate\.sh/g
+            /luca hook stage-gate/g
         )
         expect(matches?.length).toBe(1)
     })

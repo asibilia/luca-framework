@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { installSkills } from './install-skills.ts'
 
 describe('installSkills', () => {
-    let cwd: string
+    let claudeHome: string
     let skillsSource: string
 
     beforeEach(async () => {
-        cwd = await mkdtemp(join(tmpdir(), 'luca-install-skills-'))
+        claudeHome = await mkdtemp(join(tmpdir(), 'luca-claude-home-'))
         skillsSource = await mkdtemp(join(tmpdir(), 'luca-skills-source-'))
         await mkdir(join(skillsSource, 'commands'), { recursive: true })
         await mkdir(join(skillsSource, 'agents'), { recursive: true })
@@ -34,72 +34,68 @@ describe('installSkills', () => {
     })
 
     afterEach(async () => {
-        await rm(cwd, { recursive: true, force: true })
+        await rm(claudeHome, { recursive: true, force: true })
         await rm(skillsSource, { recursive: true, force: true })
     })
 
-    test('copies commands to .claude/commands/', async () => {
-        await installSkills({ cwd, skillsSource })
+    test('copies commands to <claudeHome>/commands/', async () => {
+        await installSkills({ claudeHome, skillsSource })
 
-        const target = join(cwd, '.claude/commands/phase-plan.md')
+        const target = join(claudeHome, 'commands/phase-plan.md')
         expect(existsSync(target)).toBe(true)
         const content = await readFile(target, 'utf-8')
         expect(content).toContain('phase-plan')
     })
 
-    test('copies agents to .claude/agents/', async () => {
-        await installSkills({ cwd, skillsSource })
+    test('copies agents to <claudeHome>/agents/', async () => {
+        await installSkills({ claudeHome, skillsSource })
 
-        const target = join(cwd, '.claude/agents/luca-executor.md')
+        const target = join(claudeHome, 'agents/luca-executor.md')
         expect(existsSync(target)).toBe(true)
     })
 
-    test('copies skill directories to .claude/skills/<name>/', async () => {
-        await installSkills({ cwd, skillsSource })
+    test('copies skill directories to <claudeHome>/skills/<name>/', async () => {
+        await installSkills({ claudeHome, skillsSource })
 
-        const target = join(cwd, '.claude/skills/luca-init/SKILL.md')
+        const target = join(claudeHome, 'skills/luca-init/SKILL.md')
         expect(existsSync(target)).toBe(true)
         const content = await readFile(target, 'utf-8')
         expect(content).toContain('luca-init')
     })
 
     test('is idempotent — re-running does not duplicate or error', async () => {
-        await installSkills({ cwd, skillsSource })
-        await installSkills({ cwd, skillsSource })
+        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, skillsSource })
 
-        expect(existsSync(join(cwd, '.claude/commands/phase-plan.md'))).toBe(
-            true
-        )
+        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
     })
 
-    test('preserves user-authored files in .claude/commands/ that are not part of the install set', async () => {
-        await mkdir(join(cwd, '.claude/commands'), { recursive: true })
+    test('preserves user-authored files not part of the install set', async () => {
+        await mkdir(join(claudeHome, 'commands'), { recursive: true })
         await writeFile(
-            join(cwd, '.claude/commands/my-custom-command.md'),
+            join(claudeHome, 'commands/my-custom-command.md'),
             'user content'
         )
 
-        await installSkills({ cwd, skillsSource })
+        await installSkills({ claudeHome, skillsSource })
 
         expect(
-            existsSync(join(cwd, '.claude/commands/my-custom-command.md'))
+            existsSync(join(claudeHome, 'commands/my-custom-command.md'))
         ).toBe(true)
-        expect(existsSync(join(cwd, '.claude/commands/phase-plan.md'))).toBe(
-            true
-        )
+        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
     })
 
     test('overwrites existing skills with the same name (force-updates from package)', async () => {
-        await mkdir(join(cwd, '.claude/commands'), { recursive: true })
+        await mkdir(join(claudeHome, 'commands'), { recursive: true })
         await writeFile(
-            join(cwd, '.claude/commands/phase-plan.md'),
+            join(claudeHome, 'commands/phase-plan.md'),
             'STALE OLD CONTENT'
         )
 
-        await installSkills({ cwd, skillsSource })
+        await installSkills({ claudeHome, skillsSource })
 
         const content = await readFile(
-            join(cwd, '.claude/commands/phase-plan.md'),
+            join(claudeHome, 'commands/phase-plan.md'),
             'utf-8'
         )
         expect(content).not.toContain('STALE')

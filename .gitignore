@@ -44,6 +44,7 @@ packages/luca-mastracode/.planning/
 
 # generated output (built by build:all, deployed by deploy — source repo uses ~/.claude/ globally)
 .claude/agents/
+.claude/commands/
 .claude/skills/
 .claude/rules/
 .claude/hooks/
