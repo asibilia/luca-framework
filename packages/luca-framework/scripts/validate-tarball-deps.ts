@@ -1,26 +1,33 @@
 #!/usr/bin/env bun
 /**
- * Validate that the packed tarball pins every Mastra-family dependency
- * to an exact version (no caret, no tilde, no range, no `*`).
+ * Validate the packed luca-framework tarball before `npm publish`.
  *
- * Why: `mastracode` releases its harness alongside specific exact pins
- * of `@mastra/core` and friends. Publishing with caret ranges lets npm
- * silently swap in a newer `@mastra/core` at user install time, which
- * has produced runtime breakage like
- *     `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
- * when `mastracode@0.19` (built against `@mastra/core@1.34`) ended up
- * paired with a stale older core that does not recognise the `signal`
- * message role. Pinning eliminates this drift class entirely.
+ * Two checks; either failing exits 1.
  *
- * This runs in the publish job, after `bun pm pack`, before
- * `npm publish`. Exit 1 if any Mastra dep in the packed
- * `package.json` is non-exact.
+ * Check 1 — no private workspace package in `dependencies`.
+ *   Private `@alecsibilia/*` packages (luca-core, luca-mastracode) are
+ *   bundled into the tarball and never published to the registry. If one
+ *   is listed under `dependencies`, the publish tooling rewrites its
+ *   `workspace:*` spec to a concrete version and a consumer's package
+ *   manager tries — and fails with a 404 — to resolve it from npm. Such
+ *   packages belong in `devDependencies`, which consumers do not install.
+ *
+ * Check 2 — every Mastra-family dependency is exact-pinned (no ^, ~,
+ *   range, or `*`). `mastracode` releases its harness alongside specific
+ *   exact pins of `@mastra/core` and friends. Caret ranges let npm
+ *   silently swap in a newer `@mastra/core` at install time, which has
+ *   produced runtime breakage like
+ *       `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
+ *   when `mastracode@0.19` (built against `@mastra/core@1.34`) ended up
+ *   paired with a stale older core. Pinning eliminates that drift class.
+ *
+ * This runs in the publish job, after `bun pm pack`, before `npm publish`.
  *
  * Usage: bun run scripts/validate-tarball-deps.ts [path/to/tarball.tgz]
  *        (defaults to packages/luca-framework/.pack/*.tgz)
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const PINNED_PREFIXES = ['mastracode', '@mastra/']
@@ -30,6 +37,37 @@ const isMastraFamilyDep = (name: string): boolean =>
     PINNED_PREFIXES.some(
         (p) => name === p.replace(/\/$/, '') || name.startsWith(p)
     )
+
+/**
+ * Names of every workspace package marked `private: true`. These are
+ * bundled into publishable tarballs and never published standalone, so
+ * they must never appear in a published package's `dependencies`.
+ *
+ * Derived from the workspace itself so a newly added private package is
+ * covered automatically — and a package that later drops `private` is
+ * automatically allowed.
+ */
+function collectPrivateWorkspacePackages(packagesDir: string): Set<string> {
+    const names = new Set<string>()
+    if (!existsSync(packagesDir)) return names
+    for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const manifest = resolve(packagesDir, entry.name, 'package.json')
+        if (!existsSync(manifest)) continue
+        try {
+            const p = JSON.parse(readFileSync(manifest, 'utf-8')) as {
+                name?: string
+                private?: boolean
+            }
+            if (p.private === true && typeof p.name === 'string') {
+                names.add(p.name)
+            }
+        } catch {
+            // Unreadable/malformed manifest — skip it.
+        }
+    }
+    return names
+}
 
 const pkgDir = resolve(import.meta.dir, '..')
 const tarballArg = process.argv[2]
@@ -94,10 +132,29 @@ try {
 }
 const deps: Record<string, string> = pkg.dependencies ?? {}
 
-console.log(
-    `[validate-tarball-deps] Inspecting ${tarball}\n` +
-        `  Mastra deps must be exact-pinned (no ^, no ~, no ranges).`
-)
+console.log(`[validate-tarball-deps] Inspecting ${tarball}`)
+
+// --- Check 1: no private workspace package leaked into `dependencies` ---
+const privatePkgs = collectPrivateWorkspacePackages(resolve(pkgDir, '..'))
+const privateLeaks = Object.keys(deps).filter((name) => privatePkgs.has(name))
+if (privateLeaks.length > 0) {
+    console.error(
+        `\n[validate-tarball-deps] FAIL: ${privateLeaks.length} private ` +
+            `workspace package(s) leaked into the published \`dependencies\`:`
+    )
+    for (const name of privateLeaks) {
+        console.error(
+            `  - ${name}: "${deps[name]}" — private packages are bundled into ` +
+                `the tarball, not published to npm. Move it to devDependencies ` +
+                `(consumers do not install devDependencies).`
+        )
+    }
+    process.exit(1)
+}
+console.log(`  ✔ no private workspace package in dependencies`)
+
+// --- Check 2: every Mastra-family dep is exact-pinned ---
+console.log(`  Mastra deps must be exact-pinned (no ^, no ~, no ranges).`)
 
 const violations: { name: string; spec: string }[] = []
 for (const [name, spec] of Object.entries(deps)) {
