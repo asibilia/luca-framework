@@ -2,6 +2,7 @@ import {
     classifyWritePath,
     coarsePhaseOf,
     isToolAllowed,
+    loadCurrentState,
     type ToolCategory,
     type WritePathClass,
 } from '@alecsibilia/luca-core'
@@ -10,7 +11,6 @@ import {
     classifyBashCommand,
     type BashCategory,
 } from './classify-bash-command.ts'
-import { loadCurrentState } from './load-current-state.ts'
 
 export interface HandleStageGateHookOptions {
     /** Raw JSON string read from PreToolUse stdin. */

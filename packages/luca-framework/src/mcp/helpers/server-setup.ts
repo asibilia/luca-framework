@@ -1,11 +1,15 @@
-import { coarsePhaseOf, type PipelineStep } from '@alecsibilia/luca-core'
+import {
+    coarsePhaseOf,
+    loadCurrentState,
+    type PipelineStep,
+} from '@alecsibilia/luca-core'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
+    type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js'
 
-import { loadCurrentState } from '../../hook/helpers/load-current-state.ts'
 import type { ToolContext, ToolDescriptor, ToolResult } from '../schemas.ts'
 
 export interface CreateServerOptions {
@@ -49,6 +53,15 @@ export function createLucaMcpServer(opts: CreateServerOptions): Server {
     }))
 
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        // A WriteResult is structurally a valid CallToolResult — the
+        // adapter is a single cast at the transport boundary (v13 D4).
+        return (await dispatchTool(request)) as CallToolResult
+    })
+
+    /** Resolve, phase-check, validate and invoke a tool handler. */
+    async function dispatchTool(request: {
+        params: { name: string; arguments?: Record<string, unknown> }
+    }): Promise<ToolResult> {
         const tool = opts.tools.find((t) => t.name === request.params.name)
         if (!tool) {
             return errorResult(`unknown tool: ${request.params.name}`)
@@ -86,7 +99,7 @@ export function createLucaMcpServer(opts: CreateServerOptions): Server {
                 `tool '${tool.name}' threw: ${(err as Error).message}`
             )
         }
-    })
+    }
 
     return server
 }

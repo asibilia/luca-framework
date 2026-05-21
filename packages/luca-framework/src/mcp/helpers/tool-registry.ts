@@ -1,43 +1,49 @@
-import { lucaBranchGuardTool } from './tools/luca-branch-guard.ts'
-import { lucaChecksRunTool } from './tools/luca-checks-run.ts'
-import { lucaConfidenceLogTool } from './tools/luca-confidence-log.ts'
-import { lucaPhaseCurrentTool } from './tools/luca-phase-current.ts'
-import { lucaPhaseWriteAuditTool } from './tools/luca-phase-write-audit.ts'
-import { lucaPhaseWriteContextTool } from './tools/luca-phase-write-context.ts'
-import { lucaPhaseWriteLearnTool } from './tools/luca-phase-write-learn.ts'
-import { lucaPhaseWritePlanReviewTool } from './tools/luca-phase-write-plan-review.ts'
-import { lucaPhaseWritePlanTool } from './tools/luca-phase-write-plan.ts'
-import { lucaPhaseWriteResearchTool } from './tools/luca-phase-write-research.ts'
-import { lucaPhaseWriteSummaryTool } from './tools/luca-phase-write-summary.ts'
-import { lucaPhaseWriteVerifyTool } from './tools/luca-phase-write-verify.ts'
-import { lucaPhaseWriteWaveTool } from './tools/luca-phase-write-wave.ts'
-import { lucaPrReviewDetectConvergenceTool } from './tools/luca-pr-review-detect-convergence.ts'
-import { lucaPrReviewFilterStaleTool } from './tools/luca-pr-review-filter-stale.ts'
-import { lucaPrReviewRegressionCheckTool } from './tools/luca-pr-review-regression-check.ts'
-import { lucaPreferencesReadTool } from './tools/luca-preferences-read.ts'
-import { lucaPreferencesWriteTool } from './tools/luca-preferences-write.ts'
-import { lucaRepoCleanupApplyTool } from './tools/luca-repo-cleanup-apply.ts'
-import { lucaRoadmapCreateTool } from './tools/luca-roadmap-create.ts'
-import { lucaRoadmapReadTool } from './tools/luca-roadmap-read.ts'
-import { lucaStateAdvanceTool } from './tools/luca-state-advance.ts'
-import { lucaStateReadTool } from './tools/luca-state-read.ts'
-import { lucaTodoAddTool } from './tools/luca-todo-add.ts'
-import { lucaTodoListTool } from './tools/luca-todo-list.ts'
-import { lucaTodoUpdateTool } from './tools/luca-todo-update.ts'
-import { lucaWorkflowResetTool } from './tools/luca-workflow-reset.ts'
+import {
+    lucaBranchGuardTool,
+    lucaChecksRunTool,
+    lucaConfidenceLogTool,
+    lucaPhaseCurrentTool,
+    lucaPhaseWriteAuditTool,
+    lucaPhaseWriteContextTool,
+    lucaPhaseWriteLearnTool,
+    lucaPhaseWritePlanReviewTool,
+    lucaPhaseWritePlanTool,
+    lucaPhaseWriteResearchTool,
+    lucaPhaseWriteSummaryTool,
+    lucaPhaseWriteVerifyTool,
+    lucaPhaseWriteWaveTool,
+    lucaPreferencesReadTool,
+    lucaPreferencesWriteTool,
+    lucaPrReviewDetectConvergenceTool,
+    lucaPrReviewFilterStaleTool,
+    lucaPrReviewRegressionCheckTool,
+    lucaRepoCleanupApplyTool,
+    lucaRoadmapCreateTool,
+    lucaRoadmapReadTool,
+    lucaStateAdvanceTool,
+    lucaStateReadTool,
+    lucaTodoAddTool,
+    lucaTodoListTool,
+    lucaTodoUpdateTool,
+    lucaWorkflowResetTool,
+} from '../../write-surface/index.ts'
 
 import type { ToolDescriptor } from '../schemas.ts'
 
 /**
  * Central catalog of every MCP tool the luca server exposes. Importing
- * this module gets you the full set. Phase 5B.1 added 5 phase-write
- * tools (summary, wave, verify, learn, plan-review); Phase 5B.2 added 4
- * workflow + verification tools (branch-guard, confidence-log,
- * workflow-reset, checks-run); Phase 5B.3 added 4 preferences + roadmap
- * tools; Phase 5B.4 added 3 todo delegation tools (add, list, update)
- * that emit muninn_remember/recall instructions for the agent to run;
- * Phase 5B.5 adds 3 PR-review hardening tools + 1 repo-cleanup apply
- * tool (the write half of the read-only shadow-scanner subagent).
+ * this module gets you the full set. The tool handlers themselves now
+ * live in the runtime-agnostic src/write-surface/ domain (v13 plan,
+ * Phase A); this registry is the MCP-transport view over them.
+ *
+ * Phase 5B.1 added 5 phase-write tools (summary, wave, verify, learn,
+ * plan-review); Phase 5B.2 added 4 workflow + verification tools
+ * (branch-guard, confidence-log, workflow-reset, checks-run); Phase
+ * 5B.3 added 4 preferences + roadmap tools; Phase 5B.4 added 3 todo
+ * delegation tools (add, list, update) that emit
+ * muninn_remember/recall instructions for the agent to run; Phase 5B.5
+ * adds 3 PR-review hardening tools + 1 repo-cleanup apply tool (the
+ * write half of the read-only shadow-scanner subagent).
  */
 export const TOOL_REGISTRY: ToolDescriptor[] = [
     // Read tools (available in every phase)

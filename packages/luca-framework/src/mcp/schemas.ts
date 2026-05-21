@@ -1,34 +1,31 @@
-import type { PipelineStep } from '@alecsibilia/luca-core'
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+// MCP-transport schema shim.
+//
+// The runtime-agnostic write-surface types (ToolContext, ToolDescriptor,
+// WriteResult) live in src/write-surface/ (v13 plan, Phase A). This file
+// re-exports them for the MCP transport shell and keeps the only
+// genuinely MCP-coupled type — the SDK CallToolResult alias used at the
+// transport boundary.
+
 import { z } from 'zod'
 
-export interface ToolContext {
-    cwd: string
-}
+import type {
+    ToolContext,
+    ToolDescriptor,
+    WriteResult,
+} from '../write-surface/index.ts'
 
-// Re-export the SDK's CallToolResult type as our ToolResult so handler
-// return values are structurally compatible with what the MCP server
-// expects from setRequestHandler(CallToolRequestSchema, ...).
-export type ToolResult = CallToolResult
+// Re-export the runtime-agnostic write-surface types so existing MCP
+// imports (`from '../schemas.ts'`) keep resolving.
+export type { ToolContext, ToolDescriptor, WriteResult }
 
 /**
- * MCP tool descriptor — everything needed to register a tool with the
- * MCP server AND enforce phase preconditions before its handler runs.
+ * Handler result type at the MCP transport boundary.
  *
- * `allowedPhases` is OPTIONAL — it declares a phase restriction, and the
- * server-side guard refuses the tool outside those pipelineSteps. A tool
- * that omits it runs in any phase. Omission covers read-only tools AND
- * intentionally phase-agnostic write tools (e.g. luca_confidence_log,
- * luca_workflow_reset); only phase-restricted tools declare the list.
+ * A {@link WriteResult} is structurally a valid MCP `CallToolResult`
+ * (`{ content: { type: 'text'; text: string }[]; isError?: boolean }`),
+ * so the server returns handler results as-is — no adapter needed.
  */
-export interface ToolDescriptor<TArgs = unknown> {
-    name: string
-    description: string
-    inputSchema: z.ZodType<TArgs>
-    /** pipelineSteps in which this tool is allowed to run. */
-    allowedPhases?: PipelineStep[]
-    handler: (args: TArgs, ctx: ToolContext) => Promise<ToolResult>
-}
+export type ToolResult = WriteResult
 
 // Re-export Zod for tool definition convenience.
 export { z }
