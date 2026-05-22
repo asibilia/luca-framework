@@ -324,6 +324,7 @@ Measure real workflow runs → revisit the slim-down (§9).
 | 2026-05-22 | The 9 MuninnDB tracking todos are mis-framed ("patch markdown") — they will be re-derived from the §6 migration plan. |
 | 2026-05-22 | Migrate the current 6-mode pipeline as-is; the workflow slim-down is **deferred** to post-migration — data-driven, re-oriented off the migrated workflow (§9). |
 | 2026-05-22 | Item-1 package structure resolved (§4.3): `luca-cli` / `luca-core` / `luca-tools` / `luca`; public = `@alecsibilia/luca`; `luca-studio` out of scope. |
+| 2026-05-22 | Phase B ports follow **TDD** — understand the module, write the `luca-core` test first (red), then port the implementation to green. Tests run scoped via `bun test <file>`. |
 
 ## 8. Open questions
 
