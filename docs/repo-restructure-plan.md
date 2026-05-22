@@ -375,10 +375,14 @@ delete that archive.
   - ✅ relocated all of `luca-framework/src/` → `luca-cli/src/` (git mv,
     history preserved); retargeted the one mastracode import (`sanitizeVaultName`)
     to luca-core; `luca-framework` is now a husk (Phase H removes it)
-  - **next:** add CLI surfaces for the six dropped tools — `luca retro` as a
-    real postmortem generator, `luca rules`, `luca claim-verify`, a
-    telemetry-emit surface, and the dropped workflow/roadmap/verification/
-    confidence/branch actions.
+  - ✅ added CLI surfaces for every ported luca-core logic module —
+    `luca claim-verify`, `luca telemetry` (emit / new-run), `luca retro` (a
+    real postmortem *generator*, not a hollow reader), `luca rules`
+    (list / run / gate / suggest), `luca classify`. Closes §3 functional
+    gaps #1, #4, #5, #6, #7.
+  - **remaining:** audit the partially-ported write-surface commands
+    (workflow / roadmap / verification / confidence / branch) for the
+    mastracode tool actions that §5.3 flagged as dropped in v13.
 - **Phases D–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
