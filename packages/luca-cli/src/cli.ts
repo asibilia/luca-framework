@@ -80,6 +80,10 @@ const main = defineCommand({
             import('./commands/write-surface/confidence').then(
                 (m) => m.confidenceCommand
             ),
+        verification: () =>
+            import('./commands/write-surface/verification').then(
+                (m) => m.verificationCommand
+            ),
     },
 })
 
