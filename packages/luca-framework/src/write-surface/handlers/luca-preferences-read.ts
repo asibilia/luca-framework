@@ -1,7 +1,4 @@
-import {
-    loadCurrentConfig,
-    ProjectPreferencesSchema,
-} from '@alecsibilia/luca-core'
+import { extractPreferences, loadCurrentConfig } from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 
@@ -28,22 +25,13 @@ export const lucaPreferencesReadTool: ToolDescriptor<
     inputSchema,
     async handler(_args, ctx) {
         const config = await loadCurrentConfig({ cwd: ctx.cwd })
-        const raw =
-            'preferences' in config &&
-            config.preferences !== null &&
-            config.preferences !== undefined
-                ? config.preferences
-                : {}
-
-        const result = ProjectPreferencesSchema.safeParse(raw)
-        if (!result.success) {
+        const result = extractPreferences(config)
+        if (!result.ok) {
             return {
                 content: [
                     {
                         type: 'text',
-                        text: `luca_preferences_read: .luca/config.json#preferences failed validation: ${result.error.issues
-                            .map((i) => `${i.path.join('.')}: ${i.message}`)
-                            .join('; ')}`,
+                        text: `luca_preferences_read: .luca/config.json#preferences failed validation: ${result.error}`,
                     },
                 ],
                 isError: true,
@@ -52,7 +40,10 @@ export const lucaPreferencesReadTool: ToolDescriptor<
 
         return {
             content: [
-                { type: 'text', text: JSON.stringify(result.data, null, 2) },
+                {
+                    type: 'text',
+                    text: JSON.stringify(result.preferences, null, 2),
+                },
             ],
         }
     },

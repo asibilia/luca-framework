@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import {
     loadCurrentConfig,
     lucaRootPaths,
-    ProjectPreferencesSchema,
+    mergePreferences,
 } from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
@@ -16,15 +16,6 @@ const inputSchema = z.object({
             'Partial preferences object. Top-level sections (branching, commits, pr, release, tracker, schemaVersion) overlay the existing ones; unspecified sections are left unchanged. The merged result is re-validated against ProjectPreferencesSchema before write.'
         ),
 })
-
-const KNOWN_SECTIONS = [
-    'schemaVersion',
-    'branching',
-    'commits',
-    'pr',
-    'release',
-    'tracker',
-] as const
 
 /**
  * Update `.luca/config.json#preferences` with a section-level shallow
@@ -45,61 +36,35 @@ export const lucaPreferencesWriteTool: ToolDescriptor<
     inputSchema,
     async handler(args, ctx) {
         const config = await loadCurrentConfig({ cwd: ctx.cwd })
-        const currentPrefs =
-            'preferences' in config &&
-            config.preferences &&
-            typeof config.preferences === 'object'
-                ? (config.preferences as Record<string, unknown>)
-                : {}
-
-        // Section-level shallow merge — only KNOWN_SECTIONS are applied.
-        const mergedPrefs: Record<string, unknown> = { ...currentPrefs }
-        const mergedSections: string[] = []
-        for (const section of KNOWN_SECTIONS) {
-            if (section in args.preferences) {
-                mergedPrefs[section] = args.preferences[section]
-                mergedSections.push(section)
-            }
-        }
-
-        // Any other top-level keys are silently ignored — surface them so a
-        // typo'd section name doesn't look like a successful no-op write.
-        const ignoredKeys = Object.keys(args.preferences).filter(
-            (k) => !(KNOWN_SECTIONS as readonly string[]).includes(k)
-        )
-
-        const result = ProjectPreferencesSchema.safeParse(mergedPrefs)
-        if (!result.success) {
+        const result = mergePreferences(config, args.preferences)
+        if (!result.ok) {
             return {
                 content: [
                     {
                         type: 'text',
-                        text: `luca_preferences_write: validation failed: ${result.error.issues
-                            .map((i) => `${i.path.join('.')}: ${i.message}`)
-                            .join('; ')}`,
+                        text: `luca_preferences_write: validation failed: ${result.error}`,
                     },
                 ],
                 isError: true,
             }
         }
 
-        const nextConfig = { ...config, preferences: result.data }
         const absPath = join(ctx.cwd, lucaRootPaths.config)
         await writeAtomicFile(
             absPath,
-            JSON.stringify(nextConfig, null, 2) + '\n'
+            JSON.stringify(result.nextConfig, null, 2) + '\n'
         )
 
         const ignoredNote =
-            ignoredKeys.length > 0
-                ? `; ignored ${ignoredKeys.length} unknown key(s): ${ignoredKeys.join(', ')}`
+            result.ignoredKeys.length > 0
+                ? `; ignored ${result.ignoredKeys.length} unknown key(s): ${result.ignoredKeys.join(', ')}`
                 : ''
 
         return {
             content: [
                 {
                     type: 'text',
-                    text: `wrote .luca/config.json (preferences section updated; ${mergedSections.length} section(s) merged${ignoredNote})`,
+                    text: `wrote .luca/config.json (preferences section updated; ${result.mergedSections.length} section(s) merged${ignoredNote})`,
                 },
             ],
         }

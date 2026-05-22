@@ -350,8 +350,8 @@ delete that archive.
 > `session:repo-restructure-handoff` (luca-framework vault).
 
 - **Phase A** — package scaffolding — ✅ done & committed.
-- **Phase B** — port logic into `luca-core` — in progress, **13 of ~14
-  subsystems** done:
+- **Phase B** — port logic into `luca-core` — ✅ **done**, all 14
+  subsystem-units ported:
   - ✅ `classify-complexity` → `luca-core/src/complexity/`
   - ✅ `check-parsers` → `luca-core/src/checks/`
   - ✅ `rule-engine/define-rule` → `luca-core/src/rule-engine/`
@@ -366,9 +366,11 @@ delete that archive.
     from `luca-framework/src/write-surface/helpers/`)
   - ✅ `postmortem` → `luca-core/src/analysis/postmortem.ts`
   - ✅ `rule-engine` runner + recurrence → `luca-core/src/rule-engine/`
-  - **next:** `preferences` (reconcile with luca-core's existing
-    `preferences/` domain).
-- **Phases C–H** — not started.
+  - ✅ `preferences` read/merge logic → `luca-core/src/preferences/`
+    (schema was already ported; this added `extractPreferences` /
+    `mergePreferences` and rewired the v13 write-surface handlers)
+- **Phase C** — `luca-cli` relocate + extend the CLI — next.
+- **Phases D–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
 and committed individually (`feat(restructure): Phase B — …`).
