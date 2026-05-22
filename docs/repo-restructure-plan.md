@@ -350,7 +350,7 @@ delete that archive.
 > `session:repo-restructure-handoff` (luca-framework vault).
 
 - **Phase A** — package scaffolding — ✅ done & committed.
-- **Phase B** — port logic into `luca-core` — in progress, **11 of ~14
+- **Phase B** — port logic into `luca-core` — in progress, **12 of ~14
   subsystems** done:
   - ✅ `classify-complexity` → `luca-core/src/complexity/`
   - ✅ `check-parsers` → `luca-core/src/checks/`
@@ -364,8 +364,8 @@ delete that archive.
   - ✅ `claim-verifier` → `luca-core/src/claim-verifier/`
   - ✅ `review-analysis` → `luca-core/src/review-analysis/` (relocated
     from `luca-framework/src/write-surface/helpers/`)
-  - **next:** `postmortem`, then `rule-engine` runner + recurrence ·
-    `preferences`.
+  - ✅ `postmortem` → `luca-core/src/analysis/postmortem.ts`
+  - **next:** `rule-engine` runner + recurrence, then `preferences`.
 - **Phases C–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
