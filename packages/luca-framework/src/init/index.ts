@@ -7,5 +7,12 @@ export {
 } from './helpers/wire-claude-hooks.ts'
 export type { WireClaudeHooksOptions } from './helpers/wire-claude-hooks.ts'
 
-export { installSkills } from './helpers/install-skills.ts'
-export type { InstallSkillsOptions } from './helpers/install-skills.ts'
+export {
+    installSkills,
+    listBundledArtifacts,
+    defaultClaudeHome,
+} from './helpers/install-skills.ts'
+export type {
+    InstallSkillsOptions,
+    BundledArtifacts,
+} from './helpers/install-skills.ts'

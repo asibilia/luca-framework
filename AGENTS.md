@@ -109,11 +109,14 @@ Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defin
 
 ## Claude Code-first Architecture (v13+)
 
-`luca init` wires three layers into the project. The write surface is a two-track
-design — both tracks share one deterministic core and one enforcing hook:
+`luca init` is **global except for one per-project artifact**: it installs the
+Claude skill set and stage-gate hook into `~/.claude/` (a single luca CLI version
+owns one canonical copy across every project), and writes only the `.luca/`
+skeleton into the repo. The write surface is a two-track design — both tracks
+share one deterministic core and one enforcing hook:
 
-1. **`.luca/` directory** — the workflow state, schema-validated by `@alecsibilia/luca-core`.
-2. **Stage-gate hook** (`.claude/hooks/stage-gate.sh` + `.claude/settings.json` PreToolUse registration) — `luca hook stage-gate` enforces a coarse-phase × tool-category matrix on every Edit/Write/Bash. Always-denied paths (.git/, ~/.claude/, /etc/, …) are blocked regardless of phase. Bash commands are tokenized via shell-quote AST so output redirects + cp/mv targets are checked against the path matrix — defeating the temp-file exfiltration pattern. For an Edit/Write under `.luca/phases/`, the hook computes the legal artifact path for the current `pipelineStep` and allows **only** an exact match — making the native `Write` tool the safe channel for freeform artifact files (plan, research, context, plan-review, summary, wave, audit, learn, verify.json). Writes to `.luca/` root files are blocked.
+1. **`.luca/` directory** (per-project) — the workflow state, schema-validated by `@alecsibilia/luca-core`. The only thing `luca init` writes into the repo.
+2. **Stage-gate hook** (registered in `~/.claude/settings.json` as the bare command `luca hook stage-gate` — no wrapper script) — enforces a coarse-phase × tool-category matrix on every Edit/Write/Bash. In a non-luca repo there is no `.luca/state.json`, so the handler defaults to IDLE and allows everything. Always-denied paths (.git/, ~/.claude/, /etc/, …) are blocked regardless of phase. Bash commands are tokenized via shell-quote AST so output redirects + cp/mv targets are checked against the path matrix — defeating the temp-file exfiltration pattern. For an Edit/Write under `.luca/phases/`, the hook computes the legal artifact path for the current `pipelineStep` and allows **only** an exact match — making the native `Write` tool the safe channel for freeform artifact files (plan, research, context, plan-review, summary, wave, audit, learn, verify.json). Writes to `.luca/` root files are blocked.
 3. **`luca` CLI** — a typed Bash-invoked CLI (`src/commands/write-surface/`, registered in `src/cli.ts`) handles structured/operational mutations: `luca state advance`, `luca roadmap create`, `luca todo add`, `luca preferences write`, `luca checks run`, etc. Each leaf self-checks its phase precondition against `.luca/state.json`. The CLI never writes freeform artifact files — those go through the `Write` tool above.
 
 **Two tracks, one guard.** Freeform artifact files → native `Write` tool, gated by the hook's per-step artifact-path check. Structured mutations → `luca` CLI, which self-enforces per-verb phase rules. The runtime-agnostic handlers live in `src/write-surface/`; the CLI commands front them. Together this makes the workflow discipline impossible to bypass without `--dangerously-skip-permissions`. (v13 replaced the former MCP server — see `docs/v13-write-surface-migration.md` for the historical migration plan.)
@@ -125,7 +128,7 @@ Bundled with the npm package under `packages/luca-framework/skills/`:
 - `commands/phase-{discuss,plan,execute}.md` — slash commands the user invokes; orchestrate state advances (via the `luca` CLI), artifact writes (via the `Write` tool to canonical paths), and subagent delegation.
 - `agents/luca-{executor,planner,reviewer}.md` — Claude Code subagent definitions that do the cognitive/code-writing work.
 
-`luca init` copies these into `<project>/.claude/commands/` and `.claude/agents/`. **Re-running `luca init` always overwrites with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones).
+`luca init` copies these into the **global** `~/.claude/commands/`, `~/.claude/agents/`, and `~/.claude/skills/` — not into the repo. **Re-running `luca init` always overwrites luca's own files with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones). Stray per-repo copies left by pre-v13 `luca init` are detected and removed by `luca doctor --fix`.
 
 ### Adding a new write-surface command
 
@@ -140,7 +143,7 @@ Freeform artifact files do **not** get a CLI command — they are written with t
 
 1. Write `packages/luca-framework/skills/commands/<name>.md` with frontmatter (name, description) and instructions that name the right `luca` CLI subcommands and/or the `Write`-to-canonical-path convention.
 2. Skills are markdown — they're prompts, not code. The discipline is in the `luca` CLI + stage-gate hook they delegate to, not the markdown.
-3. `luca init` will pick the new skill up automatically (re-run it in your project to install).
+3. `luca init` will pick the new skill up automatically (re-run it to install into `~/.claude/`).
 
 ### Mastracode coexistence
 

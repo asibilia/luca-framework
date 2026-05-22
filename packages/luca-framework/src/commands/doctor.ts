@@ -13,6 +13,9 @@
  *
  * # Run only prerequisite checks
  * luca doctor --scope=prerequisites
+ *
+ * # Apply automatic fixes (e.g. remove stray local installs)
+ * luca doctor --fix
  * ```
  */
 import { defineCommand } from 'citty'
@@ -21,7 +24,7 @@ import { executeDoctor } from '../utils/doctor'
 import type { DoctorScope } from '../utils/doctor/types'
 
 /** Valid scope values for the --scope argument. */
-const VALID_SCOPES: DoctorScope[] = ['prerequisites', 'global']
+const VALID_SCOPES: DoctorScope[] = ['prerequisites', 'global', 'project']
 
 export default defineCommand({
     meta: {
@@ -37,8 +40,15 @@ export default defineCommand({
         },
         scope: {
             type: 'string',
-            description: 'Filter checks by scope: prerequisites or global',
+            description:
+                'Filter checks by scope: prerequisites, global, or project',
             alias: 's',
+        },
+        fix: {
+            type: 'boolean',
+            description:
+                'Apply automatic fixes for issues that support remediation (e.g. stray local installs)',
+            default: false,
         },
     },
     async run({ args }) {
@@ -54,6 +64,7 @@ export default defineCommand({
         const exitCode = await executeDoctor({
             verbose: args.verbose,
             scope,
+            fix: args.fix,
         })
         process.exit(exitCode)
     },

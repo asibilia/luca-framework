@@ -5,7 +5,7 @@
  * by scope. Reports results with pass/fail/warning icons and fix suggestions.
  */
 
-import type { DoctorCheck, DoctorScope } from './types'
+import type { CheckResult, DoctorCheck, DoctorScope } from './types'
 
 import { logger } from '../logger'
 
@@ -15,18 +15,22 @@ import { logger } from '../logger'
  * @param options - Execution options
  * @param options.verbose - Show detailed check information for passing checks
  * @param options.scope - Filter checks to a specific scope category
+ * @param options.fix - Apply automatic remediation for checks that support it
  * @returns Exit code: 0 for success (possibly with warnings), 1 for failures
  */
 export async function executeDoctor(
-    options: { verbose?: boolean; scope?: DoctorScope } = {}
+    options: { verbose?: boolean; scope?: DoctorScope; fix?: boolean } = {}
 ): Promise<number> {
-    const { verbose = false, scope } = options
+    const { verbose = false, scope, fix = false } = options
     logger.info('Running environment diagnostics...\n')
 
     // Import all checks
     const { bunRuntimeCheck } = await import('./checks/bun-runtime')
     const { muninndbHealthCheck } = await import('./checks/muninndb-health')
     const { staleMcpServerCheck } = await import('./checks/stale-mcp-server')
+    const { strayLocalInstallCheck } = await import(
+        './checks/stray-local-install'
+    )
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites
@@ -34,6 +38,8 @@ export async function executeDoctor(
         staleMcpServerCheck,
         // Global
         muninndbHealthCheck,
+        // Project (cwd-dependent)
+        strayLocalInstallCheck,
     ]
 
     // Filter by scope if provided
@@ -88,21 +94,26 @@ export async function executeDoctor(
         `Results: ${passCount} passing, ${failCount} failing, ${warningCount} warning(s)`
     )
 
-    // Show fix suggestions for any check (failed or warning) with one.
-    const fixableChecks = results.filter(
-        (r) =>
-            (r.status === 'fail' || r.status === 'warning') && r.fixCommand
-    )
+    // Apply automatic remediation when --fix is passed; otherwise show the
+    // suggested fix commands for any non-passing check.
+    if (fix) {
+        await applyFixes(checks, results)
+    } else {
+        const fixableChecks = results.filter(
+            (r) =>
+                (r.status === 'fail' || r.status === 'warning') && r.fixCommand
+        )
 
-    if (fixableChecks.length > 0) {
-        logger.info('')
-        logger.info('Suggested fixes:')
-        logger.info('-'.repeat(50))
+        if (fixableChecks.length > 0) {
+            logger.info('')
+            logger.info('Suggested fixes:')
+            logger.info('-'.repeat(50))
 
-        for (const check of fixableChecks) {
-            if (check.fixCommand) {
-                logger.info(`  ${check.name}:`)
-                logger.info(`  ${check.fixCommand}`)
+            for (const check of fixableChecks) {
+                if (check.fixCommand) {
+                    logger.info(`  ${check.name}:`)
+                    logger.info(`  ${check.fixCommand}`)
+                }
             }
         }
     }
@@ -128,4 +139,51 @@ export async function executeDoctor(
 
     logger.success('All checks passed! Your environment is ready.')
     return 0
+}
+
+/**
+ * Apply automatic remediation for non-passing checks that implement `fix()`.
+ *
+ * `checks` and `results` are index-aligned (results come from
+ * `Promise.all(checks.map(...))`), so each result is matched to its check.
+ */
+async function applyFixes(
+    checks: DoctorCheck[],
+    results: CheckResult[]
+): Promise<void> {
+    const fixable = checks
+        .map((check, index) => ({ check, result: results[index] }))
+        .filter(
+            (pair): pair is { check: DoctorCheck; result: CheckResult } =>
+                pair.result !== undefined &&
+                pair.result.status !== 'pass' &&
+                typeof pair.check.fix === 'function'
+        )
+
+    if (fixable.length === 0) {
+        const hasIssues = results.some((result) => result.status !== 'pass')
+        if (hasIssues) {
+            logger.info('')
+            logger.info('No automatic fixes available for the issues above.')
+        }
+        return
+    }
+
+    logger.info('')
+    logger.info('Applying fixes (--fix)')
+    logger.info('-'.repeat(50))
+
+    for (const { check } of fixable) {
+        // `fix` is guaranteed defined by the filter above.
+        const fixResult = await check.fix!()
+        for (const action of fixResult.applied) {
+            logger.success(`+ ${check.name}: ${action}`)
+        }
+        for (const error of fixResult.errors) {
+            logger.error(`x ${check.name}: ${error}`)
+        }
+        if (fixResult.applied.length === 0 && fixResult.errors.length === 0) {
+            logger.info(`  ${check.name}: nothing to fix`)
+        }
+    }
 }

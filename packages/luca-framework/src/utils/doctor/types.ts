@@ -5,8 +5,22 @@ import { z } from 'zod'
  *
  * - `prerequisites`: Bun runtime and platform checks
  * - `global`: MuninnDB binary and service health
+ * - `project`: cwd-dependent checks (e.g. stray local installs)
  */
-export type DoctorScope = 'prerequisites' | 'global'
+export type DoctorScope = 'prerequisites' | 'global' | 'project'
+
+/**
+ * Internal interface: result of a doctor check's `fix()` remediation.
+ *
+ * Returned by checks that support automatic remediation via
+ * `luca doctor --fix`.
+ */
+export interface DoctorFixResult {
+    /** Human-readable descriptions of remediations that succeeded. */
+    applied: string[]
+    /** Human-readable descriptions of remediations that failed. */
+    errors: string[]
+}
 
 /**
  * Internal schema: Doctor check result.
@@ -29,9 +43,13 @@ export type CheckResult = z.infer<typeof CheckResultSchema>
  *
  * Defines the contract for a diagnostic check that can be run
  * by the doctor command. Each check has a name and an async run method.
+ * Checks that can self-remediate also implement `fix()`, invoked by
+ * `luca doctor --fix` when the check did not pass.
  */
 export interface DoctorCheck {
     name: string
     scope: DoctorScope
     run(): Promise<CheckResult>
+    /** Optional automatic remediation, invoked by `luca doctor --fix`. */
+    fix?(): Promise<DoctorFixResult>
 }

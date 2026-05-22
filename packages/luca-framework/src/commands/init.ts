@@ -1,13 +1,21 @@
 /**
  * CLI command: luca init
  *
- * Bootstrap orchestrator. Runs a 4-step flow that's idempotent at every
- * step, so re-running in the same project is safe:
+ * Bootstrap orchestrator. Runs a 5-step flow that's idempotent at every
+ * step, so re-running is safe:
  *
  * 1. **Prerequisites** — Bun runtime check (global)
  * 2. **Luca home** — Ensure ~/.luca/ directory exists (global)
  * 3. **MuninnDB** — Binary download + service start (global)
- * 4. **Project skeleton** — Write .luca/ + .claude/ stage-gate wiring (per-project)
+ * 4. **Claude integration** — Install skills/commands/agents and register
+ *    the stage-gate hook into the *global* ~/.claude/ scope (global)
+ * 5. **Project skeleton** — Write the per-project .luca/ planning files
+ *
+ * Everything except Step 5 is global. A repo only ever receives `.luca/`
+ * planning files — the Claude skill set and hook live in `~/.claude/` so a
+ * single luca CLI version owns one canonical copy across every project.
+ * Stray per-repo copies from older luca versions are cleaned up by
+ * `luca doctor --fix`.
  *
  * Per-project vault wiring (vault name + API key) is handled
  * separately by `luca vault:init`.
@@ -23,7 +31,10 @@
  * # Skip MuninnDB setup (manage it separately)
  * luca init --skip-muninndb
  *
- * # Skip per-project skeleton (only do global setup)
+ * # Skip the global Claude integration (skills/commands/agents/hook)
+ * luca init --skip-claude
+ *
+ * # Skip the per-project .luca/ skeleton (only do global setup)
  * luca init --skip-project
  * ```
  */
@@ -31,6 +42,7 @@ import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 
 import {
+    defaultClaudeHome,
     installSkills,
     wireClaudeHooks,
     writeProjectSkeleton,
@@ -61,10 +73,15 @@ export const initCommand = defineCommand({
             description: 'Skip MuninnDB binary download and service setup',
             default: false,
         },
-        'skip-project': {
+        'skip-claude': {
             type: 'boolean',
             description:
-                'Skip per-project setup (.luca/ skeleton + .claude/ stage-gate hook)',
+                'Skip the global Claude integration (~/.claude/ skills, commands, agents, stage-gate hook)',
+            default: false,
+        },
+        'skip-project': {
+            type: 'boolean',
+            description: 'Skip the per-project .luca/ skeleton',
             default: false,
         },
     },
@@ -80,7 +97,7 @@ export const initCommand = defineCommand({
 
         // ── Step 1: Prerequisites ────────────────────────────────────────────
         if (!args['skip-prerequisites']) {
-            p.log.step('Step 1/3: Prerequisites')
+            p.log.step('Step 1/5: Prerequisites')
             const prereqs = checkPrerequisites()
 
             if (!prereqs.ok) {
@@ -105,17 +122,17 @@ export const initCommand = defineCommand({
             prereqsPlatform = `${prereqs.platform.os}/${prereqs.platform.arch}`
             p.log.success(`Bun ${prereqsVersion} (${prereqsPlatform})`)
         } else {
-            p.log.info('Step 1/3: Prerequisites (skipped)')
+            p.log.info('Step 1/5: Prerequisites (skipped)')
         }
 
         // ── Step 2: Luca home directory ──────────────────────────────────────
-        p.log.step('Step 2/3: Luca home directory')
+        p.log.step('Step 2/5: Luca home directory')
         const homePaths = await ensureLucaHome()
         p.log.success(`Luca home directory: ${homePaths.root}`)
 
         // ── Step 3: MuninnDB ─────────────────────────────────────────────────
         if (!args['skip-muninndb']) {
-            p.log.step('Step 3/3: MuninnDB')
+            p.log.step('Step 3/5: MuninnDB')
             const binaryStatus = await checkMuninndbBinary()
 
             if (!binaryStatus.installed) {
@@ -176,30 +193,35 @@ export const initCommand = defineCommand({
                 )
             }
         } else {
-            p.log.info('Step 3/3: MuninnDB (skipped)')
+            p.log.info('Step 3/5: MuninnDB (skipped)')
         }
 
-        // ── Step 4: Per-project skeleton ─────────────────────────────────────
+        // ── Step 4: Global Claude integration ────────────────────────────────
+        const claudeHome = defaultClaudeHome()
+        let claudeSetupRan = false
+        if (!args['skip-claude']) {
+            p.log.step('Step 4/5: Claude integration (~/.claude/)')
+            await installSkills({ log: (msg) => p.log.info(msg) })
+            await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
+            claudeSetupRan = true
+            p.log.success(`Claude skills and stage-gate hook installed to ${claudeHome}`)
+        } else {
+            p.log.info('Step 4/5: Claude integration (skipped)')
+        }
+
+        // ── Step 5: Per-project skeleton ─────────────────────────────────────
         let projectSetupRan = false
         if (!args['skip-project']) {
-            p.log.step('Step 4/4: Project skeleton (.luca/ + .claude/)')
+            p.log.step('Step 5/5: Project skeleton (.luca/)')
             const projectCwd = process.cwd()
             await writeProjectSkeleton({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
-            await wireClaudeHooks({
-                cwd: projectCwd,
-                log: (msg) => p.log.info(msg),
-            })
-            await installSkills({
-                cwd: projectCwd,
-                log: (msg) => p.log.info(msg),
-            })
             projectSetupRan = true
-            p.log.success(`Per-project skeleton written to ${projectCwd}`)
+            p.log.success(`Per-project skeleton written to ${projectCwd}/.luca/`)
         } else {
-            p.log.info('Step 4/4: Project skeleton (skipped)')
+            p.log.info('Step 5/5: Project skeleton (skipped)')
         }
 
         // ── Post-init readout ────────────────────────────────────────────────
@@ -231,9 +253,11 @@ export const initCommand = defineCommand({
         readout.push('Directories:')
         readout.push(`  ${homePaths.root}/`)
         readout.push(`  ${homePaths.bin}/`)
+        if (claudeSetupRan) {
+            readout.push(`  ${claudeHome}/  (Claude skills, agents, hook — global)`)
+        }
         if (projectSetupRan) {
-            readout.push(`  ${process.cwd()}/.luca/`)
-            readout.push(`  ${process.cwd()}/.claude/`)
+            readout.push(`  ${process.cwd()}/.luca/  (per-project planning)`)
         }
 
         readout.push('')
