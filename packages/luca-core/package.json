@@ -21,7 +21,8 @@
     "./rule-engine": "./src/rule-engine/index.ts",
     "./vault": "./src/vault/index.ts",
     "./analysis": "./src/analysis/index.ts",
-    "./telemetry": "./src/telemetry/index.ts"
+    "./telemetry": "./src/telemetry/index.ts",
+    "./ledger": "./src/ledger/index.ts"
   },
   "main": "src/index.ts",
   "private": true,

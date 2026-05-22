@@ -350,14 +350,15 @@ delete that archive.
 > `session:repo-restructure-handoff` (luca-framework vault).
 
 - **Phase A** — package scaffolding — ✅ done & committed.
-- **Phase B** — port logic into `luca-core` — in progress, **5 of ~14
+- **Phase B** — port logic into `luca-core` — in progress, **6 of ~14
   subsystems** done:
   - ✅ `classify-complexity` → `luca-core/src/complexity/`
   - ✅ `check-parsers` → `luca-core/src/checks/`
   - ✅ `rule-engine/define-rule` → `luca-core/src/rule-engine/`
   - ✅ `vault` → `luca-core/src/vault/`
   - ✅ `phase-diff` → `luca-core/src/analysis/`
-  - **next:** `telemetry`, then `session-ledger` · `verification-result` ·
+  - ✅ `telemetry` → `luca-core/src/telemetry/`
+  - **next:** `session-ledger`, then `verification-result` ·
     `confidence-journal` · `claim-verifier` · `review-analysis` · `postmortem` ·
     `rule-engine` runner + recurrence · `preferences`.
 - **Phases C–H** — not started.
