@@ -15,13 +15,17 @@ const main = defineCommand({
         name: 'luca',
         version: LUCA_VERSION,
         description:
-            'Luca CLI — bootstrap MuninnDB and launch the Mastra Code harness',
+            'Luca CLI — spec-driven agentic development workflow + write surface',
     },
     subCommands: {
         init: () => import('./commands/init').then((m) => m.initCommand),
         'vault:init': () =>
             import('./commands/vault-init').then((m) => m.vaultInitCommand),
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
+        'claim-verify': () =>
+            import('./commands/claim-verify').then(
+                (m) => m.claimVerifyCommand
+            ),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
