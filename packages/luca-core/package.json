@@ -17,7 +17,8 @@
     "./todos": "./src/todos/index.ts",
     "./shadow-scan": "./src/shadow-scan/index.ts",
     "./complexity": "./src/complexity/index.ts",
-    "./checks": "./src/checks/index.ts"
+    "./checks": "./src/checks/index.ts",
+    "./rule-engine": "./src/rule-engine/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
