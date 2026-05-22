@@ -14,6 +14,7 @@
     "fix-reviewer-usage-self-report",
     "fix-telemetry-batch-5-quality-regressions",
     "luca-core-phase-1",
+    "luca-init-global-install",
     "memory-audit-skill",
     "memory-tier-promotion-contract",
     "mode-transition-telemetry",
