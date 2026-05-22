@@ -15,7 +15,8 @@
     "./luca-dir": "./src/luca-dir/index.ts",
     "./preferences": "./src/preferences/index.ts",
     "./todos": "./src/todos/index.ts",
-    "./shadow-scan": "./src/shadow-scan/index.ts"
+    "./shadow-scan": "./src/shadow-scan/index.ts",
+    "./complexity": "./src/complexity/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
