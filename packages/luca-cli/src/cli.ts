@@ -29,6 +29,8 @@ const main = defineCommand({
         telemetry: () =>
             import('./commands/telemetry').then((m) => m.telemetryCommand),
         rules: () => import('./commands/rules').then((m) => m.rulesCommand),
+        classify: () =>
+            import('./commands/classify').then((m) => m.classifyCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
