@@ -26,6 +26,8 @@ const main = defineCommand({
             import('./commands/claim-verify').then(
                 (m) => m.claimVerifyCommand
             ),
+        telemetry: () =>
+            import('./commands/telemetry').then((m) => m.telemetryCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
