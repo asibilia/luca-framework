@@ -388,7 +388,14 @@ delete that archive.
     divergence) and F3–F5 (design calls; small `luca state advance` side-
     effect verifications) are documented in the audit as follow-ups that
     need a design decision before they can land.
-- **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — next.
+- **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — in progress:
+  - ✅ **D-1** — `define-*` factories landed at
+    `packages/luca-tools/src/define/` (`defineAgent`, `defineSubagent`,
+    `defineCommand`, `defineSkill`, `defineHook`, `defineRule`
+    re-export). Discriminated union `Artifact` + narrow guards for the
+    D-2 compiler. Schemas declare D1 guidance / telemetry / pipeline-
+    invocation fields explicitly so D-3 can port subagents without
+    scattering restored guidance into per-subagent prose.
 - **Phases E–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
