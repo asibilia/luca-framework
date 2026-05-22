@@ -11,7 +11,8 @@
     "typescript": "catalog:"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./define": "./src/define/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
