@@ -28,7 +28,7 @@
  */
 import { chmodSync } from 'node:fs'
 
-import { sanitizeVaultName } from '@alecsibilia/luca-mastracode'
+import { sanitizeVaultName } from '@alecsibilia/luca-core'
 import * as p from '@clack/prompts'
 import { join, basename } from 'pathe'
 import { z } from 'zod'
