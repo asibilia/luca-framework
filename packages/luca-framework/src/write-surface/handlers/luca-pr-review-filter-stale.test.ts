@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewFilterStaleTool } from './luca-pr-review-filter-stale.ts'
 
-import type { PrReviewComment } from '../helpers/review-analysis/index.ts'
+import type { PrReviewComment } from '@alecsibilia/luca-core/review-analysis'
 
 const FIXTURE_PATH = 'src/sample.ts'
 const FIXTURE_CONTENT = [

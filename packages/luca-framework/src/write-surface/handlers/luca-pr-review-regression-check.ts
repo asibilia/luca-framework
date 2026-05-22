@@ -3,7 +3,7 @@ import {
     checkRegression,
     diffPaths,
     type ReviewFinding,
-} from '../helpers/review-analysis/index.ts'
+} from '@alecsibilia/luca-core/review-analysis'
 
 const findingSchema = z.object({
     id: z.string(),

@@ -2,7 +2,7 @@ import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import {
     filterStaleComments,
     type PrReviewComment,
-} from '../helpers/review-analysis/index.ts'
+} from '@alecsibilia/luca-core/review-analysis'
 
 const commentSchema = z.object({
     id: z.number(),

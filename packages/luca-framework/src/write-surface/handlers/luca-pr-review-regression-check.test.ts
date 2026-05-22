@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewRegressionCheckTool } from './luca-pr-review-regression-check.ts'
 
-import type { ReviewFinding } from '../helpers/review-analysis/index.ts'
+import type { ReviewFinding } from '@alecsibilia/luca-core/review-analysis'
 
 function finding(over: Partial<ReviewFinding>): ReviewFinding {
     return {

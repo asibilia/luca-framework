@@ -34,7 +34,7 @@ export type {
     ValidateVerificationRefOptions,
     ValidationError,
 } from './helpers/validate-verification-ref.ts'
-export * from './helpers/review-analysis/index.ts'
+export * from '@alecsibilia/luca-core/review-analysis'
 
 // Handlers — the 27 tool descriptors
 export { lucaBranchGuardTool } from './handlers/luca-branch-guard.ts'

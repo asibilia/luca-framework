@@ -2,7 +2,7 @@ import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import {
     detectConvergence,
     type ReviewFinding,
-} from '../helpers/review-analysis/index.ts'
+} from '@alecsibilia/luca-core/review-analysis'
 
 const findingSchema = z.object({
     id: z.string(),
