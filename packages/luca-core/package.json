@@ -20,7 +20,8 @@
     "./checks": "./src/checks/index.ts",
     "./rule-engine": "./src/rule-engine/index.ts",
     "./vault": "./src/vault/index.ts",
-    "./analysis": "./src/analysis/index.ts"
+    "./analysis": "./src/analysis/index.ts",
+    "./telemetry": "./src/telemetry/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
