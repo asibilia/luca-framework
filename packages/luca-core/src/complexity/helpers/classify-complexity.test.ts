@@ -2,11 +2,13 @@ import { describe, expect, test } from 'bun:test'
 
 import { classifyComplexity } from './classify-complexity.ts'
 
-import type { ClassifyComplexityInput } from '../schemas.ts'
+import type { ClassifyComplexityInput, ComplexityResult } from '../schemas.ts'
 
 describe('classifyComplexity', () => {
     // Table-driven: one case per score band (TRIVIAL → CRITICAL).
-    const cases: Array<[string, ClassifyComplexityInput, string]> = [
+    const cases: Array<
+        [string, ClassifyComplexityInput, ComplexityResult['complexity']]
+    > = [
         [
             'a typo in one file',
             { taskDescription: 'fix a typo', estimatedFileCount: 1 },
