@@ -369,7 +369,16 @@ delete that archive.
   - ✅ `preferences` read/merge logic → `luca-core/src/preferences/`
     (schema was already ported; this added `extractPreferences` /
     `mergePreferences` and rewired the v13 write-surface handlers)
-- **Phase C** — `luca-cli` relocate + extend the CLI — next.
+- **Phase C** — `luca-cli` relocate + extend the CLI — in progress:
+  - ✅ dropped the mastracode `run` launcher + `migrate-planning` +
+    `src/migration/`
+  - ✅ relocated all of `luca-framework/src/` → `luca-cli/src/` (git mv,
+    history preserved); retargeted the one mastracode import (`sanitizeVaultName`)
+    to luca-core; `luca-framework` is now a husk (Phase H removes it)
+  - **next:** add CLI surfaces for the six dropped tools — `luca retro` as a
+    real postmortem generator, `luca rules`, `luca claim-verify`, a
+    telemetry-emit surface, and the dropped workflow/roadmap/verification/
+    confidence/branch actions.
 - **Phases D–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
