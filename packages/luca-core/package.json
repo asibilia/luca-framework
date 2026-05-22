@@ -16,7 +16,8 @@
     "./preferences": "./src/preferences/index.ts",
     "./todos": "./src/todos/index.ts",
     "./shadow-scan": "./src/shadow-scan/index.ts",
-    "./complexity": "./src/complexity/index.ts"
+    "./complexity": "./src/complexity/index.ts",
+    "./checks": "./src/checks/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
