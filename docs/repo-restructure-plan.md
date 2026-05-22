@@ -369,21 +369,27 @@ delete that archive.
   - ✅ `preferences` read/merge logic → `luca-core/src/preferences/`
     (schema was already ported; this added `extractPreferences` /
     `mergePreferences` and rewired the v13 write-surface handlers)
-- **Phase C** — `luca-cli` relocate + extend the CLI — in progress:
+- **Phase C** — `luca-cli` relocate + extend the CLI — ✅ **done**:
   - ✅ dropped the mastracode `run` launcher + `migrate-planning` +
     `src/migration/`
   - ✅ relocated all of `luca-framework/src/` → `luca-cli/src/` (git mv,
-    history preserved); retargeted the one mastracode import (`sanitizeVaultName`)
-    to luca-core; `luca-framework` is now a husk (Phase H removes it)
+    history preserved); retargeted the one mastracode import
+    (`sanitizeVaultName`) to luca-core; `luca-framework` is now a husk
+    (Phase H removes it)
   - ✅ added CLI surfaces for every ported luca-core logic module —
     `luca claim-verify`, `luca telemetry` (emit / new-run), `luca retro` (a
     real postmortem *generator*, not a hollow reader), `luca rules`
     (list / run / gate / suggest), `luca classify`. Closes §3 functional
     gaps #1, #4, #5, #6, #7.
-  - **remaining:** audit the partially-ported write-surface commands
-    (workflow / roadmap / verification / confidence / branch) for the
-    mastracode tool actions that §5.3 flagged as dropped in v13.
-- **Phases D–H** — not started.
+  - ✅ dropped-actions audit produced
+    (`docs/repo-restructure-dropped-actions-audit.md`). Audit finding F2
+    closed with `luca confidence read|summary|render` and
+    `luca verification read|aggregate`. F1 (confidence-log schema
+    divergence) and F3–F5 (design calls; small `luca state advance` side-
+    effect verifications) are documented in the audit as follow-ups that
+    need a design decision before they can land.
+- **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — next.
+- **Phases E–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
 and committed individually (`feat(restructure): Phase B — …`).
