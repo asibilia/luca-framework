@@ -343,3 +343,24 @@ workflow runs → revisit the slim-down, re-oriented off the *migrated* workflow
 rather than the old mastracode one. The specs live in
 `.legacy-planning-archive/planning/todos/pending/` — Phase H must **not**
 delete that archive.
+
+## 10. Progress
+
+> Live progress marker. Full resumption detail is in MuninnDB —
+> `session:repo-restructure-handoff` (luca-framework vault).
+
+- **Phase A** — package scaffolding — ✅ done & committed.
+- **Phase B** — port logic into `luca-core` — in progress, **5 of ~14
+  subsystems** done:
+  - ✅ `classify-complexity` → `luca-core/src/complexity/`
+  - ✅ `check-parsers` → `luca-core/src/checks/`
+  - ✅ `rule-engine/define-rule` → `luca-core/src/rule-engine/`
+  - ✅ `vault` → `luca-core/src/vault/`
+  - ✅ `phase-diff` → `luca-core/src/analysis/`
+  - **next:** `telemetry`, then `session-ledger` · `verification-result` ·
+    `confidence-journal` · `claim-verifier` · `review-analysis` · `postmortem` ·
+    `rule-engine` runner + recurrence · `preferences`.
+- **Phases C–H** — not started.
+
+Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
+and committed individually (`feat(restructure): Phase B — …`).
