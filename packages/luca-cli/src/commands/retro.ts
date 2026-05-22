@@ -1,103 +1,94 @@
 /**
- * CLI command: luca retro
+ * CLI command: `luca retro`
  *
- * Inspect the most recent Luca pipeline postmortem. Prints the cached
- * `.planning/POSTMORTEM.md` if it exists. With `--list`, enumerates
- * archived runs across both `.planning/phases/<slug>/runs/` (current
- * layout per issue #220) and the legacy `.planning/runs/` location.
- * Generating a fresh postmortem for the live run is done from inside
- * the harness via `runPostmortem`.
+ * Generates a structured postmortem for a Luca pipeline run — scanning the
+ * run's session-ledger, verification results, and confidence entries for
+ * seven classes of pipeline-discipline violation.
+ *
+ * This is a real generator, not a hollow reader: it closes §3 functional
+ * gap #4 of the migration-recovery plan (`luca retro` was reduced to
+ * printing a cached file; the analysis logic was lost in the v13 rewrite).
+ *
+ *   - `luca retro`              — postmortem for the most recent run
+ *   - `luca retro --run <id>`   — postmortem for a specific run
+ *   - `luca retro --list`       — list the runs recorded in the ledger
+ *   - `luca retro --json`       — emit the full report as JSON (incl. pitfalls)
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-
 import { defineCommand } from 'citty'
-import { join, resolve } from 'pathe'
 
-import { logger } from '../utils/logger'
+import { analyzeRun, listRuns, renderPostmortemMarkdown } from '@alecsibilia/luca-core'
 
-/**
- * Yield directories that may hold archived run subdirectories, in priority
- * order: every `phases/<slug>/runs/` directory on disk, followed by the
- * legacy `.planning/runs/` root. Mirrors the lookup used by
- * `luca-mastracode`'s `listArchivedRuns()` so the CLI stays consistent
- * with postmortem/recurrence analysis after issue #220.
- */
-function candidateArchiveRoots(planningDir: string): string[] {
-    const roots: string[] = []
-    const phasesRoot = join(planningDir, 'phases')
-    if (existsSync(phasesRoot)) {
-        try {
-            for (const entry of readdirSync(phasesRoot, {
-                withFileTypes: true,
-            })) {
-                if (!entry.isDirectory()) continue
-                roots.push(join(phasesRoot, entry.name, 'runs'))
-            }
-        } catch {
-            // ignore unreadable phases/ root
-        }
-    }
-    roots.push(join(planningDir, 'runs'))
-    return roots
-}
-
-function listArchivedRunIds(planningDir: string): string[] {
-    const seen = new Set<string>()
-    for (const archiveRoot of candidateArchiveRoots(planningDir)) {
-        if (!existsSync(archiveRoot)) continue
-        try {
-            for (const name of readdirSync(archiveRoot)) {
-                try {
-                    if (statSync(join(archiveRoot, name)).isDirectory()) {
-                        seen.add(name)
-                    }
-                } catch {
-                    // ignore unreadable entries
-                }
-            }
-        } catch {
-            // ignore unreadable archive root
-        }
-    }
-    return Array.from(seen).sort()
-}
+import { gatherRunArtifacts } from './__helpers/gather-run-artifacts.ts'
+import { logger } from '../utils/logger.ts'
 
 export const retroCommand = defineCommand({
     meta: {
         name: 'retro',
-        description:
-            'Show the latest Luca pipeline postmortem from .planning/POSTMORTEM.md',
+        description: 'Generate a postmortem for a Luca pipeline run.',
     },
     args: {
+        run: {
+            type: 'string',
+            description:
+                'Run id to analyze (default: the most recent run in the ledger).',
+        },
         list: {
             type: 'boolean',
+            description: 'List the runs recorded in .luca/ledger.jsonl.',
+        },
+        json: {
+            type: 'boolean',
             description:
-                'List archived runs under .planning/phases/<slug>/runs/ and .planning/runs/',
-            required: false,
+                'Emit the full PostmortemReport as JSON instead of Markdown.',
         },
     },
-    async run({ args }) {
-        const planningDir = resolve(process.cwd(), '.planning')
+    run({ args }) {
+        const cwd = process.cwd()
+        const runs = listRuns({ cwd })
 
         if (args.list) {
-            const runIds = listArchivedRunIds(planningDir)
-            if (runIds.length === 0) {
-                logger.info('No archived runs found.')
+            if (runs.length === 0) {
+                logger.info('No runs recorded in .luca/ledger.jsonl.')
                 return
             }
-            for (const runId of runIds) {
-                logger.info(runId)
+            for (const r of runs) {
+                logger.info(
+                    `${r.runId}  —  ${r.eventCount} event(s), ` +
+                        `${r.firstEvent} → ${r.lastEvent}`
+                )
             }
             return
         }
 
-        const postmortemPath = join(planningDir, 'POSTMORTEM.md')
-        if (!existsSync(postmortemPath)) {
+        if (runs.length === 0) {
             logger.warn(
-                'No .planning/POSTMORTEM.md found. Run `luca run` and let finalize emit one, or call runPostmortem(action: "render") inside the harness.'
+                'No runs recorded in .luca/ledger.jsonl — nothing to analyze.'
             )
             return
         }
-        process.stdout.write(readFileSync(postmortemPath, 'utf8'))
+
+        let runId = args.run
+        if (!runId) {
+            // Most recent run, by last-event timestamp.
+            runId = [...runs].sort((a, b) =>
+                b.lastEvent.localeCompare(a.lastEvent)
+            )[0]?.runId
+        } else if (!runs.some((r) => r.runId === runId)) {
+            logger.error(`luca retro: run '${runId}' not found in the ledger.`)
+            process.exitCode = 1
+            return
+        }
+        if (!runId) {
+            logger.warn('Could not resolve a run to analyze.')
+            return
+        }
+
+        const report = analyzeRun(gatherRunArtifacts({ cwd, runId }))
+
+        if (args.json) {
+            process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+            return
+        }
+        process.stdout.write(`${renderPostmortemMarkdown(report)}\n`)
     },
 })
