@@ -24,7 +24,8 @@
     "./telemetry": "./src/telemetry/index.ts",
     "./ledger": "./src/ledger/index.ts",
     "./verification": "./src/verification/index.ts",
-    "./confidence": "./src/confidence/index.ts"
+    "./confidence": "./src/confidence/index.ts",
+    "./claim-verifier": "./src/claim-verifier/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
