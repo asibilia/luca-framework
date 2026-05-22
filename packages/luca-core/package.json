@@ -22,7 +22,8 @@
     "./vault": "./src/vault/index.ts",
     "./analysis": "./src/analysis/index.ts",
     "./telemetry": "./src/telemetry/index.ts",
-    "./ledger": "./src/ledger/index.ts"
+    "./ledger": "./src/ledger/index.ts",
+    "./verification": "./src/verification/index.ts"
   },
   "main": "src/index.ts",
   "private": true,

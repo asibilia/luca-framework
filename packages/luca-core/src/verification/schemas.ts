@@ -1,0 +1,73 @@
+/**
+ * Structured verification output — `.luca/phases/<slug>/verify.json`.
+ *
+ * Replaces prose-based verification with deterministic JSON the orchestrator
+ * can read without parsing free text. The verifier writes the result; the
+ * review step reads it for audit aggregation; finalize reads it for milestone
+ * validation; the todo→done gate reads it for criterion lookup.
+ *
+ * Ported from luca-mastracode `state/verification-result.ts`.
+ */
+import { z } from 'zod'
+
+/** A single acceptance-criterion verdict. */
+export const VerificationCriterionSchema = z.object({
+    /** Stable identifier (e.g. "ac-01", "test-pass"). */
+    criterionId: z.string(),
+    /** Human-readable description. */
+    description: z.string(),
+    /** Whether the criterion is satisfied. */
+    met: z.boolean(),
+    /** File / line / test evidence supporting the verdict. */
+    evidence: z.string(),
+    /** If not met, what is missing. */
+    gap: z.string().optional(),
+    /** Whether this criterion blocks proceeding. */
+    blocking: z.boolean(),
+})
+export type VerificationCriterion = z.infer<typeof VerificationCriterionSchema>
+
+/** An automated check result (test / typecheck / lint / build). */
+export const CheckResultSchema = z.object({
+    name: z.string(),
+    status: z.enum(['pass', 'fail', 'skip', 'timeout']),
+    errorCount: z.number(),
+    warningCount: z.number(),
+    /** Duration in milliseconds. */
+    durationMs: z.number().optional(),
+})
+export type CheckResult = z.infer<typeof CheckResultSchema>
+
+/** The full verification result for one wave of one phase. */
+export const VerificationResultSchema = z.object({
+    /** ISO 8601 timestamp (stored verbatim; not parsed for arithmetic). */
+    timestamp: z.string(),
+    /**
+     * Run that produced this result. Stamped on write, validated on read: a
+     * stale result from a prior run (mismatched runId) is treated as absent so
+     * it cannot satisfy the new run's wave/phase guards. Optional for
+     * back-compat with results written before runId stamping.
+     */
+    runId: z.string().optional(),
+    /** Pipeline phase (e.g. "Phase 1: Setup"). */
+    phase: z.string().optional(),
+    /** Wave / iteration number. */
+    wave: z.number(),
+    /** Verification depth. */
+    mode: z.enum(['quick', 'full']),
+    /** Overall verdict. */
+    status: z.enum(['PASS', 'FAIL', 'STALLED']),
+    /** Per-criterion results. */
+    criteria: z.array(VerificationCriterionSchema),
+    /** Automated check results. */
+    checks: z.array(CheckResultSchema),
+    /** Convergence assessment. */
+    convergence: z.enum(['converging', 'stalled', 'resolved']),
+    /** Error fingerprints for tracking across iterations. */
+    errorFingerprints: z.array(z.string()),
+    /** Recommendation to the orchestrator. */
+    recommendation: z.enum(['proceed', 'fix', 'escalate']),
+    /** Free-form notes from the verifier. */
+    notes: z.string().optional(),
+})
+export type VerificationResult = z.infer<typeof VerificationResultSchema>
