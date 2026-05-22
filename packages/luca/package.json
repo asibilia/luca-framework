@@ -1,0 +1,22 @@
+{
+  "name": "@alecsibilia/luca",
+  "description": "Luca — spec-driven agentic development workflow for Claude Code",
+  "version": "0.1.0",
+  "devDependencies": {
+    "@alecsibilia/luca-cli": "workspace:*",
+    "@alecsibilia/luca-core": "workspace:*",
+    "@alecsibilia/luca-tools": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx --bun tsc --noEmit"
+  },
+  "type": "module"
+}
