@@ -816,9 +816,75 @@ delete that archive.
     `phase-execute` (largest at 1843 source lines) all render
     correctly. tsc green on luca-tools + luca-core + luca-cli post-
     increment. Commands surface lands in E-6.
-- **Phase E remaining** — E-6 (`defineCommand` slash-command port to
-  close the parallel commands gap; the user-facing artifacts that
-  have BOTH a SKILL.md and a `commands/<name>.md`).
+  - ✅ **E-6** — ported 17 user-facing slash commands from
+    `~/.claude/commands/<name>.md` (user copy canonical at E-6 time) as
+    `defineCommand` TS definitions at
+    `packages/luca-tools/src/artifacts/commands/<name>.ts`. The 17
+    ported commands: bug-diagnose, gh-issue-triage, gh-pr-address,
+    gh-prepare, grill-me, lu, lu-review, luca-init,
+    luca-telemetry-report, memory-audit, milestone-new, phase-discuss,
+    phase-execute, phase-plan, repo-cleanup, todo-add, todo-check. Each
+    file uses the D-1 `defineCommand` factory. Bodies sourced verbatim
+    from the user's working copies (the user has already applied
+    `.planning/` → `.luca/` retargeting). Manifest extended at
+    `packages/luca-tools/src/artifacts/index.ts`:
+    `ARTIFACTS = [...SUBAGENTS, ...MODES, ...HOOKS, ...SKILLS,
+    ...COMMANDS]` (commands appended last).
+
+    Decision-algorithm outcomes (per the E-6 brief — the commands-vs-
+    skills surface question in Claude Code: SKILL.md auto-surfaces as
+    a slash command, but a `commands/<name>.md` shipped alongside it
+    overrides the SKILL.md body for the explicit `/<name>` invocation
+    context):
+    - **17 ported**: every Luca-specific command the user has been
+      maintaining at `~/.claude/commands/`. Each has a meaningfully
+      different body from the corresponding SKILL.md — the commands
+      are tighter, more imperative "do this right now when the user
+      explicitly types `/<name>`" prompts (e.g. `/lu` is a 75-line
+      orchestrator script that drives the pipeline loop end-to-end;
+      the `lu` SKILL is a broader routing skill). Both surfaces ship
+      intentionally and the user has been editing them in tandem.
+    - **1 skipped (aidesigner)**: third-party, auto-generated from
+      `packages/aidesigner-agent-skills`; falls under the same
+      "cross-cutting NOT ported" rule as vercel:*, cloudflare:*, etc.
+    - **23 examined-but-no-port**: every other E-5 skill where the
+      user has not maintained a separate `commands/<name>.md`. For
+      these, Claude Code's auto-surface-SKILL.md-as-`/<name>`
+      behavior is the entire user-facing slash-command surface — no
+      separate command body needed. Examples: arch-audit, autopilot,
+      choose, milestone-audit, milestone-complete, milestone-gaps,
+      note, phase-add, phase-assumptions, phase-insert, phase-remove,
+      phase-research, post-init-tour, progress, project-new, quick,
+      rename-audit, repo-audit, seed-memory, session-pause,
+      session-plan, session-resume, workflow-save, luca-write-surface.
+
+    Pre-D-4 baseline check: `git show fd0b169be^:packages/luca-
+    framework/.claude/commands/` did not exist (commands were under
+    `packages/luca-framework/skills/commands/`, which carried 17
+    files — exactly the user's current set). No pre-D-4 commands
+    existed for the 23 examined-but-no-port skills, which corroborates
+    the decision to rely on SKILL.md auto-surfacing for them.
+
+    No `emit-command.ts` extension needed — the D-2 emitter handles
+    every shape in the ported set.
+
+    Audit follow-ups (per the E-6 brief): F1/F3 stay open. F1
+    (confidence schema alignment) is not touched by any ported
+    command — the commands reference \`luca state advance\` and other
+    write-surface verbs generically, never constructing
+    confidence-log payloads. F3 (\`luca state advance\` side-effect
+    verification) likewise not addressed; the ported commands invoke
+    \`luca state advance --to-step <step>\` but do not assert anything
+    about the events it emits. Both carry forward to Phase G.
+
+    Smoke verified at \`/tmp/e6-verify-9122-{a,b}\`: \`bun run --filter
+    @alecsibilia/luca-tools compile:artifacts -- --out <tmp>\` emits
+    all 17 command files at \`<tmp>/.claude/commands/<name>.md\` with
+    valid YAML frontmatter (\`name\` + \`description\`) and verbatim
+    markdown bodies. Two consecutive compile runs produce
+    byte-identical output (\`diff -r\` exit 0). tsc green on
+    luca-tools + luca-core + luca-cli post-increment. Phase E
+    complete — orchestration hooks + skills + commands all ported.
 - **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
