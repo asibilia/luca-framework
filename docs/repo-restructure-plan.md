@@ -709,6 +709,116 @@ delete that archive.
     runs produce byte-identical output (idempotent). F3 audit follow-
     up still open for opportunistic pickup; F1/F4/F5 not relevant to
     this surface.
+  - ✅ **E-5** — ported 40 user-facing skills from `~/.claude/skills/`
+    + the pre-D-4 `packages/luca-framework/{.cursor/skills,skills/
+    commands}/` snapshot into `packages/luca-tools/src/artifacts/
+    skills/<name>/index.ts` as `defineSkill` definitions. Closes the
+    manifest gap surfaced by the post-E-4 audit ("ZERO skills + ZERO
+    commands in the compiled output"). Each skill compiles to
+    `skills/<name>/SKILL.md` via the existing D-2 `emit-skill.ts` (the
+    emitter needed NO extension).
+
+    Batch shape:
+      - **Batch 1 — Luca-pipeline core (9 skills):** lu, luca-init,
+        luca-telemetry-report, luca-write-surface, phase-discuss,
+        phase-plan, phase-execute, phase-research, phase-assumptions.
+      - **Batch 2 — peripheral milestones / GH / backlog (13 skills):**
+        phase-add, phase-insert, phase-remove, milestone-new,
+        milestone-complete, milestone-audit, milestone-gaps,
+        gh-prepare, gh-issue-triage, gh-pr-address, lu-review,
+        todo-check, todo-add.
+      - **Batch 3 — utility, repo audits, Luca extras (18 skills):**
+        grill-me, memory-audit, rename-audit, arch-audit,
+        repo-cleanup, repo-audit (the user-listed set); plus
+        Luca-pipeline-essential extras included by judgment per the
+        E-5 brief: seed-memory, session-pause, session-plan,
+        session-resume, post-init-tour, workflow-save, progress,
+        project-new, note, autopilot, quick, choose.
+      - **Batch 4 — manifest registration:** SKILLS barrel at
+        `packages/luca-tools/src/artifacts/skills/index.ts`,
+        `ARTIFACTS = [...SUBAGENTS, ...MODES, ...HOOKS, ...SKILLS]` in
+        `packages/luca-tools/src/artifacts/index.ts`.
+
+    Source priority outcomes (per the E-5 brief's "user copy WINS over
+    pre-D-4" rule):
+      - **User copy canonical** (9 skills present in `~/.claude/skills/
+        <name>/SKILL.md` as real files): luca-init, luca-telemetry-
+        report, luca-write-surface, grill-me, memory-audit,
+        rename-audit, arch-audit, gh-prepare, gh-issue-triage.
+      - **Pre-D-4 cursor copy** (`fd0b169be^:packages/luca-framework/
+        .cursor/skills/<name>/SKILL.md`) for everything else where the
+        user has only a (now-dangling) symlink: lu, all `phase-*`, all
+        `milestone-*`, `todo-*`, and the Luca-pipeline extras.
+      - **Pre-D-4 skills/commands** (`fd0b169be^:packages/luca-
+        framework/skills/commands/<name>.md`) for skills that never
+        had a SKILL.md / cursor variant pre-D-4: `gh-pr-address`,
+        `lu-review`, `repo-cleanup`.
+      - **No divergence audit required** — every skill resolved to
+        exactly one source (either present-and-user-edited OR
+        symlink-only-and-recovered-from-git); no skill had BOTH a
+        non-dangling user copy AND a divergent pre-D-4 copy needing
+        per-line reconciliation.
+
+    Per-action D3 judgement outcomes (per the E-5 brief's RESTORE +
+    IMPROVE posture for guidance-dropped skills): for E-5 the bodies
+    are markdown procedures, not subagent contracts, so D1 factory
+    flags (`verticalSlice` / `tdd` / `selfVerify` / pipeline
+    invocations) do NOT apply to skills — those are agent concerns and
+    were already restored in D-3. Skill bodies port verbatim with
+    deterministic path retargeting (`.planning/` → `.luca/`;
+    `PLAN.md/RESEARCH.md/CONTEXT.md/POSTMORTEM.md` → lowercase
+    LUCA_DIR_CONTRACT canonicals); references to the v13 write-surface
+    CLI (`luca preferences write`, `luca todo list`, `luca state
+    advance`, etc.) carried over as-is from the user's current copies
+    where present, and the pre-D-4 cursor copies already use that
+    surface from the v13 migration.
+
+    Out-of-scope artifacts (NOT ported in E-5, per the brief's
+    cross-cutting exclusion list): vercel:*, cloudflare:*,
+    frontend-design:*, skill-creator:*, firecrawl-*, claude-api,
+    mastra, shadcn, impeccable, playwright-cli, run, init,
+    code-review, security-review, verify.
+
+    Examined-but-deferred Luca-adjacent skills (candidates for a
+    follow-up port if they prove load-bearing in F-2 onboarding):
+    `help`, `help-tour` (generic CLI helpers, not pipeline machinery);
+    `pr-address` (duplicated by `gh-pr-address` — same job, different
+    naming); `pr-create`, `outcome`, `restructure-driver` (current-
+    session driver only — installed at `~/.claude/skills/` and not
+    intended as a framework artifact), `shadow-cleanup`, `git-feature`,
+    `jira-issue`, `jira-start`, `update`, `qa-consolidate`,
+    `workflow-start`, `profile-export`, `profile-import`,
+    `config-profile`, `config-settings`, and the `rule-*` reference
+    skills (`rule-complexity-gating`, `rule-file-naming`,
+    `rule-harness-verification`, `rule-hook-skill-boundary`,
+    `rule-lu-workflow` — arguably better as `.claude/rules/` advisory
+    files than skills; deferring until the rule-engine port settles
+    that contract); `codebase-map` (cursor-mode-specific multi-agent
+    spawn pattern — needs a Claude-Code-native re-think). `bug-diagnose`
+    has a working user copy but is generic enough that it falls under
+    the cross-cutting exclusion.
+
+    Audit follow-ups (per the E-5 brief): no F1/F3 closure landed
+    in this run — skills reference the v13 write surface
+    (`luca confidence log`, `luca state advance`) generically; F1's
+    schema-alignment + F3's `luca state advance` side-effect
+    verification remain follow-ups for a later phase (F1 will be
+    resolved by reshaping the writer when callers in agents need the
+    full ConfidenceEntrySchema shape — none of the ported skills
+    construct confidence-log payloads directly).
+
+    Smoke verified at `/tmp/e5-verify-XXXX*`: `bun run --filter
+    @alecsibilia/luca-tools compile:artifacts -- --out <tmp>` emits
+    all 40 skill files at `<tmp>/skills/<name>/SKILL.md` with valid
+    YAML frontmatter (`name` + `description`) and verbatim markdown
+    bodies. Two consecutive compile runs produce byte-identical output
+    (`diff -r` exit 0). Spot-checked `lu`, `grill-me`, `memory-audit`,
+    `phase-execute` (largest at 1843 source lines) all render
+    correctly. tsc green on luca-tools + luca-core + luca-cli post-
+    increment. Commands surface lands in E-6.
+- **Phase E remaining** — E-6 (`defineCommand` slash-command port to
+  close the parallel commands gap; the user-facing artifacts that
+  have BOTH a SKILL.md and a `commands/<name>.md`).
 - **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
