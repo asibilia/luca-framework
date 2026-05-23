@@ -11,10 +11,22 @@ export interface InstallSkillsOptions {
      */
     claudeHome?: string
     /**
-     * Path to the luca-framework's bundled skills/ directory. Defaults to the
-     * package's own `skills/` (resolved from this file's location).
+     * Root directory containing the bundled `.claude/agents/` and
+     * `.claude/commands/` trees. Defaults to the umbrella's bundled
+     * artifacts at `<luca-pkg-root>/dist/claude/.claude/`.
+     *
+     * Two-root design (F-2): the luca-tools compiler emits commands +
+     * agents under `<dist/claude>/.claude/` and skills under
+     * `<dist/claude>/skills/`. install-skills accepts both roots
+     * independently so a caller can override them separately if needed
+     * (rare — defaults resolve via `resolveBundledArtifacts()`).
      */
-    skillsSource?: string
+    claudeArtifactsRoot?: string
+    /**
+     * Root directory containing the bundled `<name>/SKILL.md` skill
+     * tree. Defaults to `<luca-pkg-root>/dist/claude/skills/`.
+     */
+    skillsRoot?: string
     log?: (msg: string) => void
 }
 
@@ -38,9 +50,9 @@ export function defaultClaudeHome(): string {
 
 /**
  * Copy bundled luca skills into the *global* Claude config directory:
- *   - commands/*.md          → ~/.claude/commands/ (slash commands)
- *   - agents/*.md            → ~/.claude/agents/   (subagents)
- *   - skills/<name>/SKILL.md → ~/.claude/skills/   (auto-triggerable skills)
+ *   - `<artifacts>/.claude/commands/*.md`       → ~/.claude/commands/
+ *   - `<artifacts>/.claude/agents/*.md`         → ~/.claude/agents/
+ *   - `<artifacts>/skills/<name>/SKILL.md`      → ~/.claude/skills/
  *
  * Installing globally — rather than per-repo — means one luca CLI version
  * owns a single canonical skill set across every project. Repos stay
@@ -53,37 +65,55 @@ export function defaultClaudeHome(): string {
  * those directories.
  *
  * Designed to be called from `luca init`, idempotent on re-run.
+ *
+ * F-2: source roots default to the @alecsibilia/luca umbrella's bundled
+ * `dist/claude/` tree. When `luca` is installed globally via npm, the
+ * compiled artifacts ship inside the tarball (built at publish time
+ * via the umbrella's `build:done` hook in `build.config.ts`). When
+ * running from a dev tree (no `dist/claude/` present), the resolver
+ * returns null and `installSkills` skips with a clear message instead
+ * of failing.
  */
 export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
     const log = opts.log ?? (() => {})
     const claudeHome = opts.claudeHome ?? defaultClaudeHome()
-    const skillsSource = opts.skillsSource ?? resolveDefaultSkillsSource()
+    const resolved = resolveBundledArtifacts({
+        claudeArtifactsRoot: opts.claudeArtifactsRoot,
+        skillsRoot: opts.skillsRoot,
+    })
 
-    if (!skillsSource || !existsSync(skillsSource)) {
+    if (resolved === null) {
         log(
-            skillsSource
-                ? `  skip:  skills source not found at ${skillsSource} (running from a non-bundled dev tree?)`
-                : '  skip:  could not locate the luca-framework package root — skills not installed (running from a non-bundled dev tree?)'
+            '  skip:  bundled artifacts not found — could not locate the @alecsibilia/luca package root (running from a non-bundled dev tree?)'
+        )
+        return
+    }
+
+    const { claudeArtifactsRoot, skillsRoot } = resolved
+
+    if (!existsSync(claudeArtifactsRoot)) {
+        log(
+            `  skip:  bundled artifacts not found at ${claudeArtifactsRoot} (running from a non-bundled dev tree? did the umbrella build run?)`
         )
         return
     }
 
     await copyDir({
-        from: join(skillsSource, 'commands'),
+        from: join(claudeArtifactsRoot, 'commands'),
         to: join(claudeHome, 'commands'),
         log,
         label: 'command',
     })
 
     await copyDir({
-        from: join(skillsSource, 'agents'),
+        from: join(claudeArtifactsRoot, 'agents'),
         to: join(claudeHome, 'agents'),
         log,
         label: 'agent',
     })
 
     await copySkillTree({
-        from: join(skillsSource, 'skills'),
+        from: skillsRoot,
         to: join(claudeHome, 'skills'),
         log,
     })
@@ -99,16 +129,142 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
  * from a non-bundled dev tree), so callers can skip rather than guess.
  */
 export async function listBundledArtifacts(
-    skillsSource?: string
+    opts: {
+        claudeArtifactsRoot?: string
+        skillsRoot?: string
+    } = {}
 ): Promise<BundledArtifacts | null> {
-    const source = skillsSource ?? resolveDefaultSkillsSource()
-    if (!source || !existsSync(source)) return null
+    const resolved = resolveBundledArtifacts({
+        claudeArtifactsRoot: opts.claudeArtifactsRoot,
+        skillsRoot: opts.skillsRoot,
+    })
+    if (resolved === null) return null
+
+    const { claudeArtifactsRoot, skillsRoot } = resolved
+    if (!existsSync(claudeArtifactsRoot)) return null
 
     return {
-        commands: await listEntries(join(source, 'commands'), 'file', '.md'),
-        agents: await listEntries(join(source, 'agents'), 'file', '.md'),
-        skills: await listEntries(join(source, 'skills'), 'dir'),
+        commands: await listEntries(
+            join(claudeArtifactsRoot, 'commands'),
+            'file',
+            '.md'
+        ),
+        agents: await listEntries(
+            join(claudeArtifactsRoot, 'agents'),
+            'file',
+            '.md'
+        ),
+        skills: await listEntries(skillsRoot, 'dir'),
     }
+}
+
+/**
+ * Resolve the two source roots (`.claude/` artifacts + `skills/`)
+ * inside the @alecsibilia/luca umbrella's bundled `dist/claude/`
+ * directory.
+ *
+ * Resolution priority:
+ *   1. Explicit overrides passed by the caller.
+ *   2. Walk up from `import.meta.url` looking for the umbrella's
+ *      `package.json` (name === '@alecsibilia/luca'). When running
+ *      from `bin/luca.js` after a `bun install`, this finds
+ *      `<node_modules>/@alecsibilia/luca/`; the bundled artifacts are
+ *      at `<pkg>/dist/claude/`.
+ *   3. Returns `null` if the package root can't be located — the
+ *      caller (`installSkills`) reports a clear skip message.
+ *
+ * Two-root rationale: the luca-tools compiler emits commands + agents
+ * under `<outputRoot>/.claude/` and skills under `<outputRoot>/skills/`.
+ * Passing one combined "source root" would only match three of those
+ * four buckets. The cleanest fix is to surface BOTH roots explicitly,
+ * derived from the same `<dist/claude>` parent.
+ */
+function resolveBundledArtifacts(overrides: {
+    claudeArtifactsRoot?: string
+    skillsRoot?: string
+}): { claudeArtifactsRoot: string; skillsRoot: string } | null {
+    if (
+        overrides.claudeArtifactsRoot !== undefined &&
+        overrides.skillsRoot !== undefined
+    ) {
+        return {
+            claudeArtifactsRoot: overrides.claudeArtifactsRoot,
+            skillsRoot: overrides.skillsRoot,
+        }
+    }
+    const distClaude = findUmbrellaDistClaude()
+    if (distClaude === null) return null
+    return {
+        claudeArtifactsRoot:
+            overrides.claudeArtifactsRoot ?? join(distClaude, '.claude'),
+        skillsRoot: overrides.skillsRoot ?? join(distClaude, 'skills'),
+    }
+}
+
+/**
+ * Walk up from this module's location looking for the umbrella's
+ * `package.json` (name === '@alecsibilia/luca'). Returns
+ * `<pkg-root>/dist/claude` on success, `null` if no umbrella package
+ * is found within 20 levels.
+ *
+ * Works whether install-skills.ts is invoked from:
+ *   (a) The published umbrella: `<node_modules>/@alecsibilia/luca/
+ *       dist/chunks/install-skills.<hash>.mjs` — walking up finds
+ *       `<node_modules>/@alecsibilia/luca/package.json`.
+ *   (b) A dev tree: `packages/luca-cli/src/init/helpers/
+ *       install-skills.ts` — walking up finds `luca-cli/package.json`
+ *       (NOT the umbrella). The function then keeps walking and
+ *       finds `packages/luca/package.json` further up. In a dev tree
+ *       `packages/luca/dist/claude/` is present iff the umbrella has
+ *       been built locally; otherwise the caller skips.
+ *   (c) The umbrella's own dev tree: walking up directly finds
+ *       `packages/luca/package.json`.
+ */
+function findUmbrellaDistClaude(): string | null {
+    let dir = dirname(fileURLToPath(import.meta.url))
+    // Bound the walk so we don't run forever in odd environments.
+    for (let i = 0; i < 20; i += 1) {
+        const pkgPath = join(dir, 'package.json')
+        if (existsSync(pkgPath)) {
+            try {
+                const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+                    name?: string
+                }
+                if (pkg.name === '@alecsibilia/luca') {
+                    return join(dir, 'dist', 'claude')
+                }
+            } catch {
+                // ignore malformed package.json, keep walking
+            }
+        }
+        const parent = dirname(dir)
+        if (parent === dir) break
+        dir = parent
+    }
+    // Dev-tree fallback: when running directly from the luca-cli
+    // workspace (e.g. `bun packages/luca-cli/src/commands/init.ts`),
+    // walking up from luca-cli never crosses into the umbrella. Probe
+    // the monorepo layout explicitly as a last resort.
+    dir = dirname(fileURLToPath(import.meta.url))
+    for (let i = 0; i < 20; i += 1) {
+        const candidate = join(dir, 'packages', 'luca', 'package.json')
+        if (existsSync(candidate)) {
+            try {
+                const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as {
+                    name?: string
+                }
+                if (pkg.name === '@alecsibilia/luca') {
+                    return join(dir, 'packages', 'luca', 'dist', 'claude')
+                }
+            } catch {
+                // ignore malformed package.json, keep walking
+            }
+        }
+        const parent = dirname(dir)
+        if (parent === dir) break
+        dir = parent
+    }
+    return null
 }
 
 /** List the names of files (with `ext`) or directories directly under `dir`. */
@@ -171,42 +327,4 @@ async function copyDir(args: {
         await copyFile(join(args.from, entry.name), join(args.to, entry.name))
         args.log(`  write: ${join(args.to, entry.name)}`)
     }
-}
-
-/**
- * Resolve the bundled `skills/` directory from this file's location.
- *
- * Works both in workspace dev (where this file lives at packages/
- * luca-framework/src/init/helpers/) and inside the published tarball
- * (where the bundled dist/index.mjs lives at node_modules/@alecsibilia/
- * luca-framework/dist/). In both cases, walking up from import.meta.url
- * eventually finds the luca-framework package.json, and `skills/` is
- * a sibling of that file.
- *
- * Returns `null` (not an empty string) when the package root can't be
- * located, so the caller can guard explicitly rather than relying on
- * `existsSync('')`/`join('', …)` quirks.
- */
-function resolveDefaultSkillsSource(): string | null {
-    let dir = dirname(fileURLToPath(import.meta.url))
-    // Bound the walk so we don't run forever in odd environments.
-    for (let i = 0; i < 20; i += 1) {
-        const pkgPath = join(dir, 'package.json')
-        if (existsSync(pkgPath)) {
-            try {
-                const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
-                    name?: string
-                }
-                if (pkg.name === '@alecsibilia/luca-framework') {
-                    return join(dir, 'skills')
-                }
-            } catch {
-                // ignore malformed package.json, keep walking
-            }
-        }
-        const parent = dirname(dir)
-        if (parent === dir) break
-        dir = parent
-    }
-    return null
 }

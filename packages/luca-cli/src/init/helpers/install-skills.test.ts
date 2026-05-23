@@ -9,37 +9,43 @@ import { installSkills } from './install-skills.ts'
 
 describe('installSkills', () => {
     let claudeHome: string
-    let skillsSource: string
+    let distClaude: string
+    let claudeArtifactsRoot: string
+    let skillsRoot: string
 
     beforeEach(async () => {
         claudeHome = await mkdtemp(join(tmpdir(), 'luca-claude-home-'))
-        skillsSource = await mkdtemp(join(tmpdir(), 'luca-skills-source-'))
-        await mkdir(join(skillsSource, 'commands'), { recursive: true })
-        await mkdir(join(skillsSource, 'agents'), { recursive: true })
-        await mkdir(join(skillsSource, 'skills/luca-init'), {
-            recursive: true,
-        })
+        // F-2: mirror the umbrella's bundled-artifacts layout — commands
+        // and agents under `<dist/claude>/.claude/`, skills under
+        // `<dist/claude>/skills/`. The compiler emits both as siblings
+        // of `<outputRoot>`.
+        distClaude = await mkdtemp(join(tmpdir(), 'luca-dist-claude-'))
+        claudeArtifactsRoot = join(distClaude, '.claude')
+        skillsRoot = join(distClaude, 'skills')
+        await mkdir(join(claudeArtifactsRoot, 'commands'), { recursive: true })
+        await mkdir(join(claudeArtifactsRoot, 'agents'), { recursive: true })
+        await mkdir(join(skillsRoot, 'luca-init'), { recursive: true })
         await writeFile(
-            join(skillsSource, 'commands/phase-plan.md'),
+            join(claudeArtifactsRoot, 'commands/phase-plan.md'),
             '---\nname: phase-plan\n---\nbody'
         )
         await writeFile(
-            join(skillsSource, 'agents/luca-executor.md'),
+            join(claudeArtifactsRoot, 'agents/luca-executor.md'),
             '---\nname: luca-executor\n---\nbody'
         )
         await writeFile(
-            join(skillsSource, 'skills/luca-init/SKILL.md'),
+            join(skillsRoot, 'luca-init/SKILL.md'),
             '---\nname: luca-init\ndescription: seed prefs\n---\nbody'
         )
     })
 
     afterEach(async () => {
         await rm(claudeHome, { recursive: true, force: true })
-        await rm(skillsSource, { recursive: true, force: true })
+        await rm(distClaude, { recursive: true, force: true })
     })
 
     test('copies commands to <claudeHome>/commands/', async () => {
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         const target = join(claudeHome, 'commands/phase-plan.md')
         expect(existsSync(target)).toBe(true)
@@ -48,14 +54,14 @@ describe('installSkills', () => {
     })
 
     test('copies agents to <claudeHome>/agents/', async () => {
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         const target = join(claudeHome, 'agents/luca-executor.md')
         expect(existsSync(target)).toBe(true)
     })
 
     test('copies skill directories to <claudeHome>/skills/<name>/', async () => {
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         const target = join(claudeHome, 'skills/luca-init/SKILL.md')
         expect(existsSync(target)).toBe(true)
@@ -64,8 +70,8 @@ describe('installSkills', () => {
     })
 
     test('is idempotent — re-running does not duplicate or error', async () => {
-        await installSkills({ claudeHome, skillsSource })
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
     })
@@ -77,7 +83,7 @@ describe('installSkills', () => {
             'user content'
         )
 
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         expect(
             existsSync(join(claudeHome, 'commands/my-custom-command.md'))
@@ -92,7 +98,7 @@ describe('installSkills', () => {
             'STALE OLD CONTENT'
         )
 
-        await installSkills({ claudeHome, skillsSource })
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
         const content = await readFile(
             join(claudeHome, 'commands/phase-plan.md'),
