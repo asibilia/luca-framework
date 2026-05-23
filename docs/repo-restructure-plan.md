@@ -388,7 +388,7 @@ delete that archive.
     divergence) and F3–F5 (design calls; small `luca state advance` side-
     effect verifications) are documented in the audit as follow-ups that
     need a design decision before they can land.
-- **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — in progress:
+- **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — ✅ **done**:
   - ✅ **D-1** — `define-*` factories landed at
     `packages/luca-tools/src/define/` (`defineAgent`, `defineSubagent`,
     `defineCommand`, `defineSkill`, `defineHook`, `defineRule`
@@ -469,6 +469,20 @@ delete that archive.
     Guidance / Pipeline Invocations / Telemetry preludes appear
     below the body (the compiler is doing exactly what D1
     specified: flipping flags expands into deterministic prose).
+  - ✅ **D-4** — superseded and deleted the hand-written
+    `packages/luca-framework/.claude/` (110 files: 36 agents + rules +
+    skills + settings.json + .build-manifest.json) and
+    `packages/luca-framework/skills/` (37 files: 11 SKILL.md + supporting
+    files) — 147 files total — replaced wholesale by the
+    `compile:artifacts` pipeline landed in D-3. Compiled artifacts land
+    at `packages/luca-tools/dist/claude/` as **build output** (per the
+    D-2 contract, the default `--out`); they are NOT committed to this
+    repo. The framework's own dev work uses the user-level
+    `~/.claude/` toolbox; consumer repos receive the artifacts via
+    `luca init` (wired in Phase F-2). Deletion commit:
+    `fd0b169be5240872f75a1904f8c72784ef95ec41`. tsc gate green on
+    luca-tools + luca-core + luca-cli post-deletion (luca-cli has no
+    dependency on the deleted dirs, confirmed via grep).
 - **Phases E–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
