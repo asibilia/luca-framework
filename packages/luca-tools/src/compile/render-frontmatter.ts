@@ -146,24 +146,55 @@ function formatScalar(value: FrontmatterScalar): string {
 }
 
 /**
- * Return true when a string can't be emitted bare in YAML 1.2 flow
- * context (the only context we use). The list below is intentionally
- * conservative — when in doubt, quote.
+ * Return true when a string can't be emitted bare in YAML 1.2 block
+ * scalar context (the only context we use for top-level values).
+ *
+ * The list below is calibrated against the hand-written precedents in
+ * `packages/luca-framework/.claude/agents/*.md` and
+ * `packages/luca-framework/.claude/commands/*.md`, which use bare
+ * strings for things like `description: Defines and
+ * verifies code scaffolding, system architecture, and cleanliness.`
+ * — commas, periods, and intra-word `<>`/`/` are all fine in block
+ * scalar context. We only quote when YAML genuinely requires it.
  *
  * Quoting triggers:
  * - Empty string (otherwise `key: ` parses as null in YAML).
  * - Leading/trailing whitespace (would be stripped on parse).
- * - Contains any of: `: # & * ! | > ' " % @ \` ` ` , [ ] { } \n \t \r
- * - Starts with: `?` `-` `:` `,` `[` `]` `{` `}` `#` `&` `*` `!` `|` `>` `'` `"` `%` `@` `` ` ``
+ * - Contains a colon followed by space (`: ` — terminates a key/value).
+ * - Contains a space-then-`#` (`  #` — starts a comment).
+ * - Contains a newline, tab, or single/double quote.
+ * - Starts with a YAML indicator that would change parse mode:
+ *     `?` `-` (when followed by space — but bare `-foo` is fine, so
+ *      we treat `-` as a trigger only when followed by whitespace or
+ *      end-of-string), `:` `,` `[` `]` `{` `}` `#` `&` `*` `!` `|`
+ *     `>` `'` `"` `%` `@` `` ` ``
  * - Looks like a YAML reserved literal: `null` `true` `false` `yes`
  *   `no` `on` `off` `~` (case-insensitive)
  * - Parses as a number — would round-trip as `number`, not `string`.
+ *
+ * Notes:
+ * - We DO NOT quote on a bare comma in scalar context (commas are
+ *   only YAML-special inside flow collections `[ ]` / `{ }`).
+ * - We DO NOT quote on intra-string `<` or `>` (only leading `>` is
+ *   a folded-scalar indicator).
+ * - We DO NOT quote on a bare hash mark unless preceded by whitespace
+ *   (YAML's comment-start rule).
  */
 function needsQuoting(s: string): boolean {
     if (s.length === 0) return true
     if (/^\s|\s$/.test(s)) return true
-    if (/[:#&*!|>'"%@`,\[\]{}\n\t\r]/.test(s)) return true
-    if (/^[-?:,\[\]{}#&*!|>'"%@`]/.test(s)) return true
+    // Block scalar specials:
+    if (s.includes(': ')) return true
+    if (/\s#/.test(s)) return true
+    if (/[\n\t\r'"]/.test(s)) return true
+    // Leading indicator characters:
+    if (/^[?,\[\]{}#&*!|>'"%@`]/.test(s)) return true
+    // Leading `-` is only an indicator when followed by whitespace
+    // (the YAML block-sequence-entry pattern). `-foo` or `--flag` are
+    // legal plain scalars.
+    if (/^-\s/.test(s) || s === '-') return true
+    // Leading `:` likewise — only an issue when followed by space.
+    if (/^:\s/.test(s) || s === ':') return true
     const reserved = new Set([
         'null',
         'true',
