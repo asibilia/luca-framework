@@ -483,7 +483,32 @@ delete that archive.
     `fd0b169be5240872f75a1904f8c72784ef95ec41`. tsc gate green on
     luca-tools + luca-core + luca-cli post-deletion (luca-cli has no
     dependency on the deleted dirs, confirmed via grep).
-- **Phases E–H** — not started.
+- **Phase E** — re-implement orchestration as Claude Code hooks — in progress:
+  - ✅ **E-1** — `pipeline-guard` hook landed. Pure algorithm at
+    `packages/luca-core/src/orchestration/pipeline-guard.ts` —
+    `checkPipelineGuard()` is a stateless decision function that
+    delegates legality to the canonical `PIPELINE_TRANSITIONS` table in
+    `state/configs/`; rejects unknown steps, same-step no-ops, and
+    illegal transitions with a typed reason code + structured telemetry
+    payload. Hook surface in luca-tools at
+    `packages/luca-tools/src/hooks/pipeline-guard/{index.ts,handler.ts}`
+    — registered as `PreToolUse` on `Bash` matcher with the bun-script
+    runtime; handler narrows to `luca state advance <step>` invocations
+    (the single structured surface for pipelineStep mutations in v13's
+    write-surface), reads `.luca/state.json`, calls the algorithm, and
+    exits 2 with a stderr message on rejection. Failure-open on every
+    error path (the CLI's own legal-transition check is the
+    authoritative gate; the hook is a fast-path). The
+    `emit-hook.ts` compiler needed no extension; the existing
+    bun-script emission produces the correct
+    `bun "$CLAUDE_PROJECT_DIR"/<handler>` command. Handler source
+    distribution from luca-tools to the consumer repo's
+    `.claude/hooks/pipeline-guard.ts` is a Phase F-2 (`luca init`)
+    concern. Smoke verified at `/tmp/e1-verify-$$`: the merged
+    settings.json contains the `PreToolUse[Bash]` entry with the
+    correct command. No audit follow-ups closed this run (F3 stays
+    open for opportunistic pickup later in Phase E).
+- **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
 and committed individually (`feat(restructure): Phase B — …`).
