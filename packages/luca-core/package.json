@@ -26,7 +26,8 @@
     "./verification": "./src/verification/index.ts",
     "./confidence": "./src/confidence/index.ts",
     "./claim-verifier": "./src/claim-verifier/index.ts",
-    "./review-analysis": "./src/review-analysis/index.ts"
+    "./review-analysis": "./src/review-analysis/index.ts",
+    "./orchestration": "./src/orchestration/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
