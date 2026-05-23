@@ -28,9 +28,12 @@
  *      E-5: the user-listed core/peripheral/utility set plus the
  *      Luca-pipeline-essential extras like seed-memory, session-*,
  *      autopilot, etc.). Each skill compiles to `skills/<name>/SKILL.md`.
- *
- * Commands (`/<name>` filesystem surface) come in E-6 — many user-facing
- * artifacts have BOTH a SKILL.md and a commands/<name>.md.
+ *   5. Commands — `/<name>` filesystem surface for the slash-command
+ *      picker (17 of them after E-6). Most user-facing artifacts have
+ *      BOTH a SKILL.md and a commands/<name>.md — the command bodies
+ *      are tighter "do this right now" prompts, distinct from the
+ *      SKILL.md procedural guides. Each command compiles to
+ *      `.claude/commands/<name>.md`.
  *
  * D-4 will point `--out` at the host repo's tracked artifact dirs to
  * supersede the hand-written copies under packages/luca-framework/.
@@ -40,6 +43,7 @@ import type { Artifact } from '../define/index.ts'
 
 import { HOOKS } from '../hooks/index.ts'
 
+import { COMMANDS } from './commands/index.ts'
 import { MODES } from './modes/index.ts'
 import { SKILLS } from './skills/index.ts'
 import { SUBAGENTS } from './subagents/index.ts'
@@ -48,17 +52,19 @@ export { SUBAGENTS } from './subagents/index.ts'
 export { MODES } from './modes/index.ts'
 export { HOOKS } from '../hooks/index.ts'
 export { SKILLS } from './skills/index.ts'
+export { COMMANDS } from './commands/index.ts'
 
 /**
  * Ordered list of every Artifact shipped with luca-tools today.
- * Subagents first, then modes, then hooks, then skills. Stable order =
- * deterministic compile output across machines.
+ * Subagents first, then modes, then hooks, then skills, then commands.
+ * Stable order = deterministic compile output across machines.
  */
 export const ARTIFACTS: readonly Artifact[] = [
     ...SUBAGENTS,
     ...MODES,
     ...HOOKS,
     ...SKILLS,
+    ...COMMANDS,
 ]
 
 /**
