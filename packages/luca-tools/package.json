@@ -13,7 +13,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./define": "./src/define/index.ts",
-    "./compile": "./src/compile/index.ts"
+    "./compile": "./src/compile/index.ts",
+    "./artifacts": "./src/artifacts/index.ts"
   },
   "main": "src/index.ts",
   "private": true,
@@ -21,7 +22,8 @@
     "test": "bun test",
     "typecheck": "bunx --bun tsc --noEmit",
     "compile": "bun src/compile/bin/compile.ts",
-    "compile:smoke": "bun src/compile/__fixtures__/compile-smoke.ts"
+    "compile:smoke": "bun src/compile/__fixtures__/compile-smoke.ts",
+    "compile:artifacts": "bun src/compile/bin/compile.ts --manifest src/artifacts/index.ts"
   },
   "type": "module"
 }
