@@ -552,6 +552,75 @@ delete that archive.
     `NotebookEdit` — each with the correct command + status
     message. No audit follow-ups closed this run (F3 still open
     for opportunistic pickup; F4/F5 not relevant to this surface).
+  - ✅ **E-3** — `continuation-messages` hook landed. Pure
+    algorithm at
+    `packages/luca-core/src/orchestration/continuation-messages.ts`
+    — `computeContinuationMessage()` is a stateless builder that
+    decides whether to surface a mode-entry kick-off prompt for
+    the freshly-entered `pipelineStep` and what it says. Returns
+    `{ message, severity, reason, telemetry? } | null` (null when
+    the new step is `idle`). Per-step templates live in a
+    `Record<ContinuationStep, string>` where
+    `ContinuationStep = Exclude<PipelineStep, 'idle'>`, giving
+    compile-time exhaustiveness across the 13 non-idle steps; a
+    module-load dev-guard asserts every non-idle step has a
+    template. The Mastra-only `LucaWorkflowState` fields the
+    original templates leaned on (`intent`, `assignedTodos`,
+    `affectedAreas`, `planFile`, `roadmapFile`,
+    `currentPhaseSlug`) do NOT survive — luca-core's state schema
+    is intentionally narrower; the artifact-path anchors moved
+    into the D-3 per-mode subagent instructions instead. The
+    message envelope still carries `coarsePhase`, `complexity`,
+    `oversight`, and optional `currentPhase/totalPhases` so the
+    next mode knows what regime it's in. The whole message is
+    `<system-reminder>`-wrapped per
+    `docs/research/prompt-architecture/02` (cache-friendly,
+    invisible to user, visible to model).
+    Hook surface in luca-tools at
+    `packages/luca-tools/src/hooks/continuation-messages/{index.ts,handler.ts}`
+    — `PostToolUse` on `Bash` matcher, `bun-script` runtime.
+    Handler narrows to successful `luca state advance <step>`
+    invocations: parses the requested target step out of argv
+    (parser duplicated from pipeline-guard's, intentionally —
+    parser is ~30 lines and stable, and lifting it to luca-core
+    would add a transitive dep that needs to survive Phase F-2's
+    `luca init` artifact copy), reads `.luca/state.json`, and
+    only emits a continuation when the now-current `pipelineStep`
+    matches the requested target step (i.e. the advance actually
+    happened — if the CLI rejected the transition the state
+    still shows the old step and the hook exits silently). On
+    success the handler emits Claude Code's PostToolUse JSON
+    output shape:
+
+    ```json
+    {
+      "hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": "<system-reminder>…</system-reminder>"
+      }
+    }
+    ```
+
+    The `additionalContext` channel is the message-layer
+    injection surface from `docs/research/prompt-architecture/02`
+    — cache-warm, invisible to the user, visible to the model.
+    Failure-open everywhere; no stderr writes (informational
+    hook). Event/matcher choice rationale: PostToolUse is the
+    only Claude Code event with the same post-state-change
+    semantics as the mastracode original (which fired AFTER a
+    successful Mastra mode switch); Bash matcher catches every
+    transition (skills, agents, manual invocations all funnel
+    through `luca state advance`); UserPromptSubmit would mis-fire
+    on every user message, and Stop lacks the deterministic
+    transition signal. The `emit-hook.ts` compiler needed NO
+    extension — PostToolUse + Bash matcher + bun-script runtime
+    are all already supported (same primitives as E-1). Smoke
+    verified at `/tmp/e3-verify`: merged `settings.json` contains
+    one new `PostToolUse[Bash]` entry alongside the four
+    `PreToolUse` entries from E-1/E-2 (5 hooks total), and two
+    consecutive compile runs produce byte-identical output. F3
+    audit follow-up still open for opportunistic pickup; F1/F4/F5
+    not relevant to this surface.
 - **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
