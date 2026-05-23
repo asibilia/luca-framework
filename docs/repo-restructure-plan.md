@@ -396,6 +396,33 @@ delete that archive.
     D-2 compiler. Schemas declare D1 guidance / telemetry / pipeline-
     invocation fields explicitly so D-3 can port subagents without
     scattering restored guidance into per-subagent prose.
+  - ✅ **D-2** — TS→Claude-Code compiler landed at
+    `packages/luca-tools/src/compile/`. Top-level
+    `compile(artifacts, outputRoot)` dispatches off the `Artifact`
+    discriminator into six per-kind emitters (agent, subagent, command,
+    skill, hook, rule); hook slices merge into a single
+    `<outputRoot>/.claude/settings.json` with events ordered by a fixed
+    `HOOK_EVENT_ORDER`. The shared `render-body.ts` interpolates D1
+    `guidance` / `pipelineInvocations` / `telemetryHooks` into
+    deterministic `## Guidance` / `## Pipeline Invocations` / `##
+    Telemetry` preludes appended below the author's own instructions —
+    so D-3 can port subagents from luca-mastracode by flipping flags on
+    definitions instead of re-writing dropped guidance into every body.
+    `render-frontmatter.ts` is a hand-rolled deterministic YAML emitter
+    calibrated against the hand-written precedents in
+    `packages/luca-framework/.claude/`. Rules are pass-through
+    bookkeeping — they live as `.luca/rules/<id>.ts` in the consuming
+    repo and are loaded by `@alecsibilia/luca-core/rule-engine`; the
+    compiler only records them in the report so the parity audit can
+    enumerate the full surface. CLI driver at
+    `packages/luca-tools/src/compile/bin/compile.ts` (run via
+    `bun run --filter @alecsibilia/luca-tools compile -- --manifest
+    <path>`). Executable smoke fixture at
+    `src/compile/__fixtures__/compile-smoke.ts` (run via `bun run
+    --filter @alecsibilia/luca-tools compile:smoke`). Idempotence
+    verified: same input → byte-identical output across two compile
+    runs. D-4 will swap the outputRoot at the host repo's tracked
+    `.claude/` and `skills/`.
 - **Phases E–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
