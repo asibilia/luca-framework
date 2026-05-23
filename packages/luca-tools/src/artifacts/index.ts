@@ -12,13 +12,12 @@
  *   1. Subagents — Task-tool-spawnable workers (7 of them after
  *      dropping planner + fix per plan §5.6).
  *   2. Modes — top-level pipeline stages + stock utility modes (10).
- *   3. Skills / commands / hooks — none yet. Skills come in a later
- *      Phase D-step or Phase E; hooks land in Phase E.
+ *   3. Hooks — Claude Code lifecycle hooks. Phase E lands them; the
+ *      first is `pipeline-guard` (E-1), a PreToolUse guard on `Bash`
+ *      that vets `luca state advance` transitions.
  *
- * No rules in the manifest yet either: rules live at
- * `.luca/rules/<id>.ts` and are loaded by luca-core/rule-engine at
- * runtime. The compiler accepts `RuleArtifact` for pass-through
- * bookkeeping; we don't ship any in this manifest.
+ * No skills/commands/rules in the manifest yet. Skills come in a
+ * later Phase D-step or Phase E follow-up.
  *
  * D-4 will point `--out` at the host repo's tracked artifact dirs to
  * supersede the hand-written copies under packages/luca-framework/.
@@ -26,18 +25,25 @@
  */
 import type { Artifact } from '../define/index.ts'
 
+import { HOOKS } from '../hooks/index.ts'
+
 import { MODES } from './modes/index.ts'
 import { SUBAGENTS } from './subagents/index.ts'
 
 export { SUBAGENTS } from './subagents/index.ts'
 export { MODES } from './modes/index.ts'
+export { HOOKS } from '../hooks/index.ts'
 
 /**
  * Ordered list of every Artifact shipped with luca-tools today.
- * Subagents first, then modes. Stable order = deterministic compile
- * output across machines.
+ * Subagents first, then modes, then hooks. Stable order =
+ * deterministic compile output across machines.
  */
-export const ARTIFACTS: readonly Artifact[] = [...SUBAGENTS, ...MODES]
+export const ARTIFACTS: readonly Artifact[] = [
+    ...SUBAGENTS,
+    ...MODES,
+    ...HOOKS,
+]
 
 /**
  * The compile CLI's `--manifest` flag treats the default export as
