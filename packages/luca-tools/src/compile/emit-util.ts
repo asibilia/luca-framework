@@ -10,12 +10,16 @@
  *   2. Determinism: we always overwrite. We never append, never seed
  *      from existing contents. Re-running the compiler twice produces
  *      identical bytes.
- *   3. Bun-first: per the project rule, prefer Bun.file / Bun.write
- *      over `node:fs`. The fs.mkdir we DO use is mkdir-only — Bun
- *      doesn't ship a direct equivalent — and it's idempotent
- *      (`recursive: true`).
+ *   3. Runtime-agnostic: we use `node:fs/promises` for both mkdir and
+ *      writeFile so the compile pipeline runs under both Bun and Node.
+ *      F-2 calls `compile()` from inside the umbrella's unbuild
+ *      `build:done` hook — unbuild's CLI is Node-shebanged, so the
+ *      hook callback executes under Node where `Bun` is not defined.
+ *      The CLI driver (`bin/compile.ts`) is still Bun-shebanged for
+ *      shell-level ergonomics but the compile pipeline itself no
+ *      longer depends on Bun-specific APIs.
  */
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 import type { Artifact } from '../define/index.ts'
@@ -41,8 +45,8 @@ export async function ensureDir(dir: string): Promise<void> {
 }
 
 /**
- * Write a text file. Always overwrites. Uses `Bun.write` per the
- * Bun-preference rule.
+ * Write a text file. Always overwrites. Uses `node:fs/promises` so
+ * the compile pipeline is runtime-agnostic (Bun + Node).
  *
  * We also call `ensureDir(dirname(path))` defensively — most emitters
  * call `ensureDir` on a known parent, but hook emission lays files
@@ -54,5 +58,5 @@ export async function writeFileBytes(
     contents: string,
 ): Promise<void> {
     await ensureDir(dirname(path))
-    await Bun.write(path, contents)
+    await writeFile(path, contents, 'utf-8')
 }

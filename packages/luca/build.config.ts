@@ -6,17 +6,24 @@
  * self-contained dist/ via unbuild's `inlineDependencies: true`. End
  * users `npm install @alecsibilia/luca` and never see the sub-packages.
  *
- * The artifact set shipped with luca-tools (the compiled .claude/
- * skills/, commands/, agents/, hooks/) is NOT carried here yet — that
- * lands in F-2 (rewire `luca init` to consume them at install time)
- * and F-3 (publish prep). For F-1, the build produces dist/index.mjs
- * with all three workspace siblings inlined as source.
+ * F-2 also compiles the luca-tools artifact set (agents, subagents,
+ * commands, skills, rules, settings.json) into `dist/claude/` as a
+ * `build:done` post-step. `luca init` reads from that directory to
+ * install agents/commands/skills into `~/.claude/` and to merge the
+ * compiled `settings.json` into the user's global Claude settings.
  *
- * Precedent: packages/luca-framework/build.config.ts already uses this
- * pattern to inline luca-core + bundle mastracode for the legacy
- * 12.0.0-alpha tarball.
+ * The umbrella's `files: ["bin", "dist", "README.md", "LICENSE"]`
+ * already ships everything under `dist/` in the published tarball, so
+ * the compiled artifact set lands in `node_modules/@alecsibilia/luca/
+ * dist/claude/` after `npm install` — bit-identical across machines,
+ * no per-install compilation required.
+ *
+ * Precedent: packages/luca-framework/build.config.ts uses the same
+ * pattern (`hooks: { 'build:done': ... }`) to bundle luca-core +
+ * mastracode for the legacy 12.0.0-alpha tarball.
  */
 import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
 
@@ -60,4 +67,30 @@ export default defineBuildConfig({
         'update-notifier',
         'zod',
     ],
+    hooks: {
+        // F-2: compile the luca-tools artifact set after the JS bundle
+        // is built. We import the manifest + compiler from the
+        // workspace sibling and call compile() directly — this is
+        // cheaper than spawning the compile CLI as a child process and
+        // produces the same on-disk output.
+        //
+        // `build:done` fires after dist/index.mjs and the declarations
+        // are written, so the dist directory exists and we can layer
+        // `dist/claude/` underneath it.
+        async 'build:done'() {
+            const distClaude = resolve(join('dist', 'claude'))
+            const { ARTIFACTS } = await import(
+                '@alecsibilia/luca-tools/artifacts'
+            )
+            const { compile } = await import('@alecsibilia/luca-tools/compile')
+            const report = await compile(ARTIFACTS, distClaude)
+            // Soft log — unbuild's own log lines are noisy enough; we
+            // just emit a one-line summary so the build output shows
+            // that the artifact compile fired.
+            const c = report.counts
+            console.log(
+                `[luca] compiled artifacts → ${distClaude} (agents:${c.agent} subagents:${c.subagent} commands:${c.command} skills:${c.skill} hooks:${c.hook} rules:${c.rule})`,
+            )
+        },
+    },
 })
