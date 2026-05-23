@@ -939,12 +939,82 @@ delete that archive.
       pure umbrella wiring; no CLI/skill bodies touched. F1's
       `confidence log` writer-alignment is unaffected; F3's
       `luca state advance` ledger-event verification is unaffected.
-  - **F-2** — pending: rewire `luca init` to install the compiled
-    luca-tools artifacts from inside the umbrella tarball
-    (`dist/claude/`). Currently `luca-cli/src/init/helpers/
-    install-skills.ts` still looks for `@alecsibilia/luca-framework`'s
-    `skills/` directory — that lookup needs to retarget to the
-    umbrella's bundled artifacts.
+  - **F-2** ✅ **done** 2026-05-23: rewire `luca init` to install the
+    compiled luca-tools artifacts from inside the umbrella tarball.
+    - **Build extension**: `packages/luca/build.config.ts` gained a
+      `build:done` hook that imports `ARTIFACTS` from
+      `@alecsibilia/luca-tools/artifacts` and calls
+      `compile(ARTIFACTS, dist/claude)`. The umbrella build now emits
+      `dist/claude/.claude/{agents,commands,settings.json}` +
+      `dist/claude/skills/<name>/SKILL.md` alongside `dist/index.mjs`.
+      Compile-at-publish-time was chosen over compile-at-install-time
+      because (a) faster install — no per-install compilation; (b)
+      idempotent — every user gets bit-identical artifacts; (c) avoids
+      pulling unbuild + rollup + TS artifact source files into the
+      consumer environment.
+    - **Runtime-agnostic compile pipeline**:
+      `packages/luca-tools/src/compile/emit-util.ts` switched
+      `writeFileBytes` from `Bun.write` to `node:fs/promises writeFile`.
+      Unbuild's CLI is Node-shebanged, so the `build:done` callback
+      executes under Node where `Bun` is not defined. The compile
+      pipeline is now runtime-agnostic; the CLI driver
+      (`bin/compile.ts`) is still Bun-shebanged for shell ergonomics.
+    - **install-skills resolver decision — TWO SOURCE ROOTS (option ii
+      from the F-2 prompt)**: the compiler emits commands + agents
+      under `<outputRoot>/.claude/` and skills under
+      `<outputRoot>/skills/` — a single combined source would only
+      match three of those four buckets. Surfacing BOTH roots
+      explicitly (defaulting to `<dist/claude>/.claude` and
+      `<dist/claude>/skills`) keeps the compiler's emission layout
+      unchanged and the resolver semantics explicit. The new
+      `InstallSkillsOptions` exposes `claudeArtifactsRoot` and
+      `skillsRoot`; `skillsSource` is removed (breaking — only
+      internal callers).
+    - **Resolution algorithm**: walks up from `import.meta.url`
+      looking for `@alecsibilia/luca/package.json`. Covers three
+      scenarios: (a) installed —
+      `<node_modules>/@alecsibilia/luca/dist/...` finds the package
+      root one or two levels up; (b) umbrella dev tree —
+      `packages/luca/...` finds the package root directly; (c)
+      luca-cli dev tree — walks past luca-cli, doesn't find the
+      umbrella, falls back to a monorepo-layout probe that looks for
+      `packages/luca/package.json` from the workspace root. If
+      `dist/claude/` hasn't been built yet, the helper skips with a
+      clear message rather than failing.
+    - **`listBundledArtifacts` signature change**: widened from
+      `(skillsSource?: string)` to `(opts: { ... } = {})`. The single
+      existing caller (`utils/doctor/checks/stray-local-install.ts`)
+      invokes it with no arguments, so the call site is unchanged.
+    - **`wire-claude-hooks.ts` LEFT UNCHANGED (analysis)**: the
+      bundled `settings.json` from luca-tools registers hooks that
+      reference per-project `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.ts`
+      handler paths (pipeline-guard, read-only-enforcement,
+      continuation-messages, context-refresher). Merging that into
+      `~/.claude/settings.json` (global) would mean every project
+      Claude Code runs in tries to execute those hooks — but their
+      handler scripts only exist in per-luca projects. The existing
+      `wireClaudeHooks` helper registers the path-free
+      `luca hook stage-gate` command globally, which delegates to the
+      CLI handler and reads `.luca/state.json` from cwd — correct
+      design for a global registration. Per-project distribution of
+      the bundled hooks' handler scripts + a per-project settings.json
+      merge is a follow-up gap (handler-script distribution per
+      `writeProjectSkeleton`), recorded for Phase G parity audit.
+    - **Test fixture updated**: `install-skills.test.ts` now seeds
+      the temp tree as `<dist-claude>/.claude/{commands,agents}` +
+      `<dist-claude>/skills/` to mirror the compiler's emission
+      layout, and passes both roots explicitly to `installSkills`.
+    - **Build verification**: `cd packages/luca && bun run build` →
+      `dist/index.mjs` (2.74 kB) + `dist/claude/...` populated.
+      Report: agents:10 subagents:8 commands:17 skills:40 hooks:6
+      rules:0. The umbrella's `files: [bin, dist, ...]` already
+      includes `dist/` so the compiled artifacts ship inside the
+      tarball without further config.
+    - **Audit followups**: F1 + F3 carry forward unchanged; F-2 did
+      not touch confidence-log payloads or `luca state advance`
+      ledger-event emission. New follow-up recorded above
+      (per-project hook handler distribution).
+    - tsc green on all 4 packages.
   - **F-3** — pending: publish PREP (changeset, version bump path,
     final CHANGELOG, validate-package smoke). User runs
     `bun publish` manually.
