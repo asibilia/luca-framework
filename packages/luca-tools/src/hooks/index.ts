@@ -12,6 +12,7 @@
 import type { HookDefinition } from '../define/index.ts'
 
 import { continuationMessagesHook } from './continuation-messages/index.ts'
+import { contextRefresherHook } from './context-refresher/index.ts'
 import { pipelineGuardHook } from './pipeline-guard/index.ts'
 import {
     READ_ONLY_ENFORCEMENT_HOOKS,
@@ -20,6 +21,7 @@ import {
     readOnlyEnforcementWriteHook,
 } from './read-only-enforcement/index.ts'
 
+export { contextRefresherHook } from './context-refresher/index.ts'
 export { continuationMessagesHook } from './continuation-messages/index.ts'
 export { pipelineGuardHook } from './pipeline-guard/index.ts'
 export {
@@ -38,13 +40,20 @@ export {
  *      Write/Edit/NotebookEdit], gates write tools in read-only steps.
  *   3. continuation-messages (E-3) — PostToolUse[Bash], surfaces a
  *      mode-entry kick-off prompt after a successful pipeline advance.
+ *   4. context-refresher (E-4) — PostToolUse[*], surfaces a per-step
+ *      <luca-reminder> after every Nth tool call (default 30) or on a
+ *      step change since the last fire.
  *
  * Per-event order in the compiled settings.json is determined by the
  * compile pipeline (HOOK_EVENT_ORDER); intra-event order tracks this
- * list.
+ * list. context-refresher follows continuation-messages within the
+ * PostToolUse array — continuation runs first (per-event order matches
+ * registration order) so that on a step-advance Bash invocation the
+ * agent receives the kick-off message before the refresher reminder.
  */
 export const HOOKS: readonly HookDefinition[] = [
     pipelineGuardHook,
     ...READ_ONLY_ENFORCEMENT_HOOKS,
     continuationMessagesHook,
+    contextRefresherHook,
 ]
