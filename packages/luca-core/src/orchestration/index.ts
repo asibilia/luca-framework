@@ -38,3 +38,18 @@ export {
     type ContinuationTelemetry,
     type ContinuationVerdict,
 } from './continuation-messages.ts'
+
+export {
+    computeContextRefresher,
+    type ContextRefresherCarryState,
+    type ContextRefresherInput,
+    type ContextRefresherReason,
+    type ContextRefresherSeverity,
+    type ContextRefresherTelemetry,
+    type ContextRefresherVerdict,
+} from './context-refresher.ts'
+
+export {
+    CONTEXT_REFRESHER_DEFAULTS,
+    type ContextRefresherThresholds,
+} from './context-refresher-config.ts'
