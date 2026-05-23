@@ -22,9 +22,15 @@
  *        - E-3: `continuation-messages` (PostToolUse[Bash], surfaces a
  *          mode-entry kick-off prompt via additionalContext when the
  *          pipeline successfully advances).
+ *        - E-4: `context-refresher` (PostToolUse[*], surfaces a per-step
+ *          luca-reminder every Nth tool call or on step change).
+ *   4. Skills — user-facing slash-command workflows (40 of them after
+ *      E-5: the user-listed core/peripheral/utility set plus the
+ *      Luca-pipeline-essential extras like seed-memory, session-*,
+ *      autopilot, etc.). Each skill compiles to `skills/<name>/SKILL.md`.
  *
- * No skills/commands/rules in the manifest yet. Skills come in a
- * later Phase D-step or Phase E follow-up.
+ * Commands (`/<name>` filesystem surface) come in E-6 — many user-facing
+ * artifacts have BOTH a SKILL.md and a commands/<name>.md.
  *
  * D-4 will point `--out` at the host repo's tracked artifact dirs to
  * supersede the hand-written copies under packages/luca-framework/.
@@ -35,21 +41,24 @@ import type { Artifact } from '../define/index.ts'
 import { HOOKS } from '../hooks/index.ts'
 
 import { MODES } from './modes/index.ts'
+import { SKILLS } from './skills/index.ts'
 import { SUBAGENTS } from './subagents/index.ts'
 
 export { SUBAGENTS } from './subagents/index.ts'
 export { MODES } from './modes/index.ts'
 export { HOOKS } from '../hooks/index.ts'
+export { SKILLS } from './skills/index.ts'
 
 /**
  * Ordered list of every Artifact shipped with luca-tools today.
- * Subagents first, then modes, then hooks. Stable order =
+ * Subagents first, then modes, then hooks, then skills. Stable order =
  * deterministic compile output across machines.
  */
 export const ARTIFACTS: readonly Artifact[] = [
     ...SUBAGENTS,
     ...MODES,
     ...HOOKS,
+    ...SKILLS,
 ]
 
 /**
