@@ -1087,9 +1087,52 @@ delete that archive.
         or if it belongs in a separate `state ledger` surface.
     - Commit: 2bb8917de.
     - tsc green on all 4 packages.
-- **Phase F complete; Phase G (parity audit) next**, after which the
-  driver halts at the G→H boundary.
-- **Phases G–H** — not started.
+- **Phase G** — parity verification gate — ✅ **done** 2026-05-23:
+  - **G-1** ✅ **done** 2026-05-23: comprehensive parity audit landed at
+    `docs/repo-restructure-parity-report.md`. **Verdict: READY WITH
+    CAVEATS.** Every §3 functional gap (1–8) closed (or partial in the
+    case of #8, which carries F3 as a recorded follow-up); every §5
+    port disposition row landed; tsc green on all four active packages
+    (luca-tools, luca-core, luca-cli, luca); umbrella builds + packs to
+    a 245.27 kB / 122-file tarball that resolves `catalog:` /
+    `workspace:*` refs correctly; manifest verification confirms
+    18 agents (10 modes + 8 subagents) + 17 commands + 40 skills + 6
+    hooks (4 PreToolUse + 2 PostToolUse) + 0 rules, byte-identical
+    across two compile runs (idempotent); D1 restoration preludes
+    (Guidance / Pipeline Invocations / Telemetry) verified in compiled
+    `executor.md`, `reviewer.md`, `learner.md`, `finalize.md`;
+    telemetry round-trips end-to-end (verified at
+    `/tmp/luca-parity-test.0Esf` with a real
+    `.luca/telemetry/<runId>.jsonl` emission); learning loop wired
+    structurally (`luca retro` → `analyzeRun()` → pitfall payloads
+    with `vault: 'default'`). Four non-blocking caveats recorded for
+    a follow-up v14 milestone:
+      - **F1** — `luca confidence log` still accepts v13 `{score,
+        stage, rationale}` shape; D2 reshape to canonical
+        `ConfidenceEntrySchema` not yet applied (breaking change).
+      - **F3** — `luca state advance` emits no ledger events;
+        `phase-empty-justification` / `re-enter-pipeline` design call
+        deferred.
+      - **Hook handler distribution gap** — bundled `dist/claude/
+        .claude/settings.json` registers 6 new Phase E hooks at
+        `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.ts` but the
+        handlers are not copied by `writeProjectSkeleton`. The new
+        orchestration hooks (pipeline-guard, read-only-enforcement,
+        continuation-messages, context-refresher) are dead on arrival
+        in fresh `luca init` projects until this is wired.
+      - **`vault-init` `.planning/` residue** — `vault-init.ts` /
+        `vault-setup.ts` still write `.planning/config.json`, create
+        `.planning/` directories, and reference the dropped `luca run`
+        command in user-visible strings. Small focused patch.
+    None of these regress the v13 baseline. The restructure achieves
+    its primary goal (artifacts compiled from TS via the D-2
+    compiler, with D1 guidance / telemetry / pipeline invocations
+    restored, replacing the v13 hand-rewritten markdown). Phase H
+    (destructive removal of `luca-mastracode/` + `luca-framework/`
+    husk + Cursor/Pi support + root `package.json` script cleanup) is
+    structurally safe to proceed.
+  - **Phase G complete — driver halts at the G→H boundary.**
+- **Phase H** — DESTRUCTIVE legacy removal — not started (user-only).
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
 and committed individually (`feat(restructure): Phase B — …`).
