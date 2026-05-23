@@ -19,6 +19,9 @@
  *        - E-2: `read-only-enforcement` (three sibling slices,
  *          PreToolUse[Write|Edit|NotebookEdit], blocks write tools in
  *          read-only pipeline steps).
+ *        - E-3: `continuation-messages` (PostToolUse[Bash], surfaces a
+ *          mode-entry kick-off prompt via additionalContext when the
+ *          pipeline successfully advances).
  *
  * No skills/commands/rules in the manifest yet. Skills come in a
  * later Phase D-step or Phase E follow-up.
