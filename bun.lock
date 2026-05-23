@@ -27,13 +27,30 @@
     },
     "packages/luca": {
       "name": "@alecsibilia/luca",
-      "version": "0.1.0",
+      "version": "13.0.0-alpha.0",
+      "bin": {
+        "luca": "./bin/luca.js",
+      },
+      "dependencies": {
+        "@clack/prompts": "^1.0.0",
+        "citty": "^0.2.0",
+        "consola": "^3.4.0",
+        "pathe": "^2.0.3",
+        "semver": "^7.6.0",
+        "shell-quote": "^1.8.3",
+        "update-notifier": "^7.3.1",
+        "zod": "catalog:",
+      },
       "devDependencies": {
         "@alecsibilia/luca-cli": "workspace:*",
         "@alecsibilia/luca-core": "workspace:*",
         "@alecsibilia/luca-tools": "workspace:*",
         "@types/bun": "latest",
+        "@types/semver": "^7.5.8",
+        "@types/shell-quote": "^1.7.5",
+        "@types/update-notifier": "^6.0.8",
         "typescript": "catalog:",
+        "unbuild": "^3.5.0",
       },
     },
     "packages/luca-cli": {

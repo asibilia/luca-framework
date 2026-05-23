@@ -1,22 +1,68 @@
 {
   "name": "@alecsibilia/luca",
-  "description": "Luca — spec-driven agentic development workflow for Claude Code",
-  "version": "0.1.0",
+  "description": "Luca — spec-driven agentic development workflow for Claude Code (umbrella; bundles luca-cli, luca-core, luca-tools)",
+  "version": "13.0.0-alpha.0",
+  "bin": {
+    "luca": "./bin/luca.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.0",
+    "citty": "^0.2.0",
+    "consola": "^3.4.0",
+    "pathe": "^2.0.3",
+    "semver": "^7.6.0",
+    "shell-quote": "^1.8.3",
+    "update-notifier": "^7.3.1",
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@alecsibilia/luca-cli": "workspace:*",
     "@alecsibilia/luca-core": "workspace:*",
     "@alecsibilia/luca-tools": "workspace:*",
     "@types/bun": "latest",
-    "typescript": "catalog:"
+    "@types/semver": "^7.5.8",
+    "@types/shell-quote": "^1.7.5",
+    "@types/update-notifier": "^6.0.8",
+    "typescript": "catalog:",
+    "unbuild": "^3.5.0"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
   },
-  "main": "src/index.ts",
-  "private": true,
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agent",
+    "ai",
+    "cli",
+    "claude-code",
+    "luca",
+    "muninndb",
+    "workflow",
+    "spec-driven"
+  ],
+  "module": "./dist/index.mjs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asibilia/luca-framework.git",
+    "directory": "packages/luca"
+  },
   "scripts": {
+    "build": "unbuild",
+    "prepublishOnly": "bun run build",
     "test": "bun test",
     "typecheck": "bunx --bun tsc --noEmit"
   },
-  "type": "module"
+  "type": "module",
+  "types": "./dist/index.d.mts"
 }
