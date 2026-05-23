@@ -423,6 +423,52 @@ delete that archive.
     verified: same input → byte-identical output across two compile
     runs. D-4 will swap the outputRoot at the host repo's tracked
     `.claude/` and `skills/`.
+  - ✅ **D-3** — ported 8 subagents (researcher, discussion,
+    plan-reviewer, executor, verifier, reviewer, learner,
+    shadow-scanner) and 10 mode-agents (triage, research, architect,
+    execute, review, finalize, discuss, build, plan, fast) + the 3
+    shared glue files (shared-prefix, agent-constraints,
+    memory-tier-discipline) from luca-mastracode TS source to
+    `packages/luca-tools/src/artifacts/{subagents,modes,shared}/` as
+    `defineSubagent` / `defineAgent` definitions. Dropped the
+    `planner` (orphan: registered, never invoked — architect mode
+    does the planning work directly) and `fix` (orphan: referenced in
+    execute.md but never existed as a concrete subagent) subagents
+    per plan §5.6. D1 restoration applied throughout via flags on
+    the factory schemas (verticalSlice / tdd / selfVerify /
+    antiSycophancy guidance; telemetry hooks for phase / wave /
+    subagent / verification boundaries; pipeline invocations for
+    rule-run, claim-verify, postmortem-generate, confidence-log,
+    muninn-recall). Specifically: executor + execute + architect
+    carry verticalSlice; executor + execute + build carry tdd;
+    every reviewer-shaped subagent + review + finalize carry
+    antiSycophancy; execute owns the full telemetry hook set per
+    §3 #1; execute + verifier carry rule-run + claim-verify per
+    §3 #5/#6/#7; learner + finalize carry postmortem-generate per
+    §3 #4. Path retargeting: every `.planning/` reference rewrites
+    to `.luca/`; the legacy uppercase filenames (`PLAN.md`,
+    `RESEARCH.md`, `CONTEXT.md`, `REVIEW-{n}.md`, `POSTMORTEM.md`)
+    retarget to the LUCA_DIR_CONTRACT canonical names (`plan.md`,
+    `research.md`, `context.md`, `audits/<reviewer>.md`,
+    `learn.md`). Mastra harness tool names (`workflowState`,
+    `writePlanningFile`, `runChecks`, `runRules`, `runPostmortem`,
+    `claimVerifier`, `manageRoadmap`, `manageTodos`,
+    `ensureFeatureBranch`, `projectPreferences`, `pipelineLock`,
+    `repoCleanup`, `verificationResult`, `confidenceJournal`,
+    `sessionLedger`) retargeted to the `luca` CLI write surface.
+    Hardcoded model IDs stripped from every mode-agent (the runtime
+    picks per the complexity-routing table). Canonical Artifact[]
+    manifest landed at
+    `packages/luca-tools/src/artifacts/index.ts` as both a default
+    and a named `ARTIFACTS` export of `[...SUBAGENTS, ...MODES]`.
+    Wired `compile:artifacts` package script
+    (`bun run --filter @alecsibilia/luca-tools compile:artifacts --
+    --out <path>`). Verified end-to-end: 18 files render to a /tmp
+    output tree, two consecutive runs produce byte-identical bytes,
+    and spot-checks of the rendered executor confirm the D1
+    Guidance / Pipeline Invocations / Telemetry preludes appear
+    below the body (the compiler is doing exactly what D1
+    specified: flipping flags expands into deterministic prose).
 - **Phases E–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
