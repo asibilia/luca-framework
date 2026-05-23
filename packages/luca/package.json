@@ -2,6 +2,15 @@
   "name": "@alecsibilia/luca",
   "description": "Luca — spec-driven agentic development workflow for Claude Code (umbrella; bundles luca-cli, luca-core, luca-tools)",
   "version": "13.0.0-alpha.0",
+  "license": "Apache-2.0",
+  "author": "Alec Sibilia <sibilia.alec@gmail.com>",
+  "homepage": "https://github.com/asibilia/luca-framework#readme",
+  "bugs": {
+    "url": "https://github.com/asibilia/luca-framework/issues"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "bin": {
     "luca": "./bin/luca.js"
   },
@@ -60,7 +69,6 @@
   "scripts": {
     "build": "unbuild",
     "prepublishOnly": "bun run build",
-    "test": "bun test",
     "typecheck": "bunx --bun tsc --noEmit"
   },
   "type": "module",
