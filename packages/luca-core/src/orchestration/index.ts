@@ -18,3 +18,14 @@ export {
     type PipelineGuardTelemetry,
     type PipelineGuardVerdict,
 } from './pipeline-guard.ts'
+
+export {
+    enforceReadOnly,
+    READ_ONLY_STEPS,
+    READ_ONLY_TOOL_CLASS_BY_NAME,
+    type ReadOnlyEnforcementInput,
+    type ReadOnlyEnforcementReason,
+    type ReadOnlyEnforcementTelemetry,
+    type ReadOnlyEnforcementVerdict,
+    type ReadOnlyToolClass,
+} from './read-only-enforcement.ts'
