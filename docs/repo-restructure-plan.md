@@ -885,7 +885,7 @@ delete that archive.
     byte-identical output (\`diff -r\` exit 0). tsc green on
     luca-tools + luca-core + luca-cli post-increment. Phase E
     complete — orchestration hooks + skills + commands all ported.
-- **Phase F** — `luca` umbrella + distribution — 🚧 **in progress**:
+- **Phase F** — `luca` umbrella + distribution — ✅ **done** 2026-05-23:
   - **F-1** ✅ **done** 2026-05-23: wire the publishable umbrella.
     - `packages/luca/package.json` flipped from private workspace stub
       to publish-shaped: name `@alecsibilia/luca`, version
@@ -1015,9 +1015,80 @@ delete that archive.
       ledger-event emission. New follow-up recorded above
       (per-project hook handler distribution).
     - tsc green on all 4 packages.
-  - **F-3** — pending: publish PREP (changeset, version bump path,
-    final CHANGELOG, validate-package smoke). User runs
-    `bun publish` manually.
+  - **F-3** ✅ **done** 2026-05-23: final publish-readiness pass for
+    `@alecsibilia/luca@13.0.0-alpha.0`. **Driver does PREP only — npm
+    publish remains a manual user step.**
+    - **`packages/luca/package.json` metadata additions**: `license:
+      Apache-2.0` (matches the LICENSE file already shipped in the
+      package), `author: Alec Sibilia <sibilia.alec@gmail.com>`,
+      `homepage` + `bugs` (point at the GitHub repo / issues),
+      `engines.bun: >=1.0.0` (Luca requires Bun at runtime).
+      Vestigial `test: bun test` script removed (tests intentionally
+      absent — no-tests rule; the script would have failed on every
+      install attempt).
+    - **`packages/luca/PUBLISHING.md` (new)**: end-to-end publish
+      runbook covering: versioning lineage (`luca-framework@12` →
+      `luca@13`), pre-publish checklist (4-package tsc, package-scoped
+      build via `bun run --filter`, **`bun pm pack` — NOT `npm pack`
+      because npm doesn't resolve `catalog:` refs**), tarball
+      verification grep recipes (file count, exclusion of
+      `src/`/`node_modules/`/`tsconfig`/`build.config`, confirmation
+      that `catalog:`/`workspace:*` refs are resolved in the published
+      `package.json`), offline smoke-test recipe (`tar -xzf` to temp
+      + `bun bin/luca.js --help`), the actual user publish command
+      (`npm publish --access public --tag alpha`), post-publish
+      verification (`npm view ...`), tag promotion (alpha → beta →
+      stable), deprecation flow, and a troubleshooting section
+      covering common failure modes (unresolved catalog refs, missing
+      `dist/claude/`, install-skills resolver edge cases).
+    - **Build verification** (`bun run --filter @alecsibilia/luca
+      build`): `dist/index.mjs` (2.74 kB) + `dist/claude/` populated.
+      Report: agents:10 subagents:8 commands:17 skills:40 hooks:6
+      rules:0. Total dist size ~265 kB.
+    - **Tarball verification** (`bun pm pack`): 122 files, 245.27 kB
+      packed, 0.86 MB unpacked. Contents: `bin/luca.js` (executable,
+      `-rwxr-xr-x`), `dist/{index.mjs, index.d.{ts,mts}, chunks/,
+      shared/, claude/}`, `package.json`, `README.md`, `LICENSE`.
+      `catalog:` refs resolved to `^4.3.6` (zod). `workspace:*` refs
+      resolved to `0.1.0` (cli/core/tools) — kept in `devDependencies`
+      only, **NOT** in the shipped `dependencies`. No `src/` files,
+      no `node_modules/`, no `tsconfig`/`build.config`. PUBLISHING.md
+      correctly **excluded** from the tarball (the `files` field is
+      `[bin, dist, README.md, LICENSE]` — PUBLISHING.md is for the
+      publisher, not consumers). dist/claude tree fully present:
+      40 skill SKILL.mds, 17 commands, 18 agents, settings.json.
+    - **Offline smoke test**: extracted tarball to `mktemp -d`,
+      confirmed `bin/luca.js` executable bit survives pack/extract,
+      confirmed `bun bin/luca.js --help` reaches the entry point.
+      (Errors on missing npm deps under raw `bun bin/luca.js` —
+      expected; consumers run `npm install` to resolve.)
+    - **Audit follow-ups (inspected against the BUILT bundle —
+      both confirmed as Phase G blockers, not fixable cheaply here)**:
+      - **F1 (confidence-log schema D2)** — **NOT applied**.
+        `dist/chunks/confidence.mjs` shows the `log` subcommand still
+        accepts the v13 `{score, stage, rationale, metadata}` shape
+        rather than the canonical `ConfidenceEntrySchema` shape
+        (`{phase, wave, task, confidence (high|medium|low), category,
+        decision, alternatives, reasoning, risk, files, reviewHint?}`).
+        Rewriting the writer is a non-trivial breaking change with
+        ripple effects through downstream consumers (skills/agents
+        that construct confidence-log payloads); needs to be done in
+        Phase G alongside the parity audit, not slipped into F-3.
+      - **F3 (`luca state advance` ledger emission)** — **confirmed
+        missing**. The `lucaStateAdvanceTool` handler in
+        `dist/shared/luca.Bs1mFXxQ.mjs` validates the transition,
+        writes `.luca/state.json` atomically, returns success — but
+        **emits no ledger events**. The shadow scanner's reader side
+        explicitly handles `phase-empty-justification` (case statement
+        + absence check in `dist/shared/luca.CIKVZO1U.mjs`), so the
+        writer half of the contract is what's missing. Needs design
+        work in Phase G — which ledger events get emitted on which
+        transitions, and whether `state advance` is the right writer
+        or if it belongs in a separate `state ledger` surface.
+    - Commit: 2bb8917de.
+    - tsc green on all 4 packages.
+- **Phase F complete; Phase G (parity audit) next**, after which the
+  driver halts at the G→H boundary.
 - **Phases G–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
