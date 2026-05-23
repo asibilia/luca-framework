@@ -12,9 +12,13 @@
  *   1. Subagents — Task-tool-spawnable workers (7 of them after
  *      dropping planner + fix per plan §5.6).
  *   2. Modes — top-level pipeline stages + stock utility modes (10).
- *   3. Hooks — Claude Code lifecycle hooks. Phase E lands them; the
- *      first is `pipeline-guard` (E-1), a PreToolUse guard on `Bash`
- *      that vets `luca state advance` transitions.
+ *   3. Hooks — Claude Code lifecycle hooks. Phase E lands them in
+ *      sequence:
+ *        - E-1: `pipeline-guard` (PreToolUse[Bash], vets
+ *          `luca state advance` transitions).
+ *        - E-2: `read-only-enforcement` (three sibling slices,
+ *          PreToolUse[Write|Edit|NotebookEdit], blocks write tools in
+ *          read-only pipeline steps).
  *
  * No skills/commands/rules in the manifest yet. Skills come in a
  * later Phase D-step or Phase E follow-up.
