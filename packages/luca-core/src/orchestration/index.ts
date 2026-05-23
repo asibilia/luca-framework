@@ -29,3 +29,12 @@ export {
     type ReadOnlyEnforcementVerdict,
     type ReadOnlyToolClass,
 } from './read-only-enforcement.ts'
+
+export {
+    computeContinuationMessage,
+    type ContinuationInput,
+    type ContinuationReason,
+    type ContinuationSeverity,
+    type ContinuationTelemetry,
+    type ContinuationVerdict,
+} from './continuation-messages.ts'
