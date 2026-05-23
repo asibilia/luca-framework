@@ -483,7 +483,7 @@ delete that archive.
     `fd0b169be5240872f75a1904f8c72784ef95ec41`. tsc gate green on
     luca-tools + luca-core + luca-cli post-deletion (luca-cli has no
     dependency on the deleted dirs, confirmed via grep).
-- **Phase E** — re-implement orchestration as Claude Code hooks — in progress:
+- **Phase E** — re-implement orchestration as Claude Code hooks — ✅ **done**:
   - ✅ **E-1** — `pipeline-guard` hook landed. Pure algorithm at
     `packages/luca-core/src/orchestration/pipeline-guard.ts` —
     `checkPipelineGuard()` is a stateless decision function that
@@ -621,6 +621,94 @@ delete that archive.
     consecutive compile runs produce byte-identical output. F3
     audit follow-up still open for opportunistic pickup; F1/F4/F5
     not relevant to this surface.
+  - ✅ **E-4** — `context-refresher` hook landed. Pure algorithm at
+    `packages/luca-core/src/orchestration/context-refresher.ts` —
+    `computeContextRefresher()` is a stateless decision function that
+    decides whether to surface a per-step `<luca-reminder>` to combat
+    context rot. Returns `{ message, severity, reason, telemetry?,
+    nextState? } | null`. Per-step reminder templates live in a
+    `Record<RefresherStep, string>` where
+    `RefresherStep = Exclude<PipelineStep, 'idle'>`, giving
+    compile-time exhaustiveness across the 13 non-idle steps; two
+    module-load dev-guards assert every non-idle step has a reminder
+    AND every reminder targets a step whose coarse phase is NOT IDLE.
+    Mastracode-mode-specific bodies (`luca:1-triage`, `luca:4-execute`,
+    …) were retargeted to luca-core's `pipelineStep` vocabulary; stock-
+    Mastra utility modes (`build`, `plan`, `fast`) were dropped (they
+    were harness utilities and do not map to a pipelineStep). Reminder
+    envelope is `<luca-reminder>` (matching the mastracode original)
+    rather than `<system-reminder>` — these are tactical mid-
+    conversation nudges, distinct from continuation-messages's
+    step-entry kick-off prompt.
+    Threshold model: a deterministic tool-call-count proxy substitutes
+    for the mastracode `TokenBudgetMonitor` (Claude Code does not
+    expose a context-window utilization API to hooks). Defaults live in
+    `packages/luca-core/src/orchestration/context-refresher-config.ts`
+    as `CONTEXT_REFRESHER_DEFAULTS.toolCallsPerRefresh = 30` — a rough
+    analogue for the mastracode 30% threshold on a 200K window. The
+    algorithm fires when EITHER the step changed since the last fire
+    (re-anchor on the new mode) OR the counter crosses the threshold
+    within the current step.
+    Hook surface in luca-tools at
+    `packages/luca-tools/src/hooks/context-refresher/{index.ts,handler.ts}`
+    — `PostToolUse` with matcher `*` (every tool call), `bun-script`
+    runtime. Rationale: tool calls correlate with context growth more
+    tightly than UserPromptSubmit or Stop in an autonomous run where
+    one user prompt may chain hundreds of tool calls; PreToolUse would
+    tick BEFORE the tool output is folded in, so PostToolUse is the
+    right post-context-update edge. Matcher `*` because every tool
+    call grows context — narrowing to e.g. `Bash` would miss read-
+    heavy planning sessions that bloat context via Read/Grep/Glob
+    without shelling out.
+    Cooldown-state location decision: **sidecar file at
+    `.claude/cache/context-refresher-state.json`** (NOT `.luca/`).
+    Three options were considered: (1) sidecar file, (2) extend the
+    luca-core state schema with a `lastContextRefreshAt` field, (3)
+    stateless count from the ledger. Picked option (1) because the
+    `.luca/` contract is a strict allowlist of pipeline-state
+    artifacts (a hook-managed cooldown counter is not pipeline state),
+    extending state.json would mean a breaking schema change for a
+    cosmetic feature, and the ledger doesn't record raw tool-call
+    ticks. `.claude/cache/` is a fresh subdirectory inside Claude
+    Code's config dir — independently discardable at Phase H without
+    touching `.luca/`. The handler reads/writes the sidecar atomically
+    (write-then-rename); the algorithm itself stays pure and stateless
+    across invocations via a `ContextRefresherCarryState` shape
+    (`toolCallCount`, `lastFiredStep?`, `lastFiredAt?`) the handler
+    threads in and out.
+    Handler ticks the counter BEFORE calling the algorithm so the
+    threshold check reflects THIS tool call, persists `nextState` (or
+    the incremented prior state on no-op verdicts) BEFORE writing
+    stdout so a stdout error doesn't leak ticks, and emits the
+    reminder via `additionalContext` in the PostToolUse JSON output
+    shape:
+
+    ```json
+    {
+      "hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": "<luca-reminder>…</luca-reminder>"
+      }
+    }
+    ```
+
+    Failure-open everywhere — informational hook, never blocks. Every
+    error path (stdin parse error, sidecar read/write failure,
+    state.json missing/malformed, internal throw) exits 0 silently.
+    `emit-hook.ts` needed NO extension — PostToolUse + matcher `*` +
+    bun-script runtime are all already supported (same primitives as
+    E-3). HOOKS barrel: `HOOKS = [pipelineGuardHook,
+    ...READ_ONLY_ENFORCEMENT_HOOKS, continuationMessagesHook,
+    contextRefresherHook]` (6 hooks total). Smoke verified at
+    `/tmp/e4-verify`: merged `settings.json` adds a `PostToolUse[*]`
+    entry alongside the four `PreToolUse` entries from E-1/E-2 and the
+    `PostToolUse[Bash]` entry from E-3 (6 hooks total). Continuation
+    runs first within `PostToolUse` (registration order = per-event
+    order) so a step-advance Bash invocation receives the kick-off
+    message before the refresher reminder. Two consecutive compile
+    runs produce byte-identical output (idempotent). F3 audit follow-
+    up still open for opportunistic pickup; F1/F4/F5 not relevant to
+    this surface.
 - **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
