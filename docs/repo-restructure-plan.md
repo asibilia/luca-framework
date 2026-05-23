@@ -508,6 +508,50 @@ delete that archive.
     settings.json contains the `PreToolUse[Bash]` entry with the
     correct command. No audit follow-ups closed this run (F3 stays
     open for opportunistic pickup later in Phase E).
+  - ✅ **E-2** — `read-only-enforcement` hook landed. Pure algorithm
+    at `packages/luca-core/src/orchestration/read-only-enforcement.ts`
+    — `enforceReadOnly()` is a stateless decision function that
+    derives the read-only-step set (`READ_ONLY_STEPS`) from the
+    canonical `coarsePhaseOf()` mapping (every step whose coarse
+    phase is `PLANNING` or `REVIEWING`: triage, research, discuss,
+    architect, plan, plan-review, verify, review, learn) plus a
+    small `ReadOnlyToolClass` taxonomy (`write-file`, `edit-file`,
+    `notebook-edit`, `bash-mutate`, `other`). Reports a typed
+    verdict `{ allowed, reason, message, telemetry? }`. A module-
+    load dev-guard asserts `READ_ONLY_STEPS` agrees with
+    `coarsePhaseOf` so edits in either place fail loud. No new
+    `READ_ONLY_STEPS`-style constant was added to `state/configs/`
+    — the coarse-phase map is the single source of truth.
+    Hook surface in luca-tools at
+    `packages/luca-tools/src/hooks/read-only-enforcement/{index.ts,handler.ts}`
+    — three sibling `PreToolUse` definitions
+    (`read-only-enforcement-write`, `…-edit`, `…-notebook-edit`)
+    with matchers `Write` / `Edit` / `NotebookEdit` respectively,
+    all `bun-script` runtime, all referencing the same shared
+    handler at `.claude/hooks/read-only-enforcement.ts`. The
+    handler reads the PreToolUse payload, classifies the tool via
+    `READ_ONLY_TOOL_CLASS_BY_NAME`, loads `.luca/state.json`, calls
+    `enforceReadOnly()`, and exits 0 (allow) or 2 (block + stderr).
+    Bash is intentionally NOT in the matcher set: pre-classifying
+    Bash commands would require lifting `classify-bash-command`
+    out of luca-cli, and the stage-gate hook (luca-cli, fires on
+    `Bash`) already covers Bash mutation enforcement via the
+    `STAGE_TOOL_MATRIX` in `REVIEWING`/`PLANNING` phases — defense
+    in depth without duplicating the parser. Failure-open on
+    every error path (empty stdin, JSON parse error, unknown tool,
+    internal throw). The `emit-hook.ts` compiler needed no
+    extension — the existing `bun-script` emission produces the
+    correct `bun "$CLAUDE_PROJECT_DIR"/<handler>` command for all
+    three slices, and the per-event merge in `compile()` composes
+    them into the same `PreToolUse` array. Handler source
+    distribution from luca-tools to the consumer repo's
+    `.claude/hooks/read-only-enforcement.ts` is a Phase F-2
+    (`luca init`) concern. Smoke verified at `/tmp/e2-verify`:
+    merged `settings.json` contains four `PreToolUse` entries in
+    stable order — `Bash` (pipeline-guard), `Write`, `Edit`,
+    `NotebookEdit` — each with the correct command + status
+    message. No audit follow-ups closed this run (F3 still open
+    for opportunistic pickup; F4/F5 not relevant to this surface).
 - **Phases F–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
