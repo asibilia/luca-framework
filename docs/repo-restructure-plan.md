@@ -885,7 +885,70 @@ delete that archive.
     byte-identical output (\`diff -r\` exit 0). tsc green on
     luca-tools + luca-core + luca-cli post-increment. Phase E
     complete — orchestration hooks + skills + commands all ported.
-- **Phases F–H** — not started.
+- **Phase F** — `luca` umbrella + distribution — 🚧 **in progress**:
+  - **F-1** ✅ **done** 2026-05-23: wire the publishable umbrella.
+    - `packages/luca/package.json` flipped from private workspace stub
+      to publish-shaped: name `@alecsibilia/luca`, version
+      `13.0.0-alpha.0` (new lineage; supersedes legacy
+      `@alecsibilia/luca-framework@12.0.0-alpha.16` once Phase H
+      lands), `private` removed, `publishConfig.access: public`,
+      `bin: ./bin/luca.js`, `files: [bin, dist, README.md, LICENSE]`,
+      `exports.import: ./dist/index.mjs`, `exports.types:
+      ./dist/index.d.mts`. Runtime deps mirror luca-cli's
+      (`citty`, `@clack/prompts`, `consola`, `pathe`, `semver`,
+      `shell-quote`, `update-notifier`, `zod`); workspace siblings
+      (`luca-cli`, `luca-core`, `luca-tools`) live in
+      `devDependencies` (dev-only — inlined at build time, not
+      shipped to consumers).
+    - `tsconfig.json` already matched the strict baseline
+      (`noUncheckedIndexedAccess`, `verbatimModuleSyntax`,
+      `allowImportingTsExtensions`, `noUnusedLocals: false`) — no
+      change needed.
+    - `src/index.ts` re-exports `runMain`, `runInit`, `LUCA_VERSION`,
+      and `ProjectContext` from `@alecsibilia/luca-cli`. Intentionally
+      minimal — most consumers use the bin, not the library surface.
+    - `bin/luca.js`: `#!/usr/bin/env bun` + import `../dist/index.mjs`
+      + `runMain()`. Identical shape to the luca-framework precedent.
+      Made executable (`chmod +x`).
+    - `README.md` + `LICENSE`: minimal quickstart README + MIT
+      license copied from repo root.
+    - `build.config.ts` (unbuild): `inlineDependencies: true` rolls
+      luca-cli + luca-core + luca-tools source into a single
+      `dist/index.mjs` (+ chunks/ + shared/). Externals list pins
+      every runtime npm dep so only the three workspace siblings
+      inline. Rollup `replace` plugin substitutes the
+      `__LUCA_VERSION__` sentinel that luca-cli's `utils/manifest.ts`
+      uses — since luca-cli is inlined here, the umbrella's build is
+      now the one doing the substitution.
+    - **Build verified** (package-scoped — never `bun run build:all`):
+      `bun run build` → `dist/index.mjs` (2.74 kB) + chunks/ +
+      shared/ (~265 kB total). `__LUCA_VERSION__` correctly
+      substituted to `"13.0.0-alpha.0"`. dist/ is gitignored
+      (root .gitignore line 5).
+    - **Tarball verified** (`bun pm pack` — proper catalog/workspace
+      resolution; `npm pack --dry-run` is misleading here because
+      npm doesn't resolve `catalog:`): 46 files, 74.7 kB packed,
+      279.7 kB unpacked. Contents: `bin/luca.js`, `dist/{index.mjs,
+      index.d.{ts,mts}, chunks/, shared/}`, `package.json`,
+      `README.md`, `LICENSE`. `catalog:` refs resolved to `^4.3.6`
+      (zod), workspace:* refs resolved to `0.1.0` (cli/core/tools)
+      and kept in devDependencies (NOT shipped as runtime deps to
+      consumers). No `src/` files. No workspace:* in runtime deps.
+    - tsc green on all 4 packages (tools, core, cli, NEW: luca).
+    - **Audit followups**: F1 + F3 carry forward unchanged. F-1 is
+      pure umbrella wiring; no CLI/skill bodies touched. F1's
+      `confidence log` writer-alignment is unaffected; F3's
+      `luca state advance` ledger-event verification is unaffected.
+  - **F-2** — pending: rewire `luca init` to install the compiled
+    luca-tools artifacts from inside the umbrella tarball
+    (`dist/claude/`). Currently `luca-cli/src/init/helpers/
+    install-skills.ts` still looks for `@alecsibilia/luca-framework`'s
+    `skills/` directory — that lookup needs to retarget to the
+    umbrella's bundled artifacts.
+  - **F-3** — pending: publish PREP (changeset, version bump path,
+    final CHANGELOG, validate-package smoke). User runs
+    `bun publish` manually.
+- **Phases G–H** — not started.
 
 Each Phase B subsystem is ported test-first (TDD), gated on `tsc` + `bun test`,
 and committed individually (`feat(restructure): Phase B — …`).
