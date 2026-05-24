@@ -147,6 +147,10 @@ The skill exits. No further actions. The user invokes it again with different \`
 
 export const lucaTelemetryReportSkill = defineSkill({
     name: "luca-telemetry-report",
-    description: "Cross-run aggregator over `.luca/telemetry/*.jsonl`. Reads per-run JSONL telemetry records (phase/wave/step/subagent/recall/review events), aggregates streaming-style, and emits a markdown report inline. Read-only over the telemetry dir; no MuninnDB writes, no state mutation.",
+    description: `Cross-run aggregator over \`.luca/telemetry/*.jsonl\`. Reads per-run JSONL telemetry records (phase/wave/step/subagent/recall/review events), aggregates streaming-style, and emits a markdown report inline. Read-only over the telemetry dir; no MuninnDB writes, no state mutation.
+
+Use when user says "telemetry report", "aggregate telemetry", "show telemetry summary", "luca-telemetry-report", or invokes \`/luca-telemetry-report\`.
+
+Arguments: \`--runs <N>\` (default 10), \`--since <ISO-date>\`, \`--vault <name>\`.`,
     body: BODY,
 })

@@ -54,7 +54,10 @@ import {
     checkPipelineGuard,
     type PipelineGuardInput,
 } from '@alecsibilia/luca-core/orchestration'
-import { loadCurrentState } from '@alecsibilia/luca-core/state'
+import {
+    loadCurrentState,
+    parseAdvanceCommand,
+} from '@alecsibilia/luca-core/state'
 
 /**
  * Shape of the relevant slice of the PreToolUse stdin payload. We
@@ -152,77 +155,11 @@ async function main(): Promise<number> {
     return 2
 }
 
-/**
- * Parse `luca state advance <step>` (and `luca state advance --to-step
- * <step>` / `--to-step=<step>`) out of a Bash command string. Returns
- * the requested step name, or null if the command doesn't match.
- *
- * Why we accept multiple forms: citty (the CLI framework luca-cli
- * uses) accepts both positional and long-flag invocations. Real users
- * type either; the hook should catch both. We're conservative on
- * shape — if any tokenization edge case fails, we return null and
- * let the call through (failure-open). The CLI itself does the
- * authoritative parse.
- *
- * We do NOT spawn a shell parser — Bash command parsing is full of
- * edge cases (quoting, expansion, command substitution). A regex-
- * over-tokens approach is good enough because the hook's job is only
- * to catch the common-case `luca state advance plan` form. Anything
- * weirder (env-var indirection, command substitution) bypasses the
- * hook, and the CLI's own validation catches it.
- */
-function parseAdvanceCommand(command: string): string | null {
-    const trimmed = command.trim()
-    // Quick reject so the regex only runs on plausible matches.
-    if (!/\bluca\b/.test(trimmed) || !/\bstate\b/.test(trimmed) ||
-        !/\badvance\b/.test(trimmed)) {
-        return null
-    }
-
-    // Tokenize on whitespace; we don't need a full shell parser
-    // because the hook fires before the call runs, so we're matching
-    // the literal argv string from the harness.
-    const tokens = trimmed.split(/\s+/)
-    // Find the `luca` token (allowing for prefixes like `bun run`,
-    // `npx`, env-var assignments).
-    const lucaIdx = tokens.findIndex((t) => t === 'luca' || t.endsWith('/luca'))
-    if (lucaIdx < 0) return null
-    if (tokens[lucaIdx + 1] !== 'state') return null
-    if (tokens[lucaIdx + 2] !== 'advance') return null
-
-    // Positional: `luca state advance <step>`
-    const next = tokens[lucaIdx + 3]
-    if (next !== undefined && !next.startsWith('-')) {
-        return stripQuotes(next)
-    }
-
-    // Long flag: `luca state advance --to-step <step>` or
-    // `--to-step=<step>`.
-    for (let i = lucaIdx + 3; i < tokens.length; i++) {
-        const tok = tokens[i] ?? ''
-        if (tok === '--to-step') {
-            const v = tokens[i + 1]
-            if (v !== undefined) return stripQuotes(v)
-            return null
-        }
-        if (tok.startsWith('--to-step=')) {
-            return stripQuotes(tok.slice('--to-step='.length))
-        }
-    }
-
-    return null
-}
-
-function stripQuotes(s: string): string {
-    if (s.length >= 2) {
-        const first = s[0]
-        const last = s[s.length - 1]
-        if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-            return s.slice(1, -1)
-        }
-    }
-    return s
-}
+// `parseAdvanceCommand` (and its `stripQuotes` helper) was promoted to
+// `@alecsibilia/luca-core/state` (see `packages/luca-core/src/state/
+// cli-parse.ts`) — both the pipeline-guard hook and the
+// continuation-messages hook used byte-identical copies, so the
+// helper now lives in luca-core and is imported above (CF11).
 
 // Touched to suppress unused-import in some toolchains; `join` may be
 // folded out by the bundler if unused, but kept here in case future

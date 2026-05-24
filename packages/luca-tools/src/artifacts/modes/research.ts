@@ -102,9 +102,36 @@ Spawn researcher subagents in parallel for each dimension:
 
 ---
 
+## Capture Raw Findings
+
+**IMMEDIATELY** after all 5 subagents return, persist each dimension's raw output to \`.luca/phases/<currentPhaseSlug>/raw/research-<NN>.md\` **before** synthesis. This is the safety net: if synthesis is interrupted or context is compressed before \`research.md\` lands, the raw subagent output survives in a contracted-allowlist slot and synthesis can re-read it on the next iteration.
+
+\`<NN>\` is zero-padded by dimension order: \`01\` = scope, \`02\` = architecture, \`03\` = patterns, \`04\` = dependencies, \`05\` = risk. The raw files are NOT the canonical artifact — \`research.md\` (produced by synthesis below) is. Treat \`raw/research-*.md\` as recovery state.
+
+Write each via the standard artifact write — the path \`.luca/phases/<currentPhaseSlug>/raw/research-<NN>.md\` is in the LUCA_DIR_CONTRACT \`raw/\` slot per the validator.
+
+Template:
+\`\`\`markdown
+# Research Capture — {Dimension}
+
+**Subagent**: researcher
+**Perspective**: {dimension}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+\`\`\`
+
+Five files total (one per dimension): \`research-01.md\` through \`research-05.md\`.
+
+---
+
 ## Synthesis
 
 After all subagents complete, synthesize into \`research.md\` at \`.luca/phases/<currentPhaseSlug>/research.md\`. Use \`luca\` CLI artifact write semantics — never hand-write outside the contract path.
+
+If raw outputs were OM-compressed between capture and synthesis, **re-read** the per-dimension findings from \`.luca/phases/<currentPhaseSlug>/raw/research-<NN>.md\` (the safety-net files written above).
 
 Structure:
 \`\`\`markdown

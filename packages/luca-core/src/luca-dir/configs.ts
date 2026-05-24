@@ -86,6 +86,14 @@ export const LUCA_DIR_CONTRACT = {
                         'Append-only per-phase confidence journal (one JSON object per line)',
                     writtenBy: 'any phase (executor/verifier/reviewer logs)',
                 },
+                {
+                    dir: 'raw/',
+                    description:
+                        'Per-stage raw output capture (safety net before consolidation)',
+                    pattern: '<stage>-<NN>.md',
+                    writtenBy:
+                        'PLANNING/REVIEWING (safety-net before consolidation into research.md / audits/<reviewer>.md)',
+                },
             ],
         },
         milestones: {

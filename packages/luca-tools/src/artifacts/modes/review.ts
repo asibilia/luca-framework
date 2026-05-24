@@ -93,12 +93,37 @@ Each subagent writes \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` (f
 
 **Confidence-guided review**: Reviewers should weight their scrutiny toward areas flagged as \`low\` or \`medium\` confidence in the confidence journal. Cross-reference journal entries with code changes to prioritize review where execution certainty was lowest.
 
+### Step 4.5: Capture Raw Findings
+
+**IMMEDIATELY** after all 5 reviewers return, persist each perspective's raw output to \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` **before** consolidation. This is the safety net: if consolidation is interrupted or context is compressed before \`audits/<reviewer>.md\` lands, the raw subagent output survives in a contracted-allowlist slot and consolidation can re-read it on the next iteration.
+
+\`<reviewer>\` is the perspective name (\`architecture\`, \`dx\`, \`security\`, \`simplification\`, \`test-quality\`). \`<NN>\` is the zero-padded review wave (\`reviewIteration\` from \`luca state read\`; default \`01\`). The raw files are NOT the canonical artifact — the per-reviewer \`audits/<reviewer>.md\` files (and the consolidated report below) are. Treat \`raw/review-*.md\` as recovery state; on re-review iterations, the previous wave's raw files remain in place so subsequent iterations can diff.
+
+Write each via the standard artifact write — the path \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` is in the LUCA_DIR_CONTRACT \`raw/\` slot per the validator.
+
+Template:
+\`\`\`markdown
+# Review Capture — {Perspective} [Wave {NN}]
+
+**Subagent**: reviewer
+**Perspective**: {perspective}
+**Timestamp**: {ISO 8601}
+
+## Findings
+
+{raw subagent output, preserved verbatim}
+\`\`\`
+
+Five files per wave (one per perspective): \`review-architecture-<NN>.md\`, \`review-dx-<NN>.md\`, \`review-security-<NN>.md\`, \`review-simplification-<NN>.md\`, \`review-test-quality-<NN>.md\`.
+
 ### Step 5: Consolidate Findings
 
 Merge all subagent outputs by severity:
 - **MUST-FIX** — Blocks proceeding: regressions, missing requirements, security issues, broken checks.
 - **SHOULD-FIX** — Advisory: pattern violations, DX improvements, minor issues.
 - **NOTE** — Informational: future tech debt, refactoring opportunities.
+
+If raw outputs were OM-compressed between capture and consolidation, **re-read** the per-perspective findings from \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` (the safety-net files written in Step 4.5).
 
 ### Step 5.5: Cross-Reference MuninnDB
 

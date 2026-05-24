@@ -66,7 +66,10 @@ import {
     computeContinuationMessage,
     type ContinuationInput,
 } from '@alecsibilia/luca-core/orchestration'
-import { loadCurrentState } from '@alecsibilia/luca-core/state'
+import {
+    loadCurrentState,
+    parseAdvanceCommand,
+} from '@alecsibilia/luca-core/state'
 
 /**
  * Shape of the relevant slice of the PostToolUse stdin payload. We
@@ -194,77 +197,11 @@ async function main(): Promise<number> {
     return 0
 }
 
-/**
- * Parse `luca state advance <step>` (and `luca state advance --to-step
- * <step>` / `--to-step=<step>`) out of a Bash command string. Returns
- * the requested step name, or null if the command doesn't match.
- *
- * Implementation mirrors `pipeline-guard/handler.ts`'s parser — same
- * forms accepted, same conservative-on-edge-cases stance. The two
- * parsers are intentionally duplicated rather than shared via a
- * luca-core helper for now because:
- *
- *   - Each hook is a standalone bun-script; pulling a helper into
- *     luca-core adds a transitive dependency that needs to survive
- *     `luca init`'s artifact copy step (Phase F-2).
- *   - The parser is ~30 lines and stable; duplication cost is bounded.
- *   - If a third caller ever needs this parser, lift it into luca-core
- *     then.
- */
-function parseAdvanceCommand(command: string): string | null {
-    const trimmed = command.trim()
-    // Quick reject so the regex only runs on plausible matches.
-    if (
-        !/\bluca\b/.test(trimmed) ||
-        !/\bstate\b/.test(trimmed) ||
-        !/\badvance\b/.test(trimmed)
-    ) {
-        return null
-    }
-
-    const tokens = trimmed.split(/\s+/)
-    const lucaIdx = tokens.findIndex(
-        (t) => t === 'luca' || t.endsWith('/luca'),
-    )
-    if (lucaIdx < 0) return null
-    if (tokens[lucaIdx + 1] !== 'state') return null
-    if (tokens[lucaIdx + 2] !== 'advance') return null
-
-    // Positional: `luca state advance <step>`
-    const next = tokens[lucaIdx + 3]
-    if (next !== undefined && !next.startsWith('-')) {
-        return stripQuotes(next)
-    }
-
-    // Long flag: `luca state advance --to-step <step>` or `--to-step=<step>`.
-    for (let i = lucaIdx + 3; i < tokens.length; i++) {
-        const tok = tokens[i] ?? ''
-        if (tok === '--to-step') {
-            const v = tokens[i + 1]
-            if (v !== undefined) return stripQuotes(v)
-            return null
-        }
-        if (tok.startsWith('--to-step=')) {
-            return stripQuotes(tok.slice('--to-step='.length))
-        }
-    }
-
-    return null
-}
-
-function stripQuotes(s: string): string {
-    if (s.length >= 2) {
-        const first = s[0]
-        const last = s[s.length - 1]
-        if (
-            (first === '"' && last === '"') ||
-            (first === "'" && last === "'")
-        ) {
-            return s.slice(1, -1)
-        }
-    }
-    return s
-}
+// `parseAdvanceCommand` (and its `stripQuotes` helper) was promoted to
+// `@alecsibilia/luca-core/state` (see `packages/luca-core/src/state/
+// cli-parse.ts`) — both this hook and `pipeline-guard/handler.ts`
+// used byte-identical copies, so the helper now lives in luca-core
+// and is imported above (CF11).
 
 main().then(
     (code) => process.exit(code),

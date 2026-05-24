@@ -221,6 +221,8 @@ Increment \`totalProcessed += batchSize\` regardless of mode.
 
 export const memoryAuditSkill = defineSkill({
     name: "memory-audit",
-    description: "Paginated, LLM-judged retro-pass over a MuninnDB vault that classifies each engram against the trust-tier rule and applies corrections via `mcp__muninn__muninn_trust`. Resumable via a `memory-audit:cursor` memory stored in the audited vault. Per-run audit reports are emitted inline.",
+    description: `Paginated, LLM-judged retro-pass over a MuninnDB vault that classifies each engram against the trust-tier rule and applies corrections via \`mcp__muninn__muninn_trust\`. Resumable via a \`memory-audit:cursor\` memory stored in the audited vault. Per-run audit reports are emitted inline.
+
+Use when user says "audit memory", "audit muninn", "audit vault", "memory audit", "retro tier pass", or invokes \`/memory-audit\`. Default mode is \`--dry-run\` (no mutations). Pass \`--apply\` to commit trust-tier changes. Pass \`--auto\` with \`--apply\` to skip per-promotion confirmation prompts.`,
     body: BODY,
 })

@@ -16,7 +16,12 @@
  */
 import { defineCommand } from 'citty'
 
-import { analyzeRun, listRuns, renderPostmortemMarkdown } from '@alecsibilia/luca-core'
+import {
+    analyzeRun,
+    computePostmortemExitCode,
+    listRuns,
+    renderPostmortemMarkdown,
+} from '@alecsibilia/luca-core'
 
 import { gatherRunArtifacts } from './__helpers/gather-run-artifacts.ts'
 import { logger } from '../utils/logger.ts'
@@ -87,8 +92,16 @@ export const retroCommand = defineCommand({
 
         if (args.json) {
             process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
-            return
+        } else {
+            process.stdout.write(`${renderPostmortemMarkdown(report)}\n`)
         }
-        process.stdout.write(`${renderPostmortemMarkdown(report)}\n`)
+
+        // CF5 — restore the mastracode exit-code semantic: exit 1 when
+        // the report contains critical violations, 0 otherwise. CI
+        // integrators depend on this to gate on pipeline-discipline
+        // failures. We use `process.exitCode` (not `process.exit`) so
+        // citty completes the command lifecycle cleanly and uses the
+        // set code at process termination.
+        process.exitCode = computePostmortemExitCode(report)
     },
 })

@@ -11,6 +11,14 @@ export const PHASE_SLUG_RE = /^[0-9]{2}-[a-z](?:[a-z0-9-]*[a-z0-9])?$/
 // Examples: "01.md", "12.md"
 export const WAVE_FILE_RE = /^[0-9]{2}\.md$/
 
+// Raw-capture file: <stage>-<NN>.md where <stage> is a kebab-case
+// stage identifier (e.g. "research", "review", "review-code-review"),
+// and NN is zero-padded. The stage may itself contain hyphens because
+// review-mode files key on `<stage>-<reviewer>` (e.g.
+// "review-security-01.md"); we anchor on the trailing -NN.md.
+// Examples: "research-01.md", "review-architect-00.md"
+export const RAW_FILE_RE = /^[a-z][a-z0-9-]*-[0-9]{2}\.md$/
+
 // SemVer with optional prerelease/build (e.g. "v12.0.0", "v12.0.0-alpha.0")
 export const SEMVER_TAG_RE =
     /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
