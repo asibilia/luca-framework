@@ -91,6 +91,19 @@ const skill = defineSkill({
     body: '# Smoke skill\n\nDo the smoke thing.',
 })
 
+// Multi-paragraph description coverage. The legacy SKILL.md authoring
+// style used YAML block scalars with a blank-line paragraph break (a
+// primary description followed by a "Use when …" trigger paragraph).
+// The compiler must emit those as a YAML literal block scalar so the
+// blank line survives — see the P2 regression in
+// `docs/parity-review/03-skills-commands-fidelity.md` §3.11/§4.7.
+const multiParaSkill = defineSkill({
+    name: 'smoke-skill-multi',
+    description:
+        'Multi-paragraph smoke skill.\n\nUse when verifying that block-scalar emission preserves blank lines.',
+    body: '# Multi-paragraph smoke\n\nProves the compiler round-trips a two-paragraph description.',
+})
+
 const hookPost = defineHook({
     id: 'smoke-edit',
     description: 'Smoke post-edit hook.',
@@ -124,7 +137,16 @@ const rule = {
     }),
 }
 
-const artifacts = [subagent, agent, command, skill, hookPost, hookPre, rule]
+const artifacts = [
+    subagent,
+    agent,
+    command,
+    skill,
+    multiParaSkill,
+    hookPost,
+    hookPre,
+    rule,
+]
 
 const report = await compile(artifacts, root)
 
@@ -201,6 +223,19 @@ const expectedSkillFrontmatter = [
     '---',
 ].join('\n')
 
+// Multi-paragraph description must render as a YAML literal block
+// scalar (`|-`) with the blank line preserved. The `|-` chomp keeps
+// the source string trailing-newline-free.
+const expectedMultiParaSkillFrontmatter = [
+    '---',
+    'name: smoke-skill-multi',
+    'description: |-',
+    '  Multi-paragraph smoke skill.',
+    '',
+    '  Use when verifying that block-scalar emission preserves blank lines.',
+    '---',
+].join('\n')
+
 // settings.json shape — pretty-printed JSON with PreToolUse before
 // PostToolUse (HOOK_EVENT_ORDER).
 const expectedSettingsFragment =
@@ -210,12 +245,17 @@ const subagentPath = join(root, '.claude/agents/smoke-subagent.md')
 const agentPath = join(root, '.claude/agents/smoke-agent.md')
 const commandPath = join(root, '.claude/commands/smoke-cmd.md')
 const skillPath = join(root, 'skills/smoke-skill/SKILL.md')
+const multiParaSkillPath = join(
+    root,
+    'skills/smoke-skill-multi/SKILL.md',
+)
 const settingsPath = join(root, '.claude/settings.json')
 
 const subagentText = await Bun.file(subagentPath).text()
 const agentText = await Bun.file(agentPath).text()
 const commandText = await Bun.file(commandPath).text()
 const skillText = await Bun.file(skillPath).text()
+const multiParaSkillText = await Bun.file(multiParaSkillPath).text()
 const settingsText = await Bun.file(settingsPath).text()
 
 function check(label: string, actual: string, expected: string): void {
@@ -251,6 +291,20 @@ check('command body', commandText, '$ARGUMENTS')
 
 check('skill frontmatter', skillText, expectedSkillFrontmatter)
 check('skill body', skillText, '# Smoke skill')
+
+check(
+    'multi-paragraph skill frontmatter (block scalar)',
+    multiParaSkillText,
+    expectedMultiParaSkillFrontmatter,
+)
+// Defensive: prove the rendered output is NOT the legacy JSON-escaped
+// single-line form. If this substring ever appears in the rendered
+// output we've regressed to the pre-fix behavior.
+if (multiParaSkillText.includes('\\n\\n')) {
+    failures.push(
+        '[multi-paragraph skill] rendered frontmatter contains "\\n\\n" escape — block-scalar emission regressed',
+    )
+}
 
 check('settings.json PreToolUse', settingsText, expectedSettingsFragment)
 check(

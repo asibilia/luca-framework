@@ -17,9 +17,15 @@
  * NON-GOALS:
  * - Round-tripping arbitrary YAML.
  * - Anchors, tags, multi-document streams.
- * - Multi-line block scalars (folded `>` / literal `|`). If a string
- *   contains a newline we quote it and emit `\n` as an escape. Bodies
- *   live BELOW the frontmatter; we don't need block scalars up here.
+ * - Folded block scalars (`>`). We do emit LITERAL block scalars (`|`)
+ *   for multi-line string values, because Claude Code's skill auto-
+ *   trigger surface reads frontmatter `description` fields and matches
+ *   trigger phrases like "Use when …" that authors place on a second
+ *   paragraph. A JSON-escaped single-line scalar (`description: "Foo.\n\nUse when …"`)
+ *   is technically valid YAML but is hard to read and the trigger
+ *   phrase doesn't surface naturally. Literal block scalars round-trip
+ *   the source string EXACTLY (including blank lines) — see
+ *   `emitLiteralBlockScalar` below.
  *
  * Stability contract:
  * - Keys in the input object are emitted in the order they appear in the
@@ -94,6 +100,15 @@ function emitKeyValue(
 ): string {
     const indent = '  '.repeat(depth)
     if (typeof value === 'string') {
+        // Multi-line strings: emit as a YAML literal block scalar (`|`)
+        // so blank lines and intentional paragraph breaks survive. The
+        // alternative (`JSON.stringify` to a double-quoted single line
+        // with `\n` escapes) is technically valid YAML but loses
+        // readability AND breaks Claude Code's skill auto-trigger
+        // matching against multi-paragraph `description` fields.
+        if (value.includes('\n')) {
+            return emitLiteralBlockScalar(key, value, depth)
+        }
         return `${indent}${key}: ${formatScalar(value)}`
     }
     if (typeof value === 'number' || typeof value === 'boolean') {
@@ -117,6 +132,64 @@ function emitKeyValue(
         subLines.push(emitKeyValue(subKey, subValue, depth + 1))
     }
     return subLines.join('\n')
+}
+
+/**
+ * Emit a multi-line string value as a YAML literal block scalar:
+ *
+ *   key: |
+ *     first line
+ *
+ *     second paragraph after blank line
+ *
+ * Why literal (`|`) and not folded (`>`):
+ *
+ * The legacy hand-authored skill descriptions used `description: >`
+ * (folded) with an intentional blank line separating the primary
+ * description from the "Use when …" trigger paragraph. YAML's folded
+ * scalar collapses single newlines to spaces but preserves blank lines
+ * as a single `\n`. Round-tripping THAT precisely from a TS string
+ * literal (where the author has already chosen where the newlines go)
+ * requires literal block form — `|` preserves every newline character
+ * exactly. Re-folding to `>` would require us to guess which newlines
+ * were "soft" (line-wrapping artifacts) vs "hard" (semantic paragraph
+ * breaks), and we don't have that information once the source is a JS
+ * string.
+ *
+ * Chomp indicator:
+ *
+ * - Source ends with `\n` -> use `|` (default "clip": keep one trailing newline).
+ * - Source does NOT end with `\n` -> use `|-` (strip all trailing newlines).
+ *
+ * This lets a TS string literal like `"a\n\nb"` round-trip through
+ * YAML parse and re-emit without acquiring a spurious trailing newline.
+ *
+ * Indentation:
+ *
+ * Each content line is indented by `(depth + 1) * 2` spaces. Empty
+ * lines in the source are emitted as truly empty lines (no trailing
+ * indent whitespace) because YAML allows fewer-indented blank lines
+ * inside a block scalar and trailing whitespace can confuse parsers
+ * and editors.
+ */
+function emitLiteralBlockScalar(
+    key: string,
+    value: string,
+    depth: number,
+): string {
+    const headerIndent = '  '.repeat(depth)
+    const contentIndent = '  '.repeat(depth + 1)
+    const endsWithNewline = value.endsWith('\n')
+    const indicator = endsWithNewline ? '|' : '|-'
+    // Strip any trailing newlines for splitting; the chomp indicator
+    // (or its absence) tells YAML how to reconstruct them.
+    const content = endsWithNewline
+        ? value.slice(0, -1)
+        : value
+    const contentLines = content.split('\n').map((line) =>
+        line === '' ? '' : `${contentIndent}${line}`
+    )
+    return [`${headerIndent}${key}: ${indicator}`, ...contentLines].join('\n')
 }
 
 /**
