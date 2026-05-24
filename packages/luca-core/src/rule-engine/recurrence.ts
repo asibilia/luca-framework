@@ -37,7 +37,19 @@ export interface RecurringPitfall {
     runCount: number
     /** Total occurrences across all runs (sum of per-run violation counts). */
     occurrences: number
-    /** Run IDs where this code appeared. */
+    /**
+     * Run IDs where this code appeared.
+     *
+     * Ordering follows the **caller-supplied `reports` order**: the
+     * function preserves insertion order via a `Set<string>` keyed on
+     * `report.runId`. To get "oldest-first" semantics (matching the
+     * legacy mastracode behaviour, audit ref M4), pass the `reports`
+     * array sorted by `startedAt` ascending. To get "newest-first",
+     * sort descending. The function deliberately does not re-sort
+     * internally because reports may lack `startedAt` (e.g. legacy
+     * runs without a session-start event) and caller-side sorting is
+     * the only signal the function can trust.
+     */
     runIds: string[]
     /** Most recent violation message seen. */
     sampleMessage: string

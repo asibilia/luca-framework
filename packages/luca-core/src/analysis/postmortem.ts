@@ -401,6 +401,30 @@ export function analyzeRun(input: AnalyzeRunInput): PostmortemReport {
 // Render
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Exit-code helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the process exit code for a postmortem report.
+ *
+ * Returns `1` if the report contains any `critical`-severity violation,
+ * `0` otherwise. Pure — the CLI surface (`luca retro` in luca-cli)
+ * decides whether to call `process.exit(...)` / `process.exitCode = ...`
+ * with the result.
+ *
+ * Mirrors the legacy mastracode `retro.ts` semantics:
+ *   `process.exit(critical.length > 0 ? 1 : 0)`
+ *
+ * Audit ref CF5 — the legacy CLI exited non-zero on any critical
+ * violation. The v13 port lost that signal, so any pipeline gate that
+ * piped `luca retro` to `||` is now silently inert. This helper makes
+ * the contract explicit and testable; the CLI calls it.
+ */
+export function computePostmortemExitCode(report: PostmortemReport): 0 | 1 {
+    return report.violations.some((v) => v.severity === 'critical') ? 1 : 0
+}
+
 /** Render a postmortem report as human-readable Markdown. Pure. */
 export function renderPostmortemMarkdown(report: PostmortemReport): string {
     const lines: string[] = []

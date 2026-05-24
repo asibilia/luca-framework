@@ -132,10 +132,16 @@ const VALID_STEPS = new Set(Object.keys(PIPELINE_TRANSITIONS))
  *
  * The decision tree:
  *   1. Either step is unknown → reject with a typed reason.
- *   2. Same step → reject as a no-op (the state machine has no
- *      self-edges; loop-back is via a distinct prior step).
- *   3. Transition is illegal per `PIPELINE_TRANSITIONS` → reject.
- *   4. Otherwise → allow.
+ *   2. Transition is illegal per `PIPELINE_TRANSITIONS`:
+ *      a. If `currentStep === requestedStep` AND the table does not
+ *         allow the self-edge → reject as `same-step-no-op`.
+ *      b. Otherwise → reject as `illegal-transition`.
+ *   3. Otherwise → allow.
+ *
+ * Self-edges are NOT universally rejected because the canonical
+ * transitions table allows specific self-loops (e.g. `research →
+ * research` for re-research). The guard's `same-step-no-op` reason
+ * is reserved for the case where a self-edge is genuinely illegal.
  *
  * The mastracode `executeEnforcement` step (nudge vs. force) does NOT
  * port — Claude Code hooks return allow/deny, not nudge-and-retry. If
@@ -184,30 +190,37 @@ export function checkPipelineGuard(
         }
     }
 
-    if (currentStep === requestedStep) {
-        return {
-            allowed: false,
-            reason: 'same-step-no-op',
-            message:
-                `pipeline-guard: already at pipelineStep '${currentStep}'. ` +
-                `Transitions to the same step are no-ops; use the next legal step.`,
-            telemetry: buildTelemetry(
-                'pipeline-guard-rejection',
-                currentStep,
-                requestedStep,
-                'same-step-no-op',
-                complexity,
-                oversight,
-            ),
-        }
-    }
-
     // Cast is safe: VALID_STEPS membership guarantees these are
     // PipelineStep values, but the input arrives as arbitrary strings.
+    //
+    // Order matters: the legality check runs BEFORE the same-step-no-op
+    // check because PIPELINE_TRANSITIONS deliberately permits select
+    // self-edges (e.g. `research: ['discuss', 'research']` for the
+    // re-research loop). Rejecting `current === requested` first would
+    // contradict the table.
     if (!isLegalTransition(
         currentStep as PipelineStep,
         requestedStep as PipelineStep,
     )) {
+        // Reject same-step transitions ONLY when the table does not
+        // explicitly allow the self-edge.
+        if (currentStep === requestedStep) {
+            return {
+                allowed: false,
+                reason: 'same-step-no-op',
+                message:
+                    `pipeline-guard: already at pipelineStep '${currentStep}'. ` +
+                    `Transitions to the same step are no-ops; use the next legal step.`,
+                telemetry: buildTelemetry(
+                    'pipeline-guard-rejection',
+                    currentStep,
+                    requestedStep,
+                    'same-step-no-op',
+                    complexity,
+                    oversight,
+                ),
+            }
+        }
         const allowed = PIPELINE_TRANSITIONS[currentStep as PipelineStep]
         return {
             allowed: false,

@@ -14,10 +14,17 @@
  *   - `findCriterion` / `aggregateVerificationResults` are pure over a
  *     caller-supplied `VerificationResult[]`.
  *
- * Not ported — no `.luca/` equivalent: `verification-history.jsonl`
- * (`readVerificationHistory` + the auto-read inside `findCriterion`). The
- * `.luca/` contract has no cross-run history file at root or in a phase dir;
- * cross-run verification events flow through the session ledger instead.
+ * **Intentionally not ported** (audit ref M6) — no `.luca/` equivalent:
+ * `verification-history.jsonl` and the auto-read inside the legacy
+ * `findCriterion`. The `.luca/` contract has no cross-run history file at
+ * root or in a phase dir (plan §5.5: "cross-run *-history.jsonl logs
+ * DROPPED"). Cross-run verification events flow through the session
+ * ledger instead — a `verification-result` event is emitted on every
+ * `writeVerificationResult` by the CLI surface, and consumers reconstruct
+ * history from the ledger when needed. If any downstream consumer treated
+ * `verification-history.jsonl` as the authoritative audit log of attempted
+ * verifications, they're now blind; the session ledger is the canonical
+ * signal.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

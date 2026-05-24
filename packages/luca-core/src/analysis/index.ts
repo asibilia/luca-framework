@@ -5,7 +5,11 @@
 export { snapshotWorkingTree, computePhaseDiff } from './phase-diff.ts'
 export type { PhaseSnapshot, PhaseDiff } from './phase-diff.ts'
 
-export { analyzeRun, renderPostmortemMarkdown } from './postmortem.ts'
+export {
+    analyzeRun,
+    computePostmortemExitCode,
+    renderPostmortemMarkdown,
+} from './postmortem.ts'
 export type {
     AnalyzeRunInput,
     PhaseSummary,

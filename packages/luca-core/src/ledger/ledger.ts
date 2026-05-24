@@ -66,7 +66,11 @@ export function appendLedger(opts: AppendLedgerOptions): void {
  * Read all ledger entries for the current session.
  *
  * Returns `[]` when the file is missing, empty, or unreadable. Lines that are
- * not valid JSON or do not satisfy {@link LedgerEntrySchema} are skipped.
+ * not valid JSON or do not satisfy {@link LedgerEntrySchema} are skipped — a
+ * one-line `console.warn` is emitted per skipped line so operators have an
+ * audible signal that the file is partially corrupt (audit ref M5). The
+ * mastracode original discarded the whole file on the first parse error;
+ * this is strictly an improvement.
  */
 export function readLedger(opts: { cwd: string }): LedgerEntry[] {
     const p = join(opts.cwd, lucaRootPaths.ledger)
@@ -77,13 +81,26 @@ export function readLedger(opts: { cwd: string }): LedgerEntry[] {
         if (!content.trim()) return []
 
         const entries: LedgerEntry[] = []
+        let lineNumber = 0
         for (const line of content.split('\n')) {
+            lineNumber += 1
             if (!line.trim()) continue
+            let parsedJson: unknown
             try {
-                const parsed = LedgerEntrySchema.safeParse(JSON.parse(line))
-                if (parsed.success) entries.push(parsed.data)
+                parsedJson = JSON.parse(line)
             } catch {
-                // Skip a line that is not valid JSON.
+                console.warn(
+                    `readLedger: skipping malformed JSON at ${p}:${lineNumber}`,
+                )
+                continue
+            }
+            const parsed = LedgerEntrySchema.safeParse(parsedJson)
+            if (parsed.success) {
+                entries.push(parsed.data)
+            } else {
+                console.warn(
+                    `readLedger: skipping schema-invalid entry at ${p}:${lineNumber}`,
+                )
             }
         }
         return entries

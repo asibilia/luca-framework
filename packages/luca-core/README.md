@@ -6,10 +6,11 @@ Core types, schemas, and deterministic contracts shared by the luca toolchain.
 
 `luca-core` is the foundation layer that has no runtime dependencies beyond `zod`. It is consumed by:
 
-- `@alecsibilia/luca-framework` — the user-facing `luca` CLI
-- `@alecsibilia/luca-mastracode` — the (gradually retiring) Mastra Code harness
+- `@alecsibilia/luca-cli` — the user-facing `luca` CLI surface
+- `@alecsibilia/luca-tools` — Claude Code artifacts (skills, modes, subagents, hooks) and MCP tooling
+- `@alecsibilia/luca` — the umbrella package that bundles cli + tools
 
-Both packages import the canonical state schema, `pipelineStep` enum, coarse-phase mapping, and `.luca/` directory contract from here. This guarantees that hooks, MCP tools, skills, and the legacy harness all see the same shape of truth.
+Every consumer imports the canonical state schema, `pipelineStep` enum, coarse-phase mapping, and `.luca/` directory contract from here. This guarantees that hooks, MCP tools, skills, and the CLI all see the same shape of truth.
 
 ## Modules
 
@@ -20,8 +21,8 @@ Both packages import the canonical state schema, `pipelineStep` enum, coarse-pha
 
 ## What lives here vs. elsewhere
 
-- **luca-core**: pure types, schemas, pure functions. No I/O. No CLI. No MCP server.
-- **luca-framework**: CLI commands, MCP server, hook entry points, init logic. Imports schemas + helpers from luca-core.
-- **luca-mastracode**: legacy harness (retiring). Imports schemas from luca-core during gradual migration.
+- **luca-core**: pure types, schemas, deterministic algorithms. Minimal I/O (filesystem reads/writes of `.luca/` artifacts: ledger, verification result, etc.). No CLI surface, no MCP server, no Claude Code artifacts.
+- **luca-cli**: `luca` CLI commands (`luca state advance`, `luca confidence log`, `luca retro`, etc.). Imports algorithms + schemas from luca-core.
+- **luca-tools**: Claude Code skills, modes, subagents, hooks, MCP tooling. Imports algorithms + schemas from luca-core.
 
-If a function touches the filesystem, spawns a process, or talks to a service, it does NOT belong here.
+If a function spawns a subprocess, talks to a network service, or owns user-facing argv parsing, it does NOT belong here.
