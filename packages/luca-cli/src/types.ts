@@ -3,7 +3,7 @@ export interface ProjectContext {
     hasPackageJson: boolean
     /** Whether .git directory exists */
     hasGit: boolean
-    /** Whether Luca is already installed (.planning/ directory exists) */
+    /** Whether Luca is already installed (.luca/ directory exists) */
     hasLuca: boolean
     /** Detected stack from dependencies */
     detectedStack: 'react-ts' | 'react' | 'node-ts' | 'node' | 'unknown'

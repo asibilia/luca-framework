@@ -27,8 +27,9 @@ export type RuntimeContext = z.infer<typeof RuntimeContextSchema>
  * Detect whether Luca is running from a global install or from the monorepo in dev mode.
  *
  * Uses `import.meta.dir` to determine the absolute directory of the running script.
- * If the resolved path contains `packages/luca-framework/`, Luca is running in dev mode
- * (inside the monorepo). Otherwise, it is running as a globally installed package.
+ * If the resolved path contains a `packages/luca-{cli,core,tools}/` segment or
+ * `packages/luca/`, Luca is running in dev mode (inside the monorepo). Otherwise,
+ * it is running as a globally installed package.
  *
  * @returns A validated `RuntimeContext` object with mode, packageDir, and homeDir.
  *
@@ -44,7 +45,11 @@ export type RuntimeContext = z.infer<typeof RuntimeContextSchema>
  */
 export function detectRuntimeContext(): RuntimeContext {
     const scriptDir = import.meta.dir
-    const isDevMode = scriptDir.includes('packages/luca-framework/')
+    const isDevMode =
+        scriptDir.includes('packages/luca-cli/') ||
+        scriptDir.includes('packages/luca-core/') ||
+        scriptDir.includes('packages/luca-tools/') ||
+        scriptDir.includes('packages/luca/')
     const home = homedir()
 
     const result: RuntimeContext = {
@@ -59,22 +64,23 @@ export function detectRuntimeContext(): RuntimeContext {
 /**
  * Walk up from a starting directory to find the monorepo root.
  *
- * Checks for `packages/luca-framework/` in each ancestor directory.
- * Returns the starting directory unchanged if no monorepo marker is found
- * (e.g. when running from a global install).
+ * Checks for `packages/luca-cli/` in each ancestor directory (a marker
+ * directory present in the luca-framework monorepo). Returns the starting
+ * directory unchanged if no monorepo marker is found (e.g. when running
+ * from a global install).
  *
  * @param startDir - Directory to start walking up from.
  * @returns Absolute path to the monorepo root, or startDir if not found.
  *
  * @example
  * ```typescript
- * const root = resolveMonorepoRoot("/Users/you/luca/packages/luca-framework/src/utils");
- * // Returns: "/Users/you/luca"
+ * const root = resolveMonorepoRoot("/Users/you/luca-framework/packages/luca-cli/src/utils");
+ * // Returns: "/Users/you/luca-framework"
  * ```
  */
 export function resolveMonorepoRoot(startDir: string): string {
     let dir = startDir
-    while (dir !== '/' && !existsSync(join(dir, 'packages/luca-framework'))) {
+    while (dir !== '/' && !existsSync(join(dir, 'packages/luca-cli'))) {
         dir = dirname(dir)
     }
     return dir
@@ -82,15 +88,15 @@ export function resolveMonorepoRoot(startDir: string): string {
 
 /**
  * Walk up from a starting directory to find the root of the
- * `@alecsibilia/luca-framework` install (the directory containing its
+ * `@alecsibilia/luca` install (the directory containing its
  * `package.json`).
  *
- * Used in global/installed mode to resolve the bundled `dist/mastracode/`
- * harness relative to the framework's own install location rather than the
+ * Used in global/installed mode to resolve the bundled `dist/` artifacts
+ * relative to the umbrella package's own install location rather than the
  * user's cwd.
  *
  * @param startDir - Directory to start walking up from (typically `import.meta.dir`).
- * @returns Absolute path to the framework package root, or `null` if not found.
+ * @returns Absolute path to the umbrella package root, or `null` if not found.
  */
 export function resolveFrameworkPackageRoot(startDir: string): string | null {
     let dir = startDir
@@ -101,7 +107,7 @@ export function resolveFrameworkPackageRoot(startDir: string): string | null {
                 const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
                     name?: string
                 }
-                if (pkg.name === '@alecsibilia/luca-framework') {
+                if (pkg.name === '@alecsibilia/luca') {
                     return dir
                 }
             } catch {

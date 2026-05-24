@@ -43,6 +43,7 @@ import { defineCommand, runMain } from 'citty'
 
 import {
     defaultClaudeHome,
+    installHooks,
     installSkills,
     wireClaudeHooks,
     writeProjectSkeleton,
@@ -212,14 +213,24 @@ export const initCommand = defineCommand({
         // ── Step 5: Per-project skeleton ─────────────────────────────────────
         let projectSetupRan = false
         if (!args['skip-project']) {
-            p.log.step('Step 5/5: Project skeleton (.luca/)')
+            p.log.step('Step 5/5: Project skeleton (.luca/ + .claude/hooks/)')
             const projectCwd = process.cwd()
             await writeProjectSkeleton({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
+            // B3: copy bundled Claude Code hook handlers + merge the
+            // bundled settings.json into the project's .claude/
+            // directory. Without this the compiled settings.json's
+            // hook handler references resolve to nothing and the
+            // pipeline-guard / read-only-enforcement / continuation /
+            // context-refresher hooks are dead on arrival.
+            await installHooks({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
             projectSetupRan = true
-            p.log.success(`Per-project skeleton written to ${projectCwd}/.luca/`)
+            p.log.success(`Per-project skeleton written to ${projectCwd}/.luca/ + ${projectCwd}/.claude/`)
         } else {
             p.log.info('Step 5/5: Project skeleton (skipped)')
         }
@@ -265,9 +276,9 @@ export const initCommand = defineCommand({
         readout.push(
             '  To set up a project vault: cd <project> && luca vault:init'
         )
-        readout.push('  To launch the harness:     luca run')
+        readout.push('  To start the pipeline:     lu "<your task>"')
         readout.push(
-            '  To seed project conventions:        invoke /luca-init inside `luca run`'
+            '  To seed project conventions:        invoke /luca-init from Claude Code'
         )
         readout.push(
             '    (probes branching/commits/PR/release/tracker conventions and'

@@ -9,10 +9,20 @@
  *   - `confidence summary` — aggregate counts (total / high / medium / low / categories)
  *   - `confidence render`  — render the journal as Markdown
  *
- * The `log` leaf writes the v13 `{score, stage, rationale}` shape; the
- * read leaves use luca-core's `ConfidenceEntrySchema` reader. Audit finding
- * F1 (docs/repo-restructure-dropped-actions-audit.md) flags the schema
- * divergence — readers will drop log-written entries until F1 is resolved.
+ * F1 closure: the `log` leaf now accepts the FULL canonical
+ * `ConfidenceEntrySchema` shape (phase, wave, task, confidence, category,
+ * decision, alternatives, reasoning, risk, files, reviewHint?). The reader
+ * leaves use luca-core's `ConfidenceEntrySchema` reader, so writer / reader
+ * are round-trip exact. The v13 narrow `{score, stage, rationale}` shape is
+ * REMOVED (breaking change per F1 design call).
+ *
+ * Input forms:
+ *   - Flag-driven: every field as a CLI flag. `alternatives` and `files`
+ *     are comma-separated. Suitable for one-off invocations.
+ *   - File-driven: `--file <payload.json>` carries a single JSON object
+ *     matching the canonical shape (minus `timestamp`, server-stamped).
+ *     Preferred for structured callers — skills/agents construct the
+ *     payload as a JSON object and pass the file path.
  */
 import { defineCommand } from 'citty'
 
@@ -43,53 +53,124 @@ async function resolveSlug(opts: {
     return r.slug
 }
 
+/** Split a comma-separated string into a trimmed, non-empty array. */
+function splitCsv(input: string | undefined): string[] {
+    if (!input) return []
+    return input
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+}
+
 const logCommand = defineCommand({
     meta: {
         name: 'log',
         description:
-            "Append a confidence-score entry to the active phase's " +
-            'confidence.jsonl (one JSONL line per call). Records subjective ' +
-            'certainty at each stage. Phase-agnostic, but an active phase ' +
-            'must exist.',
+            "Append a confidence entry to the active phase's " +
+            'confidence.jsonl (one JSONL line per call). Payload uses the ' +
+            'canonical ConfidenceEntrySchema shape (phase, wave, task, ' +
+            'confidence, category, decision, alternatives, reasoning, ' +
+            'risk, files, reviewHint?). Phase-agnostic, but an active ' +
+            'phase must exist.',
     },
     args: {
-        score: {
+        // File-driven input (preferred for structured callers)
+        file: {
             type: 'string',
-            required: true,
             description:
-                'Confidence score in [0,1]: 0 = no confidence, 1 = certain.',
+                'Path to a JSON payload matching the canonical ' +
+                'ConfidenceEntrySchema shape (minus `timestamp`, which is ' +
+                'server-stamped). When set, all other flags below are ' +
+                'ignored.',
         },
-        stage: {
+        // Flag-driven input (every field is also a CLI flag)
+        phase: {
             type: 'string',
-            required: true,
-            description:
-                'Pipeline stage this confidence was recorded at (e.g. ' +
-                'plan, execute, verify, review).',
+            description: 'Phase name from the plan / roadmap.',
         },
-        rationale: {
+        wave: {
             type: 'string',
-            required: true,
-            description:
-                'Free-text justification for the score — what raised or ' +
-                'lowered confidence.',
+            description: 'Wave number within the phase (parsed as a number).',
         },
-        'metadata-file': {
+        task: {
+            type: 'string',
+            description: 'Task ID or description from the plan.',
+        },
+        confidence: {
+            type: 'string',
+            description: 'high | medium | low.',
+        },
+        category: {
             type: 'string',
             description:
-                'Optional path to a JSON file of structured fields to ' +
-                'capture alongside the score.',
+                'One of: plan-gap, design-choice, convention-unclear, ' +
+                'requirement-ambiguous, dependency-unknown, scope-creep.',
+        },
+        decision: {
+            type: 'string',
+            description: 'What the executor actually decided to do.',
+        },
+        alternatives: {
+            type: 'string',
+            description:
+                'Comma-separated list of other options considered ' +
+                '(e.g. `--alternatives="a,b,c"`).',
+        },
+        reasoning: {
+            type: 'string',
+            description: 'Why this choice was made over the alternatives.',
+        },
+        risk: {
+            type: 'string',
+            description: 'What could go wrong if this was the wrong call.',
+        },
+        files: {
+            type: 'string',
+            description:
+                'Comma-separated list of files affected by this decision ' +
+                '(e.g. `--files="src/a.ts,src/b.ts"`).',
+        },
+        'review-hint': {
+            type: 'string',
+            description:
+                'Optional. Suggested focus area for a human reviewer.',
         },
     },
     async run({ args }) {
-        const metadata = args['metadata-file']
-            ? await readJsonPayload('confidence log', args['metadata-file'])
-            : undefined
-        await runWriteHandler('confidence log', lucaConfidenceLogTool, {
-            score: Number(args.score),
-            stage: args.stage,
-            rationale: args.rationale,
-            metadata,
-        })
+        let payload: Record<string, unknown>
+        if (args.file) {
+            const fromFile = await readJsonPayload('confidence log', args.file)
+            if (typeof fromFile !== 'object' || fromFile === null || Array.isArray(fromFile)) {
+                logger.error(
+                    `luca confidence log: --file payload must be a JSON object.`
+                )
+                process.exit(1)
+            }
+            payload = fromFile as Record<string, unknown>
+        } else {
+            // Flag-driven form — build the payload from individual flags.
+            payload = {
+                phase: args.phase,
+                wave: args.wave !== undefined ? Number(args.wave) : undefined,
+                task: args.task,
+                confidence: args.confidence,
+                category: args.category,
+                decision: args.decision,
+                alternatives: splitCsv(args.alternatives),
+                reasoning: args.reasoning,
+                risk: args.risk,
+                files: splitCsv(args.files),
+                ...(args['review-hint'] !== undefined
+                    ? { reviewHint: args['review-hint'] }
+                    : {}),
+            }
+        }
+
+        await runWriteHandler(
+            'confidence log',
+            lucaConfidenceLogTool,
+            payload
+        )
     },
 })
 

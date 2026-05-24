@@ -267,6 +267,23 @@ function findUmbrellaDistClaude(): string | null {
     return null
 }
 
+/**
+ * Resolve the bundled `<luca-pkg>/dist/claude/.claude/` directory.
+ *
+ * Companion to `resolveBundledArtifacts()` — that function returns the
+ * roots for skills + agents + commands; this one returns the root for
+ * the `<luca-pkg>/dist/claude/.claude/` directory itself, which is where
+ * the hook handlers and bundled settings.json live.
+ *
+ * Returns null if the umbrella package root can't be located (e.g.
+ * running from a non-bundled dev tree). Used by `install-hooks.ts`.
+ */
+export function resolveBundledArtifactsForHooks(): string | null {
+    const distClaude = findUmbrellaDistClaude()
+    if (distClaude === null) return null
+    return join(distClaude, '.claude')
+}
+
 /** List the names of files (with `ext`) or directories directly under `dir`. */
 async function listEntries(
     dir: string,

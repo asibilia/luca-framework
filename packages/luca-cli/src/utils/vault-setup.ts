@@ -217,18 +217,18 @@ export async function runVaultWizard(
 }
 
 /**
- * Write the vault name to `.planning/config.json`.
+ * Write the vault name to `.luca/config.json`.
  *
  * Reads the existing config file, sets or updates the `muninn.vault` field,
  * and writes it back. Creates the file with a minimal structure if it does
  * not exist.
  *
  * @param vaultName - The vault name to write.
- * @param configPath - Absolute path to `.planning/config.json`.
+ * @param configPath - Absolute path to `.luca/config.json`.
  *
  * @example
  * ```typescript
- * writeVaultConfig("my-project", "/path/to/.planning/config.json");
+ * writeVaultConfig("my-project", "/path/to/.luca/config.json");
  * // config.json now contains: { "muninn": { "vault": "my-project" }, ... }
  * ```
  */

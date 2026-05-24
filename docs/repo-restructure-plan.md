@@ -388,6 +388,12 @@ delete that archive.
     divergence) and F3–F5 (design calls; small `luca state advance` side-
     effect verifications) are documented in the audit as follow-ups that
     need a design decision before they can land.
+  - ✅ **F4/F5 resolved (2026-05-23, pre-Phase-H fix wave):** branch and
+    repo surfaces stay thin — non-`guard`/`cleanup-apply` actions are
+    INTENTIONALLY DROPPED. Skills run git directly and parse shadow-scan
+    output inline; framework owns only the atomic mutations and the
+    non-recoverable guard. See dropped-actions audit §6 / §7 for per-
+    action dispositions.
 - **Phase D** — `luca-tools` artifact model + TS→Claude-Code compiler — ✅ **done**:
   - ✅ **D-1** — `define-*` factories landed at
     `packages/luca-tools/src/define/` (`defineAgent`, `defineSubagent`,

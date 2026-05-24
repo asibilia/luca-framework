@@ -5,7 +5,7 @@
  * and that the service is running and healthy. Uses the existing
  * `checkMuninndbBinary()` and `checkMuninndbService()` utilities.
  *
- * @see packages/luca-framework/src/utils/muninndb-health.ts
+ * @see packages/luca-cli/src/utils/muninndb-health.ts
  */
 
 import {

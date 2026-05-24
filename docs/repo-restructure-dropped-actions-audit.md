@@ -85,30 +85,55 @@ plus the freeform phase artifact writes via the native Write tool.
 
 7 actions. v13 surface: `luca branch guard` (one action — the assert).
 
+**F4 design call (RESOLVED, 2026-05-23):** The 6 non-`guard` actions are
+**INTENTIONALLY DROPPED**. Skills run git directly for inspection
+(`git rev-parse --abbrev-ref HEAD`, `git branch --show-current`) and
+consult merged branching preferences via `luca preferences read`.
+Framework no longer owns git mutation — that boundary is owned by the
+skill that knows the intent (`gh-prepare`, `git-feature`, etc.).
+`luca branch guard` is the single retained surface because it gates a
+*non-recoverable* operation (preventing accidental writes to the default
+branch) and benefits from a typed CLI.
+
 | # | Action | Disposition | v13 surface / rationale |
 |---|---|---|---|
-| 1 | `status` | **MISSING (small)** | Inspect the current branch + match against branching preferences. Cheap if `luca-core/preferences` is wired (it is). |
-| 2 | `create` | **MISSING — design call** | Direct `git checkout -b` mutation. v13 may intend skills to run git directly. If we keep `luca branch` thin, drop. If we want the framework to own branch creation (so preferences are enforced), port. |
-| 3 | `rename` | **MISSING — design call** | Same disposition as `create`. |
-| 4 | `assert-not-default` | **PORTED** | `luca branch guard --default-branch <name>` exits 1 on the default branch. |
-| 5 | `consult` | **MISSING (small)** | Return merged branching preferences. Trivial — `extractPreferences(config).branching`. |
-| 6 | `resolve` | **MISSING — design call** | Compute a branch plan from preferences. Pure, but the consumer of the plan (`apply`) is the design-call piece. |
-| 7 | `apply` | **MISSING — design call** | Execute a resolve result (git mutation + state persistence). Same design call as `create`. |
+| 1 | `status` | **INTENTIONALLY DROPPED** | Skills inspect current branch via direct git invocations (`git rev-parse --abbrev-ref HEAD`); no framework wrapper needed. |
+| 2 | `create` | **INTENTIONALLY DROPPED** | `git checkout -b` is a single shell call — skills run git directly. Framework doesn't own branch creation. |
+| 3 | `rename` | **INTENTIONALLY DROPPED** | Same rationale as `create`. |
+| 4 | `assert-not-default` | **PORTED** | `luca branch guard --default-branch <name>` exits 1 on the default branch. Retained because it gates a non-recoverable operation. |
+| 5 | `consult` | **INTENTIONALLY DROPPED** | Skills call `luca preferences read` for branching conventions and parse the JSON directly. |
+| 6 | `resolve` | **INTENTIONALLY DROPPED** | Computing a branch plan from preferences is a few lines of skill logic; not a framework concern. |
+| 7 | `apply` | **INTENTIONALLY DROPPED** | Same rationale as `create`. Framework doesn't own git mutation. |
 
-**Net:** 1 ported. 2 trivially-portable (`status`, `consult`). 4 (`create`, `rename`, `resolve`, `apply`) hinge on whether the framework should own git mutation or leave it to skills. v12 mastracode owned it; v13 has not. **This is a deliberate v13 simplification, not an oversight** — flag for sign-off if reconsidering.
+**Net:** 1 ported (`assert-not-default`), 6 intentionally dropped. The
+v13 model is *thin framework, smart skills* — the framework owns
+guards and atomic state mutation; the skills own intent, git, and
+multi-step orchestration.
 
 ## 7. repo-cleanup (mastracode `tools/repo-cleanup.ts`)
 
 6 actions. v13 surface: `luca repo cleanup-apply` (one action).
 
+**F5 design call (RESOLVED, 2026-05-23):** The 5 non-`cleanup-apply`
+actions are **INTENTIONALLY DROPPED**. The skills (`repo-cleanup` and
+the `shadow-scanner` subagent) invoke the shadow-scanner directly,
+parse its JSON output inline, and pass concrete findings into
+`luca repo cleanup-apply` one at a time. Parsing, summarising, and
+deciding which findings to act on are skill responsibilities — the
+framework owns only the atomic apply step that validates a
+`ShadowScanFinding` against the canonical schema and mutates the
+filesystem safely. `cleanup-artifacts` (mass-cleanup) is intentionally
+omitted: it's too coarse for autonomous use and any operator who needs
+it can invoke shell directly.
+
 | # | Action | Disposition | v13 surface / rationale |
 |---|---|---|---|
-| 1 | `scan` | **SUPERSEDED** | Invoking the shadow-scanner subagent is a Mastra-harness concern; the v13 model has skills invoke it directly. |
-| 2 | `parse-report` | **MISSING — small** | Pure shadow-scan-output parser. luca-core has a `shadow-scan` domain (`shadow-scan/schemas.ts`); a thin parser surface is feasible. |
-| 3 | `apply-fix` | **PORTED** | `luca repo cleanup-apply --file <finding.json>` applies a single ShadowScanFinding. |
-| 4 | `summary` | **MISSING (small)** | Aggregate a parsed report — counts by recommended-action. Pure transformation. |
-| 5 | `cleanup-artifacts` | **MISSING — design call** | Mass-cleanup of pipeline-leftover artifacts. Risky enough to want an explicit user-facing flag rather than an agent action. |
-| 6 | `archive-loose` | **MISSING (small)** | Move "loose" `.luca/` root files to the archive. May overlap with `apply-fix` of the `move` finding kind — verify. |
+| 1 | `scan` | **INTENTIONALLY DROPPED** | Skills invoke the shadow-scanner subagent directly (D-3 ports it). No framework wrapper needed. |
+| 2 | `parse-report` | **INTENTIONALLY DROPPED** | Skills parse shadow-scan JSON output inline. Pure transformation; no framework value. |
+| 3 | `apply-fix` | **PORTED** | `luca repo cleanup-apply --file <finding.json>` applies a single ShadowScanFinding. The atomic mutation kept inside the framework. |
+| 4 | `summary` | **INTENTIONALLY DROPPED** | Skills aggregate findings inline (`jq`, `awk`, or a few lines of TS). |
+| 5 | `cleanup-artifacts` | **INTENTIONALLY DROPPED** | Mass-cleanup is too coarse for autonomous use. Operators invoke shell directly when needed. |
+| 6 | `archive-loose` | **INTENTIONALLY DROPPED** | Overlaps with `apply-fix` of the `move` finding kind — `cleanup-apply` already handles this case via a `ShadowScanFinding` of kind `move`. |
 
 ## 8. Findings & recommended follow-ups
 
@@ -120,9 +145,25 @@ Ordered by value-to-cost:
 
 **F3. Verify `luca state advance` side effects** for the two workflow-state actions flagged "MISSING (verify)": `justify-empty-phase` (emits a `phase-empty-justification` ledger event the postmortem requires) and `re-enter-pipeline` (re-entry transitions in the legal-transition table). If the side effect is missing, add the surface; if present, document it.
 
-**F4. Decide the `luca branch` scope** (§6 design call). v12 owned git mutation (`create` / `rename` / `resolve` / `apply`); v13 has not. Either port these four actions back, or document the deliberate v13 simplification ("skills run git directly; `luca branch` only guards"). Two trivial reads (`status`, `consult`) are worth adding either way.
+**F4. `luca branch` scope — RESOLVED (2026-05-23, parity-review §B4 + this audit §6).** All 6 non-`guard` actions
+(`status`, `create`, `rename`, `consult`, `resolve`, `apply`) are **INTENTIONALLY DROPPED**. The v13 model is
+*thin framework, smart skills* — the framework owns guards and atomic
+state mutation; skills own intent, git, and multi-step orchestration.
+Skills run git directly (`git rev-parse --abbrev-ref HEAD`,
+`git checkout -b`, etc.) and consult merged branching preferences via
+`luca preferences read`. `luca branch guard --default-branch <name>` is
+the single retained surface because it gates a non-recoverable operation
+(preventing accidental writes to the default branch). See §6 for the
+per-action disposition.
 
-**F5. Decide the `luca repo` scope** (§7 design call). Add the small `parse-report` / `summary` / `archive-loose` surfaces; sign off on whether `cleanup-artifacts` belongs in the framework at all.
+**F5. `luca repo` scope — RESOLVED (2026-05-23, parity-review §B4 + this audit §7).** All 5 non-`cleanup-apply`
+actions (`scan`, `parse-report`, `summary`, `cleanup-artifacts`,
+`archive-loose`) are **INTENTIONALLY DROPPED**. Skills invoke the
+shadow-scanner subagent directly, parse JSON output inline, and pass
+concrete findings into `luca repo cleanup-apply` one at a time.
+Framework owns only the atomic apply step. `cleanup-artifacts`
+(mass-cleanup) is intentionally omitted as too coarse for autonomous
+use. See §7 for the per-action disposition.
 
 ## 9. Out of scope for this audit
 

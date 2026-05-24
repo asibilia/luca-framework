@@ -3,14 +3,14 @@
  *
  * Per-project MuninnDB vault wiring. Detects the project context,
  * runs the vault wizard (vault name + API key prompts), writes
- * `.planning/config.json` and `.env`, and verifies connectivity.
+ * `.luca/config.json` and `.env`, and verifies connectivity.
  *
  * @example
  * ```bash
  * # Interactive mode (default)
  * luca vault:init
  *
- * # Skip vault setup (create .planning/ directory only)
+ * # Skip vault setup (create .luca/ directory only)
  * luca vault:init --skip-vault
  * ```
  */
@@ -38,7 +38,7 @@ export const vaultInitCommand = defineCommand({
         'skip-vault': {
             type: 'boolean',
             description:
-                'Skip MuninnDB vault setup (only create .planning/ directory)',
+                'Skip MuninnDB vault setup (only create .luca/ directory)',
             default: false,
         },
     },
@@ -51,23 +51,23 @@ export const vaultInitCommand = defineCommand({
         const context = await detectProjectContext()
 
         // Guard: check if vault is already configured
-        const configPath = join(cwd, '.planning', 'config.json')
+        const configPath = join(cwd, '.luca', 'config.json')
         if (existsSync(configPath)) {
             p.log.warn(
-                'Vault already configured (.planning/config.json exists).'
+                'Vault already configured (.luca/config.json exists).'
             )
             p.log.info(
-                'To reconfigure, delete .planning/config.json and run again.'
+                'To reconfigure, delete .luca/config.json and run again.'
             )
             p.outro('Vault setup skipped.')
             return
         }
 
-        // Ensure .planning/ directory exists
-        const planningDir = join(cwd, '.planning')
-        if (!existsSync(planningDir)) {
-            mkdirSync(planningDir, { recursive: true })
-            p.log.success('Created .planning/ directory')
+        // Ensure .luca/ directory exists
+        const lucaDir = join(cwd, '.luca')
+        if (!existsSync(lucaDir)) {
+            mkdirSync(lucaDir, { recursive: true })
+            p.log.success('Created .luca/ directory')
         }
 
         // Vault setup
@@ -89,7 +89,7 @@ export const vaultInitCommand = defineCommand({
         const envPath = join(cwd, '.env')
 
         await writeVaultConfig(vaultResult.vaultName, configPath)
-        p.log.success('Vault name written to .planning/config.json')
+        p.log.success('Vault name written to .luca/config.json')
 
         await writeApiKeyToEnv(
             vaultResult.apiKey,
@@ -112,6 +112,6 @@ export const vaultInitCommand = defineCommand({
             )
         }
 
-        p.outro('Vault configured! Run `luca run` to launch the harness.')
+        p.outro('Vault configured! Run `lu "<your task>"` to start the pipeline.')
     },
 })

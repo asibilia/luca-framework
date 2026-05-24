@@ -62,7 +62,7 @@ export async function detectProjectContext(
 
     // Directory existence checks — existsSync required (Bun.file doesn't support dirs)
     context.hasGit = existsSync(join(cwd, '.git'))
-    context.hasLuca = existsSync(join(cwd, '.planning'))
+    context.hasLuca = existsSync(join(cwd, '.luca'))
 
     // Detect existing source code directories
     context.hasExistingSource =

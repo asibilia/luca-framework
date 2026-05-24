@@ -22,8 +22,8 @@
  * pattern (`hooks: { 'build:done': ... }`) to bundle luca-core +
  * mastracode for the legacy 12.0.0-alpha tarball.
  */
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
 
@@ -90,6 +90,41 @@ export default defineBuildConfig({
             const c = report.counts
             console.log(
                 `[luca] compiled artifacts → ${distClaude} (agents:${c.agent} subagents:${c.subagent} commands:${c.command} skills:${c.skill} hooks:${c.hook} rules:${c.rule})`,
+            )
+
+            // B3 (parity-review §B3, F-2 known gap): the compiler emits
+            // a `settings.json` referencing handler scripts at
+            // `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.ts`, but those
+            // handler scripts are not in `dist/claude/` yet — they live
+            // in source at `packages/luca-tools/src/hooks/<name>/handler.ts`.
+            //
+            // Copy them into `dist/claude/.claude/hooks/<name>.ts` so
+            // `luca init` can lay them down per-project. Each hook
+            // directory under `packages/luca-tools/src/hooks/` is mirrored
+            // to `<distClaude>/.claude/hooks/<name>.ts`.
+            //
+            // We resolve `packages/luca-tools/` relative to the umbrella
+            // package — the umbrella's cwd at build time is
+            // `packages/luca/`, so the sibling lives at
+            // `../luca-tools/src/hooks/`.
+            const hooksSrcRoot = resolve('..', 'luca-tools', 'src', 'hooks')
+            const hooksDestRoot = join(distClaude, '.claude', 'hooks')
+            const copiedHookHandlers: string[] = []
+            if (existsSync(hooksSrcRoot)) {
+                mkdirSync(hooksDestRoot, { recursive: true })
+                for (const entry of readdirSync(hooksSrcRoot)) {
+                    const dir = join(hooksSrcRoot, entry)
+                    if (!statSync(dir).isDirectory()) continue
+                    const handlerSrc = join(dir, 'handler.ts')
+                    if (!existsSync(handlerSrc)) continue
+                    const handlerDest = join(hooksDestRoot, `${entry}.ts`)
+                    mkdirSync(dirname(handlerDest), { recursive: true })
+                    copyFileSync(handlerSrc, handlerDest)
+                    copiedHookHandlers.push(`${entry}.ts`)
+                }
+            }
+            console.log(
+                `[luca] copied hook handlers → ${hooksDestRoot} (${copiedHookHandlers.length}: ${copiedHookHandlers.join(', ')})`,
             )
         },
     },

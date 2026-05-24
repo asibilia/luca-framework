@@ -52,7 +52,7 @@ export async function checkForUpdates(): Promise<void> {
         // Notify if update available
         // This is non-blocking - runs in background
         notifier.notify({
-            message: `New Luca CLI version available: {currentVersion} → {latestVersion}\nRun: bun add -g @alecsibilia/luca-framework@latest`,
+            message: `New Luca CLI version available: {currentVersion} → {latestVersion}\nRun: bun add -g @alecsibilia/luca@latest`,
             defer: false,
         })
     } catch {
