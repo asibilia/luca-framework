@@ -29,7 +29,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 
 2. **Load roadmap:**
 
-   - Read \`.luca/ROADMAP.md\`
+   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\`)
    - Error if not found
 
 3. **Verify target phase:**
@@ -62,13 +62,9 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
    - Include "(INSERTED)" marker
    - Add Goal, Depends on, Plans placeholders
 
-8. **Update state (bridge primary, STATE.md fallback):**
+8. **Roadmap update:**
 
-   \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Manually add entry under "Roadmap Evolution" in STATE.md with (URGENT) marker
-   \\\`\\\`\\\`
+   The roadmap edit is the durable change. Confirm via \`luca roadmap read\`. The workflow state in \`.luca/state.json\` updates separately when the pipeline transitions into the inserted phase.
 
 9. **Present completion:**
 
@@ -95,7 +91,7 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry (includes "(INSERTED)" marker)
 - [ ] Phase inserted in correct position
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] \`.luca/state.json\` reflects the new phase (read back via \`luca state read\` to confirm)
 - [ ] Decimal number calculated correctly
 
 ## Next Steps

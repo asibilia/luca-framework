@@ -26,7 +26,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
 2. **Load roadmap:**
 
-   - Read \`.luca/ROADMAP.md\`
+   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\`)
    - Error if not found
 
 3. **Find current milestone:**
@@ -57,15 +57,9 @@ Add a new integer phase to the end of the current milestone in the roadmap.
    - Insert new phase entry after last phase in current milestone
    - Include Goal, Depends on, Plans placeholders
 
-8. **Update state (bridge primary, STATE.md fallback):**
+8. **Roadmap update:**
 
-   \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Manually add reference to new phase in STATE.md
-   \\\`\\\`\\\`
-
-   - Add entry under "Roadmap Evolution" in STATE.md
+   The roadmap edit is the durable change. Read it back via \`luca roadmap read\` to confirm the new phase appears. The workflow state machine in \`.luca/state.json\` updates separately when the pipeline transitions into that phase.
 
 9. **Present completion:**
 
@@ -96,7 +90,7 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] \`.luca/state.json\` reflects the new phase (read back via \`luca state read\` to confirm)
 - [ ] New phase appears at end of current milestone
 - [ ] Next phase number calculated correctly
 </main>

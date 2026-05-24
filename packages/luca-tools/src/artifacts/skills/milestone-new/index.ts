@@ -13,57 +13,46 @@ const BODY = `<main>
 
 Start a new milestone through unified flow: questioning → research (optional) → requirements → roadmap.
 
-This is the brownfield equivalent of new-project. The project exists, PROJECT.md has history. This command gathers "what's next", updates PROJECT.md, then continues through the full requirements → roadmap cycle.
+This is the brownfield equivalent of new-project. The project exists, the \`brain:project-identity\` MuninnDB tree has history. This command gathers "what's next", evolves \`brain:project-identity\`, then continues through the full requirements → roadmap cycle.
 
 **Arguments:** \`[milestone name, e.g., 'v1.1 Notifications']\`
 
 ## Creates/Updates
 
-- \`.luca/PROJECT.md\` — updated with new milestone goals
-- \`.luca/research/\` — domain research (optional, focuses on NEW features)
-- \`.luca/REQUIREMENTS.md\` — scoped requirements for this milestone
-- \`.luca/ROADMAP.md\` — phase structure (continues numbering)
-- \`.luca/STATE.md\` — reset for new milestone
+- MuninnDB \`brain:project-identity\` — updated with new milestone marker + goals
+- MuninnDB \`brain:project-requirements\` — scoped requirements for this milestone (REQ-IDs continue from prior milestone)
+- MuninnDB \`research:milestone-<slug>:*\` — domain research (optional, focuses on NEW features)
+- \`.luca/roadmap.md\` — phase structure (continues numbering, written via \`luca roadmap create\` if resetting or hand-edited if extending)
+- \`.luca/state.json\` — reset for new milestone via \`luca workflow reset\`
 
 **After this command:** Run \`/phase-plan [N]\` to start execution.
 
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.cursor/luca/references/questioning.md\`
-- \`.cursor/luca/references/ui-brand.md\`
-- \`.cursor/luca/templates/project.md\`
-- \`.cursor/luca/templates/requirements.md\`
-
 ## Process
 
-1. **Load Context** — Read PROJECT.md, MILESTONES.md, STATE.md
+1. **Load Context** — Read project identity from MuninnDB (\`brain:project-identity\`), prior milestone snapshots under \`.luca/milestones/\`, and the current workflow state:
 
    \`\`\`bash
-   # Primary: Read state from bridge (typed, validated)
-   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly (backward compatibility)
-   STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+   STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
    \`\`\`
 
-2. **Gather Milestone Goals** — Use MILESTONE-context.md if exists, or question user
-3. **Determine Milestone Version** — Parse last version, suggest next
-4. **Update PROJECT.md** — Add Current Milestone section
-5. **Reset state for new milestone:**
+2. **Gather Milestone Goals** — Recall any per-milestone discussion context from MuninnDB (\`milestone:<slug>\`), or question user
+3. **Determine Milestone Version** — Parse last version from \`.luca/milestones/\` snapshots, suggest next
+4. **Update project identity in MuninnDB** — Store the current milestone marker:
+
+   \`\`\`
+   mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "milestone:v{version}", content: "<milestone goals + scope>", tags: ["milestone","active"])
+   \`\`\`
+
+5. **Reset workflow state for new milestone:**
 
    \`\`\`bash
-   # Primary: Reset state machine and reinitialize for new milestone
-   bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="v{version}" 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Update STATE.md directly if bridge unavailable
+   luca workflow reset 2>/dev/null || true
+   # The freshly reset state defaults to pipelineStep=triage. The milestone identifier is captured via MuninnDB (above), not as a state field.
    \`\`\`
 
 6. **Research Decision** — Spawn researchers if selected (milestone-aware context)
 7. **Define Requirements** — Present features, scope each category
-8. **Create Roadmap** — Spawn lu-roadmapper (continues phase numbering)
+8. **Create Roadmap** — Use \`luca roadmap create\` (continues phase numbering)
 9. **GitHub Issue & Branch Decision** — See below
 10. **Done** — Present completion with next steps
 
@@ -85,24 +74,26 @@ How should this milestone be tracked on GitHub?
 
 **If "New issue & branch" selected:**
 
-1. Generate issue body from PROJECT.md (Current Milestone section), REQUIREMENTS.md summary
+1. Generate issue body from MuninnDB recall (\`brain:project-identity\` current-milestone child + \`brain:project-requirements\` v-current scope)
 2. Create issue: \`gh issue create --title "feat({scope}): {milestone-name}" --body "{body}"\`
 3. Create branch: \`git checkout -b {issue_number}--{milestone-slug}\`
 4. Push branch: \`git push -u origin {branch_name}\`
-5. Update state with new issue/branch references:
+5. Record the issue/branch references in MuninnDB so the active session has durable context:
 
-   \`\`\`bash
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Update STATE.md directly
+   \`\`\`
+   mcp__muninn__muninn_remember(
+     vault: "<repo_vault>",
+     concept: "session:milestone-v{version}",
+     content: "GitHub issue #{issue_number} / branch {branch_name} — milestone v{version}",
+     tags: ["session","milestone","github"]
+   )
    \`\`\`
 
 **If "Continue on existing" selected:**
 
 1. Verify existing issue still open: \`gh issue view {number} --json state\`
 2. Add comment to existing issue noting new milestone started
-3. Keep existing issue/branch in state (no bridge update needed)
+3. Keep existing issue/branch references in MuninnDB (no state update needed)
 
 **If "No tracking" selected:**
 
@@ -111,16 +102,16 @@ How should this milestone be tracked on GitHub?
 
 ## Success Criteria
 
-- [ ] PROJECT.md updated with Current Milestone section
-- [ ] STATE.md reset for new milestone
-- [ ] MILESTONE-context.md consumed and deleted (if existed)
+- [ ] MuninnDB \`brain:project-identity\` updated with current-milestone marker
+- [ ] \`.luca/state.json\` reset for new milestone (via \`luca workflow reset\`)
+- [ ] Prior milestone-context engrams consumed (recalled into the new milestone's planning)
 - [ ] Research completed (if selected) — 4 parallel agents spawned, milestone-aware
 - [ ] Requirements gathered (from research or conversation)
 - [ ] User scoped each category
-- [ ] REQUIREMENTS.md created with REQ-IDs
-- [ ] ROADMAP.md created with phases continuing from previous milestone
+- [ ] MuninnDB \`brain:project-requirements\` updated with new milestone's REQ-IDs
+- [ ] \`.luca/roadmap.md\` created with phases continuing from previous milestone
 - [ ] GitHub tracking decision made (new issue, continue existing, or opt-out)
-- [ ] State machine reflects issue/branch tracking status (via bridge set-field)
+- [ ] Issue/branch tracking captured in MuninnDB \`session:milestone-*\` engram (when tracking opted in)
 
 ## Next Steps
 

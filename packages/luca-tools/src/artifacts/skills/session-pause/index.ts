@@ -19,13 +19,12 @@ Enables seamless resumption in fresh session with full context restoration.
 
 ### Step 1: Detect Current Phase
 
-Read current phase from bridge (with filesystem fallback):
+Read current phase from the canonical workflow state:
 
 \`\`\`bash
-# Primary: Read phase info from bridge
-PHASE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Find current phase directory from most recently modified files
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+PHASE=$(echo "$STATE_JSON" | jq -r '.currentPhase // empty')
+PHASE_SLUG=$(echo "$STATE_JSON" | jq -r '.currentPhaseSlug // empty')
 \`\`\`
 
 ### Step 2: Gather Context

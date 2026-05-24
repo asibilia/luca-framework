@@ -29,14 +29,11 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 2. **Load state:**
 
    \\\`\\\`\\\`bash
-   # Primary: Read state from bridge
-   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly
-   STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+   STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
    \\\`\\\`\\\`
 
-   - Read ROADMAP.md
-   - Parse current phase number
+   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\`)
+   - Parse current phase number from the workflow state JSON
 
 3. **Validate phase exists:**
 
@@ -72,19 +69,15 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 
    - Rename plan files inside renumbered directories
 
-10. **Update ROADMAP.md:**
+10. **Update \`.luca/roadmap.md\`:**
 
     - Remove phase section entirely
     - Renumber all subsequent phases
     - Update dependency references
 
-11. **Update state (bridge primary, STATE.md fallback):**
+11. **Roadmap update:**
 
-    \\\`\\\`\\\`bash
-    # Primary: Regenerate STATE.md from state machine (reflects roadmap changes)
-    bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-    # Fallback: Manually update total phase count and progress percentage in STATE.md
-    \\\`\\\`\\\`
+    The roadmap edit is the durable change. Confirm via \`luca roadmap read\`. The workflow state in \`.luca/state.json\` reads phase counts from the roadmap on demand — no separate state snapshot step is needed.
 
 12. **Commit:**
     - \`chore: remove phase {target} ({original-phase-name})\`
@@ -94,12 +87,12 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 - Don't remove completed phases (have SUMMARY.md files)
 - Don't remove current or past phases
 - Don't leave gaps in numbering - always renumber
-- Don't add "removed phase" notes to STATE.md - git commit is the record
+- Don't add "removed phase" notes to \`.luca/state.json\` — the git commit is the record
 
 ## Edge Cases
 
 - **Removing decimal phase:** Only affects other decimals in same series
-- **No subsequent phases:** Just delete and update ROADMAP.md
+- **No subsequent phases:** Just delete and update \`.luca/roadmap.md\`
 - **Phase directory doesn't exist:** Skip deletion, proceed with updates
 - **Decimal phases under removed integer:** Renumber to previous integer
 
@@ -109,8 +102,8 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 - [ ] Phase directory deleted (if existed)
 - [ ] All subsequent phase directories renumbered
 - [ ] Files inside directories renamed
-- [ ] ROADMAP.md updated (section removed, all references renumbered)
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] \`.luca/roadmap.md\` updated (section removed, all references renumbered)
+- [ ] \`.luca/state.json\` reflects the new phase numbering (read back via \`luca state read\` to confirm)
 - [ ] Changes committed with descriptive message
 - [ ] No gaps in phase numbering
 

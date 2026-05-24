@@ -29,26 +29,22 @@ Capture idea or task as todo from current conversation.
    - Search existing pending todos for similar content
    - Warn if duplicate found
 
-4. **Create todo file:**
-   - Location: \`.luca/todos/pending/{slug}.md\`
-   - Include: title, area, source context, timestamp
-
-5. **Update state (bridge primary, STATE.md fallback):**
+4. **Persist the todo via the canonical CLI surface:**
 
    \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (reflects todo changes)
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Manually increment todo count in STATE.md
+   luca todo add --title "<title>" --area "<area>" --priority "<low|medium|high|critical>" --source "<origin>" --body "<source context>"
    \\\`\\\`\\\`
 
-6. **Confirm:**
+   Backlog state lives in MuninnDB (\`todo:*\` engrams under the repo vault) — there is no \`.luca/todos/\` directory in the LUCA_DIR_CONTRACT.
+
+5. **Confirm:**
 
    \`\`\`
    ✓ Todo captured: {title}
-   
+
    Area: {area}
-   File: .luca/todos/pending/{slug}.md
-   
+   Backlog: MuninnDB todo:<id> (see \`luca todo list\`)
+
    /todo-check to review pending
    \`\`\`
 
@@ -80,8 +76,8 @@ source: conversation
 - [ ] Todo content extracted (from args or conversation)
 - [ ] Area inferred from context
 - [ ] Duplicate check performed
-- [ ] Todo file created in \`.luca/todos/pending/\`
-- [ ] State updated via bridge snapshot (or STATE.md fallback)
+- [ ] Todo engram persisted to MuninnDB backlog (\`todo:*\` in repo vault)
+- [ ] Todo persisted to MuninnDB backlog via \`luca todo add\` (read back via \`luca todo list\` to confirm)
 - [ ] User knows how to review todos
 
 ## Next Steps

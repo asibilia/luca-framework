@@ -9,13 +9,11 @@
 import { defineSkill } from '../../../define/skill.ts'
 
 const BODY = `<main>
-The single entry point for all Luca workflows. This is a **routing skill** — it classifies the task and invokes the appropriate sub-skill via the Skill tool.
+The single entry point for the Luca pipeline. This SKILL is the long-form companion to the modernized \`/lu\` slash command — it drives the pipeline loop end-to-end: triage → research → discuss → architect → plan → plan-review → execute → checks → verify → review → learn → milestone.
 
-**Arguments:** \`<task-description | Jira-URL | [TICKET-ID]> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch]\`
+**Arguments:** \`<task-description> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch]\`
 
-> **Note:** Replace \`[TICKET-ID]\` with your project's configured ticket pattern (e.g., \`PROJ-123\`, \`PT-123\`, or your custom \`ticketPattern\` from \`.luca/config.json\`). Default pattern: \`[A-Z]+-\\d+\`
-
-**CRITICAL:** You are a router. Do NOT execute workflow steps yourself. Invoke sub-skills and sub-agents as described below.
+**CRITICAL:** You are the **orchestrator**. You do not write code or planning artifacts directly — you read state, run each step (delegating to its skill or subagent), and advance the pipeline via \`luca state advance\`.
 
 </main>
 
@@ -28,175 +26,93 @@ This skill uses TWO delegation mechanisms:
 - Each invoked skill loads its own SKILL.md with full instructions
 - Users see visual skill headers for each step
 
-**Task tool** — for specialized agents (lu-cognition, lu-router, lu-verifier, lu-learner)
+**Task tool** — for specialized subagents (luca-researcher, luca-plan-reviewer, luca-verifier, luca-reviewer, luca-learner)
 
 - Invoke: \`Task(agent: "agent-name", prompt: "...")\`
-- Agents run as sub-agents within the current context
+- Subagents run inside a fresh sub-context
 
 ### Model Resolution
 
-Resolve models before spawning agents:
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-| Agent       | quality | balanced | budget |
-| ----------- | ------- | -------- | ------ |
-| lu-verifier | sonnet  | sonnet   | haiku  |
-| lu-learner  | sonnet  | haiku    | haiku  |
-| lu-planner  | opus    | opus     | sonnet |
-| lu-executor | opus    | sonnet   | sonnet |
-
-**Current model values:**
-
-- Lightweight agents (lu-learner): \`model="fast"\`
-- Reasoning-intensive agents (lu-verifier, lu-planner, lu-executor): omit model (inherit from parent)
+Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`). The skill does not pick model strings — it spawns the named agent and the routing layer handles tier selection.
 
 </sub-agent_delegation_requirements>
 
 <workflow>
-Execute these steps in order. Each step is either a Task tool call (for agents) or a Skill tool call (for sub-skills).
+Execute these steps in order. Each step is either a Task tool call (for subagents) or a Skill tool call (for sub-skills).
 
-### Step 0: Parse Request
+### Step 0: Read state
 
-Determine:
+Run \`luca state read\`. Branch on \`pipelineStep\`:
 
-- **Task type**: New project, phase work, PR review, debug, quick task, or session planning
-- **Complexity override**: Check for \`--complexity=<level>\` or \`--force-complex\` flags
-- **Git context**: Check for Jira URL, ticket ID, or plain task description
-- **Skip flags**: \`--skip-memory\`, \`--skip-branch\`
+- \`idle\` or \`complete\` → fresh start. Go to **Triage**.
+- anything else → the pipeline is mid-flight. Skip triage, go straight to **Pipeline loop** and resume from the current step.
 
-### Step 1: Git Context Setup (if applicable)
+If the user passed a request but the pipeline is already mid-flight, surface that to the user and ask whether to resume the current run or finish it first — do NOT silently discard either.
 
-If the request includes a Jira ticket or URL and \`--skip-branch\` is NOT set:
+### Triage
 
-1. Check if a GitHub issue exists for this ticket
-2. If not, invoke: \`Skill(skill: "jira-issue", args: "<ticket-id>")\`
-3. Create or switch to the feature branch: \`Skill(skill: "git-feature", args: "<ticket-id>")\`
+Triage runs once, at the start of a run. It is inline here — there is no separate triage skill.
 
-If already on a feature branch or \`--skip-branch\` is set, skip this step.
+1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (the model-routing table keys off it). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
+2. **Build the roadmap.** Decompose the request into ordered phases. Each phase is one deliverable unit. Stage the phases array in a JSON file, then run \`luca roadmap create --file\`:
+   \`\`\`
+   # /tmp/luca-roadmap.json:
+   # [
+   #   { "name": "<kebab-or-prose name>", "deps": [], "complexity": "<level>" },
+   #   ...
+   # ]
+   luca roadmap create --file /tmp/luca-roadmap.json
+   \`\`\`
+   For a single-deliverable request, that is a one-phase roadmap. \`luca roadmap create\` is only legal in \`idle\`/\`triage\` — it resets \`currentPhase\` to 0.
+3. **Advance** \`idle → triage → research\` via two \`luca state advance --to-step <step>\` calls.
 
-### Step 2: Cognitive Pre-Flight (if applicable)
+### Pipeline loop
 
-Unless \`--skip-memory\` is set, spawn the lu-cognition agent:
+Repeat until \`pipelineStep\` is \`complete\`:
 
-\`\`\`
-Task(agent: "lu-cognition", prompt: "Run cognitive pre-flight for task: <task-description>. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns for <task-description>'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*').")
-\`\`\`
+1. Run \`luca state read\` to get the current \`pipelineStep\`.
+2. Run the step using the table below.
+3. Advance to the next step with \`luca state advance --to-step <step>\`. Transitions are validated against the pipeline-transitions table — illegal jumps are rejected.
 
-### Step 3: Complexity Classification
+| Step          | How to run it                                                              |
+|---------------|----------------------------------------------------------------------------|
+| \`research\`    | Spawn \`luca-researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
+| \`discuss\`     | Invoke \`Skill(skill: "phase-discuss")\`.                                    |
+| \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Advance to \`plan\`. |
+| \`plan\`        | Invoke \`Skill(skill: "phase-plan")\`.                                       |
+| \`plan-review\` | Spawn \`luca-plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
+| \`execute\`     | Invoke \`Skill(skill: "phase-execute")\`.                                    |
+| \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
+| \`verify\`      | Spawn \`luca-verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
+| \`review\`      | Spawn \`luca-reviewer\` (Agent tool) — one per perspective, in parallel.     |
+| \`learn\`       | Spawn \`luca-learner\` (Agent tool). Then: more phases remain → advance to \`plan\` for the next phase; last phase → advance to \`milestone\`. |
+| \`milestone\`   | Invoke \`Skill(skill: "milestone-new")\` to close out, or advance to \`complete\` if no milestone bookkeeping is needed. |
 
-If \`--complexity=<level>\` was passed, use that level directly. Write it via the bridge:
+### Oversight
 
-\`\`\`bash
-# Primary: Set complexity via bridge (updates state machine + STATE.md)
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-# Fallback: Update STATE.md directly if bridge unavailable
-\`\`\`
+Read \`oversight\` from \`luca state read\`:
 
-If \`--force-complex\` was passed, use COMPLEX.
+- \`full-auto\` — run the whole loop without pausing.
+- \`checkpoint\` — pause after \`plan-review\`, \`verify\`, and \`learn\` for user confirmation.
+- \`human-in-loop\` — pause after every step.
 
-Otherwise, spawn lu-router to classify:
+### What you must NOT do
 
-\`\`\`
-Task(agent: "lu-router", prompt: "Classify complexity for task: <task-description>. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL.")
-\`\`\`
+- Do NOT write code directly. Phase artifact files are written with the \`Write\` tool to their canonical path by a subagent or \`/phase-*\` skill; structured \`.luca/\` mutations go through the \`luca\` CLI. The stage-gate hook blocks any other direct write.
+- Do NOT skip steps. The pipeline-transitions table is the contract; \`luca state advance\` enforces it. There is no bypass.
+- Do NOT re-triage a mid-flight pipeline. Resume from the current step instead.
+- Do NOT commit. Commits happen only in the finalizing flow, never inside \`/lu\`.
 
-### Step 4: Route to Handler (via Skill tool)
+### Other entry points (alternatives to /lu)
 
-Based on the classified complexity and task type, invoke the appropriate skill:
+- New project initialization: \`Skill(skill: "project-new", args: "<project description>")\`
+- New milestone: \`Skill(skill: "milestone-new", args: "<milestone description>")\`
+- Quick / ad-hoc task that doesn't need a roadmap: \`Skill(skill: "quick", args: "<task-description>")\`
+- Progress check: \`Skill(skill: "progress")\`
+- Session planning: \`Skill(skill: "session-plan")\`
+- Autonomous execution across multiple phases: \`Skill(skill: "autopilot", args: "<flags>")\`
 
-**New project initialization:**
-\`\`\`
-Skill(skill: "project-new", args: "<project description>")
-\`\`\`
-
-**New milestone:**
-\`\`\`
-Skill(skill: "milestone-new", args: "<milestone description>")
-\`\`\`
-
-**Task routing (via state machine or gate checks):**
-
-For phase work, query the state machine or use \`luca_gate_check\` to determine which steps should run based on the classified complexity:
-
-1. Check \`research\` gate (if required/optional): \`Skill(skill: "phase-research")\`
-2. Check \`discussion\` gate (if required/optional/run): \`Skill(skill: "phase-discuss")\`
-3. Always plan (if no plans exist): \`Skill(skill: "phase-plan")\`
-4. Always execute: \`Skill(skill: "phase-execute")\`
-
-Alternatively, hand off to the \`autopilot\` skill which handles these state machine checks natively.
-
-**Ad-hoc / Quick task:**
-If task is truly TRIVIAL or SIMPLE AND does not require roadmap planning:
-\`\`\`
-Skill(skill: "quick", args: "<task-description>")
-\`\`\`
-
-**PR review work:**
-\`\`\`
-Skill(skill: "pr-address", args: "<pr-url>")
-\`\`\`
-
-**Debug workflow:**
-\`\`\`
-Skill(skill: "debug", args: "<bug-description>")
-\`\`\`
-
-**Session planning:**
-\`\`\`
-Skill(skill: "session-plan")
-\`\`\`
-
-**Progress check:**
-\`\`\`
-Skill(skill: "progress")
-\`\`\`
-
-**Autopilot mode (autonomous execution):**
-If task description is "autopilot" or \`--autopilot\` flag is passed, route to the autopilot orchestrator which drives backlog scan, roadmap revision, and multi-phase execution autonomously:
-\`\`\`
-Skill(skill: "autopilot", args: "<flags>")
-\`\`\`
-Supported flags: \`--oversight=flagged|milestone|phase|full-auto\`, \`--skip-backlog\`, \`--max-phases=N\`, \`--dry-run\`
-
-### Step 5: Verification (always runs)
-
-After the handler skill completes, spawn lu-verifier:
-
-\`\`\`
-Task(agent: "lu-verifier", prompt: "Verify the work completed for task: <task-description>. Check against acceptance criteria and requirements.")
-\`\`\`
-
-### Step 6: Learning Capture (always runs)
-
-Always spawn lu-learner (model tier resolved from routing table per complexity):
-
-\`\`\`
-Task(agent: "lu-learner", model: "fast", prompt: "Extract learnings from completed task: <task-description>. Recall session findings via mcp__muninn__muninn_recall(vault: 'default', context: 'current session context and findings'). Capture patterns, decisions, and pitfalls to MuninnDB via mcp__muninn__muninn_remember(vault: 'default', concept: '<category>', content: '<learning>'). Clear session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*') after extraction.")
-\`\`\`
-
-The lu-learner model tier is resolved via \`resolveModelForAgent("lu-learner", complexity)\`. At TRIVIAL/SIMPLE, the learner uses a "fast" model tier, keeping cost minimal while still capturing learnings.
-
-### Step 7: Commit (if on feature branch)
-
-If on a feature branch with uncommitted changes:
-\`\`\`
-Skill(skill: "git-commit", args: "--no-push")
-\`\`\`
-
-### Complexity Override
-
-If \`--complexity=<level>\` is passed:
-1. Skip lu-router classification
-2. Use the specified level directly
-3. Look up gated steps from the complexity matrix in config.json
-4. Persist via bridge: \`bun run packages/luca-framework/src/state/bridge.ts set-field --field=complexity --value="<LEVEL>" 2>/dev/null || true\`
-
-If \`--force-complex\` is passed (backward compatibility):
-- Equivalent to \`--complexity=COMPLEX\`
+PR-review and debug workflows are not bundled with the v13 Luca skill set; reach for the user's own \`gh-pr-address\` / \`bug-diagnose\` skills (under \`~/.claude/skills/\`) when present.
 
 </workflow>
 `

@@ -41,7 +41,7 @@ const BODY = `# Triage Agent Instructions
 
 > **COMMUNICATION**: Caveman mode (full) is always active. Activate the \`caveman\` skill immediately and follow its rules for all output.
 
-> **Artifact paths**: Per-phase artifacts (research.md, context.md, plan.md, plan-review.md, verify.json, learn.md, execute/, audits/) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (roadmap.md, state.json, config.json, ledger.jsonl) stay at \`.luca/\` root. Triage derives + persists \`currentPhaseSlug\` automatically via \`luca state save-triage\`; downstream stages just read it.
+> **Artifact paths**: Per-phase artifacts (research.md, context.md, plan.md, plan-review.md, verify.json, learn.md, execute/, audits/) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (roadmap.md, state.json, config.json, ledger.jsonl) stay at \`.luca/\` root. Triage derives + persists the workflow state (intent, complexity, oversight, profile, affected areas) via the standard \`luca state advance\` flow; downstream stages just read it.
 
 ## Role
 
@@ -62,15 +62,12 @@ You are **read-only + classification only**: classify → save → switch mode �
 
 ## Step 0: Crash Recovery
 
-Invoke \`luca state recover\`. If it returns a \`recovery\` field, handle by \`strategy\`:
-- \`resume-phase\` / \`advance-phase\`: skip triage, switch to \`recovery.resumeMode\`.
-- \`restart-step\`: switch to the recommended mode (re-executes from scratch).
-- \`fresh-start\`: continue with normal triage below.
+Read the current workflow state via \`luca state read\`. Inspect the returned \`pipelineStep\` and any active phase:
 
-If status is \`live\`: warn the user another session is active, wait for guidance.
-If status is \`clear\`: proceed normally.
+- If a phase is in progress (non-\`triage\` step, \`currentPhase\` non-null), assume crash recovery: skip a full re-triage and continue from the active step via \`luca state advance --to-step <step>\` when ready.
+- If state is clean (no active phase, \`pipelineStep === 'triage'\`), continue with normal triage below.
 
-After recovery (if proceeding), acquire a fresh lock via \`luca state lock acquire\`.
+If another live session is detected (concurrent-run protection is a v14 carry-forward; pipeline locking is not yet wired in v13), proceed cautiously and warn the user before mutating shared workflow state.
 
 ---
 
@@ -143,23 +140,26 @@ Default is **\`full-auto\`** — use unless the user explicitly requests \`--ove
 
 ---
 
-## Step 4: MANDATORY Save + Switch
+## Step 4: MANDATORY Save + Advance
 
 Two CLI calls in sequence:
 
-### 4a. Save triage results:
+### 4a. Persist triage results via preferences + state writes:
+
+Capture the classification metadata so downstream stages can read it via \`luca state read\`:
+
 \`\`\`
-luca state save-triage --intent "<parsed intent summary>" --complexity MODERATE --oversight full-auto --profile balanced --affected-areas "<comma-separated list>"
+luca preferences write --file <(jq -n --arg intent "<parsed intent summary>" --arg complexity MODERATE --arg oversight full-auto --arg profile balanced --arg areas "<comma-separated list>" '{triage:{intent:$intent,complexity:$complexity,oversight:$oversight,profile:$profile,affectedAreas:($areas|split(","))}}')
 \`\`\`
 
-This call also derives and persists \`currentPhaseSlug\` into \`.luca/state.json\`. Every downstream phase reads it via \`luca state read\`.
+(Equivalent shape: any minimal mutation that records intent + complexity + oversight + profile + affected areas at the canonical state surface.) The downstream phases derive \`currentPhaseSlug\` automatically when they advance into a phase.
 
-### 4b. IMMEDIATELY switch mode:
+### 4b. IMMEDIATELY advance the pipeline step:
 \`\`\`
-luca state switch-mode --target "<research|architect>"
+luca state advance --to-step <research|architect>
 \`\`\`
 
-**After calling switch-mode, STOP. No more text or tool calls.**
+**After calling advance, STOP. No more text or tool calls.**
 
 ---
 

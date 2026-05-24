@@ -65,6 +65,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
+import { appendLedger } from '@alecsibilia/luca-core/ledger'
 import {
     computeContextRefresher,
     type ContextRefresherCarryState,
@@ -161,6 +162,29 @@ async function main(): Promise<number> {
         // unknown-current-step verdict. In either case persist a
         // fresh counter from the increment so we don't lose ticks.
         await writeSidecar(cwd, priorState)
+    }
+
+    // Emit a ledger event for the hook firing. Only log on decisive
+    // outcomes (emit vs skipped) — every tool call fires this hook, so
+    // logging every tick would flood the ledger. Failure-open.
+    if (verdict !== null && verdict.reason === 'refresh-emitted') {
+        try {
+            const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
+                ? (state as { sessionId: string }).sessionId
+                : ''
+            appendLedger({
+                cwd,
+                runId,
+                event: 'hook.context-refresher.fired',
+                data: {
+                    pipelineStep: state.pipelineStep,
+                    decision: 'emitted',
+                    toolCallCount: priorState.toolCallCount,
+                },
+            })
+        } catch {
+            // Failure-open.
+        }
     }
 
     if (verdict === null) {

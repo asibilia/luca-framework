@@ -19,6 +19,7 @@ import type { Artifact } from '../../define/index.ts'
 
 import { archAuditSkill } from './arch-audit/index.ts'
 import { autopilotSkill } from './autopilot/index.ts'
+import { bugDiagnoseSkill } from './bug-diagnose/index.ts'
 import { chooseSkill } from './choose/index.ts'
 import { ghIssueTriageSkill } from './gh-issue-triage/index.ts'
 import { ghPrAddressSkill } from './gh-pr-address/index.ts'
@@ -61,6 +62,7 @@ import { workflowSaveSkill } from './workflow-save/index.ts'
 export {
     archAuditSkill,
     autopilotSkill,
+    bugDiagnoseSkill,
     chooseSkill,
     ghIssueTriageSkill,
     ghPrAddressSkill,
@@ -108,6 +110,7 @@ export {
 export const SKILLS: readonly Artifact[] = [
     archAuditSkill,
     autopilotSkill,
+    bugDiagnoseSkill,
     chooseSkill,
     ghIssueTriageSkill,
     ghPrAddressSkill,

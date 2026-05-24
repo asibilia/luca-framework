@@ -41,6 +41,7 @@
  * stage-gate hook (luca-cli) is the authoritative gate; this hook is
  * defense-in-depth.
  */
+import { appendLedger } from '@alecsibilia/luca-core/ledger'
 import {
     enforceReadOnly,
     READ_ONLY_TOOL_CLASS_BY_NAME,
@@ -111,6 +112,32 @@ async function main(): Promise<number> {
     }
 
     const verdict = enforceReadOnly(input)
+
+    // Emit a ledger event for the hook firing. The postmortem analyzer
+    // scans for `hook.read-only-enforcement.fired` events to detect
+    // read-only violations over time. Failure-open: never block on a
+    // ledger-write error.
+    try {
+        const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
+            ? (state as { sessionId: string }).sessionId
+            : ''
+        appendLedger({
+            cwd,
+            runId,
+            event: 'hook.read-only-enforcement.fired',
+            data: {
+                pipelineStep: state.pipelineStep,
+                toolName,
+                toolClass,
+                targetPath: targetPath ?? null,
+                decision: verdict.allowed ? 'allow' : 'block',
+                reason: verdict.allowed ? undefined : verdict.message,
+            },
+        })
+    } catch {
+        // Failure-open.
+    }
+
     if (verdict.allowed) {
         return 0
     }

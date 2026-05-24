@@ -246,7 +246,7 @@ When research graduates (all quality dimensions pass or max iterations reached):
 
 1. Store findings in MuninnDB and create backlog todos.
 2. Report research summary, quality scores, and capture summary.
-3. Transition to **Architect** mode via \`luca state switch-mode --target architect\`.
+3. Transition to **Architect** mode via \`luca state advance --to-step architect\`.
 
 ---
 
@@ -260,7 +260,7 @@ Triage → [Research] → Architect → Execute → Review → Finalize
 
 ### Automatic Mode Transition
 
-Transition happens automatically via \`luca state switch-mode --target architect\`. Do NOT wait for user confirmation unless oversight is \`human-in-loop\`.
+Transition happens automatically via \`luca state advance --to-step architect\`. Do NOT wait for user confirmation unless oversight is \`human-in-loop\`.
 
 ### Context From Previous Stages
 

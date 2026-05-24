@@ -53,11 +53,9 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 \`\`\`bash
 CONFIG=$(cat .luca/config.json 2>/dev/null || echo '{}')
-# Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE=$(cat .luca/STATE.md 2>/dev/null || echo "")
-ROADMAP=$(cat .luca/ROADMAP.md 2>/dev/null || echo "")
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+ROADMAP=$(cat .luca/roadmap.md 2>/dev/null || echo "")
 \`\`\`
 
 Extract autopilot settings (with defaults):
@@ -122,10 +120,10 @@ Task(
 
 ### 0d. Display Session Start & Initialize State Machine
 
-Transition state machine from idle to preflight:
+Advance the workflow from \`idle\` to \`triage\` (the canonical entry point — the legacy "preflight" step is folded into \`triage\` in v13):
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=START 2>/dev/null || true
+luca state advance --to-step triage 2>/dev/null || true
 \`\`\`
 
 \`\`\`
@@ -141,10 +139,10 @@ Cross-milestone: {CROSS_MILESTONE}
 Swarm:         {SWARM_ENABLED} (max {MAX_PARALLEL} parallel)
 \`\`\`
 
-After cognitive pre-flight completes, transition to routing:
+After cognitive pre-flight completes, advance to the next pipeline step. The exact target depends on classification; in v13 the canonical sequence is \`triage → research → discuss → architect → plan\`:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PREFLIGHT_COMPLETE 2>/dev/null || true
+luca state advance --to-step research 2>/dev/null || true
 \`\`\`
 </configuration>
 
@@ -156,29 +154,30 @@ bun run packages/luca-framework/src/state/bridge.ts transition --event=PREFLIGHT
 ### 1a. Read Pending Todos
 
 \`\`\`bash
-TODOS=$(ls .luca/todos/pending/*.md 2>/dev/null || echo "")
+TODOS=$(luca todo list --status pending 2>/dev/null || echo "")
 TODO_COUNT=$(echo "$TODOS" | grep -c '.' 2>/dev/null || echo "0")
 \`\`\`
 
+Backlog state is MuninnDB-backed; \`luca todo list\` is the canonical read surface.
+
 If TODO_COUNT == 0: Skip to Step 3 (execute existing roadmap).
 
-### 1b. Read ROADMAP.md
+### 1b. Read roadmap.md
 
 \`\`\`bash
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md 2>/dev/null || echo "")
+ROADMAP_CONTENT=$(cat .luca/roadmap.md 2>/dev/null || echo "")
 \`\`\`
 
 ### 1c. Detect Unplanned Work
 
-For each todo file in \`.luca/todos/pending/\`:
+For each todo returned by \`luca todo list --status pending\`:
 
-1. Read the file content
-2. Extract \`title\` from YAML frontmatter (between \`---\` delimiters)
-3. Search ROADMAP_CONTENT for any reference to:
+1. Read the todo's title + area + body from the JSON output (or via \`muninn_read --id <todo-id>\`)
+2. Search ROADMAP_CONTENT for any reference to:
    - The todo's title (case-insensitive substring match)
-   - The todo's filename (without .md extension)
-4. If neither found: classify as **unplanned**
-5. If found in a phase with \`- [ ]\` plans: classify as **planned but incomplete** (normal)
+   - The todo's slug / id
+3. If neither found: classify as **unplanned**
+4. If found in a phase with \`- [ ]\` plans: classify as **planned but incomplete** (normal)
 
 ### 1d. Display Backlog Summary
 
@@ -205,10 +204,7 @@ If UNPLANNED_COUNT == 0: Skip to Step 3.
 Read all todo contents for the prompt:
 
 \`\`\`bash
-TODO_CONTENTS=""
-for f in .luca/todos/pending/*.md; do
-  TODO_CONTENTS="$TODO_CONTENTS\\n---FILE: $f---\\n$(cat "$f")"
-done
+TODO_CONTENTS=$(luca todo list --status pending --format json)
 \`\`\`
 
 **Branch based on SWARM_ENABLED:**
@@ -232,15 +228,15 @@ Task(
 **All Pending Todos:**
 {TODO_CONTENTS}
 
-**Current ROADMAP.md:**
+**Current roadmap.md:**
 {ROADMAP_CONTENT}
 
-**Current STATE.md:**
+**Current workflow state (from \`luca state read\`):**
 {STATE_CONTENT}
 
 **Instructions:**
 1. Score ALL pending todos by WSJF (Business Value + Time Criticality + Risk Reduction / Effort)
-2. For todos already referenced in ROADMAP.md: validate their current priority ordering
+2. For todos already referenced in roadmap.md: validate their current priority ordering
 3. For unplanned todos (not referenced in ROADMAP):
    a. Determine if the todo fits the scope of an existing incomplete phase
    b. If yes: recommend adding it to that phase
@@ -311,10 +307,10 @@ Task(
   **All Pending Todos:**
   {TODO_CONTENTS}
 
-  **Current ROADMAP.md:**
+  **Current roadmap.md:**
   {ROADMAP_CONTENT}
 
-  **Current STATE.md:**
+  **Current workflow state (from \`luca state read\`):**
   {STATE_CONTENT}
 
   **Instructions:**
@@ -340,10 +336,10 @@ Task(
   **All Pending Todos:**
   {TODO_CONTENTS}
 
-  **Current ROADMAP.md:**
+  **Current roadmap.md:**
   {ROADMAP_CONTENT}
 
-  **Current STATE.md:**
+  **Current workflow state (from \`luca state read\`):**
   {STATE_CONTENT}
 
   **Instructions:**
@@ -369,10 +365,10 @@ Task(
   **All Pending Todos:**
   {TODO_CONTENTS}
 
-  **Current ROADMAP.md:**
+  **Current roadmap.md:**
   {ROADMAP_CONTENT}
 
-  **Current STATE.md:**
+  **Current workflow state (from \`luca state read\`):**
   {STATE_CONTENT}
 
   **Instructions:**
@@ -419,7 +415,7 @@ Task(
   **QA Analysis:**
   {QA_RESULT}
 
-  **Current ROADMAP.md:**
+  **Current roadmap.md:**
   {ROADMAP_CONTENT}
 
   **Instructions:**
@@ -487,7 +483,7 @@ Display the proposal ResultEnvelope:
 
 \`\`\`
 Options:
-  1. Approve all — Apply proposed changes to ROADMAP.md
+  1. Approve all — Apply proposed changes to roadmap.md
   2. Review details — Show full breakdown of each change
   3. Approve with modifications — Let me adjust before applying
   4. Skip — Proceed with existing roadmap (ignore unplanned work)
@@ -496,12 +492,12 @@ Options:
 ### 2d. Apply Changes
 
 If approved:
-1. Update ROADMAP.md with new/reordered phases
+1. Update roadmap.md with new/reordered phases
 2. Create phase directories for new phases: \`mkdir -p .luca/phases/{NN}-{phase-name}\`
 3. Commit changes:
 
 \`\`\`bash
-git add .luca/ROADMAP.md .luca/phases/
+git add .luca/roadmap.md .luca/phases/
 bun run commit --message="revise roadmap with unplanned backlog items" --type=docs --scope=autopilot --no-push --skip-checks
 \`\`\`
 
@@ -509,12 +505,12 @@ bun run commit --message="revise roadmap with unplanned backlog items" --type=do
 
 **After applying roadmap changes, ensure a GitHub issue and feature branch exist for the milestone.**
 
-Read state from bridge (with STATE.md fallback) and check for existing GitHub issue/ticket:
+Read workflow state and check for an existing GitHub issue/ticket reference (issue metadata lives in MuninnDB \`session:*\` engrams, not in \`.luca/state.json\`):
 
 \\\`\\\`\\\`bash
-# Primary: Read state from bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Check github_issue field from JSON; fallback: grep STATE.md
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+# Recall any session-bound GitHub issue ref:
+# mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "GitHub issue for current milestone", tags: ["session","github"])
 \\\`\\\`\\\`
 
 **If no issue exists:**
@@ -524,8 +520,8 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 
 **Auto-create flow:**
 
-1. Extract milestone name from ROADMAP.md (e.g., "v1.4.0 — Developer Experience & Verification")
-2. Generate issue body from ROADMAP.md summary + REQUIREMENTS.md summary
+1. Extract milestone name from roadmap.md (e.g., "v1.4.0 — Developer Experience & Verification")
+2. Generate issue body from roadmap.md summary + MuninnDB recall (\`mcp__muninn__muninn_recall_tree(vault: '<repo_vault>', id: 'brain:project-requirements')\`)
 3. Create issue:
    \`\`\`bash
    gh issue create --title "feat(framework): {milestone-name}" --body "{body}"
@@ -539,12 +535,14 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
    \`\`\`bash
    git push -u origin {branch_name}
    \`\`\`
-7. Update state via bridge:
-   \\\`\\\`\\\`bash
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{branch_name}" 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Update STATE.md directly
+7. Record the issue and branch references in MuninnDB so the active session has durable context:
+   \\\`\\\`\\\`
+   mcp__muninn__muninn_remember(
+     vault: "<repo_vault>",
+     concept: "session:autopilot-milestone",
+     content: "GitHub issue #{issue_number} / branch {branch_name} — autopilot milestone",
+     tags: ["session","autopilot","github"]
+   )
    \\\`\\\`\\\`
 
 **If issue already exists:**
@@ -560,13 +558,13 @@ STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/
 
 ### 3a. Parse Incomplete Phases
 
-Re-read ROADMAP.md (may have been updated in Step 2):
+Re-read roadmap.md (may have been updated in Step 2):
 
 \`\`\`bash
-ROADMAP=$(cat .luca/ROADMAP.md)
+ROADMAP=$(cat .luca/roadmap.md)
 \`\`\`
 
-For each phase in ROADMAP.md:
+For each phase in roadmap.md:
 1. Check if ALL plans are marked \`[x]\` — if so, phase is complete, skip it
 2. Check if any plans are marked \`[ ]\` — phase has incomplete work
 3. Check if no plans are listed — phase needs planning (plan.md generation)
@@ -658,7 +656,7 @@ Used for single-phase levels OR when SWARM_ENABLED == false.
 ### 4a. Dependency Check
 
 Verify all phases listed in \`Depends on:\` are either:
-- Already marked complete in ROADMAP.md, OR
+- Already marked complete in roadmap.md, OR
 - In COMPLETED_PHASES from this session
 
 If any dependency is in PARKED_PHASES:
@@ -700,10 +698,10 @@ Task(
 )
 \`\`\`
 
-Write complexity via bridge (transitions state machine from routing to planning/discussing):
+Advance the pipeline step (the legacy "routing" step is folded into \`triage\` → \`research\`/\`discuss\` in v13). Complexity is recorded in the orchestrator's reasoning and passed to every subagent — there's no separate state field for it:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=ROUTE_COMPLETE --data='{"complexity":"{COMPLEXITY}"}' 2>/dev/null || true
+luca state advance --to-step discuss 2>/dev/null || true
 \`\`\`
 
 ### 4d. Discussion (Always Runs)
@@ -714,37 +712,37 @@ Discussion always runs. The discussion depth and model tier scale with complexit
 Skill(skill: "phase-discuss", args: "{phase_number}")
 \`\`\`
 
-Transition state machine after discussion:
+Advance the pipeline step after discussion:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=DISCUSS_COMPLETE 2>/dev/null || true
+luca state advance --to-step architect 2>/dev/null || true
 \`\`\`
 
 ### 4e. Planning
 
-Check if plan.md files already exist for this phase:
+Check if \`plan.md\` already exists for this phase (canonical per LUCA_DIR_CONTRACT — one plan.md per phase, not many):
 
 \`\`\`bash
-PLAN_COUNT=$(ls .luca/phases/{phase_dir}/*-plan.md 2>/dev/null | grep -c '.' || echo "0")
+PLAN_EXISTS=$([ -f ".luca/phases/{phase_dir}/plan.md" ] && echo "true" || echo "false")
 \`\`\`
 
-If PLAN_COUNT == 0 and AUTO_PLAN == true:
+If PLAN_EXISTS == "false" and AUTO_PLAN == true:
 
 \`\`\`
 Skill(skill: "phase-plan", args: "{phase_number}")
 \`\`\`
 
-If PLAN_COUNT == 0 and AUTO_PLAN == false:
-- Park this phase: "No plans and auto_plan disabled"
+If PLAN_EXISTS == "false" and AUTO_PLAN == false:
+- Park this phase: "No plan and auto_plan disabled"
 - Add to PARKED_PHASES
 - Continue to next phase
 
-If PLAN_COUNT > 0: skip planning (plans already exist).
+If PLAN_EXISTS == "true": skip planning (plan already exists).
 
-Transition state machine to executing:
+Advance the pipeline step to execute:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=PLAN_COMPLETE 2>/dev/null || true
+luca state advance --to-step execute 2>/dev/null || true
 \`\`\`
 
 ### 4f. Execution
@@ -770,17 +768,17 @@ Skill(skill: "phase-execute", args: "{EXEC_FLAGS}")
 
 ### 4g. Result Handling
 
-Parse the phase-execute outcome from STATE.md and phase VERIFICATION.md:
+Parse the phase-execute outcome from the workflow state and the active phase's \`verify.json\`:
 
 \`\`\`bash
-VERIFICATION=$(cat .luca/phases/{phase_dir}/*-VERIFICATION.md 2>/dev/null || echo "")
+VERIFICATION=$(cat .luca/phases/{phase_dir}/verify.json 2>/dev/null || echo "")
 \`\`\`
 
 **Route by outcome:**
 
 **If phase passed (verification status: "passed"):**
 1. Add to COMPLETED_PHASES
-2. Update ROADMAP.md plans to \`[x]\`
+2. Update roadmap.md plans to \`[x]\`
 3. Log to MuninnDB: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "{timestamp} [PHASE-COMPLETE] Phase {NN} passed")\`
 4. Display:
 
@@ -899,7 +897,7 @@ For each phase (in parallel, using Task tool):
 
     **Phase:** {NN} - {goal}
     **Phase directory:** .luca/phases/{phase_dir}/
-    **Project state:** {STATE.md content}
+    **Project state:** {state.json content via \`luca state read\`}
     **Working memory:** {session context from MuninnDB}
     **CLAUDE.md conventions:** Read CLAUDE.md for project conventions.
 
@@ -982,7 +980,7 @@ For each phase with an approved plan:
     5. When done, mark your task completed: TaskUpdate(taskId: "{id}", status: "completed")
     6. Send a summary to the lead: SendMessage(type: "message", recipient: "team-lead", content: "...", summary: "Phase {NN} execution complete")
 
-    **Do NOT modify:** ROADMAP.md, STATE.md, .luca/ metadata (lead handles these)
+    **Do NOT modify:** roadmap.md, state.json, .luca/ metadata (lead handles these)
     **Do NOT deviate from the approved plan** without messaging the lead first.
     """
   )
@@ -1028,12 +1026,13 @@ After all executors in this level complete (or are marked failed/timed out):
    TeamDelete()
    \`\`\`
 
-2. Update ROADMAP.md: mark completed phase plans as \`[x]\`
+2. Update roadmap.md: mark completed phase plans as \`[x]\`
 3. Add completed phases to COMPLETED_PHASES
 4. Add failed/timed-out phases to PARKED_PHASES with reasons
-5. Update state via bridge:
+5. Advance the pipeline step (the per-phase boundary moves through \`checks → verify → review → learn\` per the pipeline-transitions table):
    \`\`\`bash
-   bun run packages/luca-framework/src/state/bridge.ts transition --event=PHASE_COMPLETE --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
+   luca state advance --to-step checks 2>/dev/null || true
+   luca telemetry emit --kind=phase.complete --data='{"phase_id":{NN},"summary":"Phase {NN} completed (parallel)"}' 2>/dev/null || true
    \`\`\`
 6. Log to MuninnDB session memory via muninn_remember
 
@@ -1137,7 +1136,7 @@ After completing a milestone:
 
 ### 6a. Check for Next Milestone
 
-1. Re-scan backlog: \`ls .luca/todos/pending/*.md\`
+1. Re-scan backlog: \`luca todo list --status pending\`
 2. If pending todos exist: there may be work for a new milestone
 3. If no pending todos and ROADMAP has no more milestones: done
 
@@ -1289,24 +1288,17 @@ Duration:   {session duration}
 
 ### Update State
 
-1. Update state via bridge (falls back to STATE.md):
+1. Advance the pipeline step to \`complete\` once the autopilot session finishes:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+luca state advance --to-step complete 2>/dev/null || true
 \`\`\`
 
-2. Regenerate STATE.md via bridge snapshot:
-
-\`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-# Fallback: Update STATE.md manually with autopilot session results
-\`\`\`
-
-3. Log final status to MuninnDB: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "Autopilot session complete")\`
+2. Log final status to MuninnDB: \`mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:findings", content: "Autopilot session complete")\`
 4. Commit session metadata:
 
 \`\`\`bash
-git add .luca/STATE.md .luca/state.json
+git add .luca/state.json
 bun run commit --message="autopilot session complete" --type=docs --scope=autopilot --no-push --skip-checks
 \`\`\`
 </summary>

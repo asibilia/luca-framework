@@ -99,10 +99,10 @@ For each **phase** in the plan:
 
 \`\`\`
 for each phase in PLAN:
-  luca telemetry emit phase-start
-  luca state start-phase --phase-name "Phase N: name"
+  luca telemetry emit --kind=phase.start
+  luca state advance --to-step execute   # one-time entry per phase
   for each wave in phase:
-    luca telemetry emit wave-start
+    luca telemetry emit --kind=wave.start
     1. EXECUTE  → spawn executor subagent (Task tool)
     2. CHECKS   → run tsc, fix failures (convergence-tracked)
     3. RULE GATE → luca rules run (must-fix findings block)
@@ -110,20 +110,19 @@ for each phase in PLAN:
     5. REVIEW   → spawn 4 reviewers in parallel
     6. LEARN    → spawn learner subagent
     7. COMMIT   → atomic commit per task
-    luca telemetry emit wave-end
-    luca state advance-wave
-  luca state complete-phase --verification-passed true
-  luca telemetry emit phase-end
+    luca telemetry emit --kind=wave.end
+  # phase-close transition; pipeline checks/verify steps follow per the transition table
+  luca state advance --to-step checks
+  luca telemetry emit --kind=phase.end
 \`\`\`
 
 ### Phase Tracking via the \`luca\` CLI
 
-- \`luca state start-phase\` — sets \`currentPhaseName\`, resets wave/iteration counters.
-- \`luca state advance-wave\` — after completing each wave.
-- \`luca state record-iteration\` — after each execute→checks→verify cycle.
-- \`luca state complete-phase\` — records timing and pass/fail.
+- The pipeline step itself is the phase-tracking primitive — read it via \`luca state read\`. Wave counters are internal to the execute step.
+- Per-iteration telemetry: \`luca telemetry emit --kind=iteration\` (or the specific event names \`wave.start\`/\`wave.end\`) after each execute→checks→verify cycle.
+- Phase advance: \`luca state advance --to-step <next-step>\` per the pipeline-transitions table (execute → checks → verify → review → learn).
 
-Read progress with \`luca state read\` → \`currentPhase\`, \`totalPhases\`, \`currentWave\`, \`currentIteration\`, \`phaseResults\`.
+Read progress with \`luca state read\` → \`pipelineStep\`, \`currentPhase\`, \`totalPhases\`, \`iteration\`, \`phaseResults\`.
 
 ---
 
@@ -197,7 +196,7 @@ Tests should verify **behavior through public interfaces**, not implementation d
 
 If executor context exhausted mid-wave:
 1. Save progress — note complete vs remaining tasks.
-2. Record via \`luca state record-iteration\`.
+2. Emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the overflow boundary.
 3. Spawn **fresh executor** with only remaining tasks, focused summary, current file states.
 4. Continue from where it left off.
 
@@ -348,8 +347,7 @@ After verification and review pass for each task:
 When all phases complete:
 
 1. Report execution summary (tasks completed, checks passing, review findings).
-2. \`luca state complete-phase --verification-passed true\`.
-3. Transition to **Review** mode via \`luca state switch-mode --target review\`.
+2. Transition through the verification + review steps via \`luca state advance --to-step verify\` then \`luca state advance --to-step review\`.
 
 ---
 
@@ -391,9 +389,9 @@ After completing a single task: \`luca todo move <id> --to done\`. For multiple 
 
 ## Tool Coordination
 
-After each wave: (1) \`luca checks run\` → (2) if fail: fix → re-check → (3) if pass: \`luca rules run\` → (4) if rule violations: fix → re-gate → (5) if pass: spawn verifier → \`luca state advance-wave\`. Do NOT advance without passing checks AND the rule gate.
+After each wave: (1) \`luca checks run\` → (2) if fail: fix → re-check → (3) if pass: \`luca rules run\` → (4) if rule violations: fix → re-gate → (5) if pass: spawn verifier and emit \`luca telemetry emit --kind=wave.end\`. Do NOT advance the pipeline step without passing checks AND the rule gate.
 
-After all waves: \`luca state complete-phase\` → \`luca state switch-mode --target review\`.
+After all waves: \`luca state advance --to-step verify\` → \`luca state advance --to-step review\` per the pipeline-transitions table.
 `
 
 export const executeMode = defineAgent({

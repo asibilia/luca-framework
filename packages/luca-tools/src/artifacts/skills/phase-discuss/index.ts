@@ -38,21 +38,14 @@ Auto mode is useful when running via \`/autopilot\` or when the user wants AI-re
 
 **Output:** \`{phase}-context.md\` — decisions clear enough that downstream agents can act without asking the user again
 
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.cursor/luca/workflows/discuss-phase.md\`
-- \`.cursor/luca/templates/context.md\`
-
 ## Process
 
 ### Complexity-Aware Discussion
 
-Read complexity from bridge (falls back to STATE.md \`Task Complexity:\` field):
+Read complexity from the canonical workflow state:
 
 \`\`\`bash
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .luca/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 \`\`\`
 
 **Always runs.** Discussion depth and model tier scale with complexity:
@@ -115,7 +108,7 @@ The lu-discuss-researcher model tier is resolved via \`resolveModelForAgent("lu-
 
 ## Critical: Scope Guardrail
 
-- Phase boundary from ROADMAP.md is FIXED
+- Phase boundary from roadmap.md is FIXED
 - Discussion clarifies HOW to implement, not WHETHER to add more
 - If user suggests new capabilities: "That's its own phase. I'll note it for later."
 - Capture deferred ideas — don't lose them, don't act on them

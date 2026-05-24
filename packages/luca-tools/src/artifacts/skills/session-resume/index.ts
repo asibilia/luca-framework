@@ -13,12 +13,6 @@ const BODY = `<main>
 
 Restore complete project context and resume work seamlessly from previous session.
 
-## Execution Context
-
-Read this reference file before executing:
-
-- \`.cursor/luca/workflows/resume-project.md\`
-
 ## Process
 
 Follow the resume-project workflow which handles:
@@ -27,24 +21,22 @@ Follow the resume-project workflow which handles:
    - Check for \`.luca/\` directory
    - Error if project not initialized
 
-2. **State loading (bridge primary, STATE.md fallback)**
+2. **State loading via the \`luca\` CLI**
 
    \`\`\`bash
-   # Primary: Read comprehensive state from bridge
-   STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-   # Fallback: Read STATE.md directly (backward compatibility)
-   STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+   # Read the comprehensive state from .luca/state.json
+   STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 
-   # Read complexity and phase info
-   COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .luca/STATE.md | awk '{print $NF}' || echo "MODERATE")
-   PHASE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-phase 2>/dev/null || echo '{"current_phase":null}')
+   # Extract complexity and phase info from the state JSON
+   COMPLEXITY=$(echo "$STATE_JSON" | jq -r '.complexity // "MODERATE"')
+   PHASE=$(echo "$STATE_JSON" | jq -r '.currentPhase // empty')
+   PIPELINE_STEP=$(echo "$STATE_JSON" | jq -r '.pipelineStep // "triage"')
    \`\`\`
 
-   If state not initialized, reconstruct from artifacts
+   If state not initialized, reconstruct from artifacts (research.md, context.md, plan.md, audits/ under the active phase directory).
 
-3. **Checkpoint and incomplete work detection**
-   - Check for \`.continue-here.md\` files
-   - Find plan.md without matching SUMMARY.md
+3. **Incomplete work detection**
+   - For the active phase under \`.luca/phases/<currentPhaseSlug>/\`: check for \`plan.md\` without matching \`execute/summary.md\` (mid-phase abandonment) and for partially-filled \`audits/\` (mid-review abandonment).
 
 4. **Visual status presentation**
    - Show progress bar
@@ -52,7 +44,7 @@ Follow the resume-project workflow which handles:
    - Display current position
 
 5. **Context-aware option offering**
-   - Check context.md before suggesting plan vs discuss
+   - Check the active phase's \`context.md\` before suggesting plan vs discuss
    - Offer appropriate next actions
 
 6. **Routing to appropriate next command**
@@ -61,8 +53,7 @@ Follow the resume-project workflow which handles:
    - Discuss phase if no context
 
 7. **Session continuity updates**
-   - Session continuity is auto-tracked by the state machine (\`last_transition_at\` field)
-   - STATE.md is regenerated via \`bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true\`
+   - Session continuity is auto-tracked by the state machine in \`.luca/state.json\` (no separate snapshot step needed).
 
 ## Success Criteria
 

@@ -61,6 +61,7 @@
  * silently. A hook that mis-injects a continuation will confuse the
  * agent; a hook that crashes is worse. Choose silent skip.
  */
+import { appendLedger } from '@alecsibilia/luca-core/ledger'
 import {
     computeContinuationMessage,
     type ContinuationInput,
@@ -142,6 +143,32 @@ async function main(): Promise<number> {
     }
 
     const verdict = computeContinuationMessage(input)
+
+    // Emit a ledger event for the hook firing. Records whether a
+    // continuation was emitted (and why not, when applicable) so the
+    // postmortem analyzer has signal on hook coverage. Failure-open.
+    try {
+        const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
+            ? (state as { sessionId: string }).sessionId
+            : ''
+        appendLedger({
+            cwd,
+            runId,
+            event: 'hook.continuation-messages.fired',
+            data: {
+                pipelineStep: state.pipelineStep,
+                decision: verdict === null
+                    ? 'skipped'
+                    : verdict.reason === 'unknown-current-step'
+                        ? 'skipped'
+                        : 'emitted',
+                reason: verdict === null ? 'no-continuation' : verdict.reason,
+            },
+        })
+    } catch {
+        // Failure-open.
+    }
+
     if (verdict === null) {
         // No continuation appropriate (e.g. advance into `idle`).
         return 0

@@ -36,7 +36,7 @@ Agents are specialized sub-agents that handle focused tasks: lu-router classifie
 
 ### Step 4: Phases -- Structured Development
 
-Work is organized into phases listed in ROADMAP.md. Each phase has a plan (plan.md) with waves of tasks. Use /phase-plan to create plans and /phase-execute to run them. Phases keep work focused and context-efficient.
+Work is organized into phases listed in \`.luca/roadmap.md\`. Each phase has a plan (\`plan.md\`) with waves of tasks. Use /phase-plan to create plans and /phase-execute to run them. Phases keep work focused and context-efficient.
 
 ### Step 5: Rules -- Automatic Enforcement
 

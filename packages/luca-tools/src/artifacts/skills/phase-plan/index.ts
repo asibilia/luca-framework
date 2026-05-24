@@ -23,20 +23,11 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`lu-phase-researcher\` - Researches implementation approaches before planning
-- \`lu-planner\` - Creates plan.md files with task breakdowns
-- \`lu-plan-checker\` - Validates plans before execution
+- \`researcher\` - Researches implementation approaches before planning (5-dimension parallel batch)
+- The \`architect\` mode-agent performs the planning work in v13 (the v12-era \`lu-planner\` subagent was dropped per plan §5.6)
+- \`plan-reviewer\` - Validates plans before execution
 
-**DO NOT** attempt to research, plan, or verify plans yourself. Spawn the appropriate agents.
-
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
-
-## Execution Context
-
-Read this reference file before executing:
-
-- \`.cursor/luca/references/ui-brand.md\`
-- \`.cursor/luca/workflows/cognitive-preflight.md\`
+**DO NOT** attempt to research, plan, or verify plans yourself. Spawn the appropriate subagents via the \`Task\` tool, or invoke the architect mode-agent.
 
 ## Cognitive Pre-Flight (NEW)
 
@@ -104,30 +95,7 @@ ls .luca/ 2>/dev/null
 
 If not found: Error - user should run \`/project-new\` first.
 
-**Resolve model profile for agent spawning:**
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-**Model lookup table:**
-
-| Agent                  | quality | balanced | budget |
-| ---------------------- | ------- | -------- | ------ |
-| lu-phase-researcher | opus    | sonnet   | haiku  |
-| lu-planner          | opus    | opus     | sonnet |
-| lu-plan-checker     | sonnet  | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# All agents in plan-phase require reasoning → omit (inherit from parent)
-researcher_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-\`\`\`
+Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`) — the orchestrator does not pick model strings. The \`researcher\`, \`architect\` (mode-agent), and \`plan-reviewer\` subagents all inherit the appropriate tier based on the active complexity level.
 
 ### 2. Parse and Normalize Arguments
 
@@ -154,7 +122,7 @@ fi
 ### 3. Validate Phase
 
 \`\`\`bash
-grep -A5 "Phase \${PHASE}:" .luca/ROADMAP.md 2>/dev/null
+grep -A5 "Phase \${PHASE}:" .luca/roadmap.md 2>/dev/null
 \`\`\`
 
 If not found: Error with available phases. If found: Extract phase number, name, description.
@@ -164,7 +132,7 @@ If not found: Error with available phases. If found: Extract phase number, name,
 \`\`\`bash
 PHASE_DIR=$(ls -d .luca/phases/\${PHASE}-* 2>/dev/null | head -1)
 if [ -z "$PHASE_DIR" ]; then
-  PHASE_NAME=$(grep "Phase \${PHASE}:" .luca/ROADMAP.md | sed 's/.*Phase [0-9]*: //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+  PHASE_NAME=$(grep "Phase \${PHASE}:" .luca/roadmap.md | sed 's/.*Phase [0-9]*: //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
   mkdir -p ".luca/phases/\${PHASE}-\${PHASE_NAME}"
   PHASE_DIR=".luca/phases/\${PHASE}-\${PHASE_NAME}"
 fi
@@ -186,10 +154,10 @@ fi
 | COMPLEX | Run | capable |
 | CRITICAL | Run | capable |
 
-Read complexity from bridge (falls back to STATE.md \`Task Complexity:\` field):
+Read complexity from the canonical workflow state:
 
 \`\`\`bash
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .luca/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 \`\`\`
 
 The researcher model tier is resolved via \`resolveModelForAgent("lu-phase-researcher", complexity)\`.
@@ -205,13 +173,11 @@ WORKFLOW_RESEARCH=$(cat .luca/config.json 2>/dev/null | grep -o '"research"[[:sp
 First, read the required context:
 
 \`\`\`bash
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md)
-# Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md)
-REQUIREMENTS_CONTENT=$(cat .luca/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
-CONTEXT_CONTENT=$(cat .luca/context.md 2>/dev/null || echo "No context file")
+ROADMAP_CONTENT=$(cat .luca/roadmap.md)
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+# Phase-scoped context (research, plan, decisions) lives under .luca/phases/<currentPhaseSlug>/
+CONTEXT_CONTENT=$(find .luca/phases -name context.md -newer .luca/state.json 2>/dev/null | head -1 | xargs cat 2>/dev/null || echo "No context file")
 \`\`\`
 
 Then spawn the researcher:
@@ -271,13 +237,13 @@ If exists: Offer to continue planning, view existing, or replan from scratch.
 
 ### 7. Read Context Files
 
-Read and store context file contents for the planner agent:
+Read and store context file contents for the planning step:
 
-- STATE.md, ROADMAP.md
-- REQUIREMENTS.md, context.md, research.md (if exist)
-- VERIFICATION.md, UAT.md (if --gaps mode)
+- Workflow state via \`luca state read\`, roadmap.md
+- MuninnDB \`brain:project-requirements\` (recall), active phase's context.md + research.md (if exist)
+- Active phase's verify.json (if --gaps mode)
 
-### 8. Spawn lu-planner Agent
+### 8. Invoke the Architect Mode-Agent (Planning)
 
 Display stage banner:
 
@@ -286,79 +252,58 @@ Display stage banner:
  Luca ► PLANNING PHASE {X}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-◆ Spawning planner...
+◆ Invoking architect mode-agent for planning...
 \`\`\`
 
-**MANDATORY**: You MUST spawn a lu-planner sub-agent. Do NOT attempt to create plans yourself.
+**MANDATORY**: The architect mode-agent performs planning in v13 (the v12-era \`lu-planner\` subagent was dropped per plan §5.6). Invoke it via the standard mode-transition flow — do NOT attempt to create plans yourself.
 
 First, read all context files (already done in step 7):
 
 \`\`\`bash
-# Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md)
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md)
-REQUIREMENTS_CONTENT=$(cat .luca/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+ROADMAP_CONTENT=$(cat .luca/roadmap.md)
 RESEARCH_CONTENT=$(cat "\${PHASE_DIR}/research.md" 2>/dev/null || echo "No research file")
-VERIFICATION_CONTENT=$(cat "\${PHASE_DIR}/VERIFICATION.md" 2>/dev/null || echo "")  # For gaps mode
+VERIFICATION_CONTENT=$(cat "\${PHASE_DIR}/verify.json" 2>/dev/null || echo "")  # For gaps mode
 # Recall session context from MuninnDB:
 # mcp__muninn__muninn_recall(vault: "default", context: "current session context for planning")
 WORKING_CONTENT="[recalled from MuninnDB session context]"
 \`\`\`
 
-Then spawn the planner:
+Then invoke the architect mode-agent (typically by transitioning into the architect mode-agent's plan flow):
 
 \`\`\`python
+# The architect mode-agent is invoked via the standard mode-transition flow rather than spawned as a subagent.
+# When orchestrating from this skill body, build the planning brief and pass it to the architect mode-agent's
+# plan step. The brief includes:
+#
+# <planning_context>
+#   Phase: {phase_number}
+#   Phase Name: {phase_name}
+#   Mode: {standard | gap_closure}
+#   Phase Directory: {phase_dir}
+#   Project State: {state_content}
+#   Roadmap: {roadmap_content}
+#   Research (if available): {research_content}
+#   Verification Issues (for gap mode): {verification_content}
+#   Working Memory: {working_content}
+# </planning_context>
+#
+# <downstream_consumer>
+#   Output consumed by /phase-execute.
+#   Plans must be executable prompts with: YAML frontmatter (id, title, wave, tasks), clear task descriptions with goals,
+#   verification criteria for each task, dependencies between tasks.
+# </downstream_consumer>
+#
+# <output_requirements>
+#   - Write the canonical plan.md to .luca/phases/<slug>/plan.md
+#   - Organize tasks into waves for parallel execution
+#   - Each plan should be focused and completable in one session
+#   - Return summary of plan created
+# </output_requirements>
 Task(
-  prompt="""
-<planning_context>
-
-**Phase:** {phase_number}
-**Phase Name:** {phase_name}
-**Mode:** {standard | gap_closure}
-**Phase Directory:** {phase_dir}
-
-**Project State:**
-{state_content}
-
-**Roadmap:**
-{roadmap_content}
-
-**Requirements:**
-{requirements_content}
-
-**Research (if available):**
-{research_content}
-
-**Verification Issues (for gap mode):**
-{verification_content}
-
-**Working Memory:**
-{working_content}
-
-</planning_context>
-
-<downstream_consumer>
-Output consumed by /phase-execute.
-Plans must be executable prompts with:
-- YAML frontmatter (id, title, wave, tasks)
-- Clear task descriptions with goals
-- Verification criteria for each task
-- Dependencies between tasks
-</downstream_consumer>
-
-<output_requirements>
-- Create {N}-plan.md files in phase directory
-- Organize tasks into waves for parallel execution
-- Each plan should be focused and completable in one session
-- Return summary of plans created
-</output_requirements>
-
-Create plan.md files for this phase with tasks, waves, and dependencies.
-""",
-  subagent_type="lu-planner",
-  model="{planner_model}",
+  prompt="...",
+  subagent_type="architect",  # mode-agent name
   description="Plan Phase {phase_number}"
 )
 \`\`\`
@@ -393,14 +338,15 @@ Display:
 
 The plan-checker model tier is resolved via \`resolveModelForAgent("lu-plan-checker", complexity)\`.
 
-**MANDATORY**: You MUST spawn a lu-plan-checker sub-agent. Do NOT attempt to verify plans yourself.
+**MANDATORY**: You MUST spawn the \`plan-reviewer\` subagent. Do NOT attempt to verify plans yourself.
 
-First, read the created plans:
+First, read the created plan (canonical: one \`plan.md\` per phase per LUCA_DIR_CONTRACT):
 
 \`\`\`bash
-PLANS_CONTENT=$(find "\${PHASE_DIR}" -name "*-plan.md" -exec cat {} ;)
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md)
-REQUIREMENTS_CONTENT=$(cat .luca/REQUIREMENTS.md 2>/dev/null || echo "No requirements file")
+PLAN_CONTENT=$(cat "\${PHASE_DIR}/plan.md" 2>/dev/null)
+ROADMAP_CONTENT=$(cat .luca/roadmap.md)
+# Recall requirements from MuninnDB:
+# mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
 \`\`\`
 
 Then spawn the plan checker:
@@ -458,16 +404,16 @@ Verify these plans will achieve the phase goal when executed.
 Check the current complexity level's gating matrix for \`planVerificationIterations\`:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null
-# Then parse planVerificationIterations from the complexity matrix for this level
+luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"'
+# Then parse planVerificationIterations from .luca/config.json complexity matrix for that level
 \`\`\`
 
-*(If using the pi extension tool \`luca_gate_check\`, it returns the full matrix for the current level).*
+The complexity matrix lives in \`.luca/config.json\` under \`complexity.matrix.<LEVEL>.planVerificationIterations\`.
 
 If issues found and iteration_count < planVerificationIterations:
 
-- Spawn lu-planner with revision context
-- Re-verify with checker
+- Re-invoke the architect mode-agent with revision context
+- Re-verify with the plan-reviewer subagent
 - Repeat until passed or max iterations
 
 ### 13. Present Final Status
@@ -497,7 +443,7 @@ If issues found and iteration_count < planVerificationIterations:
 - [ ] Phase validated against roadmap
 - [ ] Phase directory created if needed
 - [ ] Research completed (unless --skip-research or --gaps or exists)
-- [ ] lu-planner spawned with context
+- [ ] architect mode-agent invoked with planning context (researcher + plan-reviewer subagents spawned as required)
 - [ ] Plans created
 - [ ] lu-plan-checker spawned (unless --skip-verify)
 - [ ] Verification passed OR user override
@@ -522,6 +468,6 @@ If issues found and iteration_count < planVerificationIterations:
 
 export const phasePlanSkill = defineSkill({
     name: "phase-plan",
-    description: "Create detailed PLAN.md execution plans for a specific phase with tasks, waves, and verification.",
+    description: "Create detailed plan.md execution plans for a specific phase with tasks, waves, and verification.",
     body: BODY,
 })

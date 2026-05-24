@@ -9,8 +9,10 @@
  * import the list directly without going through the compiler CLI.
  *
  * Order on disk:
- *   1. Subagents — Task-tool-spawnable workers (7 of them after
- *      dropping planner + fix per plan §5.6).
+ *   1. Subagents — Task-tool-spawnable workers (8 of them: discussion,
+ *      executor, learner, plan-reviewer, researcher, reviewer,
+ *      shadow-scanner, verifier; v12-era planner + fix were dropped
+ *      per plan §5.6).
  *   2. Modes — top-level pipeline stages + stock utility modes (10).
  *   3. Hooks — Claude Code lifecycle hooks. Phase E lands them in
  *      sequence:
@@ -24,10 +26,11 @@
  *          pipeline successfully advances).
  *        - E-4: `context-refresher` (PostToolUse[*], surfaces a per-step
  *          luca-reminder every Nth tool call or on step change).
- *   4. Skills — user-facing slash-command workflows (40 of them after
- *      E-5: the user-listed core/peripheral/utility set plus the
- *      Luca-pipeline-essential extras like seed-memory, session-*,
- *      autopilot, etc.). Each skill compiles to `skills/<name>/SKILL.md`.
+ *   4. Skills — user-facing slash-command workflows (41 of them after
+ *      E-5 + the M3 bug-diagnose port: the user-listed core/peripheral/
+ *      utility set plus the Luca-pipeline-essential extras like
+ *      seed-memory, session-*, autopilot, etc.). Each skill compiles to
+ *      `skills/<name>/SKILL.md`.
  *   5. Commands — `/<name>` filesystem surface for the slash-command
  *      picker (17 of them after E-6). Most user-facing artifacts have
  *      BOTH a SKILL.md and a commands/<name>.md — the command bodies

@@ -20,11 +20,13 @@ List pending todos and select one to work on.
 1. **List pending todos:**
 
    \`\`\`bash
-   ls .luca/todos/pending/*.md 2>/dev/null
+   luca todo list --status pending
    \`\`\`
 
+   Backlog state is MuninnDB-backed; \`luca todo list\` is the canonical read surface — there is no \`.luca/todos/\` directory in the LUCA_DIR_CONTRACT.
+
 2. **Filter by area (if provided):**
-   - Read each todo's frontmatter
+   - Inspect each todo's area metadata (returned by \`luca todo list\`)
    - Filter to matching area
 
 3. **Present list:**
@@ -53,7 +55,7 @@ List pending todos and select one to work on.
      - "Back" - return to list
 
 5. **If "Work on now":**
-   - Move todo to \`.luca/todos/done/\`
+   - Update the todo status via \`luca todo update --id <id> --status in-progress\` (and later to \`done\` when complete)
    - Route to appropriate action
 
 ## Success Criteria

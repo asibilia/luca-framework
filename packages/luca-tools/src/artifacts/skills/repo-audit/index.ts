@@ -34,9 +34,9 @@ Task(
 - \`--full\` or COMPLEX/CRITICAL complexity: Full audit (all checks including circular imports, dead exports)
 - Default (MODERATE): Standard audit
 
-Read complexity from state:
+Read complexity from the canonical workflow state:
 \`\`\`bash
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 \`\`\`
 
 ### 2. Run Automated Checks

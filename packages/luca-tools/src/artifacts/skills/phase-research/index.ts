@@ -33,9 +33,9 @@ Goes beyond "which library" to ecosystem knowledge:
 
 1. **Load phase context:**
 
-   - Read ROADMAP.md for phase goal
-   - Read PROJECT.md for project context
-   - Read existing research (if any)
+   - Read \`.luca/roadmap.md\` for phase goal
+   - Recall project identity from MuninnDB (\`brain:project-identity\`) for project context
+   - Read existing research at \`.luca/phases/<slug>/research.md\` (if any)
 
 2. **Spawn researcher:**
 

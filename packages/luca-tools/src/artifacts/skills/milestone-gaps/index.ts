@@ -16,7 +16,7 @@ Create phases to close gaps identified by milestone audit.
 ## Process
 
 1. **Load audit:**
-   - Read \`.luca/v{version}-MILESTONE-AUDIT.md\`
+   - Read \`.luca/milestones/v{version}-audit.md\`
    - Extract gaps section
 
 2. **Group gaps into phases:**
@@ -51,7 +51,7 @@ Create phases to close gaps identified by milestone audit.
 
 - [ ] Audit gaps loaded
 - [ ] Gaps grouped into coherent phases
-- [ ] Phases added to ROADMAP.md
+- [ ] Phases added to \`.luca/roadmap.md\`
 - [ ] Audit file updated with planning status
 - [ ] User knows next steps
 

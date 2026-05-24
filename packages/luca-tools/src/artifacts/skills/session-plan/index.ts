@@ -31,9 +31,9 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 ### Step 1: Parse Pending Todos
 
 1. **Read backlog:**
-   - Read all files from \`.luca/todos/pending/*.md\`
-   - Extract YAML frontmatter (title, area, created, source) from each
-   - Extract body content for task context
+   - Read pending todos via \`luca todo list --status pending --format json\`
+   - Each entry returns title, area, source, body, priority
+   - The backlog is MuninnDB-backed; \`luca todo\` is the canonical surface
 
 2. **Check for dependencies:**
    - Scan body content for references to other todos
@@ -47,7 +47,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 
 1. **Prepare context for PM agent:**
    - Package TodoMetadata[] as structured input
-   - Include \`.luca/ROADMAP.md\` for priority context
+   - Include \`.luca/roadmap.md\` for priority context
    - Include dependency graph
    - Include any calibration entries for effort estimates (via MuninnDB: \`mcp__muninn__muninn_recall(vault: "default", context: "effort estimates and calibration data")\`)
 

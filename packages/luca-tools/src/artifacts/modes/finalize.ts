@@ -123,21 +123,14 @@ If shadow-debt scanning is disabled in \`.luca/config.json\`, skip silently.
 
 ### Step 2.5: Stragglers Gate
 
-The \`luca state complete-phase\` CLI hard-fails when cross-phase stragglers (loose files or unknown directories) remain at \`.luca/\` root. The error payload includes a \`stragglers\` object.
+When cross-phase stragglers (loose files or unknown directories) remain at \`.luca/\` root, the milestone close is blocked. The shadow-scanner subagent surfaces these via its \`stragglers\` report. Repair flow:
 
-When you receive that error, migrate before re-running \`complete-phase\`:
+1. Run a shadow scan (Step 2 already does this) and inspect the stragglers list.
+2. For each straggler that has a canonical home under the active phase directory, migrate it manually (move via shell or via the \`luca\` artifact-write surface for structured files).
+3. Apply the cleanup via \`luca repo cleanup-apply\` for the supported cleanup actions.
+4. For stragglers with no canonical home: surface to the user — the LUCA_DIR_CONTRACT may need extension, or the file shouldn't exist.
 
-\`\`\`
-luca state archive-loose
-\`\`\`
-
-Behavior:
-- Refuses if another live session holds the pipeline lock.
-- Refuses if \`currentPhaseSlug\` is not set in \`state.json\`.
-- Outcomes: \`success: true\` with archived files moved into the active phase dir, OR \`success: false\` with \`ARCHIVE_LOOSE_SKIPPED_ONLY\` if every candidate was skipped (manual resolution needed).
-- Idempotent — safe to re-run after manual cleanup.
-
-After a successful migration, re-run \`luca state complete-phase --verification-passed true --review-passed true\` and continue to Step 3.
+The repair flow is idempotent — safe to re-run after manual cleanup. Once \`.luca/\` root is clean, continue to Step 3.
 
 ## Step 3: Gap Detection
 
@@ -171,8 +164,8 @@ Verify all planned work was completed **before** opening a PR.
 
 - **Minor gaps** (missing docs, incomplete tests): flag in PR description as follow-up (record now, surface in Step 5).
 - **Major gaps** (missing functionality, failing checks): re-enter the pipeline:
-  1. Save gap results to workflow state.
-  2. \`luca state re-enter --target review --reason "Post-finalize gap detection: <summary>"\`.
+  1. Record the gap summary in the active phase's audit artifact (it survives the re-entry as durable context).
+  2. \`luca state advance --to-step review\` to drop back into review mode.
   3. **STOP.** Review mode handles from here, iterating Execute → Review as needed.
 
 ### Step 3c — \`plan.md\` reconciliation
@@ -194,8 +187,10 @@ Cross-reference each failure against \`plan.md\` task status before deciding to 
 If blocking:
 
 \`\`\`
-luca state re-enter --target execute --reason "plan.md reconciliation: completed task cites missing symbol/path: <summary>"
+luca state advance --to-step execute
 \`\`\`
+
+(Record the reason — "plan.md reconciliation: completed task cites missing symbol/path: <summary>" — in the active phase's audit artifact so the re-entered execute step has durable context.)
 
 ## Step 4: Postmortem Gate
 
@@ -208,9 +203,9 @@ luca retro postmortem gate
 **If it returns \`code: POSTMORTEM_VIOLATIONS\`:**
 
 1. Each pitfall in the response is forwarded to MuninnDB (\`default\` vault per vault-routing) so future runs can recall the failure mode.
-2. Re-enter the pipeline at the appropriate stage:
+2. Re-enter the pipeline at the appropriate stage. Record the violation summary in the active phase's audit artifact (the re-entered step reads it as durable context), then drop back:
    \`\`\`
-   luca state re-enter --target execute --reason "<violation summary>"
+   luca state advance --to-step execute
    \`\`\`
 3. **STOP.** Do not create a PR. The re-entered pipeline must converge before finalize runs again.
 
@@ -312,7 +307,7 @@ If it returns \`code: CLAIM_VERIFICATION_FAILED\`:
    - **Milestone**: tag to version milestone.
    - **Labels**: match issue labels.
    - **Reviewers**: if configured.
-5. Store PR URL in workflow state via \`luca state set --field=prUrl --value="<url>"\`.
+5. Record the PR URL — log it as a confidence-journal entry via \`luca confidence log\` (with the post-F1 schema, category \`design-choice\`, decision \`"PR opened at <url>"\`) so it surfaces in the session summary and in the durable session ledger.
 
 If \`--skip-branch\` was set, skip.
 
@@ -341,25 +336,24 @@ Maximum **3 milestones per session**. If more remain: summarize what's left, cre
 
 ### Release Pipeline Lock
 
-\`\`\`
-luca state lock release
-\`\`\`
+Pipeline-lock concurrent-run protection is a v14 carry-forward (CF2) — the v13 \`luca\` CLI does not expose a lock-release subcommand. The session ends cleanly when the workflow reaches the \`complete\` step; no explicit release is required today.
 
 ### Clean Up Artifacts
 
 \`\`\`
-luca repo-cleanup cleanup-artifacts
+luca repo cleanup-apply
 \`\`\`
 
-Removes ephemeral capture/convergence files from \`.luca/\` root and from each \`.luca/phases/<slug>/\` subdirectory (recurses).
+Applies the supported repo-cleanup actions in v13 (artifact tidy + canonical-path realignment). The legacy \`cleanup-artifacts\` / \`parse-report\` / \`summary\` / \`archive-loose\` subcommands are intentionally dropped per the F5 design call; the shadow-scanner subagent surfaces the corresponding findings, and \`luca repo cleanup-apply\` covers the actionable subset.
 
 ### Compute Metrics
 
 \`\`\`
-luca ledger metrics
 luca verification aggregate
 luca retro postmortem render
 \`\`\`
+
+The session ledger is the source for mode-transition + iteration metrics; read it via the JSONL at \`.luca/ledger.jsonl\` if a detailed cross-event aggregate is needed. \`luca telemetry\` aggregations live in \`.luca/telemetry/<runId>.jsonl\`.
 
 Returns: total events, mode transitions, phases completed, total iterations, session duration.
 
@@ -431,7 +425,7 @@ Triage → Research → Architect → Execute → Review → [Finalize]
 If roadmap has remaining phases and milestone limit not reached:
 
 \`\`\`
-luca state switch-mode --target architect
+luca state advance --to-step architect
 \`\`\`
 
 Loops back to Architect for next milestone cycle.
@@ -439,9 +433,10 @@ Loops back to Architect for next milestone cycle.
 ### End of Pipeline
 
 When no remaining phases or milestone limit reached:
-1. Release lock: \`luca state lock release\`.
-2. Reset state: \`luca state reset-pipeline\`.
-3. Report final summary.
+1. Reset state via \`luca workflow reset\`.
+2. Report final summary.
+
+Pipeline-lock release is a v14 carry-forward (CF2); the v13 \`luca\` CLI has no separate lock-release subcommand.
 
 ### TODO Backlog Cleanup
 

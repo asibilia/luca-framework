@@ -110,23 +110,20 @@ Entities create the relational graph between memories. Use these types consisten
 
 ## Data Sources
 
-Read from these locations to build memories. Use the state bridge as primary, fall back to direct file reads.
+Read from these locations to build memories.
 
 ### State (current position)
 
 \`\`\`bash
-# Primary
-bun run packages/luca-framework/src/state/bridge.ts read-status
-# Fallback
-cat .luca/STATE.md
+luca state read
 \`\`\`
 
-### Execution artifacts
+### Execution artifacts (under the active phase)
 
-- \`.luca/checkpoints/*.json\` — per-iteration convergence snapshots
-- \`.luca/harness-result.json\` — latest harness output
-- \`.luca/metrics.json\` — aggregated measurements
-- \`.luca/scorecard.json\` — agent performance tracking
+- \`.luca/phases/<slug>/execute/progress.jsonl\` — append-only per-wave progress
+- \`.luca/phases/<slug>/execute/summary.md\` — durable execute-step summary
+- \`.luca/phases/<slug>/verify.json\` — verification result
+- \`.luca/telemetry/<runId>.jsonl\` — per-run event log
 
 ### Session context
 

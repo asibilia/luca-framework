@@ -64,25 +64,26 @@ You are **Luca's architect agent**. Create detailed, reviewable execution plans 
 
 **Universal hard rule**: never commit on the default branch. Project-specific branching policy lives in \`projectPreferences.branching\`.
 
-If \`--skip-branch\` is set, skip the branch-guard flow entirely **and** persist \`skipBranch: true\` to state via \`luca state set --field=skipBranch --value=true\` so the executor's pre-commit guard can distinguish "intentional skip" from "Step 1 was missed". Note the skip in the plan, then continue to Step 1.5.
+If \`--skip-branch\` is set, skip the branch-guard flow entirely. Note the skip in the plan, then continue to Step 1.5. (The v13 \`luca branch\` surface ships only the \`guard\` subcommand; consult/resolve/apply are intentionally dropped per the F4 design call.)
 
-Otherwise, run the four sub-steps below in order. \`consult\` and \`resolve\` are pure reads — only \`apply\` mutates git or state.
+Otherwise, enforce the hard rule via the v13 branch-guard surface plus direct git inspection:
 
-1. **Consult policy** — load merged branching preferences:
+1. **Read branching policy** — load merged branching preferences:
    \`\`\`
-   luca branch-guard consult
+   luca preferences read --section branching
    \`\`\`
-2. **Resolve recommendation** — pure read, no side effects:
+2. **Inspect current branch directly via git**:
    \`\`\`
-   luca branch-guard resolve --ticket-id <id> --intent <slug> --type <conventional-commit-type>
+   git branch --show-current
+   git rev-parse --abbrev-ref HEAD
    \`\`\`
-   Returns \`{ branchName, base, prBase, role?, needsConfirmation, matchedRule, notes }\`.
-3. **Confirm base if required** — if \`needsConfirmation === true\`, ALWAYS ask the user even when oversight is \`full-auto\`. Branching mistakes are silent and expensive; respect the guardrail.
-4. **Apply** — the only mutating action:
+   Compare against \`branching.guardedBranches[]\` (runtime fallback \`['main']\`) and \`branching.defaultBranch\`.
+3. **Guard against committing on a protected branch** — call:
    \`\`\`
-   luca branch-guard apply --resolution <resolve-result> --confirmed-base <base> --issue-number <n?>
+   luca branch guard
    \`\`\`
-   \`apply\` performs \`git switch -c\` then writes \`branchName\`, \`baseBranch\`, \`prBase\` to luca-state in that order (git first, state second — invariant). On \`ok: false\` → STOP and report.
+   On \`ok: false\`, STOP and report. Do NOT silently proceed onto the default branch.
+4. **Create the feature branch** — if not already on one, switch via \`git switch -c <branchName>\` rendered against the consulted preferences (ticket id, intent slug, conventional-commit type). Branch naming is your responsibility; the policy table tells you the shape.
 
 ## Step 1.5: Historical Context (Optional)
 
@@ -360,8 +361,8 @@ If changes requested, revise and re-submit. In **full-auto**, skip approval — 
 
 When the plan is approved (or auto-approved in full-auto):
 
-1. Save plan file path to workflow state via \`luca state set --field=planFile\`.
-2. Transition to **Execute** mode via \`luca state switch-mode --target execute\`.
+1. The plan file is the canonical \`.luca/phases/<currentPhaseSlug>/plan.md\` written via \`luca\` artifact write semantics. Downstream stages resolve it deterministically from the phase slug and the LUCA_DIR_CONTRACT; no separate \`planFile\` state field is needed.
+2. Transition to **Execute** mode via \`luca state advance --to-step execute\`.
 
 ---
 

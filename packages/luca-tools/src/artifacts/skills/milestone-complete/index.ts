@@ -11,21 +11,13 @@ import { defineSkill } from '../../../define/skill.ts'
 const BODY = `<main>
 # Luca Complete Milestone
 
-Mark milestone complete, archive to milestones/, and update ROADMAP.md and REQUIREMENTS.md.
+Mark milestone complete, archive snapshots to \`.luca/milestones/\`, and reset the workflow state + roadmap for the next cycle.
 
 **Arguments:** \`<version>\` (e.g., "1.0", "1.1", "2.0")
 
 **Purpose:** Create historical record of shipped version, archive milestone artifacts (roadmap + requirements), and prepare for next milestone.
 
-**Output:** Milestone archived (roadmap + requirements), PROJECT.md evolved, learnings consolidated, git tagged.
-
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.cursor/luca/workflows/complete-milestone.md\`
-- \`.cursor/luca/templates/milestone-archive.md\`
-- \`.cursor/luca/workflows/learning-capture.md\`
+**Output:** Milestone archived (roadmap snapshot + backlog snapshot + audit), \`brain:project-identity\` MuninnDB tree evolved, learnings consolidated, git tagged.
 
 ## Learning Consolidation (NEW)
 
@@ -57,7 +49,7 @@ Create milestone-specific memory snapshot in MuninnDB:
 mcp__muninn__muninn_export_graph(vault: "default")
 \`\`\`
 
-Store the export as \`.luca/milestones/v{version}-MEMORY-SNAPSHOT.json\`.
+Store the export as \`.luca/milestones/v{version}-backlog-snapshot.json\` (per LUCA_DIR_CONTRACT).
 
 Include in archive:
 
@@ -77,33 +69,32 @@ Long-term learnings persist in MuninnDB across milestones.
 
 ## State Machine Integration
 
-When updating state during milestone completion, use the bridge CLI as primary with STATE.md fallback:
+When updating state during milestone completion, use the \`luca\` CLI write surface:
 
 \`\`\`bash
-# Read current state
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly
-STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+# Read current workflow state
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 \`\`\`
 
-After archiving the milestone, reset state for the next milestone:
+After archiving the milestone, reset workflow state for the next milestone:
 
 \`\`\`bash
-# Reset state machine for next milestone
-bun run packages/luca-framework/src/state/bridge.ts transition --event=RESET 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts ensure-init --force 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts set-field --field=current_milestone --value="Planning next" 2>/dev/null || true
-bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-# Fallback: Update STATE.md directly if bridge unavailable
+luca workflow reset 2>/dev/null || true
 \`\`\`
 
-The bridge \`snapshot\` command automatically preserves the "Previous Milestones" section when regenerating STATE.md. Manually append the completed milestone to "Previous Milestones" before calling snapshot.
+Milestone identity (\`milestone:v<version>\`) is stored as an atomic engram in MuninnDB — there is no separate \`current_milestone\` state field on \`.luca/state.json\`. After completion, store the completed-milestone marker:
+
+\`\`\`
+mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "milestone:v{version}-complete", content: "<summary + outcomes>", tags: ["milestone","complete"])
+\`\`\`
+
+The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-{roadmap,audit,backlog-snapshot}.md\`) carry the human-readable archive.
 
 ## Process
 
 0. **Check for audit:**
 
-   - Look for \`.luca/v{version}-MILESTONE-AUDIT.md\`
+   - Look for \`.luca/milestones/v{version}-audit.md\`
    - If missing or stale: recommend \`/milestone-audit\` first
    - If audit status is \`gaps_found\`: recommend \`/milestone-gaps\` first
    - If audit status is \`passed\`: proceed
@@ -126,22 +117,22 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
    - Extract 4-6 key accomplishments
    - Present for approval
 
-4. **Archive milestone:**
+4. **Archive milestone snapshot:**
 
-   - Create \`.luca/milestones/v{version}-ROADMAP.md\`
-   - Fill milestone-archive.md template
-   - Update ROADMAP.md to one-line summary with link
+   - Create \`.luca/milestones/v{version}-roadmap.md\` (snapshot of the closing roadmap)
+   - Create \`.luca/milestones/v{version}-audit.md\` (milestone audit summary)
+   - Create \`.luca/milestones/v{version}-backlog-snapshot.{json,md}\` (per LUCA_DIR_CONTRACT — captured in Step 2 above)
+   - Reset the active roadmap via \`luca roadmap create --file <next-milestone.json>\` when a new milestone is ready; or leave the active roadmap empty until \`/milestone-new\`.
 
-5. **Archive requirements:**
+5. **Evolve requirements traceability in MuninnDB:**
 
-   - Create \`.luca/milestones/v{version}-REQUIREMENTS.md\`
-   - Mark all v1 requirements as complete
-   - Delete \`.luca/REQUIREMENTS.md\` (fresh one created for next milestone)
+   - Mark all v1 requirements as complete in \`brain:project-requirements\` (vault: repo vault)
+   - The legacy hand-authored \`REQUIREMENTS.md\` has no canonical home; this step is a MuninnDB tree mutation only.
 
-6. **Update PROJECT.md:**
+6. **Update project identity in MuninnDB:**
 
-   - Add "Current State" section with shipped version
-   - Add "Next Milestone Goals" section
+   - Update \`brain:project-identity\` to reflect the shipped version (add a \`current-version\` child, advance the milestone marker)
+   - Set the next-milestone goals as an engram for the upcoming \`/milestone-new\` to pick up
 
 7. **Commit and tag:**
 
@@ -158,11 +149,10 @@ The bridge \`snapshot\` command automatically preserves the "Previous Milestones
 
 ## Success Criteria
 
-- [ ] Milestone archived to \`.luca/milestones/v{version}-ROADMAP.md\`
-- [ ] Requirements archived to \`.luca/milestones/v{version}-REQUIREMENTS.md\`
-- [ ] \`.luca/REQUIREMENTS.md\` deleted (fresh for next milestone)
-- [ ] ROADMAP.md collapsed to one-line entry
-- [ ] PROJECT.md updated with current state
+- [ ] Milestone snapshot archived to \`.luca/milestones/v{version}-roadmap.md\` + \`v{version}-audit.md\` + \`v{version}-backlog-snapshot.{json,md}\`
+- [ ] Requirements traceability evolved in MuninnDB (\`brain:project-requirements\` v1 items marked complete)
+- [ ] Active \`.luca/roadmap.md\` reset (or left empty until next milestone opens)
+- [ ] \`brain:project-identity\` MuninnDB tree updated with current shipped version
 - [ ] Git tag v{version} created
 - [ ] Commit successful
 

@@ -22,10 +22,10 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
 ## Process
 
 1. **Load phase context:**
-   - Read ROADMAP.md for phase goal
-   - Read REQUIREMENTS.md for mapped requirements
-   - Read research (if exists)
-   - Read existing context.md (if exists)
+   - Read \`.luca/roadmap.md\` for phase goal
+   - Recall mapped requirements from MuninnDB (\`brain:project-requirements\`)
+   - Read \`.luca/phases/<slug>/research.md\` (if exists)
+   - Read \`.luca/phases/<slug>/context.md\` (if exists)
 
 2. **Generate assumptions:**
    Based on phase goal and requirements, list:

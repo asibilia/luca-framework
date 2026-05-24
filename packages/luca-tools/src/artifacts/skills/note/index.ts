@@ -33,7 +33,7 @@ When no flag is provided, the message becomes a new phase in the current milesto
    - Error if no arguments provided
 
 2. **Load roadmap:**
-   - Read \`.luca/ROADMAP.md\`
+   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\` for a typed view)
    - Error if not found
 
 3. **Find current milestone:**
@@ -60,22 +60,20 @@ When no flag is provided, the message becomes a new phase in the current milesto
    - Insert new phase entry after last phase in current milestone
    - Include Goal, Depends on, Plans placeholders
 
-8. **Update state (bridge primary, STATE.md fallback):**
+8. **Update roadmap:**
 
    \\\`\\\`\\\`bash
-   # Primary: Regenerate STATE.md from state machine (picks up roadmap changes)
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Manually add reference to new phase in STATE.md
+   # The roadmap is the durable view; the workflow state machine in .luca/state.json
+   # is updated separately by the pipeline when a phase becomes active.
+   luca roadmap create --file <payload.json>   # if creating a fresh roadmap
+   # or edit .luca/roadmap.md directly for incremental additions, then read it back via
+   luca roadmap read 2>/dev/null || true
    \\\`\\\`\\\`
 
-   - Add entry under "Roadmap Evolution" in STATE.md
-
-9. **Emit observer event (via SpacetimeDB reducer):**
+9. **Emit observer event:**
 
    \\\`\\\`\\\`bash
-   bun run packages/luca-framework/src/state/bridge.ts emit-event phase.added \\
-     --session-id="\${SESSION_ID:-}" \\
-     --payload='{"phase":"<N>","description":"<message>","directory":"<path>"}' 2>/dev/null || true
+   luca telemetry emit --kind=phase.added --data='{"phase":"<N>","description":"<message>","directory":"<path>"}' 2>/dev/null || true
    \\\`\\\`\\\`
 
 10. **Confirm:**
@@ -101,7 +99,7 @@ See \`/phase-add\` for detailed anti-patterns. Key rules:
 
 ## \`--next\` Mode — Urgent Note
 
-Queue a note picked up within 60 seconds by the context-check hook.
+Queue a note as a high-priority MuninnDB-backed todo. The context-check hook surfaces high-priority todos into the agent context.
 
 ### Process
 
@@ -109,64 +107,46 @@ Queue a note picked up within 60 seconds by the context-check hook.
    - Strip \`--next\` flag
    - Remaining text is the note body
 
-2. **Generate filename:**
-   - Priority prefix: \`0\`
-   - Unix timestamp: \`$(date +%s)\`
-   - Slug: first 5 words of message, kebab-cased, max 50 chars
-   - Format: \`0-{timestamp}-{slug}.md\`
-
-3. **Write note file:**
-   - Location: \`.luca/notes/{filename}\`
-   - Format:
-
-     \`\`\`markdown
-     ---
-     priority: next
-     created: 2026-03-04T00:00:00Z
-     status: pending
-     ---
-
-     The note message text.
-     \`\`\`
-
-4. **Emit observer event (via SpacetimeDB reducer):**
+2. **Persist to the MuninnDB-backed backlog:**
 
    \\\`\\\`\\\`bash
-   bun run packages/luca-framework/src/state/bridge.ts emit-event note.added \\
-     --session-id="\${SESSION_ID:-}" \\
-     --payload='{"priority":"next","file":"<filename>"}' 2>/dev/null || true
+   luca todo add --title "<first-line>" --area "note" --priority high --source note --body "<full message>"
    \\\`\\\`\\\`
 
-5. **Confirm:**
+3. **Emit observer event:**
+
+   \\\`\\\`\\\`bash
+   luca telemetry emit --kind=note.added --data='{"priority":"next","title":"<first-line>"}' 2>/dev/null || true
+   \\\`\\\`\\\`
+
+4. **Confirm:**
 
    \`\`\`
    Note queued: {message preview}
 
-   Priority: next
-   File: .luca/notes/{filename}
-   Pickup: within 60s
+   Priority: high (next)
+   Backlog: MuninnDB todo backlog (see \`luca todo list\`)
    \`\`\`
 
 ### Consumption
 
-Automatically injected into agent context by \`context-check-throttled.sh\` every 60 seconds. Moved to \`.luca/notes/done/\` after injection.
+High-priority todos surface in the agent context via the context-refresher / context-check hooks and via \`luca todo list\`. There is no separate \`.luca/notes/\` filesystem layer — the canonical backlog is the MuninnDB todo store.
 
 ---
 
 ## \`--whenever\` Mode — Deferred Note
 
-Queue a note picked up at commit boundaries only.
+Queue a low-priority MuninnDB-backed todo picked up at commit / phase boundaries only.
 
 ### Process
 
 Same as \`--next\` mode except:
-- Priority prefix: \`1\`
-- Frontmatter priority: \`whenever\`
-- Filename format: \`1-{timestamp}-{slug}.md\`
+- \`--priority low\` (instead of \`high\`)
+- The todo surfaces in \`luca todo list\` but is not pushed into the active agent context.
 
 ### Consumption
 
-Advisory reminder at pre-commit time. Not auto-consumed — agent reads and acts on them manually.
+Advisory backlog entry. Not auto-consumed — agent reads via \`luca todo list\` and acts on them manually.
 
 ---
 
@@ -175,13 +155,13 @@ Advisory reminder at pre-commit time. Not auto-consumed — agent reads and acts
 | Mode | Trigger | Output | Event |
 |------|---------|--------|-------|
 | Default (phase) | No flag | Roadmap phase + directory | \`phase.added\` |
-| \`--next\` | \`--next\` flag | Note file (prefix \`0\`) | \`note.added\` |
-| \`--whenever\` | \`--whenever\` flag | Note file (prefix \`1\`) | \`note.added\` |
+| \`--next\` | \`--next\` flag | MuninnDB todo (priority high) | \`note.added\` |
+| \`--whenever\` | \`--whenever\` flag | MuninnDB todo (priority low) | \`note.added\` |
 
 ## Success Criteria
 
 - [ ] Phase mode: directory created, roadmap updated, state updated
-- [ ] Note modes: file created in \`.luca/notes/\` with correct prefix
+- [ ] Note modes: MuninnDB todo created via \`luca todo add\`
 - [ ] Observer event emitted (fire-and-forget)
 - [ ] User sees confirmation with appropriate next steps
 </main>

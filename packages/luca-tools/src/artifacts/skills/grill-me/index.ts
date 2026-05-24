@@ -1,5 +1,5 @@
 /**
- * grill-me skill — Interview the user relentlessly about a plan or design until reaching shared understanding. Walks each branch of the decision tree, resolving dependencies one-by-one. Updates docs/CONTEXT.md and offers ADRs when decisions crystallize. Use when user says "grill me", "stress-test this plan", "poke holes", "challenge my design", or invokes /grill-me.
+ * grill-me skill — Interview the user relentlessly about a plan or design until reaching shared understanding. Walks each branch of the decision tree, resolving dependencies one-by-one. Updates docs/context.md and offers ADRs when decisions crystallize. Use when user says "grill me", "stress-test this plan", "poke holes", "challenge my design", or invokes /grill-me.
  *
  * Ported from ~/.claude/skills/grill-me/SKILL.md (current user copy) (E-5).
  * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
@@ -53,6 +53,6 @@ If any of the three is missing, skip the ADR.
 
 export const grillMeSkill = defineSkill({
     name: "grill-me",
-    description: "Interview the user relentlessly about a plan or design until reaching shared understanding. Walks each branch of the decision tree, resolving dependencies one-by-one. Updates docs/CONTEXT.md and offers ADRs when decisions crystallize. Use when user says \"grill me\", \"stress-test this plan\", \"poke holes\", \"challenge my design\", or invokes /grill-me.",
+    description: "Interview the user relentlessly about a plan or design until reaching shared understanding. Walks each branch of the decision tree, resolving dependencies one-by-one. Updates docs/context.md and offers ADRs when decisions crystallize. Use when user says \"grill me\", \"stress-test this plan\", \"poke holes\", \"challenge my design\", or invokes /grill-me.",
     body: BODY,
 })

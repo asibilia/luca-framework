@@ -49,6 +49,7 @@
  */
 import { join } from 'node:path'
 
+import { appendLedger } from '@alecsibilia/luca-core/ledger'
 import {
     checkPipelineGuard,
     type PipelineGuardInput,
@@ -117,6 +118,30 @@ async function main(): Promise<number> {
     }
 
     const verdict = checkPipelineGuard(input)
+
+    // Emit a ledger event for the hook firing. The postmortem analyzer
+    // scans the ledger for `hook.pipeline-guard.fired` events to detect
+    // pipeline-guard rejections and forced transitions over time.
+    // Failure-open: any ledger-write error MUST NOT block the hook.
+    try {
+        const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
+            ? (state as { sessionId: string }).sessionId
+            : ''
+        appendLedger({
+            cwd,
+            runId,
+            event: 'hook.pipeline-guard.fired',
+            data: {
+                pipelineStep: state.pipelineStep,
+                requestedStep,
+                decision: verdict.allowed ? 'allow' : 'block',
+                reason: verdict.allowed ? undefined : verdict.message,
+            },
+        })
+    } catch {
+        // Failure-open: never block the hook on a ledger-write error.
+    }
+
     if (verdict.allowed) {
         return 0
     }

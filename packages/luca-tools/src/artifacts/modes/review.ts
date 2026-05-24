@@ -180,16 +180,12 @@ In \`full-auto\`, route automatically based on findings.
 
 **Route A — Clean (no MUST-FIX)**:
 1. Save review report, store clean verdict.
-2. Transition: \`luca state switch-mode --target finalize\`.
+2. Transition: \`luca state advance --to-step learn\` (then onward to milestone/complete per the pipeline-transitions table).
 
 **Route B — Issues Found (MUST-FIX exist)**:
 1. Check iteration count against \`maxReviewIterations\`.
-2. Within budget: write iteration plan, save report, transition to Execute:
-   \`\`\`
-   luca state save-review --iteration-plan <JSON> --review-iteration <n+1> --perspectives '["architecture","security","simplification","dx","test-quality"]'
-   luca state switch-mode --target execute
-   \`\`\`
-3. At budget limit: save report with remaining issues, transition to Finalize with warning.
+2. Within budget: write the iteration plan into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
+3. At budget limit: save report with remaining issues; transition forward via \`luca state advance --to-step learn\` with a warning recorded in the audit artifact.
 
 ---
 
@@ -224,9 +220,9 @@ After review, normal routing applies: clean → Finalize, issues → Execute →
 
 ## Pipeline Orchestration
 
-Transition via \`luca state switch-mode\`:
-- \`--target finalize\` — clean or at iteration limit.
-- \`--target execute\` — MUST-FIX issues need iteration.
+Transition via \`luca state advance --to-step <step>\` per the pipeline-transitions table:
+- \`--to-step learn\` — clean or at iteration limit (then onward to milestone/complete).
+- \`--to-step execute\` — MUST-FIX issues need iteration.
 
 ### Context From Previous Stages
 

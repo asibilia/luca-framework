@@ -23,21 +23,15 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`lu-executor\` - Executes individual plans (PARALLEL per wave)
-- \`lu-verifier\` - Verifies phase goal achieved
-- \`lu-learner\` - Extracts learnings after verification
-- \`dx-advocate\` - Code quality review
-- \`code-simplifier\` - DRY and complexity review
-- \`code-architect\` - Architecture review
-- \`tailwind-auditor\` - Tailwind/styling review
-- \`security-auditor\` - Security review (conditional)
-- \`lu-planner\` - Plans fixes for issues (if needed)
-- \`lu-plan-checker\` - Validates fix plans (if needed)
-- \`lu-test-writer\` - Generates test files from plan verification criteria (spawned by lu-executor during TDD cycle)
+- \`executor\` - Executes individual tasks (PARALLEL per wave)
+- \`verifier\` - Verifies the phase goal is achieved
+- \`learner\` - Extracts learnings after verification
+- \`reviewer\` - Multi-perspective code review (one Task() spawn per perspective)
+- \`shadow-scanner\` - Scans for AI-session debris at milestone boundaries
+- For "plan a fix" cycles: re-invoke the architect mode-agent (which performs planning in v13 — the v12-era \`lu-planner\` subagent was dropped per plan §5.6).
+- For plan-validation cycles: spawn the \`plan-reviewer\` subagent.
 
-**DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate agents.
-
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**DO NOT** attempt to execute plans, verify, or review code yourself. Spawn the appropriate subagent via the \`Task\` tool, or invoke the appropriate mode-agent.
 
 ## Context-Aware Sub-Agent Spawning (Phase 16+)
 
@@ -48,25 +42,17 @@ Each sub-agent receives only the context documents appropriate for its role and 
 |------|-----------------|
 | T0 | Plan content only |
 | T1 | + project identity summary (from MuninnDB brain:*) |
-| T2 | + STATE.md + selective learnings + session context (from MuninnDB) |
+| T2 | + workflow state (state.json) + selective learnings + session context (from MuninnDB) |
 | T3 | + full project identity + full learnings + agent summaries (from MuninnDB) |
 
 **Isolation Modes:**
 | Mode | Restriction | Used By |
 |------|------------|---------|
-| none | Full context per tier | lu-executor, lu-planner, lu-learner |
-| cold | Only git diff + project identity | dx-advocate, code-simplifier, code-architect |
-| warm | Plans + summaries, NO session context | lu-verifier |
+| none | Full context per tier | executor, learner |
+| cold | Only git diff + project identity | reviewer perspectives (architect, security, simplification, dx) |
+| warm | Plans + summaries, NO session context | verifier |
 
 **Complexity promotes context:** At MODERATE+, sub-agents may receive one tier higher than their default.
-
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.cursor/luca/references/ui-brand.md\`
-- \`.cursor/luca/workflows/execute-phase.md\`
-- \`.cursor/luca/workflows/learning-capture.md\`
 
 ## Always Verify & Learning Capture (NEW)
 
@@ -188,42 +174,13 @@ Track:
 MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
 \`\`\`
 
-**Model lookup table:**
-
-| Agent            | quality | balanced | budget |
-| ---------------- | ------- | -------- | ------ |
-| lu-executor      | opus    | sonnet   | sonnet |
-| lu-verifier      | sonnet  | sonnet   | haiku  |
-| dx-advocate      | opus    | sonnet   | haiku  |
-| code-simplifier  | opus    | sonnet   | haiku  |
-| code-architect   | opus    | sonnet   | haiku  |
-| tailwind-auditor | opus    | sonnet   | haiku  |
-| security-auditor | opus    | sonnet   | haiku  |
-| lu-planner       | opus    | opus     | sonnet |
-| lu-plan-checker  | sonnet  | sonnet   | haiku  |
-| lu-test-writer   | sonnet  | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# Lightweight agents → use "fast"
-learner_model = "fast"
-
-# Reasoning-intensive agents → omit (inherit from parent)
-executor_model = (omit)
-verifier_model = (omit)
-planner_model = (omit)
-checker_model = (omit)
-reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
-\`\`\`
+Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`) — the orchestrator does not pick model strings. Lightweight agents (e.g. \`learner\`) inherit the fast tier; reasoning-intensive subagents (\`executor\`, \`verifier\`, \`plan-reviewer\`, \`reviewer\`) inherit the balanced or capable tier depending on complexity.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
 **Before executing any plans, verify issue/branch tracking is configured.**
 
-Read STATE.md and check for \`GitHub Issue:\` line.
+Recall the GitHub issue reference from MuninnDB (\`session:milestone-*\` or \`session:project-init\` in repo vault) — issue metadata lives there in v13, not on \`.luca/state.json\`.
 
 **If issue exists and is valid:**
 
@@ -247,11 +204,11 @@ Commits will not reference issues and PR creation will require manual setup.
 
 **If "Create issue now" selected:**
 
-1. Generate issue from PROJECT.md Current Milestone + REQUIREMENTS.md
+1. Generate issue from MuninnDB recall: \`brain:project-identity\` (for milestone identity) + \`brain:project-requirements\` (for scope)
 2. Create issue: \`gh issue create --title "feat({scope}): {milestone}" --body "{body}"\`
 3. Create branch: \`git checkout -b {issue_number}--{milestone-slug}\`
 4. Push: \`git push -u origin {branch_name}\`
-5. Update STATE.md
+5. Record issue/branch references in MuninnDB: \`mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:milestone-issue", content: "GitHub issue #{issue_number} / branch {branch_name}", tags: ["session","milestone","github"])\`
 6. Continue execution
 
 **If "Continue without" selected:**
@@ -271,8 +228,8 @@ Commits will not reference issues and PR creation will require manual setup.
 Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for lu-executor.
 
 \`\`\`bash
-# Read phase objective from ROADMAP.md or plan files
-PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .luca/ROADMAP.md | tail -1 | sed 's/^[[:space:]]*//')
+# Read phase objective from the roadmap or plan files
+PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .luca/roadmap.md | tail -1 | sed 's/^[[:space:]]*//')
 \`\`\`
 
 Recall replayable procedures from MuninnDB:
@@ -339,10 +296,8 @@ First, read plan contents (required because @ syntax doesn't work across Task bo
 PLAN_01_CONTENT=$(cat "{plan_01_path}")
 PLAN_02_CONTENT=$(cat "{plan_02_path}")
 PLAN_03_CONTENT=$(cat "{plan_03_path}")
-# Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md)
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 \`\`\`
 
 Recall session context from MuninnDB:
@@ -446,17 +401,13 @@ ZONE=$(echo "$CONTEXT_JSON" | bun -e "const d=JSON.parse(await Bun.stdin.text())
 
 **If zone is "stop"** (context exhaustion imminent):
 
-1. **Create checkpoint:** Record current progress so a new session can resume.
+1. **Create checkpoint:** Record current progress so a new session can resume. Emit a telemetry suspend event and persist the wave/task progress to the active phase's \`execute/progress.jsonl\` so the next session can resume from there:
 
 \`\`\`bash
-# Suspend with checkpoint via bridge
-bun run packages/luca-framework/src/state/bridge.ts suspend \\
-  --phase={phase_number} \\
-  --reason=context_exhaustion \\
-  --wave={current_wave_index} \\
-  --tasks={comma_separated_completed_task_ids} \\
-  2>/dev/null || true
+luca telemetry emit --kind=phase.suspend --data='{"phase":"{phase_number}","reason":"context_exhaustion","wave":{current_wave_index},"completed":"{comma_separated_completed_task_ids}"}' 2>/dev/null || true
 \`\`\`
+
+The execute step appends per-wave progress to \`.luca/phases/<currentPhaseSlug>/execute/progress.jsonl\` — that JSONL is the durable resume record.
 
 2. **Write \`.continue-here.md\`** as a handoff document for the next session:
 
@@ -490,21 +441,21 @@ Checkpoint saved. Resume in a new session with:
   /phase-execute {phase_number}
 \`\`\`
 
-**On resume** (checkpoint exists for this phase):
+**On resume** (the active phase's progress.jsonl indicates partial completion):
 
-At the start of phase execution, check for an existing suspend checkpoint:
+At the start of phase execution, check for an existing progress ledger:
 
 \`\`\`bash
-# Check for suspend checkpoint
-CHECKPOINT_EXISTS=$(bun run packages/luca-framework/src/state/bridge.ts resume-phase --phase={phase_number} 2>/dev/null && echo "true" || echo "false")
+PROGRESS_PATH=".luca/phases/{phase_slug}/execute/progress.jsonl"
+CHECKPOINT_EXISTS=$([ -s "$PROGRESS_PATH" ] && echo "true" || echo "false")
 \`\`\`
 
 If a checkpoint exists:
 
-1. Load the checkpoint to get completed wave index and task IDs
-2. Skip waves that were already completed
-3. Resume execution from the first incomplete wave
-4. Clear the checkpoint after successful phase completion
+1. Read \`$PROGRESS_PATH\` (JSONL) and reconstruct the completed wave index + task IDs from the last successful wave entry.
+2. Skip waves that were already completed.
+3. Resume execution from the first incomplete wave.
+4. The progress ledger is append-only — no explicit clear step is needed.
 
 ### 5. Aggregate Results
 
@@ -618,12 +569,8 @@ Overall: {PASSED/FAILED}
 Read iteration configuration:
 
 \`\`\`bash
-# Primary: Read complexity from state machine bridge
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || echo "MODERATE")
-# Fallback: grep STATE.md directly
-if [ "$COMPLEXITY" = "" ] || [ "$COMPLEXITY" = "undefined" ]; then
-  COMPLEXITY=$(grep "Task Complexity:" .luca/STATE.md | awk '{print $NF}' || echo "MODERATE")
-fi
+# Read complexity from the canonical workflow state
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 
 # Read iteration config
 CONFIG=$(cat .luca/config.json)
@@ -924,13 +871,11 @@ First, read the required context:
 
 \`\`\`bash
 PHASE_DIR=".luca/phases/{phase_number}-*"
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md)
-# Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md)
-SUMMARIES=$(find $PHASE_DIR -name "*-SUMMARY.md" -exec cat {} \\;)
-PLAN_CONTENTS=$(find $PHASE_DIR -name "*-plan.md" -exec cat {} \\;)
+ROADMAP_CONTENT=$(cat .luca/roadmap.md)
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+SUMMARIES=$(find $PHASE_DIR -path "*/execute/summary.md" -exec cat {} \\;)
+PLAN_CONTENTS=$(find $PHASE_DIR -name "plan.md" -exec cat {} \\;)
 \`\`\`
 
 Recall session context from MuninnDB:
@@ -950,7 +895,7 @@ Task(
 **Phase Directory:** {phase_dir}
 **Mode:** full (goal-backward verification)
 
-**Phase Goal (from ROADMAP.md):**
+**Phase Goal (from roadmap.md):**
 {phase_goal}
 
 **Execution Summaries:**
@@ -1336,7 +1281,7 @@ echo "$CHANGED_FILES" | grep -E '(auth|api|convex|mutation|query|middleware|prox
 
 - Git diff of changed files (not full file contents)
 - Project identity summary (conventions only, from MuninnDB brain:*)
-- NO STATE.md, NO session context, NO long-term learnings
+- NO workflow state, NO session context, NO long-term learnings
 
 This prevents reviewer bias from executor session context.
 
@@ -1583,8 +1528,8 @@ Planning fixes automatically...
 
 \`\`\`
 
-- Spawn \`lu-planner\` in quality_fixes mode
-- Spawn \`lu-plan-checker\` to verify plans
+- Re-invoke the architect mode-agent (in quality-fixes context) to produce a fix plan
+- Spawn the \`plan-reviewer\` subagent to verify the fix plan
 - Present ready status for \`/phase-execute {phase} --quality-fixes\`
 - **EXIT** (user must run execute again with --quality-fixes)
 
@@ -1615,17 +1560,17 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Signal Verification and Update State
 
-Signal verification passed via bridge. Do NOT send COMMIT_COMPLETE here — the machine transitions to \`learning\` state and expects LEARN_COMPLETE before committing.
+Advance the workflow state to the next pipeline step. Do NOT advance straight to \`complete\` here — the pipeline transitions through \`learn\` (postmortem capture) before commit:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=VERIFY_PASSED 2>/dev/null || true
+luca state advance --to-step learn 2>/dev/null || true
 \`\`\`
 
-Also update STATE.md directly for backward compatibility.
+The state machine's \`pipelineStep\` field in \`.luca/state.json\` is the authoritative signal.
 
 ### 10. Update Requirements
 
-Mark phase requirements as Complete in REQUIREMENTS.md traceability table.
+Mark phase requirements as Complete in the active phase's \`audits/\` traceability artifact (or in the active milestone audit at \`.luca/milestones/v<SEMVER>-audit.md\` once milestone is open). Requirements live in MuninnDB engrams; the per-phase \`audits/\` files surface them durably.
 
 ### 10.5. Checkpoint Cleanup
 
@@ -1645,10 +1590,10 @@ git add .
 bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
 \`\`\`\`
 
-Signal commit complete via bridge (after the actual commit succeeds):
+Advance the workflow state after the actual commit succeeds. From \`learn\` the next step is typically \`milestone\` or \`complete\` per the pipeline-transitions table:
 
 \`\`\`bash
-bun run packages/luca-framework/src/state/bridge.ts transition --event=COMMIT_COMPLETE 2>/dev/null || true
+luca state advance --to-step complete 2>/dev/null || true
 \`\`\`
 
 ### 12. User Acceptance Testing (UAT)
@@ -1682,9 +1627,7 @@ Code review passed ✓
 Testing deliverables from this phase...
 \`\`\`
 
-**Follow verify-work workflow inline:**
-
-Read \`.cursor/luca/workflows/verify-work.md\` for detailed UAT process.
+**Follow the verify-work flow inline:** spawn the \`verifier\` subagent with the per-task acceptance criteria, parse its \`verify.json\` output, and route per the recommendation field (\`pass\`, \`fix\`, \`escalate\`).
 
 1. **Find SUMMARY.md files** for the phase
 2. **Extract testable deliverables** (user-observable outcomes)
@@ -1709,7 +1652,7 @@ Code review passed ✓
 
 ## ▶ Next Up
 
-**Phase {Z+1}: {Name}** — {Goal from ROADMAP.md}
+**Phase {Z+1}: {Name}** — {Goal from roadmap.md}
 
 /phase-discuss {Z+1} — gather context and clarify approach
 \`\`\`
@@ -1748,8 +1691,8 @@ All code reviews passed ✓
   - Gate: \`root_cause_tribunal_enabled\` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
   - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
   - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
-- Spawn lu-planner in --gaps mode to create fix plans
-- Spawn lu-plan-checker to verify fix plans
+- Re-invoke the architect mode-agent (in --gaps context) to create fix plans
+- Spawn the \`plan-reviewer\` subagent to verify fix plans
 - Present ready status:
 
 \`\`\`
@@ -1824,9 +1767,9 @@ bun run commit --message="complete {phase-name} phase" --type=docs --scope={phas
 - [ ] UAT.md created with tests from SUMMARY.md
 - [ ] UAT tests presented one at a time
 - [ ] UAT issues diagnosed and fix plans created (if any)
-- [ ] STATE.md reflects phase completion
-- [ ] ROADMAP.md updated
-- [ ] REQUIREMENTS.md updated
+- [ ] \`.luca/state.json\` reflects phase completion (advanced through learn/milestone steps)
+- [ ] \`.luca/roadmap.md\` updated (phase marked complete)
+- [ ] MuninnDB \`brain:project-requirements\` traceability updated (per-phase REQ-IDs marked complete)
 - [ ] User routed to next phase or fix execution
 
 ## Next Steps

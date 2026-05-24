@@ -28,9 +28,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 - \`ui\` - Tailwind/styling review
 - \`security-auditor\` - Security review (milestone-wide)
 
-**DO NOT** attempt to check integration or review code yourself. Spawn the appropriate agents.
-
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**DO NOT** attempt to check integration or review code yourself. Spawn the appropriate subagents via the \`Task\` tool.
 
 ## Model Profile
 
@@ -63,9 +61,9 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ### 1. Load Context
 
-- Read all phase VERIFICATION.md files for the milestone
-- Read REQUIREMENTS.md
-- Read PROJECT.md for original intent
+- Read all phase \`verify.json\` files for the milestone
+- Recall requirements from MuninnDB (\`brain:project-requirements\`)
+- Recall the project identity from MuninnDB (\`brain:project-identity\`) for original intent
 
 ### 2. Check Requirements Coverage
 
@@ -74,14 +72,15 @@ reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
 
 ### 3. Spawn Integration Checker
 
-**MANDATORY**: You MUST spawn a lu-integration-checker sub-agent. Do NOT verify integration yourself.
+**MANDATORY**: You MUST spawn the integration-checker (run as a \`reviewer\` subagent with perspective=integration). Do NOT verify integration yourself.
 
 First, read the phase context:
 
 \`\`\`bash
-VERIFICATION_FILES=$(find .luca/phases -name "VERIFICATION.md" -exec cat {} ;)
-REQUIREMENTS_CONTENT=$(cat .luca/REQUIREMENTS.md)
-ROADMAP_CONTENT=$(cat .luca/ROADMAP.md)
+VERIFICATION_FILES=$(find .luca/phases -name "verify.json" -exec cat {} \\;)
+ROADMAP_CONTENT=$(cat .luca/roadmap.md)
+# Recall requirements from MuninnDB:
+# mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
 \`\`\`
 
 Then spawn the integration checker:
@@ -342,7 +341,7 @@ description="Milestone security review"
 \\\`\\\`\\\`bash
 # Read debate config
 DEBATE_ENABLED=$(cat .luca/config.json 2>/dev/null | grep -o '"milestone_debate_enabled"[[:space:]]*:[[:space:]]*[a-z]*' | grep -o '[a-z]*$' || echo "true")
-COMPLEXITY=$(bun run packages/luca-framework/src/state/bridge.ts read-complexity 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.complexity)" 2>/dev/null || grep "Task Complexity:" .luca/STATE.md | awk '{print $NF}' || echo "MODERATE")
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 \\\`\\\`\\\`
 
 **Skip if:** \\\`DEBATE_ENABLED\\\` is "false" OR complexity is below COMPLEX, OR no disagreements detected among reviewer outputs from Step 4.
@@ -425,7 +424,7 @@ Replace the raw merged findings from Step 4 with unified recommendations from th
 
 ### 5. Create Audit Report
 
-Location: \`.luca/v{version}-MILESTONE-AUDIT.md\`
+Location: \`.luca/milestones/v{version}-audit.md\` (per LUCA_DIR_CONTRACT)
 
 Include:
 - Requirements status
@@ -528,7 +527,7 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 - [ ] Code review subagents spawned (dx-advocate, code-simplifier, code-architect, tailwind-auditor, security-auditor)
 - [ ] Cross-phase patterns identified
 - [ ] Tech debt populated from code review findings
-- [ ] MILESTONE-AUDIT.md created
+- [ ] \`.luca/milestones/v<version>-audit.md\` created
 - [ ] Gaps clearly identified
 - [ ] Debate round evaluated (gate check performed; debate ran if gates passed)
 - [ ] If debate ran: unified recommendations replace raw merged findings

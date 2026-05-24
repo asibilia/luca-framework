@@ -23,11 +23,10 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 - \`lu-project-researcher\` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
 - \`lu-research-synthesizer\` - Synthesizes research outputs into SUMMARY.md
-- \`lu-roadmapper\` - Creates ROADMAP.md from requirements
+- \`lu-roadmapper\` - Creates \`.luca/roadmap.md\` from requirements via \`luca roadmap create\`
 
 **DO NOT** attempt to research, synthesize, or create roadmaps yourself. Spawn the appropriate agents.
 
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
 
 ### Model Resolution
 
@@ -58,13 +57,11 @@ roadmapper_model = (omit)
 
 ## Creates
 
-- \`.luca/PROJECT.md\` — project context
+- \`.luca/state.json\` — workflow state machine (created by \`luca init\`)
 - \`.luca/config.json\` — workflow preferences
-- **MuninnDB** — project identity, long-term learnings, and session memory (seeded via \`/seed-memory\`)
-- \`.luca/research/\` — domain research (optional)
-- \`.luca/REQUIREMENTS.md\` — scoped requirements
-- \`.luca/ROADMAP.md\` — phase structure
-- \`.luca/STATE.md\` — project memory
+- \`.luca/roadmap.md\` — phase structure (created via \`luca roadmap create\`)
+- \`.luca/phases/<NN-slug>/research.md\` — domain research (per phase, optional)
+- **MuninnDB** — project identity (\`brain:project-identity\`), project requirements (\`brain:project-requirements\`), and long-term learnings (seeded via \`/seed-memory\`)
 - **GitHub issue** — project tracking (optional)
 - **Feature branch** — linked to issue (optional)
 
@@ -97,15 +94,6 @@ MuninnDB will then accumulate over time:
 - Pitfalls encountered and how to avoid them
 - Session context for continuity across context resets
 
-## Execution Context
-
-Read these reference files before executing:
-
-- \`.cursor/luca/references/questioning.md\`
-- \`.cursor/luca/references/ui-brand.md\`
-- \`.cursor/luca/templates/project.md\`
-- \`.cursor/luca/templates/requirements.md\`
-
 ## Process
 
 ### Phase 1: Setup
@@ -115,7 +103,7 @@ Read these reference files before executing:
 1. **Abort if project exists:**
 
    \`\`\`bash
-   [ -f .luca/PROJECT.md ] && echo "ERROR: Project already initialized. Use /progress" && exit 1
+   [ -f .luca/state.json ] && echo "ERROR: Project already initialized. Use /progress" && exit 1
    \`\`\`
 
 2. **Initialize git repo in THIS directory** (required even if inside a parent repo):
@@ -201,26 +189,39 @@ Consult \`questioning.md\` for techniques:
 
 **Decision gate:**
 
-When you could write a clear PROJECT.md, use AskQuestion:
+When you have a clear project identity, use AskQuestion:
 
 - header: "Ready?"
-- question: "I think I understand what you're after. Ready to create PROJECT.md?"
+- question: "I think I understand what you're after. Ready to capture the project identity?"
 - options:
-  - "Create PROJECT.md" — Let's move forward
+  - "Capture identity" — Let's move forward
   - "Keep exploring" — I want to share more / ask me more
 
-Loop until "Create PROJECT.md" selected.
+Loop until "Capture identity" selected.
 
-### Phase 4: Write PROJECT.md
+### Phase 4: Capture Project Identity in MuninnDB
 
-Synthesize all context into \`.luca/PROJECT.md\` using the template from \`templates/project.md\`.
+Synthesize all context into a structured \`brain:project-identity\` tree in MuninnDB (vault: repo vault):
 
-**Commit PROJECT.md:**
+\`\`\`
+mcp__muninn__muninn_remember_tree(
+  vault: "<repo_vault>",
+  root: { concept: "brain:project-identity", content: "<one-line summary>", tags: ["brain","identity"] },
+  children: [
+    { concept: "brain:project-identity:what-this-is", content: "<what this is>" },
+    { concept: "brain:project-identity:core-value", content: "<core value proposition>" },
+    { concept: "brain:project-identity:scope", content: "<v1 scope>" },
+    { concept: "brain:project-identity:out-of-scope", content: "<v2+ out of scope>" }
+  ]
+)
+\`\`\`
+
+Project identity lives as MuninnDB engrams, not as a hand-authored \`PROJECT.md\` (the legacy file has no canonical home in LUCA_DIR_CONTRACT). Run \`luca init\` to write the canonical \`.luca/\` skeleton.
 
 \`\`\`bash
-mkdir -p .planning
-git add .
-bun run commit --message="initialize project - [One-liner from PROJECT.md What This Is section]" --type=docs --scope=project --no-push --skip-checks
+luca init
+git add .luca/
+bun run commit --message="initialize project identity" --type=docs --scope=project --no-push --skip-checks
 \`\`\`
 
 ### Phase 5: Workflow Preferences
@@ -251,12 +252,13 @@ If "Research first":
 
 **MANDATORY**: You MUST spawn 4 parallel researcher agents. Do NOT attempt to research yourself.
 
-First, read the project context:
+First, recall the project context from MuninnDB:
 
-\`\`\`bash
-PROJECT_CONTENT=$(cat .luca/PROJECT.md)
-mkdir -p .luca/research
 \`\`\`
+mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-identity")
+\`\`\`
+
+Per-phase research lives under \`.luca/phases/<NN-slug>/research.md\` (per LUCA_DIR_CONTRACT). For the project-initialization domain research, persist findings to MuninnDB engrams under \`research:project-init-<topic>\` (vault: repo vault).
 
 Then spawn ALL 4 researchers in PARALLEL (same message, multiple Task calls):
 
@@ -429,18 +431,21 @@ Synthesize all research outputs into a cohesive summary.
 ### Phase 7: Define Requirements
 
 Present features by category, scope each category for v1/v2/out of scope.
-Create \`.luca/REQUIREMENTS.md\` with REQ-IDs.
+Store the requirements as a MuninnDB tree under \`brain:project-requirements\` with REQ-IDs as children. The legacy hand-authored \`REQUIREMENTS.md\` has no canonical home in LUCA_DIR_CONTRACT.
 
 ### Phase 8: Create Roadmap
 
 **MANDATORY**: You MUST spawn a lu-roadmapper sub-agent. Do NOT attempt to create the roadmap yourself.
 
-First, read the required context:
+First, recall the required context from MuninnDB:
+
+\`\`\`
+mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-identity")
+mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
+mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "project-init research summary", tags: ["research","project-init"])
+\`\`\`
 
 \`\`\`bash
-PROJECT_CONTENT=$(cat .luca/PROJECT.md)
-REQUIREMENTS_CONTENT=$(cat .luca/REQUIREMENTS.md)
-RESEARCH_SUMMARY=$(cat .luca/research/SUMMARY.md 2>/dev/null || echo "No research available")
 CONFIG_CONTENT=$(cat .luca/config.json)
 \`\`\`
 
@@ -473,21 +478,15 @@ Based on config depth setting:
 </depth_guidance>
 
 <output_requirements>
-1. Create .luca/ROADMAP.md with:
+1. Create .luca/roadmap.md via \`luca roadmap create --file <payload.json>\` with:
    - Phase structure with clear goals
    - Requirement mappings (REQ-XXX → Phase X)
    - Success criteria for each phase
    - Dependencies between phases
 
-2. Initialize state machine via bridge (with STATE.md fallback):
+2. Initialize the workflow state via \`luca init\` (which creates \`.luca/state.json\`, \`config.json\`, and the canonical directory skeleton).
 
-   \\\`\\\`\\\`bash
-   # Primary: Initialize state via bridge (creates state.json + STATE.md)
-   bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-   # Fallback: Create .luca/STATE.md initialized to Phase 1, ready_for_planning
-   \\\`\\\`\\\`
-
-3. Update REQUIREMENTS.md with traceability table showing which requirements map to which phases
+3. The project requirements + traceability are already stored in MuninnDB (\`brain:project-requirements\` tree, Phase 7); the roadmap-creation step should reference those engrams for requirement → phase mapping. Per-phase requirement traceability surfaces via the per-phase \`audits/\` artifacts.
 </output_requirements>
 
 Create the project roadmap based on requirements and research.
@@ -517,12 +516,12 @@ Use AskQuestion tool:
 1. **Create GitHub issue** using \`gh issue create\`:
 
    \`\`\`bash
-   gh issue create      --title "feat([scope]): [project one-liner from PROJECT.md]"      --body "[Generated from PROJECT.md, REQUIREMENTS.md, ROADMAP.md summary]"
+   gh issue create      --title "feat([scope]): [project one-liner from brain:project-identity]"      --body "[Generated from brain:project-identity + brain:project-requirements MuninnDB engrams + roadmap.md summary]"
    \`\`\`
 
    Issue body should include:
 
-   - Summary (from PROJECT.md "What This Is")
+   - Summary (from \`brain:project-identity:what-this-is\` engram)
    - Core Value
    - v1 Scope (requirements grouped by category)
    - Roadmap table (phase | goal)
@@ -535,15 +534,18 @@ Use AskQuestion tool:
    git checkout -b {issue_number}--{project-slug}
    \`\`\`
 
-3. **Update state with issue and branch references:**
+3. **Record the issue and branch references in MuninnDB:**
 
-   \`\`\`bash
-   # Primary: Set fields via bridge (updates state.json + regenerates STATE.md)
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=github_issue --value={issue_number} 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts set-field --field=branch --value="{issue_number}--{project-slug}" 2>/dev/null || true
-   bun run packages/luca-framework/src/state/bridge.ts snapshot 2>/dev/null || true
-   # Fallback: Add to STATE.md Project Reference section manually
    \`\`\`
+   mcp__muninn__muninn_remember(
+     vault: "<repo_vault>",
+     concept: "session:project-init",
+     content: "GitHub issue #{issue_number} / branch {issue_number}--{project-slug} — initial project tracking",
+     tags: ["session","project-init","github"]
+   )
+   \`\`\`
+
+   Branch metadata (\`branchName\`, \`baseBranch\`, \`prBase\`) flows through \`luca branch guard\` and the architect mode-agent's branch-establishment flow; no separate state-field write is required.
 
 4. **Commit and push:**
 
@@ -566,7 +568,7 @@ Present completion with next steps:
 
 ## ▶ Next Up
 
-**Phase 1: [Phase Name]** — [Goal from ROADMAP.md]
+**Phase 1: [Phase Name]** — [Goal from roadmap.md]
 
 /phase-discuss 1 — gather context and clarify approach
 
@@ -582,17 +584,17 @@ Present completion with next steps:
 - [ ] Git repo initialized
 - [ ] Brownfield detection completed
 - [ ] Deep questioning completed (threads followed, not rushed)
-- [ ] PROJECT.md captures full context → committed
+- [ ] Project identity captured as MuninnDB \`brain:project-identity\` tree → committed
 - [ ] config.json has workflow mode, depth, parallelization → committed
-- [ ] Research completed (if selected) — 4 parallel agents spawned → committed
+- [ ] Research completed (if selected) — 4 parallel agents spawned → MuninnDB research engrams persisted
 - [ ] Requirements gathered (from research or conversation)
 - [ ] User scoped each category (v1/v2/out of scope)
-- [ ] REQUIREMENTS.md created with REQ-IDs → committed
-- [ ] ROADMAP.md created with phases, requirement mappings, success criteria
-- [ ] STATE.md initialized
+- [ ] Requirements stored as MuninnDB \`brain:project-requirements\` tree with REQ-IDs
+- [ ] \`.luca/roadmap.md\` created via \`luca roadmap create\` with phases, requirement mappings, success criteria
+- [ ] \`.luca/state.json\` initialized via \`luca init\`
 - [ ] GitHub issue created (if selected) with project summary
 - [ ] Feature branch created and pushed (if issue created)
-- [ ] STATE.md updated with issue/branch references (if issue created)
+- [ ] GitHub issue/branch refs stored in MuninnDB \`session:project-init\` engram (if issue created)
 - [ ] User knows next step is \`/phase-discuss 1\`
 
 ## Next Steps

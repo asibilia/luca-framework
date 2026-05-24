@@ -23,19 +23,19 @@ Read these in order via the \`Read\` tool:
 
 If either is missing, abort with a clear error pointing at the missing step.
 
-## Delegate to the planner subagent
+## Produce the plan
 
-Spawn the \`luca-planner\` subagent via the \`Agent\` tool with a prompt that includes:
+The legacy v12 \`luca-planner\` subagent was dropped per plan §5.6 — planning work is done by the architect mode-agent or, when invoked from the \`/phase-plan\` command flow, inline by the orchestrator. Synthesize the plan from:
 - The phase slug
 - The current \`pipelineStep\` (always \`plan\` here)
-- A summary of research findings + user decisions
-- An instruction to produce a plan and return it as a markdown string
+- The research findings + user decisions read above
+- The repo's coding patterns (from research) and acceptance criteria
 
-The subagent does the cognitive work; this skill is just orchestration.
+The plan should be a markdown document with: objective, atomic tasks (waves), verification criteria per task, and success criteria for the phase.
 
 ## Persist the plan
 
-When the planner returns, write the plan with the \`Write\` tool to the canonical path. Use the \`dir\` field from \`luca phase current\`; the plan path is \`<dir>/plan.md\`:
+Write the plan with the \`Write\` tool to the canonical path. Use the \`dir\` field from \`luca phase current\`; the plan path is \`<dir>/plan.md\`:
 
 \`\`\`
 Write tool → <dir>/plan.md
@@ -51,7 +51,7 @@ Run \`luca state advance --to-step plan-review\` to hand off to plan-review.
 ## What you must NOT do
 
 - Do NOT write code. Code writes are blocked in PLANNING.
-- Do NOT bypass the planner subagent by writing the plan yourself unless the user explicitly asks. The subagent is where the conceptual work happens.
+- Do NOT skip the synthesis step — read research.md + context.md before drafting the plan. The plan must be grounded in those inputs.
 - Do NOT write \`plan.md\` to any path other than \`<dir>/plan.md\`, or via \`Edit\` — the hook blocks every other \`.luca/\` write.
 `
 

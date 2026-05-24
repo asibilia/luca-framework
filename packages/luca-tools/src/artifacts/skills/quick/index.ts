@@ -11,29 +11,27 @@ import { defineSkill } from '../../../define/skill.ts'
 const BODY = `<main>
 # Luca Quick
 
-Execute small, ad-hoc tasks with Luca guarantees (atomic commits, STATE.md tracking) while skipping optional agents (research, plan-checker, verifier).
+Execute small, ad-hoc tasks with Luca guarantees (atomic commits, workflow-state tracking) while skipping optional agents (research, plan-reviewer, verifier).
 
 Quick mode is the same system with a shorter path:
 
-- Spawns lu-planner (quick mode) + lu-executor(s)
-- Skips lu-phase-researcher, lu-plan-checker, lu-verifier
-- Quick tasks live in \`.luca/quick/\` separate from planned phases
-- Updates STATE.md "Quick Tasks Completed" table (NOT ROADMAP.md)
+- Invokes the architect mode-agent (planning) + the \`executor\` subagent
+- Skips researcher, plan-reviewer, verifier
+- Quick tasks live in a phase directory like any other phase (per LUCA_DIR_CONTRACT)
+- Tracked via the canonical workflow state machine
 
 **Use when:** You know exactly what to do and the task is small enough to not need research or verification.
 
 ## Sub-agent Delegation Requirements
 
-This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using the Task tool.
+This skill is an **orchestrator**. YOU MUST delegate work to subagents using the Task tool.
 
-**Required sub-agents for this skill:**
+**Required subagents for this skill:**
 
-- \`lu-planner\` - Creates quick plan with 1-3 tasks
-- \`lu-executor\` - Executes the plan
+- The \`architect\` mode-agent performs the planning work in v13 (the v12-era \`lu-planner\` subagent was dropped per plan §5.6)
+- \`executor\` - Executes the plan
 
-**DO NOT** attempt to plan or execute yourself. Spawn the appropriate agents.
-
-**Reference:** See \`.cursor/luca/references/task-directive.md\` for Task() syntax patterns.
+**DO NOT** attempt to plan or execute yourself. Spawn the appropriate subagents via the \`Task\` tool, or invoke the architect mode-agent.
 
 ## Process
 
@@ -43,81 +41,20 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
 \`\`\`
 
-**Model lookup table:**
-
-| Agent          | quality | balanced | budget |
-| -------------- | ------- | -------- | ------ |
-| lu-planner  | opus    | opus     | sonnet |
-| lu-executor | opus    | sonnet   | sonnet |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# Planning and execution require reasoning → omit (inherit from parent)
-planner_model = (omit)
-executor_model = (omit)
-\`\`\`
+Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table — the orchestrator does not pick model strings.
 
 ### Step 1: Pre-flight Validation
 
 Check that an active Luca project exists:
 
 \`\`\`bash
-# Auto-initialize minimal .luca/ if needed (quick mode works without full project)
-if [ ! -d .planning ]; then
-  mkdir -p .luca/quick
-  # Primary: Initialize state via bridge
-  bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-  # Fallback: Create STATE.md directly
-  cat > .luca/STATE.md << 'EOF'
-# Project State
-
-## Quick Mode
-
-This project uses quick mode only. No roadmap or phases.
-
-## Quick Tasks Completed
-
-| # | Description | Date | Commit | Files |
-|---|-------------|------|--------|-------|
-
-## Session Continuity
-
-Last session: [date]
-Mode: Quick tasks only
-EOF
-  echo "Initialized minimal .luca/ for quick tasks"
-fi
-
-# Ensure STATE.md exists (might have .luca/ but no STATE.md)
-if [ ! -f .luca/STATE.md ]; then
-  # Primary: Initialize state via bridge
-  bun run packages/luca-framework/src/state/bridge.ts ensure-init 2>/dev/null || true
-  # Fallback: Create STATE.md directly
-  cat > .luca/STATE.md << 'EOF'
-# Project State
-
-## Quick Mode
-
-This project uses quick mode only. No roadmap or phases.
-
-## Quick Tasks Completed
-
-| # | Description | Date | Commit | Files |
-|---|-------------|------|--------|-------|
-
-## Session Continuity
-
-Last session: [date]
-Mode: Quick tasks only
-EOF
-  echo "Created minimal STATE.md for quick tasks"
+# Auto-initialize the canonical .luca/ skeleton if missing (quick mode works without a full roadmap)
+if [ ! -d .luca ]; then
+  luca init 2>/dev/null || true
 fi
 \`\`\`
 
-Quick tasks work independently - no ROADMAP.md required. Auto-initializes minimal .luca/ if needed.
+Quick tasks work independently — no \`roadmap.md\` required. The \`luca init\` command writes the canonical \`.luca/\` skeleton per LUCA_DIR_CONTRACT.
 
 ### Step 2: Get Task Description
 
@@ -156,21 +93,19 @@ mkdir -p "$QUICK_DIR"
 
 ### Step 5: Spawn Planner (Quick Mode)
 
-**MANDATORY**: You MUST spawn a lu-planner sub-agent. Do NOT attempt to plan yourself.
+**MANDATORY**: Invoke the architect mode-agent (which performs planning in v13 — the v12-era \`lu-planner\` subagent was dropped per plan §5.6). Do NOT attempt to plan yourself.
 
 First, read context:
 
 \`\`\`bash
-# Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 # Recall session context from MuninnDB:
 # mcp__muninn__muninn_recall(vault: "default", context: "current session context for quick task")
 WORKING_CONTENT="[recalled from MuninnDB session context]"
 \`\`\`
 
-Then spawn the planner:
+Then spawn the architect mode-agent:
 
 \`\`\`python
 Task(
@@ -198,15 +133,14 @@ Task(
 </quick_mode_constraints>
 
 <output_requirements>
-- Create {next_num}-plan.md in {quick_dir}
+- Create plan.md in {quick_dir} (canonical filename per LUCA_DIR_CONTRACT)
 - Plan should have clear tasks with verification criteria
 - Return summary of plan created
 </output_requirements>
 
 Create a quick plan for this task.
 """,
-  subagent_type="lu-planner",
-  model="{planner_model}",
+  subagent_type="architect",
   description="Quick plan: {description}"
 )
 \`\`\`
@@ -220,11 +154,9 @@ Create a quick plan for this task.
 First, read the plan:
 
 \`\`\`bash
-PLAN_CONTENT=$(cat "\${QUICK_DIR}/\${next_num}-plan.md")
-# Primary: Read state from state machine bridge
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_CONTENT=$(cat .luca/STATE.md 2>/dev/null || echo "")
+PLAN_CONTENT=$(cat "\${QUICK_DIR}/plan.md")
+# Read workflow state from .luca/state.json via the luca CLI
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 \`\`\`
 
 Then spawn the executor:
@@ -249,31 +181,31 @@ Task(
 <execution_rules>
 - Execute all tasks in the plan
 - Commit each task atomically
-- Do NOT update ROADMAP.md (quick tasks are separate)
-- Create summary at end
+- Do NOT update \`.luca/roadmap.md\` (quick tasks are separate phases per the contract)
+- Write the execution summary to the canonical \`execute/summary.md\`
 </execution_rules>
 
 <output_requirements>
-- Create {next_num}-SUMMARY.md in {quick_dir}
+- Create \`execute/summary.md\` in \`{quick_dir}\` (canonical per LUCA_DIR_CONTRACT)
 - Return commit hash and summary of what was done
 </output_requirements>
 
 Execute this quick task plan.
 """,
-  subagent_type="lu-executor",
-  model="{executor_model}",
+  subagent_type="executor",
   description="Execute quick: {description}"
 )
 \`\`\`
 
 **Do NOT proceed until the Task returns.**
 
-### Step 7: Update STATE.md
+### Step 7: Advance Workflow State
 
-Add row to "Quick Tasks Completed" table:
+Advance the pipeline through learn/complete via the standard transitions:
 
-\`\`\`markdown
-| \${next_num} | \${DESCRIPTION} | $(date +%Y-%m-%d) | \${commit_hash} | [\${next_num}-\${slug}](./quick/\${next_num}-\${slug}/) |
+\`\`\`bash
+luca state advance --to-step learn
+luca state advance --to-step complete
 \`\`\`
 
 ### Step 8: Final Commit and Completion
@@ -292,7 +224,7 @@ Display completion:
 
 Quick Task \${next_num}: \${DESCRIPTION}
 
-Summary: \${QUICK_DIR}/\${next_num}-SUMMARY.md
+Summary: \${QUICK_DIR}/execute/summary.md
 Commit: \${commit_hash}
 
 Ready for next task: /quick
@@ -300,15 +232,15 @@ Ready for next task: /quick
 
 ## Success Criteria
 
-- [ ] .luca/ directory exists (auto-created if needed)
-- [ ] STATE.md exists (auto-created if needed)
+- [ ] \`.luca/\` directory exists (auto-created via \`luca init\` if needed)
+- [ ] \`.luca/state.json\` exists (auto-created via \`luca init\` if needed)
 - [ ] User provides task description
 - [ ] Slug generated (lowercase, hyphens, max 40 chars)
-- [ ] Next number calculated (001, 002, 003...)
-- [ ] Directory created at \`.luca/quick/NNN-slug/\`
-- [ ] \`\${next_num}-plan.md\` created by planner
-- [ ] \`\${next_num}-SUMMARY.md\` created by executor
-- [ ] STATE.md updated with quick task row
+- [ ] Next phase number calculated (zero-padded NN per LUCA_DIR_CONTRACT)
+- [ ] Phase directory created at \`.luca/phases/NN-slug/\`
+- [ ] \`plan.md\` written by the architect mode-agent
+- [ ] \`execute/summary.md\` written by the \`executor\` subagent
+- [ ] Workflow state advanced through learn/complete steps
 - [ ] Artifacts committed
 
 ## Next Steps

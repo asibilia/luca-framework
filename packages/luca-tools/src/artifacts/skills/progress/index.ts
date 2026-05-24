@@ -35,41 +35,37 @@ Run /project-new to start a new project.
 
 Exit.
 
-If missing STATE.md: suggest \`/project-new\`.
+If missing \`.luca/state.json\`: suggest \`/project-new\`.
 
-**If ROADMAP.md missing but PROJECT.md exists:**
+**If \`.luca/roadmap.md\` missing but \`.luca/state.json\` exists:**
 This means a milestone was completed and archived. Go to **Route F** (between milestones).
 
 ### Step 2: Load Full Project Context
 
-- Read state from bridge (with STATE.md fallback):
+- Read workflow state via the \`luca\` CLI:
 
 \`\`\`bash
-# Primary: Read state from state machine (typed, validated)
-STATE_JSON=$(bun run packages/luca-framework/src/state/bridge.ts read-status 2>/dev/null || echo '{"initialized":false}')
-# Fallback: Read STATE.md directly (backward compatibility)
-STATE_MD=$(cat .luca/STATE.md 2>/dev/null || echo "")
+STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 \`\`\`
 
-- Read \`.luca/STATE.md\` for living memory (position, decisions, issues)
-- Read \`.luca/ROADMAP.md\` for phase structure and objectives
-- Read \`.luca/PROJECT.md\` for current state (What This Is, Core Value, Requirements)
+- Read \`.luca/roadmap.md\` for phase structure and objectives
 - Read \`.luca/config.json\` for settings (model_profile, workflow toggles)
+- Recall project identity from MuninnDB (\`brain:project-identity\` in repo vault) for the canonical project tree — What This Is, Core Value, Requirements live as engrams in v13.
 
 ### Step 3: Gather Recent Work Context
 
-- Find the 2-3 most recent SUMMARY.md files
+- Find the 2-3 most recent \`.luca/phases/<slug>/execute/summary.md\` files
 - Extract from each: what was accomplished, key decisions, any issues logged
 - This shows "what we've been working on"
 
 ### Step 4: Parse Current Position
 
-- From STATE.md: git context (ticket, issue, branch), current phase, plan number, status, task complexity
-- Calculate: total plans, completed plans, remaining plans
+- From the workflow state JSON: pipelineStep, currentPhase, totalPhases, iteration, complexity
+- Calculate: total plans, completed plans, remaining plans (cross-reference roadmap)
 - Note any blockers or concerns
-- Check for context.md: For phases without plan.md files, check if \`{phase}-context.md\` exists
-- Count pending todos: \`ls .luca/todos/pending/*.md 2>/dev/null | wc -l\`
-- Check for active debug sessions: \`ls .luca/debug/*.md 2>/dev/null | grep -v resolved | wc -l\`
+- Check for \`context.md\`: For phases without \`plan.md\`, check if \`.luca/phases/<slug>/context.md\` exists
+- Count pending todos: \`luca todo list --status pending 2>/dev/null | wc -l\`
+- Check for active debug sessions via MuninnDB recall (\`session:debug-*\` in repo vault)
 
 **Check for PR with unaddressed comments:**
 
@@ -125,11 +121,11 @@ Plan [M] of [phase-total]: [status]
 CONTEXT: [✓ if context.md exists | - if not]
 
 ## Key Decisions Made
-- [decision 1 from STATE.md]
+- [decision 1 from MuninnDB \`decision:*\` engrams + confidence-journal entries]
 - [decision 2]
 
 ## Blockers/Concerns
-- [any blockers or concerns from STATE.md]
+- [any blockers or concerns from MuninnDB \`session:*\` engrams + per-phase audits]
 
 ## What's Next
 [Next phase/plan objective from ROADMAP]
@@ -188,7 +184,7 @@ If context.md exists:
 \`\`\`
 ## ▶ Next Up
 
-**Phase {N}: {Name}** — {Goal from ROADMAP.md}
+**Phase {N}: {Name}** — {Goal from roadmap.md}
 ✓ Context gathered, ready to plan
 
 \`/phase-plan {phase-number}\`
@@ -199,7 +195,7 @@ If context.md does NOT exist:
 \`\`\`
 ## ▶ Next Up
 
-**Phase {N}: {Name}** — {Goal from ROADMAP.md}
+**Phase {N}: {Name}** — {Goal from roadmap.md}
 
 \`/phase-discuss {phase}\` — gather context and clarify approach
 
@@ -214,7 +210,7 @@ If context.md does NOT exist:
 
 ## ▶ Next Up
 
-**Phase {Z+1}: {Name}** — {Goal from ROADMAP.md}
+**Phase {Z+1}: {Name}** — {Goal from roadmap.md}
 
 \`/phase-discuss {Z+1}\` — gather context and clarify approach
 \`\`\`
