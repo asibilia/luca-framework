@@ -1,0 +1,356 @@
+# @alecsibilia/luca
+
+## 13.0.0-alpha.1
+
+### Patch Changes
+
+- 4de0d5c: Bump entire Mastra dependency family in lockstep and pin them
+  exactly in the published tarball.
+  - `mastracode` 0.17.0 → 0.19.0
+  - `@mastra/core` 1.31.0 → 1.34.0
+  - `@mastra/libsql` 1.9.1 → 1.10.1
+  - `@mastra/memory` 1.17.4 → 1.18.1
+
+  Why: `mastracode` is built against an exact pin of `@mastra/core`
+  and friends. We were publishing the framework with caret ranges
+  (`^1.31.0`), so when users installed they got `mastracode@0.19.0`
+  paired with whatever caret-resolved core happened to be hoisted —
+  producing
+  `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
+  because `@mastra/core@1.34` introduced a new `role: "signal"`
+  message type that older provider adapters (still resolved via the
+  caret range against the previous, hoisted core) do not recognise.
+
+  Changes:
+  - Pin every Mastra-family entry in the root `package.json`
+    workspaces catalog to an exact version (no caret).
+  - Add `minimumReleaseAgeExcludes` for the Mastra family in
+    `bunfig.toml` so future bumps aren't blocked by the 7-day
+    supply-chain cooldown (these are version-pinned by upstream
+    and tracked in lockstep, so the cooldown adds no signal).
+  - Add `scripts/validate-tarball-deps.ts` and wire it into the
+    Release workflow between `bun pm pack` and `npm publish`. The
+    script unpacks the tarball, inspects `package/package.json`,
+    and fails the publish if any `mastracode`/`@mastra/*` dep is
+    not exact-pinned. This blocks the regression class at the
+    release boundary, not just at the source-of-truth boundary.
+
+- acd822c: fix(luca:5-review): remove fenced block bug in reviewer spawn directive
+  - review.md Step 4: replaced ` ``` ` fenced code block with 5-line `// →` inline
+    directive prose. Fenced blocks are treated as illustrative documentation by
+    LLM agents, not executable instructions — root cause of all 4 outer reviewer
+    subagents returning success:false with durationMs:0.
+  - Use Date.now() in correlationId pattern (was literal `<ts>` placeholder).
+  - Add success:false variant for complete records (was hardcoded true).
+  - reviewer.ts:107: "of the output block above" restores specificity (was "of
+    your output" — ambiguous with two closing ` ``` ` in file).
+  - subagent-telemetry-prose.test.ts: add fence-split regression test + Date.now()
+    reference test to prevent recurrence.
+
+  Closes #18
+
+- 6d6af24: Fix `bun add -g @alecsibilia/luca-framework` failing with `error: GET .../@alecsibilia%2fluca-core - 404`.
+
+  `@alecsibilia/luca-core` is a private, workspace-only package that ships bundled inside the framework tarball — inlined into `dist/index.mjs` and copied to `dist/node_modules/` for the bundled mastracode harness. It was incorrectly listed under `dependencies`, so on publish its `workspace:*` spec was rewritten to a concrete `0.1.0` and a consumer's package manager tried to resolve it from the npm registry, where it does not exist. It is now a `devDependency`, matching how the other private internal package (`@alecsibilia/luca-mastracode`) is already handled — consumers do not install devDependencies, and the bundled copies are self-contained.
+
+  `validate-tarball-deps.ts` now also fails the publish if any private workspace package leaks into the packed `dependencies`, so this regression cannot recur silently.
+
+- 2d3f799: Fix reviewer subagent usage self-report drift. reviewer-dx and reviewer-simpl perspectives did not emit the required usage comment because the instruction was buried in SUBAGENT_SHARED_PREFIX (prepended before reviewer-specific prose). Added reinforcing usage clarification as the terminal instruction in reviewer.ts (final bullet of the Constraints section) so it is the last directive the model reads before responding. Added presence + terminal-position test in subagent-telemetry-prose.test.ts to catch drift.
+- a0cc70e: fix: harden telemetry prose to eliminate field-completeness drift
+
+  Batch fix for 5 quality regressions surfaced by run `run_mp7dcrpm_ue0yzcb0`:
+  - **Usage-comment field-completeness drift** (`model: null`, `tokens: 0`):
+    add omit-on-unknown directive to `shared-prefix.ts` Luca Reminders and
+    to every spawn-site in `execute.md`, `architect.md`, `finalize.md`,
+    `review.md`. Agents must omit the entire `<!-- usage: ... -->` comment
+    when `model` or token counts are unknown — never emit placeholder
+    values.
+  - **Fabricated `durationMs` round numbers** (`45000`, `60000`, `90000`,
+    `120000`): require `durationMs = Date.now() - ts`, never a guess. Fix
+    fabricated `execute.md:161` example (`12000` / `3400` / `45000`) to
+    realistic primes and `Date.now() - ts`.
+  - **`success: null` on `record-subagent` complete**: prose now says
+    `completed*` outcomes → `success: true`; `crashed`/`killed`/`timeout`
+    → `success: false`; never `null`.
+  - **CorrelationId unit drift** (s vs ms): standardise test fixtures to
+    13-digit millisecond timestamps with non-zero last digit (e.g.
+    `1747200000123`) to disambiguate from epoch-seconds. Add invariant test
+    rejecting fabricated `durationMs` round numbers in spawn-site regions.
+  - **Postmortem `vault: 'default'` clarification**: document that this is
+    intentional (cross-project pitfall aggregation), not a bug — JSDoc on
+    `PostmortemReport.pitfalls` plus inline comment at the construction
+    site.
+
+  Tests:
+  - New `shared-prefix-semantics.test.ts` (5 runtime invariants on
+    `SUBAGENT_SHARED_PREFIX`).
+  - New `spawn-site-invariant.test.ts` (architect, finalize, execute, review, research files × 7 assertions each).
+    **Deviation from plan**: the plan named this artifact
+    `usage-comment-completeness.test.ts` with 20 assertions (5 × 4 required
+    substrings). The shipped test file is renamed to
+    `spawn-site-invariant.test.ts` and expanded to 35 assertions (5 × 7) —
+    the additional 15 assertions cover `success:` enumeration and reject
+    fabricated round-number `durationMs` examples (`45000`, `60000`,
+    `75000`, `90000`, `120000`). The expansion is a strict superset of the
+    plan's coverage; the rename better reflects the test's scope (whole
+    spawn-site region invariants, not just the usage comment).
+  - New `postmortem-vault-comment.test.ts` (3 invariants guarding the two
+    `intentional` comments documenting the cross-project `default` vault
+    literal — JSDoc + inline construction-site comment).
+
+- 837fc89: Fix five v13 release-readiness defects found by ultrareview on the repo-restructure branch:
+  - **read-only-enforcement hook removed.** The standalone `enforceReadOnly` hook blocked every `Write`/`Edit`/`NotebookEdit` in PLANNING/REVIEWING regardless of target path, defeating the v13 freeform-artifact design (the architect couldn't write `plan.md`, reviewers couldn't write `audits/*`, etc.). Dropped the hook entirely — the stage-gate hook's target-aware `artifactPathGate` is the authoritative, correct gate.
+  - **`luca vault:init` no longer dead-ends.** It gated on `existsSync(.luca/config.json)`, but `luca init` already writes that file — so the documented setup flow always exited "already configured". It now keys on `config.muninn?.vault`.
+  - **`luca init` post-setup readout retargeted to Claude Code.** It instructed users to wire MuninnDB via the removed `~/.mastracode/mcp.json`; it now points at the Claude Code MCP surface (`claude mcp add` / `.mcp.json`) using the live MuninnDB port.
+  - **F3 ledger emission fixed.** `luca state advance` emitted event names the postmortem analyzer never reads (`phase-advance`, `re-enter-pipeline`) and reused `phase-empty-justification` for the missing-artifact case (which the reader treats as proof of justification, inverting the signal). Now emits `mode-transition` + `pipeline-re-entered` (with reader-matching fields) and a new `phase-empty-detected` event backed by a new `STEP_ARTIFACT_MISSING` analyzer rule. `state.sessionId` is now bootstrapped via `generateRunId()` so ledger entries carry a real runId instead of `""`.
+  - **Hook-merge upgrade hygiene.** `mergeLucaHookSettings` now iterates the union of existing + bundled hook events, pruning stale luca-marked entries from retired/relocated hooks instead of leaving them behind on upgrade.
+
+  Also corrected the README "Wiring MuninnDB" section (Claude Code MCP surface, correct default port 8476).
+
+- 65e47d1: Phase 1 of the Claude Code-first migration: extract shared schema into a new `@alecsibilia/luca-core` package, define the new `.luca/` directory contract, and add the `luca migrate-planning` command.
+
+  **New package: `@alecsibilia/luca-core`** (private, workspace-only)
+
+  Pure TypeScript primitives shared by `luca-framework` and `luca-mastracode`. No I/O, no CLI surface. Consumed via `@alecsibilia/luca-core`, `@alecsibilia/luca-core/state`, `@alecsibilia/luca-core/luca-dir`.
+  - Trimmed `lucaStateSchema` (14-step `pipelineStep`, down from 22). Legacy values (`classify`, `configure`, `git-setup`, `roadmap`, `phase-order`, `review-audit`, `gap-audit`, `cleanup`) are mapped to canonical replacements via Zod `.preprocess` so existing `state.json` files parse cleanly.
+  - Dropped fields: `profile`, `workflowVersion`, `skipBranch` (mastracode keeps its own extensions through retirement).
+  - `coarsePhaseOf(pipelineStep)` exhaustive mapping from each of the 14 steps to one of `IDLE | PLANNING | EXECUTING | REVIEWING | FINALIZING`.
+  - `.luca/` directory contract: strict path allowlist, path builders (`phasePathFor`, `auditPathFor`, `wavePathFor`, `milestone*PathFor`, `telemetryPathFor`, `archivedPhasePathFor`, `backlogSnapshotPathFor`), and runtime validator (`isValidLucaPath`). Backed by a declarative `LUCA_DIR_CONTRACT` spec.
+
+  **`luca migrate-planning` command** (new in `luca-framework`)
+
+  ```bash
+  luca migrate-planning [--dry-run] [--force]
+  ```
+
+  - Moves root files from `.planning/` to `.luca/` (state.json, lock.json, roadmap.md, config.json, ledger.jsonl) using `git mv` to preserve history.
+  - Deletes ephemeral files (`.context-metrics.json`, `harness-result.json`).
+  - Idempotent — re-running skips already-migrated destinations.
+  - Refuses on uncommitted `.planning/` changes; `--force` overrides.
+  - Phase directories under `.planning/phases/` intentionally left in place — a follow-up command handles slug normalization once the collision strategy is set.
+
+  **Mastracode integration**
+
+  `packages/luca-mastracode/src/state/state.ts` now re-exports the shared primitives (`ComplexityLevel`, `OversightMode`, `PhaseStatus`, `RoadmapPhaseSchema`) from `@alecsibilia/luca-core`. Mastracode-only types (`ProfileLevel`, 22-value `PipelineStep`, 2D `BUDGET_MATRIX`, legacy state fields) remain in mastracode through Phase 5 (mastracode retirement).
+
+  **Testing**
+
+  Test scripts wired for `luca-core` (`bun test`) and `luca-framework` (`bun test`). 127 new tests:
+  - 105 in luca-core covering state schema (including legacy pipelineStep mapping), `coarsePhaseOf`, `resolveBudgetLimits`, all 9 `.luca/` path builders, and `isValidLucaPath`.
+  - 22 in luca-framework covering `runMigration` (plan generation, execute, dry-run, idempotency, git-history preservation, dirty-check, --force) and the CLI logging handler.
+
+  **Guardrails:** test scripts run on-demand only — NOT wired into pre-commit hooks (per the 2026-03-06 orphan-process learning).
+
+  **Docs**
+  - `CLAUDE.md`, `AGENTS.md`: rewrote the `.planning/` artifact-layout section as `.luca/`.
+  - `docs/getting-started.md`: rewrote the "Core Concepts" + "Your First Workflow" sections.
+  - `docs/troubleshooting.md`: rewrote the "Migrating a legacy `.planning/` layout" section to point at the new command.
+  - `.gitignore`: added `.luca/` runtime patterns (state.json, lock.json, ledger.jsonl, telemetry/).
+  - Global `~/.claude/rules/planning-structure.md`: rewrote as the canonical `.luca/` contract spec.
+
+  **Not in this PR** (deferred to later phases):
+  - Stage-gate PreToolUse hook (Phase 3)
+  - MCP server with `luca_*` write tools (Phase 4)
+  - Skill migration to Claude Code subagents (Phase 5)
+  - Mastracode retirement (Phase 5)
+  - Phase directory migration with slug-collision handling
+
+- add7959: `luca init` now installs Claude artifacts globally; `luca doctor --fix` cleans up stray per-repo installs.
+
+  Previously `luca init` copied the bundled skill set (commands, agents, skills) and the stage-gate hook into the **project's** `.claude/` directory. It now installs them into the **global** `~/.claude/` scope, so a single luca CLI version owns one canonical copy across every project. A repo only ever receives `.luca/` planning files.
+
+  **What changed**
+  - `luca init` installs `commands/`, `agents/`, and `skills/` into `~/.claude/` instead of `<repo>/.claude/`.
+  - The stage-gate hook is registered in `~/.claude/settings.json` as the bare command `luca hook stage-gate` — the `.claude/hooks/stage-gate.sh` wrapper script is gone. In a non-luca repo the handler defaults to IDLE and allows everything.
+  - `luca init` is now a 5-step flow (fixing a step-numbering bug); new `--skip-claude` flag skips the global Claude integration, and `--skip-project` now scopes to just the `.luca/` skeleton.
+  - New `luca doctor` check **Stray local install**: detects luca skills/commands/agents and the stage-gate hook wrongly installed into a repo's local `.claude/` by an older `luca init`.
+  - New `luca doctor --fix` flag: removes those stray artifacts surgically — user-authored files, `settings.local.json`, and unrelated `settings.json` keys are preserved.
+
+  After upgrading, run `luca init` once to populate `~/.claude/`, then `luca doctor --fix` in any repo that still has a pre-upgrade per-repo install.
+
+- 6b7c02d: Add `/memory-audit` skill — paginated LLM-judged retro pass over MuninnDB vault.
+  - New `skills/memory-audit/SKILL.md` walks the active vault via hybrid pagination (`muninn_get_enrichment_candidates` cursor + semantic recall complement), judges each engram against the trust-tier discipline, and applies corrections via `muninn_trust`.
+  - New `commands/memory-audit.md` slash command shim with `--dry-run` (default), `--apply`, `--vault`, `--resume`, `--limit`, `--auto` flags.
+  - Resumable cursor state at `.planning/audits/memory/state.json`; per-run reports at `.planning/audits/memory/<ISO>.md`.
+  - `repo-cleanup.ts` ROOT_WHITELIST_DIRS now includes `audits` so complete-phase doesn't flag the audit directory.
+  - Hard prohibition on 11 MuninnDB write/mutation tools (`muninn_remember`, `muninn_remember_batch`, `muninn_forget`, `muninn_consolidate`, `muninn_evolve`, `muninn_link`, `muninn_state`, `muninn_decide`, `muninn_add_child`, `muninn_remember_tree`, `muninn_restore`) enforced by a fenced block and asserted by tests — audit only mutates trust tier via `muninn_trust`.
+
+- 3289efa: Add write-time trust-tier discipline at all `muninn_remember` callsites. New `MEMORY_TIER_DISCIPLINE` constant (single source of truth) is injected into both the mode-agent prefix (`agent-constraints.ts`) and the subagent prefix (`subagents/shared-prefix.ts`). Verified-tier writes get an explicit `muninn_trust` follow-up via the 2-RPC pattern (`muninn_remember` returns id → `muninn_trust(id, "verified", vault)`). Three prose-snapshot tests guard the contract: `memory-tier-prefix` (constant + dual injection), `memory-tier-callsite` (every `muninn_remember(` site has a tier marker within 30 lines preceding), and `memory-tier-verified-followup` (every verified marker has a `muninn_trust(` follow-up within 50 lines).
+- 60f5b25: Add `mode.start` / `mode.end` telemetry records emitted from `switch-mode` in `workflow-state.ts`. Captures outer pipeline loop durations (triage, research, architect, execute, review, finalize) that were missing from the v1 telemetry foundation (PR #239). Extends `TelemetryRecord.kind` union, adds `currentModeStartedAt` to `LucaWorkflowState`.
+- 1d37b29: ## PR feedback learning batch — 8 todos
+
+  Shipped as one PR per user direction. All eight learnings from prior PR-feedback retros, addressed thematically.
+
+  ### Framework utilities (#30, #36)
+  - Extracted shared sanitize and numeric helpers into `packages/luca-mastracode/src/util/sanitize.ts` (`sanitizeForLog`, `sanitizeForStorage`, `displayBounded`) and `packages/luca-mastracode/src/util/numeric.ts` (`finiteOrNull`, `clampTokens`). Re-exported from `packages/luca-mastracode/src/index.ts`.
+  - Migrated `workflow-state.ts` and `state/telemetry.ts` to import shared utils; preserved all callsite syntax via aliases.
+
+  ### PR tooling (#37)
+  - Added `unknown` bucket to `FilterResult` in `packages/luca-mastracode/src/review-analysis/stale-filter.ts`. Empty `diff_hunk` is now classified `unknown` (not silently routed to `stale`). Surfaced through `pr-review.ts` return shape, appendLedger payload, and summary message. Preserves boolean `stale` field for backward compat. Resolves Copilot false-positive epidemic on PRs #234/#236/#239/#247/#248/#249/#251/#253.
+
+  ### Reviewer subagent (#44)
+  - Added 5th `test-quality-reviewer` perspective. Updates: reviewer.ts prose, new Test Quality block (vacuous mocks, presence-only assertions, regex over-permissiveness, stale fixtures, name-vs-assertion drift). review.md Step 4 spawns 5 reviewers in parallel.
+
+  ### Skill: rename-audit (#40)
+  - New `.mastracode/skills/rename-audit/SKILL.md` — read-only audit for stale references after rename. 5 Steps. Read-only constraint via prohibition block.
+
+  ### Reviewer-hint rule packs (#15, #30, #36, #56)
+  - New `.mastracode/rules/zod-dual-layer-drift.md`
+  - New `.mastracode/rules/input-hygiene.md`
+  - New `.mastracode/rules/nan-safe-numbers.md`
+  - New `.mastracode/rules/spawn-site-prose-rules.md`
+
+  ### Repo cleanup (#42)
+  - Added `hasPlaceholderText(content)` to `packages/luca-mastracode/src/tools/repo-cleanup.ts`. Advisory only.
+  - `.gitignore` globs for `.planning/telemetry/archive/`, `.planning/**/checks-convergence.json`, `.planning/**/*-capture-*.md`.
+
+  ### Spawn-site invariant (#56)
+  - Extended `spawn-site-invariant.test.ts` with FILES-completeness check.
+
+  ### Tests
+  - Full suite green (baseline 502, net increase from new test files).
+
+  ### Review iter 1 fixes (MF-1, MF-2)
+  - Backfilled flat-schema `workflowStateInputSchema` regex constraints on `perspectives` items (`.regex(/^[a-z0-9_-]+$/)`), `role` (`.min(1).regex(/^[^\r\n\t]+$/)`), and `correlationId` (`.min(1).regex(/^[^\r\n\t]+$/)`) to match per-action schemas. The initial drift-detector test was key-presence-only and silently passed with 3 live drift instances.
+  - Rewrote `dual-layer-schema-drift.test.ts` with `missingRegexPatterns()` helper using Zod v4 `_zod.def.checks` introspection + 4 injected-drift smoke tests proving the helper actually fails on real drift.
+  - Added JSDoc to `verdictFor()` documenting the 3-state contract (`stale:true` / ACTIONABLE / UNKNOWN). Cross-referenced `FilterResult.unknown` field.
+
+  Closes #15, #30, #36, #37, #40, #42, #44, #56
+
+- bf1b8be: Four backlog todos batched into one PR:
+  1. **Pre-invoke MuninnDB recall directive** — `SUBAGENT_SHARED_PREFIX` now includes a `## Pre-Invoke Memory Recall` section instructing subagents to query MuninnDB once at startup for relevant prior learnings. Hedged so non-MCP subagents (plan-reviewer, shadow-scanner) treat it as a no-op.
+  2. **Researcher hang-timeout** — `research.md` parallel-batch protocol now requires the orchestrator to capture `Date.now()` per spawn, compute elapsed time, and emit `record-subagent complete` with `outcome: "timeout"` for any researcher exceeding 60s. Synthesis proceeds with partial results when at least 3/5 researchers returned; otherwise the wave is marked STALLED.
+  3. **Outcome enum aggregator flag-list** — `skills/luca-telemetry-report/SKILL.md` Subagent Costs section now flags the full non-success terminal set: `crashed`, `killed`, `timeout` (hard failures) and `completed_no_usage`, `completed_partial_parse` (soft failures — subagent finished but usage telemetry malformed).
+  4. **Model-field CR/LF guard + stale-example fix** — `record-subagent` `model` field now enforces `/^[^\r\n\t]+$/` regex parity with `role` and `correlationId` (CWE-117 log-injection defense). `execute.md` example updated from stale `claude-opus-4-5` to canonical `anthropic/claude-opus-4-7`.
+
+  New regression tests: parametric guard over all 6 outcome enum values; model CR/LF rejection cases; pre-invoke recall presence in shared-prefix; total-prefix size guard (<4000 chars) to catch future bloat.
+
+- a65c10a: Add `cancel-subagent` workflowState action + `subagent.cancelled` telemetry kind + `cancelled_by_user` outcome enum value.
+
+  Closes the diagnostic gap surfaced by `run_mpct9yy0_qfn0vsy5`: when the user manually kills a hung subagent (luca:2-research stuck 30m, luca:5-review prelude stuck 55m, both observed in that run), there was no way to record the cancellation in telemetry. Long `mode.start` → `mode.end` deltas with no matching `subagent.complete` were indistinguishable from pipeline stalls, sending diagnostic effort in the wrong direction.
+
+  **New action:**
+
+  ```
+  workflowState({
+    action: 'cancel-subagent',
+    role: '<role>',
+    correlationId: '<id paired to original invoke>',
+    cancelReason: '<short reason, max 512 chars>',
+    partialDurationMs: <elapsed ms from invoke to kill | null>,
+  })
+  ```
+
+  Emits a `subagent.cancelled` telemetry record with `meta.outcome` fixed at `cancelled_by_user` and `meta.success` fixed at `false`. Aggregators correlate by `role + correlationId` — `subagent.invoke` + `subagent.cancelled` forms a complete pair without a matching `.complete` event.
+
+  **Other changes:**
+  - `TelemetryKind` union extended with `'subagent.cancelled'`.
+  - `outcome` enum extended with `'cancelled_by_user'` in both per-action `recordSubagentAction` schema and the flat `workflowStateInputSchema` mirror (also reflected in `SUBAGENT_SHARED_PREFIX` enum list).
+  - `cancel-subagent` registered in `WORKFLOW_ACTION_SCHEMAS` (drift detector auto-coverage), `WORKFLOW_STATE_ACTIONS`, and the tool-manifest allowlist for research / architect / execute / review / finalize.
+  - `execute.md` now documents the `cancel-subagent` call shape with an explicit "do NOT emit `subagent.complete`" rule on killed calls.
+  - `review.md` Step 4 spawn directive includes a one-line cancel reminder.
+  - 15 new tests (12 cancel-subagent action behavior + 3 prose presence).
+
+  **Not in this PR (deferred):**
+  - Orchestrator-side hang watchdog (`setInterval` polling) — requires harness integration not yet available.
+  - TUI cancel hotkey — separate UX work.
+  - Aggregator `luca-telemetry-report` failure-mode breakdown for `cancelled_by_user` — small follow-up.
+
+- 2fecc3f: Add subagent invocation telemetry (`subagent.invoke` / `subagent.complete` kinds).
+  - New `record-subagent` workflowState action with Zod-validated schema (role, correlationId, tokens, durationMs, success, model)
+  - `clampTokens` helper: non-finite/negative/>10M values coerced to null; zero preserved
+  - Prose instrumentation in all 5 spawn-site instruction files (execute, architect, research, review, finalize)
+  - `shared-prefix.ts`: subagents self-report usage via `<!-- usage: {...} -->` comment
+  - Length caps on role (64), correlationId (128), model (64) to preserve PIPE_BUF atomicity
+  - 8 new tests (record-subagent action) + 5 presence-scan tests (subagent-telemetry-prose.test.ts)
+
+- 31a0859: telemetry batch completion (9 todos in one PR)
+
+  Foundation features for the telemetry-v1 system, plus targeted bug fixes that
+  unblock cross-run aggregation.
+  - **#43 luca-telemetry-report aggregator skill** — read-only cross-run
+    aggregator over `.planning/telemetry/*.jsonl`. New skill at
+    `skills/luca-telemetry-report/SKILL.md` with `existsSync` guard,
+    forbidden-tools fence, 7 steps. Command shim at
+    `commands/luca-telemetry-report.md`. Flags: `--runs N` (default 10),
+    `--since <ISO>`, `--vault <name>`.
+  - **#44 telemetry janitor** — `reset-pipeline` best-effort archives the prior
+    run's JSONL to `.planning/telemetry/archive/<runId>.jsonl` via
+    `renameSync`. Wrapped in try/catch (sanitized warn on failure) so
+    `reset-pipeline` always completes its state-mutation. New
+    `TELEMETRY_ARCHIVE_DIR` / `TELEMETRY_ARCHIVE_PATH` exports in
+    `phase-paths.ts`.
+  - **#45 record-recall action** — new `workflowState({ action: "record-recall",
+... })` emits `recall.hit` / `recall.miss` telemetry with `verifiedCount`
+    clamped against `resultCount`, `sanitizeLogMessage` on query for CWE-117,
+    and `durationMs` routed through overrides. Allowlisted in 6 pipeline modes.
+    Inline `// → record-recall { ... }` directive added to all 5 mode
+    instruction files at every `muninn_recall` call site (9 directives total).
+  - **#46 review-iteration convergence telemetry** — `save-review-results`
+    extended with optional `perspectives` array + severity counts + verdict.
+    Emits `review.iteration` kind with `durationMs` computed from
+    `state.reviewStartedAt`. New `reviewStartedAt` field set on switch-to-review
+    (post-await merged write) and re-enter-pipeline; cleared on reset-pipeline.
+  - **#29 outcome enum** — `record-subagent` schema extended with
+    `outcome: 'completed' | 'completed_no_usage' | 'completed_partial_parse' |
+'crashed' | 'killed' | 'timeout'` optional field. Stored in `meta.outcome`
+    (v:1 contract preserved). Backward-compatible (missing → null in meta).
+    `shared-prefix.ts` usage comment example mentions the new field.
+  - **#11 correlationId format audit** — replaced legacy `<ts>` placeholder
+    with `const ts = Date.now()` + `` `${ts}` `` template across spawn-site
+    directives in `execute.md` / `architect.md` / `research.md` / `finalize.md`.
+    New region-scoped test `correlationid-format-prose.test.ts` enforces the
+    positive form and negative-asserts `<ts>` + compact-ISO 14-digit + 10+
+    digit hardcoded epoch.
+  - **#17 finalize.md vault hardcode** — confirmed clean (no `vault: "default"`
+    literal remains; doc-comment fallback semantics preserved at L52).
+  - **#18 reviewer-dx/simpl usage self-report drift** — drive-by regression
+    test added to `subagent-telemetry-prose.test.ts` enforcing that
+    `reviewer.ts`'s terminal usage instruction is the LAST occurrence of
+    `Append the usage comment` in the assembled prompt and that no `## `
+    heading follows. Anchors the dx + simpl perspectives that originally
+    exhibited attention-burial drift in PR #245.
+  - **#10 absorb into #43** — ts-gap fallback for `durationMs:null` on
+    `*.end` records is now documented in the aggregator SKILL.md Step 3
+    (Date.parse(end.ts) − Date.parse(start.ts) when finite & non-negative).
+  - **shadow-scanner allowlist** — `'telemetry/'` added to
+    `planning_root_dirs` (prose + Zod default) so the archive subdir and
+    report files don't trip the shadow scanner.
+
+  New tests: 28 added (8 record-recall + 4 review.iteration + 3 outcome + 4
+  janitor + 4 aggregator-skill-presence + 1 drive-by #18 reviewer +
+  12 correlationId region tests + 21 recall-prose region tests, where
+  `correlationId-format-prose.test.ts` and `recall-prose.test.ts` are net-new
+  files). 401/401 tests, `bun tsc` clean.
+
+- ec56f6d: v13 write-surface re-architecture: replace the MCP server with the `luca` CLI.
+
+  The 27-tool MCP server is removed. Luca's write surface is now two tracks, both enforced by the stage-gate hook: freeform artifact files (plan, research, audit, …) are written with the agent's native `Write` tool to the canonical `.luca/` path, and structured/operational mutations go through a typed `luca` CLI.
+
+  **Breaking changes**
+  - The `luca mcp serve` command and the luca MCP server are removed.
+  - `@modelcontextprotocol/sdk` is no longer a `luca-framework` dependency.
+  - `luca init` no longer registers an MCP server.
+
+  **What changed**
+  - Phase A — the 27 tool handlers + helpers moved out of `src/mcp/` into a runtime-agnostic `src/write-surface/` domain; the SDK-coupled result type was dropped.
+  - Phase B — new `luca` CLI: 18 commands across 11 noun groups (`luca state`, `luca todo`, `luca roadmap`, …), plus a `luca-write-surface` discovery skill.
+  - Phase C — the stage-gate hook became a per-step artifact-path gate: a native `Write` to a `.luca/` path is allowed only when the path is exactly the legal artifact for the current `pipelineStep`.
+  - Phase D — ~24 skill/agent files rewired off the `luca_*` MCP tools.
+  - Phase E — `src/mcp/`, `luca mcp serve`, the `wire-mcp-server` init wiring, and the `@modelcontextprotocol/sdk` dependency deleted.
+
+  `luca doctor` now flags a stale `luca mcp serve` registration left by a pre-v13 `luca init` (fix: `claude mcp remove luca`). The `.luca/` directory contract is unchanged — no artifact migration required.
+
+- 4448b79: Add per-phase wave duration telemetry — foundation for the Wave 1 telemetry program.
+
+  `workflowState` now emits structured JSONL records at phase/wave boundaries to `.planning/telemetry/<runId>.jsonl`. Four event kinds at v1 schema: `phase.start`, `wave.start`, `wave.end`, `phase.end`. Each record carries `runId`, phase name + slug, wave number, complexity, oversight, and `durationMs` on closing events.
+
+  New module `src/state/telemetry.ts` exports:
+  - `appendTelemetry(kind, meta?, overrides?)` — fail-safe writer, never throws
+  - `buildTelemetryRecord(...)` — pure record builder
+  - `readTelemetry(runId)` — per-run reader with Zod validation
+  - `TelemetryRecord` + `TelemetryRecordSchema` — locked v1 contract for follow-on consumers
+
+  Also: `PhaseResult.waveStartedAt` tracks wave start time across `startPhase` (new + RESUME branches) and `advanceWave`. `ROOT_WHITELIST_DIRS` now includes `'telemetry'`.
+
+  This is the foundation for 4 follow-on telemetry todos (subagent invocation costs, `muninn_recall` hit/miss, review iteration convergence, cross-run aggregator skill).
