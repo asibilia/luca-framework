@@ -16,6 +16,7 @@
  */
 import { existsSync, mkdirSync } from 'node:fs'
 
+import { loadCurrentConfig } from '@alecsibilia/luca-core'
 import * as p from '@clack/prompts'
 import { defineCommand } from 'citty'
 import { join } from 'pathe'
@@ -50,14 +51,22 @@ export const vaultInitCommand = defineCommand({
         // Detect project context
         const context = await detectProjectContext()
 
-        // Guard: check if vault is already configured
+        // Guard: check if a vault is already configured. We key on the
+        // `muninn.vault` field — NOT mere existence of config.json. `luca
+        // init` writes config.json (lucaVersion, oversight) without a vault,
+        // so an existsSync gate would wrongly short-circuit the very flow
+        // the post-init readout tells users to run. `writeVaultConfig`
+        // safely merges `muninn.vault` into the existing config.
         const configPath = join(cwd, '.luca', 'config.json')
-        if (existsSync(configPath)) {
+        const config = await loadCurrentConfig({ cwd })
+        const existingVault = (config.muninn as { vault?: unknown } | undefined)
+            ?.vault
+        if (typeof existingVault === 'string' && existingVault.length > 0) {
             p.log.warn(
-                'Vault already configured (.luca/config.json exists).'
+                `Vault already configured (muninn.vault = "${existingVault}").`
             )
             p.log.info(
-                'To reconfigure, delete .luca/config.json and run again.'
+                'To reconfigure, edit the muninn.vault field in .luca/config.json and run again.'
             )
             p.outro('Vault setup skipped.')
             return

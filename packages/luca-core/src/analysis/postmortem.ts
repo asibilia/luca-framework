@@ -34,6 +34,7 @@ import type { PhaseDiff } from './phase-diff.ts'
 
 export type ViolationCode =
     | 'EMPTY_PHASE_NO_JUSTIFICATION'
+    | 'STEP_ARTIFACT_MISSING'
     | 'TODO_DONE_NO_VERIFICATION'
     | 'FORCED_TRANSITION'
     | 'LOW_CONFIDENCE_THRESHOLD'
@@ -353,6 +354,32 @@ export function analyzeRun(input: AnalyzeRunInput): PostmortemReport {
             message: `Pipeline-guard skipped enforcement because pipelineStep was idle. May indicate stale state contamination.`,
             evidence: `at=${e.timestamp}`,
             evidenceFingerprint: fingerprint(`IDLE_BYPASS:${e.timestamp}`),
+        })
+    }
+
+    // 8. Step advanced without writing its expected artifact (warning —
+    //    possible empty/skipped step). Emitted by `luca state advance` as
+    //    `phase-empty-detected`. This is the inverse of a
+    //    `phase-empty-justification` entry (which is PROOF an operator
+    //    justified an empty phase and SUPPRESSES rule #1) — a detected
+    //    empty step is evidence FOR a problem, so it raises its own
+    //    violation rather than reusing the justification event.
+    const emptyDetected = entries.filter(
+        (e) => e.event === 'phase-empty-detected'
+    )
+    for (const e of emptyDetected) {
+        const fromStep = eventDataString(e, 'from') ?? '?'
+        const toStep = eventDataString(e, 'to') ?? '?'
+        const expected = eventDataString(e, 'expectedArtifact') ?? '?'
+        const slug = eventDataString(e, 'slug') ?? '?'
+        violations.push({
+            severity: 'warning',
+            code: 'STEP_ARTIFACT_MISSING',
+            message: `Step "${fromStep}" advanced to "${toStep}" without writing its expected artifact ("${expected}") — possible empty/skipped step.`,
+            evidence: `slug=${slug} expectedArtifact=${expected} at=${e.timestamp}`,
+            evidenceFingerprint: fingerprint(
+                `STEP_EMPTY:${slug}:${fromStep}:${e.timestamp}`
+            ),
         })
     }
 

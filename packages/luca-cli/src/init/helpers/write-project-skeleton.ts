@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { lucaStateSchema } from '@alecsibilia/luca-core'
+import { generateRunId, lucaStateSchema } from '@alecsibilia/luca-core'
 
 import { LUCA_VERSION } from '../../utils/manifest.ts'
 
@@ -26,9 +26,18 @@ export async function writeProjectSkeleton(
     const lucaDir = join(opts.cwd, '.luca')
     await mkdir(lucaDir, { recursive: true })
 
+    // Bootstrap a stable, non-empty `sessionId` so ledger entries carry a
+    // real runId. Without this, `state.sessionId` is undefined and ledger
+    // writers fall back to "" — which `readLedgerForRun` can never resolve,
+    // silently dropping every postmortem signal for the run.
     await writeIfMissing({
         path: join(lucaDir, 'state.json'),
-        contents: JSON.stringify(lucaStateSchema.parse({}), null, 2) + '\n',
+        contents:
+            JSON.stringify(
+                lucaStateSchema.parse({ sessionId: generateRunId() }),
+                null,
+                2
+            ) + '\n',
         force: opts.force ?? false,
         log,
     })

@@ -18,9 +18,10 @@
  *      sequence:
  *        - E-1: `pipeline-guard` (PreToolUse[Bash], vets
  *          `luca state advance` transitions).
- *        - E-2: `read-only-enforcement` (three sibling slices,
- *          PreToolUse[Write|Edit|NotebookEdit], blocks write tools in
- *          read-only pipeline steps).
+ *        - E-2: (removed) `read-only-enforcement` — superseded by the
+ *          target-aware stage-gate hook in luca-cli, which is the
+ *          authoritative gate and correctly allows the legal `.luca/`
+ *          artifact write for each read-only step.
  *        - E-3: `continuation-messages` (PostToolUse[Bash], surfaces a
  *          mode-entry kick-off prompt via additionalContext when the
  *          pipeline successfully advances).

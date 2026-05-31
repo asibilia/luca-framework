@@ -128,49 +128,68 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             // permissions, etc.) never blocks the state advance itself.
             // Failure-open semantics per the F-3 ledger contract.
             //
-            // Events emitted (postmortem analyzer scans for these):
-            //   - phase-advance              (always — telemetry signal)
-            //   - re-enter-pipeline          (when `to` is an earlier
+            // Events emitted (postmortem analyzer scans for these — the
+            // event NAMES and data SHAPES below must match the reader in
+            // luca-core/analysis/postmortem.ts + ledger.ts):
+            //   - mode-transition            (always — counted as
+            //                                 metrics.modeTransitions)
+            //   - pipeline-re-entered        (when `to` is an earlier
             //                                 step than `from`, i.e. a
-            //                                 loop-back / fix iteration)
-            //   - phase-empty-justification  (when leaving a step that
+            //                                 loop-back / fix iteration;
+            //                                 reader keys on `targetMode`
+            //                                 + `reason` → PIPELINE_RE_ENTERED)
+            //   - phase-empty-detected       (when leaving a step that
             //                                 should have produced an
-            //                                 artifact and didn't)
+            //                                 artifact and didn't → reader
+            //                                 raises STEP_ARTIFACT_MISSING).
+            //                                 NOTE: deliberately NOT
+            //                                 `phase-empty-justification` —
+            //                                 that event is read as PROOF an
+            //                                 operator justified an empty
+            //                                 phase, so reusing it here would
+            //                                 INVERT the signal (suppress the
+            //                                 very violation we want to raise).
             try {
                 const runId = typeof state.sessionId === 'string'
                     ? state.sessionId
                     : ''
 
-                // Always: phase-advance.
+                // Always: mode-transition (the metric the postmortem
+                // analyzer counts as metrics.modeTransitions).
                 appendLedger({
                     cwd: ctx.cwd,
                     runId,
-                    event: 'phase-advance',
+                    event: 'mode-transition',
                     data: { from, to },
                 })
 
-                // Conditional: re-enter-pipeline. We emit when `to` is at
+                // Conditional: pipeline-re-entered. We emit when `to` is at
                 // an earlier ordinal than `from` in PipelineStepValues —
                 // i.e. a documented loop-back transition (e.g.
                 // checks → execute, verify → checks, learn → plan,
                 // plan-review → plan, complete → idle). Same-step
                 // self-loops (research → research) are NOT re-entries;
                 // they're advisory re-research signals captured by
-                // phase-advance.
+                // mode-transition. The reader (postmortem.ts) keys on
+                // `targetMode` + `reason`, so we emit those field names.
                 if (stepOrdinal(to) < stepOrdinal(from)) {
                     appendLedger({
                         cwd: ctx.cwd,
                         runId,
-                        event: 're-enter-pipeline',
-                        data: { from, to },
+                        event: 'pipeline-re-entered',
+                        data: {
+                            targetMode: to,
+                            from,
+                            reason: `loop-back from '${from}' to '${to}' (rework / fix iteration)`,
+                        },
                     })
                 }
 
-                // Conditional: phase-empty-justification. If the FROM
+                // Conditional: phase-empty-detected. If the FROM
                 // step had an expected artifact and that file does not
                 // exist on disk, the step was skipped/empty — emit the
                 // event so the shadow scanner / postmortem analyzer can
-                // surface it.
+                // surface it (as a STEP_ARTIFACT_MISSING violation).
                 //
                 // Resolution path: we need an active slug to address
                 // `<slug>/...`. If `resolveActiveSlug` errors (no active
@@ -199,7 +218,7 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                                 appendLedger({
                                     cwd: ctx.cwd,
                                     runId,
-                                    event: 'phase-empty-justification',
+                                    event: 'phase-empty-detected',
                                     data: {
                                         from,
                                         to,

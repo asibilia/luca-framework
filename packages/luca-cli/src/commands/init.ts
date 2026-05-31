@@ -52,6 +52,7 @@ import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
 import { checkMuninndbBinary } from '../utils/muninndb-health'
+import { MUNINNDB_DEFAULT_PORT } from '../utils/muninndb-schemas'
 import { startMuninndb } from '../utils/muninndb-service'
 import { isOnPath, getPathGuidance } from '../utils/path-check'
 import { checkPrerequisites, promptBunInstall } from '../utils/prerequisites'
@@ -223,8 +224,8 @@ export const initCommand = defineCommand({
             // bundled settings.json into the project's .claude/
             // directory. Without this the compiled settings.json's
             // hook handler references resolve to nothing and the
-            // pipeline-guard / read-only-enforcement / continuation /
-            // context-refresher hooks are dead on arrival.
+            // pipeline-guard / continuation / context-refresher hooks
+            // are dead on arrival.
             await installHooks({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
@@ -286,16 +287,23 @@ export const initCommand = defineCommand({
         readout.push(
             '     stores them in MuninnDB; downstream pipeline modes consult them)'
         )
+        const mcpPort = muninndbPort ?? MUNINNDB_DEFAULT_PORT
         readout.push(
-            '  To expose MuninnDB to the harness: add an MCP server entry to'
+            '  To expose MuninnDB to Claude Code: register it as an MCP server,'
         )
         readout.push(
-            '    <home>/.mastracode/mcp.json (macOS/Linux: ~/.mastracode/mcp.json;'
+            `    e.g. claude mcp add --transport http muninn http://localhost:${mcpPort}/mcp \\`
         )
         readout.push(
-            '    Windows: %USERPROFILE%\\.mastracode\\mcp.json) — see README →'
+            '         --header "Authorization: Bearer <your-muninn-api-key>"'
         )
-        readout.push('    "Wiring MuninnDB into the Mastracode harness".')
+        readout.push(
+            '    (or add a "muninn" entry under mcpServers in .mcp.json). Use the'
+        )
+        readout.push(
+            '    same key as `luca vault:init` (.env MUNINN_DB_API_KEY). See the'
+        )
+        readout.push('    README "MuninnDB" section for details.')
 
         p.note(readout.join('\n'), 'Setup Complete')
 

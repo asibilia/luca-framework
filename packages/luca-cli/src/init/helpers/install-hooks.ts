@@ -132,6 +132,14 @@ export async function installHooks(opts: InstallHooksOptions): Promise<void> {
  * by their bundled counterparts; unrelated entries are preserved
  * verbatim.
  *
+ * Iterates the UNION of existing + bundled hook events — not just the
+ * bundled set — so stale luca-marked entries living in an event the
+ * current bundle no longer ships (e.g. a hook retired or moved to a
+ * different Claude Code event between luca versions) are pruned on
+ * upgrade instead of surviving indefinitely. An event whose entries all
+ * drop out (only stale luca entries, no user entries, nothing bundled)
+ * is omitted entirely rather than left as an empty array.
+ *
  * Pure function — exported for testability.
  */
 export function mergeLucaHookSettings(
@@ -139,22 +147,36 @@ export function mergeLucaHookSettings(
     bundled: ClaudeSettings
 ): ClaudeSettings {
     const next: ClaudeSettings = { ...existing }
-    const mergedHooks: Record<string, HookEventEntry[]> = {
-        ...(existing.hooks ?? {}),
-    }
+    const existingHooks = existing.hooks ?? {}
+    const bundledHooks = bundled.hooks ?? {}
+    const mergedHooks: Record<string, HookEventEntry[]> = {}
 
-    for (const [event, bundledEntries] of Object.entries(bundled.hooks ?? {})) {
-        const existingEntries = mergedHooks[event] ?? []
+    // Union of event keys: existing first (stable order), then any new
+    // bundled-only events.
+    const events = new Set<string>([
+        ...Object.keys(existingHooks),
+        ...Object.keys(bundledHooks),
+    ])
+
+    for (const event of events) {
+        const existingEntries = existingHooks[event] ?? []
+        const bundledEntries = bundledHooks[event] ?? []
         // Drop any prior luca-defined entries (we'll re-add them from
-        // bundled). An entry is luca-defined if any of its `hooks[].command`
-        // strings contains LUCA_HOOK_HANDLER_MARKER.
+        // bundled if this event is still shipped). An entry is luca-defined
+        // if any of its `hooks[].command` strings contains
+        // LUCA_HOOK_HANDLER_MARKER. Applying this to EVERY existing event —
+        // including those absent from the bundle — is what prunes stale
+        // entries from retired/relocated hooks.
         const filtered = existingEntries.filter(
             (entry) =>
                 !entry.hooks.some((h) =>
                     h.command?.includes(LUCA_HOOK_HANDLER_MARKER)
                 )
         )
-        mergedHooks[event] = [...filtered, ...bundledEntries]
+        const combined = [...filtered, ...bundledEntries]
+        if (combined.length > 0) {
+            mergedHooks[event] = combined
+        }
     }
 
     next.hooks = mergedHooks
