@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": patch
+"@alecsibilia/luca": patch
 ---
 
 Add `/memory-audit` skill — paginated LLM-judged retro pass over MuninnDB vault.

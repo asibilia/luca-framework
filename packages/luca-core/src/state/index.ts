@@ -54,3 +54,24 @@ export {
     WRITE_COMMAND_PHASES,
 } from './configs/step-artifacts.ts'
 export type { StepArtifact } from './configs/step-artifacts.ts'
+
+// CLI invocation parsers (shared by hooks, future surfaces)
+export { parseAdvanceCommand, stripQuotes } from './cli-parse.ts'
+
+// Pipeline lock (inner single-flight protection for .luca/state.json)
+export {
+    acquire as acquirePipelineLock,
+    release as releasePipelineLock,
+    forceUnlock as forcePipelineUnlock,
+    readLock as readPipelineLock,
+    PipelineLockSchema,
+} from './pipeline-lock.ts'
+export type {
+    PipelineLock,
+    AcquireOptions as AcquirePipelineLockOptions,
+    AcquireResult as AcquirePipelineLockResult,
+    ReleaseOptions as ReleasePipelineLockOptions,
+    ReleaseResult as ReleasePipelineLockResult,
+    ForceUnlockOptions as ForcePipelineUnlockOptions,
+    ForceUnlockResult as ForcePipelineUnlockResult,
+} from './pipeline-lock.ts'

@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-framework": patch
+"@alecsibilia/luca": patch
 ---
 
 Fix `bun add -g @alecsibilia/luca-framework` failing with `error: GET .../@alecsibilia%2fluca-core - 404`.

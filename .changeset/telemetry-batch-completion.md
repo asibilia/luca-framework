@@ -1,5 +1,5 @@
 ---
-'@alecsibilia/luca-mastracode': minor
+"@alecsibilia/luca": patch
 ---
 
 telemetry batch completion (9 todos in one PR)

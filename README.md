@@ -97,25 +97,25 @@ Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persiste
 - **Project preferences** — branching, commits, PR titles, release tooling, tracker (seeded by `/luca-init` inside `luca run`)
 - **Entity graph** — named entities and relationships across the codebase
 
-#### Wiring MuninnDB into the Mastracode harness
+#### Wiring MuninnDB into Claude Code
 
-MuninnDB tools (`mcp__muninn__*`) reach the harness via MCP — and Mastracode does **not** auto-configure this. After `luca init` installs and starts MuninnDB, you have to add an MCP server entry yourself.
+MuninnDB tools (`mcp__muninn__*`) reach Claude Code via MCP — and `luca init` does **not** auto-configure this. After it installs and starts MuninnDB, register the MCP server yourself.
 
-Mastracode loads MCP config from three locations, highest priority first (where `<home>` is `$HOME` on macOS/Linux and `%USERPROFILE%` on Windows):
+The fastest way is the Claude Code CLI (registers a user-scoped server every project picks up):
 
-1. `<project>/.mastracode/mcp.json` — project-scoped
-2. `<home>/.mastracode/mcp.json` — user-global (recommended for MuninnDB)
-   - macOS/Linux: `~/.mastracode/mcp.json`
-   - Windows: `%USERPROFILE%\.mastracode\mcp.json`
-3. `<project>/.claude/settings.local.json` — Claude Code compat
+```bash
+claude mcp add --transport http muninn http://localhost:8476/mcp \
+  --header "Authorization: Bearer <your-muninn-api-key>"
+```
 
-For most users, configure once globally and every project picks it up. Create the user-global file at `<home>/.mastracode/mcp.json`:
+Or add a project-scoped server by creating `<project>/.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "muninn": {
-      "url": "http://localhost:8750/mcp",
+      "type": "http",
+      "url": "http://localhost:8476/mcp",
       "headers": {
         "Authorization": "Bearer <your-muninn-api-key>"
       }
@@ -124,7 +124,7 @@ For most users, configure once globally and every project picks it up. Create th
 }
 ```
 
-Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart the harness, then run `/mcp` inside the TUI to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to mode agents and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
+`8476` is MuninnDB's default port (`MUNINNDB_DEFAULT_PORT`); if you overrode it via `MUNINNDB_PORT`, use that value instead — `luca init`'s post-setup readout prints the live port. Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart Claude Code, then run `/mcp` to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to the pipeline modes and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
 
 ### Prompt Engineering
 

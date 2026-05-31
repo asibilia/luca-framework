@@ -1,6 +1,5 @@
 ---
-'@alecsibilia/luca-framework': minor
-'@alecsibilia/luca-mastracode': minor
+"@alecsibilia/luca": patch
 ---
 
 Bump entire Mastra dependency family in lockstep and pin them

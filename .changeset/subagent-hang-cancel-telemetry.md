@@ -1,5 +1,5 @@
 ---
-'@alecsibilia/luca-mastracode': minor
+"@alecsibilia/luca": patch
 ---
 
 Add `cancel-subagent` workflowState action + `subagent.cancelled` telemetry kind + `cancelled_by_user` outcome enum value.

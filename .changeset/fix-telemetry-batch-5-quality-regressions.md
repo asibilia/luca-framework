@@ -1,5 +1,5 @@
 ---
-'@alecsibilia/luca-mastracode': patch
+"@alecsibilia/luca": patch
 ---
 
 fix: harden telemetry prose to eliminate field-completeness drift

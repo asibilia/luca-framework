@@ -1,6 +1,5 @@
 ---
-"@alecsibilia/luca-framework": minor
-"@alecsibilia/luca-mastracode": minor
+"@alecsibilia/luca": patch
 ---
 
 `luca init` now installs Claude artifacts globally; `luca doctor --fix` cleans up stray per-repo installs.

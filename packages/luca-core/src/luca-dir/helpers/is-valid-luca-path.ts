@@ -1,6 +1,7 @@
 import {
     LUCA_DIR_ROOT,
     PHASE_SLUG_RE,
+    RAW_FILE_RE,
     REVIEWER_NAME_RE,
     RUN_ID_RE,
     SEMVER_TAG_RE,
@@ -113,6 +114,21 @@ function validatePhaseSubtree(
         return {
             valid: false,
             error: `invalid phase execute path "${rest.join('/')}"`,
+        }
+    }
+
+    // raw/<stage>-<NN>.md — per-stage raw output capture (safety net).
+    // Written during PLANNING (research mode) and REVIEWING (review
+    // mode) BEFORE consolidating into the canonical research.md /
+    // audits/<reviewer>.md. Subsequent consolidation reads these files
+    // and produces the canonical artifact.
+    if (rest[0] === 'raw') {
+        if (rest.length === 2 && RAW_FILE_RE.test(rest[1]!)) {
+            return { valid: true, kind: 'phase.raw' }
+        }
+        return {
+            valid: false,
+            error: `invalid raw path "${rest.join('/')}"; expected raw/<stage>-<NN>.md`,
         }
     }
 
