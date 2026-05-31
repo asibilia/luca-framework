@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": patch
+"@alecsibilia/luca": patch
 ---
 
 Add subagent invocation telemetry (`subagent.invoke` / `subagent.complete` kinds).

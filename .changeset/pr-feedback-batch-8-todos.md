@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": minor
+"@alecsibilia/luca": patch
 ---
 
 ## PR feedback learning batch — 8 todos

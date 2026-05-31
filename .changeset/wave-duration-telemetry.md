@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": minor
+"@alecsibilia/luca": patch
 ---
 
 Add per-phase wave duration telemetry — foundation for the Wave 1 telemetry program.

@@ -1,6 +1,5 @@
 ---
-"@alecsibilia/luca-framework": major
-"@alecsibilia/luca-mastracode": major
+"@alecsibilia/luca": patch
 ---
 
 Phase 1 of the Claude Code-first migration: extract shared schema into a new `@alecsibilia/luca-core` package, define the new `.luca/` directory contract, and add the `luca migrate-planning` command.

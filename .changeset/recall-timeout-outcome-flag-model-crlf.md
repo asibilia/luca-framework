@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": patch
+"@alecsibilia/luca": patch
 ---
 
 Four backlog todos batched into one PR:

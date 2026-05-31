@@ -6,9 +6,9 @@
 #      PR that bumps package versions and updates CHANGELOG.md
 #   3. When that PR merges to main, this workflow runs again — but with no
 #      pending changesets, so it executes the `publish` command instead,
-#      which creates a GitHub Release tagged v<luca-framework version>
+#      which creates a GitHub Release tagged v<luca umbrella version>
 #   4. Immediately after the release is created, the publish job in this
-#      same workflow publishes @alecsibilia/luca-framework to npm.
+#      same workflow publishes @alecsibilia/luca to npm.
 #
 # Note: We publish inline rather than listening for `release: published`
 # because releases created by GITHUB_TOKEN do not trigger downstream
@@ -16,7 +16,7 @@
 #
 # Requirements:
 #   - npm Trusted Publisher configured on npmjs.com for
-#     @alecsibilia/luca-framework, pointing at this repository and the
+#     @alecsibilia/luca, pointing at this repository and the
 #     `Release` workflow. No NPM_TOKEN secret is used — the publish job
 #     authenticates via OIDC, which also produces signed provenance
 #     attestations on each release.
@@ -107,7 +107,7 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     runs-on: ubuntu-latest
-    # The npm Trusted Publisher for @alecsibilia/luca-framework is
+    # The npm Trusted Publisher for @alecsibilia/luca is
     # configured with `Environment name: npm-publish`. That makes npm
     # require the incoming OIDC token to carry an `environment` claim
     # matching that value. Declaring `environment: npm-publish` here is
@@ -155,33 +155,29 @@ jobs:
       - name: Typecheck
         run: bunx --bun tsc --noEmit
 
-      - name: Build framework
-        run: cd packages/luca-framework && bun run build
+      - name: Build umbrella
+        run: cd packages/luca && bun run build
 
       # bun pm pack rewrites catalog: and workspace:* protocols to concrete
       # semver ranges that npm understands; bun publish itself does the same
       # rewrite, but bun publish doesn't yet support npm OIDC trusted
       # publishing (oven-sh/bun#22423), so we hand the tarball to npm.
+      #
+      # NOTE: the umbrella inlines its private workspace siblings
+      # (luca-cli/core/tools) into dist/ via unbuild's
+      # `inlineDependencies`, so the packed tarball carries no
+      # `workspace:*` refs for those. The former "Validate exact-pinned
+      # Mastra deps" step was removed: it guarded the legacy
+      # luca-framework tarball, which shipped `mastracode`/`@mastra/*`.
+      # The @alecsibilia/luca umbrella declares no Mastra deps, so the
+      # check is inapplicable (and its script does not exist here).
       - name: Pack tarball (resolves catalog/workspace protocols)
-        run: cd packages/luca-framework && bun pm pack --destination ./.pack
-
-      # The Mastra family (`mastracode`, `@mastra/core`, etc.) ships in
-      # lockstep — `mastracode@X.Y.Z` is built against an exact pin of
-      # `@mastra/core` and friends. If we publish with caret ranges, npm
-      # will silently swap in a newer `@mastra/core` at user install time,
-      # which has produced runtime breakage like
-      #   `Error: Exhausted all fallback models. Last error: Unsupported role: signal`
-      # (mastracode 0.19 → @mastra/core 1.34 introduced a `signal` message
-      #  role that older provider adapters did not handle). This step
-      # fails the publish if any Mastra dep in the packed package.json
-      # uses a non-exact spec.
-      - name: Validate exact-pinned Mastra deps in tarball
-        run: cd packages/luca-framework && bun run scripts/validate-tarball-deps.ts
+        run: cd packages/luca && bun pm pack --destination ./.pack
 
       - name: Determine npm dist-tag
         id: dist_tag
         run: |
-          VERSION=$(jq -r .version packages/luca-framework/package.json)
+          VERSION=$(jq -r .version packages/luca/package.json)
           if [[ "$VERSION" == *-alpha.* ]]; then
             echo "tag=alpha" >> "$GITHUB_OUTPUT"
           elif [[ "$VERSION" == *-beta.* ]]; then
@@ -194,4 +190,4 @@ jobs:
           echo "Publishing $VERSION with dist-tag: $(grep tag= "$GITHUB_OUTPUT" | cut -d= -f2)"
 
       - name: Publish to npm via OIDC trusted publishing
-        run: cd packages/luca-framework && npm publish ./.pack/*.tgz --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}
+        run: cd packages/luca && npm publish ./.pack/*.tgz --access public --provenance --tag ${{ steps.dist_tag.outputs.tag }}

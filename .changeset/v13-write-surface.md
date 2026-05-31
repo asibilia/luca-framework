@@ -1,6 +1,5 @@
 ---
-"@alecsibilia/luca-framework": major
-"@alecsibilia/luca-mastracode": major
+"@alecsibilia/luca": patch
 ---
 
 v13 write-surface re-architecture: replace the MCP server with the `luca` CLI.

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { $ } from 'bun'
 
-const pkg = await Bun.file('packages/luca-framework/package.json').json()
+const pkg = await Bun.file('packages/luca/package.json').json()
 const tag = `v${pkg.version}`
-const title = `luca-framework@${pkg.version}`
+const title = `${pkg.name}@${pkg.version}`
 
 // Emitted for changesets/action's stdout parser — it looks for lines
 // matching /New tag:\s+(@scope\/name|name)@version/ to populate the
@@ -20,7 +20,7 @@ if (exists.exitCode === 0) {
   process.exit(0)
 }
 
-const changelog = await Bun.file('packages/luca-framework/CHANGELOG.md')
+const changelog = await Bun.file('packages/luca/CHANGELOG.md')
   .text()
   .catch(() => '')
 const sections = changelog.split(/^## /m)

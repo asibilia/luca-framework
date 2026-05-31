@@ -1,5 +1,5 @@
 ---
-"@alecsibilia/luca-mastracode": patch
+"@alecsibilia/luca": patch
 ---
 
 fix(luca:5-review): remove fenced block bug in reviewer spawn directive
