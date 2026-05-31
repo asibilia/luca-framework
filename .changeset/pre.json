@@ -10,5 +10,24 @@
     "@alecsibilia/luca-studio": "0.1.0",
     "@alecsibilia/luca-tools": "0.1.0"
   },
-  "changesets": []
+  "changesets": [
+    "bump-mastra-deps-and-pin-tarball",
+    "fix-luca-5-review-outer-reviewer-fanout",
+    "fix-luca-core-private-dep-resolution",
+    "fix-reviewer-usage-self-report",
+    "fix-telemetry-batch-5-quality-regressions",
+    "fix-ultrareview-v13-readiness",
+    "luca-core-phase-1",
+    "luca-init-global-install",
+    "memory-audit-skill",
+    "memory-tier-promotion-contract",
+    "mode-transition-telemetry",
+    "pr-feedback-batch-8-todos",
+    "recall-timeout-outcome-flag-model-crlf",
+    "subagent-hang-cancel-telemetry",
+    "subagent-invocation-telemetry",
+    "telemetry-batch-completion",
+    "v13-write-surface",
+    "wave-duration-telemetry"
+  ]
 }
