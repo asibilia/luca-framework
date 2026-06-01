@@ -1,3 +1,5 @@
+import { isAbsolute, relative } from 'node:path'
+
 import { PHASE_SLUG_RE, REVIEWER_NAME_RE } from '../constants.ts'
 
 export type WritePathClass =
@@ -15,6 +17,15 @@ export interface ClassifyResult {
 export interface ClassifyOptions {
     /** User home directory, for detecting absolute paths under ~/.claude/ or ~/.luca/. */
     homedir?: string
+    /**
+     * Project root. When provided, an absolute `path` under it is normalized
+     * to its repo-relative form before the `.luca/` contract check — Claude
+     * Code passes ABSOLUTE `file_path`s (e.g. `/repo/.luca/phases/…`), but the
+     * `.luca/` contract (and `phasePathFor`) are repo-relative. Without this,
+     * a legal artifact write classifies as `code` and the matrix wrongly
+     * blocks it. The always-denied checks still run on the original path.
+     */
+    cwd?: string
 }
 
 // Patterns matched against the leading directory segments of a path.
@@ -96,9 +107,13 @@ export function classifyWritePath(
         }
     }
 
-    // 4. .luca/ artifacts
-    if (path.startsWith('.luca/') || path === '.luca') {
-        if (AUDIT_PATH_PATTERN.test(path)) {
+    // 4. .luca/ artifacts. Normalize an absolute path under `cwd` to its
+    //    repo-relative form first — the contract (and AUDIT_PATH_PATTERN) is
+    //    relative, but callers pass absolute file paths.
+    const rel =
+        opts.cwd && isAbsolute(path) ? relative(opts.cwd, path) : path
+    if (rel.startsWith('.luca/') || rel === '.luca') {
+        if (AUDIT_PATH_PATTERN.test(rel)) {
             return { class: 'planning-audit' }
         }
         return { class: 'planning-general' }

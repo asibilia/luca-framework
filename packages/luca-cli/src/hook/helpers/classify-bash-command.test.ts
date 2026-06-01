@@ -157,3 +157,57 @@ describe('classifyBashCommand — edge cases', () => {
         expect(r.category).toBe('bash-readonly')
     })
 })
+
+describe('classifyBashCommand — read-only-phase regressions', () => {
+    // These all blocked the pipeline's research step before the fix: agents
+    // prefix commands with `cd`, read files with `sed -n`, and call
+    // `luca --help` — all read-only, all were misclassified as bash-mutate.
+    test('cd <dir> && cat …; echo …; sed -n … → readonly', () => {
+        const r = classifyBashCommand(
+            'cd /repo/pkg && cat lib/x.dart; echo "==="; sed -n \'1,60p\' pubspec.yaml'
+        )
+        expect(r.category).toBe('bash-readonly')
+    })
+
+    test('cd alone → readonly (shell navigation is not a file mutation)', () => {
+        expect(classifyBashCommand('cd /some/dir').category).toBe(
+            'bash-readonly'
+        )
+    })
+
+    test('luca with only flags (--help/--version) → readonly', () => {
+        expect(classifyBashCommand('luca --help').category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca --version').category).toBe(
+            'bash-readonly'
+        )
+    })
+
+    test('sed -n (print) → readonly; sed -i (in-place) → mutate', () => {
+        expect(classifyBashCommand("sed -n '1,5p' f").category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand("sed -i 's/a/b/' f").category).toBe(
+            'bash-mutate'
+        )
+    })
+
+    test('awk filter → readonly; gawk -i inplace → mutate', () => {
+        expect(classifyBashCommand("awk '{print $1}' f").category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand("awk -i inplace '{print}' f").category).toBe(
+            'bash-mutate'
+        )
+    })
+
+    test('cd does not mask a real mutation later in the chain', () => {
+        expect(classifyBashCommand('cd foo && bun add zod').category).toBe(
+            'bash-mutate'
+        )
+        expect(classifyBashCommand('cd foo && rm -rf build').category).toBe(
+            'bash-mutate'
+        )
+    })
+})

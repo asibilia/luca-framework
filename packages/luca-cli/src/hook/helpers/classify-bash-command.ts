@@ -20,6 +20,13 @@ export interface ClassifyBashResult {
 // ---------------------------------------------------------------------------
 
 const READONLY_COMMANDS = new Set([
+    // Shell navigation/no-ops: mutate shell state, not files — benign for
+    // the file/repo-mutation policy this classifier enforces. `cd` is the
+    // big one: agents prefix nearly every command with `cd <dir> && …`, so
+    // omitting it made every compound command classify as a mutate.
+    'cd',
+    'pushd',
+    'popd',
     'ls',
     'cat',
     'grep',
@@ -175,7 +182,7 @@ const LUCA_READ_VERBS = new Set([
 // noun-group commands registered in src/cli.ts and their leaf subcommands.
 const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     state: new Set(['read', 'advance']),
-    phase: new Set(['current']),
+    phase: new Set(['current', 'advance', 'archive']),
     roadmap: new Set(['read', 'create']),
     preferences: new Set(['read', 'write']),
     todo: new Set(['add', 'list', 'update']),
@@ -199,7 +206,11 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
  */
 function classifyLucaCommand(rest: string[]): BashCategory | undefined {
     const noun = rest.find((t) => !t.startsWith('-'))
-    if (!noun) return undefined
+    // `luca`, `luca --help`, `luca --version` — no noun, only flags. These
+    // print usage/version and mutate nothing, so they are read-only. (Before,
+    // returning undefined here let them fall through to the generic
+    // unknown-command → bash-mutate path, which blocked `luca --help`.)
+    if (!noun) return 'bash-readonly'
     const verbs = LUCA_NOUN_VERBS[noun]
     if (!verbs) return undefined
     // Second non-flag token after the noun is the verb.
@@ -420,6 +431,23 @@ function classifySubcommand(sub: Subcommand): {
         if (matchesPrefix(tokens, pattern)) {
             return {
                 category: 'bash-mutate',
+                targetPaths: targetsFromRedirect,
+            }
+        }
+    }
+
+    // 6b. sed / awk are read-only UNLESS they edit in place. `sed -n '1,60p'`
+    //     (print) and `awk '{…}'` (filter) read; only `sed -i…` / gawk
+    //     `-i inplace` mutate. Treating all sed/awk as mutate blocked plain
+    //     file reads in read-only phases.
+    if (cmd === 'sed' || cmd === 'awk') {
+        const sedInPlace =
+            cmd === 'sed' &&
+            rest.some((a) => a === '--in-place' || a.startsWith('-i'))
+        const awkInPlace = cmd === 'awk' && rest.includes('inplace')
+        if (!sedInPlace && !awkInPlace) {
+            return {
+                category: sub.redirect ? 'bash-mutate' : 'bash-readonly',
                 targetPaths: targetsFromRedirect,
             }
         }

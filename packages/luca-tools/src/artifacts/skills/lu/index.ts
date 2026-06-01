@@ -85,7 +85,7 @@ Repeat until \`pipelineStep\` is \`complete\`:
 | \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
 | \`verify\`      | Spawn \`luca-verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
 | \`review\`      | Spawn \`luca-reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`luca-learner\` (Agent tool). Then: more phases remain → advance to \`plan\` for the next phase; last phase → advance to \`milestone\`. |
+| \`learn\`       | Spawn \`luca-learner\` (Agent tool). Then, if more phases remain: run \`luca phase advance\` (bumps \`currentPhase\` to the next phase and marks the finished one complete) **before** advancing the step to \`plan\` — the next phase's artifacts resolve against the new \`currentPhase\`, so skipping this writes them into the wrong (or no) phase dir. On the last phase, do NOT run \`luca phase advance\`; advance the step to \`milestone\`. |
 | \`milestone\`   | Invoke \`Skill(skill: "milestone-new")\` to close out, or advance to \`complete\` if no milestone bookkeeping is needed. |
 
 ### Oversight
