@@ -8,4 +8,4 @@ Fix the pipeline deadlocking immediately after `roadmap create` — the first ph
 
 `roadmap create` now activates phase 1 immediately (`currentPhase=1` when the roadmap is non-empty, else 0). Once a roadmap exists there is always a current phase, so `resolveActiveSlug` resolves and the first artifact write is permitted.
 
-NOTE: advancing between phases (N→N+1 as each phase completes) is still unimplemented — multi-phase roadmaps will stall at the phase-1→2 boundary until a phase-advance mechanism lands. Single-phase roadmaps now run end-to-end.
+Advancing between phases (N→N+1 as each phase completes) is handled by the companion `luca phase advance` command added in this release and wired into the `/lu` `learn`-step transition — so multi-phase roadmaps now progress end-to-end, not just single-phase ones.

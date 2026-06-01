@@ -444,7 +444,12 @@ function classifySubcommand(sub: Subcommand): {
         const sedInPlace =
             cmd === 'sed' &&
             rest.some((a) => a === '--in-place' || a.startsWith('-i'))
-        const awkInPlace = cmd === 'awk' && rest.includes('inplace')
+        // gawk in-place is the flag PAIR `-i inplace` (load the inplace
+        // extension). Match the adjacent pair, not a bare "inplace" token —
+        // which could appear in the awk program text or a filename.
+        const awkInPlace =
+            cmd === 'awk' &&
+            rest.some((a, i) => a === '-i' && rest[i + 1] === 'inplace')
         if (!sedInPlace && !awkInPlace) {
             return {
                 category: sub.redirect ? 'bash-mutate' : 'bash-readonly',

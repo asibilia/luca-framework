@@ -96,6 +96,11 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     // Phase-restricted structured mutations
     'roadmap create': ['idle', 'triage'],
     'checks run': ['execute', 'checks'],
+    // Phase lifecycle: advance at the phase boundary (learn); archive only
+    // at milestone close. (The tool descriptors carry matching allowedPhases,
+    // but the CLI self-check consults THIS table — runWriteHandler.)
+    'phase advance': ['learn'],
+    'phase archive': ['milestone', 'complete'],
 
     // Phase-restricted freeform artifact writes
     'phase write-research': ['research'],

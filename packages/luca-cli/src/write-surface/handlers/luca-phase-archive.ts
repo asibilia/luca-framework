@@ -40,12 +40,24 @@ export const lucaPhaseArchiveTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             const entries = await readdir(phasesDir, { withFileTypes: true })
             const archived: string[] = []
             const skipped: string[] = []
+            const invalid: string[] = []
 
             for (const entry of entries) {
                 if (!entry.isDirectory()) continue
                 const slug = entry.name
+
+                // `archivedPhasePathFor` validates the slug against the
+                // contract and THROWS on a non-conforming name. A stray or
+                // corrupted directory must not crash the whole archive (and
+                // block milestone close) — skip it and report instead.
+                let to: string
+                try {
+                    to = join(ctx.cwd, archivedPhasePathFor(slug))
+                } catch {
+                    invalid.push(slug)
+                    continue
+                }
                 const from = join(phasesDir, slug)
-                const to = join(ctx.cwd, archivedPhasePathFor(slug))
 
                 // Never overwrite a frozen archive entry. A collision means the
                 // slug was already archived in a prior milestone — leave both
@@ -67,6 +79,11 @@ export const lucaPhaseArchiveTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             if (skipped.length > 0) {
                 parts.push(
                     `skipped (archive entry already exists): ${skipped.join(', ')}`
+                )
+            }
+            if (invalid.length > 0) {
+                parts.push(
+                    `skipped (not a valid phase slug): ${invalid.join(', ')}`
                 )
             }
             return ok(parts.join('. '))

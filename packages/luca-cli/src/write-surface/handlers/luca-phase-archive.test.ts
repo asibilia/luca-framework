@@ -49,4 +49,22 @@ describe('lucaPhaseArchiveTool', () => {
         const r = await lucaPhaseArchiveTool.handler({}, { cwd })
         expect(r.isError).toBeUndefined()
     })
+
+    test('skips a stray non-slug directory instead of throwing', async () => {
+        // A directory name that is not a valid phase slug must not crash the
+        // archive (archivedPhasePathFor throws on invalid slugs).
+        await mkdir(join(cwd, '.luca/phases/not a valid slug!'), {
+            recursive: true,
+        })
+        await mkdir(join(cwd, '.luca/phases/01-good'), { recursive: true })
+
+        const r = await lucaPhaseArchiveTool.handler({}, { cwd })
+
+        expect(r.isError).toBeUndefined()
+        // The valid one archives; the stray one is left in place.
+        expect(existsSync(join(cwd, '.luca/archive/01-good'))).toBe(true)
+        expect(existsSync(join(cwd, '.luca/phases/not a valid slug!'))).toBe(
+            true
+        )
+    })
 })
