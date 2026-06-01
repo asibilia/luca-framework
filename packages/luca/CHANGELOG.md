@@ -1,5 +1,27 @@
 # @alecsibilia/luca
 
+## 13.0.0-alpha.2
+
+### Patch Changes
+
+- 7eb7779: Add three `luca doctor` checks (and harden a fourth) that catch the environment problems v12→v13 upgraders hit during install:
+  - **Global `~/.claude` symlinks** (`scope: global`, auto-fixable) — `lstat`-scans `~/.claude/{skills,commands,agents,hooks}` for broken symlinks left by older dev installs that pointed into a repo's former `dist/claude/`. These dangling links make `luca init` crash with `EEXIST: mkdir '.../.claude/skills/<name>'`. `luca doctor --fix` removes them.
+  - **MuninnDB MCP wiring** (`scope: global`) — verifies the pipeline can actually reach memory: probes MuninnDB's MCP endpoint (`http://127.0.0.1:8750/mcp` — distinct from the `8476` service/dashboard port) and checks whether a `muninn` server is registered in `~/.claude.json` / project `.mcp.json`. Warns (never fails) with the exact `claude mcp add --transport sse …` command when it's up-but-unregistered or registered-but-down.
+  - **Legacy global package** (`scope: global`) — warns when the pre-v13 `@alecsibilia/luca-framework` is still installed in Bun's global prefix alongside `@alecsibilia/luca` (both expose the same `luca` binary; whichever was installed last wins). Points at `bun rm -g @alecsibilia/luca-framework`.
+  - **Stray-local-install hardening** — the existing check now uses `lstat` instead of `existsSync`, so dangling symlinks in a project's `.claude/` are detected (and removable by `--fix`) instead of being silently invisible.
+
+- 7eb7779: Fix every Claude Code hook firing `Cannot find module '@alecsibilia/luca-core/ledger'` in consumer projects (PreToolUse/PostToolUse errors on every tool call).
+
+  The umbrella build copied each hook handler (`pipeline-guard`, `continuation-messages`, `context-refresher`) verbatim into `dist/claude/.claude/hooks/<name>.ts`. Those handlers import private workspace packages (`@alecsibilia/luca-core/{ledger,orchestration,state}`) which are inlined into the umbrella's CLI bundle but are **not** present in a consumer's `node_modules`, so `luca init` laid down hooks that failed to resolve their imports on every fire (failing open, but noisy and non-functional).
+
+  The build now **bundles** each handler with `bun build --target bun` instead of copying it, inlining the luca-core dependencies so the emitted handler is self-contained and runs anywhere bun is available. Verified: bundled handlers carry zero bare `@alecsibilia/luca-core` imports and execute cleanly.
+
+- 7eb7779: Fix `luca init` crashing with `EEXIST: mkdir '.../.claude/skills/<name>'` when a target path is already occupied by a stale symlink or file.
+
+  `installSkills` called `mkdir(target, { recursive: true })` and `copyFile` assuming clean destinations. `mkdir` with `recursive: true` is idempotent for real directories but throws `EEXIST` when the path is a dangling symlink (e.g. left by an older dev install that symlinked `~/.claude/skills/*` into the repo's former `dist/claude/` tree), and `copyFile` would write _through_ a stale symlink to its target instead of materializing a real file. The skill/command/agent install now clears any pre-existing non-directory entry (symlink/file) at each target before creating it, so install is robust and idempotent regardless of what previously occupied `~/.claude/`.
+
+- 7eb7779: Fix `luca vault:init` pointing users at the wrong MuninnDB Web UI URL for API-key generation. The API-key prompt hardcoded `http://localhost:8477`, but the MuninnDB dashboard is served on the same port as the service (default `8476`), so the link was dead. The URL is now derived from `resolveMuninndbPort()` (`http://127.0.0.1:<port>`), honoring a `MUNINNDB_PORT` override instead of a hardcoded value.
+
 ## 13.0.0-alpha.1
 
 ### Patch Changes
