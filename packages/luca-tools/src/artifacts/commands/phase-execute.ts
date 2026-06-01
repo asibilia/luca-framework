@@ -21,7 +21,7 @@ Read \`.luca/phases/<slug>/plan.md\`. If the plan doesn't exist or appears empty
 
 ## Delegate to the executor subagent
 
-Spawn the \`luca-executor\` subagent via the \`Agent\` tool with a prompt that includes:
+Spawn the \`executor\` subagent via the \`Agent\` tool with a prompt that includes:
 - The full plan content
 - The phase slug
 - Whatever constraints apply (e.g. test-driven development, no commits without verification)

@@ -60,7 +60,7 @@ There is no \`.luca/PROJECT.md\` — project identity lives in the MuninnDB brai
 
 ## Step 5 — Research (optional)
 
-Unless \`--skip-research\` is set, for each major feature area spawn the \`luca-researcher\` subagent via the \`Agent\` tool with milestone-aware context (project brief + goal list + the feature to research).
+Unless \`--skip-research\` is set, for each major feature area spawn the \`researcher\` subagent via the \`Agent\` tool with milestone-aware context (project brief + goal list + the feature to research).
 
 Store each research summary in MuninnDB under \`research:<feature-slug>\` in the repo vault. Per-phase \`research.md\` files are written later by the pipeline once phases exist — milestone-level research is memory-only.
 

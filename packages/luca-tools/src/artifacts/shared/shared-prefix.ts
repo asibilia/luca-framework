@@ -31,11 +31,10 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - Silence is not approval — every APPROVE verdict requires specific evidence.
 
 ${MEMORY_TIER_DISCIPLINE}
-## Pre-Invoke Memory Recall
-- If MuninnDB MCP tools are available, before your first substantive tool call run \`muninn_recall\` once to surface prior learnings for this task.
-- Form: \`mcp__muninn__muninn_recall(vault: "<from .luca/config.json → muninn.vault, fallback 'default'>", context: ["<task topic>"], mode: "semantic", limit: 5)\`.
-- Filter recalled engrams: prefer \`trust: verified\` over \`inferred\` when both match.
-- If MuninnDB is unreachable or returns no matches, log briefly and proceed — NEVER block on recall failure.
+## Memory I/O Is the Orchestrator's Job
+- You do NOT have MuninnDB/MCP access. Do not attempt \`mcp__muninn__*\` calls — they are unavailable to subagents and will fail.
+- Any prior learnings, decisions, or pitfalls you need are supplied in your prompt by the orchestrator (which recalls them on your behalf). If you need context your prompt doesn't include, say so in your output instead of trying to recall it yourself.
+- Insights you produce for long-term storage are RETURNED in your structured output; the orchestrator persists them to MuninnDB. Never assume you persisted anything.
 
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — mid-session guidance supersedes stale context.

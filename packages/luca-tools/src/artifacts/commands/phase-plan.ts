@@ -25,7 +25,7 @@ If either is missing, abort with a clear error pointing at the missing step.
 
 ## Produce the plan
 
-The legacy v12 \`luca-planner\` subagent was dropped per plan §5.6 — planning work is done by the architect mode-agent or, when invoked from the \`/phase-plan\` command flow, inline by the orchestrator. Synthesize the plan from:
+The legacy v12 \`lu-planner\` subagent was dropped per plan §5.6 — planning work is done by the architect mode-agent or, when invoked from the \`/phase-plan\` command flow, inline by the orchestrator. Synthesize the plan from:
 - The phase slug
 - The current \`pipelineStep\` (always \`plan\` here)
 - The research findings + user decisions read above

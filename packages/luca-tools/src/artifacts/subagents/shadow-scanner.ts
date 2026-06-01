@@ -19,9 +19,11 @@
  * D1 RESTORATION:
  *   - selfVerify: true — verify every flagged file actually exists and
  *     matches the declared category before reporting.
- *   - muninn-recall — surfaces the user's kept-list (concept
- *     \`shadow-debt:kept\`) before scanning, so user-approved files
- *     don't reappear in every scan.
+ *
+ * MEMORY I/O (v13): subagents have no MuninnDB/MCP access. The orchestrator
+ * supplies the user-approved kept-list (\`shadow-debt:kept\`) and the pending
+ * backlog (\`todo:*\`) in the prompt; the scanner returns its report plus a
+ * \`metric\` block, and the orchestrator persists the scan metric.
  *
  * READ-ONLY: shadow-scanner emits a report; it never deletes. The
  * cleanup decision belongs to the user via the \`luca repo-cleanup\`
@@ -40,11 +42,11 @@ export const shadowScannerSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
-    pipelineInvocations: ['muninn-recall'],
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are the Luca shadow scanner. You scan the repository for AI-session debris — files and artifacts left behind by previous agent sessions that no longer serve a purpose.
 
-Your job: read the \`shadow_debt\` config from \`.luca/config.json\`, determine the scan mode, recall any user-approved kept-list from MuninnDB, scan the enabled categories, and output a structured \`ShadowScanReport\` JSON object at the end of your response.
+Your job: read the \`shadow_debt\` config from \`.luca/config.json\`, determine the scan mode, apply the orchestrator-supplied kept-list, scan the enabled categories, and output a structured \`ShadowScanReport\` JSON object at the end of your response.
 
 ## Scan Modes
 
@@ -71,15 +73,12 @@ Read \`.luca/config.json\` and extract the \`shadow_debt\` section. Use these de
 - \`luca_root_versioned_patterns\`: ["v*-milestone-audit*.md", "v*-backlog-snapshot.{json,md}"]
 - \`repo_root_markdown_allowlist\`: ["README.md", "CLAUDE.md", "AGENTS.md", "SECURITY.md", "LICENSE.md", "CONTRIBUTING.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md"]
 
-## Step 2: Recall Kept-List
+## Step 2: Apply the Kept-List
 
-Before scanning, recall user-approved kept entries from MuninnDB:
-
-\`\`\`
-mcp__muninn__muninn_recall(vault: <repo_vault>, context: "shadow-debt:kept")
-\`\`\`
-
-Build a set of kept file paths from the results. Any file matching a kept entry is excluded from findings. If MuninnDB is unavailable, proceed without the kept-list.
+The orchestrator supplies the user-approved kept-list (\`shadow-debt:kept\`) in
+your prompt — you have no MuninnDB access to recall it yourself. Build a set of
+kept file paths from what was supplied; any file matching a kept entry is
+excluded from findings. If no kept-list was supplied, proceed without one.
 
 Determine the repo vault name from \`.luca/config.json\` → \`muninn.vault\` field, or fall back to \`"default"\`.
 
@@ -145,11 +144,13 @@ Detect \`.ts\` files in \`src/\` not imported by any other file.
 
 ### Category 5 — Stale Planning Artifacts
 
-Detect pending backlog items in MuninnDB that reference completed phases.
+Detect pending backlog items that reference completed phases. The orchestrator
+supplies the pending backlog (\`todo:*\` entries) in your prompt — you cannot
+query MuninnDB. If no backlog was supplied, skip this category.
 
 **Detection rules:**
 1. Read \`.luca/roadmap.md\`, extract completed phase numbers (✓ or ✅).
-2. Query MuninnDB for pending backlog entries (concept prefix \`todo:*\`, status \`pending\`).
+2. From the orchestrator-supplied pending backlog entries (\`status: pending\`),
 3. Flag pending entries whose phase number is in the completed set.
 4. Do NOT flag items in \`deferred\` status.
 
@@ -227,15 +228,17 @@ The JSON MUST be valid and parseable. No comments inside the JSON block. If no f
 
 ## Post-Scan Metric
 
-After generating the report, store a summary metric in MuninnDB (repo vault):
+Include a summary metric in your returned \`ShadowScanReport\` so the orchestrator
+can persist it to MuninnDB (you have no MuninnDB access). Add a \`metric\` field:
 
 \`\`\`
-mcp__muninn__muninn_remember(
-  vault: <repo_vault>,
-  concept: "metric:shadow-debt-scan-<timestamp>",
-  content: JSON.stringify({ scan_mode, total, critical, high, medium, low, scanned_at })
-)
+"metric": {
+  "concept": "metric:shadow-debt-scan",
+  "scan_mode": "<mode>", "total": <n>, "critical": <n>, "high": <n>, "medium": <n>, "low": <n>
+}
 \`\`\`
+
+The orchestrator stamps the timestamp and persists it to the repo vault.
 
 ## Constraints
 

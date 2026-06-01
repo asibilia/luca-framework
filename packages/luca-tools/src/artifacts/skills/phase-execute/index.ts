@@ -118,12 +118,11 @@ Task(
 
 <output_requirements>
 - Extract ONLY validated learnings (verified by outcome)
-- Write curated insights to MuninnDB via muninn_remember
-- Clear session context via muninn_forget after extraction
-- Return summary of learnings captured
+- Write learn.md via the Write tool (you have it)
+- Return the TO_PERSIST block — do NOT call MuninnDB (subagents have no MCP access); the orchestrator persists
 </output_requirements>
 
-Extract learnings from this phase execution and store in MuninnDB.
+Extract learnings from this phase execution, write learn.md, and return the TO_PERSIST block for the orchestrator to persist.
 """,
   subagent_type="learner",
   description="Capture phase learnings"
@@ -131,6 +130,8 @@ Extract learnings from this phase execution and store in MuninnDB.
 \`\`\`
 
 **Do NOT proceed until the Task returns.**
+
+After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context with \`mcp__muninn__muninn_forget(vault: "default", id: "session:*")\`.
 
 **Learning capture always runs.** The learner model tier comes from the agent definition:
 

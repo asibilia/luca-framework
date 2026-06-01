@@ -99,25 +99,16 @@ Write the following to \`.luca/phases/<currentPhaseSlug>/context.md\` (the phase
 - <anything still unresolved — the planner should flag these>
 \`\`\`
 
-## Historical Context from MuninnDB
+## Historical Context (supplied by the orchestrator)
 
-Before surfacing ambiguities, check if past architectural decisions are relevant:
+The orchestrator includes any relevant prior architectural decisions from
+MuninnDB in your prompt (you have no MuninnDB access yourself). When such
+prior art is present:
+- Present it when surfacing related ambiguities.
+- Note whether the same decision applies here or needs revisiting.
+- Mark ambiguities that contradict prior art as higher priority for user review.
 
-1. Read \`.luca/config.json\` → \`muninn.vault\` (fall back to \`"default"\`).
-2. Query for related past decisions:
-   \`\`\`
-   mcp__muninn__muninn_recall(
-     vault: "<repo_vault>",
-     context: "<task intent and domain>",
-     tags: ["decision"]
-   )
-   \`\`\`
-3. If relevant decisions are found:
-   - Present them as **prior art** when surfacing related ambiguities
-   - Note whether the same decision applies here or needs revisiting
-   - Mark decisions that contradict prior art as higher priority for user review
-
-If MuninnDB is unavailable or returns nothing, proceed without this step.
+If no prior decisions were supplied, proceed without this step.
 
 ## Behavioral Rules
 
