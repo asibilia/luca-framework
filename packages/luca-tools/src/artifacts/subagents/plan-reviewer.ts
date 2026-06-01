@@ -16,8 +16,9 @@
  *     plan-reviewer subagent emits start/end events on its own
  *     iteration boundary so the orchestrator can track convergence
  *     loops in the durable telemetry log.
- *   - muninn-recall: pre-invoke recall surfaces prior plan-review
- *     pitfalls and common gap patterns.
+ *   - muninn-recall DROPPED (v13): subagents have no MCP access (see
+ *     SUBAGENT_SHARED_PREFIX). Prior plan-review pitfalls and gap patterns
+ *     are supplied in the prompt by the orchestrator.
  */
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX } from '../shared/index.ts'
@@ -34,7 +35,9 @@ export const planReviewerSubagent = defineSubagent({
         antiSycophancy: true,
     },
     telemetryHooks: ['subagent-start', 'subagent-end'],
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies prior plans/decisions in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca plan reviewer operating in cold isolation.
 

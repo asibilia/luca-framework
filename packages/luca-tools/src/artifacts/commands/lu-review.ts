@@ -23,7 +23,7 @@ Run \`luca phase current\` to get the active slug. If no phase is active, abort.
 
 ## Run the reviewers
 
-Spawn the \`luca-reviewer\` subagent via the \`Agent\` tool — once per perspective, in parallel:
+Spawn the \`reviewer\` subagent via the \`Agent\` tool — once per perspective, in parallel:
 
 - \`architect\` — structural correctness, dependency direction, API surface
 - \`dx\` — readability, error messages, ergonomics

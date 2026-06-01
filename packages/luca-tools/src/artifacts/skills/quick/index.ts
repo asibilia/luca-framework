@@ -35,13 +35,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to subagents using the
 
 ## Process
 
-### Step 0: Resolve Model Profile
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table — the orchestrator does not pick model strings.
+> Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
 
 ### Step 1: Pre-flight Validation
 
@@ -149,7 +143,7 @@ Create a quick plan for this task.
 
 ### Step 6: Spawn Executor
 
-**MANDATORY**: You MUST spawn a lu-executor sub-agent. Do NOT attempt to execute yourself.
+**MANDATORY**: You MUST spawn an executor sub-agent. Do NOT attempt to execute yourself.
 
 First, read the plan:
 

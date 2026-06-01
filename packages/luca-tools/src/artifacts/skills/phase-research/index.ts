@@ -39,7 +39,7 @@ Goes beyond "which library" to ecosystem knowledge:
 
 2. **Spawn researcher:**
 
-   - Use lu-phase-researcher agent
+   - Use researcher agent
    - Focus on ecosystem knowledge for the domain
 
 3. **Create research.md:**

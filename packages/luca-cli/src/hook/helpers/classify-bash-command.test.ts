@@ -210,4 +210,38 @@ describe('classifyBashCommand — read-only-phase regressions', () => {
             'bash-mutate'
         )
     })
+
+    test('luca verification (read-only command) is not bash-mutate', () => {
+        expect(classifyBashCommand('luca verification read').category).toBe(
+            'bash-readonly'
+        )
+        expect(
+            classifyBashCommand('luca verification aggregate').category
+        ).toBe('bash-readonly')
+    })
+
+    test('luca <noun> --help / --version is read-only for any noun', () => {
+        expect(classifyBashCommand('luca verification --help').category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca state --help').category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca phase --version').category).toBe(
+            'bash-readonly'
+        )
+    })
+
+    test('`-v` (=--verbose) does NOT make a mutating luca command read-only', () => {
+        // `-v` is the verbose alias, not a version probe. A mutating command
+        // must not slip past the stage gate just because it asked for verbose
+        // output. (`luca doctor` has no read verb, so it classifies as a
+        // write — the regression was `-v` flipping it to read-only.)
+        expect(classifyBashCommand('luca doctor --fix -v').category).not.toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca doctor -v').category).not.toBe(
+            'bash-readonly'
+        )
+    })
 })

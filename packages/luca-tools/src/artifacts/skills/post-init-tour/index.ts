@@ -32,7 +32,7 @@ Skills are user-invocable workflows triggered by /commands (e.g., /phase-plan, /
 
 ### Step 3: Agents -- Specialized AI Workers
 
-Agents are specialized sub-agents that handle focused tasks: lu-router classifies complexity, lu-executor runs code changes, lu-verifier validates results, and reviewers audit code quality. They are spawned automatically during workflow execution.
+Agents are specialized sub-agents that handle focused tasks: the researcher gathers context, executor runs code changes, verifier validates results, and reviewers audit code quality. They are spawned automatically during workflow execution. (Complexity classification and cognitive pre-flight are handled inline by the orchestrator, not separate agents.)
 
 ### Step 4: Phases -- Structured Development
 

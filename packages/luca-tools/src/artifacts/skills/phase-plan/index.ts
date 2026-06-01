@@ -87,7 +87,7 @@ Before planning begins, run cognitive pre-flight:
 
 ## Process
 
-### 1. Validate Environment and Resolve Model Profile
+### 1. Validate Environment
 
 \`\`\`bash
 ls .luca/ 2>/dev/null
@@ -95,7 +95,7 @@ ls .luca/ 2>/dev/null
 
 If not found: Error - user should run \`/project-new\` first.
 
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`) — the orchestrator does not pick model strings. The \`researcher\`, \`architect\` (mode-agent), and \`plan-reviewer\` subagents all inherit the appropriate tier based on the active complexity level.
+> Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
 
 ### 2. Parse and Normalize Arguments
 
@@ -144,7 +144,7 @@ fi
 
 **If \`--skip-research\` flag:** Skip to step 6.
 
-**Always runs** (model tier for lu-phase-researcher resolved from routing table per complexity). The \`--skip-research\` flag still allows skipping entirely.
+**Always runs** (model tier for researcher comes from the agent definition). The \`--skip-research\` flag still allows skipping entirely.
 
 | Complexity | Research | Model Tier (from routing table) |
 |------------|----------|---------------------------------|
@@ -160,7 +160,7 @@ Read complexity from the canonical workflow state:
 COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
 \`\`\`
 
-The researcher model tier is resolved via \`resolveModelForAgent("lu-phase-researcher", complexity)\`.
+The researcher model tier is set by the agent’s own definition.
 
 **Check config for research setting:**
 
@@ -168,7 +168,7 @@ The researcher model tier is resolved via \`resolveModelForAgent("lu-phase-resea
 WORKFLOW_RESEARCH=$(cat .luca/config.json 2>/dev/null | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 \`\`\`
 
-**MANDATORY**: If research is needed, you MUST spawn a lu-phase-researcher sub-agent. Do NOT attempt to research yourself.
+**MANDATORY**: If research is needed, you MUST spawn a researcher sub-agent. Do NOT attempt to research yourself.
 
 First, read the required context:
 
@@ -219,8 +219,7 @@ Task(
 
 Research how to implement this phase. Analyze the codebase, identify patterns, and document findings.
 """,
-  subagent_type="lu-phase-researcher",
-  model="{researcher_model}",
+  subagent_type="researcher",
   description="Research Phase {phase_number}"
 )
 \`\`\`
@@ -316,7 +315,7 @@ Task(
 - **CHECKPOINT REACHED:** Present to user, get response
 - **PLANNING INCONCLUSIVE:** Offer options to add context, retry, or manual
 
-### 10. Spawn lu-plan-checker Agent
+### 10. Spawn plan-reviewer Agent
 
 Display:
 
@@ -326,7 +325,7 @@ Display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \`\`\`
 
-**Always runs** (iteration count scales with complexity, model tier for lu-plan-checker resolved from routing table).
+**Always runs** (iteration count scales with complexity).
 
 | Complexity | Plan Verification Iterations | Model Tier (from routing table) |
 |------------|-----------------------------|---------------------------------|
@@ -336,7 +335,7 @@ Display:
 | COMPLEX | 2 iterations | capable |
 | CRITICAL | 3 iterations | capable |
 
-The plan-checker model tier is resolved via \`resolveModelForAgent("lu-plan-checker", complexity)\`.
+The plan-checker model tier is set by the agent’s own definition.
 
 **MANDATORY**: You MUST spawn the \`plan-reviewer\` subagent. Do NOT attempt to verify plans yourself.
 
@@ -386,8 +385,7 @@ Task(
 
 Verify these plans will achieve the phase goal when executed.
 """,
-  subagent_type="lu-plan-checker",
-  model="{checker_model}",
+  subagent_type="plan-reviewer",
   description="Verify Phase {phase_number} plans"
 )
 \`\`\`
@@ -445,7 +443,7 @@ If issues found and iteration_count < planVerificationIterations:
 - [ ] Research completed (unless --skip-research or --gaps or exists)
 - [ ] architect mode-agent invoked with planning context (researcher + plan-reviewer subagents spawned as required)
 - [ ] Plans created
-- [ ] lu-plan-checker spawned (unless --skip-verify)
+- [ ] plan-reviewer spawned (unless --skip-verify)
 - [ ] Verification passed OR user override
 - [ ] User knows next steps (execute or review)
 

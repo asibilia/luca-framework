@@ -101,7 +101,7 @@ Entities create the relational graph between memories. Use these types consisten
 | \`phase\` | \`phase-{NN}\` | \`phase-06\`, \`phase-03\` |
 | \`plan\` | plan filename | \`PLAN-06-01.md\` |
 | \`branch\` | full branch name | \`53--v3-data-integrity\` |
-| \`agent\` | agent name | \`lu-executor\`, \`lu-verifier\` |
+| \`agent\` | agent name | \`executor\`, \`verifier\` |
 | \`commit\` | short hash | \`a0acf99c\` |
 | \`project\` | project name | \`luca-framework\` |
 | \`error\` | fingerprint hash | \`err-5f3a\` |
@@ -231,8 +231,8 @@ After Phase 06 completes, the skill produces these memories:
 3. **commit**: "a0acf99c — docs(05-01,05-02): verify Phase 5 agentic reliability todos"
 4. **commit**: "506bbba6 — fix(03-01): add eventType/timestamp indexes to observer_events"
 5. **convergence**: "Phase 06 converged in 1 iteration. Error count: 0, delta: 0, status: improved."
-6. **agent_invocation**: "lu-executor: 3 invocations, 3 success, avg 42s, model: sonnet"
-7. **agent_invocation**: "lu-verifier: 1 invocation, 1 success, 18s, model: sonnet"
+6. **agent_invocation**: "executor: 3 invocations, 3 success, avg 42s, model: sonnet"
+7. **agent_invocation**: "verifier: 1 invocation, 1 success, 18s, model: sonnet"
 
 Then links:
 
@@ -246,7 +246,7 @@ Then links:
 At session pause, the skill produces:
 
 1. **session_end**: "Session sess-abc123 ended after 2h15m. Completed phases 05, 06. 4 commits. Paused: context window approaching limit."
-2. **scorecard_snapshot**: "Agent scorecard at session end: lu-executor 6/6 success avg 40s, lu-verifier 2/2 success avg 20s, lu-cognition 1/1 success avg 8s."
+2. **scorecard_snapshot**: "Agent scorecard at session end: executor 6/6 success avg 40s, verifier 2/2 success avg 20s, researcher 1/1 success avg 8s."
 
 Links:
 

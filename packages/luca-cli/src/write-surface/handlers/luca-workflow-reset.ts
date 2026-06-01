@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { lucaRootPaths, lucaStateSchema } from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
+import { withStateLock } from '../helpers/mutate-state.ts'
 import { writeAtomicFile } from '../helpers/write-atomic.ts'
 
 const inputSchema = z.object({
@@ -49,10 +50,16 @@ export const lucaWorkflowResetTool: ToolDescriptor<
         const statePath = join(ctx.cwd, lucaRootPaths.state)
         const lockPath = join(ctx.cwd, lucaRootPaths.lock)
 
-        await writeAtomicFile(
-            statePath,
-            JSON.stringify(defaultState, null, 2) + '\n'
-        )
+        // Serialize the reset write under the state lock so it can't race a
+        // concurrent `mutateState`. Reset deliberately overwrites (it is the
+        // recovery tool), so it does NOT use the strict `mutateState` path —
+        // it must work even when state.json is missing or corrupt.
+        await withStateLock(ctx.cwd, async () => {
+            await writeAtomicFile(
+                statePath,
+                JSON.stringify(defaultState, null, 2) + '\n'
+            )
+        })
 
         // Tolerant delete: `force` ignores a missing file, so the reset is
         // idempotent and immune to a TOCTOU race if the lock is cleared

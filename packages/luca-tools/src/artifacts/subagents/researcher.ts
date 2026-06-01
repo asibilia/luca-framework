@@ -9,8 +9,9 @@
  * D1 RESTORATION:
  *   - selfVerify: true (default) — researchers must verify every
  *     file/line they reference via Read/Grep before citing it.
- *   - muninn-recall invocation — surfaces prior research patterns from
- *     MuninnDB before the agent commits to a research direction.
+ *   - muninn-recall invocation DROPPED (v13): subagents have no MCP access
+ *     (see SUBAGENT_SHARED_PREFIX). Prior research patterns are supplied in
+ *     the prompt by the orchestrator.
  *
  * No telemetry hooks at the subagent level: subagent-start/end events
  * are emitted by the SPAWNING mode-agent (research mode), not by the
@@ -30,7 +31,9 @@ export const researcherSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies prior research/patterns in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca research specialist. You perform focused, deep research on a specific dimension of a development task.
 

@@ -26,14 +26,14 @@ This skill uses TWO delegation mechanisms:
 - Each invoked skill loads its own SKILL.md with full instructions
 - Users see visual skill headers for each step
 
-**Task tool** — for specialized subagents (luca-researcher, luca-plan-reviewer, luca-verifier, luca-reviewer, luca-learner)
+**Task tool** — for specialized subagents (researcher, plan-reviewer, verifier, reviewer, learner)
 
 - Invoke: \`Task(agent: "agent-name", prompt: "...")\`
 - Subagents run inside a fresh sub-context
 
 ### Model Resolution
 
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`). The skill does not pick model strings — it spawns the named agent and the routing layer handles tier selection.
+Models are set by each agent’s own definition (and the harness default). The skill does not pick model strings — it spawns the named agent and the routing layer handles tier selection.
 
 </sub-agent_delegation_requirements>
 
@@ -53,7 +53,7 @@ If the user passed a request but the pipeline is already mid-flight, surface tha
 
 Triage runs once, at the start of a run. It is inline here — there is no separate triage skill.
 
-1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (the model-routing table keys off it). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
+1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (pass it to any subagent whose behavior varies by complexity). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
 2. **Build the roadmap.** Decompose the request into ordered phases. Each phase is one deliverable unit. Stage the phases array in a JSON file, then run \`luca roadmap create --file\`:
    \`\`\`
    # /tmp/luca-roadmap.json:
@@ -76,16 +76,16 @@ Repeat until \`pipelineStep\` is \`complete\`:
 
 | Step          | How to run it                                                              |
 |---------------|----------------------------------------------------------------------------|
-| \`research\`    | Spawn \`luca-researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
+| \`research\`    | Spawn \`researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
 | \`discuss\`     | Invoke \`Skill(skill: "phase-discuss")\`.                                    |
 | \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Advance to \`plan\`. |
 | \`plan\`        | Invoke \`Skill(skill: "phase-plan")\`.                                       |
-| \`plan-review\` | Spawn \`luca-plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
+| \`plan-review\` | Spawn \`plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
 | \`execute\`     | Invoke \`Skill(skill: "phase-execute")\`.                                    |
 | \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
-| \`verify\`      | Spawn \`luca-verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
-| \`review\`      | Spawn \`luca-reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`luca-learner\` (Agent tool). Then, if more phases remain: run \`luca phase advance\` (bumps \`currentPhase\` to the next phase and marks the finished one complete) **before** advancing the step to \`plan\` — the next phase's artifacts resolve against the new \`currentPhase\`, so skipping this writes them into the wrong (or no) phase dir. On the last phase, do NOT run \`luca phase advance\`; advance the step to \`milestone\`. |
+| \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
+| \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
+| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access): for each \`TO_PERSIST\` entry call \`mcp__muninn__muninn_remember_batch\` routed to the entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then, if more phases remain: run \`luca phase advance\` (bumps \`currentPhase\` and marks the finished phase complete) **before** advancing the step to \`plan\`. On the last phase, do NOT run \`luca phase advance\`; advance to \`milestone\`. |
 | \`milestone\`   | Invoke \`Skill(skill: "milestone-new")\` to close out, or advance to \`complete\` if no milestone bookkeeping is needed. |
 
 ### Oversight

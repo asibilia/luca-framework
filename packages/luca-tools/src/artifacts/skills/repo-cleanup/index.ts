@@ -12,7 +12,7 @@ const BODY = `# /repo-cleanup
 
 Scan the repository for AI-session debris — orphaned scripts, misplaced source files, tool artifacts, dead exports, \`.luca/\` contract violations, repo-root markdown debris — and optionally apply the remediations.
 
-The scan is performed by the **\`luca-shadow-scanner\`** subagent (strictly read-only). This command drives that scan and applies fixes through the **\`luca repo cleanup-apply\`** CLI (the destructive write half).
+The scan is performed by the **\`shadow-scanner\`** subagent (strictly read-only). This command drives that scan and applies fixes through the **\`luca repo cleanup-apply\`** CLI (the destructive write half).
 
 ## Parse arguments
 
@@ -30,12 +30,15 @@ Resolve \`<repo_vault>\` from \`.luca/config.json\` → \`muninn.vault\`, fallin
 
 ## Step 1 — Scan
 
-Spawn the **\`luca-shadow-scanner\`** subagent via the \`Agent\` tool. The task prompt must include:
+First, recall the kept-list yourself (the subagent has no MuninnDB access): \`mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "shadow-debt:kept")\` and collect the kept file paths. If category 5 (stale backlog) is enabled, also recall the pending backlog (\`todo:*\`, \`status: pending\`).
+
+Spawn the **\`shadow-scanner\`** subagent via the \`Agent\` tool. The task prompt must include:
 
 - The scan mode (\`quick\` | \`standard\` | \`full\`) resolved from the flags.
 - Any \`--category=N\` filter — tell the scanner to report only that category.
+- The **kept-list** you recalled (file paths to exclude from findings), and the **pending backlog** entries if category 5 is enabled. The scanner cannot recall these itself.
 
-The subagent ends its response with a single JSON block conforming to \`ShadowScanReportSchema\` (\`scan_mode\`, \`categories_scanned\`, \`findings[]\`, \`summary\`, \`scanned_at\`).
+The subagent ends its response with a single JSON block conforming to \`ShadowScanReportSchema\` (\`scan_mode\`, \`categories_scanned\`, \`findings[]\`, \`summary\`, \`scanned_at\`, and a \`metric\` block).
 
 ## Step 2 — Parse the report
 
@@ -63,7 +66,7 @@ Display the findings banner: total count plus the per-severity breakdown from \`
   - **Fix** → stage the single finding object in a JSON file and run \`luca repo cleanup-apply --file <path> --confirm\`. For a \`move\`, the finding must carry \`target_path\`; if it does not, ask the user where it should go and add \`target_path\` to the file before running.
   - **Keep** → record the user's decision so the file is not re-flagged next scan:
 
-    First call \`mcp__muninn__muninn_remember\` with \`vault: "<repo_vault>"\`, \`concept: "shadow-debt:kept:<file_path>"\`, and content noting the user approved keeping \`<file_path>\` with an ISO timestamp. Then promote it: \`mcp__muninn__muninn_trust({ id: <returned id>, trust: "verified", vault: "<repo_vault>" })\` — this is a user-confirmed decision. The \`luca-shadow-scanner\` recalls \`shadow-debt:kept\` entries and excludes them from future scans.
+    First call \`mcp__muninn__muninn_remember\` with \`vault: "<repo_vault>"\`, \`concept: "shadow-debt:kept:<file_path>"\`, and content noting the user approved keeping \`<file_path>\` with an ISO timestamp. Then promote it: \`mcp__muninn__muninn_trust({ id: <returned id>, trust: "verified", vault: "<repo_vault>" })\` — this is a user-confirmed decision. On the next scan, you (the orchestrator) recall these \`shadow-debt:kept\` entries in Step 1 and pass them to the scanner so they're excluded.
   - **Skip** → take no action; the file will be flagged again on the next scan.
 
 ## Step 4 — Store the cleanup metric
@@ -80,7 +83,7 @@ mcp__muninn__muninn_remember({
 })
 \`\`\`
 
-The \`luca-shadow-scanner\` already stores the raw scan counts under \`metric:shadow-debt-scan-*\`; this metric captures the action outcome (\`fixed\` / \`kept\` / \`skipped\`).
+Also persist the scan counts the scanner RETURNED in its \`metric\` block (it cannot write to MuninnDB): \`mcp__muninn__muninn_remember\` with \`concept: "metric:shadow-debt-scan-<ISO timestamp>"\`, \`vault: "<repo_vault>"\`. This cleanup metric captures the action outcome (\`fixed\` / \`kept\` / \`skipped\`); the scan metric captures the raw counts.
 
 $ARGUMENTS
 `

@@ -20,6 +20,7 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - No temp files or shell commands for edits — use edit tools only.
 - No prose between consecutive tool calls — invoke tools directly.
 - Respect mode boundaries — read-only means read-only.
+- Pipeline state belongs to the orchestrator. You MUST NOT run state-mutating \`luca\` commands (\`luca state advance\`, \`luca roadmap create\`, \`luca phase advance\`/\`archive\`, \`luca workflow reset\`). Reading state is fine (\`luca state read\`, \`luca phase current\`, \`luca verification read\`). Mutating pipeline state from a subagent races the orchestrator and corrupts the run. This restriction is about PIPELINE STATE only — it does NOT limit code edits: if your role is to change code (e.g. executor, test-writer), edit production files freely within your mode boundary using Edit/Write. The one constraint on \`.luca/\` artifacts is that you write only the SINGLE canonical artifact assigned to your role (e.g. a reviewer writes its one \`audits/<reviewer>.md\`), never another step's artifact or \`state.json\`.
 
 ## Self-Verification Mandate
 - Verify every assumption with a tool call. Do NOT rely on memory of file contents — re-read files before editing.
@@ -30,11 +31,10 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - Silence is not approval — every APPROVE verdict requires specific evidence.
 
 ${MEMORY_TIER_DISCIPLINE}
-## Pre-Invoke Memory Recall
-- If MuninnDB MCP tools are available, before your first substantive tool call run \`muninn_recall\` once to surface prior learnings for this task.
-- Form: \`mcp__muninn__muninn_recall(vault: "<from .luca/config.json → muninn.vault, fallback 'default'>", context: ["<task topic>"], mode: "semantic", limit: 5)\`.
-- Filter recalled engrams: prefer \`trust: verified\` over \`inferred\` when both match.
-- If MuninnDB is unreachable or returns no matches, log briefly and proceed — NEVER block on recall failure.
+## Memory I/O Is the Orchestrator's Job
+- You do NOT have MuninnDB/MCP access. Do not attempt \`mcp__muninn__*\` calls — they are unavailable to subagents and will fail.
+- Any prior learnings, decisions, or pitfalls you need are supplied in your prompt by the orchestrator (which recalls them on your behalf). If you need context your prompt doesn't include, say so in your output instead of trying to recall it yourself.
+- Insights you produce for long-term storage are RETURNED in your structured output; the orchestrator persists them to MuninnDB. Never assume you persisted anything.
 
 ## Luca Reminders
 - Obey \`<luca-reminder>\` tags — mid-session guidance supersedes stale context.

@@ -173,6 +173,7 @@ const LUCA_READ_VERBS = new Set([
     'current',
     'list',
     'guard',
+    'aggregate',
     'filter-stale',
     'detect-convergence',
     'regression-check',
@@ -196,6 +197,8 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     branch: new Set(['guard']),
     workflow: new Set(['reset']),
     confidence: new Set(['log']),
+    // Read-side surfaces over the per-phase verify.json files.
+    verification: new Set(['read', 'aggregate']),
 }
 
 /**
@@ -205,11 +208,21 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
  * falls through to the generic command classification).
  */
 function classifyLucaCommand(rest: string[]): BashCategory | undefined {
+    // `--help`/`-h`/`--version` anywhere → usage/version output, which
+    // mutates nothing. This holds for ANY noun (e.g. `luca verification --help`,
+    // `luca state --help`), so check it before noun resolution — otherwise a
+    // help probe on a noun with no read verb fell through to bash-mutate.
+    //
+    // NOTE: `-v` is deliberately EXCLUDED. The CLI uses `-v` as an alias for
+    // `--verbose` (e.g. `luca doctor`), not `--version`. Treating `-v` as a
+    // version probe would classify a mutating command like `luca doctor --fix
+    // -v` as read-only and let it bypass the stage gate. Only the unambiguous
+    // help/version flags get the shortcut.
+    if (rest.some((t) => ['--help', '-h', '--version'].includes(t))) {
+        return 'bash-readonly'
+    }
     const noun = rest.find((t) => !t.startsWith('-'))
-    // `luca`, `luca --help`, `luca --version` — no noun, only flags. These
-    // print usage/version and mutate nothing, so they are read-only. (Before,
-    // returning undefined here let them fall through to the generic
-    // unknown-command → bash-mutate path, which blocked `luca --help`.)
+    // `luca` with no noun (only flags handled above) — bare usage, read-only.
     if (!noun) return 'bash-readonly'
     const verbs = LUCA_NOUN_VERBS[noun]
     if (!verbs) return undefined

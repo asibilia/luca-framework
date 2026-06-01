@@ -103,12 +103,12 @@ If \`--dry-run\`, stop here.
 
 When two or more independent reviewer perspectives flag the same location, that location is materially more likely to be a real issue. Auto-promote severity so converged findings are treated as must-fix.
 
-Build a \`findings\` array — one entry per actionable comment, plus any findings from other perspectives this iteration has access to. If a pipeline phase is active, include the \`luca-reviewer\` MUST-FIX/SHOULD-FIX entries from \`.luca/phases/<NN-slug>/audits/*.md\`. Map each to:
+Build a \`findings\` array — one entry per actionable comment, plus any findings from other perspectives this iteration has access to. If a pipeline phase is active, include the \`reviewer\` MUST-FIX/SHOULD-FIX entries from \`.luca/phases/<NN-slug>/audits/*.md\`. Map each to:
 
 \`\`\`
 {
-  id:          <stable id, e.g. comment id or "luca-reviewer:<n>">,
-  perspective: <who produced it, e.g. "Copilot", "luca-reviewer">,
+  id:          <stable id, e.g. comment id or "reviewer:<n>">,
+  perspective: <who produced it, e.g. "Copilot", "reviewer">,
   path:        <file path>,
   line:        <line number>,
   severity:    <"must-fix" | "should-fix" | "nit" | "style" | "improvement" | ...>,
@@ -142,7 +142,7 @@ For comments with severity **must fix** and **should fix**:
 
 ## Step 4 — Execute fixes
 
-Spawn **\`luca-executor\`** subagents (one per file group) via the \`Agent\` tool. Each subagent receives:
+Spawn **\`executor\`** subagents (one per file group) via the \`Agent\` tool. Each subagent receives:
 
 - The file path and the relevant comment details (body, line, category).
 - Instructions to fix each issue and commit using the project's commit convention. Read it first by running \`luca preferences read\` and using the \`commits\` section (\`convention\`, \`types\`, \`scopes\`, \`trailers\`, \`subjectMaxLength\`). Reference the PR number per \`commits.trailers.issueRef\` when set; the executor adds the \`Co-Authored-By\` trailer automatically when \`commits.trailers.coAuthor === true\`.

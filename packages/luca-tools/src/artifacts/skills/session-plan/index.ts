@@ -43,21 +43,21 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
    - Show count of pending todos by area
    - Note any items with dependencies
 
-### Step 2: Invoke PM Agent (lu-pm-planner)
+### Step 2: Invoke the planner (\`architect\`) for WSJF prioritization
 
-1. **Prepare context for PM agent:**
+1. **Prepare planning context:**
    - Package TodoMetadata[] as structured input
    - Include \`.luca/roadmap.md\` for priority context
    - Include dependency graph
    - Include any calibration entries for effort estimates (via MuninnDB: \`mcp__muninn__muninn_recall(vault: "default", context: "effort estimates and calibration data")\`)
 
-2. **Spawn lu-pm-planner sub-agent:**
-   - Agent infers WSJF inputs (BV, TC, RR) for each todo from context
-   - Agent maps complexity to effort points
-   - Agent computes WSJF scores and ranks items
-   - Agent applies Big Rock First + WSJF tail scheduling
-   - Agent assigns quality zones
-   - Agent returns ResultEnvelope containing SessionPlan
+2. **Spawn the \`architect\` mode-agent** (v13 does planning/prioritization work through the architect; the v12-era \`lu-pm-planner\` subagent was dropped), with a WSJF-prioritization brief instructing it to:
+   - Infer WSJF inputs (BV, TC, RR) for each todo from context
+   - Map complexity to effort points
+   - Compute WSJF scores and rank items
+   - Apply Big Rock First + WSJF tail scheduling
+   - Assign quality zones
+   - Return a ResultEnvelope containing the SessionPlan
 
 3. **Receive and validate result:**
    - Parse ResultEnvelope from agent output

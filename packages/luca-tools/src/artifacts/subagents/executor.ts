@@ -32,8 +32,10 @@
  *     category, decision, alternatives, reasoning, risk, files,
  *     reviewHint?}). Mastracode embedded the prose; D1 makes the
  *     invocation point auditable.
- *   - muninn-recall — pre-commit recall for commit conventions and
- *     pre-commit pitfalls. Preserved from the mastracode body.
+ *   - muninn-recall DROPPED (v13): subagents have no MCP access (see
+ *     SUBAGENT_SHARED_PREFIX). Commit conventions come from `luca preferences
+ *     read`; prior pitfalls are supplied in the prompt by the orchestrator.
+ *     rule-run + confidence-log (CLI/Bash-based) are retained.
  */
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX } from '../shared/index.ts'
@@ -52,7 +54,10 @@ export const executorSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['wave-start', 'wave-end'],
-    pipelineInvocations: ['muninn-recall', 'rule-run', 'confidence-log'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies prior context in the prompt. rule-run +
+    // confidence-log are CLI/Bash-based and stay.
+    pipelineInvocations: ['rule-run', 'confidence-log'],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca executor. You implement code changes from \`.luca/phases/<currentPhaseSlug>/plan.md\` atomically.
 
@@ -74,18 +79,7 @@ You are a Luca executor. You implement code changes from \`.luca/phases/<current
 2. Read relevant existing code — understand conventions before writing.
 3. Implement the change following existing patterns.
 4. Verify the change works (run the task's verification command).
-5. **Pre-commit MuninnDB recall** — before staging, query MuninnDB for prior learnings that could change *what* gets committed (commit-message conventions, sign-off trailers, scope rules, files we've previously committed by mistake). Vault from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\`:
-
-   \`\`\`
-   mcp__muninn__muninn_recall(
-     vault: "<repo_vault>",
-     context: ["commit conventions", "pre-commit pitfalls", "<scope of this task>"],
-     mode: "semantic",
-     limit: 5,
-   )
-   \`\`\`
-
-   Apply any directly relevant learnings (trailer format, files to exclude, message structure). If MuninnDB is unreachable, log and proceed — never block on a recall failure.
+5. **Apply pre-commit conventions** — the orchestrator supplies any relevant prior learnings in your prompt (commit-message conventions, sign-off trailers, scope rules, files previously committed by mistake); you have no MuninnDB access to recall them yourself. Apply any directly relevant ones (trailer format, files to exclude, message structure). For the authoritative commit format, read \`luca preferences read\` (\`commits\` section) — that is a CLI read, allowed. If neither is available, follow the repo's existing commit style.
 6. Stage and commit with a descriptive message.
 
 ## Commit Format

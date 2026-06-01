@@ -50,16 +50,16 @@ Repeat until \`pipelineStep\` is \`complete\`:
 
 | Step          | How to run it                                                              |
 |---------------|----------------------------------------------------------------------------|
-| \`research\`    | Spawn \`luca-researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
+| \`research\`    | Spawn \`researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
 | \`discuss\`     | Invoke the \`/phase-discuss\` skill.                                         |
 | \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Advance to \`plan\`. |
 | \`plan\`        | Invoke the \`/phase-plan\` skill.                                            |
-| \`plan-review\` | Spawn \`luca-plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
+| \`plan-review\` | Spawn \`plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
 | \`execute\`     | Invoke the \`/phase-execute\` skill.                                         |
 | \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
-| \`verify\`      | Spawn \`luca-verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
-| \`review\`      | Spawn \`luca-reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`luca-learner\` (Agent tool). Then: more phases remain → advance to \`plan\` for the next phase; last phase → advance to \`milestone\`. |
+| \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
+| \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
+| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access): for each \`TO_PERSIST\` entry call \`mcp__muninn__muninn_remember_batch\` routed to the entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\`; last phase → advance to \`milestone\`. |
 | \`milestone\`   | Invoke the \`/milestone-new\` skill to close out, or advance to \`complete\` if no milestone bookkeeping is needed. |
 
 ## Oversight

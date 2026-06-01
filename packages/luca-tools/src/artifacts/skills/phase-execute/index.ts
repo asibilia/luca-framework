@@ -60,7 +60,7 @@ Each sub-agent receives only the context documents appropriate for its role and 
 
 ### Verification
 
-Invoke lu-verifier with mode based on phase complexity:
+Invoke verifier with mode based on phase complexity:
 
 | Phase Scope        | Verification Mode               |
 | ------------------ | ------------------------------- |
@@ -73,7 +73,7 @@ Invoke lu-verifier with mode based on phase complexity:
 
 After verification (pass or fail):
 
-**MANDATORY**: You MUST spawn a lu-learner sub-agent. Do NOT attempt to capture learnings yourself.
+**MANDATORY**: You MUST spawn a learner sub-agent. Do NOT attempt to capture learnings yourself.
 
 First, read the required context:
 
@@ -89,9 +89,11 @@ mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and pas
 
 \`\`\`bash
 VERIFICATION_RESULT="[from verifier return value]"
+# Resolve the active phase slug for the learner (it has no Bash to do this itself).
+PHASE_SLUG=$(luca phase current 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.slug ?? '')" 2>/dev/null || echo "")
 \`\`\`
 
-Then spawn the learner:
+Then spawn the learner (substitute \`{phase_slug}\` with \`$PHASE_SLUG\`):
 
 \`\`\`python
 Task(
@@ -99,6 +101,7 @@ Task(
 <learning_context>
 
 **Phase:** {phase_number}
+**Phase Slug:** {phase_slug}   # write learn.md to .luca/phases/{phase_slug}/learn.md (the learner has no Bash to resolve this itself)
 **Verification Result:** {verification_result}
 
 **Working Memory (session findings):**
@@ -118,22 +121,22 @@ Task(
 
 <output_requirements>
 - Extract ONLY validated learnings (verified by outcome)
-- Write curated insights to MuninnDB via muninn_remember
-- Clear session context via muninn_forget after extraction
-- Return summary of learnings captured
+- Write learn.md via the Write tool (you have it)
+- Return the TO_PERSIST block — do NOT call MuninnDB (subagents have no MCP access); the orchestrator persists
 </output_requirements>
 
-Extract learnings from this phase execution and store in MuninnDB.
+Extract learnings from this phase execution, write learn.md, and return the TO_PERSIST block for the orchestrator to persist.
 """,
-  subagent_type="lu-learner",
-  model="{learner_model}",
+  subagent_type="learner",
   description="Capture phase learnings"
 )
 \`\`\`
 
 **Do NOT proceed until the Task returns.**
 
-**Learning capture always runs.** The lu-learner model tier is resolved from the routing table based on complexity:
+After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context with \`mcp__muninn__muninn_forget(vault: "default", id: "session:*")\`.
+
+**Learning capture always runs.** The learner model tier comes from the agent definition:
 
 | Complexity | Learning Depth                                  | Model Tier (from routing table) |
 | ---------- | ----------------------------------------------- | ------------------------------- |
@@ -144,10 +147,10 @@ Extract learnings from this phase execution and store in MuninnDB.
 | CRITICAL   | Full + debrief (include retrospective analysis) | balanced                        |
 
 For TRIVIAL/SIMPLE: Include only execution summary, not full working memory.
-For MODERATE and above: Use the current lu-learner spawn as-is.
-For CRITICAL: Add to the lu-learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
+For MODERATE and above: Use the current learner spawn as-is.
+For CRITICAL: Add to the learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
 
-The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner", complexity)\` from the centralized routing table in \`src/complexity/__helpers/model-routing.ts\`.
+The model tier for learner is set by the agent’s own definition.
 
 ### Session Logging During Execution
 
@@ -168,13 +171,7 @@ Track:
 
 ## Process
 
-### 0. Resolve Model Profile
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`) — the orchestrator does not pick model strings. Lightweight agents (e.g. \`learner\`) inherit the fast tier; reasoning-intensive subagents (\`executor\`, \`verifier\`, \`plan-reviewer\`, \`reviewer\`) inherit the balanced or capable tier depending on complexity.
+> Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
@@ -225,7 +222,7 @@ Commits will not reference issues and PR creation will require manual setup.
 
 **Skip if:** \`--skip-replay\` flag passed.
 
-Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for lu-executor.
+Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for executor.
 
 \`\`\`bash
 # Read phase objective from the roadmap or plan files
@@ -242,7 +239,7 @@ Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT)
 
 **If replayable procedures found (REPLAY_COUNT > 0):**
 
-Store \`REPLAY_JSON\` for injection into lu-executor context. When spawning lu-executor for each plan, include the pre-plans as additional context:
+Store \`REPLAY_JSON\` for injection into executor context. When spawning executor for each plan, include the pre-plans as additional context:
 
 \`\`\`
 <procedure_replay_context>
@@ -283,12 +280,12 @@ Continue normally. No pre-plan context is injected.
 For each wave in order:
 
 - Read plan contents (@ syntax doesn't work across Task boundaries)
-- Spawn \`lu-executor\` for each plan in wave (parallel Task calls)
+- Spawn \`executor\` for each plan in wave (parallel Task calls)
 - Wait for completion
 - Verify SUMMARYs created
 - Proceed to next wave
 
-**MANDATORY**: You MUST spawn lu-executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
+**MANDATORY**: You MUST spawn executor sub-agents for each plan. Do NOT attempt to execute plans yourself.
 
 First, read plan contents (required because @ syntax doesn't work across Task boundaries):
 
@@ -343,8 +340,7 @@ Task(
 
 Execute this plan. Return SUMMARY when complete.
 """,
-  subagent_type="lu-executor",
-  model="{executor_model}",
+  subagent_type="executor",
   description="Execute {plan_01_name}"
 )
 
@@ -381,8 +377,7 @@ Task(
 
 Execute this plan. Return SUMMARY when complete.
 """,
-  subagent_type="lu-executor",
-  model="{executor_model}",
+  subagent_type="executor",
   description="Execute {plan_02_name}"
 )
 \`\`\`
@@ -472,9 +467,9 @@ When sub-agents return, attempt to parse their output as a result envelope:
   "summary": "Brief description of what was accomplished",
   "artifacts": [{ "path": "file.ts", "action": "created" }],
   "issues": [
-    { "severity": "medium", "message": "...", "source_agent": "lu-executor" }
+    { "severity": "medium", "message": "...", "source_agent": "executor" }
   ],
-  "metadata": { "agent_name": "lu-executor", "context_tier": "T2" }
+  "metadata": { "agent_name": "executor", "context_tier": "T2" }
 }
 \`\`\`
 
@@ -795,8 +790,7 @@ Task(
 
 Fix these harness failures.
 """,
-  subagent_type="lu-executor",
-  model="{executor_model}",
+  subagent_type="executor",
   description="Fix harness failures (Loop A, iteration {N})"
 )
 \`\`\`
@@ -865,7 +859,7 @@ This ensures that:
 
 ### 7. Verify Phase Goal
 
-**MANDATORY**: You MUST spawn a lu-verifier sub-agent. Do NOT attempt to verify yourself.
+**MANDATORY**: You MUST spawn a verifier sub-agent. Do NOT attempt to verify yourself.
 
 First, read the required context:
 
@@ -939,8 +933,7 @@ plan.md contents are included above. Use them in Step 2.5 (Specification Anchori
 
 Verify the phase goal was achieved using goal-backward analysis.
 """,
-  subagent_type="lu-verifier",
-  model="{verifier_model}",
+  subagent_type="verifier",
   description="Verify Phase {phase_number}"
 )
 \`\`\`
@@ -978,7 +971,7 @@ VT_ENABLED=$(echo "$CONFIG" | bun -e "
 3. **Spawn three diagnostic agents in PARALLEL**:
 
 \`\`\`python
-# Spawn lu-test-writer diagnostic
+# Spawn test-writer diagnostic
 Task(
   prompt="""
 <diagnostic_context>
@@ -987,15 +980,14 @@ Task(
 **Phase:** {phase_number}
 **VERIFICATION.md:** {verification_content}
 
-Analyze the T1/T3 conflict from your perspective as test coverage expert.
+Settle the T1/T3 conflict empirically: write a focused, non-vacuous test that exercises the disputed behavior and report whether it passes, with the exact runner output.
 </diagnostic_context>
 """,
-  subagent_type="lu-test-writer",
-  model="{diagnostic_model}",
+  subagent_type="test-writer",
   description="Test Writer Diagnostic"
 )
 
-# Spawn lu-verifier diagnostic (IN PARALLEL)
+# Spawn verifier diagnostic (IN PARALLEL)
 Task(
   prompt="""
 <diagnostic_context>
@@ -1007,12 +999,11 @@ Task(
 Re-examine your T3 analysis for potential over-specification.
 </diagnostic_context>
 """,
-  subagent_type="lu-verifier",
-  model="{diagnostic_model}",
+  subagent_type="verifier",
   description="Verifier Diagnostic"
 )
 
-# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+# Spawn the integration reviewer diagnostic (IN PARALLEL)
 Task(
   prompt="""
 <diagnostic_context>
@@ -1021,11 +1012,10 @@ Task(
 **Phase:** {phase_number}
 **VERIFICATION.md:** {verification_content}
 
-Analyze cross-component wiring for integration gaps.
+PERSPECTIVE: integration. Analyze cross-component/cross-phase wiring for integration gaps and report findings using the integration perspective.
 </diagnostic_context>
 """,
-  subagent_type="lu-integration-checker",
-  model="{diagnostic_model}",
+  subagent_type="reviewer",
   description="Integration Diagnostic"
 )
 \`\`\`
@@ -1160,8 +1150,7 @@ Task(
 
 Fix the verification gaps for this plan.
 """,
-  subagent_type="lu-executor",
-  model="{executor_model}",
+  subagent_type="executor",
   description="Fix verify gaps for {plan_name} (Loop B, iteration {N})"
 )
 \`\`\`
@@ -1194,8 +1183,7 @@ Task(
 
 Re-verify the phase goal after gap fix iteration {N}.
 """,
-  subagent_type="lu-verifier",
-  model="{verifier_model}",
+  subagent_type="verifier",
   description="Re-verify Phase {phase_number} (Loop B, iteration {N})"
 )
 \`\`\`
@@ -1233,7 +1221,7 @@ If outcome is anything else: Display remaining gaps and offer \`/phase-plan {X} 
 
 **Skip if:** \`--skip-review\` flag passed OR \`workflow.code_review: false\` in config.
 
-**Always runs** (model tier resolved from routing table per complexity). Each reviewer agent resolves its model tier via \`resolveModelForAgent(agentName, complexity)\`.
+**Always runs** (model tier comes from the agent definition). Each reviewer agent inherits its model tier from its agent definition.
 
 Get changed files for this phase:
 
@@ -1297,6 +1285,8 @@ Then spawn all reviewers in PARALLEL:
 # DX Advocate - conventions, coding standards
 Task(
   prompt="""
+PERSPECTIVE: dx
+
 Review the following changed files for code quality issues.
 
 **Changed files:**
@@ -1320,8 +1310,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="dx-advocate",
-model="{reviewer_model}",
+subagent_type="reviewer",
 description="DX review"
 )
 
@@ -1329,6 +1318,8 @@ description="DX review"
 
 Task(
 prompt="""
+PERSPECTIVE: simplification
+
 Review the following changed files for complexity and duplication.
 
 **Changed files:**
@@ -1350,8 +1341,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="code-simplifier",
-model="{reviewer_model}",
+subagent_type="reviewer",
 description="Simplification review"
 )
 
@@ -1359,6 +1349,8 @@ description="Simplification review"
 
 Task(
 prompt="""
+PERSPECTIVE: architecture
+
 Review the following changed files for architecture issues.
 
 **Changed files:**
@@ -1380,21 +1372,22 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="code-architect",
-model="{reviewer_model}",
+subagent_type="reviewer",
 description="Architecture review"
 )
 
-# Tailwind Auditor - styling patterns
+# Test Quality - coverage, assertions, test design
 
 Task(
 prompt="""
-Review the following changed files for Tailwind and styling issues.
+PERSPECTIVE: test-quality
+
+Review the following changed files for test-quality issues.
 
 **Changed files:**
 {CHANGED_FILES}
 
-**Your focus:** Dynamic color system usage, Tailwind patterns, shadcn anti-patterns, MUI deprecation compliance.
+**Your focus:** Missing coverage for new/changed behavior, weak or tautological assertions, untested error paths and edge cases, brittle tests coupled to implementation detail.
 
 **Return format:**
 
@@ -1405,14 +1398,13 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
-    source_agent: tailwind-auditor
+    source_agent: test-quality
 \`\`\`
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="ui",
-model="{reviewer_model}",
-description="Tailwind review"
+subagent_type="reviewer",
+description="Test-quality review"
 )
 
 # Security Auditor - ONLY if auth/api files changed
@@ -1421,6 +1413,8 @@ description="Tailwind review"
 
 Task(
 prompt="""
+PERSPECTIVE: security
+
 Review the following changed files for security issues.
 
 **Changed files:**
@@ -1442,8 +1436,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="security-auditor",
-model="{reviewer_model}",
+subagent_type="reviewer",
 description="Security review"
 )
 
@@ -1689,7 +1682,7 @@ All code reviews passed ✓
 - Spawn parallel debug agents to diagnose root causes
 - **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
   - Gate: \`root_cause_tribunal_enabled\` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
-  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, lu-verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - When gated in: spawn two \`debater\` subagents in parallel over the proposed root-cause fix — one STANCE=DEFEND, one STANCE=CHALLENGE — and optionally a \`test-writer\` to settle it with an empirical repro. You arbitrate by confidence-weighted majority over their verdicts
   - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Re-invoke the architect mode-agent (in --gaps context) to create fix plans
 - Spawn the \`plan-reviewer\` subagent to verify fix plans
