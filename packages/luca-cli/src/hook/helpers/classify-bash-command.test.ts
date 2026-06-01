@@ -210,4 +210,25 @@ describe('classifyBashCommand — read-only-phase regressions', () => {
             'bash-mutate'
         )
     })
+
+    test('luca verification (read-only command) is not bash-mutate', () => {
+        expect(classifyBashCommand('luca verification read').category).toBe(
+            'bash-readonly'
+        )
+        expect(
+            classifyBashCommand('luca verification aggregate').category
+        ).toBe('bash-readonly')
+    })
+
+    test('luca <noun> --help / --version is read-only for any noun', () => {
+        expect(classifyBashCommand('luca verification --help').category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca state --help').category).toBe(
+            'bash-readonly'
+        )
+        expect(classifyBashCommand('luca phase --version').category).toBe(
+            'bash-readonly'
+        )
+    })
 })

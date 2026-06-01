@@ -1,9 +1,5 @@
-import { join } from 'node:path'
-
-import { loadCurrentState, lucaRootPaths } from '@alecsibilia/luca-core'
-
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { writeAtomicFile } from '../helpers/write-atomic.ts'
+import { mutateState } from '../helpers/mutate-state.ts'
 
 const inputSchema = z.object({})
 
@@ -29,41 +25,47 @@ export const lucaPhaseAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
         inputSchema,
         allowedPhases: ['learn'],
         async handler(_args, ctx) {
-            const state = await loadCurrentState({ cwd: ctx.cwd })
-            const { currentPhase, totalPhases } = state
-
-            if (currentPhase === 0) {
-                return errorResult(
-                    'no active phase to advance (currentPhase=0). Create a roadmap first (`luca roadmap create`).'
-                )
+            let from!: number
+            let total!: number
+            try {
+                // Serialized + strict under the state lock — a concurrent agent
+                // cannot revert currentPhase mid-advance.
+                await mutateState(ctx.cwd, (state) => {
+                    const { currentPhase, totalPhases } = state
+                    from = currentPhase
+                    total = totalPhases
+                    if (currentPhase === 0) {
+                        throw new Error(
+                            'no active phase to advance (currentPhase=0). Create a roadmap first (`luca roadmap create`).'
+                        )
+                    }
+                    if (currentPhase >= totalPhases) {
+                        throw new Error(
+                            `already at the final phase (${currentPhase}/${totalPhases}); there is no next phase. Advance to the milestone step instead.`
+                        )
+                    }
+                    // Mark the leaving phase complete, the entering phase
+                    // in-progress. (Indices 0-based; currentPhase 1-based.)
+                    const roadmap = state.roadmap.map((phase, index) => {
+                        if (index === currentPhase - 1) {
+                            return { ...phase, status: 'complete' as const }
+                        }
+                        if (index === currentPhase) {
+                            return { ...phase, status: 'in-progress' as const }
+                        }
+                        return phase
+                    })
+                    return { ...state, roadmap, currentPhase: currentPhase + 1 }
+                })
+            } catch (err) {
+                return errorResult((err as Error).message)
             }
-            if (currentPhase >= totalPhases) {
-                return errorResult(
-                    `already at the final phase (${currentPhase}/${totalPhases}); there is no next phase. Advance to the milestone step instead.`
-                )
-            }
-
-            // Mark the leaving phase complete and the entering phase in-progress.
-            // (Indices are 0-based; currentPhase is 1-based.)
-            const roadmap = state.roadmap.map((phase, index) => {
-                if (index === currentPhase - 1) {
-                    return { ...phase, status: 'complete' as const }
-                }
-                if (index === currentPhase) {
-                    return { ...phase, status: 'in-progress' as const }
-                }
-                return phase
-            })
-
-            const next = { ...state, roadmap, currentPhase: currentPhase + 1 }
-            const absPath = join(ctx.cwd, lucaRootPaths.state)
-            await writeAtomicFile(absPath, JSON.stringify(next, null, 2) + '\n')
 
             return {
                 content: [
                     {
                         type: 'text',
-                        text: `phase advanced: ${currentPhase} → ${currentPhase + 1} of ${totalPhases} (phase ${currentPhase} marked complete, phase ${currentPhase + 1} in-progress)`,
+                        text: `phase advanced: ${from} → ${from + 1} of ${total} (phase ${from} marked complete, phase ${from + 1} in-progress)`,
                     },
                 ],
             }

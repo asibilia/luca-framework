@@ -24,6 +24,11 @@ export const LUCA_DIR_CONTRACT = {
                 'Pipeline lock (PID, acquired_at) — prevents concurrent runs',
         },
         {
+            file: 'state.json.lock',
+            purpose:
+                'Transient exclusive lock serializing state.json read-modify-write (created + deleted per mutation)',
+        },
+        {
             file: 'roadmap.md',
             purpose:
                 'Active roadmap — GENERATED view of MuninnDB-backed roadmap',

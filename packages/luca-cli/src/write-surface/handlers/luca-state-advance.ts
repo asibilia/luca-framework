@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import {
     appendLedger,
     isLegalTransition,
-    loadCurrentState,
     phasePathFor,
     PIPELINE_STEP_TO_COARSE_PHASE,
     PipelineStep,
@@ -13,12 +12,13 @@ import {
     resolveActiveSlug,
     STEP_ARTIFACTS,
     type CoarsePhase,
+    type LucaState,
     type StepArtifact,
 } from '@alecsibilia/luca-core'
 
 import { tickPhaseTasks } from '../../utils/plan-checkboxes.ts'
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { writeAtomicFile } from '../helpers/write-atomic.ts'
+import { mutateState } from '../helpers/mutate-state.ts'
 
 const inputSchema = z.object({
     toStep: PipelineStep.describe(
@@ -99,26 +99,33 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             'Atomically advance the workflow pipelineStep. Validates the transition against the pipeline-transitions table; legal forward + loop-back transitions allowed, illegal jumps rejected.',
         inputSchema,
         async handler(args, ctx) {
-            const state = await loadCurrentState({ cwd: ctx.cwd })
-            const from = state.pipelineStep
             const to = args.toStep
-
-            if (!isLegalTransition(from, to)) {
-                const allowed = PIPELINE_TRANSITIONS[from].join(', ')
+            let from!: PipelineStep
+            let state: LucaState
+            try {
+                // Serialized read-modify-write under the .luca/state.json lock,
+                // with a strict read (no silent defaults). This is what stops a
+                // concurrent agent's stale-state write from reverting the
+                // advance mid-run — the v13 pipelineStep-reversion corruption.
+                state = await mutateState(ctx.cwd, (s) => {
+                    from = s.pipelineStep
+                    if (!isLegalTransition(s.pipelineStep, to)) {
+                        const allowed =
+                            PIPELINE_TRANSITIONS[s.pipelineStep].join(', ')
+                        throw new Error(
+                            `illegal transition: '${s.pipelineStep}' → '${to}'. Allowed next steps from '${s.pipelineStep}': [${allowed}].`
+                        )
+                    }
+                    return { ...s, pipelineStep: to }
+                })
+            } catch (err) {
                 return {
                     content: [
-                        {
-                            type: 'text',
-                            text: `illegal transition: '${from}' → '${to}'. Allowed next steps from '${from}': [${allowed}].`,
-                        },
+                        { type: 'text', text: (err as Error).message },
                     ],
                     isError: true,
                 }
             }
-
-            const next = { ...state, pipelineStep: to }
-            const path = join(ctx.cwd, '.luca', 'state.json')
-            await writeAtomicFile(path, JSON.stringify(next, null, 2) + '\n')
 
             // ---- F3: emit ledger side-effect events --------------------
             //

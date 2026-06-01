@@ -1,14 +1,7 @@
-import { join } from 'node:path'
-
-import {
-    loadCurrentState,
-    lucaRootPaths,
-    RoadmapPhaseSchema,
-    type RoadmapPhase,
-} from '@alecsibilia/luca-core'
+import { RoadmapPhaseSchema, type RoadmapPhase } from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { writeAtomicFile } from '../helpers/write-atomic.ts'
+import { mutateState } from '../helpers/mutate-state.ts'
 
 const inputSchema = z.object({
     phases: z
@@ -49,24 +42,28 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
     inputSchema,
     allowedPhases: ['idle', 'triage'],
     async handler(args, ctx) {
-        const state = await loadCurrentState({ cwd: ctx.cwd })
-
         const phases: RoadmapPhase[] = args.phases.map((p) => ({
             ...p,
             deps: p.deps ?? [],
             status: p.status ?? 'pending',
         }))
-
         const currentPhase = phases.length > 0 ? 1 : 0
-        const next = {
-            ...state,
-            roadmap: phases,
-            totalPhases: phases.length,
-            currentPhase,
-        }
 
-        const absPath = join(ctx.cwd, lucaRootPaths.state)
-        await writeAtomicFile(absPath, JSON.stringify(next, null, 2) + '\n')
+        try {
+            // Serialized under the state lock so the roadmap replacement +
+            // phase-1 activation cannot race a concurrent state write.
+            await mutateState(ctx.cwd, (state) => ({
+                ...state,
+                roadmap: phases,
+                totalPhases: phases.length,
+                currentPhase,
+            }))
+        } catch (err) {
+            return {
+                content: [{ type: 'text', text: (err as Error).message }],
+                isError: true,
+            }
+        }
 
         return {
             content: [

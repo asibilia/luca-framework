@@ -25,6 +25,10 @@ const ROOT_FILE_KINDS: Record<string, LucaArtifactKind> = {
     'state.json': 'root.state',
     'config.json': 'root.config',
     'lock.json': 'root.lock',
+    // Transient exclusive lock serializing state.json read-modify-write.
+    // Created + deleted per mutation; classified as a lock so the scanner
+    // never flags it as stray debris.
+    'state.json.lock': 'root.lock',
     'roadmap.md': 'root.roadmap',
     'ledger.jsonl': 'root.ledger',
 }
