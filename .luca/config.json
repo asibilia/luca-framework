@@ -5,15 +5,33 @@
   "preferences": {
     "schemaVersion": 1,
     "branching": {
-      "types": ["feat", "fix", "refactor", "chore", "docs", "test", "style"],
+      "types": [
+        "feat",
+        "fix",
+        "refactor",
+        "chore",
+        "docs",
+        "test",
+        "style"
+      ],
       "template": "{type}/{slug}",
       "defaultBranch": "main",
-      "guardedBranches": ["main"],
+      "guardedBranches": [
+        "main"
+      ],
       "confirmBaseBeforeCreate": false
     },
     "commits": {
       "convention": "conventional",
-      "scopes": ["luca-framework", "mastracode", "luca-core", "deps", "release", "mcp", "repo"],
+      "scopes": [
+        "luca-framework",
+        "mastracode",
+        "luca-core",
+        "deps",
+        "release",
+        "mcp",
+        "repo"
+      ],
       "subjectMaxLength": 72
     },
     "pr": {
@@ -22,11 +40,19 @@
     },
     "release": {
       "tool": "changesets",
-      "versionBump": { "feat": "minor", "fix": "patch", "chore": "patch", "refactor": "patch" }
+      "versionBump": {
+        "feat": "minor",
+        "fix": "patch",
+        "chore": "patch",
+        "refactor": "patch"
+      }
     },
     "tracker": {
       "kind": "github",
       "issuePrefix": ""
     }
+  },
+  "muninn": {
+    "vault": "luca-framework"
   }
 }
