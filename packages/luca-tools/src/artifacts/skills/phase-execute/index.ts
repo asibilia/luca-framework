@@ -126,14 +126,13 @@ Task(
 Extract learnings from this phase execution and store in MuninnDB.
 """,
   subagent_type="learner",
-  model="{learner_model}",
   description="Capture phase learnings"
 )
 \`\`\`
 
 **Do NOT proceed until the Task returns.**
 
-**Learning capture always runs.** The lu-learner model tier is resolved from the routing table based on complexity:
+**Learning capture always runs.** The learner model tier comes from the agent definition:
 
 | Complexity | Learning Depth                                  | Model Tier (from routing table) |
 | ---------- | ----------------------------------------------- | ------------------------------- |
@@ -147,7 +146,7 @@ For TRIVIAL/SIMPLE: Include only execution summary, not full working memory.
 For MODERATE and above: Use the current learner spawn as-is.
 For CRITICAL: Add to the learner prompt: "Include a retrospective analysis: what went well, what didn't, what would you do differently?"
 
-The model tier for lu-learner is resolved via \`resolveModelForAgent("lu-learner", complexity)\` from the centralized routing table in \`src/complexity/__helpers/model-routing.ts\`.
+The model tier for learner is set by the agent’s own definition.
 
 ### Session Logging During Execution
 
@@ -168,13 +167,7 @@ Track:
 
 ## Process
 
-### 0. Resolve Model Profile
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`) — the orchestrator does not pick model strings. Lightweight agents (e.g. \`learner\`) inherit the fast tier; reasoning-intensive subagents (\`executor\`, \`verifier\`, \`plan-reviewer\`, \`reviewer\`) inherit the balanced or capable tier depending on complexity.
+> Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
@@ -344,7 +337,6 @@ Task(
 Execute this plan. Return SUMMARY when complete.
 """,
   subagent_type="executor",
-  model="{executor_model}",
   description="Execute {plan_01_name}"
 )
 
@@ -382,7 +374,6 @@ Task(
 Execute this plan. Return SUMMARY when complete.
 """,
   subagent_type="executor",
-  model="{executor_model}",
   description="Execute {plan_02_name}"
 )
 \`\`\`
@@ -472,9 +463,9 @@ When sub-agents return, attempt to parse their output as a result envelope:
   "summary": "Brief description of what was accomplished",
   "artifacts": [{ "path": "file.ts", "action": "created" }],
   "issues": [
-    { "severity": "medium", "message": "...", "source_agent": "lu-executor" }
+    { "severity": "medium", "message": "...", "source_agent": "executor" }
   ],
-  "metadata": { "agent_name": "lu-executor", "context_tier": "T2" }
+  "metadata": { "agent_name": "executor", "context_tier": "T2" }
 }
 \`\`\`
 
@@ -796,7 +787,6 @@ Task(
 Fix these harness failures.
 """,
   subagent_type="executor",
-  model="{executor_model}",
   description="Fix harness failures (Loop A, iteration {N})"
 )
 \`\`\`
@@ -940,7 +930,6 @@ plan.md contents are included above. Use them in Step 2.5 (Specification Anchori
 Verify the phase goal was achieved using goal-backward analysis.
 """,
   subagent_type="verifier",
-  model="{verifier_model}",
   description="Verify Phase {phase_number}"
 )
 \`\`\`
@@ -978,7 +967,7 @@ VT_ENABLED=$(echo "$CONFIG" | bun -e "
 3. **Spawn three diagnostic agents in PARALLEL**:
 
 \`\`\`python
-# Spawn lu-test-writer diagnostic
+# Spawn test-writer diagnostic
 Task(
   prompt="""
 <diagnostic_context>
@@ -987,11 +976,10 @@ Task(
 **Phase:** {phase_number}
 **VERIFICATION.md:** {verification_content}
 
-Analyze the T1/T3 conflict from your perspective as test coverage expert.
+Settle the T1/T3 conflict empirically: write a focused, non-vacuous test that exercises the disputed behavior and report whether it passes, with the exact runner output.
 </diagnostic_context>
 """,
-  subagent_type="lu-test-writer",
-  model="{diagnostic_model}",
+  subagent_type="test-writer",
   description="Test Writer Diagnostic"
 )
 
@@ -1008,11 +996,10 @@ Re-examine your T3 analysis for potential over-specification.
 </diagnostic_context>
 """,
   subagent_type="verifier",
-  model="{diagnostic_model}",
   description="Verifier Diagnostic"
 )
 
-# Spawn lu-integration-checker diagnostic (IN PARALLEL)
+# Spawn the integration reviewer diagnostic (IN PARALLEL)
 Task(
   prompt="""
 <diagnostic_context>
@@ -1021,11 +1008,10 @@ Task(
 **Phase:** {phase_number}
 **VERIFICATION.md:** {verification_content}
 
-Analyze cross-component wiring for integration gaps.
+PERSPECTIVE: integration. Analyze cross-component/cross-phase wiring for integration gaps and report findings using the integration perspective.
 </diagnostic_context>
 """,
-  subagent_type="lu-integration-checker",
-  model="{diagnostic_model}",
+  subagent_type="reviewer",
   description="Integration Diagnostic"
 )
 \`\`\`
@@ -1161,7 +1147,6 @@ Task(
 Fix the verification gaps for this plan.
 """,
   subagent_type="executor",
-  model="{executor_model}",
   description="Fix verify gaps for {plan_name} (Loop B, iteration {N})"
 )
 \`\`\`
@@ -1195,7 +1180,6 @@ Task(
 Re-verify the phase goal after gap fix iteration {N}.
 """,
   subagent_type="verifier",
-  model="{verifier_model}",
   description="Re-verify Phase {phase_number} (Loop B, iteration {N})"
 )
 \`\`\`
@@ -1233,7 +1217,7 @@ If outcome is anything else: Display remaining gaps and offer \`/phase-plan {X} 
 
 **Skip if:** \`--skip-review\` flag passed OR \`workflow.code_review: false\` in config.
 
-**Always runs** (model tier resolved from routing table per complexity). Each reviewer agent resolves its model tier via \`resolveModelForAgent(agentName, complexity)\`.
+**Always runs** (model tier comes from the agent definition). Each reviewer agent inherits its model tier from its agent definition.
 
 Get changed files for this phase:
 
@@ -1321,7 +1305,6 @@ issues:
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="DX review"
 )
 
@@ -1351,7 +1334,6 @@ issues:
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Simplification review"
 )
 
@@ -1381,7 +1363,6 @@ issues:
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Architecture review"
 )
 
@@ -1411,7 +1392,6 @@ issues:
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Tailwind review"
 )
 
@@ -1443,7 +1423,6 @@ issues:
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Security review"
 )
 
@@ -1689,7 +1668,7 @@ All code reviews passed ✓
 - Spawn parallel debug agents to diagnose root causes
 - **Root Cause Tribunal (conditional):** When debug agents return ROOT CAUSE FOUND during UAT diagnosis, check tribunal gating conditions before creating fix plans:
   - Gate: \`root_cause_tribunal_enabled\` in config (default: true) AND complexity is COMPLEX+ AND multi-issue debugging (issue_count >= 2)
-  - When gated in: Spawn three tribunal agents in parallel (lu-debugger as defender, verifier as challenger, lu-integration-checker as arbiter) to validate the proposed fix before planning
+  - When gated in: spawn two \`debater\` subagents in parallel over the proposed root-cause fix — one STANCE=DEFEND, one STANCE=CHALLENGE — and optionally a \`test-writer\` to settle it with an empirical repro. You arbitrate by confidence-weighted majority over their verdicts
   - Resolution: "verified_fix" proceeds to fix planning; "needs_deeper_investigation" re-runs diagnosis with tribunal findings as additional context
 - Re-invoke the architect mode-agent (in --gaps context) to create fix plans
 - Spawn the \`plan-reviewer\` subagent to verify fix plans

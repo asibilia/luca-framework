@@ -21,39 +21,9 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`researcher\` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
-- \`lu-research-synthesizer\` - Synthesizes research outputs into SUMMARY.md
-- \`lu-roadmapper\` - Creates \`.luca/roadmap.md\` from requirements via \`luca roadmap create\`
+- \`researcher\` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls), and synthesis of those findings into \`.luca/research/SUMMARY.md\`.
 
-**DO NOT** attempt to research, synthesize, or create roadmaps yourself. Spawn the appropriate agents.
-
-
-### Model Resolution
-
-Resolve models before spawning agents:
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-| Agent                      | quality | balanced | budget |
-| -------------------------- | ------- | -------- | ------ |
-| researcher   | opus    | sonnet   | haiku  |
-| lu-research-synthesizer | opus    | sonnet   | haiku  |
-| lu-roadmapper           | opus    | opus     | sonnet |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# Lightweight summarization → use "fast"
-synthesizer_model = "fast"
-
-# Reasoning-intensive agents → omit (inherit from parent)
-researcher_model = (omit)
-roadmapper_model = (omit)
-\`\`\`
+**DO NOT** do the domain research yourself — spawn \`researcher\` agents. Roadmap creation is an orchestrator step backed by the \`luca roadmap create\` write surface (Phase 8), not a subagent. Agent model tiers come from each agent's own definition / the harness default; the orchestrator does not pick model strings.
 
 ## Creates
 
@@ -290,7 +260,6 @@ Task(
 Research the optimal technology stack for this project.
 """,
   subagent_type="researcher",
-  model="{researcher_model}",
   description="Research Stack"
 )
 
@@ -321,7 +290,6 @@ Task(
 Research features and competitive landscape for this project.
 """,
   subagent_type="researcher",
-  model="{researcher_model}",
   description="Research Features"
 )
 
@@ -352,7 +320,6 @@ Task(
 Research architectural patterns and best practices for this project.
 """,
   subagent_type="researcher",
-  model="{researcher_model}",
   description="Research Architecture"
 )
 
@@ -383,7 +350,6 @@ Task(
 Research common pitfalls and risks for this project.
 """,
   subagent_type="researcher",
-  model="{researcher_model}",
   description="Research Pitfalls"
 )
 \`\`\`
@@ -420,8 +386,7 @@ Task(
 
 Synthesize all research outputs into a cohesive summary.
 """,
-  subagent_type="lu-research-synthesizer",
-  model="{synthesizer_model}",
+  subagent_type="researcher",
   description="Synthesize Research"
 )
 \`\`\`
@@ -435,7 +400,10 @@ Store the requirements as a MuninnDB tree under \`brain:project-requirements\` w
 
 ### Phase 8: Create Roadmap
 
-**MANDATORY**: You MUST spawn a lu-roadmapper sub-agent. Do NOT attempt to create the roadmap yourself.
+Build the roadmap yourself (you are the orchestrator) and persist it with the
+\`luca roadmap create\` CLI — the same inline pattern \`milestone-new\` uses. v13
+has no dedicated roadmapper subagent; roadmap synthesis is an orchestrator step
+backed by the deterministic \`luca roadmap create\` write surface.
 
 First, recall the required context from MuninnDB:
 
@@ -449,26 +417,8 @@ mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "project-init researc
 CONFIG_CONTENT=$(cat .luca/config.json)
 \`\`\`
 
-Then spawn the roadmapper:
-
-\`\`\`python
-Task(
-  prompt="""
-<roadmap_context>
-
-**Project:**
-{project_content}
-
-**Requirements:**
-{requirements_content}
-
-**Research Summary:**
-{research_summary}
-
-**Config (for depth setting):**
-{config_content}
-
-</roadmap_context>
+Then synthesize the phase breakdown from the project identity, requirements, and
+research summary, and write it via the CLI:
 
 <depth_guidance>
 Based on config depth setting:
@@ -478,26 +428,18 @@ Based on config depth setting:
 </depth_guidance>
 
 <output_requirements>
-1. Create .luca/roadmap.md via \`luca roadmap create --file <payload.json>\` with:
+1. Create the roadmap via \`luca roadmap create --file <payload.json>\` with:
    - Phase structure with clear goals
    - Requirement mappings (REQ-XXX → Phase X)
    - Success criteria for each phase
    - Dependencies between phases
+   (\`luca roadmap create\` writes \`.luca/state.json\` and activates phase 1.)
 
-2. Initialize the workflow state via \`luca init\` (which creates \`.luca/state.json\`, \`config.json\`, and the canonical directory skeleton).
-
-3. The project requirements + traceability are already stored in MuninnDB (\`brain:project-requirements\` tree, Phase 7); the roadmap-creation step should reference those engrams for requirement → phase mapping. Per-phase requirement traceability surfaces via the per-phase \`audits/\` artifacts.
+2. Requirements + traceability are already stored in MuninnDB
+   (\`brain:project-requirements\` tree, Phase 7); reference those engrams for
+   requirement → phase mapping. Per-phase requirement traceability surfaces via
+   the per-phase \`audits/\` artifacts.
 </output_requirements>
-
-Create the project roadmap based on requirements and research.
-""",
-  subagent_type="lu-roadmapper",
-  model="{roadmapper_model}",
-  description="Create Roadmap"
-)
-\`\`\`
-
-**Do NOT proceed until the Task returns.**
 
 ### Phase 9: GitHub Issue & Branch
 

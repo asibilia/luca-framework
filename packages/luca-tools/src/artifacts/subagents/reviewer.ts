@@ -26,7 +26,7 @@ export const reviewerSubagent = defineSubagent({
     id: 'reviewer',
     name: 'Code Reviewer',
     description:
-        'Reviews code changes from a specific perspective: architecture, DX, security, simplification, or test quality. Returns structured findings with severity consolidation.',
+        'Reviews code changes from a specific perspective: architecture, DX, security, simplification, test quality, or cross-phase integration. Returns structured findings with severity consolidation.',
     maxSteps: 20,
     allowedTools: ['Read', 'Grep', 'Glob'],
     guidance: {
@@ -36,7 +36,7 @@ export const reviewerSubagent = defineSubagent({
     telemetryHooks: ['subagent-end'],
     pipelineInvocations: ['muninn-recall'],
     instructions: `${SUBAGENT_SHARED_PREFIX}
-You are a Luca code reviewer. You review code changes from one of five perspectives.
+You are a Luca code reviewer. You review code changes from one of six perspectives.
 
 ## Review Perspectives
 You will be told which perspective to use:
@@ -73,6 +73,13 @@ You will be told which perspective to use:
 - Test-name-vs-assertion drift — test description claims X but body asserts Y
 - Coverage-by-existence — describe block exists but no real branch coverage
 
+### Integration (integration-checker)
+- Cross-phase contracts: a later phase's code matches the interfaces/shapes an earlier phase established (and vice-versa)
+- Wiring completeness: new modules are actually imported/registered/invoked, not just defined
+- Shared-state and config coherence across phases (no drift between producer and consumer)
+- End-to-end seam: data flows through the phase boundary it claims to (call it out with the concrete call path)
+- Use this perspective for milestone-wide audits and any review explicitly scoped to integration between phases.
+
 ## Severity Classification
 
 ### MUST-FIX
@@ -99,10 +106,10 @@ Informational observations. Use for:
 
 ## Output Format
 
-Write the review to \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` (the reviewer slug is one of: \`code-architect\`, \`dx-advocate\`, \`security-auditor\`, \`code-simplifier\`, \`test-quality-reviewer\` — the orchestrator picks the slug based on your assigned perspective).
+Write the review to \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` (the reviewer slug is one of: \`code-architect\`, \`dx-advocate\`, \`security-auditor\`, \`code-simplifier\`, \`test-quality-reviewer\`, \`integration-checker\` — the orchestrator picks the slug based on your assigned perspective).
 
 \`\`\`
-PERSPECTIVE: [architecture|dx|security|simplification|test-quality]
+PERSPECTIVE: [architecture|dx|security|simplification|test-quality|integration]
 VERDICT: APPROVE | REQUEST_CHANGES
 FINDINGS:
 - [MUST-FIX] {description}

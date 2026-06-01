@@ -30,13 +30,11 @@ This skill is a **meta-orchestrator**. It chains other SKILLS and AGENTS in an a
 
 **Sub-agents spawned (via Task tool):**
 
-- \`lu-cognition\` — Cognitive pre-flight at session start
-- \`lu-router\` — Classify complexity for each phase
-- \`lu-pm-planner\` — WSJF scoring and backlog prioritization (fallback for \`--no-swarm\` roadmap revision)
-- \`lu-roadmap-architect\` — Architectural impact analysis for roadmap revision (swarm specialist)
-- \`lu-roadmap-prioritizer\` — WSJF scoring and milestone scoping for roadmap revision (swarm specialist)
-- \`lu-roadmap-qa\` — Testing gap analysis and QA impact for roadmap revision (swarm specialist)
-- \`lu-roadmap-synthesizer\` — Merges specialist analyses into unified roadmap proposal (swarm synthesizer)
+- \`architect\` — phase planning, and roadmap-revision analysis spawned once per role (architectural impact, WSJF prioritization/scoping, and synthesis of the specialist analyses).
+- \`reviewer\` — testing-gap / QA-impact analysis for roadmap revision (perspective: test-quality/integration), plus standard code review.
+- \`researcher\`, \`executor\`, \`verifier\`, \`plan-reviewer\`, \`learner\` — the standard per-phase pipeline agents, invoked through the phase skills.
+
+Cognitive pre-flight and complexity classification are inline orchestrator steps in v13 (no separate \`cognition\`/\`router\` agents).
 
 **CRITICAL — WORKFLOW COMPLIANCE IS MANDATORY:**
 
@@ -109,13 +107,12 @@ MAX_PARALLEL=$(echo "$CONFIG" | bun -e "
 
 ### 0c. Cognitive Pre-Flight
 
-Unless the session already has cognitive context loaded:
+Unless the session already has cognitive context loaded, run cognitive pre-flight INLINE (v13 folds this into the orchestrator — there is no separate cognition agent):
 
 \`\`\`
-Task(
-  agent: "lu-cognition",
-  prompt: "Run cognitive pre-flight for autopilot session. Load project identity via mcp__muninn__muninn_recall_tree(vault: 'default', id: 'brain:project-identity'). Recall relevant patterns via mcp__muninn__muninn_recall(vault: 'default', context: 'relevant patterns and decisions for planning and workflow'). Clear previous session context via mcp__muninn__muninn_forget(vault: 'default', id: 'session:*')."
-)
+mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
+mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and decisions for planning and workflow")
+mcp__muninn__muninn_forget(vault: "default", id: "session:*")
 \`\`\`
 
 ### 0d. Display Session Start & Initialize State Machine
@@ -216,11 +213,11 @@ TODO_CONTENTS=$(luca todo list --status pending --format json)
 
 #### Path A: Single-Agent (--no-swarm fallback)
 
-**If SWARM_ENABLED == false:** Use the original single lu-pm-planner agent path.
+**If SWARM_ENABLED == false:** Use the original single architect agent path.
 
 \`\`\`
 Task(
-  agent: "lu-pm-planner",
+  agent: "architect",
   prompt: """
 <planning_context>
 **Mode:** roadmap-revision (extended)
@@ -255,7 +252,7 @@ Task(
 )
 \`\`\`
 
-Skip to Step 2b with the lu-pm-planner's ResultEnvelope.
+Skip to Step 2b with the architect's ResultEnvelope.
 
 ---
 
@@ -300,9 +297,9 @@ TaskCreate(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "architect",
-  subagent_type: "lu-roadmap-architect",
+  subagent_type: "architect",
   prompt: """
-  You are a roadmap architect specialist (lu-roadmap-architect role).
+  You are a roadmap architect specialist (architect role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -329,9 +326,9 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "prioritizer",
-  subagent_type: "lu-roadmap-prioritizer",
+  subagent_type: "architect",
   prompt: """
-  You are a roadmap prioritizer specialist (lu-roadmap-prioritizer role).
+  You are a roadmap prioritizer specialist (architect role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -358,9 +355,9 @@ Task(
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "qa-analyst",
-  subagent_type: "lu-roadmap-qa",
+  subagent_type: "reviewer",
   prompt: """
-  You are a roadmap QA specialist (lu-roadmap-qa role).
+  You are a roadmap QA specialist (reviewer role).
 
   **All Pending Todos:**
   {TODO_CONTENTS}
@@ -392,7 +389,7 @@ Wait for all 3 specialists to send their ResultEnvelopes (10-minute timeout per 
 **Graceful degradation:**
 - If 1 specialist times out or errors: proceed with 2 specialist outputs, note the gap
 - If 2 specialists time out: proceed with 1 output, set confidence to LOW
-- If all 3 fail: fall back to Path A (single lu-pm-planner)
+- If all 3 fail: fall back to Path A (single architect)
 
 ##### 2a-swarm-iv. Spawn Synthesizer
 
@@ -402,9 +399,9 @@ After collecting specialist outputs, spawn the synthesizer with all results:
 Task(
   team_name: "roadmap-revision-{timestamp}",
   name: "synthesizer",
-  subagent_type: "lu-roadmap-synthesizer",
+  subagent_type: "architect",
   prompt: """
-  You are a roadmap synthesizer (lu-roadmap-synthesizer role).
+  You are a roadmap synthesizer (architect role).
 
   **Architect Analysis:**
   {ARCHITECT_RESULT}
@@ -689,14 +686,7 @@ Wait for user input. Route by choice.
 
 ### 4c. Complexity Classification
 
-Spawn lu-router to classify:
-
-\`\`\`
-Task(
-  agent: "lu-router",
-  prompt: "Classify complexity for Phase {NN}: {phase_goal}. Consider file count, scope, and risk. Output: TRIVIAL, SIMPLE, MODERATE, COMPLEX, or CRITICAL."
-)
-\`\`\`
+Classify complexity INLINE (v13 folds the legacy router into the orchestrator — there is no separate router agent): read \`{phase_goal}\` and pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk.
 
 Advance the pipeline step (the legacy "routing" step is folded into \`triage\` → \`research\`/\`discuss\` in v13). Complexity is recorded in the orchestrator's reasoning and passed to every subagent — there's no separate state field for it:
 

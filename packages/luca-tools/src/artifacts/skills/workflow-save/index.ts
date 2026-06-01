@@ -246,7 +246,7 @@ Then links:
 At session pause, the skill produces:
 
 1. **session_end**: "Session sess-abc123 ended after 2h15m. Completed phases 05, 06. 4 commits. Paused: context window approaching limit."
-2. **scorecard_snapshot**: "Agent scorecard at session end: executor 6/6 success avg 40s, verifier 2/2 success avg 20s, lu-cognition 1/1 success avg 8s."
+2. **scorecard_snapshot**: "Agent scorecard at session end: executor 6/6 success avg 40s, verifier 2/2 success avg 20s, researcher 1/1 success avg 8s."
 
 Links:
 

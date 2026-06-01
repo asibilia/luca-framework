@@ -33,7 +33,7 @@ This skill uses TWO delegation mechanisms:
 
 ### Model Resolution
 
-Models are resolved at runtime via \`resolveModelForAgent(agentName, complexity)\` from the centralized routing table (\`src/complexity/__helpers/model-routing.ts\`). The skill does not pick model strings — it spawns the named agent and the routing layer handles tier selection.
+Models are set by each agent’s own definition (and the harness default). The skill does not pick model strings — it spawns the named agent and the routing layer handles tier selection.
 
 </sub-agent_delegation_requirements>
 
@@ -53,7 +53,7 @@ If the user passed a request but the pipeline is already mid-flight, surface tha
 
 Triage runs once, at the start of a run. It is inline here — there is no separate triage skill.
 
-1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (the model-routing table keys off it). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
+1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (pass it to any subagent whose behavior varies by complexity). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
 2. **Build the roadmap.** Decompose the request into ordered phases. Each phase is one deliverable unit. Stage the phases array in a JSON file, then run \`luca roadmap create --file\`:
    \`\`\`
    # /tmp/luca-roadmap.json:

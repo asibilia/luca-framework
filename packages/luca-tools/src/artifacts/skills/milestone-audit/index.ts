@@ -21,41 +21,10 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`lu-integration-checker\` - Verifies cross-phase integration
-- \`dx-advocate\` - Code quality review (milestone-wide)
-- \`code-simplifier\` - DRY and complexity review
-- \`code-architect\` - Architecture coherence review
-- \`ui\` - Tailwind/styling review
-- \`security-auditor\` - Security review (milestone-wide)
+- \`reviewer\` — milestone-wide code review, spawned once per perspective. Use the perspectives: **integration** (cross-phase wiring), **architecture**, **dx**, **simplification**, **security**. The perspective is passed in the prompt (\`PERSPECTIVE: <name>\`); these are not separate agents.
+- \`debater\` — adversarial validation of disputed findings (defender vs challenger) in the rebuttal round.
 
-**DO NOT** attempt to check integration or review code yourself. Spawn the appropriate subagents via the \`Task\` tool.
-
-## Model Profile
-
-\`\`\`bash
-MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
-\`\`\`
-
-**Model lookup table:**
-
-| Agent                     | quality | balanced | budget |
-| ------------------------- | ------- | -------- | ------ |
-| lu-integration-checker | sonnet  | sonnet   | haiku  |
-| dx-advocate               | opus    | sonnet   | haiku  |
-| code-simplifier           | opus    | sonnet   | haiku  |
-| code-architect            | opus    | sonnet   | haiku  |
-| tailwind-auditor          | opus    | sonnet   | haiku  |
-| security-auditor          | opus    | sonnet   | haiku  |
-
-> **Current Limitation:** Cursor's Task tool only supports \`model="fast"\` or inheriting from parent. This table is preserved for future compatibility.
-
-**Current model variable values:**
-
-\`\`\`
-# All audit agents require reasoning → omit (inherit from parent)
-integration_checker_model = (omit)
-reviewer_model = (omit)  # dx-advocate, code-simplifier, etc.
-\`\`\`
+**DO NOT** check integration or review code yourself — spawn \`reviewer\` subagents (one per perspective) via the \`Task\` tool. Agent model tiers come from each agent's own definition / the harness default; the orchestrator does not pick model strings.
 
 ## Process
 
@@ -123,10 +92,9 @@ gaps:
 
 </output_requirements>
 
-Verify cross-phase integration for this milestone.
+PERSPECTIVE: integration. Verify cross-phase integration for this milestone.
 """,
-subagent_type="lu-integration-checker",
-model="{checker_model}",
+subagent_type="reviewer",
 description="Integration check: v{version}"
 )
 
@@ -200,7 +168,6 @@ issues:
 If no issues: \`issues: []\`
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Milestone DX review"
 )
 
@@ -229,7 +196,6 @@ issues:
 
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Milestone simplification review"
 )
 
@@ -258,7 +224,6 @@ issues:
 
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Milestone architecture review"
 )
 
@@ -287,7 +252,6 @@ issues:
 
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Milestone Tailwind review"
 )
 
@@ -316,7 +280,6 @@ issues:
 
 """,
 subagent_type="reviewer",
-model="{reviewer_model}",
 description="Milestone security review"
 )
 
@@ -369,25 +332,32 @@ Running adversarial rebuttal round...
 
 #### 4.5.2 Rebuttal Round
 
-For each disagreement, spawn challenger and defender in PARALLEL:
+For each disagreement, spawn a challenger and a defender in PARALLEL using the
+\`debater\` subagent (the adversarial-validation primitive). Both receive the
+SAME proposition — the disputed finding — and opposing stances; you arbitrate
+by confidence-weighted majority over their structured verdicts.
 
 \\\`\\\`\\\`\\\`python
-# For each disagreement: spawn challenger and defender
-# Use the SAME reviewer agent type as the original finding
+# For each disagreement: spawn two debaters with opposing stances.
+# PROPOSITION = the disputed finding (e.g. "<finding> is a real, must-fix issue").
 
 Task(
   prompt="""
+PROPOSITION: {finding_as_proposition}
+STANCE: CHALLENGE
 {challenger_prompt from buildRebuttalPrompts, augmented with milestone context}
 """,
-  subagent_type="{challenger_agent_type}",
+  subagent_type="debater",
   description="Challenge: {finding_summary}"
 )
 
 Task(
   prompt="""
+PROPOSITION: {finding_as_proposition}
+STANCE: DEFEND
 {defender_prompt from buildRebuttalPrompts, augmented with milestone context}
 """,
-  subagent_type="{defender_agent_type}",
+  subagent_type="debater",
   description="Defend: {finding_summary}"
 )
 \\\`\\\`\\\`\\\`
