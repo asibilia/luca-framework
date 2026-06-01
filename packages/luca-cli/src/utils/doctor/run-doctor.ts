@@ -27,7 +27,12 @@ export async function executeDoctor(
     // Import all checks
     const { bunRuntimeCheck } = await import('./checks/bun-runtime')
     const { muninndbHealthCheck } = await import('./checks/muninndb-health')
+    const { muninnMcpCheck } = await import('./checks/muninn-mcp')
     const { staleMcpServerCheck } = await import('./checks/stale-mcp-server')
+    const { staleGlobalSymlinksCheck } = await import(
+        './checks/stale-global-symlinks'
+    )
+    const { legacyPackageCheck } = await import('./checks/legacy-package')
     const { strayLocalInstallCheck } = await import(
         './checks/stray-local-install'
     )
@@ -38,6 +43,9 @@ export async function executeDoctor(
         staleMcpServerCheck,
         // Global
         muninndbHealthCheck,
+        muninnMcpCheck,
+        staleGlobalSymlinksCheck,
+        legacyPackageCheck,
         // Project (cwd-dependent)
         strayLocalInstallCheck,
     ]

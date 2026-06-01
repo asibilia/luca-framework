@@ -104,7 +104,7 @@ MuninnDB tools (`mcp__muninn__*`) reach Claude Code via MCP — and `luca init` 
 The fastest way is the Claude Code CLI (registers a user-scoped server every project picks up):
 
 ```bash
-claude mcp add --transport http muninn http://localhost:8476/mcp \
+claude mcp add --transport sse muninn http://localhost:8750/mcp \
   --header "Authorization: Bearer <your-muninn-api-key>"
 ```
 
@@ -114,8 +114,8 @@ Or add a project-scoped server by creating `<project>/.mcp.json`:
 {
   "mcpServers": {
     "muninn": {
-      "type": "http",
-      "url": "http://localhost:8476/mcp",
+      "type": "sse",
+      "url": "http://localhost:8750/mcp",
       "headers": {
         "Authorization": "Bearer <your-muninn-api-key>"
       }
@@ -124,7 +124,7 @@ Or add a project-scoped server by creating `<project>/.mcp.json`:
 }
 ```
 
-`8476` is MuninnDB's default port (`MUNINNDB_DEFAULT_PORT`); if you overrode it via `MUNINNDB_PORT`, use that value instead — `luca init`'s post-setup readout prints the live port. Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart Claude Code, then run `/mcp` to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to the pipeline modes and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
+**Ports:** MuninnDB serves its **MCP endpoint on `8750`** (authenticated, SSE) and its **service + web dashboard on `8476`** (the port `luca init` reports and where you generate the API key). Use `8750` for the MCP wiring above; use `8476` for the dashboard. The MCP port is a MuninnDB-internal default and is not affected by `MUNINNDB_PORT`. Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart Claude Code, then run `/mcp` to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to the pipeline modes and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
 
 ### Prompt Engineering
 

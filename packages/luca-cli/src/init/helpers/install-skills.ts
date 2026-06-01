@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { copyFile, mkdir, readdir } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, readdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -317,13 +317,47 @@ async function copySkillTree(args: {
         if (!entry.isDirectory()) continue
         const skillFrom = join(args.from, entry.name)
         const skillTo = join(args.to, entry.name)
+        // Clear any stale non-directory entry (e.g. a dangling symlink left
+        // by an older dev install) squatting the target path. mkdir with
+        // `recursive: true` is idempotent for real directories but throws
+        // EEXIST when the path is a symlink/file, so we must remove it first.
+        await clearNonDirTarget(skillTo)
         await mkdir(skillTo, { recursive: true })
         const files = await readdir(skillFrom, { withFileTypes: true })
         for (const file of files) {
             if (!file.isFile()) continue
-            await copyFile(join(skillFrom, file.name), join(skillTo, file.name))
-            args.log(`  write: ${join(skillTo, file.name)}`)
+            const fileTo = join(skillTo, file.name)
+            // Drop a pre-existing symlink so we materialize a real file
+            // rather than writing through the link to its (stale) target.
+            await clearSymlink(fileTo)
+            await copyFile(join(skillFrom, file.name), fileTo)
+            args.log(`  write: ${fileTo}`)
         }
+    }
+}
+
+/**
+ * Remove a path if it exists and is NOT a real directory (i.e. a symlink
+ * or file). No-op when the path is absent or already a directory. Used to
+ * sanitize install targets that older dev setups left as dangling symlinks
+ * into the repo's former `dist/claude/` tree.
+ */
+async function clearNonDirTarget(p: string): Promise<void> {
+    try {
+        const st = await lstat(p)
+        if (!st.isDirectory()) await rm(p, { force: true })
+    } catch {
+        // ENOENT — nothing to clear.
+    }
+}
+
+/** Remove a path only if it is a symbolic link; otherwise leave it. */
+async function clearSymlink(p: string): Promise<void> {
+    try {
+        const st = await lstat(p)
+        if (st.isSymbolicLink()) await rm(p, { force: true })
+    } catch {
+        // ENOENT — nothing to clear.
     }
 }
 
@@ -337,11 +371,14 @@ async function copyDir(args: {
         args.log(`  skip:  ${args.label}s source missing (${args.from})`)
         return
     }
+    await clearNonDirTarget(args.to)
     await mkdir(args.to, { recursive: true })
     const entries = await readdir(args.from, { withFileTypes: true })
     for (const entry of entries) {
         if (!entry.isFile() || !entry.name.endsWith('.md')) continue
-        await copyFile(join(args.from, entry.name), join(args.to, entry.name))
-        args.log(`  write: ${join(args.to, entry.name)}`)
+        const dest = join(args.to, entry.name)
+        await clearSymlink(dest)
+        await copyFile(join(args.from, entry.name), dest)
+        args.log(`  write: ${dest}`)
     }
 }

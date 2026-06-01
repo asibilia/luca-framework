@@ -62,7 +62,15 @@ export type VaultConfig = z.infer<typeof VaultConfigSchema>
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MUNINNDB_WEB_UI_URL = 'http://localhost:8477'
+/**
+ * MuninnDB web dashboard URL. The dashboard is served on the same port as
+ * the MuninnDB service (default 8476), NOT a separate port — so we derive
+ * it from `resolveMuninndbPort()` to honor a `MUNINNDB_PORT` override
+ * instead of hardcoding.
+ */
+function muninndbWebUiUrl(): string {
+    return `http://127.0.0.1:${resolveMuninndbPort()}`
+}
 
 // ─── Functions ───────────────────────────────────────────────────────────────
 
@@ -171,7 +179,7 @@ export async function runVaultWizard(
         [
             'To generate an API key, open the MuninnDB Web UI:',
             '',
-            `  ${MUNINNDB_WEB_UI_URL}`,
+            `  ${muninndbWebUiUrl()}`,
             '',
             'Navigate to Settings > API Keys and create a new key.',
             'If MuninnDB is not running, you can set this up later.',
