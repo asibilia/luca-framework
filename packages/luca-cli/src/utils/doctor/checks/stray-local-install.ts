@@ -12,7 +12,7 @@
  * stage-gate registration inside `.claude/settings.json`. User-authored
  * files (and `settings.local.json`, `plans/`, …) are never touched.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, lstatSync } from 'node:fs'
 import { readdir, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -38,6 +38,21 @@ interface StrayScan {
     items: StrayItem[]
     /** True when `.claude/settings.json` carries a stage-gate hook entry. */
     settingsStageGate: boolean
+}
+
+/**
+ * True when a path exists as any directory entry — including a dangling
+ * symlink. `existsSync` follows the link and so reports a broken symlink as
+ * absent; `lstatSync` does not follow, so a stray (possibly broken) symlink
+ * is still detected and can be removed by `fix()`.
+ */
+function pathPresent(p: string): boolean {
+    try {
+        lstatSync(p)
+        return true
+    } catch {
+        return false
+    }
 }
 
 /** Read + parse a JSON object file; null on missing/unreadable/malformed. */
@@ -81,7 +96,7 @@ async function scanStray(cwd: string): Promise<StrayScan> {
     if (bundled) {
         for (const name of bundled.commands) {
             const path = join(claudeDir, 'commands', name)
-            if (existsSync(path)) {
+            if (pathPresent(path)) {
                 items.push({
                     path,
                     label: `.claude/commands/${name}`,
@@ -91,7 +106,7 @@ async function scanStray(cwd: string): Promise<StrayScan> {
         }
         for (const name of bundled.agents) {
             const path = join(claudeDir, 'agents', name)
-            if (existsSync(path)) {
+            if (pathPresent(path)) {
                 items.push({
                     path,
                     label: `.claude/agents/${name}`,
@@ -101,7 +116,7 @@ async function scanStray(cwd: string): Promise<StrayScan> {
         }
         for (const name of bundled.skills) {
             const path = join(claudeDir, 'skills', name)
-            if (existsSync(path)) {
+            if (pathPresent(path)) {
                 items.push({
                     path,
                     label: `.claude/skills/${name}/`,
@@ -113,7 +128,7 @@ async function scanStray(cwd: string): Promise<StrayScan> {
 
     // Legacy stage-gate hook wrapper (pre-v13 `luca init` wrote this).
     const hookScript = join(claudeDir, 'hooks', 'stage-gate.sh')
-    if (existsSync(hookScript)) {
+    if (pathPresent(hookScript)) {
         items.push({
             path: hookScript,
             label: '.claude/hooks/stage-gate.sh',

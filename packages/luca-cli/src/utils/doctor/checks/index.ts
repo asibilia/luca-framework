@@ -1,4 +1,7 @@
 export { bunRuntimeCheck } from './bun-runtime'
+export { legacyPackageCheck } from './legacy-package'
 export { muninndbHealthCheck } from './muninndb-health'
+export { muninnMcpCheck } from './muninn-mcp'
+export { staleGlobalSymlinksCheck } from './stale-global-symlinks'
 export { staleMcpServerCheck } from './stale-mcp-server'
 export { strayLocalInstallCheck } from './stray-local-install'

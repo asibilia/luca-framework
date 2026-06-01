@@ -22,7 +22,8 @@
  * pattern (`hooks: { 'build:done': ... }`) to bundle luca-core +
  * mastracode for the legacy 12.0.0-alpha tarball.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
@@ -95,21 +96,30 @@ export default defineBuildConfig({
             // B3 (parity-review §B3, F-2 known gap): the compiler emits
             // a `settings.json` referencing handler scripts at
             // `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.ts`, but those
-            // handler scripts are not in `dist/claude/` yet — they live
-            // in source at `packages/luca-tools/src/hooks/<name>/handler.ts`.
+            // handler scripts live in source at
+            // `packages/luca-tools/src/hooks/<name>/handler.ts`.
             //
-            // Copy them into `dist/claude/.claude/hooks/<name>.ts` so
-            // `luca init` can lay them down per-project. Each hook
-            // directory under `packages/luca-tools/src/hooks/` is mirrored
-            // to `<distClaude>/.claude/hooks/<name>.ts`.
+            // We BUNDLE (not copy) each handler into
+            // `dist/claude/.claude/hooks/<name>.ts`. The handlers import
+            // private workspace packages (`@alecsibilia/luca-core/ledger`,
+            // `/orchestration`, `/state`) that are inlined into THIS
+            // package's CLI bundle but are NOT present in a consumer's
+            // `node_modules`. A raw copy therefore fails at runtime with
+            // `Cannot find module '@alecsibilia/luca-core/ledger'` on every
+            // hook fire. `bun build --target bun` inlines those deps so the
+            // emitted handler is self-contained and runs anywhere bun does.
             //
-            // We resolve `packages/luca-tools/` relative to the umbrella
-            // package — the umbrella's cwd at build time is
-            // `packages/luca/`, so the sibling lives at
-            // `../luca-tools/src/hooks/`.
+            // We shell out to `bun build` rather than `Bun.build` because
+            // this hook runs under unbuild's (Node) runtime, where the
+            // `Bun` global is not available. `bun` is a hard prerequisite
+            // of this repo, so it is always on PATH at build time.
+            //
+            // `packages/luca-tools/` is resolved relative to the umbrella
+            // (cwd is `packages/luca/` at build time), so the sibling lives
+            // at `../luca-tools/src/hooks/`.
             const hooksSrcRoot = resolve('..', 'luca-tools', 'src', 'hooks')
             const hooksDestRoot = join(distClaude, '.claude', 'hooks')
-            const copiedHookHandlers: string[] = []
+            const bundledHookHandlers: string[] = []
             if (existsSync(hooksSrcRoot)) {
                 mkdirSync(hooksDestRoot, { recursive: true })
                 for (const entry of readdirSync(hooksSrcRoot)) {
@@ -119,12 +129,29 @@ export default defineBuildConfig({
                     if (!existsSync(handlerSrc)) continue
                     const handlerDest = join(hooksDestRoot, `${entry}.ts`)
                     mkdirSync(dirname(handlerDest), { recursive: true })
-                    copyFileSync(handlerSrc, handlerDest)
-                    copiedHookHandlers.push(`${entry}.ts`)
+                    // Throws (failing the umbrella build) if a handler can't
+                    // be bundled — better than silently shipping a broken,
+                    // unresolvable hook. stderr is inherited so the bundler's
+                    // diagnostics are visible in the build/CI log on failure;
+                    // stdout is suppressed to keep the success path quiet
+                    // (the one-line summary below reports what was bundled).
+                    execFileSync(
+                        'bun',
+                        [
+                            'build',
+                            handlerSrc,
+                            '--target',
+                            'bun',
+                            '--outfile',
+                            handlerDest,
+                        ],
+                        { stdio: ['ignore', 'ignore', 'inherit'] },
+                    )
+                    bundledHookHandlers.push(`${entry}.ts`)
                 }
             }
             console.log(
-                `[luca] copied hook handlers → ${hooksDestRoot} (${copiedHookHandlers.length}: ${copiedHookHandlers.join(', ')})`,
+                `[luca] bundled hook handlers → ${hooksDestRoot} (${bundledHookHandlers.length}: ${bundledHookHandlers.join(', ')})`,
             )
         },
     },

@@ -52,7 +52,6 @@ import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
 import { checkMuninndbBinary } from '../utils/muninndb-health'
-import { MUNINNDB_DEFAULT_PORT } from '../utils/muninndb-schemas'
 import { startMuninndb } from '../utils/muninndb-service'
 import { isOnPath, getPathGuidance } from '../utils/path-check'
 import { checkPrerequisites, promptBunInstall } from '../utils/prerequisites'
@@ -287,12 +286,14 @@ export const initCommand = defineCommand({
         readout.push(
             '     stores them in MuninnDB; downstream pipeline modes consult them)'
         )
-        const mcpPort = muninndbPort ?? MUNINNDB_DEFAULT_PORT
+        // MuninnDB serves its MCP endpoint on its own fixed port (8750),
+        // distinct from the service/dashboard port (8476). luca does not
+        // manage the MCP port, so it is not derived from MUNINNDB_PORT.
         readout.push(
             '  To expose MuninnDB to Claude Code: register it as an MCP server,'
         )
         readout.push(
-            `    e.g. claude mcp add --transport http muninn http://localhost:${mcpPort}/mcp \\`
+            `    e.g. claude mcp add --transport sse muninn http://localhost:8750/mcp \\`
         )
         readout.push(
             '         --header "Authorization: Bearer <your-muninn-api-key>"'
