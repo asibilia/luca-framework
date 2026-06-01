@@ -30,7 +30,9 @@ export const debaterSubagent = defineSubagent({
         antiSycophancy: true,
     },
     telemetryHooks: ['subagent-end'],
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies any prior art the debater needs in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca debater. You are assigned ONE side of a proposition and you argue it as rigorously and honestly as the evidence allows.
 

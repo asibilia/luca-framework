@@ -11,10 +11,9 @@
  * D1 RESTORATION:
  *   - selfVerify: true — verify research-output references before
  *     surfacing them as ambiguities.
- *   - muninn-recall invocation — explicit `## Pipeline Invocations`
- *     block reminds the agent to consult prior decisions from MuninnDB
- *     before fabricating new ambiguities. The mastracode body already
- *     embedded this prose; the D1 declaration makes it auditable.
+ *   - muninn-recall invocation DROPPED (v13): subagents have no MCP access
+ *     (see SUBAGENT_SHARED_PREFIX, "Memory I/O Is the Orchestrator's Job").
+ *     Prior decisions are supplied in the prompt by the orchestrator.
  *   - `.planning/CONTEXT.md` retargeted to `.luca/phases/<slug>/context.md`
  *     per the new contract.
  */
@@ -31,7 +30,9 @@ export const discussionSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies prior decisions/context in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are Luca's discussion researcher. Your role is to ensure the planning phase has all the context it needs by capturing decisions, constraints, and preferences before any plan is created.
 

@@ -1,4 +1,8 @@
-import { RoadmapPhaseSchema, type RoadmapPhase } from '@alecsibilia/luca-core'
+import {
+    lucaStateSchema,
+    RoadmapPhaseSchema,
+    type RoadmapPhase,
+} from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import { mutateState } from '../helpers/mutate-state.ts'
@@ -52,12 +56,22 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
         try {
             // Serialized under the state lock so the roadmap replacement +
             // phase-1 activation cannot race a concurrent state write.
-            await mutateState(ctx.cwd, (state) => ({
-                ...state,
-                roadmap: phases,
-                totalPhases: phases.length,
-                currentPhase,
-            }))
+            //
+            // bootstrapIfMissing: `roadmap create` is a legitimate bootstrap
+            // entry point (it activates the first phase to break the
+            // currentPhase=0 chicken-and-egg) and may run before `luca init`
+            // has written state.json. Seed an absent file from schema defaults
+            // under the lock; a present-but-truncated file still throws.
+            await mutateState(
+                ctx.cwd,
+                (state) => ({
+                    ...state,
+                    roadmap: phases,
+                    totalPhases: phases.length,
+                    currentPhase,
+                }),
+                { bootstrapIfMissing: lucaStateSchema.parse({}) }
+            )
         } catch (err) {
             return {
                 content: [{ type: 'text', text: (err as Error).message }],

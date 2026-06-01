@@ -25,7 +25,9 @@ export const testWriterSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['subagent-end'],
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies any relevant prior learnings in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca test writer. You write ONE focused test (or a tight cluster) that exercises a real production code path for an assigned behavior, run it, and report what it proves.
 

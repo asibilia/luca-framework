@@ -16,8 +16,9 @@
  *     mastracode prose did not enforce a per-reviewer end-event;
  *     declaring it here lets the orchestrator track per-perspective
  *     completion in the durable log.
- *   - muninn-recall — surfaces prior known pitfalls and anti-patterns
- *     for the reviewer's assigned perspective.
+ *   - muninn-recall DROPPED (v13): subagents have no MCP access (see
+ *     SUBAGENT_SHARED_PREFIX). Prior pitfalls/anti-patterns for the assigned
+ *     perspective are supplied in the prompt by the orchestrator.
  */
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX } from '../shared/index.ts'
@@ -28,13 +29,17 @@ export const reviewerSubagent = defineSubagent({
     description:
         'Reviews code changes from a specific perspective: architecture, DX, security, simplification, test quality, or cross-phase integration. Returns structured findings with severity consolidation.',
     maxSteps: 20,
-    allowedTools: ['Read', 'Grep', 'Glob'],
+    // Write is required: the reviewer's one assigned artifact is its audit
+    // file at .luca/phases/<slug>/audits/<reviewer>.md (see Output Format).
+    allowedTools: ['Read', 'Grep', 'Glob', 'Write'],
     guidance: {
         selfVerify: true,
         antiSycophancy: true,
     },
     telemetryHooks: ['subagent-end'],
-    pipelineInvocations: ['muninn-recall'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies any prior findings/decisions in the prompt.
+    pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca code reviewer. You review code changes from one of six perspectives.
 

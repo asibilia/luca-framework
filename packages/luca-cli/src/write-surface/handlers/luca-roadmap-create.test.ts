@@ -53,7 +53,9 @@ describe('luca_roadmap_create', () => {
         expect(roadmap[0]!.status).toBe('pending')
         expect(roadmap[1]!.deps).toEqual(['auth-rewrite'])
         expect(state.totalPhases).toBe(3)
-        expect(state.currentPhase).toBe(0)
+        // A non-empty roadmap activates phase 1 (breaks the currentPhase=0
+        // chicken-and-egg — see the handler docstring).
+        expect(state.currentPhase).toBe(1)
     })
 
     test('preserves unrelated state fields', async () => {
@@ -93,5 +95,33 @@ describe('luca_roadmap_create', () => {
 
     test('declares allowedPhases: [idle, triage]', () => {
         expect(lucaRoadmapCreateTool.allowedPhases).toEqual(['idle', 'triage'])
+    })
+
+    test('bootstraps an ABSENT state.json on a fresh workflow (idle defaults)', async () => {
+        // No state.json written — `roadmap create` is a legitimate bootstrap
+        // entry point and must seed defaults under the lock rather than throw.
+        const parsed = lucaRoadmapCreateTool.inputSchema.parse({
+            phases: [{ name: 'first-phase' }, { name: 'second-phase' }],
+        })
+        const r = await lucaRoadmapCreateTool.handler(parsed, { cwd })
+
+        expect(r.isError).toBeFalsy()
+        const state = await readState(cwd)
+        expect((state.roadmap as unknown[]).length).toBe(2)
+        expect(state.totalPhases).toBe(2)
+        expect(state.currentPhase).toBe(1)
+        // Seeded from schema defaults, so pipelineStep is the idle default.
+        expect(state.pipelineStep).toBe('idle')
+    })
+
+    test('still throws on a present-but-truncated {} (corruption, not bootstrap)', async () => {
+        await writeFile(join(cwd, '.luca/state.json'), '{}')
+        const parsed = lucaRoadmapCreateTool.inputSchema.parse({
+            phases: [{ name: 'x' }],
+        })
+        const r = await lucaRoadmapCreateTool.handler(parsed, { cwd })
+        expect(r.isError).toBe(true)
+        // The truncated file is left untouched (not overwritten with defaults).
+        expect(await readFile(join(cwd, '.luca/state.json'), 'utf-8')).toBe('{}')
     })
 })

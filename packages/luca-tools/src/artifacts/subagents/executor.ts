@@ -32,8 +32,10 @@
  *     category, decision, alternatives, reasoning, risk, files,
  *     reviewHint?}). Mastracode embedded the prose; D1 makes the
  *     invocation point auditable.
- *   - muninn-recall — pre-commit recall for commit conventions and
- *     pre-commit pitfalls. Preserved from the mastracode body.
+ *   - muninn-recall DROPPED (v13): subagents have no MCP access (see
+ *     SUBAGENT_SHARED_PREFIX). Commit conventions come from `luca preferences
+ *     read`; prior pitfalls are supplied in the prompt by the orchestrator.
+ *     rule-run + confidence-log (CLI/Bash-based) are retained.
  */
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX } from '../shared/index.ts'
@@ -52,7 +54,10 @@ export const executorSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['wave-start', 'wave-end'],
-    pipelineInvocations: ['muninn-recall', 'rule-run', 'confidence-log'],
+    // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
+    // The orchestrator supplies prior context in the prompt. rule-run +
+    // confidence-log are CLI/Bash-based and stay.
+    pipelineInvocations: ['rule-run', 'confidence-log'],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca executor. You implement code changes from \`.luca/phases/<currentPhaseSlug>/plan.md\` atomically.
 

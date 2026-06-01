@@ -89,9 +89,11 @@ mcp__muninn__muninn_recall(vault: "default", context: "relevant patterns and pas
 
 \`\`\`bash
 VERIFICATION_RESULT="[from verifier return value]"
+# Resolve the active phase slug for the learner (it has no Bash to do this itself).
+PHASE_SLUG=$(luca phase current 2>/dev/null | bun -e "const r=JSON.parse(await Bun.stdin.text()); console.log(r.slug ?? '')" 2>/dev/null || echo "")
 \`\`\`
 
-Then spawn the learner:
+Then spawn the learner (substitute \`{phase_slug}\` with \`$PHASE_SLUG\`):
 
 \`\`\`python
 Task(
@@ -99,6 +101,7 @@ Task(
 <learning_context>
 
 **Phase:** {phase_number}
+**Phase Slug:** {phase_slug}   # write learn.md to .luca/phases/{phase_slug}/learn.md (the learner has no Bash to resolve this itself)
 **Verification Result:** {verification_result}
 
 **Working Memory (session findings):**

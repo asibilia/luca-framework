@@ -20,7 +20,7 @@ export const SUBAGENT_SHARED_PREFIX = `## Core Operating Rules (all subagents)
 - No temp files or shell commands for edits — use edit tools only.
 - No prose between consecutive tool calls — invoke tools directly.
 - Respect mode boundaries — read-only means read-only.
-- Pipeline state belongs to the orchestrator. You MUST NOT run state-mutating \`luca\` commands (\`luca state advance\`, \`luca roadmap create\`, \`luca phase advance\`/\`archive\`, \`luca workflow reset\`). Reading state is fine (\`luca state read\`, \`luca phase current\`, \`luca verification read\`); writing is limited to your ONE assigned artifact via the native Write tool. Mutating pipeline state from a subagent races the orchestrator and corrupts the run.
+- Pipeline state belongs to the orchestrator. You MUST NOT run state-mutating \`luca\` commands (\`luca state advance\`, \`luca roadmap create\`, \`luca phase advance\`/\`archive\`, \`luca workflow reset\`). Reading state is fine (\`luca state read\`, \`luca phase current\`, \`luca verification read\`). Mutating pipeline state from a subagent races the orchestrator and corrupts the run. This restriction is about PIPELINE STATE only — it does NOT limit code edits: if your role is to change code (e.g. executor, test-writer), edit production files freely within your mode boundary using Edit/Write. The one constraint on \`.luca/\` artifacts is that you write only the SINGLE canonical artifact assigned to your role (e.g. a reviewer writes its one \`audits/<reviewer>.md\`), never another step's artifact or \`state.json\`.
 
 ## Self-Verification Mandate
 - Verify every assumption with a tool call. Do NOT rely on memory of file contents — re-read files before editing.

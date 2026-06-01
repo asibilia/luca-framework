@@ -64,7 +64,7 @@ CONFIDENCE: HIGH | MEDIUM | LOW
 
 ## Step 2 — Write learn.md
 
-Write the learnings to the canonical artifact at \`.luca/phases/<currentPhaseSlug>/learn.md\` with the Write tool (the orchestrator supplies the slug; get it from \`luca phase current\`). One markdown section per learning — type, concept, content, context, confidence. This file is the durable record and is YOUR responsibility; it survives even if MuninnDB persistence is skipped.
+Write the learnings to the canonical artifact at \`.luca/phases/<currentPhaseSlug>/learn.md\` with the Write tool. The orchestrator supplies \`<currentPhaseSlug>\` in your prompt — you have no Bash and cannot run \`luca phase current\` to discover it yourself; use the slug exactly as given. One markdown section per learning — type, concept, content, context, confidence. This file is the durable record and is YOUR responsibility; it survives even if MuninnDB persistence is skipped.
 
 ## Step 3 — Return structured learnings for the orchestrator to persist
 
