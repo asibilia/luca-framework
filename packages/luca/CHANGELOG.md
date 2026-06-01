@@ -1,5 +1,28 @@
 # @alecsibilia/luca
 
+## 13.0.0-alpha.3
+
+### Patch Changes
+
+- 871d206: Add `luca phase advance` to close the phase-lifecycle gap for multi-phase roadmaps. Nothing advanced `currentPhase` between phases, so after phase 1 a multi-phase roadmap stalled at the 1→2 boundary (every phase-2 artifact path resolved against the wrong/no slug). The new command bumps `currentPhase → currentPhase+1`, marks the finished phase `complete` and the next `in-progress`, and errors if no phase is active or already at the final phase. It's registered as a `luca-write` verb in the stage-gate bash classifier, and the `/lu` orchestrator now calls it at the `learn` step (when more phases remain) before advancing to `plan` for the next phase.
+- 871d206: Ship the `caveman` skill (ultra-compressed communication mode, ~75% fewer tokens). Seven v13 pipeline modes (triage, research, architect, execute, review, finalize, fast) instruct the agent to "activate the `caveman` skill", but the skill was dropped in the Phase D/E mastracode→luca-tools port and never shipped — so those references dangled and the token savings never applied on a fresh install. The skill is now ported into the luca-tools artifact set and registered in the manifest (skills 41→42). The companion mastracode `caveman` rule is intentionally not ported: v13 has no Claude Code rule-delivery target, and the modes invoke the skill directly. (Audit note: mastracode shipped only two rules — `caveman` and `pr-title-format`; the latter is superseded by the v13 preferences system + gh-prepare/gh-pr-address skills and used the removed `projectPreferences` tool, so it was not re-ported.)
+- 871d206: Fix `milestone-complete` never archiving phase directories — prior-milestone phase dirs piled up in `.luca/phases/` and collided on phase number (e.g. several `01-*` dirs) with the next milestone's roadmap, violating the planning-structure contract. The skill only snapshotted roadmap/audit/backlog files to `.luca/milestones/`; the `archivedPhasePathFor` helper existed but nothing used it. New `luca phase archive` moves every `.luca/phases/<slug>/` → `.luca/archive/<slug>/` (idempotent — skips a slug already frozen under archive/, never overwrites), and `milestone-complete` now runs it during the close, before the workflow reset and next-milestone roadmap.
+- 871d206: Fix the pipeline deadlocking immediately after `roadmap create` — the first phase never activated, so no phase artifact could be written.
+
+  `luca roadmap create` reset `currentPhase` to `0` and a code comment deferred activation to "the orchestrator on the next transition" — but no command, state event, or skill step anywhere ever advances `currentPhase`. With `currentPhase=0`, `resolveActiveSlug` returns "no active phase", so the stage-gate hook can compute no canonical `.luca/phases/<slug>/` path: the researcher's `research.md` write is blocked as `code-write`, and a raw `mkdir` is blocked as `bash-mutate` — a chicken-and-egg with no channel to create the phase.
+
+  `roadmap create` now activates phase 1 immediately (`currentPhase=1` when the roadmap is non-empty, else 0). Once a roadmap exists there is always a current phase, so `resolveActiveSlug` resolves and the first artifact write is permitted.
+
+  Advancing between phases (N→N+1 as each phase completes) is handled by the companion `luca phase advance` command added in this release and wired into the `/lu` `learn`-step transition — so multi-phase roadmaps now progress end-to-end, not just single-phase ones.
+
+- 871d206: Fix the stage-gate hook blocking the pipeline's own legal operations — a live `/lu` run stalled in the research step because read-only commands and the legal artifact write were misclassified as mutations.
+  - **`classifyWritePath` now normalizes absolute paths.** Claude Code's `Write`/`Edit` pass an ABSOLUTE `file_path` (e.g. `/repo/.luca/phases/01-x/research.md`), but the classifier only matched repo-relative `.luca/` paths — so the legal `research.md` write classified as `code` and the matrix blocked it. It now takes an optional `cwd` and normalizes absolute paths to the repo-relative `.luca/` form for the contract check (always-denied system/home checks still run on the original absolute path). The stage-gate hook passes `cwd` and feeds the relative path to the artifact gate.
+  - **`cd` (and `pushd`/`popd`) are now read-only.** They mutate shell state, not files. Agents prefix nearly every command with `cd <dir> && …`, so omitting `cd` made every compound command classify as `bash-mutate` and get blocked in read-only phases.
+  - **`sed`/`awk` are read-only unless editing in place.** `sed -n '1,60p'` (print) and `awk '{…}'` (filter) read; only `sed -i…` / gawk `-i inplace` mutate. They were unconditionally treated as mutations.
+  - **`luca --help` / `luca --version` are read-only.** `luca` with only flags (no noun) fell through to the unknown-command → `bash-mutate` path.
+
+  Regression tests added for all four cases.
+
 ## 13.0.0-alpha.2
 
 ### Patch Changes
