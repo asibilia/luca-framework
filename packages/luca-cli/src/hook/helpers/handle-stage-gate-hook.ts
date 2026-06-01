@@ -15,6 +15,8 @@ import {
     type WritePathClass,
 } from '@alecsibilia/luca-core'
 
+import { isAbsolute, relative } from 'node:path'
+
 import {
     classifyBashCommand,
     type BashCategory,
@@ -120,7 +122,15 @@ export async function handleStageGateHook(
             log(`stage-gate: ${toolName} without file_path — allowing`)
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         }
-        const pc = classifyWritePath(targetPath, { homedir })
+        // Claude Code passes an ABSOLUTE file_path, but the .luca/ contract
+        // (and artifactPathGate, via phasePathFor) is repo-relative. Pass cwd
+        // to classifyWritePath so it normalizes for the .luca/ check, and feed
+        // the relative form to the gate. Denied checks still run on the
+        // absolute original inside classifyWritePath.
+        const relTarget = isAbsolute(targetPath)
+            ? relative(cwd, targetPath)
+            : targetPath
+        const pc = classifyWritePath(targetPath, { homedir, cwd })
         if (pc.class === 'denied') {
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`
         } else if (
@@ -132,7 +142,7 @@ export async function handleStageGateHook(
             // exact legal artifact for the current pipelineStep; block
             // every other .luca/ write — including .luca/ root files,
             // which are mutated solely through the `luca` CLI.
-            const gate = artifactPathGate(targetPath, state.pipelineStep, state)
+            const gate = artifactPathGate(relTarget, state.pipelineStep, state)
             if (gate.kind === 'block') {
                 const msg = `stage-gate BLOCK: ${toolName} ${gate.reason} (pipelineStep=${state.pipelineStep})`
                 log(msg)

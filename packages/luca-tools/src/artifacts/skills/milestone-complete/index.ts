@@ -76,9 +76,16 @@ When updating state during milestone completion, use the \`luca\` CLI write surf
 STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
 \`\`\`
 
-After archiving the milestone, reset workflow state for the next milestone:
+After archiving the milestone, freeze the closing milestone's phase
+directories and reset workflow state for the next milestone:
 
 \`\`\`bash
+# Move .luca/phases/<slug>/ → .luca/archive/<slug>/ so the next milestone's
+# roadmap starts from an empty phases/ dir (per LUCA_DIR_CONTRACT). Idempotent;
+# skips any slug already present under archive/. Do this BEFORE the next
+# roadmap is created, or stale phase dirs collide on phase number with it.
+luca phase archive 2>/dev/null || true
+
 luca workflow reset 2>/dev/null || true
 \`\`\`
 

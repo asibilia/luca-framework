@@ -21,9 +21,19 @@ const inputSchema = z.object({
 
 /**
  * Replace the roadmap[] array in .luca/state.json with the supplied
- * phases. totalPhases is set to phases.length; currentPhase is reset to
- * 0 (no active phase — orchestrator will advance to phase 1 on the next
- * triage→research transition).
+ * phases. totalPhases is set to phases.length; currentPhase is set to
+ * **1** (the first phase activates immediately) when the roadmap is
+ * non-empty, or 0 when it is empty.
+ *
+ * Why activate phase 1 here: once a roadmap exists there is always a
+ * "current phase", and `resolveActiveSlug` treats `currentPhase===0` as
+ * "no active phase" — so it can compute no canonical `.luca/phases/<slug>/`
+ * path. With currentPhase pinned at 0 and no command anywhere to advance
+ * it, the stage-gate hook had no legal artifact path to allow, and the
+ * very first phase artifact write (e.g. `research.md`) deadlocked: the
+ * Write was blocked as code-write and a raw `mkdir` was blocked as
+ * bash-mutate, with no channel to create the phase. Activating phase 1 on
+ * roadmap creation closes that chicken-and-egg.
  *
  * Restricted to `idle` and `triage` pipelineSteps so a mid-execution
  * orchestrator cannot accidentally clobber an in-progress roadmap.
@@ -35,7 +45,7 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
 > = {
     name: 'luca_roadmap_create',
     description:
-        'Replace the roadmap in .luca/state.json with a new ordered list of phases. Resets currentPhase to 0; updates totalPhases. Only callable in idle or triage pipelineSteps so an active roadmap cannot be clobbered mid-execution.',
+        'Replace the roadmap in .luca/state.json with a new ordered list of phases. Activates phase 1 (currentPhase=1) when non-empty; updates totalPhases. Only callable in idle or triage pipelineSteps so an active roadmap cannot be clobbered mid-execution.',
     inputSchema,
     allowedPhases: ['idle', 'triage'],
     async handler(args, ctx) {
@@ -47,11 +57,12 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
             status: p.status ?? 'pending',
         }))
 
+        const currentPhase = phases.length > 0 ? 1 : 0
         const next = {
             ...state,
             roadmap: phases,
             totalPhases: phases.length,
-            currentPhase: 0,
+            currentPhase,
         }
 
         const absPath = join(ctx.cwd, lucaRootPaths.state)
@@ -61,7 +72,7 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
             content: [
                 {
                     type: 'text',
-                    text: `wrote .luca/state.json (roadmap replaced with ${phases.length} phase(s); currentPhase reset to 0)`,
+                    text: `wrote .luca/state.json (roadmap replaced with ${phases.length} phase(s); currentPhase=${currentPhase})`,
                 },
             ],
         }

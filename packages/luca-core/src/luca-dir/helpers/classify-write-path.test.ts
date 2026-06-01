@@ -113,3 +113,44 @@ describe('classifyWritePath — reason field', () => {
         expect(r.reason).toContain('.git')
     })
 })
+
+describe('classifyWritePath — absolute paths normalized via cwd', () => {
+    // Regression: Claude Code passes an ABSOLUTE file_path. Without cwd
+    // normalization an absolute `.luca/` artifact classified as `code`, and
+    // the stage-gate matrix wrongly blocked legal artifact writes (e.g. the
+    // researcher writing research.md in the research step).
+    const cwd = '/Users/dev/proj'
+
+    test('absolute .luca artifact → planning-general', () => {
+        expect(
+            classifyWritePath(`${cwd}/.luca/phases/01-x/research.md`, { cwd })
+                .class
+        ).toBe('planning-general')
+    })
+
+    test('absolute .luca audit → planning-audit', () => {
+        expect(
+            classifyWritePath(
+                `${cwd}/.luca/phases/01-x/audits/code-review.md`,
+                { cwd }
+            ).class
+        ).toBe('planning-audit')
+    })
+
+    test('absolute code file → code', () => {
+        expect(classifyWritePath(`${cwd}/lib/main.dart`, { cwd }).class).toBe(
+            'code'
+        )
+    })
+
+    test('absolute system path stays denied even with cwd set', () => {
+        expect(classifyWritePath('/etc/passwd', { cwd }).class).toBe('denied')
+    })
+
+    test('without cwd, an absolute .luca path is not recognized', () => {
+        // Documents WHY the hook must pass cwd.
+        expect(
+            classifyWritePath(`${cwd}/.luca/phases/01-x/research.md`).class
+        ).toBe('code')
+    })
+})
