@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import {
     appendLedger,
     isLegalTransition,
+    lucaStateSchema,
     phasePathFor,
     PIPELINE_STEP_TO_COARSE_PHASE,
     PipelineStep,
@@ -104,20 +105,30 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             let state: LucaState
             try {
                 // Serialized read-modify-write under the .luca/state.json lock,
-                // with a strict read (no silent defaults). This is what stops a
-                // concurrent agent's stale-state write from reverting the
-                // advance mid-run — the v13 pipelineStep-reversion corruption.
-                state = await mutateState(ctx.cwd, (s) => {
-                    from = s.pipelineStep
-                    if (!isLegalTransition(s.pipelineStep, to)) {
-                        const allowed =
-                            PIPELINE_TRANSITIONS[s.pipelineStep].join(', ')
-                        throw new Error(
-                            `illegal transition: '${s.pipelineStep}' → '${to}'. Allowed next steps from '${s.pipelineStep}': [${allowed}].`
-                        )
-                    }
-                    return { ...s, pipelineStep: to }
-                })
+                // with a strict read (no silent defaults on a present file).
+                // This is what stops a concurrent agent's stale-state write from
+                // reverting the advance mid-run — the v13 pipelineStep-reversion
+                // corruption.
+                //
+                // bootstrapIfMissing: an ABSENT state.json is the legitimate
+                // first-advance bootstrap (idle → triage on a fresh repo).
+                // Seed it from schema defaults so that path keeps working;
+                // a present-but-truncated file still throws (corruption).
+                state = await mutateState(
+                    ctx.cwd,
+                    (s) => {
+                        from = s.pipelineStep
+                        if (!isLegalTransition(s.pipelineStep, to)) {
+                            const allowed =
+                                PIPELINE_TRANSITIONS[s.pipelineStep].join(', ')
+                            throw new Error(
+                                `illegal transition: '${s.pipelineStep}' → '${to}'. Allowed next steps from '${s.pipelineStep}': [${allowed}].`
+                            )
+                        }
+                        return { ...s, pipelineStep: to }
+                    },
+                    { bootstrapIfMissing: lucaStateSchema.parse({}) }
+                )
             } catch (err) {
                 return {
                     content: [

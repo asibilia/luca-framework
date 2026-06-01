@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
-import { open, readFile, rm, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, open, readFile, rm, stat } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 
 import { lucaStateSchemaTolerant, type LucaState } from '@alecsibilia/luca-core'
 
@@ -26,6 +26,11 @@ function lockPathFor(cwd: string): string {
  * times out rather than hanging.
  */
 async function acquireLock(lockPath: string): Promise<void> {
+    // Ensure `.luca/` exists before the exclusive create — otherwise `open(…,
+    // 'wx')` throws ENOENT (not EEXIST) for callers operating on a workflow
+    // that was never initialized (e.g. `luca workflow reset` recreating
+    // bookkeeping from scratch). mkdir recursive is idempotent and cheap.
+    await mkdir(dirname(lockPath), { recursive: true })
     const deadline = Date.now() + LOCK_TIMEOUT_MS
     for (;;) {
         try {
@@ -74,6 +79,34 @@ export async function withStateLock<T>(
     }
 }
 
+export interface MutateStateOptions {
+    /**
+     * Base state to use when `state.json` is ABSENT (ENOENT). Lets the
+     * legitimate bootstrap path (`luca state advance` on a fresh repo, `luca
+     * workflow reset`) create the file from a known default instead of
+     * failing. Has NO effect when the file is present-but-malformed — that is
+     * always the corruption case and always throws. Omit to require an
+     * already-initialized workflow.
+     */
+    bootstrapIfMissing?: LucaState
+}
+
+/**
+ * The minimal key whose presence distinguishes a real, fully-serialized
+ * `state.json` from a truncated/empty fragment. Every legitimate write emits
+ * `pipelineStep`; a partial write that lands as `{}` (or any object lacking
+ * it) is treated as corruption rather than silently defaulting to
+ * `idle`/`currentPhase: 0` and overwriting an active workflow.
+ */
+function hasRequiredStateKeys(raw: unknown): boolean {
+    return (
+        typeof raw === 'object' &&
+        raw !== null &&
+        !Array.isArray(raw) &&
+        'pipelineStep' in raw
+    )
+}
+
 /**
  * Serialized, strict read-modify-write of `.luca/state.json`.
  *
@@ -81,31 +114,50 @@ export async function withStateLock<T>(
  * write can never revert another writer's update mid-run — the v13 corruption
  * where `pipelineStep`/`currentPhase` silently reverted under concurrent agents.
  *
- * STRICT: refuses to mutate when `state.json` is missing or malformed instead
- * of silently writing schema defaults (which would overwrite an active
- * workflow with `idle`/`currentPhase: 0`). Permissive read paths still use
+ * STRICT: a present-but-incomplete/malformed file always throws rather than
+ * silently writing schema defaults (which would overwrite an active workflow
+ * with `idle`/`currentPhase: 0`). "Strict" is enforced BEFORE schema defaults
+ * apply — the raw JSON must contain the required keys (see
+ * `hasRequiredStateKeys`), otherwise the tolerant schema's `.default()`s would
+ * paper over a truncated write. An ABSENT file is a different case: it throws
+ * unless the caller opts into `bootstrapIfMissing`, which is reserved for the
+ * legitimate initialize/reset paths. Permissive read paths still use
  * `loadCurrentState`; this is exclusively for mutations.
  */
 export async function mutateState(
     cwd: string,
-    mutator: (state: LucaState) => LucaState
+    mutator: (state: LucaState) => LucaState,
+    opts: MutateStateOptions = {}
 ): Promise<LucaState> {
     const statePath = join(cwd, '.luca', 'state.json')
     return withStateLock(cwd, async () => {
-        if (!existsSync(statePath)) {
-            throw new Error(
-                'cannot mutate .luca/state.json: file missing (workflow not initialized — run `luca init`)'
-            )
-        }
         let current: LucaState
-        try {
-            current = lucaStateSchemaTolerant.parse(
-                JSON.parse(await readFile(statePath, 'utf-8'))
-            )
-        } catch {
-            throw new Error(
-                'cannot mutate .luca/state.json: file is malformed — refusing to overwrite (resolve by hand or `luca workflow reset --confirm`)'
-            )
+        if (!existsSync(statePath)) {
+            if (opts.bootstrapIfMissing === undefined) {
+                throw new Error(
+                    'cannot mutate .luca/state.json: file missing (workflow not initialized — run `luca init`)'
+                )
+            }
+            current = opts.bootstrapIfMissing
+        } else {
+            let raw: unknown
+            try {
+                raw = JSON.parse(await readFile(statePath, 'utf-8'))
+            } catch {
+                throw new Error(
+                    'cannot mutate .luca/state.json: file is malformed JSON — refusing to overwrite (resolve by hand or `luca workflow reset --confirm`)'
+                )
+            }
+            // Strict: validate required keys are PRESENT in the raw object
+            // before the tolerant schema applies its defaults. A truncated
+            // write that parses as `{}` lacks `pipelineStep` and must be
+            // rejected, not silently reset to idle/0.
+            if (!hasRequiredStateKeys(raw)) {
+                throw new Error(
+                    'cannot mutate .luca/state.json: file is incomplete (missing required `pipelineStep`) — refusing to overwrite an active workflow with defaults (resolve by hand or `luca workflow reset --confirm`)'
+                )
+            }
+            current = lucaStateSchemaTolerant.parse(raw)
         }
         const next = mutator(current)
         await writeAtomicFile(statePath, JSON.stringify(next, null, 2) + '\n')

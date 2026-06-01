@@ -143,7 +143,7 @@ Create a quick plan for this task.
 
 ### Step 6: Spawn Executor
 
-**MANDATORY**: You MUST spawn a executor sub-agent. Do NOT attempt to execute yourself.
+**MANDATORY**: You MUST spawn an executor sub-agent. Do NOT attempt to execute yourself.
 
 First, read the plan:
 

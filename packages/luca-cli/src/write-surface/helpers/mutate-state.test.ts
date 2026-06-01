@@ -64,6 +64,49 @@ describe('mutateState', () => {
         expect(await readFile(statePath(), 'utf-8')).toContain('not valid json')
     })
 
+    test('strict: rejects a present-but-incomplete {} (no silent default to idle/0)', async () => {
+        // A truncated write that lands as valid-JSON `{}` lacks pipelineStep.
+        // The tolerant schema would default it to idle/currentPhase:0, which
+        // is exactly the active-workflow-clobber this guard prevents.
+        await writeFile(statePath(), '{}')
+        await expect(mutateState(cwd, (s) => s)).rejects.toThrow(/incomplete/)
+        // Left untouched — not overwritten with defaults.
+        expect(await readFile(statePath(), 'utf-8')).toBe('{}')
+    })
+
+    test('bootstrapIfMissing: an ABSENT file is created from the supplied base', async () => {
+        // state.json does not exist; opting into bootstrap seeds it.
+        const result = await mutateState(
+            cwd,
+            (s) => ({ ...s, pipelineStep: 'triage' as const }),
+            { bootstrapIfMissing: { ...baseState } as never }
+        )
+        expect(result.pipelineStep).toBe('triage')
+        expect((await readState()).pipelineStep).toBe('triage')
+    })
+
+    test('bootstrapIfMissing does NOT rescue a present-but-incomplete file', async () => {
+        // Bootstrap only applies to ABSENT files — a truncated present file is
+        // still corruption and must throw even when a base is offered.
+        await writeFile(statePath(), '{}')
+        await expect(
+            mutateState(cwd, (s) => s, {
+                bootstrapIfMissing: { ...baseState } as never,
+            })
+        ).rejects.toThrow(/incomplete/)
+    })
+
+    test('creates the .luca/ lock dir when absent (workflow reset on a fresh repo)', async () => {
+        // Remove .luca/ entirely; withStateLock must recreate it for the lock.
+        await rm(join(cwd, '.luca'), { recursive: true, force: true })
+        let ran = false
+        await withStateLock(cwd, async () => {
+            ran = true
+        })
+        expect(ran).toBe(true)
+        expect(existsSync(join(cwd, '.luca'))).toBe(true)
+    })
+
     test('withStateLock runs the body and releases the lock', async () => {
         let ran = false
         await withStateLock(cwd, async () => {

@@ -139,6 +139,8 @@ Then spawn ALL reviewers in PARALLEL (same message, multiple Task calls):
 # DX Advocate - conventions across phases
 Task(
   prompt="""
+PERSPECTIVE: dx
+
 Review files changed across this milestone for code quality issues.
 
 **Changed files (all phases):**
@@ -175,6 +177,8 @@ description="Milestone DX review"
 
 Task(
 prompt="""
+PERSPECTIVE: simplification
+
 Review files changed across this milestone for complexity and duplication.
 
 **Changed files (all phases):**
@@ -203,6 +207,8 @@ description="Milestone simplification review"
 
 Task(
 prompt="""
+PERSPECTIVE: architecture
+
 Review files changed across this milestone for architecture issues.
 
 **Changed files (all phases):**
@@ -227,16 +233,18 @@ subagent_type="reviewer",
 description="Milestone architecture review"
 )
 
-# Tailwind Auditor - styling consistency
+# Test Quality - coverage and test design across phases
 
 Task(
 prompt="""
-Review files changed across this milestone for Tailwind/styling issues.
+PERSPECTIVE: test-quality
+
+Review files changed across this milestone for test-quality issues.
 
 **Changed files (all phases):**
 {changed_files}
 
-**Your focus:** Dynamic color system usage, shadcn anti-patterns, Tailwind consistency
+**Your focus:** Coverage gaps for milestone behavior, weak/tautological assertions, untested error paths, brittle tests coupled to implementation detail
 
 **Return format:**
 
@@ -252,13 +260,15 @@ issues:
 
 """,
 subagent_type="reviewer",
-description="Milestone Tailwind review"
+description="Milestone test-quality review"
 )
 
 # Security Auditor - security across milestone
 
 Task(
 prompt="""
+PERSPECTIVE: security
+
 Review files changed across this milestone for security issues.
 
 **Changed files (all phases):**
@@ -289,11 +299,11 @@ description="Milestone security review"
 
 **Agent-specific focus:**
 
-- **dx-advocate**: "Conventions consistency across phases, snake_case keys, Lodash usage patterns"
-- **code-simplifier**: "DRY violations across phases, duplicated utilities, refactoring opportunities"
-- **code-architect**: "Architecture consistency, module boundaries, file organization, pattern coherence across phases"
-- **tailwind-auditor**: "Dynamic color system usage, shadcn anti-patterns (text-muted-foreground, bg-primary), Tailwind consistency"
-- **security-auditor**: "Auth patterns consistency, API security across all endpoints, data flow"
+- **dx**: "Conventions consistency across phases, snake_case keys, Lodash usage patterns"
+- **simplification**: "DRY violations across phases, duplicated utilities, refactoring opportunities"
+- **architecture**: "Architecture consistency, module boundaries, file organization, pattern coherence across phases"
+- **test-quality**: "Coverage gaps for milestone behavior, weak assertions, untested error paths, brittle tests"
+- **security**: "Auth patterns consistency, API security across all endpoints, data flow"
 
 **Merge findings:** Combine all issues, categorize by severity and cross-phase flag. Store each reviewer's raw output keyed by agent name for potential debate analysis.
 

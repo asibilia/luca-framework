@@ -1282,6 +1282,8 @@ Then spawn all reviewers in PARALLEL:
 # DX Advocate - conventions, coding standards
 Task(
   prompt="""
+PERSPECTIVE: dx
+
 Review the following changed files for code quality issues.
 
 **Changed files:**
@@ -1313,6 +1315,8 @@ description="DX review"
 
 Task(
 prompt="""
+PERSPECTIVE: simplification
+
 Review the following changed files for complexity and duplication.
 
 **Changed files:**
@@ -1342,6 +1346,8 @@ description="Simplification review"
 
 Task(
 prompt="""
+PERSPECTIVE: architecture
+
 Review the following changed files for architecture issues.
 
 **Changed files:**
@@ -1367,16 +1373,18 @@ subagent_type="reviewer",
 description="Architecture review"
 )
 
-# Tailwind Auditor - styling patterns
+# Test Quality - coverage, assertions, test design
 
 Task(
 prompt="""
-Review the following changed files for Tailwind and styling issues.
+PERSPECTIVE: test-quality
+
+Review the following changed files for test-quality issues.
 
 **Changed files:**
 {CHANGED_FILES}
 
-**Your focus:** Dynamic color system usage, Tailwind patterns, shadcn anti-patterns, MUI deprecation compliance.
+**Your focus:** Missing coverage for new/changed behavior, weak or tautological assertions, untested error paths and edge cases, brittle tests coupled to implementation detail.
 
 **Return format:**
 
@@ -1387,13 +1395,13 @@ issues:
     line: 42
     issue: Brief description
     suggestion: How to fix
-    source_agent: tailwind-auditor
+    source_agent: test-quality
 \`\`\`
 
 If no issues found, return: \`issues: []\`
 """,
 subagent_type="reviewer",
-description="Tailwind review"
+description="Test-quality review"
 )
 
 # Security Auditor - ONLY if auth/api files changed
@@ -1402,6 +1410,8 @@ description="Tailwind review"
 
 Task(
 prompt="""
+PERSPECTIVE: security
+
 Review the following changed files for security issues.
 
 **Changed files:**
