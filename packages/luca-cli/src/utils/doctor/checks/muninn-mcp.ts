@@ -79,14 +79,24 @@ async function isMuninnRegistered(cwd: string): Promise<boolean> {
     return false
 }
 
-/** Any HTTP response (incl. 401) means the MCP endpoint is up. */
+/**
+ * True only when `:8750/mcp` answers like the MuninnDB MCP endpoint: a 2xx,
+ * or a 401/403 when it requires the Bearer token (the unauthenticated probe
+ * here). Any other status (404, 5xx, …) means some OTHER process is bound to
+ * the port — not MuninnDB — so we do NOT count it as reachable, avoiding a
+ * false PASS. A connection error (nothing listening) is also unreachable.
+ */
 async function isMcpReachable(): Promise<boolean> {
     try {
-        await fetch(MCP_URL, {
+        const res = await fetch(MCP_URL, {
             method: 'GET',
             signal: AbortSignal.timeout(2500),
         })
-        return true
+        return (
+            (res.status >= 200 && res.status < 300) ||
+            res.status === 401 ||
+            res.status === 403
+        )
     } catch {
         return false
     }

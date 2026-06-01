@@ -61,10 +61,16 @@ export const legacyPackageCheck: DoctorCheck = {
             : `The pre-v13 ${LEGACY} is still installed globally; install `
               + `${UMBRELLA} for the v13 CLI.`
 
+        // Only the message claims a "conflict" when the umbrella is actually
+        // present; otherwise it is just a leftover legacy install.
+        const message = umbrellaInstalled
+            ? `legacy ${LEGACY} installed globally (conflicts with ${UMBRELLA})`
+            : `legacy ${LEGACY} still installed globally (pre-v13)`
+
         return {
             name: CHECK_NAME,
             status: 'warning',
-            message: `legacy ${LEGACY} installed globally (conflicts with ${UMBRELLA})`,
+            message,
             fixCommand: `bun rm -g ${LEGACY}`,
             details: [
                 conflict,

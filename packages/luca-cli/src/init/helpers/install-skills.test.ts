@@ -1,5 +1,13 @@
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+    lstat,
+    mkdir,
+    mkdtemp,
+    readFile,
+    rm,
+    symlink,
+    writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -89,6 +97,43 @@ describe('installSkills', () => {
             existsSync(join(claudeHome, 'commands/my-custom-command.md'))
         ).toBe(true)
         expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
+    })
+
+    test('replaces a dangling symlink squatting a skill directory (regression: EEXIST crash)', async () => {
+        // Reproduce the exact state an older dev install leaves behind: a
+        // broken symlink at ~/.claude/skills/<name> pointing into a build
+        // path that no longer exists. A naive `mkdir(recursive)` throws
+        // EEXIST on this, which crashed `luca init`.
+        await mkdir(join(claudeHome, 'skills'), { recursive: true })
+        await symlink(
+            join(distClaude, 'nonexistent-old-build-target'),
+            join(claudeHome, 'skills/luca-init')
+        )
+
+        // Must not throw.
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
+
+        const target = join(claudeHome, 'skills/luca-init/SKILL.md')
+        expect(existsSync(target)).toBe(true)
+        expect(await readFile(target, 'utf-8')).toContain('luca-init')
+    })
+
+    test('replaces a symlinked destination file instead of writing through it', async () => {
+        // A stale symlink at a destination *file* path must be removed and
+        // replaced with a real file — not followed (which would clobber the
+        // link's unrelated target).
+        await mkdir(join(claudeHome, 'commands'), { recursive: true })
+        const foreign = join(distClaude, 'foreign-file.md')
+        await writeFile(foreign, 'FOREIGN — must not be overwritten')
+        await symlink(foreign, join(claudeHome, 'commands/phase-plan.md'))
+
+        await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
+
+        const dest = join(claudeHome, 'commands/phase-plan.md')
+        expect((await lstat(dest)).isSymbolicLink()).toBe(false)
+        expect(await readFile(dest, 'utf-8')).toContain('phase-plan')
+        // The symlink's original target was left untouched.
+        expect(await readFile(foreign, 'utf-8')).toContain('FOREIGN')
     })
 
     test('overwrites existing skills with the same name (force-updates from package)', async () => {

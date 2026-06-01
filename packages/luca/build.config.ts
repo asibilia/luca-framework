@@ -131,7 +131,10 @@ export default defineBuildConfig({
                     mkdirSync(dirname(handlerDest), { recursive: true })
                     // Throws (failing the umbrella build) if a handler can't
                     // be bundled — better than silently shipping a broken,
-                    // unresolvable hook.
+                    // unresolvable hook. stderr is inherited so the bundler's
+                    // diagnostics are visible in the build/CI log on failure;
+                    // stdout is suppressed to keep the success path quiet
+                    // (the one-line summary below reports what was bundled).
                     execFileSync(
                         'bun',
                         [
@@ -142,7 +145,7 @@ export default defineBuildConfig({
                             '--outfile',
                             handlerDest,
                         ],
-                        { stdio: 'pipe' },
+                        { stdio: ['ignore', 'ignore', 'inherit'] },
                     )
                     bundledHookHandlers.push(`${entry}.ts`)
                 }
