@@ -33,7 +33,7 @@ Before archiving, ensure all session learnings are captured:
    mcp__muninn__muninn_recall(vault: "default", context: "current session context and unextracted findings")
    \`\`\`
 
-2. **Invoke lu-learner** if candidate learnings exist
+2. **Invoke learner** if candidate learnings exist
 
 3. **Review milestone-specific insights** in MuninnDB:
    - Patterns that were validated multiple times -> bump to High confidence via \`mcp__muninn__muninn_evolve\`

@@ -21,7 +21,7 @@ This skill is an **orchestrator**. YOU MUST delegate work to sub-agents using th
 
 **Required sub-agents for this skill:**
 
-- \`lu-project-researcher\` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
+- \`researcher\` - Domain research (4 parallel agents for Stack, Features, Architecture, Pitfalls)
 - \`lu-research-synthesizer\` - Synthesizes research outputs into SUMMARY.md
 - \`lu-roadmapper\` - Creates \`.luca/roadmap.md\` from requirements via \`luca roadmap create\`
 
@@ -38,7 +38,7 @@ MODEL_PROFILE=$(cat .luca/config.json 2>/dev/null | grep -o '"model_profile"[[:s
 
 | Agent                      | quality | balanced | budget |
 | -------------------------- | ------- | -------- | ------ |
-| lu-project-researcher   | opus    | sonnet   | haiku  |
+| researcher   | opus    | sonnet   | haiku  |
 | lu-research-synthesizer | opus    | sonnet   | haiku  |
 | lu-roadmapper           | opus    | opus     | sonnet |
 
@@ -289,7 +289,7 @@ Task(
 
 Research the optimal technology stack for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="researcher",
   model="{researcher_model}",
   description="Research Stack"
 )
@@ -320,7 +320,7 @@ Task(
 
 Research features and competitive landscape for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="researcher",
   model="{researcher_model}",
   description="Research Features"
 )
@@ -351,7 +351,7 @@ Task(
 
 Research architectural patterns and best practices for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="researcher",
   model="{researcher_model}",
   description="Research Architecture"
 )
@@ -382,7 +382,7 @@ Task(
 
 Research common pitfalls and risks for this project.
 """,
-  subagent_type="lu-project-researcher",
+  subagent_type="researcher",
   model="{researcher_model}",
   description="Research Pitfalls"
 )

@@ -168,7 +168,7 @@ The researcher model tier is resolved via \`resolveModelForAgent("lu-phase-resea
 WORKFLOW_RESEARCH=$(cat .luca/config.json 2>/dev/null | grep -o '"research"[[:space:]]*:[[:space:]]*[^,}]*' | grep -o 'true|false' || echo "true")
 \`\`\`
 
-**MANDATORY**: If research is needed, you MUST spawn a lu-phase-researcher sub-agent. Do NOT attempt to research yourself.
+**MANDATORY**: If research is needed, you MUST spawn a researcher sub-agent. Do NOT attempt to research yourself.
 
 First, read the required context:
 
@@ -219,7 +219,7 @@ Task(
 
 Research how to implement this phase. Analyze the codebase, identify patterns, and document findings.
 """,
-  subagent_type="lu-phase-researcher",
+  subagent_type="researcher",
   model="{researcher_model}",
   description="Research Phase {phase_number}"
 )
@@ -316,7 +316,7 @@ Task(
 - **CHECKPOINT REACHED:** Present to user, get response
 - **PLANNING INCONCLUSIVE:** Offer options to add context, retry, or manual
 
-### 10. Spawn lu-plan-checker Agent
+### 10. Spawn plan-reviewer Agent
 
 Display:
 
@@ -386,7 +386,7 @@ Task(
 
 Verify these plans will achieve the phase goal when executed.
 """,
-  subagent_type="lu-plan-checker",
+  subagent_type="plan-reviewer",
   model="{checker_model}",
   description="Verify Phase {phase_number} plans"
 )
@@ -445,7 +445,7 @@ If issues found and iteration_count < planVerificationIterations:
 - [ ] Research completed (unless --skip-research or --gaps or exists)
 - [ ] architect mode-agent invoked with planning context (researcher + plan-reviewer subagents spawned as required)
 - [ ] Plans created
-- [ ] lu-plan-checker spawned (unless --skip-verify)
+- [ ] plan-reviewer spawned (unless --skip-verify)
 - [ ] Verification passed OR user override
 - [ ] User knows next steps (execute or review)
 

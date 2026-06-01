@@ -199,7 +199,7 @@ issues:
 
 If no issues: \`issues: []\`
 """,
-subagent_type="dx-advocate",
+subagent_type="reviewer",
 model="{reviewer_model}",
 description="Milestone DX review"
 )
@@ -228,7 +228,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="code-simplifier",
+subagent_type="reviewer",
 model="{reviewer_model}",
 description="Milestone simplification review"
 )
@@ -257,7 +257,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="code-architect",
+subagent_type="reviewer",
 model="{reviewer_model}",
 description="Milestone architecture review"
 )
@@ -286,7 +286,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="ui",
+subagent_type="reviewer",
 model="{reviewer_model}",
 description="Milestone Tailwind review"
 )
@@ -315,7 +315,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="security-auditor",
+subagent_type="reviewer",
 model="{reviewer_model}",
 description="Milestone security review"
 )
