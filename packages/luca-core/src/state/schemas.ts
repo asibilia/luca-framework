@@ -90,7 +90,20 @@ export const lucaStateSchema = z.object({
     phaseSubStep: z.string().optional(),
 
     // --- Session ---
+    // `sessionId` is the generated pipeline RUN id (stamped at init via
+    // generateRunId) — used for ledger run-grouping and the lock `run_id`.
+    // It is NOT a Claude Code session id.
     sessionId: z.string().optional(),
+    // `ownerSessionId` is the Claude Code `session_id` (read from PreToolUse
+    // hook stdin) of the session that last advanced the pipeline — i.e. the
+    // session currently driving the run. The stage-gate hook stamps it on
+    // every `luca state advance` and uses it to EXEMPT other ("bystander")
+    // sessions from phase/tool-matrix enforcement: a separate terminal doing
+    // ad-hoc work in the same repo must not be governed by a pipeline it is
+    // not running. Always-denied path/command rules still apply to every
+    // session. Re-stamped on each advance, so a new run from a different
+    // session re-homes ownership automatically.
+    ownerSessionId: z.string().optional(),
 
     // --- Roadmap ---
     roadmap: z.array(RoadmapPhaseSchema).default([]),
