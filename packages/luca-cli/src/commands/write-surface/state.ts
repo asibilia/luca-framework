@@ -5,9 +5,10 @@
  * `.luca/state.json`. Part of the v13 `luca` write surface (Phase B).
  *
  * Leaves:
- *   - `state read`        — read the full workflow state (pure read)
- *   - `state advance`     — atomically advance the pipelineStep
- *   - `state claim-owner` — record the session_id that owns the run
+ *   - `state read`              — read the full workflow state (pure read)
+ *   - `state advance`           — atomically advance the pipelineStep
+ *   - `state claim-owner`       — record the session_id that owns the run
+ *   - `state set-current-phase` — position currentPhase (recovery primitive)
  */
 import { defineCommand } from 'citty'
 
@@ -15,6 +16,7 @@ import {
     lucaStateAdvanceTool,
     lucaStateClaimOwnerTool,
     lucaStateReadTool,
+    lucaStateSetCurrentPhaseTool,
 } from '../../write-surface/index.ts'
 import { runWriteHandler } from './__helpers/run-handler.ts'
 
@@ -79,6 +81,31 @@ const claimOwnerCommand = defineCommand({
     },
 })
 
+const setCurrentPhaseCommand = defineCommand({
+    meta: {
+        name: 'set-current-phase',
+        description:
+            'Set currentPhase directly to a 1-based phase number and mark ' +
+            'that phase in-progress. Recovery primitive for restoring ' +
+            'position after a roadmap reset/wipe.',
+    },
+    args: {
+        'phase-number': {
+            type: 'string',
+            required: true,
+            description:
+                'Target phase number (1-based); must be within 1..totalPhases.',
+        },
+    },
+    async run({ args }) {
+        await runWriteHandler(
+            'state set-current-phase',
+            lucaStateSetCurrentPhaseTool,
+            { currentPhase: Number(args['phase-number']) }
+        )
+    },
+})
+
 export const stateCommand = defineCommand({
     meta: {
         name: 'state',
@@ -88,5 +115,6 @@ export const stateCommand = defineCommand({
         read: readCommand,
         advance: advanceCommand,
         'claim-owner': claimOwnerCommand,
+        'set-current-phase': setCurrentPhaseCommand,
     },
 })

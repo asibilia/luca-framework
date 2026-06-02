@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { generateRunId, lucaStateSchema } from '@alecsibilia/luca-core'
@@ -30,17 +30,29 @@ export async function writeProjectSkeleton(
     // real runId. Without this, `state.sessionId` is undefined and ledger
     // writers fall back to "" — which `readLedgerForRun` can never resolve,
     // silently dropping every postmortem signal for the run.
-    await writeIfMissing({
-        path: join(lucaDir, 'state.json'),
-        contents:
-            JSON.stringify(
-                lucaStateSchema.parse({ sessionId: generateRunId() }),
-                null,
-                2
-            ) + '\n',
-        force: opts.force ?? false,
-        log,
-    })
+    //
+    // C1 safety: NEVER clobber an ACTIVE state.json — even with `force`.
+    // A fresh skeleton write resets to idle + a brand-new sessionId, which is
+    // exactly the "state.json wiped mid-pipeline" corruption from the v13 run
+    // report. `force` is only meant to refresh an idle/empty skeleton, so an
+    // active state (non-idle step, or a non-empty roadmap, or currentPhase>0)
+    // is protected unconditionally.
+    const statePath = join(lucaDir, 'state.json')
+    if (existsSync(statePath) && (await isActiveState(statePath))) {
+        log(`  skip:  ${statePath} (active workflow — refusing to overwrite)`)
+    } else {
+        await writeIfMissing({
+            path: statePath,
+            contents:
+                JSON.stringify(
+                    lucaStateSchema.parse({ sessionId: generateRunId() }),
+                    null,
+                    2
+                ) + '\n',
+            force: opts.force ?? false,
+            log,
+        })
+    }
 
     await writeIfMissing({
         path: join(lucaDir, 'config.json'),
@@ -57,6 +69,31 @@ export async function writeProjectSkeleton(
         force: opts.force ?? false,
         log,
     })
+}
+
+/**
+ * True when `state.json` holds progress worth protecting from a skeleton
+ * overwrite: a non-idle pipelineStep, a non-empty roadmap, or currentPhase>0.
+ * A corrupt/unreadable file returns `false` (let the bootstrap path replace
+ * it) — matching the "permissive when not initialized" contract.
+ */
+async function isActiveState(statePath: string): Promise<boolean> {
+    try {
+        const raw = JSON.parse(await readFile(statePath, 'utf-8')) as Record<
+            string,
+            unknown
+        >
+        const step = raw.pipelineStep
+        const roadmap = raw.roadmap
+        const currentPhase = raw.currentPhase
+        return (
+            (typeof step === 'string' && step !== 'idle') ||
+            (Array.isArray(roadmap) && roadmap.length > 0) ||
+            (typeof currentPhase === 'number' && currentPhase > 0)
+        )
+    } catch {
+        return false
+    }
 }
 
 async function writeIfMissing(args: {

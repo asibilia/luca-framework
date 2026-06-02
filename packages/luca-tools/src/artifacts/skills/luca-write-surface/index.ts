@@ -200,9 +200,14 @@ Used by the gh-pr-address flow. Each takes a JSON \`--file\` payload.
 
 ### \`confidence\` — confidence logging
 
-- **\`luca confidence log --score <0..1> --stage <s> --rationale <r>
-  [--metadata-file <path>]\`** — append a confidence entry to the active
-  phase's confidence.jsonl.
+- **\`luca confidence log --phase <name> --wave <n> --task <id>
+  --confidence <high|medium|low> --category <c> --decision <d>
+  --reasoning <r> --risk <r> [--alternatives "a,b,c"] [--files "a.ts,b.ts"]
+  [--review-hint <h>]\`** — append a confidence entry to the active phase's
+  confidence.jsonl. \`category\` is one of: plan-gap, design-choice,
+  convention-unclear, requirement-ambiguous, dependency-unknown, scope-creep.
+- Alternatively pass the whole entry as one JSON object:
+  **\`luca confidence log --file <payload.json>\`**.
 
 ## Error handling
 

@@ -36,6 +36,9 @@ export async function executeDoctor(
     const { strayLocalInstallCheck } = await import(
         './checks/stray-local-install'
     )
+    const { configVersionSkewCheck } = await import(
+        './checks/config-version-skew'
+    )
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites
@@ -48,6 +51,7 @@ export async function executeDoctor(
         legacyPackageCheck,
         // Project (cwd-dependent)
         strayLocalInstallCheck,
+        configVersionSkewCheck,
     ]
 
     // Filter by scope if provided
