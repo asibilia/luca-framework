@@ -1,5 +1,85 @@
 # @alecsibilia/luca
 
+## 13.0.0-alpha.5
+
+### Patch Changes
+
+- b06dd99: Session-scope the stage-gate hook so a pipeline running in one terminal no
+  longer fences off ad-hoc work in another terminal in the same repo.
+
+  Previously the PreToolUse stage-gate read the shared `.luca/state.json` and
+  enforced the current `pipelineStep` phase/tool matrix against **every**
+  session in the repo. A separate out-of-workflow terminal doing cleanup would
+  inherit the pipeline's phase restrictions — e.g. a `flutter test` run blocked
+  with `stage-gate BLOCK: Bash (category=bash-mutate) is not allowed in
+phase=REVIEWING (pipelineStep=learn)` purely because a pipeline was mid-run
+  elsewhere.
+
+  Changes:
+  - Add `ownerSessionId` to `lucaStateSchema` — the Claude Code `session_id`
+    (read from PreToolUse stdin) of the session driving the current run.
+    Distinct from `sessionId`, which is the generated pipeline run-id used for
+    ledger grouping and the lock `run_id`.
+  - Add a `luca state claim-owner --session-id=<id>` write-surface command that
+    records `ownerSessionId`. The stage-gate hook invokes this handler on every
+    `luca state advance` (the orchestrator-only command) rather than writing
+    `state.json` directly — so the invariant "`.luca/state.json` is mutated
+    solely through the `luca` write surface" is preserved: every `state.json`
+    byte-write is owned by a registered write-surface handler. Re-stamping on
+    each advance re-homes ownership when a new run starts in a different session.
+    Best-effort — a stamp failure never breaks the gate.
+  - Non-owner ("bystander") sessions are exempted from the phase/tool matrix.
+    The exemption runs **after** the always-denied path/command checks
+    (`.git/`, `~/.claude/`, pipe-to-shell, …) and after `artifactPathGate`, so
+    the security floor and `.luca/` artifact protection still apply to all
+    sessions — only the phase-ordering matrix is relaxed.
+
+  Failure direction is conservative: unknown owner or unknown session falls
+  through to full enforcement, so the gate is only ever relaxed for a session
+  we are confident is a non-owner.
+
+  Also hardens two stage-gate classification bugs surfaced by a real run:
+  - **cwd-robust artifact classification.** `classifyWritePath` resolved the
+    `.luca/`-relative path via `relative(cwd, path)`, which only works when the
+    hook's `cwd` is the repo root. When a subagent/harness invoked the hook from
+    a subdirectory, a legal artifact write (e.g. `verify.json` at the `verify`
+    step, `learn.md` at `learn`) normalized to `../../.luca/…`, fell through to
+    the `code` class, and the matrix wrongly blocked it during REVIEWING/PLANNING.
+    A shared `toLucaRelative` resolver now locates the `.luca/` path segment
+    directly, so artifact classification is cwd-independent; the stage-gate hook
+    uses it for both classification and the artifact-path gate.
+  - **bash classifier over-blocking.** Read-only text filters (`sort`, `uniq`,
+    `cut`, `tr`, `comm`, `diff`, `jq`, `rg`, `column`, `nl`, `tac`, `rev`,
+    `paste`, `fold`, `join`) were missing from the read-only allowlist, so any
+    pipeline through one (e.g. `find . | sort`) promoted to `bash-mutate` and was
+    blocked in restrictive phases. Recognized top-level `luca` commands
+    (`version`/`telemetry`/`rules` as read; `init`/`repair`/`doctor`/`retro`/…
+    as `luca-write`) no longer fall through to `bash-mutate` either.
+
+- b06dd99: Follow-up fixes from a real v13 run (Ramora report) — state-write safety, a
+  recovery primitive, and version/doc hygiene.
+  - **C1-residual — never clobber an active `state.json`.** `writeProjectSkeleton`
+    could (with `force`) overwrite an existing `state.json` with a fresh idle
+    skeleton + a brand-new `sessionId` — exactly the "state wiped mid-pipeline"
+    symptom. The state.json write now refuses to overwrite an ACTIVE state (a
+    non-idle pipelineStep, a non-empty roadmap, or currentPhase>0) even under
+    `force`; `force` still refreshes an idle/empty skeleton.
+  - **M2 — `luca state set-current-phase <n>` recovery primitive.** Adds a
+    lock-serialized write-surface command to position `currentPhase` directly to
+    a 1-based phase number (marking it in-progress). Previously `roadmap create`
+    always activated phase 1 and `phase advance` only moved +1 at the `learn`
+    step, so restoring position after a roadmap reset meant walking the pipeline
+    once per phase. Validated `1..totalPhases`.
+  - **C2 — fix stale `luca confidence log` flags.** The `luca-write-surface`
+    reference skill documented the removed `--score/--stage/--rationale` shape;
+    updated to the canonical `--phase/--wave/--task/--confidence/--category/
+--decision/--reasoning/--risk` (or `--file <json>`) surface.
+  - **M4 (part) — config-vs-CLI version-skew doctor check.** `lucaVersion` in
+    `.luca/config.json` is written once at init and never reconciled, so it goes
+    stale after a CLI upgrade. Adds a project-scoped `luca doctor` check that
+    warns on skew and reconciles it under `luca doctor --fix` (preserving all
+    other config keys). Skipped in dev builds.
+
 ## 13.0.0-alpha.4
 
 ### Patch Changes
