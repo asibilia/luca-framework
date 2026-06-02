@@ -1,5 +1,3 @@
-import { isAbsolute, relative } from 'node:path'
-
 import {
     AUDIT_PATH_PATTERN,
     classifyWritePath,
@@ -9,6 +7,7 @@ import {
     phasePathFor,
     resolveActiveSlug,
     STEP_ARTIFACTS,
+    toLucaRelative,
     WAVE_FILE_RE,
     type LucaState,
     type PhaseFile,
@@ -176,13 +175,12 @@ export async function handleStageGateHook(
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         }
         // Claude Code passes an ABSOLUTE file_path, but the .luca/ contract
-        // (and artifactPathGate, via phasePathFor) is repo-relative. Pass cwd
-        // to classifyWritePath so it normalizes for the .luca/ check, and feed
-        // the relative form to the gate. Denied checks still run on the
-        // absolute original inside classifyWritePath.
-        const relTarget = isAbsolute(targetPath)
-            ? relative(cwd, targetPath)
-            : targetPath
+        // (and artifactPathGate, via phasePathFor) is repo-relative. Use the
+        // shared `toLucaRelative` resolver — robust to `cwd` not being the
+        // repo root (a subagent/harness cwd inside a subdir would otherwise
+        // yield `../../.luca/…` and wrongly fail the gate). Denied checks
+        // still run on the absolute original inside classifyWritePath.
+        const relTarget = toLucaRelative(targetPath, cwd)
         const pc = classifyWritePath(targetPath, { homedir, cwd })
         if (pc.class === 'denied') {
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`

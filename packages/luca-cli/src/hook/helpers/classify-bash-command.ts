@@ -43,6 +43,28 @@ const READONLY_COMMANDS = new Set([
     'printf',
     'true',
     'false',
+    // Read-only text filters. These read stdin/files and write to stdout —
+    // they never mutate files on their own. Omitting them made any pipeline
+    // through a filter (e.g. `find . | sort`) promote to bash-mutate via the
+    // unknown-command fallback, blocking read-only inspection in restrictive
+    // phases (v13 run report, M1). `tee`/`xargs` are deliberately EXCLUDED:
+    // `tee` writes files and `xargs` runs an arbitrary (possibly mutating)
+    // command, so they stay conservative.
+    'sort',
+    'uniq',
+    'cut',
+    'tr',
+    'comm',
+    'diff',
+    'jq',
+    'rg',
+    'column',
+    'nl',
+    'tac',
+    'rev',
+    'paste',
+    'fold',
+    'join',
 ])
 
 const GIT_READONLY_SUBCOMMANDS = new Set([
@@ -167,6 +189,27 @@ const ALWAYS_DENIED_COMMANDS = new Set(['eval', 'source', '.'])
 // Read verbs classify as `bash-readonly`; write verbs as `luca-write`.
 // ---------------------------------------------------------------------------
 
+// Top-level `luca` commands (no noun/verb pair) that only READ/report —
+// safe to allow in any phase. Without these, `luca version`, `luca telemetry`,
+// etc. fell through to the unknown-command → bash-mutate path and got blocked
+// at plan/REVIEWING (v13 run report, M1).
+const LUCA_TOPLEVEL_READ = new Set(['version', 'telemetry', 'rules'])
+
+// Top-level `luca` commands that mutate (or may mutate). Classified as
+// `luca-write` — the matrix allows `luca-write` in every non-IDLE phase and
+// each command self-enforces its own preconditions, so they are never wrongly
+// blocked as a generic bash-mutate (e.g. `luca repair`). `hook` is omitted
+// deliberately (internal; invoked by wrappers, not agents).
+const LUCA_TOPLEVEL_WRITE = new Set([
+    'init',
+    'vault:init',
+    'retro',
+    'claim-verify',
+    'classify',
+    'doctor',
+    'repair',
+])
+
 // Read-only `luca` verbs — these do not mutate state.
 const LUCA_READ_VERBS = new Set([
     'read',
@@ -225,7 +268,13 @@ function classifyLucaCommand(rest: string[]): BashCategory | undefined {
     // `luca` with no noun (only flags handled above) — bare usage, read-only.
     if (!noun) return 'bash-readonly'
     const verbs = LUCA_NOUN_VERBS[noun]
-    if (!verbs) return undefined
+    if (!verbs) {
+        // Not a write-surface noun group — it may still be a recognised
+        // top-level command (`luca repair`, `luca doctor`, `luca version`, …).
+        if (LUCA_TOPLEVEL_READ.has(noun)) return 'bash-readonly'
+        if (LUCA_TOPLEVEL_WRITE.has(noun)) return 'luca-write'
+        return undefined
+    }
     // Second non-flag token after the noun is the verb.
     const afterNoun = rest.slice(rest.indexOf(noun) + 1)
     const verb = afterNoun.find((t) => !t.startsWith('-'))

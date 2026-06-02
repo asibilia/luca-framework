@@ -36,3 +36,22 @@ Changes:
 Failure direction is conservative: unknown owner or unknown session falls
 through to full enforcement, so the gate is only ever relaxed for a session
 we are confident is a non-owner.
+
+Also hardens two stage-gate classification bugs surfaced by a real run:
+
+- **cwd-robust artifact classification.** `classifyWritePath` resolved the
+  `.luca/`-relative path via `relative(cwd, path)`, which only works when the
+  hook's `cwd` is the repo root. When a subagent/harness invoked the hook from
+  a subdirectory, a legal artifact write (e.g. `verify.json` at the `verify`
+  step, `learn.md` at `learn`) normalized to `../../.luca/…`, fell through to
+  the `code` class, and the matrix wrongly blocked it during REVIEWING/PLANNING.
+  A shared `toLucaRelative` resolver now locates the `.luca/` path segment
+  directly, so artifact classification is cwd-independent; the stage-gate hook
+  uses it for both classification and the artifact-path gate.
+- **bash classifier over-blocking.** Read-only text filters (`sort`, `uniq`,
+  `cut`, `tr`, `comm`, `diff`, `jq`, `rg`, `column`, `nl`, `tac`, `rev`,
+  `paste`, `fold`, `join`) were missing from the read-only allowlist, so any
+  pipeline through one (e.g. `find . | sort`) promoted to `bash-mutate` and was
+  blocked in restrictive phases. Recognized top-level `luca` commands
+  (`version`/`telemetry`/`rules` as read; `init`/`repair`/`doctor`/`retro`/…
+  as `luca-write`) no longer fall through to `bash-mutate` either.
