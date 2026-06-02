@@ -18,10 +18,8 @@
  * wiring requires an API key this check cannot supply, so there is no
  * automatic `fix()`.
  */
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-
 import type { CheckResult, DoctorCheck } from '../types'
+import { isMuninnRegistered } from '../../muninn-mcp-registration'
 
 const CHECK_NAME = 'MuninnDB MCP wiring'
 
@@ -31,53 +29,6 @@ const MCP_URL = 'http://127.0.0.1:8750/mcp'
 const ADD_COMMAND =
     'claude mcp add --transport sse muninn http://localhost:8750/mcp ' +
     '--header "Authorization: Bearer <your-muninn-api-key>"'
-
-/** Read + parse a JSON object file; null on missing/unreadable/malformed. */
-async function readJsonObject(
-    path: string
-): Promise<Record<string, unknown> | null> {
-    try {
-        const file = Bun.file(path)
-        if (!(await file.exists())) return null
-        const parsed = JSON.parse(await file.text()) as unknown
-        return parsed !== null && typeof parsed === 'object'
-            ? (parsed as Record<string, unknown>)
-            : null
-    } catch {
-        return null
-    }
-}
-
-/** True when an `mcpServers` map contains a `muninn` entry. */
-function hasMuninnEntry(mcpServers: unknown): boolean {
-    return (
-        mcpServers !== null &&
-        typeof mcpServers === 'object' &&
-        'muninn' in (mcpServers as Record<string, unknown>)
-    )
-}
-
-/** Scan the user + project config surfaces for a registered `muninn` server. */
-async function isMuninnRegistered(cwd: string): Promise<boolean> {
-    const projectMcp = await readJsonObject(join(cwd, '.mcp.json'))
-    if (hasMuninnEntry(projectMcp?.mcpServers)) return true
-
-    const userConfig = await readJsonObject(join(homedir(), '.claude.json'))
-    if (hasMuninnEntry(userConfig?.mcpServers)) return true
-
-    const projects = userConfig?.projects
-    if (projects !== null && typeof projects === 'object') {
-        const project = (projects as Record<string, unknown>)[cwd]
-        if (
-            project !== null &&
-            typeof project === 'object' &&
-            hasMuninnEntry((project as Record<string, unknown>).mcpServers)
-        ) {
-            return true
-        }
-    }
-    return false
-}
 
 /**
  * True only when `:8750/mcp` answers like the MuninnDB MCP endpoint: a 2xx,
