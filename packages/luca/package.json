@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca",
   "description": "Luca — spec-driven agentic development workflow for Claude Code (umbrella; bundles luca-cli, luca-core, luca-tools)",
-  "version": "13.0.0-alpha.5",
+  "version": "13.0.0-alpha.6",
   "license": "Apache-2.0",
   "author": "Alec Sibilia <sibilia.alec@gmail.com>",
   "homepage": "https://github.com/asibilia/luca-framework#readme",
