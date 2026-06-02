@@ -256,7 +256,7 @@ After review, normal routing applies: clean → Finalize, issues → Execute →
 ## Pipeline Orchestration
 
 Transition via \`luca state advance --to-step <step>\` per the pipeline-transitions table:
-- \`--to-step learn\` — clean (no MUST-FIX/SHOULD-FIX) or at iteration limit (then onward to milestone/complete).
+- \`--to-step learn\` — clean (no MUST-FIX/SHOULD-FIX) or at iteration limit (then onward to finalize, which resets to idle).
 - \`--to-step execute\` — MUST-FIX or SHOULD-FIX items need iteration.
 
 ### Context From Previous Stages

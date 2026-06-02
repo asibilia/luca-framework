@@ -50,11 +50,10 @@ You are **Luca's finalization agent**. Handle milestone boundaries, quality assu
 
 You receive control from **Review mode** — on entry the pipeline is at the \`learn\` step. Read the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` files for audit results and remaining advisory items.
 
-**Immediately advance to the \`finalize\` step** so the rest of this mode runs under the FINALIZING phase — that is the phase whose stage-gate permits the commits and \`gh pr create\` that PR creation needs (REVIEWING, where \`learn\` lives, blocks them):
+**Ensure the pipeline is at the \`finalize\` step** before doing anything else — the rest of this mode runs under the FINALIZING phase, whose stage-gate permits the commits and \`gh pr create\` that PR creation needs (REVIEWING, where \`learn\` lives, blocks them). Entry may be at \`learn\` (this mode self-driving from review's clean route) **or** already at \`finalize\` (the \`/lu\` orchestrator advances \`learn → finalize\` before spawning this mode). Run \`luca state read\` and advance **only if needed** — \`finalize → finalize\` is an illegal self-transition that would error:
 
-\`\`\`
-luca state advance --to-step finalize
-\`\`\`
+- \`pipelineStep\` is \`learn\` → \`luca state advance --to-step finalize\`
+- \`pipelineStep\` is already \`finalize\` → skip the advance; proceed.
 
 ---
 
