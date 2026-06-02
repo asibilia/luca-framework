@@ -17,6 +17,7 @@
     "feat-port-caveman-skill",
     "feat-v13-agent-roster-reconciliation",
     "fix-bundle-hook-handlers",
+    "fix-finalize-step-reentry-edges",
     "fix-init-decouple-vault-key",
     "fix-init-skill-install-stale-symlinks",
     "fix-luca-5-review-outer-reviewer-fanout",
