@@ -19,11 +19,14 @@ Changes:
   (read from PreToolUse stdin) of the session driving the current run.
   Distinct from `sessionId`, which is the generated pipeline run-id used for
   ledger grouping and the lock `run_id`.
-- The stage-gate hook stamps `ownerSessionId` on every `luca state advance`
-  (the orchestrator-only command), via the existing lock-guarded
-  `mutateState`. Re-stamping on each advance re-homes ownership when a new run
-  starts in a different session. The stamp is best-effort and never breaks the
-  gate.
+- Add a `luca state claim-owner --session-id=<id>` write-surface command that
+  records `ownerSessionId`. The stage-gate hook invokes this handler on every
+  `luca state advance` (the orchestrator-only command) rather than writing
+  `state.json` directly — so the invariant "`.luca/state.json` is mutated
+  solely through the `luca` write surface" is preserved: every `state.json`
+  byte-write is owned by a registered write-surface handler. Re-stamping on
+  each advance re-homes ownership when a new run starts in a different session.
+  Best-effort — a stamp failure never breaks the gate.
 - Non-owner ("bystander") sessions are exempted from the phase/tool matrix.
   The exemption runs **after** the always-denied path/command checks
   (`.git/`, `~/.claude/`, pipe-to-shell, …) and after `artifactPathGate`, so

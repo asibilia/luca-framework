@@ -23,7 +23,7 @@ import {
     type BashCategory,
 } from './classify-bash-command.ts'
 
-import { mutateState } from '../../write-surface/helpers/mutate-state.ts'
+import { lucaStateClaimOwnerTool } from '../../write-surface/handlers/luca-state-claim-owner.ts'
 
 export interface HandleStageGateHookOptions {
     /** Raw JSON string read from PreToolUse stdin. */
@@ -107,9 +107,16 @@ export async function handleStageGateHook(
     // `luca state advance`, so the session issuing it is, by definition, the
     // session driving the pipeline. Stamp it as the run owner — re-stamping
     // on every advance re-homes ownership when a new run starts in a
-    // different session. Best-effort: a stamp failure (e.g. state.json absent
-    // on a brand-new repo's first advance) must never break the gate, so it
-    // falls through to conservative enforcement.
+    // different session.
+    //
+    // The mutation is delegated to the `luca state claim-owner` write-surface
+    // handler (NOT a direct `mutateState` call), so the invariant "state.json
+    // is mutated solely through the luca write surface" holds — the hook is a
+    // caller of the sanctioned surface, identical to how skills mutate state.
+    //
+    // Best-effort: a stamp failure (e.g. state.json absent on a brand-new
+    // repo's first advance) must never break the gate, so it falls through to
+    // conservative enforcement.
     if (
         toolName === 'Bash' &&
         sessionId &&
@@ -119,11 +126,7 @@ export async function handleStageGateHook(
         )
     ) {
         try {
-            await mutateState(cwd, (s) =>
-                s.ownerSessionId === sessionId
-                    ? s
-                    : { ...s, ownerSessionId: sessionId }
-            )
+            await lucaStateClaimOwnerTool.handler({ sessionId }, { cwd })
             // Reflect the stamp in our in-memory copy so the bystander check
             // below sees the fresh owner (this advancing session IS the owner).
             state.ownerSessionId = sessionId

@@ -5,13 +5,15 @@
  * `.luca/state.json`. Part of the v13 `luca` write surface (Phase B).
  *
  * Leaves:
- *   - `state read`    — read the full workflow state (pure read)
- *   - `state advance` — atomically advance the pipelineStep
+ *   - `state read`        — read the full workflow state (pure read)
+ *   - `state advance`     — atomically advance the pipelineStep
+ *   - `state claim-owner` — record the session_id that owns the run
  */
 import { defineCommand } from 'citty'
 
 import {
     lucaStateAdvanceTool,
+    lucaStateClaimOwnerTool,
     lucaStateReadTool,
 } from '../../write-surface/index.ts'
 import { runWriteHandler } from './__helpers/run-handler.ts'
@@ -53,6 +55,30 @@ const advanceCommand = defineCommand({
     },
 })
 
+const claimOwnerCommand = defineCommand({
+    meta: {
+        name: 'claim-owner',
+        description:
+            'Record the Claude Code session that owns the current run ' +
+            '(state.ownerSessionId). Idempotent and phase-agnostic — the ' +
+            'stage-gate hook uses it to scope phase enforcement to the ' +
+            'owning session.',
+    },
+    args: {
+        'session-id': {
+            type: 'string',
+            required: true,
+            description:
+                'Claude Code session_id of the session driving the run.',
+        },
+    },
+    async run({ args }) {
+        await runWriteHandler('state claim-owner', lucaStateClaimOwnerTool, {
+            sessionId: args['session-id'],
+        })
+    },
+})
+
 export const stateCommand = defineCommand({
     meta: {
         name: 'state',
@@ -61,5 +87,6 @@ export const stateCommand = defineCommand({
     subCommands: {
         read: readCommand,
         advance: advanceCommand,
+        'claim-owner': claimOwnerCommand,
     },
 })
