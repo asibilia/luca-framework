@@ -107,7 +107,13 @@ export const vaultInitCommand = defineCommand({
         if (vaultResult.apiKey) {
             await writeApiKeyToEnv(vaultResult.apiKey, envPath)
             p.log.success('API key written to .env')
+        }
 
+        // Protect `.env` in `.gitignore` whenever it exists — independent of
+        // whether we wrote a Muninn key this run. In the common no-key path
+        // (MCP server already registered) a project may still have a `.env`
+        // holding OTHER secrets, and it must not be left untracked-by-gitignore.
+        if (existsSync(envPath)) {
             await ensureEnvInGitignore(cwd)
             p.log.success('.env protected in .gitignore')
         }

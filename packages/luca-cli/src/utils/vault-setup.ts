@@ -300,9 +300,12 @@ export async function writeVaultConfig(
  *
  * The key is INSTANCE-level, not per-vault: one MuninnDB instance issues one
  * key that reaches every vault (the vault is a per-tool-call parameter). So
- * there is exactly one env var — earlier per-vault aliasing
- * (`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`) wrote the same
- * value under several names and was never read by anything. This value is a
+ * there is exactly one env var. Earlier per-vault aliasing
+ * (`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`) wrote the SAME
+ * value under several names, which was redundant: consumers that look up a
+ * per-vault/default key (e.g. luca-studio's `muninn-config`) already fall back
+ * to the generic `MUNINN_DB_API_KEY`, and the instance-level key is valid for
+ * every vault — so the single generic var is sufficient. This value is also a
  * convenience reference for the one-time `claude mcp add … --header
  * "Authorization: Bearer <key>"` registration.
  *

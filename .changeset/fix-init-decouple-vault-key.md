@@ -11,8 +11,11 @@ single registered `muninn` MCP server therefore covers all current and future
 vaults. The wizard previously prompted for a key on every `luca vault:init`
 (and `luca init`, which delegates to it), implying each vault needs its own —
 and `writeApiKeyToEnv` wrote the same key value under three names
-(`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`, `MUNINN_DB_API_KEY`),
-none of which anything reads.
+(`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`, `MUNINN_DB_API_KEY`).
+Writing all three was redundant: consumers that look up a per-vault/default key
+(e.g. luca-studio's `muninn-config`) already fall back to the generic
+`MUNINN_DB_API_KEY`, and the instance-level key is valid for every vault — so a
+single generic var suffices.
 
 Changes:
 
@@ -25,6 +28,7 @@ Changes:
 - **Reword the prompt** to say the key is a one-time, instance-level credential
   for registering the MCP server — not a per-vault secret.
 - **Simplify `writeApiKeyToEnv`** to write a single `MUNINN_DB_API_KEY` (the
-  per-vault aliasing was dead — same value under multiple names, never read).
+  per-vault aliasing was redundant — same value under multiple names, and
+  consumers fall back to the generic key).
   `VaultConfig.apiKey` is now optional, and `vault:init` only writes `.env`
   when a key was actually captured.
