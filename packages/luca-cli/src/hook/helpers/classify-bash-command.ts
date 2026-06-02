@@ -225,7 +225,7 @@ const LUCA_READ_VERBS = new Set([
 // Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
 // noun-group commands registered in src/cli.ts and their leaf subcommands.
 const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
-    state: new Set(['read', 'advance', 'claim-owner']),
+    state: new Set(['read', 'advance', 'claim-owner', 'set-current-phase']),
     phase: new Set(['current', 'advance', 'archive']),
     roadmap: new Set(['read', 'create']),
     preferences: new Set(['read', 'write']),

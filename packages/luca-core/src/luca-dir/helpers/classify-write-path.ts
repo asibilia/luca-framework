@@ -70,23 +70,30 @@ export const AUDIT_PATH_PATTERN = new RegExp(
  * path segment directly.
  *
  * Returns the path unchanged when it is not under any `.luca/` directory.
+ *
+ * Cross-platform: the `.luca/` prefix checks and fallback regex are POSIX
+ * (`/`). On Windows, Claude Code passes `C:\…\.luca\…` and `relative()`
+ * returns `..\.luca\…`, neither of which would match — so both the input and
+ * the `relative()` result are normalized to forward slashes first. (Backslash
+ * is vanishingly rare in POSIX paths, so this normalization is safe there.)
  */
 export function toLucaRelative(path: string, cwd?: string): string {
+    const p = path.replace(/\\/g, '/')
     // Preferred: cwd-relative normalization, used only when it actually
     // lands inside `.luca/` (i.e. cwd really is the repo root).
     if (cwd && isAbsolute(path)) {
-        const r = relative(cwd, path)
+        const r = relative(cwd, path).replace(/\\/g, '/')
         if (r === '.luca' || r.startsWith('.luca/')) return r
-    } else if (path === '.luca' || path.startsWith('.luca/')) {
-        return path
+    } else if (p === '.luca' || p.startsWith('.luca/')) {
+        return p
     }
     // Fallback: recover the contract-relative portion by locating the
     // `.luca/` path segment (segment-anchored so `src/foo.luca/…` can't
     // match). Handles absolute paths from any cwd and `../../.luca/…` forms.
-    const seg = path.match(/(?:^|\/)(\.luca\/.*)$/)
+    const seg = p.match(/(?:^|\/)(\.luca\/.*)$/)
     if (seg) return seg[1]!
-    if (/(?:^|\/)\.luca$/.test(path)) return '.luca'
-    return path
+    if (/(?:^|\/)\.luca$/.test(p)) return '.luca'
+    return p
 }
 
 /**
