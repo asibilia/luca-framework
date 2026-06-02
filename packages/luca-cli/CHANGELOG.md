@@ -1,5 +1,12 @@
 # @alecsibilia/luca-cli
 
+## 13.0.0-alpha.4
+
+### Patch Changes
+
+- @alecsibilia/luca-core@13.0.0-alpha.4
+- @alecsibilia/luca-tools@13.0.0-alpha.4
+
 ## 13.0.0-alpha.3
 
 ### Patch Changes

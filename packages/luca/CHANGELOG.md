@@ -1,5 +1,71 @@
 # @alecsibilia/luca
 
+## 13.0.0-alpha.4
+
+### Patch Changes
+
+- 0e464b6: Reconcile the v13 agent roster so every agent a skill spawns actually ships, and restore the beneficial tooling the port dropped. Previously skills referenced a dozen v12 agents that don't exist in v13 (they fell back to generic read-only agents), and the verification tribunal / model-tier routing referenced dropped subsystems.
+
+  **New subagents (ported — genuinely reusable primitives):**
+  - `test-writer` — authors focused, non-vacuous tests and runs them; tests are first-class in v13 again, and the tribunal uses it to settle a dispute with an empirical repro.
+  - `debater` — stance-parameterized adversarial validator (DEFEND/CHALLENGE a proposition with calibrated confidence). The reusable primitive behind the verification tribunal and any decision that benefits from adversarial validation.
+
+  **Extended:** `reviewer` gains an `integration` perspective (cross-phase wiring), replacing the dropped `lu-integration-checker`.
+
+  **Verification tribunal** re-implemented on v13 agents: `debater` (defender/challenger) + `test-writer` (empirical repro) + `reviewer` (integration), with the orchestrator arbitrating by confidence-weighted majority. Used in phase-execute (diagnostic + root-cause tribunals) and milestone-audit (rebuttal round).
+
+  **Dropped agents folded into existing agents / inline orchestration** (no dangling spawns): `lu-research-synthesizer`→`researcher`; `lu-roadmapper`→inline `luca roadmap create` (matching milestone-new); `lu-discuss-researcher`→`researcher`; `lu-repo-architect`→`architect`; the roadmap-revision swarm (`lu-pm-planner`, `lu-roadmap-architect/prioritizer/qa/synthesizer`)→`architect`/`reviewer` role spawns; `lu-cognition` (pre-flight) and `lu-router` (complexity) → inline orchestrator steps; `lu-pm-planner` (session WSJF)→`architect`.
+
+  **Removed** the stale `resolveModelForAgent` / `model-routing.ts` prose across 6 skills — that module was never ported to v13; agent model tiers come from each agent's own definition / the harness default.
+
+  Net roster: 10 subagents (was 8) + 10 mode-agents. Every `subagent_type=` across all skills now resolves to a real v13 agent.
+
+- 0e464b6: Fix skills spawning non-existent v12 agent names. The mastracode→luca-tools port renamed the agents (dropped the `lu-` prefix, consolidated reviewers into one `reviewer` subagent) but the skill bodies still used the old names — so `/lu` and friends spawned `subagent_type="lu-executor"`, `"lu-verifier"`, `"lu-phase-researcher"`, `"code-architect"`, etc., which don't resolve to any installed v13 agent. Claude Code then fell back to a generic/read-only agent that lacked the real agent's tools and instructions, which is why subagents "couldn't write" their own artifacts and the orchestrator had to persist everything.
+
+  Renamed across all skills (both `subagent_type=` spawn values and imperative prose): `lu-executor`→`executor`, `lu-verifier`→`verifier`, `lu-learner`→`learner`, `lu-phase-researcher`/`lu-project-researcher`→`researcher`, `lu-plan-checker`→`plan-reviewer`, and the per-perspective reviewers (`code-architect`/`dx-advocate`/`code-simplifier`/`security-auditor`/`ui`)→`reviewer` (perspective passed in the prompt).
+
+  Resolved in this PR (agent-roster reconciliation): the tribunal pattern is re-implemented as the `debater` subagent (defend/challenge) plus the `integration` reviewer perspective; `test-writer` is restored as a first-class subagent; roadmap creation is handled inline by the orchestrator via `luca roadmap create`; and the stale `resolveModelForAgent`/`model-routing.ts` prose is removed (model tiers come from each agent's own definition in v13). No v12 agent names remain unaccounted for.
+
+- 0e464b6: Fix `.luca/state.json` corruption / step-reversion under concurrent agents. A live `/lu` run saw `pipelineStep` revert (the verifier read `checks` while the orchestrator had advanced to `verify`): state mutations did an unlocked read-modify-write, so a concurrent or stale-state write from a subagent could clobber the orchestrator's update, and `loadCurrentState` silently returns schema defaults (`idle`, `currentPhase: 0`) on any read hiccup.
+  - New `mutateState` / `withStateLock` helpers serialize every `state.json` write behind an exclusive on-disk lock (with stale-lock stealing so a crashed holder can't deadlock). `state-advance`, `roadmap-create`, `phase-advance`, and `workflow-reset` now go through them — verified: 30 concurrent mutations land 30 updates with zero losses.
+  - `mutateState` reads strictly: it **refuses to mutate** when `state.json` is missing or malformed rather than overwriting an active workflow with defaults.
+  - Subagent shared prefix now forbids state-mutating `luca` commands (`state advance`, `roadmap create`, `phase advance`/`archive`, `workflow reset`) — pipeline state is the orchestrator's; subagents read state and write only their one artifact.
+  - Added `state.json.lock` to the `.luca/` contract so the structural scanner treats the transient lock as legitimate.
+
+- 0e464b6: Fix `luca verification` (and `luca <noun> --help`) being blocked by the stage-gate. The bash classifier's `LUCA_NOUN_VERBS` was missing the real, read-only `verification` command (`read` / `aggregate`), so `luca verification …` classified as `bash-mutate` and was refused in PLANNING/REVIEWING. Added `verification` to the allowlist (read verbs), and `--help`/`-h`/`--version` now classify read-only for ANY noun instead of falling through to `bash-mutate`. Note: `-v` is deliberately NOT treated as a version flag — it's the CLI's `--verbose` alias, so honoring it would let a mutating command (e.g. `luca doctor --fix -v`) bypass the gate.
+- 0e464b6: Fix the orchestrator-owns-memory-I/O boundary so the learner (and every subagent) stops silently failing to persist.
+
+  Subagents have no MuninnDB/MCP access, yet several subagent bodies still instructed them to call `mcp__muninn__*` and run `luca retro postmortem`. Those calls silently no-op'd: the learner produced excellent structured learnings but never reached MuninnDB, and `learn.md` was never written because the body deferred persistence to a tool the subagent can't reach.
+
+  The fix establishes a single rule — **memory I/O belongs to the orchestrator** — and rewires the artifacts accordingly:
+  - `shared-prefix.ts`: replaced the "Pre-Invoke Memory Recall" section with "Memory I/O Is the Orchestrator's Job" — subagents never call `mcp__muninn__*`; prior context is supplied in the prompt, and insights are RETURNED for the orchestrator to persist. Also added a Core Operating Rule forbidding state-mutating `luca` commands from subagents.
+  - `learner.ts`: drops the MuninnDB/postmortem invocations; now (1) writes `learn.md` via the Write tool and (2) returns a machine-parseable `TO_PERSIST` block annotated with each entry's target vault.
+  - `shadow-scanner.ts`: the orchestrator now supplies the kept-list (`shadow-debt:kept`) and pending backlog; the scanner returns a `metric` block for the orchestrator to persist.
+  - `discussion.ts`, `executor.ts`: historical context is now orchestrator-supplied rather than self-recalled.
+  - `lu` (skill + command), `phase-execute`, `repo-cleanup` (skill + command): the orchestrator now persists the learner's `TO_PERSIST` learnings via `muninn_remember_batch` (routed per entry vault) and the shadow-scanner's scan metric, and recalls + supplies the kept-list before spawning the scanner.
+
+  Also fixes a stale-rename collision: `commands/phase-plan.ts` referenced the dropped legacy planner as `architect` (self-contradicting the live architect mode-agent); restored to `lu-planner`.
+
+- 0e464b6: Address PR #278 review (batch 2): finish the orchestrator-owns-memory-I/O alignment and fix two more bootstrap/tooling gaps.
+  - **Subagent `muninn-recall` contradiction**: `debater`, `test-writer`, `reviewer`, `researcher`, `plan-reviewer`, `discussion`, and `executor` all declared `pipelineInvocations: ['muninn-recall']`, which the compiler expands into a "Pre-invoke MuninnDB recall" instruction — directly contradicting the shared-prefix rule that subagents have no MCP access. Dropped `muninn-recall` from every subagent (CLI/Bash-based `rule-run`/`confidence-log`/`claim-verify` retained); the orchestrator supplies prior context in the prompt. Stale docstrings updated to match.
+  - **`reviewer` could not write its artifact**: `allowedTools` omitted `Write`, but the reviewer's one assigned artifact is `audits/<reviewer>.md`. Added `Write`.
+  - **`luca roadmap create` bootstrap**: it routed through strict `mutateState` and threw on a fresh workflow, even though it's a legitimate first-phase bootstrap. Now opts into `bootstrapIfMissing` (like `luca_state_advance`) — seeds an absent `state.json` from defaults under the lock while still throwing on a present-but-truncated file.
+  - **`learner` slug discovery**: the body told the learner to run `luca phase current`, but it has no Bash. It now uses the orchestrator-supplied `{phase_slug}`; `phase-execute` resolves and passes it.
+  - **shared-prefix wording**: clarified that the "write only your one assigned artifact" rule constrains `.luca/` pipeline artifacts only — it does NOT forbid `executor`/`test-writer` from editing production code.
+  - **Changeset accuracy**: corrected the `-v` claim in the verification-classifier note (it's excluded, not read-only), and refreshed the "Still pending" list in the stale-names note (tribunal/test-writer/roadmap/model-routing are all resolved in this PR).
+
+  Regression tests added for roadmap-create bootstrap (absent → seeded, truncated `{}` → throws) and a stale `currentPhase` assertion corrected to match the documented phase-1 activation.
+
+- 0e464b6: Address PR #278 review: stage-gate `-v` bypass, state-mutation strictness/bootstrap, and reviewer-perspective directives.
+  - **Stage gate (`classify-bash-command`)**: `-v` is the `--verbose` alias, not `--version`. Treating it as a version probe let mutating commands like `luca doctor --fix -v` classify as read-only and bypass the gate. The read-only shortcut now matches only `--help`/`-h`/`--version`.
+  - **`mutateState` (`acquireLock`)**: ensure `.luca/` exists before the exclusive lock create, so `luca workflow reset` (and any bootstrap path) no longer throws `ENOENT` on an uninitialized workflow.
+  - **`mutateState` strictness**: "strict" is now enforced before schema defaults apply — the raw JSON must contain the required `pipelineStep` key, so a truncated-but-valid `{}` is rejected instead of silently defaulting to `idle`/`currentPhase: 0` and clobbering an active workflow.
+  - **`mutateState` bootstrap**: a new `bootstrapIfMissing` option distinguishes an ABSENT file (legitimate initialize/reset → seed from a supplied base) from a present-but-incomplete one (corruption → throw). `luca_state_advance` opts in, preserving the missing→defaults first-advance contract while staying strict on malformed reads.
+  - **Reviewer spawns**: every `reviewer` Task in `phase-execute` and `milestone-audit` now declares an explicit `PERSPECTIVE:` (dx / simplification / architecture / security). The dead Tailwind/UI review (no such perspective on the consolidated reviewer, and this is a CLI repo) is repurposed to `test-quality`.
+  - **Grammar**: "spawn a executor" → "an executor" in `quick`.
+
+  Regression tests added for the `-v` non-bypass, the incomplete-`{}` rejection, `bootstrapIfMissing` semantics, and lock-dir creation.
+
 ## 13.0.0-alpha.3
 
 ### Patch Changes
