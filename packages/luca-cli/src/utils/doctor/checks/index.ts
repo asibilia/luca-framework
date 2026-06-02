@@ -1,4 +1,5 @@
 export { bunRuntimeCheck } from './bun-runtime'
+export { configVersionSkewCheck } from './config-version-skew'
 export { legacyPackageCheck } from './legacy-package'
 export { muninndbHealthCheck } from './muninndb-health'
 export { muninnMcpCheck } from './muninn-mcp'

@@ -56,6 +56,47 @@ export const AUDIT_PATH_PATTERN = new RegExp(
 )
 
 /**
+ * Resolve a write-target path to its `.luca/`-contract-relative form,
+ * robust to the hook's `cwd` NOT being the repo root.
+ *
+ * Claude Code passes ABSOLUTE `file_path`s; the `.luca/` contract (and
+ * `phasePathFor` / `AUDIT_PATH_PATTERN`) are repo-relative. The naive
+ * `relative(cwd, path)` only works when `cwd` IS the repo root — when a
+ * subagent/harness invokes the hook with `cwd` set to a subdirectory,
+ * `relative()` yields `../../.luca/phases/…`, which fails the `.luca/`
+ * prefix check, mis-classifies a legal artifact write as `code`, and the
+ * matrix wrongly blocks it (the REVIEWING/PLANNING block in the v13 run
+ * report). To be cwd-independent we fall back to locating the `.luca/`
+ * path segment directly.
+ *
+ * Returns the path unchanged when it is not under any `.luca/` directory.
+ *
+ * Cross-platform: the `.luca/` prefix checks and fallback regex are POSIX
+ * (`/`). On Windows, Claude Code passes `C:\…\.luca\…` and `relative()`
+ * returns `..\.luca\…`, neither of which would match — so both the input and
+ * the `relative()` result are normalized to forward slashes first. (Backslash
+ * is vanishingly rare in POSIX paths, so this normalization is safe there.)
+ */
+export function toLucaRelative(path: string, cwd?: string): string {
+    const p = path.replace(/\\/g, '/')
+    // Preferred: cwd-relative normalization, used only when it actually
+    // lands inside `.luca/` (i.e. cwd really is the repo root).
+    if (cwd && isAbsolute(path)) {
+        const r = relative(cwd, path).replace(/\\/g, '/')
+        if (r === '.luca' || r.startsWith('.luca/')) return r
+    } else if (p === '.luca' || p.startsWith('.luca/')) {
+        return p
+    }
+    // Fallback: recover the contract-relative portion by locating the
+    // `.luca/` path segment (segment-anchored so `src/foo.luca/…` can't
+    // match). Handles absolute paths from any cwd and `../../.luca/…` forms.
+    const seg = p.match(/(?:^|\/)(\.luca\/.*)$/)
+    if (seg) return seg[1]!
+    if (/(?:^|\/)\.luca$/.test(p)) return '.luca'
+    return p
+}
+
+/**
  * Classify a write-target path into one of four classes used by the
  * stage-gate matrix.
  *
@@ -107,11 +148,11 @@ export function classifyWritePath(
         }
     }
 
-    // 4. .luca/ artifacts. Normalize an absolute path under `cwd` to its
-    //    repo-relative form first — the contract (and AUDIT_PATH_PATTERN) is
-    //    relative, but callers pass absolute file paths.
-    const rel =
-        opts.cwd && isAbsolute(path) ? relative(opts.cwd, path) : path
+    // 4. .luca/ artifacts. Normalize to the contract-relative form first —
+    //    the contract (and AUDIT_PATH_PATTERN) is relative, but callers pass
+    //    absolute file paths. `toLucaRelative` is robust to `cwd` not being
+    //    the repo root (see its docstring).
+    const rel = toLucaRelative(path, opts.cwd)
     if (rel.startsWith('.luca/') || rel === '.luca') {
         if (AUDIT_PATH_PATTERN.test(rel)) {
             return { class: 'planning-audit' }

@@ -5,14 +5,18 @@
  * `.luca/state.json`. Part of the v13 `luca` write surface (Phase B).
  *
  * Leaves:
- *   - `state read`    — read the full workflow state (pure read)
- *   - `state advance` — atomically advance the pipelineStep
+ *   - `state read`              — read the full workflow state (pure read)
+ *   - `state advance`           — atomically advance the pipelineStep
+ *   - `state claim-owner`       — record the session_id that owns the run
+ *   - `state set-current-phase` — position currentPhase (recovery primitive)
  */
 import { defineCommand } from 'citty'
 
 import {
     lucaStateAdvanceTool,
+    lucaStateClaimOwnerTool,
     lucaStateReadTool,
+    lucaStateSetCurrentPhaseTool,
 } from '../../write-surface/index.ts'
 import { runWriteHandler } from './__helpers/run-handler.ts'
 
@@ -53,6 +57,55 @@ const advanceCommand = defineCommand({
     },
 })
 
+const claimOwnerCommand = defineCommand({
+    meta: {
+        name: 'claim-owner',
+        description:
+            'Record the Claude Code session that owns the current run ' +
+            '(state.ownerSessionId). Idempotent and phase-agnostic — the ' +
+            'stage-gate hook uses it to scope phase enforcement to the ' +
+            'owning session.',
+    },
+    args: {
+        'session-id': {
+            type: 'string',
+            required: true,
+            description:
+                'Claude Code session_id of the session driving the run.',
+        },
+    },
+    async run({ args }) {
+        await runWriteHandler('state claim-owner', lucaStateClaimOwnerTool, {
+            sessionId: args['session-id'],
+        })
+    },
+})
+
+const setCurrentPhaseCommand = defineCommand({
+    meta: {
+        name: 'set-current-phase',
+        description:
+            'Set currentPhase directly to a 1-based phase number and mark ' +
+            'that phase in-progress. Recovery primitive for restoring ' +
+            'position after a roadmap reset/wipe.',
+    },
+    args: {
+        'phase-number': {
+            type: 'string',
+            required: true,
+            description:
+                'Target phase number (1-based); must be within 1..totalPhases.',
+        },
+    },
+    async run({ args }) {
+        await runWriteHandler(
+            'state set-current-phase',
+            lucaStateSetCurrentPhaseTool,
+            { currentPhase: Number(args['phase-number']) }
+        )
+    },
+})
+
 export const stateCommand = defineCommand({
     meta: {
         name: 'state',
@@ -61,5 +114,7 @@ export const stateCommand = defineCommand({
     subCommands: {
         read: readCommand,
         advance: advanceCommand,
+        'claim-owner': claimOwnerCommand,
+        'set-current-phase': setCurrentPhaseCommand,
     },
 })

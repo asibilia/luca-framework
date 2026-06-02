@@ -7,6 +7,7 @@ import {
     phasePathFor,
     resolveActiveSlug,
     STEP_ARTIFACTS,
+    toLucaRelative,
     WAVE_FILE_RE,
     type LucaState,
     type PhaseFile,
@@ -14,13 +15,14 @@ import {
     type ToolCategory,
     type WritePathClass,
 } from '@alecsibilia/luca-core'
-
-import { isAbsolute, relative } from 'node:path'
+import { parse } from 'shell-quote'
 
 import {
     classifyBashCommand,
     type BashCategory,
 } from './classify-bash-command.ts'
+
+import { lucaStateClaimOwnerTool } from '../../write-surface/handlers/luca-state-claim-owner.ts'
 
 export interface HandleStageGateHookOptions {
     /** Raw JSON string read from PreToolUse stdin. */
@@ -87,11 +89,61 @@ export async function handleStageGateHook(
         (parsed.toolName as string | undefined)
     const toolInput =
         (parsed.tool_input as unknown) ?? (parsed.toolInput as unknown)
+    // The Claude Code `session_id` (PreToolUse payload). The ONLY reliable
+    // place this is visible — used to scope phase enforcement to the session
+    // that owns the run. Absent in non-Claude-Code harnesses; treated as
+    // "unknown owner" → conservative enforcement (see below).
+    const sessionId =
+        (parsed.session_id as string | undefined) ??
+        (parsed.sessionId as string | undefined)
 
     const cwd = opts.cwd ?? process.cwd()
     const homedir = opts.homedir ?? process.env.HOME
 
     const state = await loadCurrentState({ cwd })
+
+    // Ownership stamping (session-scoped gate). Only the orchestrator runs
+    // `luca state advance`, so the session issuing it is, by definition, the
+    // session driving the pipeline. Stamp it as the run owner — re-stamping
+    // on every advance re-homes ownership when a new run starts in a
+    // different session.
+    //
+    // The mutation is delegated to the `luca state claim-owner` write-surface
+    // handler (NOT a direct `mutateState` call), so the invariant "state.json
+    // is mutated solely through the luca write surface" holds — the hook is a
+    // caller of the sanctioned surface, identical to how skills mutate state.
+    //
+    // Best-effort: a stamp failure (e.g. state.json absent on a brand-new
+    // repo's first advance) must never break the gate, so it falls through to
+    // conservative enforcement.
+    if (
+        toolName === 'Bash' &&
+        sessionId &&
+        state.ownerSessionId !== sessionId &&
+        isStateAdvanceCommand(
+            (toolInput as { command?: string } | undefined)?.command ?? ''
+        )
+    ) {
+        try {
+            await lucaStateClaimOwnerTool.handler({ sessionId }, { cwd })
+            // Reflect the stamp in our in-memory copy so the bystander check
+            // below sees the fresh owner (this advancing session IS the owner).
+            state.ownerSessionId = sessionId
+        } catch (err) {
+            log(`stage-gate: owner stamp skipped (${(err as Error).message})`)
+        }
+    }
+
+    // A bystander is a session that is NOT the pipeline owner — a separate
+    // terminal doing out-of-workflow work in the same repo. We know the owner
+    // only once it has been stamped AND we can see the incoming session id;
+    // when either is unknown we fall through to normal enforcement
+    // (conservative — never disable the gate for the real pipeline).
+    const isBystander =
+        Boolean(state.ownerSessionId) &&
+        Boolean(sessionId) &&
+        state.ownerSessionId !== sessionId
+
     const phase = coarsePhaseOf(state.pipelineStep)
 
     // IDLE: no enforcement.
@@ -123,13 +175,12 @@ export async function handleStageGateHook(
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         }
         // Claude Code passes an ABSOLUTE file_path, but the .luca/ contract
-        // (and artifactPathGate, via phasePathFor) is repo-relative. Pass cwd
-        // to classifyWritePath so it normalizes for the .luca/ check, and feed
-        // the relative form to the gate. Denied checks still run on the
-        // absolute original inside classifyWritePath.
-        const relTarget = isAbsolute(targetPath)
-            ? relative(cwd, targetPath)
-            : targetPath
+        // (and artifactPathGate, via phasePathFor) is repo-relative. Use the
+        // shared `toLucaRelative` resolver — robust to `cwd` not being the
+        // repo root (a subagent/harness cwd inside a subdir would otherwise
+        // yield `../../.luca/…` and wrongly fail the gate). Denied checks
+        // still run on the absolute original inside classifyWritePath.
+        const relTarget = toLucaRelative(targetPath, cwd)
         const pc = classifyWritePath(targetPath, { homedir, cwd })
         if (pc.class === 'denied') {
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`
@@ -215,6 +266,22 @@ export async function handleStageGateHook(
         return { exitCode: 0, toolName, toolInput, decision: 'allow' }
     }
 
+    // Session-scoped exemption: a non-owner ("bystander") session is doing
+    // out-of-workflow work in a repo where a pipeline happens to be mid-run.
+    // It must not inherit that pipeline's phase restrictions. Exempt it from
+    // the phase/tool matrix — the always-denied path/command rules above have
+    // ALREADY run and applied to every session, so this only relaxes the
+    // phase-ordering matrix, not the security floor. `.luca/` artifact writes
+    // are unaffected (handled by artifactPathGate, which returns earlier).
+    if (isBystander) {
+        log(
+            `stage-gate: session ${sessionId} is not the run owner ` +
+                `(${state.ownerSessionId}) — exempting ${toolName} ` +
+                `(category=${category}) from the phase=${phase} matrix`
+        )
+        return { exitCode: 0, toolName, toolInput, decision: 'allow' }
+    }
+
     // Matrix lookup
     const allowed = isToolAllowed({ phase, category })
     if (!allowed) {
@@ -235,6 +302,36 @@ export async function handleStageGateHook(
         `stage-gate: ${toolName} (category=${category}) allowed in phase=${phase}`
     )
     return { exitCode: 0, toolName, toolInput, decision: 'allow' }
+}
+
+/**
+ * Detect a `luca state advance` invocation anywhere in a (possibly compound)
+ * bash command — the ownership signal for the session-scoped gate. Parses
+ * with shell-quote (operators become non-string entries, so the `luca`,
+ * `state`, `advance` word triplet stays contiguous in the string-token
+ * stream even for `cd x && luca state advance …`). A parse failure is
+ * treated as "not an advance" — the stamp is best-effort, never the gate's
+ * security boundary.
+ */
+function isStateAdvanceCommand(command: string): boolean {
+    if (!command.includes('advance')) return false
+    let entries: ReturnType<typeof parse>
+    try {
+        entries = parse(command)
+    } catch {
+        return false
+    }
+    const toks = entries.filter((e): e is string => typeof e === 'string')
+    for (let i = 0; i <= toks.length - 3; i += 1) {
+        if (
+            toks[i] === 'luca' &&
+            toks[i + 1] === 'state' &&
+            toks[i + 2] === 'advance'
+        ) {
+            return true
+        }
+    }
+    return false
 }
 
 /**

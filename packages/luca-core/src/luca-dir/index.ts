@@ -38,6 +38,7 @@ export { archivedPhasePathFor } from './helpers/archived-phase-path-for.ts'
 export { isValidLucaPath } from './helpers/is-valid-luca-path.ts'
 export {
     classifyWritePath,
+    toLucaRelative,
     AUDIT_PATH_PATTERN,
 } from './helpers/classify-write-path.ts'
 
