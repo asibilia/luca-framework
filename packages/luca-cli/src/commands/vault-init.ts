@@ -100,15 +100,23 @@ export const vaultInitCommand = defineCommand({
         await writeVaultConfig(vaultResult.vaultName, configPath)
         p.log.success('Vault name written to .luca/config.json')
 
-        await writeApiKeyToEnv(
-            vaultResult.apiKey,
-            envPath,
-            vaultResult.vaultName
-        )
-        p.log.success('API key written to .env')
+        // The API key is optional and instance-level: only write it when the
+        // wizard captured one (i.e. no MuninnDB MCP server was registered yet).
+        // A registered server already reaches this vault, so there's nothing to
+        // write to .env.
+        if (vaultResult.apiKey) {
+            await writeApiKeyToEnv(vaultResult.apiKey, envPath)
+            p.log.success('API key written to .env')
+        }
 
-        await ensureEnvInGitignore(cwd)
-        p.log.success('.env protected in .gitignore')
+        // Protect `.env` in `.gitignore` whenever it exists — independent of
+        // whether we wrote a Muninn key this run. In the common no-key path
+        // (MCP server already registered) a project may still have a `.env`
+        // holding OTHER secrets, and it must not be left untracked-by-gitignore.
+        if (existsSync(envPath)) {
+            await ensureEnvInGitignore(cwd)
+            p.log.success('.env protected in .gitignore')
+        }
 
         const reachable = await verifyVaultConnection(vaultResult.vaultName)
         if (reachable) {

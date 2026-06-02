@@ -34,6 +34,7 @@ import { join, basename } from 'pathe'
 import { z } from 'zod'
 
 import { checkMuninndbService } from './muninndb-health'
+import { isMuninnRegistered } from './muninn-mcp-registration'
 import { resolveMuninndbPort } from './muninndb-schemas'
 import { sanitizeJsonParse } from './sanitize'
 
@@ -53,8 +54,14 @@ import type { ProjectContext } from '../types'
 export const VaultConfigSchema = z.object({
     /** Sanitized vault name in lowercase kebab-case. */
     vaultName: z.string().min(1),
-    /** MuninnDB API key for authentication. */
-    apiKey: z.string().min(1),
+    /**
+     * MuninnDB API key. OPTIONAL — it is an instance-level credential needed
+     * only ONCE to register the MuninnDB MCP server, which then reaches every
+     * vault (the vault is a per-tool-call parameter). When a `muninn` MCP
+     * server is already registered, the wizard records just the vault name and
+     * leaves this unset.
+     */
+    apiKey: z.string().min(1).optional(),
 })
 
 /** Vault configuration inferred from the Zod schema. */
@@ -174,17 +181,33 @@ export async function runVaultWizard(
 
     const finalVaultName = sanitizeVaultName(String(vaultName))
 
-    // Step 2: API key guidance
+    // Step 2: API key — but ONLY if it's actually needed. The key is an
+    // instance-level credential used once to register the MuninnDB MCP server;
+    // a registered server already reaches EVERY vault (vault is a per-call
+    // parameter). So when one is registered, record just the vault name and
+    // skip the key entirely — there is no such thing as a per-vault key.
+    if (await isMuninnRegistered(cwd)) {
+        p.log.success(
+            'MuninnDB MCP server already registered — it reaches every vault, ' +
+                'so no API key is needed here.'
+        )
+        return { vaultName: finalVaultName }
+    }
+
     p.note(
         [
-            'To generate an API key, open the MuninnDB Web UI:',
+            'No MuninnDB MCP server is registered with Claude Code yet. The key',
+            'below is an INSTANCE-level credential, captured once to register',
+            'the server — that single registration then reaches every vault.',
+            '',
+            'Generate one in the MuninnDB Web UI:',
             '',
             `  ${muninndbWebUiUrl()}`,
             '',
-            'Navigate to Settings > API Keys and create a new key.',
-            'If MuninnDB is not running, you can set this up later.',
+            'Settings > API Keys > create a new key. You can also skip this and',
+            'register the server later (see `luca doctor`).',
         ].join('\n'),
-        'API Key'
+        'API Key (one-time)'
     )
 
     // Step 3: API key input
@@ -197,15 +220,18 @@ export async function runVaultWizard(
     const trimmedKey = String(apiKey ?? '').trim()
 
     if (trimmedKey.length === 0) {
+        // Still record the vault name — the key is optional and only used to
+        // register the MCP server, which can be done later.
         p.log.warn(
-            'No API key provided. You can set MUNINN_API_KEY in .env later.'
+            'No API key provided. Vault name recorded; register the MuninnDB ' +
+                'MCP server later (see `luca doctor`).'
         )
-        return null
+        return { vaultName: finalVaultName }
     }
 
     // Step 4: Confirmation
     const confirmed = await p.confirm({
-        message: `Set vault "${finalVaultName}" with the provided API key?`,
+        message: `Set vault "${finalVaultName}" and write the API key to .env?`,
         initialValue: true,
     })
 
@@ -270,51 +296,37 @@ export async function writeVaultConfig(
 }
 
 /**
- * Write MuninnDB API key(s) to a `.env` file using per-vault naming.
+ * Write the MuninnDB API key to a `.env` file as a single `MUNINN_DB_API_KEY`.
  *
- * Creates the `.env` file if it does not exist. Writes up to three env vars:
- * - `MUNINN_DB_<VAULT>_API_KEY` — per-vault key (when vaultName provided)
- * - `MUNINN_DB_DEFAULT_API_KEY` — default vault key (for cross-cutting access)
- * - `MUNINN_DB_API_KEY` — generic fallback (for runtime code that reads this)
+ * The key is INSTANCE-level, not per-vault: one MuninnDB instance issues one
+ * key that reaches every vault (the vault is a per-tool-call parameter). So
+ * there is exactly one env var. Earlier per-vault aliasing
+ * (`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`) wrote the SAME
+ * value under several names, which was redundant: consumers that look up a
+ * per-vault/default key (e.g. luca-studio's `muninn-config`) already fall back
+ * to the generic `MUNINN_DB_API_KEY`, and the instance-level key is valid for
+ * every vault — so the single generic var is sufficient. This value is also a
+ * convenience reference for the one-time `claude mcp add … --header
+ * "Authorization: Bearer <key>"` registration.
  *
- * If the file already contains a matching line, the existing value is replaced.
- * Otherwise the key is appended on a new line.
- *
- * After writing, the file permissions are set to `0600` (owner read/write
- * only) to prevent other users on the system from reading the API key.
+ * Creates the `.env` file if it does not exist; replaces an existing
+ * `MUNINN_DB_API_KEY=` line in place, otherwise appends it. After writing,
+ * permissions are set to `0600` (owner read/write only).
  *
  * @param apiKey - The MuninnDB API key value to write.
  * @param envPath - Absolute path to the `.env` file.
- * @param vaultName - Vault name for per-vault env var (e.g. "my-project").
  *
  * @example
  * ```typescript
- * await writeApiKeyToEnv("sk-abc123", "/path/to/.env", "my-project");
- * // .env now contains:
- * //   MUNINN_DB_MY_PROJECT_API_KEY=sk-abc123
- * //   MUNINN_DB_DEFAULT_API_KEY=sk-abc123
- * //   MUNINN_DB_API_KEY=sk-abc123
- * // File permissions: 0600 (owner read/write only)
+ * await writeApiKeyToEnv("sk-abc123", "/path/to/.env");
+ * // .env now contains: MUNINN_DB_API_KEY=sk-abc123  (perms 0600)
  * ```
  */
 export async function writeApiKeyToEnv(
     apiKey: string,
-    envPath: string,
-    vaultName?: string
+    envPath: string
 ): Promise<void> {
-    // MuninnDB expects per-vault env vars: MUNINN_DB_<VAULT>_API_KEY
-    // Also write the default vault key and generic fallback for runtime consumers
-    const vaultKey = vaultName
-        ? `MUNINN_DB_${vaultName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_API_KEY`
-        : 'MUNINN_DB_API_KEY'
-    const envLines = [
-        `${vaultKey}=${apiKey}`,
-        // Default vault key is always needed for cross-cutting memories
-        ...(vaultName && vaultName !== 'default'
-            ? [`MUNINN_DB_DEFAULT_API_KEY=${apiKey}`]
-            : []),
-        `MUNINN_DB_API_KEY=${apiKey}`,
-    ]
+    const envLines = [`MUNINN_DB_API_KEY=${apiKey}`]
 
     const file = Bun.file(envPath)
 
