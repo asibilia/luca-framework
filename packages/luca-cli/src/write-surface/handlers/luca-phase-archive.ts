@@ -28,9 +28,9 @@ export const lucaPhaseArchiveTool: ToolDescriptor<z.infer<typeof inputSchema>> =
     {
         name: 'luca_phase_archive',
         description:
-            'Archive all active phase directories (.luca/phases/<slug>/ → .luca/archive/<slug>/) at milestone close, so the next milestone starts from an empty phases/ dir. Idempotent: a slug already present under archive/ is skipped, not overwritten. Allowed only in the milestone/complete steps.',
+            'Archive all active phase directories (.luca/phases/<slug>/ → .luca/archive/<slug>/) at milestone close, so the next milestone starts from an empty phases/ dir. Idempotent: a slug already present under archive/ is skipped, not overwritten. Allowed only in the finalize step.',
         inputSchema,
-        allowedPhases: ['milestone', 'complete'],
+        allowedPhases: ['finalize'],
         async handler(_args, ctx) {
             const phasesDir = join(ctx.cwd, '.luca', 'phases')
             if (!existsSync(phasesDir)) {

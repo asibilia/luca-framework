@@ -133,10 +133,9 @@ Default is **\`full-auto\`** — use unless the user explicitly requests \`--ove
 | \`checkpoint\`     | Pause at plan approval and phase boundaries.      |
 | \`human-in-loop\`  | Pause at every major decision point.              |
 
-### Next Mode
+### Next Step
 
-- **TRIVIAL / SIMPLE** → **Architect** (skip research).
-- **MODERATE / COMPLEX / CRITICAL** → **Research** first.
+All complexities advance to the **research** step — the only legal next step from \`triage\`. For **TRIVIAL / SIMPLE** the research step is lightweight (the researcher fast-exits with minimal findings) rather than skipped; for **MODERATE / COMPLEX / CRITICAL** it runs in full.
 
 ---
 
@@ -156,7 +155,7 @@ luca preferences write --file <(jq -n --arg intent "<parsed intent summary>" --a
 
 ### 4b. IMMEDIATELY advance the pipeline step:
 \`\`\`
-luca state advance --to-step <research|architect>
+luca state advance --to-step research
 \`\`\`
 
 **After calling advance, STOP. No more text or tool calls.**

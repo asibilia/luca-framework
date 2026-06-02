@@ -185,7 +185,7 @@ mcp__muninn__muninn_remember({
 
 ### 9. Pipeline integration
 
-Run \`luca state read\`. If a Luca pipeline is active (\`pipelineStep\` is not \`idle\`/\`complete\`), later pipeline steps discover this PR by recalling the \`gh-prepare\` memory from Step 8 — no separate workflow-state write is needed. If no pipeline is active, skip — the skill works standalone.
+Run \`luca state read\`. If a Luca pipeline is active (\`pipelineStep\` is not \`idle\`), later pipeline steps discover this PR by recalling the \`gh-prepare\` memory from Step 8 — no separate workflow-state write is needed. If no pipeline is active, skip — the skill works standalone.
 
 ### 10. Report
 

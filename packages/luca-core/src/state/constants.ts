@@ -1,4 +1,6 @@
-// Canonical pipelineStep values (14), trimmed from the original 22.
+// Canonical pipelineStep values (13). `finalize` is the terminal mode that
+// wraps the milestone (gap audit, postmortem, PR) and resets to `idle`;
+// "milestone" is a work-organization concept handled by skills, not a step.
 // Folded steps are mapped to canonical values via LEGACY_PIPELINE_STEP_MAP
 // for backwards-compat reading of pre-migration state.json files.
 export const PipelineStepValues = [
@@ -14,8 +16,7 @@ export const PipelineStepValues = [
     'verify',
     'review',
     'learn',
-    'milestone',
-    'complete',
+    'finalize',
 ] as const
 
 // Mapping from legacy pipelineStep values to their canonical replacements.
@@ -30,6 +31,8 @@ export const LEGACY_PIPELINE_STEP_MAP: Record<string, string> = {
     // Old audit sub-steps fold into review.
     'review-audit': 'review',
     'gap-audit': 'review',
-    // Old cleanup folds into milestone.
-    cleanup: 'milestone',
+    // Old milestone/complete/cleanup steps fold into the terminal finalize mode.
+    cleanup: 'finalize',
+    milestone: 'finalize',
+    complete: 'finalize',
 }

@@ -195,11 +195,12 @@ Execute this quick task plan.
 
 ### Step 7: Advance Workflow State
 
-Advance the pipeline through learn/complete via the standard transitions:
+Advance the pipeline through learn → finalize → idle via the standard transitions:
 
 \`\`\`bash
 luca state advance --to-step learn
-luca state advance --to-step complete
+luca state advance --to-step finalize
+luca state advance --to-step idle
 \`\`\`
 
 ### Step 8: Final Commit and Completion
@@ -234,7 +235,7 @@ Ready for next task: /quick
 - [ ] Phase directory created at \`.luca/phases/NN-slug/\`
 - [ ] \`plan.md\` written by the architect mode-agent
 - [ ] \`execute/summary.md\` written by the \`executor\` subagent
-- [ ] Workflow state advanced through learn/complete steps
+- [ ] Workflow state advanced through learn → finalize → idle
 - [ ] Artifacts committed
 
 ## Next Steps

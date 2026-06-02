@@ -22,6 +22,5 @@ export const PIPELINE_STEP_TO_COARSE_PHASE: Record<PipelineStep, CoarsePhase> =
         review: 'REVIEWING',
         learn: 'REVIEWING',
 
-        milestone: 'FINALIZING',
-        complete: 'FINALIZING',
+        finalize: 'FINALIZING',
     }

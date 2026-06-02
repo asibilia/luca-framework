@@ -241,10 +241,8 @@ const STEP_REMINDERS: Record<RefresherStep, string> = {
         '<luca-reminder>You are in review mode (read-only). Maximum 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.</luca-reminder>',
     learn:
         '<luca-reminder>You are in learn mode. Capture patterns/decisions/pitfalls in MuninnDB + learn.md. Be concrete. ≤200 lines.</luca-reminder>',
-    milestone:
-        '<luca-reminder>You are in milestone mode. Close the milestone: versioned roadmap + audit snapshot under .luca/milestones/.</luca-reminder>',
-    complete:
-        '<luca-reminder>You are in complete mode. Finalize metrics, surface the PR if appropriate, then advance to idle.</luca-reminder>',
+    finalize:
+        '<luca-reminder>You are in finalize mode. Gap audit + postmortem, close the milestone (versioned roadmap + audit snapshot under .luca/milestones/), surface the PR, then reset to idle.</luca-reminder>',
 }
 
 /**
@@ -439,8 +437,7 @@ const ALL_PIPELINE_STEPS_TABLE: Record<PipelineStep, true> = {
     verify: true,
     review: true,
     learn: true,
-    milestone: true,
-    complete: true,
+    finalize: true,
 }
 const ALL_PIPELINE_STEPS_SET = new Set<string>(
     Object.keys(ALL_PIPELINE_STEPS_TABLE),

@@ -1278,10 +1278,11 @@ Duration:   {session duration}
 
 ### Update State
 
-1. Advance the pipeline step to \`complete\` once the autopilot session finishes:
+1. Reset the pipeline to \`idle\` (via \`finalize\`) once the autopilot session finishes:
 
 \`\`\`bash
-luca state advance --to-step complete 2>/dev/null || true
+luca state advance --to-step finalize 2>/dev/null || true
+luca state advance --to-step idle 2>/dev/null || true
 \`\`\`
 
 2. Log final status to MuninnDB: \`mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:findings", content: "Autopilot session complete")\`
