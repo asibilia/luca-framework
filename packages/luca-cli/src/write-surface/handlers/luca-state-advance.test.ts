@@ -37,7 +37,7 @@ describe('luca_state_advance', () => {
 
     test('rejects illegal jumps with isError', async () => {
         const result = await lucaStateAdvanceTool.handler(
-            { toStep: 'milestone' },
+            { toStep: 'execute' },
             { cwd }
         )
 

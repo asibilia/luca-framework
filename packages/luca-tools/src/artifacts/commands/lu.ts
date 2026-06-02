@@ -10,7 +10,7 @@ import { defineCommand } from '../../define/command.ts'
 
 const BODY = `# /lu
 
-The unified entry point for the Luca pipeline. \`/lu <request>\` takes a development request and drives it through the full pipeline: triage → research → discuss → architect → plan → plan-review → execute → checks → verify → review → learn → milestone.
+The unified entry point for the Luca pipeline. \`/lu <request>\` takes a development request and drives it through the full pipeline: triage → research → discuss → architect → plan → plan-review → execute → checks → verify → review → learn → finalize.
 
 You are the **orchestrator**. You do not write code or planning artifacts directly — you read state, run each step (delegating to its skill or subagent), and advance the pipeline.
 
@@ -42,7 +42,7 @@ Triage runs once, at the start of a run. It is inline here — there is no separ
 
 ## Pipeline loop
 
-Repeat until \`pipelineStep\` is \`complete\`:
+Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \`idle\`):
 
 1. Run \`luca state read\` to get the current \`pipelineStep\`.
 2. Run the step using the table below.
@@ -59,8 +59,8 @@ Repeat until \`pipelineStep\` is \`complete\`:
 | \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
 | \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
 | \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access): for each \`TO_PERSIST\` entry call \`mcp__muninn__muninn_remember_batch\` routed to the entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\`; last phase → advance to \`milestone\`. |
-| \`milestone\`   | Invoke the \`/milestone-new\` skill to close out, or advance to \`complete\` if no milestone bookkeeping is needed. |
+| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access): for each \`TO_PERSIST\` entry call \`mcp__muninn__muninn_remember_batch\` routed to the entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\`; last phase → advance to \`finalize\`. |
+| \`finalize\`    | Spawn the \`finalize\` agent (Agent tool): gap detection, postmortem gate, PR creation, milestone close (invokes \`/milestone-complete\` for the versioned snapshot + phase archive). On a gap/postmortem block it re-enters via \`--to-step execute\`/\`review\`; on success it resets the run with \`--to-step idle\`. |
 
 ## Oversight
 

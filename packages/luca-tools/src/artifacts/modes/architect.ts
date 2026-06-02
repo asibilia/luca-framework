@@ -362,7 +362,7 @@ If changes requested, revise and re-submit. In **full-auto**, skip approval — 
 When the plan is approved (or auto-approved in full-auto):
 
 1. The plan file is the canonical \`.luca/phases/<currentPhaseSlug>/plan.md\` written via \`luca\` artifact write semantics. Downstream stages resolve it deterministically from the phase slug and the LUCA_DIR_CONTRACT; no separate \`planFile\` state field is needed.
-2. Transition to **Execute** mode via \`luca state advance --to-step execute\`.
+2. Transition to the **plan** step via \`luca state advance --to-step plan\` (the only legal next step from \`architect\`; planning then flows plan → plan-review → execute per the pipeline-transitions table).
 
 ---
 

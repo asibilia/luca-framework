@@ -24,7 +24,7 @@ Parse \`$ARGUMENTS\` for:
 
 Resolve \`<repo_vault>\` from \`.luca/config.json\` → \`muninn.vault\`, falling back to \`"default"\`.
 
-If the pipeline is mid-flight (\`pipelineStep\` is not \`idle\` or \`complete\`), warn the user that starting a new milestone resets pipeline state, and confirm before proceeding.
+If the pipeline is mid-flight (\`pipelineStep\` is not \`idle\` — a finished run resets to \`idle\`), warn the user that starting a new milestone resets pipeline state, and confirm before proceeding.
 
 ## Step 2 — Gather milestone goals
 

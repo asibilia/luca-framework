@@ -1583,10 +1583,11 @@ git add .
 bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
 \`\`\`\`
 
-Advance the workflow state after the actual commit succeeds. From \`learn\` the next step is typically \`milestone\` or \`complete\` per the pipeline-transitions table:
+Advance the workflow state after the actual commit succeeds. From \`learn\` the next step is \`finalize\` (which then resets to \`idle\`) per the pipeline-transitions table:
 
 \`\`\`bash
-luca state advance --to-step complete 2>/dev/null || true
+luca state advance --to-step finalize 2>/dev/null || true
+luca state advance --to-step idle 2>/dev/null || true
 \`\`\`
 
 ### 12. User Acceptance Testing (UAT)

@@ -20,8 +20,7 @@ describe('coarsePhaseOf', () => {
         ['verify', 'REVIEWING'],
         ['review', 'REVIEWING'],
         ['learn', 'REVIEWING'],
-        ['milestone', 'FINALIZING'],
-        ['complete', 'FINALIZING'],
+        ['finalize', 'FINALIZING'],
     ]
 
     for (const [step, expected] of cases) {
@@ -30,7 +29,7 @@ describe('coarsePhaseOf', () => {
         })
     }
 
-    test('all 14 canonical pipelineSteps are covered by the table above', () => {
-        expect(cases.length).toBe(14)
+    test('all 13 canonical pipelineSteps are covered by the table above', () => {
+        expect(cases.length).toBe(13)
     })
 })

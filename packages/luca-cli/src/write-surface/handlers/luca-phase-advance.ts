@@ -12,7 +12,7 @@ const inputSchema = z.object({})
  * multi-phase roadmap stalled at the phase-1→2 boundary (every phase-2 artifact
  * path resolved against the stale phase-1 slug, or none at all). The orchestrator
  * calls this at the phase boundary (the `learn` step) when more phases remain;
- * the final phase routes to the `milestone` step instead of advancing.
+ * the final phase routes to the `finalize` step instead of advancing.
  *
  * Restricted to the `learn` pipelineStep — the canonical end-of-phase moment in
  * the `/lu` loop, just before advancing the step to `plan` for the next phase.
@@ -41,7 +41,7 @@ export const lucaPhaseAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     }
                     if (currentPhase >= totalPhases) {
                         throw new Error(
-                            `already at the final phase (${currentPhase}/${totalPhases}); there is no next phase. Advance to the milestone step instead.`
+                            `already at the final phase (${currentPhase}/${totalPhases}); there is no next phase. Advance to the finalize step instead.`
                         )
                     }
                     // Mark the leaving phase complete, the entering phase

@@ -180,12 +180,10 @@ const STEP_TEMPLATES: Record<ContinuationStep, string> = {
         'execute; otherwise advance to learn.',
     learn:
         'Capture learnings as patterns/decisions/pitfalls in MuninnDB and as `learn.md`. ' +
-        'Then advance to milestone (to close the milestone) or back to plan (to start the next phase).',
-    milestone:
-        'Close the milestone. Produce the versioned roadmap + audit snapshot under `.luca/milestones/`. ' +
-        'Then advance to complete.',
-    complete:
-        'Wrap the session: finalize metrics, surface the PR if appropriate, and advance to idle.',
+        'Then advance to finalize (last phase done) or back to plan (to start the next phase).',
+    finalize:
+        'Finalize the run: gap audit + postmortem, close the milestone (versioned roadmap + audit ' +
+        'snapshot under `.luca/milestones/`), surface the PR, then reset to idle.',
 }
 
 /**
@@ -325,8 +323,7 @@ const ALL_PIPELINE_STEPS_TABLE: Record<PipelineStep, true> = {
     verify: true,
     review: true,
     learn: true,
-    milestone: true,
-    complete: true,
+    finalize: true,
 }
 const ALL_PIPELINE_STEPS_SET = new Set<string>(
     Object.keys(ALL_PIPELINE_STEPS_TABLE),

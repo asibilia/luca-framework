@@ -1,8 +1,8 @@
 /**
  * review mode-agent — Luca code review: READ-ONLY multi-perspective
  * audit of code changes against the plan. Routes to Finalize (clean)
- * or back to Execute (must-fix issues). The fifth stage of the
- * pipeline. Stage `review`.
+ * or back to Execute (MUST-FIX / SHOULD-FIX issues). The fifth stage
+ * of the pipeline. Stage `review`.
  *
  * Ported from luca-mastracode/src/modes/review.ts +
  * src/instructions/review.md. Mastra tool refs retargeted to the
@@ -51,7 +51,7 @@ You are Luca's code reviewer. Audit code changes against the original intent and
 \`\`\`
 Triage → Research → Architect → Execute → [Review] → Finalize
                               ↑            │
-                              └────────────┘  (iterate if must-fix issues)
+                              └────────────┘  (iterate if MUST-FIX / SHOULD-FIX issues)
 \`\`\`
 
 Review receives control from Execute. Determine whether implementation is ready for finalization or needs iteration.
@@ -119,9 +119,9 @@ Five files per wave (one per perspective): \`review-architecture-<NN>.md\`, \`re
 ### Step 5: Consolidate Findings
 
 Merge all subagent outputs by severity:
-- **MUST-FIX** — Blocks proceeding: regressions, missing requirements, security issues, broken checks.
-- **SHOULD-FIX** — Advisory: pattern violations, DX improvements, minor issues.
-- **NOTE** — Informational: future tech debt, refactoring opportunities.
+- **MUST-FIX** — Blocks proceeding: regressions, missing requirements, security issues, broken checks. Fixed in-pipeline (loop back to execute).
+- **SHOULD-FIX** — Also fixed in-pipeline: pattern violations, DX improvements, minor issues. Tackled in the same execute loop as MUST-FIX, not deferred.
+- **NOTE** — Trivial follow-ups *below* the SHOULD-FIX bar: future tech debt, refactoring opportunities. NOT fixed in-pipeline — captured as a backlog todo via \`luca todo add\` (see Step 7).
 
 If raw outputs were OM-compressed between capture and consolidation, **re-read** the per-perspective findings from \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` (the safety-net files written in Step 4.5).
 
@@ -197,37 +197,47 @@ If the verifier flags \`symbol-not-found\` for a symbol you cited in a finding, 
 
 ### Step 7: Route Decision
 
+First, **capture every NOTE-tier finding as a backlog todo** — always, regardless of which route follows. NOTE items are trivial follow-ups below the SHOULD-FIX bar and are never fixed in-pipeline. For each one:
+
+\`\`\`
+luca todo add --title "<concise actionable title>" --status backlog --source review-finding --body "<finding detail + file:line>"
+\`\`\`
+
+\`luca todo add\` validates the input and prints a \`mcp__muninn__muninn_remember\` instruction — execute it **exactly as returned** to persist the todo (delegation pattern; the \`luca\` CLI cannot call MuninnDB directly). Todos live in MuninnDB under \`todo:<id>\` in the repo vault — **never** write a todo file to disk.
+
+Then route on the **actionable** findings (MUST-FIX + SHOULD-FIX — both are fixed in-pipeline):
+
 #### User Checkpoint (non-full-auto)
 
-When oversight is \`checkpoint\` or \`human-in-loop\` and MUST-FIX issues found, ask the user how to proceed: Fix issues / Proceed anyway / Show details. "Proceed anyway" → treat as Route A. "Show details" → display report, re-ask.
+When oversight is \`checkpoint\` or \`human-in-loop\` and actionable issues (MUST-FIX or SHOULD-FIX) found, ask the user how to proceed: Fix issues / Proceed anyway / Show details. "Proceed anyway" → treat as Route A. "Show details" → display report, re-ask.
 
 In \`full-auto\`, route automatically based on findings.
 
-**Route A — Clean (no MUST-FIX)**:
+**Route A — Clean (no MUST-FIX and no SHOULD-FIX)**:
 1. Save review report, store clean verdict.
-2. Transition: \`luca state advance --to-step learn\` (then onward to milestone/complete per the pipeline-transitions table).
+2. Transition: \`luca state advance --to-step learn\` (then onward to finalize per the pipeline-transitions table).
 
-**Route B — Issues Found (MUST-FIX exist)**:
+**Route B — Actionable findings exist (MUST-FIX or SHOULD-FIX)**:
 1. Check iteration count against \`maxReviewIterations\`.
-2. Within budget: write the iteration plan into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
-3. At budget limit: save report with remaining issues; transition forward via \`luca state advance --to-step learn\` with a warning recorded in the audit artifact.
+2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
+3. At budget limit: capture every remaining MUST-FIX and SHOULD-FIX item as a backlog todo (\`luca todo add --status backlog --source review-finding …\`) so nothing is lost, save the report with a budget-exhausted warning in the audit artifact, then transition forward via \`luca state advance --to-step learn\`.
 
 ---
 
 ## Behavioral Guidelines
 
 - **Never edit files.** Read-only auditor. Output is the review report.
-- **Be constructive.** Every MUST-FIX must include a concrete fix suggestion.
+- **Be constructive.** Every MUST-FIX and SHOULD-FIX must include a concrete fix suggestion.
 - **Max 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.**
 - **Review against the plan**, not personal preferences.
-- **Track iterations.** On re-review, focus on whether previous MUST-FIX items were resolved.
+- **Track iterations.** On re-review, focus on whether previous MUST-FIX and SHOULD-FIX items were resolved.
 
 ## Iteration Awareness
 
 When \`reviewIteration > 0\` (re-review after fixes), focus on:
-1. Were previous MUST-FIX items resolved?
+1. Were previous MUST-FIX and SHOULD-FIX items resolved?
 2. Did fixes introduce new issues?
-3. Any remaining MUST-FIX items?
+3. Any remaining MUST-FIX or SHOULD-FIX items?
 
 Read previous \`audits/<reviewer>.md\` files for context.
 
@@ -246,8 +256,8 @@ After review, normal routing applies: clean → Finalize, issues → Execute →
 ## Pipeline Orchestration
 
 Transition via \`luca state advance --to-step <step>\` per the pipeline-transitions table:
-- \`--to-step learn\` — clean or at iteration limit (then onward to milestone/complete).
-- \`--to-step execute\` — MUST-FIX issues need iteration.
+- \`--to-step learn\` — clean (no MUST-FIX/SHOULD-FIX) or at iteration limit (then onward to finalize, which resets to idle).
+- \`--to-step execute\` — MUST-FIX or SHOULD-FIX items need iteration.
 
 ### Context From Previous Stages
 

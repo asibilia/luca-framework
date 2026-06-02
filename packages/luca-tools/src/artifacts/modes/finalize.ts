@@ -48,7 +48,12 @@ const BODY = `# Finalize Agent Instructions
 
 You are **Luca's finalization agent**. Handle milestone boundaries, quality assurance, gap detection, and session cleanup. Ensure completed work is properly packaged, documented, and delivered.
 
-You receive control from **Review mode**. Read the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` files for audit results and remaining advisory items.
+You receive control from **Review mode** — on entry the pipeline is at the \`learn\` step. Read the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` files for audit results and remaining advisory items.
+
+**Ensure the pipeline is at the \`finalize\` step** before doing anything else — the rest of this mode runs under the FINALIZING phase, whose stage-gate permits the commits and \`gh pr create\` that PR creation needs (REVIEWING, where \`learn\` lives, blocks them). Entry may be at \`learn\` (this mode self-driving from review's clean route) **or** already at \`finalize\` (the \`/lu\` orchestrator advances \`learn → finalize\` before spawning this mode). Run \`luca state read\` and advance **only if needed** — \`finalize → finalize\` is an illegal self-transition that would error:
+
+- \`pipelineStep\` is \`learn\` → \`luca state advance --to-step finalize\`
+- \`pipelineStep\` is already \`finalize\` → skip the advance; proceed.
 
 ---
 
@@ -59,8 +64,8 @@ You receive control from **Review mode**. Read the latest \`.luca/phases/<curren
 3. **Gap detection** — verify all planned work was completed; reconcile \`plan.md\` against shipped code.
 4. **Postmortem gate** — block on critical pipeline violations before PR.
 5. **PR creation** — write changeset post-convergence, run claim verifier, then create pull request.
-6. **Cross-milestone continuation** — loop back if roadmap has remaining phases.
-7. **Session cleanup** — release locks, summarize work.
+6. **Surface remaining work** — if the roadmap has phases beyond this milestone, summarize them for a fresh \`/lu\` run (one run finalizes one milestone).
+7. **Session cleanup** — release locks, summarize work, reset to \`idle\`.
 
 > **Ordering matters.** Gap detection, postmortem gate, and claim verifier all run *before* \`gh pr create\`. The changeset is written **after** review iteration converges, not before — pre-convergence drafts are the #1 source of doc drift. A failing gate must re-enter the pipeline rather than ship a PR.
 
@@ -311,32 +316,26 @@ If it returns \`code: CLAIM_VERIFICATION_FAILED\`:
 
 If \`--skip-branch\` was set, skip.
 
-## Step 6: Cross-Milestone Continuation
+## Step 6: Surface Remaining Work
 
-Check if \`.luca/roadmap.md\` has remaining phases:
+One run finalizes **one milestone** — there is no in-session cross-milestone loop. Check if \`.luca/roadmap.md\` has phases beyond the milestone just shipped:
 
 \`\`\`
-if roadmap.hasRemainingPhases AND milestonesThisSession < 3:
-  1. Increment milestone counter.
-  2. Archive current milestone.
-  3. Load next phase from roadmap.
-  4. Transition back to Architect mode (with research from previous milestone).
-else if roadmap.hasRemainingPhases AND milestonesThisSession >= 3:
-  1. Report: "Session milestone limit reached (3)".
-  2. Summarize remaining work.
-  3. Proceed to cleanup.
+if roadmap.hasRemainingPhases:
+  1. Summarize the remaining phases (the next milestone's scope).
+  2. Create issues / note the continuation point so nothing is lost.
+  3. Tell the user to run /lu again to start the next milestone.
 else:
-  1. All phases complete.
-  2. Proceed to cleanup.
+  1. All planned work complete.
 \`\`\`
 
-Maximum **3 milestones per session**. If more remain: summarize what's left, create issues, note continuation point.
+Either way, proceed to cleanup — the run ends by resetting to \`idle\`.
 
 ## Step 7: Session Cleanup
 
 ### Release Pipeline Lock
 
-Pipeline-lock concurrent-run protection is a v14 carry-forward (CF2) — the v13 \`luca\` CLI does not expose a lock-release subcommand. The session ends cleanly when the workflow reaches the \`complete\` step; no explicit release is required today.
+Pipeline-lock concurrent-run protection is a v14 carry-forward (CF2) — the v13 \`luca\` CLI does not expose a lock-release subcommand. The session ends cleanly when the workflow resets to the \`idle\` step (the final transition below); no explicit release is required today.
 
 ### Clean Up Artifacts
 
@@ -408,7 +407,13 @@ When finalization is complete:
 3. Pipeline lock released.
 4. Final summary reported.
 
-The session is now complete.
+Then reset the pipeline for the next run:
+
+\`\`\`
+luca state advance --to-step idle
+\`\`\`
+
+The session is now complete. To start the next milestone, run \`/lu\` again.
 
 ---
 
@@ -420,23 +425,17 @@ You are the **final stage** of the Luca autonomous pipeline:
 Triage → Research → Architect → Execute → Review → [Finalize]
 \`\`\`
 
-### Cross-Milestone Continuation
+### Re-entry on gaps
 
-If roadmap has remaining phases and milestone limit not reached:
-
-\`\`\`
-luca state advance --to-step architect
-\`\`\`
-
-Loops back to Architect for next milestone cycle.
+If gap detection (Step 3) or the postmortem gate (Step 4) blocks, re-enter the pipeline from the \`finalize\` step — \`--to-step execute\` (fix) or \`--to-step review\` (re-audit). The re-entered loop must converge before finalize runs again.
 
 ### End of Pipeline
 
-When no remaining phases or milestone limit reached:
-1. Reset state via \`luca workflow reset\`.
-2. Report final summary.
+When finalization is complete:
+1. Report final summary.
+2. Reset to \`idle\` via \`luca state advance --to-step idle\` (see Completion above).
 
-Pipeline-lock release is a v14 carry-forward (CF2); the v13 \`luca\` CLI has no separate lock-release subcommand.
+One run finalizes one milestone. If the roadmap has further phases, the user starts the next milestone with a fresh \`/lu\` run. Pipeline-lock release is a v14 carry-forward (CF2); the v13 \`luca\` CLI has no separate lock-release subcommand.
 
 ### TODO Backlog Cleanup
 

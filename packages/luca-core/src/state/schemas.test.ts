@@ -56,8 +56,7 @@ describe('PipelineStep', () => {
             'verify',
             'review',
             'learn',
-            'milestone',
-            'complete',
+            'finalize',
         ] as const
         for (const step of canonical) {
             expect(PipelineStep.parse(step)).toBe(step)
@@ -81,8 +80,10 @@ describe('PipelineStep', () => {
         expect(PipelineStep.parse('gap-audit')).toBe('review')
     })
 
-    test('maps legacy cleanup to milestone', () => {
-        expect(PipelineStep.parse('cleanup')).toBe('milestone')
+    test('maps legacy milestone/complete/cleanup to finalize', () => {
+        expect(PipelineStep.parse('cleanup')).toBe('finalize')
+        expect(PipelineStep.parse('milestone')).toBe('finalize')
+        expect(PipelineStep.parse('complete')).toBe('finalize')
     })
 
     test('rejects unknown pipelineStep values', () => {
@@ -152,7 +153,7 @@ describe('lucaStateSchema', () => {
 
     test('applies pipelineStep legacy mapping at the top level', () => {
         const parsed = lucaStateSchema.parse({ pipelineStep: 'cleanup' })
-        expect(parsed.pipelineStep).toBe('milestone')
+        expect(parsed.pipelineStep).toBe('finalize')
     })
 
     test('strict variant drops legacy fields by failing them', () => {

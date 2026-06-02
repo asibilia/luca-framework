@@ -20,10 +20,9 @@ export const PIPELINE_TRANSITIONS: Record<PipelineStep, PipelineStep[]> = {
     execute: ['checks'],
     checks: ['verify', 'execute'], // fix loop back to execute
     verify: ['review', 'checks'], // fix loop back to checks
-    review: ['learn'],
-    learn: ['milestone', 'plan'], // next phase OR close milestone
-    milestone: ['complete'],
-    complete: ['idle'], // start a fresh session
+    review: ['learn', 'execute'], // fix loop back to execute for MUST-FIX / SHOULD-FIX iteration
+    learn: ['plan', 'finalize'], // plan=next phase; finalize=last phase done
+    finalize: ['idle', 'execute', 'review'], // idle=run complete; execute/review=gap & postmortem re-entry
 }
 
 export function isLegalTransition(

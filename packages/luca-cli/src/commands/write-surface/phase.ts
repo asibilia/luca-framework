@@ -44,7 +44,7 @@ const advanceCommand = defineCommand({
             'Advance the active roadmap phase by one (currentPhase → ' +
             'currentPhase+1), marking the completed phase done and the next ' +
             'in-progress. Call at the phase boundary (learn step) when more ' +
-            'phases remain; the final phase routes to the milestone step.',
+            'phases remain; the final phase routes to the finalize step.',
     },
     async run() {
         await runWriteHandler('phase advance', lucaPhaseAdvanceTool, {})
@@ -58,7 +58,7 @@ const archiveCommand = defineCommand({
             'Archive all active phase directories (.luca/phases/<slug>/ → ' +
             '.luca/archive/<slug>/) at milestone close, so the next milestone ' +
             'starts from an empty phases/ dir. Idempotent; skips slugs already ' +
-            'archived. Allowed only in the milestone/complete steps.',
+            'archived. Allowed only in the finalize step.',
     },
     async run() {
         await runWriteHandler('phase archive', lucaPhaseArchiveTool, {})

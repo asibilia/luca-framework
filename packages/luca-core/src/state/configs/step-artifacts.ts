@@ -50,8 +50,9 @@ export const STEP_ARTIFACTS: Record<PipelineStep, StepArtifact[]> = {
     verify: ['verify'],
     review: ['audits/*'],
     learn: ['learn'],
-    milestone: [],
-    complete: [],
+    // finalize writes the postmortem learn.md and records gap summaries in
+    // audit artifacts before re-entry; see finalize mode.
+    finalize: ['learn', 'audits/*'],
 }
 
 /**
@@ -97,10 +98,10 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     'roadmap create': ['idle', 'triage'],
     'checks run': ['execute', 'checks'],
     // Phase lifecycle: advance at the phase boundary (learn); archive only
-    // at milestone close. (The tool descriptors carry matching allowedPhases,
+    // during finalize (milestone close). (The tool descriptors carry matching allowedPhases,
     // but the CLI self-check consults THIS table — runWriteHandler.)
     'phase advance': ['learn'],
-    'phase archive': ['milestone', 'complete'],
+    'phase archive': ['finalize'],
 
     // Phase-restricted freeform artifact writes
     'phase write-research': ['research'],
