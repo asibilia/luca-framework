@@ -28,9 +28,9 @@
  *        - E-4: `context-refresher` (PostToolUse[*], surfaces a per-step
  *          luca-reminder every Nth tool call or on step change).
  *   4. Skills — user-facing slash-command workflows (41 of them after
- *      E-5 + the M3 bug-diagnose port: the user-listed core/peripheral/
+ *      E-5 + the M3 bug-diagnose port and the autopilot removal: the user-listed core/peripheral/
  *      utility set plus the Luca-pipeline-essential extras like
- *      seed-memory, session-*, autopilot, etc.). Each skill compiles to
+ *      seed-memory, session-*, etc.). Each skill compiles to
  *      `skills/<name>/SKILL.md`.
  *   5. Commands — `/<name>` filesystem surface for the slash-command
  *      picker (17 of them after E-6). Most user-facing artifacts have
