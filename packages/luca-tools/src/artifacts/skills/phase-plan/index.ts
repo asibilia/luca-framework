@@ -7,6 +7,7 @@
  * canonicals (plan.md, research.md, context.md, learn.md).
  */
 import { defineSkill } from '../../../define/skill.ts'
+import { INPHASE_TERSENESS_DIRECTIVE } from '../../shared/index.ts'
 
 const BODY = `<main>
 # Luca Plan Phase
@@ -14,6 +15,8 @@ const BODY = `<main>
 Create executable phase prompts (plan.md files) for a roadmap phase with integrated research and verification.
 
 **Default flow:** Cognitive Pre-Flight → Research (if needed) → Plan → Verify → Done
+
+${INPHASE_TERSENESS_DIRECTIVE}
 
 **Arguments:** \`[phase] [--research] [--skip-research] [--gaps] [--skip-verify] [--skip-memory]\`
 
@@ -86,6 +89,14 @@ Before planning begins, run cognitive pre-flight:
 - Apply successful planning approaches
 
 ## Process
+
+### Step 0 — Ensure pipelineStep (self-gate)
+
+Run \`luca state read\`. This skill writes \`plan.md\`, which the stage-gate hook permits **only** in the \`plan\` pipelineStep. The single legal forward entry is \`architect → plan\` (loop-back entries \`plan-review → plan\` and \`learn → plan\` already land you at \`plan\`).
+
+- \`pipelineStep === "plan"\` → already there, proceed.
+- \`pipelineStep === "architect"\` → run \`luca state advance --to-step plan\`, then proceed.
+- anything else → STOP. The pipeline must reach \`architect\` before planning can run — point the user at \`/lu\`. Do NOT force the transition or write \`plan.md\` from the wrong step (the hook will BLOCK it). This guard intentionally surfaces a mis-routing caller — e.g. an orchestrator that delegated here while the state was still at \`architect\` without advancing.
 
 ### 1. Validate Environment
 
@@ -213,11 +224,11 @@ Task(
 </research_focus>
 
 <output_requirements>
-- Create research.md in phase directory
-- Return summary of key findings and recommendations
+- Do NOT write research.md (or any .luca/ artifact). This is plan-time research running in the \`plan\` pipelineStep, where the only legal artifact is plan.md — the stage-gate hook will BLOCK a research.md write here. The discrete \`research\` step (driven by /lu or /phase-research) owns research.md; this supplementary research feeds the plan in-context only.
+- Return a structured summary of key findings and recommendations for the architect to fold directly into plan.md
 </output_requirements>
 
-Research how to implement this phase. Analyze the codebase, identify patterns, and document findings.
+Research how to implement this phase. Analyze the codebase and identify patterns. Return your findings — do not persist them to disk.
 """,
   subagent_type="researcher",
   description="Research Phase {phase_number}"

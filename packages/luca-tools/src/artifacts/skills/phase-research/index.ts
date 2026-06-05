@@ -31,6 +31,14 @@ Goes beyond "which library" to ecosystem knowledge:
 
 ## Process
 
+### Step 0 — Ensure pipelineStep (self-gate)
+
+Run \`luca state read\`. This skill writes \`research.md\`, which the stage-gate hook permits **only** in the \`research\` pipelineStep. The single legal forward entry is \`triage → research\`.
+
+- \`pipelineStep === "research"\` → already there, proceed.
+- \`pipelineStep === "triage"\` → run \`luca state advance --to-step research\`, then proceed.
+- anything else → STOP. The pipeline must reach \`triage\` before research can run — point the user at \`/lu\` to drive it there. Do NOT force the transition or let the researcher write \`research.md\` from the wrong step (the hook will BLOCK it).
+
 1. **Load phase context:**
 
    - Read \`.luca/roadmap.md\` for phase goal
