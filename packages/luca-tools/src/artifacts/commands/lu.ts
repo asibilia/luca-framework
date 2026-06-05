@@ -57,21 +57,42 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 | \`discuss\`     | Invoke the \`/phase-discuss\` skill.                                         |
 | \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Advance to \`plan\`. |
 | \`plan\`        | Invoke the \`/phase-plan\` skill.                                            |
-| \`plan-review\` | Spawn \`plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. |
-| \`execute\`     | Invoke the \`/phase-execute\` skill.                                         |
+| \`plan-review\` | Spawn \`plan-reviewer\` (Agent tool). On \`NEEDS_REVISION\`, loop back to \`plan\`. After \`APPROVED\`, check \`plan-review.md\` for an existing \`## Confidence Gate Resolutions\` section (a resuming orchestrator re-uses it rather than re-running the gate); then run the **Confidence Gate** (see below) before advancing. |
+| \`execute\`     | Invoke the \`/phase-execute\` skill, injecting the gate resolutions as a \`<confidence-gate-resolutions>\` block in its prompt. (The Confidence Gate runs between plan-review and execute — see the section below; it is a sub-step, not a \`pipelineStep\`.)                                         |
 | \`checks\`      | Run \`luca checks run --file <commands.json>\` with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
 | \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
 | \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
 | \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access): for each \`TO_PERSIST\` entry call \`mcp__muninn__muninn_remember_batch\` routed to the entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\`; last phase → advance to \`finalize\`. |
 | \`finalize\`    | Spawn the \`finalize\` agent (Agent tool): gap detection, postmortem gate, PR creation, milestone close (invokes \`/milestone-complete\` for the versioned snapshot + phase archive). On a gap/postmortem block it re-enters via \`--to-step execute\`/\`review\`; on success it resets the run with \`--to-step idle\`. |
 
+## Confidence Gate (between plan-review and execute)
+
+After \`plan-reviewer\` returns \`APPROVED\`, run the gate before advancing to \`execute\`:
+
+**Resume check:** if \`plan-review.md\` already contains a \`## Confidence Gate Resolutions\` section (from a prior run or interrupted gate), skip steps 1–4 below and proceed directly to step 5 (hold resolutions in context) and step 6 (advance to execute).
+
+1. \`luca confidence gate --slug <currentPhaseSlug>\` → parse \`{ auto, research, ask, counts }\`.
+2. **All-auto check:** if \`counts.research === 0\` and \`counts.ask === 0\`, proceed directly to step 6 — no resolutions to record.
+3. **\`auto\`** — proceed silently.
+4. **\`research\`** — per entry, spawn \`researcher\` (Agent tool) with the following prompt template:
+   > "You are a researcher resolving a planning-time ambiguity for the Luca confidence gate.
+   > Decision: <entry.decision>
+   > Category: <entry.category>
+   > Reasoning recorded by the executor: <entry.reasoning>
+   > Alternatives considered: <entry.alternatives>
+   > Provide a concrete recommendation (one clear answer) and a brief rationale (2–4 sentences). Respond with: RECOMMENDATION: <answer> RATIONALE: <why>"
+   Record recommendation as \`[gate-research]\` resolution.
+5. **\`ask\`** — per entry, use the **AskUserQuestion** tool to surface ONE targeted question: set the question to the entry's \`decision\` and options to the entry's \`alternatives\`. **Block until the user answers — do NOT proceed on an unanswered question.** Record the answer as a \`[gate-ask]\` resolution. **This is the only pause in \`full-auto\`** — gate \`ask\` items pause even in full-auto; \`checkpoint\` and \`human-in-loop\` additionally pause at their normal points.
+6. Get the phase dir via \`luca phase current\`. Read \`.luca/phases/<slug>/plan-review.md\`. **Check if a \`## Confidence Gate Resolutions\` section already exists** — if so, skip the append (idempotency guard). Otherwise, append \`## Confidence Gate Resolutions\` with all resolutions using the \`Edit\` tool (not \`Write\`). This write targets \`plan-review.md\` (legal at \`plan-review\` step) — do NOT write to \`context.md\` (blocked here).
+7. Hold resolutions in context; inject them as \`<confidence-gate-resolutions>\` into the \`/phase-execute\` prompt at the execute step so the implementer resolves ambiguities without re-asking the user.
+
 ## Oversight
 
 Read \`oversight\` from \`luca state read\`:
 
-- \`full-auto\` — run the whole loop without pausing.
-- \`checkpoint\` — pause after \`plan-review\`, \`verify\`, and \`learn\` for user confirmation.
-- \`human-in-loop\` — pause after every step.
+- \`full-auto\` — autonomous: the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable) and CRITICAL safety. All other steps run without interruption.
+- \`checkpoint\` — pause after \`plan-review\` (post-gate), \`verify\`, and \`learn\` for user confirmation; confidence-gate \`ask\` items also pause.
+- \`human-in-loop\` — pause after every step; confidence-gate \`ask\` items pause within the plan-review step as well.
 
 ## What you must NOT do
 

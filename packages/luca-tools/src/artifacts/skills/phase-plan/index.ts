@@ -267,6 +267,8 @@ Display stage banner:
 
 **MANDATORY**: The architect mode-agent performs planning in v13 (the v12-era \`lu-planner\` subagent was dropped per plan §5.6). Invoke it via the standard mode-transition flow — do NOT attempt to create plans yourself.
 
+> **Confidence emission**: the architect logs a confidence entry per non-trivial plan-time decision — see its "Confidence Emission (plan-time)" section for triggers, field guidance, and the \`luca confidence log\` invocation pattern. These entries feed the **active** confidence gate that runs after plan-review and before execute begins.
+
 First, read all context files (already done in step 7):
 
 \`\`\`bash

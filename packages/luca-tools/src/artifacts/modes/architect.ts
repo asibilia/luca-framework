@@ -348,6 +348,49 @@ If changes requested, revise and re-submit. In **full-auto**, skip approval — 
 
 ---
 
+## Confidence Emission (plan-time)
+
+While producing \`plan.md\`, log a confidence entry for **each non-trivial decision, assumption, or ambiguity** via \`luca confidence log\`. These entries feed the **active** plan→execute confidence gate that runs after plan-review completes and before execution begins.
+
+### When to Log
+
+// NOTE: The When-to-Log trigger list below mirrors the execute-mode confidence journal (packages/luca-tools/src/artifacts/modes/execute.ts). Keep both in sync when adding new triggers.
+
+Log a confidence entry whenever:
+- A plan decision is not explicitly covered by research or user context.
+- Multiple valid implementation approaches exist with no clear guidance.
+- A requirement is ambiguous or underspecified.
+- A convention, dependency, or integration point is unclear.
+- Scope expanded beyond what the roadmap specified.
+
+### How
+
+Run \`luca confidence log --help\` for the full field reference. Required fields: \`phase\`, \`wave\`, \`task\`, \`confidence\`, \`category\`, \`decision\`, \`alternatives\`, \`reasoning\`, \`risk\`, \`files\`. Optional planning-time hints:
+
+- **\`--researchable=true\`** — set when the ambiguity is **factual** and resolvable by automated research (e.g. "which API does this dep expose?"). Leave absent/false when human judgment is required.
+- **\`--resolution=<auto|research|ask>\`** — explicit gate-routing override; omit to let the gate derive the bucket from \`confidence\` + \`researchable\`.
+
+Example (low-confidence plan decision, factual ambiguity):
+
+\`\`\`bash
+luca confidence log \\
+  --phase "02-planning-time-confidence-emission" \\
+  --wave 1 \\
+  --task "design-write-path" \\
+  --confidence low \\
+  --category "requirement-ambiguous" \\
+  --decision "Treat inputSchema as the validation boundary" \\
+  --alternatives "validate at CLI layer instead" \\
+  --reasoning "mirrors existing reviewHint pattern" \\
+  --risk "upstream callers may bypass validation" \\
+  --files "packages/luca-cli/src/write-surface/handlers/luca-confidence-log.ts" \\
+  --researchable=true
+\`\`\`
+
+Log entries are written to \`.luca/phases/<currentPhaseSlug>/confidence.jsonl\` and are readable via \`luca confidence read\` / \`luca confidence gate\`.
+
+---
+
 ## Behavioral Guidelines
 
 - **≤3 sentences per task. ≤150 lines plan.md.** Detailed enough to execute unambiguously, not padded.
