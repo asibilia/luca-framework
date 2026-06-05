@@ -39,6 +39,9 @@ export async function executeDoctor(
     const { configVersionSkewCheck } = await import(
         './checks/config-version-skew'
     )
+    const { vaultConfigLocationCheck } = await import(
+        './checks/vault-config-location'
+    )
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites
@@ -52,6 +55,7 @@ export async function executeDoctor(
         // Project (cwd-dependent)
         strayLocalInstallCheck,
         configVersionSkewCheck,
+        vaultConfigLocationCheck,
     ]
 
     // Filter by scope if provided

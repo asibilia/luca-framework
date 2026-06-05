@@ -60,8 +60,12 @@ export async function writeProjectSkeleton(
             JSON.stringify(
                 {
                     lucaVersion: LUCA_VERSION,
-                    vault: null,
                     oversight: 'full-auto',
+                    // Canonical vault location is `muninn.vault` (see
+                    // resolveRepoVault + the vault-routing rule). `luca
+                    // vault:init` fills this in later; the placeholder makes the
+                    // canonical home discoverable in a fresh config.
+                    muninn: { vault: null },
                 },
                 null,
                 2
