@@ -39,12 +39,20 @@ async function readConfig(): Promise<Record<string, unknown> | null> {
     }
 }
 
-/** Read `muninn.vault` as a non-empty string, or undefined. */
+/** Return the trimmed string if non-empty after trimming, else undefined. */
+function nonEmptyTrimmed(v: unknown): string | undefined {
+    if (typeof v === 'string') {
+        const trimmed = v.trim()
+        if (trimmed.length > 0) return trimmed
+    }
+    return undefined
+}
+
+/** Read `muninn.vault` as a non-empty (trimmed) string, or undefined. */
 function muninnVaultOf(config: Record<string, unknown>): string | undefined {
     const muninn = config.muninn
     if (muninn && typeof muninn === 'object' && !Array.isArray(muninn)) {
-        const v = (muninn as Record<string, unknown>).vault
-        if (typeof v === 'string' && v.length > 0) return v
+        return nonEmptyTrimmed((muninn as Record<string, unknown>).vault)
     }
     return undefined
 }
@@ -67,16 +75,13 @@ export const vaultConfigLocationCheck: DoctorCheck = {
             return pass('no .luca/config.json to check')
         }
         if (!('vault' in config)) {
-            return pass('vault stored at canonical muninn.vault')
+            return pass('no legacy top-level vault key present')
         }
 
         // A stale top-level `vault` key is present.
-        const topLevel = config.vault
+        const topLevel = nonEmptyTrimmed(config.vault)
         const muninnVault = muninnVaultOf(config)
-        const wouldFold =
-            typeof topLevel === 'string' &&
-            topLevel.length > 0 &&
-            muninnVault === undefined
+        const wouldFold = topLevel !== undefined && muninnVault === undefined
 
         const detail = wouldFold
             ? `It carries "${topLevel}" and muninn.vault is unset — \`--fix\` `
@@ -104,16 +109,12 @@ export const vaultConfigLocationCheck: DoctorCheck = {
             return { applied: [], errors: [] }
         }
         try {
-            const topLevel = config.vault
+            const topLevel = nonEmptyTrimmed(config.vault)
             const muninnVault = muninnVaultOf(config)
             const next: Record<string, unknown> = { ...config }
             const applied: string[] = []
 
-            if (
-                typeof topLevel === 'string' &&
-                topLevel.length > 0 &&
-                muninnVault === undefined
-            ) {
+            if (topLevel !== undefined && muninnVault === undefined) {
                 const existingMuninn =
                     config.muninn &&
                     typeof config.muninn === 'object' &&
