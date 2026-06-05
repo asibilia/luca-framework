@@ -7,12 +7,15 @@
  * routing skill); both surfaces ship intentionally.
  */
 import { defineCommand } from '../../define/command.ts'
+import { INPHASE_TERSENESS_DIRECTIVE } from '../shared/index.ts'
 
 const BODY = `# /lu
 
 The unified entry point for the Luca pipeline. \`/lu <request>\` takes a development request and drives it through the full pipeline: triage → research → discuss → architect → plan → plan-review → execute → checks → verify → review → learn → finalize.
 
 You are the **orchestrator**. You do not write code or planning artifacts directly — you read state, run each step (delegating to its skill or subagent), and advance the pipeline.
+
+${INPHASE_TERSENESS_DIRECTIVE}
 
 ## Step 0 — Read state
 

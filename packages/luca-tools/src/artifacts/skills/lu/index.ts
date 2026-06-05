@@ -7,6 +7,7 @@
  * canonicals (plan.md, research.md, context.md, learn.md).
  */
 import { defineSkill } from '../../../define/skill.ts'
+import { INPHASE_TERSENESS_DIRECTIVE } from '../../shared/index.ts'
 
 const BODY = `<main>
 The single entry point for the Luca pipeline. This SKILL is the long-form companion to the modernized \`/lu\` slash command — it drives the pipeline loop end-to-end: triage → research → discuss → architect → plan → plan-review → execute → checks → verify → review → learn → finalize.
@@ -14,6 +15,8 @@ The single entry point for the Luca pipeline. This SKILL is the long-form compan
 **Arguments:** \`<task-description> [--complexity=TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL] [--force-complex] [--skip-memory] [--skip-branch]\`
 
 **CRITICAL:** You are the **orchestrator**. You do not write code or planning artifacts directly — you read state, run each step (delegating to its skill or subagent), and advance the pipeline via \`luca state advance\`.
+
+${INPHASE_TERSENESS_DIRECTIVE}
 
 </main>
 
@@ -110,7 +113,6 @@ Read \`oversight\` from \`luca state read\`:
 - Quick / ad-hoc task that doesn't need a roadmap: \`Skill(skill: "quick", args: "<task-description>")\`
 - Progress check: \`Skill(skill: "progress")\`
 - Session planning: \`Skill(skill: "session-plan")\`
-- Autonomous execution across multiple phases: \`Skill(skill: "autopilot", args: "<flags>")\`
 
 PR-review and debug workflows are not bundled with the v13 Luca skill set; reach for the user's own \`gh-pr-address\` / \`bug-diagnose\` skills (under \`~/.claude/skills/\`) when present.
 
