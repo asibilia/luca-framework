@@ -303,7 +303,7 @@ export async function writeVaultConfig(
  * there is exactly one env var. Earlier per-vault aliasing
  * (`MUNINN_DB_<VAULT>_API_KEY`, `MUNINN_DB_DEFAULT_API_KEY`) wrote the SAME
  * value under several names, which was redundant: consumers that look up a
- * per-vault/default key (e.g. luca-studio's `muninn-config`) already fall back
+ * per-vault/default key (e.g. a tool's `muninn-config`) already fall back
  * to the generic `MUNINN_DB_API_KEY`, and the instance-level key is valid for
  * every vault — so the single generic var is sufficient. This value is also a
  * convenience reference for the one-time `claude mcp add … --header
