@@ -25,6 +25,8 @@
     "build": "cd packages/luca && bun run build",
     "changeset": "changeset",
     "commit": "bunx --bun @alecsibilia/commit",
+    "css:studio": "bun run --filter @alecsibilia/luca-studio css:build",
+    "dev:studio": "bun run --filter @alecsibilia/luca-studio dev",
     "lint": "bun run --filter '*' lint",
     "lint:fix": "bun run --filter '*' lint:fix",
     "mastracode": "bun run packages/luca-mastracode/src/index.ts",
