@@ -28,7 +28,6 @@
   },
   "exclude": [
     "dist",
-    "**/dist",
-    "packages/luca-studio"
+    "**/dist"
   ]
 }
