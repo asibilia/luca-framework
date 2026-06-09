@@ -137,9 +137,16 @@ export const LUCA_DIR_CONTRACT = {
                 'Phases moved here after milestone close — frozen, never resurfaces',
             entries: 'Mirrors phases/<NN-slug>/ structure',
         },
+        tmp: {
+            path: 'tmp/',
+            description:
+                'Ephemeral, repo-scoped CLI-handoff payloads (LLM orchestrator → `luca` CLI via --file). Gitignored; NOT pipeline artifacts. Flat .json files only.',
+            pattern: '<kebab-name>.json',
+        },
     },
     rules: [
-        'No notes/, drafts/, tmp/, or other ad-hoc directories — if not in the allowlist, it does not exist.',
+        'No notes/, drafts/, or other ad-hoc directories — if not in the allowlist, it does not exist. (tmp/ IS sanctioned, but only for flat <kebab-name>.json CLI-handoff payloads.)',
+        'tmp/ holds ONLY ephemeral <kebab-name>.json handoff files (repo-scoped scratch for `luca <cmd> --file`); it is gitignored and writable in any pipelineStep. Never put pipeline artifacts there.',
         'Phase slugs are <NN>-<kebab-case> with zero-padded NN derived from roadmap order — NOT LLM-named.',
         'Audit filenames are fixed by reviewer name (kebab-case) — NOT LLM-named.',
         'Wave files are NN.md (zero-padded) — NOT LLM-named.',

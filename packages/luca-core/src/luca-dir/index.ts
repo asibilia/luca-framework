@@ -40,6 +40,7 @@ export {
     classifyWritePath,
     toLucaRelative,
     AUDIT_PATH_PATTERN,
+    TMP_PATH_PATTERN,
 } from './helpers/classify-write-path.ts'
 
 export type { ValidationResult } from './helpers/is-valid-luca-path.ts'

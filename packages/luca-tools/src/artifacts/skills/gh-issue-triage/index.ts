@@ -63,7 +63,7 @@ Wait for the user to confirm which issues to import. Accept "all" or a comma-sep
 For each approved issue, stage the \`metadata\` object in a JSON file and run \`luca todo add\`:
 
 \`\`\`
-# /tmp/luca-todo-meta.json:
+# .luca/tmp/todo-meta.json:
 # { "priority": "<high|medium|low>", "area": "<ui|api|infra|...>" }
 luca todo add \\
   --title "<issue title>" \\
@@ -71,7 +71,7 @@ luca todo add \\
 
 <issue body, trimmed to essentials>" \\
   --source "gh-issue-#<N>" \\
-  --metadata-file /tmp/luca-todo-meta.json
+  --metadata-file .luca/tmp/todo-meta.json
 \`\`\`
 
 - **\`--source\`** is \`gh-issue-#<N>\` — the link back to the originating issue. It carries the issue number through the entire pipeline.

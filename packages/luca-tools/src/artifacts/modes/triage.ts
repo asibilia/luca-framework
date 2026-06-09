@@ -129,9 +129,9 @@ Default is **\`full-auto\`** — use unless the user explicitly requests \`--ove
 
 | Oversight Mode   | Behavior                                          |
 | ---------------- | ------------------------------------------------- |
-| \`full-auto\`      | **Default.** Transition and execute without pausing. |
-| \`checkpoint\`     | Pause at plan approval and phase boundaries.      |
-| \`human-in-loop\`  | Pause at every major decision point.              |
+| \`full-auto\`      | **Default.** Autonomous — the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable) and CRITICAL safety. |
+| \`checkpoint\`     | Pause after plan-review (post-gate), verify, and learn; confidence-gate \`ask\` items also pause. |
+| \`human-in-loop\`  | Pause after every step; confidence-gate \`ask\` items pause within the plan-review step as well. |
 
 ### Next Step
 

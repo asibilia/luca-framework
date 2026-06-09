@@ -7,6 +7,7 @@
  * canonicals (plan.md, research.md, context.md, learn.md).
  */
 import { defineSkill } from '../../../define/skill.ts'
+import { INPHASE_TERSENESS_DIRECTIVE } from '../../shared/index.ts'
 
 const BODY = `<main>
 # Luca Execute Phase
@@ -14,6 +15,8 @@ const BODY = `<main>
 Execute all plans in a phase using wave-based parallel execution, then verify with code review and UAT.
 
 Orchestrator stays lean: discover plans, analyze dependencies, group into waves, spawn subagents, collect results. Each subagent loads the full execute-plan context and handles its own plan.
+
+${INPHASE_TERSENESS_DIRECTIVE}
 
 **Arguments:** \`<phase-number> [--gaps-only] [--quality-fixes] [--skip-review] [--skip-uat] [--skip-memory] [--skip-replay]\`
 
@@ -71,7 +74,7 @@ Invoke verifier with mode based on phase complexity:
 
 ### Learning Capture
 
-After verification (pass or fail):
+The learner writes \`learn.md\`, which is a **legal artifact only in the \`learn\` pipelineStep**. Do NOT spawn the learner here in the overview's reading order — it runs in **### 9**, *after* \`luca state advance --to-step learn\` has moved the state into \`learn\`. Spawning it earlier (while still in \`execute\`/\`verify\`/\`review\`) makes the \`learn.md\` write illegal and the stage-gate hook will BLOCK it. The brief below is the spawn template; ### 9 is where you actually invoke it.
 
 **MANDATORY**: You MUST spawn a learner sub-agent. Do NOT attempt to capture learnings yourself.
 
@@ -172,6 +175,14 @@ Track:
 ## Process
 
 > Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
+
+### 0. Ensure pipelineStep (self-gate)
+
+Run \`luca state read\`. This skill drives the \`execute → checks → verify → review → learn\` back half; its first gated write (\`execute/summary.md\`, \`execute/waves/NN.md\`) is legal **only** in the \`execute\` pipelineStep. The single legal forward entry is \`plan-review → execute\`.
+
+- \`pipelineStep === "execute"\` → already there, proceed.
+- \`pipelineStep === "plan-review"\` → run \`luca state advance --to-step execute\`, then proceed.
+- anything else → STOP. The pipeline must reach \`plan-review\` before execution can run — point the user at \`/lu\`. Do NOT force the transition. This guard intentionally surfaces a mis-routing caller — e.g. an orchestrator that delegated here while the state was still at \`architect\`.
 
 ### 0.5. Verify GitHub Tracking (Gate)
 
@@ -1560,6 +1571,8 @@ luca state advance --to-step learn 2>/dev/null || true
 \`\`\`
 
 The state machine's \`pipelineStep\` field in \`.luca/state.json\` is the authoritative signal.
+
+**Now spawn the learner** — this is the correct point in the flow, because the state has just advanced to \`learn\` and \`learn.md\` is now a legal artifact. Use the learner spawn template from the **Learning Capture** section above (recall session context, spawn the \`learner\` subagent which writes \`learn.md\` via the Write tool, then persist its \`TO_PERSIST\` block to MuninnDB yourself). Do NOT proceed to ### 10 until the learner returns.
 
 ### 10. Update Requirements
 

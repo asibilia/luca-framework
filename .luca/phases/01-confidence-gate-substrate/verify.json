@@ -1,0 +1,63 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "passed",
+  "summary": "Confidence-gate substrate delivered exactly to spec: two optional schema fields, a pure total bucketing helper exported through both barrels, and a read-only `confidence gate` CLI subcommand. tsc passes clean (exit 0). All invariants hold (postmortem/LOW_CONFIDENCE_THRESHOLD untouched, MCP write-surface handler unchanged, no writer flags added, helper is pure). One non-blocking environmental note: the globally-installed `luca` bin is stale (v13.0.0-alpha.8) so the `gate` subcommand cannot be exercised through it; runtime correctness is established by composition (type-checked thin CLI wrapper + proven empty-journal -> [] + pure total helper).",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "ConfidenceEntrySchema has optional researchable (boolean) + resolution (enum auto/research/ask), both .optional(); no other schema changed.",
+      "met": true,
+      "evidence": "schemas.ts:58 `researchable: z.boolean().optional()`; schemas.ts:63 `resolution: z.enum(['auto','research','ask']).optional()`. ConfidenceLevelSchema (13), ConfidenceCategorySchema (17), ConfidenceSummary (68) unchanged.",
+      "gap": "",
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "selectConfidenceGateActions(entries) is pure, returns {auto,research,ask,counts}, implements locked precedence with a TOTAL final else->ask branch.",
+      "met": true,
+      "evidence": "gate.ts:39-68. No Date./Math./fs/node: refs (grep clean). Precedence: resolution wins (47-50) -> high->auto (51) -> medium->auto (53) -> low+researchable->research (55) -> else->ask (57). Total: every entry hits exactly one branch. Traces: {low}->ask (else); {low,researchable:true}->research; {medium}->auto; {low,resolution:'auto'}->auto (resolution override). counts = bucket lengths (66).",
+      "gap": "",
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "Barrel confidence/index.ts exports helper + type; re-exported from luca-core src/index.ts.",
+      "met": true,
+      "evidence": "confidence/index.ts:24 `export { selectConfidenceGateActions } from './gate.ts'`; :25 `export type { ConfidenceGateActions }`. src/index.ts:20 `export * from './confidence/index.ts'`. Import resolves: confidence.ts:35 imports it from '@alecsibilia/luca-core'.",
+      "gap": "",
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "gateCommand (citty) defined, uses resolveSlug + readConfidenceJournal, emits JSON, registered as `gate` in subCommands.",
+      "met": true,
+      "evidence": "confidence.ts:244-265 gateCommand defineCommand with slug arg; run does resolveSlug -> selectConfidenceGateActions(readConfidenceJournal({cwd,slug})) -> stdout JSON. Registered confidence.ts:278 `gate: gateCommand`.",
+      "gap": "",
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "Invariants: LOW_CONFIDENCE_THRESHOLD/postmortem untouched; no MCP write-surface handler changed; no log writer flags added; helper pure.",
+      "met": true,
+      "evidence": "LOW_CONFIDENCE_THRESHOLD only in postmortem.ts (unchanged, not in git diff). MCP handler luca-confidence-log.ts has no researchable/resolution/gate refs (explicit field list, lines 54-94/121-139). logCommand args unchanged (confidence.ts:77-139, no new flags). Helper purity confirmed in ac-02.",
+      "gap": "",
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "tsc --noEmit passes; `luca confidence gate` emits {auto,research,ask,counts} on empty journal without crashing.",
+      "met": true,
+      "evidence": "bunx --bun tsc --noEmit -> TSC_EXIT=0. Empty-journal no-crash proven by composition: confidence.jsonl absent -> readConfidenceJournal returns [] (confidence-journal.ts:65) -> selectConfidenceGateActions([]) returns {auto:[],research:[],ask:[],counts:{auto:0,research:0,ask:0}}. Direct CLI exercise blocked only by a STALE global luca bin (v13.0.0-alpha.8 lacks `gate`); source is correct and registered. Non-blocking deploy-staleness, resolved by rebuild/relink/luca init.",
+      "gap": "",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "gaps": [],
+  "recommendation": "proceed"
+}

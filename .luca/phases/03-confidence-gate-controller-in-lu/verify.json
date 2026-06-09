@@ -1,0 +1,78 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "Gate sub-step in lu SKILL: runs luca confidence gate after APPROVED; routes auto/research/ask; ask is sole full-auto pause; appends ## Confidence Gate Resolutions to plan-review.md (not context.md); injects resolutions into executor prompt at execute step",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:86-130 — plan-review table row references 'Confidence Gate (see below)'; lines 93-130 contain the full gate section: luca confidence gate CLI call (line 99), auto/research/ask routing (lines 104-109), 'This is the only pause in full-auto mode' (line 109), Read-then-Edit to plan-review.md with explicit 'Do NOT write to context.md' (lines 111-112), advance to execute (line 116), and Executor prompt injection section with <confidence-gate-resolutions> block (lines 118-130)",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "Gate sub-step mirrored in lu COMMAND: loop table has a gate row between plan-review and execute; same plan-review.md persistence + executor injection",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/commands/lu.ts:60-78 — plan-review row (line 60) says 'run the Confidence Gate (see below) before advancing'; line 61 shows explicit *(gate)* row in the loop table with luca confidence gate call, auto/research/ask routing, [gate-research]/[gate-ask] annotations, 'append resolutions to plan-review.md'; lines 69-78 contain the full 'Confidence Gate' section with 6-step procedure matching the lu skill, explicit 'do NOT write to context.md' (line 77), and executor injection (line 78)",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "full-auto redefined consistently across all 4 surfaces: lu skill, lu command, modes/triage.ts, modes/execute.ts — none says 'never pause / no questions'",
+      "met": true,
+      "evidence": "lu skill:137 — 'autonomous: the only pauses are confidence-gate ask items (low-confidence + unresearchable) and CRITICAL safety'; lu command:84 — identical wording; triage.ts:132-134 — 'Autonomous — the only pauses are confidence-gate ask items (low-confidence + unresearchable) and CRITICAL safety'; execute.ts:92 — 'the only pauses are confidence-gate ask items (low-confidence + unresearchable decisions surfaced before execute began) and CRITICAL safety stops'. All 4 surfaces consistent; execute.ts additionally notes ask items were injected into its prompt and no re-asking required during execution",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "De-stale: architect.ts and phase-plan/index.ts no longer call the gate '(future)' — changed to 'active'",
+      "met": true,
+      "evidence": "modes/architect.ts:353 — 'These entries feed the active plan→execute confidence gate that runs after plan-review completes and before execution begins'; skills/phase-plan/index.ts:270 — 'These entries feed the active confidence gate that runs after plan-review and before execute begins'. No '(future)' qualifier present in either file",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "No luca-core changes: OversightMode enum unchanged (3 values); no new pipelineStep or agent; gate.ts and confidence/ predate this phase",
+      "met": true,
+      "evidence": "packages/luca-core/src/state/schemas.ts:18-22 — OversightMode = z.enum(['full-auto', 'checkpoint', 'human-in-loop']) — exactly 3 values, unchanged; step-artifacts.ts:46-56 — STEP_ARTIFACTS map unchanged, 'plan-review': ['plan-review'] (confirms persistence target is legal at this step, context is only legal at discuss); gate.ts and confidence/index.ts exist as Phase 1/2 artifacts with no Phase 3 modifications visible in their content",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "bunx --bun tsc --noEmit passes",
+      "met": true,
+      "evidence": "Ran bunx --bun tsc --noEmit via Bash tool — returned no output (exit 0, no type errors)",
+      "gap": null,
+      "blocking": true
+    }
+  ],
+  "checks": [
+    { "name": "typecheck", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "coherenceChecks": [
+    {
+      "check": "Journal ordering invariant",
+      "result": "SOUND — architect emits confidence entries at plan step; gate runs at tail of plan-review (after plan-reviewer exits). Append-only journal is fully populated before the gate reads it. Gate is single-pass. Confirmed by architect.ts:351-354 (Confidence Emission section) and lu skill plan-review table row",
+      "met": true
+    },
+    {
+      "check": "Stage-gate legality of plan-review.md write",
+      "result": "CONFIRMED — step-artifacts.ts:47 maps 'plan-review' → ['plan-review'], so writing plan-review.md at pipelineStep=plan-review is explicitly permitted. context is mapped to ['context'] under discuss step only (line 43). The rev-2 design constraint (confirmed in plan-review.md) correctly identified this as the unblocked target",
+      "met": true
+    },
+    {
+      "check": "Full-auto consistency — no internal contradiction",
+      "result": "CONSISTENT — all 4 surfaces agree: full-auto pauses only on gate ask items + CRITICAL safety. execute.ts explicitly clarifies gate ask items were resolved before execution started and injected into the executor prompt, so no re-asking occurs during execution waves. This is coherent with the gate running at plan-review tail before execute begins",
+      "met": true
+    }
+  ],
+  "convergence": "n/a",
+  "errorFingerprints": [],
+  "recommendation": "proceed"
+}

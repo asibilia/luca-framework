@@ -1,0 +1,1 @@
+{"timestamp":"2026-06-05T14:41:12.278Z","runId":"","event":"hook.pipeline-guard.fired","data":{"pipelineStep":"idle","requestedStep":"execute","decision":"block","reason":"pipeline-guard: 'idle' → 'execute' is not a legal pipeline transition. From 'idle', the allowed next steps are: triage."}}

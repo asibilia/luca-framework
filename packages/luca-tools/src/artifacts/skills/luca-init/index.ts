@@ -67,8 +67,8 @@ Otherwise, show the detected values and ask once with \`AskUserQuestion\`:
 Write the approved candidate. Stage the partial preferences object in a JSON file, then run \`luca preferences write --file\`:
 
 \`\`\`
-# /tmp/luca-preferences.json holds the approved candidate preferences object
-luca preferences write --file /tmp/luca-preferences.json
+# .luca/tmp/preferences.json holds the approved candidate preferences object
+luca preferences write --file .luca/tmp/preferences.json
 \`\`\`
 
 This validates the merged result against \`ProjectPreferencesSchema\` and atomically rewrites \`.luca/config.json\`, preserving every other config key (\`lucaVersion\`, \`vault\`, \`oversight\`, …). \`.luca/config.json#preferences\` is the single source of truth — \`luca preferences read\` reads it deterministically, so no separate MuninnDB registration is needed.

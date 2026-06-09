@@ -18,7 +18,6 @@
 import type { Artifact } from '../../define/index.ts'
 
 import { archAuditSkill } from './arch-audit/index.ts'
-import { autopilotSkill } from './autopilot/index.ts'
 import { bugDiagnoseSkill } from './bug-diagnose/index.ts'
 import { cavemanSkill } from './caveman/index.ts'
 import { chooseSkill } from './choose/index.ts'
@@ -62,7 +61,6 @@ import { workflowSaveSkill } from './workflow-save/index.ts'
 
 export {
     archAuditSkill,
-    autopilotSkill,
     bugDiagnoseSkill,
     cavemanSkill,
     chooseSkill,
@@ -111,7 +109,6 @@ export {
  */
 export const SKILLS: readonly Artifact[] = [
     archAuditSkill,
-    autopilotSkill,
     bugDiagnoseSkill,
     cavemanSkill,
     chooseSkill,

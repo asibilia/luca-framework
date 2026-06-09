@@ -44,6 +44,9 @@ export const LucaArtifactKind = z.enum([
     'telemetry.run',
     // Archive
     'archive.phase',
+    // Ephemeral CLI-handoff scratch (.luca/tmp/<name>.json) — repo-scoped,
+    // gitignored, not a pipeline artifact.
+    'tmp.handoff',
 ])
 export type LucaArtifactKind = z.infer<typeof LucaArtifactKind>
 

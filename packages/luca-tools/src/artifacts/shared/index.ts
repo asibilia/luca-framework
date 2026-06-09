@@ -7,6 +7,7 @@
  * artifact bytes deterministic — a prerequisite for the compiler's
  * idempotence guarantee.
  */
+export { INPHASE_TERSENESS_DIRECTIVE } from './inphase-terseness.ts'
 export { MEMORY_TIER_DISCIPLINE } from './memory-tier-discipline.ts'
 export { SUBAGENT_SHARED_PREFIX } from './shared-prefix.ts'
 export {
