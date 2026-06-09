@@ -210,6 +210,16 @@ After each wave, run \`luca checks run\` for automated checks:
 2. **Linting** — there is no ESLint config in this repo today; checks effectively reduce to typecheck.
 3. **Tests** — intentionally absent (no-tests rule).
 
+Stage the commands payload at \`.luca/tmp/checks.json\` (repo-scoped — NEVER
+the shared OS \`/tmp/\`, where \`luca-*\` files collide across concurrently
+running repos and are blocked by the stage-gate hook):
+
+\`\`\`bash
+# .luca/tmp/checks.json holds the commands array:
+# [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+luca checks run --file .luca/tmp/checks.json
+\`\`\`
+
 ### Convergence-Based Fix Strategy
 
 | Status | Action |

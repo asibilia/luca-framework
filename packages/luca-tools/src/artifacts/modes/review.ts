@@ -77,7 +77,7 @@ For each acceptance criterion in the plan:
 
 ### Step 3: Automated Checks
 
-Run \`luca checks run\` for TypeScript compilation. Record results for the audit report.
+Run \`luca checks run --file .luca/tmp/checks.json\` for TypeScript compilation (stage the commands array at that repo-scoped path — never in the shared OS \`/tmp/\`). Record results for the audit report.
 
 ### Step 4: Parallel Code Review
 

@@ -33,6 +33,18 @@ const SYSTEM_DIR_PATTERN = /^\/(etc|usr|var|System|bin|sbin)(\/|$)/
 const GIT_DIR_PATTERN = /(^|\/)\.git(\/|$)/
 const HOME_DENIED_SUBDIRS = ['.claude', '.luca']
 
+// Legacy shared-tmp handoff payloads: `/tmp/luca-*` (e.g.
+// `/tmp/luca-checks-07.json`) was the pre-v13 staging convention for
+// LLM→CLI `--file` payloads. The OS tmp dir is GLOBAL, so two repos
+// running pipelines concurrently overwrite each other's payloads. The
+// canonical replacement is repo-scoped `.luca/tmp/<kebab-name>.json`
+// (TMP_PATH_PATTERN below); writes to the legacy location are denied
+// outright so a model reverting to old habits gets redirected instead
+// of silently corrupting another project's run. `/private/tmp` is
+// macOS's physical location for `/tmp` (a symlink), so both spellings
+// are covered.
+const SHARED_TMP_LUCA_PATTERN = /^\/(private\/)?tmp\/luca-/
+
 // Audit file pattern: .luca/phases/<NN-slug>/audits/<reviewer>.md
 //
 // Built from the canonical PHASE_SLUG_RE + REVIEWER_NAME_RE (anchors
@@ -117,7 +129,8 @@ export function toLucaRelative(path: string, cwd?: string): string {
  *   - 'planning-general': .luca/ artifact other than an audit file
  *   - 'planning-audit': .luca/phases/<slug>/audits/<reviewer>.md
  *   - 'denied': must never be written regardless of phase
- *               (.git/, ~/.claude/, ~/.luca/, /etc/, /usr/, /var/, /System/, /bin/, /sbin/)
+ *               (.git/, ~/.claude/, ~/.luca/, /etc/, /usr/, /var/, /System/,
+ *               /bin/, /sbin/, and legacy shared-tmp /tmp/luca-* payloads)
  *
  * Pass `homedir` to detect absolute paths under the user home that
  * resolve to denied subdirectories.
@@ -142,7 +155,17 @@ export function classifyWritePath(
         }
     }
 
-    // 3. Always-denied: user-home tooling dirs
+    // 3. Always-denied: legacy shared-tmp luca handoff payloads
+    if (SHARED_TMP_LUCA_PATTERN.test(path)) {
+        return {
+            class: 'denied',
+            reason:
+                'luca CLI handoff payloads must be repo-scoped — write to .luca/tmp/<kebab-name>.json instead ' +
+                '(shared /tmp/luca-* files collide across concurrently-running repos)',
+        }
+    }
+
+    // 4. Always-denied: user-home tooling dirs
     for (const subdir of HOME_DENIED_SUBDIRS) {
         if (path.startsWith(`~/${subdir}/`) || path === `~/${subdir}`) {
             return {
@@ -161,7 +184,7 @@ export function classifyWritePath(
         }
     }
 
-    // 4. .luca/ artifacts. Normalize to the contract-relative form first —
+    // 5. .luca/ artifacts. Normalize to the contract-relative form first —
     //    the contract (and AUDIT_PATH_PATTERN) is relative, but callers pass
     //    absolute file paths. `toLucaRelative` is robust to `cwd` not being
     //    the repo root (see its docstring).
@@ -173,6 +196,6 @@ export function classifyWritePath(
         return { class: 'planning-general' }
     }
 
-    // 5. Default: code
+    // 6. Default: code
     return { class: 'code' }
 }

@@ -146,7 +146,7 @@ Verify all planned work was completed **before** opening a PR.
 1. **Aggregate verification**: \`luca verification aggregate\` for total waves, pass/fail/stalled, blocking criteria status.
 2. **Load \`plan.md\`** from \`.luca/phases/<currentPhaseSlug>/plan.md\`.
 3. **For each task**: Was it executed? Passed verification? Passed review? Unresolved must-fix items?
-4. **For each verification criterion**: Currently met? Run final \`luca checks run\` to confirm.
+4. **For each verification criterion**: Currently met? Run final \`luca checks run --file .luca/tmp/checks.json\` to confirm (stage the commands array at that repo-scoped path — never in shared \`/tmp/\`).
 
 ### Gap Report
 

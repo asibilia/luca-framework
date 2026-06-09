@@ -57,7 +57,8 @@ export interface HandleStageGateHookResult {
  * IDLE is permissive (no enforcement). Other phases apply the matrix from
  * decision:luca-stage-tool-matrix-2026-05-19. Always-denied paths
  * (.git/, ~/.claude/, ~/.luca/, /etc/, /usr/, /var/, /System/, /bin/,
- * /sbin/) are blocked regardless of phase.
+ * /sbin/, legacy shared-tmp /tmp/luca-* payloads) are blocked
+ * regardless of phase.
  */
 export async function handleStageGateHook(
     opts: HandleStageGateHookOptions
