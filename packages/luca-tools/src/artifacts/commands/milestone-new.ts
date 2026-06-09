@@ -80,12 +80,12 @@ Let the user adjust. Fold the agreed requirement list into the milestone memory 
 Organize the requirements into ordered phases by dependency and priority. Stage the phases array in a JSON file, then run \`luca roadmap create --file\`:
 
 \`\`\`
-# /tmp/luca-roadmap.json:
+# .luca/tmp/roadmap.json:
 # [
 #   { "name": "<phase name>", "deps": [...], "complexity": "<TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL>" },
 #   ...
 # ]
-luca roadmap create --file /tmp/luca-roadmap.json
+luca roadmap create --file .luca/tmp/roadmap.json
 \`\`\`
 
 \`luca roadmap create\` is only legal in \`idle\`/\`triage\`; it resets \`currentPhase\` to 0 and sets \`totalPhases\`. If the pipeline was mid-flight and the user confirmed the reset in Step 1, run \`luca workflow reset --confirm\` first to return to a clean idle state.

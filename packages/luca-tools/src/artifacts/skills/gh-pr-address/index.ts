@@ -55,8 +55,8 @@ Comments filed against an earlier commit may already be addressed by later fix c
 Run the stale-comment filter on the **review comments** (the raw \`gh api pulls/<n>/comments\` objects — each carries \`id, path, line, original_line, commit_id, original_commit_id, diff_hunk, body, in_reply_to_id?, user?\`). Stage the review comments array in a JSON file, then run \`luca pr-review filter-stale --file\`:
 
 \`\`\`
-# /tmp/luca-pr-comments.json holds the review comments array from Step 1
-luca pr-review filter-stale --file /tmp/luca-pr-comments.json
+# .luca/tmp/pr-comments.json holds the review comments array from Step 1
+luca pr-review filter-stale --file .luca/tmp/pr-comments.json
 \`\`\`
 
 The command partitions them into four buckets:
@@ -120,8 +120,8 @@ Build a \`findings\` array — one entry per actionable comment, plus any findin
 Run convergence detection. Stage the findings array in a JSON file, then run \`luca pr-review detect-convergence --file\`:
 
 \`\`\`
-# /tmp/luca-pr-findings.json holds the findings array
-luca pr-review detect-convergence --file /tmp/luca-pr-findings.json --line-tolerance 2
+# .luca/tmp/pr-findings.json holds the findings array
+luca pr-review detect-convergence --file .luca/tmp/pr-findings.json --line-tolerance 2
 \`\`\`
 
 For each entry in the returned \`report.promotions\`:
@@ -205,14 +205,14 @@ Fix commits sometimes introduce new issues the original review didn't flag. Catc
 3. **Run the regression check** (it computes touched paths from the SHA range via \`git diff\`). Stage the full payload object in a JSON file, then run \`luca pr-review regression-check --file\`:
 
    \`\`\`
-   # /tmp/luca-pr-regression.json holds:
+   # .luca/tmp/pr-regression.json holds:
    # {
    #   "before":   <pre-iteration findings>,
    #   "after":    <post-iteration findings>,
    #   "from_sha": "<iterationStartSha>",
    #   "to_sha":   "HEAD"
    # }
-   luca pr-review regression-check --file /tmp/luca-pr-regression.json
+   luca pr-review regression-check --file .luca/tmp/pr-regression.json
    \`\`\`
 
 4. **Handle the verdict.**

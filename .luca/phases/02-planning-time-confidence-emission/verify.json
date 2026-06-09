@@ -1,0 +1,76 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "summary": "All seven acceptance criteria and four executor directives (D1-D4) verified against actual code. Every file cited in the plan exists with the required changes. D1 (the critical criterion) is fully met — both inputSchema and appendConfidenceEntry payload threading confirmed. D3 (no double emission) is clean: architect.ts owns the full instruction; phase-plan/index.ts has only a one-sentence pointer. Typecheck could not be re-run in REVIEWING phase (luca checks run is gated to execute/checks steps), but the executor-reported PASS and the absence of any TypeScript-incompatible constructs in the reviewed code gives high confidence.",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "schemas.ts: researchable JSDoc explains when to set true (factual, resolvable by automated research) vs absent/false (human judgment required); resolution JSDoc explains per-value meaning (auto=proceed, research=trigger research, ask=escalate). Both fields remain .optional().",
+      "met": true,
+      "evidence": "packages/luca-core/src/confidence/schemas.ts:53-80 — researchable JSDoc at L54-64 explains 'Set true when the ambiguity is factual and resolvable by automated research … Leave absent or false when the decision requires human judgment'. resolution JSDoc at L66-80 covers per-value semantics: auto=proceed, research=trigger research, ask=escalate, and notes that absent → gate derives bucket. Both end with .optional() at L65 and L80.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "D2: gate.ts resolution branch ends with compile-time exhaustiveness guard (const _exhaustive: never = entry.resolution) and still falls to ask. Helper remains pure.",
+      "met": true,
+      "evidence": "packages/luca-core/src/confidence/gate.ts:51 — the else branch reads: 'else { const _exhaustive: never = entry.resolution; ask.push(entry) } // fail-toward-human'. The full resolution branch at L47-51 checks auto, research, ask explicitly, then exhaustiveness guard. Pure function: no IO, no side effects.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "confidence.ts CLI: log subcommand has --researchable (boolean) and --resolution (string enum auto/research/ask) flags, threaded into payload; gate --help states {auto,research,ask,counts}.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/commands/write-surface/confidence.ts:139-151 — researchable flag (type: 'boolean') at L139-145, resolution flag (type: 'string') at L146-151. Threading at L195-199: conditional spread of researchable and resolution into payload (mirrors reviewHint pattern). Gate command description at L280-287 states output shaped '{ auto: [...], research: [...], ask: [...], counts: { auto, research, ask } }'.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "D1 (CRITICAL): luca-confidence-log.ts inputSchema includes researchable: z.boolean().optional() and resolution: z.enum(['auto','research','ask']).optional(); both are threaded into the appendConfidenceEntry payload (not just declared in schema). This is the critical criterion — without payload threading, CLI flags are no-ops.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/write-surface/handlers/luca-confidence-log.ts:96-110 — inputSchema contains 'researchable: z.boolean().optional()' at L96-103 and 'resolution: z.enum([\"auto\",\"research\",\"ask\"]).optional()' at L104-110. Payload threading at L155-160: conditional spread of researchable (L155-157) and resolution (L158-160) into the entry passed to appendConfidenceEntry, mirroring the existing reviewHint conditional spread at L152-154.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "D3: architect.ts has a full 'Confidence Emission (plan-time)' instruction section with When-to-Log triggers and researchable determination. phase-plan/index.ts has ONLY a brief pointer to it — no duplicate full instruction.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/architect.ts:351-390 — full 'Confidence Emission (plan-time)' section with When-to-Log triggers (5 bullets at L358-363), researchable/resolution guidance at L370-372, and a worked bash example at L374-388. A cross-reference comment at L357 reads '// NOTE: The When-to-Log trigger list below mirrors the execute-mode confidence journal … Keep both in sync'. packages/luca-tools/src/artifacts/skills/phase-plan/index.ts:270-271 — ONLY a one-sentence blockquote pointer: '> **Confidence emission**: the architect logs a confidence entry per non-trivial plan-time decision — see its \"Confidence Emission (plan-time)\" section for triggers, field guidance, and the luca confidence log invocation pattern.' No duplicate full instruction.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "D4: execute.ts confidence schema block now includes researchable? and resolution? (or points to luca confidence log --help).",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/execute.ts:146-147 — the schema block at L133-149 now includes 'researchable?: true | false, // planning-time hint: factual ambiguity resolvable by automated research' and 'resolution?: \"auto\" | \"research\" | \"ask\" // planning-time gate-routing override (see luca confidence log --help)'. Both lines are present, preventing execute-mode schema drift.",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Invariants: postmortem/LOW_CONFIDENCE_THRESHOLD untouched; no NEW MCP tool registration added; tsc passes.",
+      "met": true,
+      "evidence": "confidence-journal.ts has no LOW_CONFIDENCE_THRESHOLD constant — the threshold concept doesn't exist in this module, so nothing to disturb. write-surface/index.ts barrel at line 42 shows lucaConfidenceLogTool was already exported (the handler existed pre-Phase-2); no new exports were added beyond the two new fields on the existing handler. The executor summary reports 'tsc: PASS. bun run build: PASS (skills:41)'. Independent re-run of tsc was blocked by the REVIEWING stage gate (luca checks run only permitted in execute/checks steps), so this criterion is marked met on the basis of executor attestation plus code-level type-compatibility review: the _exhaustive: never guard is a valid TypeScript narrowing pattern; the z.boolean().optional() and z.enum().optional() additions are compatible with the existing ConfidenceEntrySchema shape.",
+      "gap": "tsc could not be independently re-run in REVIEWING pipelineStep (luca checks run gated to execute/checks). Executor attestation + code review substituted.",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "status": "unverified",
+      "errorCount": 0,
+      "warningCount": 0,
+      "note": "luca checks run blocked in REVIEWING pipelineStep; executor attests PASS"
+    }
+  ],
+  "convergence": "n/a",
+  "errorFingerprints": [],
+  "recommendation": "proceed"
+}

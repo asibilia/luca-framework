@@ -1,6 +1,6 @@
 import { isAbsolute, relative } from 'node:path'
 
-import { PHASE_SLUG_RE, REVIEWER_NAME_RE } from '../constants.ts'
+import { PHASE_SLUG_RE, REVIEWER_NAME_RE, TMP_FILE_RE } from '../constants.ts'
 
 export type WritePathClass =
     | 'code'
@@ -53,6 +53,19 @@ export const AUDIT_PATH_PATTERN = new RegExp(
     `^\\.luca/phases/${reAnchorless(PHASE_SLUG_RE)}/audits/${reAnchorless(
         REVIEWER_NAME_RE
     )}\\.md$`
+)
+
+/**
+ * Canonical scratch-handoff path pattern: `.luca/tmp/<kebab-name>.json`.
+ *
+ * Exported so the v13 stage-gate hook can recognise an ephemeral
+ * CLI-handoff payload and allow it in ANY pipelineStep — these
+ * repo-scoped files (LLM orchestrator → `luca` CLI via `--file`) are not
+ * pipeline artifacts and replace the old shared global `/tmp/luca-*.json`
+ * paths that collided across repos.
+ */
+export const TMP_PATH_PATTERN = new RegExp(
+    `^\\.luca/tmp/${reAnchorless(TMP_FILE_RE)}$`
 )
 
 /**

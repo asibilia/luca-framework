@@ -1,0 +1,120 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "M1 (critical structural): lu skill step table has EXACTLY ONE `finalize` row, contiguous after `learn`, inside the markdown table. No orphaned `finalize` row below gate sections.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:80-92 — table header at line 80, 11 data rows lines 82-92 (research…learn at line 91, finalize at line 92). `### Confidence Gate` section begins at line 94. No `finalize` row appears anywhere in lines 94-176.",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "M2: both lu skill gate `ask` handler AND `/lu` command gate `ask` step explicitly name AskUserQuestion tool and say to block until answered.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:121 — 'use the **AskUserQuestion** tool … Block until the user answers — do NOT proceed on an unanswered question.' | packages/luca-tools/src/artifacts/commands/lu.ts:61 (table gate row) — 'use **AskUserQuestion** per `ask` entry … block until answered' and line 86 (expanded gate) — 'use the **AskUserQuestion** tool … Block until the user answers — do NOT proceed on an unanswered question.'",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "S1: idempotency guard before appending `## Confidence Gate Resolutions` — checks for existing section to prevent double-append on plan-review→plan→plan-review re-runs.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:124 — 'Check if a `## Confidence Gate Resolutions` section already exists — if it does, skip this append (idempotency guard against plan-review→plan→plan-review re-runs).' | packages/luca-tools/src/artifacts/commands/lu.ts:87 — 'Check if a `## Confidence Gate Resolutions` section already exists — if so, skip the append (idempotency guard).'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "S2: plan-review row notes that resuming orchestrator should check plan-review.md for resolutions section before re-running the gate.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:86 — plan-review row: 'check `plan-review.md` for an existing `## Confidence Gate Resolutions` section (a resuming orchestrator should re-use it rather than re-running the gate)' | packages/luca-tools/src/artifacts/commands/lu.ts:60 — 'a resuming orchestrator re-uses it rather than re-running the gate'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "S3: all-auto empty-buckets fast-path — if counts.research===0 and counts.ask===0, skip gate and proceed directly to execute.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:106 — 'if `counts.research === 0` and `counts.ask === 0` (every entry is `auto`), proceed directly to step 5' | packages/luca-tools/src/artifacts/commands/lu.ts:76 — 'if `counts.research === 0` and `counts.ask === 0`, proceed directly to step 6 — no resolutions to record.'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "S4: concrete researcher prompt template for research bucket (passes decision/category/reasoning/alternatives, returns RECOMMENDATION+RATIONALE).",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:112-118 — full prompt template with all 4 fields and explicit RECOMMENDATION/RATIONALE response format | packages/luca-tools/src/artifacts/commands/lu.ts:79-85 — identical template",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "S5: command parity — `luca phase current` and 'use Edit not Write' present in /lu command gate section.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/commands/lu.ts:61 (table gate row) — 'use `luca phase current` for the phase dir; use `Edit` not `Write`' | line 87 (expanded gate step 6) — 'Get the phase dir via `luca phase current`' and 'using the `Edit` tool (not `Write`)'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Task 2: `--resolution` invalid-value error message cites `luca confidence log --help`.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/commands/write-surface/confidence.ts:173-177 — error: 'Run `luca confidence log --help` for usage.'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "Task 2: `lucaConfidenceLogTool.description` prose lists `researchable?` and `resolution?` fields.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/write-surface/handlers/luca-confidence-log.ts:126-127 — description ends '…reviewHint?, researchable?, resolution?)'",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "Task 3: `docs/decisions/confidence-gated-lu.md` exists and covers full-auto redefinition, confidence signal (researchable/resolution), deterministic bucketing (medium→auto, fail-toward-ask), gate placement (tail of plan-review → plan-review.md → executor injection), all 4 delivered phases, and 2 follow-ups.",
+      "met": true,
+      "evidence": "docs/decisions/confidence-gated-lu.md — full-auto redef: lines 17-18; signal fields table: lines 23-37; bucketing rules (medium→auto, fail-toward-human): lines 40-54; gate placement: lines 59-72; 4 phases: lines 77-107; 2 follow-ups: lines 113-133",
+      "gap": null,
+      "blocking": false
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "Constraint: ZERO files under `packages/luca-core/` changed this phase.",
+      "met": true,
+      "evidence": "execute/waves/01.md line 57: 'No files under `packages/luca-core/` were modified.' Wave modified file list confirms only: 2 luca-tools files, 2 luca-cli files, 1 docs/decisions file.",
+      "gap": null,
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "Constraint: `bunx --bun tsc --noEmit` passes.",
+      "met": true,
+      "evidence": "execute/waves/01.md line 37: 'bunx --bun tsc --noEmit: PASS'. Stage-gate blocked re-running typecheck in REVIEWING step; executor-reported result with build counts (skills:41, commands:17) matching plan expectations accepted. No type-unsafe code patterns observed in changed files.",
+      "gap": "Could not re-run typecheck independently (stage-gate blocks bash-mutate in REVIEWING); relying on executor-reported PASS with corroborating build counts.",
+      "blocking": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "tests",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "n/a",
+  "errorFingerprints": [],
+  "recommendation": "proceed"
+}

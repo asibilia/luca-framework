@@ -50,6 +50,34 @@ export const ConfidenceEntrySchema = z.object({
     files: z.array(z.string()),
     /** Suggested focus area for a human reviewer. */
     reviewHint: z.string().optional(),
+    /**
+     * Planning-time hint: whether a low-confidence item can be resolved by
+     * automated research rather than requiring a human. Splits `low` into
+     * research-vs-ask in the confidence gate.
+     *
+     * Set `true` when the ambiguity is **factual** and resolvable by automated
+     * research (e.g. "which API version does this dependency expose?", "does
+     * this file already define X?"). Leave absent or `false` when the decision
+     * requires **human judgment** (e.g. product prioritisation, design
+     * trade-offs, stakeholder constraints). Absent/false entries that reach the
+     * gate fall into the `ask` bucket (fail-toward-human convention).
+     */
+    researchable: z.boolean().optional(),
+    /**
+     * Planning-time explicit gate routing. When set, overrides the
+     * confidence-derived bucket in the confidence gate. Takes precedence over
+     * `researchable` and `confidence` level.
+     *
+     * - `"auto"` — proceed without intervention; the decision is safe to ship.
+     * - `"research"` — trigger automated research to resolve the ambiguity
+     *   before execution continues.
+     * - `"ask"` — escalate to a human; the ambiguity cannot be resolved by
+     *   the system alone.
+     *
+     * When absent the gate derives the bucket from `confidence` +
+     * `researchable` (see `selectConfidenceGateActions`).
+     */
+    resolution: z.enum(['auto', 'research', 'ask']).optional(),
 })
 export type ConfidenceEntry = z.infer<typeof ConfidenceEntrySchema>
 

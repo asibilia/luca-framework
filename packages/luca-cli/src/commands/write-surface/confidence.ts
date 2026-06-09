@@ -32,6 +32,7 @@ import {
     readConfidenceJournal,
     renderConfidenceJournalMarkdown,
     resolveActiveSlug,
+    selectConfidenceGateActions,
 } from '@alecsibilia/luca-core'
 
 import { logger } from '../../utils/logger.ts'
@@ -135,6 +136,19 @@ const logCommand = defineCommand({
             description:
                 'Optional. Suggested focus area for a human reviewer.',
         },
+        researchable: {
+            type: 'boolean',
+            description:
+                'Optional. Set true when the ambiguity is factual and ' +
+                'resolvable by automated research; absent/false means human ' +
+                'judgment is required (gate routes to ask).',
+        },
+        resolution: {
+            type: 'string',
+            description:
+                'Optional. Explicit gate routing override: auto | research | ask. ' +
+                'Overrides confidence-derived bucketing when set.',
+        },
     },
     async run({ args }) {
         let payload: Record<string, unknown>
@@ -148,6 +162,20 @@ const logCommand = defineCommand({
             }
             payload = fromFile as Record<string, unknown>
         } else {
+            // Validate --resolution enum value when provided.
+            const resolution = args.resolution as string | undefined
+            if (
+                resolution !== undefined &&
+                resolution !== 'auto' &&
+                resolution !== 'research' &&
+                resolution !== 'ask'
+            ) {
+                logger.error(
+                    `luca confidence log: --resolution must be one of: auto, research, ask (got "${resolution}"). Run \`luca confidence log --help\` for usage.`
+                )
+                process.exit(1)
+            }
+
             // Flag-driven form — build the payload from individual flags.
             payload = {
                 phase: args.phase,
@@ -162,6 +190,12 @@ const logCommand = defineCommand({
                 files: splitCsv(args.files),
                 ...(args['review-hint'] !== undefined
                     ? { reviewHint: args['review-hint'] }
+                    : {}),
+                ...(args.researchable !== undefined
+                    ? { researchable: args.researchable }
+                    : {}),
+                ...(resolution !== undefined
+                    ? { resolution }
                     : {}),
             }
         }
@@ -240,6 +274,33 @@ const renderCommand = defineCommand({
     },
 })
 
+const gateCommand = defineCommand({
+    meta: {
+        name: 'gate',
+        description:
+            "Bucket a phase's confidence entries into gate actions and " +
+            'emit a JSON object shaped { auto: [...], research: [...], ' +
+            'ask: [...], counts: { auto, research, ask } } to stdout. ' +
+            'Each entry lands in exactly one bucket: explicit resolution ' +
+            'overrides first, then high/medium → auto, low+researchable → ' +
+            'research, otherwise → ask (fail-toward-human).',
+    },
+    args: {
+        slug: {
+            type: 'string',
+            description: 'Phase slug (defaults to active phase).',
+        },
+    },
+    async run({ args }) {
+        const cwd = process.cwd()
+        const slug = await resolveSlug({ explicit: args.slug, cwd })
+        const actions = selectConfidenceGateActions(
+            readConfidenceJournal({ cwd, slug })
+        )
+        process.stdout.write(`${JSON.stringify(actions, null, 2)}\n`)
+    },
+})
+
 export const confidenceCommand = defineCommand({
     meta: {
         name: 'confidence',
@@ -251,5 +312,6 @@ export const confidenceCommand = defineCommand({
         read: readCommand,
         summary: summaryCommand,
         render: renderCommand,
+        gate: gateCommand,
     },
 })

@@ -89,7 +89,7 @@ The plan file on disk is the **source of truth**. Do NOT re-create or re-plan.
 
 ## Checkpoint Interaction
 
-When oversight is \`checkpoint\`, ask the user after each **phase** whether to proceed. When oversight is \`human-in-loop\`, ask after each **wave**. When oversight is \`full-auto\`, execute continuously — no questions.
+When oversight is \`checkpoint\`, ask the user after each **phase** whether to proceed. When oversight is \`human-in-loop\`, ask after each **wave**. When oversight is \`full-auto\`, execute continuously — the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable decisions surfaced before execute began) and CRITICAL safety stops. The gate \`ask\` items were resolved at the plan-review step and injected into this prompt as \`<confidence-gate-resolutions>\`; no re-asking is required during execution.
 
 ---
 
@@ -142,7 +142,9 @@ The execution step maintains a running confidence journal. The \`luca confidence
   reasoning: <why this path>,
   risk: <what could go wrong>,
   files: [<affected file paths>],
-  reviewHint: <optional one-line review hint>
+  reviewHint: <optional one-line review hint>,
+  researchable?: true | false,           // planning-time hint: factual ambiguity resolvable by automated research
+  resolution?: "auto" | "research" | "ask"  // planning-time gate-routing override (see luca confidence log --help)
 }
 \`\`\`
 

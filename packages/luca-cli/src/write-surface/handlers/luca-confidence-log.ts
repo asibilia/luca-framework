@@ -50,6 +50,8 @@ import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
  *   - `risk`: what could go wrong if this was the wrong call.
  *   - `files`: which files were affected by this decision.
  *   - `reviewHint?`: suggested focus area for a human reviewer.
+ *   - `researchable?`: true when the ambiguity is factual + auto-researchable.
+ *   - `resolution?`: explicit gate-routing override (auto|research|ask).
  */
 const inputSchema = z.object({
     phase: z
@@ -91,6 +93,21 @@ const inputSchema = z.object({
         .string()
         .optional()
         .describe('Suggested focus area for a human reviewer.'),
+    researchable: z
+        .boolean()
+        .optional()
+        .describe(
+            'Planning-time hint: true when the ambiguity is factual and ' +
+            'resolvable by automated research; absent/false means human ' +
+            'judgment is required (gate routes to ask).'
+        ),
+    resolution: z
+        .enum(['auto', 'research', 'ask'])
+        .optional()
+        .describe(
+            'Explicit gate-routing override. Overrides confidence-derived ' +
+            'bucketing: auto=proceed, research=trigger research, ask=escalate.'
+        ),
 })
 
 /**
@@ -106,7 +123,7 @@ export const lucaConfidenceLogTool: ToolDescriptor<z.infer<typeof inputSchema>> 
     {
         name: 'luca_confidence_log',
         description:
-            "Append a confidence entry to the active phase's confidence.jsonl. One JSONL line per call. Payload matches the canonical ConfidenceEntrySchema (phase, wave, task, confidence, category, decision, alternatives, reasoning, risk, files, reviewHint?).",
+            "Append a confidence entry to the active phase's confidence.jsonl. One JSONL line per call. Payload matches the canonical ConfidenceEntrySchema (phase, wave, task, confidence, category, decision, alternatives, reasoning, risk, files, reviewHint?, researchable?, resolution?).",
         inputSchema,
         async handler(args, ctx) {
             const state = await loadCurrentState({ cwd: ctx.cwd })
@@ -134,6 +151,12 @@ export const lucaConfidenceLogTool: ToolDescriptor<z.infer<typeof inputSchema>> 
                     files: args.files,
                     ...(args.reviewHint !== undefined
                         ? { reviewHint: args.reviewHint }
+                        : {}),
+                    ...(args.researchable !== undefined
+                        ? { researchable: args.researchable }
+                        : {}),
+                    ...(args.resolution !== undefined
+                        ? { resolution: args.resolution }
                         : {}),
                 },
             })

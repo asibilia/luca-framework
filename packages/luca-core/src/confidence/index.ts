@@ -20,3 +20,6 @@ export {
     readConfidenceJournal,
     renderConfidenceJournalMarkdown,
 } from './confidence-journal.ts'
+
+export { selectConfidenceGateActions } from './gate.ts'
+export type { ConfidenceGateActions } from './gate.ts'

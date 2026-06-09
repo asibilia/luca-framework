@@ -52,8 +52,8 @@ Display the findings banner: total count plus the per-severity breakdown from \`
 - **\`--fix\`** → for every finding where \`auto_fixable === true\`, stage that single finding object in a JSON file and run:
 
   \`\`\`
-  # /tmp/luca-cleanup-finding.json holds the single finding object
-  luca repo cleanup-apply --file /tmp/luca-cleanup-finding.json --confirm
+  # .luca/tmp/cleanup-finding.json holds the single finding object
+  luca repo cleanup-apply --file .luca/tmp/cleanup-finding.json --confirm
   \`\`\`
 
   Findings with \`auto_fixable === false\` (e.g. repo-root markdown, SUMMARY moves) are listed for the user but not auto-applied.

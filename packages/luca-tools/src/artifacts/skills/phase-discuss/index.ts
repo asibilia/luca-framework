@@ -7,11 +7,14 @@
  * canonicals (plan.md, research.md, context.md, learn.md).
  */
 import { defineSkill } from '../../../define/skill.ts'
+import { INPHASE_TERSENESS_DIRECTIVE } from '../../shared/index.ts'
 
 const BODY = `<main>
 # Luca Discuss Phase
 
 Extract implementation decisions that downstream agents need — researcher and planner will use context.md to know what to investigate and what choices are locked.
+
+${INPHASE_TERSENESS_DIRECTIVE}
 
 **Arguments:** \`<phase> [--auto]\`
 
@@ -34,11 +37,19 @@ Extract implementation decisions that downstream agents need — researcher and 
 6. Offer user override: accept all / override some / switch to interactive
 7. Create context.md with researched decisions (annotated with source provenance)
 
-Auto mode is useful when running via \`/autopilot\` or when the user wants AI-researched decisions instead of manual discussion.
+Auto mode is useful when running via \`/lu\` in auto mode or when the user wants AI-researched decisions instead of manual discussion.
 
 **Output:** \`{phase}-context.md\` — decisions clear enough that downstream agents can act without asking the user again
 
 ## Process
+
+### Step 0 — Ensure pipelineStep (self-gate)
+
+Run \`luca state read\`. This skill writes \`context.md\`, which the stage-gate hook permits **only** in the \`discuss\` pipelineStep. The single legal forward entry is \`research → discuss\`.
+
+- \`pipelineStep === "discuss"\` → already there, proceed.
+- \`pipelineStep === "research"\` → run \`luca state advance --to-step discuss\`, then proceed.
+- anything else → STOP. The pipeline must reach \`research\` before discuss can run — point the user at \`/lu\`. Do NOT force the transition or write \`context.md\` from the wrong step (the hook will BLOCK it).
 
 ### Complexity-Aware Discussion
 
