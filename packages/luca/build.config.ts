@@ -153,6 +153,39 @@ export default defineBuildConfig({
             console.log(
                 `[luca] bundled hook handlers → ${hooksDestRoot} (${bundledHookHandlers.length}: ${bundledHookHandlers.join(', ')})`,
             )
+
+            // Statusline handler: same bundle-don't-copy rationale as the
+            // hook handlers above. Emitted next to them under
+            // `dist/claude/.claude/` so `luca init`'s install-statusline
+            // helper can resolve it via resolveBundledArtifactsForHooks().
+            const statuslineSrc = resolve(
+                '..',
+                'luca-tools',
+                'src',
+                'statusline',
+                'handler.ts',
+            )
+            if (existsSync(statuslineSrc)) {
+                const statuslineDest = join(
+                    distClaude,
+                    '.claude',
+                    'luca-statusline.ts',
+                )
+                mkdirSync(dirname(statuslineDest), { recursive: true })
+                execFileSync(
+                    'bun',
+                    [
+                        'build',
+                        statuslineSrc,
+                        '--target',
+                        'bun',
+                        '--outfile',
+                        statuslineDest,
+                    ],
+                    { stdio: ['ignore', 'ignore', 'inherit'] },
+                )
+                console.log(`[luca] bundled statusline → ${statuslineDest}`)
+            }
         },
     },
 })

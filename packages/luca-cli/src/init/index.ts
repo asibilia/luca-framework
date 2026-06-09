@@ -22,3 +22,12 @@ export {
     mergeLucaHookSettings,
 } from './helpers/install-hooks.ts'
 export type { InstallHooksOptions } from './helpers/install-hooks.ts'
+
+export {
+    installStatusline,
+    mergeStatuslineRegistration,
+} from './helpers/install-statusline.ts'
+export type {
+    InstallStatuslineOptions,
+    StatuslineMergeAction,
+} from './helpers/install-statusline.ts'
