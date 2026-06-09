@@ -12,6 +12,8 @@
   },
   "changesets": [
     "bump-mastra-deps-and-pin-tarball",
+    "confidence-gated-lu",
+    "drop-autopilot",
     "feat-doctor-install-health-checks",
     "feat-phase-advance-lifecycle",
     "feat-port-caveman-skill",
@@ -45,6 +47,7 @@
     "pr278-review-batch2",
     "pr278-review-fixes",
     "recall-timeout-outcome-flag-model-crlf",
+    "remove-luca-studio",
     "subagent-hang-cancel-telemetry",
     "subagent-invocation-telemetry",
     "telemetry-batch-completion",
