@@ -7,6 +7,7 @@ import {
     phasePathFor,
     resolveActiveSlug,
     STEP_ARTIFACTS,
+    TMP_PATH_PATTERN,
     toLucaRelative,
     WAVE_FILE_RE,
     type LucaState,
@@ -386,6 +387,15 @@ function artifactPathGate(
     pipelineStep: LucaState['pipelineStep'],
     state: LucaState
 ): ArtifactGateDecision {
+    // Sanctioned ephemeral CLI-handoff scratch: `.luca/tmp/<name>.json` is a
+    // repo-scoped payload file bridging the LLM orchestrator and the `luca`
+    // CLI (`--file`). It is NOT a pipeline artifact, so it is allowed in ANY
+    // pipelineStep (including steps with no legal artifact). This replaces the
+    // old shared global `/tmp/luca-*.json` paths that collided across repos.
+    if (TMP_PATH_PATTERN.test(targetPath)) {
+        return { kind: 'allow' }
+    }
+
     const legalArtifacts = STEP_ARTIFACTS[pipelineStep]
 
     // A step that produces no freeform phase artifact: block every .luca/

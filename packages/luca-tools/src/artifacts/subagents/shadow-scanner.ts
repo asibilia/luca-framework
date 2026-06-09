@@ -14,7 +14,7 @@
  * planning-root rules now key off the LUCA_DIR_CONTRACT allowlist —
  * which is the canonical source for what belongs in \`.luca/\` root
  * (state.json, config.json, lock.json, roadmap.md, ledger.jsonl) plus
- * the canonical directories (phases/, milestones/, telemetry/, archive/).
+ * the canonical directories (phases/, milestones/, telemetry/, archive/, tmp/).
  *
  * D1 RESTORATION:
  *   - selfVerify: true — verify every flagged file actually exists and
@@ -69,7 +69,7 @@ Read \`.luca/config.json\` and extract the \`shadow_debt\` section. Use these de
 - \`known_artifact_dirs\`: [".playwright-cli", ".next", ".turbo", ".cache", "coverage"]
 - \`allowlist\`: ["scripts/", ".luca/", "docs/", "packages/"]
 - \`luca_root_file_allowlist\`: from \`@alecsibilia/luca-core/luca-dir\` LUCA_DIR_CONTRACT (state.json, config.json, lock.json, roadmap.md, ledger.jsonl)
-- \`luca_root_dirs\`: from LUCA_DIR_CONTRACT (phases/, milestones/, telemetry/, archive/)
+- \`luca_root_dirs\`: from LUCA_DIR_CONTRACT (phases/, milestones/, telemetry/, archive/, tmp/). Note: \`tmp/\` holds only ephemeral \`<kebab-name>.json\` CLI-handoff payloads (gitignored); it is NOT debris.
 - \`luca_root_versioned_patterns\`: ["v*-milestone-audit*.md", "v*-backlog-snapshot.{json,md}"]
 - \`repo_root_markdown_allowlist\`: ["README.md", "CLAUDE.md", "AGENTS.md", "SECURITY.md", "LICENSE.md", "CONTRIBUTING.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md"]
 

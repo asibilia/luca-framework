@@ -5,6 +5,7 @@ import {
     REVIEWER_NAME_RE,
     RUN_ID_RE,
     SEMVER_TAG_RE,
+    TMP_FILE_RE,
     WAVE_FILE_RE,
 } from '../constants.ts'
 import type { LucaArtifactKind } from '../schemas.ts'
@@ -75,8 +76,27 @@ export function isValidLucaPath(relPath: string): ValidationResult {
     if (head === 'archive') return validatePhaseSubtree(remainder, 'archive')
     if (head === 'milestones') return validateMilestonesSubtree(remainder)
     if (head === 'telemetry') return validateTelemetrySubtree(remainder)
+    if (head === 'tmp') return validateTmpSubtree(remainder)
 
     return { valid: false, error: `unknown top-level directory "${head}"` }
+}
+
+/**
+ * Validate `.luca/tmp/<name>.json` — the sanctioned, repo-scoped scratch
+ * area for ephemeral CLI-handoff payloads (LLM orchestrator → `luca` CLI
+ * via `--file`). Flat (no subdirectories), `.json` only, kebab-case basename.
+ * These files are gitignored and are NOT pipeline artifacts; they exist so
+ * a large payload (e.g. `roadmap create`'s phases array) never has to ride
+ * a shared global `/tmp` path that collides across repos.
+ */
+function validateTmpSubtree(parts: string[]): ValidationResult {
+    if (parts.length !== 1 || !TMP_FILE_RE.test(parts[0]!)) {
+        return {
+            valid: false,
+            error: 'tmp/ contains <kebab-name>.json handoff files only (flat, no subdirectories)',
+        }
+    }
+    return { valid: true, kind: 'tmp.handoff' }
 }
 
 function validatePhaseSubtree(

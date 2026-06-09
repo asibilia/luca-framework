@@ -33,12 +33,12 @@ Triage runs once, at the start of a run. It is inline here — there is no separ
 1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (the model-routing table keys off it).
 2. **Build the roadmap.** Decompose the request into ordered phases. Each phase is one deliverable unit. Stage the phases array in a JSON file, then run \`luca roadmap create --file\`:
    \`\`\`
-   # /tmp/luca-roadmap.json:
+   # .luca/tmp/roadmap.json:
    # [
    #   { "name": "<kebab-or-prose name>", "deps": [], "complexity": "<level>" },
    #   ...
    # ]
-   luca roadmap create --file /tmp/luca-roadmap.json
+   luca roadmap create --file .luca/tmp/roadmap.json
    \`\`\`
    For a single-deliverable request, that is a one-phase roadmap. \`luca roadmap create\` is only legal in \`idle\`/\`triage\` — it resets \`currentPhase\` to 0.
 3. **Advance** \`idle → triage → research\` via two \`luca state advance --to-step <step>\` calls.

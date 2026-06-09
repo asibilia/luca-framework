@@ -71,11 +71,12 @@ packages/luca-mastracode/.planning/
 
 # Luca workflow runtime state under the new .luca/ contract.
 # Committed: config.json, roadmap.md (generated view), milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}
-# Ignored: per-run state, lock, ledger, telemetry
+# Ignored: per-run state, lock, ledger, telemetry, ephemeral CLI-handoff scratch
 .luca/state.json
 .luca/lock.json
 .luca/ledger.jsonl
 .luca/telemetry/
+.luca/tmp/
 
 # tests — only the throwaway tmp files are ignored. The luca-mastracode
 # package keeps its unit tests in src/__tests__/ (run via `bun test`); the

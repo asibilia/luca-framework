@@ -73,6 +73,70 @@ export async function writeProjectSkeleton(
         force: opts.force ?? false,
         log,
     })
+
+    // Ensure the consumer repo ignores `.luca/` per-run/ephemeral state so it
+    // never gets committed (mirrors the luca-framework repo's own .gitignore).
+    await ensureLucaGitignore(opts.cwd, log)
+}
+
+/**
+ * `.luca/` artifacts that are per-run or ephemeral and must NOT be committed.
+ *
+ * Committed counterparts are intentionally absent: `config.json`, `roadmap.md`
+ * (generated view), `milestones/`, `archive/`, and the durable phase artifacts
+ * under `phases/<slug>/` ({plan,research,context,verify,learn,audits/*}).
+ */
+const LUCA_GITIGNORE_ENTRIES = [
+    '.luca/state.json',
+    '.luca/state.json.lock',
+    '.luca/lock.json',
+    '.luca/ledger.jsonl',
+    '.luca/telemetry/',
+    '.luca/tmp/',
+] as const
+
+/**
+ * Ensure the project `.gitignore` ignores `.luca/` per-run/ephemeral state
+ * (state, locks, ledger, telemetry, and the `.luca/tmp/` CLI-handoff scratch).
+ *
+ * Idempotent: only entries not already present are appended; a labeled block
+ * header is added only when seeding a fresh `.gitignore` (or one with none of
+ * these entries yet), so re-running `luca init` never duplicates the header.
+ * Creates `.gitignore` if missing.
+ *
+ * @param cwd - Project root containing `.gitignore`.
+ * @param log - Optional progress logger.
+ */
+export async function ensureLucaGitignore(
+    cwd: string,
+    log: (msg: string) => void = () => {}
+): Promise<void> {
+    const gitignorePath = join(cwd, '.gitignore')
+    const content = existsSync(gitignorePath)
+        ? await readFile(gitignorePath, 'utf-8')
+        : ''
+
+    const present = new Set(content.split('\n').map((line) => line.trim()))
+    const missing = LUCA_GITIGNORE_ENTRIES.filter((entry) => !present.has(entry))
+    if (missing.length === 0) return
+
+    // Only emit the labeled header when starting a fresh block (none of our
+    // entries were present). Partial top-ups append the bare missing lines.
+    const freshBlock = missing.length === LUCA_GITIGNORE_ENTRIES.length
+    const header =
+        '# Luca workflow runtime state under the .luca/ contract.\n' +
+        '# Committed: config.json, roadmap.md, milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}\n' +
+        '# Ignored: per-run state, locks, ledger, telemetry, ephemeral CLI-handoff scratch\n'
+    const body = (freshBlock ? header : '') + missing.join('\n') + '\n'
+
+    const leadingGap = content === '' || content.endsWith('\n') ? '' : '\n'
+    const blockSeparator = content === '' ? '' : '\n'
+    await writeFile(gitignorePath, content + leadingGap + blockSeparator + body)
+    log(
+        `  write: ${gitignorePath} (+${missing.length} .luca/ ignore${
+            missing.length === 1 ? '' : 's'
+        })`
+    )
 }
 
 /**
