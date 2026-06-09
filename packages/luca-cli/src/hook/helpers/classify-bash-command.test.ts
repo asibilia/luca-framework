@@ -23,6 +23,8 @@ describe('classifyBashCommand — read-only', () => {
         'gh issue view 100',
         'gh pr list --state=open',
         'bunx --bun tsc --noEmit',
+        'playwright-cli open http://localhost:3000/demo',
+        'playwright-cli screenshot --filename=uat.png',
     ])('%s → bash-readonly', (cmd) => {
         const r = classifyBashCommand(cmd)
         expect(r.category).toBe('bash-readonly')

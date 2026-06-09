@@ -65,6 +65,14 @@ const READONLY_COMMANDS = new Set([
     'paste',
     'fold',
     'join',
+    // Browser UAT driver. Observes a running app (navigate, snapshot,
+    // screenshot) — it never mutates repo files, which is the policy this
+    // classifier enforces. Without this entry it fell through to the
+    // unknown-command → bash-mutate default and blocked browser UAT in
+    // PLANNING/REVIEWING — exactly the steps where visual verification
+    // belongs. (Screenshot output files are UAT evidence, same tier as a
+    // command's stdout.)
+    'playwright-cli',
 ])
 
 const GIT_READONLY_SUBCOMMANDS = new Set([
