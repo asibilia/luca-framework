@@ -1,5 +1,68 @@
 # @alecsibilia/luca
 
+## 13.0.0-alpha.10
+
+### Minor Changes
+
+- fcf20bf: Ship a Claude Code statusline with `luca init`.
+
+  A new bundled statusline script renders a single-line TUI footer: model name, repo + git branch (with dirty marker), context-window usage as a colored 10-slot bar chart (green → yellow ≥60% → red ≥80%, with token counts derived from the session transcript's main-chain usage records), luca pipeline step + phase progress from `.luca/state.json`, and session line delta.
+
+  Delivery follows the hook-handler pattern:
+  - **Source** (`luca-tools`): `src/statusline/handler.ts` — self-contained, fail-open bun script (always exits 0; every segment degrades independently).
+  - **Build** (`luca` umbrella): `build:done` bundles it via `bun build --target bun` to `dist/claude/.claude/luca-statusline.ts`.
+  - **Install** (`luca-cli`): new `installStatusline()` helper wired into `luca init` Step 4 — copies the script to `~/.claude/luca-statusline.ts` and merges a `statusLine` entry into global `settings.json`. A user-authored custom statusline is never clobbered (registration is skipped); a luca-owned entry is refreshed idempotently.
+
+- fcf20bf: Mirror the legacy-environment cleanup in `luca doctor` so consumers can remediate too.
+
+  Three new doctor checks (all with `--fix` remediation) cover the debris classes found in the 2026-06-09 legacy audit:
+  - **Legacy global Claude artifacts** (global): detects orphaned pre-v13 files in `~/.claude/` by curated name list — the 9 v12 `luca-*.md` agents and 4 retired rules (`state-machine-bridge`, `complexity-gating`, `gate-enforcement`, `harness-verification`) whose stale instructions leak into every session (the source of invented commands like `luca suspend`). `--fix` moves them to `~/.claude/.luca-legacy-backup/` (reversible), never touching user-authored files.
+  - **Shared-tmp luca payloads** (global): detects stray pre-v13 `/tmp/luca-*.json` handoff payloads (the cross-repo collision class now blocked by the stage-gate). `--fix` deletes them. Found 49 on the reference machine.
+  - **Luca gitignore coverage** (project): warns when a luca-managed repo's `.gitignore` is missing managed entries (e.g. the newly added `.playwright-cli/`). `--fix` runs the same idempotent top-up as `luca init`.
+
+  Also exports `ensureLucaGitignore` / `LUCA_GITIGNORE_ENTRIES` from the init barrel for reuse.
+
+### Patch Changes
+
+- fcf20bf: Block legacy shared-tmp `/tmp/luca-*` handoff payloads and document the canonical `.luca/tmp/` staging path.
+
+  `/lu` sessions occasionally staged CLI handoff payloads (e.g. the `luca checks run` commands array) at the pre-v13 shared location `/tmp/luca-checks-NN.json`, where concurrently-running repos overwrite each other's files. Two-layer fix:
+  - **Enforcement** (`luca-core`): `classifyWritePath` now always-denies `/tmp/luca-*` and `/private/tmp/luca-*` with a reason that redirects to `.luca/tmp/<kebab-name>.json`. Covers both native `Write`/`Edit` targets and Bash redirects via the stage-gate hook.
+  - **Instructions** (`luca-tools`): the `luca-write-surface` skill now documents the `.luca/tmp/` staging convention for all `--file` payloads, and the `lu` skill/command tables plus the execute/review/finalize modes spell out `--file .luca/tmp/checks.json` instead of leaving the path to the model.
+
+  Also updates classifier tests (new deny cases; fixes a stale assertion that pre-dated the `toLucaRelative` segment fallback).
+
+- fcf20bf: Classify `playwright-cli` as read-only in the stage-gate bash classifier.
+
+  `playwright-cli` (the browser UAT driver) was missing from `READONLY_COMMANDS`, so it fell through to the unknown-command → `bash-mutate` default and was blocked during PLANNING/REVIEWING — exactly the pipeline steps where visual verification belongs. It observes a running app and never mutates repo files (screenshot output is UAT evidence, same tier as stdout), so it now classifies as `bash-readonly`. Shell redirects on a `playwright-cli` invocation still escalate to mutate, and the always-denied path rules are unaffected.
+
+- fcf20bf: Keep browser UAT artifacts out of the worktree.
+
+  With `playwright-cli` now classified read-only (runnable at any pipeline step), its screenshot output was landing in the repo root — debris that can't be `rm`'d during read-only steps and risks being swept into commits. Two-part fix:
+  - **Convention** (shared subagent prefix): all UAT evidence goes under `.playwright-cli/` (`playwright-cli screenshot --filename=.playwright-cli/<name>.png`), never the repo root.
+  - **Hygiene** (`luca init`): `.playwright-cli/` added to the managed `.gitignore` entries (idempotent top-up on re-init), so mid-pipeline UAT never dirties commits. The shadow scanner already sweeps the directory at milestone close, which remains the evidence lifecycle.
+
+- fcf20bf: Purge legacy v12 commands from shipped instruction bodies.
+
+  A legacy audit found pre-v13 commands surviving as actionable instructions in the shipped artifact set, causing LLM sessions to invoke nonexistent commands:
+  - **`bun run commit --message=... --type=... --skip-checks`** (14 sites across `phase-execute`, `quick`, `project-new`, `session-pause`, `milestone-complete`) — a repo-specific v12 script. Replaced with plain `git commit` using conventional messages (`{type}({scope}): {subject}` per `luca preferences read`).
+  - **`bun run ./src/harness/runner.ts`** (3 sites in `phase-execute`) — the v12 harness, which doesn't exist in v13. Replaced with `luca checks run --file .luca/tmp/checks.json` and its real output contract (`{ passed, summary }`, exit 0/1).
+  - **`luca branch-guard assert-not-default`** (executor subagent + execute/finalize/triage modes) — wrong syntax for a command that is actually `luca branch guard`; output fields corrected to the real `{ ok, current, default, message }` contract.
+  - **`luca milestone` CLI surface** (finalize mode) — no such command exists; reworded to reference the LUCA_DIR_CONTRACT milestone paths (a sanctioned milestone write surface is tracked as a backlog item).
+
+  Remaining v12 debris (the `src/iteration/*` subsystem embedded in `phase-execute`, and the orphaned `luca-framework`/`luca-mastracode` packages) is tracked in the MuninnDB backlog as phase-sized work.
+
+- fcf20bf: Fix unresolvable `subagent_type` references in shipped skills.
+
+  Claude Code resolves agent types by **normalized display name only** (`executor` → `Executor`, `plan-reviewer` → `Plan Reviewer`); frontmatter `id` is not consulted. Three values used by the shipped skills never matched any installed agent's name:
+  - `subagent_type="reviewer"` (12 sites) → `"Code Reviewer"`
+  - `subagent_type="architect"` (2 sites) → `"luca: Architect"`
+  - `subagent_type="debater"` (2 sites) → `"Adversarial Debater"`
+
+  This is how pipeline sessions ended up spawning the orphaned v12 shadow agents (`luca-executor`, `luca-planner`): when the correct spawn failed to resolve, the model fell back to the v12 files whose descriptions explicitly advertise themselves for the skill (e.g. "Invoked by /phase-execute") — and broke entirely once `luca doctor --fix` removed those shadows. With the references fixed, the v12 shadows are now truly inert and safe to prune.
+
+  Verified empirically: all remaining `subagent_type` values resolve against the v13 roster via the normalization rule.
+
 ## 13.0.0-alpha.9
 
 ### Minor Changes
