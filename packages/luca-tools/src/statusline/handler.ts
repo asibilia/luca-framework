@@ -92,14 +92,24 @@ interface StatuslinePayload {
 /**
  * Run a git subcommand in `dir` and return trimmed stdout, or null on
  * any failure (not a repo, git missing, non-zero exit).
+ *
+ * `--no-optional-locks` is the standard statusline/prompt-integration
+ * flag: this handler fires on every TUI tick (~300ms debounce), and a
+ * default `git status` takes the index lock for its optimistic refresh —
+ * colliding with the user's (or the agent's) own `git add`/`commit` as
+ * spurious `index.lock` contention. The flag skips the refresh and never
+ * locks; harmless on the read-only rev-parse calls.
  */
 function runGit(dir: string, args: string[]): string | null {
     try {
-        const result = Bun.spawnSync(['git', '-C', dir, ...args], {
-            stdout: 'pipe',
-            stderr: 'ignore',
-            stdin: 'ignore',
-        })
+        const result = Bun.spawnSync(
+            ['git', '--no-optional-locks', '-C', dir, ...args],
+            {
+                stdout: 'pipe',
+                stderr: 'ignore',
+                stdin: 'ignore',
+            }
+        )
         if (result.exitCode !== 0) return null
         return result.stdout.toString().trim()
     } catch {

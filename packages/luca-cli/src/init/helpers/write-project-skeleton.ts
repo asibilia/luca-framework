@@ -112,10 +112,15 @@ export const LUCA_GITIGNORE_ENTRIES = [
  *
  * @param cwd - Project root containing `.gitignore`.
  * @param log - Optional progress logger.
+ * @param entries - Managed entries to ensure. Defaults to the full
+ *   `LUCA_GITIGNORE_ENTRIES` list; the doctor `luca-gitignore` check
+ *   passes a narrowed list so semantically-covered entries (matched via
+ *   `git check-ignore` rather than exact text) are not re-appended.
  */
 export async function ensureLucaGitignore(
     cwd: string,
-    log: (msg: string) => void = () => {}
+    log: (msg: string) => void = () => {},
+    entries: readonly string[] = LUCA_GITIGNORE_ENTRIES
 ): Promise<void> {
     const gitignorePath = join(cwd, '.gitignore')
     const content = existsSync(gitignorePath)
@@ -123,12 +128,12 @@ export async function ensureLucaGitignore(
         : ''
 
     const present = new Set(content.split('\n').map((line) => line.trim()))
-    const missing = LUCA_GITIGNORE_ENTRIES.filter((entry) => !present.has(entry))
+    const missing = entries.filter((entry) => !present.has(entry))
     if (missing.length === 0) return
 
     // Only emit the labeled header when starting a fresh block (none of our
     // entries were present). Partial top-ups append the bare missing lines.
-    const freshBlock = missing.length === LUCA_GITIGNORE_ENTRIES.length
+    const freshBlock = missing.length === entries.length
     const header =
         '# Luca workflow runtime state under the .luca/ contract.\n' +
         '# Committed: config.json, roadmap.md, milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}\n' +

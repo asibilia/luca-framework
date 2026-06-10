@@ -23,14 +23,43 @@ import type { CheckResult, DoctorCheck, DoctorFixResult } from '../types'
 
 const CHECK_NAME = 'Luca gitignore coverage'
 
-/** Managed entries missing from `<cwd>/.gitignore` (empty when complete). */
+/**
+ * True when `git check-ignore` confirms the entry's path is ignored —
+ * a SEMANTIC test that recognises equivalent-but-different patterns
+ * (`.luca/`, `.luca/*`, a parent-dir rule, …) which exact-line matching
+ * would miss and warn about forever. Directory entries are probed via a
+ * synthetic child path (`.luca/telemetry/` → `.luca/telemetry/probe`)
+ * since check-ignore tests paths, not patterns. Returns false when git
+ * is unavailable or the cwd isn't a repo — the caller then falls back
+ * to the textual test alone.
+ */
+function ignoredByGit(cwd: string, entry: string): boolean {
+    const probe = entry.endsWith('/') ? `${entry}probe` : entry
+    try {
+        const result = Bun.spawnSync(
+            ['git', '-C', cwd, 'check-ignore', '-q', probe],
+            { stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' }
+        )
+        return result.exitCode === 0
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Managed entries not covered by `<cwd>/.gitignore` (empty when
+ * complete). An entry counts as covered when it is textually present OR
+ * git reports its path as already ignored (semantic equivalence).
+ */
 async function missingEntries(cwd: string): Promise<string[]> {
     const gitignorePath = join(cwd, '.gitignore')
     const content = existsSync(gitignorePath)
         ? await readFile(gitignorePath, 'utf-8')
         : ''
     const present = new Set(content.split('\n').map((line) => line.trim()))
-    return LUCA_GITIGNORE_ENTRIES.filter((entry) => !present.has(entry))
+    return LUCA_GITIGNORE_ENTRIES.filter(
+        (entry) => !present.has(entry) && !ignoredByGit(cwd, entry)
+    )
 }
 
 /**
@@ -86,7 +115,10 @@ export const lucaGitignoreCheck: DoctorCheck = {
 
         const before = await missingEntries(cwd)
         try {
-            await ensureLucaGitignore(cwd)
+            // Append only the semantically-missing entries — passing the
+            // full managed list would re-append entries that exact-line
+            // matching misses but git already covers (e.g. `.luca/*`).
+            await ensureLucaGitignore(cwd, undefined, before)
             for (const entry of before) {
                 applied.push(`appended '${entry}' to .gitignore`)
             }

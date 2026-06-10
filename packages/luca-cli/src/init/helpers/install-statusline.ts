@@ -36,7 +36,8 @@ interface StatusLineConfig {
 }
 
 interface ClaudeSettings {
-    statusLine?: StatusLineConfig
+    /** `null` is meaningful: the user deliberately disabled the statusline. */
+    statusLine?: StatusLineConfig | null
     [k: string]: unknown
 }
 
@@ -83,11 +84,17 @@ export async function installStatusline(
     log(`  write: ${dest}`)
 
     const settingsPath = join(claudeHome, 'settings.json')
-    const existing = existsSync(settingsPath)
-        ? ((JSON.parse(
-              await readFile(settingsPath, 'utf-8')
-          ) as ClaudeSettings) ?? {})
-        : {}
+    const existing = await readSettings(settingsPath)
+    if (existing === null) {
+        // Malformed or non-object settings.json — fail open like the
+        // missing-bundle case. Touching a file we can't parse risks
+        // destroying user config; the script stays copied so the user
+        // can register it by hand once the file is repaired.
+        log(
+            `  skip:  could not parse ${settingsPath} — statusline not registered (repair the file and re-run \`luca init\`)`
+        )
+        return
+    }
 
     const { next, action } = mergeStatuslineRegistration(existing, dest)
     if (action === 'kept-user') {
@@ -102,12 +109,47 @@ export async function installStatusline(
 }
 
 /**
+ * Read and parse a Claude settings.json. Returns `{}` when the file is
+ * absent (a fresh install), and `null` when the file exists but cannot
+ * be used (malformed JSON, or parses to a non-object like an array or
+ * string) — callers must skip registration rather than risk rewriting a
+ * file whose contents they don't understand.
+ */
+async function readSettings(
+    settingsPath: string
+): Promise<ClaudeSettings | null> {
+    if (!existsSync(settingsPath)) return {}
+    try {
+        const parsed = JSON.parse(
+            await readFile(settingsPath, 'utf-8')
+        ) as unknown
+        if (
+            parsed === null ||
+            typeof parsed !== 'object' ||
+            Array.isArray(parsed)
+        ) {
+            return null
+        }
+        return parsed as ClaudeSettings
+    } catch {
+        return null
+    }
+}
+
+/**
  * Merge the luca statusline registration into a ClaudeSettings object.
  *
- * - No `statusLine` present → add ours (`installed`).
- * - Existing `statusLine` referencing the luca script → refresh the
- *   command to the canonical form (`updated`).
- * - Any other `statusLine` → leave settings untouched (`kept-user`).
+ * - No `statusLine` key at all → add ours (`installed`).
+ * - `statusLine: null` → the user deliberately disabled their statusline;
+ *   respect that choice (`kept-user`).
+ * - Existing `statusLine` whose command IS one of the canonical luca
+ *   forms → luca-owned; refresh the command while preserving any other
+ *   fields the user tweaked (e.g. `padding`) (`updated`).
+ * - Any other `statusLine` → user-authored; leave settings untouched
+ *   (`kept-user`). This includes commands that merely *reference* the
+ *   luca script (e.g. piping it through a filter) — the opt-in path the
+ *   install log recommends — which must never be clobbered back to the
+ *   canonical command.
  *
  * Pure function — exported for testability.
  */
@@ -126,11 +168,29 @@ export function mergeStatuslineRegistration(
     if (existing === undefined) {
         return { next: { ...settings, statusLine: entry }, action: 'installed' }
     }
+    if (existing === null) {
+        // Explicit null is a deliberate "no statusline" choice.
+        return { next: settings, action: 'kept-user' }
+    }
+    // Ownership test is EXACT equality against the canonical command
+    // spellings luca has ever written (quoted current form, plus the
+    // unquoted variant for robustness). A substring test would also
+    // match user-authored wrappers that invoke the script (the
+    // recommended opt-in), silently clobbering them on re-init.
+    const canonicalForms = [command, `bun ${scriptPath}`]
     if (
         typeof existing.command === 'string' &&
-        existing.command.includes(STATUSLINE_SCRIPT_NAME)
+        canonicalForms.includes(existing.command.trim())
     ) {
-        return { next: { ...settings, statusLine: entry }, action: 'updated' }
+        return {
+            // Refresh only the fields luca owns; user tweaks on the
+            // luca-owned entry (e.g. padding) survive the update.
+            next: {
+                ...settings,
+                statusLine: { ...existing, type: 'command', command },
+            },
+            action: 'updated',
+        }
     }
     return { next: settings, action: 'kept-user' }
 }
