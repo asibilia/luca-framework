@@ -1,4 +1,8 @@
-export { writeProjectSkeleton } from './helpers/write-project-skeleton.ts'
+export {
+    writeProjectSkeleton,
+    ensureLucaGitignore,
+    LUCA_GITIGNORE_ENTRIES,
+} from './helpers/write-project-skeleton.ts'
 export type { WriteProjectSkeletonOptions } from './helpers/write-project-skeleton.ts'
 
 export {

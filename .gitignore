@@ -100,3 +100,5 @@ packages/luca-mastracode/.planning/
 .planning/**/checks-convergence.json
 .planning/**/*-capture-*.md
 .planning/audits/memory/state.json
+
+.luca/state.json.lock

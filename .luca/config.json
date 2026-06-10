@@ -1,6 +1,5 @@
 {
-  "lucaVersion": "12.0.0-alpha.14",
-  "vault": "luca-framework",
+  "lucaVersion": "13.0.0-alpha.9",
   "oversight": "full-auto",
   "preferences": {
     "schemaVersion": 1,

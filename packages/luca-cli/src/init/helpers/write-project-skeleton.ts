@@ -86,7 +86,7 @@ export async function writeProjectSkeleton(
  * (generated view), `milestones/`, `archive/`, and the durable phase artifacts
  * under `phases/<slug>/` ({plan,research,context,verify,learn,audits/*}).
  */
-const LUCA_GITIGNORE_ENTRIES = [
+export const LUCA_GITIGNORE_ENTRIES = [
     '.luca/state.json',
     '.luca/state.json.lock',
     '.luca/lock.json',
