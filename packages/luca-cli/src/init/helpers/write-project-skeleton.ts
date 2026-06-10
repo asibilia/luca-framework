@@ -80,24 +80,30 @@ export async function writeProjectSkeleton(
 }
 
 /**
- * `.luca/` artifacts that are per-run or ephemeral and must NOT be committed.
+ * Per-run or ephemeral workflow artifacts that must NOT be committed.
  *
  * Committed counterparts are intentionally absent: `config.json`, `roadmap.md`
  * (generated view), `milestones/`, `archive/`, and the durable phase artifacts
  * under `phases/<slug>/` ({plan,research,context,verify,learn,audits/*}).
  */
-const LUCA_GITIGNORE_ENTRIES = [
+export const LUCA_GITIGNORE_ENTRIES = [
     '.luca/state.json',
     '.luca/state.json.lock',
     '.luca/lock.json',
     '.luca/ledger.jsonl',
     '.luca/telemetry/',
     '.luca/tmp/',
+    // Browser UAT artifact dir (playwright-cli screenshots/snapshots/traces).
+    // Subagents are instructed (shared prefix) to stage all UAT evidence
+    // here instead of the repo root; the shadow scanner sweeps it at
+    // milestone close. Gitignored so mid-pipeline UAT never dirties commits.
+    '.playwright-cli/',
 ] as const
 
 /**
- * Ensure the project `.gitignore` ignores `.luca/` per-run/ephemeral state
- * (state, locks, ledger, telemetry, and the `.luca/tmp/` CLI-handoff scratch).
+ * Ensure the project `.gitignore` ignores per-run/ephemeral workflow state
+ * (state, locks, ledger, telemetry, the `.luca/tmp/` CLI-handoff scratch,
+ * and the `.playwright-cli/` browser-UAT artifact dir).
  *
  * Idempotent: only entries not already present are appended; a labeled block
  * header is added only when seeding a fresh `.gitignore` (or one with none of
@@ -106,10 +112,15 @@ const LUCA_GITIGNORE_ENTRIES = [
  *
  * @param cwd - Project root containing `.gitignore`.
  * @param log - Optional progress logger.
+ * @param entries - Managed entries to ensure. Defaults to the full
+ *   `LUCA_GITIGNORE_ENTRIES` list; the doctor `luca-gitignore` check
+ *   passes a narrowed list so semantically-covered entries (matched via
+ *   `git check-ignore` rather than exact text) are not re-appended.
  */
 export async function ensureLucaGitignore(
     cwd: string,
-    log: (msg: string) => void = () => {}
+    log: (msg: string) => void = () => {},
+    entries: readonly string[] = LUCA_GITIGNORE_ENTRIES
 ): Promise<void> {
     const gitignorePath = join(cwd, '.gitignore')
     const content = existsSync(gitignorePath)
@@ -117,16 +128,16 @@ export async function ensureLucaGitignore(
         : ''
 
     const present = new Set(content.split('\n').map((line) => line.trim()))
-    const missing = LUCA_GITIGNORE_ENTRIES.filter((entry) => !present.has(entry))
+    const missing = entries.filter((entry) => !present.has(entry))
     if (missing.length === 0) return
 
     // Only emit the labeled header when starting a fresh block (none of our
     // entries were present). Partial top-ups append the bare missing lines.
-    const freshBlock = missing.length === LUCA_GITIGNORE_ENTRIES.length
+    const freshBlock = missing.length === entries.length
     const header =
         '# Luca workflow runtime state under the .luca/ contract.\n' +
         '# Committed: config.json, roadmap.md, milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}\n' +
-        '# Ignored: per-run state, locks, ledger, telemetry, ephemeral CLI-handoff scratch\n'
+        '# Ignored: per-run state, locks, ledger, telemetry, ephemeral CLI-handoff scratch, browser-UAT artifacts\n'
     const body = (freshBlock ? header : '') + missing.join('\n') + '\n'
 
     const leadingGap = content === '' || content.endsWith('\n') ? '' : '\n'

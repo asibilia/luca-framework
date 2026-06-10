@@ -153,6 +153,49 @@ export default defineBuildConfig({
             console.log(
                 `[luca] bundled hook handlers → ${hooksDestRoot} (${bundledHookHandlers.length}: ${bundledHookHandlers.join(', ')})`,
             )
+
+            // Statusline handler: same bundle-don't-copy rationale as the
+            // hook handlers above. Emitted next to them under
+            // `dist/claude/.claude/` so `luca init`'s install-statusline
+            // helper can resolve it via resolveBundledArtifactsForHooks().
+            const statuslineSrc = resolve(
+                '..',
+                'luca-tools',
+                'src',
+                'statusline',
+                'handler.ts',
+            )
+            // Throw — not skip — when the source is missing. A silent
+            // skip here plus `luca init`'s easy-to-miss `skip:` log is
+            // two silent layers deep; a refactor that moves the handler
+            // would make the feature vanish for consumers with no build
+            // signal. Same loud-failure policy as the hook-handler
+            // bundling above.
+            if (!existsSync(statuslineSrc)) {
+                throw new Error(
+                    `[luca] statusline handler source missing at ${statuslineSrc} — ` +
+                        'was packages/luca-tools/src/statusline/handler.ts moved or renamed?',
+                )
+            }
+            const statuslineDest = join(
+                distClaude,
+                '.claude',
+                'luca-statusline.ts',
+            )
+            mkdirSync(dirname(statuslineDest), { recursive: true })
+            execFileSync(
+                'bun',
+                [
+                    'build',
+                    statuslineSrc,
+                    '--target',
+                    'bun',
+                    '--outfile',
+                    statuslineDest,
+                ],
+                { stdio: ['ignore', 'ignore', 'inherit'] },
+            )
+            console.log(`[luca] bundled statusline → ${statuslineDest}`)
         },
     },
 })

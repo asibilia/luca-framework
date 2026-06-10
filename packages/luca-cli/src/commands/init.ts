@@ -45,6 +45,7 @@ import {
     defaultClaudeHome,
     installHooks,
     installSkills,
+    installStatusline,
     wireClaudeHooks,
     writeProjectSkeleton,
 } from '../init'
@@ -204,8 +205,9 @@ export const initCommand = defineCommand({
             p.log.step('Step 4/5: Claude integration (~/.claude/)')
             await installSkills({ log: (msg) => p.log.info(msg) })
             await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
+            await installStatusline({ log: (msg) => p.log.info(msg) })
             claudeSetupRan = true
-            p.log.success(`Claude skills and stage-gate hook installed to ${claudeHome}`)
+            p.log.success(`Claude skills, stage-gate hook, and statusline installed to ${claudeHome}`)
         } else {
             p.log.info('Step 4/5: Claude integration (skipped)')
         }

@@ -30,6 +30,11 @@ luca <noun> <verb> [--flags] [--file <path>]
 - **Large structured payloads** (arrays, objects) are passed as a \`--file\`
   pointing at a JSON file you stage first. The CLI reads and \`JSON.parse\`s
   it.
+- **Stage payload files at \`.luca/tmp/<kebab-name>.json\`** — repo-scoped,
+  gitignored, writable in any pipelineStep. NEVER stage them in the shared
+  OS \`/tmp/\`: \`/tmp/luca-*.json\` paths collide across concurrently-running
+  repos (one project's pipeline overwrites another's payload) and are
+  blocked by the stage-gate hook.
 - Output: the command prints a human/JSON result to stdout and exits \`0\` on
   success, \`1\` on error (validation failure, phase refusal, handler error).
 - Run \`luca <noun> <verb> --help\` for the authoritative argument schema.
@@ -185,6 +190,12 @@ Used by the gh-pr-address flow. Each takes a JSON \`--file\` payload.
   list of commands sequentially with per-command timeouts. File holds the
   commands array \`[{ argv: string[], label? }, ...]\`. Allowed only in
   \`execute\` / \`checks\`.
+
+  \`\`\`bash
+  # .luca/tmp/checks.json holds the commands array:
+  # [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+  luca checks run --file .luca/tmp/checks.json
+  \`\`\`
 
 ### \`branch\` — git branch guard
 

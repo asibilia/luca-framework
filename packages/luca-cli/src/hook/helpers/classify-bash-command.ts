@@ -65,6 +65,9 @@ const READONLY_COMMANDS = new Set([
     'paste',
     'fold',
     'join',
+    // NOTE: `playwright-cli` is NOT in this set — it has a dedicated
+    // clause (step 4c in classifySubcommand) that extracts `--filename`
+    // output paths and enforces the `.playwright-cli/` artifact dir.
 ])
 
 const GIT_READONLY_SUBCOMMANDS = new Set([
@@ -474,6 +477,43 @@ function classifySubcommand(sub: Subcommand): {
         // generic classification (conservative bash-mutate).
     }
 
+    // 4c. Browser UAT driver. Observing a running app (navigate, snapshot,
+    //     screenshot to stdout) never mutates repo files, so plain
+    //     invocations classify read-only — without this, playwright-cli
+    //     fell to the unknown-command → bash-mutate default and blocked
+    //     browser UAT in PLANNING/REVIEWING, exactly the steps where
+    //     visual verification belongs.
+    //
+    //     But `--filename=<path>` IS a file write, and unlike shell
+    //     redirects it would otherwise never reach path classification —
+    //     `--filename=.git/hooks/x.png` or `--filename=/tmp/luca-foo.json`
+    //     would sail through as readonly with empty targetPaths. The
+    //     output path is therefore extracted into targetPaths (so the
+    //     hook's always-denied path rules apply) and the `.playwright-cli/`
+    //     artifact-dir convention (shared subagent prefix) is enforced
+    //     deterministically: an output path outside `.playwright-cli/`
+    //     (or attempting `..` traversal out of it) classifies bash-mutate,
+    //     so the phase matrix blocks it in read-only steps.
+    if (cmd === 'playwright-cli') {
+        const target = extractFilenameFlag(rest)
+        if (target !== undefined) {
+            const inArtifactDir =
+                target.startsWith('.playwright-cli/') &&
+                !target.split('/').includes('..')
+            return {
+                category:
+                    inArtifactDir && !sub.redirect
+                        ? 'bash-readonly'
+                        : 'bash-mutate',
+                targetPaths: [...targetsFromRedirect, target],
+            }
+        }
+        return {
+            category: sub.redirect ? 'bash-mutate' : 'bash-readonly',
+            targetPaths: targetsFromRedirect,
+        }
+    }
+
     // 5. Read-only multi-token patterns checked BEFORE generic mutate
     //    patterns so e.g. `bunx --bun tsc --noEmit` isn't conflated with
     //    arbitrary bunx invocations.
@@ -554,6 +594,29 @@ function classifySubcommand(sub: Subcommand): {
         category: 'bash-mutate',
         targetPaths: targetsFromRedirect,
     }
+}
+
+/**
+ * Extract the value of a `--filename=<path>` or `--filename <path>` flag.
+ * Returns undefined when the flag is absent or has no value. Used by the
+ * playwright-cli clause; covers the one output flag the playwright-cli
+ * skill documents (extend here if more output flags appear).
+ */
+function extractFilenameFlag(args: string[]): string | undefined {
+    for (let i = 0; i < args.length; i += 1) {
+        const a = args[i]!
+        if (a.startsWith('--filename=')) {
+            const value = a.slice('--filename='.length)
+            return value.length > 0 ? value : undefined
+        }
+        if (a === '--filename') {
+            const value = args[i + 1]
+            return value !== undefined && !value.startsWith('-')
+                ? value
+                : undefined
+        }
+    }
+    return undefined
 }
 
 function lastNonFlag(args: string[]): string | undefined {

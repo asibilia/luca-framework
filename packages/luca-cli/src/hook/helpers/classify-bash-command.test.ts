@@ -23,9 +23,60 @@ describe('classifyBashCommand — read-only', () => {
         'gh issue view 100',
         'gh pr list --state=open',
         'bunx --bun tsc --noEmit',
+        'playwright-cli open http://localhost:3000/demo',
+        'playwright-cli screenshot --filename=.playwright-cli/uat.png',
     ])('%s → bash-readonly', (cmd) => {
         const r = classifyBashCommand(cmd)
         expect(r.category).toBe('bash-readonly')
+    })
+})
+
+describe('classifyBashCommand — playwright-cli output paths', () => {
+    test('--filename inside .playwright-cli/ → readonly with targetPath', () => {
+        const r = classifyBashCommand(
+            'playwright-cli screenshot --filename=.playwright-cli/uat.png'
+        )
+        expect(r.category).toBe('bash-readonly')
+        expect(r.targetPaths).toEqual(['.playwright-cli/uat.png'])
+    })
+
+    test.each([
+        ['repo root', 'playwright-cli screenshot --filename=uat.png'],
+        [
+            'space-separated flag',
+            'playwright-cli screenshot --filename pctx-p1-uat.png',
+        ],
+        [
+            'traversal out of artifact dir',
+            'playwright-cli screenshot --filename=.playwright-cli/../uat.png',
+        ],
+        [
+            'absolute path',
+            'playwright-cli screenshot --filename=/tmp/evidence.png',
+        ],
+    ])('--filename outside artifact dir (%s) → bash-mutate', (_label, cmd) => {
+        const r = classifyBashCommand(cmd)
+        expect(r.category).toBe('bash-mutate')
+        expect(r.targetPaths.length).toBe(1)
+    })
+
+    test('--filename target reaches path classification (deny rules apply)', () => {
+        // The hook runs classifyWritePath over targetPaths — a .git/ or
+        // /tmp/luca-* target must be visible there, not swallowed.
+        const r = classifyBashCommand(
+            'playwright-cli screenshot --filename=.git/hooks/x.png'
+        )
+        expect(r.targetPaths).toEqual(['.git/hooks/x.png'])
+        const r2 = classifyBashCommand(
+            'playwright-cli snapshot --filename=/tmp/luca-evidence.json'
+        )
+        expect(r2.targetPaths).toEqual(['/tmp/luca-evidence.json'])
+    })
+
+    test('redirect on a playwright-cli invocation stays mutate', () => {
+        const r = classifyBashCommand('playwright-cli snapshot > evidence.txt')
+        expect(r.category).toBe('bash-mutate')
+        expect(r.targetPaths).toEqual(['evidence.txt'])
     })
 })
 

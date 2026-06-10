@@ -95,7 +95,7 @@ Start with: [specific first action when resuming]
 
 \`\`\`bash
 git add .
-bun run commit --message="[phase-name] paused at task [X]/[Y]" --type=chore --scope=wip --no-push --skip-checks
+git commit -m "chore(wip): [phase-name] paused at task [X]/[Y]"
 \`\`\`
 
 ### Step 5: Confirm

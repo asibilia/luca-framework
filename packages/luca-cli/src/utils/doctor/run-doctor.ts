@@ -33,9 +33,16 @@ export async function executeDoctor(
         './checks/stale-global-symlinks'
     )
     const { legacyPackageCheck } = await import('./checks/legacy-package')
+    const { legacyClaudeArtifactsCheck } = await import(
+        './checks/legacy-claude-artifacts'
+    )
+    const { sharedTmpPayloadsCheck } = await import(
+        './checks/shared-tmp-payloads'
+    )
     const { strayLocalInstallCheck } = await import(
         './checks/stray-local-install'
     )
+    const { lucaGitignoreCheck } = await import('./checks/luca-gitignore')
     const { configVersionSkewCheck } = await import(
         './checks/config-version-skew'
     )
@@ -52,10 +59,13 @@ export async function executeDoctor(
         muninnMcpCheck,
         staleGlobalSymlinksCheck,
         legacyPackageCheck,
+        legacyClaudeArtifactsCheck,
+        sharedTmpPayloadsCheck,
         // Project (cwd-dependent)
         strayLocalInstallCheck,
         configVersionSkewCheck,
         vaultConfigLocationCheck,
+        lucaGitignoreCheck,
     ]
 
     // Filter by scope if provided

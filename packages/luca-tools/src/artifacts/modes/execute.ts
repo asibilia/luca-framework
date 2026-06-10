@@ -210,6 +210,16 @@ After each wave, run \`luca checks run\` for automated checks:
 2. **Linting** — there is no ESLint config in this repo today; checks effectively reduce to typecheck.
 3. **Tests** — intentionally absent (no-tests rule).
 
+Stage the commands payload at \`.luca/tmp/checks.json\` (repo-scoped — NEVER
+the shared OS \`/tmp/\`, where \`luca-*\` files collide across concurrently
+running repos and are blocked by the stage-gate hook):
+
+\`\`\`bash
+# .luca/tmp/checks.json holds the commands array:
+# [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+luca checks run --file .luca/tmp/checks.json
+\`\`\`
+
 ### Convergence-Based Fix Strategy
 
 | Status | Action |
@@ -299,7 +309,7 @@ Include recalled learnings in the next executor's task description.
 
 ### Pre-commit guard
 
-Before the first commit of every wave, the executor subagent calls \`luca branch-guard assert-not-default\`. HARD GUARD: returns \`ok: false\` if the current branch is the default branch or appears in \`projectPreferences.branching.guardedBranches[]\` (runtime fallback \`['main']\`). If \`ok: false\`, STOP — do NOT attempt recovery. OVERFLOW executors must run this on their first commit even if a prior session passed; "once per session" is a hint, not a guarantee across resumes.
+Before the first commit of every wave, the executor subagent calls \`luca branch guard\`. HARD GUARD: returns \`ok: false\` if the current branch is the default branch or appears in \`projectPreferences.branching.guardedBranches[]\` (runtime fallback \`['main']\`). If \`ok: false\`, STOP — do NOT attempt recovery. OVERFLOW executors must run this on their first commit even if a prior session passed; "once per session" is a hint, not a guarantee across resumes.
 
 After verification and review pass for each task:
 

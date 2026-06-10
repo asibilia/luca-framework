@@ -145,7 +145,7 @@ The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-{roadmap,audi
 
    \`\`\`bash
    git add .
-   bun run commit --message="archive v{version} milestone" --type=chore --scope=milestone --no-push --skip-checks
+   git commit -m "chore(milestone): archive v{version} milestone"
    git tag -a v{version} -m "[milestone summary]"
    \`\`\`
 

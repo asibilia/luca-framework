@@ -315,7 +315,7 @@ Then invoke the architect mode-agent (typically by transitioning into the archit
 # </output_requirements>
 Task(
   prompt="...",
-  subagent_type="architect",  # mode-agent name
+  subagent_type="luca: Architect",  # mode-agent name
   description="Plan Phase {phase_number}"
 )
 \`\`\`

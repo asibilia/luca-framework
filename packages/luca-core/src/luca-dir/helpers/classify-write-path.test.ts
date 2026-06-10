@@ -91,6 +91,25 @@ describe('classifyWritePath — always-denied paths', () => {
         expect(classifyWritePath('~/.luca/foo').class).toBe('denied')
     })
 
+    test('denies legacy shared-tmp luca handoff payloads', () => {
+        // Regression: /tmp/luca-*.json payloads collide across repos —
+        // two concurrent pipelines overwrite each other's checks files.
+        for (const path of [
+            '/tmp/luca-checks-07.json',
+            '/tmp/luca-roadmap.json',
+            '/private/tmp/luca-checks-01.json',
+        ]) {
+            const r = classifyWritePath(path)
+            expect(r.class).toBe('denied')
+            expect(r.reason).toContain('.luca/tmp/')
+        }
+    })
+
+    test('does not deny non-luca /tmp scratch files', () => {
+        expect(classifyWritePath('/tmp/scratch.json').class).toBe('code')
+        expect(classifyWritePath('/tmp/some-script.sh').class).toBe('code')
+    })
+
     test('denies absolute paths under the user home .claude/ or .luca/', () => {
         const homedir = '/Users/alec'
         expect(
@@ -147,10 +166,12 @@ describe('classifyWritePath — absolute paths normalized via cwd', () => {
         expect(classifyWritePath('/etc/passwd', { cwd }).class).toBe('denied')
     })
 
-    test('without cwd, an absolute .luca path is not recognized', () => {
-        // Documents WHY the hook must pass cwd.
+    test('without cwd, an absolute .luca path is still recognized', () => {
+        // toLucaRelative's segment fallback recovers the contract-relative
+        // portion even when no cwd is provided (or cwd is not the repo
+        // root) — see its docstring.
         expect(
             classifyWritePath(`${cwd}/.luca/phases/01-x/research.md`).class
-        ).toBe('code')
+        ).toBe('planning-general')
     })
 })
