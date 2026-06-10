@@ -191,7 +191,7 @@ Project identity lives as MuninnDB engrams, not as a hand-authored \`PROJECT.md\
 \`\`\`bash
 luca init
 git add .luca/
-bun run commit --message="initialize project identity" --type=docs --scope=project --no-push --skip-checks
+git commit -m "docs(project): initialize project identity"
 \`\`\`
 
 ### Phase 5: Workflow Preferences
@@ -493,7 +493,7 @@ Use AskQuestion tool:
 
    \`\`\`bash
    git add .
-   bun run commit --message="link planning docs to GitHub issue" --type=docs --scope=repo --no-push --skip-checks
+   git commit -m "docs(repo): link planning docs to GitHub issue"
    git push -u origin {branch_name}
    \`\`\`
 

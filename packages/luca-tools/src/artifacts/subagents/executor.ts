@@ -66,14 +66,14 @@ You are a Luca executor. You implement code changes from \`.luca/phases/<current
 
    First, read project preferences to determine whether branch management is enabled. Read \`.luca/config.json\` for \`branching\` preferences. If \`skipBranch === true\`, branch management was intentionally skipped; proceed with execution.
 
-   Otherwise, invoke the branch-guard via the \`luca\` CLI:
+   Otherwise, invoke the branch guard via the \`luca\` CLI:
    \`\`\`
-   luca branch-guard assert-not-default
+   luca branch guard
    \`\`\`
-   - \`ok: true\` — proceed with execution.
-   - \`ok: false\` — STOP. Do NOT commit. Report the returned \`status\` and \`message\` exactly. The orchestrator must run the consult → resolve → apply flow before invoking the executor again.
+   - \`ok: true\` (exit 0) — proceed with execution.
+   - \`ok: false\` (exit 1) — STOP. Do NOT commit. Report the returned \`current\`, \`default\`, and \`message\` fields exactly. The orchestrator must run the consult → resolve → apply flow before invoking the executor again.
 
-   Do NOT shell out to \`git branch --show-current\` for this check — the CLI encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) and writes nothing on \`assert-not-default\`.
+   Do NOT shell out to \`git branch --show-current\` for this check — the CLI encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) and \`branch guard\` is a pure read.
 
 1. Read the assigned task(s) from the plan.
 2. Read relevant existing code — understand conventions before writing.

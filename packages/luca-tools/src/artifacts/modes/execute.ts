@@ -309,7 +309,7 @@ Include recalled learnings in the next executor's task description.
 
 ### Pre-commit guard
 
-Before the first commit of every wave, the executor subagent calls \`luca branch-guard assert-not-default\`. HARD GUARD: returns \`ok: false\` if the current branch is the default branch or appears in \`projectPreferences.branching.guardedBranches[]\` (runtime fallback \`['main']\`). If \`ok: false\`, STOP — do NOT attempt recovery. OVERFLOW executors must run this on their first commit even if a prior session passed; "once per session" is a hint, not a guarantee across resumes.
+Before the first commit of every wave, the executor subagent calls \`luca branch guard\`. HARD GUARD: returns \`ok: false\` if the current branch is the default branch or appears in \`projectPreferences.branching.guardedBranches[]\` (runtime fallback \`['main']\`). If \`ok: false\`, STOP — do NOT attempt recovery. OVERFLOW executors must run this on their first commit even if a prior session passed; "once per session" is a hint, not a guarantee across resumes.
 
 After verification and review pass for each task:
 

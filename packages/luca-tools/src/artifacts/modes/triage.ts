@@ -10,7 +10,7 @@
  * src/instructions/triage.md. Mastra-specific tool references
  * (workflowState, pipelineLock, classifyComplexity, manageTodos,
  * projectPreferences) retargeted to the `luca` CLI write surface
- * (luca state, luca branch-guard, luca classify, luca todo,
+ * (luca state, luca branch guard, luca classify, luca todo,
  * luca preferences). `.planning/` retargeted to `.luca/`.
  *
  * D1 RESTORATION:

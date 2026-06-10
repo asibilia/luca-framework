@@ -112,7 +112,7 @@ mcp__muninn__muninn_remember(
 )
 \`\`\`
 
-The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-roadmap.md\`, \`v<SEMVER>-audit.md\`, \`v<SEMVER>-backlog-snapshot.{json,md}\`) are written via the \`luca milestone\` CLI surface — never hand-written outside the contract.
+The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-roadmap.md\`, \`v<SEMVER>-audit.md\`, \`v<SEMVER>-backlog-snapshot.{json,md}\`) follow the LUCA_DIR_CONTRACT paths exactly — never write milestone files outside the contract. (A dedicated \`luca\` write surface for milestone snapshots is pending; until it lands, these are the only \`.luca/\` paths written at milestone close.)
 
 ## Step 2: Shadow Debt Scan
 
@@ -301,7 +301,7 @@ If it returns \`code: CLAIM_VERIFICATION_FAILED\`:
 
 ### 5b.3. Create PR
 
-1. **Pre-push branch guard** — call \`luca branch-guard assert-not-default\`. On \`ok: false\`, STOP and report the returned status/message; do NOT push to the default branch and do NOT open a PR.
+1. **Pre-push branch guard** — call \`luca branch guard\`. On \`ok: false\` (exit 1), STOP and report the returned \`current\`/\`default\`/\`message\`; do NOT push to the default branch and do NOT open a PR.
 2. **Push** the feature branch to remote.
 3. **Resolve PR base** — \`luca state read\` returns \`state.prBase\`/\`state.baseBranch\`. Compute \`const base = state.prBase ?? state.baseBranch ?? 'main'\` and pass that to \`gh pr create --base\`. The \`'main'\` literal is the conservative fallback when state is missing.
 4. **Create PR** with:

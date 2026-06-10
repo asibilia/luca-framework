@@ -341,7 +341,7 @@ Task(
 
 <execution_rules>
 - Execute each task in the plan sequentially
-- Commit atomically after each task (git add . && bun run commit)
+- Commit atomically after each task (git add . && git commit with a conventional message: \`{type}({scope}): {subject}\`)
 - Create SUMMARY.md when complete
 - Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
@@ -378,7 +378,7 @@ Task(
 
 <execution_rules>
 - Execute each task in the plan sequentially
-- Commit atomically after each task (git add . && bun run commit)
+- Commit atomically after each task (git add . && git commit with a conventional message: \`{type}({scope}): {subject}\`)
 - Create SUMMARY.md when complete
 - Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
@@ -529,26 +529,27 @@ If changes exist:
 
 \`\`\`bash
 git add .
-bun run commit --message="orchestrator corrections" --type=fix --scope={phase} --no-push --skip-checks
+git commit -m "fix({phase}): orchestrator corrections"
 \`\`\`
 
 ### 6.5. Run Verification Harness
 
 **Run automated quality checks before agent verification.**
 
-Run the harness runner:
+Run the project's checks via the \`luca\` CLI (stage the commands array at the repo-scoped \`.luca/tmp/checks.json\` — never in shared \`/tmp/\`):
 
 \`\`\`bash
-# Run harness (outputs JSON to stdout)
-HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+# .luca/tmp/checks.json holds the commands array:
+# [{ "argv": ["bunx", "--bun", "tsc", "--noEmit"], "label": "typecheck" }]
+HARNESS_OUTPUT=$(luca checks run --file .luca/tmp/checks.json)
 HARNESS_EXIT=$?
 echo "$HARNESS_OUTPUT"
 \`\`\`
 
-Parse the JSON output:
+Parse the JSON output (\`{ passed: boolean, summary: [...] }\`):
 
-- If \`status: "passed"\` -- display results and continue to Step 7
-- If \`status: "failed"\` -- enter failure-to-fix loop (Step 6.6)
+- If \`passed: true\` (exit 0) -- display results and continue to Step 7
+- If \`passed: false\` (exit 1) -- enter failure-to-fix loop (Step 6.6)
 
 Display:
 
@@ -809,11 +810,11 @@ Fix these harness failures.
 **Step G: Re-run Harness**
 
 \`\`\`bash
-HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+HARNESS_OUTPUT=$(luca checks run --file .luca/tmp/checks.json)
 HARNESS_EXIT=$?
 \`\`\`
 
-If harness passes (status: "passed"): Exit loop with outcome "all_passed".
+If harness passes (\`passed: true\`, exit 0): Exit loop with outcome "all_passed".
 
 If harness fails: Update \`PREVIOUS_ERRORS = CURRENT_ERRORS\`, advance budget:
 
@@ -1173,7 +1174,7 @@ Spawn all gap-targeted executors in PARALLEL (same message, multiple Task calls)
 After executors return, re-run the harness to ensure fixes didn't break mechanical checks:
 
 \`\`\`bash
-HARNESS_OUTPUT=$(bun run ./src/harness/runner.ts --project-dir=.)
+HARNESS_OUTPUT=$(luca checks run --file .luca/tmp/checks.json)
 \`\`\`
 
 If harness fails: Enter Loop A mini-loop (1 iteration only) to fix mechanical breakage, then continue Loop B.
@@ -1593,7 +1594,7 @@ This removes all \`iter/{phase}/*\` git tags and \`.luca/checkpoints/iter-{phase
 
 \`\`\`bash
 git add .
-bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
+git commit -m "docs({phase}): complete {phase-name} phase"
 \`\`\`\`
 
 Advance the workflow state after the actual commit succeeds. From \`learn\` the next step is \`finalize\` (which then resets to \`idle\`) per the pipeline-transitions table:
@@ -1739,27 +1740,27 @@ During execution, handle discoveries automatically:
 
 ## Commit Rules
 
-**IMPORTANT:** Always use \`bun run commit\` with flags. Always stage ALL files with \`git add .\` before committing. Partial commits are not allowed in standard workflow.
+**IMPORTANT:** Always commit with \`git commit\` using a conventional message (\`{type}({scope}): {subject}\`, types/scopes per \`luca preferences read\`). Always stage ALL files with \`git add .\` before committing. Partial commits are not allowed in standard workflow. Do NOT push — pushing happens at finalize.
 
 **Per-Task Commits:**
 
 \`\`\`bash
 git add .
-bun run commit --message="{task-name}" --type={type} --scope={phase}-{plan} --no-push --skip-checks
+git commit -m "{type}({phase}-{plan}): {task-name}"
 \`\`\`
 
 **Plan Metadata Commit:**
 
 \`\`\`bash
 git add .
-bun run commit --message="complete {plan-name} plan" --type=docs --scope={phase}-{plan} --no-push --skip-checks
+git commit -m "docs({phase}-{plan}): complete {plan-name} plan"
 \`\`\`
 
 **Phase Completion Commit:**
 
 \`\`\`bash
 git add .
-bun run commit --message="complete {phase-name} phase" --type=docs --scope={phase} --no-push --skip-checks
+git commit -m "docs({phase}): complete {phase-name} phase"
 \`\`\`
 
 ## Success Criteria

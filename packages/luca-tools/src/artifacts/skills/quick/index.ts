@@ -207,7 +207,7 @@ luca state advance --to-step idle
 
 \`\`\`bash
 git add .
-bun run commit --message="\${DESCRIPTION}" --type=docs --scope=quick-\${next_num} --no-push --skip-checks
+git commit -m "docs(quick-\${next_num}): \${DESCRIPTION}"
 \`\`\`
 
 Display completion:
@@ -244,7 +244,7 @@ Ready for next task: /quick
 |-----------|--------|---------|
 | Task complete | Check project status | \`/progress\` |
 | More quick tasks | Run another | \`/quick\` |
-| Want to commit | Commit changes | Run \`bun run commit\` |
+| Want to commit | Commit changes | \`git commit\` with a conventional message |
 | Want PR | Create pull request | Run \`gh pr create\` |
 
 **Primary:** \`/progress\` — See project status after quick task
