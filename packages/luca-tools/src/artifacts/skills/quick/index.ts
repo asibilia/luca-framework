@@ -134,7 +134,7 @@ Task(
 
 Create a quick plan for this task.
 """,
-  subagent_type="architect",
+  subagent_type="luca: Architect",
   description="Quick plan: {description}"
 )
 \`\`\`

@@ -94,7 +94,7 @@ gaps:
 
 PERSPECTIVE: integration. Verify cross-phase integration for this milestone.
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Integration check: v{version}"
 )
 
@@ -169,7 +169,7 @@ issues:
 
 If no issues: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Milestone DX review"
 )
 
@@ -199,7 +199,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Milestone simplification review"
 )
 
@@ -229,7 +229,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Milestone architecture review"
 )
 
@@ -259,7 +259,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Milestone test-quality review"
 )
 
@@ -289,7 +289,7 @@ issues:
 \`\`\`
 
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Milestone security review"
 )
 
@@ -357,7 +357,7 @@ PROPOSITION: {finding_as_proposition}
 STANCE: CHALLENGE
 {challenger_prompt from buildRebuttalPrompts, augmented with milestone context}
 """,
-  subagent_type="debater",
+  subagent_type="Adversarial Debater",
   description="Challenge: {finding_summary}"
 )
 
@@ -367,7 +367,7 @@ PROPOSITION: {finding_as_proposition}
 STANCE: DEFEND
 {defender_prompt from buildRebuttalPrompts, augmented with milestone context}
 """,
-  subagent_type="debater",
+  subagent_type="Adversarial Debater",
   description="Defend: {finding_summary}"
 )
 \\\`\\\`\\\`\\\`

@@ -1027,7 +1027,7 @@ Task(
 PERSPECTIVE: integration. Analyze cross-component/cross-phase wiring for integration gaps and report findings using the integration perspective.
 </diagnostic_context>
 """,
-  subagent_type="reviewer",
+  subagent_type="Code Reviewer",
   description="Integration Diagnostic"
 )
 \`\`\`
@@ -1322,7 +1322,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="DX review"
 )
 
@@ -1353,7 +1353,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Simplification review"
 )
 
@@ -1384,7 +1384,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Architecture review"
 )
 
@@ -1415,7 +1415,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Test-quality review"
 )
 
@@ -1448,7 +1448,7 @@ issues:
 
 If no issues found, return: \`issues: []\`
 """,
-subagent_type="reviewer",
+subagent_type="Code Reviewer",
 description="Security review"
 )
 
