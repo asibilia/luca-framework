@@ -11,7 +11,11 @@
 import { defineCommand } from 'citty'
 
 import { lucaChecksRunTool } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const runCommand = defineCommand({
     meta: {
@@ -38,7 +42,8 @@ const runCommand = defineCommand({
                 'default 90000). On timeout the process is killed.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('checks run', cmd, rawArgs)
         const commands = await readJsonPayload('checks run', args.file)
         await runWriteHandler('checks run', lucaChecksRunTool, {
             commands,

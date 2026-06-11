@@ -48,29 +48,6 @@ Capture idea or task as todo from current conversation.
    /todo-check to review pending
    \`\`\`
 
-## Todo File Format
-
-\`\`\`markdown
----
-title: {title}
-area: {api/ui/auth/data/etc}
-created: {timestamp}
-source: conversation
----
-
-## Context
-
-{What the user was discussing when this came up}
-
-## Task
-
-{Specific thing to do}
-
-## Notes
-
-{Any additional context}
-\`\`\`
-
 ## Success Criteria
 
 - [ ] Todo content extracted (from args or conversation)

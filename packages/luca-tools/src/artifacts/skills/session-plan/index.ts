@@ -31,8 +31,9 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 ### Step 1: Parse Pending Todos
 
 1. **Read backlog:**
-   - Read pending todos via \`luca todo list --status pending --format json\`
-   - Each entry returns title, area, source, body, priority
+   - Run \`luca todo list --status pending\` — it emits a \`mcp__muninn__muninn_recall\` instruction; execute it exactly as returned
+   - Each recalled todo's \`content\` is a JSON payload with title, body, status, source, and now priority and area
+   - Filters (\`--status\`, \`--area\`, \`--priority\`) are applied post-recall
    - The backlog is MuninnDB-backed; \`luca todo\` is the canonical surface
 
 2. **Check for dependencies:**

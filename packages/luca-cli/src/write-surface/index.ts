@@ -36,7 +36,7 @@ export type {
 } from './helpers/validate-verification-ref.ts'
 export * from '@alecsibilia/luca-core/review-analysis'
 
-// Handlers — the 27 tool descriptors
+// Handlers — the tool descriptors
 export { lucaBranchGuardTool } from './handlers/luca-branch-guard.ts'
 export { lucaChecksRunTool } from './handlers/luca-checks-run.ts'
 export { lucaConfidenceLogTool } from './handlers/luca-confidence-log.ts'
@@ -52,6 +52,7 @@ export { lucaPhaseWriteResearchTool } from './handlers/luca-phase-write-research
 export { lucaPhaseWriteSummaryTool } from './handlers/luca-phase-write-summary.ts'
 export { lucaPhaseWriteVerifyTool } from './handlers/luca-phase-write-verify.ts'
 export { lucaPhaseWriteWaveTool } from './handlers/luca-phase-write-wave.ts'
+export { lucaPlanLintTool } from './handlers/luca-plan-lint.ts'
 export { lucaPrReviewDetectConvergenceTool } from './handlers/luca-pr-review-detect-convergence.ts'
 export { lucaPrReviewFilterStaleTool } from './handlers/luca-pr-review-filter-stale.ts'
 export { lucaPrReviewRegressionCheckTool } from './handlers/luca-pr-review-regression-check.ts'

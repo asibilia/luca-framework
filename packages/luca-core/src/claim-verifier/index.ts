@@ -4,6 +4,8 @@
 
 export {
     extractClaims,
+    FORBIDDEN_LANGUAGE_PHRASES,
+    scanForbiddenLanguage,
     verifyClaims,
     verifyFile,
     verifyTextArtifact,
@@ -14,5 +16,6 @@ export type {
     ClaimVerificationReport,
     ExtractedClaim,
     FailureReason,
+    ForbiddenLanguageWarning,
     VerifyOpts,
 } from './claim-verifier.ts'

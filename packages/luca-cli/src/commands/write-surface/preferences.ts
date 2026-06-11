@@ -14,7 +14,11 @@ import {
     lucaPreferencesReadTool,
     lucaPreferencesWriteTool,
 } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const readCommand = defineCommand({
     meta: {
@@ -25,7 +29,8 @@ const readCommand = defineCommand({
             'ProjectPreferencesSchema-validated JSON with defaults applied ' +
             'to unset sections. Pure read; allowed in every pipelineStep.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('preferences read', cmd, rawArgs)
         await runWriteHandler('preferences read', lucaPreferencesReadTool, {})
     },
 })
@@ -51,7 +56,8 @@ const writeCommand = defineCommand({
                 'file because the object may be large.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('preferences write', cmd, rawArgs)
         const preferences = await readJsonPayload(
             'preferences write',
             args.file

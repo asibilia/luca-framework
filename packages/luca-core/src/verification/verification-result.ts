@@ -127,6 +127,11 @@ export function findCriterion(opts: {
 /**
  * Aggregate verification results for milestone validation: overall verdict
  * counts plus the blocking gaps of the latest result.
+ *
+ * A `deferred: true` criterion on the latest result is always a blocking gap
+ * REGARDLESS of its `met` value (a malformed `deferred: true, met: true`
+ * record must not slip through), and forces `allCriteriaMet` to `false`
+ * until the deferred probe runs.
  */
 export function aggregateVerificationResults(
     results: VerificationResult[]
@@ -141,10 +146,18 @@ export function aggregateVerificationResults(
     const latest = results[results.length - 1]
     const blockingGaps = latest
         ? latest.criteria
-              .filter((c) => !c.met && c.blocking)
+              .filter((c) => c.deferred === true || (!c.met && c.blocking))
               .map((c) => ({
                   criterionId: c.criterionId,
-                  gap: c.gap ?? 'Unknown',
+                  gap:
+                      c.gap ??
+                      (c.deferred
+                          ? `Deferred — pending follow-up${
+                                c.deferredFollowUp
+                                    ? ` todo ${c.deferredFollowUp}`
+                                    : ''
+                            }`
+                          : 'Unknown'),
                   wave: latest.wave,
               }))
         : []
@@ -155,7 +168,8 @@ export function aggregateVerificationResults(
         failCount: results.filter((r) => r.status === 'FAIL').length,
         stalledCount: results.filter((r) => r.status === 'STALLED').length,
         allCriteriaMet: latest
-            ? latest.criteria.filter((c) => c.blocking).every((c) => c.met)
+            ? latest.criteria.every((c) => c.deferred !== true) &&
+              latest.criteria.filter((c) => c.blocking).every((c) => c.met)
             : false,
         blockingGaps,
     }

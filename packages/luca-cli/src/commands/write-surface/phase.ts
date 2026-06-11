@@ -21,7 +21,7 @@ import {
     lucaPhaseArchiveTool,
     lucaPhaseCurrentTool,
 } from '../../write-surface/index.ts'
-import { runWriteHandler } from './__helpers/run-handler.ts'
+import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
 const currentCommand = defineCommand({
     meta: {
@@ -32,7 +32,8 @@ const currentCommand = defineCommand({
             '`dir` field as the base for native Write-tool artifact paths. ' +
             'Pure read; allowed in every pipelineStep.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('phase current', cmd, rawArgs)
         await runWriteHandler('phase current', lucaPhaseCurrentTool, {})
     },
 })
@@ -46,7 +47,8 @@ const advanceCommand = defineCommand({
             'in-progress. Call at the phase boundary (learn step) when more ' +
             'phases remain; the final phase routes to the finalize step.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('phase advance', cmd, rawArgs)
         await runWriteHandler('phase advance', lucaPhaseAdvanceTool, {})
     },
 })
@@ -60,7 +62,8 @@ const archiveCommand = defineCommand({
             'starts from an empty phases/ dir. Idempotent; skips slugs already ' +
             'archived. Allowed only in the finalize step.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('phase archive', cmd, rawArgs)
         await runWriteHandler('phase archive', lucaPhaseArchiveTool, {})
     },
 })

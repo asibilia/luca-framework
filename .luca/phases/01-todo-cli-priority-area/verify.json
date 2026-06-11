@@ -1,0 +1,196 @@
+{
+    "timestamp": "2026-06-10T17:30:00-07:00",
+    "phase": "01-todo-cli-priority-area",
+    "wave": 4,
+    "mode": "quick",
+    "status": "PASS",
+    "criteria": [
+        {
+            "criterionId": "ac-01",
+            "description": "tsc passes after TodoSchema priority/area fields",
+            "met": true,
+            "evidence": "bunx --bun tsc --noEmit exit 0, repo-wide, run independently by verifier",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-02",
+            "description": "TodoPriority exported; priority+area optional on TodoSchema",
+            "met": true,
+            "evidence": "packages/luca-core/src/todos/schemas.ts:20-21 (export const+type TodoPriority enum low|medium|high|critical), :68 priority: TodoPriority.optional(), :70 area: TodoAreaSchema.optional() (line numbers refreshed after Wave 4 TodoAreaSchema insertion)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-03",
+            "description": "tsc passes after rejectUnknownFlags helper",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-04",
+            "description": "rejectUnknownFlags exported; handles --no-, =value, -- terminator, help/version",
+            "met": true,
+            "evidence": "packages/luca-cli/src/commands/write-surface/__helpers/run-handler.ts:173 export function rejectUnknownFlags<TArgsDef extends ArgsDef>; :206 '--' break, :213-216 '=' split, :221 'no-' retry, :187 allowed set seeds help/version, :224-229 console.error naming flag+command then exit 1",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-05",
+            "description": "tsc passes after handler inputSchema changes",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-06",
+            "description": "priority+area in both handler inputSchemas; full-replace warning in update handler",
+            "met": true,
+            "evidence": "luca-todo-add.ts:35-40 (TodoPriority.optional + TodoAreaSchema.optional) + passthrough; luca-todo-update.ts:37-40 + passthrough; 'full-replace' warning now consolidated at luca-todo-update.ts:76 (Wave 4 supersedes the five per-field repeats originally cited)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-07",
+            "description": "tsc passes after todo CLI flag wiring",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-08",
+            "description": "todo add --help lists --priority enum + --area; todo update --help shows full-replace warning",
+            "met": true,
+            "evidence": "Static: todo.ts:56-67 add --priority type:'enum' options [...TodoPriority.options] + --area; update meta.description :153-159 carries 'Update is full-replace' warning. Runtime probes executor-attested in waves/02.md and waves/04.md (live --help captures during EXECUTING); direct runtime re-probe blocked in verify step — see notes",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-09",
+            "description": "todo add --bogus-flag exits non-zero naming flag; --priority wrong rejected by enum",
+            "met": true,
+            "evidence": "Static: todo.ts add run() calls rejectUnknownFlags first; run-handler.ts:224-229 exits 1 naming '--<flag>' and command; citty type:'enum' yields native CLIError on bad value. Executor-attested live probes in execute/summary.md + waves/02.md: exit 1 \"unknown flag '--bogus-flag'\"; CLIError 'Expected one of: low, medium, high, critical'",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-10",
+            "description": "--area/--priority filter hints in luca-todo-list.ts instruction text",
+            "met": true,
+            "evidence": "Regression re-checked post-Wave-4: luca-todo-list.ts:12-29 schema fields (priority TodoPriority, area TodoAreaSchema), :42 description names status/priority/area post-recall filters, :48-59 filter builder emits content.status / content.priority / content.area clauses",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-10b",
+            "description": "todo list --area x --priority high exits 0; instruction names both filters",
+            "met": true,
+            "evidence": "Static (re-checked post-Wave-4): todo.ts list declares both flags and forwards both at :142-144 (priority: args.priority, area: args.area); handler filter builder luca-todo-list.ts:51-58 provably includes both when set. Executor-attested live probe in waves/02.md (exit 0, instruction named content.priority === \"high\" && content.area === \"x\")",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-11",
+            "description": "tsc passes after wiring reject into remaining leaves",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0 (also covers the generic-widening deviation fix <TArgsDef extends ArgsDef>)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-12",
+            "description": "rejectUnknownFlags in >=12 write-surface files; state read --bogus exits non-zero",
+            "met": true,
+            "evidence": "grep -rln rejectUnknownFlags over commands/write-surface/*.ts = 12 files (branch, checks, confidence, phase, pr-review, preferences, repo, roadmap, state, todo, verification, workflow). Per-file run()-count == guard-call-count for all files (verification.ts 2/2 hand-checked incl. non-async run). state.ts 'state read' leaf guarded. Runtime --bogus probe executor-attested in waves/02.md (exit 1 named)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-13",
+            "description": "tsc passes after skill prose edits",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-14",
+            "description": "Stale prose removed (Todo File Format, --format json, metadata-file priority pattern); first-class flags in gh-issue-triage",
+            "met": true,
+            "evidence": "grep -c 'Todo File Format' todo-add/index.ts = 0; grep -c -- '--format json' session-plan/index.ts = 0; grep 'metadata-file|metadataFile' gh-issue-triage/index.ts = no matches; gh-issue-triage/index.ts:72-78 shows first-class --priority/--area flags with label-inference prose",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-15",
+            "description": "tsc passes after modes/commands prose edits",
+            "met": true,
+            "evidence": "Same repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-16",
+            "description": "priority and area in todo-check.ts field list and render line",
+            "met": true,
+            "evidence": "todo-check.ts:26 field list includes priority?/area? in TodoSchema shape; :34 render line shows priority (if set) and area (if set). research.ts:257 confirmed exact enum match (--area + --priority low|medium|high|critical)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-17",
+            "description": "All pai-review todos carry top-level priority+area; [priority: ...] body line removed",
+            "met": true,
+            "evidence": "Orchestrator-attested (verifier has no MCP access): waves/03.md documents muninn_remember_batch ok x10 (10 todos, not 9 — 10th postdates plan) plus a direct muninn_read read-back of a fresh engram showing top-level priority/area and no '[priority:' body line; full payload resend with title/body/status/source preserved",
+            "blocking": false
+        },
+        {
+            "criterionId": "ac-18",
+            "description": "tsc passes after SEC-01/SEC-02 fixes (TodoAreaSchema + JSON.stringify)",
+            "met": true,
+            "evidence": "bunx --bun tsc --noEmit exit 0, repo-wide, run independently by verifier in this cycle-2 pass",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-19",
+            "description": "list handler quotes area via JSON.stringify; TodoAreaSchema (kebab regex + max 60) defined in luca-core, barrel-exported, used in TodoSchema.area and all three handler area fields",
+            "met": true,
+            "evidence": "luca-todo-list.ts:58 JSON.stringify(args.area); schemas.ts:44-49 TodoAreaSchema = z.string().max(60).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/); todos/index.ts:6 barrel export; schemas.ts:70 TodoSchema.area; luca-todo-add.ts:38, luca-todo-update.ts:40, luca-todo-list.ts:19 all use TodoAreaSchema.optional()",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-20",
+            "description": "Injection-shaped --area value rejected before reaching instruction text",
+            "met": true,
+            "evidence": "Structural: list inputSchema area field is TodoAreaSchema.optional() (luca-todo-list.ts:19), whose regex rejects quotes/spaces, and the residual path is JSON.stringify-quoted (:54-58). Runtime: executor-attested source-run probe in waves/04.md — `--area 'x\"y'` rejected with kebab-case message, exit 1. Direct runtime re-probe blocked in verify step (see notes)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-21",
+            "description": "tsc passes after AR-01 + warning consolidation",
+            "met": true,
+            "evidence": "Same cycle-2 repo-wide tsc run, exit 0",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-22",
+            "description": "todo.ts derives priority enum options from TodoPriority.options; no literal priority arrays remain",
+            "met": true,
+            "evidence": "todo.ts:59,:122,:191 — three [...TodoPriority.options] usages (add, list, update); grep for literal ['low','medium','high','critical'] array in todo.ts = 0 matches",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-23",
+            "description": "Exactly one full-replace statement per file, naming priority+area",
+            "met": true,
+            "evidence": "grep -c 'full-replace' = 1 in todo.ts (:157, updateCommand meta.description, names '(body, source, metadata, priority, area)') and 1 in luca-todo-update.ts (:76, tool description, same field list)",
+            "blocking": true
+        },
+        {
+            "criterionId": "ac-24",
+            "description": "updateCommand meta.description carries consolidated full-replace warning; per-field descriptions restored as real descriptions with terse '(dropped if omitted)' suffix",
+            "met": true,
+            "evidence": "todo.ts:153-159 meta.description ends with the consolidated warning; per-field descriptions at :183-220 are substantive (body, priority, area, source, metadata-file) each with '(dropped if omitted)' suffix only — no repeated warning. Executor-attested --help probe in waves/04.md: warning rendered once, real field descriptions present",
+            "blocking": true
+        }
+    ],
+    "checks": [
+        {
+            "name": "typecheck",
+            "status": "pass",
+            "errorCount": 0,
+            "warningCount": 0
+        }
+    ],
+    "convergence": "resolved",
+    "errorFingerprints": [],
+    "recommendation": "proceed",
+    "notes": "Cycle-2 quick-mode re-verification after review-driven Wave 4 (ac-18..ac-24). All 25 criteria pass (ac-01..ac-17 + ac-10b carried forward; ac-06/ac-08/ac-10/ac-10b evidence line-numbers refreshed where Wave 4 moved code — the full-replace warning is now consolidated, superseding the five per-field repeats cited in the cycle-1 evidence). Fresh probes this cycle: repo-wide tsc exit 0; TodoAreaSchema single-source chain (define/export/consume x4) verified line-level; JSON.stringify defense-in-depth at list:58; TodoPriority.options x3 with zero literal arrays; exactly one full-replace statement per file naming priority+area; consolidated meta.description warning with restored per-field descriptions. Regression spot-check: list handler still emits both content.priority and content.area filter clauses (luca-todo-list.ts:51-58) and todo.ts list forwards both flags. luca rules run: 0 rules discovered, no findings. Runtime probes (ac-20 injection rejection, ac-24 --help) could not be re-executed in verify step (stage-gate blocks bash-mutate in REVIEWING) — met on structural verification plus executor-attested probes in waves/04.md. STALE-DIST CAVEAT (carried forward, re-confirmed): packages/luca/dist/index.mjs mtime Jun 10 10:37 with zero TodoAreaSchema occurrences — finalize must rebuild/relink (bun run build or release:local) before the linked `luca` binary is consumed. Staged scope re-checked: same 22 planned source files, no strays."
+}

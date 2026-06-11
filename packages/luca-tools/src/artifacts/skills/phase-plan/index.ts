@@ -304,7 +304,11 @@ Then invoke the architect mode-agent (typically by transitioning into the archit
 # <downstream_consumer>
 #   Output consumed by /phase-execute.
 #   Plans must be executable prompts with: YAML frontmatter (id, title, wave, tasks), clear task descriptions with goals,
-#   verification criteria for each task, dependencies between tasks.
+#   a ## Verification Criteria section with stable plan-authored ac-IDs (- **ac-NN**: <one binary probe>) referenced by
+#   each task's Verification line, >=1 anti-criterion (- **anti-NN**: MUST NOT — <guard + probe>), and dependencies
+#   between tasks. The verifier consumes ac-IDs verbatim — never renumber across revisions (splits become ac-NN.M).
+#   Plans must also carry a ## Deliverables section mapping every explicit ask in the phase goal to >=1 ac-ID
+#   (canonical D-line grammar lives in the Architect mode plan template — do not improvise it here).
 # </downstream_consumer>
 #
 # <output_requirements>
@@ -352,6 +356,14 @@ The plan-checker model tier is set by the agent’s own definition.
 
 **MANDATORY**: You MUST spawn the \`plan-reviewer\` subagent. Do NOT attempt to verify plans yourself.
 
+BEFORE spawning the plan-reviewer, run the advisory linter against the written plan:
+
+\`\`\`bash
+luca plan lint --file "\${PHASE_DIR}/plan.md"
+\`\`\`
+
+The linter is warn-only (always exits 0 on lint findings) and checks mechanical conformance to the criteria grammar. The plan must carry a \`## Deliverables\` section mapping each explicit ask in the phase goal to its verification criteria; the linter warns on missing or malformed D-lines (canonical D-line grammar lives in the Architect mode plan template). Address each warning: fix the criterion, or justify the deviation in the plan's decisions/notes. Judgment checks — probe nameability, the A-passes-while-B-fails independence test — are the plan-reviewer's job, not the linter's; do not treat a clean lint as a substitute for review.
+
 First, read the created plan (canonical: one \`plan.md\` per phase per LUCA_DIR_CONTRACT):
 
 \`\`\`bash
@@ -386,7 +398,7 @@ Task(
 1. **Completeness**: Do plans cover all phase requirements?
 2. **Executability**: Are tasks clear and actionable?
 3. **Dependencies**: Are wave assignments and dependencies correct?
-4. **Verification**: Does each task have verification criteria?
+4. **Verification**: Does each task's Verification line reference ac-IDs from the ## Verification Criteria section? Does every criterion pass the Splitting Test (exactly one binary probe)? Is at least one anti-criterion (- **anti-NN**: MUST NOT — ...) present? Are IDs stable vs any prior revision (splits as ac-NN.M, drops tombstoned, never renumbered)?
 5. **Goal Alignment**: Will executing these plans achieve the phase goal?
 </verification_criteria>
 
@@ -474,6 +486,8 @@ If issues found and iteration_count < planVerificationIterations:
 
 - \`/progress\` — See plan details before executing
 - \`/phase-discuss {phase}\` — Gather more context if plans seem off
+
+**Materialization note:** instruction-body changes (this skill, the architect mode) reach users via \`bun run build\` followed by a \`luca init\` re-run from the installed CLI — editing the source alone does not refresh deployed instruction bodies.
 </main>
 `
 

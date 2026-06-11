@@ -9,7 +9,7 @@
 import { defineCommand } from 'citty'
 
 import { lucaBranchGuardTool } from '../../write-surface/index.ts'
-import { runWriteHandler } from './__helpers/run-handler.ts'
+import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
 const guardCommand = defineCommand({
     meta: {
@@ -29,7 +29,8 @@ const guardCommand = defineCommand({
                 '(typically the repository default branch, default "main").',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('branch guard', cmd, rawArgs)
         await runWriteHandler('branch guard', lucaBranchGuardTool, {
             default_branch: args['default-branch'],
         })

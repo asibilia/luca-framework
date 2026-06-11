@@ -48,6 +48,10 @@ const main = defineCommand({
             import('./commands/write-surface/phase').then(
                 (m) => m.phaseCommand
             ),
+        plan: () =>
+            import('./commands/write-surface/plan').then(
+                (m) => m.planCommand
+            ),
         roadmap: () =>
             import('./commands/write-surface/roadmap').then(
                 (m) => m.roadmapCommand

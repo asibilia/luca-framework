@@ -24,6 +24,7 @@ import type { VerificationResult } from '@alecsibilia/luca-core'
 
 import { listPhaseSlugs } from '../__helpers/list-phase-slugs.ts'
 import { logger } from '../../utils/logger.ts'
+import { rejectUnknownFlags } from './__helpers/run-handler.ts'
 
 /** Resolve the explicit `--slug` arg, or the active phase. Exits 1 if neither. */
 async function resolveSlug(opts: {
@@ -58,7 +59,8 @@ const readCommand = defineCommand({
                 'not match are treated as stale and yield null.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('verification read', cmd, rawArgs)
         const cwd = process.cwd()
         const slug = await resolveSlug({ explicit: args.slug, cwd })
         const result = readVerificationResult({
@@ -85,7 +87,8 @@ const aggregateCommand = defineCommand({
                 'Current run id; filters out stale per-phase verify.json.',
         },
     },
-    run({ args }) {
+    run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('verification aggregate', cmd, rawArgs)
         const cwd = process.cwd()
         const results: VerificationResult[] = []
         for (const slug of listPhaseSlugs(cwd)) {

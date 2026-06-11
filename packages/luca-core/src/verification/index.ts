@@ -3,11 +3,13 @@
 
 export {
     CheckResultSchema,
+    DeliverableComplianceSchema,
     VerificationCriterionSchema,
     VerificationResultSchema,
 } from './schemas.ts'
 export type {
     CheckResult,
+    DeliverableCompliance,
     VerificationCriterion,
     VerificationResult,
 } from './schemas.ts'

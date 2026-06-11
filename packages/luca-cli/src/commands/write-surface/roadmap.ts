@@ -14,7 +14,11 @@ import {
     lucaRoadmapCreateTool,
     lucaRoadmapReadTool,
 } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const readCommand = defineCommand({
     meta: {
@@ -25,7 +29,8 @@ const readCommand = defineCommand({
             '{ name, deps, status, complexity? }. Pure read; allowed in ' +
             'every pipelineStep.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('roadmap read', cmd, rawArgs)
         await runWriteHandler('roadmap read', lucaRoadmapReadTool, {})
     },
 })
@@ -49,7 +54,8 @@ const createCommand = defineCommand({
                 'flag. Defaults applied: deps=[], status=pending.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('roadmap create', cmd, rawArgs)
         const phases = await readJsonPayload('roadmap create', args.file)
         await runWriteHandler('roadmap create', lucaRoadmapCreateTool, {
             phases,

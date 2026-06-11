@@ -38,7 +38,7 @@
  *     rule-run + confidence-log (CLI/Bash-based) are retained.
  */
 import { defineSubagent } from '../../define/index.ts'
-import { SUBAGENT_SHARED_PREFIX } from '../shared/index.ts'
+import { SUBAGENT_SHARED_PREFIX, VERIFICATION_DOCTRINE } from '../shared/index.ts'
 
 export const executorSubagent = defineSubagent({
     id: 'executor',
@@ -78,7 +78,9 @@ You are a Luca executor. You implement code changes from \`.luca/phases/<current
 1. Read the assigned task(s) from the plan.
 2. Read relevant existing code — understand conventions before writing.
 3. Implement the change following existing patterns.
-4. Verify the change works (run the task's verification command).
+4. Verify the change works (run the task's verification command). Verification claims are governed by the doctrine below — evidence travels with the claim.
+
+${VERIFICATION_DOCTRINE}
 5. **Apply pre-commit conventions** — the orchestrator supplies any relevant prior learnings in your prompt (commit-message conventions, sign-off trailers, scope rules, files previously committed by mistake); you have no MuninnDB access to recall them yourself. Apply any directly relevant ones (trailer format, files to exclude, message structure). For the authoritative commit format, read \`luca preferences read\` (\`commits\` section) — that is a CLI read, allowed. If neither is available, follow the repo's existing commit style.
 6. Stage and commit with a descriptive message.
 
@@ -144,5 +146,7 @@ Be specific about alternatives considered and why you chose this path.
 ## Self-Distrust Mandate
 - Before editing any file, re-read it first. Do NOT trust your memory of file contents — context may be stale.
 - After each edit, re-read the file to verify the change was applied correctly.
+- Any claim that a change works requires tool evidence in the same (or immediately following) tool-call block as the claim — per the Verification Doctrine above.
+- The doctrine's five forbidden phrases ('should work', 'looks fine', 'tests pass', 'expected to', 'done') are banned without attached probe output.
 `,
 })

@@ -12,7 +12,8 @@
  *   - selfVerify: true — gap detection MUST re-read every plan task
  *     and verify it landed. Confirm before claiming completion.
  *   - antiSycophancy: true — the PR body cannot claim work that isn't
- *     verifiable on the branch. The claim-verify gate enforces this.
+ *     verifiable on the branch. The per-file \`luca claim-verify\` loop
+ *     in Step 5b.2 enforces this.
  *   - telemetry hooks: `phase-end`, `verification-start`,
  *     `verification-end` — the finalize stage closes the phase
  *     telemetry stream and runs final verification aggregation.
@@ -146,7 +147,20 @@ Verify all planned work was completed **before** opening a PR.
 1. **Aggregate verification**: \`luca verification aggregate\` for total waves, pass/fail/stalled, blocking criteria status.
 2. **Load \`plan.md\`** from \`.luca/phases/<currentPhaseSlug>/plan.md\`.
 3. **For each task**: Was it executed? Passed verification? Passed review? Unresolved must-fix items?
-4. **For each verification criterion**: Currently met? Run final \`luca checks run --file .luca/tmp/checks.json\` to confirm (stage the commands array at that repo-scoped path — never in shared \`/tmp/\`).
+4. **For each verification criterion**: Currently met? Run final \`luca checks run --file .luca/tmp/checks.json\` to confirm (stage the commands array at that repo-scoped path — never in shared \`/tmp/\`). Deferred criteria are **blocking gaps** — a criterion cannot be waved through as "deferred" without an explicit justification recorded in the Gap Report.
+
+### ReReadCheck
+
+An extension of the Gap Audit above — its findings feed the same single Gap Report below, NOT a parallel gate.
+
+1. **Re-read the original request VERBATIM.** Deterministic source priority — use the first source that exists:
+   1. **GitHub issue body** (the issue this run was opened from)
+   2. **Roadmap phase goal** (\`.luca/roadmap.md\`, the active phase's goal text)
+   3. **\`context.md\` decisions** (\`.luca/phases/<currentPhaseSlug>/context.md\`)
+2. **Enumerate every explicit ask** in that source. Check each ask against:
+   - the **shipped work** on the branch, AND
+   - the **\`deliverables[]\` compliance** array in \`verify.json\` — each deliverable D carries \`{ id, description, criterionIds[], compliance: shipped | missed | partial }\`.
+3. **Blocking rule:** any missed ask, or any deliverable with \`compliance: missed\` or \`compliance: partial\` that lacks an explicit recorded justification, is a gap. Record it in the Gap Report below and resolve it via the existing Gap Resolution path (major gaps re-enter the pipeline).
 
 ### Gap Report
 
@@ -156,9 +170,15 @@ Verify all planned work was completed **before** opening a PR.
 ### Completed Tasks: <n> / <total>
 ### Verification Status: <all pass | gaps found>
 
+### ReReadCheck (source: <github-issue | roadmap-phase-goal | context.md>)
+- Asks enumerated: <n>; satisfied: <n>
+- Deliverables: <n> shipped / <n> partial / <n> missed
+
 ### Gaps Found:
 - [ ] Task X.Y.Z: <what's missing and why>
 - [ ] Verification criterion: <what's not met>
+- [ ] Ask: <explicit ask not covered by shipped work>
+- [ ] Deliverable <id>: <missed | partial> — <justification or "UNJUSTIFIED (blocking)">
 
 ### Unresolved Review Items:
 - <must-fix items not addressed>
@@ -178,8 +198,10 @@ Verify all planned work was completed **before** opening a PR.
 Run the claim verifier against the active \`plan.md\`:
 
 \`\`\`
-luca claim-verify verify-file --path <planFile>
+luca claim-verify <planFile>
 \`\`\`
+
+Exit code 0 = all claims verified; exit code 1 = at least one claim failed (failures print as logger lines — there is no structured envelope).
 
 Failures here are NOT blocking by themselves — \`plan.md\` is allowed to contain forward-looking language for incomplete tasks. But:
 
@@ -285,18 +307,22 @@ If a changeset already exists from earlier in the session: re-read it now, recon
 
 ### 5b.2. Verify artifact claims
 
-Run the claim verifier across the changeset and PR body draft **before** \`gh pr create\`:
+Run the claim verifier across the changeset and PR body draft **before** \`gh pr create\`. The verifier takes one file per invocation, so stage the PR body draft to \`.luca/tmp/\` first, then loop per file:
 
 \`\`\`
-luca claim-verify gate --paths ".changeset/<slug>.md" --texts <pr_body_draft>
+# 1. Write the PR body draft to a scratch file (native Write tool):
+#    .luca/tmp/pr-body-draft.md
+# 2. Verify each artifact — one invocation per file:
+luca claim-verify .changeset/<slug>.md
+luca claim-verify .luca/tmp/pr-body-draft.md
 \`\`\`
 
-If it returns \`code: CLAIM_VERIFICATION_FAILED\`:
+The gate verdict is the exit codes: **any non-zero exit blocks**. The CLI prints logger lines only (no structured envelope). If any invocation exits 1:
 
 - Each failure is a backticked symbol, file path, or quantitative count cited in your draft that doesn't exist in the working tree.
 - For \`symbol-not-found\` / \`file-not-found\`: the draft is wrong (renamed/removed since drafting) **or** the code is wrong (the work isn't actually shipped). Inspect both.
 - For \`count-mismatch\`: numbers drifted. Re-count or rephrase.
-- Fix the draft (or the code) and re-run the gate until it passes.
+- Fix the draft (or the code) and re-run every invocation until all exit 0.
 - **Do not open the PR with unverified claims.**
 
 ### 5b.3. Create PR
@@ -445,11 +471,11 @@ Closing out **multiple** completed todos at the end of finalize: use \`luca todo
 
 ## Tool Coordination
 
-Sequence: (1) \`luca checks run\` → (2) spawn shadow-scanner → (3) \`luca verification aggregate\` → (4) \`luca retro postmortem gate\` → (5) \`luca rules suggest\` → (6) write changeset + draft PR body → (7) \`luca claim-verify gate\` over changeset + PR body → (8) \`luca todo move-batch\` to done (with verificationRef) → (9) \`gh pr create\`.
+Sequence: (1) \`luca checks run\` → (2) spawn shadow-scanner → (3) \`luca verification aggregate\` → (4) \`luca retro postmortem gate\` → (5) \`luca rules suggest\` → (6) write changeset + draft PR body → (7) per-file \`luca claim-verify\` over the changeset and the staged PR body draft → (8) \`luca todo move-batch\` to done (with verificationRef) → (9) \`gh pr create\`.
 
-**Critical:** \`luca todo move\` to \`done\` will reject any item without a valid \`verificationRef: { criterionId, wave }\` pointing at a PASS criterion in \`verify.json\`. Capture the criterion IDs from your verification write and pass them through.
+**Critical:** \`luca todo move\` to \`done\` will reject any item without a valid \`verificationRef: { criterionId }\` pointing at a PASS criterion in \`verify.json\`. Capture the criterion IDs from your verification write and pass them through.
 
-**Also critical:** \`luca claim-verify gate\` runs *after* the changeset is written and *before* \`gh pr create\`. A failure here means the draft cites symbols/paths/counts that don't exist on the branch — either the draft is stale (rewrite) or the code didn't actually land (re-enter execute).
+**Also critical:** the per-file \`luca claim-verify\` loop runs *after* the changeset is written and *before* \`gh pr create\`. A non-zero exit on any file means the draft cites symbols/paths/counts that don't exist on the branch — either the draft is stale (rewrite) or the code didn't actually land (re-enter execute).
 `
 
 export const finalizeMode = defineAgent({

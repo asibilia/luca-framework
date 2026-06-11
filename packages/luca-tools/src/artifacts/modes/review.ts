@@ -70,10 +70,20 @@ Review receives control from Execute. Determine whether implementation is ready 
 
 ### Step 2: Requirements Coverage
 
-For each acceptance criterion in the plan:
+Criterion IDs are **plan-authored**: read them verbatim from the plan.md \`## Verification Criteria\` section (\`ac-NN\`, split sub-ids \`ac-NN.M\`, anti-criteria \`anti-NN\`). Never renumber or mint ids — the coverage table cites the plan's ids.
+
+For each live (non-tombstoned) acceptance criterion in the plan:
 1. Verify it is addressed by the implementation.
 2. Check that verification command passes.
 3. Mark as: **MET**, **PARTIAL**, or **UNMET**.
+
+Coverage judgments follow the Verification Doctrine (canonical: \`VERIFICATION_DOCTRINE\` in \`artifacts/shared/verification-doctrine.ts\`): a criterion counts as MET only with attached probe evidence — bare assertions ('should work', 'tests pass') without tool output do not satisfy coverage.
+
+**Deferred criteria are OPEN GAPS.** A verify.json criterion with \`deferred: true\` (\`[DEFERRED-VERIFY]\`) NEVER counts as MET — its probe has not run. Surface it in coverage as **PARTIAL** (implementation present, probe deferred) or **UNMET** (otherwise), citing its \`deferredFollowUp\` todo id as the tracking reference. A deferred criterion can flip to MET only after the deferred probe runs with evidence.
+
+Criteria tombstoned as \`[DROPPED — see decisions <date>]\` are excluded from verify.json and from coverage — do not report them as UNMET.
+
+**Rule — todo→done verificationRefs cite live criteria**: a todo may transition to \`done\` only with a verificationRef whose criterionId is a **live (non-tombstoned, non-split-parent)** plan-authored id. The ref is validated by exact-match against the verify.json criteria array; tombstoned criteria and \`[SPLIT → ...]\` parent pointer lines are excluded from that array, so a ref citing a \`[DROPPED]\` or split-parent id is rejected with \`CRITERION_NOT_FOUND\` — that rejection is correct behavior by design, not a bug. Re-point the todo at a live criterion (for splits: one of the ac-NN.M children) instead of working around the validation.
 
 ### Step 3: Automated Checks
 
@@ -158,6 +168,8 @@ The consolidated report is composed from the per-perspective audit files in \`.l
 |-----------|--------|----------|
 | ... | ... | ... |
 
+Deferred (\`deferred: true\`) criteria appear here as PARTIAL/UNMET — never MET — with the \`deferredFollowUp\` todo id in the Evidence column.
+
 ## Automated Checks
 
 | Check | Status | Duration |
@@ -187,13 +199,16 @@ The consolidated report is composed from the per-perspective audit files in \`.l
 
 ### Optional: Self-check review claims
 
-Before finalizing the verdict, optionally run the claim verifier across your own MUST-FIX / SHOULD-FIX entries to catch hallucinated symbols or stale file paths in your own output:
+The Verification Doctrine's evidence rules apply to your own findings too: every coverage claim must cite probe evidence, and any \`deferred: true\` criterion you encounter remains an open gap in the verdict. Before finalizing the verdict, optionally run the claim verifier across your own MUST-FIX / SHOULD-FIX entries to catch hallucinated symbols or stale file paths in your own output. The verifier takes a file path, so stage the review text to \`.luca/tmp/\` first:
 
 \`\`\`
-luca claim-verify verify-text --text "<full review output>"
+# 1. Write the full review output to a scratch file (native Write tool):
+#    .luca/tmp/review-self-check.md
+# 2. Run the verifier on it:
+luca claim-verify .luca/tmp/review-self-check.md
 \`\`\`
 
-If the verifier flags \`symbol-not-found\` for a symbol you cited in a finding, that finding is suspect — the symbol doesn't exist in the working tree. Either fix the citation or drop the finding. Non-blocking: this is a self-check, not a gate.
+Branch on the exit code — the CLI prints logger lines only (no structured envelope): exit 0 means every claim verified; exit 1 means at least one claim failed, with each failure printed as a \`reason: claim (line N)\` logger line. If the verifier flags \`symbol-not-found\` for a symbol you cited in a finding, that finding is suspect — the symbol doesn't exist in the working tree. Either fix the citation or drop the finding. Non-blocking: this is a self-check, not a gate.
 
 ### Step 7: Route Decision
 

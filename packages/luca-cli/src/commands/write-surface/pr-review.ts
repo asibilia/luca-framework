@@ -21,7 +21,11 @@ import {
     lucaPrReviewFilterStaleTool,
     lucaPrReviewRegressionCheckTool,
 } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const filterStaleCommand = defineCommand({
     meta: {
@@ -52,7 +56,8 @@ const filterStaleCommand = defineCommand({
                 'stale (default 5).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('pr-review filter-stale', cmd, rawArgs)
         const comments = await readJsonPayload(
             'pr-review filter-stale',
             args.file
@@ -95,7 +100,8 @@ const detectConvergenceCommand = defineCommand({
                 'location (default 2).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('pr-review detect-convergence', cmd, rawArgs)
         const findings = await readJsonPayload(
             'pr-review detect-convergence',
             args.file
@@ -134,7 +140,8 @@ const regressionCheckCommand = defineCommand({
                 'to_sha?: string }.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('pr-review regression-check', cmd, rawArgs)
         const payload = await readJsonPayload(
             'pr-review regression-check',
             args.file

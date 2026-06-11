@@ -73,6 +73,11 @@ export interface ClaimVerificationReport {
     }
     /** True when the budget was exhausted; remaining claims are unverified. */
     timedOut: boolean
+    /**
+     * Advisory forbidden-language findings (see `scanForbiddenLanguage`).
+     * Warnings only — NEVER feed into `passed` or any gate verdict.
+     */
+    forbiddenLanguage: ForbiddenLanguageWarning[]
 }
 
 export interface VerifyOpts {
@@ -301,6 +306,119 @@ export function extractClaims(text: string): ExtractedClaim[] {
     }
 
     return claims
+}
+
+// ---------------------------------------------------------------------------
+// Forbidden language (advisory)
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical list of confidence-theater phrases from the verification
+ * doctrine. Each phrase is forbidden only WITHOUT attached probe evidence —
+ * the phrases are fine when accompanied by tool output.
+ *
+ * Single source of truth: the luca-tools doctrine constant
+ * (`packages/luca-tools/src/artifacts/shared/verification-doctrine.ts`)
+ * interpolates this export. Keep the list here.
+ */
+export const FORBIDDEN_LANGUAGE_PHRASES = [
+    'should work',
+    'looks fine',
+    'tests pass',
+    'expected to',
+    'done',
+] as const
+
+export interface ForbiddenLanguageWarning {
+    /** The matched phrase (canonical lowercase form from the list). */
+    phrase: string
+    /** 1-indexed line number in the source artifact. */
+    sourceLine: number
+    /** Up to 1 line of context around the match. */
+    sourceContext: string
+}
+
+/** Word-boundary, case-insensitive matcher per phrase, built once. */
+const FORBIDDEN_PHRASE_MATCHERS = FORBIDDEN_LANGUAGE_PHRASES.map((phrase) => ({
+    phrase,
+    re: new RegExp(`\\b${phrase.replace(/ /g, '\\s+')}\\b`, 'i'),
+}))
+
+/**
+ * Heuristic: a line "carries evidence" when it looks like tool output or an
+ * explicit evidence reference — a fenced-code delimiter, a shell prompt, or
+ * an evidence keyword (exit/exit code, stdout, stderr, output, evidence,
+ * probe, tool). Deliberately loose: this scan is advisory-only, so false
+ * negatives (missed flags) are preferred over false positives.
+ */
+const EVIDENCE_MARKER_RE =
+    /```|^\s*\$\s|\b(?:exit(?:\s+code)?|stdout|stderr|output|evidence|probe|tool)\b/i
+
+/**
+ * Mask the contents of inline backtick code spans with spaces (preserving
+ * each span's length) so code-span text never triggers the forbidden-phrase
+ * match. Same-length space masking mirrors the precedent in luca-cli's
+ * plan-lint handler (`maskInlineCodeSpans`); reimplemented locally because
+ * that helper is private to luca-cli and luca-core must not import from it.
+ */
+function maskInlineCodeSpans(line: string): string {
+    return line.replace(
+        /`[^`]*`/g,
+        (span) => `\`${' '.repeat(span.length - 2)}\``
+    )
+}
+
+/**
+ * Advisory scan for forbidden confidence-theater language in prose.
+ *
+ * A phrase occurrence is flagged when no evidence marker is nearby, where
+ * "nearby" = the same line or an adjacent line (±1) matches
+ * `EVIDENCE_MARKER_RE`. Inline code spans are space-masked before matching
+ * so `` `done` `` (a code token) never flags; lines inside fenced code
+ * blocks are skipped entirely — fenced content IS tool output. Evidence
+ * detection runs on the RAW lines (backtick content like `exit 0` counts
+ * as evidence).
+ *
+ * Output is warnings only — callers MUST NOT gate verdicts or exit codes
+ * on these findings.
+ */
+export function scanForbiddenLanguage(text: string): ForbiddenLanguageWarning[] {
+    if (!text) return []
+
+    const lines = text.split('\n')
+    const warnings: ForbiddenLanguageWarning[] = []
+    let inFence = false
+
+    for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i] ?? ''
+        if (/^\s*(?:```|~~~)/.test(raw)) {
+            inFence = !inFence
+            continue
+        }
+        if (inFence) continue
+
+        const masked = maskInlineCodeSpans(raw)
+        const hits = FORBIDDEN_PHRASE_MATCHERS.filter(({ re }) =>
+            re.test(masked)
+        )
+        if (hits.length === 0) continue
+
+        const nearby = [lines[i - 1], raw, lines[i + 1]]
+        const hasEvidence = nearby.some(
+            (l) => l !== undefined && EVIDENCE_MARKER_RE.test(l)
+        )
+        if (hasEvidence) continue
+
+        for (const { phrase } of hits) {
+            warnings.push({
+                phrase,
+                sourceLine: i + 1,
+                sourceContext: raw.trim().slice(0, 240),
+            })
+        }
+    }
+
+    return warnings
 }
 
 // ---------------------------------------------------------------------------
@@ -566,6 +684,9 @@ export function verifyClaims(
         failures,
         extractedBreakdown: breakdown,
         timedOut,
+        // verifyClaims has no source text — text-level callers
+        // (verifyTextArtifact) overwrite this with the real scan.
+        forbiddenLanguage: [],
     }
 }
 
@@ -574,7 +695,10 @@ export function verifyTextArtifact(
     text: string,
     opts: VerifyOpts
 ): ClaimVerificationReport {
-    return verifyClaims(extractClaims(text), opts)
+    return {
+        ...verifyClaims(extractClaims(text), opts),
+        forbiddenLanguage: scanForbiddenLanguage(text),
+    }
 }
 
 /**
@@ -608,6 +732,7 @@ export function verifyFile(
             ],
             extractedBreakdown: { symbols: 0, filePaths: 0, quantitative: 0 },
             timedOut: false,
+            forbiddenLanguage: [],
         }
     }
     return verifyTextArtifact(text, opts)

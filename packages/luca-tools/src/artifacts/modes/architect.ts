@@ -35,7 +35,7 @@ const BODY = `# Architect Agent Instructions
 
 > Luca Steps 4–7g: Git Setup → Roadmap → Plan → Review
 
-> **CRITICAL CONSTRAINT**: ≤3 sentences per task description. ≤150 lines total plan.md. Obey \`<luca-reminder>\` tags.
+> **CRITICAL CONSTRAINT**: ≤3 sentences per task description. ≤150 lines total plan.md — the \`## Verification Criteria\` and \`## Deliverables\` sections are EXEMPT from this count. Obey \`<luca-reminder>\` tags.
 
 > **COMMUNICATION**: Caveman mode (full) is always active. Activate the \`caveman\` skill immediately and follow its rules for all output.
 
@@ -199,12 +199,12 @@ Tasks in a wave can be executed in parallel. Waves execute sequentially.
 
 - [ ] **Task 1.1.1**: <atomic task description>
   - Files: <files to create/modify>
-  - Verification: <how to verify correctness>
+  - Verification: <ac-ID references into ## Verification Criteria, e.g. ac-03, ac-07>
   - Dependencies: <task IDs this depends on, if any>
 
 - [ ] **Task 1.1.2**: <atomic task description>
   - Files: <files to create/modify>
-  - Verification: <how to verify correctness>
+  - Verification: <ac-ID references, e.g. ac-01, ac-04>
 
 #### Wave 2: <wave description>
 - [ ] **Task 1.2.1**: ...
@@ -212,12 +212,46 @@ Tasks in a wave can be executed in parallel. Waves execute sequentially.
 ### Phase 2: <name>
 ...
 
+## Deliverables
+- **D1**: <explicit ask from the phase goal/request> → <ac-IDs, e.g. ac-01, ac-03>
+- **D2**: <explicit ask> → <ac-IDs>
+
+Every D maps to ≥1 verification criterion; every explicit ask in the phase goal/request appears as exactly one D.
+
 ## Verification Criteria
-<overall criteria for plan completion>
+- **ac-01**: <one binary probe — a single command/check with a pass/fail outcome>
+- **ac-02**: [SPLIT → ac-02.1, ac-02.2]
+- **ac-02.1**: <split of a prior ac-02 — parent ID preserved, never renumbered>
+- **ac-02.2**: <second half of the split — its own binary probe>
+
+### Anti-criteria (regression guards)
+- **anti-01**: MUST NOT — <guard + probe>
 
 ## Risks & Mitigations
 <known risks and how the plan addresses them>
+
+## Decisions
+- <date> — <one-line decision>
+
+Tombstone references (\`[DROPPED — see decisions <date>]\`) and lint-warning justifications land here.
 \`\`\`
+
+### Criteria Quality Rules
+
+These rules govern every \`## Verification Criteria\` section. The \`luca plan lint\` regexes key to the exact line grammar below — do not vary it.
+
+**Canonical line grammar (exact literals):**
+- Criteria lines: \`- **ac-NN**: <one binary probe>\` (splits: \`- **ac-NN.M**: ...\`).
+- Anti-criteria lines: \`- **anti-NN**: MUST NOT — <guard + probe>\`.
+- Per-task Verification lines REFERENCE ac-IDs (e.g. \`- Verification: ac-03, ac-07\`) — never restate the probe inline.
+
+**1. Splitting Test.** Every acceptance criterion names exactly ONE binary tool probe — a single command or check with a pass/fail outcome. Criteria compounded with \` and \` / \` with \` must be split into separate criteria. Judgment test: if part A can pass while part B fails, split. Criteria using "all/every/complete" must enumerate their sub-criteria explicitly. If no tool probe is nameable for a criterion, the criterion must be rewritten until one is.
+
+**2. Mandatory anti-criteria.** Every plan carries ≥1 anti-criterion — a "what must NOT happen" regression guard. Derive anti-criteria from the phase \`context.md\` \`### Out of Scope\` section (written by the discussion step) and from known regression concerns. A plan with zero anti-NN entries is incomplete.
+
+**3. ID-stability.** Criterion IDs are never renumbered across plan revisions. When a criterion splits, the replacements become \`ac-NN.M\` with the parent ID preserved (e.g. ac-04 splits into ac-04.1 and ac-04.2 — ac-05 onward keep their numbers). When a criterion splits, the parent line becomes a pointer: \`- **ac-NN**: [SPLIT → ac-NN.1, ac-NN.2]\` — split-parent pointer lines are excluded from verify.json exactly like tombstones. Dropped criteria are never deleted from the list — they become tombstones: \`- **ac-NN**: [DROPPED — see decisions <date>]\`. Tombstoned criteria are excluded from verify.json.
+
+**4. Deliverable tracing.** \`## Deliverables\` D-lines (\`- **D<N>**: <explicit ask> → <ac-IDs>\`) trace every explicit ask in the phase goal/request to ≥1 verification criterion; the verifier scores each D shipped|missed|partial at verify time.
 
 ### Goal-Backward Analysis
 
@@ -233,7 +267,7 @@ Build the plan backward from desired end state:
 
 Each task must be:
 - **Single-responsibility**: One logical change.
-- **Independently verifiable**: Own verification criteria.
+- **Independently verifiable**: Verification line references ac-IDs from \`## Verification Criteria\`, each satisfying the Criteria Quality Rules.
 - **Committable**: Results in valid, non-breaking codebase state.
 - **Scoped**: Touches bounded set of files (ideally 1–3).
 
@@ -313,6 +347,18 @@ Revise the plan to address violations before proceeding to Step 5.
 
 ## Step 5: Plan Review
 
+### Pre-Review Lint
+
+BEFORE spawning the plan-reviewer, run the advisory linter against the written plan:
+
+\`\`\`bash
+luca plan lint --file .luca/phases/<currentPhaseSlug>/plan.md
+\`\`\`
+
+The linter is warn-only (always exits 0 on lint findings) and checks mechanical conformance to the Criteria Quality Rules grammar. Address each warning: fix the criterion, or justify the deviation in the plan's decisions/notes. Judgment checks — probe nameability, the A-passes-while-B-fails independence test — are the plan-reviewer's job, not the linter's; do not treat a clean lint as a substitute for review.
+
+### Spawning the Reviewer
+
 Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan against the criteria above. Emit \`subagent-start\` / \`subagent-end\` telemetry around the spawn.
 
 ### Review Criteria
@@ -320,7 +366,7 @@ Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan ag
 1. **Completeness**: Covers everything in research/triage scope?
 2. **Atomicity**: Every task truly atomic and independently verifiable?
 3. **Ordering**: Dependencies correct? Waves properly sequenced?
-4. **Verification**: Every task has concrete, testable verification criteria?
+4. **Verification**: Every task's Verification line references ac-IDs? Every criterion passes the Splitting Test (one binary probe)? ≥1 anti-NN entry present? IDs stable vs the prior revision (splits as ac-NN.M, drops tombstoned)?
 5. **Feasibility**: Tasks realistic given codebase state?
 6. **Gap detection**: Anything from research missing?
 7. **Architectural quality**: No shallow extractions, promotion model respected, no premature abstractions, tasks deliver testable interfaces?
@@ -393,11 +439,11 @@ Log entries are written to \`.luca/phases/<currentPhaseSlug>/confidence.jsonl\` 
 
 ## Behavioral Guidelines
 
-- **≤3 sentences per task. ≤150 lines plan.md.** Detailed enough to execute unambiguously, not padded.
+- **≤3 sentences per task. ≤150 lines plan.md** (the \`## Verification Criteria\` and \`## Deliverables\` sections are EXEMPT from the count). Detailed enough to execute unambiguously, not padded.
 - **Match depth to complexity.** TRIVIAL → lightweight plan. CRITICAL → exhaustive.
 - **Use real file paths.** Reference actual files, not hypothetical ones.
-- **Every task needs verification criteria.** "It works" is not valid.
-- **Don't plan what you can't verify.** If untestable, restructure.
+- **Every task needs verification criteria.** "It works" is not valid — each task's Verification line references ac-IDs, and each ac-NN names exactly one binary probe (see Criteria Quality Rules).
+- **Don't plan what you can't verify.** If no binary tool probe is nameable, rewrite the criterion until one is — or restructure the task.
 - **Prefer existing patterns.** Don't introduce new patterns when existing ones work.
 
 ## Completion

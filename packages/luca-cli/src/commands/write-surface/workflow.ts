@@ -10,7 +10,7 @@
 import { defineCommand } from 'citty'
 
 import { lucaWorkflowResetTool } from '../../write-surface/index.ts'
-import { runWriteHandler } from './__helpers/run-handler.ts'
+import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
 const resetCommand = defineCommand({
     meta: {
@@ -31,7 +31,8 @@ const resetCommand = defineCommand({
                 'workflow.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('workflow reset', cmd, rawArgs)
         await runWriteHandler('workflow reset', lucaWorkflowResetTool, {
             confirm: args.confirm,
         })

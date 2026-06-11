@@ -37,7 +37,11 @@ import {
 
 import { logger } from '../../utils/logger.ts'
 import { lucaConfidenceLogTool } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 /** Resolve the explicit `--slug` arg, or the active phase. Exits 1 if neither. */
 async function resolveSlug(opts: {
@@ -150,7 +154,8 @@ const logCommand = defineCommand({
                 'Overrides confidence-derived bucketing when set.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('confidence log', cmd, rawArgs)
         let payload: Record<string, unknown>
         if (args.file) {
             const fromFile = await readJsonPayload('confidence log', args.file)
@@ -220,7 +225,8 @@ const readCommand = defineCommand({
             description: 'Phase slug to read (default: the active phase).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('confidence read', cmd, rawArgs)
         const cwd = process.cwd()
         const slug = await resolveSlug({ explicit: args.slug, cwd })
         const entries = readConfidenceJournal({ cwd, slug })
@@ -242,7 +248,8 @@ const summaryCommand = defineCommand({
                 'Phase slug to summarize (default: the active phase).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('confidence summary', cmd, rawArgs)
         const cwd = process.cwd()
         const slug = await resolveSlug({ explicit: args.slug, cwd })
         const summary = getConfidenceSummary(
@@ -264,7 +271,8 @@ const renderCommand = defineCommand({
             description: 'Phase slug to render (default: the active phase).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('confidence render', cmd, rawArgs)
         const cwd = process.cwd()
         const slug = await resolveSlug({ explicit: args.slug, cwd })
         const md = renderConfidenceJournalMarkdown(
@@ -291,7 +299,8 @@ const gateCommand = defineCommand({
             description: 'Phase slug (defaults to active phase).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('confidence gate', cmd, rawArgs)
         const cwd = process.cwd()
         const slug = await resolveSlug({ explicit: args.slug, cwd })
         const actions = selectConfidenceGateActions(

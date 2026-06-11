@@ -31,7 +31,7 @@ The legacy v12 \`lu-planner\` subagent was dropped per plan §5.6 — planning w
 - The research findings + user decisions read above
 - The repo's coding patterns (from research) and acceptance criteria
 
-The plan should be a markdown document with: objective, atomic tasks (waves), verification criteria per task, and success criteria for the phase.
+The plan should be a markdown document with: objective, atomic tasks (waves), and a \`## Verification Criteria\` section carrying plan-authored ac-IDs (grammar: \`- **ac-NN**: <one binary probe>\`). Each task's Verification line references ac-IDs from that section. Every criterion must pass the Splitting Test — exactly one binary probe (a single command/check with a pass/fail outcome); criteria compounded with "and"/"with" must be split, and "all/every/complete" criteria must enumerate sub-criteria. The plan must also carry ≥1 anti-criterion (\`- **anti-NN**: MUST NOT — <guard + probe>\`) derived from the context.md Out of Scope section. Criterion IDs are stability-locked: never renumber across plan revisions; splits become \`ac-NN.M\` with the parent line converted to a \`[SPLIT → ac-NN.1, ac-NN.2]\` pointer; dropped criteria become tombstones (\`- **ac-NN**: [DROPPED — see decisions <date>]\`), never deleted.
 
 ## Persist the plan
 
@@ -43,6 +43,10 @@ content: "<plan markdown>"
 \`\`\`
 
 The stage-gate hook only permits this \`Write\` to \`<dir>/plan.md\` while \`pipelineStep === "plan"\` — any other path or step is blocked.
+
+## Pre-review lint
+
+After persisting the plan, run \`luca plan lint --file <dir>/plan.md\`. The linter is warn-only (always exits 0 on lint findings) and checks mechanical conformance to the criteria grammar. The plan must carry a \`## Deliverables\` section mapping each explicit ask in the phase goal to its verification criteria; the linter warns on missing or malformed D-lines (canonical D-line grammar lives in the Architect mode plan template). Address each warning before advancing: fix the criterion, or justify the deviation in the plan's decisions/notes.
 
 ## Advance
 

@@ -9,7 +9,11 @@
 import { defineCommand } from 'citty'
 
 import { lucaRepoCleanupApplyTool } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const cleanupApplyCommand = defineCommand({
     meta: {
@@ -37,7 +41,8 @@ const cleanupApplyCommand = defineCommand({
                 'delete or move files.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('repo cleanup-apply', cmd, rawArgs)
         const finding = await readJsonPayload('repo cleanup-apply', args.file)
         await runWriteHandler(
             'repo cleanup-apply',
