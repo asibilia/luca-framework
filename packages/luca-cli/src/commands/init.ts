@@ -42,10 +42,12 @@ import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 
 import {
+    defaultAntigravityHome,
     defaultClaudeHome,
     installHooks,
     installSkills,
     installStatusline,
+    wireAntigravityHooks,
     wireClaudeHooks,
     writeProjectSkeleton,
 } from '../init'
@@ -198,18 +200,21 @@ export const initCommand = defineCommand({
             p.log.info('Step 3/5: MuninnDB (skipped)')
         }
 
-        // ── Step 4: Global Claude integration ────────────────────────────────
+        // ── Step 4: Global Agent integration ────────────────────────────────
         const claudeHome = defaultClaudeHome()
-        let claudeSetupRan = false
+        const agyHome = defaultAntigravityHome()
+        let agentSetupRan = false
         if (!args['skip-claude']) {
-            p.log.step('Step 4/5: Claude integration (~/.claude/)')
+            p.log.step('Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)')
             await installSkills({ log: (msg) => p.log.info(msg) })
             await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
+            await wireAntigravityHooks({ log: (msg) => p.log.info(msg) })
+            await wireAntigravityMcp({ log: (msg) => p.log.info(msg) })
             await installStatusline({ log: (msg) => p.log.info(msg) })
-            claudeSetupRan = true
-            p.log.success(`Claude skills, stage-gate hook, and statusline installed to ${claudeHome}`)
+            agentSetupRan = true
+            p.log.success('Claude and Antigravity skills, stage-gate hook, and MCP settings installed')
         } else {
-            p.log.info('Step 4/5: Claude integration (skipped)')
+            p.log.info('Step 4/5: Agent integration (skipped)')
         }
 
         // ── Step 5: Per-project skeleton ─────────────────────────────────────
@@ -266,8 +271,9 @@ export const initCommand = defineCommand({
         readout.push('Directories:')
         readout.push(`  ${homePaths.root}/`)
         readout.push(`  ${homePaths.bin}/`)
-        if (claudeSetupRan) {
+        if (agentSetupRan) {
             readout.push(`  ${claudeHome}/  (Claude skills, agents, hook — global)`)
+            readout.push(`  ${agyHome}/  (Antigravity skills, agents, hook — global)`)
         }
         if (projectSetupRan) {
             readout.push(`  ${process.cwd()}/.luca/  (per-project planning)`)

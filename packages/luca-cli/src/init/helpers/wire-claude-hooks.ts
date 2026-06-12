@@ -2,20 +2,23 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { defaultClaudeHome } from './install-skills.ts'
+import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
 
 export interface WireClaudeHooksOptions {
-    /** Global Claude config directory. Defaults to `~/.claude`. */
+    /** Global config directory. Defaults to `~/.claude` for Claude or `~/.gemini/antigravity-cli` for Antigravity. */
+    home?: string
+    /** Alias for home, kept for compatibility with older callers. */
     claudeHome?: string
     log?: (msg: string) => void
 }
 
 // Matcher per decision:luca-stage-gate-hook-scope-2026-05-19 (D2): hook fires
 // on every tool that can mutate the filesystem.
-const STAGE_GATE_MATCHER = 'Edit|Write|NotebookEdit|Bash'
+const CLAUDE_STAGE_GATE_MATCHER = 'Edit|Write|NotebookEdit|Bash'
+const AGY_STAGE_GATE_MATCHER = 'replace|write_file|run_shell_command|run_command'
 
 /**
- * Command registered in `~/.claude/settings.json`. The luca CLI is on PATH
+ * Command registered in the agent's global settings. The luca CLI is on PATH
  * (installed globally), so the hook needs no wrapper script — it delegates
  * straight to `luca hook stage-gate`, which reads the project's
  * `.luca/state.json` relative to the cwd at invocation time. In a non-luca
@@ -44,6 +47,27 @@ interface ClaudeSettings {
     [k: string]: unknown
 }
 
+interface AntigravitySettings {
+    hooks?: AntigravityHooks
+    mcpServers?: Record<
+        string,
+        {
+            command: string
+            args: string[]
+            env?: Record<string, string>
+        }
+    >
+    [k: string]: unknown
+}
+
+interface AntigravityHooks {
+    [hookName: string]: {
+        enabled?: boolean
+        PreToolUse?: PreToolUseEntry[]
+        [k: string]: unknown
+    }
+}
+
 /**
  * Register the luca stage-gate hook in the *global* Claude settings
  * (`~/.claude/settings.json`). Merges the PreToolUse entry into any
@@ -54,10 +78,10 @@ interface ClaudeSettings {
  * per-repo. Idempotent — re-running won't duplicate the entry.
  */
 export async function wireClaudeHooks(
-    opts: WireClaudeHooksOptions
+    opts: WireClaudeHooksOptions = {}
 ): Promise<void> {
     const log = opts.log ?? (() => {})
-    const claudeHome = opts.claudeHome ?? defaultClaudeHome()
+    const claudeHome = opts.home ?? opts.claudeHome ?? defaultClaudeHome()
     const settingsPath = join(claudeHome, 'settings.json')
 
     await mkdir(claudeHome, { recursive: true })
@@ -71,6 +95,56 @@ export async function wireClaudeHooks(
         : {}
 
     const next = mergeStageGateRegistration(existing)
+
+    await writeFile(settingsPath, JSON.stringify(next, null, 2) + '\n')
+    log(`  write: ${settingsPath}`)
+}
+
+/**
+ * Register the luca stage-gate hook in the *global* Antigravity hooks
+ * (`~/.gemini/antigravity-cli/hooks.json`).
+ */
+export async function wireAntigravityHooks(
+    opts: WireClaudeHooksOptions = {}
+): Promise<void> {
+    const log = opts.log ?? (() => {})
+    const agyHome = opts.home ?? defaultAntigravityHome()
+    const hooksPath = join(agyHome, 'hooks.json')
+
+    await mkdir(agyHome, { recursive: true })
+
+    const existing = existsSync(hooksPath)
+        ? ((JSON.parse(
+              await readFile(hooksPath, 'utf-8')
+          ) as AntigravityHooks) ?? {})
+        : {}
+
+    const next = mergeAntigravityHookRegistration(existing)
+
+    await writeFile(hooksPath, JSON.stringify(next, null, 2) + '\n')
+    log(`  write: ${hooksPath}`)
+}
+
+/**
+ * Register the MuninnDB MCP server in the *global* Antigravity settings
+ * (`~/.gemini/antigravity-cli/settings.json`).
+ */
+export async function wireAntigravityMcp(
+    opts: WireClaudeHooksOptions = {}
+): Promise<void> {
+    const log = opts.log ?? (() => {})
+    const agyHome = opts.home ?? defaultAntigravityHome()
+    const settingsPath = join(agyHome, 'settings.json')
+
+    await mkdir(agyHome, { recursive: true })
+
+    const existing = existsSync(settingsPath)
+        ? ((JSON.parse(
+              await readFile(settingsPath, 'utf-8')
+          ) as AntigravitySettings) ?? {})
+        : {}
+
+    const next = mergeAntigravityMcpRegistration(existing)
 
     await writeFile(settingsPath, JSON.stringify(next, null, 2) + '\n')
     log(`  write: ${settingsPath}`)
@@ -102,7 +176,7 @@ export function mergeStageGateRegistration(
     }
 
     preToolUse.push({
-        matcher: STAGE_GATE_MATCHER,
+        matcher: CLAUDE_STAGE_GATE_MATCHER,
         hooks: [
             {
                 type: 'command',
@@ -113,5 +187,66 @@ export function mergeStageGateRegistration(
     })
 
     next.hooks.PreToolUse = preToolUse
+    return next
+}
+
+/**
+ * Merge the stage-gate PreToolUse registration into an existing
+ * AntigravityHooks object.
+ */
+export function mergeAntigravityHookRegistration(
+    hooks: AntigravityHooks
+): AntigravityHooks {
+    const next: AntigravityHooks = { ...hooks }
+
+    // Idempotency: check if 'luca-stage-gate' already exists
+    if (next['luca-stage-gate']) {
+        return next
+    }
+
+    next['luca-stage-gate'] = {
+        enabled: true,
+        PreToolUse: [
+            {
+                matcher: AGY_STAGE_GATE_MATCHER,
+                hooks: [
+                    {
+                        type: 'command',
+                        command: STAGE_GATE_COMMAND,
+                        timeout: 30,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return next
+}
+
+/**
+ * Merge the MuninnDB MCP registration into an existing AntigravitySettings object.
+ */
+export function mergeAntigravityMcpRegistration(
+    settings: AntigravitySettings
+): AntigravitySettings {
+    const next: AntigravitySettings = { ...settings }
+    next.mcpServers = { ...(settings.mcpServers ?? {}) }
+
+    // Idempotency: check if 'muninn' already exists
+    if (next.mcpServers.muninn) {
+        return next
+    }
+
+    // Note: This uses the standard SSE transport for MuninnDB.
+    // The API key is usually picked up from the environment or vault.
+    next.mcpServers.muninn = {
+        command: 'npx',
+        args: [
+            '-y',
+            '@modelcontextprotocol/server-sse',
+            'http://localhost:8750/mcp',
+        ],
+    }
+
     return next
 }

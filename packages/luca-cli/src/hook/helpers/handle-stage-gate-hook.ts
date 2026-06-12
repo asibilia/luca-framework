@@ -166,14 +166,17 @@ export async function handleStageGateHook(
     if (
         toolName === 'Edit' ||
         toolName === 'Write' ||
-        toolName === 'NotebookEdit'
+        toolName === 'NotebookEdit' ||
+        toolName === 'replace' ||
+        toolName === 'write_file'
     ) {
-        const targetPath = (toolInput as { file_path?: string } | undefined)
-            ?.file_path
+        const targetPath = (
+            toolInput as { file_path?: string; path?: string } | undefined
+        )?.file_path ?? (toolInput as { file_path?: string; path?: string } | undefined)?.path
         if (!targetPath) {
             // Can't classify without a target. Allow conservatively —
-            // shouldn't happen in real Claude Code invocations.
-            log(`stage-gate: ${toolName} without file_path — allowing`)
+            // shouldn't happen in real Claude Code/Antigravity invocations.
+            log(`stage-gate: ${toolName} without file_path/path — allowing`)
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         }
         // Claude Code passes an ABSOLUTE file_path, but the .luca/ contract
@@ -219,7 +222,11 @@ export async function handleStageGateHook(
             // pc.class === 'code' — normal project file. Matrix decides.
             category = pathClassToToolCategory(pc.class)
         }
-    } else if (toolName === 'Bash') {
+    } else if (
+        toolName === 'Bash' ||
+        toolName === 'run_shell_command' ||
+        toolName === 'run_command'
+    ) {
         const command =
             (toolInput as { command?: string } | undefined)?.command ?? ''
         const bashResult = classifyBashCommand(command)
