@@ -33,8 +33,8 @@ import * as p from '@clack/prompts'
 import { join, basename } from 'pathe'
 import { z } from 'zod'
 
-import { checkMuninndbService } from './muninndb-health'
 import { isMuninnRegistered } from './muninn-mcp-registration'
+import { checkMuninndbService } from './muninndb-health'
 import { resolveMuninndbPort } from './muninndb-schemas'
 import { sanitizeJsonParse } from './sanitize'
 
@@ -107,6 +107,54 @@ export function suggestVaultName(
 ): string {
     const raw = context.projectName ?? basename(cwd)
     return sanitizeVaultName(raw)
+}
+
+/**
+ * Automatically create a MuninnDB vault using the CLI.
+ *
+ * Returns true if successful, false if it failed (e.g., already exists or CLI unavailable).
+ */
+export async function autoCreateVault(vaultName: string): Promise<boolean> {
+    try {
+        const proc = Bun.spawn(['muninn', 'vault', 'create', vaultName], {
+            stdout: 'pipe',
+            stderr: 'pipe',
+        })
+        const exitCode = await proc.exited
+        return exitCode === 0
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Automatically generate a MuninnDB API key using the CLI.
+ *
+ * Parses the CLI output to extract the 'mk_...' token.
+ */
+export async function autoCreateApiKey(
+    vaultName: string,
+    label: string
+): Promise<string | null> {
+    try {
+        const proc = Bun.spawn(
+            [
+                'muninn',
+                'api-key',
+                'create',
+                '--vault',
+                vaultName,
+                '--label',
+                label,
+            ],
+            { stdout: 'pipe', stderr: 'pipe' }
+        )
+        const stdout = await new Response(proc.stdout).text()
+        const match = stdout.match(/Token\s*:\s*(mk_[a-zA-Z0-9_]+)/)
+        return match ? match[1] : null
+    } catch {
+        return null
+    }
 }
 
 /**

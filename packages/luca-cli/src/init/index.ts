@@ -19,16 +19,14 @@ export {
     installSkills,
     listBundledArtifacts,
     defaultClaudeHome,
+    defaultAntigravityHome,
 } from './helpers/install-skills.ts'
 export type {
     InstallSkillsOptions,
     BundledArtifacts,
 } from './helpers/install-skills.ts'
 
-export {
-    installHooks,
-    mergeLucaHookSettings,
-} from './helpers/install-hooks.ts'
+export { installHooks, mergeLucaHookSettings } from './helpers/install-hooks.ts'
 export type { InstallHooksOptions } from './helpers/install-hooks.ts'
 
 export {

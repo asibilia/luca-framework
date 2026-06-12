@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
@@ -10,12 +11,15 @@ export interface WireClaudeHooksOptions {
     /** Alias for home, kept for compatibility with older callers. */
     claudeHome?: string
     log?: (msg: string) => void
+    /** MuninnDB API token. If provided, overrides reading from ~/.muninn/mcp.token */
+    token?: string
 }
 
 // Matcher per decision:luca-stage-gate-hook-scope-2026-05-19 (D2): hook fires
 // on every tool that can mutate the filesystem.
 const CLAUDE_STAGE_GATE_MATCHER = 'Edit|Write|NotebookEdit|Bash'
-const AGY_STAGE_GATE_MATCHER = 'replace|write_file|run_shell_command|run_command'
+const AGY_STAGE_GATE_MATCHER =
+    'replace|write_file|run_shell_command|run_command'
 
 /**
  * Command registered in the agent's global settings. The luca CLI is on PATH
@@ -127,27 +131,39 @@ export async function wireAntigravityHooks(
 
 /**
  * Register the MuninnDB MCP server in the *global* Antigravity settings
- * (`~/.gemini/antigravity-cli/settings.json`).
+ * (`~/.gemini/antigravity-cli/mcp_config.json`).
  */
 export async function wireAntigravityMcp(
     opts: WireClaudeHooksOptions = {}
 ): Promise<void> {
     const log = opts.log ?? (() => {})
     const agyHome = opts.home ?? defaultAntigravityHome()
-    const settingsPath = join(agyHome, 'settings.json')
+    const mcpConfigPath = join(agyHome, 'mcp_config.json')
 
     await mkdir(agyHome, { recursive: true })
 
-    const existing = existsSync(settingsPath)
+    const existing = existsSync(mcpConfigPath)
         ? ((JSON.parse(
-              await readFile(settingsPath, 'utf-8')
+              await readFile(mcpConfigPath, 'utf-8')
           ) as AntigravitySettings) ?? {})
         : {}
 
-    const next = mergeAntigravityMcpRegistration(existing)
+    let token: string | undefined = opts.token
+    if (!token) {
+        try {
+            const tokenPath = join(homedir(), '.muninn', 'mcp.token')
+            if (existsSync(tokenPath)) {
+                token = (await readFile(tokenPath, 'utf-8')).trim()
+            }
+        } catch {
+            // silently ignore read errors
+        }
+    }
 
-    await writeFile(settingsPath, JSON.stringify(next, null, 2) + '\n')
-    log(`  write: ${settingsPath}`)
+    const next = mergeAntigravityMcpRegistration(existing, token)
+
+    await writeFile(mcpConfigPath, JSON.stringify(next, null, 2) + '\n')
+    log(`  write: ${mcpConfigPath}`)
 }
 
 /**
@@ -227,7 +243,8 @@ export function mergeAntigravityHookRegistration(
  * Merge the MuninnDB MCP registration into an existing AntigravitySettings object.
  */
 export function mergeAntigravityMcpRegistration(
-    settings: AntigravitySettings
+    settings: AntigravitySettings,
+    token?: string
 ): AntigravitySettings {
     const next: AntigravitySettings = { ...settings }
     next.mcpServers = { ...(settings.mcpServers ?? {}) }
@@ -237,15 +254,16 @@ export function mergeAntigravityMcpRegistration(
         return next
     }
 
-    // Note: This uses the standard SSE transport for MuninnDB.
-    // The API key is usually picked up from the environment or vault.
+    // Note: This uses the native SSE transport for MuninnDB via serverUrl.
+    // The API key is sourced from ~/.muninn/mcp.token (from `muninn init`),
+    // falling back to the legacy environment variable if missing.
+    const authHeader = token ? `Bearer ${token}` : 'Bearer ${MUNINN_DB_API_KEY}'
+
     next.mcpServers.muninn = {
-        command: 'npx',
-        args: [
-            '-y',
-            '@modelcontextprotocol/server-sse',
-            'http://localhost:8750/mcp',
-        ],
+        serverUrl: 'http://127.0.0.1:8750/mcp',
+        headers: {
+            Authorization: authHeader,
+        },
     }
 
     return next

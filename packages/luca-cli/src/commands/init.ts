@@ -38,8 +38,13 @@
  * luca init --skip-project
  * ```
  */
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+
 import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
+import { join } from 'pathe'
 
 import {
     defaultAntigravityHome,
@@ -48,9 +53,11 @@ import {
     installSkills,
     installStatusline,
     wireAntigravityHooks,
+    wireAntigravityMcp,
     wireClaudeHooks,
     writeProjectSkeleton,
 } from '../init'
+import { detectProjectContext } from '../utils/detect'
 import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
@@ -58,6 +65,12 @@ import { checkMuninndbBinary } from '../utils/muninndb-health'
 import { startMuninndb } from '../utils/muninndb-service'
 import { isOnPath, getPathGuidance } from '../utils/path-check'
 import { checkPrerequisites, promptBunInstall } from '../utils/prerequisites'
+import {
+    suggestVaultName,
+    autoCreateVault,
+    autoCreateApiKey,
+    writeVaultConfig,
+} from '../utils/vault-setup'
 
 // ─── Init command definition ─────────────────────────────────────────────────
 
@@ -205,20 +218,25 @@ export const initCommand = defineCommand({
         const agyHome = defaultAntigravityHome()
         let agentSetupRan = false
         if (!args['skip-claude']) {
-            p.log.step('Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)')
+            p.log.step(
+                'Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)'
+            )
             await installSkills({ log: (msg) => p.log.info(msg) })
             await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
             await wireAntigravityHooks({ log: (msg) => p.log.info(msg) })
             await wireAntigravityMcp({ log: (msg) => p.log.info(msg) })
             await installStatusline({ log: (msg) => p.log.info(msg) })
             agentSetupRan = true
-            p.log.success('Claude and Antigravity skills, stage-gate hook, and MCP settings installed')
+            p.log.success(
+                'Claude and Antigravity skills, stage-gate hook, and MCP settings installed'
+            )
         } else {
             p.log.info('Step 4/5: Agent integration (skipped)')
         }
 
         // ── Step 5: Per-project skeleton ─────────────────────────────────────
         let projectSetupRan = false
+        let automatedVaultName = ''
         if (!args['skip-project']) {
             p.log.step('Step 5/5: Project skeleton (.luca/ + .claude/hooks/)')
             const projectCwd = process.cwd()
@@ -236,8 +254,55 @@ export const initCommand = defineCommand({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
+
+            if (muninndbHealthy) {
+                const context = await detectProjectContext(projectCwd)
+                automatedVaultName = suggestVaultName(context, projectCwd)
+                await autoCreateVault(automatedVaultName)
+                const configPath = join(projectCwd, '.luca', 'config.json')
+                await writeVaultConfig(automatedVaultName, configPath)
+
+                let token: string | undefined
+                try {
+                    const tokenPath = join(homedir(), '.muninn', 'mcp.token')
+                    if (existsSync(tokenPath)) {
+                        token = (await readFile(tokenPath, 'utf-8')).trim()
+                    }
+                } catch {}
+
+                if (token) {
+                    try {
+                        const proc = Bun.spawn(
+                            [
+                                'claude',
+                                'mcp',
+                                'add',
+                                '--transport',
+                                'sse',
+                                'muninn',
+                                'http://127.0.0.1:8750/mcp',
+                                '--header',
+                                `Authorization: Bearer ${token}`,
+                            ],
+                            {
+                                cwd: projectCwd,
+                                stdout: 'ignore',
+                                stderr: 'ignore',
+                            }
+                        )
+                        await proc.exited
+                    } catch {}
+                }
+
+                p.log.success(
+                    `MuninnDB vault "${automatedVaultName}" automatically created and MCP server configured`
+                )
+            }
+
             projectSetupRan = true
-            p.log.success(`Per-project skeleton written to ${projectCwd}/.luca/ + ${projectCwd}/.claude/`)
+            p.log.success(
+                `Per-project skeleton written to ${projectCwd}/.luca/ + ${projectCwd}/.claude/`
+            )
         } else {
             p.log.info('Step 5/5: Project skeleton (skipped)')
         }
@@ -272,8 +337,12 @@ export const initCommand = defineCommand({
         readout.push(`  ${homePaths.root}/`)
         readout.push(`  ${homePaths.bin}/`)
         if (agentSetupRan) {
-            readout.push(`  ${claudeHome}/  (Claude skills, agents, hook — global)`)
-            readout.push(`  ${agyHome}/  (Antigravity skills, agents, hook — global)`)
+            readout.push(
+                `  ${claudeHome}/  (Claude skills, agents, hook — global)`
+            )
+            readout.push(
+                `  ${agyHome}/  (Antigravity skills, agents, hook — global)`
+            )
         }
         if (projectSetupRan) {
             readout.push(`  ${process.cwd()}/.luca/  (per-project planning)`)
@@ -281,9 +350,11 @@ export const initCommand = defineCommand({
 
         readout.push('')
         readout.push('Next steps:')
-        readout.push(
-            '  To set up a project vault: cd <project> && luca vault:init'
-        )
+        if (!automatedVaultName) {
+            readout.push(
+                '  To set up a project vault: cd <project> && luca vault:init'
+            )
+        }
         readout.push('  To start the pipeline:     lu "<your task>"')
         readout.push(
             '  To seed project conventions:        invoke /luca-init from Claude Code'
@@ -294,25 +365,28 @@ export const initCommand = defineCommand({
         readout.push(
             '     stores them in MuninnDB; downstream pipeline modes consult them)'
         )
-        // MuninnDB serves its MCP endpoint on its own fixed port (8750),
-        // distinct from the service/dashboard port (8476). luca does not
-        // manage the MCP port, so it is not derived from MUNINNDB_PORT.
-        readout.push(
-            '  To expose MuninnDB to Claude Code: register it as an MCP server,'
-        )
-        readout.push(
-            `    e.g. claude mcp add --transport sse muninn http://localhost:8750/mcp \\`
-        )
-        readout.push(
-            '         --header "Authorization: Bearer <your-muninn-api-key>"'
-        )
-        readout.push(
-            '    (or add a "muninn" entry under mcpServers in .mcp.json). Use the'
-        )
-        readout.push(
-            '    same key as `luca vault:init` (.env MUNINN_DB_API_KEY). See the'
-        )
-        readout.push('    README "MuninnDB" section for details.')
+
+        if (!automatedVaultName) {
+            // MuninnDB serves its MCP endpoint on its own fixed port (8750),
+            // distinct from the service/dashboard port (8476). luca does not
+            // manage the MCP port, so it is not derived from MUNINNDB_PORT.
+            readout.push(
+                '  To expose MuninnDB to Claude Code: register it as an MCP server,'
+            )
+            readout.push(
+                `    e.g. claude mcp add --transport sse muninn http://localhost:8750/mcp \\`
+            )
+            readout.push(
+                '         --header "Authorization: Bearer <your-muninn-api-key>"'
+            )
+            readout.push(
+                '    (or add a "muninn" entry under mcpServers in .mcp.json). Use the'
+            )
+            readout.push(
+                '    same key as `luca vault:init` (.env MUNINN_DB_API_KEY). See the'
+            )
+            readout.push('    README "MuninnDB" section for details.')
+        }
 
         p.note(readout.join('\n'), 'Setup Complete')
 
