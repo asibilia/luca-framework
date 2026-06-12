@@ -7,7 +7,11 @@ export type { WriteProjectSkeletonOptions } from './helpers/write-project-skelet
 
 export {
     wireClaudeHooks,
+    wireAntigravityHooks,
+    wireAntigravityMcp,
     mergeStageGateRegistration,
+    mergeAntigravityHookRegistration,
+    mergeAntigravityMcpRegistration,
 } from './helpers/wire-claude-hooks.ts'
 export type { WireClaudeHooksOptions } from './helpers/wire-claude-hooks.ts'
 

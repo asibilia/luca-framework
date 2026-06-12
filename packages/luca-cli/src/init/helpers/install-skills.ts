@@ -48,11 +48,22 @@ export function defaultClaudeHome(): string {
     return join(homedir(), '.claude')
 }
 
+/** The default global Antigravity config directory: `~/.gemini/antigravity-cli`. */
+export function defaultAntigravityHome(): string {
+    return join(homedir(), '.gemini', 'antigravity-cli')
+}
+
 /**
- * Copy bundled luca skills into the *global* Claude config directory:
+ * Copy bundled luca skills into the *global* config directories:
+ *
+ * For Claude Code:
  *   - `<artifacts>/.claude/commands/*.md`       → ~/.claude/commands/
  *   - `<artifacts>/.claude/agents/*.md`         → ~/.claude/agents/
  *   - `<artifacts>/skills/<name>/SKILL.md`      → ~/.claude/skills/
+ *
+ * For Antigravity CLI:
+ *   - `<artifacts>/skills/<name>/SKILL.md`      → ~/.gemini/antigravity-cli/skills/
+ *   - `<artifacts>/.claude/agents/*.md`         → ~/.gemini/antigravity-cli/agents/
  *
  * Installing globally — rather than per-repo — means one luca CLI version
  * owns a single canonical skill set across every project. Repos stay
@@ -77,6 +88,8 @@ export function defaultClaudeHome(): string {
 export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
     const log = opts.log ?? (() => {})
     const claudeHome = opts.claudeHome ?? defaultClaudeHome()
+    const agyHome = defaultAntigravityHome()
+
     const resolved = resolveBundledArtifacts({
         claudeArtifactsRoot: opts.claudeArtifactsRoot,
         skillsRoot: opts.skillsRoot,
@@ -98,23 +111,40 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
         return
     }
 
+    // Install to Claude Code
     await copyDir({
         from: join(claudeArtifactsRoot, 'commands'),
         to: join(claudeHome, 'commands'),
         log,
-        label: 'command',
+        label: 'Claude command',
     })
 
     await copyDir({
         from: join(claudeArtifactsRoot, 'agents'),
         to: join(claudeHome, 'agents'),
         log,
-        label: 'agent',
+        label: 'Claude agent',
     })
 
     await copySkillTree({
         from: skillsRoot,
         to: join(claudeHome, 'skills'),
+        log,
+    })
+
+    // Install to Antigravity CLI (if the directory exists or we want to support it)
+    // We don't check for existence of agyHome here to allow 'luca init' to set it up
+    // even if agy hasn't been run yet, but typically agy creates it.
+    await copyDir({
+        from: join(claudeArtifactsRoot, 'agents'),
+        to: join(agyHome, 'agents'),
+        log,
+        label: 'Antigravity agent',
+    })
+
+    await copySkillTree({
+        from: skillsRoot,
+        to: join(agyHome, 'skills'),
         log,
     })
 }
