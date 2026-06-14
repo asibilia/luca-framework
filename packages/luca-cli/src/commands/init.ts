@@ -49,7 +49,6 @@ import {
     defaultClaudeHome,
     installHooks,
     installSkills,
-    installStatusline,
     writeProjectSkeleton,
 } from '../init'
 import { detectProjectContext } from '../utils/detect'
@@ -239,15 +238,26 @@ export const initCommand = defineCommand({
             p.log.step(
                 'Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)'
             )
-            // installSkills/installStatusline remain unconditional when ANY
-            // harness is active (carry-forward to per-harness installs is
-            // deferred — see plan Decisions).
-            await installSkills({ log: (msg) => p.log.info(msg) })
+            // Artifact installs are now descriptor-driven and run per active
+            // harness inside this loop. This completes WS8: skills/agents/
+            // commands AND the statusline now respect the same
+            // `!skipMap[h.id] && h.isInstalled()` gating as hooks/MCP — a
+            // harness whose home is absent no longer receives any artifacts
+            // (previously installSkills/installStatusline ran unconditionally
+            // whenever ANY harness was active). For the default case (both
+            // harnesses present) the SAME files land in the SAME homes:
+            // Claude gets commands+agents+skills+statusline, Antigravity gets
+            // agents+skills — exactly as `installArtifacts` encodes.
             for (const h of activeHarnesses) {
+                await installSkills({
+                    home: h.home(),
+                    artifacts: h.installArtifacts,
+                    log: (msg) => p.log.info(msg),
+                })
                 await h.wireHooks({ log: (msg) => p.log.info(msg) })
                 if (h.mcp) await h.mcp.wire({ log: (msg) => p.log.info(msg) })
+                await h.installExtras?.({ log: (msg) => p.log.info(msg) })
             }
-            await installStatusline({ log: (msg) => p.log.info(msg) })
             agentSetupRan = true
             p.log.success(
                 `Agent integration installed (${activeHarnesses

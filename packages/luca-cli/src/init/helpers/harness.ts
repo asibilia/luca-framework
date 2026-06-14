@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs'
 
 import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
+import type { InstallSkillsArtifacts } from './install-skills.ts'
+import { installStatusline } from './install-statusline.ts'
 import {
     wireAntigravityHooks,
     wireAntigravityMcp,
@@ -11,15 +13,18 @@ import type { WireClaudeHooksOptions } from './wire-claude-hooks.ts'
 
 /**
  * Which bundled artifact buckets a harness receives during `luca init`.
- * Forward-scaffolding for phase 4 / WS8: today every harness receives
- * skills + agents regardless of these flags (install-skills writes to both
- * homes in one call), but the descriptor records the intent so future
- * per-harness installs can branch on it.
+ * `luca init` Step 4 drives `installSkills` directly off these flags
+ * (one call per active harness), so "add a harness = add one descriptor"
+ * holds: the descriptor's flags decide what lands in its home.
+ *
+ * Shares the shape of `InstallSkillsArtifacts` so a descriptor's flags
+ * pass straight through to `installSkills({ artifacts })`.
  */
-interface HarnessInstallArtifacts {
-    agents: boolean
-    commands: boolean
-    skills: boolean
+type HarnessInstallArtifacts = InstallSkillsArtifacts
+
+/** Options passed to a harness's optional extra-install hook. */
+export interface HarnessInstallExtrasOptions {
+    log?: (msg: string) => void
 }
 
 /**
@@ -47,6 +52,13 @@ export interface Harness {
      * `claude mcp add` shell-out).
      */
     mcp?: { wire(opts: WireClaudeHooksOptions): Promise<void> }
+    /**
+     * Optional extra per-harness artifacts beyond skills/agents/commands —
+     * currently the Claude statusline. Only harnesses that support the
+     * capability implement it; `luca init` calls it conditionally
+     * (`await h.installExtras?.(...)`).
+     */
+    installExtras?(opts: HarnessInstallExtrasOptions): Promise<void>
 }
 
 /** Claude Code harness descriptor. */
@@ -58,6 +70,10 @@ export const claudeHarness: Harness = {
     installArtifacts: { agents: true, commands: true, skills: true },
     wireHooks: (opts) => wireClaudeHooks(opts),
     mcp: { wire: (opts) => wireClaudeMcp(opts) },
+    // Statusline is a Claude-only capability — install it into the Claude
+    // home as the harness's "extras".
+    installExtras: (opts) =>
+        installStatusline({ home: defaultClaudeHome(), log: opts.log }),
 }
 
 /** Antigravity CLI harness descriptor. */

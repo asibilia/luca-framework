@@ -23,6 +23,7 @@ export {
 } from './helpers/install-skills.ts'
 export type {
     InstallSkillsOptions,
+    InstallSkillsArtifacts,
     BundledArtifacts,
 } from './helpers/install-skills.ts'
 
@@ -43,4 +44,7 @@ export {
     claudeHarness,
     antigravityHarness,
 } from './helpers/harness.ts'
-export type { Harness } from './helpers/harness.ts'
+export type {
+    Harness,
+    HarnessInstallExtrasOptions,
+} from './helpers/harness.ts'
