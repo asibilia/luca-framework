@@ -128,36 +128,6 @@ export async function autoCreateVault(vaultName: string): Promise<boolean> {
 }
 
 /**
- * Automatically generate a MuninnDB API key using the CLI.
- *
- * Parses the CLI output to extract the 'mk_...' token.
- */
-export async function autoCreateApiKey(
-    vaultName: string,
-    label: string
-): Promise<string | null> {
-    try {
-        const proc = Bun.spawn(
-            [
-                'muninn',
-                'api-key',
-                'create',
-                '--vault',
-                vaultName,
-                '--label',
-                label,
-            ],
-            { stdout: 'pipe', stderr: 'pipe' }
-        )
-        const stdout = await new Response(proc.stdout).text()
-        const match = stdout.match(/Token\s*:\s*(mk_[a-zA-Z0-9_]+)/)
-        return match ? match[1] : null
-    } catch {
-        return null
-    }
-}
-
-/**
  * Run the interactive MuninnDB vault wizard using @clack/prompts.
  *
  * Performs a health pre-check before showing any prompts. If MuninnDB is not
