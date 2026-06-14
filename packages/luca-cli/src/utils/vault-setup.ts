@@ -27,6 +27,7 @@
  * ```
  */
 import { chmodSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 
 import { sanitizeVaultName } from '@alecsibilia/luca-core'
 import * as p from '@clack/prompts'
@@ -369,13 +370,18 @@ export async function writeApiKeyToEnv(
             }
         }
 
-        await Bun.write(envPath, content)
+        // Write with mode 0600 from inception so a token-bearing .env never
+        // exists in a world-readable (umask 0644) state. For an existing file
+        // the mode flag is ignored, so the chmodSync below still tightens it.
+        await writeFile(envPath, content, { mode: 0o600 })
     } else {
-        // Create new .env file
-        await Bun.write(envPath, envLines.join('\n') + '\n')
+        // Create new .env file restrictive from inception (SEC-002) — no
+        // write-then-chmod window where the credential is world-readable.
+        await writeFile(envPath, envLines.join('\n') + '\n', { mode: 0o600 })
     }
 
-    // Restrict permissions: owner read/write only (SEC-002)
+    // Restrict permissions: owner read/write only (SEC-002). Belt-and-suspenders
+    // for the existing-file path (writeFile's mode flag only applies on create).
     chmodSync(envPath, 0o600)
 }
 

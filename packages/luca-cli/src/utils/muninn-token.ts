@@ -2,9 +2,10 @@
  * Read the MuninnDB MCP credential token from disk.
  *
  * The token is written by `muninn init` to `~/.muninn/mcp.token`. Multiple
- * init/MCP-wiring call sites need to read it (Antigravity `mcp_config.json`
- * writer, the Claude `claude mcp add` shell-out), so the read is factored
- * into this single shared helper rather than duplicated inline.
+ * init/MCP-wiring call sites need to read it — the Antigravity `mcp_config.json`
+ * writer and the Claude global MCP file-merge into `~/.claude.json`
+ * (`wireAntigravityMcp` / `wireClaudeMcp`) — so the read is factored into this
+ * single shared helper rather than duplicated inline.
  *
  * @param path - Token file path. Defaults to `~/.muninn/mcp.token`. The
  *   optional override exists so tests/probes can target a temp fixture
