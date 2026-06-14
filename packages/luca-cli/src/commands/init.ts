@@ -38,10 +38,6 @@
  * luca init --skip-project
  * ```
  */
-import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-
 import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
 import { join } from 'pathe'
@@ -63,12 +59,12 @@ import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
 import { checkMuninndbBinary } from '../utils/muninndb-health'
 import { startMuninndb } from '../utils/muninndb-service'
+import { readMuninnToken } from '../utils/muninn-token'
 import { isOnPath, getPathGuidance } from '../utils/path-check'
 import { checkPrerequisites, promptBunInstall } from '../utils/prerequisites'
 import {
     suggestVaultName,
     autoCreateVault,
-    autoCreateApiKey,
     writeVaultConfig,
 } from '../utils/vault-setup'
 
@@ -262,13 +258,7 @@ export const initCommand = defineCommand({
                 const configPath = join(projectCwd, '.luca', 'config.json')
                 await writeVaultConfig(automatedVaultName, configPath)
 
-                let token: string | undefined
-                try {
-                    const tokenPath = join(homedir(), '.muninn', 'mcp.token')
-                    if (existsSync(tokenPath)) {
-                        token = (await readFile(tokenPath, 'utf-8')).trim()
-                    }
-                } catch {}
+                const token = await readMuninnToken()
 
                 if (token) {
                     try {

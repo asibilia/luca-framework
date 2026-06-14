@@ -1,8 +1,8 @@
 import { chmodSync, existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+import { readMuninnToken } from '../../utils/muninn-token.ts'
 import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
 
 /**
@@ -174,17 +174,7 @@ export async function wireAntigravityMcp(
         }
     }
 
-    let token: string | undefined = opts.token
-    if (!token) {
-        try {
-            const tokenPath = join(homedir(), '.muninn', 'mcp.token')
-            if (existsSync(tokenPath)) {
-                token = (await readFile(tokenPath, 'utf-8')).trim()
-            }
-        } catch {
-            // silently ignore read errors
-        }
-    }
+    const token = opts.token ?? (await readMuninnToken())
 
     // D3: never write a partial config. Antigravity inlines the token (no env
     // interpolation), so without a present token we'd emit a useless server
