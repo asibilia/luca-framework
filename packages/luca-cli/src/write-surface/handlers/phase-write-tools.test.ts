@@ -102,9 +102,30 @@ describe('luca_phase_write_verify', () => {
         const r = await lucaPhaseWriteVerifyTool.handler(
             {
                 result: {
-                    status: 'pass',
-                    typecheck: true,
-                    tests: { passed: 105, failed: 0 },
+                    timestamp: new Date().toISOString(),
+                    wave: 1,
+                    mode: 'quick',
+                    status: 'PASS',
+                    criteria: [
+                        {
+                            criterionId: 'c-01',
+                            description: 'Test criterion',
+                            met: true,
+                            evidence: 'All tests passed',
+                            blocking: true,
+                        }
+                    ],
+                    checks: [
+                        {
+                            name: 'tests',
+                            status: 'pass',
+                            errorCount: 0,
+                            warningCount: 0,
+                        }
+                    ],
+                    convergence: 'resolved',
+                    errorFingerprints: [],
+                    recommendation: 'proceed',
                 },
             },
             { cwd }
@@ -116,8 +137,8 @@ describe('luca_phase_write_verify', () => {
                 'utf-8'
             )
         )
-        expect(parsed.status).toBe('pass')
-        expect(parsed.tests.passed).toBe(105)
+        expect(parsed.status).toBe('PASS')
+        expect(parsed.checks[0].name).toBe('tests')
     })
 
     test('declares allowedPhases: [verify]', () => {

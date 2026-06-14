@@ -4,10 +4,54 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test } from 'bun:test'
 
-const SKILLS_ROOT = join(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../../skills'
-)
+import { existsSync, readFileSync } from 'node:fs'
+
+function findUmbrellaDistClaude(): string {
+    let dir = dirname(fileURLToPath(import.meta.url))
+    for (let i = 0; i < 20; i += 1) {
+        const pkgPath = join(dir, 'package.json')
+        if (existsSync(pkgPath)) {
+            try {
+                const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+                    name?: string
+                }
+                if (pkg.name === '@alecsibilia/luca') {
+                    return join(dir, 'dist', 'claude')
+                }
+            } catch {
+                // ignore
+            }
+        }
+        const parent = dirname(dir)
+        if (parent === dir) break
+        dir = parent
+    }
+    dir = dirname(fileURLToPath(import.meta.url))
+    for (let i = 0; i < 20; i += 1) {
+        const candidate = join(dir, 'packages', 'luca', 'package.json')
+        if (existsSync(candidate)) {
+            try {
+                const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as {
+                    name?: string
+                }
+                if (pkg.name === '@alecsibilia/luca') {
+                    return join(dir, 'packages', 'luca', 'dist', 'claude')
+                }
+            } catch {
+                // ignore
+            }
+        }
+        const parent = dirname(dir)
+        if (parent === dir) break
+        dir = parent
+    }
+    throw new Error('Could not find @alecsibilia/luca package root')
+}
+
+const distClaude = findUmbrellaDistClaude()
+const COMMANDS_DIR = join(distClaude, '.claude', 'commands')
+const AGENTS_DIR = join(distClaude, '.claude', 'agents')
+const SKILLS_DIR = join(distClaude, 'skills')
 
 // Tokens that indicate stale mastracode references that should NOT appear
 // in the new Claude Code-first skills. Each file is checked against this
@@ -73,14 +117,14 @@ async function listSkillFiles(skillsDir: string): Promise<string[]> {
 
 describe('bundled skill markdown — structural validation', () => {
     test('commands/ and agents/ exist with at least one .md each', async () => {
-        const commands = await listMarkdownFiles(join(SKILLS_ROOT, 'commands'))
-        const agents = await listMarkdownFiles(join(SKILLS_ROOT, 'agents'))
+        const commands = await listMarkdownFiles(COMMANDS_DIR)
+        const agents = await listMarkdownFiles(AGENTS_DIR)
         expect(commands.length).toBeGreaterThan(0)
         expect(agents.length).toBeGreaterThan(0)
     })
 
     test('every command markdown file has frontmatter with name + description', async () => {
-        const files = await listMarkdownFiles(join(SKILLS_ROOT, 'commands'))
+        const files = await listMarkdownFiles(COMMANDS_DIR)
         for (const file of files) {
             const content = await readFile(file, 'utf-8')
             expect(hasFrontmatter(content)).toBe(true)
@@ -90,7 +134,7 @@ describe('bundled skill markdown — structural validation', () => {
     })
 
     test('every agent markdown file has frontmatter with name + description', async () => {
-        const files = await listMarkdownFiles(join(SKILLS_ROOT, 'agents'))
+        const files = await listMarkdownFiles(AGENTS_DIR)
         for (const file of files) {
             const content = await readFile(file, 'utf-8')
             expect(hasFrontmatter(content)).toBe(true)
@@ -100,7 +144,7 @@ describe('bundled skill markdown — structural validation', () => {
     })
 
     test('every bundled SKILL.md has frontmatter with name + description', async () => {
-        const files = await listSkillFiles(join(SKILLS_ROOT, 'skills'))
+        const files = await listSkillFiles(SKILLS_DIR)
         for (const file of files) {
             const content = await readFile(file, 'utf-8')
             expect(hasFrontmatter(content)).toBe(true)
@@ -111,9 +155,9 @@ describe('bundled skill markdown — structural validation', () => {
 
     test('no bundled skill references stale mastracode tools or paths', async () => {
         const files = [
-            ...(await listMarkdownFiles(join(SKILLS_ROOT, 'commands'))),
-            ...(await listMarkdownFiles(join(SKILLS_ROOT, 'agents'))),
-            ...(await listSkillFiles(join(SKILLS_ROOT, 'skills'))),
+            ...(await listMarkdownFiles(COMMANDS_DIR)),
+            ...(await listMarkdownFiles(AGENTS_DIR)),
+            ...(await listSkillFiles(SKILLS_DIR)),
         ]
         const violations: Array<{
             file: string
