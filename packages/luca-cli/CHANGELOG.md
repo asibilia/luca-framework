@@ -1,5 +1,17 @@
 # @alecsibilia/luca-cli
 
+## 13.0.0-alpha.11
+
+### Patch Changes
+
+- 47ed287: feat(repo): add Antigravity CLI support
+  - `luca init` now natively configures Antigravity CLI alongside Claude Code.
+  - Adds `~/.gemini/antigravity-cli/skills` and `agents` provisioning.
+  - Registers the stage-gate hook for Antigravity's `PreToolUse` event in `hooks.json`.
+  - Automates MuninnDB MCP server registration in Antigravity's `settings.json`.
+  - @alecsibilia/luca-core@13.0.0-alpha.11
+  - @alecsibilia/luca-tools@13.0.0-alpha.11
+
 ## 13.0.0-alpha.10
 
 ### Patch Changes
