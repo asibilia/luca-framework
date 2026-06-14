@@ -372,25 +372,34 @@ export const initCommand = defineCommand({
         )
 
         if (!automatedVaultName) {
-            // MuninnDB serves its MCP endpoint on its own fixed port (8750),
-            // distinct from the service/dashboard port (8476). luca does not
-            // manage the MCP port, so it is not derived from MUNINNDB_PORT.
+            // This branch runs only when vault automation did NOT happen —
+            // i.e. MuninnDB was unreachable during this `luca init`. When
+            // MuninnDB is healthy, `luca init` AUTO-registers it as an MCP
+            // server for BOTH harnesses (Claude via a ~/.claude.json
+            // file-merge, Antigravity via mcp_config.json) in Step 4, so no
+            // manual command is needed. Steer the user back to that path.
             readout.push(
-                '  To expose MuninnDB to Claude Code: register it as an MCP server,'
+                '  MuninnDB MCP not registered (MuninnDB was unreachable this run).'
             )
             readout.push(
-                `    e.g. claude mcp add --transport sse muninn http://localhost:8750/mcp \\`
+                '    Start MuninnDB (`muninn start`), then re-run `luca init` — it'
             )
             readout.push(
-                '         --header "Authorization: Bearer <your-muninn-api-key>"'
+                '    auto-registers MuninnDB as an MCP server for every installed'
             )
             readout.push(
-                '    (or add a "muninn" entry under mcpServers in .mcp.json). Use the'
+                '    harness (Claude + Antigravity) once the service is healthy.'
             )
             readout.push(
-                '    same key as `luca vault:init` (.env MUNINN_DB_API_KEY). See the'
+                '    Manual fallback: add a "muninn" entry under mcpServers pointing'
             )
-            readout.push('    README "MuninnDB" section for details.')
+            readout.push(
+                '    at the MuninnDB MCP endpoint, using the same key as'
+            )
+            readout.push(
+                '    `luca vault:init` (.env MUNINN_DB_API_KEY). See the README'
+            )
+            readout.push('    "MuninnDB" section for details.')
         }
 
         p.note(readout.join('\n'), 'Setup Complete')
