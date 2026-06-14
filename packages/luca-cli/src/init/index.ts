@@ -37,3 +37,10 @@ export type {
     InstallStatuslineOptions,
     StatuslineMergeAction,
 } from './helpers/install-statusline.ts'
+
+export {
+    HARNESSES,
+    claudeHarness,
+    antigravityHarness,
+} from './helpers/harness.ts'
+export type { Harness } from './helpers/harness.ts'
