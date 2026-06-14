@@ -5,6 +5,7 @@ import {
     wireAntigravityHooks,
     wireAntigravityMcp,
     wireClaudeHooks,
+    wireClaudeMcp,
 } from './wire-claude-hooks.ts'
 import type { WireClaudeHooksOptions } from './wire-claude-hooks.ts'
 
@@ -40,9 +41,10 @@ export interface Harness {
     /** Register the luca stage-gate hook in the harness's global settings. */
     wireHooks(opts: WireClaudeHooksOptions): Promise<void>
     /**
-     * Optional MCP wiring. Present only for harnesses whose MCP registration
-     * is driven by luca (Antigravity). Claude's MCP is still registered via
-     * the Step-5 `claude mcp add` shell-out this phase.
+     * Optional MCP wiring. Driven by luca for every harness — Antigravity via
+     * its dedicated `mcp_config.json`, Claude via a global file-merge into the
+     * user's primary `~/.claude.json` (WS4, replacing the old per-project
+     * `claude mcp add` shell-out).
      */
     mcp?: { wire(opts: WireClaudeHooksOptions): Promise<void> }
 }
@@ -55,6 +57,7 @@ export const claudeHarness: Harness = {
     isInstalled: () => existsSync(defaultClaudeHome()),
     installArtifacts: { agents: true, commands: true, skills: true },
     wireHooks: (opts) => wireClaudeHooks(opts),
+    mcp: { wire: (opts) => wireClaudeMcp(opts) },
 }
 
 /** Antigravity CLI harness descriptor. */
