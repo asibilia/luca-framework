@@ -1,5 +1,5 @@
 import { chmodSync, existsSync, statSync } from 'node:fs'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -186,18 +186,28 @@ export async function wireAntigravityMcp(
 
     await mkdir(agyHome, { recursive: true })
 
-    // A corrupt or hand-edited mcp_config.json must not abort `luca init` —
-    // fall back to an empty config on parse failure (missing-file already
-    // yields {} via the existsSync guard).
+    // Three-case read guard (mirrors wireClaudeMcp). Lower stakes than the
+    // primary Claude config, but the {}-fallback-then-write pattern is the same
+    // clobber bug class — a present-but-unparseable mcp_config.json must NOT be
+    // overwritten with a `{}`-derived config:
+    //  1. absent OR whitespace-only  → `{}` (safe first run).
+    //  2. present, non-empty, parses → use parsed object.
+    //  3. present, non-empty, throws → ABORT before any write.
     let existing: AntigravitySettings = {}
     if (existsSync(mcpConfigPath)) {
-        try {
-            existing =
-                ((JSON.parse(
-                    await readFile(mcpConfigPath, 'utf-8')
-                ) as AntigravitySettings) ?? {})
-        } catch {
+        const raw = await readFile(mcpConfigPath, 'utf-8')
+        if (raw.trim().length === 0) {
             existing = {}
+        } else {
+            try {
+                existing = (JSON.parse(raw) as AntigravitySettings) ?? {}
+            } catch {
+                log(
+                    '  skip: Antigravity MCP not registered — mcp_config.json is present but not valid JSON.\n' +
+                        '        Skipping to avoid overwriting it. Fix the file and re-run `luca init`.'
+                )
+                return
+            }
         }
     }
 
@@ -217,9 +227,13 @@ export async function wireAntigravityMcp(
 
     const next = mergeAntigravityMcpRegistration(existing, token)
 
-    await writeFile(mcpConfigPath, JSON.stringify(next, null, 2) + '\n')
-    // The config inlines the MuninnDB token (Bearer <token>); restrict to
-    // owner read/write only (mirrors writeApiKeyToEnv SEC-002).
+    // The config inlines the MuninnDB token (Bearer <token>); create it
+    // owner-read/write-only FROM INCEPTION so the token is never world-readable
+    // even briefly. chmodSync remains belt-and-suspenders for a pre-existing
+    // inode (mirrors writeApiKeyToEnv SEC-002).
+    await writeFile(mcpConfigPath, JSON.stringify(next, null, 2) + '\n', {
+        mode: 0o600,
+    })
     chmodSync(mcpConfigPath, 0o600)
     log(`  write: ${mcpConfigPath}`)
 }
@@ -422,9 +436,9 @@ export function mergeClaudeMcpRegistration(
  * `claude mcp add` shell-out. Because `~/.claude.json` holds far more than MCP
  * (projects, history, …), the write is merge-only and atomic:
  *
- *  - Read + try/catch parse guard. Fall back to `{}` ONLY when JSON.parse
- *    throws — never on a populated, readable file (that would silently drop the
- *    user's config).
+ *  - Three-case read guard: absent/whitespace-only → `{}`; present + parses →
+ *    parsed object; present-non-empty + parse THROWS → ABORT (log + return)
+ *    rather than clobber a hand-edited-but-malformed primary config.
  *  - Resolve the token via `opts.token ?? readMuninnToken()`; skip+log
  *    actionable guidance and `return` BEFORE any write when absent (D3 — never
  *    emit a partial/placeholder entry; Claude does not interpolate env vars
@@ -440,18 +454,28 @@ export async function wireClaudeMcp(
     const log = opts.log ?? (() => {})
     const configPath = join(homedir(), '.claude.json')
 
-    // A corrupt or hand-edited ~/.claude.json must not abort `luca init` — fall
-    // back to an empty config ONLY on parse failure. A readable, populated file
-    // is always preserved; never clobber the user's primary config.
+    // Three-case read guard — `~/.claude.json` is the user's PRIMARY config, so
+    // a parse failure must NEVER fall back to `{}` and clobber it:
+    //  1. file absent OR whitespace-only  → `{}` (safe, normal first run).
+    //  2. present, non-empty, parses       → use the parsed object.
+    //  3. present, non-empty, parse THROWS → ABORT before any write/rename.
+    // The atomic rename makes a clobber total, so a hand-edited-but-malformed
+    // config (trailing comma, comment) must not be overwritten.
     let existing: ClaudeUserConfig = {}
     if (existsSync(configPath)) {
-        try {
-            existing =
-                ((JSON.parse(
-                    await readFile(configPath, 'utf-8')
-                ) as ClaudeUserConfig) ?? {})
-        } catch {
+        const raw = await readFile(configPath, 'utf-8')
+        if (raw.trim().length === 0) {
             existing = {}
+        } else {
+            try {
+                existing = (JSON.parse(raw) as ClaudeUserConfig) ?? {}
+            } catch {
+                log(
+                    '  skip: Claude MCP not registered — ~/.claude.json is present but not valid JSON.\n' +
+                        '        Skipping to avoid overwriting it. Fix the file and re-run `luca init`.'
+                )
+                return
+            }
         }
     }
 
@@ -488,8 +512,18 @@ export async function wireClaudeMcp(
         homedir(),
         `.claude.json.luca-${process.pid}-${Date.now()}.tmp`
     )
-    await writeFile(tmpPath, JSON.stringify(next, null, 2) + '\n')
-    chmodSync(tmpPath, mode)
-    await rename(tmpPath, configPath)
+    try {
+        // SEC: create the temp restrictive FROM INCEPTION — it holds a Bearer
+        // token, so it must never exist in a world-readable (0644) state. The
+        // chmodSync below is belt-and-suspenders for a pre-existing inode whose
+        // mode the `mode:` open flag would not retighten.
+        await writeFile(tmpPath, JSON.stringify(next, null, 2) + '\n', { mode })
+        chmodSync(tmpPath, mode)
+        await rename(tmpPath, configPath)
+    } catch (err) {
+        // Never leave an orphaned token-bearing temp behind on failure.
+        await unlink(tmpPath).catch(() => {})
+        throw err
+    }
     log(`  write: ${configPath}`)
 }
