@@ -128,7 +128,7 @@ Task(
 
 <output_requirements>
 - Create plan.md in {quick_dir} (canonical filename per LUCA_DIR_CONTRACT)
-- Plan should have clear tasks with verification criteria
+- Plan should have clear tasks whose Verification lines reference ac-IDs from a ## Verification Criteria section (- **ac-NN**: <one binary probe> — exactly one binary probe per criterion)
 - Return summary of plan created
 </output_requirements>
 

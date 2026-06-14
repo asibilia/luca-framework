@@ -252,14 +252,21 @@ Non-must-fix findings (\`should-fix\`, \`nit\`, \`info\`) are surfaced in the wa
 
 Spawn a **verifier** subagent after checks + rule gate pass. Emit \`verification-start\` / \`verification-end\` telemetry around the spawn.
 
-1. Re-read the plan's acceptance criteria for this wave.
+1. Re-read the plan-authored criteria for this wave from plan.md \`## Verification Criteria\` — stable \`ac-NN\` ids (split sub-ids \`ac-NN.M\`, anti-criteria \`anti-NN\`), consumed verbatim; entries tombstoned \`[DROPPED — see decisions <date>]\` are out of scope.
 2. Verify each criterion against actual implementation.
 3. Run verification commands from the plan.
 4. Check for regressions in previously-completed waves.
 5. Validate implementation matches architectural patterns from research.
 6. Route every verification claim through \`luca claim-verify\` so the durable log carries the audit trail.
 
-The verifier writes \`.luca/phases/<currentPhaseSlug>/verify.json\` via \`luca verification write\` (see the verifier subagent's instructions for the schema). If verification fails, loop back to Step 1 before proceeding.
+**Verification Doctrine digest** (canonical: \`VERIFICATION_DOCTRINE\` in \`artifacts/shared/verification-doctrine.ts\` — the verifier subagent carries the full text):
+- Evidence-in-same-tool-block rule: claim and probe travel together; no criterion is met without tool evidence.
+- Per-artifact-type probes (file→read-back, edit→grep, command→checked output, HTTP→curl, deploy→live version, UI→screenshot, schema→SELECT, config→read-back).
+- Forbidden-without-evidence phrases ('should work', 'tests pass', 'done', …).
+- Dual-evidence fallback when a probe is stage-gate-blocked in REVIEWING.
+- \`[DEFERRED-VERIFY]\` protocol: \`met: false\` + \`deferred: true\` + \`deferredFollowUp\` todo when a probe is genuinely impossible.
+
+The verifier writes \`.luca/phases/<currentPhaseSlug>/verify.json\` with the native \`Write\` tool at the \`verify\` pipelineStep (per STEP_ARTIFACTS; see the verifier subagent's instructions for the schema). If verification fails, loop back to Step 1 before proceeding.
 
 ## Step 4: Code Review
 

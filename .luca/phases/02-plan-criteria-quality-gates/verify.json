@@ -1,0 +1,266 @@
+{
+  "timestamp": "2026-06-11T00:00:00Z",
+  "phase": "02-plan-criteria-quality-gates",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "grep -c \"Splitting Test\" architect.ts >= 1",
+      "met": true,
+      "evidence": "Re-probed cycle 2: grep -c returned 2 (packages/luca-tools/src/artifacts/modes/architect.ts)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "\"Out of Scope\" hit inside anti-criteria rule mandating >=1 anti-criterion",
+      "met": true,
+      "evidence": "Re-probed cycle 2: count 1; rule text intact ('Every plan carries ≥1 anti-criterion … context.md ### Out of Scope')",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "\"DROPPED\" hits the tombstone rule text in architect.ts",
+      "met": true,
+      "evidence": "Re-probed cycle 2: architect.ts:230 (## Decisions destination) and :246 (Rule 3 tombstone text) — wave-4 edits additive",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03.1",
+      "description": "\"ac-NN.M\" hits the split convention (parent ID preserved, never renumber)",
+      "met": true,
+      "evidence": "architect.ts:246 — Rule 3 retains ac-NN.M split convention with parent ID preserved (cycle-1 evidence carried, surface re-read cycle 2)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "150-line budget amended with explicit ## Verification Criteria exemption",
+      "met": true,
+      "evidence": "architect.ts:38 and :428 region — both budget lines carry the EXEMPT clause (cycle-1 evidence; wave 4 did not touch budget lines)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "grep -c \"G-CRIT\" plan-reviewer.ts >= 1",
+      "met": true,
+      "evidence": "Re-probed cycle 2: plan-reviewer.ts:85 G-CRIT-NNN gap class present",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "grep -c \"anti-criter\" plan-reviewer.ts >= 1 (checklist item present)",
+      "met": true,
+      "evidence": "plan-reviewer.ts:72 checklist item 8 (cycle-1 evidence; plan-reviewer.ts not edited in wave 4)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "verifier.ts contains a rule forbidding minting criterion ids",
+      "met": true,
+      "evidence": "Re-probed cycle 2: verifier.ts:85 — 'You must NEVER mint or invent your own criterion ids'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-07.1",
+      "description": "\"plan-authored\" hits the rule to consume ac-IDs from plan.md ## Verification Criteria",
+      "met": true,
+      "evidence": "Re-probed cycle 2: verifier.ts:85 and :93 — plan-authored, consumed verbatim",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "\"DROPPED\" hits exclusion rule in verifier.ts (tombstoned criteria omitted from verify.json)",
+      "met": true,
+      "evidence": "Re-probed cycle 2: verifier.ts:87 — exclusion rule intact, now extended with split-parent pointer exclusion (additive)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "grep -l \"anti-criter\" lists both phase-plan command and phase-plan skill",
+      "met": true,
+      "evidence": "Cycle-1 probe listed both files; wave-4 edits to phase-plan.ts (:34) retain anti-criterion mention (confirmed in ac-23 probe output)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-09.1",
+      "description": "grep -l \"ac-\" lists both phase-execute and quick skills",
+      "met": true,
+      "evidence": "Cycle-1 probe listed both files; neither skill edited in wave 4 (not in any wave-4 task file list)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "source-run luca plan lint on this phase's plan.md exits 0 (warn-only)",
+      "met": true,
+      "evidence": "Structural: run-handler.ts:96-102 exits isError?1:0; handler returns findings WITHOUT isError. Runtime executor-attested (waves/01.md). Surface re-read cycle 2 after 1.4.3 edits — warn-only contract unchanged.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-10.1",
+      "description": "lint detection path: compound + missing-anti fixture emits >=2 warnings, still exits 0",
+      "met": true,
+      "evidence": "Structural: all 4 checks present post-wave-4 (luca-plan-lint.ts:150-203); registration intact. Runtime executor-attested (waves/01.md fixture: 3 warnings, exit 0).",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "grep -l \"ac-\" lists both review.ts and execute.ts modes",
+      "met": true,
+      "evidence": "Cycle-1 probe listed both; review.ts:82 wave-4 edit retains ac- references (confirmed in ac-27 probe output)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Re-run by verifier cycle 2 on the post-wave-4 tree: exit=0, no diagnostics",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "grep -l \"plan lint\" lists both architect.ts and phase-plan skill (invocation wired)",
+      "met": true,
+      "evidence": "Re-probed cycle 2: grep -c \"plan lint\" architect.ts = 2; skill lint brief confirmed at phase-plan/index.ts:363 (ac-25 probe)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "classifier registers `luca plan lint` as read-only (not bash-mutate) so it is allowed in PLANNING",
+      "met": true,
+      "evidence": "Structural: classify-bash-command.ts:250 `plan: new Set(['lint'])` in LUCA_NOUN_VERBS; 'lint' present in LUCA_READ_VERBS (:217-226 block); :296 routes read verbs to 'bash-readonly'. Runtime bun -e classifier probe executor-attested in waves/02.md (before: bash-mutate; after: bash-readonly). Direct source-run blocked in REVIEWING.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "'plan lint' entry in WRITE_COMMAND_PHASES mapped to []",
+      "met": true,
+      "evidence": "step-artifacts.ts:87 — `'plan lint': [],`. Cross-checked run-handler.ts:53-66: phase self-check runs only `if (allowedPhases && allowedPhases.length > 0)`, so [] skips the check — allowed anywhere, not nowhere.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "` and ` inside backtick code spans emits zero compound warnings",
+      "met": true,
+      "evidence": "Structural: maskInlineCodeSpans (luca-plan-lint.ts:44-49, same-length space masking) applied at :161 before compound (:164) and quantifier (:178) checks. Fixture transcript executor-attested in waves/02.md.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-17",
+      "description": "uppercase ` AND ` compound (outside backticks) is flagged (case-insensitive connective)",
+      "met": true,
+      "evidence": "Structural: COMPOUND_CONNECTIVE = /( and | with )/i at luca-plan-lint.ts:30 (/i flag present). Fixture transcript executor-attested in waves/02.md.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-18",
+      "description": "--file path with raw ESC byte produces no unescaped \\x1b in output",
+      "met": true,
+      "evidence": "Structural: sanitizeControlChars (luca-plan-lint.ts:61-66, C0+DEL → \\xNN) applied at ALL echo sites — safeFile :233 used in warning lines :254 and summary :257; error branch :242-244 sanitizes both path and err.message. Fixture transcript executor-attested in waves/02.md.",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-19",
+      "description": "help/description says \"exits 0 on lint findings\"; zero \"always exits 0\"/\"Always succeeds\" remnants",
+      "met": true,
+      "evidence": "plan.ts:10 — 'exits 0 on lint findings'; grep for 'always exits 0|Always exits 0|Always succeeds' across plan.ts and luca-plan-lint.ts returned no matches (exit 1); handler description now reads 'Lint findings never block — only an unreadable file is an error.'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-20",
+      "description": "\"SPLIT →\" hits Rule 3 parent-pointer sentence + template example in architect.ts",
+      "met": true,
+      "evidence": "architect.ts:246 — Rule 3 'parent line becomes a pointer: - **ac-NN**: [SPLIT → ac-NN.1, ac-NN.2] — excluded from verify.json exactly like tombstones'; template example at :217 '- **ac-02**: [SPLIT → ac-02.1, ac-02.2]'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-21",
+      "description": "\"SPLIT\" hits the verifier enumeration note excluding [SPLIT pointer lines from verify.json",
+      "met": true,
+      "evidence": "verifier.ts:87 — 'Split-parent pointer lines … are excluded from the verify.json criteria array exactly like tombstones; only the live ac-NN.M children get entries.'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-22",
+      "description": "round-trip fixture: split parent pointer + .1/.2 children + >=1 anti-NN line lints to 0 warnings (rev-3 probe replaced, ID kept)",
+      "met": true,
+      "evidence": "Structural: pointer line carries a well-formed ID (check a passes), contains no ' and '/' with ' or absolute quantifier, and .M siblings exempt the parent (hasSubCriteria :136-141); .M children skipped by quantifier check (:177-179); anti-NN satisfies check d. Round-trip fixture executor-attested in waves/02.md (0 warnings, exit 0, run post-1.4.3).",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-23",
+      "description": "\"tombstone\" hits the restored Rule 3 (ID-stability) mention in phase-plan.ts",
+      "met": true,
+      "evidence": "phase-plan.ts:34 — 'Criterion IDs are stability-locked: never renumber … splits become ac-NN.M with the parent line converted to a [SPLIT → …] pointer; dropped criteria become tombstones … never deleted.'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-24",
+      "description": "\"plan lint\" hits the lint invocation in the phase-plan command body",
+      "met": true,
+      "evidence": "phase-plan.ts:49 — 'After persisting the plan, run luca plan lint --file <dir>/plan.md … Address each warning before advancing.'",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-25",
+      "description": "\"substitute for review\" hits the restored sentence at the skill lint brief",
+      "met": true,
+      "evidence": "skills/phase-plan/index.ts:363 — 'do not treat a clean lint as a substitute for review' (judgment checks attributed to plan-reviewer)",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-26",
+      "description": "grep -c \"## Decisions\" architect.ts goes 0 (pre-state) -> >=1 in template block",
+      "met": true,
+      "evidence": "grep -c returned 1; architect.ts:230 region documents the section as destination for tombstone references and lint-warning justifications. Pre-state 0 attested in plan criterion text and waves/02.md (0→1).",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-27",
+      "description": "\"non-split-parent\" hits the widened done-ref liveness clause in review.ts",
+      "met": true,
+      "evidence": "review.ts:82 — 'live (non-tombstoned, non-split-parent) plan-authored id'; CRITERION_NOT_FOUND rejection of [DROPPED]/split-parent ids documented as correct behavior with re-point guidance",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT change verification core (luca-core/src/verification/)",
+      "met": true,
+      "evidence": "Re-probed cycle 2: git diff and git diff --cached against packages/luca-core/src/verification/ both empty. step-artifacts.ts edit is under src/state/configs/ — outside the guarded path, legal per Task 1.4.2 note.",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT disturb staged phase-01 index",
+      "met": true,
+      "evidence": "Re-probed cycle 2: 38 staged files (36 from cycle 1 + classify-bash-command.ts + step-artifacts.ts from wave 4); all sampled phase-01 entries (todos/schemas.ts, run-handler.ts, write-surface/todo.ts, luca-todo-add/update/list.ts) remain staged",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT commit",
+      "met": true,
+      "evidence": "Re-probed cycle 2: git log -1 --format=%H == 15a4e40328ade367da0f7a7f78d43d0e10361e08 (unchanged baseline)",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT touch legacy luca-mastracode mirrors",
+      "met": true,
+      "evidence": "Re-probed cycle 2: git status --porcelain | grep -ci mastracode = 0",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Cycle-2 full re-verification on staged working tree (branch 295--pai-learnings, plan revision 4, wave 4 review fixes). Runtime probes (ac-10/10.1 cycle 1; ac-14 classifier before/after, ac-16/17/18 fixtures, ac-22 round-trip cycle 2) are executor-attested in execute/waves/{01,02}.md — direct source-run is stage-gate-blocked in REVIEWING (empirically confirmed cycle 1); each was independently verified structurally against the working tree (regexes, mask/sanitize call sites, classifier sets, runWriteHandler []-skip semantics). ac-22 was content-replaced ID-stable per rev-4 (rev-3 probe vacuous — replaced, ID kept). Split-parent coherence confirmed: architect rule (:246) + template (:217), verifier enumeration (:87), review.ts liveness clause (:82), and phase-plan mirror (:34) all agree split parents are excluded/non-live; no surface implies live split parents (plan-reviewer item 9 predates the pointer form but says only 'parent ID preserved' — consistent, not contradictory; nit, non-blocking). Regression sweep: ac-01..ac-13 surfaces re-hit (wave-4 edits additive). Stale-dist caveat stands: finalize must rebuild (bun run build) and re-run luca init before the linked CLI / materialized instruction bodies pick up these changes — until then the stage-gate classifier fix (ac-14) is source-only."
+}

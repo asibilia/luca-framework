@@ -18,7 +18,7 @@ import {
     lucaStateReadTool,
     lucaStateSetCurrentPhaseTool,
 } from '../../write-surface/index.ts'
-import { runWriteHandler } from './__helpers/run-handler.ts'
+import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
 const readCommand = defineCommand({
     meta: {
@@ -28,7 +28,8 @@ const readCommand = defineCommand({
             'pipelineStep, currentPhase, iteration counters, and roadmap. ' +
             'Pure read; allowed in every pipelineStep.',
     },
-    async run() {
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('state read', cmd, rawArgs)
         await runWriteHandler('state read', lucaStateReadTool, {})
     },
 })
@@ -50,7 +51,8 @@ const advanceCommand = defineCommand({
                 'be a legal transition from the current step.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('state advance', cmd, rawArgs)
         await runWriteHandler('state advance', lucaStateAdvanceTool, {
             toStep: args['to-step'],
         })
@@ -74,7 +76,8 @@ const claimOwnerCommand = defineCommand({
                 'Claude Code session_id of the session driving the run.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('state claim-owner', cmd, rawArgs)
         await runWriteHandler('state claim-owner', lucaStateClaimOwnerTool, {
             sessionId: args['session-id'],
         })
@@ -97,7 +100,8 @@ const setCurrentPhaseCommand = defineCommand({
                 'Target phase number (1-based); must be within 1..totalPhases.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('state set-current-phase', cmd, rawArgs)
         await runWriteHandler(
             'state set-current-phase',
             lucaStateSetCurrentPhaseTool,

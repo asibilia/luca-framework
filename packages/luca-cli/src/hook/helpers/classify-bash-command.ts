@@ -223,6 +223,7 @@ const LUCA_READ_VERBS = new Set([
     'filter-stale',
     'detect-convergence',
     'regression-check',
+    'lint',
 ])
 
 // Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
@@ -245,6 +246,8 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     confidence: new Set(['log']),
     // Read-side surfaces over the per-phase verify.json files.
     verification: new Set(['read', 'aggregate']),
+    // Read-only plan-quality linter over a plan.md file.
+    plan: new Set(['lint']),
 }
 
 /**

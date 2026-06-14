@@ -12,7 +12,11 @@ async function makeProjectAtStep(step: string): Promise<string> {
     await mkdir(join(cwd, '.luca'), { recursive: true })
     await writeFile(
         join(cwd, '.luca/state.json'),
-        JSON.stringify({ pipelineStep: step })
+        JSON.stringify({
+            pipelineStep: step,
+            currentPhase: 1,
+            roadmap: [{ name: 'x' }],
+        })
     )
     return cwd
 }

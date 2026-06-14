@@ -1,0 +1,26 @@
+PERSPECTIVE: architecture
+VERDICT: APPROVE
+FINDINGS:
+- [SHOULD-FIX] AR-01: Priority enum literals duplicated across the luca-core/luca-cli boundary. The values `['low', 'medium', 'high', 'critical']` are hard-coded three times in the CLI surface (todo.ts:58, todo.ts:121, todo.ts:188) while the canonical vocabulary lives in `TodoPriority` (packages/luca-core/src/todos/schemas.ts:20), which luca-core already exports (packages/luca-core/src/todos/index.ts:4) and which the handlers already import. Adding a fifth priority level requires touching four code locations and will drift silently if one is missed — citty would then reject (or accept) a value the Zod schema disagrees with.
+  File: packages/luca-cli/src/commands/write-surface/todo.ts:58
+  Suggestion: Import `TodoPriority` from `@alecsibilia/luca-core` in todo.ts and use `options: [...TodoPriority.options]` (spread converts the readonly zod tuple to citty's `string[]`) at all three arg sites; the precedent already exists — run-handler.ts imports from luca-core, so no new layering edge is introduced.
+  Cross-phase: false
+- [NOTE] AR-02: Mixed flag-validation styles in the same args blocks: new `priority` flags use citty `type: 'enum'` (fail at parse time) while the adjacent pre-existing `status` flags remain `type: 'string'` (fail later at Zod parse, e.g. todo.ts:49-55 vs the `z.enum(['pending','backlog'])` in luca-todo-add.ts:33). Out of staged scope to fix `status`, but worth converging on the enum style the diff just established.
+- [NOTE] AR-03: Residual unknown-flag hole at the group level. citty's subcommand dispatch drops flags placed before the subcommand token (`luca todo --bogus add --title x` — `--bogus` never reaches the leaf's `rawArgs`), so the guard only covers leaf-position flags. Worth one sentence in the rejectUnknownFlags JSDoc (run-handler.ts:127-171) documenting this boundary so future readers don't assume total coverage.
+- [NOTE] AR-04: The `--no-` retry (run-handler.ts:221) doesn't check that the base flag is boolean-typed, so `--no-title` passes the guard even though citty's negation semantics only apply to booleans. Over-permissive in a rare corner; acceptable for a typo guard, flagging for the record.
+- [NOTE] AR-05: run-handler.ts now hosts three concerns (handler execution, flag guarding + case converters, JSON payload reading). Still defensible under its stated charter ("owns the shared flow so leaf commands stay thin", run-handler.ts:1-17), but if a fourth concern lands, split `rejectUnknownFlags` + the case helpers into `__helpers/reject-unknown-flags.ts`.
+
+EVIDENCE FOR APPROVE (locations verified):
+1. Generic signature soundness — verified against citty's actual type defs (node_modules/.bun/citty@0.2.2/node_modules/citty/dist/index.d.mts:58-74): `CommandDef<T>` places `T` in contravariant position via `setup`/`run`/`cleanup(context: CommandContext<T>)`, so concrete arg defs are not assignable to `CommandDef<ArgsDef>` — the `<TArgsDef extends ArgsDef>` generic (run-handler.ts:173) is the correct fix, not a deviation smell. The runtime `Resolvable` narrowing (run-handler.ts:178-183) correctly excludes `Promise<T>` (instanceof) and thunks (typeof 'object'), and PositionalArgDef omitting `alias` is handled by the `'alias' in def` guard (run-handler.ts:193).
+2. Call-site consistency — grepped every `run(` in packages/luca-cli/src/commands/write-surface/*.ts: all 28 leaf commands across all 12 command-group files invoke `rejectUnknownFlags('<noun> <verb>', cmd, rawArgs)` as the first statement of `run()`, before `readJsonPayload` (roadmap.ts:58-59, todo.ts:88-90) and before `runWriteHandler`, with command strings matching the paired `runWriteHandler` call. Zero leaf commands missing the guard.
+3. Schema-first conventions — packages/luca-core/src/todos/schemas.ts:20-21 follows the exact `export const X = z.enum(...) / export type X = z.infer<typeof X>` dual-declaration precedent set by TodoStatus (schemas.ts:17-18); both are re-exported (todos/index.ts:3-4). `priority`/`area` are correctly `.optional()` with no default (absent ≠ defaulted — old todos stay valid, confirmed by the legacy `metadata.priority` fixture at schemas.test.ts:37 still parsing).
+4. Handler-layer boundary — luca-todo-add.ts:34, luca-todo-list.ts:15, luca-todo-update.ts:36 all reuse `TodoPriority` from luca-core rather than redefining; conditional-spread construction (`...(args.priority !== undefined ? { priority: args.priority } : {})`, luca-todo-add.ts:96-99) keeps optional fields truly absent in the persisted JSON. Dependency direction is uniformly core → cli, no reverse imports.
+5. Cross-package prose coherence — luca-tools artifacts (skills/todo-add/index.ts:35, skills/gh-issue-triage/index.ts:72-79, commands/todo-check.ts:26, modes/research.ts:257) reference `--priority`/`--area` with the same four enum values and document the legacy `metadata.priority` coexistence.
+
+Token-scan semantics of the guard were checked against the documented edge cases: `--flag=value` split (run-handler.ts:213-215), `--` terminator stop (run-handler.ts:206-208), short flags/positionals ignored (run-handler.ts:209-211) — all match the JSDoc contract and citty's parse behavior.
+
+CONSOLIDATED:
+  MUST_FIX_COUNT: 0
+  SHOULD_FIX_COUNT: 1
+  NOTE_COUNT: 4
+  CROSS_PHASE_COUNT: 0

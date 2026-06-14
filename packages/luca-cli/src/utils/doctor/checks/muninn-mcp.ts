@@ -26,7 +26,13 @@ const CHECK_NAME = 'MuninnDB MCP wiring'
 /** MuninnDB's MCP endpoint (fixed port, distinct from the 8476 service). */
 const MCP_URL = 'http://127.0.0.1:8750/mcp'
 
-const ADD_COMMAND =
+// Primary remediation: re-running `luca init` auto-registers MuninnDB for every
+// installed harness (Claude global file-merge into ~/.claude.json + Antigravity
+// mcp_config.json), sourcing the token from ~/.muninn/mcp.token. The manual
+// `claude mcp add` below is a Claude-only fallback for when automation is skipped.
+const FIX_COMMAND = 'luca init'
+
+const MANUAL_ADD_COMMAND =
     'claude mcp add --transport sse muninn http://localhost:8750/mcp ' +
     '--header "Authorization: Bearer <your-muninn-api-key>"'
 
@@ -77,13 +83,14 @@ export const muninnMcpCheck: DoctorCheck = {
             return {
                 name: CHECK_NAME,
                 status: 'warning',
-                message: 'MuninnDB MCP is up but not registered with Claude Code',
-                fixCommand: ADD_COMMAND,
+                message: 'MuninnDB MCP is up but not registered',
+                fixCommand: FIX_COMMAND,
                 details: [
                     'The MCP endpoint on :8750 is reachable, but no `muninn`',
                     'server is registered, so the pipeline cannot use memory.',
-                    'Register it (use the key from `luca vault:init` / .env):',
-                    `  ${ADD_COMMAND}`,
+                    'Re-run `luca init` to auto-register it for every installed',
+                    'harness (Claude + Antigravity). Manual Claude-only fallback:',
+                    `  ${MANUAL_ADD_COMMAND}`,
                 ].join('\n  '),
             }
         }
@@ -106,12 +113,13 @@ export const muninnMcpCheck: DoctorCheck = {
             name: CHECK_NAME,
             status: 'warning',
             message: 'MuninnDB MCP not running and not registered (optional)',
-            fixCommand: ADD_COMMAND,
+            fixCommand: FIX_COMMAND,
             details: [
                 'MuninnDB provides cross-session memory for the pipeline. It is',
-                'optional, but recommended. Start it (`luca init`) and register',
-                'the MCP server:',
-                `  ${ADD_COMMAND}`,
+                'optional, but recommended. Start it and run `luca init`, which',
+                'auto-registers it for every installed harness (Claude +',
+                'Antigravity). Manual Claude-only fallback:',
+                `  ${MANUAL_ADD_COMMAND}`,
             ].join('\n  '),
         }
     },

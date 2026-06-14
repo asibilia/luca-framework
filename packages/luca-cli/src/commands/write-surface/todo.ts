@@ -11,6 +11,7 @@
  *   - `todo list`   — list todos (emits a muninn_recall instruction)
  *   - `todo update` — update a todo (emits a muninn_remember instruction)
  */
+import { TodoPriority } from '@alecsibilia/luca-core'
 import { defineCommand } from 'citty'
 
 import {
@@ -18,7 +19,11 @@ import {
     lucaTodoListTool,
     lucaTodoUpdateTool,
 } from '../../write-surface/index.ts'
-import { readJsonPayload, runWriteHandler } from './__helpers/run-handler.ts'
+import {
+    readJsonPayload,
+    rejectUnknownFlags,
+    runWriteHandler,
+} from './__helpers/run-handler.ts'
 
 const addCommand = defineCommand({
     meta: {
@@ -49,6 +54,18 @@ const addCommand = defineCommand({
                 'Initial status: "pending" or "backlog" (default ' +
                 'pending). Promotion to "done" happens via `todo update`.',
         },
+        priority: {
+            type: 'enum',
+            options: [...TodoPriority.options],
+            description:
+                'Optional triage priority: low | medium | high | critical.',
+        },
+        area: {
+            type: 'string',
+            description:
+                'Optional kebab-case area/component tag (e.g. "cli", ' +
+                '"mcp-server"); max 60 chars.',
+        },
         source: {
             type: 'string',
             description:
@@ -68,7 +85,8 @@ const addCommand = defineCommand({
                 'fields to store alongside the todo.',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('todo add', cmd, rawArgs)
         const metadata = args['metadata-file']
             ? await readJsonPayload('todo add', args['metadata-file'])
             : undefined
@@ -76,6 +94,8 @@ const addCommand = defineCommand({
             title: args.title,
             body: args.body,
             status: args.status,
+            priority: args.priority,
+            area: args.area,
             source: args.source,
             id: args.id,
             metadata,
@@ -97,15 +117,31 @@ const listCommand = defineCommand({
                 'Optional status filter (pending, backlog, done, ...). ' +
                 'Applied by the agent post-recall.',
         },
+        priority: {
+            type: 'enum',
+            options: [...TodoPriority.options],
+            description:
+                'Optional priority filter (low | medium | high | ' +
+                'critical). Applied by the agent post-recall.',
+        },
+        area: {
+            type: 'string',
+            description:
+                'Optional area/component filter (e.g. "cli"). Applied by ' +
+                'the agent post-recall.',
+        },
         limit: {
             type: 'string',
             default: '50',
             description: 'Max todos to recall (range 1-200, default 50).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('todo list', cmd, rawArgs)
         await runWriteHandler('todo list', lucaTodoListTool, {
             status: args.status,
+            priority: args.priority,
+            area: args.area,
             limit: Number(args.limit),
         })
     },
@@ -117,7 +153,10 @@ const updateCommand = defineCommand({
         description:
             'Update an existing todo. Validates the new shape, enforces ' +
             'the verification-ref guard when promoting to "done", and ' +
-            'emits a muninn_remember instruction. Phase-agnostic.',
+            'emits a muninn_remember instruction. Phase-agnostic. ' +
+            'Update is full-replace — omitted optional fields (body, ' +
+            'source, metadata, priority, area) are dropped; re-send the ' +
+            'full payload.',
     },
     args: {
         id: {
@@ -143,11 +182,28 @@ const updateCommand = defineCommand({
         },
         body: {
             type: 'string',
-            description: 'Optional updated markdown body.',
+            description:
+                'Optional updated markdown body — context, acceptance ' +
+                'criteria, references (dropped if omitted).',
+        },
+        priority: {
+            type: 'enum',
+            options: [...TodoPriority.options],
+            description:
+                'Optional triage priority: low | medium | high | ' +
+                'critical (dropped if omitted).',
+        },
+        area: {
+            type: 'string',
+            description:
+                'Optional kebab-case area/component tag (e.g. "cli"); ' +
+                'max 60 chars (dropped if omitted).',
         },
         source: {
             type: 'string',
-            description: 'Optional updated origin label.',
+            description:
+                'Optional origin label — e.g. "gh-issue-#42", ' +
+                '"phase-research", "manual" (dropped if omitted).',
         },
         'verification-criterion': {
             type: 'string',
@@ -160,10 +216,11 @@ const updateCommand = defineCommand({
             type: 'string',
             description:
                 'Optional path to a JSON file of arbitrary structured ' +
-                'fields to store alongside the todo.',
+                'fields to store alongside the todo (dropped if omitted).',
         },
     },
-    async run({ args }) {
+    async run({ args, rawArgs, cmd }) {
+        rejectUnknownFlags('todo update', cmd, rawArgs)
         const metadata = args['metadata-file']
             ? await readJsonPayload('todo update', args['metadata-file'])
             : undefined
@@ -175,6 +232,8 @@ const updateCommand = defineCommand({
             title: args.title,
             status: args.status,
             body: args.body,
+            priority: args.priority,
+            area: args.area,
             source: args.source,
             metadata,
             verificationRef,

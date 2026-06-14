@@ -8,7 +8,17 @@ import {
 } from './install-skills.ts'
 
 export interface InstallStatuslineOptions {
-    /** Global Claude config directory. Defaults to `~/.claude`. */
+    /**
+     * Global harness config directory that receives the statusline script
+     * + `settings.json` registration. Defaults to `~/.claude`. Statusline
+     * is a Claude-only capability today (only `claudeHarness` exposes it),
+     * so the default is the Claude home.
+     */
+    home?: string
+    /**
+     * @deprecated Use `home`. Retained as an alias for backward
+     * compatibility. `home` wins when both are supplied.
+     */
     claudeHome?: string
     /**
      * Path to the bundled statusline script. Defaults to
@@ -68,7 +78,7 @@ export async function installStatusline(
     opts: InstallStatuslineOptions
 ): Promise<void> {
     const log = opts.log ?? (() => {})
-    const claudeHome = opts.claudeHome ?? defaultClaudeHome()
+    const claudeHome = opts.home ?? opts.claudeHome ?? defaultClaudeHome()
 
     const src = opts.bundledScriptPath ?? resolveBundledStatuslineScript()
     if (src === null || !existsSync(src)) {

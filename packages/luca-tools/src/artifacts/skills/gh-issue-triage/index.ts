@@ -60,23 +60,23 @@ Wait for the user to confirm which issues to import. Accept "all" or a comma-sep
 
 ### 5. Create todos
 
-For each approved issue, stage the \`metadata\` object in a JSON file and run \`luca todo add\`:
+For each approved issue, run \`luca todo add\` with first-class flags:
 
 \`\`\`
-# .luca/tmp/todo-meta.json:
-# { "priority": "<high|medium|low>", "area": "<ui|api|infra|...>" }
 luca todo add \\
   --title "<issue title>" \\
   --body "> GitHub Issue: #<N> — <url>
 
 <issue body, trimmed to essentials>" \\
   --source "gh-issue-#<N>" \\
-  --metadata-file .luca/tmp/todo-meta.json
+  --priority "<low|medium|high|critical>" \\
+  --area "<ui|api|infra|...>"
 \`\`\`
 
 - **\`--source\`** is \`gh-issue-#<N>\` — the link back to the originating issue. It carries the issue number through the entire pipeline.
-- **\`priority\`** is inferred from labels (\`critical\`/\`bug\` → \`high\`, \`enhancement\` → \`medium\`, unlabeled → \`medium\`) and goes in the metadata file.
-- **\`area\`** is inferred from labels when recognizable (\`ui\`, \`api\`, \`infra\`) and goes in the metadata file.
+- **\`--priority\`** is inferred from labels (\`critical\`/\`bug\` → \`high\`, \`enhancement\` → \`medium\`, unlabeled → \`medium\`).
+- **\`--area\`** is inferred from labels when recognizable (\`ui\`, \`api\`, \`infra\`).
+- Older engrams may carry a legacy \`metadata.priority\` field alongside the first-class one — harmless; the first-class field is canonical.
 
 \`luca todo add\` validates the input and prints a \`mcp__muninn__muninn_remember\` instruction blob — execute that instruction **exactly as returned** to persist the todo. The todo \`id\` is derived from the title (kebab-slug).
 

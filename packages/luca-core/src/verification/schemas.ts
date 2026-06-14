@@ -24,8 +24,43 @@ export const VerificationCriterionSchema = z.object({
     gap: z.string().optional(),
     /** Whether this criterion blocks proceeding. */
     blocking: z.boolean(),
+    /**
+     * Whether verification of this criterion is deferred to a later probe
+     * (e.g. post-deploy smoke check). When set, `deferredFollowUp` (the todo
+     * id of the tracked follow-up) is REQUIRED, and the criterion MUST have
+     * `met: false` until the deferred probe runs.
+     */
+    deferred: z.boolean().optional(),
+    /** Todo id of the tracked follow-up for a deferred criterion. */
+    deferredFollowUp: z.string().optional(),
+    /** Kind of probe used (or planned) to verify this criterion. */
+    probeType: z
+        .enum([
+            'file-read',
+            'grep-symbol',
+            'command',
+            'http',
+            'deploy',
+            'ui-screenshot',
+            'db-select',
+            'config-read',
+        ])
+        .optional(),
 })
 export type VerificationCriterion = z.infer<typeof VerificationCriterionSchema>
+
+/** Per-deliverable compliance verdict against the plan's deliverable manifest. */
+export const DeliverableComplianceSchema = z.object({
+    /** Stable deliverable identifier (e.g. "d-01"). */
+    id: z.string(),
+    /** Human-readable description of the deliverable. */
+    description: z.string(),
+    /** Criterion ids that verify this deliverable. */
+    criterionIds: z.array(z.string()),
+    /** Whether the deliverable shipped, was missed, or partially shipped. */
+    compliance: z.enum(['shipped', 'missed', 'partial']),
+})
+export type DeliverableCompliance = z.infer<typeof DeliverableComplianceSchema>
 
 /** An automated check result (test / typecheck / lint / build). */
 export const CheckResultSchema = z.object({
@@ -69,5 +104,7 @@ export const VerificationResultSchema = z.object({
     recommendation: z.enum(['proceed', 'fix', 'escalate']),
     /** Free-form notes from the verifier. */
     notes: z.string().optional(),
+    /** Per-deliverable compliance against the plan's deliverable manifest. */
+    deliverables: z.array(DeliverableComplianceSchema).optional(),
 })
 export type VerificationResult = z.infer<typeof VerificationResultSchema>

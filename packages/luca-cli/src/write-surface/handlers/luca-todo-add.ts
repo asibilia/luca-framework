@@ -1,6 +1,8 @@
 import {
     slugFromTitle,
+    TodoAreaSchema,
     TodoIdSchema,
+    TodoPriority,
     TodoSchema,
     todoConceptFor,
 } from '@alecsibilia/luca-core'
@@ -30,6 +32,12 @@ const inputSchema = z.object({
      * that points at a met criterion in verify.json.
      */
     status: z.enum(['pending', 'backlog']).default('pending'),
+    priority: TodoPriority.optional().describe(
+        'Optional triage priority: low | medium | high | critical.'
+    ),
+    area: TodoAreaSchema.optional().describe(
+        'Optional kebab-case area/component tag (e.g. "cli", "mcp-server"); max 60 chars.'
+    ),
     source: z
         .string()
         .max(120)
@@ -82,6 +90,10 @@ export const lucaTodoAddTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
             title: args.title,
             ...(args.body !== undefined ? { body: args.body } : {}),
             status: args.status,
+            ...(args.priority !== undefined
+                ? { priority: args.priority }
+                : {}),
+            ...(args.area !== undefined ? { area: args.area } : {}),
             ...(args.source !== undefined ? { source: args.source } : {}),
             ...(args.metadata !== undefined ? { metadata: args.metadata } : {}),
             updatedAt: new Date().toISOString(),

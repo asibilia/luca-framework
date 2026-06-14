@@ -10,6 +10,7 @@
 export { INPHASE_TERSENESS_DIRECTIVE } from './inphase-terseness.ts'
 export { MEMORY_TIER_DISCIPLINE } from './memory-tier-discipline.ts'
 export { SUBAGENT_SHARED_PREFIX } from './shared-prefix.ts'
+export { VERIFICATION_DOCTRINE } from './verification-doctrine.ts'
 export {
     CORE_OPERATING_RULES,
     HARD_CONSTRAINTS,

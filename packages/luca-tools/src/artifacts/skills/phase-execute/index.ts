@@ -1635,7 +1635,7 @@ Code review passed ✓
 Testing deliverables from this phase...
 \`\`\`
 
-**Follow the verify-work flow inline:** spawn the \`verifier\` subagent with the per-task acceptance criteria, parse its \`verify.json\` output, and route per the recommendation field (\`pass\`, \`fix\`, \`escalate\`).
+**Follow the verify-work flow inline:** spawn the \`verifier\` subagent with the plan-authored ac-ID criteria from the plan's \`## Verification Criteria\` section (IDs consumed verbatim, including anti-NN entries — the verifier never mints its own), parse its \`verify.json\` output, and route per the recommendation field (\`pass\`, \`fix\`, \`escalate\`).
 
 1. **Find SUMMARY.md files** for the phase
 2. **Extract testable deliverables** (user-observable outcomes)

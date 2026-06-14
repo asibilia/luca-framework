@@ -79,14 +79,23 @@ describe('writeProjectSkeleton', () => {
         const { writeFile } = await import('node:fs/promises')
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'plan' }, null, 2)
+            JSON.stringify({ pipelineStep: 'idle', sessionId: 'custom-session-id' }, null, 2)
         )
 
-        await writeProjectSkeleton({ cwd, force: true })
-
-        const state = JSON.parse(
+        // Without force=true, should NOT overwrite
+        await writeProjectSkeleton({ cwd })
+        let state = JSON.parse(
             await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
+        expect(state.sessionId).toBe('custom-session-id')
+
+        // With force=true, should overwrite (since it is inactive state)
+        await writeProjectSkeleton({ cwd, force: true })
+
+        state = JSON.parse(
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
+        )
+        expect(state.sessionId).not.toBe('custom-session-id')
         expect(state.pipelineStep).toBe('idle')
     })
 })

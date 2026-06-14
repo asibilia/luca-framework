@@ -81,6 +81,10 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     'pr-review filter-stale': [],
     'pr-review detect-convergence': [],
     'pr-review regression-check': [],
+    // Phase-agnostic plan-quality lint: explicit empty entry = allowed in
+    // any pipelineStep (registry completeness — absence is NOT the same
+    // as []).
+    'plan lint': [],
 
     // Todo delegation — phase-agnostic (emit muninn instructions)
     'todo add': [],

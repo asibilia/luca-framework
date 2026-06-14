@@ -1,7 +1,9 @@
 export {
     TodoSchema,
     TodoStatus,
+    TodoPriority,
     TodoIdSchema,
+    TodoAreaSchema,
     VerificationRefSchema,
     TODO_CONCEPT_PREFIX,
     todoConceptFor,

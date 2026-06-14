@@ -1,0 +1,135 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "Bash: `bunx --bun tsc --noEmit` -> TSC_EXIT=0 (post review-fix d41c13982).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "mergeAntigravityMcpRegistration({}, 'mdb_x') deep-equals golden { mcpServers:{ muninn:{ serverUrl:'http://127.0.0.1:8750/mcp', headers:{Authorization:'Bearer mdb_x'}, enabledTools:['*'] } } }, no url key.",
+      "met": true,
+      "evidence": "Control-flow trace wire-claude-hooks.ts:290-333 — existing=undefined skips idempotency (302-311), rest={}, builds {serverUrl:MUNINN_MCP_SERVER_URL='http://127.0.0.1:8750/mcp', headers:{Authorization:'Bearer mdb_x'}, enabledTools:['*']}; no `url` set. serverUrl now sourced from const (324). Dual-evidence: executor attestation summary.md:20. bun -e stage-gate-blocked in verify step.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "Feeding golden back is a deep-equal no-op.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:302-311 — golden satisfies all four invariants (serverUrl===MUNINN_MCP_SERVER_URL, headers.Authorization==='Bearer mdb_x', enabledTools array includes '*', no 'url'), early-returns the shallow-cloned next == golden. Dual-evidence: summary.md:20. bun -e stage-gate-blocked.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "{ mcpServers:{ muninn:{ url:'http://127.0.0.1:8750/mcp', headers:{} } } } migrates to canonical golden, NO url key, Authorization injected into empty headers.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:317-330 — existing.serverUrl undefined so idempotency skipped; destructure-omit drops `url` (317), rest={headers:{}}, output {headers:{Authorization:'Bearer mdb_x'}, serverUrl:'http://127.0.0.1:8750/mcp', enabledTools:['*']} == golden, no url. Dual-evidence: summary.md:20. bun -e stage-gate-blocked.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-05.1",
+      "description": "wireAntigravityMcp with no opts.token and no ~/.muninn/mcp.token returns before writeFile (no file written).",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:193-199 — `if (!token)` logs guidance then `return` at line 198, structurally preceding the sole writeFile at line 203 (and chmodSync at 206). Token read (177-187) only sets token when file exists. Dual-evidence: summary.md:21. bun -e stage-gate-blocked.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-05.2",
+      "description": "Same precondition, log invoked with actionable token-missing guidance.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:194-197 — log emits 'skip: Antigravity MCP not registered — no MuninnDB token found ... Run `muninn init` ... then re-run `luca init`.' (actionable). Dual-evidence: summary.md:21. bun -e stage-gate-blocked.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "grep 'mcp_config.json' matches in wireAntigravityMcp path/read/write.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:158 (mcpConfigPath = join(...)), read 166-170, write 203. PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT reference settings.json in wireAntigravityMcp write path.",
+      "met": true,
+      "evidence": "grep -n 'settings.json' -> only lines 87, 99, 103 (all inside wireClaudeHooks, the allowed Claude path); zero hits in wireAntigravityMcp (153-208). PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT — literal ${MUNINN_DB_API_KEY} anywhere in file.",
+      "met": true,
+      "evidence": "grep -F 'MUNINN_DB_API_KEY' wire-claude-hooks.ts -> no matches (exit 1). PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT — no new/restored .test.ts file (no-tests policy).",
+      "met": true,
+      "evidence": "git status --porcelain — the only .test.ts entries (handle-stage-gate-hook, skill-validation, write-project-skeleton, phase-write-tools) are ' M' (pre-existing modifications, later phases), NOT 'A'/'??'. No new/restored test files. PASS.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "RF-1",
+      "description": "Review-fix (security audits/security.md): chmod 0600 on mcp_config after successful write, write path only; chmodSync imported from node:fs.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:1 `import { chmodSync, existsSync } from 'node:fs'`; chmodSync(mcpConfigPath, 0o600) at line 206 — AFTER writeFile (203), and AFTER the no-token early `return` (198), so the skip path never chmods. Single call site (grep chmodSync = 2 lines: import + call). PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "RF-2",
+      "description": "Review-fix (correctness): isMuninnRegistered probes ~/.gemini/antigravity-cli/mcp_config.json (NOT settings.json) for muninn entry; detector agrees with writer.",
+      "met": true,
+      "evidence": "muninn-mcp-registration.ts:52-55 — readJsonObject(join(homedir(),'.gemini','antigravity-cli','mcp_config.json')) then hasMuninnEntry(agyConfig?.mcpServers). Comment 49-51 documents 'NOT settings.json'. grep shows mcp_config.json only, no settings.json reference. Matches writer target (wire-claude-hooks.ts:158). PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "RF-3",
+      "description": "Review-fix (drift guard): module const MUNINN_MCP_SERVER_URL='http://127.0.0.1:8750/mcp' referenced in BOTH idempotency check and entry write; no bare literal in those two spots.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:13 const declaration; referenced at idempotency check line 304 (existing.serverUrl === MUNINN_MCP_SERVER_URL) and entry write line 324 (serverUrl: MUNINN_MCP_SERVER_URL). The only bare '127.0.0.1:8750/mcp' literal is the const definition itself (line 13); neither merge spot uses a bare literal. PASS.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "RF-4",
+      "description": "Review-fix (robustness): existing-config read in wireAntigravityMcp wrapped in try/catch falling back to {} on parse error.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:165-175 — `let existing: AntigravitySettings = {}` then `if (existsSync) { try { existing = JSON.parse(...) ?? {} } catch { existing = {} } }`. Corrupt JSON falls back to {} (comment 162-164). PASS.",
+      "blocking": true,
+      "probeType": "config-read"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "Focused delta re-verify after review-fix wave (commits 1678dcbd4 + d41c13982). All original criteria (ac-01..ac-06, anti-01..anti-03) STILL hold against the updated line numbers. Four review-fix items confirmed by code read: RF-1 chmod 0600 write-path-only (line 206, after return@198 and writeFile@203, import@1); RF-2 isMuninnRegistered now probes mcp_config.json (muninn-mcp-registration.ts:52-55), producer/consumer agree; RF-3 MUNINN_MCP_SERVER_URL const (line 13) used in both idempotency@304 and write@324; RF-4 try/catch parse fallback to {} (lines 165-175). SPEC PROBE criteria ac-02/03/04/05.1/05.2: planned bun -e evals remain stage-gate-blocked in the verify pipelineStep (bash-mutate disallowed), satisfied per dual-evidence fallback by structural control-flow trace + executor attestation in execute/summary.md:20-21.",
+  "deliverables": [
+    { "id": "D1-target", "description": "writer targets mcp_config.json only; never settings.json mcpServers", "criterionIds": ["ac-06", "anti-01", "RF-2"], "compliance": "shipped" },
+    { "id": "D3-token", "description": "real token inlined; literal ${MUNINN_DB_API_KEY} never reaches disk", "criterionIds": ["ac-02", "ac-05.1", "anti-02", "RF-1"], "compliance": "shipped" },
+    { "id": "D4-tools", "description": "enabledTools: ['*'] written and required for idempotency", "criterionIds": ["ac-02", "ac-03", "ac-04"], "compliance": "shipped" },
+    { "id": "D-merge", "description": "merge-not-replace, preserve user headers (Q1), migrate/drop stale url", "criterionIds": ["ac-02", "ac-04", "RF-3", "RF-4"], "compliance": "shipped" },
+    { "id": "D-skip", "description": "no token => no file written, guidance logged (Q2)", "criterionIds": ["ac-05.1", "ac-05.2"], "compliance": "shipped" },
+    { "id": "D-gate", "description": "file type-checks clean", "criterionIds": ["ac-01"], "compliance": "shipped" }
+  ]
+}

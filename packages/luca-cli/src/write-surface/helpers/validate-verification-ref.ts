@@ -20,6 +20,7 @@ export interface ValidationError {
         | 'VERIFY_FILE_MISSING'
         | 'VERIFY_FILE_INVALID'
         | 'CRITERION_NOT_FOUND'
+        | 'CRITERION_DEFERRED'
         | 'CRITERION_UNMET'
         | 'CRITERION_NO_EVIDENCE'
         | 'VERIFY_NOT_PASS'
@@ -72,6 +73,8 @@ export async function validateVerificationRef(
             criterionId?: string
             met?: boolean
             evidence?: string
+            deferred?: boolean
+            deferredFollowUp?: string
         }>
     }
     const criteria = Array.isArray(result.criteria) ? result.criteria : []
@@ -85,6 +88,18 @@ export async function validateVerificationRef(
                     .filter(Boolean)
                     .join(', ') || '(none)'
             }.`,
+        }
+    }
+    // Deferred check runs REGARDLESS of `met` — a malformed
+    // `deferred: true, met: true` record must still be rejected.
+    if (found.deferred === true) {
+        return {
+            code: 'CRITERION_DEFERRED',
+            message: `criterion "${opts.ref.criterionId}" is deferred to a later probe${
+                found.deferredFollowUp
+                    ? ` (follow-up todo ${found.deferredFollowUp})`
+                    : ''
+            }. Cannot mark a todo done against a deferred criterion until the deferred probe runs.`,
         }
     }
     if (!found.met) {

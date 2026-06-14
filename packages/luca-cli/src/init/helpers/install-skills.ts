@@ -4,12 +4,38 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+/**
+ * Which bundled artifact buckets to install into a harness home. Mirrors
+ * the `installArtifacts` flags on a `Harness` descriptor — `installSkills`
+ * is driven entirely off these so "add a harness = add one descriptor"
+ * holds: the descriptor's flags decide what lands in its home.
+ */
+export interface InstallSkillsArtifacts {
+    agents: boolean
+    commands: boolean
+    skills: boolean
+}
+
 export interface InstallSkillsOptions {
     /**
-     * Path to the global Claude config directory that receives
-     * `commands/`, `agents/`, and `skills/`. Defaults to `~/.claude`.
+     * Path to the global harness config directory that receives the
+     * enabled `commands/`, `agents/`, and/or `skills/` buckets. Defaults
+     * to `~/.claude` for backward compatibility with callers that don't
+     * pass a home.
+     */
+    home?: string
+    /**
+     * @deprecated Use `home`. Retained as an alias so existing callers
+     * (and tests) that pass `claudeHome` keep compiling. `home` wins when
+     * both are supplied.
      */
     claudeHome?: string
+    /**
+     * Which buckets to install into `home`, driven by the harness
+     * descriptor's `installArtifacts` flags. Defaults to all three
+     * enabled (the historical Claude behavior) when omitted.
+     */
+    artifacts?: InstallSkillsArtifacts
     /**
      * Root directory containing the bundled `.claude/agents/` and
      * `.claude/commands/` trees. Defaults to the umbrella's bundled
@@ -54,16 +80,17 @@ export function defaultAntigravityHome(): string {
 }
 
 /**
- * Copy bundled luca skills into the *global* config directories:
+ * Copy bundled luca artifacts into ONE harness's *global* config home,
+ * driven by that harness's `installArtifacts` flags:
  *
- * For Claude Code:
- *   - `<artifacts>/.claude/commands/*.md`       → ~/.claude/commands/
- *   - `<artifacts>/.claude/agents/*.md`         → ~/.claude/agents/
- *   - `<artifacts>/skills/<name>/SKILL.md`      → ~/.claude/skills/
+ *   - `<artifacts>/.claude/commands/*.md`       → <home>/commands/   (if artifacts.commands)
+ *   - `<artifacts>/.claude/agents/*.md`         → <home>/agents/     (if artifacts.agents)
+ *   - `<artifacts>/skills/<name>/SKILL.md`      → <home>/skills/     (if artifacts.skills)
  *
- * For Antigravity CLI:
- *   - `<artifacts>/skills/<name>/SKILL.md`      → ~/.gemini/antigravity-cli/skills/
- *   - `<artifacts>/.claude/agents/*.md`         → ~/.gemini/antigravity-cli/agents/
+ * The descriptor's flags are the single source of truth for what a
+ * harness receives. Reproducing the historical defaults:
+ *   - Claude       `{ agents, commands, skills }` → commands + agents + skills
+ *   - Antigravity  `{ agents, skills }` (no commands) → agents + skills
  *
  * Installing globally — rather than per-repo — means one luca CLI version
  * owns a single canonical skill set across every project. Repos stay
@@ -75,7 +102,8 @@ export function defaultAntigravityHome(): string {
  * versions are canonical) but preserves unrelated user-authored files in
  * those directories.
  *
- * Designed to be called from `luca init`, idempotent on re-run.
+ * Designed to be called once per active harness from `luca init` Step 4,
+ * idempotent on re-run.
  *
  * F-2: source roots default to the @alecsibilia/luca umbrella's bundled
  * `dist/claude/` tree. When `luca` is installed globally via npm, the
@@ -87,8 +115,14 @@ export function defaultAntigravityHome(): string {
  */
 export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
     const log = opts.log ?? (() => {})
-    const claudeHome = opts.claudeHome ?? defaultClaudeHome()
-    const agyHome = defaultAntigravityHome()
+    const home = opts.home ?? opts.claudeHome ?? defaultClaudeHome()
+    // Default to all-on so legacy callers (and the historical Claude home)
+    // behave exactly as before when no descriptor flags are supplied.
+    const artifacts = opts.artifacts ?? {
+        agents: true,
+        commands: true,
+        skills: true,
+    }
 
     const resolved = resolveBundledArtifacts({
         claudeArtifactsRoot: opts.claudeArtifactsRoot,
@@ -111,42 +145,31 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
         return
     }
 
-    // Install to Claude Code
-    await copyDir({
-        from: join(claudeArtifactsRoot, 'commands'),
-        to: join(claudeHome, 'commands'),
-        log,
-        label: 'Claude command',
-    })
+    if (artifacts.commands) {
+        await copyDir({
+            from: join(claudeArtifactsRoot, 'commands'),
+            to: join(home, 'commands'),
+            log,
+            label: 'command',
+        })
+    }
 
-    await copyDir({
-        from: join(claudeArtifactsRoot, 'agents'),
-        to: join(claudeHome, 'agents'),
-        log,
-        label: 'Claude agent',
-    })
+    if (artifacts.agents) {
+        await copyDir({
+            from: join(claudeArtifactsRoot, 'agents'),
+            to: join(home, 'agents'),
+            log,
+            label: 'agent',
+        })
+    }
 
-    await copySkillTree({
-        from: skillsRoot,
-        to: join(claudeHome, 'skills'),
-        log,
-    })
-
-    // Install to Antigravity CLI (if the directory exists or we want to support it)
-    // We don't check for existence of agyHome here to allow 'luca init' to set it up
-    // even if agy hasn't been run yet, but typically agy creates it.
-    await copyDir({
-        from: join(claudeArtifactsRoot, 'agents'),
-        to: join(agyHome, 'agents'),
-        log,
-        label: 'Antigravity agent',
-    })
-
-    await copySkillTree({
-        from: skillsRoot,
-        to: join(agyHome, 'skills'),
-        log,
-    })
+    if (artifacts.skills) {
+        await copySkillTree({
+            from: skillsRoot,
+            to: join(home, 'skills'),
+            log,
+        })
+    }
 }
 
 /**
