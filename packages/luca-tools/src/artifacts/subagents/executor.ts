@@ -37,6 +37,8 @@
  *     read`; prior pitfalls are supplied in the prompt by the orchestrator.
  *     rule-run + confidence-log (CLI/Bash-based) are retained.
  */
+import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
+
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX, VERIFICATION_DOCTRINE } from '../shared/index.ts'
 
@@ -147,6 +149,8 @@ Be specific about alternatives considered and why you chose this path.
 - Before editing any file, re-read it first. Do NOT trust your memory of file contents — context may be stale.
 - After each edit, re-read the file to verify the change was applied correctly.
 - Any claim that a change works requires tool evidence in the same (or immediately following) tool-call block as the claim — per the Verification Doctrine above.
-- The doctrine's five forbidden phrases ('should work', 'looks fine', 'tests pass', 'expected to', 'done') are banned without attached probe output.
+- The doctrine's ${FORBIDDEN_LANGUAGE_PHRASES.length} forbidden phrases (${FORBIDDEN_LANGUAGE_PHRASES.map(
+        (phrase) => `'${phrase}'`
+    ).join(', ')}) are banned without attached probe output.
 `,
 })

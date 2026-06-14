@@ -9,12 +9,15 @@
  *   - `plan lint` — warn-only advisory linter for a plan.md. Emits one
  *     warning per finding plus a summary, and exits 0 on lint findings:
  *     warnings never block progression (only operational errors, e.g. an
- *     unreadable file, exit 1). The four regex checks (missing ac-NN /
- *     anti-NN IDs, compound criteria, absolute quantifiers without .M
- *     sub-criteria, missing anti-criteria) are keyed to the pinned
- *     architect criterion grammar; judgment checks (probe nameability,
- *     can-A-pass-while-B-fails) stay instruction-side in the architect /
- *     plan-reviewer prompts.
+ *     unreadable file, exit 1). The seven regex checks — four criterion
+ *     grammar (missing ac-NN / anti-NN IDs, compound criteria, absolute
+ *     quantifiers without .M sub-criteria, missing anti-criteria) plus
+ *     three deliverable-manifest checks (missing `## Deliverables`
+ *     section, malformed `- **D<N>**: … → <ac-IDs>` line, deliverable
+ *     referencing an unknown ac-ID) — are keyed to the pinned architect
+ *     criterion and deliverable grammars; judgment checks (probe
+ *     nameability, can-A-pass-while-B-fails) stay instruction-side in the
+ *     architect / plan-reviewer prompts.
  */
 import { defineCommand } from 'citty'
 
@@ -29,9 +32,12 @@ const lintCommand = defineCommand({
         name: 'lint',
         description:
             'Warn-only advisory lint of a plan.md against the pinned ' +
-            'criterion grammar (ac-NN / anti-NN IDs, compound criteria, ' +
-            'absolute quantifiers, missing anti-criteria). Exits 0 on ' +
-            'lint findings — they are warnings, never blockers (only ' +
+            'criterion and deliverable grammars — seven checks: four ' +
+            'criterion (ac-NN / anti-NN IDs, compound criteria, absolute ' +
+            'quantifiers, missing anti-criteria) plus three deliverable ' +
+            '(missing ## Deliverables section, malformed D-line, ' +
+            'deliverable referencing an unknown ac-ID). Exits 0 on lint ' +
+            'findings — they are warnings, never blockers (only ' +
             'operational errors like an unreadable file exit 1). ' +
             'Phase-agnostic.',
     },

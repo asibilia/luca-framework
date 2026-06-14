@@ -46,12 +46,37 @@ export const VerificationCriterionSchema = z.object({
             'config-read',
         ])
         .optional(),
+}).superRefine((criterion, ctx) => {
+    // Cross-field invariants on the deferred-verify fields ONLY. These fire
+    // exclusively on the `deferred: true` branch, so a payload WITHOUT
+    // `deferred` (or with `deferred: false`) parses exactly as before — no
+    // pre-existing field's type or optionality changes (anti-02 holds).
+    if (criterion.deferred !== true) return
+    if (
+        criterion.deferredFollowUp === undefined ||
+        criterion.deferredFollowUp.length === 0
+    ) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['deferredFollowUp'],
+            message:
+                'deferredFollowUp is required (non-empty) when deferred is true — record the tracked follow-up source (e.g. "deferred-verify:<slug>:<ac-id>")',
+        })
+    }
+    if (criterion.met !== false) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['met'],
+            message:
+                'met must be false when deferred is true — a deferred criterion cannot flip to met until the deferred probe runs',
+        })
+    }
 })
 export type VerificationCriterion = z.infer<typeof VerificationCriterionSchema>
 
 /** Per-deliverable compliance verdict against the plan's deliverable manifest. */
 export const DeliverableComplianceSchema = z.object({
-    /** Stable deliverable identifier (e.g. "d-01"). */
+    /** Stable deliverable identifier (e.g. "D1"). */
     id: z.string(),
     /** Human-readable description of the deliverable. */
     description: z.string(),

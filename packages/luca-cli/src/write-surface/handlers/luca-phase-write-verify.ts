@@ -1,29 +1,15 @@
-import { join } from 'node:path'
-
 import {
-    phasePathFor,
     loadCurrentState,
+    phasePathFor,
     resolveActiveSlug,
 } from '@alecsibilia/luca-core'
-import { VerificationResultSchema } from '@alecsibilia/luca-core/verification'
+import {
+    VerificationResultSchema,
+    writeVerificationResult,
+} from '@alecsibilia/luca-core/verification'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
-import { writeAtomicFile } from '../helpers/write-atomic.ts'
-
-/**
- * Replace ASCII control characters with their `\xNN` escapes so echoed
- * payload fragments cannot inject terminal escape sequences into tool
- * output. Mirrors the convention in `luca-plan-lint.ts`.
- *
- * @param text - Raw text destined for an output line.
- * @returns The text with each control character replaced by its escape.
- */
-function sanitizeControlChars(text: string): string {
-    return text.replace(
-        /[\x00-\x1f\x7f]/g,
-        (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, '0')}`
-    )
-}
+import { sanitizeControlChars } from '../helpers/sanitize-control-chars.ts'
 
 const inputSchema = z.object({
     result: z
@@ -70,14 +56,26 @@ export const lucaPhaseWriteVerifyTool: ToolDescriptor<
                 isError: true,
             }
         }
+        // Route through the core writer so the atomic tmp+rename and runId
+        // stamping live in one place. runId comes from the loaded run's
+        // sessionId when present; omitted otherwise (the writer prefers an
+        // existing result.runId and tolerates legacy no-runId results).
+        const runId =
+            typeof state.sessionId === 'string' && state.sessionId.length > 0
+                ? state.sessionId
+                : undefined
+        writeVerificationResult({
+            cwd: ctx.cwd,
+            slug: slug.slug,
+            result: parsed.data,
+            runId,
+        })
         const relPath = phasePathFor(slug.slug, 'verify')
-        const content = JSON.stringify(parsed.data, null, 2) + '\n'
-        await writeAtomicFile(join(ctx.cwd, relPath), content)
         return {
             content: [
                 {
                     type: 'text',
-                    text: `wrote ${relPath} (${content.length} bytes)`,
+                    text: `wrote ${relPath}`,
                 },
             ],
         }

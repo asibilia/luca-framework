@@ -41,6 +41,8 @@
  *   - postmortem-generate — surfaced at execute boundary (the
  *     learner subagent triggers it at wave/phase close).
  */
+import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
+
 import { defineAgent } from '../../define/index.ts'
 import {
     CORE_OPERATING_RULES,
@@ -262,7 +264,9 @@ Spawn a **verifier** subagent after checks + rule gate pass. Emit \`verification
 **Verification Doctrine digest** (canonical: \`VERIFICATION_DOCTRINE\` in \`artifacts/shared/verification-doctrine.ts\` — the verifier subagent carries the full text):
 - Evidence-in-same-tool-block rule: claim and probe travel together; no criterion is met without tool evidence.
 - Per-artifact-type probes (file→read-back, edit→grep, command→checked output, HTTP→curl, deploy→live version, UI→screenshot, schema→SELECT, config→read-back).
-- Forbidden-without-evidence phrases ('should work', 'tests pass', 'done', …).
+- Forbidden-without-evidence phrases (${FORBIDDEN_LANGUAGE_PHRASES.map(
+    (phrase) => `'${phrase}'`
+).join(', ')}).
 - Dual-evidence fallback when a probe is stage-gate-blocked in REVIEWING.
 - \`[DEFERRED-VERIFY]\` protocol: \`met: false\` + \`deferred: true\` + \`deferredFollowUp\` todo when a probe is genuinely impossible.
 

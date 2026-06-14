@@ -26,7 +26,14 @@
  * verifications, they're now blind; the session ledger is the canonical
  * signal.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { phasePathFor } from '../luca-dir/index.ts'
@@ -82,6 +89,12 @@ export function readVerificationResult(opts: {
  * Stamps `runId` (preferring an existing `result.runId`, falling back to the
  * supplied `runId`) so a stale snapshot from a prior run cannot silently
  * satisfy the new run's wave/phase guards.
+ *
+ * The write is atomic: content lands in a sibling `<path>.tmp` first, then is
+ * `rename()`d into place (atomic on POSIX). A reader therefore never observes
+ * a half-written verify.json, and a mid-write failure cannot leave truncated
+ * content behind. The temp file is a sibling of the destination so the rename
+ * stays within one filesystem (no EXDEV); it is removed on any failure.
  */
 export function writeVerificationResult(opts: {
     cwd: string
@@ -95,7 +108,14 @@ export function writeVerificationResult(opts: {
     }
     const p = join(opts.cwd, phasePathFor(opts.slug, 'verify'))
     mkdirSync(dirname(p), { recursive: true })
-    writeFileSync(p, `${JSON.stringify(stamped, null, 2)}\n`, 'utf-8')
+    const tmp = `${p}.tmp`
+    try {
+        writeFileSync(tmp, `${JSON.stringify(stamped, null, 2)}\n`, 'utf-8')
+        renameSync(tmp, p)
+    } catch (err) {
+        rmSync(tmp, { force: true })
+        throw err
+    }
 }
 
 // ---------------------------------------------------------------------------

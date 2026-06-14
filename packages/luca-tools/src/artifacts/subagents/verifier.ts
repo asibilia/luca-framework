@@ -113,7 +113,7 @@ For each live (non-tombstoned) criterion from \`plan.md\` — acceptance and ant
 When plan.md has a \`## Deliverables\` section, populate the verify.json \`deliverables\` array — one entry per D-line:
 \`\`\`
 {
-  id: "d-01",                  // deliverable id from the plan
+  id: "D1",                    // deliverable id from the plan (D<N> grammar)
   description: "...",          // what was promised
   criterionIds: ["ac-01"],     // criteria that verify this deliverable
   compliance: "shipped"        // shipped | missed | partial
@@ -124,6 +124,7 @@ Derive \`compliance\` from the mapped criteria: all met → \`shipped\`; none me
 After running all checks and evaluating all criteria, write the result to \`.luca/phases/<currentPhaseSlug>/verify.json\`:
 \`\`\`
 {
+  timestamp: "2026-01-01T00:00:00.000Z",  // REQUIRED; ISO 8601, time of this verification run
   wave: <current wave number>,
   mode: "quick" | "full",
   status: "PASS" | "FAIL" | "STALLED",
