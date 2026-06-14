@@ -46,6 +46,14 @@ export async function isMuninnRegistered(cwd: string): Promise<boolean> {
     const userConfig = await readJsonObject(join(homedir(), '.claude.json'))
     if (hasMuninnEntry(userConfig?.mcpServers)) return true
 
+    // Antigravity registers MCP servers in a dedicated mcp_config.json (the
+    // wireAntigravityMcp writer's target) — NOT settings.json. Probe the
+    // canonical file so this consumer stays in sync with the producer.
+    const agyConfig = await readJsonObject(
+        join(homedir(), '.gemini', 'antigravity-cli', 'mcp_config.json')
+    )
+    if (hasMuninnEntry(agyConfig?.mcpServers)) return true
+
     const projects = userConfig?.projects
     if (projects !== null && typeof projects === 'object') {
         const project = (projects as Record<string, unknown>)[cwd]

@@ -1,9 +1,16 @@
-import { existsSync } from 'node:fs'
+import { chmodSync, existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
+
+/**
+ * MuninnDB MCP server endpoint (Streamable-HTTP transport). Hoisted to a
+ * single module-level const so the idempotency/correctness check and the entry
+ * write in `mergeAntigravityMcpRegistration` can never drift apart.
+ */
+const MUNINN_MCP_SERVER_URL = 'http://127.0.0.1:8750/mcp'
 
 export interface WireClaudeHooksOptions {
     /** Global config directory. Defaults to `~/.claude` for Claude or `~/.gemini/antigravity-cli` for Antigravity. */
@@ -152,11 +159,20 @@ export async function wireAntigravityMcp(
 
     await mkdir(agyHome, { recursive: true })
 
-    const existing = existsSync(mcpConfigPath)
-        ? ((JSON.parse(
-              await readFile(mcpConfigPath, 'utf-8')
-          ) as AntigravitySettings) ?? {})
-        : {}
+    // A corrupt or hand-edited mcp_config.json must not abort `luca init` —
+    // fall back to an empty config on parse failure (missing-file already
+    // yields {} via the existsSync guard).
+    let existing: AntigravitySettings = {}
+    if (existsSync(mcpConfigPath)) {
+        try {
+            existing =
+                ((JSON.parse(
+                    await readFile(mcpConfigPath, 'utf-8')
+                ) as AntigravitySettings) ?? {})
+        } catch {
+            existing = {}
+        }
+    }
 
     let token: string | undefined = opts.token
     if (!token) {
@@ -185,6 +201,9 @@ export async function wireAntigravityMcp(
     const next = mergeAntigravityMcpRegistration(existing, token)
 
     await writeFile(mcpConfigPath, JSON.stringify(next, null, 2) + '\n')
+    // The config inlines the MuninnDB token (Bearer <token>); restrict to
+    // owner read/write only (mirrors writeApiKeyToEnv SEC-002).
+    chmodSync(mcpConfigPath, 0o600)
     log(`  write: ${mcpConfigPath}`)
 }
 
@@ -282,7 +301,7 @@ export function mergeAntigravityMcpRegistration(
     const existing = next.mcpServers.muninn
     if (
         existing &&
-        existing.serverUrl === 'http://127.0.0.1:8750/mcp' &&
+        existing.serverUrl === MUNINN_MCP_SERVER_URL &&
         existing.headers?.Authorization === authHeader &&
         Array.isArray(existing.enabledTools) &&
         existing.enabledTools.includes('*') &&
@@ -302,7 +321,7 @@ export function mergeAntigravityMcpRegistration(
     // calls with `tool muninn_recall is not enabled for server muninn`.
     next.mcpServers.muninn = {
         ...rest,
-        serverUrl: 'http://127.0.0.1:8750/mcp',
+        serverUrl: MUNINN_MCP_SERVER_URL,
         headers: {
             ...(existing?.headers ?? {}),
             Authorization: authHeader,
