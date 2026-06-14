@@ -1,5 +1,6 @@
-import { chmodSync, existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { chmodSync, existsSync, statSync } from 'node:fs'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { readMuninnToken } from '../../utils/muninn-token.ts'
@@ -80,6 +81,32 @@ interface AntigravityHooks {
         PreToolUse?: PreToolUseEntry[]
         [k: string]: unknown
     }
+}
+
+/**
+ * The user's *primary* Claude Code config (`~/.claude.json`). Far more than MCP
+ * lives here (projects, history, theme, …), so the type carries a
+ * `[k: string]: unknown` passthrough and the merge spreads every key through.
+ *
+ * Claude's MCP entry shape is the canonical SSE transport
+ * (`{ type: 'sse', url, headers }`) — DISTINCT from Antigravity's
+ * `serverUrl`/`enabledTools` shape. The optional Antigravity-style keys are
+ * declared only so the merge can destructure-omit them when migrating a stale
+ * cross-contaminated entry.
+ */
+interface ClaudeUserConfig {
+    mcpServers?: Record<
+        string,
+        {
+            type?: string
+            url?: string
+            headers?: Record<string, string>
+            command?: string
+            args?: string[]
+            env?: Record<string, string>
+        }
+    >
+    [k: string]: unknown
 }
 
 /**
@@ -320,4 +347,149 @@ export function mergeAntigravityMcpRegistration(
     }
 
     return next
+}
+
+/**
+ * Merge the MuninnDB MCP registration into the user's primary Claude config
+ * (`~/.claude.json`). Pure — exported for testability.
+ *
+ * Claude uses the canonical SSE transport entry shape
+ * (`{ type: 'sse', url, headers: { Authorization } }`) under top-level
+ * `mcpServers`, DISTINCT from Antigravity's `serverUrl`/`enabledTools`. When a
+ * stale entry carries Antigravity-shape keys (`serverUrl`/`enabledTools`) from
+ * an earlier cross-contaminated write, they are destructure-omitted so the
+ * Claude entry stays canonical.
+ *
+ * Merge-not-replace: every other top-level config key AND every other
+ * `mcpServers` entry is spread through untouched. `~/.claude.json` is the user's
+ * PRIMARY config — clobbering it is catastrophic.
+ */
+export function mergeClaudeMcpRegistration(
+    config: ClaudeUserConfig,
+    token: string
+): ClaudeUserConfig {
+    const next: ClaudeUserConfig = { ...config }
+    next.mcpServers = { ...(config.mcpServers ?? {}) }
+
+    const authHeader = `Bearer ${token}`
+    const existing = next.mcpServers.muninn as
+        | Record<string, unknown>
+        | undefined
+
+    // Idempotency / correctness: leave the entry untouched only when ALL of the
+    // canonical Claude invariants already hold — SSE transport, the matching
+    // url, the exact inlined token, and NO stale Antigravity-shape keys.
+    if (
+        existing &&
+        existing.type === 'sse' &&
+        existing.url === MUNINN_MCP_SERVER_URL &&
+        (existing.headers as Record<string, string> | undefined)
+            ?.Authorization === authHeader &&
+        !('serverUrl' in existing) &&
+        !('enabledTools' in existing)
+    ) {
+        return next
+    }
+
+    // Migrate-not-clobber: preserve any user-set fields/headers while dropping
+    // the cross-contaminating Antigravity-shape keys (serverUrl/enabledTools).
+    const {
+        serverUrl: _dropServerUrl,
+        enabledTools: _dropEnabledTools,
+        ...rest
+    } = existing ?? {}
+    void _dropServerUrl
+    void _dropEnabledTools
+
+    next.mcpServers.muninn = {
+        ...rest,
+        type: 'sse',
+        url: MUNINN_MCP_SERVER_URL,
+        headers: {
+            ...((existing?.headers as Record<string, string> | undefined) ?? {}),
+            Authorization: authHeader,
+        },
+    }
+
+    return next
+}
+
+/**
+ * Register the MuninnDB MCP server in the user's *primary* Claude config
+ * (`~/.claude.json`, NOT `~/.claude/settings.json`).
+ *
+ * WS4: this is a global file-merge that replaces the old per-project
+ * `claude mcp add` shell-out. Because `~/.claude.json` holds far more than MCP
+ * (projects, history, …), the write is merge-only and atomic:
+ *
+ *  - Read + try/catch parse guard. Fall back to `{}` ONLY when JSON.parse
+ *    throws — never on a populated, readable file (that would silently drop the
+ *    user's config).
+ *  - Resolve the token via `opts.token ?? readMuninnToken()`; skip+log
+ *    actionable guidance and `return` BEFORE any write when absent (D3 — never
+ *    emit a partial/placeholder entry; Claude does not interpolate env vars
+ *    here).
+ *  - Write to a temp file in the same directory then `rename` over the target
+ *    (atomic replace — a crash mid-write can't truncate the primary config).
+ *  - chmod 0600 (the file now holds a Bearer token) but never LOOSEN a stricter
+ *    existing mode.
+ */
+export async function wireClaudeMcp(
+    opts: WireClaudeHooksOptions = {}
+): Promise<void> {
+    const log = opts.log ?? (() => {})
+    const configPath = join(homedir(), '.claude.json')
+
+    // A corrupt or hand-edited ~/.claude.json must not abort `luca init` — fall
+    // back to an empty config ONLY on parse failure. A readable, populated file
+    // is always preserved; never clobber the user's primary config.
+    let existing: ClaudeUserConfig = {}
+    if (existsSync(configPath)) {
+        try {
+            existing =
+                ((JSON.parse(
+                    await readFile(configPath, 'utf-8')
+                ) as ClaudeUserConfig) ?? {})
+        } catch {
+            existing = {}
+        }
+    }
+
+    const token = opts.token ?? (await readMuninnToken())
+
+    // D3: never write a partial config. Claude inlines the token (no env
+    // interpolation), so without a present token we'd emit a useless entry.
+    // Gate here and surface actionable guidance instead. The `return` narrows
+    // `token` to `string` for the merge call below.
+    if (!token) {
+        log(
+            '  skip: Claude MCP not registered — no MuninnDB token found.\n' +
+                "        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`."
+        )
+        return
+    }
+
+    const next = mergeClaudeMcpRegistration(existing, token)
+
+    // Determine the post-write mode: tighten to 0600 (the file now holds a
+    // Bearer token) but never LOOSEN a stricter existing mode.
+    let mode = 0o600
+    if (existsSync(configPath)) {
+        const existingMode = statSync(configPath).mode & 0o777
+        if (existingMode < mode) {
+            mode = existingMode
+        }
+    }
+
+    // Atomic write: serialize to a temp file in the same directory, then rename
+    // over the target. rename(2) within a filesystem is atomic, so a crash
+    // mid-write cannot truncate ~/.claude.json (the user's primary config).
+    const tmpPath = join(
+        homedir(),
+        `.claude.json.luca-${process.pid}-${Date.now()}.tmp`
+    )
+    await writeFile(tmpPath, JSON.stringify(next, null, 2) + '\n')
+    chmodSync(tmpPath, mode)
+    await rename(tmpPath, configPath)
+    log(`  write: ${configPath}`)
 }
