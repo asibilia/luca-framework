@@ -43,14 +43,12 @@ import { defineCommand, runMain } from 'citty'
 import { join } from 'pathe'
 
 import {
+    HARNESSES,
     defaultAntigravityHome,
     defaultClaudeHome,
     installHooks,
     installSkills,
     installStatusline,
-    wireAntigravityHooks,
-    wireAntigravityMcp,
-    wireClaudeHooks,
     writeProjectSkeleton,
 } from '../init'
 import { detectProjectContext } from '../utils/detect'
@@ -218,9 +216,10 @@ export const initCommand = defineCommand({
                 'Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)'
             )
             await installSkills({ log: (msg) => p.log.info(msg) })
-            await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
-            await wireAntigravityHooks({ log: (msg) => p.log.info(msg) })
-            await wireAntigravityMcp({ log: (msg) => p.log.info(msg) })
+            for (const h of HARNESSES) {
+                await h.wireHooks({ log: (msg) => p.log.info(msg) })
+                if (h.mcp) await h.mcp.wire({ log: (msg) => p.log.info(msg) })
+            }
             await installStatusline({ log: (msg) => p.log.info(msg) })
             agentSetupRan = true
             p.log.success(
