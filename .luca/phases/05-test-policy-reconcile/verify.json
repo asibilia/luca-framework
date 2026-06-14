@@ -1,0 +1,92 @@
+{
+  "wave": 1,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0 with all 105 test files present",
+      "met": true,
+      "evidence": "TSC_EXIT=0 (tsc --noEmit clean, all .test.ts present)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "wire-claude-hooks.test.ts and build-muninn-instruction.test.ts assert no behavior removed in phases 1-4",
+      "met": true,
+      "evidence": "wire-claude-hooks.test.ts:21-103 — all assertions target the stage-gate HOOK in settings.json (PreToolUse, 'luca hook stage-gate', idempotency, merge); zero Antigravity-MCP/mcp_config.json refs. build-muninn-instruction.test.ts:17-67 — asserts tool name + argsJson=JSON.stringify + instruction contains tool/JSON.parse/description, all still true post native-call edit.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "No test file references wireAntigravityMcp/mergeAntigravityMcpRegistration/wireClaudeMcp/mergeClaudeMcpRegistration",
+      "met": true,
+      "evidence": "grep -rn '<4 symbols>' packages --include='*.test.ts' → GREP_EXIT=1 (zero matches)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "Reconcile commit landed; 2 package.json + 4 .test.ts committed (not dirty)",
+      "met": true,
+      "evidence": "git log -1 = 793f942ad reconcile commit; git show --stat 793f942ad = exactly handle-stage-gate-hook.test.ts, skill-validation.test.ts, write-project-skeleton.test.ts, phase-write-tools.test.ts, luca-framework/package.json, luca-tools/package.json; git status --porcelain shows none of these dirty (only .luca/, .planning/, .claude/cache).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "Stale 'tests intentionally removed' memory corrected",
+      "met": true,
+      "evidence": "summary.md:9,22 — correction recorded in MuninnDB brain:project-tests-are-maintained (canonical per user's MuninnDB-is-canonical convention). File-based ~/.claude MEMORY.md + rules/no-tests.md edit is hook-blocked (verified: all ~/.claude writes hard-blocked by stage-gate); flagged for manual update. Dual-evidence: executor attestation (summary Task-5.4) + structural probe (~/.claude write-block is real).",
+      "blocking": false,
+      "probeType": "config-read",
+      "deferred": false
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "Execute summary + learn name the MCP-merge coverage gap as a known follow-up",
+      "met": true,
+      "evidence": "summary.md:11-12 — explicit 'ACCEPTED coverage gap' section naming mergeAntigravityMcpRegistration (new token sig), mergeClaudeMcpRegistration, wireAntigravityMcp, wireClaudeMcp as recorded follow-up. learn.md not yet written (REVIEWING/learn step downstream) — summary requirement satisfied.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT delete any .test.ts/.spec.ts file",
+      "met": true,
+      "evidence": "git status --porcelain '*.test.ts' '*.spec.ts' → empty (no 'D' status). find packages -name '*.test.ts' -o -name '*.spec.ts' | wc -l = 105 (intact).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT remove 'test' script from root/luca-cli/luca-core/luca-mastracode",
+      "met": true,
+      "evidence": "root package.json:34 'test': 'bun run --filter * test'; luca-cli:30, luca-core:35, luca-mastracode:23 all 'test': 'bun test'. (luca-framework + luca-tools correctly have none — grep EXIT=1.)",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT alter any phase-1-4 SOURCE behavior",
+      "met": true,
+      "evidence": "git show --stat 793f942ad = 6 files: 4 .test.ts + 2 package.json only. No src/*.ts logic file touched.",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "ac-IDs consumed verbatim from plan.md Verification Criteria + Anti-criteria. ac-05 file-based MEMORY.md correction is hook-blocked under ~/.claude (real, verified block); correction recorded in MuninnDB (canonical) per summary Task-5.4 attestation — cannot independently query MuninnDB from a subagent, accepted via dual-evidence (attestation + structural write-block probe). Manual file-artifact update of ~/.claude MEMORY.md + rules/no-tests.md remains an out-of-repo follow-up for the orchestrator/user. ac-06 learn.md is a downstream REVIEWING/learn-step artifact, not yet written — summary requirement met.",
+  "deliverables": [
+    { "id": "d-01", "description": "keep tests; reconcile diff (tests intact, dead scripts removed, pre-existing edits committed)", "criterionIds": ["ac-01", "ac-04"], "compliance": "shipped" },
+    { "id": "d-02", "description": "no stale tests for changed code; MCP-merge coverage gap recorded", "criterionIds": ["ac-02", "ac-03", "ac-06"], "compliance": "shipped" },
+    { "id": "d-03", "description": "no-tests memory corrected", "criterionIds": ["ac-05"], "compliance": "shipped" }
+  ]
+}

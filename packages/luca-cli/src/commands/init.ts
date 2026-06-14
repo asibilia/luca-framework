@@ -31,8 +31,9 @@
  * # Skip MuninnDB setup (manage it separately)
  * luca init --skip-muninndb
  *
- * # Skip the global Claude integration (skills/commands/agents/hook)
+ * # Skip a specific harness (each flag governs ONLY that harness)
  * luca init --skip-claude
+ * luca init --skip-antigravity
  *
  * # Skip the per-project .luca/ skeleton (only do global setup)
  * luca init --skip-project
@@ -40,17 +41,17 @@
  */
 import * as p from '@clack/prompts'
 import { defineCommand, runMain } from 'citty'
+import { join } from 'pathe'
 
 import {
+    HARNESSES,
     defaultAntigravityHome,
     defaultClaudeHome,
     installHooks,
     installSkills,
-    installStatusline,
-    wireAntigravityHooks,
-    wireClaudeHooks,
     writeProjectSkeleton,
 } from '../init'
+import { detectProjectContext } from '../utils/detect'
 import { logger } from '../utils/logger'
 import { ensureLucaHome } from '../utils/luca-home'
 import { downloadMuninndbBinary } from '../utils/muninndb-download'
@@ -58,6 +59,11 @@ import { checkMuninndbBinary } from '../utils/muninndb-health'
 import { startMuninndb } from '../utils/muninndb-service'
 import { isOnPath, getPathGuidance } from '../utils/path-check'
 import { checkPrerequisites, promptBunInstall } from '../utils/prerequisites'
+import {
+    suggestVaultName,
+    autoCreateVault,
+    writeVaultConfig,
+} from '../utils/vault-setup'
 
 // ─── Init command definition ─────────────────────────────────────────────────
 
@@ -80,7 +86,13 @@ export const initCommand = defineCommand({
         'skip-claude': {
             type: 'boolean',
             description:
-                'Skip the global Claude integration (~/.claude/ skills, commands, agents, stage-gate hook)',
+                'Skip the global Claude harness integration (~/.claude/ hook + ~/.claude.json MCP). Does NOT affect Antigravity.',
+            default: false,
+        },
+        'skip-antigravity': {
+            type: 'boolean',
+            description:
+                'Skip the global Antigravity harness integration (~/.gemini/antigravity-cli/ hook + MCP).',
             default: false,
         },
         'skip-project': {
@@ -204,21 +216,61 @@ export const initCommand = defineCommand({
         const claudeHome = defaultClaudeHome()
         const agyHome = defaultAntigravityHome()
         let agentSetupRan = false
-        if (!args['skip-claude']) {
-            p.log.step('Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)')
-            await installSkills({ log: (msg) => p.log.info(msg) })
-            await wireClaudeHooks({ log: (msg) => p.log.info(msg) })
-            await wireAntigravityHooks({ log: (msg) => p.log.info(msg) })
-            await wireAntigravityMcp({ log: (msg) => p.log.info(msg) })
-            await installStatusline({ log: (msg) => p.log.info(msg) })
+
+        // Per-harness skip flags (WS8): `--skip-claude` now governs ONLY the
+        // Claude harness, `--skip-antigravity` ONLY Antigravity — neither
+        // gates the whole step.
+        const skipMap: Record<(typeof HARNESSES)[number]['id'], boolean> = {
+            claude: args['skip-claude'],
+            antigravity: args['skip-antigravity'],
+        }
+
+        // A harness is active when it is neither skipped nor uninstalled.
+        // Gating on `isInstalled()` (home dir exists) is the WS8 behavior
+        // change: init no longer pre-seeds a harness whose home doesn't exist
+        // yet ("don't scaffold a harness the user doesn't have"), reversing the
+        // old unconditional `mkdir -p`. (G-DX-005)
+        const activeHarnesses = HARNESSES.filter(
+            (h) => !skipMap[h.id] && h.isInstalled()
+        )
+
+        if (activeHarnesses.length > 0) {
+            p.log.step(
+                'Step 4/5: Agent integration (~/.claude/ + ~/.gemini/antigravity-cli/)'
+            )
+            // Artifact installs are now descriptor-driven and run per active
+            // harness inside this loop. This completes WS8: skills/agents/
+            // commands AND the statusline now respect the same
+            // `!skipMap[h.id] && h.isInstalled()` gating as hooks/MCP — a
+            // harness whose home is absent no longer receives any artifacts
+            // (previously installSkills/installStatusline ran unconditionally
+            // whenever ANY harness was active). For the default case (both
+            // harnesses present) the SAME files land in the SAME homes:
+            // Claude gets commands+agents+skills+statusline, Antigravity gets
+            // agents+skills — exactly as `installArtifacts` encodes.
+            for (const h of activeHarnesses) {
+                await installSkills({
+                    home: h.home(),
+                    artifacts: h.installArtifacts,
+                    log: (msg) => p.log.info(msg),
+                })
+                await h.wireHooks({ log: (msg) => p.log.info(msg) })
+                if (h.mcp) await h.mcp.wire({ log: (msg) => p.log.info(msg) })
+                await h.installExtras?.({ log: (msg) => p.log.info(msg) })
+            }
             agentSetupRan = true
-            p.log.success('Claude and Antigravity skills, stage-gate hook, and MCP settings installed')
+            p.log.success(
+                `Agent integration installed (${activeHarnesses
+                    .map((h) => h.displayName)
+                    .join(', ')})`
+            )
         } else {
-            p.log.info('Step 4/5: Agent integration (skipped)')
+            p.log.info('Step 4/5: Agent integration (skipped — no active harness)')
         }
 
         // ── Step 5: Per-project skeleton ─────────────────────────────────────
         let projectSetupRan = false
+        let automatedVaultName = ''
         if (!args['skip-project']) {
             p.log.step('Step 5/5: Project skeleton (.luca/ + .claude/hooks/)')
             const projectCwd = process.cwd()
@@ -236,8 +288,26 @@ export const initCommand = defineCommand({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
+
+            if (muninndbHealthy) {
+                const context = await detectProjectContext(projectCwd)
+                automatedVaultName = suggestVaultName(context, projectCwd)
+                await autoCreateVault(automatedVaultName)
+                const configPath = join(projectCwd, '.luca', 'config.json')
+                await writeVaultConfig(automatedVaultName, configPath)
+
+                // Claude MCP is now registered globally via the Step-4
+                // `h.mcp.wire` loop (wireClaudeMcp → ~/.claude.json file-merge),
+                // not a per-project `claude mcp add` shell-out.
+                p.log.success(
+                    `MuninnDB vault "${automatedVaultName}" automatically created`
+                )
+            }
+
             projectSetupRan = true
-            p.log.success(`Per-project skeleton written to ${projectCwd}/.luca/ + ${projectCwd}/.claude/`)
+            p.log.success(
+                `Per-project skeleton written to ${projectCwd}/.luca/ + ${projectCwd}/.claude/`
+            )
         } else {
             p.log.info('Step 5/5: Project skeleton (skipped)')
         }
@@ -272,8 +342,12 @@ export const initCommand = defineCommand({
         readout.push(`  ${homePaths.root}/`)
         readout.push(`  ${homePaths.bin}/`)
         if (agentSetupRan) {
-            readout.push(`  ${claudeHome}/  (Claude skills, agents, hook — global)`)
-            readout.push(`  ${agyHome}/  (Antigravity skills, agents, hook — global)`)
+            readout.push(
+                `  ${claudeHome}/  (Claude skills, agents, hook — global)`
+            )
+            readout.push(
+                `  ${agyHome}/  (Antigravity skills, agents, hook — global)`
+            )
         }
         if (projectSetupRan) {
             readout.push(`  ${process.cwd()}/.luca/  (per-project planning)`)
@@ -281,9 +355,11 @@ export const initCommand = defineCommand({
 
         readout.push('')
         readout.push('Next steps:')
-        readout.push(
-            '  To set up a project vault: cd <project> && luca vault:init'
-        )
+        if (!automatedVaultName) {
+            readout.push(
+                '  To set up a project vault: cd <project> && luca vault:init'
+            )
+        }
         readout.push('  To start the pipeline:     lu "<your task>"')
         readout.push(
             '  To seed project conventions:        invoke /luca-init from Claude Code'
@@ -294,25 +370,37 @@ export const initCommand = defineCommand({
         readout.push(
             '     stores them in MuninnDB; downstream pipeline modes consult them)'
         )
-        // MuninnDB serves its MCP endpoint on its own fixed port (8750),
-        // distinct from the service/dashboard port (8476). luca does not
-        // manage the MCP port, so it is not derived from MUNINNDB_PORT.
-        readout.push(
-            '  To expose MuninnDB to Claude Code: register it as an MCP server,'
-        )
-        readout.push(
-            `    e.g. claude mcp add --transport sse muninn http://localhost:8750/mcp \\`
-        )
-        readout.push(
-            '         --header "Authorization: Bearer <your-muninn-api-key>"'
-        )
-        readout.push(
-            '    (or add a "muninn" entry under mcpServers in .mcp.json). Use the'
-        )
-        readout.push(
-            '    same key as `luca vault:init` (.env MUNINN_DB_API_KEY). See the'
-        )
-        readout.push('    README "MuninnDB" section for details.')
+
+        if (!automatedVaultName) {
+            // This branch runs only when vault automation did NOT happen —
+            // i.e. MuninnDB was unreachable during this `luca init`. When
+            // MuninnDB is healthy, `luca init` AUTO-registers it as an MCP
+            // server for BOTH harnesses (Claude via a ~/.claude.json
+            // file-merge, Antigravity via mcp_config.json) in Step 4, so no
+            // manual command is needed. Steer the user back to that path.
+            readout.push(
+                '  MuninnDB MCP not registered (MuninnDB was unreachable this run).'
+            )
+            readout.push(
+                '    Start MuninnDB (`muninn start`), then re-run `luca init` — it'
+            )
+            readout.push(
+                '    auto-registers MuninnDB as an MCP server for every installed'
+            )
+            readout.push(
+                '    harness (Claude + Antigravity) once the service is healthy.'
+            )
+            readout.push(
+                '    Manual fallback: add a "muninn" entry under mcpServers pointing'
+            )
+            readout.push(
+                '    at the MuninnDB MCP endpoint, using the same key as'
+            )
+            readout.push(
+                '    `luca vault:init` (.env MUNINN_DB_API_KEY). See the README'
+            )
+            readout.push('    "MuninnDB" section for details.')
+        }
 
         p.note(readout.join('\n'), 'Setup Complete')
 

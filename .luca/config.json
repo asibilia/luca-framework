@@ -52,6 +52,6 @@
     }
   },
   "muninn": {
-    "vault": "luca-framework"
+    "vault": "luca-monorepo"
   }
 }

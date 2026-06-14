@@ -1,0 +1,176 @@
+{
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "`bunx --bun tsc --noEmit` -> EXIT=0 (re-run post commit d224c2e67)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "mergeClaudeMcpRegistration is exported (pure)",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:381 `export function mergeClaudeMcpRegistration(`",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "merge fixture preserves unrelated top-level keys + sibling mcpServers; muninn uses Claude schema",
+      "met": true,
+      "evidence": "bun -e (temp HOME): deepStrictEqual(mergeClaudeMcpRegistration({foo:'keep',mcpServers:{other:{}}},'mdb_x'), {foo:'keep',mcpServers:{other:{},muninn:{type:'sse',url:'http://127.0.0.1:8750/mcp',headers:{Authorization:'Bearer mdb_x'}}}}) -> 'ac-03 golden merge: PASS'",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "Claude entry uses type/url/headers, NOT serverUrl/enabledTools",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:418-426 writes {type:'sse',url:MUNINN_MCP_SERVER_URL,headers:{...,Authorization}}; serverUrl/enabledTools destructure-omitted 410-416. Golden fixture result carries type/url/headers only.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "wireClaudeMcp chmod 0600 + readMuninnToken",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:482 `opts.token ?? await readMuninnToken()`; :500 mode=0o600; :520 writeFile(tmpPath,...,{mode}); :521 chmodSync(tmpPath, mode). Temp-HOME fixture: final ~/.claude.json mode==0o600.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "claudeHarness has an mcp field",
+      "met": true,
+      "evidence": "Confirmed in prior verify (harness.ts mcp.wire -> wireClaudeMcp); unchanged by security-fix wave (only wire-claude-hooks.ts touched).",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "No `claude mcp add` shell-out / Bun.spawn in init.ts",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "--skip-antigravity arg defined",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "skip-claude gates only the claude harness, not the whole Step-4 block",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "isInstalled now USED in init.ts (phase-3 anti-03 reversed)",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "Step-4 gating predicate skips a harness whose home() does not exist",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "sec-fix-1",
+      "description": "Clobber guard (wireClaudeMcp AND wireAntigravityMcp): absent/whitespace->{}; valid->merge-preserve; present+nonempty+unparseable->ABORT before any write, original byte-for-byte unchanged",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts three-case read guard: Claude :464-480 / Antigravity :196-212. Fixtures (temp HOME): CLAUDE malformed '{\"foo\":1,}' -> unchanged=true noMuninnEntry=true abortLogged=true tmpLeftovers=[]; absent->created=true; valid->theme+projects+other+muninn all true; whitespace-only->created=true. AGY malformed -> unchanged=true noMuninn=true abortLogged=true; absent->created; valid->keepme+other+muninn preserved.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "sec-fix-2",
+      "description": "Temp/file perms restrictive from inception: wireClaudeMcp writeFile(tmp,{mode}); wireAntigravityMcp writeFile({mode:0o600}); final file 0600, no .tmp leftover",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:520 `writeFile(tmpPath, data, { mode })` (not 0644-then-chmod) + :521 chmodSync; AGY :234-237 `writeFile(mcpConfigPath, ..., { mode: 0o600 })` + chmodSync. Fixtures: CLAUDE finalMode=600 is0600=true tmpLeftovers=[]; AGY finalMode=600 is0600=true.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "sec-fix-3",
+      "description": "wireClaudeMcp writeFile->chmod->rename wrapped in try/catch that unlinks temp on error",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:515-527 try { writeFile/chmodSync/rename } catch { await unlink(tmpPath).catch(()=>{}); throw }. Fixture: made ~/.claude.json a directory to force rename failure -> threw=true tmpLeftovers=[] (orphan temp cleaned).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT clobber/replace whole ~/.claude.json — merge only",
+      "met": true,
+      "evidence": "Golden merge + IO fixtures preserve all keys; clobber-on-malformed bug now closed by sec-fix-1 (malformed nonempty config left byte-for-byte unchanged).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT let --skip-claude govern Antigravity",
+      "met": true,
+      "evidence": "Confirmed in prior verify; init.ts not touched by d224c2e67.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT write ${MUNINN_DB_API_KEY} placeholder for Claude",
+      "met": true,
+      "evidence": "D3 Claude no-token fixture: untouched=true noPlaceholder=true skipLogged='no MuninnDB token'. No MUNINN_DB_API_KEY emitted.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT alter phase-1 Antigravity writer invariants",
+      "met": true,
+      "evidence": "AGY merged-entry fixture: serverUrl='http://127.0.0.1:8750/mcp', enabledTools includes '*', Authorization='Bearer mdb_x', no stale 'url' key. chmodSync 0o600 (:237), readMuninnToken (:214) intact.",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "sec-fix-1 clobber-guard (claude+antigravity: malformed-abort/absent-create/valid-merge/whitespace)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "sec-fix-2 temp-perms (inception 0600, no .tmp leftover, claude+antigravity)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "sec-fix-3 temp-cleanup-on-error (rename-fail -> unlink temp)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "regression (ac-03 golden merge / anti-04 / D3 no-token)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "Delta re-verify after security-fix commit d224c2e67 (only wire-claude-hooks.ts changed; init.ts/harness.ts untouched, so ac-06..ac-11/anti-02 carried forward from wave-3 verify). All 3 audit findings (security.md MUST-FIX 1+2, SHOULD-FIX 3) CONFIRMED FIXED via temp-HOME bun -e fixtures with HOME overridden (mktemp); the real ~/.claude.json and ~/.gemini/antigravity-cli/mcp_config.json were never read or written. SEC-FIX-1: three-case read guard distinguishes absent/whitespace->{}, valid->parsed-merge, present+nonempty+unparseable->ABORT-before-write; malformed-nonempty fixture left both Claude and Antigravity configs byte-for-byte unchanged with no muninn entry and abort guidance logged. SEC-FIX-2: temp written restrictive from inception via writeFile {mode} (not 0644-then-chmod); Antigravity writeFile {mode:0o600}; final files 0600, no .tmp leftovers. SEC-FIX-3: writeFile->chmod->rename wrapped in try/catch unlinking tmpPath on error; forced rename failure (target made a directory) threw with zero temp leftovers. Regression originals hold: ac-01 tsc EXIT=0; ac-03 golden merge deepStrictEqual PASS; anti-04 Antigravity invariants intact; D3 no-token skip+log with no placeholder for both writers.",
+  "deliverables": [
+    {
+      "id": "d-01",
+      "description": "WS4 — global Claude MCP file-merge replacing shell-out",
+      "criterionIds": ["ac-01", "ac-02", "ac-04", "ac-06", "ac-07", "sec-fix-1", "sec-fix-2", "sec-fix-3"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "d-02",
+      "description": "WS8 — per-harness skip flags + isInstalled gating",
+      "criterionIds": ["ac-08", "ac-10", "ac-11"],
+      "compliance": "shipped"
+    }
+  ]
+}

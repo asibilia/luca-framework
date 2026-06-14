@@ -19,16 +19,15 @@ export {
     installSkills,
     listBundledArtifacts,
     defaultClaudeHome,
+    defaultAntigravityHome,
 } from './helpers/install-skills.ts'
 export type {
     InstallSkillsOptions,
+    InstallSkillsArtifacts,
     BundledArtifacts,
 } from './helpers/install-skills.ts'
 
-export {
-    installHooks,
-    mergeLucaHookSettings,
-} from './helpers/install-hooks.ts'
+export { installHooks, mergeLucaHookSettings } from './helpers/install-hooks.ts'
 export type { InstallHooksOptions } from './helpers/install-hooks.ts'
 
 export {
@@ -39,3 +38,13 @@ export type {
     InstallStatuslineOptions,
     StatuslineMergeAction,
 } from './helpers/install-statusline.ts'
+
+export {
+    HARNESSES,
+    claudeHarness,
+    antigravityHarness,
+} from './helpers/harness.ts'
+export type {
+    Harness,
+    HarnessInstallExtrasOptions,
+} from './helpers/harness.ts'

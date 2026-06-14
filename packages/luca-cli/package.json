@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca-cli",
   "description": "Luca CLI — the luca command surface (private; bundled into @alecsibilia/luca)",
-  "version": "13.0.0-alpha.10",
+  "version": "13.0.0-alpha.12",
   "dependencies": {
     "@alecsibilia/luca-core": "workspace:*",
     "@alecsibilia/luca-tools": "workspace:*",

@@ -1,0 +1,115 @@
+{
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "Zero non-.test.ts matches for autoCreateApiKey in packages/",
+      "met": true,
+      "evidence": "grep -rn 'autoCreateApiKey' packages/ --include='*.ts' → zero matches (no test refs either)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "tsc --noEmit → TSC_EXIT_0",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "autoCreateVault live import preserved in init.ts",
+      "met": true,
+      "evidence": "init.ts:67 import + :257 call site",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "Exactly one exported readMuninnToken in muninn-token.ts",
+      "met": true,
+      "evidence": "grep -c 'export async function readMuninnToken' muninn-token.ts → 1; muninn-token.ts:21-23 signature with path default join(homedir(),'.muninn','mcp.token')",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05.1",
+      "description": "wire-claude-hooks.ts rewired to call readMuninnToken",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:5 import; :177 `const token = opts.token ?? (await readMuninnToken())`",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05.2",
+      "description": "init.ts rewired to call readMuninnToken",
+      "met": true,
+      "evidence": "init.ts:62 import; :261 `const token = await readMuninnToken()`",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "readMuninnToken(temp file ' tok \\n') returns 'tok'; nonexistent path returns undefined",
+      "met": true,
+      "evidence": "DUAL-EVIDENCE: bun -e probe stage-gate-blocked in verify (Bash mutate disallowed in REVIEWING). Structural read muninn-token.ts:24-31 — existsSync→readFile().trim() on present, returns undefined on absent/catch. Executor attestation summary.md:14 'temp-fixture probe → trimmed value; nonexistent → undefined ✓'.",
+      "blocking": true,
+      "probeType": "config-read"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "chmodSync(mcpConfigPath, 0o600) still present in wire-claude-hooks.ts",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:196",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Comment line in build-muninn-instruction.ts documents native-invocation rationale (failure mode)",
+      "met": true,
+      "evidence": "build-muninn-instruction.ts:55-61 // comment block referencing flattened registry / call_mcp_tool / 'not enabled' / Antigravity; instruction literal at :63 unchanged",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "No unused existsSync/readFile/homedir imports remain in init.ts",
+      "met": true,
+      "evidence": "grep -c each in init.ts → existsSync 0, readFile 0, homedir 0 (imports removed; symbols no longer referenced)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT delete writeApiKeyToEnv/autoCreateVault definitions in vault-setup.ts",
+      "met": true,
+      "evidence": "vault-setup.ts:117 export autoCreateVault; :343 export writeApiKeyToEnv (both definitions present)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT change phase-1 Antigravity writer behavior (serverUrl const, enabledTools ['*'], chmod 0600, token gate)",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:314 serverUrl: MUNINN_MCP_SERVER_URL; :319 enabledTools: ['*']; :196 chmodSync(mcpConfigPath, 0o600); :183-189 token gate (skip+log+return on missing token) intact",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "ac-05 excluded (tombstoned [SPLIT → ac-05.1, ac-05.2]). ac-06 verified via dual-evidence: bun -e probe is stage-gate-blocked in verify (Bash category=bash-mutate disallowed in REVIEWING), so substituted structural read of readMuninnToken (muninn-token.ts:24-31) + executor attestation (summary.md:14). All other criteria probed directly via grep/tsc.",
+  "deliverables": [
+    { "id": "D1", "description": "dead autoCreateApiKey + import removed, no symbol left", "criterionIds": ["ac-01", "ac-02", "ac-03"], "compliance": "shipped" },
+    { "id": "D2", "description": "single shared readMuninnToken() consumed by both former inline readers, no orphaned imports", "criterionIds": ["ac-04", "ac-05.1", "ac-05.2", "ac-06", "ac-07", "ac-09"], "compliance": "shipped" },
+    { "id": "D3", "description": "native-invocation rationale documented in build-muninn-instruction.ts", "criterionIds": ["ac-08"], "compliance": "shipped" }
+  ]
+}

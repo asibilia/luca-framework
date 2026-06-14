@@ -52,8 +52,15 @@ export function buildMuninnInstruction(
     input: MuninnInstructionInput
 ): MuninnInstruction {
     const argsJson = JSON.stringify(input.args)
+    // The "call DIRECTLY as a native environment function" directive below is
+    // load-bearing for Antigravity. Antigravity exposes MCP tools in a
+    // flattened registry, and routing a `mcp__muninn__*` call through the
+    // generic `call_mcp_tool` wrapper made the server reject it — the tool
+    // came back as "not enabled" / "unknown tool name" until invoked natively.
+    // So we explicitly forbid `call_mcp_tool` and tell the agent to call the
+    // named MCP tool directly. Keep the wording in sync with this rationale.
     const instructionForAgent =
-        `Call ${input.tool}. ${input.description} ` +
+        `Call the ${input.tool} tool DIRECTLY as a native environment function (do NOT use wrapper tools like \`call_mcp_tool\`). ${input.description} ` +
         `Parse the args via JSON.parse on the argsJson field; do NOT ` +
         `interpolate any free-form values directly into the call.`
     return {
