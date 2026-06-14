@@ -18,6 +18,7 @@
     "feat-claude-code-statusline",
     "feat-doctor-install-health-checks",
     "feat-doctor-legacy-environment-cleanup",
+    "feat-mcp-automation",
     "feat-phase-advance-lifecycle",
     "feat-port-caveman-skill",
     "feat-v13-agent-roster-reconciliation",
