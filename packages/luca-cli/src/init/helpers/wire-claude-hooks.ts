@@ -56,9 +56,12 @@ interface AntigravitySettings {
     mcpServers?: Record<
         string,
         {
-            command: string
-            args: string[]
+            command?: string
+            args?: string[]
             env?: Record<string, string>
+            serverUrl?: string
+            headers?: Record<string, string>
+            enabledTools?: string[]
         }
     >
     [k: string]: unknown
@@ -130,8 +133,15 @@ export async function wireAntigravityHooks(
 }
 
 /**
- * Register the MuninnDB MCP server in the *global* Antigravity settings
+ * Register the MuninnDB MCP server in the *global* Antigravity MCP config
  * (`~/.gemini/antigravity-cli/mcp_config.json`).
+ *
+ * WS2: Antigravity reads its MCP server registry from a *dedicated*
+ * `mcp_config.json` file — NOT from the agent settings file's `mcpServers`
+ * key (that is the legacy Gemini-CLI surface and Antigravity ignores it).
+ * Antigravity also does NOT interpolate environment variables in this config,
+ * so the MuninnDB token must be written inline (a literal `Bearer <token>`
+ * header), never an env-var placeholder.
  */
 export async function wireAntigravityMcp(
     opts: WireClaudeHooksOptions = {}
@@ -158,6 +168,18 @@ export async function wireAntigravityMcp(
         } catch {
             // silently ignore read errors
         }
+    }
+
+    // D3: never write a partial config. Antigravity inlines the token (no env
+    // interpolation), so without a present token we'd emit a useless server
+    // entry. Gate here and surface actionable guidance instead. The `return`
+    // narrows `token` to `string` for the merge call below.
+    if (!token) {
+        log(
+            '  skip: Antigravity MCP not registered — no MuninnDB token found.\n' +
+                "        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`."
+        )
+        return
     }
 
     const next = mergeAntigravityMcpRegistration(existing, token)
@@ -244,26 +266,48 @@ export function mergeAntigravityHookRegistration(
  */
 export function mergeAntigravityMcpRegistration(
     settings: AntigravitySettings,
-    token?: string
+    token: string
 ): AntigravitySettings {
     const next: AntigravitySettings = { ...settings }
     next.mcpServers = { ...(settings.mcpServers ?? {}) }
 
-    // Idempotency: check if 'muninn' already exists
-    if (next.mcpServers.muninn) {
+    // Antigravity does not interpolate env vars in mcp_config.json, so the
+    // token is inlined directly into the Authorization header.
+    const authHeader = `Bearer ${token}`
+
+    // Idempotency / correctness: leave the entry untouched only when ALL of
+    // the canonical invariants already hold — Streamable-HTTP serverUrl, the
+    // exact inlined token, the `*` tool allowlist, and no stale `url` key from
+    // an older SSE-transport config.
+    const existing = next.mcpServers.muninn
+    if (
+        existing &&
+        existing.serverUrl === 'http://127.0.0.1:8750/mcp' &&
+        existing.headers?.Authorization === authHeader &&
+        Array.isArray(existing.enabledTools) &&
+        existing.enabledTools.includes('*') &&
+        !('url' in (existing as Record<string, unknown>))
+    ) {
         return next
     }
 
-    // Note: This uses the native SSE transport for MuninnDB via serverUrl.
-    // The API key is sourced from ~/.muninn/mcp.token (from `muninn init`),
-    // falling back to the legacy environment variable if missing.
-    const authHeader = token ? `Bearer ${token}` : 'Bearer ${MUNINN_DB_API_KEY}'
+    // Merge-not-replace: preserve any user-set headers and other fields while
+    // dropping the stale `url` key (legacy SSE transport — Antigravity uses
+    // Streamable-HTTP via `serverUrl`). `url` is not part of the canonical
+    // type, so omit it via a record-typed destructure.
+    const { url: _drop, ...rest } = (existing ?? {}) as Record<string, unknown>
+    void _drop
 
+    // enabledTools: ['*'] is load-bearing. Without it Antigravity rejects tool
+    // calls with `tool muninn_recall is not enabled for server muninn`.
     next.mcpServers.muninn = {
+        ...rest,
         serverUrl: 'http://127.0.0.1:8750/mcp',
         headers: {
+            ...(existing?.headers ?? {}),
             Authorization: authHeader,
         },
+        enabledTools: ['*'],
     }
 
     return next
