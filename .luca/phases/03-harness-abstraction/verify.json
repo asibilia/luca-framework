@@ -1,0 +1,117 @@
+{
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "bunx --bun tsc --noEmit -> TSC_EXIT=0",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "interface Harness present in harness.ts.",
+      "met": true,
+      "evidence": "harness.ts:32 `export interface Harness {` (fields: id, displayName, home(), isInstalled(), installArtifacts, wireHooks(opts), optional mcp?.wire)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "HARNESSES array contains both claude and antigravity descriptors.",
+      "met": true,
+      "evidence": "harness.ts:72 `export const HARNESSES: Harness[] = [claudeHarness, antigravityHarness]`; claudeHarness id:'claude' (:52), antigravityHarness id:'antigravity' (:63)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "HARNESSES re-exported from init barrel.",
+      "met": true,
+      "evidence": "init/index.ts:41-46 re-exports HARNESSES, claudeHarness, antigravityHarness, type Harness from ./helpers/harness.ts",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "commands/init.ts iterates HARNESSES; hardcoded wireAntigravityMcp( call gone from Step 4.",
+      "met": true,
+      "evidence": "commands/init.ts:46 imports HARNESSES, :219 `for (const h of HARNESSES)`, :220 h.wireHooks, :221 await h.mcp.wire; grep 'wireAntigravityMcp(' in commands/init.ts -> no match",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "All three merge* pure fns remain exported in wire-claude-hooks.ts.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts:207 mergeStageGateRegistration, :244 mergeAntigravityHookRegistration, :276 mergeAntigravityMcpRegistration",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Both home exports preserved in install-skills.ts.",
+      "met": true,
+      "evidence": "install-skills.ts:47 defaultClaudeHome, :52 defaultAntigravityHome",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Phase-1/2 antigravity MCP invariants untouched in wire-claude-hooks.ts.",
+      "met": true,
+      "evidence": "wire-claude-hooks.ts: MUNINN_MCP_SERVER_URL (:13 const, :314 serverUrl), enabledTools:['*'] (:319, gate :296-297), chmodSync(mcpConfigPath, 0o600) (:196), readMuninnToken gate (:177,:183-189)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT remove Step-5 claude mcp add shell-out.",
+      "met": true,
+      "evidence": "commands/init.ts:264-282 Bun.spawn(['claude','mcp','add',...]) intact (:267 'mcp'); refactor diff (5c34aaac4) does not touch Step 5",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT add --skip-antigravity / --skip-harness flag.",
+      "met": true,
+      "evidence": "grep 'skip-antigravity|skip-harness' commands/init.ts -> no match",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT gate any wiring on isInstalled() in init.",
+      "met": true,
+      "evidence": "grep 'isInstalled' commands/init.ts -> no match; isInstalled defined in harness.ts:55,65 only (forward-scaffolding, not referenced by init loop)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT drop installStatusline / installSkills from Step 4.",
+      "met": true,
+      "evidence": "commands/init.ts:218 await installSkills (before loop), :223 await installStatusline (after loop) — both direct + unconditional",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "BEHAVIOR-EQUIVALENCE: CONFIRMED. Refactor commit 5c34aaac4 diff shows exact substitution of `await wireClaudeHooks(opts); await wireAntigravityHooks(opts); await wireAntigravityMcp(opts)` with `for (const h of HARNESSES) { await h.wireHooks(opts); if (h.mcp) await h.mcp.wire(opts) }`. Same 3 effective calls in equivalent order: claude(wireClaudeHooks, no mcp) -> antigravity(wireAntigravityHooks then wireAntigravityMcp). Both harnesses' wireHooks invoked; antigravity mcp.wire invoked (mcp_config.json write preserved); claude has no mcp so no spurious write; Step-5 `claude mcp add` shell-out untouched. installSkills (before loop) + installStatusline (after loop) remain direct/unconditional, not gated on isInstalled. Descriptors are thin pass-throughs (opts)=>wireX(opts) with no re-authored merge logic (harness.ts:57,67,68). No silent behavior change detected.",
+  "deliverables": [
+    { "id": "D1", "description": "Harness descriptor + luca init routes wiring through HARNESSES", "criterionIds": ["ac-01", "ac-02", "ac-05"], "compliance": "shipped" },
+    { "id": "D2", "description": "Both claude and antigravity descriptors in registry", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D3", "description": "Per-harness pure merge* fns intact + exported", "criterionIds": ["ac-06"], "compliance": "shipped" },
+    { "id": "D4", "description": "Phase-1/2 antigravity MCP invariants + home exports preserved", "criterionIds": ["ac-08", "ac-07", "anti-03"], "compliance": "shipped" }
+  ]
+}
