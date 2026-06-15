@@ -1,0 +1,232 @@
+{
+  "timestamp": "2026-06-14T00:00:00.000Z",
+  "wave": 5,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "3 new kinds (signal.satisfaction, signal.failure-dump, classifier.override) present in TelemetryKind union",
+      "met": true,
+      "evidence": "grep -c on schemas.ts = 7 (>=3); kinds at schemas.ts:38-41",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "OverrideSource enum with cli-flag/force-complex/human-ask/heuristic-promotion present",
+      "met": true,
+      "evidence": "OverrideSourceSchema z.enum at schemas.ts:96-101 with all 4 sources",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "3 meta-validators (Satisfaction/ClassifierOverride/FailureDump MetaSchema) defined",
+      "met": true,
+      "evidence": "grep -c on schemas.ts = 9 (>=3); SatisfactionSignalMetaSchema:113, ClassifierOverrideMetaSchema:133, FailureDumpMetaSchema:153",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "classifier.override emit wired in lu body",
+      "met": true,
+      "evidence": "lu/index.ts:75 emit kind classifier.override",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "heuristic comparison uses full 'luca classify --task <request> --json' (--task required per classify.ts:30-35)",
+      "met": true,
+      "evidence": "lu/index.ts:73 'luca classify --task \"<request>\" --json'; classify.ts:31-35 confirms task required:true",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "classifier.override added to aggregator known-kind list",
+      "met": true,
+      "evidence": "grep classifier.override exit 0 in luca-telemetry-report/index.ts",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "signal.satisfaction emit wired in lu body",
+      "met": true,
+      "evidence": "lu/index.ts:117,181,237 signal.satisfaction emits",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-08.1",
+      "description": "NEW satisfaction meta literal source:'gate-ask' present (distinct from pre-existing [gate-ask] annotation)",
+      "met": true,
+      "evidence": "lu/index.ts:179 meta-key label source:'gate-ask' + runnable emit :181 \"source\":\"gate-ask\"",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-08.2",
+      "description": "oversight-pause satisfaction source present",
+      "met": true,
+      "evidence": "lu/index.ts:237 emit with source:oversight-pause; prose at :235",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "implicit-outcome satisfaction emit exists by construction (full-auto sparsity guarantee)",
+      "met": true,
+      "evidence": "lu/index.ts:114 meta-key source:'outcome' + runnable emit :117 \"source\":\"outcome\"",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "signal.failure-dump emit wired at terminal failure branches",
+      "met": true,
+      "evidence": "lu/index.ts:138,143 signal.failure-dump emits",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "large-dump meta.dumpRef token present",
+      "met": true,
+      "evidence": "lu/index.ts:143 dumpRef in failure-dump emit meta",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-12.1",
+      "description": "signal.satisfaction in aggregator known list",
+      "met": true,
+      "evidence": "grep signal.satisfaction exit 0 in luca-telemetry-report/index.ts",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-12.2",
+      "description": "signal.failure-dump in aggregator known list",
+      "met": true,
+      "evidence": "grep signal.failure-dump exit 0 in luca-telemetry-report/index.ts",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "signal-clustering step added to learner",
+      "met": true,
+      "evidence": "grep cluster|theme|synthesi exit 0 in learner.ts; Signal Synthesis step at :67",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "learn-step <signal-digest> injection block present in lu body",
+      "met": true,
+      "evidence": "lu/index.ts:213-223 <signal-digest> injection block mirroring confidence-gate-resolutions",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "session-resume readback references signal telemetry",
+      "met": true,
+      "evidence": "session-resume/index.ts:38-63 signal readback; uses .sessionId (not .runId) at :46, graceful skip when unset :48-52, signal.failure-dump named :57",
+      "blocking": true
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "bunx --bun tsc --noEmit exits 0 across schema + instruction-body deltas",
+      "met": true,
+      "evidence": "tsc --noEmit exit 0",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT change required/optional status of pre-existing TelemetryRecord field block",
+      "met": true,
+      "evidence": "git diff --cached schemas.ts = 81 insertions, 0 deletions; hunk @@ -80,3 +83,81 @@ appends AFTER TelemetryRecordSchema (lines 72-85 untouched); all .optional() additions belong to new MetaSchemas",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT register a new CLI verb/subcommand",
+      "met": true,
+      "evidence": "git diff --cached telemetry.ts cli.ts produces no subCommands/defineCommand additions (empty)",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT reference any luca verb/flag absent from telemetry.ts/classify.ts CLI",
+      "met": true,
+      "evidence": "all luca verbs in lu/index.ts (telemetry emit/new-run, classify, state read/advance, roadmap create, checks run, confidence gate, phase current/advance) are real; --run-id and new-run confirmed real in telemetry.ts:32-36,103-111; --task confirmed in classify.ts:31-35",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT wire any *MetaSchema into a throwing emit path",
+      "met": true,
+      "evidence": "grep MetaSchema.parse( across telemetry dirs + telemetry.ts = 0 matches; MetaSchemas are .passthrough() advisory only",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT add a new .luca/ phase-artifact contract entry for failure dumps",
+      "met": true,
+      "evidence": "git diff --cached packages/luca-core/src/luca-dir empty; dumps live in gitignored .luca/tmp/",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT instruct a subagent to fetch telemetry/MuninnDB itself",
+      "met": true,
+      "evidence": "learner.ts mentions of luca telemetry/mcp__muninn are all prohibitive ('Do NOT attempt') prose; digest stated orchestrator-injected at :39,:67,:82",
+      "blocking": true
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "MUST NOT create .test.ts files or invoke bun test",
+      "met": true,
+      "evidence": "git diff --cached --name-only has no *.test.ts; no 'bun test' in lu/learner/session-resume bodies",
+      "blocking": true
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "passed": true },
+    { "name": "run-id-runnability (emits-without-run-id=0)", "passed": true },
+    { "name": "telemetry-new-run-fallback-present", "passed": true },
+    { "name": "no-broken-runId-refs", "passed": true },
+    { "name": "anti-03-phantom-cli", "passed": true }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "CYCLE-2 re-verify after wave-5 review-fix. The 2 MUST-FIX from code-simplifier.md are resolved and re-probed for RUNNABILITY (not just token presence): (1) all 6 'luca telemetry emit' examples in lu/index.ts carry --run-id (emits-without-run-id=0); the run id is established once at Step 0 from sessionId with a 'luca telemetry new-run' fallback (telemetry new-run is a real verb, telemetry.ts:103-111). (2) the nonexistent state.runId field is replaced by sessionId everywhere (lu/index.ts learn-step + session-resume readback); no broken state.runId or jq '.runId' refs remain — the only 'runId' tokens are the legitimate --run-id <runId> flag placeholder. SHOULD-FIX applied: session-resume names signal.failure-dump and --meta JSON-safety prose added. Split parents ac-08/ac-12 excluded per ID-stability rule; only live children graded. All ac-IDs consumed verbatim from plan.md ## Verification Criteria.",
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "REQ-04 3-path satisfaction capture (gate-ask, oversight-pause, outcome)",
+      "criterionIds": ["ac-07", "ac-08.1", "ac-08.2", "ac-09", "ac-12.1", "ac-12.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "REQ-04 failure dumps (inline + dumpRef)",
+      "criterionIds": ["ac-10", "ac-11"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D3",
+      "description": "REQ-04 synthesis clusters (learner themes in learn.md)",
+      "criterionIds": ["ac-13", "ac-14"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D4",
+      "description": "REQ-04 session readback (signals + themes on resume)",
+      "criterionIds": ["ac-15"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D5",
+      "description": "REQ-05 classifier-override telemetry with override-source taxonomy",
+      "criterionIds": ["ac-04", "ac-05", "ac-06"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D6",
+      "description": "Schema substrate: new kinds + override-source enum + fail-safe meta-validators, no field-optionality change",
+      "criterionIds": ["ac-01", "ac-02", "ac-03"],
+      "compliance": "shipped"
+    }
+  ]
+}

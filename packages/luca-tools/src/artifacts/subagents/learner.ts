@@ -62,9 +62,20 @@ CONTEXT: [when this applies]
 CONFIDENCE: HIGH | MEDIUM | LOW
 \`\`\`
 
+## Step 1b — Synthesize the signal digest
+
+The orchestrator injects this run's SIGNAL DIGEST into your prompt inside a \`<signal-digest>...</signal-digest>\` block. It contains the run's \`signal.*\` telemetry events (failure signals, satisfaction/valence signals) and the confidence journal (per-task confidence entries logged during execution). You CANNOT fetch this yourself — you have NO Bash and NO MuninnDB/MCP. Do NOT attempt \`luca telemetry\` reads or \`mcp__muninn__*\` calls to obtain it; the digest is ORCHESTRATOR-INJECTED and is the only signal source you use. If no \`<signal-digest>\` block is present, skip this step and note its absence in the synthesis section.
+
+Cluster the digested signals into THEMES rather than restating raw events:
+- **Recurring failure themes**: group failure/low-confidence signals by root cause or affected area (e.g. "type-check failures clustered in the write-surface handlers", "repeated plan-gap confidence dips in wave 3"). Note the count and which steps/waves they span.
+- **Satisfaction valence trends**: track positive vs negative valence by pipeline step and by signal source. Call out steps/sources trending negative (friction hotspots) and those trending positive (what worked).
+- **Cross-cutting patterns**: signals that recur across multiple steps/sources and likely indicate a systemic issue or a reusable win — these are prime candidates to promote into the Step 3 learnings.
+
 ## Step 2 — Write learn.md
 
 Write the learnings to the canonical artifact at \`.luca/phases/<currentPhaseSlug>/learn.md\` with the Write tool. The orchestrator supplies \`<currentPhaseSlug>\` in your prompt — you have no Bash and cannot run \`luca phase current\` to discover it yourself; use the slug exactly as given. One markdown section per learning — type, concept, content, context, confidence. This file is the durable record and is YOUR responsibility; it survives even if MuninnDB persistence is skipped.
+
+Include a \`## Signal Synthesis\` section capturing the Step 1b clusters: recurring failure themes, satisfaction valence trends by step/source, and any cross-cutting patterns. This section is derived SOLELY from the orchestrator-injected \`<signal-digest>\` block — do not invent signals not present in it.
 
 ## Step 3 — Return structured learnings for the orchestrator to persist
 

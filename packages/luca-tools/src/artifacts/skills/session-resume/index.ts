@@ -35,30 +35,66 @@ Follow the resume-project workflow which handles:
 
    If state not initialized, reconstruct from artifacts (research.md, context.md, plan.md, audits/ under the active phase directory).
 
-3. **Incomplete work detection**
+3. **Signal readback (satisfaction/failure telemetry)**
+
+   Surface the \`signal.*\` telemetry accrued for this run plus the clustered "Signal Synthesis" themes from the prior phase's \`learn.md\`, so the resuming session sees what satisfaction and failure signals built up before the break.
+
+   \`\`\`bash
+   # Resolve the active run's telemetry log. The run id is the state's
+   # sessionId (the generated pipeline RUN id) — the same value emit used as
+   # --run-id, so the log is named .luca/telemetry/<sessionId>.jsonl.
+   SESSION_ID=$(echo "$STATE_JSON" | jq -r '.sessionId // empty')
+
+   if [ -z "$SESSION_ID" ]; then
+     # sessionId is unset (recovery/partial run never stamped it). There is no
+     # run id, therefore NO telemetry log exists for this run — skip the
+     # readback gracefully. Do NOT error and do NOT invent a file path.
+     echo "No run id for this session (sessionId unset) — skipping signal readback."
+   else
+     TELEMETRY_FILE=".luca/telemetry/\${SESSION_ID}.jsonl"
+     if [ -f "$TELEMETRY_FILE" ]; then
+       # Replay every signal.* event (e.g. signal.satisfaction,
+       # signal.failure-dump) and tally by kind so the digest shows the balance
+       # of signals. The startswith("signal.") prefix match catches all signal
+       # kinds regardless of suffix.
+       echo "Signal telemetry for run \${SESSION_ID}:"
+       jq -rc 'select((.kind // "") | startswith("signal."))' "$TELEMETRY_FILE"
+       jq -rc 'select((.kind // "") | startswith("signal.")) | .kind' "$TELEMETRY_FILE" \\
+         | sort | uniq -c
+     else
+       echo "No signal telemetry log found for run \${SESSION_ID}."
+     fi
+   fi
+   \`\`\`
+
+   Then read the prior phase's \`learn.md\` (under \`.luca/phases/<currentPhaseSlug>/learn.md\`, or the most recent completed phase) and surface its **Signal Synthesis** section — the clustered themes distilled from those signals. If \`learn.md\` is absent, note that no synthesis exists yet and fall back to the raw telemetry tally above.
+
+4. **Incomplete work detection**
    - For the active phase under \`.luca/phases/<currentPhaseSlug>/\`: check for \`plan.md\` without matching \`execute/summary.md\` (mid-phase abandonment) and for partially-filled \`audits/\` (mid-review abandonment).
 
-4. **Visual status presentation**
+5. **Visual status presentation**
    - Show progress bar
    - Summarize recent work
    - Display current position
+   - Include the signal readback digest (satisfaction/failure tally + Signal Synthesis themes) from step 3
 
-5. **Context-aware option offering**
+6. **Context-aware option offering**
    - Check the active phase's \`context.md\` before suggesting plan vs discuss
    - Offer appropriate next actions
 
-6. **Routing to appropriate next command**
+7. **Routing to appropriate next command**
    - Execute phase if plans exist
    - Plan phase if not planned
    - Discuss phase if no context
 
-7. **Session continuity updates**
+8. **Session continuity updates**
    - Session continuity is auto-tracked by the state machine in \`.luca/state.json\` (no separate snapshot step needed).
 
 ## Success Criteria
 
 - [ ] Project context fully restored
 - [ ] Checkpoint file processed (if exists)
+- [ ] Signal telemetry + Signal Synthesis themes surfaced
 - [ ] Incomplete work detected
 - [ ] Clear next steps presented
 - [ ] User knows what to do next

@@ -1,14 +1,15 @@
 {
-  "timestamp": "2026-06-11T00:00:00Z",
-  "wave": 4,
+  "timestamp": "2026-06-14T00:00:00.000Z",
+  "runId": "verify-cycle2",
+  "wave": 5,
   "mode": "full",
   "status": "PASS",
   "criteria": [
     {
       "criterionId": "ac-01",
-      "description": "VerificationCriterionSchema gains deferral fields (umbrella; met by ac-01.1–.3)",
+      "description": "VerificationCriterionSchema gains deferral fields (umbrella; met by ac-01.1-.3)",
       "met": true,
-      "evidence": "Derived from children ac-01.1/.2/.3, all met (schemas.ts:27-48)",
+      "evidence": "Derived from children ac-01.1/.2/.3, all met (schemas.ts:27-48, read in full this cycle)",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -16,7 +17,7 @@
       "criterionId": "ac-01.1",
       "description": "grep deferredFollowUp in luca-core verification/schemas.ts hits",
       "met": true,
-      "evidence": "packages/luca-core/src/verification/schemas.ts:29 (JSDoc), :35 (deferredFollowUp: z.string().optional()); read back in full",
+      "evidence": "schemas.ts:35 `deferredFollowUp: z.string().optional()`; JSDoc :29 names it",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -24,7 +25,7 @@
       "criterionId": "ac-01.2",
       "description": "deferred is optional boolean; JSDoc states deferredFollowUp required when set",
       "met": true,
-      "evidence": "schemas.ts:33 `deferred: z.boolean().optional()`; JSDoc :27-32 states deferredFollowUp is REQUIRED when set and met MUST stay false until deferred probe runs",
+      "evidence": "schemas.ts:33 `deferred: z.boolean().optional()`; JSDoc :27-32 states deferredFollowUp REQUIRED and met MUST be false when set",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -32,21 +33,21 @@
       "criterionId": "ac-01.3",
       "description": "probeType is an optional enum on VerificationCriterionSchema",
       "met": true,
-      "evidence": "schemas.ts:37-48 z.enum(['file-read','grep-symbol','command','http','deploy','ui-screenshot','db-select','config-read']).optional()",
+      "evidence": "schemas.ts:37-48 z.enum([8 probe types]).optional()",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-02",
-      "description": "DeliverableComplianceSchema exists; compliance enum exactly shipped|missed|partial; deliverables optional on VerificationResultSchema",
+      "description": "DeliverableComplianceSchema exists; compliance enum exactly shipped|missed|partial; deliverables optional",
       "met": true,
-      "evidence": "schemas.ts:53-62 DeliverableComplianceSchema with compliance z.enum(['shipped','missed','partial']) at :61; :108 deliverables optional array; barrel exports verification/index.ts:6,:12",
+      "evidence": "schemas.ts:78-87 DeliverableComplianceSchema; :86 z.enum(['shipped','missed','partial']); :133 deliverables optional array on VerificationResultSchema",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-03",
-      "description": "Shared doctrine constant ships complete (umbrella; met by ac-03.1–.3)",
+      "description": "Shared doctrine constant ships complete (umbrella; met by ac-03.1-.3)",
       "met": true,
       "evidence": "Derived from children ac-03.1/.2/.3, all met (verification-doctrine.ts read in full)",
       "blocking": true,
@@ -56,15 +57,15 @@
       "criterionId": "ac-03.1",
       "description": "verification-doctrine.ts exists; re-exported from shared/index.ts",
       "met": true,
-      "evidence": "packages/luca-tools/src/artifacts/shared/verification-doctrine.ts read (38 lines, VERIFICATION_DOCTRINE export :11); shared/index.ts:13 `export { VERIFICATION_DOCTRINE } from './verification-doctrine.ts'`",
+      "evidence": "verification-doctrine.ts exists (41 lines, VERIFICATION_DOCTRINE export :11); imported/interpolated by verifier.ts and executor.ts (grep confirmed)",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-03.2",
-      "description": "Probe table contains all 8 rows: file write, code edit, command, HTTP/API, deploy, UI, schema/DB, config/env",
+      "description": "Probe table contains all 8 rows",
       "met": true,
-      "evidence": "verification-doctrine.ts:19-26 — | file write | Read it back |, | code edit | Grep |, | command | Bash checked output |, | HTTP/API | curl -i |, | deploy | live version string |, | UI | screenshot |, | schema/DB | SELECT |, | config/env | Read on disk | — exactly 8 data rows",
+      "evidence": "verification-doctrine.ts:19-26 — file write, code edit, command, HTTP/API, deploy, UI, schema/DB, config/env — exactly 8 rows",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -72,13 +73,13 @@
       "criterionId": "ac-03.3",
       "description": "Dual-evidence fallback for REVIEWING-blocked probes present",
       "met": true,
-      "evidence": "verification-doctrine.ts:28 — stage-gate-blocked in REVIEWING requires BOTH executor attestation in execute/waves/NN.md AND independent structural probe, noted in verify.json notes, never attestation alone",
+      "evidence": "verification-doctrine.ts:28 — BOTH executor attestation in execute/waves/NN.md AND independent structural probe, noted in verify.json notes, never attestation alone",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-04",
-      "description": "Forbidden-language list ships complete (umbrella; met by ac-04.1–.2)",
+      "description": "Forbidden-language list ships complete (umbrella; met by ac-04.1-.2)",
       "met": true,
       "evidence": "Derived from children ac-04.1/.2, both met",
       "blocking": true,
@@ -86,9 +87,9 @@
     },
     {
       "criterionId": "ac-04.1",
-      "description": "Constant enumerates all 5 phrases: should work, looks fine, tests pass, expected to, done",
+      "description": "Constant enumerates all 5 phrases",
       "met": true,
-      "evidence": "luca-core claim-verifier.ts:324-330 FORBIDDEN_LANGUAGE_PHRASES = ['should work','looks fine','tests pass','expected to','done']; verification-doctrine.ts:9 imports and :30-32 interpolates the list",
+      "evidence": "verification-doctrine.ts:9 imports FORBIDDEN_LANGUAGE_PHRASES from luca-core/claim-verifier; :30-32 interpolates the list (5 phrases owned by claim-verifier)",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -96,15 +97,15 @@
       "criterionId": "ac-04.2",
       "description": "Constant states phrases forbidden only WITHOUT attached probe evidence",
       "met": true,
-      "evidence": "verification-doctrine.ts:30-32 — 'each forbidden only WITHOUT attached probe evidence; the phrases are fine when accompanied by tool output'",
+      "evidence": "verification-doctrine.ts:30-32 'each forbidden only WITHOUT attached probe evidence; the phrases are fine when accompanied by tool output'",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-05",
-      "description": "aggregateVerificationResults treats deferred:true as blocking gap; deferred-only-unmet yields allCriteriaMet=false",
+      "description": "aggregateVerificationResults treats deferred:true as blocking gap",
       "met": true,
-      "evidence": "verification-result.ts:149 blockingGaps filter `c.deferred === true || (!c.met && c.blocking)`; :170-173 allCriteriaMet = every(c.deferred !== true) && blocking-criteria all met. Constructed-input reasoning: a result whose only unmet item is deferred:true fails the every(deferred !== true) conjunct → allCriteriaMet=false and appears in blockingGaps; malformed deferred:true+met:true also caught",
+      "evidence": "Cycle-1 PASS (verification-result.ts:149 blockingGaps filter, :170-173 allCriteriaMet every(deferred !== true)); not touched by wave 5",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -112,21 +113,21 @@
       "criterionId": "ac-06",
       "description": "CRITERION_DEFERRED returned before CRITERION_UNMET in validate-verification-ref",
       "met": true,
-      "evidence": "validate-verification-ref.ts:23 code declared, :95-104 deferred check returns CRITERION_DEFERRED (runs regardless of met, comment :93-94) BEFORE :105-110 CRITERION_UNMET; message cites deferredFollowUp todo when present",
+      "evidence": "Re-probed this cycle: validate-verification-ref.ts:29 code declared, :124-135 CRITERION_DEFERRED (runs regardless of met) BEFORE :136-141 CRITERION_UNMET",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-07",
-      "description": "verifier.ts: 0 stale 'luca verification write' refs; VERIFICATION_DOCTRINE interpolated; deliverables[] instructions present",
+      "description": "verifier.ts: 0 stale 'luca verification write' refs; VERIFICATION_DOCTRINE interpolated; deliverables[] instructions",
       "met": true,
-      "evidence": "grep -c 'luca verification write' verifier.ts → 0; import :30, `${VERIFICATION_DOCTRINE}` interpolation :81; Deliverable Compliance section :111-122 with shipped|missed|partial derivation rule :122; verify.json example lists deliverables :136; native-Write path per STEP_ARTIFACTS :85",
+      "evidence": "Re-probed: grep -c 'luca verification write' verifier.ts -> 0; VERIFICATION_DOCTRINE 2 hits; Deliverable Compliance section :111-122 with compliance-derivation rule",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-08",
-      "description": "Doctrine reaches execution-side bodies (umbrella; met by ac-08.1–.3)",
+      "description": "Doctrine reaches execution-side bodies (umbrella; met by ac-08.1-.3)",
       "met": true,
       "evidence": "Derived from children ac-08.1/.2/.3, all met",
       "blocking": true,
@@ -136,7 +137,7 @@
       "criterionId": "ac-08.1",
       "description": "executor.ts interpolates VERIFICATION_DOCTRINE (not literal copy)",
       "met": true,
-      "evidence": "executor.ts:41 import { SUBAGENT_SHARED_PREFIX, VERIFICATION_DOCTRINE } from '../shared/index.ts'; :83 `${VERIFICATION_DOCTRINE}` inside step-4 verify section; Self-Distrust Mandate :146-150 aligned (evidence-in-same-block bullet :149, phrases-banned-without-probe-output :150)",
+      "evidence": "Cycle-1 PASS; executor.ts imports/interpolates VERIFICATION_DOCTRINE; not regressed by wave 5",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -144,7 +145,7 @@
       "criterionId": "ac-08.2",
       "description": "execute.ts Step 3 digest references doctrine; 0 stale 'luca verification write' refs",
       "met": true,
-      "evidence": "grep -c 'luca verification write' execute.ts → 0; digest at :262-268 names canonical VERIFICATION_DOCTRINE in artifacts/shared/verification-doctrine.ts, 5 condensed rule lines (no full table copy); :269 native Write of verify.json at verify pipelineStep per STEP_ARTIFACTS",
+      "evidence": "Cycle-1 PASS; execute.ts digest references canonical doctrine; not regressed",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -152,23 +153,23 @@
       "criterionId": "ac-08.3",
       "description": "review.ts mentions deferred-criterion = open-gap semantics",
       "met": true,
-      "evidence": "review.ts:82 'Deferred criteria are OPEN GAPS … NEVER counts as MET … PARTIAL/UNMET citing deferredFollowUp'; :171 coverage-table note; :202 doctrine evidence rules applied to reviewer's own findings",
+      "evidence": "Re-probed: review.ts:202 'any deferred: true criterion you encounter remains an open gap in the verdict'",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-09",
-      "description": "architect.ts has ## Deliverables template section; both 150-line-budget exemption sentences name it",
+      "description": "architect.ts has ## Deliverables template section; both line-budget exemption sentences name it",
       "met": true,
-      "evidence": "architect.ts:215 `## Deliverables` template section; :254 Criteria Quality Rule 4 'Deliverable tracing' with D-line grammar; exemption sentences at :38 AND :442 both name `## Deliverables` as exempt",
+      "evidence": "Re-probed: grep -c '## Deliverables' architect.ts -> 4; cycle-1 PASS confirmed exemption sentences; not regressed",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-10",
-      "description": "Plan-lint covers D-lines (umbrella; met by ac-10.1–.2)",
+      "description": "Plan-lint covers D-lines (umbrella; met by ac-10.1-.2)",
       "met": true,
-      "evidence": "Derived from children ac-10.1/.2, both met",
+      "evidence": "Cycle-1 PASS (luca-plan-lint.ts checks e/f/g); not touched by wave 5",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -176,7 +177,7 @@
       "criterionId": "ac-10.1",
       "description": "grep Deliverables in luca-plan-lint.ts hits",
       "met": true,
-      "evidence": "luca-plan-lint.ts hits at :125,:131,:134,:142,:162,:251,:308,:337; checks (e) missing section :304-312, (f) grammar :263-273, (g) unknown criterion :275-288; maskInlineCodeSpans applied to D-lines :261",
+      "evidence": "Cycle-1 PASS; luca-plan-lint.ts Deliverables checks present; not regressed",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -184,21 +185,21 @@
       "criterionId": "ac-10.2",
       "description": "Fixture plan with nonexistent ac-ID D-line emits warning; exit code stays 0",
       "met": true,
-      "evidence": "DUAL-EVIDENCE (runtime fixture probe stage-gate-blocked in REVIEWING): wave 3 attestation (waves/03.md — /tmp fixture with ac-99 D-line → warnings, isError:false, exit 0) + independent structural probe: handler :361-376 returns findings as text-only content with NO isError field (isError:true only on unreadable file :347-357); doc comment :323-326 'Findings NEVER fail the invocation'",
+      "evidence": "Cycle-1 DUAL-EVIDENCE (waves/03.md attestation + structural read of warn-only text-only return path); not touched by wave 5",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-11",
-      "description": "plan-reviewer has numbered manifest-mapping check; Deliverables mentioned in phase-plan skill and command",
+      "description": "plan-reviewer has numbered manifest-mapping check; Deliverables in phase-plan skill+command",
       "met": true,
-      "evidence": "plan-reviewer.ts:74 check '10. **Deliverables mapping**' (D→ac-ID mapping both directions, umbrella live targets, [SPLIT →] parents invalid); skills/phase-plan/index.ts:310,:365 and commands/phase-plan.ts:49 all hit 'Deliverables'",
+      "evidence": "Cycle-1 PASS (plan-reviewer.ts check 10; phase-plan skill+command); not touched by wave 5",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-12",
-      "description": "Finalize gate extended (umbrella; met by ac-12.1–.3)",
+      "description": "Finalize gate extended (umbrella; met by ac-12.1-.3)",
       "met": true,
       "evidence": "Derived from children ac-12.1/.2/.3, all met",
       "blocking": true,
@@ -208,31 +209,31 @@
       "criterionId": "ac-12.1",
       "description": "grep ReReadCheck in finalize.ts hits",
       "met": true,
-      "evidence": "finalize.ts:151 '### ReReadCheck' (extension of Gap Audit feeding the same single Gap Report :153) and :172 ReReadCheck block in Gap Report template",
+      "evidence": "Cycle-1 PASS (finalize.ts ReReadCheck block); not regressed by wave 5",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-12.2",
-      "description": "finalize.ts spells out source priority: GitHub issue body → roadmap phase goal → context.md",
+      "description": "finalize.ts spells out source priority: GitHub issue body -> roadmap phase goal -> context.md",
       "met": true,
-      "evidence": "finalize.ts:155-158 deterministic priority 1) GitHub issue body 2) Roadmap phase goal (.luca/roadmap.md) 3) context.md decisions; :159-162 asks checked against shipped work AND verify.json deliverables[] compliance; :162 unjustified missed/partial blocks via Gap Report",
+      "evidence": "Cycle-1 PASS; source priority present; not regressed",
       "blocking": true,
       "probeType": "file-read"
     },
     {
       "criterionId": "ac-12.3",
-      "description": "finalize.ts :450-region says verificationRef: { criterionId }; no wave field mentioned",
+      "description": "finalize.ts :450-region says verificationRef: { criterionId }; no wave field",
       "met": true,
-      "evidence": "finalize.ts:469 'verificationRef: { criterionId }'; grep 'wave' across finalize.ts shows no wave field in any verificationRef prose (hits only at :82,:99,:146,:149 — unrelated wave-count prose)",
+      "evidence": "Re-probed: finalize.ts:476 'verificationRef: { criterionId }'; no wave field in verificationRef prose",
       "blocking": true,
       "probeType": "grep-symbol"
     },
     {
       "criterionId": "ac-13",
-      "description": "Verify handler hardened (umbrella; met by ac-13.1–.3)",
+      "description": "Verify handler hardened (umbrella; met by ac-13.1-.3)",
       "met": true,
-      "evidence": "Derived from children ac-13.1/.2/.3, all met",
+      "evidence": "Derived from children ac-13.1/.2/.3, all met; further hardened by wave 5 (ac-19)",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -240,7 +241,7 @@
       "criterionId": "ac-13.1",
       "description": "luca-phase-write-verify imports VerificationResultSchema",
       "met": true,
-      "evidence": "luca-phase-write-verify.ts:8 `import { VerificationResultSchema } from '@alecsibilia/luca-core/verification'`",
+      "evidence": "Re-probed: luca-phase-write-verify.ts:6-9 imports VerificationResultSchema (and writeVerificationResult) from @alecsibilia/luca-core/verification",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -248,7 +249,7 @@
       "criterionId": "ac-13.2",
       "description": "Handler rejects invalid payload with actionable error",
       "met": true,
-      "evidence": "DUAL-EVIDENCE (handler invocation blocked in REVIEWING): wave 4 attestation (waves/04.md — bun -e safeParse({status:'BOGUS'}) → success:false with issues) + independent structural probe: handler :53 safeParse(args.result), :54-72 on failure returns isError:true with per-issue path/message list BEFORE phasePathFor/writeAtomicFile (:73-75)",
+      "evidence": "Re-read: handler :39 safeParse(args.result), :40-57 returns isError:true with per-issue path/message list BEFORE writeVerificationResult (:67)",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -256,7 +257,7 @@
       "criterionId": "ac-13.3",
       "description": "Old z.record(z.string(), z.unknown()) result shape gone",
       "met": true,
-      "evidence": "grep 'z.record' in luca-phase-write-verify.ts → no matches; description :32 rewritten to criteria[]/checks[]/status/recommendation/deliverables[] contract",
+      "evidence": "Re-read: luca-phase-write-verify.ts:14-19 inputSchema uses z.unknown() (validated downstream via safeParse), no z.record result shape; description :17-19 rewritten to criteria/checks/status/deliverables contract",
       "blocking": true,
       "probeType": "grep-symbol"
     },
@@ -264,7 +265,7 @@
       "criterionId": "ac-14",
       "description": "claim-verifier flags 'should work' in prose but not in backticks; CLI exit code unchanged on warnings-only",
       "met": true,
-      "evidence": "DUAL-EVIDENCE (runtime fixture probes blocked in REVIEWING): wave 4 attestation (waves/04.md — prose flagged, backticked/fenced/evidence-adjacent/word-boundary NOT flagged; warnings-only → exit 0; failing claim → exit 1 from claim only) + independent structural probe: claim-verifier.ts:342-345 word-boundary case-insensitive matchers, :364-369 maskInlineCodeSpans before match :400-403, :354-355+406-410 evidence-marker ±1-line suppression; claim-verify.ts:67-73 warnings printed in loop OUTSIDE exit-code branch, :75-83 process.exitCode keyed solely on report.passed",
+      "evidence": "Cycle-1 DUAL-EVIDENCE (waves/04.md attestation + structural read); re-read claim-verify.ts:82-98 confirms warnings loop OUTSIDE exit-code branch, exitCode keyed solely on report.passed",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -272,15 +273,15 @@
       "criterionId": "ac-15",
       "description": "bunx --bun tsc --noEmit exits 0 across the monorepo",
       "met": true,
-      "evidence": "Ran `bunx --bun tsc --noEmit` directly in this verify step — completed with no output (exit 0)",
+      "evidence": "Ran `bunx --bun tsc --noEmit` twice this cycle — no output, exit 0 (TSC_DONE_EXIT_0)",
       "blocking": true,
       "probeType": "command"
     },
     {
       "criterionId": "ac-16",
-      "description": "[DEFERRED-VERIFY] protocol complete (umbrella; met by ac-16.1–.2)",
+      "description": "[DEFERRED-VERIFY] protocol complete (umbrella; met by ac-16.1-.2)",
       "met": true,
-      "evidence": "Derived from children ac-16.1/.2, both met",
+      "evidence": "Derived from children ac-16.1/.2, both met (and refined by ac-20 this wave)",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -288,7 +289,7 @@
       "criterionId": "ac-16.1",
       "description": "Doctrine names luca todo add follow-up; source pattern deferred-verify:<slug>:<ac-id> verbatim",
       "met": true,
-      "evidence": "verification-doctrine.ts:36 'Create the tracked follow-up via `luca todo add` with source `deferred-verify:<slug>:<ac-id>`' — pattern verbatim",
+      "evidence": "Re-read verification-doctrine.ts:37-38 — `luca todo add --source deferred-verify:<slug>:<ac-id>` verbatim",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -296,7 +297,135 @@
       "criterionId": "ac-16.2",
       "description": "Doctrine states deferred criterion cannot flip to met until deferred probe runs",
       "met": true,
-      "evidence": "verification-doctrine.ts:37 'The criterion cannot flip to met until the deferred probe runs.'",
+      "evidence": "Re-read verification-doctrine.ts:39 'The criterion cannot flip to met until the deferred probe runs.'",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-17",
+      "description": "Phantom claim-verify grammar purged (umbrella; met by ac-17.1-.2)",
+      "met": true,
+      "evidence": "Derived from children ac-17.1/.2, both met",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-17.1",
+      "description": "0 verify-text in review.ts; 0 verify-file in finalize.ts; 0 'claim-verify gate' in finalize.ts",
+      "met": true,
+      "evidence": "grep -c: review.ts verify-text -> 0; finalize.ts verify-file -> 0; finalize.ts 'claim-verify gate' -> 0 (all pre-fix counts purged)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-17.2",
+      "description": "0 CLAIM_VERIFICATION_FAILED in finalize.ts; call sites branch on exit code, stage text inputs under .luca/tmp/",
+      "met": true,
+      "evidence": "grep -c CLAIM_VERIFICATION_FAILED finalize.ts -> 0; finalize.ts:310-317 stages PR body to .luca/tmp/ then `luca claim-verify .luca/tmp/pr-body-draft.md`, :204 'no structured envelope'; review.ts:205-208 stages review text to .luca/tmp/ then claim-verify, :211 branches on exit code",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-18",
+      "description": "Verifier template schema-complete: timestamp present, example id is D1 not d-01",
+      "met": true,
+      "evidence": "Re-read verifier.ts:127 `timestamp: '...' // REQUIRED; ISO 8601` inside verify.json template; :116 `id: 'D1'`; grep -c '\"d-01\"' verifier.ts -> 0",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-19",
+      "description": "luca-phase-write-verify routes through writeVerificationResult with runId from state.sessionId",
+      "met": true,
+      "evidence": "Re-read luca-phase-write-verify.ts: writeVerificationResult imported :8, called :67; runId :63-66 from state.sessionId when typeof string && length>0, else undefined (writer tolerates legacy no-runId)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-20",
+      "description": "Doctrine capability-aware (umbrella; met by ac-20.1-.2)",
+      "met": true,
+      "evidence": "Derived from children ac-20.1/.2, both met",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.1",
+      "description": "[DEFERRED-VERIFY] step 2 instructs subagents to RETURN follow-up for orchestrator persistence; no subagent self-execution",
+      "met": true,
+      "evidence": "Re-read verification-doctrine.ts:36-38 — subagents record deferredFollowUp source string AND RETURN it in structured output; 'The orchestrator runs luca todo add ... never the subagent'",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.2",
+      "description": "0 'wave 2 wires' comment in verification-doctrine.ts",
+      "met": true,
+      "evidence": "grep -c 'wave 2 wires' verification-doctrine.ts -> 0 (1 pre-fix)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-21",
+      "description": "Echo sanitization complete (umbrella; met by ac-21.1-.2)",
+      "met": true,
+      "evidence": "Derived from children ac-21.1/.2, both met",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-21.1",
+      "description": "validate-verification-ref wraps criterionId/id-join/deferredFollowUp/status/JSON.parse err with sanitizeControlChars",
+      "met": true,
+      "evidence": "grep -c sanitizeControlChars validate-verification-ref.ts -> 7; re-read confirms wrap on criterionId :67, JSON.parse err :75, safeParse issues :88, existing-id join :112, deferredFollowUp :129, status :151; imports shared helper :16",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-21.2",
+      "description": "claim-verify.ts wraps sourceContext and evidence/claim-text echoes with sanitizeControlChars",
+      "met": true,
+      "evidence": "Re-read claim-verify.ts: sanitizeControlChars wraps failure.claim.text + failure.evidence :78 and warning.sourceContext :86. NOTE: claim-verify.ts uses a LOCAL sanitizeControlChars copy (:30-33) with an explanatory NOTE comment (:20-22) rather than importing the shared helper — ac-21.2 requires only that the function be present covering those echoes, which holds; deviation from plan task 1.5.4 phrasing 'via the shared helper' recorded in notes",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-22",
+      "description": "superRefine enforces deferred:true => deferredFollowUp present AND met===false; d-01 doc example gone",
+      "met": true,
+      "evidence": "Re-read schemas.ts:49-74 superRefine: :54 early-return when deferred !== true (no-deferred payloads parse unchanged); :55-65 adds issue when deferredFollowUp undefined/empty; :66-73 adds 'met must be false' issue when met !== false. Deterministic dispatch on plain conditionals — structural read conclusive for all 3 cases (A deferred:true+met:true->FAIL met-message; B deferred:true+met:false+followUp->PASS; C no-deferred->PASS). bun -e/probe-file blocked by stage-gate (bash-mutate + non-verify Write) so dual-substitution applies; grep -c 'd-01' schemas.ts -> 0",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-23",
+      "description": "validate-verification-ref parses verify.json with safeParse; raw 'as' cast gone; schema-invalid -> VERIFY_FILE_INVALID",
+      "met": true,
+      "evidence": "grep -c safeParse validate-verification-ref.ts -> 1; re-read :84 VerificationResultSchema.safeParse(raw), :85-99 returns VERIFY_FILE_INVALID on failure; no inline `as` cast (parsed.data used :100, findCriterion consumed :104)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-24",
+      "description": "Drift docs fixed (umbrella; met by ac-24.1-.2)",
+      "met": true,
+      "evidence": "Derived from children ac-24.1/.2, both met",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-24.1",
+      "description": "executor.ts and execute.ts render phrase list via FORBIDDEN_LANGUAGE_PHRASES interpolation; 0 'should work' literals",
+      "met": true,
+      "evidence": "grep -c \"'should work'\" executor.ts -> 0 and execute.ts -> 0; executor.ts:40 import + :152 `FORBIDDEN_LANGUAGE_PHRASES.length`+map interpolation; execute.ts:44 import + :267 map interpolation",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-24.2",
+      "description": "plan.ts: 0 'four regex'; lint description enumerates seven checks incl. deliverable checks",
+      "met": true,
+      "evidence": "grep -c 'four regex' plan.ts -> 0; plan.ts:12 module header 'seven regex checks — four criterion...', :35 lint subcommand description 'criterion and deliverable grammars — seven checks: four ...'",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -304,23 +433,23 @@
       "criterionId": "anti-01",
       "description": "MUST NOT register any new CLI verb/subcommand for doctrine features this phase",
       "met": true,
-      "evidence": "git diff HEAD -- cli.ts shows only the `plan` lazy-import entry, which is phase-02 work (02-plan-criteria-quality-gates/plan.md Task 1.2.3 explicitly creates commands/write-surface/plan.ts + cli.ts entry — pre-dates phase-03 baseline; branch carries phases uncommitted); plan.ts noun-group exposes only `lint` (:27-29); no doctrine-feature verb anywhere in the diff; wave 4 attests claim-verify pre-registered",
+      "evidence": "claim-verify.ts grammar unchanged (single command, positional file + repo-root flag, NO subCommands); no doctrine-feature verb added in wave 5; git diff classified read-only-blocked but re-read of command files shows no new registration",
       "blocking": true,
-      "probeType": "command"
+      "probeType": "file-read"
     },
     {
       "criterionId": "anti-02",
       "description": "MUST NOT change type/required-optional status of any pre-existing schema field",
       "met": true,
-      "evidence": "git diff HEAD -- packages/luca-core/src/verification/schemas.ts contains ONLY additions: deferred/deferredFollowUp/probeType on VerificationCriterionSchema, DeliverableComplianceSchema block, optional deliverables on VerificationResultSchema — zero modified/removed lines on pre-existing fields",
+      "evidence": "Re-read schemas.ts: superRefine (wave 5) attaches cross-field validation that early-returns on non-deferred payloads (:54) — zero pre-existing field type/optionality changed; deferred/deferredFollowUp/probeType remain optional; DeliverableComplianceSchema + optional deliverables unchanged",
       "blocking": true,
-      "probeType": "command"
+      "probeType": "file-read"
     },
     {
       "criterionId": "anti-03",
       "description": "MUST NOT make forbidden-language scan or plan-lint D-line checks blocking",
       "met": true,
-      "evidence": "plan-lint: findings returned as text-only content, no isError on findings (luca-plan-lint.ts:361-376; isError only for unreadable file :356); claim-verify: warnings loop :67-73 commented 'NEVER affect process.exitCode', exitCode :75-83 keyed solely on report.passed; wave 3+4 runtime attestations corroborate exit 0 with warnings present",
+      "evidence": "Re-read claim-verify.ts:82-83 warnings loop commented 'NEVER affect process.exitCode'; exitCode :90-98 keyed solely on report.passed; plan-lint findings text-only (cycle-1)",
       "blocking": true,
       "probeType": "file-read"
     },
@@ -328,27 +457,34 @@
       "criterionId": "anti-04",
       "description": "MUST NOT create any .test.ts/.spec.ts file or invoke bun test",
       "met": true,
-      "evidence": "git diff HEAD --name-only and git status --porcelain (full listing) contain zero .test.ts/.spec.ts entries; untracked paths are only .firecrawl/ and .luca/phases/*; all verification this phase used tsc + structural probes",
+      "evidence": "No .test.ts/.spec.ts files created this wave; verification used tsc + structural Read/Grep probes only; no bun test invoked",
       "blocking": true,
-      "probeType": "command"
+      "probeType": "file-read"
     },
     {
       "criterionId": "anti-05",
       "description": "MUST NOT duplicate doctrine text as hand-written copies in verifier.ts/executor.ts",
       "met": true,
-      "evidence": "Both files interpolate the shared constant (verifier.ts:81, executor.ts:83 `${VERIFICATION_DOCTRINE}`); grep for probe-table row strings ('Read it back', 'Grep for the new symbol', 'curl -i', 'live version string', 'SELECT confirming') across verifier.ts/executor.ts/execute.ts → zero matches (exit 1)",
+      "evidence": "Both interpolate ${VERIFICATION_DOCTRINE} (cycle-1, not regressed); wave 5 replaced the hand-typed forbidden-phrase literals with FORBIDDEN_LANGUAGE_PHRASES interpolation (ac-24.1) — reducing, not adding, duplication",
       "blocking": true,
       "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT change the shipped luca claim-verify CLI grammar this wave; instruction text adapts to CLI",
+      "met": true,
+      "evidence": "Re-read claim-verify.ts:35-54 — shipped grammar (positional file required, repo-root string flag, no subCommands) unchanged; wave-5 edits there were echo-sanitization only (:78,:86). Instruction text in finalize.ts/review.ts was rewritten to MATCH the shipped grammar (`luca claim-verify <file>`, exit-code branching, no structured envelope) — adapting text to CLI, not vice versa",
+      "blocking": true,
+      "probeType": "file-read"
     }
   ],
   "checks": [
-    { "name": "tsc", "passed": true },
-    { "name": "luca-rules-run", "passed": true },
-    { "name": "luca-checks-run (wave-close, attested waves 1-4)", "passed": true }
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 }
   ],
   "convergence": "resolved",
-  "recommendation": "pass",
-  "notes": "Full goal-backward verification; every criterion independently re-probed with Read/Grep/git-diff/tsc tool calls, not attestations alone. Dual-evidence substitutions (probe stage-gate-blocked in REVIEWING, per doctrine fallback): ac-10.2 (plan-lint fixture run), ac-13.2 (handler invocation against bad payload), ac-14 (claim-verifier fixture runs + CLI exit-code probes) — each backed by executor attestation in execute/waves/03.md or 04.md PLUS an independent structural read of the warn-only/safeParse/exit-code paths cited in evidence. anti-01 nuance: the `plan` verb in the HEAD diff is phase-02 work (branch carries phases 01-03 uncommitted); phase-02 plan.md Task 1.2.3 names exactly those registration files. Minor observation (non-blocking, within plan scope): executor.ts Self-Distrust Mandate :150 hand-lists the 5 phrases as alignment wording per Task 1.2.2 — anti-05 scopes only probe-table rows, which grep-confirmed absent. luca rules run: 0 rules discovered, 0 findings.",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "CYCLE-2 full goal-backward verification after the wave-5 review-fix cycle. Every wave-5 criterion (ac-17..ac-24 + children) and anti-06 was independently re-probed this cycle with Read/Grep/tsc tool calls; cycle-1 criteria ac-06/ac-07/ac-09/ac-12.3/ac-16 spot-checked for regression and confirmed intact (others carried from cycle-1 PASS, unchanged by wave-5 diff). DUAL-EVIDENCE / structural-read substitutions noted per doctrine fallback: (1) ac-22 superRefine behavioral probes — `bun -e` and writing a probe under .luca/tmp/ are both stage-gate-blocked in pipelineStep=verify (bash-mutate + non-verify Write), so the three deferred/met cross-field cases were verified by conclusive structural read of schemas.ts:49-74 (deterministic plain-conditional dispatch with early-return on non-deferred); grep -c 'd-01'->0 corroborates the doc-example fix; (2) ac-10.2/ac-13.2/ac-14 carry cycle-1 dual-evidence (waves/03.md,04.md attestation + structural read) — no new runtime fixture run was possible in REVIEWING. anti-01 nuance carried from cycle-1: the `plan` verb in the branch diff is phase-02 work, not a doctrine verb. DEVIATION (non-blocking): claim-verify.ts retains a LOCAL sanitizeControlChars copy (with explanatory NOTE) rather than importing the shared write-surface helper that plan task 1.5.4 phrasing implies; ac-21.2 only requires the sanitizer be present over sourceContext+evidence/claim echoes, which holds — flagged for a future shared-helper-consolidation follow-up. This verify.json was authored with the corrected schema (timestamp present, errorFingerprints[]/convergence required fields included, deliverable ids in D<N> form) so it round-trips through VerificationResultSchema.safeParse — dogfooding the ac-13/ac-19/ac-23 fix.",
   "deliverables": [
     {
       "id": "D1",
@@ -365,13 +501,13 @@
     {
       "id": "D3",
       "description": "Forbidden-language list (5 phrases, without-evidence framing)",
-      "criterionIds": ["ac-04", "ac-14"],
+      "criterionIds": ["ac-04", "ac-14", "ac-24"],
       "compliance": "shipped"
     },
     {
       "id": "D4",
       "description": "[DEFERRED-VERIFY] marker + tracked follow-up + cannot-flip-to-met gate",
-      "criterionIds": ["ac-01", "ac-05", "ac-06", "ac-16"],
+      "criterionIds": ["ac-01", "ac-05", "ac-06", "ac-16", "ac-20", "ac-22"],
       "compliance": "shipped"
     },
     {
@@ -383,13 +519,13 @@
     {
       "id": "D6",
       "description": "Deliverable manifest D1..DN at plan time + compliance at verify",
-      "criterionIds": ["ac-02", "ac-09", "ac-10", "ac-11", "ac-12"],
+      "criterionIds": ["ac-02", "ac-09", "ac-10", "ac-11", "ac-12", "ac-18"],
       "compliance": "shipped"
     },
     {
       "id": "D7",
-      "description": "Bonus drift fixes (stale luca verification write ×3, finalize :450 verificationRef, verify handler description)",
-      "criterionIds": ["ac-07", "ac-12", "ac-13"],
+      "description": "Bonus drift fixes + wave-5 hardening (stale refs, phantom grammar purge, verify-handler routing, echo sanitization)",
+      "criterionIds": ["ac-07", "ac-12", "ac-13", "ac-17", "ac-19", "ac-21", "ac-23", "ac-24"],
       "compliance": "shipped"
     }
   ]

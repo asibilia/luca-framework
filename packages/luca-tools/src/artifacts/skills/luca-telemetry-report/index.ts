@@ -42,6 +42,9 @@ Known \`kind\` values:
 - \`subagent.invoke\` / \`subagent.complete\` — subagent dispatch boundaries
 - \`recall.hit\` / \`recall.miss\` — MuninnDB recall outcomes
 - \`review.iteration\` — review-step emit
+- \`classifier.override\` — manual override of an automated classifier decision (carries \`meta.source\` for the override origin)
+- \`signal.satisfaction\` — user/reviewer satisfaction signal (carries \`meta.valence\` and \`meta.source\`); summarize as a count plus valence breakdown by source
+- \`signal.failure-dump\` — captured failure-dump signal; summarize as a count
 
 Treat the union as **open**: the aggregator must tolerate unknown kinds (count them under "Unknown kinds" rather than crash).
 
@@ -85,6 +88,9 @@ For each selected file, stream lines (small files, ≤ a few MB each — a full 
    - \`subagent.*\`: tally \`byRole[role]\` with input/output token sums; pair \`invoke\`/\`complete\` by \`meta.correlationId\` for orchestrator-side duration (preferred over a null harness \`durationMs\`)
    - \`recall.*\`: tally hit/miss/verifiedCount per \`meta.callerMode\`
    - \`review.iteration\`: collect the verdict/mustFixCount/perspectives series
+   - \`classifier.override\`: tally \`byOverrideSource[meta.source]\` (count of classifier overrides, broken down by override-source)
+   - \`signal.satisfaction\`: tally \`bySatisfactionSource[meta.source]\` with \`meta.valence\` breakdown (count of satisfaction signals + valence breakdown by source)
+   - \`signal.failure-dump\`: tally \`failureDumpCount\` (count of failure-dump signals)
 4. If \`durationMs === null\` for a \`*.end\` record, attempt a **ts-gap fallback** — find the matching \`*.start\` event with the same phase/slug/wave/runId, compute \`Date.parse(end.ts) - Date.parse(start.ts)\`. Only apply when both \`Date.parse\` calls return finite non-negative deltas. If the fallback fails, leave \`null\` and tally under \`failures.unknownDuration\`.
 
 Memory note: aggregators are **per-run scoped** — release per-run accumulators between files. Cross-run totals are written to a separate top-level accumulator.
@@ -122,7 +128,8 @@ Emit the markdown report **inline** in your response to the user. Do NOT write a
 After the report, print:
 
 - Counts: runs aggregated, total records parsed, failures (parse/schema/unknownDuration)
-- A one-line headline, e.g. \`"10 runs, 7 phases avg, p95 step.execute=18m"\`
+- Classifier overrides: total count of \`classifier.override\` records, with a breakdown by override-source (\`byOverrideSource\`)
+- A one-line headline, e.g. \`"10 runs, 7 phases avg, p95 step.execute=18m, 3 classifier overrides"\`
 
 ## Step 7: Done
 

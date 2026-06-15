@@ -36,6 +36,9 @@ export type TelemetryKind =
     | 'recall.hit'
     | 'recall.miss'
     | 'review.iteration'
+    | 'signal.satisfaction'
+    | 'signal.failure-dump'
+    | 'classifier.override'
     | (string & {})
 
 export interface TelemetryRecord {
@@ -80,3 +83,81 @@ export const TelemetryRecordSchema: z.ZodType<TelemetryRecord> = z.object({
     durationMs: z.number().nullable(),
     meta: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * Provenance of a classifier override — why the pipeline's automatic
+ * classification was superseded.
+ *
+ * - `cli-flag`: operator passed an explicit CLI flag.
+ * - `force-complex`: complexity was forced up to COMPLEX.
+ * - `human-ask`: a human gate/ask resolved the classification.
+ * - `heuristic-promotion`: a heuristic promoted the classification.
+ */
+export const OverrideSourceSchema = z.enum([
+    'cli-flag',
+    'force-complex',
+    'human-ask',
+    'heuristic-promotion',
+])
+
+/** Inferred type for {@link OverrideSourceSchema}. */
+export type OverrideSource = z.infer<typeof OverrideSourceSchema>
+
+/**
+ * ADVISORY shape for `signal.satisfaction` event `meta`.
+ *
+ * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
+ * rejection. This schema documents the expected shape for IDE/tooling and
+ * MUST NOT be wired into any throwing validation path (no `.parse()` in emit).
+ */
+export const SatisfactionSignalMetaSchema = z
+    .object({
+        source: z.enum(['gate-ask', 'oversight-pause', 'outcome']),
+        valence: z.enum(['positive', 'negative', 'neutral']),
+        step: z.string().optional(),
+        detail: z.string().optional(),
+    })
+    .passthrough()
+
+/** Inferred type for {@link SatisfactionSignalMetaSchema}. */
+export type SatisfactionSignalMeta = z.infer<
+    typeof SatisfactionSignalMetaSchema
+>
+
+/**
+ * ADVISORY shape for `classifier.override` event `meta`.
+ *
+ * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
+ * rejection. Documentation-only; MUST NOT be wired into a throwing path.
+ */
+export const ClassifierOverrideMetaSchema = z
+    .object({
+        classifier: z.string(),
+        from: z.string(),
+        to: z.string(),
+        source: OverrideSourceSchema,
+    })
+    .passthrough()
+
+/** Inferred type for {@link ClassifierOverrideMetaSchema}. */
+export type ClassifierOverrideMeta = z.infer<
+    typeof ClassifierOverrideMetaSchema
+>
+
+/**
+ * ADVISORY shape for `signal.failure-dump` event `meta`.
+ *
+ * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
+ * rejection. Documentation-only; MUST NOT be wired into a throwing path.
+ */
+export const FailureDumpMetaSchema = z
+    .object({
+        step: z.string().optional(),
+        reason: z.string().optional(),
+        dump: z.string().optional(),
+        dumpRef: z.string().optional(),
+    })
+    .passthrough()
+
+/** Inferred type for {@link FailureDumpMetaSchema}. */
+export type FailureDumpMeta = z.infer<typeof FailureDumpMetaSchema>

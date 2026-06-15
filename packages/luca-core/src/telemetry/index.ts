@@ -1,8 +1,21 @@
 // Barrel exports for the telemetry domain.
 // Append-only per-run event log at `.luca/telemetry/<runId>.jsonl`.
 
-export { TelemetryRecordSchema } from './schemas.ts'
-export type { TelemetryKind, TelemetryRecord } from './schemas.ts'
+export {
+    ClassifierOverrideMetaSchema,
+    FailureDumpMetaSchema,
+    OverrideSourceSchema,
+    SatisfactionSignalMetaSchema,
+    TelemetryRecordSchema,
+} from './schemas.ts'
+export type {
+    ClassifierOverrideMeta,
+    FailureDumpMeta,
+    OverrideSource,
+    SatisfactionSignalMeta,
+    TelemetryKind,
+    TelemetryRecord,
+} from './schemas.ts'
 
 export {
     appendTelemetry,
