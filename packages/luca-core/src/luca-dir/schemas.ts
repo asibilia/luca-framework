@@ -47,6 +47,9 @@ export const LucaArtifactKind = z.enum([
     // Ephemeral CLI-handoff scratch (.luca/tmp/<name>.json) — repo-scoped,
     // gitignored, not a pipeline artifact.
     'tmp.handoff',
+    // Ephemeral browser preview (.luca/tmp/previews/<name>) — repo-scoped,
+    // gitignored, not a pipeline artifact. Allowed in any pipelineStep.
+    'tmp.preview',
 ])
 export type LucaArtifactKind = z.infer<typeof LucaArtifactKind>
 

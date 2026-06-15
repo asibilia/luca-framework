@@ -16,6 +16,8 @@ import {
     type ToolCategory,
     type WritePathClass,
 } from '@alecsibilia/luca-core'
+import { tmpdir } from 'node:os'
+
 import { parse } from 'shell-quote'
 
 import {
@@ -35,6 +37,11 @@ export interface HandleStageGateHookOptions {
     /** User home directory (for detecting absolute paths under ~/.claude/
      *  or ~/.luca/). Defaults to process.env.HOME. */
     homedir?: string
+    /** Absolute OS-temp-dir prefixes treated as ephemeral scratch (allowed
+     *  in any pipelineStep). Defaults to [`$TMPDIR`, `os.tmpdir()`]; tests
+     *  pass an explicit dir. The universal `/tmp` and `/private/tmp` roots
+     *  are always recognised regardless of this value. */
+    tmpdirs?: string[]
 }
 
 export interface HandleStageGateHookResult {
@@ -101,6 +108,9 @@ export async function handleStageGateHook(
 
     const cwd = opts.cwd ?? process.cwd()
     const homedir = opts.homedir ?? process.env.HOME
+    const tmpdirs = opts.tmpdirs ?? [process.env.TMPDIR, tmpdir()].filter(
+        (d): d is string => Boolean(d)
+    )
 
     const state = await loadCurrentState({ cwd })
 
@@ -186,9 +196,19 @@ export async function handleStageGateHook(
         // yield `../../.luca/…` and wrongly fail the gate). Denied checks
         // still run on the absolute original inside classifyWritePath.
         const relTarget = toLucaRelative(targetPath, cwd)
-        const pc = classifyWritePath(targetPath, { homedir, cwd })
+        const pc = classifyWritePath(targetPath, { homedir, cwd, tmpdirs })
         if (pc.class === 'denied') {
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`
+        } else if (pc.class === 'ephemeral') {
+            // Inert ephemeral scratch (OS-temp file or .luca/tmp/previews/<name>):
+            // a browser preview / screenshot / generated HTML that touches
+            // neither the repo nor pipeline state. Allowed in ANY pipelineStep
+            // — bypass the phase/tool matrix entirely (the always-denied path
+            // rules above have already run).
+            log(
+                `stage-gate: ${toolName} to '${targetPath}' is ephemeral scratch — allowing`
+            )
+            return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         } else if (
             pc.class === 'planning-general' ||
             pc.class === 'planning-audit'
@@ -236,7 +256,7 @@ export async function handleStageGateHook(
             }`
         } else {
             for (const target of bashResult.targetPaths) {
-                const pc = classifyWritePath(target, { homedir })
+                const pc = classifyWritePath(target, { homedir, tmpdirs })
                 if (pc.class === 'denied') {
                     pathBlockReason = `Bash writes to denied path '${target}': ${
                         pc.reason ?? 'forbidden path'
@@ -502,6 +522,10 @@ function pathClassToToolCategory(c: WritePathClass): ToolCategory {
             return 'planning-write-general'
         case 'planning-audit':
             return 'planning-write-audit'
+        case 'ephemeral':
+            // Caller short-circuits 'ephemeral' to allow before this is
+            // called — it has no phase/tool-matrix category.
+            throw new Error('pathClassToToolCategory called with ephemeral')
         case 'denied':
             // Caller has already handled 'denied' before this is called.
             throw new Error('pathClassToToolCategory called with denied')

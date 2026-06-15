@@ -134,6 +134,30 @@ describe('isValidLucaPath — archive', () => {
     })
 })
 
+describe('isValidLucaPath — tmp scratch', () => {
+    test('accepts flat <kebab-name>.json handoff payloads', () => {
+        const r = isValidLucaPath('.luca/tmp/roadmap.json')
+        expect(r.valid).toBe(true)
+        if (r.valid) expect(r.kind).toBe('tmp.handoff')
+    })
+
+    test('accepts previews/<name>.<ext> browser previews', () => {
+        const r = isValidLucaPath('.luca/tmp/previews/auth-decision.html')
+        expect(r.valid).toBe(true)
+        if (r.valid) expect(r.kind).toBe('tmp.preview')
+    })
+
+    test('rejects a non-json flat tmp file', () => {
+        expect(isValidLucaPath('.luca/tmp/scratch.txt').valid).toBe(false)
+    })
+
+    test('rejects a preview nested deeper than one level', () => {
+        expect(
+            isValidLucaPath('.luca/tmp/previews/sub/x.html').valid
+        ).toBe(false)
+    })
+})
+
 describe('isValidLucaPath — top-level errors', () => {
     test('rejects paths not starting with .luca/', () => {
         expect(isValidLucaPath('src/foo.ts').valid).toBe(false)

@@ -6,6 +6,7 @@ import {
     RUN_ID_RE,
     SEMVER_TAG_RE,
     TMP_FILE_RE,
+    TMP_PREVIEW_FILE_RE,
     WAVE_FILE_RE,
 } from '../constants.ts'
 import type { LucaArtifactKind } from '../schemas.ts'
@@ -82,18 +83,32 @@ export function isValidLucaPath(relPath: string): ValidationResult {
 }
 
 /**
- * Validate `.luca/tmp/<name>.json` — the sanctioned, repo-scoped scratch
- * area for ephemeral CLI-handoff payloads (LLM orchestrator → `luca` CLI
- * via `--file`). Flat (no subdirectories), `.json` only, kebab-case basename.
- * These files are gitignored and are NOT pipeline artifacts; they exist so
- * a large payload (e.g. `roadmap create`'s phases array) never has to ride
- * a shared global `/tmp` path that collides across repos.
+ * Validate `.luca/tmp/` — the sanctioned, repo-scoped scratch area. Two
+ * shapes are legal, both gitignored and NOT pipeline artifacts:
+ *
+ *   - `tmp/<kebab-name>.json` — ephemeral CLI-handoff payloads (LLM
+ *     orchestrator → `luca` CLI via `--file`). Flat, `.json` only. They
+ *     exist so a large payload (e.g. `roadmap create`'s phases array) never
+ *     has to ride a shared global `/tmp` path that collides across repos.
+ *   - `tmp/previews/<name>.<ext>` — ephemeral browser previews (e.g. a
+ *     decision-visualizer page). Any extension; one level deep.
  */
 function validateTmpSubtree(parts: string[]): ValidationResult {
+    // tmp/previews/<name>.<ext>
+    if (parts.length === 2 && parts[0] === 'previews') {
+        if (TMP_PREVIEW_FILE_RE.test(parts[1]!)) {
+            return { valid: true, kind: 'tmp.preview' }
+        }
+        return {
+            valid: false,
+            error: 'tmp/previews/ contains <kebab-name>.<ext> preview files only',
+        }
+    }
+    // tmp/<kebab-name>.json
     if (parts.length !== 1 || !TMP_FILE_RE.test(parts[0]!)) {
         return {
             valid: false,
-            error: 'tmp/ contains <kebab-name>.json handoff files only (flat, no subdirectories)',
+            error: 'tmp/ contains <kebab-name>.json handoff files or previews/<name>.<ext> only',
         }
     }
     return { valid: true, kind: 'tmp.handoff' }
