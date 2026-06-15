@@ -39,11 +39,11 @@ const BODY = `# Finalize Agent Instructions
 
 > Luca Steps 8–11: Milestone Boundary → Shadow Scan → PR → Gap Audit → Cleanup
 
-> **CRITICAL CONSTRAINT**: Check every task in plan.md. Report exact completed/total ratio. Obey \`<luca-reminder>\` tags.
+> Check every task in plan.md and report the exact completed/total ratio. Obey \`<luca-reminder>\` tags.
 
-> **COMMUNICATION**: Caveman mode (full) is always active. Activate the \`caveman\` skill immediately and follow its rules for all output.
+> Caveman mode (full) is active — activate the \`caveman\` skill and follow its rules for all output.
 
-> **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`verify.json\`, \`learn.md\`, \`audits/<reviewer>.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root. The \`luca\` CLI surfaces are phase-aware: \`luca claim-verify\`, \`luca retro postmortem\`, \`luca rules suggest\`, \`luca verification aggregate\`, \`luca repo-cleanup\` all resolve paths from state and recurse into \`phases/*/\` automatically.
+> **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`verify.json\`, \`learn.md\`, \`audits/<reviewer>.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root. The \`luca\` CLI surfaces are phase-aware: \`luca claim-verify\`, \`luca retro\`, \`luca rules suggest\`, \`luca verification aggregate\`, \`luca repo-cleanup\` all resolve paths from state and recurse into \`phases/*/\` automatically.
 
 ## Role
 
@@ -221,30 +221,24 @@ luca state advance --to-step execute
 
 ## Step 4: Postmortem Gate
 
-**Always runs before PR creation.** Catches silent-skip incidents (execute mode skipped but todos moved to done), unverified completions, and forced transitions.
+Runs before PR creation. Catches silent-skip incidents (execute step skipped but todos marked done), unverified completions, and forced transitions.
 
 \`\`\`
-luca retro postmortem gate
+luca retro
 \`\`\`
 
-**If it returns \`code: POSTMORTEM_VIOLATIONS\`:**
+The exit code is the gate: \`luca retro\` analyzes the run's ledger, verification, and confidence entries and exits 1 when the report contains critical violations, 0 otherwise. Use \`luca retro --json\` to read the structured report (including the \`pitfalls\` array).
 
-1. Each pitfall in the response is forwarded to MuninnDB (\`default\` vault per vault-routing) so future runs can recall the failure mode.
-2. Re-enter the pipeline at the appropriate stage. Record the violation summary in the active phase's audit artifact (the re-entered step reads it as durable context), then drop back:
+If the gate exits non-zero (critical violations):
+
+1. Forward each pitfall in the report to MuninnDB (\`default\` vault per vault-routing) so future runs recall the failure mode.
+2. Record the violation summary in the active phase's audit artifact (durable context for the re-entered step), then drop back:
    \`\`\`
    luca state advance --to-step execute
    \`\`\`
-3. **STOP.** Do not create a PR. The re-entered pipeline must converge before finalize runs again.
+3. Stop — do not create a PR. The re-entered pipeline must converge before finalize runs again.
 
-**If the gate passes** (no critical violations), continue to Step 5. Warnings are non-blocking but should be referenced in the PR body.
-
-Then render the human-readable report:
-
-\`\`\`
-luca retro postmortem render
-\`\`\`
-
-This writes \`.luca/phases/<currentPhaseSlug>/learn.md\` with the final postmortem. Reference it in the PR body (Step 5) and the Final Summary (Step 7).
+If the gate exits 0 (no critical violations), continue to Step 5. Warnings are non-blocking but should be referenced in the PR body. Capture the rendered markdown report (default \`luca retro\` stdout) and reference it in the PR body (Step 5) and the Final Summary (Step 7).
 
 ## Step 4.5: Recurring-Pitfall Rule Suggestions
 
@@ -375,7 +369,7 @@ Applies the supported repo-cleanup actions in v13 (artifact tidy + canonical-pat
 
 \`\`\`
 luca verification aggregate
-luca retro postmortem render
+luca retro
 \`\`\`
 
 The session ledger is the source for mode-transition + iteration metrics; read it via the JSONL at \`.luca/ledger.jsonl\` if a detailed cross-event aggregate is needed. \`luca telemetry\` aggregations live in \`.luca/telemetry/<runId>.jsonl\`.
@@ -418,12 +412,12 @@ Returns: total events, mode transitions, phases completed, total iterations, ses
 
 ## Behavioral Guidelines
 
-- **Check every task in plan.md. Report exact completed/total ratio.**
-- **Don't skip the PR.** If git workflow was used, the PR is the deliverable.
-- **Respect the milestone limit.** 3 per session is a hard cap.
-- **Archive everything.** Future sessions depend on good archives.
-- **Be honest in metrics.** Report what actually happened.
-- **Clean up.** Release locks, close resources, leave workspace tidy.
+- Check every task in plan.md and report the exact completed/total ratio.
+- Don't skip the PR — if git workflow was used, the PR is the deliverable.
+- Respect the milestone limit: 3 per session is a hard cap.
+- Archive everything — future sessions depend on good archives.
+- Be honest in metrics: report what actually happened.
+- Clean up — release locks, close resources, leave the workspace tidy.
 
 ## Completion
 
@@ -467,13 +461,13 @@ One run finalizes one milestone. If the roadmap has further phases, the user sta
 
 Use \`luca todo list\` to verify all assigned todos are done. For remaining in-progress items, either mark done or note as incomplete in the gap report.
 
-Closing out **multiple** completed todos at the end of finalize: use \`luca todo move-batch --items <JSON>\` in a **single call**. Do not loop \`move\` per item — indices reshuffle after every move and sequential calls will mark the wrong todos.
+Promote each completed todo with \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <ac-id>\`. Todos are addressed by stable kebab-case id, so transition them one per call; \`--verification-criterion\` must point at a met PASS criterion in \`verify.json\`.
 
 ## Tool Coordination
 
-Sequence: (1) \`luca checks run\` → (2) spawn shadow-scanner → (3) \`luca verification aggregate\` → (4) \`luca retro postmortem gate\` → (5) \`luca rules suggest\` → (6) write changeset + draft PR body → (7) per-file \`luca claim-verify\` over the changeset and the staged PR body draft → (8) \`luca todo move-batch\` to done (with verificationRef) → (9) \`gh pr create\`.
+Sequence: (1) \`luca checks run\` → (2) spawn shadow-scanner → (3) \`luca verification aggregate\` → (4) \`luca retro\` (exit code gates) → (5) \`luca rules suggest\` → (6) write changeset + draft PR body → (7) per-file \`luca claim-verify\` over the changeset and the staged PR body draft → (8) \`luca todo update --status done\` per completed todo (each with \`--verification-criterion\`) → (9) \`gh pr create\`.
 
-**Critical:** \`luca todo move\` to \`done\` will reject any item without a valid \`verificationRef: { criterionId }\` pointing at a PASS criterion in \`verify.json\`. Capture the criterion IDs from your verification write and pass them through.
+Promoting a todo to \`done\` is rejected without a valid \`--verification-criterion <ac-id>\` pointing at a PASS criterion in \`verify.json\`. Capture the criterion IDs from your verification write and pass them through; transition todos one per call via \`luca todo update\` (the only promotion verb).
 
 **Also critical:** the per-file \`luca claim-verify\` loop runs *after* the changeset is written and *before* \`gh pr create\`. A non-zero exit on any file means the draft cites symbols/paths/counts that don't exist on the branch — either the draft is stale (rewrite) or the code didn't actually land (re-enter execute).
 `
@@ -485,6 +479,12 @@ export const finalizeMode = defineAgent({
         'Milestone boundaries, shadow scan, gap audit, PR creation, postmortem gate, and session cleanup.',
     stage: 'finalize',
     color: '#6366f1',
+    gotchas: [
+        'Ensure `pipelineStep` is `finalize` before doing anything — but `finalize → finalize` is an ILLEGAL self-transition that errors. Read state and advance from `learn → finalize` ONLY if needed; if already at `finalize`, skip the advance entirely.',
+        'Ordering is non-negotiable: gap detection (Step 3), postmortem gate (Step 4), and per-file `luca claim-verify` all run BEFORE `gh pr create`. Write the changeset only AFTER review iteration converges — pre-convergence release artifacts are the #1 source of doc-vs-code drift.',
+        'todo→done is rejected without a valid `verificationRef: { criterionId }` pointing at a PASS criterion in verify.json — the ref is `{ criterionId }` only (no wave field). Capture criterion IDs from the verify write and pass them through.',
+        'Close each completed todo with `luca todo update --id <id> --status done --verification-criterion <ac-id>` — todos are addressed by stable id, so transition them one per call. The only todo write verbs are add|list|update; older instructions referenced verbs that no longer exist, so do not invent todo subcommands. One run finalizes one milestone; remaining roadmap phases are surfaced for a fresh `/lu`, not looped in-session.',
+    ],
     guidance: {
         selfVerify: true,
         antiSycophancy: true,

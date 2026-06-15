@@ -25,6 +25,11 @@ export const testWriterSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['subagent-end'],
+    gotchas: [
+        'A passing test that never exercises the production path proves nothing — avoid presence-only assertions and vacuous mocks; confirm the test FAILS for the right reason if the behavior were wrong.',
+        'Do NOT modify production code to make a test pass — if a green test requires a production change, say so and stop; that is the executor\'s job. A FAIL is a valid outcome when settling a dispute — report it honestly, never weaken the assertion.',
+        'Run the single test file scoped (e.g. `bun test <path>`), never the whole suite — and match the repo\'s existing runner/conventions; do not introduce a new framework.',
+    ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies any relevant prior learnings in the prompt.
     pipelineInvocations: [],

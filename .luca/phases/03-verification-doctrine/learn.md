@@ -183,3 +183,101 @@
   Worked, but is an IMPLICIT protocol — same root capability gap as the doctrine `luca todo add`
   MUST-FIX. Should be formalized in executor body text: "return, don't write".
 - **Context:** Any .luca/ side-channel data produced inside a subagent under v13 stage-gating.
+
+## Cycle 2 (review-fix wave + state-recovery)
+
+> **Cycle 2** of 2 (verify PASS — wave-5 fix criteria ac-17..24 + anti-06 met, cycle-1
+> ac-01..16/anti-01..05 no regression; BOTH combined reviews APPROVE — 0 MUST-FIX, 0 SHOULD-FIX,
+> only NOTEs). All 5 cycle-1 MUST-FIX held under independent re-probe. One non-blocking deviation
+> filed as follow-up (STRIP-vs-ESCAPE sanitize divergence, below).
+
+### Patterns
+
+#### pattern:convergence-in-one-fix-wave-from-discriminating-criteria
+- **Type:** pattern · **Confidence:** HIGH
+- **Content:** Cycle-2 converged in a SINGLE fix wave (no third cycle) because (a) the cycle-1
+  acceptance criteria were discriminating enough to pin each MUST-FIX to a concrete locus, and
+  (b) each fix criterion (ac-17..ac-24) encoded a verified pre→post DELTA (e.g. "phantom
+  claim-verify subcommands removed → shipped `<file>` grammar in review.ts/finalize.ts, envelope
+  deleted"; "verify.json template gained required timestamp; d-01→D1"). That made the cycle-2
+  re-probe MECHANICAL — re-read the cited locus, confirm the delta, no re-derivation. All 5
+  cycle-1 MUST-FIX verified genuinely resolved (not papered over) and 0 new MUST-FIX surfaced.
+- **Context:** Review-fix loops. Frame each fix as a testable pre→post delta tied to the original
+  finding's locus so the re-review is a confirmation pass, not a fresh audit — this is what keeps
+  a fix cycle from spawning another.
+
+### Pitfalls
+
+#### pitfall:luca-state-json-single-mutable-global-clobbered-on-resume
+- **Type:** pitfall · **Confidence:** HIGH
+- **Content:** `.luca/state.json` is a SINGLE mutable global with no per-pipeline isolation. During
+  a multi-day session interruption an unrelated luca milestone ran in the same checkout and
+  OVERWROTE state to idle/phase-5-of-5 with a DIFFERENT roadmap; origin/main merges (#296-299)
+  landed; and a 99-file `chore(repo): checkpoint` commit (72a3bccdb) froze our phase-03 waves 1-4
+  mid-flight. On resume the orchestrator's IN-CONTEXT model (phase 3, wave 5) silently diverged
+  from on-disk state, with no warning. Observed downstream symptoms of the drift: (1) executors'
+  `luca confidence log --phase 03-...` got MISATTRIBUTED to the active phase-05 (CLI resolves phase
+  from state, ignores the --phase arg's intent — see next entry); (2) the stage-gate stopped
+  blocking commits (state idle = permissive); (3) a parallel executor found its task "already
+  applied in checkpoint 72a3bccdb".
+- **Prevention:** On ANY resume after a gap, BEFORE acting, `luca state read` and reconcile it
+  against the in-context phase/step. If they diverge, STOP and surface the divergence to the user
+  via AskUserQuestion before any state mutation — do not silently re-seed. Never trust the
+  in-context state model across a session interruption.
+
+#### pitfall:luca-confidence-log-attributes-to-active-state-phase-not-flag
+- **Type:** pitfall · **Confidence:** HIGH
+- **Content:** `luca confidence log --phase <X>` attributes the entry to the ACTIVE state.json
+  phase, NOT to the `--phase X` argument — the CLI resolves the target phase from state and the
+  flag does not override it. Benign when state matches intent; SILENTLY misattributes when state
+  has drifted (e.g. an interrupted/clobbered pipeline, see the state-clobber entry). Phase-03
+  cycle-2 instance: confidence entries intended for `03-verification-doctrine` landed on the active
+  `05-test-policy-reconcile` because state had been overwritten. (Extends the cycle-1 observation
+  that subagents cannot write confidence logs at all — here the orchestrator-side write itself
+  mis-targets.)
+- **Prevention:** Before logging confidence/checks with a `--phase` flag, confirm state.json's
+  current phase equals the intended phase (`luca state read`); the flag is not a safety net.
+
+### Procedures
+
+#### procedure:luca-pipeline-state-recovery-after-roadmap-reset
+- **Type:** procedure · **Confidence:** HIGH
+- **Content:** Recovery sequence to restore an interrupted pipeline after `.luca/state.json` was
+  clobbered / the roadmap was reset by an unrelated run. ALL steps are read-only or CLI primitives
+  — NEVER hand-edit state.json. Validated on phase-03 cycle-2 (idle/phase-5 + foreign roadmap →
+  restored to phase-3 verify): (0) surface the situation to the user via AskUserQuestion BEFORE
+  any mutation. (1) git-commit the staged in-flight work as a clean phase commit (state idle =
+  commits allowed by stage-gate). (2) `luca roadmap create --file <payload>` re-seeds the correct
+  N-phase roadmap; the payload accepts an optional `status?` per phase so completed phases stay
+  completed. (3) `luca state set-current-phase --phase-number=<N>` (recovery primitive; marks the
+  phase in-progress). (4) `luca state claim-owner --session-id=$CLAUDE_CODE_SESSION_ID` (note the
+  env var is `CLAUDE_CODE_SESSION_ID`, NOT `CLAUDE_SESSION_ID`). (5) walk `pipelineStep`
+  idle→target via SEQUENTIAL `luca state advance --to-step <step>` calls (each transition is
+  validated; NO jumps — e.g. idle→verify took 9 calls). Confirm coherence over the merged tree
+  with `bunx --bun tsc --noEmit` (green) before proceeding.
+- **Context:** Restoring a Luca pipeline after a state/roadmap wipe from a concurrent or
+  interrupted run. The orchestrator owns these mutations; a subagent must NOT run them.
+
+### Conventions
+
+#### convention:combined-perspective-reviewers-for-focused-fix-cycle
+- **Type:** convention · **Confidence:** HIGH
+- **Content:** For a focused single-wave fix-cycle re-review, two COMBINED-perspective reviewers
+  (architecture+security, simplification+dx) were used instead of the 4-5 separate reviewers of
+  the full cycle. Proportionate to a narrow fix scope (5 MUST-FIX loci) and converged cleanly:
+  both APPROVE, 0 MUST-FIX / 0 SHOULD-FIX, only NOTEs. Audits overwrite cycle-1 at
+  audits/{code-architect,code-simplifier}.md.
+- **Context:** Re-reviewing a bounded fix wave in luca-framework. Collapse the reviewer set to
+  combined perspectives when the change surface is small and already scoped by prior findings;
+  keep the full panel for fresh/broad phases.
+
+#### convention:claim-verify-local-sanitize-strip-vs-shared-escape
+- **Type:** convention · **Confidence:** MEDIUM
+- **Content:** claim-verify.ts intentionally keeps a LOCAL `sanitizeControlChars` that STRIPS
+  control chars, whereas the shared helper (extracted in cycle-1, used by
+  validate-verification-ref.ts et al.) ESCAPES them. The two have DIFFERENT intended semantics —
+  flagged as a reviewer NOTE and filed as a follow-up todo. Non-blocking (verify PASS). The
+  follow-up that ports claim-verify onto the shared helper MUST preserve the STRIP behavior (or
+  consciously change it), not assume the shared ESCAPE is a drop-in.
+- **Context:** Any future consolidation of control-char sanitizers in luca-core/luca-cli. STRIP
+  and ESCAPE are not interchangeable; the divergence is deliberate until the follow-up decides.

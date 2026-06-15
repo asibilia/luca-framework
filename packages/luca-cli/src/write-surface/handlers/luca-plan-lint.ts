@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
+import { sanitizeControlChars } from '../helpers/sanitize-control-chars.ts'
 
 const inputSchema = z.object({
     file: z
@@ -60,23 +61,6 @@ function maskInlineCodeSpans(line: string): string {
     return line.replace(
         /`[^`]*`/g,
         (span) => `\`${' '.repeat(span.length - 2)}\``
-    )
-}
-
-/**
- * Escape C0 control characters (newline, ESC/ANSI, other C0, DEL) in text
- * derived from user input — the `--file` path and any error message that
- * embeds it — before echoing, so output lines stay single-line and free
- * of terminal escape-sequence injection.
- *
- * @param text - Raw text destined for an output line.
- * @returns The text with each control character replaced by its `\xNN`
- *   escape.
- */
-function sanitizeControlChars(text: string): string {
-    return text.replace(
-        /[\x00-\x1f\x7f]/g,
-        (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, '0')}`
     )
 }
 

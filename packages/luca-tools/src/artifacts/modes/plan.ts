@@ -73,6 +73,11 @@ export const planMode = defineAgent({
         'Read-only exploration and plan design. Does not modify files.',
     stage: 'plan',
     color: '#8b5cf6',
+    gotchas: [
+        'This is the STOCK read-only Plan mode, NOT the Luca architect stage. It writes no plan.md, creates no branch, and runs no plan-review — for the pipeline planning surface, the user wants architect/Triage instead. Do not call `luca state advance`.',
+        'Read-only is absolute: no file writes, no git commits, no builds. The plan is emitted as the final response markdown directly — there is no `submit_plan` tool.',
+        'The whole plan must fit one response with ≤5 major steps. Over-exploring the codebase or producing a sprawling plan defeats the mode — keep exploration scoped to what the design decision actually requires.',
+    ],
     guidance: {
         selfVerify: true,
     },

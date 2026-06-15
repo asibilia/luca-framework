@@ -13,9 +13,9 @@
  *     guidance (the executor enacts plans, so the slicing discipline
  *     applies here too: one slice at a time, end-to-end).
  *   - tdd: true — TDD discipline RESTORED per plan §3 #3. The
- *     compiler's `## Guidance` block calls out the no-tests
- *     environment caveat (tests are absent today; the discipline
- *     applies when re-introduced).
+ *     compiler's `## Guidance` block calls out the test-execution
+ *     caveat (tests are maintained, but the pipeline doesn't
+ *     auto-run them — run bounded `bun test <file>` deliberately).
  *   - selfVerify: true — re-read files before editing; verify
  *     assumptions with tool calls. Mastracode embedded this prose
  *     under "Self-Distrust Mandate"; D1 makes it auditable.
@@ -37,6 +37,8 @@
  *     read`; prior pitfalls are supplied in the prompt by the orchestrator.
  *     rule-run + confidence-log (CLI/Bash-based) are retained.
  */
+import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
+
 import { defineSubagent } from '../../define/index.ts'
 import { SUBAGENT_SHARED_PREFIX, VERIFICATION_DOCTRINE } from '../shared/index.ts'
 
@@ -54,6 +56,11 @@ export const executorSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['wave-start', 'wave-end'],
+    gotchas: [
+        'git commit is stage-gate-blocked in EXECUTING — stage with `git add <explicit files>` only; never `git add .` or `git add -A` (sweeps concurrent executors\' and pipeline-generated work into your commit).',
+        'You have no MuninnDB/MCP access — do NOT attempt `mcp__muninn__*` to recall commit conventions or prior pitfalls; read `luca preferences read` (commits section) and apply the orchestrator-supplied learnings from your prompt.',
+        'Do not write `.luca/` artifacts directly — your only writes are production code; verify.json/audits/learn.md belong to other steps and the stage-gate will reject the path.',
+    ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies prior context in the prompt. rule-run +
     // confidence-log are CLI/Bash-based and stay.
@@ -147,6 +154,8 @@ Be specific about alternatives considered and why you chose this path.
 - Before editing any file, re-read it first. Do NOT trust your memory of file contents — context may be stale.
 - After each edit, re-read the file to verify the change was applied correctly.
 - Any claim that a change works requires tool evidence in the same (or immediately following) tool-call block as the claim — per the Verification Doctrine above.
-- The doctrine's five forbidden phrases ('should work', 'looks fine', 'tests pass', 'expected to', 'done') are banned without attached probe output.
+- The doctrine's ${FORBIDDEN_LANGUAGE_PHRASES.length} forbidden phrases (${FORBIDDEN_LANGUAGE_PHRASES.map(
+        (phrase) => `'${phrase}'`
+    ).join(', ')}) are banned without attached probe output.
 `,
 })

@@ -124,6 +124,15 @@ export const AgentDefinitionSchema = z.object({
      */
     pipelineInvocations: z.array(PipelineInvocationSchema).default([]),
     /**
+     * Known footguns for this mode-agent — recurring mistakes, sharp
+     * edges, or counter-intuitive behaviors the agent should be warned
+     * about up front. The compiler renders these as a `## Gotchas` block
+     * in the agent body (mirroring how `guidance` flags expand into
+     * their own blocks). Optional — defaults to an empty list, which the
+     * compiler renders as no block at all.
+     */
+    gotchas: z.array(z.string()).default([]),
+    /**
      * The prompt body. Markdown — what the mode-agent should do at this
      * stage. The constraint shell (core-operating-rules + hard-
      * constraints + alwaysApply rules + memory-tier-discipline +

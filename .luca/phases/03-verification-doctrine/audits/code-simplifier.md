@@ -1,50 +1,52 @@
-PERSPECTIVE: simplification
-VERDICT: REQUEST_CHANGES
-FINDINGS:
-- [MUST-FIX] Instruction bodies invoke `luca claim-verify` subcommands that do not exist. The shipped CLI is `luca claim-verify <file> [--repo-root]` only (packages/luca-cli/src/commands/claim-verify.ts:27-39; cli.ts:25-28 registers the command directly, no subcommands). But the rendered agent instructions call: `luca claim-verify verify-text --text "<full review output>"` (packages/luca-tools/src/artifacts/modes/review.ts:205), `luca claim-verify verify-file --path <planFile>` (packages/luca-tools/src/artifacts/modes/finalize.ts:200), and `luca claim-verify gate --paths ".changeset/<slug>.md" --texts <pr_body_draft>` (finalize.ts:310, repeated at finalize.ts:467 and :471). With citty's positional `file` arg, `verify-text`/`verify-file`/`gate` parse as the file path and the command fails. finalize uses `gate` as a BLOCKING pre-PR step (sequence item 7), so the finalize gate as written cannot run. These subcommands exist only in the legacy luca-mastracode Mastra tool (`packages/luca-mastracode/src/tools/claim-verifier.ts`), which this phase explicitly did not port.
-  File: packages/luca-tools/src/artifacts/modes/finalize.ts:200 (also finalize.ts:310,467; modes/review.ts:205)
-  Suggestion: Either (a) rewrite the three call sites to the actual surface — `luca claim-verify <file>` (for inline text: stage it at `.luca/tmp/<name>.md` first, per the existing tmp-handoff convention), or (b) add `verify-text`/`gate` modes to claimVerifyCommand. Option (a) is the simpler change and removes the phantom surface.
-  Cross-phase: false
-- [MUST-FIX] The production verify.json write path never stamps `runId`, making the stale-run defense dead. `luca_phase_write_verify` serializes and writes verify.json itself via `writeAtomicFile` (packages/luca-cli/src/write-surface/handlers/luca-phase-write-verify.ts:73-75), bypassing `writeVerificationResult` (packages/luca-core/src/verification/verification-result.ts:86-99), which is the only place runId stamping happens — and which now has zero production callers (grep: only the barrel and verification-result.test.ts reference it). `readVerificationResult` treats a result with no `runId` as legacy and accepts it (verification-result.ts:50,65-72), so the documented stale-snapshot guard (schemas.ts:80-86: "Stamped on write, validated on read") can never fire on handler-written results — a prior run's PASS snapshot can still satisfy the new run's guards, the exact hole this code claims to close. The verifier subagent's schema example (subagents/verifier.ts:124-138) also omits runId, so no path supplies it.
-  File: packages/luca-cli/src/write-surface/handlers/luca-phase-write-verify.ts:73
-  Suggestion: Have the handler call `writeVerificationResult({ cwd, slug, result: parsed.data, runId: <current run id from state/ctx> })` (or stamp runId before writeAtomicFile if atomicity must be kept — then move the atomic write into the core writer). This fixes the inert guard AND removes the duplicated serialize-and-write logic / dead exported function in one move.
-  Cross-phase: false
-- [SHOULD-FIX] Executor instruction body re-types the full forbidden-phrase list by hand immediately after interpolating the doctrine that already contains it. `VERIFICATION_DOCTRINE` is interpolated at executor.ts:83 (list rendered from `FORBIDDEN_LANGUAGE_PHRASES`), then line 150 hand-types "The doctrine's five forbidden phrases ('should work', 'looks fine', 'tests pass', 'expected to', 'done')". Both the count ("five") and the literals will drift the moment the canonical luca-core list changes — defeating the "SINGLE source of truth" stated in verification-doctrine.ts:5-8.
-  File: packages/luca-tools/src/artifacts/subagents/executor.ts:150
-  Suggestion: Delete the sentence (the doctrine block 67 lines earlier already states it), or interpolate: `The doctrine's ${FORBIDDEN_LANGUAGE_PHRASES.length} forbidden phrases (${...map/join...}) are banned...`.
-  Cross-phase: false
-- [SHOULD-FIX] `maskInlineCodeSpans` is duplicated in luca-core and luca-cli with the duplication pointing the wrong way. claim-verifier.ts:358-369 reimplements the helper "because that helper is private to luca-cli and luca-core must not import from it" — but luca-cli depends on luca-core, so the canonical home is luca-core. The two bodies are byte-identical 3-line functions.
-  File: packages/luca-core/src/claim-verifier/claim-verifier.ts:364 (duplicate: packages/luca-cli/src/write-surface/handlers/luca-plan-lint.ts:59)
-  Suggestion: Export `maskInlineCodeSpans` from the luca-core claim-verifier barrel (or a small text-utils module) and import it in luca-plan-lint.ts; delete the luca-cli copy and the apologetic comment.
-  Cross-phase: false
-- [SHOULD-FIX] `sanitizeControlChars` is copy-pasted between two handlers in the SAME package — no import-boundary excuse. luca-phase-write-verify.ts:21-26 ("Mirrors the convention in luca-plan-lint.ts") and luca-plan-lint.ts:76-81 are identical.
-  File: packages/luca-cli/src/write-surface/handlers/luca-phase-write-verify.ts:21 (duplicate: luca-plan-lint.ts:76)
-  Suggestion: Extract once to `packages/luca-cli/src/write-surface/helpers/sanitize-control-chars.ts` (sibling of write-atomic.ts / validate-verification-ref.ts) and import from both handlers.
-  Cross-phase: false
-- [SHOULD-FIX] `validate-verification-ref.ts` hand-rolls verify.json parsing with an unsafe structural `as` cast instead of reusing the luca-core schema/helpers added by this same phase. Lines 70-80 cast `JSON.parse` output to an inline shape; `VerificationResultSchema.safeParse` would give the same error surface (VERIFY_FILE_INVALID on failure) with real types, and criterion lookup duplicates what `findCriterion` (verification-result.ts:110) provides — `findCriterion` currently has zero production callers despite the schemas.ts header (line 7) naming the todo→done gate as its consumer. Also violates the repo's schema-first parsing rule.
-  File: packages/luca-cli/src/write-surface/helpers/validate-verification-ref.ts:70
-  Suggestion: Parse with `VerificationResultSchema.safeParse` (map failure → VERIFY_FILE_INVALID) and look up the criterion via `findCriterion({ results: [result], criterionId })`; keeps one parser and gives `findCriterion` its intended consumer (or, if the looser parse is deliberate for legacy files, delete the unused `findCriterion` export instead).
-  Cross-phase: false
-- [SHOULD-FIX] Stale doc in the new `luca plan` command group: header says "The four regex checks" but the linter implements seven (a–g, including the three deliverable checks added this phase — handler JSDoc at luca-plan-lint.ts:138 says "seven advisory regex checks", and the lint subcommand description at plan.ts:31-36 also omits the deliverable checks).
-  File: packages/luca-cli/src/commands/write-surface/plan.ts:12
-  Suggestion: Update the header (and the lint subcommand description) to the seven-check list, or replace the enumerations with a pointer to lintPlanLines's JSDoc so there is one check inventory.
-  Cross-phase: false
-- [SHOULD-FIX] The criterion-grammar doctrine is re-typed in at least five instruction bodies with no shared constant, unlike the probe doctrine which this phase correctly centralized. The literals `- **ac-NN**:`, `- **anti-NN**: MUST NOT —`, `[DROPPED — see decisions <date>]`, `[SPLIT → ac-NN.1, ...]`, and the splitting-test phrasing appear hand-typed in modes/architect.ts:244-254, commands/phase-plan.ts:34, skills/phase-plan/index.ts:307-310+401, subagents/plan-reviewer.ts:71-74, and subagents/verifier.ts:90-94 — and are mirrored a sixth time as regexes in luca-cli's plan-lint (CRITERION_ID etc., luca-plan-lint.ts:24-48). Any grammar change now requires six synchronized edits; drift between the prose grammar and the lint regexes silently breaks linting.
-  File: packages/luca-tools/src/artifacts/modes/architect.ts:244
-  Suggestion: Follow the VERIFICATION_DOCTRINE precedent: extract the grammar core (line formats + ID-stability/tombstone/split rules) into a shared constant in artifacts/shared/ and interpolate it; role-specific guidance stays local. Full regex unification with luca-cli is optional — at minimum add cross-pointer comments naming all consumers.
-  Cross-phase: false
-- [NOTE] execute.ts's "Verification Doctrine digest" (modes/execute.ts:262-267) re-types a condensed doctrine including a partial hand-typed phrase list ("'should work', 'tests pass', 'done', …"). It cites the canonical constant, which is the right pattern for a digest, but the phrase fragment will drift; interpolating `FORBIDDEN_LANGUAGE_PHRASES` into the digest line would make it drift-proof for free.
-- [NOTE] `findVerificationCriteriaSection` / `findDeliverablesSection` (luca-plan-lint.ts:118-135) are single-use one-line wrappers around `findSection`, each with a 7-line JSDoc — inlining the two `findSection(lines, /…/)` calls at their sole call sites (lines 179, 251) would remove ~28 lines of indirection. Harmless as-is.
+PERSPECTIVE: simplification + dx (cycle-2 convergence re-review, cold isolation of wave-5 fix delta)
+VERDICT: APPROVE
 
-What I checked and found clean:
-- Doctrine interpolation in subagents: verifier.ts:81 and executor.ts:83 interpolate `VERIFICATION_DOCTRINE`; the constant itself interpolates `FORBIDDEN_LANGUAGE_PHRASES` from luca-core (verification-doctrine.ts:9,30) — the intended single-source chain works for the subagent bodies.
-- No dead exports in the claim-verifier barrel: `extractClaims`/`scanForbiddenLanguage`/`verifyClaims`/`verifyTextArtifact`/`verifyFile` all have production consumers (CLI command or each other); `FORBIDDEN_LANGUAGE_PHRASES` is consumed by the doctrine constant.
-- Instruction-body growth is proportionate: verifier body (+criterion-ID/tombstone/umbrella/deliverable rules, verifier.ts:88-122) and review-mode deferred-handling additions encode consumer-side semantics that exist nowhere else; not bloat.
-- `aggregateVerificationResults` deferred-always-blocks logic (verification-result.ts:148-173) is single-sourced and consumed by the verification CLI surface (commands/write-surface/verification.ts:103).
-- `luca plan lint --file` invocation in commands/phase-plan.ts:49 matches the registered citty surface (commands/write-surface/plan.ts:39-46) — unlike the claim-verify call sites.
+## Cycle-1 MUST-FIX resolution (both fixed)
+
+1. **Phantom `claim-verify` subcommands** (cycle-1 MUST-FIX #1) — RESOLVED.
+   - All call sites now use the real surface `luca claim-verify <file>`: `modes/review.ts:205` stages text to `.luca/tmp/` then runs the file form; `modes/finalize.ts:201` (`<planFile>`), `:316`/`:317` (`.changeset/<slug>.md`, `.luca/tmp/pr-body-draft.md`). The finalize sequence item 7 (`:474`) is now a per-file `luca claim-verify` loop over real paths. Zero `verify-text`/`verify-file`/`claim-verify gate` literals remain (grep over modes/ → 0). The blocking pre-PR gate can now actually run.
+
+2. **runId never stamped → inert stale-run guard** (cycle-1 MUST-FIX #2) — RESOLVED.
+   - `handlers/luca-phase-write-verify.ts:67-72` now routes through `writeVerificationResult({ cwd, slug, result, runId })` instead of the bypassing `writeAtomicFile`. `runId` is sourced from `state.sessionId` (:63-66). The duplicated serialize-and-write logic is gone; `writeVerificationResult` is no longer a dead export (it is the sole production write path). The documented stale-snapshot guard (read-side runId match in verification-result.ts:72-79) can now fire on handler-written results.
+
+## Cycle-1 SHOULD-FIX/NOTE cleanups (all five targeted ones landed)
+
+1. **Forbidden-phrase list interpolation** — RESOLVED.
+   - `subagents/executor.ts:40` imports `FORBIDDEN_LANGUAGE_PHRASES`; `:152` renders `${FORBIDDEN_LANGUAGE_PHRASES.length}` + `.map(...).join(', ')` — no re-typed list, no "five"/literal drift.
+   - `modes/execute.ts:44` import; `:267-269` digest interpolates `FORBIDDEN_LANGUAGE_PHRASES.map(...)` — the cycle-1 NOTE'd hand-typed fragment is gone. Drift-proof.
+
+2. **Shared `sanitizeControlChars`** — RESOLVED.
+   - Extracted to `write-surface/helpers/sanitize-control-chars.ts:15` (single def). `handlers/luca-plan-lint.ts:4` + `handlers/luca-phase-write-verify.ts:12` import it; `grep "function sanitizeControlChars"` over handlers → 0.
+   - KNOWN residual: `commands/claim-verify.ts:30` keeps a LOCAL copy — ANNOTATED, not silent (NOTE :20-22, "switch to the shared helper … once it lands"). Confirmed a filed follow-up, NOT a blocker.
+
+3. **`as` cast → schema parse + dead `findCriterion`** — RESOLVED.
+   - `helpers/validate-verification-ref.ts:84` uses `VerificationResultSchema.safeParse`; schema-invalid verify.json returns hard `VERIFY_FILE_INVALID` (:87-98). `findCriterion` now CONSUMED at `:104` (was dead); barrel-exported `verification/index.ts:19`.
+
+4. **Stale "four regex checks" doc** — RESOLVED.
+   - `commands/write-surface/plan.ts:12` "seven regex checks — four criterion grammar … plus three deliverable-manifest checks"; `:35` description "seven checks: four criterion … plus three deliverable".
+
+5. **`d-01` → `D1` deliverable example** — RESOLVED.
+   - `subagents/verifier.ts:116` example uses `id: "D1"`, matching `DeliverableComplianceSchema` (`schemas.ts:79`).
+
+(Cycle-1 SHOULD-FIX on `maskInlineCodeSpans` cross-package dup and the criterion-grammar 6-site restatement are out of the wave-5 fix scope — not re-judged here; they remain filed.)
+
+## NEW findings in the fix delta
+
+FINDINGS:
+- [NOTE] claim-verify.ts's annotated-residual `sanitizeControlChars` (commands/claim-verify.ts:30-33) is not merely a duplicate of the shared helper — it has DIFFERENT semantics: it STRIPS control chars (`.replace(/[…]/g, '')`) whereas the shared helper ESCAPES to `\xNN`. When the planned switch happens, claim-verify echo output changes (stripped → escaped). The follow-up that ports it should call out the strip-vs-escape difference so it's a deliberate behavior change, not a silent regression.
+- [NOTE] superRefine error messages (schemas.ts:62-64, :70-72) are exemplary DX — state the invariant, the rationale, AND a concrete format example (`deferred-verify:<slug>:<ac-id>`). Positive evidence; no change needed.
+- [NOTE] Deferred-gap semantics are restated in three instruction bodies (verification-doctrine.ts:34-39, review.ts:82/:171, finalize.ts:150) plus the executable invariant (schemas.ts:49-74) and aggregation (verification-result.ts:167-183). This is intentional cross-surface restatement (per-subagent instruction text + one executable source of truth), not removable duplication. No action.
+
+## Verified, no issue found
+
+- **Atomic-write port** (writeVerificationResult, verification-result.ts:99-119): CLEAN, not duplicative. Single tmp-then-rename block (:111-114); sibling `.tmp` keeps the rename on one filesystem (no EXDEV, documented :96-97); `rmSync(tmp,{force:true})` cleanup on failure (:116). read/write share `phasePathFor` + `VerificationResultSchema` — no copied parse/path logic.
+- **[DEFERRED-VERIFY] capability branch** (verification-doctrine.ts:34-39): reads unambiguously to a cold subagent. :37 cleanly separates (a) what to WRITE (`deferredFollowUp` = deterministic source string), (b) what to RETURN (follow-up request verbatim in structured output), (c) what the ORCHESTRATOR — never the subagent — does (`luca todo add`, muninn persist), and pre-empts the "no todo id" objection. Honors subagent no-MCP discipline. :38 gives the orchestrator-context variant.
+- **CRITERION_DEFERRED message** (validate-verification-ref.ts:127-133): helpful — names the criterion id, the follow-up todo when present, and the remediation. All eight ValidationError messages name the failing check + a concrete fix.
+- **superRefine gating** (schemas.ts:49-74): fires ONLY on `deferred === true` (`:54` early return); non-deferred payloads parse exactly as before (anti-02 holds).
+- **Barrel exports** (verification/index.ts:8,19,21): `VerificationResultSchema`, `findCriterion`, `writeVerificationResult` all exported; new consumers resolve.
 
 CONSOLIDATED:
-  MUST_FIX_COUNT: 2
-  SHOULD_FIX_COUNT: 6
-  NOTE_COUNT: 2
+  MUST_FIX_COUNT: 0
+  SHOULD_FIX_COUNT: 0
+  NOTE_COUNT: 3
   CROSS_PHASE_COUNT: 0

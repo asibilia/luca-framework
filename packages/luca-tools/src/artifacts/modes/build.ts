@@ -13,7 +13,8 @@
  * D1 RESTORATION:
  *   - selfVerify: true — re-read before editing; verify after.
  *   - tdd: true — TDD discipline restored per plan §3 #3. The
- *     compiler's `## Guidance` block calls out the no-tests caveat.
+ *     compiler's `## Guidance` block calls out the test-execution
+ *     caveat (tests are maintained but the pipeline doesn't auto-run them).
  */
 import { defineAgent } from '../../define/index.ts'
 import {
@@ -52,8 +53,8 @@ Only move to the next change after the current one is verified working.
 
 Before considering any task complete:
 - For TypeScript, run \`bunx --bun tsc --noEmit\` to catch type errors.
-- Tests are intentionally absent in this repo today (see CLAUDE.md / no-tests rule); when reintroduced, run them.
-- If there are no automated tests, manually verify the behavior works as expected.
+- Tests ARE maintained in this repo; the Luca pipeline does not auto-run them (agent-spawned suites orphan processes) — run \`bun test <file>\` deliberately and bounded when a change warrants it, and never delete tests to satisfy a gate.
+- If a change isn't covered by automated tests, manually verify the behavior works as expected.
 
 **Don't mark something as done until you've verified it actually works.**
 
@@ -89,6 +90,11 @@ export const buildMode = defineAgent({
     description: 'Full-access build mode for implementing changes.',
     stage: 'build',
     color: '#16c858',
+    gotchas: [
+        'Build is the default OUTSIDE the Luca pipeline — it has full tool access but no pipeline state, no waves, no verify.json. Track multi-step work in a short in-output todo list (no external tool), not via `luca state advance`.',
+        'Verification is required before "done": run `bunx --bun tsc --noEmit` for TypeScript, then manually confirm behavior. Tests ARE maintained in this repo (106 *.test.ts files) but the Luca pipeline does not auto-run them (agent-spawned suites orphan processes) — run `bun test <file>` deliberately and bounded when a change warrants it; never delete test files to satisfy a gate.',
+        'Do NOT commit unless asked — report what changed instead. When the user does ask, verify the code compiles first and use a descriptive `feat/`|`fix/`|`refactor/` branch (never commit straight to the default branch).',
+    ],
     guidance: {
         selfVerify: true,
         tdd: true,

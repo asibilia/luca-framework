@@ -182,6 +182,15 @@ export const SubagentDefinitionSchema = z.object({
      */
     pipelineInvocations: z.array(PipelineInvocationSchema).default([]),
     /**
+     * Known footguns for this subagent — recurring mistakes, sharp
+     * edges, or counter-intuitive behaviors the subagent should be
+     * warned about up front. The compiler renders these as a
+     * `## Gotchas` block in the prompt body (mirroring how `guidance`
+     * flags expand into their own blocks). Optional — defaults to an
+     * empty list, which the compiler renders as no block at all.
+     */
+    gotchas: z.array(z.string()).default([]),
+    /**
      * The prompt body. Markdown — what the subagent should actually
      * do. The shared-prefix and the guidance/telemetry blocks are
      * composed in at compile time; this body is the subagent-specific

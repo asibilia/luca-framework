@@ -12,6 +12,20 @@ const baseState = {
     roadmap: [{ name: 'auth-rewrite', deps: [], status: 'in-progress' }],
 }
 
+// A schema-complete verify.json wrapper. The handler now `safeParse`s the
+// whole VerificationResultSchema before lookup, so fixtures must carry every
+// required field a real `writeVerificationResult` output has. Tests override
+// `status` / `criteria` per case.
+const verifyBase = {
+    timestamp: '2026-06-15T12:00:00Z',
+    wave: 1,
+    mode: 'full',
+    checks: [],
+    convergence: 'resolved',
+    errorFingerprints: [],
+    recommendation: 'proceed',
+}
+
 async function setupProject(
     cwd: string,
     verifyContent: unknown
@@ -41,6 +55,7 @@ describe('validateVerificationRef', () => {
 
     test('returns null when criterion is met + has evidence + status=PASS', async () => {
         await setupProject(cwd, {
+            ...verifyBase,
             status: 'PASS',
             criteria: [
                 {
@@ -88,10 +103,12 @@ describe('validateVerificationRef', () => {
 
     test('rejects when criterion is not present in verify.json', async () => {
         await setupProject(cwd, {
+            ...verifyBase,
             status: 'PASS',
             criteria: [
                 {
                     criterionId: 'ac-01',
+                    description: 'auth middleware rewritten',
                     met: true,
                     evidence: 'x',
                     blocking: true,
@@ -109,10 +126,13 @@ describe('validateVerificationRef', () => {
 
     test('rejects when criterion is met:false', async () => {
         await setupProject(cwd, {
+            ...verifyBase,
             status: 'FAIL',
+            recommendation: 'fix',
             criteria: [
                 {
                     criterionId: 'ac-01',
+                    description: 'auth middleware rewritten',
                     met: false,
                     evidence: 'x',
                     blocking: true,
@@ -130,10 +150,12 @@ describe('validateVerificationRef', () => {
 
     test('rejects when criterion has empty evidence', async () => {
         await setupProject(cwd, {
+            ...verifyBase,
             status: 'PASS',
             criteria: [
                 {
                     criterionId: 'ac-01',
+                    description: 'auth middleware rewritten',
                     met: true,
                     evidence: '',
                     blocking: true,
@@ -151,10 +173,14 @@ describe('validateVerificationRef', () => {
 
     test('rejects when parent verify status is not PASS', async () => {
         await setupProject(cwd, {
+            ...verifyBase,
             status: 'STALLED',
+            convergence: 'stalled',
+            recommendation: 'escalate',
             criteria: [
                 {
                     criterionId: 'ac-01',
+                    description: 'auth middleware rewritten',
                     met: true,
                     evidence: 'x',
                     blocking: true,

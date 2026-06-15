@@ -1,0 +1,190 @@
+{
+  "timestamp": "2026-06-15T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "gotchas field present in define/agent.ts (>=1)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: define/agent.ts gotchas field `z.array(z.string()).default([])`; not touched by the fix wave (diff --cached scope is artifacts/ only).",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "gotchas field present in define/subagent.ts (>=1)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: define/subagent.ts gotchas field present; fix wave did not touch define/.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "renderGotchasPrelude in render-body.ts (>=2: def + call)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: render-body.ts unchanged by fix wave (artifacts-only delta).",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "gotchas wiring in render-body.ts (>=3)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: render-body.ts not in fix-wave diff.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "gotchas pass-through in emit-agent.ts and emit-subagent.ts (>=1 each)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: emit-agent.ts / emit-subagent.ts not in fix-wave diff.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "Every defineAgent mode file carries a gotchas: field (zero missing)",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: `grep -rL 'gotchas:' $(grep -rl 'defineAgent(' modes/)` exit=1, zero files missing. finalize.ts (fixed) still carries gotchas: (count=1, gotcha block :488-493). 10/10 mode files carry gotchas:. No regression.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Every defineSubagent file carries a gotchas: field (zero missing)",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: `grep -rL 'gotchas:' $(grep -rl 'defineSubagent(' subagents/)` exit=1, zero files missing. researcher.ts (count=1) and learner.ts (count=1) both fixed and still carry gotchas:. 10/10 subagent files. No regression.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08.1",
+      "description": "compile-smoke fixture compiles and exits 0 with the new ## Gotchas golden checks active",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1 (dual-evidence): compile-smoke.ts + render-body.ts not in fix-wave diff; tsc exit 0 (re-run this cycle). Render path and golden checks unchanged.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08.2",
+      "description": "smoke fixture asserts rendered ## Gotchas via two golden checks (>=2)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: compile-smoke.ts not in fix-wave diff; two golden '## Gotchas' checks intact.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "learner.ts references conjectured/refuted_by/criterion_now (binary REQ-06 anchor, >=1)",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: `grep -ci 'conjectur|refuted_by|criterion_now' learner.ts` = 10. C/R/L extraction shape intact after the retro-verb fix (which only touched the retro string at :36/:44). No regression.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "learn.md write section renders C/R/L fields",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: learner.ts learn.md write section (C/R/L four-line render) untouched by the retro-string fix. CRITERION_NOW present in Step 2 body.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "TO_PERSIST content: carries C/R/L shape inside content (no contract change)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: TO_PERSIST content-carry (vault/concept/content/tags keys; C/R/L inside content as prose) untouched by the fix; explicit guard against top-level C/R/L field retained.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "bunx --bun tsc --noEmit exits 0 across monorepo",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: `bunx --bun tsc --noEmit` TSC_EXIT=0, no diagnostics. The 3 gotcha-string edits are prose-only and introduced no type errors.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT — gotchas declared as required .min(1)",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: define/agent.ts & define/subagent.ts still `gotchas: z.array(z.string()).default([])`, no .min(1); not in fix-wave diff.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT — new typed Zod C/R/L learning schema with no consumer",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: no ConjectureSchema/CRLSchema in learner.ts; C/R/L remains prose extraction template. No regression from the retro-string fix.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "MUST NOT — parallel C/R/L TO_PERSIST block",
+      "met": true,
+      "evidence": "RE-PROBED post-fix: `grep -c '### TO_PERSIST' learner.ts` = 1. Single block, content-carry only. Fix wave did not add a parallel block. No regression.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-08",
+      "description": "MUST NOT — create a .test.ts file or run bun test",
+      "met": true,
+      "evidence": "RE-CONFIRMED: fix-wave diff (--cached --stat) is artifacts/*.ts mode/subagent files only; no new *.test.ts/*.spec.ts; no bun test run.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-09",
+      "description": "MUST NOT — reference an unshipped CLI verb/flag in edited prose",
+      "met": true,
+      "evidence": "RE-PROBED post-fix (this is the criterion the fix wave directly addressed): EDITED prose now cites only shipped verbs. (1) finalize gotcha :492 names `luca todo update --id <id> --status done --verification-criterion <ac-id>` — verified against todo.ts subCommands {add,list,update} (:249-253) and the --verification-criterion flag (:208); the `move`/`move-batch` mention at :492 is a NEGATION ('there is no move/move-batch verb; those are legacy'), not an instruction. (2) researcher gotcha :35 re-anchored to 'read-only (no Write tool — Read/Grep/Glob), parent research mode owns research.md write'; `grep -c 'illegal at the plan' researcher.ts` = 0. (3) learner gotcha :36 + body :44 now name bare `luca retro` — verified retro.ts is name:'retro' with NO postmortem subcommand (postmortem is the artifact `luca retro` generates, retro.ts:4/12/31). The single residual `retro postmortem` hit (learner.ts:12) is in a JSDoc narrative describing the PRIOR bug ('The previous body told it to run luca retro postmortem; neither is reachable'), not an instruction — descriptive history, not a citation to run.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-10",
+      "description": "MUST NOT — Date.now()/Math.random() in render-body.ts",
+      "met": true,
+      "evidence": "RE-CONFIRMED UNCHANGED from cycle-1: render-body.ts not in fix-wave diff; renderGotchasPrelude still pure/idempotent.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-11",
+      "description": "MUST NOT — reference a nonexistent schema field in edited prose",
+      "met": true,
+      "evidence": "RE-CONFIRMED: edited gotcha prose cites only shipped schema keys — TO_PERSIST vault/concept/content/tags (unchanged contract) and verificationRef { criterionId } (todo.ts:228, no wave field). No nonexistent field referenced in the 3 corrected gotchas.",
+      "blocking": true,
+      "probeType": "file-read"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca-rules-run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "CYCLE-2 verification after the gotcha-content fix wave (waves/03.md) that corrected 3 authored gotchas which themselves contained the phantom-capability/field-drift class REQ-07 is meant to catch. All 3 fixes RE-PROBED as real and non-regressing: (1) finalize gotcha now names the real verb `luca todo update --status done --verification-criterion` (todo.ts surface = add|list|update only), move/move-batch reframed as a legacy negation; (2) researcher gotcha re-anchored to the true reason (no Write tool / parent mode owns research.md), `illegal at the plan` removed (=0) — research.md IS legal at the research step per step-artifacts.ts research:['research']; (3) learner gotcha+body now bare `luca retro` (retro.ts has no postmortem subcommand). Regression guards all hold: ac-06/ac-07 grep -rL exit 1 (zero missing, finalize/researcher/learner still carry gotchas:), ac-09=10, anti-07=1, ac-12 tsc exit 0, luca rules run clean. Cycle-1 criteria not touched by the artifacts-only fix wave are carried forward and marked RE-CONFIRMED UNCHANGED. NON-BLOCKING RESIDUAL (out of phase-05 delta, already filed as todo 'phantom-cli-verbs-finalize-execute-todo-move-move-batch'): finalize.ts BODY lines 470/474/476 and execute.ts:411 still INSTRUCT `luca todo move`/`move-batch` and `luca retro postmortem gate` — these are pre-existing body bugs NOT in this phase's staged delta; the finalize mode has Bash and would hit 'unknown command' at milestone close. anti-09 is met because it scopes to EDITED prose (the gotcha delta, which is clean); the body fix belongs to the filed todo / phase-06 governance-audits scope. Recommend proceed for phase-05; the residual body bug is tracked separately.",
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "REQ-06 — learner expresses learnings in Deutsch conjectured/refuted_by/learned/criterion_now shape (extraction + learn.md + TO_PERSIST content-carry)",
+      "criterionIds": ["ac-09", "ac-10", "ac-11", "anti-06", "anti-07"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "REQ-07 — each defineAgent/defineSubagent artifact carries a gotchas field rendered into the compiled body (with factually-accurate footgun content)",
+      "criterionIds": ["ac-01", "ac-02", "ac-03", "ac-04", "ac-05", "ac-06", "ac-07", "ac-08.1", "ac-08.2", "anti-05", "anti-09", "anti-10", "anti-11"],
+      "compliance": "shipped"
+    }
+  ]
+}

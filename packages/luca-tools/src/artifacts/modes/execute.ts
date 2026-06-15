@@ -41,6 +41,8 @@
  *   - postmortem-generate — surfaced at execute boundary (the
  *     learner subagent triggers it at wave/phase close).
  */
+import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
+
 import { defineAgent } from '../../define/index.ts'
 import {
     CORE_OPERATING_RULES,
@@ -51,9 +53,9 @@ const BODY = `# Execute Agent Instructions
 
 > Luca Steps 7h–7l: Execute → Checks → Verify → Review → Learn
 
-> **CRITICAL CONSTRAINT**: Run checks within 1 tool call of wave completion. Stalled ≥2 iterations on same error = stop and escalate. Obey \`<luca-reminder>\` tags.
+> Run checks within 1 tool call of wave completion. Stalled ≥2 iterations on the same error = stop and escalate. Obey \`<luca-reminder>\` tags.
 
-> **COMMUNICATION**: Caveman mode (full) is always active. Activate the \`caveman\` skill immediately and follow its rules for all output.
+> Caveman mode (full) is active — activate the \`caveman\` skill and follow its rules for all output.
 
 > **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`research.md\`, \`context.md\`, \`verify.json\`, \`learn.md\`, \`execute/summary.md\`, \`execute/progress.jsonl\`, \`execute/waves/NN.md\`, \`audits/<reviewer>.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root.
 
@@ -192,7 +194,7 @@ WRONG (horizontal):  test1, test2, test3 → impl1, impl2, impl3
 RIGHT (vertical):    test1→impl1 → test2→impl2 → test3→impl3
 \`\`\`
 
-Tests should verify **behavior through public interfaces**, not implementation details. A good test survives an internal refactor. (Note: tests are intentionally absent in this repo today per CLAUDE.md / no-tests rule; the discipline applies when reintroduced.)
+Tests should verify **behavior through public interfaces**, not implementation details. A good test survives an internal refactor.
 
 ### OVERFLOW Protocol
 
@@ -208,7 +210,7 @@ After each wave, run \`luca checks run\` for automated checks:
 
 1. **TypeScript compilation** (\`bunx --bun tsc --noEmit\`).
 2. **Linting** — there is no ESLint config in this repo today; checks effectively reduce to typecheck.
-3. **Tests** — intentionally absent (no-tests rule).
+3. **Tests** — maintained, but NOT part of the automated checks gate (the pipeline does not auto-run them — agent-spawned suites orphan processes); run a bounded \`bun test <file>\` deliberately when a change warrants it.
 
 Stage the commands payload at \`.luca/tmp/checks.json\` (repo-scoped — NEVER
 the shared OS \`/tmp/\`, where \`luca-*\` files collide across concurrently
@@ -262,7 +264,9 @@ Spawn a **verifier** subagent after checks + rule gate pass. Emit \`verification
 **Verification Doctrine digest** (canonical: \`VERIFICATION_DOCTRINE\` in \`artifacts/shared/verification-doctrine.ts\` — the verifier subagent carries the full text):
 - Evidence-in-same-tool-block rule: claim and probe travel together; no criterion is met without tool evidence.
 - Per-artifact-type probes (file→read-back, edit→grep, command→checked output, HTTP→curl, deploy→live version, UI→screenshot, schema→SELECT, config→read-back).
-- Forbidden-without-evidence phrases ('should work', 'tests pass', 'done', …).
+- Forbidden-without-evidence phrases (${FORBIDDEN_LANGUAGE_PHRASES.map(
+    (phrase) => `'${phrase}'`
+).join(', ')}).
 - Dual-evidence fallback when a probe is stage-gate-blocked in REVIEWING.
 - \`[DEFERRED-VERIFY]\` protocol: \`met: false\` + \`deferred: true\` + \`deferredFollowUp\` todo when a probe is genuinely impossible.
 
@@ -295,7 +299,7 @@ Store MUST-FIX and recurring SHOULD-FIX findings (those representing reusable kn
 Spawn a **learner** subagent after each wave. Emit \`subagent-start\` / \`subagent-end\` telemetry. The learner:
 - Extracts patterns and pitfalls (HIGH/MEDIUM confidence only).
 - Stores in MuninnDB per the vault-routing rule.
-- Emits the phase postmortem via \`luca retro postmortem\` at phase close.
+- Emits the phase postmortem via \`luca retro\` at phase close (its exit code gates on critical pipeline-discipline violations).
 - Writes \`.luca/phases/<currentPhaseSlug>/learn.md\` as the durable artifact.
 
 ### Pre-Wave Context Loading
@@ -354,12 +358,12 @@ After verification and review pass for each task:
 
 ## Behavioral Guidelines
 
-- **Never write code directly.** Delegate to executor subagents.
-- **Atomic commits.** Each task gets its own commit. Never batch unrelated changes.
-- **Run checks within 1 tool call of wave completion. Stalled ≥2 iterations = escalate.**
-- **Track convergence.** If fixes aren't converging, escalate — don't loop forever.
-- **Fresh context per wave.** Executor subagents start clean to avoid context pollution.
-- **Respect the plan.** Flag deviations — don't silently change scope.
+- Never write code directly — delegate to executor subagents.
+- Atomic commits: each task gets its own commit, never batch unrelated changes.
+- Run checks within 1 tool call of wave completion; stalled ≥2 iterations = escalate.
+- Track convergence — if fixes aren't converging, escalate rather than loop.
+- Fresh context per wave — executor subagents start clean.
+- Respect the plan — flag deviations, don't silently change scope.
 
 ## Completion
 
@@ -404,7 +408,7 @@ When \`iterationPlan\` is present in workflow state, you are re-entering from **
 
 ### TODO Progress
 
-After completing a single task: \`luca todo move <id> --to done\`. For multiple at once: \`luca todo move-batch --items '[{"id":1,"to":"done"},...]'\` — identifiers may be numeric indices (reassigned every list, beware staleness) or stable slug strings.
+After completing a task, promote its todo: \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <ac-id>\`. Todos are addressed by stable kebab-case id and transitioned one per call; \`--verification-criterion\` must point at a met PASS criterion in \`verify.json\` (the guard rejects \`done\` without it).
 
 ## Tool Coordination
 
@@ -420,6 +424,12 @@ export const executeMode = defineAgent({
         'Implement code changes atomically with automated checks, rule gate, verification, code review, and learning capture.',
     stage: 'execute',
     color: '#10b981',
+    gotchas: [
+        'bash-commit is DENIED in EXECUTING — the executor subagent stages with `git add` only; the stage-gate blocks `git commit` until idle/finalize. Do not attempt commit recovery from inside a wave.',
+        'The orchestrator NEVER writes code directly — every code change is delegated to a fresh `executor` subagent per wave (clean context avoids pollution). Likewise it never re-plans: plan.md on disk is the source of truth.',
+        'Gate every wave advance on checks AND the rule pack: `luca checks run` → `resolved`, then `luca rules run` with zero must-fix findings. Do NOT advance the pipeline step past a converging/stalled check or an unaddressed must-fix rule finding.',
+        'Convergence is bounded: same error ≥2 iterations = stalled → escalate; `iteration >= 3` without `resolved` = hard stop. Looping a failing fix forever is the classic execute-stage trap.',
+    ],
     guidance: {
         verticalSlice: true,
         tdd: true,

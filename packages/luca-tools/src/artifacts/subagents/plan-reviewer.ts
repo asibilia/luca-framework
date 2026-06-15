@@ -35,6 +35,11 @@ export const planReviewerSubagent = defineSubagent({
         antiSycophancy: true,
     },
     telemetryHooks: ['subagent-start', 'subagent-end'],
+    gotchas: [
+        'You have no write to pipeline state and no Task-spawn — return findings in the STATUS/GAPS format; the orchestrator persists the plan-review.md artifact, you never hand-write a path outside the contract.',
+        'Cold isolation is the point: you receive ONLY plan files + phase context — do NOT reference execution state, prior review results, or implementation details, or the review is biased.',
+        'A bare APPROVED with no cited evidence is a known plan-reviewer failure mode — verify referenced file paths and function names against the actual codebase before blessing them.',
+    ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies prior plans/decisions in the prompt.
     pipelineInvocations: [],
