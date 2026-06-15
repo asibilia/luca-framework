@@ -12,6 +12,19 @@ const baseState = {
     roadmap: [{ name: 'auth-rewrite', deps: [], status: 'in-progress' }],
 }
 
+// A schema-complete verify.json wrapper. The handler `safeParse`s the whole
+// VerificationResultSchema before the criterion lookup, so fixtures must carry
+// every required field a real `writeVerificationResult` output has.
+const verifyBase = {
+    timestamp: '2026-06-15T12:00:00Z',
+    wave: 1,
+    mode: 'full',
+    checks: [],
+    convergence: 'resolved',
+    errorFingerprints: [],
+    recommendation: 'proceed',
+}
+
 async function setupProject(
     cwd: string,
     opts: { verify?: unknown; vault?: string } = {}
@@ -86,10 +99,12 @@ describe('luca_todo_update', () => {
     test('accepts status=done when verificationRef points at met PASS criterion', async () => {
         await setupProject(cwd, {
             verify: {
+                ...verifyBase,
                 status: 'PASS',
                 criteria: [
                     {
                         criterionId: 'ac-01',
+                        description: 'auth middleware rewritten',
                         met: true,
                         evidence: 'src/auth.ts:42',
                         blocking: true,
@@ -116,10 +131,13 @@ describe('luca_todo_update', () => {
     test('rejects status=done when criterion is unmet', async () => {
         await setupProject(cwd, {
             verify: {
+                ...verifyBase,
                 status: 'FAIL',
+                recommendation: 'fix',
                 criteria: [
                     {
                         criterionId: 'ac-01',
+                        description: 'auth middleware rewritten',
                         met: false,
                         evidence: 'x',
                         blocking: true,

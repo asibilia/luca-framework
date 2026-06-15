@@ -95,7 +95,7 @@ Spawn researcher subagents in parallel for each dimension:
 ### 5. Risk Assessment
 - Identify highest-risk aspects of the change.
 - Enumerate failure modes and their impact.
-- Assess test coverage gaps in affected areas (note: tests are intentionally absent today per CLAUDE.md / no-tests rule; assess the gaps regardless).
+- Assess test coverage gaps in affected areas (tests ARE maintained in this repo; the pipeline does not auto-run them, but run a bounded \`bun test <file>\` deliberately when assessing coverage).
 - Flag security implications (auth, data access, input validation).
 - Note performance-sensitive code paths.
 - Estimate confidence level per risk (low/medium/high).

@@ -194,7 +194,7 @@ WRONG (horizontal):  test1, test2, test3 → impl1, impl2, impl3
 RIGHT (vertical):    test1→impl1 → test2→impl2 → test3→impl3
 \`\`\`
 
-Tests should verify **behavior through public interfaces**, not implementation details. A good test survives an internal refactor. (Note: tests are intentionally absent in this repo today per CLAUDE.md / no-tests rule; the discipline applies when reintroduced.)
+Tests should verify **behavior through public interfaces**, not implementation details. A good test survives an internal refactor.
 
 ### OVERFLOW Protocol
 
@@ -210,7 +210,7 @@ After each wave, run \`luca checks run\` for automated checks:
 
 1. **TypeScript compilation** (\`bunx --bun tsc --noEmit\`).
 2. **Linting** — there is no ESLint config in this repo today; checks effectively reduce to typecheck.
-3. **Tests** — intentionally absent (no-tests rule).
+3. **Tests** — maintained, but NOT part of the automated checks gate (the pipeline does not auto-run them — agent-spawned suites orphan processes); run a bounded \`bun test <file>\` deliberately when a change warrants it.
 
 Stage the commands payload at \`.luca/tmp/checks.json\` (repo-scoped — NEVER
 the shared OS \`/tmp/\`, where \`luca-*\` files collide across concurrently

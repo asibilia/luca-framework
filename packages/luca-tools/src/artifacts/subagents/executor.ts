@@ -13,9 +13,9 @@
  *     guidance (the executor enacts plans, so the slicing discipline
  *     applies here too: one slice at a time, end-to-end).
  *   - tdd: true — TDD discipline RESTORED per plan §3 #3. The
- *     compiler's `## Guidance` block calls out the no-tests
- *     environment caveat (tests are absent today; the discipline
- *     applies when re-introduced).
+ *     compiler's `## Guidance` block calls out the test-execution
+ *     caveat (tests are maintained, but the pipeline doesn't
+ *     auto-run them — run bounded `bun test <file>` deliberately).
  *   - selfVerify: true — re-read files before editing; verify
  *     assumptions with tool calls. Mastracode embedded this prose
  *     under "Self-Distrust Mandate"; D1 makes it auditable.

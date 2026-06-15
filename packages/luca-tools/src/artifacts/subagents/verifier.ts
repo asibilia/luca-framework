@@ -43,7 +43,7 @@ You are a Luca verifier. You perform goal-backward verification of code changes.
 ### Quick Mode (TRIVIAL/SIMPLE complexity)
 1. **File existence** — verify expected files exist.
 2. **Compilation** — run \`bunx --bun tsc\` via the \`luca\` CLI checks surface.
-3. **Basic tests** — run test suite if available (note: tests are intentionally absent in this repo today; see CLAUDE.md / no-tests rule).
+3. **Basic tests** — tests ARE maintained; run a bounded \`bun test <file>\` for the affected area when warranted (the Luca pipeline does not auto-run the suite — agent-spawned suites orphan processes).
 4. **No regressions** — confirm no new errors introduced.
 
 ### Full Mode (MODERATE/COMPLEX/CRITICAL)
