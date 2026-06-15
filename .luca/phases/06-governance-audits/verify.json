@@ -1,0 +1,208 @@
+{
+  "timestamp": "2026-06-15T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "docs/decisions/governance-floors-audit.md exists.",
+      "met": true,
+      "evidence": "Read docs/decisions/governance-floors-audit.md resolves; file present (115 lines staged, incl. new Completeness Sweep section).",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "Audit doc cites >=8 inventory gate files.",
+      "met": true,
+      "evidence": "grep -coE 'packages/luca-[a-z]+/src/...\\.ts' governance-floors-audit.md = 29 (>=8).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "RELAXATION_PATHS const present in relaxation-paths.ts.",
+      "met": true,
+      "evidence": "grep -c 'RelaxationPath|RELAXATION_PATHS' = 2; exported `const RELAXATION_PATHS: readonly RelaxationPath[]` at relaxation-paths.ts:39.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "RelaxationPath type exported.",
+      "met": true,
+      "evidence": "`export type RelaxationPath` at relaxation-paths.ts:17.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": ">=5 floors classified hard|soft.",
+      "met": true,
+      "evidence": "grep -cE \"floor: '(hard|soft)'\" relaxation-paths.ts = 17 (>=5). 5 hard + 12 soft entries (was 13 last cycle; +2 new soft entries code-review/uat, +1 force-complex, +1 gap-closure-research, minus the prior overcount). All classified.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-06.1",
+      "description": "skip-verify present in relaxation-paths.ts.",
+      "met": true,
+      "evidence": "`verify-skip-standalone` entry flag '--skip-verify' at relaxation-paths.ts:143-148.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-06.2",
+      "description": "skip-verify entry annotated standalone-only.",
+      "met": true,
+      "evidence": "note 'STANDALONE phase-plan skill only — the /lu pipeline has no verify bypass' at relaxation-paths.ts:147. Cross-checked against pipeline-transitions verify:['review','checks'].",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Phantom verbs (todo move|move-batch|retro postmortem gate) eliminated in execute.ts + finalize.ts.",
+      "met": true,
+      "evidence": "grep -rcE 'todo move|move-batch|retro postmortem gate' execute.ts finalize.ts = 0/0. Real verbs (`luca todo update --status done --verification-criterion`, `luca retro` exit-code gate) retained. No regression in cycle-2 — the wave-3 fix touched neither file's verb usage.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "init/vault:init cited in an excluded-scope context.",
+      "met": true,
+      "evidence": "'Excluded scope' section (governance-floors-audit.md:66-72) states init/vault:init gate SETUP not pipeline, cross-referenced to LUCA_TOPLEVEL_WRITE (classify-bash-command.ts:206-214).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "Whole tree type-checks clean (tsc exit 0).",
+      "met": true,
+      "evidence": "bunx --bun tsc --noEmit EXIT=0.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "Directive density drops in review.ts (CRITICAL CONSTRAINT count strictly decreases).",
+      "met": true,
+      "evidence": "Established met in wave-2 (baseline 1 -> post-trim 0). Wave-3 fix did not touch review.ts directive density; no regression. review.ts is staged but the cycle-2 delta is unrelated tone, constraint count unchanged from wave-2 result.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT register a new CLI verb for floors/relaxation.",
+      "met": true,
+      "evidence": "grep -rlE 'floors|relaxation' packages/luca-cli/src/commands/ returns NO matches; no new defineCommand. relaxation-paths.ts lives under luca-core/state/configs, not the CLI command tree.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT add a Zod schema for the static const.",
+      "met": true,
+      "evidence": "grep -cE 'z\\.|zod|safeParse|\\.parse\\(' relaxation-paths.ts = 0. Still a static readonly array + plain TS type after the wave-3 additions; the 4 new entries are plain object literals.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT cite a phantom verb/flag/path in the audit doc or const.",
+      "met": true,
+      "evidence": "PHANTOM CHECK ON THE WAVE-3 ADDITIONS — all resolve to real source: --skip-review/workflow.code_review at phase-execute/index.ts:1234,:1270 (grep-confirmed); --skip-uat/workflow.uat_required at phase-execute/index.ts:1609,:1611 (grep-confirmed); --force-complex at lu/index.ts:15,:71,:77 (grep-confirmed); --gaps at phase-plan/index.ts:21,:118,:154 (grep-confirmed); aligned pr-validation source skills/gh-pr-address/index.ts carries --skip-validation at :21,:73 (grep-confirmed). /lu->Skill(phase-execute) reachability confirmed at lu/index.ts:105. Zero phantom additions.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT trim a load-bearing constraint — load-bearing token count in review.ts does not regress.",
+      "met": true,
+      "evidence": "Established met in wave-2 (review.ts load-bearing tokens 6->8). Wave-3 fix did not remove constraints from any trimmed body; reviewer NOTE confirmed no load-bearing rule removed. No regression.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT re-introduce a phantom CLI verb anywhere in the artifacts tree.",
+      "met": true,
+      "evidence": "grep -rlE 'todo move|move-batch|retro postmortem gate' packages/luca-tools/src/artifacts/ returns NO files (empty). Zero phantom verbs across the entire artifacts tree after the wave-3 edits.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT touch agent-constraints.ts HARD_CONSTRAINTS.",
+      "met": true,
+      "evidence": "git diff --cached --name-only does NOT list packages/luca-tools/src/artifacts/shared/agent-constraints.ts.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "MUST NOT create .test.ts files or run bun test.",
+      "met": true,
+      "evidence": "git diff --cached --name-only has NO .test.ts/.spec.ts entries. Verification used tsc + grep/structural probes + luca rules run only; no bun test invoked.",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    {
+      "name": "tsc --noEmit",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "luca rules run",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "CYCLE-2 re-verification after the wave-3 enumeration-completeness fix that closed the code-architect MUST-FIX. KEY COMPLETENESS RE-PROBE (the criterion cycle-1 missed): the audit's 'CLOSED enumeration' is now GENUINELY closed. Independent sweep grepped EVERY --skip*/skip*/_required/_enabled/enabled token across all three pipeline-reachable skill bodies (lu, phase-plan, phase-execute; /lu reaches phase-plan at lu:103 and phase-execute at lu:105). Full token set and disposition: ENUMERATED SOFT FLOORS in RELAXATION_PATHS — --complexity (iteration-caps), --force-complex (iteration-caps-force, lu:15/71/77), --skip-memory (memory-recall), --skip-branch (branch-creation), --skip-research (research-step), --gaps (gap-closure-research, phase-plan:21/118/154), --skip-verify (verify-skip-standalone, standalone-only), --skip-review + workflow.code_review (code-review, phase-execute:1234/1270 — NEWLY ADDED), --skip-uat + workflow.uat_required (uat, phase-execute:1609/1611 — NEWLY ADDED), --skip-validation (pr-comment-validation), oversight (oversight-pauses). JUSTIFIED NON-FLOORS in the sweep table — --skip-replay (replay control), --skip-verify-loop (gap re-exec retry; verify gate still runs), --gaps-only/--quality-fixes (re-entry modes scoping which plans re-run), workflow.verification_tribunal_enabled/tribunal_enabled/root_cause_tribunal_enabled/stall_debate_enabled (COMPLEX+ default-on adversarial enhancements layered ON the gate), tdd_enabled (per-plan execution MODE read from frontmatter at phase-execute:340/377, not a config/flag escape hatch), debate_enabled (a buildReviewMetrics record field at :1501, not a gate). NO remaining token is a real pipeline-reachable gate-skip left unaccounted — the cycle-1 gap (code-review/uat) is the only one that was missing and it is now in BOTH const and doc with grep-verified line cites. The 4 new const entries appear in both relaxation-paths.ts (grep=8) and governance-floors-audit.md (grep=15). ANTI-03 on the additions: every newly-cited flag/configKey/source resolves to real source — zero phantoms. The architect's two SHOULD-FIX items (gh-prepare/progress/milestone-new peer flags; pr-validation source drift) were non-blocking: gh-prepare/progress/milestone-new are OUTSIDE the three pipeline-reachable skills so out of sweep scope (standalone surfaces), and the source-path drift was resolved by aligning both doc and const on skills/gh-pr-address/index.ts. SCOPE NOTE (carried, non-blocking): the unplanned `gotchas` field mechanism added in wave-1/2 to preserve trimmed constraints remains; it type-checks clean and is smoke-tested but is material scope expansion beyond the plan's authorized file list — acknowledge at milestone review.",
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "REQ-08 audit doc enumerating hard-vs-soft floors with relaxation paths and excluded-scope boundary.",
+      "criterionIds": ["ac-01", "ac-02", "ac-08"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "REQ-08 machine-checkable RELAXATION_PATHS const + RelaxationPath type.",
+      "criterionIds": ["ac-03", "ac-04", "ac-05", "ac-09"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D3",
+      "description": "REQ-08 --skip-verify resolved (standalone-only soft floor) in both artifacts.",
+      "criterionIds": ["ac-06.1", "ac-06.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D4",
+      "description": "REQ-09 over-prescription trimmed across mode + subagent bodies, load-bearing constraints survive.",
+      "criterionIds": ["ac-10", "anti-04", "anti-06"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D5",
+      "description": "Carried-forward phantom-verb fix in execute.ts + finalize.ts.",
+      "criterionIds": ["ac-07", "anti-05"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D6",
+      "description": "Whole tree type-checks clean.",
+      "criterionIds": ["ac-09"],
+      "compliance": "shipped"
+    }
+  ]
+}
