@@ -283,6 +283,19 @@ describe('handleStageGateHook — ephemeral scratch (gated step)', () => {
         expect(r.decision).toBe('allow')
     })
 
+    test('allows opening the rendered preview in a browser during learn', async () => {
+        // `open`/`xdg-open` launch a viewer — no file/repo mutation — so the
+        // skill can render AND open its page without the `!` shell escape.
+        for (const command of [
+            'open .luca/tmp/previews/phase3-direction-1.html',
+            'xdg-open /tmp/decision.html',
+        ]) {
+            const r = await handleStageGateHook({ stdin: bashStdin(command), cwd })
+            expect(r.exitCode).toBe(0)
+            expect(r.decision).toBe('allow')
+        }
+    })
+
     test('still blocks Write to a project HTML file during learn', async () => {
         const r = await handleStageGateHook({
             stdin: writeStdin('src/pages/decision.html'),

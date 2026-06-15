@@ -25,6 +25,11 @@ describe('classifyBashCommand — read-only', () => {
         'bunx --bun tsc --noEmit',
         'playwright-cli open http://localhost:3000/demo',
         'playwright-cli screenshot --filename=.playwright-cli/uat.png',
+        // Desktop viewer-open launchers — display a file, never mutate it.
+        'open .luca/tmp/previews/phase3-direction-1.html',
+        'open "/Users/alec/repo/.luca/tmp/previews/decision.html"',
+        'xdg-open /tmp/decision.html',
+        'start decision.html',
     ])('%s → bash-readonly', (cmd) => {
         const r = classifyBashCommand(cmd)
         expect(r.category).toBe('bash-readonly')

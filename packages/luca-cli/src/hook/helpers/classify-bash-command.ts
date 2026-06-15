@@ -65,6 +65,17 @@ const READONLY_COMMANDS = new Set([
     'paste',
     'fold',
     'join',
+    // Desktop "open with the default handler" launchers. These hand a path
+    // (or URL) to the OS to display in a viewer/browser — they do NOT mutate
+    // files or repo/pipeline state, so they are benign for the file-mutation
+    // policy this classifier enforces. Without them, a skill that renders a
+    // preview and opens it (e.g. decision-visualizer's
+    // `open .luca/tmp/previews/<name>.html`) fell through to the
+    // unknown-command → bash-mutate path and got blocked in gated phases
+    // (REVIEWING/learn), even though the HTML write itself is allowed.
+    'open', // macOS
+    'xdg-open', // Linux
+    'start', // Windows (cmd builtin)
     // NOTE: `playwright-cli` is NOT in this set — it has a dedicated
     // clause (step 4c in classifySubcommand) that extracts `--filename`
     // output paths and enforces the `.playwright-cli/` artifact dir.
