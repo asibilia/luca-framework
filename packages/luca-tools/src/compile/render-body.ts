@@ -54,6 +54,13 @@ export interface BodyRenderInput {
     telemetryHooks: readonly TelemetryHook[]
     /** Pipeline invocations declared on the agent. */
     pipelineInvocations: readonly PipelineInvocation[]
+    /**
+     * Gotchas — repo-/role-specific warnings restored into the prelude.
+     * Optional with a `[]` default so callers that don't yet pass it
+     * (the emitters wire this in a follow-up task) keep compiling; an
+     * empty array renders nothing, exactly like absent guidance.
+     */
+    gotchas?: readonly string[]
 }
 
 /**
@@ -66,6 +73,8 @@ export function renderBody(input: BodyRenderInput): string {
     const sections: string[] = [normalizeTrailing(input.instructions)]
     const guidancePrelude = renderGuidancePrelude(input.guidance)
     if (guidancePrelude) sections.push(guidancePrelude)
+    const gotchasPrelude = renderGotchasPrelude(input.gotchas ?? [])
+    if (gotchasPrelude) sections.push(gotchasPrelude)
     const invocationPrelude = renderPipelineInvocationPrelude(
         input.pipelineInvocations,
     )
@@ -123,6 +132,22 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
     }
     if (items.length === 0) return ''
     return ['## Guidance', '', ...items].join('\n')
+}
+
+/**
+ * Render a `## Gotchas` block from the agent's declared gotchas. If the
+ * list is empty, returns the empty string (the caller skips the
+ * section) — exactly like `renderGuidancePrelude` does for no guidance.
+ *
+ * Each gotcha becomes one bullet. The strings are author-controlled
+ * prose; we don't re-order or re-format them beyond the leading bullet
+ * marker, so the §3 parity audit can fingerprint "## Gotchas" the same
+ * way it keys off the Guidance block.
+ */
+function renderGotchasPrelude(gotchas: readonly string[]): string {
+    if (gotchas.length === 0) return ''
+    const items = gotchas.map((g) => `- ${g}`)
+    return ['## Gotchas', '', ...items].join('\n')
 }
 
 /**

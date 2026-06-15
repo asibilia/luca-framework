@@ -1502,6 +1502,69 @@ TRIBUNAL_ENABLED=$(echo "$CONFIG" | bun -e "
 
 **Replace merged findings** with the tribunal's unified recommendations for Step 8.1.
 
+### 8.6. Cross-Vendor / Independence Audit (Conditional)
+
+**Skip if:** \`workflow.cross_vendor_audit_enabled\` is false (default: false — opt-in), OR complexity is below CRITICAL, OR no changed files.
+
+**Honest note:** This harness is single-vendor — all reviewers run on the same Anthropic model family. This step does NOT spawn any separate vendor or model; it APPROXIMATES a cross-vendor audit by spawning ONE reviewer in cold, adversarial, fully-independent isolation. It is an independence approximation only, not a genuine multi-vendor check.
+
+**Gate check:**
+
+\`\`\`bash
+COMPLEXITY=$(luca state read 2>/dev/null | jq -r '.complexity // "MODERATE"')
+
+CROSS_VENDOR_ENABLED=$(echo "$CONFIG" | bun -e "
+  const c = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log(c.workflow?.cross_vendor_audit_enabled ?? false);
+")
+
+# Run ONLY when explicitly enabled AND complexity is CRITICAL AND files changed.
+# If COMPLEXITY !== "CRITICAL" → skip (CRITICAL-only gate).
+if [ "$CROSS_VENDOR_ENABLED" = "true" ] && [ "$COMPLEXITY" = "CRITICAL" ] && [ -n "$CHANGED_FILES" ]; then
+  RUN_CROSS_VENDOR=true
+fi
+\`\`\`
+
+**When enabled at CRITICAL complexity with changed files:**
+
+Spawn ONE cold, independent reviewer. It operates in COLD isolation: it receives ONLY the git diff of changed files plus the project identity summary (conventions only). It receives NO workflow state, NO session context, NO long-term learnings, and crucially NONE of the other reviewers' findings. This prevents the independence auditor from anchoring on prior reviewers' conclusions — it must reach its own verdict from the diff alone.
+
+\`\`\`\`python
+# Independence Auditor - cold, adversarial, no prior findings
+Task(
+  prompt="""
+PERSPECTIVE: independence
+
+You are an independent, adversarial reviewer auditing this diff with ZERO knowledge of any other reviewer's findings. Reach your own conclusions from the diff and project conventions alone. Be skeptical: assume prior reviewers may have missed or misjudged issues.
+
+**Changed files (diff only):**
+{CHANGED_FILES}
+
+**Project standards (conventions only):**
+{claude_content}
+
+**Your focus:** Correctness, hidden assumptions, regressions, and any CRITICAL/HIGH issue another reviewer might have anchored past. You have NOT seen any other reviewer's output — do not reference it.
+
+**Return format:**
+\`\`\`yaml
+issues:
+  - severity: CRITICAL|HIGH|MEDIUM|LOW
+    file: path/to/file.ts
+    line: 42
+    issue: Brief description
+    suggestion: How to fix
+    source_agent: independence-auditor
+\`\`\`
+
+If no issues found, return: \`issues: []\`
+""",
+subagent_type="Code Reviewer",
+description="Independence audit"
+)
+\`\`\`\`
+
+**Merge findings:** Combine the independence auditor's issues into the same merged-findings set, deduplicated by file:line, and route them through Step 8.1 exactly like every other reviewer.
+
 ### 8.1. Handle Code Review Results
 
 **Route based on findings:**

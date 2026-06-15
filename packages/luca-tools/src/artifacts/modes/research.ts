@@ -303,6 +303,12 @@ export const researchMode = defineAgent({
     description: 'Deep codebase and ecosystem research before planning.',
     stage: 'research',
     color: '#3b82f6',
+    gotchas: [
+        'The `Task` tool has no per-subagent abort — timeout is post-await detection only. Capture `start = Date.now()` per spawn and classify any `elapsed > 60_000` result as a timeout AFTER the batch returns; you cannot cancel a hung researcher mid-flight.',
+        'Capture raw findings to `raw/research-<NN>.md` IMMEDIATELY after the 5 subagents return, BEFORE synthesis. If synthesis is interrupted or OM-compresses, that raw output is the only recovery state — synthesizing first risks losing every dimension.',
+        'research→discuss is the only legal next step (not architect). Synthesis is capped at ≤200 lines and tool budget is MODERATE ≤10 / COMPLEX ≤20 / CRITICAL ≤30 — overshooting the budget on a single dimension starves the others.',
+        '`research:*` memories route to the REPO vault (project-scoped), not `default` — misrouting them to `default` corrupts the two-vault model.',
+    ],
     guidance: {
         selfVerify: true,
     },

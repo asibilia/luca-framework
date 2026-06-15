@@ -31,6 +31,11 @@ export const researcherSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
+    gotchas: [
+        'You are read-only (no Write tool — only Read/Grep/Glob) and write NO `.luca/` artifacts — return your findings in-context for the orchestrator; the parent research mode owns the `research.md` write, never create a file yourself.',
+        'You have no MCP access — do NOT attempt `mcp__muninn__*` to recall prior research; the orchestrator supplies prior patterns in your prompt.',
+        'Every finding must cite a verified file:line — cite nothing you have not opened with Read/Grep; unverified claims poison downstream planning.',
+    ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies prior research/patterns in the prompt.
     pipelineInvocations: [],

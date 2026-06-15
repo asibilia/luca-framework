@@ -42,6 +42,11 @@ export const shadowScannerSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
+    gotchas: [
+        'You are READ-ONLY — emit a report, NEVER delete/move/create files; use Bash only for glob/grep/find inspection. The cleanup decision belongs to the user via `luca repo-cleanup`.',
+        '`.luca/tmp/` holds gitignored ephemeral CLI-handoff payloads — it is NOT debris; do not flag it. Key Category-6 violations off the LUCA_DIR_CONTRACT allowlist, not intuition.',
+        'The structured JSON ShadowScanReport must be VALID, comment-free, and the LAST content in your response — the orchestrator parses it; prose-only findings are dropped.',
+    ],
     pipelineInvocations: [],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are the Luca shadow scanner. You scan the repository for AI-session debris — files and artifacts left behind by previous agent sessions that no longer serve a purpose.

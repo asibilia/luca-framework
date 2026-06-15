@@ -89,6 +89,11 @@ export const buildMode = defineAgent({
     description: 'Full-access build mode for implementing changes.',
     stage: 'build',
     color: '#16c858',
+    gotchas: [
+        'Build is the default OUTSIDE the Luca pipeline — it has full tool access but no pipeline state, no waves, no verify.json. Track multi-step work in a short in-output todo list (no external tool), not via `luca state advance`.',
+        'Verification is required before "done": run `bunx --bun tsc --noEmit` for TypeScript, then manually confirm behavior. Tests are intentionally absent in this repo (no-tests rule) — never run `bun test` or restore test files to satisfy the gate.',
+        'Do NOT commit unless asked — report what changed instead. When the user does ask, verify the code compiles first and use a descriptive `feat/`|`fix/`|`refactor/` branch (never commit straight to the default branch).',
+    ],
     guidance: {
         selfVerify: true,
         tdd: true,

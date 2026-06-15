@@ -1,28 +1,13 @@
 /**
- * verifier subagent — performs goal-backward verification of code
- * changes; supports quick mode (TRIVIAL/SIMPLE) and full mode
- * (MODERATE+).
+ * verifier subagent — goal-backward verification of code changes;
+ * quick mode (TRIVIAL/SIMPLE) and full mode (MODERATE+).
  *
- * Ported from luca-mastracode/src/subagents/verifier.ts.
- *
- * D1 RESTORATION:
- *   - selfVerify: true — verify every claim against actual file
- *     contents. Re-read files even if you think you know their state.
- *   - antiSycophancy: true — RESOLVED status requires fingerprinted
- *     evidence; "looks fine" is not a verification.
- *   - telemetry hooks: `verification-start`, `verification-end` —
- *     restored per plan §3 #1. The mastracode prose did NOT enforce
- *     these emissions; the v13 rewrite dropped them entirely.
- *   - rule-run invocation — restored per plan §3 #6. The verifier
- *     runs the repo-local rule packs as part of its check loop.
- *   - claim-verify invocation — restored per plan §3 #7. Every
- *     verification finding goes through `luca claim-verify` so the
- *     verification record is on the durable log, not just in the
- *     subagent's transient output.
- *
- * The verificationResult write path is preserved verbatim — the
- * orchestrator reads the verify.json file the verifier writes with the
- * native Write tool, not the subagent's prose.
+ * - selfVerify / antiSycophancy: verify claims against actual file
+ *   contents; RESOLVED requires fingerprinted evidence.
+ * - telemetry hooks (`verification-start`/`-end`), rule-run, and
+ *   claim-verify put each finding on the durable log.
+ * - The orchestrator reads the verify.json file (native Write tool),
+ *   not the subagent's prose.
  */
 import { defineSubagent } from '../../define/index.ts'
 import {
@@ -36,15 +21,19 @@ export const verifierSubagent = defineSubagent({
     description:
         'Verifies code changes meet acceptance criteria using goal-backward analysis and automated testing. Supports quick mode (TRIVIAL/SIMPLE) and full mode (MODERATE+).',
     maxSteps: 30,
-    // Reads + bash (to run checks) + edit (to apply minimal fixes in the
-    // checks-fix loop). The mastracode source did not declare an
-    // allowedTools list — full surface.
+    // Reads + bash (run checks) + edit/write (apply minimal fixes in the
+    // checks-fix loop; write verify.json).
     allowedTools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
     guidance: {
         selfVerify: true,
         antiSycophancy: true,
     },
     telemetryHooks: ['verification-start', 'verification-end'],
+    gotchas: [
+        'Token-presence greps pass while the emitted CLI command is runtime-broken — validate full commands against the CLI required-arg contract and real schema field names, not token presence.',
+        'Criterion IDs are plan-authored: consume ac-NN verbatim from plan.md, NEVER mint your own; exclude tombstoned (`[DROPPED …]`) and `[SPLIT → …]` parent-pointer lines from the verify.json criteria array, but KEEP umbrella and anti-criteria.',
+        'verify.json is writable ONLY in the `verify` pipelineStep — reporting results as prose silently drops them; the orchestrator reads the JSON file, not your text.',
+    ],
     pipelineInvocations: ['rule-run', 'claim-verify'],
     instructions: `${SUBAGENT_SHARED_PREFIX}
 You are a Luca verifier. You perform goal-backward verification of code changes.
@@ -80,16 +69,15 @@ When automated checks fail:
 
 ${VERIFICATION_DOCTRINE}
 
-## Output — CRITICAL
+## Output
 
-You MUST write structured results to \`.luca/phases/<currentPhaseSlug>/verify.json\` with the native Write tool. This write is legal only in the \`verify\` pipelineStep (per STEP_ARTIFACTS).
-NEVER report verification results as prose only — the orchestrator reads the JSON file, not your text.
+Write structured results to \`.luca/phases/<currentPhaseSlug>/verify.json\` with the native Write tool — legal only in the \`verify\` pipelineStep (per STEP_ARTIFACTS). Prose-only results are silently dropped; the orchestrator reads the JSON file.
 
 ### Criterion ID Rules
 
-- Criterion IDs are **plan-authored**. Consume ac-IDs verbatim from the plan.md \`## Verification Criteria\` section. You must NEVER mint or invent your own criterion ids — the plan is the single source of ID truth. If plan.md lacks IDs (legacy plans), fall back to ac-NN in listed order and note the fallback in the verify.json \`notes\` field.
+- Criterion IDs are **plan-authored**. Consume ac-IDs verbatim from the plan.md \`## Verification Criteria\` section; never mint your own. If plan.md lacks IDs (legacy plans), fall back to ac-NN in listed order and note the fallback in the verify.json \`notes\` field.
 - Sub-ids (ac-NN.M, produced by criterion splits) pass through as-is. The schema's criterionId is an unconstrained string — apply no format transformation.
-- **Tombstoned criteria** — entries marked \`[DROPPED — see decisions <date>]\` in plan.md — are EXCLUDED from the verify.json criteria array entirely. Rationale: aggregation's allCriteriaMet requires every blocking criterion to be met, so a tombstone recorded as met:false would wrongly fail the milestone gate; exclusion keeps the gate clean. **Split-parent pointer lines** — \`- **ac-NN**: [SPLIT → ac-NN.1, ac-NN.2]\` — are excluded from the verify.json criteria array exactly like tombstones; only the live ac-NN.M children get entries. Note that todo→done verificationRefs must cite live (non-tombstoned) ids — exact-match validation rejects dropped ids, which is correct behavior.
+- **Tombstoned criteria** — entries marked \`[DROPPED — see decisions <date>]\` — are excluded from the verify.json criteria array entirely (a met:false tombstone would wrongly fail the milestone gate). **Split-parent pointer lines** — \`- **ac-NN**: [SPLIT → ac-NN.1, ac-NN.2]\` — are excluded the same way; only the live ac-NN.M children get entries. todo→done verificationRefs must cite live ids — exact-match validation rejects dropped ids.
 - **Anti-criteria** (\`- **anti-NN**: MUST NOT — ...\`) ARE included in verify.json with their anti-NN ids. For an anti-criterion, met=true means the guarded regression did NOT occur; the evidence is the probe output.
 - **Umbrella criteria** — entries annotated \`(umbrella; met by ac-NN.1–.M)\` — are LIVE criteria. Record them in verify.json with \`met\` derived from their children (met=true only when every listed ac-NN.M child is met). Do NOT confuse them with \`[SPLIT → ...]\` parent pointer lines, which stay excluded.
 
@@ -139,10 +127,9 @@ After running all checks and evaluating all criteria, write the result to \`.luc
 \`\`\`
 
 ## Constraints
-- Fix errors in the current codebase, don't rewrite.
-- Minimal changes — fix only what's broken.
+- Fix errors in the current codebase, don't rewrite. Minimal changes — fix only what's broken.
 - Track iterations — don't spin forever.
 - In quick mode, skip goal-backward analysis.
-- ALWAYS write verify.json with the native Write tool (\`verify\` pipelineStep only) — never skip structured output.
+- Write verify.json with the native Write tool (\`verify\` pipelineStep only).
 `,
 })

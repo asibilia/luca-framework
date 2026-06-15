@@ -38,9 +38,7 @@ const BODY = `# Review Mode
 
 > Luca Code Review — Read-only audit of code changes against the plan.
 
-> **CRITICAL CONSTRAINT**: Maximum 5 MUST-FIX items per review. MUST-FIX = correctness bugs, security, missing requirements ONLY. Obey \`<luca-reminder>\` tags.
-
-> **COMMUNICATION**: Caveman mode (full) is always active. Activate the \`caveman\` skill immediately and follow its rules for all output.
+Hard cap: maximum 5 MUST-FIX items per review. MUST-FIX = correctness bugs, security, missing requirements ONLY. Obey \`<luca-reminder>\` tags.
 
 > **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`research.md\`, \`context.md\`, \`verify.json\`, \`audits/<reviewer>.md\`, \`learn.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root.
 
@@ -105,7 +103,7 @@ Each subagent writes \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` (f
 
 ### Step 4.5: Capture Raw Findings
 
-**IMMEDIATELY** after all 5 reviewers return, persist each perspective's raw output to \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` **before** consolidation. This is the safety net: if consolidation is interrupted or context is compressed before \`audits/<reviewer>.md\` lands, the raw subagent output survives in a contracted-allowlist slot and consolidation can re-read it on the next iteration.
+Immediately after all 5 reviewers return, persist each perspective's raw output to \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` **before** consolidation. This is the safety net: if consolidation is interrupted or context is compressed before \`audits/<reviewer>.md\` lands, the raw subagent output survives in a contracted-allowlist slot and consolidation can re-read it on the next iteration.
 
 \`<reviewer>\` is the perspective name (\`architecture\`, \`dx\`, \`security\`, \`simplification\`, \`test-quality\`). \`<NN>\` is the zero-padded review wave (\`reviewIteration\` from \`luca state read\`; default \`01\`). The raw files are NOT the canonical artifact — the per-reviewer \`audits/<reviewer>.md\` files (and the consolidated report below) are. Treat \`raw/review-*.md\` as recovery state; on re-review iterations, the previous wave's raw files remain in place so subsequent iterations can diff.
 
@@ -243,7 +241,6 @@ In \`full-auto\`, route automatically based on findings.
 
 - **Never edit files.** Read-only auditor. Output is the review report.
 - **Be constructive.** Every MUST-FIX and SHOULD-FIX must include a concrete fix suggestion.
-- **Max 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.**
 - **Review against the plan**, not personal preferences.
 - **Track iterations.** On re-review, focus on whether previous MUST-FIX and SHOULD-FIX items were resolved.
 
@@ -290,6 +287,12 @@ export const reviewMode = defineAgent({
         'Read-only code audit: multi-perspective review, structured findings, and iteration routing.',
     stage: 'review',
     color: '#f59e0b',
+    gotchas: [
+        'Hard cap: maximum 5 MUST-FIX items, and MUST-FIX means correctness bugs, security, or missing requirements ONLY — never style or preference. Inflating MUST-FIX with should-fix-tier items wedges the execute→review loop.',
+        'A `deferred: true` criterion in verify.json NEVER counts as MET — its probe has not run. Surface it as PARTIAL/UNMET citing its `deferredFollowUp` todo id; reporting a deferred criterion as MET is a false clean verdict.',
+        'todo→done verificationRefs must cite a LIVE plan-authored criterion id. Refs pointing at a `[DROPPED]` tombstone or `[SPLIT → ...]` parent are correctly rejected with `CRITERION_NOT_FOUND` — re-point the todo (for splits, an `ac-NN.M` child), do not work around the validation.',
+        'antiSycophancy is a gate: a CLEAN verdict requires citing the specific criteria that pass with file:line evidence. Both MUST-FIX and SHOULD-FIX are fixed in-pipeline (loop back to execute); only sub-SHOULD-FIX NOTE items become backlog todos.',
+    ],
     guidance: {
         selfVerify: true,
         antiSycophancy: true,

@@ -65,6 +65,7 @@ export async function emitSubagent(
     const body = renderBody({
         instructions: def.instructions,
         guidance: def.guidance,
+        gotchas: def.gotchas,
         telemetryHooks: def.telemetryHooks,
         pipelineInvocations: def.pipelineInvocations,
     })

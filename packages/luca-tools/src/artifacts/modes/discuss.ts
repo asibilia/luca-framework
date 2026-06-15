@@ -67,6 +67,11 @@ export const discussMode = defineAgent({
     description: 'Read-only brainstorming and open-ended discussion.',
     stage: 'discuss',
     color: '#f59e0b',
+    gotchas: [
+        'Discuss is NOT a Luca pipeline stage — never call `luca state advance` or trigger a mode transition from here. If the user wants to act, suggest switching to Plan (for a plan) or Triage (for the autonomous pipeline) rather than doing it yourself.',
+        'Read-only is absolute: no file writes, no git commits, no builds, and `luca todo list` is the ONLY todo surface — you cannot add, transition, or remove todos here.',
+        'Resist solving. Unless the user explicitly asks for a solution, stay in the thinking space — emitting a plan or implementation leaks Plan/Build-mode behavior into a conversation the user opened to brainstorm.',
+    ],
     guidance: {
         selfVerify: true,
     },

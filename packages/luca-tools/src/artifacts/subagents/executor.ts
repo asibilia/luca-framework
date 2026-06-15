@@ -56,6 +56,11 @@ export const executorSubagent = defineSubagent({
         selfVerify: true,
     },
     telemetryHooks: ['wave-start', 'wave-end'],
+    gotchas: [
+        'git commit is stage-gate-blocked in EXECUTING — stage with `git add <explicit files>` only; never `git add .` or `git add -A` (sweeps concurrent executors\' and pipeline-generated work into your commit).',
+        'You have no MuninnDB/MCP access — do NOT attempt `mcp__muninn__*` to recall commit conventions or prior pitfalls; read `luca preferences read` (commits section) and apply the orchestrator-supplied learnings from your prompt.',
+        'Do not write `.luca/` artifacts directly — your only writes are production code; verify.json/audits/learn.md belong to other steps and the stage-gate will reject the path.',
+    ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies prior context in the prompt. rule-run +
     // confidence-log are CLI/Bash-based and stay.

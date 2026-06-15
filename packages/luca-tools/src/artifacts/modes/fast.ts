@@ -57,6 +57,11 @@ export const fastMode = defineAgent({
     description: 'Speed-optimized mode for quick edits and direct answers.',
     stage: 'fast',
     color: '#fdac53',
+    gotchas: [
+        'Speed is the constraint, not correctness: never skip the read-before-edit / type-check-after-edit loop to save a tool call. One Read + one Edit + one `tsc --noEmit` is the minimum, not an optional flourish.',
+        'Do NOT explore the codebase. For general programming questions answer from knowledge with no tools; reach for Read only when the answer lives in THIS project. Unsolicited grepping blows the <100-word / ≤25-words-between-calls budget.',
+        'Know when to bail: if the task needs more than ~5 tool calls or combines unrelated changes, stop and suggest build mode instead of grinding it out slowly in fast mode.',
+    ],
     guidance: {
         selfVerify: true,
     },

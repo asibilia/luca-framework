@@ -62,6 +62,7 @@ const subagent = defineSubagent({
     },
     telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'claim-verify'],
+    gotchas: ['<example footgun>'],
     instructions: 'You are the smoke subagent. Do the smoke thing.',
 })
 
@@ -74,6 +75,7 @@ const agent = defineAgent({
     guidance: { verticalSlice: true, tdd: false, selfVerify: true, antiSycophancy: false },
     telemetryHooks: ['phase-start', 'phase-end'],
     pipelineInvocations: ['confidence-log'],
+    gotchas: ['<example footgun>'],
     instructions: 'You are the smoke mode-agent. You plan.',
 })
 
@@ -266,6 +268,7 @@ function check(label: string, actual: string, expected: string): void {
 
 check('subagent frontmatter', subagentText, expectedSubagentFrontmatter)
 check('subagent D1 guidance', subagentText, '## Guidance')
+check('subagent gotchas', subagentText, '## Gotchas')
 check('subagent tdd line', subagentText, '**Test-driven development.**')
 check(
     'subagent telemetry',
@@ -285,6 +288,7 @@ check(
 
 check('agent frontmatter', agentText, expectedAgentFrontmatter)
 check('agent stage', agentText, 'stage: plan')
+check('agent gotchas', agentText, '## Gotchas')
 
 check('command frontmatter', commandText, expectedCommandFrontmatter)
 check('command body', commandText, '$ARGUMENTS')
