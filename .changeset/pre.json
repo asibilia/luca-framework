@@ -37,6 +37,7 @@
     "fix-reviewer-usage-self-report",
     "fix-roadmap-create-activates-phase-1",
     "fix-stage-gate-allows-ephemeral-scratch",
+    "fix-stage-gate-allows-viewer-open",
     "fix-stage-gate-classifier-blocks-pipeline",
     "fix-stage-gate-session-scope",
     "fix-stale-v12-agent-names-in-skills",
