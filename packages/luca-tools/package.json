@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca-tools",
   "description": "Luca agent-environment artifacts — agent/skill/command/rule/hook definitions and the harness-shape compiler (private; bundled into @alecsibilia/luca)",
-  "version": "13.0.0-alpha.12",
+  "version": "13.0.0-alpha.13",
   "dependencies": {
     "@alecsibilia/luca-core": "workspace:*",
     "zod": "catalog:"
