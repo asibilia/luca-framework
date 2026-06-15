@@ -105,9 +105,9 @@ describe('classifyWritePath — always-denied paths', () => {
         }
     })
 
-    test('does not deny non-luca /tmp scratch files', () => {
-        expect(classifyWritePath('/tmp/scratch.json').class).toBe('code')
-        expect(classifyWritePath('/tmp/some-script.sh').class).toBe('code')
+    test('classifies non-luca /tmp scratch files as ephemeral (not denied)', () => {
+        expect(classifyWritePath('/tmp/scratch.json').class).toBe('ephemeral')
+        expect(classifyWritePath('/tmp/some-script.sh').class).toBe('ephemeral')
     })
 
     test('denies absolute paths under the user home .claude/ or .luca/', () => {
@@ -122,6 +122,70 @@ describe('classifyWritePath — always-denied paths', () => {
                 homedir,
             }).class
         ).toBe('denied')
+    })
+})
+
+describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
+    test('classifies universal /tmp and /private/tmp writes as ephemeral', () => {
+        expect(classifyWritePath('/tmp/decision.html').class).toBe('ephemeral')
+        expect(
+            classifyWritePath('/private/tmp/ramora-p4-decision.html').class
+        ).toBe('ephemeral')
+    })
+
+    test('classifies platform tmpdir (macOS /var/folders) as ephemeral via tmpdirs opt', () => {
+        const tmpdirs = ['/var/folders/ab/cd1234/T']
+        expect(
+            classifyWritePath('/var/folders/ab/cd1234/T/abc/decision.html', {
+                tmpdirs,
+            }).class
+        ).toBe('ephemeral')
+        // A custom $TMPDIR-style root also passed via tmpdirs.
+        expect(
+            classifyWritePath('/Users/alec/.cache/tmp/x.html', {
+                tmpdirs: ['/Users/alec/.cache/tmp'],
+            }).class
+        ).toBe('ephemeral')
+    })
+
+    test('platform /var/folders temp is NOT denied by the /var system-dir rule', () => {
+        // Without the tmpdirs opt it falls back to the /var denial — but the
+        // hook always supplies os.tmpdir(), so the real path is exercised above.
+        const r = classifyWritePath('/var/folders/ab/cd/T/x.html', {
+            tmpdirs: ['/var/folders/ab/cd/T'],
+        })
+        expect(r.class).not.toBe('denied')
+    })
+
+    test('legacy /tmp/luca-* payloads stay denied even though they live under /tmp', () => {
+        // The collision denial is checked before the ephemeral allow.
+        const r = classifyWritePath('/tmp/luca-checks-07.json', {
+            tmpdirs: ['/tmp'],
+        })
+        expect(r.class).toBe('denied')
+        expect(r.reason).toContain('.luca/tmp/')
+    })
+
+    test('non-temp /var paths remain denied', () => {
+        expect(classifyWritePath('/var/log/system.log').class).toBe('denied')
+    })
+
+    test('classifies .luca/tmp/previews/<name> as ephemeral', () => {
+        expect(
+            classifyWritePath('.luca/tmp/previews/auth-decision.html').class
+        ).toBe('ephemeral')
+        expect(
+            classifyWritePath(
+                '/repo/.luca/tmp/previews/ws-reconnect.html',
+                { cwd: '/repo' }
+            ).class
+        ).toBe('ephemeral')
+    })
+
+    test('flat .luca/tmp/<name>.json handoffs remain planning-general (unchanged)', () => {
+        expect(classifyWritePath('.luca/tmp/roadmap.json').class).toBe(
+            'planning-general'
+        )
     })
 })
 

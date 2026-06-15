@@ -37,6 +37,14 @@ export const RUN_ID_RE = /^[A-Za-z0-9_-]+$/
 // are NOT pipeline artifacts. Examples: "roadmap.json", "pr-findings.json"
 export const TMP_FILE_RE = /^[a-z][a-z0-9-]*\.json$/
 
+// tmp/previews/ scratch file: a kebab-case basename with any single
+// extension. These are ephemeral, repo-scoped, gitignored browser previews
+// (e.g. a decision-visualizer page) — NOT pipeline artifacts and NOT
+// CLI-handoff payloads. Allowed in ANY pipelineStep because they touch
+// neither the repo nor pipeline state. Examples: "auth-decision.html",
+// "ws-reconnect-tradeoffs.html".
+export const TMP_PREVIEW_FILE_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9]+$/i
+
 // ---------------------------------------------------------------------------
 // Directory + file path constants
 // ---------------------------------------------------------------------------

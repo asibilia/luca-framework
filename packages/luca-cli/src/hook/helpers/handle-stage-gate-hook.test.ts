@@ -234,6 +234,73 @@ describe('handleStageGateHook — REVIEWING', () => {
     })
 })
 
+// Regression: a presentational skill (e.g. decision-visualizer) writes an
+// inert ephemeral HTML preview while the pipeline is parked at a gated step.
+// Such writes touch neither the repo nor pipeline state and must be allowed
+// in any pipelineStep — the previous behaviour blocked them as 'code-write'.
+describe('handleStageGateHook — ephemeral scratch (gated step)', () => {
+    let cwd: string
+    beforeEach(async () => {
+        // `learn` lives in REVIEWING — the exact step from the bug report.
+        cwd = await makeProjectAtStep('learn')
+    })
+    afterEach(async () => {
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    function writeStdin(filePath: string): string {
+        return JSON.stringify({
+            tool_name: 'Write',
+            tool_input: { file_path: filePath },
+        })
+    }
+
+    test('allows Write to an OS-temp HTML preview during learn', async () => {
+        const r = await handleStageGateHook({
+            stdin: writeStdin('/tmp/ramora-p4-cycle4-decision.html'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
+
+    test('allows Write to the platform tmpdir via tmpdirs', async () => {
+        const r = await handleStageGateHook({
+            stdin: writeStdin('/var/folders/ab/cd/T/xyz/decision.html'),
+            cwd,
+            tmpdirs: ['/var/folders/ab/cd/T'],
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
+
+    test('allows Write to .luca/tmp/previews/<name> during learn', async () => {
+        const r = await handleStageGateHook({
+            stdin: writeStdin('.luca/tmp/previews/auth-decision.html'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
+
+    test('still blocks Write to a project HTML file during learn', async () => {
+        const r = await handleStageGateHook({
+            stdin: writeStdin('src/pages/decision.html'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+    })
+
+    test('still denies the legacy /tmp/luca-* payload during learn', async () => {
+        const r = await handleStageGateHook({
+            stdin: writeStdin('/tmp/luca-checks-07.json'),
+            cwd,
+            tmpdirs: ['/tmp'],
+        })
+        expect(r.exitCode).toBe(2)
+    })
+})
+
 describe('handleStageGateHook — FINALIZING', () => {
     let cwd: string
     beforeEach(async () => {

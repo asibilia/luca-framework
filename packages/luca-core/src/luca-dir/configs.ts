@@ -140,13 +140,13 @@ export const LUCA_DIR_CONTRACT = {
         tmp: {
             path: 'tmp/',
             description:
-                'Ephemeral, repo-scoped CLI-handoff payloads (LLM orchestrator → `luca` CLI via --file). Gitignored; NOT pipeline artifacts. Flat .json files only.',
-            pattern: '<kebab-name>.json',
+                'Ephemeral, repo-scoped scratch. Gitignored; NOT pipeline artifacts; writable in any pipelineStep. Two shapes: flat <kebab-name>.json CLI-handoff payloads (LLM orchestrator → `luca` CLI via --file), and previews/<name>.<ext> browser previews (e.g. a decision-visualizer page).',
+            pattern: '<kebab-name>.json | previews/<name>.<ext>',
         },
     },
     rules: [
-        'No notes/, drafts/, or other ad-hoc directories — if not in the allowlist, it does not exist. (tmp/ IS sanctioned, but only for flat <kebab-name>.json CLI-handoff payloads.)',
-        'tmp/ holds ONLY ephemeral <kebab-name>.json handoff files (repo-scoped scratch for `luca <cmd> --file`); it is gitignored and writable in any pipelineStep. Never put pipeline artifacts there.',
+        'No notes/, drafts/, or other ad-hoc directories — if not in the allowlist, it does not exist. (tmp/ IS sanctioned, but only for flat <kebab-name>.json CLI-handoff payloads and previews/<name>.<ext> browser previews.)',
+        'tmp/ holds ONLY ephemeral <kebab-name>.json handoff files and previews/<name>.<ext> browser previews; it is gitignored and writable in any pipelineStep. Never put pipeline artifacts there.',
         'Phase slugs are <NN>-<kebab-case> with zero-padded NN derived from roadmap order — NOT LLM-named.',
         'Audit filenames are fixed by reviewer name (kebab-case) — NOT LLM-named.',
         'Wave files are NN.md (zero-padded) — NOT LLM-named.',
