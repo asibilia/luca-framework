@@ -5,6 +5,7 @@ export {
     ClassifierOverrideMetaSchema,
     FailureDumpMetaSchema,
     OverrideSourceSchema,
+    RecallUtilizationMetaSchema,
     SatisfactionSignalMetaSchema,
     TelemetryRecordSchema,
 } from './schemas.ts'
@@ -12,6 +13,7 @@ export type {
     ClassifierOverrideMeta,
     FailureDumpMeta,
     OverrideSource,
+    RecallUtilizationMeta,
     SatisfactionSignalMeta,
     TelemetryKind,
     TelemetryRecord,

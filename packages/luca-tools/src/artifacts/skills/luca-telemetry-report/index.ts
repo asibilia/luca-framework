@@ -41,6 +41,7 @@ Known \`kind\` values:
 - \`mode.start\` / \`mode.end\` — pipeline step transitions
 - \`subagent.invoke\` / \`subagent.complete\` — subagent dispatch boundaries
 - \`recall.hit\` / \`recall.miss\` — MuninnDB recall outcomes
+- \`recall.utilization\` — post-hoc tie of a run's recalled memory IDs to that run's outcome valence (carries \`meta.recalledIds\`, \`meta.outcome\` ∈ {positive|negative|neutral}, \`meta.step\` ∈ {verify|review})
 - \`review.iteration\` — review-step emit
 - \`classifier.override\` — manual override of an automated classifier decision (carries \`meta.source\` for the override origin)
 - \`signal.satisfaction\` — user/reviewer satisfaction signal (carries \`meta.valence\` and \`meta.source\`); summarize as a count plus valence breakdown by source
@@ -86,7 +87,8 @@ For each selected file, stream lines (small files, ≤ a few MB each — a full 
    - \`phase.*\` / \`wave.*\`: sum \`durationMs\` into \`byPhase[phase]\` / \`byWave[wave]\` buckets
    - \`mode.*\`: sum into \`byStep[from|to]\`
    - \`subagent.*\`: tally \`byRole[role]\` with input/output token sums; pair \`invoke\`/\`complete\` by \`meta.correlationId\` for orchestrator-side duration (preferred over a null harness \`durationMs\`)
-   - \`recall.*\`: tally hit/miss/verifiedCount per \`meta.callerMode\`
+   - \`recall.hit\` / \`recall.miss\`: tally hit/miss/verifiedCount per \`meta.callerMode\`
+   - \`recall.utilization\`: for each record read \`meta.recalledIds\` (array of concept ULIDs), \`meta.outcome\` (\`positive\`|\`negative\`|\`neutral\`), and \`meta.step\` (\`verify\`|\`review\`). For every ULID in \`meta.recalledIds\`, increment a cross-run \`byRecalledId[ulid][outcome]\` tally (keyed also by \`meta.step\` so verify vs review scope is distinguishable). Skip records missing \`meta.recalledIds\` or with an out-of-range \`meta.outcome\` (tally under \`failures.schema\`).
    - \`review.iteration\`: collect the verdict/mustFixCount/perspectives series
    - \`classifier.override\`: tally \`byOverrideSource[meta.source]\` (count of classifier overrides, broken down by override-source)
    - \`signal.satisfaction\`: tally \`bySatisfactionSource[meta.source]\` with \`meta.valence\` breakdown (count of satisfaction signals + valence breakdown by source)
@@ -110,6 +112,13 @@ Per-role breakdown: invocations, input/output token sums, mean tokens/call. List
 
 ### Recall Stats
 Per-mode hit-rate (hit / (hit+miss)). Verified-tier hit-rate (sum(verifiedCount) / sum(resultCount)). Flag modes with a hit-rate < 0.4.
+
+### Recall Utilization
+A recalled-ID → outcome-valence correlation built from \`recall.utilization\` records (\`byRecalledId\`). For each recalled memory (by concept ULID), tabulate how often it was in scope when the run's outcome was \`positive\` vs \`negative\` vs \`neutral\`, split by \`meta.step\` (verify | review). Table: recalled ULID | step | positive | negative | neutral. Sort by net valence (positive − negative) descending so the memories most associated with good outcomes surface first.
+
+This correlation is **post-hoc / statistical**, aggregated by runId + step (MVP) — it is NOT a per-memory utility score and does not imply causation. A memory appears here only because it was recalled in a run whose outcome was later recorded; co-occurrence is not attribution.
+
+If no \`recall.utilization\` records exist across the selected runs, this section reports "no utilization data yet" and is otherwise skipped — the skill stays read-only and fail-tolerant (see Failure Modes), so absence is never an error.
 
 ### Review Convergence
 Per-run review-iteration count, mustFixCount trajectory, time-to-APPROVED (sum of \`review.iteration\` durationMs). Flag runs that hit \`maxReviewIterations\`.
@@ -145,6 +154,8 @@ The skill exits. No further actions. The user invokes it again with different \`
 | \`durationMs:null\` on a \`*.end\` record | Aborted run or NaN guard fired | Attempt the ts-gap fallback (Step 3); else tally and continue |
 | \`--vault\` unresolvable | Vault not in \`.luca/config.json\` | Continue with the supplied vault name; the report uses it as-is |
 | Unknown \`kind\` value | Future telemetry kind added post-skill | Tally under "Unknown kinds" in the Failure Modes section; do not crash |
+| No \`recall.utilization\` records | Runs predate utilization telemetry, or none emitted | Recall Utilization section reports "no utilization data yet"; do not crash |
+| \`recall.utilization\` missing \`meta.recalledIds\` / bad \`meta.outcome\` | Malformed utilization record | Increment \`failures.schema\`, skip the record, continue |
 
 ## Notes
 

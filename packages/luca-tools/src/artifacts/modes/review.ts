@@ -147,6 +147,14 @@ mcp__muninn__muninn_recall(
 
 If matches found, note **recurring issues** (increases severity signal) and reference prior occurrence.
 
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run it with \`--kind recall.hit\` when results were returned, or \`--kind recall.miss\` when \`resultCount\` is 0:
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+
 After producing the audit report, store notable findings (MUST-FIX and recurring SHOULD-FIX). Per vault-routing rule, \`review-finding:*\` is project-scoped → repo vault.
 
 ### Step 6: Audit Report
@@ -234,6 +242,16 @@ In \`full-auto\`, route automatically based on findings.
 1. Check iteration count against \`maxReviewIterations\`.
 2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
 3. At budget limit: capture every remaining MUST-FIX and SHOULD-FIX item as a backlog todo (\`luca todo add --status backlog --source review-finding …\`) so nothing is lost, save the report with a budget-exhausted warning in the audit artifact, then transition forward via \`luca state advance --to-step learn\`.
+
+### Step 8: Learn-Step Outcome Correlation
+
+At the learn step, correlate recalled memories to this run's outcome. Gather the \`recalledIds\` captured in the run's \`recall.hit\`/\`recall.miss\` records (from \`.luca/telemetry/<runId>.jsonl\`) and the terminal outcome valence at verify/review, then emit one \`recall.utilization\` record so the read-time aggregator can join recalled memories to outcomes:
+
+\`\`\`
+luca telemetry emit --kind recall.utilization --run-id <runId> --meta '{"recalledIds":["<recalled concept ULID>", "..."],"outcome":"<positive|negative|neutral>","step":"<verify|review>"}'
+\`\`\`
+
+Correlation is post-hoc/statistical by \`runId\`+\`step\` (MVP — no per-memory write-back).
 
 ---
 

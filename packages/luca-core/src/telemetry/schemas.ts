@@ -35,6 +35,7 @@ export type TelemetryKind =
     | 'subagent.cancelled'
     | 'recall.hit'
     | 'recall.miss'
+    | 'recall.utilization'
     | 'review.iteration'
     | 'signal.satisfaction'
     | 'signal.failure-dump'
@@ -161,3 +162,23 @@ export const FailureDumpMetaSchema = z
 
 /** Inferred type for {@link FailureDumpMetaSchema}. */
 export type FailureDumpMeta = z.infer<typeof FailureDumpMetaSchema>
+
+/**
+ * ADVISORY shape for `recall.utilization` event `meta`.
+ *
+ * Records which recalled engrams (by concept ULID) were associated with a
+ * pipeline step's outcome — feeding recall outcome attribution.
+ *
+ * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
+ * rejection. Documentation-only; MUST NOT be wired into a throwing path.
+ */
+export const RecallUtilizationMetaSchema = z
+    .object({
+        recalledIds: z.array(z.string()).optional(),
+        outcome: z.string().optional(),
+        step: z.string().optional(),
+    })
+    .passthrough()
+
+/** Inferred type for {@link RecallUtilizationMetaSchema}. */
+export type RecallUtilizationMeta = z.infer<typeof RecallUtilizationMetaSchema>
