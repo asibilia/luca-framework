@@ -5,6 +5,7 @@ export {
     ClassifierOverrideMetaSchema,
     FailureDumpMetaSchema,
     OverrideSourceSchema,
+    PrOutcomeMetaSchema,
     RecallUtilizationMetaSchema,
     SatisfactionSignalMetaSchema,
     TelemetryRecordSchema,
@@ -13,6 +14,7 @@ export type {
     ClassifierOverrideMeta,
     FailureDumpMeta,
     OverrideSource,
+    PrOutcomeMeta,
     RecallUtilizationMeta,
     SatisfactionSignalMeta,
     TelemetryKind,
@@ -32,3 +34,10 @@ export type {
 } from './telemetry.ts'
 
 export { generateRunId } from './helpers/generate-run-id.ts'
+
+export { computeOutcomeKpis } from './outcome-kpi.ts'
+export type {
+    ComputeOutcomeKpisOptions,
+    OutcomeKpiBucket,
+    OutcomeKpis,
+} from './outcome-kpi.ts'

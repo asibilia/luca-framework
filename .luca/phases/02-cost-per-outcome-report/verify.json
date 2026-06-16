@@ -1,0 +1,166 @@
+{
+  "timestamp": "2026-06-16T00:00:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "BODY rate table names opus, sonnet, haiku",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/luca-telemetry-report/index.ts:105-109 — Model rate table rows `opus`/`sonnet`/`haiku` + fallback; substring directive at :89,:112",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02.1",
+      "description": "inputTokens referenced as token-rate input",
+      "met": true,
+      "evidence": "index.ts:89 — `callCost = (meta.inputTokens × inputRate) + ...`; token source read from meta.inputTokens",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02.2",
+      "description": "outputTokens referenced as token-rate input",
+      "met": true,
+      "evidence": "index.ts:89 — `... + (meta.outputTokens × outputRate)`; token source read from meta.outputTokens",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "### Cost Summary section present",
+      "met": true,
+      "evidence": "index.ts:127 — `### Cost Summary` heading; per-role + total cost from Model rate table",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "### Cost per Outcome section present",
+      "met": true,
+      "evidence": "index.ts:130 — `### Cost per Outcome` heading",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05.1",
+      "description": "phases-completed outcome denominator present",
+      "met": true,
+      "evidence": "index.ts:133 — `cost / phases-completed` = totalCost / phasesCompleted (count of phase.end records)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05.2",
+      "description": "first-pass outcome denominator present, defined as exactly one review.iteration ending APPROVED with no re-entry",
+      "met": true,
+      "evidence": "index.ts:134 — `cost / first-pass-success`; defined literally: 'exactly ONE entry whose verdict is APPROVED and no subsequent fix / re-execute re-entry — count == 1 && verdict == APPROVED', derived purely from per-phase review.iteration series — matches user-confirmed definition",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "meta.role discriminator documented",
+      "met": true,
+      "evidence": "index.ts:89,:90 — bucket tokens AND cost by meta.role; executor = meta.role === \"executor\"",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07.1",
+      "description": "executor attribution bucket named",
+      "met": true,
+      "evidence": "index.ts:90 — executor bucket collects only records where meta.role === \"executor\"; :141 executor bucket in report",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07.2",
+      "description": "structure-vs-executor attribution / structure bucket named",
+      "met": true,
+      "evidence": "index.ts:90 — structure bucket = every other role (unknown/missing/future → structure); :138 `### Structure vs Executor Attribution` heading",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "named cost-compute test block exists (non-vacuous)",
+      "met": true,
+      "evidence": "index.test.ts:22 — describe('cost-compute') with 3 it/test blocks asserting opus/sonnet/haiku, inputTokens/outputTokens, `### Cost Summary` via toContain (no -t-only probes)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "named cost-per-outcome test block exists",
+      "met": true,
+      "evidence": "index.test.ts:39 — describe('cost-per-outcome') asserting `### Cost per Outcome`, phases-completed, first-pass via toContain",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "named structure-vs-executor test block exists",
+      "met": true,
+      "evidence": "index.test.ts:50 — describe('structure-vs-executor') asserting meta.role, executor, `### Structure vs Executor Attribution` via toContain",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "index.test.ts passes (timeout 120 bun test ... exits 0)",
+      "met": true,
+      "evidence": "Dual-evidence: (1) structural — index.test.ts asserts the correct literals in 3 separately-named describe blocks (cost-compute/cost-per-outcome/structure-vs-executor), each via toContain on the real lucaTelemetryReportSkill.body export (no vacuous -t probes); (2) attestation — orchestrator ran `timeout 120 bun test .../index.test.ts` live at the checks step: 7 pass / 0 fail, exit 0. bun test is stage-gate-blocked in the verify step, so dual-evidence substitution applies per doctrine.",
+      "blocking": false,
+      "probeType": "dual-evidence"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Ran `bunx --bun tsc --noEmit` in this verify step → exit 0, no diagnostics",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT bump telemetry schema version (no real v: 2 line)",
+      "met": true,
+      "evidence": "`grep -nE \"^\\s*v:\\s*2\\b\" packages/luca-core/src/telemetry/schemas.ts` → no match (exit 1). Only real v is z.literal(1); doc-comment v: 2 sits on a *-prefixed line, correctly excluded by the anchor.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT add a MuninnDB write (skill stays read-only)",
+      "met": true,
+      "evidence": "`git diff .../index.ts | grep '^+' | grep muninn_*` → NO additions. The only muninn_* tokens (index.ts:23-24) are pre-existing scope-guard FORBID declarations (mcp__muninn__muninn_remember/_evolve listed as PROHIBITED operations), not write invocations. No write added by this phase.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT edit luca-mastracode instructions",
+      "met": true,
+      "evidence": "`git diff --name-only | grep packages/luca-mastracode/src/instructions/` → no match (exit 1). Only changed paths are skills/luca-telemetry-report/index.ts (M) + index.test.ts (A).",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test (index.test.ts, orchestrator-run at checks)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "REQ-13 MODERATE. Skill is an LLM-executed instruction BODY string, not runnable code — acceptance is honest token/structure-presence proving each directive is wired into the BODY, not that the LLM computes correctly. Goal-backward: all 3 REQ-13 asks are substantively present, not merely token-present. Ask 1 (cost compute): rate table opus/sonnet/haiku+fallback (index.ts:105-110) with the Step-3 directive at :89 multiplying meta.inputTokens/outputTokens by substring-matched rates from that table into callCost/totalCost/costByRole, surfaced in `### Cost Summary` (:127). Ask 2 (cost-per-outcome): `### Cost per Outcome` (:130) with cost/phases-completed (:133) AND cost/first-pass-success defined as exactly one review.iteration ending APPROVED with no re-entry (:134), the user-confirmed definition. Ask 3 (attribution): Step-3 bucketing by meta.role (executor === \"executor\", structure = all else) at :90 feeding `### Structure vs Executor Attribution` (:138). anti-02 grep matched pre-existing scope-guard prohibition lines, not new writes — git diff confirms zero muninn_* additions. ac-11 verified via dual-evidence (structural test assertions + orchestrator 7-pass attestation) because bun test is stage-gate-blocked in the verify step.",
+  "deliverables": [
+    { "id": "D1", "description": "REQ-13 ask 1 — token×model-rate cost compute", "criterionIds": ["ac-01", "ac-02.1", "ac-02.2", "ac-03", "ac-08"], "compliance": "shipped" },
+    { "id": "D2", "description": "REQ-13 ask 2 — cost-per-outcome metrics", "criterionIds": ["ac-04", "ac-05.1", "ac-05.2", "ac-09"], "compliance": "shipped" },
+    { "id": "D3", "description": "REQ-13 ask 3 — structure-vs-executor token attribution", "criterionIds": ["ac-06", "ac-07.1", "ac-07.2", "ac-10"], "compliance": "shipped" },
+    { "id": "D4", "description": "test + type gates", "criterionIds": ["ac-08", "ac-09", "ac-10", "ac-11", "ac-12"], "compliance": "shipped" }
+  ]
+}

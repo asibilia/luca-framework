@@ -1,0 +1,161 @@
+{
+  "timestamp": "2026-06-16T00:00:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "'pr.outcome' kind literal on the TelemetryKind union",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/schemas.ts:44 ( | 'pr.outcome' on the open union)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "Handler emits via appendTelemetry",
+      "met": true,
+      "evidence": "packages/luca-cli/src/write-surface/handlers/luca-pr-outcome.ts:18 (import) + :73 (appendTelemetry({kind:'pr.outcome', ctx:{runId:'pr-outcomes'}, meta:{...}}))",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "Handler test exits 0 — merged+reverted+reviewRounds+timeToMergeMs round-trip in the JSONL line",
+      "met": true,
+      "evidence": "Dual-evidence: (1) structural — luca-pr-outcome.test.ts:44 describe('pr-outcome') asserts result=merged (:55-65), result=reverted (:100-110), reviewRounds=7 (:112-118), timeToMergeMs=123456 (:120-129), plus kind/runId round-trip (:131-136). Fix-2 coverage present: full-optional round-trip branch/issue/originRunId (:67-81), omitted-optional absence (:83-98), toHaveLength(1) (:62). (2) attestation — orchestrator ran handler test live post-fix: 9 pass / 0 fail.",
+      "blocking": true,
+      "probeType": "dual-evidence"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "Schema-rejection test passes inside named pr-outcome block (bad result enum + missing required field)",
+      "met": true,
+      "evidence": "Dual-evidence: (1) structural — luca-pr-outcome.test.ts:138-144 inputSchema.safeParse rejects bad result enum (success=false), :146-150 rejects payload missing required prNumber (success=false), both inside named describe('pr-outcome'). (2) attestation — handler test 9 pass / 0 fail live post-fix.",
+      "blocking": true,
+      "probeType": "dual-evidence"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "citty pr-outcome leaf registered under telemetry subCommands",
+      "met": true,
+      "evidence": "packages/luca-cli/src/commands/telemetry.ts:120 (name:'pr-outcome') + :210 ('pr-outcome': prOutcomeCommand under subCommands). Leaf runtime-valid :163-199 — rejectUnknownFlags + Fix-3 --result enum pre-check (:168-174, error+exitCode=1 on non-merged/reverted) → typed payload (Number coercion) → runWriteHandler(lucaPrOutcomeTool). Helpers imported cross-dir per G-DX-002. Not token-only.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "Step 3 pr.outcome accumulator directive in report body",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/luca-telemetry-report/index.ts:101 (Step 3 accumulator: tally meta.result merged|reverted, collect meta.reviewRounds + meta.timeToMergeMs keyed by meta.prNumber; explicitly NOT a pipeline run, no byPhase/byWave math). Fix-1 unaffected: directive intact post-exclusion.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Step 4 '### PR Outcomes' report section heading",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/luca-telemetry-report/index.ts:143 (### PR Outcomes) with merge rate (:146), average review-rounds (:147), median time-to-merge (:148). Fix-1: index.ts:82 reads pr-outcomes.jsonl SEPARATELY as the dedicated source for this section, independent of the --runs window.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Handler barrel-exported as lucaPrOutcomeTool",
+      "met": true,
+      "evidence": "packages/luca-cli/src/write-surface/index.ts:56 (export { lucaPrOutcomeTool } from './handlers/luca-pr-outcome.ts')",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "Whole-repo type gate exits 0",
+      "met": true,
+      "evidence": "command: `bunx --bun tsc --noEmit` -> tsc exit:0 (re-run post review-fix wave; all 3 fixes type-clean)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "'pr.created' second kind literal on the open union",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/schemas.ts:43 ( | 'pr.created')",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "finalize PR-create emits the run→PR map directive (pr.created)",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/finalize.ts:352 (step 6 'Emit the run→PR map' at PR-create) + :355 emits `luca telemetry emit --kind pr.created --run-id <sessionId> --meta {prNumber,branch,issue,originRunId}`. Runtime-valid: telemetry emit verb accepts --kind/--run-id/--meta.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "Report body names pr.created as run→PR join key",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/luca-telemetry-report/index.ts:150 ('run → PR join (the join key)' — builds meta.prNumber→runId map from pr.created, then JOIN pr.created(meta.prNumber, runId=origin) ⋈ pr.outcome(meta.prNumber) to correlate outcome back to originating run cost/first-pass)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT bump telemetry schema version (no v:2)",
+      "met": true,
+      "evidence": "command: `grep -nE \"^\\s*v:\\s*2\\b\" packages/luca-core/src/telemetry/schemas.ts` -> exit:1 (no match). v remains z.literal(1).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT call muninn_feedback",
+      "met": true,
+      "evidence": "command: `grep -rnF muninn_feedback` across schemas.ts, luca-pr-outcome.ts, telemetry.ts -> exit:1 (no match)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT edit luca-mastracode .md files",
+      "met": true,
+      "evidence": "command: `git diff --name-only HEAD | grep 'packages/luca-mastracode/.*\\.md$'` -> exit:1 (no match)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT mutate .luca/state.json from the handler",
+      "met": true,
+      "evidence": "command: `grep -nF state.json packages/luca-cli/src/write-surface/handlers/luca-pr-outcome.ts` -> exit:1 (no match). Handler uses fixed literal runId 'pr-outcomes', no state lookup.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT run bun test -t against unnamed blocks (G-DX-003)",
+      "met": true,
+      "evidence": "command: `grep -nE 'bun test .* -t ' plan.md | grep -vF 'grep -nE'` -> exit:1 (zero real invocations). The single raw match on plan.md:84 is the anti-criterion DESCRIPTION quoting the forbidden regex pattern, not a test command. Both test files use named describe blocks ('pr-outcome' / 'pr-outcomes'); ac-03/ac-04 use whole-file `bun test <path>`.",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "handler-test (attested live by orchestrator, post-fix)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "report-test (attested live by orchestrator)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "RE-VERIFY of MODERATE phase after the review→execute fix wave (3 MEDIUM fixes, no CRITICAL/HIGH). All 12 ac and 5 anti-criteria STILL hold; no regressions. Fixes confirmed landed: (Fix 1, correctness) report Step 2 EXCLUDES pr-outcomes.jsonl from the run-file enumeration — index.ts:78 places the directive BEFORE the mtime sort, --runs N slice, Run Inventory table, and run count; :82 reads it separately for the ### PR Outcomes section. ac-06/ac-07/ac-12 still match (pr.outcome at :101, ### PR Outcomes at :143, pr.created join at :150). (Fix 2, coverage) handler test now carries full-optional round-trip branch/issue/originRunId (:67-81), omitted-optional absence (:83-98), and toHaveLength(1) (:62) inside named describe('pr-outcome'); attested 9 pass/0 fail. ac-03/ac-04 = MET via dual-evidence (bun test stage-gate-blocked in verify/REVIEWING — structural read + orchestrator attestation handler 9/0, report 11/0). (Fix 3, DX) citty leaf adds a --result enum pre-check (telemetry.ts:168-174, error+exitCode=1) with reordered imports; ac-05 'pr-outcome' leaf still matches at :120/:210 and tsc green. tsc re-run exit 0 post-fix. anti-05 raw grep produced one self-referential false positive on plan.md:84 (the ac line quoting the forbidden pattern); disambiguated to zero real invocations.",
+  "deliverables": [
+    { "id": "D1", "description": "merged-vs-reverted captured", "criterionIds": ["ac-02", "ac-03"], "compliance": "shipped" },
+    { "id": "D2", "description": "review-rounds captured", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D3", "description": "time-to-merge captured", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D4", "description": "queryable by report KPI layer", "criterionIds": ["ac-06", "ac-07"], "compliance": "shipped" },
+    { "id": "D5", "description": "gates pass — handler test plus tsc", "criterionIds": ["ac-04", "ac-09"], "compliance": "shipped" },
+    { "id": "D6", "description": "run→PR map persist (per-run correlation enablement)", "criterionIds": ["ac-10", "ac-11", "ac-12"], "compliance": "shipped" }
+  ]
+}
