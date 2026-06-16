@@ -52,6 +52,7 @@ packages/luca-mastracode/.planning/
 .claude/settings.json
 .claude/.session-lock
 .claude/.build-manifest.json
+.claude/cache/
 
 # context monitoring (runtime artifacts) — legacy .planning/ layout
 .planning/.context-metrics.json
