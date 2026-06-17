@@ -90,13 +90,28 @@ const PR_OUTCOMES_RUN_ID = 'pr-outcomes'
 /** Steps whose negative outcome counts as a rework iteration. */
 const REWORK_STEPS = new Set(['checks', 'verify'])
 
-/** Strip a leading zero-padded `NN-` from a phase dir slug. */
-function slugToName(slug: string): string {
-    return slug.replace(/^\d{2,}-/, '')
+/**
+ * Canonicalize a name or slug to lowercase kebab-case so a roadmap
+ * `phase.name` (which may be prose, e.g. `"Implement OAuth"`) and a phase dir
+ * slug (always lowercase-kebab per LUCA_DIR_CONTRACT, e.g. `"implement-oauth"`)
+ * compare equal. Without this, any phase whose name carries spaces or
+ * uppercase falls through to `unattributed`.
+ */
+function toKebab(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+}
+
+/** Strip a leading zero-padded `NN-` from a phase dir slug, canonicalized. */
+function slugToName({ slug }: { slug: string }): string {
+    return toKebab(slug.replace(/^\d{2,}-/, ''))
 }
 
 /** List phase dir slugs under `.luca/phases/`. */
-function listPhaseSlugs(cwd: string): string[] {
+function listPhaseSlugs({ cwd }: { cwd: string }): string[] {
     const phasesDir = join(cwd, LUCA_DIR_ROOT, 'phases')
     if (!existsSync(phasesDir)) return []
     return readdirSync(phasesDir, { withFileTypes: true })
@@ -108,7 +123,7 @@ function listPhaseSlugs(cwd: string): string[] {
  * Read every real run's telemetry records, excluding the synthetic
  * `pr-outcomes.jsonl`. Returns the flat record list.
  */
-function readAllRunRecords(cwd: string): TelemetryRecord[] {
+function readAllRunRecords({ cwd }: { cwd: string }): TelemetryRecord[] {
     const telemetryDir = join(cwd, LUCA_DIR_ROOT, 'telemetry')
     if (!existsSync(telemetryDir)) return []
     const records: TelemetryRecord[] = []
@@ -122,10 +137,10 @@ function readAllRunRecords(cwd: string): TelemetryRecord[] {
 }
 
 /** A source:outcome satisfaction record carrying a usable slug. */
-function isOutcomeRecord(r: TelemetryRecord): boolean {
+function isOutcomeRecord({ record }: { record: TelemetryRecord }): boolean {
     return (
-        r.kind === 'signal.satisfaction' &&
-        (r.meta as { source?: unknown }).source === 'outcome'
+        record.kind === 'signal.satisfaction' &&
+        (record.meta as { source?: unknown }).source === 'outcome'
     )
 }
 
@@ -147,14 +162,18 @@ export function computeOutcomeKpis(
     // name → complexity (skip entries without a complexity classification).
     const nameToComplexity = new Map<string, string>()
     for (const phase of roadmap) {
-        if (phase.complexity) nameToComplexity.set(phase.name, phase.complexity)
+        // Key by canonical kebab so a prose/uppercase roadmap name (e.g.
+        // "Implement OAuth") still matches the kebab dir slug.
+        if (phase.complexity) {
+            nameToComplexity.set(toKebab(phase.name), phase.complexity)
+        }
     }
 
     // Group outcome telemetry records by slug; tally slug:null / unmatched.
     const outcomeRecordsBySlug = new Map<string, TelemetryRecord[]>()
     let unattributedRecords = 0
-    for (const record of readAllRunRecords(cwd)) {
-        if (!isOutcomeRecord(record)) continue
+    for (const record of readAllRunRecords({ cwd })) {
+        if (!isOutcomeRecord({ record })) continue
         if (!record.slug) {
             unattributedRecords++
             continue
@@ -195,8 +214,8 @@ export function computeOutcomeKpis(
     let unattributedPhases = 0
     const slugsWithOutcomeRecords = new Set(outcomeRecordsBySlug.keys())
 
-    for (const slug of listPhaseSlugs(cwd)) {
-        const complexity = nameToComplexity.get(slugToName(slug))
+    for (const slug of listPhaseSlugs({ cwd })) {
+        const complexity = nameToComplexity.get(slugToName({ slug }))
         if (!complexity) {
             unattributedPhases++
             // Any outcome records for this slug are also unattributable.

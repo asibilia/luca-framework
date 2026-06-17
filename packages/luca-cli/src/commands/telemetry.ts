@@ -178,6 +178,27 @@ const prOutcomeCommand = defineCommand({
             return
         }
 
+        // Validate numeric flags up front. `Number("abc")` is NaN, which Zod's
+        // `z.number()` accepts and then serializes as `null` in the JSONL —
+        // silently corrupting telemetry and breaking the prNumber join. Reject
+        // non-numeric input with a friendly error instead.
+        const numericFlags: ReadonlyArray<[flag: string, raw: string | undefined]> =
+            [
+                ['--pr-number', args['pr-number']],
+                ['--review-rounds', args['review-rounds']],
+                ['--time-to-merge-ms', args['time-to-merge-ms']],
+                ['--issue', args.issue],
+            ]
+        for (const [flag, raw] of numericFlags) {
+            if (raw !== undefined && Number.isNaN(Number(raw))) {
+                logger.error(
+                    `luca telemetry pr-outcome: ${flag} must be a number (got "${raw}"). Run \`luca telemetry pr-outcome --help\` for usage.`
+                )
+                process.exitCode = 1
+                return
+            }
+        }
+
         const payload = {
             prNumber:
                 args['pr-number'] !== undefined

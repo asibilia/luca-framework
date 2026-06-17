@@ -1,4 +1,5 @@
 import {
+    existsSync,
     mkdirSync,
     mkdtempSync,
     readdirSync,
@@ -111,5 +112,77 @@ describe('telemetry kpi leaf', () => {
 
         const after = telemetryLineCount(cwd)
         expect(after).toBe(before)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// VAL-02 — the pr-outcome leaf rejects non-numeric flags before writing
+// ---------------------------------------------------------------------------
+
+describe('telemetry pr-outcome leaf — numeric validation (VAL-02)', () => {
+    let cwd: string
+    let originalCwd: string
+
+    beforeEach(() => {
+        originalCwd = process.cwd()
+        cwd = cleanDir()
+        mkdirSync(join(cwd, '.luca', 'telemetry'), { recursive: true })
+        process.chdir(cwd)
+    })
+
+    afterEach(() => {
+        process.chdir(originalCwd)
+        for (const dir of tmpDirs.splice(0)) {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    })
+
+    const subCommands = telemetryCommand.subCommands as Record<string, unknown>
+
+    test('rejects a non-numeric --review-rounds and writes nothing', async () => {
+        const leaf = subCommands['pr-outcome']
+        expect(leaf).toBeDefined()
+        const runFn = (leaf as { run?: unknown }).run
+        expect(typeof runFn).toBe('function')
+
+        // Setting process.exitCode would poison the test runner's exit status,
+        // so snapshot and restore it around the invocation.
+        const prevExit = process.exitCode
+        try {
+            await (
+                runFn as (ctx: {
+                    args: Record<string, unknown>
+                    rawArgs: string[]
+                    cmd: unknown
+                }) => unknown
+            )({
+                args: {
+                    'pr-number': '5',
+                    result: 'merged',
+                    'review-rounds': 'abc',
+                    'time-to-merge-ms': '1000',
+                },
+                rawArgs: [
+                    '--pr-number',
+                    '5',
+                    '--result',
+                    'merged',
+                    '--review-rounds',
+                    'abc',
+                    '--time-to-merge-ms',
+                    '1000',
+                ],
+                cmd: leaf,
+            })
+
+            // Guarded: non-zero exit, and NO pr-outcomes.jsonl written (a NaN
+            // would otherwise serialize as null in the log).
+            expect(process.exitCode).toBe(1)
+            expect(
+                existsSync(join(cwd, '.luca', 'telemetry', 'pr-outcomes.jsonl'))
+            ).toBe(false)
+        } finally {
+            process.exitCode = prevExit
+        }
     })
 })

@@ -263,4 +263,36 @@ describe('computeOutcomeKpis', () => {
         const { unattributed } = computeOutcomeKpis({ cwd, roadmap })
         expect(unattributed.phases).toBe(1)
     })
+
+    test('prose/uppercase roadmap name still attributes to its bucket (BUG-01)', () => {
+        // Isolated fixture: roadmap name is PROSE with spaces + uppercase,
+        // while the phase dir slug is kebab. Pre-fix, the raw-name map key
+        // ("Implement OAuth") never matched the kebab lookup
+        // ("implement-oauth") and the phase fell through to `unattributed`.
+        const freshCwd = cleanDir()
+        const proseRoadmap: RoadmapPhase[] = [
+            {
+                name: 'Implement OAuth',
+                deps: [],
+                status: 'complete',
+                complexity: 'COMPLEX',
+            },
+        ]
+        writeConfidence(freshCwd, '05-implement-oauth', {
+            high: 1,
+            medium: 0,
+            low: 1,
+        })
+        writeVerify(freshCwd, '05-implement-oauth', 1, 'PASS')
+
+        const { buckets, unattributed } = computeOutcomeKpis({
+            cwd: freshCwd,
+            roadmap: proseRoadmap,
+        })
+
+        // Lands in COMPLEX, NOT unattributed.
+        expect(buckets.COMPLEX?.sampleSize).toBe(1)
+        expect(unattributed.phases).toBe(0)
+        expect(buckets.COMPLEX?.lowConfidenceRatio).toBeCloseTo(0.5, 10)
+    })
 })
