@@ -316,6 +316,14 @@ mcp__muninn__muninn_recall(
 
 Include recalled learnings in the next executor's task description.
 
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+
 ## Step 6: Commit
 
 ### Pre-commit guard

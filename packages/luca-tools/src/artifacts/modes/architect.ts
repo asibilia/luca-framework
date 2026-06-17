@@ -94,6 +94,14 @@ mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<task intent>", tags
 
 If results found, note past decisions, patterns, and pitfalls. Include relevant context for the discussion subagent. If unavailable, proceed normally. **Budget**: ≤2 tool calls.
 
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id established at pipeline Step 0 (REQUIRED flag).
+
 ## Step 2: Discussion
 
 > **Subagent Telemetry**: emit \`subagent-start\` / \`subagent-end\` via \`luca telemetry emit\` around the Task spawn. Parse \`<!-- usage: ... -->\` from the subagent's last 256 chars for token counts.

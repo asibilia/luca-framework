@@ -1,0 +1,85 @@
+{
+  "milestone": "v13.1.0",
+  "title": "Telemetry Impact & Attribution",
+  "closedAt": "2026-06-16",
+  "vault": "luca-monorepo",
+  "completed": [
+    {
+      "id": "close-the-recall-outcome-loop-memory-utilization-tracking",
+      "req": ["REQ-11", "REQ-12"],
+      "phase": "01-recall-outcome-attribution",
+      "status": "done",
+      "verificationCriterion": "ac-01"
+    },
+    {
+      "id": "add-cost-per-outcome-to-the-telemetry-report-token-rates-eff",
+      "req": ["REQ-13"],
+      "phase": "02-cost-per-outcome-report",
+      "status": "done",
+      "verificationCriterion": "ac-01"
+    },
+    {
+      "id": "pr-outcome-write-back-post-merge-signal-the-missing-loop",
+      "req": ["REQ-15"],
+      "phase": "03-pr-outcome-writeback",
+      "status": "done",
+      "verificationCriterion": "ac-02"
+    },
+    {
+      "id": "persist-outcome-kpis-as-metric-memories-at-milestone-close",
+      "req": ["REQ-14"],
+      "phase": "04-outcome-kpi-persistence",
+      "status": "done",
+      "verificationCriterion": "ac-07"
+    }
+  ],
+  "pending": [
+    {
+      "id": "widen-finalizing-stage-gate-or-add-milestone-snapshot-write-verb",
+      "area": "stage-gate",
+      "priority": "medium",
+      "note": "FINALIZING stage-gate blocks .luca/milestones/* + .changeset/* writes the finalize/milestone-complete specs require; widen the gate or add a luca milestone snapshot write verb."
+    },
+    {
+      "id": "ws2-document-antigravity-uses-mcp-config-json-not-settings-j",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws3-introduce-harness-descriptor-abstraction-in-luca-init",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws4-global-file-merge-claude-mcp-registration-drop-per-project",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws5-remove-dead-autocreateapikey-and-wrong-mk-regex",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws6-extract-shared-readmuninntoken-helper",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws7-document-build-muninn-instruction-call-mcp-tool-change",
+      "area": "build",
+      "priority": "low"
+    },
+    {
+      "id": "ws8-per-harness-skip-flags-isinstalled-gating-token-health-m",
+      "area": "init",
+      "priority": "low"
+    },
+    {
+      "id": "ws9-reconcile-test-file-churn-with-tests-removed-policy",
+      "area": "tests",
+      "priority": "low",
+      "note": "Largely superseded: tests ARE maintained (brain:project-tests-are-maintained)."
+    }
+  ]
+}

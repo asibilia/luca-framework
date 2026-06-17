@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-06-16T12:00:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "lowConfidenceRatio == low/total per bucket (outcome-kpi.test.ts)",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/outcome-kpi.test.ts:206-212 asserts SIMPLE 0.25 and MODERATE 2/6; compute outcome-kpi.ts:213-217,253-254 sums confLow/confTotal via getConfidenceSummary. Test green 8/8.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "firstPassVerifyRate from lowest-wave verify.json status==PASS",
+      "met": true,
+      "evidence": "outcome-kpi.test.ts:214-220 asserts SIMPLE 1.0 (PASS), MODERATE 0.5 (one STALLED, one PASS). compute outcome-kpi.ts:219-224,255-258 uses readVerificationResult, status==='PASS'. Re-verify (fix 2): JSDoc reworded to 'single per-phase VerificationResult; status==PASS = first-pass' — comment-only, logic unchanged, test still green 8/8.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "NN-foo/SIMPLE phase lands in SIMPLE bucket",
+      "met": true,
+      "evidence": "outcome-kpi.test.ts:222-228 asserts buckets.SIMPLE.sampleSize===1, MODERATE===2. slugToName strips ^\\d{2,}- (outcome-kpi.ts:93-95) and matches RoadmapPhase.name (148-150,198).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "timeout 120 bun test outcome-kpi.test.ts passes (named describe, non-vacuous)",
+      "met": true,
+      "evidence": "Ran: 8 pass, 0 fail, 15 expect() calls; named describe('computeOutcomeKpis') at outcome-kpi.test.ts:127.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "kpi leaf registered in telemetryCommand.subCommands",
+      "met": true,
+      "evidence": "packages/luca-cli/src/commands/telemetry.ts:244 (kpi: kpiCommand under subCommands); telemetry.test.ts:86-88 asserts subCommands.kpi defined.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "kpi leaf run() appends ZERO telemetry (JSONL line count unchanged pre/post on temp cwd)",
+      "met": true,
+      "evidence": "telemetry.test.ts:90-114 asserts after===before on temp cwd. Re-verify (fix 3): kpiCommand.run() (telemetry.ts:221-231) still calls only loadCurrentState + computeOutcomeKpis + stdout.write on BOTH branches; the new non-json path writes renderOutcomeKpis(kpis) — a pure string formatter (telemetry.ts:243-266, no fs/appendTelemetry/runWriteHandler). The appendTelemetry/runWriteHandler refs at telemetry.ts:97/203 belong to the emit/pr-outcome leaves, not kpi. Both branches perform identical I/O (compute + stdout), so the json:true zero-write proof covers the render path. Test green 2/2.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "metric:outcome-kpi- present in finalize.ts body directive",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/finalize.ts:138,145,146,154 — concept metric:outcome-kpi-<version>-<complexity> in real prose directive (run kpi verb -> muninn_remember_batch to luca-monorepo).",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "finalize.test.ts asserts the body tokens (telemetry kpi, metric:outcome-kpi-, muninn_remember_batch, + vault token)",
+      "met": true,
+      "evidence": "Re-verify (fix 1): hardcoded vault literal 'luca-monorepo' was REPLACED with config-resolved vault (.luca/config.json -> muninn.vault, fallback default) — finalize.ts:138 now resolves the vault and the muninn_remember_batch example uses vault: \"<repo_vault>\" (finalize.ts:142). finalize.test.ts REQUIRED_TOKENS (lines 19-27) dropped 'luca-monorepo', ADDED 'muninn.vault', KEPT telemetry kpi/metric:outcome-kpi-/muninn_remember_batch/meanReworkIterations/reEntryRate. grep confirms NO 'luca-monorepo' literal remains in finalize.ts. The criterion ('finalize.test asserts the body tokens') still holds — test green 6/6.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Ran: tsc --noEmit EXIT=0.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "meanReworkIterations per bucket = mean of negative source:outcome records at step in {checks,verify}",
+      "met": true,
+      "evidence": "outcome-kpi.test.ts:230-236 asserts SIMPLE 2.0, MODERATE 0.5. compute outcome-kpi.ts:90 REWORK_STEPS={checks,verify}, 229-237 filters valence==='negative' && step in set, 259-261 mean over bucket phases.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12.1",
+      "description": "reEntryRate per bucket = phases with >=1 negative outcome / phases in bucket",
+      "met": true,
+      "evidence": "outcome-kpi.test.ts:238-244 asserts SIMPLE 1.0, MODERATE 0.5. compute outcome-kpi.ts:238-241 (hasNegative -> reEntryPhases++), 263-264 reEntryPhases/sampleSize.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12.2",
+      "description": "slug:null -> unattributed tally (no bucket)",
+      "met": true,
+      "evidence": "outcome-kpi.test.ts:246-251 asserts unattributed.records===1 and MODERATE rework unchanged. compute outcome-kpi.ts:157-160 (!record.slug -> unattributedRecords++, continue).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "pr-outcomes.jsonl records never contribute to any bucket",
+      "met": true,
+      "evidence": "SUBSTANTIVE: outcome-kpi.ts:87 PR_OUTCOMES_RUN_ID='pr-outcomes', readAllRunRecords:117 skips that runId during enumeration (not just a test claim). outcome-kpi.test.ts:196-203 plants a pr-outcomes negative record; :253-257 asserts SIMPLE rework stays 2 (would be 3 if read).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "meanReworkIterations present in finalize.ts persisted payload",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/finalize.ts:136,146 — output shape lists meanReworkIterations and the persisted content string carries meanReworkIterations=<n>.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "--slug on all 3 signal.satisfaction emit directives in lu/index.ts",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:117 (source:outcome), :183 (gate-ask), :239 (oversight-pause) — each signal.satisfaction emit carries --slug <currentPhaseSlug>; FORWARD-ONLY note at :120.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "--complexity on those signal.satisfaction emits",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts:117,183,239 each also carry --complexity <level> on the signal.satisfaction emit directives.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT bump telemetry schema v (schemas.ts keeps z.literal(1), no v:2)",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/schemas.ts:76 v: z.literal(1) intact. Staged schemas.ts diff adds only pr.created/pr.outcome kinds + PrOutcomeMetaSchema (prior-phase pr-outcome work) — no literal bump. Line 13 is a doc comment, {\"v\":2} hits are pre-existing rejection-test fixtures.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT call muninn_feedback anywhere",
+      "met": true,
+      "evidence": "grep -rn muninn_feedback packages/luca-tools/src packages/luca-cli/src packages/luca-core/src -> NO HITS.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT edit luca-mastracode .md instructions",
+      "met": true,
+      "evidence": "git diff --name-only (working + staged) shows no packages/luca-mastracode/**/*.md changes; staged set is luca-cli/luca-core/luca-tools src + tests only.",
+      "blocking": false,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test outcome-kpi.test.ts", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test telemetry.test.ts (cli)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test finalize.test.ts", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "RE-VERIFY (2026-06-16) after a 3-fix review wave; all fixes hold, no regression. FIX 1: finalize.ts KPI persist directive replaced the hardcoded 'luca-monorepo' vault literal with a config-resolved vault (.luca/config.json -> muninn.vault, fallback default, same as Step 1); grep confirms no 'luca-monorepo' literal remains in finalize.ts (vault: \"<repo_vault>\"). finalize.test.ts shifted its token list luca-monorepo->muninn.vault (intended reconciliation; ac-09 criterion still holds, 6/6 green). FIX 2: outcome-kpi.ts JSDoc reworded ('single per-phase VerificationResult; status==PASS = first-pass') — comment-only, ac-02 logic unchanged. FIX 3: kpi leaf non-json path now renders via pure renderOutcomeKpis(); ac-06 zero-write still holds — run() does compute + stdout only on both branches, render is a pure string formatter with no fs/append. Re-ran: tsc EXIT=0, outcome-kpi 8/8, telemetry-cli 2/2, finalize 6/6; anti-01 (z.literal(1) intact), anti-02 (no muninn_feedback), anti-03 (no luca-mastracode .md) all still hold. ORIGINAL VERIFICATION: Full goal-backward verification of CAPSTONE phase 04. ac-08 is a [SPLIT] parent pointer; ac-08.1 and ac-08.2 are correctly TOMBSTONED ([REMOVED — superseded by FULL scope]) and excluded from this criteria array — confirmed they are NOT live, and no deferral todo/gap prose exists (correct, since scope is FULL). ac-12 is a [SPLIT] parent pointer, excluded; its live children ac-12.1/ac-12.2 are recorded. SUBSTANTIVE confirmations beyond grep: (1) computeOutcomeKpis genuinely excludes pr-outcomes.jsonl at the enumeration layer (readAllRunRecords:117), not merely via a test assertion; (2) finalize directive is real prose wiring — run kpi verb -> muninn_remember_batch to luca-monorepo with all 4 KPI fields, not a stub; (3) kpi leaf run() is read-only (no appendTelemetry/runWriteHandler); (4) slug->complexity strips NN- and matches RoadmapPhase.name, unattributable phases/records increment the unattributed tally rather than being dropped. schemas.ts appears in the staged diff but the additions are pr.created/pr.outcome kinds + PrOutcomeMetaSchema from prior pr-outcome phases; z.literal(1) is unchanged, so anti-01 holds.",
+  "deliverables": [
+    { "id": "D1", "description": "first-pass verify rate, bucketed (coarse from verify.json)", "criterionIds": ["ac-02", "ac-04"], "compliance": "shipped" },
+    { "id": "D2", "description": "mean rework iterations, bucketed", "criterionIds": ["ac-11"], "compliance": "shipped" },
+    { "id": "D3", "description": "re-entry rate, bucketed", "criterionIds": ["ac-11", "ac-12.1"], "compliance": "shipped" },
+    { "id": "D4", "description": "low-confidence ratio, fully bucketed", "criterionIds": ["ac-01", "ac-04"], "compliance": "shipped" },
+    { "id": "D5", "description": "persist milestone-stamped metric:outcome-kpi-<version>-<complexity> (all 4 KPIs) to the config-resolved repo vault (muninn.vault, fallback default) via finalize body", "criterionIds": ["ac-07", "ac-09", "ac-14"], "compliance": "shipped" },
+    { "id": "D6", "description": "read-only compute verb luca telemetry kpi --json", "criterionIds": ["ac-05", "ac-06"], "compliance": "shipped" },
+    { "id": "D7", "description": "producer instrumentation — --slug/--complexity on signal.satisfaction emits", "criterionIds": ["ac-15", "ac-16"], "compliance": "shipped" },
+    { "id": "D8", "description": "unattributable (slug:null) telemetry excluded from buckets but counted in unattributed tally", "criterionIds": ["ac-12.2"], "compliance": "shipped" }
+  ]
+}

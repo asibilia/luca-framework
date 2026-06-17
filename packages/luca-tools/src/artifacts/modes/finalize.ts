@@ -94,6 +94,14 @@ mcp__muninn__muninn_recall(
 )
 \`\`\`
 
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+
 Review results:
 - **Remove duplicates**: use \`mcp__muninn__muninn_forget\` for less specific overlapping patterns.
 - **Remove noise**: forget patterns too specific to be reusable.
@@ -114,6 +122,36 @@ mcp__muninn__muninn_remember(
 \`\`\`
 
 The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-roadmap.md\`, \`v<SEMVER>-audit.md\`, \`v<SEMVER>-backlog-snapshot.{json,md}\`) follow the LUCA_DIR_CONTRACT paths exactly — never write milestone files outside the contract. (A dedicated \`luca\` write surface for milestone snapshots is pending; until it lands, these are the only \`.luca/\` paths written at milestone close.)
+
+### Outcome KPI Persistence (REQ-14)
+
+Persist complexity-bucketed OUTCOME KPIs as milestone-stamped \`metric:*\` memories so cross-run trends survive between milestones. This follows the same MCP-direct in-file pattern as the shadow-debt metric write in Step 2 — no new role, no CLI→MCP bridge.
+
+1. **Compute** the KPIs read-only:
+
+\`\`\`
+luca telemetry kpi --json
+\`\`\`
+
+The output shape is \`{ buckets: { <COMPLEXITY>: { lowConfidenceRatio, firstPassVerifyRate, meanReworkIterations, reEntryRate, sampleSize } }, unattributed: { phases, records } }\`. The verb reads \`.luca/\` artifacts only and appends NO telemetry.
+
+2. **Persist** one memory per complexity bucket to the repo vault (resolved from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\` — the same vault already resolved at Step 1) via a single batched write. Concept is \`metric:outcome-kpi-<version>-<complexity>\` (lowercase complexity, e.g. \`metric:outcome-kpi-v13.1.0-moderate\`), and the payload carries all four KPIs for that bucket:
+
+\`\`\`
+mcp__muninn__muninn_remember_batch(
+  vault: "<repo_vault>",
+  memories: [
+    {
+      concept: "metric:outcome-kpi-<version>-<complexity>",
+      content: "<complexity> bucket @ <version>: lowConfidenceRatio=<n>, firstPassVerifyRate=<n>, meanReworkIterations=<n>, reEntryRate=<n>, sampleSize=<n>",
+      tags: ["metric", "outcome-kpi", "<version>", "<complexity>"]
+    }
+    // ...one entry per bucket returned by \`luca telemetry kpi --json\`
+  ]
+)
+\`\`\`
+
+Substitute \`<version>\` with the milestone version and emit one \`metric:outcome-kpi-<version>-<complexity>\` entry per bucket. Skip buckets with \`sampleSize === 0\`. The \`unattributed\` tally is informational (forward-only attribution gap) — note it in the session archive, do not persist it as a metric.
 
 ## Step 2: Shadow Debt Scan
 
@@ -291,6 +329,14 @@ mcp__muninn__muninn_recall(
 )
 \`\`\`
 
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+
 ### 5b.1. Write release artifacts (AFTER review iteration converged)
 
 Now — and only now, after every review iteration is resolved — write the changeset (\`.changeset/<slug>.md\`) and any release notes. **Writing these before this point is the #1 cause of drift between artifact claims and shipped code.** Symbols rename mid-review, schemas evolve, counts shift; only the post-convergence tree is trustworthy as the source of truth for release artifacts.
@@ -333,6 +379,13 @@ The gate verdict is the exit codes: **any non-zero exit blocks**. The CLI prints
    - **Labels**: match issue labels.
    - **Reviewers**: if configured.
 5. Record the PR URL — log it as a confidence-journal entry via \`luca confidence log\` (with the post-F1 schema, category \`design-choice\`, decision \`"PR opened at <url>"\`) so it surfaces in the session summary and in the durable session ledger.
+6. **Emit the run→PR map** — emit a \`pr.created\` telemetry record under THIS session's live runId so a later \`pr.outcome\` (which rides the fixed \`pr-outcomes\` synthetic runId because the merge happens outside this session) can correlate back to this run via the join key \`meta.prNumber\`:
+
+\`\`\`
+luca telemetry emit --kind pr.created --run-id <sessionId> --meta '{"prNumber":<#>,"branch":"<branch>","issue":<#>,"originRunId":"<sessionId>"}'
+\`\`\`
+
+Substitute \`<sessionId>\` with the current session's runId, \`<#>\` (prNumber) with the number from the \`gh pr create\` output, \`<branch>\` with the feature branch, and \`<#>\` (issue) with the tracker issue this PR closes. This durable run→PR map is what lets the post-merge \`luca telemetry pr-outcome\` writeback (keyed by \`prNumber\`) trace back to the originating run that opened the PR.
 
 If \`--skip-branch\` was set, skip.
 

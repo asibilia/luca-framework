@@ -1,0 +1,159 @@
+{
+  "timestamp": "2026-06-15T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "Runnable record-recall directive (--kind recall.(hit|miss) --run-id) in architect.ts",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/architect.ts:100 — full command with --kind recall.hit --run-id <runId> + 6 meta keys + recalledIds; recall.miss branch documented at :97",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "Runnable record-recall directive in execute.ts",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/execute.ts:322 — full command; recall.miss branch at :319",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "Runnable record-recall directive in review.ts",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/review.ts:153 — full command; recall.miss branch at :150",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "Runnable record-recall directive in finalize.ts (both recall sites)",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/finalize.ts:100 and :305 — both recall sites carry full command; recall.miss branches at :97, :302",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "triage.ts upgraded to runnable record-recall directive",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/triage.ts:87 — full runnable command (upgraded from prose); recall.miss branch at :84",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "6 meta keys (query/resultCount/verifiedCount/vault/callerMode/durationMs) present in finalize.ts directive",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/finalize.ts:100,:305 — all 6 keys present in one line; uses callerMode (not mode) per canonical source",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "Per-mode test suite passes: --run-id + 6 meta keys asserted independently per mode (fails if any single mode lacks one)",
+      "met": true,
+      "evidence": "Live `bun test` stage-gate-blocked in verify step (bash-mutate). DUAL EVIDENCE: (1) structural probe — single grep line containing all 9 required tokens + recalledIds present in ALL 5 mode bodies (architect:1, execute:1, review:1, finalize:2, triage:1), the exact predicate the test's per-mode toContain assertions check; (2) test source record-recall.test.ts:43-52 loops MODES with one independent test() per mode over REQUIRED_TOKENS[9]; (3) executor attestation summary.md:3,17 'Surface test 10/10'. Substitution noted per dual-evidence fallback.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "recall.utilization added to TelemetryKind union in schemas.ts",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/schemas.ts:38 — 'recall.utilization' in TelemetryKind union",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "RecallUtilizationMetaSchema re-exported from telemetry/index.ts barrel",
+      "met": true,
+      "evidence": "packages/luca-core/src/telemetry/index.ts:8 (value export) and :16 (type export); schema defined schemas.ts:175-184 with recalledIds/outcome/step + .passthrough()",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "recalledIds threaded into review.ts recall emit meta",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/review.ts:153 (recall.hit directive carries recalledIds), :156 (explanation), :248,:251 (utilization emit recalledIds)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "Outcome-time recall.utilization emit in review.ts learn step; Wave-1 recall.hit|miss directive ALSO still present",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/modes/review.ts:251 — `luca telemetry emit --kind recall.utilization --run-id <runId>`; Wave-1 recall.hit directive intact at :153 (not overwritten)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "luca-telemetry-report skill reads recall.utilization records",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/luca-telemetry-report/index.ts:44,91,117,121,157,158 — reads recall.utilization, tallies byRecalledId[ulid][outcome] by step, fail-tolerant",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Ran `bunx --bun tsc --noEmit` — no output, exit 0",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "bun test -t recalledIds exits 0 AND runs >=1 test (non-vacuous)",
+      "met": true,
+      "evidence": "Live `bun test` stage-gate-blocked in verify step. DUAL EVIDENCE: (1) structural probe — recalledIds present in all 5 mode bodies (single all-token line per mode); (2) test source record-recall.test.ts:54-61 'recalledIds present per mode' block, each test named `${mode} meta includes recalledIds` — all 5 names contain literal 'recalledIds' so `-t recalledIds` matches exactly 5 tests, cannot be vacuous; (3) executor attestation summary.md:17,28 '5 tests run, proven failing-then-restored'. Non-vacuity proven by construction.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT bump telemetry schema version (no v: 2 field)",
+      "met": true,
+      "evidence": "grep -nE '^\\s*v:\\s*2\\b' packages/luca-core/src/telemetry/schemas.ts returns no match (exit 1); v: 1 still present at schemas.ts:47",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT introduce a muninn_feedback call",
+      "met": true,
+      "evidence": "grep -rn 'muninn_feedback' packages/luca-tools/src packages/luca-core/src returns no match (exit 1)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT edit legacy luca-mastracode .md instructions",
+      "met": true,
+      "evidence": "git status --porcelain | grep packages/luca-mastracode/src/instructions/ returns no match (exit 1)",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Full mode goal-backward verification. ac-IDs consumed verbatim from plan.md Verification Criteria (ac-01..ac-14, anti-01..anti-03). All grep/tsc/rules probes run live against working tree. ac-07 and ac-14 could not run the live `bun test` probe — the stage-gate hook classifies `bun test` as bash-mutate and BLOCKS it in the verify pipelineStep. Applied the dual-evidence fallback: executor attestation (summary.md) PLUS an independent structural probe — a single grep line containing all 9 required tokens + recalledIds present in EACH of the 5 mode bodies (architect/execute/review/finalize x2/triage), which is the exact predicate the per-mode test assertions check. The `recalledIds` test block names all contain the literal so `-t recalledIds` matches 5 tests (non-vacuous by construction). callerMode key (not mode) confirmed per canonical source. ac-11 confirmed Wave-1 recall.hit directive coexists with new recall.utilization emit in review.ts (not overwritten).",
+  "deliverables": [
+    { "id": "D1", "description": "REQ-11 .ts wiring — runnable record-recall directive in 5 modes", "criterionIds": ["ac-01","ac-02","ac-03","ac-04","ac-05","ac-06"], "compliance": "shipped" },
+    { "id": "D2", "description": "REQ-11 test — .ts-surface per-mode test", "criterionIds": ["ac-07","ac-14"], "compliance": "shipped" },
+    { "id": "D3", "description": "REQ-12 schema — recall.utilization kind + advisory meta barrel re-export, no v bump", "criterionIds": ["ac-08","ac-09"], "compliance": "shipped" },
+    { "id": "D4", "description": "REQ-12 emit — recalledIds in recall metas + outcome-time utilization emit", "criterionIds": ["ac-10","ac-11","ac-14"], "compliance": "shipped" },
+    { "id": "D5", "description": "REQ-12 aggregator — read-time correlation in telemetry-report skill", "criterionIds": ["ac-12"], "compliance": "shipped" }
+  ]
+}

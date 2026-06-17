@@ -81,7 +81,13 @@ Query MuninnDB for historical context (≤1 tool call, vault from \`.luca/config
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<parsed intent summary>", tags: ["milestone"])
 \`\`\`
 
-After the recall returns, emit \`record-recall\` telemetry via \`luca telemetry emit\` so the aggregator can compute hit/miss rates and verified-tier hit rate per mode.
+After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
+
+\`\`\`
+luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
+\`\`\`
+
+\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
 
 If results found, factor prior complexity levels and learnings into classification. If MuninnDB is unavailable, skip — never delay triage.
 

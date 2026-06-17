@@ -114,8 +114,10 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 This is the **primary** satisfaction signal (meta key \`source:'outcome'\`) and the one that makes \`full-auto\` runs observable: gate-ask and oversight-pause only fire when a human is in the loop, but \`source:'outcome'\` fires on every run regardless of oversight, so a fully autonomous run is **never** signal-empty. At each terminal branch of \`checks\`, \`verify\`, and \`review\`, emit one record reflecting whether the step passed:
 
 \`\`\`
-luca telemetry emit --kind signal.satisfaction --run-id <runId> --meta '{"source":"outcome","valence":"<positive|negative|neutral>","step":"<checks|verify|review>","detail":"<pass/fail summary>"}'
+luca telemetry emit --kind signal.satisfaction --run-id <runId> --slug <currentPhaseSlug> --complexity <level> --meta '{"source":"outcome","valence":"<positive|negative|neutral>","step":"<checks|verify|review>","detail":"<pass/fail summary>"}'
 \`\`\`
+
+**Why \`--slug\`/\`--complexity\` (FORWARD-ONLY).** All three \`signal.satisfaction\` emits below stamp \`--slug <currentPhaseSlug>\` and \`--complexity <level>\` so the milestone-close outcome KPIs (\`luca telemetry kpi\`) can bucket records by complexity. This is forward-only: records emitted before this stamping carry \`slug:null\`/\`complexity:null\` and are excluded from buckets (tallied under \`unattributed\`). The KPIs are forward trends, not a backfill. Pass the run's classified \`<level>\` (Step 0/1) and the active \`<currentPhaseSlug>\`.
 
 Valence mapping per step:
 
@@ -178,7 +180,7 @@ After \`plan-reviewer\` returns \`APPROVED\` and **before** advancing to \`execu
 
      **Satisfaction signal (meta key \`source:'gate-ask'\`).** Each answered \`ask\` item IS a satisfaction signal — the answer tells you whether the plan matched user intent. Emit one record per answer:
      \`\`\`
-     luca telemetry emit --kind signal.satisfaction --run-id <runId> --meta '{"source":"gate-ask","valence":"<positive|negative|neutral>","step":"plan-review","detail":"<decision + which alternative the user picked>"}'
+     luca telemetry emit --kind signal.satisfaction --run-id <runId> --slug <currentPhaseSlug> --complexity <level> --meta '{"source":"gate-ask","valence":"<positive|negative|neutral>","step":"plan-review","detail":"<decision + which alternative the user picked>"}'
      \`\`\`
      Set \`valence\` from accept-vs-redirect: the user accepting the executor's recorded/leading recommendation is \`positive\`; picking a different alternative (a redirect away from the plan) is \`negative\`; an unclear or "either is fine" answer is \`neutral\`.
 
@@ -234,7 +236,7 @@ Read \`oversight\` from \`luca state read\`:
 
 **Satisfaction signal (oversight-pause).** At every \`checkpoint\` / \`human-in-loop\` oversight pause, the user's response IS a satisfaction signal. After the user responds, emit one record:
 \`\`\`
-luca telemetry emit --kind signal.satisfaction --run-id <runId> --meta '{"source":"oversight-pause","valence":"<positive|negative|neutral>","step":"<the step just paused after>","detail":"<what the user confirmed or redirected>"}'
+luca telemetry emit --kind signal.satisfaction --run-id <runId> --slug <currentPhaseSlug> --complexity <level> --meta '{"source":"oversight-pause","valence":"<positive|negative|neutral>","step":"<the step just paused after>","detail":"<what the user confirmed or redirected>"}'
 \`\`\`
 Set \`valence\` from accept-vs-redirect: the user confirming / approving the step is \`positive\`; asking for changes or redirecting is \`negative\`; a neutral acknowledgement is \`neutral\`. These pauses only fire in \`checkpoint\` / \`human-in-loop\`, so in \`full-auto\` the \`outcome\` path below carries the satisfaction signal instead.
 
