@@ -63,6 +63,7 @@
     "subagent-hang-cancel-telemetry",
     "subagent-invocation-telemetry",
     "telemetry-batch-completion",
+    "telemetry-impact-attribution",
     "v13-write-surface",
     "wave-duration-telemetry"
   ]
