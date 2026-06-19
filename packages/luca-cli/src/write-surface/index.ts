@@ -23,11 +23,29 @@ export {
 } from '@alecsibilia/luca-core'
 export { resolveRepoVault } from './helpers/resolve-repo-vault.ts'
 export type { ResolveRepoVaultOptions } from './helpers/resolve-repo-vault.ts'
+export { resolveBacklogRoot } from './helpers/resolve-backlog-root.ts'
+export type {
+    BacklogRoot,
+    ResolveBacklogRootOptions,
+} from './helpers/resolve-backlog-root.ts'
+export { resolveBrainRoot } from './helpers/resolve-brain-root.ts'
+export type {
+    BrainRoot,
+    ResolveBrainRootOptions,
+} from './helpers/resolve-brain-root.ts'
 export { writeAtomicFile } from './helpers/write-atomic.ts'
-export { buildMuninnInstruction } from './helpers/build-muninn-instruction.ts'
+export {
+    buildMuninnInstruction,
+    buildMuninnProcedure,
+    ROOT_ID_PLACEHOLDER,
+    TODO_ENGRAM_ID_PLACEHOLDER,
+} from './helpers/build-muninn-instruction.ts'
 export type {
     MuninnInstruction,
     MuninnInstructionInput,
+    MuninnProcedure,
+    MuninnProcedureInput,
+    MuninnProcedureStep,
 } from './helpers/build-muninn-instruction.ts'
 export { validateVerificationRef } from './helpers/validate-verification-ref.ts'
 export type {
@@ -37,6 +55,8 @@ export type {
 export * from '@alecsibilia/luca-core/review-analysis'
 
 // Handlers — the tool descriptors
+export { lucaBrainRecallRootTool } from './handlers/luca-brain-recall-root.ts'
+export { lucaBrainSetRootTool } from './handlers/luca-brain-set-root.ts'
 export { lucaBranchGuardTool } from './handlers/luca-branch-guard.ts'
 export { lucaChecksRunTool } from './handlers/luca-checks-run.ts'
 export { lucaConfidenceLogTool } from './handlers/luca-confidence-log.ts'
@@ -68,5 +88,7 @@ export { lucaStateReadTool } from './handlers/luca-state-read.ts'
 export { lucaStateSetCurrentPhaseTool } from './handlers/luca-state-set-current-phase.ts'
 export { lucaTodoAddTool } from './handlers/luca-todo-add.ts'
 export { lucaTodoListTool } from './handlers/luca-todo-list.ts'
+export { lucaTodoMigrateTool } from './handlers/luca-todo-migrate.ts'
+export { lucaTodoSetRootTool } from './handlers/luca-todo-set-root.ts'
 export { lucaTodoUpdateTool } from './handlers/luca-todo-update.ts'
 export { lucaWorkflowResetTool } from './handlers/luca-workflow-reset.ts'

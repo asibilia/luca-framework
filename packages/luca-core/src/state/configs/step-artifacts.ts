@@ -90,6 +90,10 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     'todo add': [],
     'todo list': [],
     'todo update': [],
+    'todo migrate': [],
+    'todo set-root': [],
+    'brain set-root': [],
+    'brain recall-root': [],
 
     // Operational mutations — phase-agnostic
     'repo cleanup-apply': [],

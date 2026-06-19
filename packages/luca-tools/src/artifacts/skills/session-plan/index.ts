@@ -20,7 +20,7 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 ### Step 0: Cognitive Pre-Flight
 
 1. **Load context from MuninnDB:**
-   - Recall project identity: \`mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
+   - Recall project identity: \`luca brain recall-root --concept brain:project-identity\` (follow the emitted recall_tree procedure — it resolves the cached root ULID in the repo vault; do NOT pass the concept to recall_tree directly)
    - Recall session context: \`mcp__muninn__muninn_recall(vault: "default", context: "current session context")\`
    - Recall planning patterns: \`mcp__muninn__muninn_recall(vault: "default", context: "planning patterns, estimates, and workflow decisions")\`
 

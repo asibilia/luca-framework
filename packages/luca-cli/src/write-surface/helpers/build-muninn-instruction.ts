@@ -69,3 +69,92 @@ export function buildMuninnInstruction(
         instructionForAgent,
     }
 }
+
+/**
+ * Placeholder token an agent substitutes with the backlog-root engram id
+ * resolved by an earlier step in a {@link MuninnProcedure}. It is a fixed
+ * constant (never free-form), so embedding it in step args / instruction
+ * text carries no injection risk.
+ */
+export const ROOT_ID_PLACEHOLDER = '<<ROOT_ID>>'
+
+/**
+ * Placeholder token an agent substitutes with the resolved todo engram id
+ * (the ULID found by concept lookup) in a later step of a
+ * {@link MuninnProcedure}. Fixed constant — see {@link ROOT_ID_PLACEHOLDER}.
+ */
+export const TODO_ENGRAM_ID_PLACEHOLDER = '<<TODO_ENGRAM_ID>>'
+
+/** A single ordered step in a {@link MuninnProcedure}. */
+export interface MuninnProcedureStep {
+    /** 1-based ordinal — the agent executes steps in this order. */
+    step: number
+    /** Fully-qualified MCP tool name to call for this step. */
+    tool: string
+    /**
+     * Pre-stringified JSON arg blob. The agent JSON.parses it and passes
+     * the result to the tool. May contain placeholder tokens
+     * ({@link ROOT_ID_PLACEHOLDER}, {@link TODO_ENGRAM_ID_PLACEHOLDER})
+     * that the agent replaces with ids resolved by earlier steps. As with
+     * the single-call instruction, free-form values (todo titles/bodies)
+     * live ONLY here, behind JSON.parse — never in `instructionForAgent`.
+     */
+    argsJson: string
+    /**
+     * What this step accomplishes, including any conditional ("only if
+     * step 1 found nothing") and placeholder-substitution note.
+     */
+    description: string
+}
+
+/**
+ * A multi-step MuninnDB delegation procedure.
+ *
+ * Some backlog operations are not a single tool call: tree-backed todos
+ * require resolving the backlog root, then acting under it (add a child,
+ * enumerate the subtree, evolve a node in place). A {@link MuninnInstruction}
+ * models exactly one call; this models an ordered sequence with data flowing
+ * between steps via placeholder tokens. The `kind: 'procedure'` discriminator
+ * lets the agent (and tests) distinguish it from a single-call instruction.
+ */
+export interface MuninnProcedure {
+    kind: 'procedure'
+    steps: MuninnProcedureStep[]
+    instructionForAgent: string
+}
+
+export interface MuninnProcedureInput {
+    steps: Array<{
+        tool: string
+        args: Record<string, unknown>
+        description: string
+    }>
+    /**
+     * Ties the steps together — ordering, conditionals, and placeholder
+     * substitution. MUST NOT interpolate free-form values; those live in
+     * each step's argsJson behind JSON.parse (same injection-safety
+     * property as {@link buildMuninnInstruction}).
+     */
+    instructionForAgent: string
+}
+
+/**
+ * Build a multi-step delegation procedure. Each step's `args` object is
+ * JSON-stringified into `argsJson` (preserving the single-input-blob
+ * pattern that defangs prompt injection from free-form string fields),
+ * and steps are numbered 1..N in order.
+ */
+export function buildMuninnProcedure(
+    input: MuninnProcedureInput
+): MuninnProcedure {
+    return {
+        kind: 'procedure',
+        steps: input.steps.map((s, i) => ({
+            step: i + 1,
+            tool: s.tool,
+            argsJson: JSON.stringify(s.args),
+            description: s.description,
+        })),
+        instructionForAgent: input.instructionForAgent,
+    }
+}

@@ -18,7 +18,7 @@ Parse \`$ARGUMENTS\` for:
 
 ## Step 1 — Load context
 
-1. Recall project identity from MuninnDB: \`mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["brain:project-identity"], mode: "semantic" })\`.
+1. Recall project identity from MuninnDB: run \`luca brain recall-root --concept brain:project-identity\` and follow the emitted \`muninn_recall_tree\` procedure. (Do NOT \`muninn_recall\` the \`"brain:project-identity"\` slug — recall matches content embeddings, not the concept string, so a slug query returns nothing; the command resolves the cached root ULID instead.)
 2. Recall prior milestones: \`mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["milestone:"], mode: "recent" })\`.
 3. Run \`luca state read\` to check the pipeline status.
 

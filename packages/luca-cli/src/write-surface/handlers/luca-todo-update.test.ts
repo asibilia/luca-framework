@@ -4,7 +4,10 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { TODO_ENGRAM_ID_PLACEHOLDER } from '../helpers/build-muninn-instruction.ts'
 import { lucaTodoUpdateTool } from './luca-todo-update.ts'
+
+const ROOT_ULID = '01KVEGY63GTYVVXK38AP9C90HC'
 
 const baseState = {
     currentPhase: 1,
@@ -12,9 +15,6 @@ const baseState = {
     roadmap: [{ name: 'auth-rewrite', deps: [], status: 'in-progress' }],
 }
 
-// A schema-complete verify.json wrapper. The handler `safeParse`s the whole
-// VerificationResultSchema before the criterion lookup, so fixtures must carry
-// every required field a real `writeVerificationResult` output has.
 const verifyBase = {
     timestamp: '2026-06-15T12:00:00Z',
     wave: 1,
@@ -27,16 +27,18 @@ const verifyBase = {
 
 async function setupProject(
     cwd: string,
-    opts: { verify?: unknown; vault?: string } = {}
+    opts: { verify?: unknown; vault?: string; rootId?: string } = {}
 ): Promise<void> {
-    await mkdir(join(cwd, '.luca/phases/01-auth-rewrite'), {
-        recursive: true,
-    })
+    await mkdir(join(cwd, '.luca/phases/01-auth-rewrite'), { recursive: true })
     await writeFile(join(cwd, '.luca/state.json'), JSON.stringify(baseState))
     if (opts.vault) {
+        const muninn: Record<string, unknown> = { vault: opts.vault }
+        if (opts.rootId) {
+            muninn.todoBacklog = { vault: opts.vault, rootId: opts.rootId }
+        }
         await writeFile(
             join(cwd, '.luca/config.json'),
-            JSON.stringify({ muninn: { vault: opts.vault } })
+            JSON.stringify({ muninn })
         )
     }
     if (opts.verify) {
@@ -45,6 +47,19 @@ async function setupProject(
             JSON.stringify(opts.verify)
         )
     }
+}
+
+function procedureFrom(r: { content: { type: string; text?: string }[] }) {
+    return JSON.parse((r.content[0] as { text: string }).text)
+}
+
+function stepArgs(
+    proc: { steps: { tool: string; argsJson: string }[] },
+    tool: string
+): Record<string, unknown> {
+    const step = proc.steps.find((s) => s.tool === tool)
+    if (!step) throw new Error(`no ${tool} step`)
+    return JSON.parse(step.argsJson)
 }
 
 describe('luca_todo_update', () => {
@@ -59,8 +74,8 @@ describe('luca_todo_update', () => {
         await rm(cwd, { recursive: true, force: true })
     })
 
-    test('emits muninn_remember instruction for non-terminal status', async () => {
-        await setupProject(cwd, { vault: 'my-project' })
+    test('cached root: REPLACE via recall_tree + add_child + forget (never evolve)', async () => {
+        await setupProject(cwd, { vault: 'my-project', rootId: ROOT_ULID })
 
         const parsed = lucaTodoUpdateTool.inputSchema.parse({
             id: 'auth-rewrite',
@@ -70,26 +85,52 @@ describe('luca_todo_update', () => {
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
 
         expect(r.isError).toBeFalsy()
-        const instruction = JSON.parse((r.content[0] as { text: string }).text)
-        expect(instruction.tool).toBe('mcp__muninn__muninn_remember')
-        const args = JSON.parse(instruction.argsJson)
-        expect(args.vault).toBe('my-project')
-        expect(args.concept).toBe('todo:auth-rewrite')
-        const todo = JSON.parse(args.content)
-        expect(todo.status).toBe('backlog')
-        expect(typeof todo.updatedAt).toBe('string')
+        const proc = procedureFrom(r)
+        const tools = proc.steps.map((s: { tool: string }) => s.tool)
+        // Locate → add fresh child → forget old. No evolve (orphans the node),
+        // no remember (dedups by content → duplicates).
+        expect(tools).toEqual([
+            'mcp__muninn__muninn_recall_tree',
+            'mcp__muninn__muninn_add_child',
+            'mcp__muninn__muninn_forget',
+        ])
+        expect(tools).not.toContain('mcp__muninn__muninn_evolve')
+        expect(tools).not.toContain('mcp__muninn__muninn_remember')
+
+        const addArgs = stepArgs(proc, 'mcp__muninn__muninn_add_child')
+        expect(addArgs.parent_id).toBe(ROOT_ULID)
+        expect(addArgs.concept).toBe('todo:auth-rewrite')
+        expect(JSON.parse(addArgs.content as string).status).toBe('backlog')
+
+        const forgetArgs = stepArgs(proc, 'mcp__muninn__muninn_forget')
+        expect(forgetArgs.id).toBe(TODO_ENGRAM_ID_PLACEHOLDER)
+    })
+
+    test('no cached root → bootstrap (remember_tree + add_child, set-root instruction)', async () => {
+        await setupProject(cwd, { vault: 'my-project' })
+
+        const parsed = lucaTodoUpdateTool.inputSchema.parse({
+            id: 'auth-rewrite',
+            title: 'x',
+            status: 'backlog',
+        })
+        const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
+        const proc = procedureFrom(r)
+        expect(proc.steps.map((s: { tool: string }) => s.tool)).toEqual([
+            'mcp__muninn__muninn_remember_tree',
+            'mcp__muninn__muninn_add_child',
+        ])
+        expect(proc.instructionForAgent).toContain('luca todo set-root')
     })
 
     test('rejects status=done without verificationRef', async () => {
         await setupProject(cwd)
-
         const parsed = lucaTodoUpdateTool.inputSchema.parse({
             id: 'auth-rewrite',
             title: 'x',
             status: 'done',
         })
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
-
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
             'verificationRef'
@@ -98,6 +139,8 @@ describe('luca_todo_update', () => {
 
     test('accepts status=done when verificationRef points at met PASS criterion', async () => {
         await setupProject(cwd, {
+            vault: 'my-project',
+            rootId: ROOT_ULID,
             verify: {
                 ...verifyBase,
                 status: 'PASS',
@@ -122,8 +165,11 @@ describe('luca_todo_update', () => {
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
 
         expect(r.isError).toBeFalsy()
-        const instruction = JSON.parse((r.content[0] as { text: string }).text)
-        const todo = JSON.parse(JSON.parse(instruction.argsJson).content)
+        const addArgs = stepArgs(
+            procedureFrom(r),
+            'mcp__muninn__muninn_add_child'
+        )
+        const todo = JSON.parse(addArgs.content as string)
         expect(todo.status).toBe('done')
         expect(todo.verificationRef.criterionId).toBe('ac-01')
     })
@@ -153,7 +199,6 @@ describe('luca_todo_update', () => {
             verificationRef: { criterionId: 'ac-01' },
         })
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
-
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
             'CRITERION_UNMET'
@@ -162,7 +207,6 @@ describe('luca_todo_update', () => {
 
     test('rejects status=done when verify.json is missing', async () => {
         await setupProject(cwd)
-
         const parsed = lucaTodoUpdateTool.inputSchema.parse({
             id: 'auth-rewrite',
             title: 'x',
@@ -170,7 +214,6 @@ describe('luca_todo_update', () => {
             verificationRef: { criterionId: 'ac-01' },
         })
         const r = await lucaTodoUpdateTool.handler(parsed, { cwd })
-
         expect(r.isError).toBe(true)
         expect((r.content[0] as { text: string }).text).toContain(
             'VERIFY_FILE_MISSING'

@@ -137,7 +137,7 @@ Extract learnings from this phase execution, write learn.md, and return the TO_P
 
 **Do NOT proceed until the Task returns.**
 
-After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context with \`mcp__muninn__muninn_forget(vault: "default", id: "session:*")\`.
+After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context: \`mcp__muninn__muninn_forget\` takes an explicit engram **ULID** — there is NO wildcard/prefix forget (\`id: "session:*"\` does nothing). Instead recall the session engrams and forget each by id: \`mcp__muninn__muninn_recall({ vault: "default", context: ["session:"], mode: "recent", limit: 50 })\`, then for every returned engram whose concept starts with \`session:\`, call \`mcp__muninn__muninn_forget({ vault: "default", id: "<that engram's ULID>" })\`.
 
 **Learning capture always runs.** The learner model tier comes from the agent definition:
 
@@ -233,7 +233,7 @@ Commits will not reference issues and PR creation will require manual setup.
 
 **Skip if:** \`--skip-replay\` flag passed.
 
-Before executing plans, check for replayable procedures that match the phase objective. High-confidence procedures (composite score >= 0.7, success_rate >= 0.5, 3+ executions) are surfaced as suggested pre-plans for executor.
+Before executing plans, check for replayable procedures (\`procedure:*\` engrams — reusable multi-step recipes the learner captured from past verified phases) that match the phase objective. Relevance is decided by MuninnDB recall ranking, which is tuned over time by the \`muninn_feedback\` signals recorded in Step 6.7 — useful procedures rank higher, unhelpful ones sink below relevance. There is NO \`success_count\`/\`success_rate\`/\`composite score\` on the engram (MuninnDB has no such fields); rank + a relevance cut is the whole signal.
 
 \`\`\`bash
 # Read phase objective from the roadmap or plan files
@@ -243,14 +243,14 @@ PHASE_OBJECTIVE=$(grep -A 2 "Phase {phase_number}" .luca/roadmap.md | tail -1 | 
 Recall replayable procedures from MuninnDB:
 
 \`\`\`
-REPLAY_RESULT = mcp__muninn__muninn_recall(vault: "default", context: "replayable procedures for $PHASE_OBJECTIVE")
+REPLAY_RESULT = mcp__muninn__muninn_recall(vault: "default", context: "replayable procedures for $PHASE_OBJECTIVE", limit: 5)
 \`\`\`
 
-Parse the recall result to determine if relevant procedures exist (REPLAY_COUNT).
+From \`REPLAY_RESULT\`, keep the returned procedures whose recall \`score\` is clearly relevant (the top 1–3; ignore weak/low-score hits — recall is best-effort and depends on an embedder being configured). Note: recall returns each engram's \`id\` (ULID) and \`content\` — **capture each kept procedure's \`id\` (ULID)** into \`INJECTED_PROCEDURE_IDS\` for the Step 6.7 feedback (NOT the concept string; feedback needs the ULID).
 
-**If replayable procedures found (REPLAY_COUNT > 0):**
+**If relevant procedures were kept (REPLAY_COUNT > 0):**
 
-Store \`REPLAY_JSON\` for injection into executor context. When spawning executor for each plan, include the pre-plans as additional context:
+Store \`REPLAY_JSON\` (id + content per kept procedure) for injection into executor context. When spawning executor for each plan, include the pre-plans as additional context:
 
 \`\`\`
 <procedure_replay_context>
@@ -261,11 +261,11 @@ They are ADVISORY, not mandatory. Use them as guidance if they match the current
 </procedure_replay_context>
 \`\`\`
 
-Track which pre-plans were injected for feedback recording in Step 6.7.
+Track which pre-plans (by ULID) were injected for feedback recording in Step 6.7.
 
-**If no replayable procedures found:**
+**If no relevant procedures found:**
 
-Continue normally. No pre-plan context is injected.
+Continue normally. No pre-plan context is injected, and \`INJECTED_PROCEDURE_IDS\` is empty.
 
 ### 1. Validate Phase Exists
 
@@ -851,23 +851,22 @@ Pass results to Step 7 (verifier context):
 
 **Skip if:** \`--skip-replay\` flag passed OR no pre-plans were injected in Step 0.6.
 
-After harness verification completes, record feedback for each pre-plan that was followed. This closes the learning loop: procedure replays feed back into procedure scoring.
+After harness verification completes, record feedback for each pre-plan that was followed. This closes the learning loop: replay outcomes tune MuninnDB's recall ranking so good procedures resurface and bad ones sink.
 
-For each pre-plan that was injected during execution, record the outcome in MuninnDB:
+Use \`muninn_feedback\` — the native "was this retrieved engram useful?" signal (it updates the vault's learned recall weights via SGD). It takes the engram **ULID** (the \`id\` you captured in Step 0.6, NOT a \`procedure:<slug>\` concept) and a boolean. Do NOT use \`muninn_evolve\` here: evolve rewrites content (it would obliterate the procedure body), mints a new ULID, and orphans tree members — none of which is wanted.
 
 \`\`\`
-# For each procedure that was replayed:
-# HARNESS_PASSED is true if harness_status === "passed", false otherwise
-# EXECUTION_DURATION_MS is computed from phase start time
-
-for each PROC_ID in INJECTED_PROCEDURE_IDS:
-  mcp__muninn__muninn_evolve(vault: "default", id: "procedure:$PROC_ID", content: "replay outcome: success=$HARNESS_PASSED, duration_ms=$EXECUTION_DURATION_MS")
+# HARNESS_PASSED is true if harness_status === "passed", false otherwise.
+for each ULID in INJECTED_PROCEDURE_IDS:
+  mcp__muninn__muninn_feedback(vault: "default", engram_id: "$ULID", useful: $HARNESS_PASSED)
 \`\`\`
 
 This ensures that:
-- Successful replays boost procedure confidence (success_count incremented)
-- Failed replays degrade procedure confidence (only execution_count incremented)
-- Consistently failing procedures are auto-retired (success_rate < 0.4 after 5+ executions)
+- Successful replays (\`useful: true\`) raise the procedure's future recall ranking, so it resurfaces for similar objectives.
+- Failed replays (\`useful: false\`) lower it, so it stops being suggested.
+- Consistently-unhelpful procedures naturally fall below the Step 0.6 relevance cut (MuninnDB has no explicit auto-retire). Optional hard retire: after repeated failures, \`mcp__muninn__muninn_trust(vault: "default", id: "$ULID", trust: "untrusted")\` excludes it from recall when the vault has ExcludeUntrusted enabled.
+
+(Per-replay durations are already captured in telemetry — \`muninn_feedback\` only carries the useful/not-useful signal, so no duration is recorded here.)
 
 ### 7. Verify Phase Goal
 

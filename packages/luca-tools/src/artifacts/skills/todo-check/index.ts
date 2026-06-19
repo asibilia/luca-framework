@@ -25,6 +25,10 @@ List pending todos and select one to work on.
 
    Backlog state is MuninnDB-backed; \`luca todo list\` is the canonical read surface — there is no \`.luca/todos/\` directory in the LUCA_DIR_CONTRACT.
 
+   \`luca todo list\` enumerates the backlog **completely** — it resolves the backlog-root engram, then walks its tree (\`muninn_recall_tree\`), so every todo is returned regardless of vault size. Status is a content field: valid filters are \`pending\`, \`backlog\`, \`done\`; **omit \`--status\` to list all**. \`pending\` = ready to work; \`backlog\` = deferred/hidden tier.
+
+   If todos created before the tree-backed backlog are missing from the list, run \`luca todo migrate\` once (re-run until it links nothing new) to pull legacy flat \`todo:\` engrams under the root.
+
 2. **Filter by area (if provided):**
    - Inspect each todo's area metadata (returned by \`luca todo list\`)
    - Filter to matching area
@@ -55,7 +59,7 @@ List pending todos and select one to work on.
      - "Back" - return to list
 
 5. **If "Work on now":**
-   - Update the todo status via \`luca todo update --id <id> --status in-progress\` (and later to \`done\` when complete)
+   - There is no "in-progress" status — valid statuses are \`pending\`, \`backlog\`, \`done\`. Leave it \`pending\` while you work; mark it \`done\` only when verified: \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <criterionId>\` (the criterion must be met=true with evidence in the active phase's verify.json). Updates evolve the todo in place — no duplicate is created.
    - Route to appropriate action
 
 ## Success Criteria
@@ -64,7 +68,7 @@ List pending todos and select one to work on.
 - [ ] Area filter works (if provided)
 - [ ] Selected todo shows full context
 - [ ] Options appropriate to todo content
-- [ ] Completed todos moved to done/
+- [ ] Completed todos marked \`done\` via \`luca todo update\` (evolved in place — no duplicate)
 
 ## Next Steps
 

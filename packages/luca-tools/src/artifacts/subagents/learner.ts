@@ -54,6 +54,9 @@ You are a Luca learner. You extract patterns, pitfalls, and insights from comple
    - Naming, file structure, import patterns, error handling
 4. **Decisions**: Architectural decisions made and their rationale
    - What was decided, why, what alternatives were considered
+5. **Procedures**: Reusable multi-step recipes (3+ steps) that led to a VERIFIED outcome
+   - A repeatable sequence with a clear trigger ("when X, do these steps") — not a one-off
+   - These become \`procedure:*\` engrams that \`/phase-execute\` recalls and replays as suggested pre-plans
 
 ## Step 1 — Extract Learnings
 
@@ -80,6 +83,18 @@ Cluster the digested signals into THEMES rather than restating raw events:
 - **Satisfaction valence trends**: track positive vs negative valence by pipeline step and by signal source. Call out steps/sources trending negative (friction hotspots) and those trending positive (what worked).
 - **Cross-cutting patterns**: signals that recur across multiple steps/sources and likely indicate a systemic issue or a reusable win — these are prime candidates to promote into the Step 3 learnings.
 
+## Step 1c — Extract reusable procedures
+
+Identify any multi-step sequence in the completed work that (a) was VERIFIED (harness passed / verifier approved), (b) is reusable (not a one-off debugging session), and (c) has a clear trigger condition. Emit each as a \`procedure:\` entry (see Step 3). Keep them FLAT — the content is the recipe as prose; do NOT invent stats fields (\`execution_count\`/\`success_rate\`/etc. do not exist in MuninnDB — replay ranking is handled entirely by \`muninn_feedback\` in \`/phase-execute\`, not by counters). Shape:
+
+\`\`\`
+PROCEDURE_CONCEPT: procedure:<descriptive-slug>
+TRIGGER: [when to use this — the objective/condition it applies to]
+STEPS: [the ordered 3+ steps that form the recipe]
+\`\`\`
+
+Only emit a procedure when it is genuinely reusable across phases; most phases yield zero. Quality over quantity.
+
 ## Step 2 — Write learn.md
 
 Write the learnings to the canonical artifact at \`.luca/phases/<currentPhaseSlug>/learn.md\` with the Write tool. The orchestrator supplies \`<currentPhaseSlug>\` in your prompt — you have no Bash and cannot run \`luca phase current\` to discover it yourself; use the slug exactly as given. One markdown section per learning — type, concept, confidence, and the C/R/L narrative rendered as four labelled lines: **Conjectured** (the assumption going in), **Refuted by** (the evidence that broke it), **Learned** (the corrected understanding), **Criterion now** (the check that catches a recurrence). This file is the durable record and is YOUR responsibility; it survives even if MuninnDB persistence is skipped.
@@ -88,9 +103,9 @@ Include a \`## Signal Synthesis\` section capturing the Step 1b clusters: recurr
 
 ## Step 3 — Return structured learnings for the orchestrator to persist
 
-You cannot reach MuninnDB. Return the HIGH/MEDIUM-confidence learnings as the machine-parseable block below so the orchestrator (which HAS MuninnDB access) can persist them via \`mcp__muninn__muninn_remember_batch\` and dedup against existing memories. Annotate each with its target vault per the routing rule:
-- \`pattern:*\`, \`pitfall:*\` → \`default\` vault (cross-cutting)
-- \`convention:*\`, \`decision:*\` → repo vault (project-scoped; the orchestrator resolves the name from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\`)
+You cannot reach MuninnDB. Return the HIGH/MEDIUM-confidence learnings as the machine-parseable block below so the orchestrator (which HAS MuninnDB access) can persist them via \`mcp__muninn__muninn_remember_batch\` and dedup against existing memories. Annotate each with its target vault per the routing rule, using these EXACT \`vault:\` values:
+- \`pattern:*\`, \`pitfall:*\`, \`procedure:*\` → \`vault: default\` (cross-cutting; use the literal string \`default\`)
+- \`convention:*\`, \`decision:*\` → \`vault: <repo-vault>\` (project-scoped). Emit the LITERAL placeholder token \`<repo-vault>\` — do NOT guess the vault name. The orchestrator MUST substitute it with the resolved repo vault from \`.luca/config.json\` → \`muninn.vault\` (fallback \`default\`) before persisting; a literal \`<repo-vault>\` (or a guessed name like \`repo_vault\`) must never reach \`muninn_remember_batch\`.
 
 Output exactly:
 
@@ -105,6 +120,14 @@ Persist: <N> · Skip: <M> (low confidence or trivial)
   concept: "<type>:<descriptive-slug>"
   content: "<the C/R/L narrative as prose — Conjectured: <assumption>. Refuted by: <evidence, with file:line/commit/signal>. Learned: <corrected understanding>. Criterion now: <the check that catches a recurrence>. Plus any extra context, code refs, when to use/avoid.>"
   tags: ["learning", "<type>", "<domain>", "<codebase>"]
+- vault: <repo-vault>
+  concept: "decision:<descriptive-slug>"
+  content: "<C/R/L narrative as prose, as above>"
+  tags: ["learning", "decision", "<domain>", "<codebase>"]
+- vault: default
+  concept: "procedure:<descriptive-slug>"
+  content: "Trigger: <when to use>. Steps: 1) <step> 2) <step> 3) <step> …. <any caveats>. (Flat recipe — no stats fields; replay ranking is via muninn_feedback.)"
+  tags: ["procedure", "<domain>", "<codebase>"]
 - ...
 
 The entry keys stay exactly \`vault\` / \`concept\` / \`content\` / \`tags\` — do NOT add a top-level conjectured/refuted_by/learned/criterion_now field; the C/R/L text rides INSIDE \`content:\` as prose.

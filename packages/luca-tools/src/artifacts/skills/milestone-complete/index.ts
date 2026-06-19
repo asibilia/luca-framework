@@ -59,10 +59,12 @@ Include in archive:
 
 ### Step 2: Clean Session State
 
-After archiving, clear session context:
+After archiving, clear session context. \`mcp__muninn__muninn_forget\` requires an explicit engram **ULID** — there is NO wildcard/prefix forget, so \`id: "session:*"\` is a no-op. Recall the session engrams, then forget each by id:
 
 \`\`\`
-mcp__muninn__muninn_forget(vault: "default", id: "session:*")
+mcp__muninn__muninn_recall(vault: "default", context: ["session:"], mode: "recent", limit: 50)
+# then, for each returned engram whose concept starts with "session:":
+mcp__muninn__muninn_forget(vault: "default", id: "<that engram's ULID>")
 \`\`\`
 
 Long-term learnings persist in MuninnDB across milestones.

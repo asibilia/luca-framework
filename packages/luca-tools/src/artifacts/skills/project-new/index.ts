@@ -186,6 +186,12 @@ mcp__muninn__muninn_remember_tree(
 )
 \`\`\`
 
+**Then register the tree's root id** so future skills can re-open it (MuninnDB has no concept lookup — \`muninn_recall_tree\` requires the ULID, not the concept). Take the \`root_id\` returned by \`muninn_remember_tree\` above and run:
+
+\`\`\`bash
+luca brain set-root --concept brain:project-identity --id <root_id>
+\`\`\`
+
 Project identity lives as MuninnDB engrams, not as a hand-authored \`PROJECT.md\` (the legacy file has no canonical home in LUCA_DIR_CONTRACT). Run \`luca init\` to write the canonical \`.luca/\` skeleton.
 
 \`\`\`bash
@@ -224,9 +230,11 @@ If "Research first":
 
 First, recall the project context from MuninnDB:
 
+\`\`\`bash
+luca brain recall-root --concept brain:project-identity
 \`\`\`
-mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-identity")
-\`\`\`
+
+(Follow the emitted \`muninn_recall_tree\` procedure — it resolves the cached root ULID. Do NOT call \`muninn_recall_tree(id: "brain:project-identity")\` directly; recall_tree rejects a concept as root_id.)
 
 Per-phase research lives under \`.luca/phases/<NN-slug>/research.md\` (per LUCA_DIR_CONTRACT). For the project-initialization domain research, persist findings to MuninnDB engrams under \`research:project-init-<topic>\` (vault: repo vault).
 
@@ -396,7 +404,7 @@ Synthesize all research outputs into a cohesive summary.
 ### Phase 7: Define Requirements
 
 Present features by category, scope each category for v1/v2/out of scope.
-Store the requirements as a MuninnDB tree under \`brain:project-requirements\` with REQ-IDs as children. The legacy hand-authored \`REQUIREMENTS.md\` has no canonical home in LUCA_DIR_CONTRACT.
+Store the requirements as a MuninnDB tree under \`brain:project-requirements\` (via \`mcp__muninn__muninn_remember_tree\`, vault: repo vault) with REQ-IDs as children. The legacy hand-authored \`REQUIREMENTS.md\` has no canonical home in LUCA_DIR_CONTRACT. **Then register its root id** (so it can be re-opened — recall_tree needs the ULID, not the concept): \`luca brain set-root --concept brain:project-requirements --id <root_id>\`.
 
 ### Phase 8: Create Roadmap
 
@@ -407,9 +415,14 @@ backed by the deterministic \`luca roadmap create\` write surface.
 
 First, recall the required context from MuninnDB:
 
+\`\`\`bash
+luca brain recall-root --concept brain:project-identity
+luca brain recall-root --concept brain:project-requirements
 \`\`\`
-mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-identity")
-mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
+
+(Each emits a \`muninn_recall_tree\` procedure resolved by the cached root ULID — follow them. Do NOT pass a concept to \`muninn_recall_tree\` directly.) Then recall the research summary:
+
+\`\`\`
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "project-init research summary", tags: ["research","project-init"])
 \`\`\`
 
