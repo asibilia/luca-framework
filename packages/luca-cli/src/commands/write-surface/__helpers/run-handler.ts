@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises'
 
 import {
     loadCurrentState,
+    stringifyError,
     WRITE_COMMAND_PHASES,
     type PipelineStep,
 } from '@alecsibilia/luca-core'
@@ -81,9 +82,7 @@ export async function runWriteHandler<TArgs>(
         result = await tool.handler(parsed.data, { cwd })
     } catch (err) {
         console.error(
-            `luca ${command}: handler error — ${
-                err instanceof Error ? err.message : String(err)
-            }`
+            `luca ${command}: handler error — ${stringifyError(err)}`
         )
         process.exit(1)
     }
@@ -250,9 +249,9 @@ export async function readJsonPayload(
         raw = await readFile(filePath, 'utf-8')
     } catch (err) {
         console.error(
-            `luca ${command}: could not read --file '${filePath}' — ${
-                err instanceof Error ? err.message : String(err)
-            }`
+            `luca ${command}: could not read --file '${filePath}' — ${stringifyError(
+                err
+            )}`
         )
         process.exit(1)
     }
@@ -260,9 +259,9 @@ export async function readJsonPayload(
         return JSON.parse(raw)
     } catch (err) {
         console.error(
-            `luca ${command}: --file '${filePath}' is not valid JSON — ${
-                err instanceof Error ? err.message : String(err)
-            }`
+            `luca ${command}: --file '${filePath}' is not valid JSON — ${stringifyError(
+                err
+            )}`
         )
         process.exit(1)
     }

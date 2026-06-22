@@ -25,6 +25,7 @@ import {
 } from 'node:fs'
 import { basename, join } from 'node:path'
 
+import { stringifyError } from '@alecsibilia/luca-core'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
@@ -381,9 +382,7 @@ export function archiveLoose(): {
             renameSync(src, dst)
             archived.push(name)
         } catch (err) {
-            skipped.push(
-                `${name} (rename failed: ${err instanceof Error ? err.message : String(err)})`
-            )
+            skipped.push(`${name} (rename failed: ${stringifyError(err)})`)
         }
     }
 
@@ -604,8 +603,7 @@ export const repoCleanupTool = createTool({
                         message,
                     }
                 } catch (err) {
-                    const message =
-                        err instanceof Error ? err.message : String(err)
+                    const message = stringifyError(err)
                     // Normalize to {success:false, error} so the action's
                     // return shape matches workflowStateTool's archive-loose
                     // (#220 review) — agents that gate on result.success

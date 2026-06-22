@@ -1,3 +1,5 @@
+import { stringifyError } from '@alecsibilia/luca-core'
+
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import { mutateState } from '../helpers/mutate-state.ts'
 
@@ -58,9 +60,7 @@ export const lucaPhaseAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     return { ...state, roadmap, currentPhase: currentPhase + 1 }
                 })
             } catch (err) {
-                return errorResult(
-                    err instanceof Error ? err.message : String(err)
-                )
+                return errorResult(stringifyError(err))
             }
 
             return {

@@ -6,6 +6,7 @@ import {
     loadCurrentState,
     phasePathFor,
     resolveActiveSlug,
+    stringifyError,
     type VerificationRef,
 } from '@alecsibilia/luca-core'
 import {
@@ -73,7 +74,7 @@ export async function validateVerificationRef(
         return {
             code: 'VERIFY_FILE_INVALID',
             message: `verify.json could not be parsed: ${sanitizeControlChars(
-                err instanceof Error ? err.message : String(err)
+                stringifyError(err)
             )}`,
         }
     }

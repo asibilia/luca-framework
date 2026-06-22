@@ -10,6 +10,7 @@
  * in place. There is intentionally no `invalidate` action — preferences are
  * the source of truth for the duration of the project.
  */
+import { stringifyError } from '@alecsibilia/luca-core'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
@@ -234,7 +235,7 @@ export const projectPreferencesTool = createTool({
                 try {
                     parsed = ProjectPreferencesSchema.parse(payload)
                 } catch (err) {
-                    const msg = err instanceof Error ? err.message : String(err)
+                    const msg = stringifyError(err)
                     return {
                         success: false,
                         message: `Invalid preferences payload: ${msg}`,
@@ -271,7 +272,7 @@ export const projectPreferencesTool = createTool({
                 try {
                     parsed = ProjectPreferencesSchema.parse(merged)
                 } catch (err) {
-                    const msg = err instanceof Error ? err.message : String(err)
+                    const msg = stringifyError(err)
                     return {
                         success: false,
                         message: `Invalid preferences payload: ${msg}`,

@@ -9,6 +9,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 /**
  * Parse YAML-ish frontmatter from a rule .md file.
  * Returns { frontmatter, body } where frontmatter is a simple key-value map.
@@ -67,9 +69,7 @@ export function loadAlwaysApplyRules(): string {
             }
         } catch (error) {
             console.warn(
-                `[luca] Warning: failed to load rule "${file}": ${
-                    error instanceof Error ? error.message : String(error)
-                }`
+                `[luca] Warning: failed to load rule "${file}": ${stringifyError(error)}`
             )
         }
     }

@@ -32,6 +32,8 @@
  */
 import { resolve } from 'node:path'
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 import { type Artifact, compile } from '../index.ts'
 
 interface ParsedArgs {
@@ -111,7 +113,7 @@ async function loadManifest(modulePath: string): Promise<readonly Artifact[]> {
         mod = await import(modulePath)
     } catch (err) {
         console.error(`compile: failed to import manifest ${modulePath}`)
-        console.error(err instanceof Error ? err.message : String(err))
+        console.error(stringifyError(err))
         process.exit(1)
     }
     const raw = (mod as { default?: unknown }).default

@@ -19,6 +19,8 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -606,7 +608,7 @@ export function verifyFile(
     try {
         text = readFileSync(filePath, 'utf-8')
     } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        const msg = stringifyError(err)
         return {
             passed: false,
             totalClaims: 0,

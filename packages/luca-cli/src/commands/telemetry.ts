@@ -16,6 +16,7 @@ import {
     computeOutcomeKpis,
     generateRunId,
     loadCurrentState,
+    stringifyError,
 } from '@alecsibilia/luca-core'
 import type { OutcomeKpis, TelemetryContext } from '@alecsibilia/luca-core'
 
@@ -76,9 +77,9 @@ const emitCommand = defineCommand({
                 meta = parsed as Record<string, unknown>
             } catch (err) {
                 logger.error(
-                    `luca telemetry emit: --meta is not a valid JSON object — ${
-                        err instanceof Error ? err.message : String(err)
-                    }`
+                    `luca telemetry emit: --meta is not a valid JSON object — ${stringifyError(
+                        err
+                    )}`
                 )
                 process.exitCode = 1
                 return
