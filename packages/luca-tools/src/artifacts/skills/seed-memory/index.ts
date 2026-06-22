@@ -49,8 +49,9 @@ All entities use type-prefixed names for consistent recall and traversal:
 When a step below says "check for an existing engram," do this best-effort check instead:
 
 - \`muninn_recall({ vault, context: ["<the entity's natural-language description, NOT its slug>"], mode: "balanced", limit: 5 })\` and inspect whether any returned engram's \`concept\` exactly equals the target concept.
-- If a returned engram's concept matches: capture its \`id\` (ULID) and \`muninn_evolve(id, new_content)\` it (evolve is safe for FLAT engrams; for the \`brain:\`/\`procedure:\` TREE ROOTS it updates the root's own content fine — do not evolve tree children, which orphans them per the tree rules).
-- Otherwise: create it.
+- If a returned engram's concept matches AND it is a **FLAT** engram (a MEMORY.md / WORKING.md entry — pattern/pitfall/session/etc.): capture its \`id\` (ULID) and \`muninn_evolve(id, new_content)\` it. Evolve is safe for flat engrams only.
+- If the match is a **TREE ROOT** (\`brain:project-identity\`, a \`procedure:*\` root, or any node with children): do NOT evolve it — evolve mints a new root ULID (staling the \`muninn.brainRoots\` cache) and orphans its children from the new root. Either **skip** (leave the existing tree as-is) or **clean-replace**: \`muninn_forget\` the old root (and its children), \`muninn_remember_tree\` a fresh tree, then re-register the new root id with \`luca brain set-root --concept <concept> --id <new_root_id>\`.
+- Otherwise (no match): create it.
 
 This is **best-effort, not guaranteed** (see Idempotency below). For a clean re-seed, clear the prior seeded engrams first (recall them, then \`muninn_forget\` each by ULID).
 
@@ -74,7 +75,7 @@ If \`.luca/BRAIN.md\` exists:
 1. Read the file content
 2. Parse the major sections (look for ## headings: Project Identity, Stack, Architecture, Conventions, Preferences, etc.)
 3. **Check for an existing engram** per **Existence checks** above (do NOT use \`find_by_entity\` on the \`brain:project-identity\` slug — it never matches). Use a best-effort recall on the project-identity description.
-4. **If a matching engram is found**: Use \`mcp__muninn__muninn_evolve\` (by its ULID) to update the root engram's content
+4. **If the brain:project-identity tree already exists**: do NOT evolve the root — it is a TREE and evolve would orphan its children and stale the cached root id (see Existence checks). Either skip (leave it), or clean-replace: \`muninn_forget\` the old root + children, \`muninn_remember_tree\` fresh, then \`luca brain set-root --concept brain:project-identity --id <new_root_id>\`.
 5. **If not found**: Use \`mcp__muninn__muninn_remember_tree\` to store as a hierarchical tree:
    - vault: the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\`) — \`brain:project-*\` is project-scoped per the vault-routing rule, NOT the \`default\` vault.
    - Root concept: "brain:project-identity"
@@ -84,17 +85,16 @@ If \`.luca/BRAIN.md\` exists:
      - content: The section content as natural language
    - **Then register the root id** (so readers can re-open it — \`muninn_recall_tree\` needs the ULID, not the concept): take the \`root_id\` returned by \`muninn_remember_tree\` and run \`luca brain set-root --concept brain:project-identity --id <root_id>\`.
 
-**Example tree structure:**
+**Example tree structure** (illustrative — set \`vault\` to the resolved repo vault, NOT \`default\`; and note \`muninn_remember_tree\` does NOT accept per-node \`entities\` — it auto-extracts entities from \`content\`, so do not inject an \`entities\` field on tree nodes):
 
 \`\`\`json
 {
-  "vault": "default",
+  "vault": "<repo vault>",
   "root": {
     "concept": "brain:project-identity",
     "content": "Luca Framework -- agentic development tooling monorepo. Builds agents, skills, rules, hooks for AI-assisted development.",
     "type": "project_identity",
-    "summary": "Project identity and conventions for luca-framework",
-    "entities": [{"name": "luca-framework", "type": "project"}]
+    "summary": "Project identity and conventions for luca-framework"
   },
   "children": [
     {
@@ -128,10 +128,10 @@ If \`.luca/MEMORY.md\` exists:
    - **Check for an existing engram** per **Existence checks** above (best-effort recall on the entry's description; do NOT \`find_by_entity\` the concept slug)
    - **If a matching engram is found**: Use \`mcp__muninn__muninn_evolve\` (by its ULID) to update with latest content
    - **If not found**: Add to the batch for creation
-4. Store all new entries using \`mcp__muninn__muninn_remember_batch\`:
-   - vault: "default"
+4. Store all new entries using \`mcp__muninn__muninn_remember_batch\`, **routing each entry's \`vault\` by its concept type** (vault-routing rule): \`pattern:\`/\`pitfall:\`/\`preference:\` → \`default\` (cross-cutting); \`decision:\`/\`convention:\` → the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`default\`; project-scoped). Do NOT put them all in \`default\`.
    - Each memory includes:
-     - concept: \`<type>:<slug>\` (e.g., "pattern:bun-runtime-requirement", "pitfall:generated-files-direct-edit")
+     - vault: per the routing above (NOT a blanket \`default\`)
+     - concept: \`<type>:<slug>\` (e.g., "pattern:bun-runtime-requirement", "pitfall:generated-files-direct-edit", "decision:...")
      - content: The full entry text as natural language
      - type: One of "pattern", "decision", "pitfall", "preference"
      - summary: A one-line summary of the entry
@@ -154,7 +154,7 @@ If \`.luca/WORKING.md\` exists and is not empty:
    - **Check for an existing engram** per **Existence checks** above (best-effort recall on the section's content; do NOT \`find_by_entity\` the \`session:<section-slug>\` slug)
    - **If a matching engram is found**: Use \`mcp__muninn__muninn_evolve\` (by its ULID) to update
    - **If not found**: Use \`mcp__muninn__muninn_remember\` to store:
-     - vault: "default"
+     - vault: the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`default\`) — \`session:*\` is project-scoped per the routing rule, NOT the shared \`default\` vault
      - concept: \`session:<section-slug>\` (e.g., "session:findings", "session:progress")
      - content: The section content
      - type: "session_context"
@@ -172,7 +172,7 @@ If \`.luca/procedures/\` directory exists:
    - Read the file content
    - Extract the procedure name from the filename (strip .md, use as slug)
    - **Check for an existing engram** per **Existence checks** above (best-effort recall on the procedure's description; do NOT \`find_by_entity\` the \`procedure:<procedure-slug>\` slug)
-   - **If a matching engram is found**: Use \`mcp__muninn__muninn_evolve\` (by its ULID) to update the root's content
+   - **If the procedure tree already exists**: do NOT evolve the root — it is a TREE and evolve orphans its children (see Existence checks). Skip, or clean-replace via \`muninn_forget\` (old root + children) + \`muninn_remember_tree\` fresh.
    - **If not found**: Use \`mcp__muninn__muninn_remember_tree\`:
      - vault: "default"
      - Root concept: \`procedure:<procedure-slug>\`
@@ -241,8 +241,8 @@ MuninnDB has **no concept lookup** (see **Existence checks** above), so this ski
 | \`mcp__muninn__muninn_remember_tree\` | Store hierarchical content | BRAIN.md, Procedures |
 | \`mcp__muninn__muninn_remember_batch\` | Store multiple flat entries | MEMORY.md entries |
 | \`mcp__muninn__muninn_remember\` | Store single entry | WORKING.md sections |
-| \`mcp__muninn__muninn_find_by_entity\` | Check if entity exists | Idempotency check before every create |
-| \`mcp__muninn__muninn_evolve\` | Update existing entity | When entity already exists |
+| \`mcp__muninn__muninn_recall\` | Best-effort existence check (by description, NOT concept slug — no concept lookup exists) | Before create (see Existence checks) |
+| \`mcp__muninn__muninn_evolve\` | Update an existing **FLAT** engram by ULID (never a tree root) | Flat entry already exists |
 | \`mcp__muninn__muninn_recall\` | Verify stored content | Final verification step |
 </main>
 `

@@ -70,8 +70,10 @@ Before planning begins, run cognitive pre-flight:
 3. **Initialize session** in MuninnDB for this planning session:
 
    \`\`\`
-   mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
+   mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
    \`\`\`
+
+   (\`session:*\` is project-scoped → the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`default\`), not the shared \`default\` vault.)
 
    Store recalled context:
    - **Patterns**: [relevant patterns from MuninnDB]

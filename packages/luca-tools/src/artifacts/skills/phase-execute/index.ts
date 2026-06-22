@@ -137,7 +137,7 @@ Extract learnings from this phase execution, write learn.md, and return the TO_P
 
 **Do NOT proceed until the Task returns.**
 
-After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context: \`mcp__muninn__muninn_forget\` takes an explicit engram **ULID** — there is NO wildcard/prefix forget (\`id: "session:*"\` does nothing). Instead recall the session engrams and forget each by id: \`mcp__muninn__muninn_recall({ vault: "default", context: ["session:"], mode: "recent", limit: 50 })\`, then for every returned engram whose concept starts with \`session:\`, call \`mcp__muninn__muninn_forget({ vault: "default", id: "<that engram's ULID>" })\`.
+After the learner returns, **persist its \`TO_PERSIST\` learnings to MuninnDB yourself** (the learner has no MCP access): call \`mcp__muninn__muninn_remember_batch\` routed per each entry's \`vault:\` (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the repo vault for \`convention:\`/\`decision:\`), deduping against existing memories first. Then clear stale session context: \`mcp__muninn__muninn_forget\` takes an explicit engram **ULID** — there is NO wildcard/prefix forget (\`id: "session:*"\` does nothing). Instead recall the session engrams and forget each by id: \`mcp__muninn__muninn_recall({ vault: "<repo_vault>", context: ["session:"], mode: "recent", limit: 50 })\`, then for every returned engram whose concept starts with \`session:\`, call \`mcp__muninn__muninn_forget({ vault: "<repo_vault>", id: "<that engram's ULID>" })\`. (\`session:*\` lives in the repo vault, not \`default\`.)
 
 **Learning capture always runs.** The learner model tier comes from the agent definition:
 
@@ -162,8 +162,10 @@ Throughout execution, log findings to MuninnDB:
 Log execution progress to MuninnDB:
 
 \`\`\`
-mcp__muninn__muninn_remember(vault: "default", concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
+mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:findings", content: "[timestamp] [Plan X complete - finding Y]")
 \`\`\`
+
+(\`session:*\` is project-scoped → the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`default\`), NOT the shared \`default\` vault — keeps session context from bleeding across projects.)
 
 Track:
 
