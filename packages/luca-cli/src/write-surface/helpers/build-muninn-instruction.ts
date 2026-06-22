@@ -144,17 +144,18 @@ export interface MuninnProcedureInput {
  * pattern that defangs prompt injection from free-form string fields),
  * and steps are numbered 1..N in order.
  */
-export function buildMuninnProcedure(
-    input: MuninnProcedureInput
-): MuninnProcedure {
+export function buildMuninnProcedure({
+    steps,
+    instructionForAgent,
+}: MuninnProcedureInput): MuninnProcedure {
     return {
         kind: 'procedure',
-        steps: input.steps.map((s, i) => ({
+        steps: steps.map((s, i) => ({
             step: i + 1,
             tool: s.tool,
             argsJson: JSON.stringify(s.args),
             description: s.description,
         })),
-        instructionForAgent: input.instructionForAgent,
+        instructionForAgent,
     }
 }

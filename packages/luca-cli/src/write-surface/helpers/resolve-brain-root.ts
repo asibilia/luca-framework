@@ -1,5 +1,9 @@
 import { loadCurrentConfig } from '@alecsibilia/luca-core'
 
+import {
+    MuninnConfigSectionSchema,
+    MuninnRootEntrySchema,
+} from './muninn-config.schema.ts'
 import { resolveRepoVault } from './resolve-repo-vault.ts'
 
 export interface ResolveBrainRootOptions {
@@ -36,32 +40,17 @@ export interface BrainRoot {
  * the currently-resolved vault. Returns `rootId: null` (never throws) when the
  * tree is uninitialized for this vault.
  */
-export async function resolveBrainRoot(
-    opts: ResolveBrainRootOptions
-): Promise<BrainRoot> {
-    const vault = await resolveRepoVault({ cwd: opts.cwd })
-    const config = await loadCurrentConfig({ cwd: opts.cwd })
+export async function resolveBrainRoot({
+    cwd,
+    concept,
+}: ResolveBrainRootOptions): Promise<BrainRoot> {
+    const vault = await resolveRepoVault({ cwd })
+    const config = await loadCurrentConfig({ cwd })
 
-    const muninn = config.muninn
-    if (muninn && typeof muninn === 'object' && !Array.isArray(muninn)) {
-        const brainRoots = (muninn as Record<string, unknown>).brainRoots
-        if (
-            brainRoots &&
-            typeof brainRoots === 'object' &&
-            !Array.isArray(brainRoots)
-        ) {
-            const entry = (brainRoots as Record<string, unknown>)[opts.concept]
-            if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-                const e = entry as Record<string, unknown>
-                if (
-                    e.vault === vault &&
-                    typeof e.rootId === 'string' &&
-                    e.rootId.length > 0
-                ) {
-                    return { vault, rootId: e.rootId }
-                }
-            }
-        }
+    const muninn = MuninnConfigSectionSchema.catch({}).parse(config.muninn)
+    const entry = MuninnRootEntrySchema.safeParse(muninn.brainRoots?.[concept])
+    if (entry.success && entry.data.vault === vault) {
+        return { vault, rootId: entry.data.rootId }
     }
 
     return { vault, rootId: null }

@@ -1,5 +1,9 @@
 import { loadCurrentConfig } from '@alecsibilia/luca-core'
 
+import {
+    MuninnConfigSectionSchema,
+    MuninnRootEntrySchema,
+} from './muninn-config.schema.ts'
 import { resolveRepoVault } from './resolve-repo-vault.ts'
 
 export interface ResolveBacklogRootOptions {
@@ -33,29 +37,16 @@ export interface BacklogRoot {
  * branch on that to emit a bootstrap procedure (create the root, then
  * `luca todo set-root`) instead of a direct one.
  */
-export async function resolveBacklogRoot(
-    opts: ResolveBacklogRootOptions
-): Promise<BacklogRoot> {
-    const vault = await resolveRepoVault({ cwd: opts.cwd })
-    const config = await loadCurrentConfig({ cwd: opts.cwd })
+export async function resolveBacklogRoot({
+    cwd,
+}: ResolveBacklogRootOptions): Promise<BacklogRoot> {
+    const vault = await resolveRepoVault({ cwd })
+    const config = await loadCurrentConfig({ cwd })
 
-    const muninn = config.muninn
-    if (muninn && typeof muninn === 'object' && !Array.isArray(muninn)) {
-        const todoBacklog = (muninn as Record<string, unknown>).todoBacklog
-        if (
-            todoBacklog &&
-            typeof todoBacklog === 'object' &&
-            !Array.isArray(todoBacklog)
-        ) {
-            const entry = todoBacklog as Record<string, unknown>
-            if (
-                entry.vault === vault &&
-                typeof entry.rootId === 'string' &&
-                entry.rootId.length > 0
-            ) {
-                return { vault, rootId: entry.rootId }
-            }
-        }
+    const muninn = MuninnConfigSectionSchema.catch({}).parse(config.muninn)
+    const entry = MuninnRootEntrySchema.safeParse(muninn.todoBacklog)
+    if (entry.success && entry.data.vault === vault) {
+        return { vault, rootId: entry.data.rootId }
     }
 
     return { vault, rootId: null }

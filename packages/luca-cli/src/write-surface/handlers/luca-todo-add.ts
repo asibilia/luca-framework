@@ -96,7 +96,13 @@ export const lucaTodoAddTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
             id = args.id ?? slugFromTitle(args.title)
         } catch (err) {
             return {
-                content: [{ type: 'text', text: (err as Error).message }],
+                content: [
+                    {
+                        type: 'text',
+                        text:
+                            err instanceof Error ? err.message : String(err),
+                    },
+                ],
                 isError: true,
             }
         }

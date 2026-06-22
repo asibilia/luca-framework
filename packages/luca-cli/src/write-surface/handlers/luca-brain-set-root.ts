@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { loadCurrentConfig, lucaRootPaths } from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
+import { MuninnConfigSectionSchema } from '../helpers/muninn-config.schema.ts'
 import { resolveRepoVault } from '../helpers/resolve-repo-vault.ts'
 import { writeAtomicFile } from '../helpers/write-atomic.ts'
 
@@ -65,19 +66,10 @@ export const lucaBrainSetRootTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             const vault = await resolveRepoVault({ cwd: ctx.cwd })
             const config = await loadCurrentConfig({ cwd: ctx.cwd })
 
-            const existingMuninn =
-                config.muninn &&
-                typeof config.muninn === 'object' &&
-                !Array.isArray(config.muninn)
-                    ? (config.muninn as Record<string, unknown>)
-                    : {}
-
-            const existingRoots =
-                existingMuninn.brainRoots &&
-                typeof existingMuninn.brainRoots === 'object' &&
-                !Array.isArray(existingMuninn.brainRoots)
-                    ? (existingMuninn.brainRoots as Record<string, unknown>)
-                    : {}
+            const existingMuninn = MuninnConfigSectionSchema.catch({}).parse(
+                config.muninn
+            )
+            const existingRoots = existingMuninn.brainRoots ?? {}
 
             const nextConfig = {
                 ...config,
