@@ -74,7 +74,13 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
             )
         } catch (err) {
             return {
-                content: [{ type: 'text', text: (err as Error).message }],
+                content: [
+                    {
+                        type: 'text',
+                        text:
+                            err instanceof Error ? err.message : String(err),
+                    },
+                ],
                 isError: true,
             }
         }

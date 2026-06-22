@@ -58,7 +58,9 @@ export const lucaPhaseAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     return { ...state, roadmap, currentPhase: currentPhase + 1 }
                 })
             } catch (err) {
-                return errorResult((err as Error).message)
+                return errorResult(
+                    err instanceof Error ? err.message : String(err)
+                )
             }
 
             return {

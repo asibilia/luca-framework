@@ -132,7 +132,13 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             } catch (err) {
                 return {
                     content: [
-                        { type: 'text', text: (err as Error).message },
+                        {
+                            type: 'text',
+                            text:
+                                err instanceof Error
+                                    ? err.message
+                                    : String(err),
+                        },
                     ],
                     isError: true,
                 }
