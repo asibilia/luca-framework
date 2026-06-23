@@ -21,9 +21,9 @@ List the development backlog. Todos live in **MuninnDB** (concept \`todo:*\`, re
 
    Pass \`--status <filter>\` if a filter was given.
 
-3. **Execute the returned instruction.** \`luca todo list\` prints a \`mcp__muninn__muninn_recall\` instruction blob (delegation pattern). Execute it **exactly as returned** to recall the todos.
+3. **Execute the returned procedure.** \`luca todo list\` emits a \`muninn_recall_tree\` procedure (delegation pattern): resolve the cached backlog root, walk the tree, and \`muninn_read\` each non-deleted child for its content. Follow it **exactly as returned**. If the backlog is uninitialized it prints a plain notice instead (no todos) — report that and stop.
 
-4. **Parse each entry.** Each recalled memory's \`content\` is JSON conforming to \`TodoSchema\` (\`id\`, \`title\`, \`body?\`, \`status\`, \`priority?\`, \`area?\`, \`source?\`, \`updatedAt\`). Parse every entry. If a status filter was requested, keep only todos whose \`content.status\` matches it.
+4. **Parse each entry.** Each child's \`content\` is JSON conforming to \`TodoSchema\` (\`id\`, \`title\`, \`body?\`, \`status\`, \`priority?\`, \`area?\`, \`source?\`, \`updatedAt\`). Parse every entry, keying off \`content.id\` (not the concept string). If a status filter was requested, keep only todos whose \`content.status\` matches it.
 
 5. **Display.** Render a numbered checklist grouped by status, in this order:
 

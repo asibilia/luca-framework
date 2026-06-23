@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 
+import { stringifyError } from '@alecsibilia/luca-core'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
@@ -1017,7 +1018,7 @@ export const workflowStateTool = createTool({
                     } catch (err) {
                         return {
                             success: false,
-                            message: `Failed to switch mode: ${err instanceof Error ? err.message : String(err)}`,
+                            message: `Failed to switch mode: ${stringifyError(err)}`,
                             error: err instanceof Error ? err.stack : undefined,
                         }
                     }
@@ -1703,7 +1704,7 @@ export const workflowStateTool = createTool({
                     } catch (err) {
                         return {
                             success: false,
-                            message: `Re-entered state but mode switch failed: ${err instanceof Error ? err.message : String(err)}`,
+                            message: `Re-entered state but mode switch failed: ${stringifyError(err)}`,
                         }
                     }
                 }
@@ -1759,10 +1760,7 @@ export const workflowStateTool = createTool({
                     } catch (err) {
                         return {
                             success: false,
-                            error:
-                                err instanceof Error
-                                    ? err.message
-                                    : String(err),
+                            error: stringifyError(err),
                         }
                     }
                 }

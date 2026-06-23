@@ -244,7 +244,8 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     phase: new Set(['current', 'advance', 'archive']),
     roadmap: new Set(['read', 'create']),
     preferences: new Set(['read', 'write']),
-    todo: new Set(['add', 'list', 'update']),
+    todo: new Set(['add', 'list', 'update', 'migrate', 'set-root']),
+    brain: new Set(['set-root', 'recall-root']),
     'pr-review': new Set([
         'filter-stale',
         'detect-convergence',

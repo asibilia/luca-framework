@@ -34,6 +34,7 @@ import { pathToFileURL } from 'node:url'
 
 import type * as ts from 'typescript'
 
+import { stringifyError } from '../utils/stringify-error.ts'
 import type { RuleDefinition, RuleFile, RuleFinding } from './define-rule.ts'
 
 // TypeScript is a devDependency of this package, but rule consumers
@@ -191,7 +192,7 @@ export async function loadRules(opts: { rulesDir: string }): Promise<{
         } catch (err) {
             loadErrors.push({
                 file,
-                message: err instanceof Error ? err.message : String(err),
+                message: stringifyError(err),
             })
         }
     }
@@ -371,9 +372,7 @@ export function runRules(opts: {
             executionErrors.push({
                 ruleId: rule.id,
                 path: '',
-                message: `scope resolution failed: ${
-                    err instanceof Error ? err.message : String(err)
-                }`,
+                message: `scope resolution failed: ${stringifyError(err)}`,
             })
             timings[rule.id] = performance.now() - start
             continue
@@ -413,7 +412,7 @@ export function runRules(opts: {
                 executionErrors.push({
                     ruleId: rule.id,
                     path: relPath,
-                    message: err instanceof Error ? err.message : String(err),
+                    message: stringifyError(err),
                 })
             }
         }

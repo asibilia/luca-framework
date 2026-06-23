@@ -35,10 +35,10 @@ Before archiving, ensure all session learnings are captured:
 
 2. **Invoke learner** if candidate learnings exist
 
-3. **Review milestone-specific insights** in MuninnDB:
-   - Patterns that were validated multiple times -> bump to High confidence via \`mcp__muninn__muninn_evolve\`
-   - Decisions that held throughout milestone -> mark as Established
-   - Pitfalls that were successfully avoided -> note as Validated
+3. **Review milestone-specific insights** in MuninnDB (recall the engrams first to get their ULIDs — there is no concept lookup):
+   - Patterns validated multiple times -> promote trust tier via \`mcp__muninn__muninn_trust({ id: "<ULID>", trust: "verified" })\`. (The \`confidence\` field is set at creation and is NOT mutable by \`muninn_evolve\`; trust tier is the promotion mechanism. Use \`muninn_evolve\` only to update a flat engram's *content* by ULID.)
+   - Decisions that held throughout the milestone -> \`muninn_trust\` to \`verified\`.
+   - Pitfalls successfully avoided -> \`muninn_evolve\` (by ULID) to append a "validated" note to the flat pitfall engram.
 
 ### Step 1: Archive Milestone Memory
 
@@ -59,11 +59,15 @@ Include in archive:
 
 ### Step 2: Clean Session State
 
-After archiving, clear session context:
+After archiving, clear session context. \`mcp__muninn__muninn_forget\` requires an explicit engram **ULID** — there is NO wildcard/prefix forget, so \`id: "session:*"\` is a no-op. Recall the session engrams, then forget each by id:
 
 \`\`\`
-mcp__muninn__muninn_forget(vault: "default", id: "session:*")
+mcp__muninn__muninn_recall(vault: "<repo_vault>", context: ["session:"], mode: "recent", limit: 50)
+# then, for each returned engram whose concept starts with "session:":
+mcp__muninn__muninn_forget(vault: "<repo_vault>", id: "<that engram's ULID>")
 \`\`\`
+
+(\`session:*\` is project-scoped — it lives in the repo vault, not the shared \`default\` vault.)
 
 Long-term learnings persist in MuninnDB across milestones.
 

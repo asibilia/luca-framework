@@ -107,3 +107,42 @@ export const TODO_CONCEPT_PREFIX = 'todo:'
 export function todoConceptFor(id: string): string {
     return `${TODO_CONCEPT_PREFIX}${id}`
 }
+
+/**
+ * Reserved concept for the backlog **root** container engram.
+ *
+ * The backlog is stored as a MuninnDB tree: one root engram whose
+ * `is_part_of` children are the individual `todo:<id>` engrams. Listing
+ * resolves this root by concept (deterministic, via
+ * `muninn_find_by_entity`) and then enumerates the whole subtree with
+ * `muninn_recall_tree` — a structural walk that returns EVERY child
+ * regardless of vault size or embedding similarity. This replaces the
+ * old semantic-recall enumeration that silently dropped the long tail.
+ *
+ * The double-underscore suffix is deliberate: {@link TodoIdSchema}
+ * forbids underscores, so `todoConceptFor(<any valid id>)` can never
+ * collide with this reserved concept. It stays under the `todo:` prefix
+ * so the existing vault-routing rule (`todo:*` → repo vault) applies
+ * unchanged.
+ */
+export const TODO_BACKLOG_ROOT_CONCEPT = 'todo:__backlog__'
+
+/**
+ * Content body for the backlog root container engram. Plain natural
+ * language (the root is NOT a {@link Todo} — it has no TodoSchema
+ * content), so listing logic skips any node whose content does not
+ * parse as a Todo.
+ */
+export const TODO_BACKLOG_ROOT_CONTENT =
+    'Luca development backlog — container node. Its is_part_of children ' +
+    'are the individual todo:<id> engrams. Resolve this node via ' +
+    'muninn_find_by_entity, then enumerate the backlog with ' +
+    'muninn_recall_tree for complete, deterministic listing.'
+
+/**
+ * True when a concept is the reserved backlog-root container rather than
+ * a real todo. Listing/enumeration logic uses this to skip the root.
+ */
+export function isBacklogRootConcept(concept: string): boolean {
+    return concept === TODO_BACKLOG_ROOT_CONCEPT
+}

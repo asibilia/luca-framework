@@ -12,6 +12,7 @@ import {
     PIPELINE_TRANSITIONS,
     resolveActiveSlug,
     STEP_ARTIFACTS,
+    stringifyError,
     type CoarsePhase,
     type LucaState,
     type StepArtifact,
@@ -132,7 +133,10 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             } catch (err) {
                 return {
                     content: [
-                        { type: 'text', text: (err as Error).message },
+                        {
+                            type: 'text',
+                            text: stringifyError(err),
+                        },
                     ],
                     isError: true,
                 }

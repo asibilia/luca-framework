@@ -27,7 +27,7 @@ Resolve \`<repo_vault>\` from \`.luca/config.json\` → \`muninn.vault\`, fallin
 
 ## Step 1 — Scan
 
-First, recall the kept-list yourself (the subagent has no MuninnDB access): \`mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "shadow-debt:kept")\` and collect the kept file paths. If category 5 (stale backlog) is enabled, also recall the pending backlog (\`todo:*\`, \`status: pending\`).
+First, recall the kept-list yourself (the subagent has no MuninnDB access): \`mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "shadow-debt kept files")\` and collect the kept file paths (best-effort — recall is semantic; a miss just means a previously-kept file may be re-flagged for re-confirmation). If category 5 (stale backlog) is enabled, enumerate the pending backlog with \`luca todo list --status pending\` — do NOT \`muninn_recall\` \`todo:*\` (semantic recall silently misses todos; \`luca todo list\` walks the backlog tree for complete enumeration).
 
 Spawn the **\`shadow-scanner\`** subagent via the \`Agent\` tool. The task prompt must include:
 

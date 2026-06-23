@@ -6,6 +6,8 @@
  * and uses followUpRef to inject reminders into the conversation.
  */
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 import { MODES } from '../constants/mode-ids.js'
 import { appendLedger } from '../state/session-ledger.js'
 import type { ThresholdName, BudgetState } from '../util/token-budget.js'
@@ -75,7 +77,7 @@ export class ContextRefresher {
                 appendLedger('context-refresher-followup-failed', {
                     threshold,
                     mode: this.currentModeId,
-                    error: err instanceof Error ? err.message : String(err),
+                    error: stringifyError(err),
                 })
             } catch {
                 // ledger write itself failed — nothing else to do

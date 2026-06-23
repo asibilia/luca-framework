@@ -48,8 +48,8 @@ First, read the phase context:
 \`\`\`bash
 VERIFICATION_FILES=$(find .luca/phases -name "verify.json" -exec cat {} \\;)
 ROADMAP_CONTENT=$(cat .luca/roadmap.md)
-# Recall requirements from MuninnDB:
-# mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
+# Recall requirements from MuninnDB (resolves the cached root ULID — recall_tree needs a ULID, not the concept):
+# luca brain recall-root --concept brain:project-requirements
 \`\`\`
 
 Then spawn the integration checker:

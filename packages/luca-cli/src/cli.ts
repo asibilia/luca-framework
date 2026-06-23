@@ -62,6 +62,10 @@ const main = defineCommand({
             ),
         todo: () =>
             import('./commands/write-surface/todo').then((m) => m.todoCommand),
+        brain: () =>
+            import('./commands/write-surface/brain').then(
+                (m) => m.brainCommand
+            ),
         'pr-review': () =>
             import('./commands/write-surface/pr-review').then(
                 (m) => m.prReviewCommand

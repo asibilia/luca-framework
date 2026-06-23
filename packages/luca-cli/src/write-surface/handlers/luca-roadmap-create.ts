@@ -1,6 +1,7 @@
 import {
     lucaStateSchema,
     RoadmapPhaseSchema,
+    stringifyError,
     type RoadmapPhase,
 } from '@alecsibilia/luca-core'
 
@@ -74,7 +75,12 @@ export const lucaRoadmapCreateTool: ToolDescriptor<
             )
         } catch (err) {
             return {
-                content: [{ type: 'text', text: (err as Error).message }],
+                content: [
+                    {
+                        type: 'text',
+                        text: stringifyError(err),
+                    },
+                ],
                 isError: true,
             }
         }

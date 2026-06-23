@@ -102,11 +102,11 @@ luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall
 
 \`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
 
-Review results:
-- **Remove duplicates**: use \`mcp__muninn__muninn_forget\` for less specific overlapping patterns.
-- **Remove noise**: forget patterns too specific to be reusable.
-- **Promote winners**: update patterns validated across multiple waves.
-- **Deprecate losers**: forget or add warnings to patterns that caused problems.
+Review results. NOTE: \`mcp__muninn__muninn_forget\` requires an explicit engram **ULID** — there is no concept/similarity/wildcard forget. So to prune, work from the engrams the recall above already returned (each has an \`id\`), and forget by that id. Never pass a concept string or \`*\` to forget.
+- **Remove duplicates**: among the recalled patterns, identify less-specific overlapping ones and call \`mcp__muninn__muninn_forget(vault: "<vault>", id: "<that engram's ULID>")\` for each.
+- **Remove noise**: same — forget by ULID the patterns too specific to be reusable.
+- **Promote winners**: for patterns validated across multiple waves, update them in place with \`mcp__muninn__muninn_evolve(id: "<ULID>", new_content: ...)\` (flat pattern engrams; evolve is safe for non-tree memories).
+- **Deprecate losers**: forget by ULID, or \`muninn_evolve\` to add a warning, the patterns that caused problems.
 
 ### Session Archive
 

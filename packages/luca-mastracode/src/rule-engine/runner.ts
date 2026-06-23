@@ -26,6 +26,7 @@ import { createRequire } from 'node:module'
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { stringifyError } from '@alecsibilia/luca-core'
 import type ts from 'typescript'
 
 import type { RuleDefinition, RuleFile, RuleFinding } from './define-rule.js'
@@ -188,7 +189,7 @@ export async function loadRules(opts: { rulesDir: string }): Promise<{
         } catch (err) {
             loadErrors.push({
                 file,
-                message: err instanceof Error ? err.message : String(err),
+                message: stringifyError(err),
             })
         }
     }
@@ -377,9 +378,7 @@ export function runRules(opts: { repoRoot: string; rules: RuleDefinition[] }): {
             executionErrors.push({
                 ruleId: rule.id,
                 path: '',
-                message: `scope resolution failed: ${
-                    err instanceof Error ? err.message : String(err)
-                }`,
+                message: `scope resolution failed: ${stringifyError(err)}`,
             })
             timings[rule.id] = performance.now() - start
             continue
@@ -419,7 +418,7 @@ export function runRules(opts: { repoRoot: string; rules: RuleDefinition[] }): {
                 executionErrors.push({
                     ruleId: rule.id,
                     path: relPath,
-                    message: err instanceof Error ? err.message : String(err),
+                    message: stringifyError(err),
                 })
             }
         }

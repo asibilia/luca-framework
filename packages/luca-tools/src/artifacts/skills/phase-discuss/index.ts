@@ -87,7 +87,7 @@ The researcher model tier is set by the agent’s own definition.
 
 4a. **Analyze phase** — Same gray area identification as interactive mode
 5a. **Auto-select all gray areas** — No user prompt, select everything
-6a. **Load project identity from MuninnDB** — Extract project tech stack (languages, frameworks, conventions) via \`muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
+6a. **Load project identity from MuninnDB** — Run \`luca brain recall-root --concept brain:project-identity\` and follow the emitted \`muninn_recall_tree\` procedure to extract project tech stack (languages, frameworks, conventions). Do NOT call \`muninn_recall_tree(id: "brain:project-identity")\` directly — recall_tree rejects a concept as root_id, and the brain tree lives in the repo vault (not \`default\`).
 7a. **Spawn researcher per question** — For each gray area:
     - Formulate a focused question from the gray area topic
     - Spawn \`researcher\` via Task() with: question, phase context, tech stack from MuninnDB

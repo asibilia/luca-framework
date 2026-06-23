@@ -42,9 +42,11 @@ Before planning begins, run cognitive pre-flight:
 
 1. **Load project identity** from MuninnDB:
 
+   \`\`\`bash
+   luca brain recall-root --concept brain:project-identity
    \`\`\`
-   mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")
-   \`\`\`
+
+   Follow the emitted \`muninn_recall_tree\` procedure (it resolves the cached root ULID from the repo vault). Do NOT call \`muninn_recall_tree(id: "brain:project-identity")\` directly — recall_tree rejects a concept as root_id, and the brain tree lives in the repo vault (not \`default\`).
 
    Extract: architecture patterns, code conventions, development preferences
 
@@ -68,8 +70,10 @@ Before planning begins, run cognitive pre-flight:
 3. **Initialize session** in MuninnDB for this planning session:
 
    \`\`\`
-   mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
+   mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:info", content: "workflow=phase-plan, phase=[phase number], started=[timestamp]")
    \`\`\`
+
+   (\`session:*\` is project-scoped → the **repo vault** (\`.luca/config.json\` → \`muninn.vault\`, fallback \`default\`), not the shared \`default\` vault.)
 
    Store recalled context:
    - **Patterns**: [relevant patterns from MuninnDB]
@@ -369,8 +373,8 @@ First, read the created plan (canonical: one \`plan.md\` per phase per LUCA_DIR_
 \`\`\`bash
 PLAN_CONTENT=$(cat "\${PHASE_DIR}/plan.md" 2>/dev/null)
 ROADMAP_CONTENT=$(cat .luca/roadmap.md)
-# Recall requirements from MuninnDB:
-# mcp__muninn__muninn_recall_tree(vault: "<repo_vault>", id: "brain:project-requirements")
+# Recall requirements from MuninnDB (resolves the cached root ULID — recall_tree needs a ULID, not the concept):
+# luca brain recall-root --concept brain:project-requirements
 \`\`\`
 
 Then spawn the plan checker:

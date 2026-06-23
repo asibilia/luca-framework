@@ -121,7 +121,7 @@ If the push fails (e.g. the branch already exists with divergent history), repor
 
 Check whether this work originated from a triaged GitHub issue:
 
-1. **From the todo backlog**: run \`luca todo list\`, execute the printed \`mcp__muninn__muninn_recall\` instruction, and look for a todo whose work matches the current branch. If that todo has \`source: "gh-issue-#<N>"\`, that's the linked issue.
+1. **From the todo backlog**: run \`luca todo list\`, follow the emitted \`muninn_recall_tree\` procedure (resolve cached root → walk tree → \`muninn_read\` each non-deleted child; or handle the "not initialized" notice), and look for a todo whose work matches the current branch. If that todo has \`source: "gh-issue-#<N>"\`, that's the linked issue.
 2. **From MuninnDB**: recall recent \`gh-prepare\` memories or pipeline state that reference an issue number for this branch.
 3. **From the branch name**: if the branch is named \`feat/42-something\`, extract \`#42\` as a candidate and verify it exists: \`gh issue view 42 --json state\`.
 4. **From commit messages**: scan for \`#N\` references.

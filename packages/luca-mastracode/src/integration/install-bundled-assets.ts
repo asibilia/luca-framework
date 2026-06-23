@@ -48,6 +48,8 @@ import { existsSync, lstatSync, mkdirSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 /**
  * Resolve the bundled-assets root (the package directory containing
  * `commands/`, `skills/`, `rules/`). Computed from `import.meta.url`;
@@ -106,7 +108,7 @@ function linkAssetDir(assetName: string, assetsRoot?: string): void {
             mkdirSync(mastracodeDir, { recursive: true })
         }
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = stringifyError(error)
         console.warn(
             `[luca] failed to create ${mastracodeDir} — skipping ${assetName} link: ${message}`
         )
@@ -147,7 +149,7 @@ function linkAssetDir(assetName: string, assetsRoot?: string): void {
     try {
         symlinkSync(bundledDir, targetPath, SYMLINK_TYPE)
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = stringifyError(error)
         console.warn(
             `[luca] failed to symlink ${assetName} (${bundledDir} → ${targetPath}): ${message}`
         )

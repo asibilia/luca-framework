@@ -17,6 +17,8 @@
  * in-progress; it does NOT rewrite the status of the other phases (the
  * caller's roadmap statuses, or the natural lifecycle, own those).
  */
+import { stringifyError } from '@alecsibilia/luca-core'
+
 import { mutateState } from '../helpers/mutate-state.ts'
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 
@@ -64,7 +66,12 @@ export const lucaStateSetCurrentPhaseTool: ToolDescriptor<
             })
         } catch (err) {
             return {
-                content: [{ type: 'text' as const, text: (err as Error).message }],
+                content: [
+                    {
+                        type: 'text' as const,
+                        text: stringifyError(err),
+                    },
+                ],
                 isError: true,
             }
         }

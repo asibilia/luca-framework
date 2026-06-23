@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
+import { stringifyError } from '@alecsibilia/luca-core'
+
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import { sanitizeControlChars } from '../helpers/sanitize-control-chars.ts'
 
@@ -333,7 +335,7 @@ export const lucaPlanLintTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
                     {
                         type: 'text',
                         text: `luca_plan_lint: could not read '${safeFile}' — ${sanitizeControlChars(
-                            err instanceof Error ? err.message : String(err)
+                            stringifyError(err)
                         )}`,
                     },
                 ],

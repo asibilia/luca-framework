@@ -24,7 +24,7 @@ If no GitHub remote is detected, stop and tell the user.
 
 ### 2. Load existing todos (for dedup)
 
-Run \`luca todo list\`. It prints a \`mcp__muninn__muninn_recall\` instruction blob — execute it exactly as returned. Each recalled memory's \`content\` is JSON conforming to \`TodoSchema\`; collect every existing todo's \`source\` field. This is the dedup set for step 5.
+Run \`luca todo list\`. It emits a \`muninn_recall_tree\` procedure (resolve the cached backlog root, then walk the tree and \`muninn_read\` each non-deleted child) — follow it exactly; if the backlog is uninitialized it prints a plain notice instead (no existing todos → empty dedup set). Each child's \`content\` is JSON conforming to \`TodoSchema\`; collect every existing todo's \`source\` field. This is the dedup set for step 5.
 
 ### 3. Filter
 

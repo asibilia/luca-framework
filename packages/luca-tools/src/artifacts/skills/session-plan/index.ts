@@ -20,20 +20,20 @@ Plan the next AI coding session (or week) by analyzing pending todos, scoring th
 ### Step 0: Cognitive Pre-Flight
 
 1. **Load context from MuninnDB:**
-   - Recall project identity: \`mcp__muninn__muninn_recall_tree(vault: "default", id: "brain:project-identity")\`
+   - Recall project identity: \`luca brain recall-root --concept brain:project-identity\` (follow the emitted recall_tree procedure — it resolves the cached root ULID in the repo vault; do NOT pass the concept to recall_tree directly)
    - Recall session context: \`mcp__muninn__muninn_recall(vault: "default", context: "current session context")\`
    - Recall planning patterns: \`mcp__muninn__muninn_recall(vault: "default", context: "planning patterns, estimates, and workflow decisions")\`
 
 2. **Initialize session in MuninnDB:**
-   - Store session info: \`mcp__muninn__muninn_remember(vault: "default", concept: "session:info", content: "workflow=session-plan, started=[timestamp]")\`
+   - Store session info: \`mcp__muninn__muninn_remember(vault: "<repo_vault>", concept: "session:info", content: "workflow=session-plan, started=[timestamp]")\` (\`session:*\` is project-scoped → repo vault, not \`default\`)
    - Note any recalled calibration data for effort estimates
 
 ### Step 1: Parse Pending Todos
 
 1. **Read backlog:**
-   - Run \`luca todo list --status pending\` — it emits a \`mcp__muninn__muninn_recall\` instruction; execute it exactly as returned
-   - Each recalled todo's \`content\` is a JSON payload with title, body, status, source, and now priority and area
-   - Filters (\`--status\`, \`--area\`, \`--priority\`) are applied post-recall
+   - Run \`luca todo list --status pending\` — it emits a \`muninn_recall_tree\` procedure (resolve the cached backlog root, walk the tree, \`muninn_read\` each non-deleted child); follow it exactly, or handle the plain "not initialized" notice if the backlog is empty
+   - Each child's \`content\` is a JSON payload with title, body, status, source, and now priority and area
+   - Filters (\`--status\`, \`--area\`, \`--priority\`) are applied post-read against each todo's content
    - The backlog is MuninnDB-backed; \`luca todo\` is the canonical surface
 
 2. **Check for dependencies:**
