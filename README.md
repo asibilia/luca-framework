@@ -8,7 +8,7 @@ Luca turns AI coding assistants into structured, multi-phase development pipelin
 
 ## Packages
 
-Luca ships as a single public package, `@alecsibilia/luca`, which bundles three private workspaces:
+Luca ships as a single public umbrella package, `@alecsibilia/luca`, which bundles the three private workspaces listed below:
 
 | Package | Description |
 | ------- | ----------- |
