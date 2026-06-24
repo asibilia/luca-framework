@@ -21,8 +21,6 @@ const config: CommitConfig = {
     ],
     scopes: [
         { value: 'framework', label: 'Luca CLI (luca-framework)' },
-        { value: 'mastracode', label: 'Mastra Code harness' },
-        { value: 'studio', label: 'Luca Studio UI' },
         { value: 'config', label: 'Configuration' },
         { value: 'docs', label: 'Documentation' },
         { value: 'repo', label: 'Repository & Tooling' },

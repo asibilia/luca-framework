@@ -40,8 +40,7 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The co
 
 ```bash
 bun install              # Install dependencies
-bun run build            # Build luca-framework
-bun run mastracode       # Run mastracode harness
+bun run build            # Build the @alecsibilia/luca CLI
 bunx --bun tsc --noEmit  # Type check
 ```
 
@@ -56,15 +55,15 @@ All files use `kebab-case` naming.
 **DO:**
 
 ```
-packages/luca-mastracode/src/tools/run-checks.ts
-packages/luca-framework/src/utils/vault-setup.ts
+packages/luca-core/src/state/cli-parse.ts
+packages/luca-cli/src/utils/vault-setup.ts
 ```
 
 **DON'T:**
 
 ```
-packages/luca-mastracode/src/tools/RunChecks.ts
-packages/luca-framework/src/utils/vaultSetup.ts
+packages/luca-core/src/state/CliParse.ts
+packages/luca-cli/src/utils/vaultSetup.ts
 ```
 
 ### Planning Artifacts: `UPPERCASE.md`
@@ -149,9 +148,11 @@ src/
   skills/           # Skill definitions and registry
   workflow/         # DAG engine and step contracts
 scripts/            # Build and generation scripts
-packages/           # Publishable packages
-  luca-framework/   # Main distributable package
-  create-luca/      # Project scaffolding CLI
+packages/           # Workspaces
+  luca/             # Public umbrella package (@alecsibilia/luca)
+  luca-cli/         # CLI command surface
+  luca-core/        # Pipeline state machine and core logic
+  luca-tools/       # Harness instruction bodies (modes, subagents, skills)
 docs/               # Documentation
 .planning/          # Runtime artifacts (memory stored in MuninnDB)
 ```

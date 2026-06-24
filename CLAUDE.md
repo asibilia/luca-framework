@@ -14,12 +14,11 @@ Default to using Bun instead of Node.js.
 
 ## Repo-specific guidance for agents
 
-- **This repo is a developer tooling monorepo**, not a web app. It builds Luca's CLI (`luca-framework`) and custom Mastra Code harness (`luca-mastracode`).
+- **This repo is a developer tooling monorepo**, not a web app. It builds the `luca` CLI (`@alecsibilia/luca`) plus the skills, agents, and slash commands that install into a coding harness (Claude Code and Antigravity).
 - **Core commands** (same as `AGENTS.md`, surfaced here for convenience):
   - Install deps: `bun install`
   - Type check: `bunx --bun tsc --noEmit`
-  - Build luca-framework: `bun run build`
-  - Run mastracode: `bun run mastracode`
+  - Build the luca CLI: `bun run build`
 - The local `.claude/` in this repo contains only `settings.local.json` and `plans/` — not generated artifacts.
 - The `.luca/` directory (new) is the workflow data dir; the `.planning/` directory (legacy) still exists during the migration window — see the section below.
 - **High-leverage gotchas**:

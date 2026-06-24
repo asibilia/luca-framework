@@ -38,10 +38,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# mastracode runtime copies (generated from packages/luca-mastracode/ source files)
-packages/luca-mastracode/.mastracode/
-packages/luca-mastracode/.planning/
-
 # generated output (built by build:all, deployed by deploy — source repo uses ~/.claude/ globally)
 .claude/agents/
 .claude/commands/
@@ -79,10 +75,9 @@ packages/luca-mastracode/.planning/
 .luca/telemetry/
 .luca/tmp/
 
-# tests — only the throwaway tmp files are ignored. The luca-mastracode
-# package keeps its unit tests in src/__tests__/ (run via `bun test`); the
-# previous wholesale exclusion (tied to a since-retired no-tests rule)
-# meant Copilot/reviewers never saw the test files in PR diffs.
+# tests — only the throwaway tmp files are ignored. Packages keep their
+# unit tests in src/__tests__/ (run via `bun test`) so they stay visible
+# in PR diffs.
 .tmp-test-*
 
 # next.js

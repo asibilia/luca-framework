@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-- **Luca is a developer tooling monorepo**, not a web app. It produces a CLI tool (`luca`) and a custom Mastra Code harness (`luca-mastracode`) for AI-powered development workflows.
+- **Luca is a developer tooling monorepo**, not a web app. It produces the `luca` CLI plus the skills, agents, and slash commands that install into a coding harness (Claude Code and Antigravity) for AI-powered development workflows.
 - **Primary goal**: orchestrate structured AI coding workflows (pipeline modes, subagents, tools) on top of existing repos.
 - **Runtime & language**: Bun + TypeScript across a multi-package monorepo.
 - **Documentation for humans**: see `README.md` and the docs under `docs/`.
@@ -13,16 +13,18 @@
 
 - **Install dependencies**: `bun install`
 - **Type check**: `bunx --bun tsc --noEmit`
-- **Build luca-framework**: `bun run build`
-- **Run mastracode harness**: `bun run mastracode`
+- **Build the luca CLI**: `bun run build`
 
 ## Packages
 
+Luca ships as one public package, `@alecsibilia/luca`, bundling three private workspaces.
+
 | Package | Description |
 | ------- | ----------- |
-| `packages/luca-framework` | CLI tool (`luca`) — init, vault setup, MuninnDB management, doctor diagnostics |
-| `packages/luca-mastracode` | Custom Mastra Code distribution with pipeline modes, subagents, and tools |
-| `packages/luca-studio` | Next.js UI for project visualization and configuration |
+| `packages/luca` | Public umbrella (`@alecsibilia/luca`) — the `luca` CLI bin; bundles `luca-cli`, `luca-core`, `luca-tools` |
+| `packages/luca-cli` | CLI command surface — init, harness wiring, vault setup, write surface, diagnostics |
+| `packages/luca-core` | Pipeline state machine, complexity routing, orchestration, `.luca/` directory contract |
+| `packages/luca-tools` | Mode/subagent/skill instruction bodies materialized into each harness |
 
 ## Intent-First Response
 
@@ -54,9 +56,8 @@ No `.env` is required for core development.
 | Install deps | `bun install` |
 | Type check | `bunx --bun tsc --noEmit` |
 | Run tests (on-demand only — not in pre-commit) | `bun run --filter '*' test` |
-| Build luca-framework | `bun run build` |
-| Run mastracode harness | `bun run mastracode` |
-| Luca CLI | `bun run packages/luca-framework/bin/luca.js <command>` |
+| Build the luca CLI | `bun run build` |
+| Luca CLI (from source) | `bun run packages/luca/bin/luca.js <command>` |
 | Migrate `.planning/` → `.luca/` | `luca migrate-planning [--dry-run] [--force]` |
 | Release locally | `bun run release:local` |
 
@@ -141,13 +142,9 @@ Freeform artifact files do **not** get a CLI command — they are written with t
 
 ### Adding a new phase skill
 
-1. Write `packages/luca-framework/skills/commands/<name>.md` with frontmatter (name, description) and instructions that name the right `luca` CLI subcommands and/or the `Write`-to-canonical-path convention.
-2. Skills are markdown — they're prompts, not code. The discipline is in the `luca` CLI + stage-gate hook they delegate to, not the markdown.
-3. `luca init` will pick the new skill up automatically (re-run it to install into `~/.claude/`).
-
-### Mastracode coexistence
-
-`luca-mastracode` is still in the tree and `luca run` still spawns it the old way. The new Claude Code-first path runs through the bundled skills + the `luca` CLI write surface. The two paths are independent; you can use either in a given project. Mastracode-resident skills + subagents will be ported individually in follow-up PRs.
+1. Add the skill's instruction body under `packages/luca-tools/src/artifacts/skills/<name>/` and register it in the artifacts index. The body is a prompt that names the right `luca` CLI subcommands and/or the `Write`-to-canonical-path convention.
+2. Skills are prompts, not code. The discipline is in the `luca` CLI + stage-gate hook they delegate to, not the instruction text.
+3. `luca init` materializes the skill into each harness home automatically (re-run it to install into `~/.claude/` and the Antigravity home).
 
 ## Related Files
 

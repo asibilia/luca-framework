@@ -9,15 +9,15 @@ We have a quick list of common questions to get you started engaging with this p
 
 ## Fixed packages
 
-`@alecsibilia/luca-framework` and `@alecsibilia/luca-mastracode` are configured as a **fixed** pair in
-`config.json`. Any changeset that targets one will version both together at the same new version, even
-if the other package has no changesets of its own.
+`@alecsibilia/luca`, `@alecsibilia/luca-cli`, `@alecsibilia/luca-core`, and `@alecsibilia/luca-tools`
+are configured as a **fixed** group in `config.json`. Any changeset that targets one will version all of
+them together at the same new version, even if the others have no changesets of their own.
 
-This is intentional. `luca-mastracode` is `private: true` and is never published to npm — it is bundled
-into the framework tarball at build time (`dist/mastracode/`). Any change to mastracode is therefore a
-runtime change to the framework's published artifact, so the two packages are kept in lockstep even
-though only `@alecsibilia/luca-framework` is published and `luca-mastracode` is bundled within it.
+This is intentional. Only `@alecsibilia/luca` is published to npm; `luca-cli`, `luca-core`, and
+`luca-tools` are `private: true` and are bundled into the `@alecsibilia/luca` tarball at build time
+(via unbuild's `inlineDependencies`). Any change to a bundled workspace is therefore a runtime change to
+the published umbrella, so the group is kept in lockstep.
 
 In practice this means you can write a changeset against whichever package the change conceptually lives
-in, and the release tooling will keep both versions in lockstep. You do not need to remember to add the
-framework to every mastracode changeset.
+in, and the release tooling will keep every version in lockstep. You do not need to remember to add the
+umbrella to every workspace changeset.
