@@ -25,7 +25,10 @@ export function stripQuotes(s: string): string {
     if (s.length >= 2) {
         const first = s[0]
         const last = s[s.length - 1]
-        if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+        if (
+            (first === '"' && last === '"') ||
+            (first === "'" && last === "'")
+        ) {
             return s.slice(1, -1)
         }
     }
@@ -67,9 +70,7 @@ export function parseAdvanceCommand(command: string): string | null {
     const tokens = trimmed.split(/\s+/)
     // Find the `luca` token (allowing for prefixes like `bun run`,
     // `npx`, env-var assignments).
-    const lucaIdx = tokens.findIndex(
-        (t) => t === 'luca' || t.endsWith('/luca'),
-    )
+    const lucaIdx = tokens.findIndex((t) => t === 'luca' || t.endsWith('/luca'))
     if (lucaIdx < 0) return null
     if (tokens[lucaIdx + 1] !== 'state') return null
     if (tokens[lucaIdx + 2] !== 'advance') return null

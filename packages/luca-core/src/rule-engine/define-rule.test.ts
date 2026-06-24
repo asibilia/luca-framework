@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
 import { defineRule } from './define-rule.ts'
-
 import type { RuleDefinition } from './define-rule.ts'
 
 describe('defineRule', () => {

@@ -283,7 +283,8 @@ Use \`mode="deep"\` on recall for thorough graph traversal when you need connect
 `
 
 export const workflowSaveSkill = defineSkill({
-    name: "workflow-save",
-    description: "Save Luca workflow run data to MuninnDB for persistent cross-session memory. Use this skill after phase execution completes, when a session pauses or ends, after verification runs, or when the user asks to save, snapshot, or persist workflow state. Also trigger when the user mentions muninn, workflow memory, run history, session tracking, or wants to record what happened during a workflow run.",
+    name: 'workflow-save',
+    description:
+        'Save Luca workflow run data to MuninnDB for persistent cross-session memory. Use this skill after phase execution completes, when a session pauses or ends, after verification runs, or when the user asks to save, snapshot, or persist workflow state. Also trigger when the user mentions muninn, workflow memory, run history, session tracking, or wants to record what happened during a workflow run.',
     body: BODY,
 })

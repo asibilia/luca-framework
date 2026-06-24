@@ -167,7 +167,8 @@ The chosen interface from Step 4 becomes the first test's target (interface-firs
 `
 
 export const archAuditSkill = defineSkill({
-    name: "arch-audit",
-    description: "Find deepening opportunities — shallow modules, premature abstractions, misplaced seams. Uses the deletion test and promotion model to surface architectural friction. Use when user says \"audit architecture\", \"find refactoring opportunities\", \"what's shallow\", \"improve structure\", or invokes /arch-audit.",
+    name: 'arch-audit',
+    description:
+        'Find deepening opportunities — shallow modules, premature abstractions, misplaced seams. Uses the deletion test and promotion model to surface architectural friction. Use when user says "audit architecture", "find refactoring opportunities", "what\'s shallow", "improve structure", or invokes /arch-audit.',
     body: BODY,
 })

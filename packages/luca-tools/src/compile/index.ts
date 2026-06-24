@@ -26,6 +26,14 @@
  */
 import { join } from 'node:path'
 
+import { emitAgent } from './emit-agent.ts'
+import { emitCommand } from './emit-command.ts'
+import { emitHook, type HookEmitSlice } from './emit-hook.ts'
+import { emitRule } from './emit-rule.ts'
+import { emitSkill } from './emit-skill.ts'
+import { emitSubagent } from './emit-subagent.ts'
+import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
+
 import {
     type Artifact,
     isAgent,
@@ -35,18 +43,6 @@ import {
     isSkill,
     isSubagent,
 } from '../define/index.ts'
-
-import { emitAgent } from './emit-agent.ts'
-import { emitCommand } from './emit-command.ts'
-import { emitHook, type HookEmitSlice } from './emit-hook.ts'
-import { emitRule } from './emit-rule.ts'
-import { emitSkill } from './emit-skill.ts'
-import { emitSubagent } from './emit-subagent.ts'
-import {
-    ensureDir,
-    type EmitResult,
-    writeFileBytes,
-} from './emit-util.ts'
 
 /**
  * Result of a compile run. `paths` is in the same order the input
@@ -87,7 +83,7 @@ const HOOK_EVENT_ORDER: ReadonlyArray<HookEmitSlice['event']> = [
  */
 export async function compile(
     artifacts: readonly Artifact[],
-    outputRoot: string,
+    outputRoot: string
 ): Promise<CompileReport> {
     await ensureDir(outputRoot)
     const paths: EmitResult[] = []
@@ -133,9 +129,7 @@ export async function compile(
             // we want a clear runtime error rather than silent skip.
             const exhaustive: never = art
             throw new Error(
-                `compile: unhandled artifact kind ${
-                    JSON.stringify(exhaustive)
-                }`,
+                `compile: unhandled artifact kind ${JSON.stringify(exhaustive)}`
             )
         }
     }
@@ -173,7 +167,7 @@ export async function compile(
  */
 async function writeSettings(
     slices: readonly HookEmitSlice[],
-    outputRoot: string,
+    outputRoot: string
 ): Promise<string> {
     const hooksBlock: Record<string, HookEmitSlice['entry'][]> = {}
     for (const event of HOOK_EVENT_ORDER) {

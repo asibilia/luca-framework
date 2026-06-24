@@ -14,16 +14,16 @@
  *   - `luca retro --list`       — list the runs recorded in the ledger
  *   - `luca retro --json`       — emit the full report as JSON (incl. pitfalls)
  */
-import { defineCommand } from 'citty'
-
 import {
     analyzeRun,
     computePostmortemExitCode,
     listRuns,
     renderPostmortemMarkdown,
 } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
 
 import { gatherRunArtifacts } from './__helpers/gather-run-artifacts.ts'
+
 import { logger } from '../utils/logger.ts'
 
 export const retroCommand = defineCommand({

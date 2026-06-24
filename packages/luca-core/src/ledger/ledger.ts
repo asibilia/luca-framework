@@ -26,9 +26,9 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { lucaRootPaths } from '../luca-dir/index.ts'
-
 import { LedgerEntrySchema, type LedgerEntry } from './schemas.ts'
+
+import { lucaRootPaths } from '../luca-dir/index.ts'
 
 // ---------------------------------------------------------------------------
 // Writer
@@ -90,7 +90,7 @@ export function readLedger(opts: { cwd: string }): LedgerEntry[] {
                 parsedJson = JSON.parse(line)
             } catch {
                 console.warn(
-                    `readLedger: skipping malformed JSON at ${p}:${lineNumber}`,
+                    `readLedger: skipping malformed JSON at ${p}:${lineNumber}`
                 )
                 continue
             }
@@ -99,7 +99,7 @@ export function readLedger(opts: { cwd: string }): LedgerEntry[] {
                 entries.push(parsed.data)
             } else {
                 console.warn(
-                    `readLedger: skipping schema-invalid entry at ${p}:${lineNumber}`,
+                    `readLedger: skipping schema-invalid entry at ${p}:${lineNumber}`
                 )
             }
         }
@@ -126,9 +126,7 @@ export function getLedgerByEvent(opts: {
     const entries = readLedger({ cwd: opts.cwd }).filter(
         (e) => e.event === opts.event
     )
-    return opts.runId
-        ? entries.filter((e) => e.runId === opts.runId)
-        : entries
+    return opts.runId ? entries.filter((e) => e.runId === opts.runId) : entries
 }
 
 // ---------------------------------------------------------------------------

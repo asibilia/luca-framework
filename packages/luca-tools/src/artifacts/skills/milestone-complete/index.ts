@@ -185,7 +185,8 @@ The durable milestone snapshot files (\`.luca/milestones/v<SEMVER>-{roadmap,audi
 `
 
 export const milestoneCompleteSkill = defineSkill({
-    name: "milestone-complete",
-    description: "Archive a completed milestone, extract learnings, and prepare for the next version.",
+    name: 'milestone-complete',
+    description:
+        'Archive a completed milestone, extract learnings, and prepare for the next version.',
     body: BODY,
 })

@@ -257,7 +257,8 @@ Ready for next task: /quick
 `
 
 export const quickSkill = defineSkill({
-    name: "quick",
-    description: "Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.",
+    name: 'quick',
+    description:
+        'Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.',
     body: BODY,
 })

@@ -28,9 +28,9 @@ export const reviewerSubagent = defineSubagent({
     },
     telemetryHooks: ['subagent-end'],
     gotchas: [
-        'You have no Task-spawn and no write to pipeline state — your ONLY write is your one audit file at `.luca/phases/<slug>/audits/<reviewer>.md`; never touch another reviewer\'s audit or state.json.',
+        "You have no Task-spawn and no write to pipeline state — your ONLY write is your one audit file at `.luca/phases/<slug>/audits/<reviewer>.md`; never touch another reviewer's audit or state.json.",
         'An APPROVE verdict with no cited evidence is a rubber-stamp — APPROVE requires ≥3 specific file:line locations you actually verified; if you find 0 issues, state what you checked and why each passed.',
-        'Stay strictly in your assigned perspective — overlapping into another reviewer\'s lane double-counts findings and corrupts severity consolidation.',
+        "Stay strictly in your assigned perspective — overlapping into another reviewer's lane double-counts findings and corrupts severity consolidation.",
     ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies any prior findings/decisions in the prompt.

@@ -277,7 +277,8 @@ This skill provides intelligent routing based on project state. The "Route" sect
 `
 
 export const progressSkill = defineSkill({
-    name: "progress",
-    description: "Check project progress, show current state, and suggest the next action to take.",
+    name: 'progress',
+    description:
+        'Check project progress, show current state, and suggest the next action to take.',
     body: BODY,
 })

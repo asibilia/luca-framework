@@ -79,12 +79,12 @@ export const configVersionSkewCheck: DoctorCheck = {
             message: `config.lucaVersion ${stored} ≠ installed CLI ${LUCA_VERSION}`,
             fixCommand: 'luca doctor --fix',
             details: [
-                `.luca/config.json records lucaVersion="${stored}" but the `
-                    + `installed CLI is ${LUCA_VERSION}.`,
-                `Skills/agents that branch on lucaVersion may behave as if on `
-                    + `the older version.`,
-                `Run \`luca doctor --fix\` to reconcile (rewrites lucaVersion, `
-                    + `preserves all other config keys).`,
+                `.luca/config.json records lucaVersion="${stored}" but the ` +
+                    `installed CLI is ${LUCA_VERSION}.`,
+                `Skills/agents that branch on lucaVersion may behave as if on ` +
+                    `the older version.`,
+                `Run \`luca doctor --fix\` to reconcile (rewrites lucaVersion, ` +
+                    `preserves all other config keys).`,
             ].join('\n  '),
         }
     },
@@ -103,14 +103,11 @@ export const configVersionSkewCheck: DoctorCheck = {
         }
         try {
             const next = { ...config, lucaVersion: LUCA_VERSION }
-            await writeFile(
-                configPath(),
-                JSON.stringify(next, null, 2) + '\n'
-            )
+            await writeFile(configPath(), JSON.stringify(next, null, 2) + '\n')
             return {
                 applied: [
-                    `Reconciled .luca/config.json lucaVersion `
-                        + `${typeof stored === 'string' ? stored : 'unset'} → ${LUCA_VERSION}`,
+                    `Reconciled .luca/config.json lucaVersion ` +
+                        `${typeof stored === 'string' ? stored : 'unset'} → ${LUCA_VERSION}`,
                 ],
                 errors: [],
             }
@@ -118,8 +115,8 @@ export const configVersionSkewCheck: DoctorCheck = {
             return {
                 applied: [],
                 errors: [
-                    `Failed to rewrite .luca/config.json lucaVersion: `
-                        + `${(err as Error).message}`,
+                    `Failed to rewrite .luca/config.json lucaVersion: ` +
+                        `${(err as Error).message}`,
                 ],
             }
         }

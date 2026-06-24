@@ -83,7 +83,7 @@ export const lucaTodoMigrateTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                 'by content.id. BEST-EFFORT: semantic recall cannot guarantee ' +
                 'every legacy todo in a large vault, so re-run this command ' +
                 'until a pass migrates nothing new. New todos from `luca todo ' +
-                'add` are tree-native already. Parse each step\'s args via ' +
+                "add` are tree-native already. Parse each step's args via " +
                 'JSON.parse(argsJson).'
 
             // Bootstrap path: create the root and persist it, then migrate

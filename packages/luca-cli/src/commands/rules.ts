@@ -10,9 +10,6 @@
  *   - `luca rules gate`    — run every rule, exit 1 on any must-fix finding
  *   - `luca rules suggest` — surface recurring postmortem pitfalls as draft rules
  */
-import { defineCommand } from 'citty'
-import { join } from 'pathe'
-
 import {
     analyzeRun,
     detectRecurringPitfalls,
@@ -22,8 +19,11 @@ import {
     renderSuggestedRulesMarkdown,
 } from '@alecsibilia/luca-core'
 import type { RuleRunReport } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
+import { join } from 'pathe'
 
 import { gatherRunArtifacts } from './__helpers/gather-run-artifacts.ts'
+
 import { logger } from '../utils/logger.ts'
 
 /** Print a discover/run report: counts, load + execution errors, findings. */
@@ -97,9 +97,7 @@ const gateCommand = defineCommand({
     async run() {
         const report = await discoverAndRun({ repoRoot: process.cwd() })
         reportFindings(report)
-        const mustFix = report.findings.filter(
-            (f) => f.severity === 'must-fix'
-        )
+        const mustFix = report.findings.filter((f) => f.severity === 'must-fix')
         if (mustFix.length > 0) {
             logger.error(
                 `${mustFix.length} must-fix finding(s) — rule gate failed.`
@@ -132,9 +130,7 @@ const suggestCommand = defineCommand({
                 ? Number(args.threshold)
                 : undefined
         const recurrence = detectRecurringPitfalls({ reports, threshold })
-        process.stdout.write(
-            `${renderSuggestedRulesMarkdown(recurrence)}\n`
-        )
+        process.stdout.write(`${renderSuggestedRulesMarkdown(recurrence)}\n`)
     },
 })
 

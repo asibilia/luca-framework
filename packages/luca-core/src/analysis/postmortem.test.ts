@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
+import { analyzeRun, renderPostmortemMarkdown } from './postmortem.ts'
+import type { AnalyzeRunInput } from './postmortem.ts'
+
 import type { ConfidenceEntry } from '../confidence/index.ts'
 import type { LedgerEntry } from '../ledger/index.ts'
 import type { VerificationResult } from '../verification/index.ts'
-
-import { analyzeRun, renderPostmortemMarkdown } from './postmortem.ts'
-import type { AnalyzeRunInput } from './postmortem.ts'
 
 const RUN = 'run_pm'
 
@@ -50,10 +50,19 @@ describe('analyzeRun — violation detection', () => {
                 ev('phase-start', { phase: 'P1' }, '2026-05-22T10:00:00.000Z'),
                 ev(
                     'phase-diff-summary',
-                    { phase: 'P1', isEmpty: true, filesChanged: [], commitsAdded: [] },
+                    {
+                        phase: 'P1',
+                        isEmpty: true,
+                        filesChanged: [],
+                        commitsAdded: [],
+                    },
                     '2026-05-22T10:01:00.000Z'
                 ),
-                ev('phase-complete', { phase: 'P1' }, '2026-05-22T10:02:00.000Z'),
+                ev(
+                    'phase-complete',
+                    { phase: 'P1' },
+                    '2026-05-22T10:02:00.000Z'
+                ),
             ],
         })
         const v = report.violations.find(
@@ -76,7 +85,11 @@ describe('analyzeRun — violation detection', () => {
                     { phase: 'P1', category: 'docs', reasoning: 'doc-only' },
                     '2026-05-22T10:01:30.000Z'
                 ),
-                ev('phase-complete', { phase: 'P1' }, '2026-05-22T10:02:00.000Z'),
+                ev(
+                    'phase-complete',
+                    { phase: 'P1' },
+                    '2026-05-22T10:02:00.000Z'
+                ),
             ],
         })
         expect(
@@ -105,7 +118,12 @@ describe('analyzeRun — violation detection', () => {
 
     test('flags a blocked todo move as a warning', () => {
         const report = run({
-            entries: [ev('todo-move-blocked', { identifier: 'do-y', reason: 'no ref' })],
+            entries: [
+                ev('todo-move-blocked', {
+                    identifier: 'do-y',
+                    reason: 'no ref',
+                }),
+            ],
         })
         const v = report.violations.find(
             (x) => x.code === 'TODO_DONE_NO_VERIFICATION'
@@ -116,7 +134,10 @@ describe('analyzeRun — violation detection', () => {
     test('flags a forced transition as a warning', () => {
         const report = run({
             entries: [
-                ev('pipeline-forced-transition', { from: 'execute', to: 'review' }),
+                ev('pipeline-forced-transition', {
+                    from: 'execute',
+                    to: 'review',
+                }),
             ],
         })
         expect(
@@ -146,7 +167,10 @@ describe('analyzeRun — violation detection', () => {
         const report = run({
             entries: [
                 ev('wave-advance-blocked', { phase: 'P1', wave: 2 }),
-                ev('pipeline-re-entered', { targetMode: 'execute', reason: 'rework' }),
+                ev('pipeline-re-entered', {
+                    targetMode: 'execute',
+                    reason: 'rework',
+                }),
                 ev('pipeline-guard-idle-bypass', {}),
             ],
         })
@@ -172,7 +196,11 @@ describe('analyzeRun — metrics, phases, pitfalls', () => {
         const report = run({
             entries: [
                 ev('mode-transition', {}, '2026-05-22T10:00:00.000Z'),
-                ev('phase-complete', { phase: 'P1' }, '2026-05-22T10:05:00.000Z'),
+                ev(
+                    'phase-complete',
+                    { phase: 'P1' },
+                    '2026-05-22T10:05:00.000Z'
+                ),
             ],
         })
         expect(report.metrics.totalEvents).toBe(2)
@@ -210,7 +238,11 @@ describe('analyzeRun — metrics, phases, pitfalls', () => {
                     { phase: 'P1', isEmpty: true },
                     '2026-05-22T10:01:00.000Z'
                 ),
-                ev('phase-complete', { phase: 'P1' }, '2026-05-22T10:02:00.000Z'),
+                ev(
+                    'phase-complete',
+                    { phase: 'P1' },
+                    '2026-05-22T10:02:00.000Z'
+                ),
             ],
         })
         expect(report.pitfalls.length).toBe(1)
@@ -233,13 +265,21 @@ describe('renderPostmortemMarkdown', () => {
         const md = renderPostmortemMarkdown(
             run({
                 entries: [
-                    ev('phase-start', { phase: 'P1' }, '2026-05-22T10:00:00.000Z'),
+                    ev(
+                        'phase-start',
+                        { phase: 'P1' },
+                        '2026-05-22T10:00:00.000Z'
+                    ),
                     ev(
                         'phase-diff-summary',
                         { phase: 'P1', isEmpty: true },
                         '2026-05-22T10:01:00.000Z'
                     ),
-                    ev('phase-complete', { phase: 'P1' }, '2026-05-22T10:02:00.000Z'),
+                    ev(
+                        'phase-complete',
+                        { phase: 'P1' },
+                        '2026-05-22T10:02:00.000Z'
+                    ),
                 ],
             })
         )

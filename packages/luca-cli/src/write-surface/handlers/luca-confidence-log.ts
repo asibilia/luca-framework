@@ -54,17 +54,9 @@ import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
  *   - `resolution?`: explicit gate-routing override (auto|research|ask).
  */
 const inputSchema = z.object({
-    phase: z
-        .string()
-        .min(1)
-        .describe('Phase name from the plan / roadmap.'),
-    wave: z
-        .number()
-        .describe('Wave number within the phase.'),
-    task: z
-        .string()
-        .min(1)
-        .describe('Task ID or description from the plan.'),
+    phase: z.string().min(1).describe('Phase name from the plan / roadmap.'),
+    wave: z.number().describe('Wave number within the phase.'),
+    task: z.string().min(1).describe('Task ID or description from the plan.'),
     confidence: ConfidenceLevelSchema.describe(
         'How confident the executor was in its decision (high|medium|low).'
     ),
@@ -98,15 +90,15 @@ const inputSchema = z.object({
         .optional()
         .describe(
             'Planning-time hint: true when the ambiguity is factual and ' +
-            'resolvable by automated research; absent/false means human ' +
-            'judgment is required (gate routes to ask).'
+                'resolvable by automated research; absent/false means human ' +
+                'judgment is required (gate routes to ask).'
         ),
     resolution: z
         .enum(['auto', 'research', 'ask'])
         .optional()
         .describe(
             'Explicit gate-routing override. Overrides confidence-derived ' +
-            'bucketing: auto=proceed, research=trigger research, ask=escalate.'
+                'bucketing: auto=proceed, research=trigger research, ask=escalate.'
         ),
 })
 
@@ -119,55 +111,56 @@ const inputSchema = z.object({
  * Delegates the actual append to luca-core's `appendConfidenceEntry`,
  * which stamps `timestamp` server-side and writes a single JSONL line.
  */
-export const lucaConfidenceLogTool: ToolDescriptor<z.infer<typeof inputSchema>> =
-    {
-        name: 'luca_confidence_log',
-        description:
-            "Append a confidence entry to the active phase's confidence.jsonl. One JSONL line per call. Payload matches the canonical ConfidenceEntrySchema (phase, wave, task, confidence, category, decision, alternatives, reasoning, risk, files, reviewHint?, researchable?, resolution?).",
-        inputSchema,
-        async handler(args, ctx) {
-            const state = await loadCurrentState({ cwd: ctx.cwd })
-            const slug = resolveActiveSlug(state)
-            if (!slug.ok) {
-                return {
-                    content: [{ type: 'text', text: slug.error }],
-                    isError: true,
-                }
-            }
-
-            const entry = appendConfidenceEntry({
-                cwd: ctx.cwd,
-                slug: slug.slug,
-                entry: {
-                    phase: args.phase,
-                    wave: args.wave,
-                    task: args.task,
-                    confidence: args.confidence,
-                    category: args.category,
-                    decision: args.decision,
-                    alternatives: args.alternatives,
-                    reasoning: args.reasoning,
-                    risk: args.risk,
-                    files: args.files,
-                    ...(args.reviewHint !== undefined
-                        ? { reviewHint: args.reviewHint }
-                        : {}),
-                    ...(args.researchable !== undefined
-                        ? { researchable: args.researchable }
-                        : {}),
-                    ...(args.resolution !== undefined
-                        ? { resolution: args.resolution }
-                        : {}),
-                },
-            })
-
+export const lucaConfidenceLogTool: ToolDescriptor<
+    z.infer<typeof inputSchema>
+> = {
+    name: 'luca_confidence_log',
+    description:
+        "Append a confidence entry to the active phase's confidence.jsonl. One JSONL line per call. Payload matches the canonical ConfidenceEntrySchema (phase, wave, task, confidence, category, decision, alternatives, reasoning, risk, files, reviewHint?, researchable?, resolution?).",
+    inputSchema,
+    async handler(args, ctx) {
+        const state = await loadCurrentState({ cwd: ctx.cwd })
+        const slug = resolveActiveSlug(state)
+        if (!slug.ok) {
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `appended confidence entry (${entry.confidence}, ${entry.category}) to phase '${slug.slug}' (task: ${entry.task})`,
-                    },
-                ],
+                content: [{ type: 'text', text: slug.error }],
+                isError: true,
             }
-        },
-    }
+        }
+
+        const entry = appendConfidenceEntry({
+            cwd: ctx.cwd,
+            slug: slug.slug,
+            entry: {
+                phase: args.phase,
+                wave: args.wave,
+                task: args.task,
+                confidence: args.confidence,
+                category: args.category,
+                decision: args.decision,
+                alternatives: args.alternatives,
+                reasoning: args.reasoning,
+                risk: args.risk,
+                files: args.files,
+                ...(args.reviewHint !== undefined
+                    ? { reviewHint: args.reviewHint }
+                    : {}),
+                ...(args.researchable !== undefined
+                    ? { researchable: args.researchable }
+                    : {}),
+                ...(args.resolution !== undefined
+                    ? { resolution: args.resolution }
+                    : {}),
+            },
+        })
+
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: `appended confidence entry (${entry.confidence}, ${entry.category}) to phase '${slug.slug}' (task: ${entry.task})`,
+                },
+            ],
+        }
+    },
+}

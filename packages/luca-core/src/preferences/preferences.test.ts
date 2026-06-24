@@ -95,7 +95,10 @@ describe('mergePreferences', () => {
     })
 
     test('fails when the merged result violates the schema', () => {
-        const result = mergePreferences({}, { commits: { subjectMaxLength: 5 } })
+        const result = mergePreferences(
+            {},
+            { commits: { subjectMaxLength: 5 } }
+        )
         expect(result.ok).toBe(false)
     })
 })

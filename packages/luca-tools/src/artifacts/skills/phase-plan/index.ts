@@ -496,7 +496,8 @@ If issues found and iteration_count < planVerificationIterations:
 `
 
 export const phasePlanSkill = defineSkill({
-    name: "phase-plan",
-    description: "Create detailed plan.md execution plans for a specific phase with tasks, waves, and verification.",
+    name: 'phase-plan',
+    description:
+        'Create detailed plan.md execution plans for a specific phase with tasks, waves, and verification.',
     body: BODY,
 })

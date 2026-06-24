@@ -254,12 +254,16 @@ describe('mergeClaudeMcpRegistration (pure)', () => {
         const b = mergeClaudeMcpRegistration({}, 'BBB')
 
         expect(
-            (a.mcpServers!.muninn as Record<string, unknown>)
-                .headers as Record<string, string>
+            (a.mcpServers!.muninn as Record<string, unknown>).headers as Record<
+                string,
+                string
+            >
         ).toEqual({ Authorization: 'Bearer AAA' })
         expect(
-            (b.mcpServers!.muninn as Record<string, unknown>)
-                .headers as Record<string, string>
+            (b.mcpServers!.muninn as Record<string, unknown>).headers as Record<
+                string,
+                string
+            >
         ).toEqual({ Authorization: 'Bearer BBB' })
 
         expect(JSON.stringify(a)).not.toContain('${MUNINN_DB_API_KEY}')

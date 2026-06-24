@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os'
+
 import {
     AUDIT_PATH_PATTERN,
     classifyWritePath,
@@ -16,8 +18,6 @@ import {
     type ToolCategory,
     type WritePathClass,
 } from '@alecsibilia/luca-core'
-import { tmpdir } from 'node:os'
-
 import { parse } from 'shell-quote'
 
 import {
@@ -108,9 +108,9 @@ export async function handleStageGateHook(
 
     const cwd = opts.cwd ?? process.cwd()
     const homedir = opts.homedir ?? process.env.HOME
-    const tmpdirs = opts.tmpdirs ?? [process.env.TMPDIR, tmpdir()].filter(
-        (d): d is string => Boolean(d)
-    )
+    const tmpdirs =
+        opts.tmpdirs ??
+        [process.env.TMPDIR, tmpdir()].filter((d): d is string => Boolean(d))
 
     const state = await loadCurrentState({ cwd })
 
@@ -180,9 +180,11 @@ export async function handleStageGateHook(
         toolName === 'replace' ||
         toolName === 'write_file'
     ) {
-        const targetPath = (
-            toolInput as { file_path?: string; path?: string } | undefined
-        )?.file_path ?? (toolInput as { file_path?: string; path?: string } | undefined)?.path
+        const targetPath =
+            (toolInput as { file_path?: string; path?: string } | undefined)
+                ?.file_path ??
+            (toolInput as { file_path?: string; path?: string } | undefined)
+                ?.path
         if (!targetPath) {
             // Can't classify without a target. Allow conservatively —
             // shouldn't happen in real Claude Code/Antigravity invocations.

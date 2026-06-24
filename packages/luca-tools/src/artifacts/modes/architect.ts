@@ -26,10 +26,7 @@
  *     to a confidence-journal entry with the F1-aligned schema.
  */
 import { defineAgent } from '../../define/index.ts'
-import {
-    CORE_OPERATING_RULES,
-    getAgentConstraints,
-} from '../shared/index.ts'
+import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Architect Agent Instructions
 

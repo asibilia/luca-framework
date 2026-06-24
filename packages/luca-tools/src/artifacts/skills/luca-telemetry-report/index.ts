@@ -107,7 +107,7 @@ Memory note: aggregators are **per-run scoped** — release per-run accumulators
 
 **Operator-editable defaults — verify against current pricing before trusting cost output.** These are placeholder per-token rates (USD), NOT authoritative; edit them in-line to match your account's actual model pricing. Rates are dollars per single token (i.e. per-million-token price ÷ 1,000,000).
 
-| Model (substring match) | Input \$/token | Output \$/token |
+| Model (substring match) | Input $/token | Output $/token |
 |---|---|---|
 | \`opus\` | 0.000015 | 0.000075 |
 | \`sonnet\` | 0.000003 | 0.000015 |
@@ -211,7 +211,7 @@ The skill exits. No further actions. The user invokes it again with different \`
 `
 
 export const lucaTelemetryReportSkill = defineSkill({
-    name: "luca-telemetry-report",
+    name: 'luca-telemetry-report',
     description: `Cross-run aggregator over \`.luca/telemetry/*.jsonl\`. Reads per-run JSONL telemetry records (phase/wave/step/subagent/recall/review events), aggregates streaming-style, and emits a markdown report inline. Read-only over the telemetry dir; no MuninnDB writes, no state mutation.
 
 Use when user says "telemetry report", "aggregate telemetry", "show telemetry summary", "luca-telemetry-report", or invokes \`/luca-telemetry-report\`.

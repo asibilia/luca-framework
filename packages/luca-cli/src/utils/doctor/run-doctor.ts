@@ -29,26 +29,20 @@ export async function executeDoctor(
     const { muninndbHealthCheck } = await import('./checks/muninndb-health')
     const { muninnMcpCheck } = await import('./checks/muninn-mcp')
     const { staleMcpServerCheck } = await import('./checks/stale-mcp-server')
-    const { staleGlobalSymlinksCheck } = await import(
-        './checks/stale-global-symlinks'
-    )
+    const { staleGlobalSymlinksCheck } =
+        await import('./checks/stale-global-symlinks')
     const { legacyPackageCheck } = await import('./checks/legacy-package')
-    const { legacyClaudeArtifactsCheck } = await import(
-        './checks/legacy-claude-artifacts'
-    )
-    const { sharedTmpPayloadsCheck } = await import(
-        './checks/shared-tmp-payloads'
-    )
-    const { strayLocalInstallCheck } = await import(
-        './checks/stray-local-install'
-    )
+    const { legacyClaudeArtifactsCheck } =
+        await import('./checks/legacy-claude-artifacts')
+    const { sharedTmpPayloadsCheck } =
+        await import('./checks/shared-tmp-payloads')
+    const { strayLocalInstallCheck } =
+        await import('./checks/stray-local-install')
     const { lucaGitignoreCheck } = await import('./checks/luca-gitignore')
-    const { configVersionSkewCheck } = await import(
-        './checks/config-version-skew'
-    )
-    const { vaultConfigLocationCheck } = await import(
-        './checks/vault-config-location'
-    )
+    const { configVersionSkewCheck } =
+        await import('./checks/config-version-skew')
+    const { vaultConfigLocationCheck } =
+        await import('./checks/vault-config-location')
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites

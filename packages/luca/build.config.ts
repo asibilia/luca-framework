@@ -23,7 +23,13 @@
  * mastracode for the legacy 12.0.0-alpha tarball.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    statSync,
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 import { defineBuildConfig } from 'unbuild'
@@ -80,9 +86,8 @@ export default defineBuildConfig({
         // `dist/claude/` underneath it.
         async 'build:done'() {
             const distClaude = resolve(join('dist', 'claude'))
-            const { ARTIFACTS } = await import(
-                '@alecsibilia/luca-tools/artifacts'
-            )
+            const { ARTIFACTS } =
+                await import('@alecsibilia/luca-tools/artifacts')
             const { compile } = await import('@alecsibilia/luca-tools/compile')
             const report = await compile(ARTIFACTS, distClaude)
             // Soft log — unbuild's own log lines are noisy enough; we
@@ -90,7 +95,7 @@ export default defineBuildConfig({
             // that the artifact compile fired.
             const c = report.counts
             console.log(
-                `[luca] compiled artifacts → ${distClaude} (agents:${c.agent} subagents:${c.subagent} commands:${c.command} skills:${c.skill} hooks:${c.hook} rules:${c.rule})`,
+                `[luca] compiled artifacts → ${distClaude} (agents:${c.agent} subagents:${c.subagent} commands:${c.command} skills:${c.skill} hooks:${c.hook} rules:${c.rule})`
             )
 
             // B3 (parity-review §B3, F-2 known gap): the compiler emits
@@ -145,13 +150,13 @@ export default defineBuildConfig({
                             '--outfile',
                             handlerDest,
                         ],
-                        { stdio: ['ignore', 'ignore', 'inherit'] },
+                        { stdio: ['ignore', 'ignore', 'inherit'] }
                     )
                     bundledHookHandlers.push(`${entry}.ts`)
                 }
             }
             console.log(
-                `[luca] bundled hook handlers → ${hooksDestRoot} (${bundledHookHandlers.length}: ${bundledHookHandlers.join(', ')})`,
+                `[luca] bundled hook handlers → ${hooksDestRoot} (${bundledHookHandlers.length}: ${bundledHookHandlers.join(', ')})`
             )
 
             // Statusline handler: same bundle-don't-copy rationale as the
@@ -163,7 +168,7 @@ export default defineBuildConfig({
                 'luca-tools',
                 'src',
                 'statusline',
-                'handler.ts',
+                'handler.ts'
             )
             // Throw — not skip — when the source is missing. A silent
             // skip here plus `luca init`'s easy-to-miss `skip:` log is
@@ -174,13 +179,13 @@ export default defineBuildConfig({
             if (!existsSync(statuslineSrc)) {
                 throw new Error(
                     `[luca] statusline handler source missing at ${statuslineSrc} — ` +
-                        'was packages/luca-tools/src/statusline/handler.ts moved or renamed?',
+                        'was packages/luca-tools/src/statusline/handler.ts moved or renamed?'
                 )
             }
             const statuslineDest = join(
                 distClaude,
                 '.claude',
-                'luca-statusline.ts',
+                'luca-statusline.ts'
             )
             mkdirSync(dirname(statuslineDest), { recursive: true })
             execFileSync(
@@ -193,7 +198,7 @@ export default defineBuildConfig({
                     '--outfile',
                     statuslineDest,
                 ],
-                { stdio: ['ignore', 'ignore', 'inherit'] },
+                { stdio: ['ignore', 'ignore', 'inherit'] }
             )
             console.log(`[luca] bundled statusline → ${statuslineDest}`)
         },

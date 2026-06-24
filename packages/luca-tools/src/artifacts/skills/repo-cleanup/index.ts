@@ -89,7 +89,8 @@ $ARGUMENTS
 `
 
 export const repoCleanupSkill = defineSkill({
-    name: "repo-cleanup",
-    description: "Scan the repository for AI-session debris and optionally clean it up.",
+    name: 'repo-cleanup',
+    description:
+        'Scan the repository for AI-session debris and optionally clean it up.',
     body: BODY,
 })

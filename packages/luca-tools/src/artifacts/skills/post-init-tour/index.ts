@@ -64,7 +64,8 @@ Your project is initialized. Common next steps:
 `
 
 export const postInitTourSkill = defineSkill({
-    name: "post-init-tour",
-    description: "Guide new users through Luca's core concepts after project initialization.",
+    name: 'post-init-tour',
+    description:
+        "Guide new users through Luca's core concepts after project initialization.",
     body: BODY,
 })

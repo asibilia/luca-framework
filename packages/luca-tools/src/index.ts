@@ -14,8 +14,5 @@
 // audit, downstream packages) can drop a single import.
 
 export * from './define/index.ts'
-export {
-    compile,
-    type CompileReport,
-} from './compile/index.ts'
+export { compile, type CompileReport } from './compile/index.ts'
 export { ARTIFACTS, MODES, SUBAGENTS } from './artifacts/index.ts'

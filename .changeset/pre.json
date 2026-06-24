@@ -1,17 +1,14 @@
 {
-  "mode": "pre",
+  "mode": "exit",
   "tag": "alpha",
   "initialVersions": {
     "@alecsibilia/luca": "13.0.0-alpha.0",
     "@alecsibilia/luca-cli": "0.1.0",
     "@alecsibilia/luca-core": "0.1.0",
-    "@alecsibilia/luca-framework": "12.0.0-alpha.16",
-    "@alecsibilia/luca-mastracode": "12.0.0-alpha.16",
     "@alecsibilia/luca-studio": "0.1.0",
     "@alecsibilia/luca-tools": "0.1.0"
   },
   "changesets": [
-    "bump-mastra-deps-and-pin-tarball",
     "confidence-gated-lu",
     "drop-autopilot",
     "feat-antigravity-support",

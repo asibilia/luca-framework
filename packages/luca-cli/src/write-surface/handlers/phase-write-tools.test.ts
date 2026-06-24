@@ -113,7 +113,7 @@ describe('luca_phase_write_verify', () => {
                             met: true,
                             evidence: 'All tests passed',
                             blocking: true,
-                        }
+                        },
                     ],
                     checks: [
                         {
@@ -121,7 +121,7 @@ describe('luca_phase_write_verify', () => {
                             status: 'pass',
                             errorCount: 0,
                             warningCount: 0,
-                        }
+                        },
                     ],
                     convergence: 'resolved',
                     errorFingerprints: [],

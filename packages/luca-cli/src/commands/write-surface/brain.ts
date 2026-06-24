@@ -12,11 +12,12 @@
  */
 import { defineCommand } from 'citty'
 
+import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
+
 import {
     lucaBrainRecallRootTool,
     lucaBrainSetRootTool,
 } from '../../write-surface/index.ts'
-import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
 const setRootCommand = defineCommand({
     meta: {
@@ -82,7 +83,8 @@ const recallRootCommand = defineCommand({
 export const brainCommand = defineCommand({
     meta: {
         name: 'brain',
-        description: 'Resolve MuninnDB brain trees (project identity) by cached root ULID',
+        description:
+            'Resolve MuninnDB brain trees (project identity) by cached root ULID',
     },
     subCommands: {
         'set-root': setRootCommand,

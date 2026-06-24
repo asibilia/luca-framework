@@ -14,13 +14,13 @@
  */
 import { join } from 'node:path'
 
-import type { CommandDefinition } from '../define/index.ts'
-
+import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
 import {
     type FrontmatterEntry,
     renderFrontmatter,
 } from './render-frontmatter.ts'
-import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
+
+import type { CommandDefinition } from '../define/index.ts'
 
 /**
  * Emit `<outputRoot>/.claude/commands/<name>.md` from a command
@@ -28,7 +28,7 @@ import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
  */
 export async function emitCommand(
     def: CommandDefinition,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<EmitResult> {
     const entries: FrontmatterEntry[] = [
         ['name', def.name],

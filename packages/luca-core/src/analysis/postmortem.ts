@@ -22,11 +22,11 @@
  * Pitfalls are always routed to the canonical `default` vault for
  * cross-project aggregation — see {@link PostmortemReport.pitfalls}.
  */
+import type { PhaseDiff } from './phase-diff.ts'
+
 import type { ConfidenceEntry } from '../confidence/index.ts'
 import type { LedgerEntry } from '../ledger/index.ts'
 import type { VerificationResult } from '../verification/index.ts'
-
-import type { PhaseDiff } from './phase-diff.ts'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -459,7 +459,9 @@ export function renderPostmortemMarkdown(report: PostmortemReport): string {
     lines.push(`- **Started**: ${report.startedAt ?? 'unknown'}`)
     lines.push(`- **Ended**: ${report.endedAt ?? 'unknown'}`)
     if (report.durationMs !== undefined) {
-        lines.push(`- **Duration**: ${Math.round(report.durationMs / 60_000)} min`)
+        lines.push(
+            `- **Duration**: ${Math.round(report.durationMs / 60_000)} min`
+        )
     }
     lines.push('')
 

@@ -63,7 +63,11 @@ describe('discoverAndRun', () => {
 
     test('records a load error for a rule file that throws on import', async () => {
         const repo = cleanDir()
-        writeFile(repo, '.luca/rules/bad.ts', 'throw new Error("boom on import")')
+        writeFile(
+            repo,
+            '.luca/rules/bad.ts',
+            'throw new Error("boom on import")'
+        )
         const report = await discoverAndRun({ repoRoot: repo })
         expect(report.loadErrors.length).toBe(1)
         expect(report.loadErrors[0]?.message).toContain('boom')

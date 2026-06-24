@@ -72,7 +72,7 @@ export const HookDefinitionSchema = z
             .min(1)
             .regex(
                 /^[a-z][a-z0-9-]*$/,
-                'hook id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter',
+                'hook id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter'
             ),
         /**
          * One-sentence description. Not surfaced to the model — purely
@@ -118,14 +118,17 @@ export const HookDefinitionSchema = z
             // runtimes must reference a path that looks plausible (we
             // can't check existence at definition time).
             if (h.runtime === 'inline') return h.handler.trim().length > 0
-            return h.handler.includes('/') || h.handler.endsWith('.ts') ||
+            return (
+                h.handler.includes('/') ||
+                h.handler.endsWith('.ts') ||
                 h.handler.endsWith('.sh')
+            )
         },
         {
             message:
                 'hook.handler: inline runtimes need a non-empty command; bun-script/shell runtimes need a path-like reference',
             path: ['handler'],
-        },
+        }
     )
 
 /** Output type — what `defineHook` returns. */
@@ -136,7 +139,7 @@ export type HookDefinition = z.infer<typeof HookDefinitionSchema>
  * definition.
  */
 export function defineHook(
-    def: z.input<typeof HookDefinitionSchema>,
+    def: z.input<typeof HookDefinitionSchema>
 ): HookDefinition {
     const parsed = HookDefinitionSchema.safeParse(def)
     if (!parsed.success) {

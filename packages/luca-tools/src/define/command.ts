@@ -33,7 +33,7 @@ export const CommandDefinitionSchema = z.object({
         .min(1)
         .regex(
             /^[a-z][a-z0-9-]*$/,
-            'command name must be kebab-case: lowercase letters, digits, hyphens; must start with a letter',
+            'command name must be kebab-case: lowercase letters, digits, hyphens; must start with a letter'
         ),
     /**
      * One-sentence description. Surfaced in the slash-command picker.
@@ -61,15 +61,14 @@ export type CommandDefinition = z.infer<typeof CommandDefinitionSchema>
  * definition.
  */
 export function defineCommand(
-    def: z.input<typeof CommandDefinitionSchema>,
+    def: z.input<typeof CommandDefinitionSchema>
 ): CommandDefinition {
     const parsed = CommandDefinitionSchema.safeParse(def)
     if (!parsed.success) {
         const issues = parsed.error.issues
             .map((i) => `${i.path.join('.')}: ${i.message}`)
             .join('; ')
-        const name =
-            typeof def?.name === 'string' ? def.name : '<unknown>'
+        const name = typeof def?.name === 'string' ? def.name : '<unknown>'
         throw new Error(`defineCommand(${name}): ${issues}`)
     }
     return Object.freeze(parsed.data)

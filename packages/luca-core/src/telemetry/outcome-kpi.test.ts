@@ -4,11 +4,11 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import type { RoadmapPhase } from '../state/index.ts'
-import type { VerificationResult } from '../verification/index.ts'
-
 import { computeOutcomeKpis } from './outcome-kpi.ts'
 import type { TelemetryRecord } from './schemas.ts'
+
+import type { RoadmapPhase } from '../state/index.ts'
+import type { VerificationResult } from '../verification/index.ts'
 
 // ---------------------------------------------------------------------------
 // Fixture builders
@@ -79,7 +79,10 @@ function writeVerify(
         errorFingerprints: [],
         recommendation: status === 'PASS' ? 'proceed' : 'fix',
     }
-    writeFileSync(join(dir, 'verify.json'), `${JSON.stringify(result, null, 2)}\n`)
+    writeFileSync(
+        join(dir, 'verify.json'),
+        `${JSON.stringify(result, null, 2)}\n`
+    )
 }
 
 /** Append a telemetry JSONL file (one record per line) under .luca/telemetry/. */

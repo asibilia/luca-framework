@@ -36,13 +36,13 @@ import {
 } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { phasePathFor } from '../luca-dir/index.ts'
-
 import {
     VerificationResultSchema,
     type VerificationCriterion,
     type VerificationResult,
 } from './schemas.ts'
+
+import { phasePathFor } from '../luca-dir/index.ts'
 
 // ---------------------------------------------------------------------------
 // Read / write
@@ -153,9 +153,7 @@ export function findCriterion(opts: {
  * record must not slip through), and forces `allCriteriaMet` to `false`
  * until the deferred probe runs.
  */
-export function aggregateVerificationResults(
-    results: VerificationResult[]
-): {
+export function aggregateVerificationResults(results: VerificationResult[]): {
     totalWaves: number
     passCount: number
     failCount: number

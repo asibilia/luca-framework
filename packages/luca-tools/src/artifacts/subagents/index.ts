@@ -23,7 +23,6 @@
  * The exported `SUBAGENTS` array is the source the artifact manifest
  * pulls from; the order here is the order on disk.
  */
-import type { Artifact } from '../../define/index.ts'
 
 import { debaterSubagent } from './debater.ts'
 import { discussionSubagent } from './discussion.ts'
@@ -35,6 +34,8 @@ import { reviewerSubagent } from './reviewer.ts'
 import { shadowScannerSubagent } from './shadow-scanner.ts'
 import { testWriterSubagent } from './test-writer.ts'
 import { verifierSubagent } from './verifier.ts'
+
+import type { Artifact } from '../../define/index.ts'
 
 export {
     debaterSubagent,

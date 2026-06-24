@@ -8,19 +8,20 @@
  */
 import { defineCommand } from 'citty'
 
-import { lucaRepoCleanupApplyTool } from '../../write-surface/index.ts'
 import {
     readJsonPayload,
     rejectUnknownFlags,
     runWriteHandler,
 } from './__helpers/run-handler.ts'
 
+import { lucaRepoCleanupApplyTool } from '../../write-surface/index.ts'
+
 const cleanupApplyCommand = defineCommand({
     meta: {
         name: 'cleanup-apply',
         description:
             'Apply a single remediation finding from a ' +
-            'luca-shadow-scanner ShadowScanReport. The finding\'s ' +
+            "luca-shadow-scanner ShadowScanReport. The finding's " +
             'recommended_action drives what gets applied (delete/move). ' +
             'Requires --confirm; phase-agnostic.',
     },
@@ -44,14 +45,10 @@ const cleanupApplyCommand = defineCommand({
     async run({ args, rawArgs, cmd }) {
         rejectUnknownFlags('repo cleanup-apply', cmd, rawArgs)
         const finding = await readJsonPayload('repo cleanup-apply', args.file)
-        await runWriteHandler(
-            'repo cleanup-apply',
-            lucaRepoCleanupApplyTool,
-            {
-                finding,
-                confirm: args.confirm,
-            }
-        )
+        await runWriteHandler('repo cleanup-apply', lucaRepoCleanupApplyTool, {
+            finding,
+            confirm: args.confirm,
+        })
     },
 })
 

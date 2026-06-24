@@ -87,11 +87,7 @@ export function classifyComplexity(
               : 'deep'
 
     const riskLevel =
-        hasBreakingChanges || score > 6
-            ? 'high'
-            : score > 3
-              ? 'medium'
-              : 'low'
+        hasBreakingChanges || score > 6 ? 'high' : score > 3 ? 'medium' : 'low'
 
     return {
         complexity,

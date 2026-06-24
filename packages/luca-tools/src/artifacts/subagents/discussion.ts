@@ -33,7 +33,7 @@ export const discussionSubagent = defineSubagent({
     gotchas: [
         'Write context.md ONLY to `.luca/phases/<currentPhaseSlug>/context.md` via the contract path — never hand-edit a path outside it; the stage-gate rejects off-contract writes.',
         'In `full-auto` oversight, do NOT block on interactive Q&A — make reasonable default decisions and document them; only `human-in-loop` waits for answers.',
-        'Don\'t over-question — cap at 5-10 decisions and surface ONLY ambiguities that would CHANGE the plan if answered differently.',
+        "Don't over-question — cap at 5-10 decisions and surface ONLY ambiguities that would CHANGE the plan if answered differently.",
     ],
     // No muninn-recall: subagents have no MCP access (see SUBAGENT_SHARED_PREFIX).
     // The orchestrator supplies prior decisions/context in the prompt.

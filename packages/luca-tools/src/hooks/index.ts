@@ -9,11 +9,12 @@
  *
  * Order is fixed so the compile output is byte-stable across runs.
  */
-import type { HookDefinition } from '../define/index.ts'
 
-import { continuationMessagesHook } from './continuation-messages/index.ts'
 import { contextRefresherHook } from './context-refresher/index.ts'
+import { continuationMessagesHook } from './continuation-messages/index.ts'
 import { pipelineGuardHook } from './pipeline-guard/index.ts'
+
+import type { HookDefinition } from '../define/index.ts'
 
 export { contextRefresherHook } from './context-refresher/index.ts'
 export { continuationMessagesHook } from './continuation-messages/index.ts'

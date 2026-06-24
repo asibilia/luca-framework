@@ -17,7 +17,6 @@ import { readdir, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { listBundledArtifacts } from '../../../init'
-
 import type { CheckResult, DoctorCheck, DoctorFixResult } from '../types'
 
 const CHECK_NAME = 'Stray local install'

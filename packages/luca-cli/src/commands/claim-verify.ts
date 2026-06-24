@@ -10,10 +10,9 @@
  * Forbidden-language findings are ADVISORY ONLY — they are printed as
  * warnings and never influence the exit code or gate verdict.
  */
+import { verifyFile } from '@alecsibilia/luca-core'
 import { defineCommand } from 'citty'
 import { resolve } from 'pathe'
-
-import { verifyFile } from '@alecsibilia/luca-core'
 
 import { logger } from '../utils/logger.ts'
 import { sanitizeControlChars } from '../write-surface/helpers/sanitize-control-chars.ts'

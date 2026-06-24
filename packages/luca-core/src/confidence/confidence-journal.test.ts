@@ -1,16 +1,22 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+    existsSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, spyOn, test } from 'bun:test'
 
-import { ConfidenceEntrySchema, type ConfidenceEntry } from './schemas.ts'
 import {
     appendConfidenceEntry,
     getConfidenceSummary,
     readConfidenceJournal,
     renderConfidenceJournalMarkdown,
 } from './confidence-journal.ts'
+import { ConfidenceEntrySchema, type ConfidenceEntry } from './schemas.ts'
 
 const tmpDirs: string[] = []
 const SLUG = '01-phase-one'
@@ -58,7 +64,9 @@ describe('appendConfidenceEntry + readConfidenceJournal', () => {
             slug: SLUG,
             entry: bare(entry()),
         })
-        expect(written.timestamp).toBe(new Date(written.timestamp).toISOString())
+        expect(written.timestamp).toBe(
+            new Date(written.timestamp).toISOString()
+        )
         const journal = readConfidenceJournal({ cwd, slug: SLUG })
         expect(journal.length).toBe(1)
         expect(journal[0]?.task).toBe('wire the thing')
@@ -66,8 +74,16 @@ describe('appendConfidenceEntry + readConfidenceJournal', () => {
 
     test('appends entries in order', () => {
         const cwd = cleanDir()
-        appendConfidenceEntry({ cwd, slug: SLUG, entry: bare(entry({ task: 'one' })) })
-        appendConfidenceEntry({ cwd, slug: SLUG, entry: bare(entry({ task: 'two' })) })
+        appendConfidenceEntry({
+            cwd,
+            slug: SLUG,
+            entry: bare(entry({ task: 'one' })),
+        })
+        appendConfidenceEntry({
+            cwd,
+            slug: SLUG,
+            entry: bare(entry({ task: 'two' })),
+        })
         expect(
             readConfidenceJournal({ cwd, slug: SLUG }).map((e) => e.task)
         ).toEqual(['one', 'two'])
@@ -124,7 +140,11 @@ describe('renderConfidenceJournalMarkdown', () => {
     test('renders summary, phase grouping and a low-confidence warning', () => {
         const md = renderConfidenceJournalMarkdown([
             entry({ confidence: 'high', phase: 'Phase One' }),
-            entry({ confidence: 'low', phase: 'Phase One', category: 'plan-gap' }),
+            entry({
+                confidence: 'low',
+                phase: 'Phase One',
+                category: 'plan-gap',
+            }),
         ])
         expect(md).toContain('# Confidence Journal')
         expect(md).toContain('## Summary')

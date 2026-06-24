@@ -55,7 +55,7 @@ export async function ensureDir(dir: string): Promise<void> {
  */
 export async function writeFileBytes(
     path: string,
-    contents: string,
+    contents: string
 ): Promise<void> {
     await ensureDir(dirname(path))
     await writeFile(path, contents, 'utf-8')

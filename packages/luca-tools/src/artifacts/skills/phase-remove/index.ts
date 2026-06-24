@@ -119,7 +119,8 @@ Remove an unstarted future phase from the roadmap and renumber all subsequent ph
 `
 
 export const phaseRemoveSkill = defineSkill({
-    name: "phase-remove",
-    description: "Remove a future phase from the roadmap and renumber subsequent phases.",
+    name: 'phase-remove',
+    description:
+        'Remove a future phase from the roadmap and renumber subsequent phases.',
     body: BODY,
 })

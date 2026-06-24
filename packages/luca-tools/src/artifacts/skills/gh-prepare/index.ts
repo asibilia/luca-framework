@@ -215,7 +215,8 @@ PR:     #43 (draft) — https://github.com/<owner>/<repo>/pull/43
 `
 
 export const ghPrepareSkill = defineSkill({
-    name: "gh-prepare",
-    description: "Ship committed work: ensure a changeset, push the feature branch, open a draft PR. Works standalone (outside the Luca pipeline) or within it. Use when user says \"prepare\", \"ship this\", \"open a PR\", \"push and PR\", or invokes /gh-prepare.",
+    name: 'gh-prepare',
+    description:
+        'Ship committed work: ensure a changeset, push the feature branch, open a draft PR. Works standalone (outside the Luca pipeline) or within it. Use when user says "prepare", "ship this", "open a PR", "push and PR", or invokes /gh-prepare.',
     body: BODY,
 })

@@ -241,7 +241,8 @@ $ARGUMENTS
 `
 
 export const ghPrAddressSkill = defineSkill({
-    name: "gh-pr-address",
-    description: "Address PR review comments — fetch, filter stale, categorize, fix, respond, regression-check.",
+    name: 'gh-pr-address',
+    description:
+        'Address PR review comments — fetch, filter stale, categorize, fix, respond, regression-check.',
     body: BODY,
 })

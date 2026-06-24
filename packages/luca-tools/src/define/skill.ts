@@ -34,7 +34,7 @@ export const SkillDefinitionSchema = z.object({
         .min(1)
         .regex(
             /^[a-z][a-z0-9-]*$/,
-            'skill name must be kebab-case: lowercase letters, digits, hyphens; must start with a letter',
+            'skill name must be kebab-case: lowercase letters, digits, hyphens; must start with a letter'
         ),
     /**
      * Description — the trigger guidance shown to the model. Should
@@ -69,15 +69,14 @@ export type SkillDefinition = z.infer<typeof SkillDefinitionSchema>
  * definition.
  */
 export function defineSkill(
-    def: z.input<typeof SkillDefinitionSchema>,
+    def: z.input<typeof SkillDefinitionSchema>
 ): SkillDefinition {
     const parsed = SkillDefinitionSchema.safeParse(def)
     if (!parsed.success) {
         const issues = parsed.error.issues
             .map((i) => `${i.path.join('.')}: ${i.message}`)
             .join('; ')
-        const name =
-            typeof def?.name === 'string' ? def.name : '<unknown>'
+        const name = typeof def?.name === 'string' ? def.name : '<unknown>'
         throw new Error(`defineSkill(${name}): ${issues}`)
     }
     return Object.freeze(parsed.data)

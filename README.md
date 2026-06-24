@@ -4,15 +4,18 @@ A monorepo for structured AI coding workflows — autonomous pipeline orchestrat
 
 ## What is Luca?
 
-Luca is a custom [Mastra Code](https://mastra.ai) distribution that turns AI coding assistants into structured, multi-phase development pipelines. Instead of freeform chat, Luca orchestrates work through a defined sequence of modes — from triage through execution to finalization — with built-in quality gates, convergence tracking, and long-term memory via [MuninnDB](https://github.com/asibilia/muninn).
+Luca turns AI coding assistants into structured, multi-phase development pipelines. Instead of freeform chat, Luca orchestrates work through a defined sequence of modes — from triage through execution to finalization — with built-in quality gates, convergence tracking, and long-term memory via [MuninnDB](https://github.com/asibilia/muninn). It installs as skills, agents, and slash commands into your coding harness — currently [Claude Code](https://claude.com/claude-code) and [Antigravity](https://antigravity.google) — and drives the pipeline through the `luca` CLI write surface.
 
 ## Packages
 
+Luca ships as a single public umbrella package, `@alecsibilia/luca`, which bundles the three private workspaces listed below:
+
 | Package | Description |
 | ------- | ----------- |
-| [`packages/luca-mastracode`](packages/luca-mastracode) | Custom Mastra Code harness — 10 modes, 9 subagents, 10 tools, 7 slash commands |
-| [`packages/luca-framework`](packages/luca-framework) | CLI (`@alecsibilia/luca-framework`) — init, vault setup, MuninnDB management, diagnostics |
-| [`packages/luca-studio`](packages/luca-studio) | Next.js UI for project visualization and configuration |
+| [`packages/luca`](packages/luca) | Public umbrella (`@alecsibilia/luca`) — the `luca` CLI bin; bundles `luca-cli`, `luca-core`, `luca-tools` |
+| [`packages/luca-cli`](packages/luca-cli) | CLI command surface — init, harness wiring, vault setup, write surface, diagnostics |
+| [`packages/luca-core`](packages/luca-core) | Pipeline state machine, complexity routing, orchestration, `.luca/` directory contract |
+| [`packages/luca-tools`](packages/luca-tools) | Mode/subagent/skill instruction bodies materialized into each harness |
 
 ## Architecture
 
@@ -94,7 +97,7 @@ Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persiste
 - **Learnings** — patterns, pitfalls, and insights from completed milestones
 - **Decisions** — architectural decisions with rationale and alternatives considered
 - **Release conventions** — versioning, PR format, publish procedures
-- **Project preferences** — branching, commits, PR titles, release tooling, tracker (seeded by `/luca-init` inside `luca run`)
+- **Project preferences** — branching, commits, PR titles, release tooling, tracker (seeded by the `/luca-init` skill)
 - **Entity graph** — named entities and relationships across the codebase
 
 #### Wiring MuninnDB into Claude Code
@@ -157,40 +160,31 @@ luca vault:init    # Configure vault for your project
 luca doctor        # Run environment diagnostics and health checks
 ```
 
-### 3. Launch the harness
+### 3. Run the pipeline in your harness
 
-If you've installed `@alecsibilia/luca-framework` globally (or via `bun link`), run:
+`luca init` installs Luca's skills, agents, and slash commands into every detected harness home (`~/.claude` for Claude Code, the Antigravity CLI home) and wires the stage-gate hook and MuninnDB MCP server. From there, drive the pipeline with the `/lu` slash command inside Claude Code or Antigravity:
 
-```bash
-luca run
+```text
+/lu <your development request>
 ```
-
-Inside this monorepo, the equivalent is:
-
-```bash
-bun run mastracode
-```
-
-Or use the `/lu` slash command within the TUI to execute pipeline workflows.
 
 ### CLI Reference
 
 | Command | Purpose |
 |---------|---------|
-| `luca init` | Bootstrap MuninnDB |
+| `luca init` | Bootstrap MuninnDB and install Luca artifacts into each harness |
 | `luca vault:init` | Configure the project vault |
-| `luca run` | Launch the Mastra Code harness |
 | `luca doctor` | Run environment diagnostics and health checks |
+| `luca repair` | Repair drifted or stale harness artifacts |
 | `luca version` | Print the installed CLI version |
 
 ## Development
 
 ```bash
 bun install              # Install dependencies
-bun run build            # Build luca-framework CLI
-luca run                 # Launch mastracode harness
-bunx --bun tsc --noEmit  # Type check
-bun run dev:studio       # Run studio UI (dev mode)
+bun run build            # Build the @alecsibilia/luca CLI
+bun run release:local    # Build + bun link the luca CLI globally
+bunx --bun tsc --noEmit  # Type check (the pipeline verification gate)
 ```
 
 ### Release Process
@@ -200,7 +194,7 @@ Releases are driven by [Changesets](https://github.com/changesets/changesets):
 1. Add a changeset with your PR: `bun changeset`
 2. Merge the PR to main
 3. The `release.yml` workflow opens a "Version Packages" PR that bumps versions and updates `CHANGELOG.md`
-4. Merge the Version PR → workflow creates a GitHub Release (`vX.Y.Z`) and publishes `@alecsibilia/luca-framework` to NPM
+4. Merge the Version PR → workflow creates a GitHub Release (`vX.Y.Z`) and publishes `@alecsibilia/luca` to NPM
 
 ## Documentation
 

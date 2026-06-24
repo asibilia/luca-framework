@@ -60,7 +60,7 @@ Partial: finalize postmortem gate · deterministic check-parsers · pipeline-loc
 recovery strategy · `classify_complexity` heuristic · context-budget reminders.
 
 Not a regression: todo-confidence scoring — spec'd, never built (spec preserved
-in `.legacy-planning-archive/`).
+in `.luca/archive/00-legacy-planning/`).
 
 ## 4. Target package structure — discussion item 1
 
@@ -198,7 +198,7 @@ intact; it was simply never wired into the Claude Code workflow.
 ### 5.6 Planned-but-unfinished work
 
 No genuine in-code unfinished paths (the only TODO markers are intentional
-template stubs). But `.legacy-planning-archive/planning/todos/pending/` holds
+template stubs). But `.luca/archive/00-legacy-planning/planning/todos/pending/` holds
 **56 never-executed specs**, in coherent clusters:
 
 - **Workflow slim-down (~11 specs)** — a *complete, never-executed pipeline
@@ -216,7 +216,7 @@ template stubs). But `.legacy-planning-archive/planning/todos/pending/` holds
 - **Testing (~3 specs)** — instruction-assembly snapshot tests, permission-
   system unit tests.
 
-Full list: `.legacy-planning-archive/planning/todos/{pending,deferred}/`.
+Full list: `.luca/archive/00-legacy-planning/planning/todos/{pending,deferred}/`.
 
 ### 5.7 Cross-cutting migration concerns
 
@@ -308,7 +308,7 @@ clean parity report — this gates Phase H.
 
 Gated on G. Delete `luca-mastracode`; dissolve the old `luca-framework`
 package; remove residual `.planning/` references and Cursor/Pi support; docs
-cleanup. **Preserve `.legacy-planning-archive/`** (slim-down specs — §9). The
+cleanup. **Preserve `.luca/archive/00-legacy-planning/`** (slim-down specs — §9). The
 user handles the npm deprecations.
 
 ### Post-migration
@@ -333,7 +333,7 @@ questions surface here as the §6 migration plan is executed.
 
 ## 9. Deferred — workflow slim-down
 
-The `.legacy-planning-archive/` pipeline redesign (~11 specs: collapse
+The `.luca/archive/00-legacy-planning/` pipeline redesign (~11 specs: collapse
 triage+research+architect → one `plan` mode, drop `discuss`, renumber the
 pipeline, add todo-confidence frontmatter, a `backlog-groom` skill) is
 **deferred, not dropped**.
@@ -341,7 +341,7 @@ pipeline, add todo-confidence frontmatter, a `backlog-groom` skill) is
 Sequence: migrate the current 6-mode pipeline as-is (§6) → measure real
 workflow runs → revisit the slim-down, re-oriented off the *migrated* workflow
 rather than the old mastracode one. The specs live in
-`.legacy-planning-archive/planning/todos/pending/` — Phase H must **not**
+`.luca/archive/00-legacy-planning/planning/todos/pending/` — Phase H must **not**
 delete that archive.
 
 ## 10. Progress

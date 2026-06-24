@@ -175,10 +175,9 @@ describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
             classifyWritePath('.luca/tmp/previews/auth-decision.html').class
         ).toBe('ephemeral')
         expect(
-            classifyWritePath(
-                '/repo/.luca/tmp/previews/ws-reconnect.html',
-                { cwd: '/repo' }
-            ).class
+            classifyWritePath('/repo/.luca/tmp/previews/ws-reconnect.html', {
+                cwd: '/repo',
+            }).class
         ).toBe('ephemeral')
     })
 

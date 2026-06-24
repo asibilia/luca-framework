@@ -1,10 +1,9 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test } from 'bun:test'
-
-import { existsSync, readFileSync } from 'node:fs'
 
 function findUmbrellaDistClaude(): string {
     let dir = dirname(fileURLToPath(import.meta.url))

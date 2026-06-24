@@ -43,7 +43,8 @@ export const TMP_FILE_RE = /^[a-z][a-z0-9-]*\.json$/
 // CLI-handoff payloads. Allowed in ANY pipelineStep because they touch
 // neither the repo nor pipeline state. Examples: "auth-decision.html",
 // "ws-reconnect-tradeoffs.html".
-export const TMP_PREVIEW_FILE_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9]+$/i
+export const TMP_PREVIEW_FILE_RE =
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9]+$/i
 
 // ---------------------------------------------------------------------------
 // Directory + file path constants

@@ -103,7 +103,8 @@ When work ships a PR for a todo whose \`source\` is \`gh-issue-#<N>\`, the PR bo
 `
 
 export const ghIssueTriageSkill = defineSkill({
-    name: "gh-issue-triage",
-    description: "Pull open GitHub issues into the MuninnDB todo backlog for pipeline execution. Filters out issues labeled `skip-triage`, deduplicates against existing todos, and links each todo back to its originating issue so the PR can close it on merge. Use when user says \"triage issues\", \"pull in issues\", \"import issues\", \"sync issues to todos\", or invokes /gh-issue-triage.",
+    name: 'gh-issue-triage',
+    description:
+        'Pull open GitHub issues into the MuninnDB todo backlog for pipeline execution. Filters out issues labeled `skip-triage`, deduplicates against existing todos, and links each todo back to its originating issue so the PR can close it on merge. Use when user says "triage issues", "pull in issues", "import issues", "sync issues to todos", or invokes /gh-issue-triage.',
     body: BODY,
 })

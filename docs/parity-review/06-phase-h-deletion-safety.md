@@ -27,7 +27,7 @@ package by name, write to `.planning/config.json`, and tell users to
 already documented as v14 caveats in the Phase G parity report. They
 are Phase-H *housekeeping*, not blockers.
 
-`.legacy-planning-archive/` is present (10 top-level dirs, slim-down
+`.luca/archive/00-legacy-planning/` is present (10 top-level dirs, slim-down
 specs intact) — preservation confirmed.
 
 ## 2. Method
@@ -41,7 +41,7 @@ Greps + finds + cross-references against:
    (D1–D4), final F1–F5 disposition, Phase H guide.
 3. The four active package manifests + the umbrella `build.config.ts`.
 4. Root `package.json` scripts.
-5. The `.legacy-planning-archive/` tree.
+5. The `.luca/archive/00-legacy-planning/` tree.
 6. The `.changeset/pre.json` pre-release window.
 
 No code modified. No deletions performed.
@@ -322,7 +322,7 @@ Confirmed enumeration:
 
 No `.cursor/` or `.pi/` directories exist anywhere else in the repo
 outside `node_modules/`. No standalone `.mdc` files exist outside
-the doomed subtrees and `.legacy-planning-archive/`.
+the doomed subtrees and `.luca/archive/00-legacy-planning/`.
 
 ### C. Root-level `package.json` script entries to remove
 
@@ -360,7 +360,7 @@ may need a documentation sweep (caveat 4 in parity report).
 
 | Path | Why |
 |---|---|
-| `.legacy-planning-archive/` | **Required by plan §9** — the slim-down specs. Confirmed present, 10 top-level dirs (`codebase`, `done`, `migration`, `milestones`, `notes`, `planning`, `plans`, `research`, `summaries` + `.` itself). |
+| `.luca/archive/00-legacy-planning/` | **Required by plan §9** — the slim-down specs. Confirmed present, 10 top-level dirs (`codebase`, `done`, `migration`, `milestones`, `notes`, `planning`, `plans`, `research`, `summaries` + `.` itself). |
 | `packages/luca-cli/` | Active. |
 | `packages/luca-core/` | Active. |
 | `packages/luca-tools/` | Active. |
@@ -443,7 +443,7 @@ handoff memory).
 - Build chain: umbrella self-contained.
 - Workspace siblings: no active package lists dying packages as a
   dependency.
-- `.legacy-planning-archive/`: present, preserved.
+- `.luca/archive/00-legacy-planning/`: present, preserved.
 - Phase G parity report verdict: READY WITH CAVEATS, caveats
   explicitly non-blocking.
 

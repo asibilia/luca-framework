@@ -261,7 +261,8 @@ PR-review and debug workflows are not bundled with the v13 Luca skill set; reach
 `
 
 export const luSkill = defineSkill({
-    name: "lu",
-    description: "Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.",
+    name: 'lu',
+    description:
+        'Unified entry point for all Luca workflows with cognitive pre-flight and complexity routing.',
     body: BODY,
 })

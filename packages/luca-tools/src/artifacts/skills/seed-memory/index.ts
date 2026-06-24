@@ -248,7 +248,8 @@ MuninnDB has **no concept lookup** (see **Existence checks** above), so this ski
 `
 
 export const seedMemorySkill = defineSkill({
-    name: "seed-memory",
-    description: "Seed MuninnDB with project knowledge from existing BRAIN.md, MEMORY.md, WORKING.md, and procedure files. Run once per project to populate MuninnDB with existing knowledge. Idempotent -- safe to run multiple times.",
+    name: 'seed-memory',
+    description:
+        'Seed MuninnDB with project knowledge from existing BRAIN.md, MEMORY.md, WORKING.md, and procedure files. Run once per project to populate MuninnDB with existing knowledge. Idempotent -- safe to run multiple times.',
     body: BODY,
 })

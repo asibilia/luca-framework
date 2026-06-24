@@ -152,9 +152,9 @@ describe('isValidLucaPath — tmp scratch', () => {
     })
 
     test('rejects a preview nested deeper than one level', () => {
-        expect(
-            isValidLucaPath('.luca/tmp/previews/sub/x.html').valid
-        ).toBe(false)
+        expect(isValidLucaPath('.luca/tmp/previews/sub/x.html').valid).toBe(
+            false
+        )
     })
 })
 

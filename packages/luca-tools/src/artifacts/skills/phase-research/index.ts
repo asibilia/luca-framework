@@ -94,7 +94,8 @@ Run \`luca state read\`. This skill writes \`research.md\`, which the stage-gate
 `
 
 export const phaseResearchSkill = defineSkill({
-    name: "phase-research",
-    description: "Conduct comprehensive ecosystem research for niche or complex technical domains.",
+    name: 'phase-research',
+    description:
+        'Conduct comprehensive ecosystem research for niche or complex technical domains.',
     body: BODY,
 })

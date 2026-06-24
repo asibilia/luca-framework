@@ -48,6 +48,7 @@ import {
 } from 'node:fs'
 import { hostname } from 'node:os'
 import { dirname, join } from 'node:path'
+
 import { z } from 'zod'
 
 import { lucaRootPaths } from '../luca-dir/index.ts'
@@ -242,7 +243,11 @@ export interface ForceUnlockOptions {
 
 export type ForceUnlockResult =
     | { ok: true; released: true; previous: PipelineLock | null }
-    | { ok: false; reason: 'absent' | 'live-holder'; holder: PipelineLock | null }
+    | {
+          ok: false
+          reason: 'absent' | 'live-holder'
+          holder: PipelineLock | null
+      }
 
 /**
  * Force-unlock the pipeline lock. Two safe paths:

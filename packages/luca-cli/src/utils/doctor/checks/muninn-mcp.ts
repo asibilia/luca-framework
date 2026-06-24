@@ -18,8 +18,8 @@
  * wiring requires an API key this check cannot supply, so there is no
  * automatic `fix()`.
  */
-import type { CheckResult, DoctorCheck } from '../types'
 import { isMuninnRegistered } from '../../muninn-mcp-registration'
+import type { CheckResult, DoctorCheck } from '../types'
 
 const CHECK_NAME = 'MuninnDB MCP wiring'
 
@@ -99,7 +99,8 @@ export const muninnMcpCheck: DoctorCheck = {
             return {
                 name: CHECK_NAME,
                 status: 'warning',
-                message: 'muninn MCP registered but endpoint unreachable on :8750',
+                message:
+                    'muninn MCP registered but endpoint unreachable on :8750',
                 fixCommand: 'luca init',
                 details: [
                     'A `muninn` server is registered, but nothing is answering',

@@ -2,11 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import type { ReviewFinding } from '@alecsibilia/luca-core/review-analysis'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewRegressionCheckTool } from './luca-pr-review-regression-check.ts'
-
-import type { ReviewFinding } from '@alecsibilia/luca-core/review-analysis'
 
 function finding(over: Partial<ReviewFinding>): ReviewFinding {
     return {

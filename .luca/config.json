@@ -23,9 +23,9 @@
     "commits": {
       "convention": "conventional",
       "scopes": [
-        "luca-framework",
-        "mastracode",
-        "luca-core",
+        "cli",
+        "core",
+        "tools",
         "deps",
         "release",
         "mcp",

@@ -172,9 +172,8 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             //                                 INVERT the signal (suppress the
             //                                 very violation we want to raise).
             try {
-                const runId = typeof state.sessionId === 'string'
-                    ? state.sessionId
-                    : ''
+                const runId =
+                    typeof state.sessionId === 'string' ? state.sessionId : ''
 
                 // Always: mode-transition (the metric the postmortem
                 // analyzer counts as metrics.modeTransitions).
@@ -278,7 +277,8 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             // as `plan-tick-result` — never throws, never blocks the
             // state advance.
             try {
-                const fromCoarse: CoarsePhase = PIPELINE_STEP_TO_COARSE_PHASE[from]
+                const fromCoarse: CoarsePhase =
+                    PIPELINE_STEP_TO_COARSE_PHASE[from]
                 const toCoarse: CoarsePhase = PIPELINE_STEP_TO_COARSE_PHASE[to]
                 if (fromCoarse === 'EXECUTING' && toCoarse !== 'EXECUTING') {
                     const slugResult = resolveActiveSlug(state)
@@ -290,12 +290,14 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                         // Phase name for the plan-section heading
                         // match: the roadmap entry's `.name`, which is
                         // what mastracode used.
-                        const roadmapEntry = state.roadmap[state.currentPhase - 1]
+                        const roadmapEntry =
+                            state.roadmap[state.currentPhase - 1]
                         const phaseName = roadmapEntry?.name ?? slugResult.slug
                         const tickResult = tickPhaseTasks(planFile, phaseName)
-                        const runIdForTick = typeof state.sessionId === 'string'
-                            ? state.sessionId
-                            : ''
+                        const runIdForTick =
+                            typeof state.sessionId === 'string'
+                                ? state.sessionId
+                                : ''
                         appendLedger({
                             cwd: ctx.cwd,
                             runId: runIdForTick,

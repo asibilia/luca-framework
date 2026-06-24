@@ -130,7 +130,8 @@ This skill helps you decide between workflows. After choosing:
 `
 
 export const chooseSkill = defineSkill({
-    name: "choose",
-    description: "Choose between issue-driven development and Luca spec-driven workflow for a task.",
+    name: 'choose',
+    description:
+        'Choose between issue-driven development and Luca spec-driven workflow for a task.',
     body: BODY,
 })

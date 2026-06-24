@@ -131,7 +131,8 @@ How should this milestone be tracked on GitHub?
 `
 
 export const milestoneNewSkill = defineSkill({
-    name: "milestone-new",
-    description: "Start a new milestone cycle with requirements gathering and roadmap generation.",
+    name: 'milestone-new',
+    description:
+        'Start a new milestone cycle with requirements gathering and roadmap generation.',
     body: BODY,
 })

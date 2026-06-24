@@ -182,7 +182,8 @@ Default:
 `
 
 export const phaseDiscussSkill = defineSkill({
-    name: "phase-discuss",
-    description: "Gather phase context through adaptive questioning before creating execution plans.",
+    name: 'phase-discuss',
+    description:
+        'Gather phase context through adaptive questioning before creating execution plans.',
     body: BODY,
 })

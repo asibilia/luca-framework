@@ -135,7 +135,7 @@ export const SubagentDefinitionSchema = z.object({
         .min(1)
         .regex(
             /^[a-z][a-z0-9-]*$/,
-            'subagent id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter',
+            'subagent id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter'
         ),
     /** Human-readable name shown in the Task tool picker. */
     name: z.string().min(1),
@@ -211,7 +211,7 @@ export type SubagentDefinition = z.infer<typeof SubagentDefinitionSchema>
  * mirrors `defineRule`'s ergonomics.
  */
 export function defineSubagent(
-    def: z.input<typeof SubagentDefinitionSchema>,
+    def: z.input<typeof SubagentDefinitionSchema>
 ): SubagentDefinition {
     const parsed = SubagentDefinitionSchema.safeParse(def)
     if (!parsed.success) {

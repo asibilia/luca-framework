@@ -4,8 +4,9 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { TODO_ENGRAM_ID_PLACEHOLDER } from '../helpers/build-muninn-instruction.ts'
 import { lucaTodoUpdateTool } from './luca-todo-update.ts'
+
+import { TODO_ENGRAM_ID_PLACEHOLDER } from '../helpers/build-muninn-instruction.ts'
 
 const ROOT_ULID = '01KVEGY63GTYVVXK38AP9C90HC'
 

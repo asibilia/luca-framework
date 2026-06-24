@@ -116,12 +116,7 @@ export function computePhaseDiff(
     const commitsAdded: string[] = []
 
     if (start.headSha) {
-        const diff = runGit(cwd, [
-            'diff',
-            '--name-only',
-            start.headSha,
-            'HEAD',
-        ])
+        const diff = runGit(cwd, ['diff', '--name-only', start.headSha, 'HEAD'])
         if (diff.ok) {
             for (const f of diff.stdout.split('\n').map((s) => s.trim())) {
                 if (f) filesChanged.add(f)

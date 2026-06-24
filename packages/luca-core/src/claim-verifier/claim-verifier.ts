@@ -384,7 +384,9 @@ function maskInlineCodeSpans(line: string): string {
  * Output is warnings only — callers MUST NOT gate verdicts or exit codes
  * on these findings.
  */
-export function scanForbiddenLanguage(text: string): ForbiddenLanguageWarning[] {
+export function scanForbiddenLanguage(
+    text: string
+): ForbiddenLanguageWarning[] {
     if (!text) return []
 
     const lines = text.split('\n')
@@ -452,7 +454,15 @@ function gitGrepFiles(
     // claims. Without it, fresh files yield false-positive failures.
     const r = spawnSync(
         'git',
-        ['-C', repoRoot, 'grep', '--untracked', '-l', '--fixed-strings', needle],
+        [
+            '-C',
+            repoRoot,
+            'grep',
+            '--untracked',
+            '-l',
+            '--fixed-strings',
+            needle,
+        ],
         { encoding: 'utf-8', timeout: timeoutMs }
     )
 
