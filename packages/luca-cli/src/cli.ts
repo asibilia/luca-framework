@@ -23,9 +23,7 @@ const main = defineCommand({
             import('./commands/vault-init').then((m) => m.vaultInitCommand),
         retro: () => import('./commands/retro').then((m) => m.retroCommand),
         'claim-verify': () =>
-            import('./commands/claim-verify').then(
-                (m) => m.claimVerifyCommand
-            ),
+            import('./commands/claim-verify').then((m) => m.claimVerifyCommand),
         telemetry: () =>
             import('./commands/telemetry').then((m) => m.telemetryCommand),
         rules: () => import('./commands/rules').then((m) => m.rulesCommand),
@@ -49,9 +47,7 @@ const main = defineCommand({
                 (m) => m.phaseCommand
             ),
         plan: () =>
-            import('./commands/write-surface/plan').then(
-                (m) => m.planCommand
-            ),
+            import('./commands/write-surface/plan').then((m) => m.planCommand),
         roadmap: () =>
             import('./commands/write-surface/roadmap').then(
                 (m) => m.roadmapCommand

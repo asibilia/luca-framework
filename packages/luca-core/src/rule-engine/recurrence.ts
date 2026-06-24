@@ -25,10 +25,7 @@
  *     has no `SUGGESTED-RULES.md` slot; callers render on demand via
  *     `renderSuggestedRulesMarkdown`.
  */
-import type {
-    PostmortemReport,
-    ViolationCode,
-} from '../analysis/postmortem.ts'
+import type { PostmortemReport, ViolationCode } from '../analysis/postmortem.ts'
 
 export interface RecurringPitfall {
     /** ViolationCode that recurred. */
@@ -203,7 +200,9 @@ Scanned ${report.runsScanned} run(s).
     }
 
     const sections = report.recurring.map(
-        (p) => `## ${p.code} — ${p.runCount} run(s), ${p.occurrences} occurrence(s)
+        (
+            p
+        ) => `## ${p.code} — ${p.runCount} run(s), ${p.occurrences} occurrence(s)
 
 **Suggested rule id**: \`${p.suggestedRuleId}\`
 **Pitfall concept**: \`${p.pitfallConcept}\`

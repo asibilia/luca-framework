@@ -58,7 +58,8 @@ This is a **READ-ONLY audit**. Never call \`Write\`, \`Edit\`, \`NotebookEdit\`,
 `
 
 export const renameAuditSkill = defineSkill({
-    name: "rename-audit",
-    description: "Find stale references across the repo after renaming a file, pipeline step, export, symbol, ticket ID, or convention. Searches .md/.ts/.tsx/.mjs/.json/.jsonl, plus .claude/, .luca/, and .changeset/ artifacts. Read-only audit — never edits files. Use when the user says \"rename audit\", \"audit renames\", \"find stale refs\", \"post-rename check\", or invokes /rename-audit.",
+    name: 'rename-audit',
+    description:
+        'Find stale references across the repo after renaming a file, pipeline step, export, symbol, ticket ID, or convention. Searches .md/.ts/.tsx/.mjs/.json/.jsonl, plus .claude/, .luca/, and .changeset/ artifacts. Read-only audit — never edits files. Use when the user says "rename audit", "audit renames", "find stale refs", "post-rename check", or invokes /rename-audit.',
     body: BODY,
 })

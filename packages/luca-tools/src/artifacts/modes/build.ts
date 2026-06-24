@@ -17,10 +17,7 @@
  *     caveat (tests are maintained but the pipeline doesn't auto-run them).
  */
 import { defineAgent } from '../../define/index.ts'
-import {
-    CORE_OPERATING_RULES,
-    getAgentConstraints,
-} from '../shared/index.ts'
+import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Build Mode
 

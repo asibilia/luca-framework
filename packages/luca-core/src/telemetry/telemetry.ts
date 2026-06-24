@@ -28,14 +28,14 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { RunIdSchema, telemetryPathFor } from '../luca-dir/index.ts'
-
 import { sanitizeForLog } from './helpers/sanitize-for-log.ts'
 import {
     TelemetryRecordSchema,
     type TelemetryKind,
     type TelemetryRecord,
 } from './schemas.ts'
+
+import { RunIdSchema, telemetryPathFor } from '../luca-dir/index.ts'
 
 // ---------------------------------------------------------------------------
 // Context + overrides

@@ -106,7 +106,8 @@ Uses decimal numbering (7.1, 7.2, etc.) to preserve the logical sequence of plan
 `
 
 export const phaseInsertSkill = defineSkill({
-    name: "phase-insert",
-    description: "Insert urgent work as a decimal phase between existing phases mid-milestone.",
+    name: 'phase-insert',
+    description:
+        'Insert urgent work as a decimal phase between existing phases mid-milestone.',
     body: BODY,
 })

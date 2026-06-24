@@ -21,25 +21,27 @@ const baseState = {
 }
 
 // Canonical ConfidenceEntrySchema payload — F1 fix: writer/reader round-trip.
-function canonicalPayload(overrides: Partial<{
-    phase: string
-    wave: number
-    task: string
-    confidence: 'high' | 'medium' | 'low'
-    category:
-        | 'plan-gap'
-        | 'design-choice'
-        | 'convention-unclear'
-        | 'requirement-ambiguous'
-        | 'dependency-unknown'
-        | 'scope-creep'
-    decision: string
-    alternatives: string[]
-    reasoning: string
-    risk: string
-    files: string[]
-    reviewHint?: string
-}> = {}): {
+function canonicalPayload(
+    overrides: Partial<{
+        phase: string
+        wave: number
+        task: string
+        confidence: 'high' | 'medium' | 'low'
+        category:
+            | 'plan-gap'
+            | 'design-choice'
+            | 'convention-unclear'
+            | 'requirement-ambiguous'
+            | 'dependency-unknown'
+            | 'scope-creep'
+        decision: string
+        alternatives: string[]
+        reasoning: string
+        risk: string
+        files: string[]
+        reviewHint?: string
+    }> = {}
+): {
     phase: string
     wave: number
     task: string

@@ -290,7 +290,10 @@ describe('handleStageGateHook — ephemeral scratch (gated step)', () => {
             'open .luca/tmp/previews/phase3-direction-1.html',
             'xdg-open /tmp/decision.html',
         ]) {
-            const r = await handleStageGateHook({ stdin: bashStdin(command), cwd })
+            const r = await handleStageGateHook({
+                stdin: bashStdin(command),
+                cwd,
+            })
             expect(r.exitCode).toBe(0)
             expect(r.decision).toBe('allow')
         }

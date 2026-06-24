@@ -24,8 +24,6 @@
  *     Preferred for structured callers — skills/agents construct the
  *     payload as a JSON object and pass the file path.
  */
-import { defineCommand } from 'citty'
-
 import {
     getConfidenceSummary,
     loadCurrentState,
@@ -34,14 +32,16 @@ import {
     resolveActiveSlug,
     selectConfidenceGateActions,
 } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
 
-import { logger } from '../../utils/logger.ts'
-import { lucaConfidenceLogTool } from '../../write-surface/index.ts'
 import {
     readJsonPayload,
     rejectUnknownFlags,
     runWriteHandler,
 } from './__helpers/run-handler.ts'
+
+import { logger } from '../../utils/logger.ts'
+import { lucaConfidenceLogTool } from '../../write-surface/index.ts'
 
 /** Resolve the explicit `--slug` arg, or the active phase. Exits 1 if neither. */
 async function resolveSlug(opts: {
@@ -137,8 +137,7 @@ const logCommand = defineCommand({
         },
         'review-hint': {
             type: 'string',
-            description:
-                'Optional. Suggested focus area for a human reviewer.',
+            description: 'Optional. Suggested focus area for a human reviewer.',
         },
         researchable: {
             type: 'boolean',
@@ -159,7 +158,11 @@ const logCommand = defineCommand({
         let payload: Record<string, unknown>
         if (args.file) {
             const fromFile = await readJsonPayload('confidence log', args.file)
-            if (typeof fromFile !== 'object' || fromFile === null || Array.isArray(fromFile)) {
+            if (
+                typeof fromFile !== 'object' ||
+                fromFile === null ||
+                Array.isArray(fromFile)
+            ) {
                 logger.error(
                     `luca confidence log: --file payload must be a JSON object.`
                 )
@@ -199,17 +202,11 @@ const logCommand = defineCommand({
                 ...(args.researchable !== undefined
                     ? { researchable: args.researchable }
                     : {}),
-                ...(resolution !== undefined
-                    ? { resolution }
-                    : {}),
+                ...(resolution !== undefined ? { resolution } : {}),
             }
         }
 
-        await runWriteHandler(
-            'confidence log',
-            lucaConfidenceLogTool,
-            payload
-        )
+        await runWriteHandler('confidence log', lucaConfidenceLogTool, payload)
     },
 })
 
@@ -217,7 +214,7 @@ const readCommand = defineCommand({
     meta: {
         name: 'read',
         description:
-            'Read every entry in a phase\'s confidence.jsonl as a JSON array.',
+            "Read every entry in a phase's confidence.jsonl as a JSON array.",
     },
     args: {
         slug: {
@@ -244,8 +241,7 @@ const summaryCommand = defineCommand({
     args: {
         slug: {
             type: 'string',
-            description:
-                'Phase slug to summarize (default: the active phase).',
+            description: 'Phase slug to summarize (default: the active phase).',
         },
     },
     async run({ args, rawArgs, cmd }) {

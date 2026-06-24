@@ -22,10 +22,7 @@ export { defineRule } from './rule.ts'
 
 // Per-artifact types + schemas (authors need these for variant typing,
 // the compiler needs them for parse + emit)
-export {
-    AgentDefinitionSchema,
-    AgentStageSchema,
-} from './agent.ts'
+export { AgentDefinitionSchema, AgentStageSchema } from './agent.ts'
 export type { AgentDefinition, AgentStage } from './agent.ts'
 
 export {
@@ -53,11 +50,7 @@ export {
     HookEventSchema,
     HookRuntimeSchema,
 } from './hook.ts'
-export type {
-    HookDefinition,
-    HookEvent,
-    HookRuntime,
-} from './hook.ts'
+export type { HookDefinition, HookEvent, HookRuntime } from './hook.ts'
 
 export type {
     RuleDefinition,

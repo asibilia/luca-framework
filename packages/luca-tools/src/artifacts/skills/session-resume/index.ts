@@ -117,7 +117,8 @@ Follow the resume-project workflow which handles:
 `
 
 export const sessionResumeSkill = defineSkill({
-    name: "session-resume",
-    description: "Resume work from a previous session with full cognitive context restoration.",
+    name: 'session-resume',
+    description:
+        'Resume work from a previous session with full cognitive context restoration.',
     body: BODY,
 })

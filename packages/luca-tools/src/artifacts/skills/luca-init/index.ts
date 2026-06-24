@@ -94,7 +94,7 @@ Edit later with /luca-init.
 `
 
 export const lucaInitSkill = defineSkill({
-    name: "luca-init",
+    name: 'luca-init',
     description: `Repo-probing wizard that seeds project preferences into .luca/config.json. Detects branching conventions, commit format, PR title format, release tooling, and issue tracker from the local repo, confirms with the user, then writes the preferences section via the \`luca preferences write\` CLI.
 
 Use when the user says "init luca", "set up preferences", "luca-init", "configure conventions", or invokes /luca-init.`,

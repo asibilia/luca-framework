@@ -200,7 +200,7 @@ const STEP_TEMPLATES: Record<ContinuationStep, string> = {
 function buildContinuation(
     step: ContinuationStep,
     coarse: CoarsePhase,
-    input: ContinuationInput,
+    input: ContinuationInput
 ): string {
     const lines: string[] = []
     const arrow =
@@ -247,7 +247,7 @@ function buildContinuation(
  * surface; output is identical for identical input.
  */
 export function computeContinuationMessage(
-    input: ContinuationInput,
+    input: ContinuationInput
 ): ContinuationVerdict | null {
     const { currentStep, previousStep, complexity, oversight } = input
 
@@ -263,7 +263,7 @@ export function computeContinuationMessage(
                 previousStep,
                 undefined,
                 complexity,
-                oversight,
+                oversight
             ),
         }
     }
@@ -294,7 +294,7 @@ export function computeContinuationMessage(
             previousStep,
             coarse,
             complexity,
-            oversight,
+            oversight
         ),
     }
 }
@@ -326,7 +326,7 @@ const ALL_PIPELINE_STEPS_TABLE: Record<PipelineStep, true> = {
     finalize: true,
 }
 const ALL_PIPELINE_STEPS_SET = new Set<string>(
-    Object.keys(ALL_PIPELINE_STEPS_TABLE),
+    Object.keys(ALL_PIPELINE_STEPS_TABLE)
 )
 
 // Dev-time guard: STEP_TEMPLATES must cover every non-idle PipelineStep.
@@ -341,7 +341,7 @@ for (const step of Object.keys(ALL_PIPELINE_STEPS_TABLE) as PipelineStep[]) {
         throw new Error(
             `continuation-messages: STEP_TEMPLATES is missing an entry for ` +
                 `pipelineStep '${step}'. Add a template or extend the ` +
-                `coarse-phase map if this step shouldn't emit a continuation.`,
+                `coarse-phase map if this step shouldn't emit a continuation.`
         )
     }
 }
@@ -353,7 +353,7 @@ function buildTelemetry(
     previousStep: string | undefined,
     coarsePhase: CoarsePhase | undefined,
     complexity: ComplexityLevel | undefined,
-    oversight: OversightMode | undefined,
+    oversight: OversightMode | undefined
 ): ContinuationTelemetry {
     return {
         event,

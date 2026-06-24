@@ -29,7 +29,9 @@ export const VERIFICATION_DOCTRINE = `## Verification Doctrine
 
 **Forbidden language (without attached probe evidence).** ${FORBIDDEN_LANGUAGE_PHRASES.map(
     (phrase) => `'${phrase}'`
-).join(', ')} — each forbidden only WITHOUT attached probe evidence; the phrases are fine when accompanied by tool output.
+).join(
+    ', '
+)} — each forbidden only WITHOUT attached probe evidence; the phrases are fine when accompanied by tool output.
 
 **[DEFERRED-VERIFY] protocol.** When a probe is genuinely impossible at execution time:
 1. Mark the criterion \`[DEFERRED-VERIFY]\` with \`met: false\` + \`deferred: true\` + \`deferredFollowUp\`.

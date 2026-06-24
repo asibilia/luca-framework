@@ -1,9 +1,10 @@
-import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import {
     checkRegression,
     diffPaths,
     type ReviewFinding,
 } from '@alecsibilia/luca-core/review-analysis'
+
+import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 
 const findingSchema = z.object({
     id: z.string(),

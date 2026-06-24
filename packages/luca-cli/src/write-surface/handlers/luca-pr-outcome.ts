@@ -32,7 +32,9 @@ import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
  *   - `originRunId?`: the originating session's runId, for correlation.
  */
 const inputSchema = z.object({
-    prNumber: z.number().describe('The PR number (join key to the pr.created map).'),
+    prNumber: z
+        .number()
+        .describe('The PR number (join key to the pr.created map).'),
     result: z
         .enum(['merged', 'reverted'])
         .describe('Terminal PR outcome: merged | reverted.'),

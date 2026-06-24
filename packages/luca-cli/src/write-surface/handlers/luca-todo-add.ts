@@ -113,9 +113,7 @@ export const lucaTodoAddTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
             title: args.title,
             ...(args.body !== undefined ? { body: args.body } : {}),
             status: args.status,
-            ...(args.priority !== undefined
-                ? { priority: args.priority }
-                : {}),
+            ...(args.priority !== undefined ? { priority: args.priority } : {}),
             ...(args.area !== undefined ? { area: args.area } : {}),
             ...(args.source !== undefined ? { source: args.source } : {}),
             ...(args.metadata !== undefined ? { metadata: args.metadata } : {}),

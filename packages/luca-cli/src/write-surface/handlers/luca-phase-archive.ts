@@ -74,7 +74,9 @@ export const lucaPhaseArchiveTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                 archived.push(slug)
             }
 
-            const parts = [`archived ${archived.length} phase(s) → .luca/archive/`]
+            const parts = [
+                `archived ${archived.length} phase(s) → .luca/archive/`,
+            ]
             if (archived.length > 0) parts.push(`moved: ${archived.join(', ')}`)
             if (skipped.length > 0) {
                 parts.push(

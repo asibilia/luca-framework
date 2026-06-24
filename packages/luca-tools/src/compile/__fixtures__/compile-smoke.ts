@@ -72,7 +72,12 @@ const agent = defineAgent({
     description: 'Verifies mode-agent emission.',
     stage: 'plan',
     color: '#abcdef',
-    guidance: { verticalSlice: true, tdd: false, selfVerify: true, antiSycophancy: false },
+    guidance: {
+        verticalSlice: true,
+        tdd: false,
+        selfVerify: true,
+        antiSycophancy: false,
+    },
     telemetryHooks: ['phase-start', 'phase-end'],
     pipelineInvocations: ['confidence-log'],
     gotchas: ['<example footgun>'],
@@ -247,10 +252,7 @@ const subagentPath = join(root, '.claude/agents/smoke-subagent.md')
 const agentPath = join(root, '.claude/agents/smoke-agent.md')
 const commandPath = join(root, '.claude/commands/smoke-cmd.md')
 const skillPath = join(root, 'skills/smoke-skill/SKILL.md')
-const multiParaSkillPath = join(
-    root,
-    'skills/smoke-skill-multi/SKILL.md',
-)
+const multiParaSkillPath = join(root, 'skills/smoke-skill-multi/SKILL.md')
 const settingsPath = join(root, '.claude/settings.json')
 
 const subagentText = await Bun.file(subagentPath).text()
@@ -262,7 +264,9 @@ const settingsText = await Bun.file(settingsPath).text()
 
 function check(label: string, actual: string, expected: string): void {
     if (!actual.includes(expected)) {
-        failures.push(`[${label}]\nexpected to contain:\n${expected}\n--- got: ---\n${actual.slice(0, 800)}`)
+        failures.push(
+            `[${label}]\nexpected to contain:\n${expected}\n--- got: ---\n${actual.slice(0, 800)}`
+        )
     }
 }
 
@@ -270,21 +274,9 @@ check('subagent frontmatter', subagentText, expectedSubagentFrontmatter)
 check('subagent D1 guidance', subagentText, '## Guidance')
 check('subagent gotchas', subagentText, '## Gotchas')
 check('subagent tdd line', subagentText, '**Test-driven development.**')
-check(
-    'subagent telemetry',
-    subagentText,
-    '## Telemetry',
-)
-check(
-    'subagent invocations',
-    subagentText,
-    '## Pipeline Invocations',
-)
-check(
-    'subagent muninn-recall',
-    subagentText,
-    '**Pre-invoke MuninnDB recall.**',
-)
+check('subagent telemetry', subagentText, '## Telemetry')
+check('subagent invocations', subagentText, '## Pipeline Invocations')
+check('subagent muninn-recall', subagentText, '**Pre-invoke MuninnDB recall.**')
 
 check('agent frontmatter', agentText, expectedAgentFrontmatter)
 check('agent stage', agentText, 'stage: plan')
@@ -299,28 +291,24 @@ check('skill body', skillText, '# Smoke skill')
 check(
     'multi-paragraph skill frontmatter (block scalar)',
     multiParaSkillText,
-    expectedMultiParaSkillFrontmatter,
+    expectedMultiParaSkillFrontmatter
 )
 // Defensive: prove the rendered output is NOT the legacy JSON-escaped
 // single-line form. If this substring ever appears in the rendered
 // output we've regressed to the pre-fix behavior.
 if (multiParaSkillText.includes('\\n\\n')) {
     failures.push(
-        '[multi-paragraph skill] rendered frontmatter contains "\\n\\n" escape — block-scalar emission regressed',
+        '[multi-paragraph skill] rendered frontmatter contains "\\n\\n" escape — block-scalar emission regressed'
     )
 }
 
 check('settings.json PreToolUse', settingsText, expectedSettingsFragment)
-check(
-    'settings.json PostToolUse async',
-    settingsText,
-    '"async": true',
-)
+check('settings.json PostToolUse async', settingsText, '"async": true')
 
 // Verify rule was counted but no file was written for it.
 if (report.counts.rule !== 1) {
     failures.push(
-        `expected report.counts.rule === 1, got ${report.counts.rule}`,
+        `expected report.counts.rule === 1, got ${report.counts.rule}`
     )
 }
 

@@ -49,7 +49,9 @@ describe('luca_brain_set_root', () => {
                 rootId: ULID_A,
             },
         })
-        expect((await readConfig(cwd)).preferences).toEqual({ schemaVersion: 1 })
+        expect((await readConfig(cwd)).preferences).toEqual({
+            schemaVersion: 1,
+        })
     })
 
     test('keeps multiple brain trees side by side (identity + requirements)', async () => {

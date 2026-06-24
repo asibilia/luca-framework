@@ -16,7 +16,9 @@ interface PrOutcomePayload {
     originRunId?: string
 }
 
-function basePayload(overrides: Partial<PrOutcomePayload> = {}): PrOutcomePayload {
+function basePayload(
+    overrides: Partial<PrOutcomePayload> = {}
+): PrOutcomePayload {
     return {
         prNumber: 306,
         result: 'merged',

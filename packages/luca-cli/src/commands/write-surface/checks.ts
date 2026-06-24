@@ -10,12 +10,13 @@
  */
 import { defineCommand } from 'citty'
 
-import { lucaChecksRunTool } from '../../write-surface/index.ts'
 import {
     readJsonPayload,
     rejectUnknownFlags,
     runWriteHandler,
 } from './__helpers/run-handler.ts'
+
+import { lucaChecksRunTool } from '../../write-surface/index.ts'
 
 const runCommand = defineCommand({
     meta: {

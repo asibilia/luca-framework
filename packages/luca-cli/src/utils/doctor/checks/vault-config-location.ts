@@ -84,8 +84,8 @@ export const vaultConfigLocationCheck: DoctorCheck = {
         const wouldFold = topLevel !== undefined && muninnVault === undefined
 
         const detail = wouldFold
-            ? `It carries "${topLevel}" and muninn.vault is unset — \`--fix\` `
-              + `folds it into muninn.vault, then removes the top-level key.`
+            ? `It carries "${topLevel}" and muninn.vault is unset — \`--fix\` ` +
+              `folds it into muninn.vault, then removes the top-level key.`
             : `\`--fix\` removes it (muninn.vault is the source of truth).`
 
         return {
@@ -95,9 +95,9 @@ export const vaultConfigLocationCheck: DoctorCheck = {
                 'config.json has a top-level `vault` key (canonical location is `muninn.vault`)',
             fixCommand: 'luca doctor --fix',
             details: [
-                `.luca/config.json stores a top-level \`vault\` key. The `
-                    + `canonical location is \`muninn.vault\`; the top-level key `
-                    + `is only read as a legacy fallback.`,
+                `.luca/config.json stores a top-level \`vault\` key. The ` +
+                    `canonical location is \`muninn.vault\`; the top-level key ` +
+                    `is only read as a legacy fallback.`,
                 detail,
             ].join('\n  '),
         }
@@ -122,11 +122,15 @@ export const vaultConfigLocationCheck: DoctorCheck = {
                         ? (config.muninn as Record<string, unknown>)
                         : {}
                 next.muninn = { ...existingMuninn, vault: topLevel }
-                applied.push(`Folded top-level vault "${topLevel}" → muninn.vault`)
+                applied.push(
+                    `Folded top-level vault "${topLevel}" → muninn.vault`
+                )
             }
 
             delete next.vault
-            applied.push('Removed stale top-level `vault` key from .luca/config.json')
+            applied.push(
+                'Removed stale top-level `vault` key from .luca/config.json'
+            )
 
             await writeFile(configPath(), JSON.stringify(next, null, 2) + '\n')
             return { applied, errors: [] }
@@ -134,8 +138,8 @@ export const vaultConfigLocationCheck: DoctorCheck = {
             return {
                 applied: [],
                 errors: [
-                    `Failed to normalize .luca/config.json vault location: `
-                        + `${(err as Error).message}`,
+                    `Failed to normalize .luca/config.json vault location: ` +
+                        `${(err as Error).message}`,
                 ],
             }
         }

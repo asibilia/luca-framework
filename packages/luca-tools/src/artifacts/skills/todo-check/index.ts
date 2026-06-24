@@ -87,7 +87,7 @@ List pending todos and select one to work on.
 `
 
 export const todoCheckSkill = defineSkill({
-    name: "todo-check",
-    description: "List pending todos and select one to work on next.",
+    name: 'todo-check',
+    description: 'List pending todos and select one to work on next.',
     body: BODY,
 })

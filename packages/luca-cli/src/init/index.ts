@@ -44,7 +44,4 @@ export {
     claudeHarness,
     antigravityHarness,
 } from './helpers/harness.ts'
-export type {
-    Harness,
-    HarnessInstallExtrasOptions,
-} from './helpers/harness.ts'
+export type { Harness, HarnessInstallExtrasOptions } from './helpers/harness.ts'

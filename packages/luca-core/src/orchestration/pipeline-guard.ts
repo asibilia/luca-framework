@@ -150,7 +150,7 @@ const VALID_STEPS = new Set(Object.keys(PIPELINE_TRANSITIONS))
  * change to this verdict shape.
  */
 export function checkPipelineGuard(
-    input: PipelineGuardInput,
+    input: PipelineGuardInput
 ): PipelineGuardVerdict {
     const { currentStep, requestedStep, complexity, oversight } = input
 
@@ -167,7 +167,7 @@ export function checkPipelineGuard(
                 requestedStep,
                 'unknown-current-step',
                 complexity,
-                oversight,
+                oversight
             ),
         }
     }
@@ -185,7 +185,7 @@ export function checkPipelineGuard(
                 requestedStep,
                 'unknown-requested-step',
                 complexity,
-                oversight,
+                oversight
             ),
         }
     }
@@ -198,10 +198,12 @@ export function checkPipelineGuard(
     // self-edges (e.g. `research: ['discuss', 'research']` for the
     // re-research loop). Rejecting `current === requested` first would
     // contradict the table.
-    if (!isLegalTransition(
-        currentStep as PipelineStep,
-        requestedStep as PipelineStep,
-    )) {
+    if (
+        !isLegalTransition(
+            currentStep as PipelineStep,
+            requestedStep as PipelineStep
+        )
+    ) {
         // Reject same-step transitions ONLY when the table does not
         // explicitly allow the self-edge.
         if (currentStep === requestedStep) {
@@ -217,7 +219,7 @@ export function checkPipelineGuard(
                     requestedStep,
                     'same-step-no-op',
                     complexity,
-                    oversight,
+                    oversight
                 ),
             }
         }
@@ -234,7 +236,7 @@ export function checkPipelineGuard(
                 requestedStep,
                 'illegal-transition',
                 complexity,
-                oversight,
+                oversight
             ),
         }
     }
@@ -249,7 +251,7 @@ export function checkPipelineGuard(
             requestedStep,
             'ok',
             complexity,
-            oversight,
+            oversight
         ),
     }
 }
@@ -260,7 +262,7 @@ function buildTelemetry(
     requestedStep: string,
     reason: PipelineGuardReason,
     complexity?: ComplexityLevel,
-    oversight?: OversightMode,
+    oversight?: OversightMode
 ): PipelineGuardTelemetry {
     return {
         event,

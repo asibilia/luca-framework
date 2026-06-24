@@ -570,7 +570,8 @@ Present completion with next steps:
 `
 
 export const projectNewSkill = defineSkill({
-    name: "project-new",
-    description: "Initialize a new Luca project with deep context gathering and MuninnDB memory seeding.",
+    name: 'project-new',
+    description:
+        'Initialize a new Luca project with deep context gathering and MuninnDB memory seeding.',
     body: BODY,
 })

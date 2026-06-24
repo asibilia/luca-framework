@@ -12,7 +12,6 @@
  *     (totalWaves / passCount / failCount / stalledCount / allCriteriaMet /
  *     blockingGaps). Useful at finalize / milestone.
  */
-import { defineCommand } from 'citty'
 
 import {
     aggregateVerificationResults,
@@ -21,10 +20,12 @@ import {
     resolveActiveSlug,
 } from '@alecsibilia/luca-core'
 import type { VerificationResult } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
 
-import { listPhaseSlugs } from '../__helpers/list-phase-slugs.ts'
-import { logger } from '../../utils/logger.ts'
 import { rejectUnknownFlags } from './__helpers/run-handler.ts'
+
+import { logger } from '../../utils/logger.ts'
+import { listPhaseSlugs } from '../__helpers/list-phase-slugs.ts'
 
 /** Resolve the explicit `--slug` arg, or the active phase. Exits 1 if neither. */
 async function resolveSlug(opts: {
@@ -108,8 +109,7 @@ const aggregateCommand = defineCommand({
 export const verificationCommand = defineCommand({
     meta: {
         name: 'verification',
-        description:
-            'Read and aggregate Luca workflow verification results.',
+        description: 'Read and aggregate Luca workflow verification results.',
     },
     subCommands: {
         read: readCommand,

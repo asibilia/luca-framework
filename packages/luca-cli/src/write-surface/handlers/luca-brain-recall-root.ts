@@ -5,8 +5,7 @@ import { resolveBrainRoot } from '../helpers/resolve-brain-root.ts'
 const BrainConceptSchema = z
     .string()
     .regex(/^brain:[a-z0-9](?:[a-z0-9:-]*[a-z0-9])?$/, {
-        message:
-            'must be a brain tree concept like "brain:project-identity"',
+        message: 'must be a brain tree concept like "brain:project-identity"',
     })
 
 const inputSchema = z.object({

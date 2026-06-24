@@ -16,8 +16,8 @@
  *   escape.
  */
 export function sanitizeControlChars(text: string): string {
-    // eslint-disable-next-line no-control-regex
     return text.replace(
+        // eslint-disable-next-line no-control-regex -- intentional: this fn exists to strip C0/C1 control chars
         /[\x00-\x1f\x7f-\x9f]/g,
         (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, '0')}`
     )

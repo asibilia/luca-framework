@@ -79,7 +79,11 @@ describe('writeProjectSkeleton', () => {
         const { writeFile } = await import('node:fs/promises')
         await writeFile(
             join(cwd, '.luca/state.json'),
-            JSON.stringify({ pipelineStep: 'idle', sessionId: 'custom-session-id' }, null, 2)
+            JSON.stringify(
+                { pipelineStep: 'idle', sessionId: 'custom-session-id' },
+                null,
+                2
+            )
         )
 
         // Without force=true, should NOT overwrite

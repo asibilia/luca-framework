@@ -57,17 +57,17 @@
  *    discardable, and doesn't ride on either the pipeline state
  *    schema or the ledger format.
  */
+import {
+    CONTEXT_REFRESHER_DEFAULTS,
+    type ContextRefresherThresholds,
+} from './context-refresher-config.ts'
+
 import { coarsePhaseOf } from '../state/helpers/coarse-phase-of.ts'
 import type {
     ComplexityLevel,
     OversightMode,
     PipelineStep,
 } from '../state/schemas.ts'
-
-import {
-    CONTEXT_REFRESHER_DEFAULTS,
-    type ContextRefresherThresholds,
-} from './context-refresher-config.ts'
 
 /**
  * Reason codes for a refresher verdict. Stable strings so callers
@@ -219,28 +219,22 @@ type RefresherStep = Exclude<PipelineStep, 'idle'>
  * continuation-messages emits on a step change.
  */
 const STEP_REMINDERS: Record<RefresherStep, string> = {
-    triage:
-        '<luca-reminder>You are in triage. ≤75 words output. Classify → rationale → next step. Do NOT implement.</luca-reminder>',
+    triage: '<luca-reminder>You are in triage. ≤75 words output. Classify → rationale → next step. Do NOT implement.</luca-reminder>',
     research:
         '<luca-reminder>You are in research. Budget: MODERATE ≤10, COMPLEX ≤20, CRITICAL ≤30 tool calls. Synthesis ≤200 lines.</luca-reminder>',
     discuss:
         '<luca-reminder>Discuss (read-only). Under 300 words per turn. ≤2 clarifying questions. Persist decisions to context.md.</luca-reminder>',
     architect:
         '<luca-reminder>You are in architect mode. ≤3 sentences per task. ≤150 lines PLAN.md total. Validate with plan-reviewer before finishing.</luca-reminder>',
-    plan:
-        '<luca-reminder>You are in plan mode. Atomic tasks, each verifiable. Keep PLAN.md ≤150 lines. No code yet.</luca-reminder>',
+    plan: '<luca-reminder>You are in plan mode. Atomic tasks, each verifiable. Keep PLAN.md ≤150 lines. No code yet.</luca-reminder>',
     'plan-review':
         '<luca-reminder>Plan-review (read-only). Validate atomicity/verifiability/traceability. Surface gaps; do not edit the plan in place.</luca-reminder>',
     execute:
         '<luca-reminder>You are in execute mode. Run `luca checks run` within 1 tool call of wave completion. Stalled ≥2 iterations = stop and escalate. No prose between tool calls.</luca-reminder>',
-    checks:
-        '<luca-reminder>You are in checks. Run the verification harness. On failure, loop back to execute with a focused fix list. No prose.</luca-reminder>',
-    verify:
-        '<luca-reminder>You are in verify. Compare changes against plan + acceptance criteria. Produce verify.json; on failure loop back to checks.</luca-reminder>',
-    review:
-        '<luca-reminder>You are in review mode (read-only). Maximum 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.</luca-reminder>',
-    learn:
-        '<luca-reminder>You are in learn mode. Capture patterns/decisions/pitfalls in MuninnDB + learn.md. Be concrete. ≤200 lines.</luca-reminder>',
+    checks: '<luca-reminder>You are in checks. Run the verification harness. On failure, loop back to execute with a focused fix list. No prose.</luca-reminder>',
+    verify: '<luca-reminder>You are in verify. Compare changes against plan + acceptance criteria. Produce verify.json; on failure loop back to checks.</luca-reminder>',
+    review: '<luca-reminder>You are in review mode (read-only). Maximum 5 MUST-FIX items. MUST-FIX = correctness bugs, security, missing requirements ONLY.</luca-reminder>',
+    learn: '<luca-reminder>You are in learn mode. Capture patterns/decisions/pitfalls in MuninnDB + learn.md. Be concrete. ≤200 lines.</luca-reminder>',
     finalize:
         '<luca-reminder>You are in finalize mode. Gap audit + postmortem, close the milestone (versioned roadmap + audit snapshot under .luca/milestones/), surface the PR, then reset to idle.</luca-reminder>',
 }
@@ -273,15 +267,9 @@ const STEP_REMINDERS: Record<RefresherStep, string> = {
  * surface; output is identical for identical input.
  */
 export function computeContextRefresher(
-    input: ContextRefresherInput,
+    input: ContextRefresherInput
 ): ContextRefresherVerdict | null {
-    const {
-        currentStep,
-        priorState,
-        now,
-        complexity,
-        oversight,
-    } = input
+    const { currentStep, priorState, now, complexity, oversight } = input
     const thresholds = input.thresholds ?? CONTEXT_REFRESHER_DEFAULTS
 
     if (!isKnownPipelineStep(currentStep)) {
@@ -295,7 +283,7 @@ export function computeContextRefresher(
                 'unknown-current-step',
                 priorState,
                 complexity,
-                oversight,
+                oversight
             ),
         }
     }
@@ -319,7 +307,7 @@ export function computeContextRefresher(
                       'no-refresh-idle-step',
                       priorState,
                       complexity,
-                      oversight,
+                      oversight
                   ),
                   nextState,
               }
@@ -337,8 +325,7 @@ export function computeContextRefresher(
     // Decision: fire when EITHER the step changed since the last fire
     // (re-anchor the agent on the new mode) OR the counter has crossed
     // the threshold within the current step.
-    const shouldFire =
-        stepChanged || counter >= thresholds.toolCallsPerRefresh
+    const shouldFire = stepChanged || counter >= thresholds.toolCallsPerRefresh
 
     if (!shouldFire) {
         const reason: ContextRefresherReason =
@@ -355,7 +342,7 @@ export function computeContextRefresher(
                 reason,
                 priorState,
                 complexity,
-                oversight,
+                oversight
             ),
             // Carry the incremented counter forward unchanged; the
             // handler already incremented it before calling us.
@@ -381,7 +368,7 @@ export function computeContextRefresher(
             'refresh-emitted',
             priorState,
             complexity,
-            oversight,
+            oversight
         ),
         // Reset the counter; mark this step + timestamp as the most
         // recent fire so the next invocation knows the cooldown is
@@ -401,7 +388,7 @@ export function computeContextRefresher(
  */
 function maybeReturnNull(
     nextState: ContextRefresherCarryState,
-    priorState: ContextRefresherCarryState,
+    priorState: ContextRefresherCarryState
 ): ContextRefresherCarryState | null {
     if (
         nextState.toolCallCount === priorState.toolCallCount &&
@@ -440,7 +427,7 @@ const ALL_PIPELINE_STEPS_TABLE: Record<PipelineStep, true> = {
     finalize: true,
 }
 const ALL_PIPELINE_STEPS_SET = new Set<string>(
-    Object.keys(ALL_PIPELINE_STEPS_TABLE),
+    Object.keys(ALL_PIPELINE_STEPS_TABLE)
 )
 
 // Dev-time guard: STEP_REMINDERS must cover every non-idle PipelineStep.
@@ -454,7 +441,7 @@ for (const step of Object.keys(ALL_PIPELINE_STEPS_TABLE) as PipelineStep[]) {
         throw new Error(
             `context-refresher: STEP_REMINDERS is missing an entry for ` +
                 `pipelineStep '${step}'. Add a reminder or extend the ` +
-                `coarse-phase map if this step shouldn't emit a reminder.`,
+                `coarse-phase map if this step shouldn't emit a reminder.`
         )
     }
 }
@@ -468,7 +455,7 @@ for (const step of Object.keys(STEP_REMINDERS) as RefresherStep[]) {
         throw new Error(
             `context-refresher: STEP_REMINDERS includes step '${step}' ` +
                 `whose coarse phase is IDLE. IDLE steps never emit ` +
-                `reminders — drop the entry from STEP_REMINDERS.`,
+                `reminders — drop the entry from STEP_REMINDERS.`
         )
     }
 }
@@ -479,7 +466,7 @@ function buildTelemetry(
     reason: ContextRefresherReason,
     priorState: ContextRefresherCarryState,
     complexity: ComplexityLevel | undefined,
-    oversight: OversightMode | undefined,
+    oversight: OversightMode | undefined
 ): ContextRefresherTelemetry {
     return {
         event,

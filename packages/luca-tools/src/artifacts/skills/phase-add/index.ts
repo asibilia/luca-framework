@@ -97,7 +97,8 @@ Add a new integer phase to the end of the current milestone in the roadmap.
 `
 
 export const phaseAddSkill = defineSkill({
-    name: "phase-add",
-    description: "Append a new phase to the end of the current milestone roadmap.",
+    name: 'phase-add',
+    description:
+        'Append a new phase to the end of the current milestone roadmap.',
     body: BODY,
 })

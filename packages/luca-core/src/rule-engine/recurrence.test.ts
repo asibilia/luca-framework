@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
-import { analyzeRun } from '../analysis/postmortem.ts'
-import type { PostmortemReport } from '../analysis/postmortem.ts'
-
 import {
     detectRecurringPitfalls,
     renderDraftRule,
     renderSuggestedRulesMarkdown,
 } from './recurrence.ts'
+
+import { analyzeRun } from '../analysis/postmortem.ts'
+import type { PostmortemReport } from '../analysis/postmortem.ts'
 
 /** Build a real PostmortemReport for a run from a list of ledger event names. */
 function reportWith(runId: string, events: string[]): PostmortemReport {

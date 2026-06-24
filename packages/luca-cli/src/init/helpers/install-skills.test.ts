@@ -81,7 +81,9 @@ describe('installSkills', () => {
         await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
         await installSkills({ claudeHome, claudeArtifactsRoot, skillsRoot })
 
-        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
+        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(
+            true
+        )
     })
 
     test('preserves user-authored files not part of the install set', async () => {
@@ -96,7 +98,9 @@ describe('installSkills', () => {
         expect(
             existsSync(join(claudeHome, 'commands/my-custom-command.md'))
         ).toBe(true)
-        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(true)
+        expect(existsSync(join(claudeHome, 'commands/phase-plan.md'))).toBe(
+            true
+        )
     })
 
     test('replaces a dangling symlink squatting a skill directory (regression: EEXIST crash)', async () => {

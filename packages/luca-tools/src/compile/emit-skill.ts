@@ -20,13 +20,13 @@
  */
 import { join } from 'node:path'
 
-import type { SkillDefinition } from '../define/index.ts'
-
+import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
 import {
     type FrontmatterEntry,
     renderFrontmatter,
 } from './render-frontmatter.ts'
-import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
+
+import type { SkillDefinition } from '../define/index.ts'
 
 /**
  * Emit `<outputRoot>/skills/<name>/SKILL.md` from a skill definition.
@@ -34,7 +34,7 @@ import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
  */
 export async function emitSkill(
     def: SkillDefinition,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<EmitResult> {
     const entries: FrontmatterEntry[] = [
         ['name', def.name],

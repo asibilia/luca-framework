@@ -34,8 +34,9 @@ import { pathToFileURL } from 'node:url'
 
 import type * as ts from 'typescript'
 
-import { stringifyError } from '../utils/stringify-error.ts'
 import type { RuleDefinition, RuleFile, RuleFinding } from './define-rule.ts'
+
+import { stringifyError } from '../utils/stringify-error.ts'
 
 // TypeScript is a devDependency of this package, but rule consumers
 // might invoke the runner from a project that doesn't have `typescript`
@@ -347,10 +348,7 @@ function makeRuleFile(opts: {
 }
 
 /** Run a set of loaded rules against the working tree. */
-export function runRules(opts: {
-    repoRoot: string
-    rules: RuleDefinition[]
-}): {
+export function runRules(opts: { repoRoot: string; rules: RuleDefinition[] }): {
     timings: Record<string, number>
     findings: RuleFinding[]
     executionErrors: RuleExecutionError[]

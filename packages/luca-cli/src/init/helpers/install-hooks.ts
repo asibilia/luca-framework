@@ -79,7 +79,8 @@ interface ClaudeSettings {
 export async function installHooks(opts: InstallHooksOptions): Promise<void> {
     const log = opts.log ?? (() => {})
 
-    const artifactsRoot = opts.claudeArtifactsRoot ?? resolveBundledArtifactsForHooks()
+    const artifactsRoot =
+        opts.claudeArtifactsRoot ?? resolveBundledArtifactsForHooks()
     if (artifactsRoot === null) {
         log(
             '  skip:  bundled hook artifacts not found — could not locate the @alecsibilia/luca package root (running from a non-bundled dev tree?)'
@@ -122,7 +123,6 @@ export async function installHooks(opts: InstallHooksOptions): Promise<void> {
     } else {
         log(`  skip:  bundled settings.json missing (${settingsSrc})`)
     }
-
 }
 
 /**

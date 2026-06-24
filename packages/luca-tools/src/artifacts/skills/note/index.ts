@@ -168,7 +168,8 @@ Advisory backlog entry. Not auto-consumed — agent reads via \`luca todo list\`
 `
 
 export const noteSkill = defineSkill({
-    name: "note",
-    description: "Add a new phase to the roadmap (default), or queue a developer note with --next/--whenever.",
+    name: 'note',
+    description:
+        'Add a new phase to the roadmap (default), or queue a developer note with --next/--whenever.',
     body: BODY,
 })

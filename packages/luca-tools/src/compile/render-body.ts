@@ -76,7 +76,7 @@ export function renderBody(input: BodyRenderInput): string {
     const gotchasPrelude = renderGotchasPrelude(input.gotchas ?? [])
     if (gotchasPrelude) sections.push(gotchasPrelude)
     const invocationPrelude = renderPipelineInvocationPrelude(
-        input.pipelineInvocations,
+        input.pipelineInvocations
     )
     if (invocationPrelude) sections.push(invocationPrelude)
     const telemetryPrelude = renderTelemetryPrelude(input.telemetryHooks)
@@ -101,7 +101,7 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
             '- **Vertical-slice planning.** Decompose work into thin end-to-end ' +
                 'slices that exercise every layer (UI → API → data) rather than ' +
                 'horizontal waves by layer. Each slice should be independently ' +
-                'verifiable.',
+                'verifiable.'
         )
     }
     if (guidance.tdd) {
@@ -110,7 +110,7 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
                 'the implementation that turns it green. Refactor only with a ' +
                 'green suite. Tests are intentionally absent in this repo today ' +
                 '(see CLAUDE.md / no-tests rule); the TDD discipline still ' +
-                'applies when re-introduced.',
+                'applies when re-introduced.'
         )
     }
     if (guidance.selfVerify) {
@@ -118,7 +118,7 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
             '- **Self-verification.** Re-read files before editing. Verify ' +
                 'every assumption with a concrete tool call (Read, Grep, Glob, ' +
                 'or a CLI invocation) before acting on it. Do not infer file ' +
-                'state from memory or prior context.',
+                'state from memory or prior context.'
         )
     }
     if (guidance.antiSycophancy) {
@@ -127,7 +127,7 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
                 'evidence — a file path, a diff hunk, a test name, an audit ' +
                 'finding. Bare approvals are reviewer failure modes; the ' +
                 'review counts as not-yet-done until evidence is on the ' +
-                'record.',
+                'record.'
         )
     }
     if (items.length === 0) return ''
@@ -159,7 +159,7 @@ function renderGotchasPrelude(gotchas: readonly string[]): string {
  * argv here.
  */
 function renderPipelineInvocationPrelude(
-    invocations: readonly PipelineInvocation[],
+    invocations: readonly PipelineInvocation[]
 ): string {
     if (invocations.length === 0) return ''
     const lines: string[] = ['## Pipeline Invocations', '']
@@ -227,9 +227,7 @@ function describeInvocation(inv: PipelineInvocation): string {
  * silently. Naming them by symbolic point lets a single compiler
  * change re-emit them consistently across all agents.
  */
-function renderTelemetryPrelude(
-    hooks: readonly TelemetryHook[],
-): string {
+function renderTelemetryPrelude(hooks: readonly TelemetryHook[]): string {
     if (hooks.length === 0) return ''
     const lines: string[] = ['## Telemetry', '']
     for (const hook of hooks) {

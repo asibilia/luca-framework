@@ -98,7 +98,8 @@ Shows AI's intended approach for a phase so you can course-correct if needed.
 `
 
 export const phaseAssumptionsSkill = defineSkill({
-    name: "phase-assumptions",
-    description: "Preview AI planning assumptions for a phase before committing to execution.",
+    name: 'phase-assumptions',
+    description:
+        'Preview AI planning assumptions for a phase before committing to execution.',
     body: BODY,
 })

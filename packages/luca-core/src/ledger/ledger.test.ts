@@ -1,10 +1,15 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { LedgerEntrySchema } from './schemas.ts'
 import {
     appendLedger,
     computeSessionMetrics,
@@ -13,6 +18,7 @@ import {
     readLedger,
     readLedgerForRun,
 } from './ledger.ts'
+import { LedgerEntrySchema } from './schemas.ts'
 
 const tmpDirs: string[] = []
 
@@ -102,7 +108,9 @@ describe('readLedgerForRun + getLedgerByEvent', () => {
         appendLedger({ cwd, runId: 'run_a', event: 'phase-complete' })
         appendLedger({ cwd, runId: 'run_a', event: 'mode-transition' })
         appendLedger({ cwd, runId: 'run_b', event: 'phase-complete' })
-        expect(getLedgerByEvent({ cwd, event: 'phase-complete' }).length).toBe(2)
+        expect(getLedgerByEvent({ cwd, event: 'phase-complete' }).length).toBe(
+            2
+        )
         expect(
             getLedgerByEvent({ cwd, event: 'phase-complete', runId: 'run_b' })
                 .length

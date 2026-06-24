@@ -2,11 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import type { PrReviewComment } from '@alecsibilia/luca-core/review-analysis'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { lucaPrReviewFilterStaleTool } from './luca-pr-review-filter-stale.ts'
-
-import type { PrReviewComment } from '@alecsibilia/luca-core/review-analysis'
 
 const FIXTURE_PATH = 'src/sample.ts'
 const FIXTURE_CONTENT = [

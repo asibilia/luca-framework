@@ -531,7 +531,8 @@ Debate: {ran/skipped} {if ran: {N} disagreements resolved, {N} withdrawn, {N} mo
 `
 
 export const milestoneAuditSkill = defineSkill({
-    name: "milestone-audit",
-    description: "Audit milestone completion against original requirements and acceptance criteria.",
+    name: 'milestone-audit',
+    description:
+        'Audit milestone completion against original requirements and acceptance criteria.',
     body: BODY,
 })

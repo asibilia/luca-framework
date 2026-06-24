@@ -27,9 +27,9 @@
  */
 import { join } from 'node:path'
 
-import type { RuleArtifact } from '../define/index.ts'
-
 import type { EmitResult } from './emit-util.ts'
+
+import type { RuleArtifact } from '../define/index.ts'
 
 /**
  * Acknowledge a rule artifact during compile. Returns an EmitResult
@@ -44,7 +44,7 @@ import type { EmitResult } from './emit-util.ts'
  */
 export async function emitRule(
     art: RuleArtifact,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<EmitResult> {
     const flatId = art.rule.id.replace(/\//g, '__')
     const path = join(outputRoot, '.luca', 'rules', `${flatId}.ts`)

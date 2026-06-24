@@ -106,9 +106,9 @@ describe('luca_todo_list', () => {
         expect(
             lucaTodoListTool.inputSchema.safeParse({ limit: 201 }).success
         ).toBe(false)
-        expect(lucaTodoListTool.inputSchema.safeParse({ limit: 0 }).success).toBe(
-            true
-        )
+        expect(
+            lucaTodoListTool.inputSchema.safeParse({ limit: 0 }).success
+        ).toBe(true)
     })
 
     test('has no allowedPhases (callable in any pipelineStep)', () => {

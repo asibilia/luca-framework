@@ -55,11 +55,11 @@ export const legacyPackageCheck: DoctorCheck = {
 
         const umbrellaInstalled = isInstalled(nm, UMBRELLA)
         const conflict = umbrellaInstalled
-            ? `Both ${UMBRELLA} and ${LEGACY} are installed globally — they `
-              + `provide the same \`luca\` binary, so the active one is whichever `
-              + `was installed last.`
-            : `The pre-v13 ${LEGACY} is still installed globally; install `
-              + `${UMBRELLA} for the v13 CLI.`
+            ? `Both ${UMBRELLA} and ${LEGACY} are installed globally — they ` +
+              `provide the same \`luca\` binary, so the active one is whichever ` +
+              `was installed last.`
+            : `The pre-v13 ${LEGACY} is still installed globally; install ` +
+              `${UMBRELLA} for the v13 CLI.`
 
         // Only the message claims a "conflict" when the umbrella is actually
         // present; otherwise it is just a leftover legacy install.

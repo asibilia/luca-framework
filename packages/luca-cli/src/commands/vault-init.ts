@@ -129,6 +129,8 @@ export const vaultInitCommand = defineCommand({
             )
         }
 
-        p.outro('Vault configured! Run `lu "<your task>"` to start the pipeline.')
+        p.outro(
+            'Vault configured! Run `lu "<your task>"` to start the pipeline.'
+        )
     },
 })

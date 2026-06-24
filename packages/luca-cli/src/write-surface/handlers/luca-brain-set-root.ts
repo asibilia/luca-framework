@@ -18,8 +18,7 @@ const ULID_RE = /^[0-7][0-9ABCDEFGHJKMNPQRSTVWXYZ]{25}$/i
 const BrainConceptSchema = z
     .string()
     .regex(/^brain:[a-z0-9](?:[a-z0-9:-]*[a-z0-9])?$/, {
-        message:
-            'must be a brain tree concept like "brain:project-identity"',
+        message: 'must be a brain tree concept like "brain:project-identity"',
     })
 
 const inputSchema = z.object({

@@ -21,10 +21,7 @@ describe('resolveBacklogRoot', () => {
     })
 
     async function writeConfig(config: unknown): Promise<void> {
-        await writeFile(
-            join(cwd, '.luca/config.json'),
-            JSON.stringify(config)
-        )
+        await writeFile(join(cwd, '.luca/config.json'), JSON.stringify(config))
     }
 
     test('returns the cached rootId when the recorded vault matches', async () => {

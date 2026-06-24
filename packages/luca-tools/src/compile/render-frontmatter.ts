@@ -68,7 +68,7 @@ export type FrontmatterEntry = readonly [key: string, value: FrontmatterValue]
  * @returns the frontmatter block as a string, terminated by `\n`
  */
 export function renderFrontmatter(
-    entries: readonly FrontmatterEntry[],
+    entries: readonly FrontmatterEntry[]
 ): string {
     const lines: string[] = ['---']
     for (const [key, value] of entries) {
@@ -76,10 +76,7 @@ export function renderFrontmatter(
         // Skip empty arrays/maps so we don't pollute the frontmatter
         // with [] / {} when the field is simply not in use.
         if (Array.isArray(value) && value.length === 0) continue
-        if (
-            isPlainRecord(value) &&
-            Object.keys(value).length === 0
-        ) {
+        if (isPlainRecord(value) && Object.keys(value).length === 0) {
             continue
         }
         lines.push(emitKeyValue(key, value, 0))
@@ -96,7 +93,7 @@ export function renderFrontmatter(
 function emitKeyValue(
     key: string,
     value: FrontmatterValue,
-    depth: number,
+    depth: number
 ): string {
     const indent = '  '.repeat(depth)
     if (typeof value === 'string') {
@@ -175,7 +172,7 @@ function emitKeyValue(
 function emitLiteralBlockScalar(
     key: string,
     value: string,
-    depth: number,
+    depth: number
 ): string {
     const headerIndent = '  '.repeat(depth)
     const contentIndent = '  '.repeat(depth + 1)
@@ -183,12 +180,10 @@ function emitLiteralBlockScalar(
     const indicator = endsWithNewline ? '|' : '|-'
     // Strip any trailing newlines for splitting; the chomp indicator
     // (or its absence) tells YAML how to reconstruct them.
-    const content = endsWithNewline
-        ? value.slice(0, -1)
-        : value
-    const contentLines = content.split('\n').map((line) =>
-        line === '' ? '' : `${contentIndent}${line}`
-    )
+    const content = endsWithNewline ? value.slice(0, -1) : value
+    const contentLines = content
+        .split('\n')
+        .map((line) => (line === '' ? '' : `${contentIndent}${line}`))
     return [`${headerIndent}${key}: ${indicator}`, ...contentLines].join('\n')
 }
 
@@ -261,7 +256,7 @@ function needsQuoting(s: string): boolean {
     if (/\s#/.test(s)) return true
     if (/[\n\t\r'"]/.test(s)) return true
     // Leading indicator characters:
-    if (/^[?,\[\]{}#&*!|>'"%@`]/.test(s)) return true
+    if (/^[?,[\]{}#&*!|>'"%@`]/.test(s)) return true
     // Leading `-` is only an indicator when followed by whitespace
     // (the YAML block-sequence-entry pattern). `-foo` or `--flag` are
     // legal plain scalars.
@@ -291,7 +286,7 @@ function needsQuoting(s: string): boolean {
  * detect the empty-map case so we can skip it.
  */
 function isPlainRecord(
-    value: FrontmatterValue,
+    value: FrontmatterValue
 ): value is Record<string, FrontmatterScalar | FrontmatterScalar[]> {
     if (value === null) return false
     if (typeof value !== 'object') return false

@@ -265,7 +265,9 @@ export const initCommand = defineCommand({
                     .join(', ')})`
             )
         } else {
-            p.log.info('Step 4/5: Agent integration (skipped — no active harness)')
+            p.log.info(
+                'Step 4/5: Agent integration (skipped — no active harness)'
+            )
         }
 
         // ── Step 5: Per-project skeleton ─────────────────────────────────────

@@ -21,14 +21,14 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { phasePathFor } from '../luca-dir/index.ts'
-
 import {
     ConfidenceEntrySchema,
     type ConfidenceEntry,
     type ConfidenceLevel,
     type ConfidenceSummary,
 } from './schemas.ts'
+
+import { phasePathFor } from '../luca-dir/index.ts'
 
 // ---------------------------------------------------------------------------
 // Read / write

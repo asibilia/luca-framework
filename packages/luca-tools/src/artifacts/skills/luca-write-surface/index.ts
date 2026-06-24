@@ -232,7 +232,7 @@ happen.
 `
 
 export const lucaWriteSurfaceSkill = defineSkill({
-    name: "luca-write-surface",
+    name: 'luca-write-surface',
     description: `Reference for the \`luca\` CLI write surface — the deterministic command track for structured and operational mutations of the .luca/ workflow directory (state, roadmap, preferences, todos, checks, pr-review, repo-cleanup, workflow-reset, branch-guard, confidence). Each command is a noun/verb pair invoked via Bash; payloads are small flags or a --file JSON path. Documents every subcommand, its arguments, and its pipelineStep rules.
 
 Use when a Luca skill or agent needs to read or mutate .luca/ workflow state, advance the pipeline, manage the backlog, or run verification — i.e. anything that is NOT a freeform phase artifact file.`,

@@ -146,7 +146,7 @@ const TRANSCRIPT_TAIL_BYTES = 262_144
  * brand-new session).
  */
 async function readContextTokens(
-    transcriptPath: string | undefined,
+    transcriptPath: string | undefined
 ): Promise<number | null> {
     if (!transcriptPath || !existsSync(transcriptPath)) return null
     try {
@@ -216,9 +216,7 @@ const BAR_SLOTS = 10
  */
 function contextSegment(used: number | null, limit: number): string {
     const pct =
-        used === null
-            ? 0
-            : Math.min(100, Math.round((used / limit) * 100))
+        used === null ? 0 : Math.min(100, Math.round((used / limit) * 100))
     const filled = Math.min(BAR_SLOTS, Math.round((pct / 100) * BAR_SLOTS))
     const color = pct >= 80 ? RED : pct >= 60 ? YELLOW : GREEN
     const bar =
@@ -281,8 +279,7 @@ async function main(): Promise<void> {
         // Malformed stdin — render what we can from defaults.
     }
 
-    const dir =
-        payload.workspace?.current_dir ?? payload.cwd ?? process.cwd()
+    const dir = payload.workspace?.current_dir ?? payload.cwd ?? process.cwd()
     const projectDir = payload.workspace?.project_dir ?? dir
 
     const modelName =

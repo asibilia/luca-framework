@@ -68,7 +68,8 @@ Capture idea or task as todo from current conversation.
 `
 
 export const todoAddSkill = defineSkill({
-    name: "todo-add",
-    description: "Capture an idea or task as a todo for later without acting on it now.",
+    name: 'todo-add',
+    description:
+        'Capture an idea or task as a todo for later without acting on it now.',
     body: BODY,
 })

@@ -29,10 +29,7 @@
  *     `review-finding:*` engrams.
  */
 import { defineAgent } from '../../define/index.ts'
-import {
-    CORE_OPERATING_RULES,
-    getAgentConstraints,
-} from '../shared/index.ts'
+import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Review Mode
 

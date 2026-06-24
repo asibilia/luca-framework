@@ -1864,7 +1864,8 @@ git commit -m "docs({phase}): complete {phase-name} phase"
 `
 
 export const phaseExecuteSkill = defineSkill({
-    name: "phase-execute",
-    description: "Execute all plans in a phase with wave-based parallelization and harness verification.",
+    name: 'phase-execute',
+    description:
+        'Execute all plans in a phase with wave-based parallelization and harness verification.',
     body: BODY,
 })

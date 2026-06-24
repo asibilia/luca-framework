@@ -48,7 +48,10 @@ export function selectConfidenceGateActions(
             if (entry.resolution === 'auto') auto.push(entry)
             else if (entry.resolution === 'research') research.push(entry)
             else if (entry.resolution === 'ask') ask.push(entry)
-            else { const _exhaustive: never = entry.resolution; ask.push(entry) } // fail-toward-human
+            else {
+                const _exhaustive: never = entry.resolution
+                ask.push(entry)
+            } // fail-toward-human
         } else if (entry.confidence === 'high') {
             auto.push(entry)
         } else if (entry.confidence === 'medium') {
@@ -64,6 +67,10 @@ export function selectConfidenceGateActions(
         auto,
         research,
         ask,
-        counts: { auto: auto.length, research: research.length, ask: ask.length },
+        counts: {
+            auto: auto.length,
+            research: research.length,
+            ask: ask.length,
+        },
     }
 }

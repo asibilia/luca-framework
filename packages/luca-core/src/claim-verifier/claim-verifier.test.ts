@@ -81,9 +81,9 @@ describe('extractClaims', () => {
 
     test('deduplicates a symbol cited multiple times', () => {
         const claims = extractClaims('`processWidget` then `processWidget`.')
-        expect(claims.filter((c) => c.identifier === 'processWidget')).toHaveLength(
-            1
-        )
+        expect(
+            claims.filter((c) => c.identifier === 'processWidget')
+        ).toHaveLength(1)
     })
 })
 
@@ -137,9 +137,9 @@ describe('verifyClaims + verifyTextArtifact', () => {
         const report = verifyTextArtifact('This PR touches 5 files.', {
             repoRoot: repo,
         })
-        expect(
-            report.failures.some((f) => f.reason === 'count-mismatch')
-        ).toBe(true)
+        expect(report.failures.some((f) => f.reason === 'count-mismatch')).toBe(
+            true
+        )
     })
 
     test('reports an all-pass artifact and the extracted breakdown', () => {

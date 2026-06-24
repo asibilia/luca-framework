@@ -151,20 +151,22 @@ async function main(): Promise<number> {
     // continuation was emitted (and why not, when applicable) so the
     // postmortem analyzer has signal on hook coverage. Failure-open.
     try {
-        const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
-            ? (state as { sessionId: string }).sessionId
-            : ''
+        const runId =
+            typeof (state as { sessionId?: unknown }).sessionId === 'string'
+                ? (state as { sessionId: string }).sessionId
+                : ''
         appendLedger({
             cwd,
             runId,
             event: 'hook.continuation-messages.fired',
             data: {
                 pipelineStep: state.pipelineStep,
-                decision: verdict === null
-                    ? 'skipped'
-                    : verdict.reason === 'unknown-current-step'
+                decision:
+                    verdict === null
                         ? 'skipped'
-                        : 'emitted',
+                        : verdict.reason === 'unknown-current-step'
+                          ? 'skipped'
+                          : 'emitted',
                 reason: verdict === null ? 'no-continuation' : verdict.reason,
             },
         })
@@ -211,5 +213,5 @@ main().then(
         // shouldn't see internal errors.
         void err
         process.exit(0)
-    },
+    }
 )

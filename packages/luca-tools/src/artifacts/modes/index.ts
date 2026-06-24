@@ -14,7 +14,6 @@
  * The exported `MODES` array is the source the artifact manifest
  * pulls from; the order here is the order on disk.
  */
-import type { Artifact } from '../../define/index.ts'
 
 import { architectMode } from './architect.ts'
 import { buildMode } from './build.ts'
@@ -26,6 +25,8 @@ import { planMode } from './plan.ts'
 import { researchMode } from './research.ts'
 import { reviewMode } from './review.ts'
 import { triageMode } from './triage.ts'
+
+import type { Artifact } from '../../define/index.ts'
 
 export {
     architectMode,

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { RunIdSchema } from '../../luca-dir/index.ts'
-
 import { generateRunId } from './generate-run-id.ts'
+
+import { RunIdSchema } from '../../luca-dir/index.ts'
 
 describe('generateRunId', () => {
     test('produces a run_<ts>_<rand> base36 identifier', () => {
@@ -14,9 +14,7 @@ describe('generateRunId', () => {
     })
 
     test('produces distinct ids across many calls', () => {
-        const ids = new Set(
-            Array.from({ length: 200 }, () => generateRunId())
-        )
+        const ids = new Set(Array.from({ length: 200 }, () => generateRunId()))
         expect(ids.size).toBe(200)
     })
 })

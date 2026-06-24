@@ -132,7 +132,8 @@ This skill creates a handoff for resuming later. No immediate action needed.
 `
 
 export const sessionPauseSkill = defineSkill({
-    name: "session-pause",
-    description: "Create a context handoff snapshot when pausing work mid-phase for later resumption.",
+    name: 'session-pause',
+    description:
+        'Create a context handoff snapshot when pausing work mid-phase for later resumption.',
     body: BODY,
 })

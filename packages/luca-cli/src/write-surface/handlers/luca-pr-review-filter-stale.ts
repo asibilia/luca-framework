@@ -1,8 +1,9 @@
-import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import {
     filterStaleComments,
     type PrReviewComment,
 } from '@alecsibilia/luca-core/review-analysis'
+
+import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 
 const commentSchema = z.object({
     id: z.number(),

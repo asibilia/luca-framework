@@ -6,9 +6,8 @@
  * logic ported in Phase B — §5.3 flagged it as a dropped tool with no v13
  * handler.
  */
-import { defineCommand } from 'citty'
-
 import { classifyComplexity } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
 
 import { logger } from '../utils/logger.ts'
 

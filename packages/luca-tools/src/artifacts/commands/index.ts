@@ -27,15 +27,14 @@
  * Order is fixed (alphabetical) so the compile output is byte-stable
  * across runs.
  */
-import type { Artifact } from '../../define/index.ts'
 
 import { bugDiagnoseCommand } from './bug-diagnose.ts'
 import { ghIssueTriageCommand } from './gh-issue-triage.ts'
 import { ghPrAddressCommand } from './gh-pr-address.ts'
 import { ghPrepareCommand } from './gh-prepare.ts'
 import { grillMeCommand } from './grill-me.ts'
-import { luCommand } from './lu.ts'
 import { luReviewCommand } from './lu-review.ts'
+import { luCommand } from './lu.ts'
 import { lucaInitCommand } from './luca-init.ts'
 import { lucaTelemetryReportCommand } from './luca-telemetry-report.ts'
 import { memoryAuditCommand } from './memory-audit.ts'
@@ -46,6 +45,8 @@ import { phasePlanCommand } from './phase-plan.ts'
 import { repoCleanupCommand } from './repo-cleanup.ts'
 import { todoAddCommand } from './todo-add.ts'
 import { todoCheckCommand } from './todo-check.ts'
+
+import type { Artifact } from '../../define/index.ts'
 
 export {
     bugDiagnoseCommand,

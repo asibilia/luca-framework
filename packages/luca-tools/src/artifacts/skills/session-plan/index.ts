@@ -119,7 +119,8 @@ If \`{ARGUMENTS}\` specifies more than 1 session:
 `
 
 export const sessionPlanSkill = defineSkill({
-    name: "session-plan",
-    description: "Plan the next coding session using WSJF prioritization of pending todos and roadmap items.",
+    name: 'session-plan',
+    description:
+        'Plan the next coding session using WSJF prioritization of pending todos and roadmap items.',
     body: BODY,
 })

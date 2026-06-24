@@ -11,67 +11,69 @@
 import { z } from 'zod'
 
 /** A single acceptance-criterion verdict. */
-export const VerificationCriterionSchema = z.object({
-    /** Stable identifier (e.g. "ac-01", "test-pass"). */
-    criterionId: z.string(),
-    /** Human-readable description. */
-    description: z.string(),
-    /** Whether the criterion is satisfied. */
-    met: z.boolean(),
-    /** File / line / test evidence supporting the verdict. */
-    evidence: z.string(),
-    /** If not met, what is missing. */
-    gap: z.string().optional(),
-    /** Whether this criterion blocks proceeding. */
-    blocking: z.boolean(),
-    /**
-     * Whether verification of this criterion is deferred to a later probe
-     * (e.g. post-deploy smoke check). When set, `deferredFollowUp` (the todo
-     * id of the tracked follow-up) is REQUIRED, and the criterion MUST have
-     * `met: false` until the deferred probe runs.
-     */
-    deferred: z.boolean().optional(),
-    /** Todo id of the tracked follow-up for a deferred criterion. */
-    deferredFollowUp: z.string().optional(),
-    /** Kind of probe used (or planned) to verify this criterion. */
-    probeType: z
-        .enum([
-            'file-read',
-            'grep-symbol',
-            'command',
-            'http',
-            'deploy',
-            'ui-screenshot',
-            'db-select',
-            'config-read',
-        ])
-        .optional(),
-}).superRefine((criterion, ctx) => {
-    // Cross-field invariants on the deferred-verify fields ONLY. These fire
-    // exclusively on the `deferred: true` branch, so a payload WITHOUT
-    // `deferred` (or with `deferred: false`) parses exactly as before — no
-    // pre-existing field's type or optionality changes (anti-02 holds).
-    if (criterion.deferred !== true) return
-    if (
-        criterion.deferredFollowUp === undefined ||
-        criterion.deferredFollowUp.length === 0
-    ) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['deferredFollowUp'],
-            message:
-                'deferredFollowUp is required (non-empty) when deferred is true — record the tracked follow-up source (e.g. "deferred-verify:<slug>:<ac-id>")',
-        })
-    }
-    if (criterion.met !== false) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['met'],
-            message:
-                'met must be false when deferred is true — a deferred criterion cannot flip to met until the deferred probe runs',
-        })
-    }
-})
+export const VerificationCriterionSchema = z
+    .object({
+        /** Stable identifier (e.g. "ac-01", "test-pass"). */
+        criterionId: z.string(),
+        /** Human-readable description. */
+        description: z.string(),
+        /** Whether the criterion is satisfied. */
+        met: z.boolean(),
+        /** File / line / test evidence supporting the verdict. */
+        evidence: z.string(),
+        /** If not met, what is missing. */
+        gap: z.string().optional(),
+        /** Whether this criterion blocks proceeding. */
+        blocking: z.boolean(),
+        /**
+         * Whether verification of this criterion is deferred to a later probe
+         * (e.g. post-deploy smoke check). When set, `deferredFollowUp` (the todo
+         * id of the tracked follow-up) is REQUIRED, and the criterion MUST have
+         * `met: false` until the deferred probe runs.
+         */
+        deferred: z.boolean().optional(),
+        /** Todo id of the tracked follow-up for a deferred criterion. */
+        deferredFollowUp: z.string().optional(),
+        /** Kind of probe used (or planned) to verify this criterion. */
+        probeType: z
+            .enum([
+                'file-read',
+                'grep-symbol',
+                'command',
+                'http',
+                'deploy',
+                'ui-screenshot',
+                'db-select',
+                'config-read',
+            ])
+            .optional(),
+    })
+    .superRefine((criterion, ctx) => {
+        // Cross-field invariants on the deferred-verify fields ONLY. These fire
+        // exclusively on the `deferred: true` branch, so a payload WITHOUT
+        // `deferred` (or with `deferred: false`) parses exactly as before — no
+        // pre-existing field's type or optionality changes (anti-02 holds).
+        if (criterion.deferred !== true) return
+        if (
+            criterion.deferredFollowUp === undefined ||
+            criterion.deferredFollowUp.length === 0
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['deferredFollowUp'],
+                message:
+                    'deferredFollowUp is required (non-empty) when deferred is true — record the tracked follow-up source (e.g. "deferred-verify:<slug>:<ac-id>")',
+            })
+        }
+        if (criterion.met !== false) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['met'],
+                message:
+                    'met must be false when deferred is true — a deferred criterion cannot flip to met until the deferred probe runs',
+            })
+        }
+    })
 export type VerificationCriterion = z.infer<typeof VerificationCriterionSchema>
 
 /** Per-deliverable compliance verdict against the plan's deliverable manifest. */

@@ -169,9 +169,10 @@ async function main(): Promise<number> {
     // logging every tick would flood the ledger. Failure-open.
     if (verdict !== null && verdict.reason === 'refresh-emitted') {
         try {
-            const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
-                ? (state as { sessionId: string }).sessionId
-                : ''
+            const runId =
+                typeof (state as { sessionId?: unknown }).sessionId === 'string'
+                    ? (state as { sessionId: string }).sessionId
+                    : ''
             appendLedger({
                 cwd,
                 runId,
@@ -246,7 +247,7 @@ async function readSidecar(cwd: string): Promise<SidecarFile> {
  */
 async function writeSidecar(
     cwd: string,
-    state: ContextRefresherCarryState,
+    state: ContextRefresherCarryState
 ): Promise<void> {
     const p = join(cwd, SIDECAR_RELATIVE_PATH)
     const dir = dirname(p)
@@ -281,5 +282,5 @@ main().then(
         // errors.
         void err
         process.exit(0)
-    },
+    }
 )

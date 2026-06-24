@@ -73,7 +73,7 @@ export const AgentDefinitionSchema = z.object({
         .min(1)
         .regex(
             /^[a-z][a-z0-9-]*$/,
-            'agent id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter',
+            'agent id must be kebab-case: lowercase letters, digits, hyphens; must start with a letter'
         ),
     /** Human-readable name shown in the mode picker. */
     name: z.string().min(1),
@@ -95,7 +95,7 @@ export const AgentDefinitionSchema = z.object({
         .string()
         .regex(
             /^#[0-9a-fA-F]{6}$/,
-            'color must be a 6-digit hex code with a leading #',
+            'color must be a 6-digit hex code with a leading #'
         )
         .optional(),
     /**
@@ -151,7 +151,7 @@ export type AgentDefinition = z.infer<typeof AgentDefinitionSchema>
  * `defineSubagent`.
  */
 export function defineAgent(
-    def: z.input<typeof AgentDefinitionSchema>,
+    def: z.input<typeof AgentDefinitionSchema>
 ): AgentDefinition {
     const parsed = AgentDefinitionSchema.safeParse(def)
     if (!parsed.success) {

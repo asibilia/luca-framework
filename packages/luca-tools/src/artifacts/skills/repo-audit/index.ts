@@ -94,7 +94,8 @@ If \`--fix\` is passed and issues are auto-fixable (naming, empty dirs):
 `
 
 export const repoAuditSkill = defineSkill({
-    name: "repo-audit",
-    description: "Run repo structure audit to detect naming violations, orphaned files, and convention drift. Supports quick and full audit modes.",
+    name: 'repo-audit',
+    description:
+        'Run repo structure audit to detect naming violations, orphaned files, and convention drift. Supports quick and full audit modes.',
     body: BODY,
 })

@@ -15,7 +15,6 @@
  * Order is fixed (alphabetical) so the compile output is byte-stable
  * across runs.
  */
-import type { Artifact } from '../../define/index.ts'
 
 import { archAuditSkill } from './arch-audit/index.ts'
 import { bugDiagnoseSkill } from './bug-diagnose/index.ts'
@@ -58,6 +57,8 @@ import { sessionResumeSkill } from './session-resume/index.ts'
 import { todoAddSkill } from './todo-add/index.ts'
 import { todoCheckSkill } from './todo-check/index.ts'
 import { workflowSaveSkill } from './workflow-save/index.ts'
+
+import type { Artifact } from '../../define/index.ts'
 
 export {
     archAuditSkill,

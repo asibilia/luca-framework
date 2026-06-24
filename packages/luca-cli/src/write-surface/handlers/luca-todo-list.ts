@@ -1,4 +1,8 @@
-import { TodoAreaSchema, TodoPriority, TodoStatus } from '@alecsibilia/luca-core'
+import {
+    TodoAreaSchema,
+    TodoPriority,
+    TodoStatus,
+} from '@alecsibilia/luca-core'
 
 import { z, type ToolDescriptor } from '../__schemas/write-surface.schemas.ts'
 import { buildMuninnProcedure } from '../helpers/build-muninn-instruction.ts'
@@ -50,7 +54,7 @@ const inputSchema = z.object({
 export const lucaTodoListTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
     name: 'luca_todo_list',
     description:
-        'List todos from MuninnDB with COMPLETE enumeration. Resolves the backlog root by its cached ULID (never by concept), then muninn_recall_tree walks every is_part_of child; the agent muninn_reads each non-deleted child for its content. This returns all todos regardless of vault size (the old semantic muninn_recall dropped the tail). Optional status/priority/area filters are applied post-read against each todo\'s JSON content. Uninitialized backlog → a plain notice, not a query.',
+        "List todos from MuninnDB with COMPLETE enumeration. Resolves the backlog root by its cached ULID (never by concept), then muninn_recall_tree walks every is_part_of child; the agent muninn_reads each non-deleted child for its content. This returns all todos regardless of vault size (the old semantic muninn_recall dropped the tail). Optional status/priority/area filters are applied post-read against each todo's JSON content. Uninitialized backlog → a plain notice, not a query.",
     inputSchema,
     async handler(args, ctx) {
         const { vault, rootId } = await resolveBacklogRoot({ cwd: ctx.cwd })

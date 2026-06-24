@@ -31,16 +31,16 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { LUCA_DIR_ROOT } from '../luca-dir/index.ts'
+import type { TelemetryRecord } from './schemas.ts'
+import { readTelemetry } from './telemetry.ts'
+
 import {
     getConfidenceSummary,
     readConfidenceJournal,
 } from '../confidence/index.ts'
+import { LUCA_DIR_ROOT } from '../luca-dir/index.ts'
 import type { RoadmapPhase } from '../state/index.ts'
 import { readVerificationResult } from '../verification/index.ts'
-
-import { readTelemetry } from './telemetry.ts'
-import type { TelemetryRecord } from './schemas.ts'
 
 // ---------------------------------------------------------------------------
 // Types

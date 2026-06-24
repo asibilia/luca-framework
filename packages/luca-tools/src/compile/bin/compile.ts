@@ -125,7 +125,7 @@ async function loadManifest(modulePath: string): Promise<readonly Artifact[]> {
         console.error(
             'compile: manifest default export must be an Artifact[] (or a ' +
                 'function returning one). Got: ' +
-                typeof resolved,
+                typeof resolved
         )
         process.exit(1)
     }
@@ -142,7 +142,7 @@ async function loadManifest(modulePath: string): Promise<readonly Artifact[]> {
             console.error(
                 `compile: manifest entry ${i} is not a frozen Artifact ` +
                     '(missing `.kind` string). Was it constructed with one of ' +
-                    'the Define* factories?',
+                    'the Define* factories?'
             )
             process.exit(1)
         }

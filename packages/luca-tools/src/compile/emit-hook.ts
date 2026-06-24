@@ -42,9 +42,9 @@
  * work. For D-2 we lay down the config slice only; if the slice
  * references a `bun-script` path, D-3/E-1 wires the script there.
  */
-import type { HookDefinition } from '../define/index.ts'
-
 import type { EmitResult } from './emit-util.ts'
+
+import type { HookDefinition } from '../define/index.ts'
 
 /**
  * One entry inside a Claude Code hook event array. This matches the
@@ -86,7 +86,7 @@ export interface HookEmitSlice extends EmitResult {
  */
 export async function emitHook(
     def: HookDefinition,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<HookEmitSlice> {
     const command = buildCommand(def)
     const entry: HookSettingsEntry = {

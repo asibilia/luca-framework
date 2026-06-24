@@ -23,14 +23,14 @@
  */
 import { join } from 'node:path'
 
-import type { AgentDefinition } from '../define/index.ts'
-
+import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
 import { renderBody } from './render-body.ts'
 import {
     type FrontmatterEntry,
     renderFrontmatter,
 } from './render-frontmatter.ts'
-import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
+
+import type { AgentDefinition } from '../define/index.ts'
 
 /**
  * Emit `<outputRoot>/.claude/agents/<id>.md` from a mode-agent
@@ -38,7 +38,7 @@ import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
  */
 export async function emitAgent(
     def: AgentDefinition,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<EmitResult> {
     const entries: FrontmatterEntry[] = [
         ['name', def.name],

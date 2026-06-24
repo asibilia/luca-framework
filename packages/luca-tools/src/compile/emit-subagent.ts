@@ -20,14 +20,14 @@
  */
 import { join } from 'node:path'
 
-import type { SubagentDefinition } from '../define/index.ts'
-
+import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
 import { renderBody } from './render-body.ts'
 import {
     type FrontmatterEntry,
     renderFrontmatter,
 } from './render-frontmatter.ts'
-import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
+
+import type { SubagentDefinition } from '../define/index.ts'
 
 /**
  * Emit `<outputRoot>/.claude/agents/<id>.md` from a subagent
@@ -35,7 +35,7 @@ import { ensureDir, type EmitResult, writeFileBytes } from './emit-util.ts'
  */
 export async function emitSubagent(
     def: SubagentDefinition,
-    outputRoot: string,
+    outputRoot: string
 ): Promise<EmitResult> {
     const entries: FrontmatterEntry[] = [
         ['name', def.name],

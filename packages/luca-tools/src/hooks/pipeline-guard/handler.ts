@@ -127,9 +127,10 @@ async function main(): Promise<number> {
     // pipeline-guard rejections and forced transitions over time.
     // Failure-open: any ledger-write error MUST NOT block the hook.
     try {
-        const runId = typeof (state as { sessionId?: unknown }).sessionId === 'string'
-            ? (state as { sessionId: string }).sessionId
-            : ''
+        const runId =
+            typeof (state as { sessionId?: unknown }).sessionId === 'string'
+                ? (state as { sessionId: string }).sessionId
+                : ''
         appendLedger({
             cwd,
             runId,
@@ -175,8 +176,8 @@ main().then(
         process.stderr.write(
             `pipeline-guard handler: internal error (failing open): ${
                 (err as Error).message
-            }\n`,
+            }\n`
         )
         process.exit(0)
-    },
+    }
 )

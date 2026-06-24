@@ -40,7 +40,10 @@
 import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
 
 import { defineSubagent } from '../../define/index.ts'
-import { SUBAGENT_SHARED_PREFIX, VERIFICATION_DOCTRINE } from '../shared/index.ts'
+import {
+    SUBAGENT_SHARED_PREFIX,
+    VERIFICATION_DOCTRINE,
+} from '../shared/index.ts'
 
 export const executorSubagent = defineSubagent({
     id: 'executor',
@@ -57,7 +60,7 @@ export const executorSubagent = defineSubagent({
     },
     telemetryHooks: ['wave-start', 'wave-end'],
     gotchas: [
-        'git commit is stage-gate-blocked in EXECUTING — stage with `git add <explicit files>` only; never `git add .` or `git add -A` (sweeps concurrent executors\' and pipeline-generated work into your commit).',
+        "git commit is stage-gate-blocked in EXECUTING — stage with `git add <explicit files>` only; never `git add .` or `git add -A` (sweeps concurrent executors' and pipeline-generated work into your commit).",
         'You have no MuninnDB/MCP access — do NOT attempt `mcp__muninn__*` to recall commit conventions or prior pitfalls; read `luca preferences read` (commits section) and apply the orchestrator-supplied learnings from your prompt.',
         'Do not write `.luca/` artifacts directly — your only writes are production code; verify.json/audits/learn.md belong to other steps and the stage-gate will reject the path.',
     ],

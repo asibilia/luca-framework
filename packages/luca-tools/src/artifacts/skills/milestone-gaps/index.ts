@@ -66,7 +66,7 @@ Create phases to close gaps identified by milestone audit.
 `
 
 export const milestoneGapsSkill = defineSkill({
-    name: "milestone-gaps",
-    description: "Create phases to close gaps identified by a milestone audit.",
+    name: 'milestone-gaps',
+    description: 'Create phases to close gaps identified by a milestone audit.',
     body: BODY,
 })

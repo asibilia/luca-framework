@@ -133,9 +133,7 @@ export const lucaTodoUpdateTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
             title: args.title,
             ...(args.body !== undefined ? { body: args.body } : {}),
             status: args.status,
-            ...(args.priority !== undefined
-                ? { priority: args.priority }
-                : {}),
+            ...(args.priority !== undefined ? { priority: args.priority } : {}),
             ...(args.area !== undefined ? { area: args.area } : {}),
             ...(args.source !== undefined ? { source: args.source } : {}),
             ...(args.metadata !== undefined ? { metadata: args.metadata } : {}),
@@ -200,7 +198,7 @@ export const lucaTodoUpdateTool: ToolDescriptor<z.infer<typeof inputSchema>> = {
                     'the shell command `luca todo set-root --id <root_id>` to ' +
                     `persist it. Then run step 2, substituting ${ROOT_ID_PLACEHOLDER} ` +
                     "with that root_id. Parse each step's args via " +
-                    "JSON.parse(argsJson); the todo body lives only inside the " +
+                    'JSON.parse(argsJson); the todo body lives only inside the ' +
                     'add_child step argsJson.',
             })
             return {

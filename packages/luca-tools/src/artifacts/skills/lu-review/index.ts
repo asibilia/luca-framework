@@ -57,7 +57,8 @@ $ARGUMENTS
 `
 
 export const luReviewSkill = defineSkill({
-    name: "lu-review",
-    description: "Re-enter the Luca pipeline at the review step to audit completed work.",
+    name: 'lu-review',
+    description:
+        'Re-enter the Luca pipeline at the review step to audit completed work.',
     body: BODY,
 })

@@ -10,8 +10,7 @@ import { mutateState, withStateLock } from './mutate-state.ts'
 describe('mutateState', () => {
     let cwd: string
     const statePath = () => join(cwd, '.luca/state.json')
-    const writeState = (s: unknown) =>
-        writeFile(statePath(), JSON.stringify(s))
+    const writeState = (s: unknown) => writeFile(statePath(), JSON.stringify(s))
     const readState = async () =>
         JSON.parse(await readFile(statePath(), 'utf-8'))
     const baseState = {

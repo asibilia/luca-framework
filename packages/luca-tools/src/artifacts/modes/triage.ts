@@ -28,10 +28,7 @@
  *     borderline and the agent erred toward higher complexity).
  */
 import { defineAgent } from '../../define/index.ts'
-import {
-    CORE_OPERATING_RULES,
-    getAgentConstraints,
-} from '../shared/index.ts'
+import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Triage Agent Instructions
 

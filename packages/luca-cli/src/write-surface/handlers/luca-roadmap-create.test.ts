@@ -122,6 +122,8 @@ describe('luca_roadmap_create', () => {
         const r = await lucaRoadmapCreateTool.handler(parsed, { cwd })
         expect(r.isError).toBe(true)
         // The truncated file is left untouched (not overwritten with defaults).
-        expect(await readFile(join(cwd, '.luca/state.json'), 'utf-8')).toBe('{}')
+        expect(await readFile(join(cwd, '.luca/state.json'), 'utf-8')).toBe(
+            '{}'
+        )
     })
 })

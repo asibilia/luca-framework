@@ -81,9 +81,7 @@ export async function runWriteHandler<TArgs>(
     try {
         result = await tool.handler(parsed.data, { cwd })
     } catch (err) {
-        console.error(
-            `luca ${command}: handler error — ${stringifyError(err)}`
-        )
+        console.error(`luca ${command}: handler error — ${stringifyError(err)}`)
         process.exit(1)
     }
 

@@ -3,8 +3,9 @@ import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { readMuninnToken } from '../../utils/muninn-token.ts'
 import { defaultAntigravityHome, defaultClaudeHome } from './install-skills.ts'
+
+import { readMuninnToken } from '../../utils/muninn-token.ts'
 
 /**
  * MuninnDB MCP server endpoint (Streamable-HTTP transport). Hoisted to a
@@ -220,7 +221,7 @@ export async function wireAntigravityMcp(
     if (!token) {
         log(
             '  skip: Antigravity MCP not registered — no MuninnDB token found.\n' +
-                "        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`."
+                '        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`.'
         )
         return
     }
@@ -420,7 +421,8 @@ export function mergeClaudeMcpRegistration(
         type: 'sse',
         url: MUNINN_MCP_SERVER_URL,
         headers: {
-            ...((existing?.headers as Record<string, string> | undefined) ?? {}),
+            ...((existing?.headers as Record<string, string> | undefined) ??
+                {}),
             Authorization: authHeader,
         },
     }
@@ -488,7 +490,7 @@ export async function wireClaudeMcp(
     if (!token) {
         log(
             '  skip: Claude MCP not registered — no MuninnDB token found.\n' +
-                "        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`."
+                '        Run `muninn init` to generate ~/.muninn/mcp.token, then re-run `luca init`.'
         )
         return
     }

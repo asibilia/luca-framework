@@ -9,8 +9,6 @@
  *   - `telemetry emit`    — append one record to `.luca/telemetry/<runId>.jsonl`
  *   - `telemetry new-run` — mint and print a fresh runId
  */
-import { defineCommand } from 'citty'
-
 import {
     appendTelemetry,
     computeOutcomeKpis,
@@ -19,13 +17,15 @@ import {
     stringifyError,
 } from '@alecsibilia/luca-core'
 import type { OutcomeKpis, TelemetryContext } from '@alecsibilia/luca-core'
+import { defineCommand } from 'citty'
 
-import { logger } from '../utils/logger.ts'
-import { lucaPrOutcomeTool } from '../write-surface/index.ts'
 import {
     rejectUnknownFlags,
     runWriteHandler,
 } from './write-surface/__helpers/run-handler.ts'
+
+import { logger } from '../utils/logger.ts'
+import { lucaPrOutcomeTool } from '../write-surface/index.ts'
 
 const emitCommand = defineCommand({
     meta: {
@@ -183,13 +183,14 @@ const prOutcomeCommand = defineCommand({
         // `z.number()` accepts and then serializes as `null` in the JSONL —
         // silently corrupting telemetry and breaking the prNumber join. Reject
         // non-numeric input with a friendly error instead.
-        const numericFlags: ReadonlyArray<[flag: string, raw: string | undefined]> =
-            [
-                ['--pr-number', args['pr-number']],
-                ['--review-rounds', args['review-rounds']],
-                ['--time-to-merge-ms', args['time-to-merge-ms']],
-                ['--issue', args.issue],
-            ]
+        const numericFlags: ReadonlyArray<
+            [flag: string, raw: string | undefined]
+        > = [
+            ['--pr-number', args['pr-number']],
+            ['--review-rounds', args['review-rounds']],
+            ['--time-to-merge-ms', args['time-to-merge-ms']],
+            ['--issue', args.issue],
+        ]
         for (const [flag, raw] of numericFlags) {
             if (raw !== undefined && Number.isNaN(Number(raw))) {
                 logger.error(
@@ -215,14 +216,16 @@ const prOutcomeCommand = defineCommand({
                     ? Number(args['time-to-merge-ms'])
                     : undefined,
             ...(args.branch !== undefined ? { branch: args.branch } : {}),
-            ...(args.issue !== undefined
-                ? { issue: Number(args.issue) }
-                : {}),
+            ...(args.issue !== undefined ? { issue: Number(args.issue) } : {}),
             ...(args['origin-run-id'] !== undefined
                 ? { originRunId: args['origin-run-id'] }
                 : {}),
         }
-        await runWriteHandler('telemetry pr-outcome', lucaPrOutcomeTool, payload)
+        await runWriteHandler(
+            'telemetry pr-outcome',
+            lucaPrOutcomeTool,
+            payload
+        )
     },
 })
 

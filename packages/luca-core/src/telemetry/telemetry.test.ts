@@ -160,9 +160,9 @@ describe('appendTelemetry', () => {
 
 describe('readTelemetry', () => {
     test('returns [] when the file does not exist', () => {
-        expect(readTelemetry({ cwd: cleanDir(), runId: 'run_abc_def' })).toEqual(
-            []
-        )
+        expect(
+            readTelemetry({ cwd: cleanDir(), runId: 'run_abc_def' })
+        ).toEqual([])
     })
 
     test('returns [] for an invalid runId', () => {
