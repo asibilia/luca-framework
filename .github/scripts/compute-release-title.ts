@@ -4,8 +4,8 @@
  * by inspecting which packages will be bumped and to what version.
  *
  * Output examples:
- *   single package:    chore(release): version packages (luca-framework@10.0.2)
- *   multiple packages: chore(release): version packages (luca-framework@10.0.2, luca-mastracode@10.4.0)
+ *   single package:    chore(release): version packages (luca@13.0.1)
+ *   multiple packages: chore(release): version packages (luca@13.0.1, luca-core@13.0.1)
  *   no changesets:     chore(release): version packages
  *
  * Prints the computed title to stdout. The workflow captures it and forwards

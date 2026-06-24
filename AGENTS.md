@@ -124,17 +124,17 @@ share one deterministic core and one enforcing hook:
 
 ### Phase skills + subagents
 
-Bundled with the npm package under `packages/luca-framework/skills/`:
+Bundled with the npm package — skill and subagent instruction bodies live under `packages/luca-tools/src/artifacts/` and are materialized into each harness home by `luca init`:
 
-- `commands/phase-{discuss,plan,execute}.md` — slash commands the user invokes; orchestrate state advances (via the `luca` CLI), artifact writes (via the `Write` tool to canonical paths), and subagent delegation.
-- `agents/luca-{executor,planner,reviewer}.md` — Claude Code subagent definitions that do the cognitive/code-writing work.
+- `skills/phase-{discuss,plan,execute}/` — slash commands the user invokes; orchestrate state advances (via the `luca` CLI), artifact writes (via the `Write` tool to canonical paths), and subagent delegation.
+- `subagents/{executor,plan-reviewer,researcher,…}.ts` — Claude Code subagent definitions that do the cognitive/code-writing work.
 
 `luca init` copies these into the **global** `~/.claude/commands/`, `~/.claude/agents/`, and `~/.claude/skills/` — not into the repo. **Re-running `luca init` always overwrites luca's own files with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones). Stray per-repo copies left by pre-v13 `luca init` are detected and removed by `luca doctor --fix`.
 
 ### Adding a new write-surface command
 
-1. Add a runtime-agnostic handler in `packages/luca-framework/src/write-surface/handlers/luca-<name>.ts` (Zod input schema + `(args, ctx) => Promise<WriteResult>` handler).
-2. Wire it into the appropriate noun-group command under `packages/luca-framework/src/commands/write-surface/<noun>.ts` as a leaf `defineCommand`, and ensure the noun group is registered in `src/cli.ts`.
+1. Add a runtime-agnostic handler in `packages/luca-cli/src/write-surface/handlers/luca-<name>.ts` (Zod input schema + `(args, ctx) => Promise<WriteResult>` handler).
+2. Wire it into the appropriate noun-group command under `packages/luca-cli/src/commands/write-surface/<noun>.ts` as a leaf `defineCommand`, and ensure the noun group is registered in `packages/luca-cli/src/cli.ts`.
 3. Give every leaf a strong `meta.description` + `args` — the `--help` text is the discoverability surface.
 4. Run `bunx --bun tsc --noEmit` to verify.
 
