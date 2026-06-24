@@ -66,7 +66,7 @@ Every reviewer arrived at the same conclusion through a different lens:
   in `checkPipelineGuard` rejecting same-step research→research.
 - **R6 (deletion safety):** Zero import-level dependencies from active
   packages into the dying ones. Umbrella self-contained. Working
-  `.legacy-planning-archive/` preserved. Build chain independent.
+  `.luca/archive/00-legacy-planning/` preserved. Build chain independent.
 
 The Phase G "READY WITH CAVEATS" verdict stands and is now corroborated
 from six independent lenses. Deleting `packages/luca-mastracode/` (174
@@ -539,7 +539,7 @@ Sequenced from R6 §11 (lowest-risk-first), with cross-reviewer corroboration:
    `packages/luca-core/README.md:10` prose breadcrumb.
 
 **Preserve (R6 §8 explicit allowlist):**
-- `.legacy-planning-archive/` (10 top-level dirs, slim-down specs)
+- `.luca/archive/00-legacy-planning/` (10 top-level dirs, slim-down specs)
 - `packages/luca-{cli,core,tools}/` and `packages/luca/`
 - `packages/luca-studio/` (orthogonal Next.js dashboard, no Phase H impact)
 - `docs/repo-restructure-plan.md`, `docs/repo-restructure-parity-report.md`,
@@ -552,7 +552,7 @@ belongs in its own focused commit AFTER the deletion lands.
 
 **Cursor / Pi removal note:** No standalone `.cursor/`, `.pi/`, or `.mdc`
 directories exist outside `packages/luca-framework/` and
-`.legacy-planning-archive/` (R6 §7B). Deleting `packages/luca-framework/`
+`.luca/archive/00-legacy-planning/` (R6 §7B). Deleting `packages/luca-framework/`
 removes them automatically.
 
 ## Post-Phase-H roadmap
@@ -630,7 +630,7 @@ removes them automatically.
 - **`docs/parity-review/06-phase-h-deletion-safety.md`** (R6, 530 lines).
   Reverse-direction audit. Zero TS-level imports from active packages
   into dying packages. Umbrella self-contained via unbuild
-  `inlineDependencies`. Working `.legacy-planning-archive/` preserved.
+  `inlineDependencies`. Working `.luca/archive/00-legacy-planning/` preserved.
   Build chain independent. Phase H verdict: **CLEAR** with 4 v14
   caveats (F1, F3, hook distribution, `vault-init` residue) + 2 new
   surfaced (lu-planner refs in 7 skill bodies, `.cursor/luca/...`
