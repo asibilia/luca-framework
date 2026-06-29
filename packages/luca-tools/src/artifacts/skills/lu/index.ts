@@ -70,7 +70,15 @@ Triage runs once, at the start of a run. It is inline here — there is no separ
 
 1. **Classify complexity.** Read the request. Pick one of \`TRIVIAL | SIMPLE | MODERATE | COMPLEX | CRITICAL\` based on file count, scope, and risk. There is no CLI command to persist complexity — record it in your reasoning and pass it to every subagent you spawn (pass it to any subagent whose behavior varies by complexity). If \`--complexity=<level>\` or \`--force-complex\` was passed, use that directly.
 
-   **Override telemetry.** Once the final complexity level is chosen, compare it against the deterministic heuristic baseline from \`luca classify --task "<request>" --json\` (the \`--task\` flag is REQUIRED — read its \`.complexity\` field). On a MISMATCH between the heuristic level and your final level, emit one override record:
+   **Heuristic baseline (floor, not ceiling).** Compute the deterministic baseline with \`luca classify\`, passing the scope signals you already extracted while reading the request — NOT just \`--task\`. A \`--task\`-only call starves the heuristic (it scores \`estimatedFileCount=0\`, no domains, no concerns) and collapses to description-keyword matching, which systematically under-scores work. Supply every signal you can estimate:
+   \`\`\`
+   luca classify --task "<request>" --files <estimated-file-count> --domains "<comma-list>" --concerns "<comma-list>" [--breaking] --json
+   \`\`\`
+   (\`--task\` is REQUIRED; \`--files\`/\`--domains\`/\`--concerns\`/\`--breaking\` are optional — pass each one you can estimate. Read the \`.complexity\` field.)
+
+   This baseline is a **FLOOR, never a ceiling.** Breadth signals (files, domains) cannot measure design/iteration depth — a deep single-file design, tuning, or balancing task is genuinely hard yet touches one file. Your own judgment is authoritative: take the HIGHER of the heuristic level and your read, and never demote below your judgment to match the heuristic. **In particular, never trust a \`TRIVIAL\` heuristic result on its face — re-judge it before accepting**, because a breadth-only score under-rates deep single-file work.
+
+   **Override telemetry.** On a MISMATCH between the heuristic level and your final level, emit one override record:
    \`\`\`
    luca telemetry emit --kind classifier.override --run-id <runId> --meta '{"classifier":"complexity","from":"<heuristic-level>","to":"<final-level>","source":"<taxonomy>"}'
    \`\`\`
