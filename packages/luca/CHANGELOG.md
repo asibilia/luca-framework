@@ -1,5 +1,19 @@
 # @alecsibilia/luca
 
+## 13.0.1
+
+### Patch Changes
+
+- 18ab91d: /lu Triage: pass scope signals to `luca classify` and treat the heuristic as a floor.
+
+  The Triage step called `luca classify --task ... --json` with no scope signals, starving the heuristic (estimatedFileCount=0, no domains/concerns) so it scored on description keywords alone and systematically under-rated work — deep single-file design/tuning tasks scored TRIVIAL. The orchestrator instructions now pass `--files/--domains/--concerns/--breaking` and frame the heuristic baseline as a floor, not a ceiling: take the higher of heuristic vs judgment, and always re-judge a TRIVIAL result. Instruction-wording change only; no heuristic code or keyword list changed.
+
+- 18ab91d: Statusline: recognize native 1M context windows.
+
+  The context-usage segment inferred the window size from a legacy `[1m]` model-id suffix and defaulted everything else to 200k, so current-generation models with native 1M windows (Fable/Mythos 5, Opus 4.6/4.7/4.8, Sonnet 4.6, Sonnet 5) rendered as `###/200k` and pegged the bar at 100% far too early.
+
+  `contextLimit` now checks a known-1M model-id list alongside the `[1m]` suffix. Unrecognized ids (e.g. Haiku 4.5) still fall back to the conservative 200k so the bar over-warns rather than under-warns. Re-run `luca init` (or copy the rebuilt bundle) to refresh the installed `~/.claude/luca-statusline.ts`.
+
 ## 13.0.0
 
 ### Minor Changes
