@@ -35,7 +35,9 @@
  * occupancy. Only the transcript tail (256 KiB) is read so the handler
  * stays cheap on long sessions (statusLine fires on every TUI update,
  * debounced to ~300ms). The window size is inferred from the model id:
- * a `[1m]` suffix means a 1M-token window, anything else 200k.
+ * current-generation models (Fable/Mythos 5, Opus 4.6+, Sonnet 4.6+)
+ * have native 1M windows, a `[1m]` suffix marks the 1M beta on older
+ * models, and anything unrecognized (e.g. Haiku) falls back to 200k.
  *
  * Failure philosophy: a statusline must never break the session. Every
  * data source is best-effort — on any parse/spawn/read error the segment
@@ -192,9 +194,26 @@ async function readContextTokens(
     return null
 }
 
+/**
+ * Model-id substrings with a native 1M-token context window. Everything
+ * in the current lineup except Haiku is 1M; unrecognized ids fall back
+ * to the conservative 200k so the bar over-warns rather than under-warns.
+ */
+const ONE_MILLION_MODEL_IDS = [
+    'fable',
+    'mythos',
+    'opus-4-6',
+    'opus-4-7',
+    'opus-4-8',
+    'sonnet-4-6',
+    'sonnet-5',
+]
+
 /** Context-window size inferred from the model id. */
 function contextLimit(modelId: string | undefined): number {
-    return modelId !== undefined && modelId.includes('[1m]')
+    if (modelId === undefined) return 200_000
+    if (modelId.includes('[1m]')) return 1_000_000
+    return ONE_MILLION_MODEL_IDS.some((id) => modelId.includes(id))
         ? 1_000_000
         : 200_000
 }
