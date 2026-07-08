@@ -78,15 +78,10 @@ export async function runDaemon(cwd: string): Promise<void> {
         )
     }
 
-    // Reap a stale dead-pid lock, then remove any stale socket file.
+    // Reap a stale dead-pid lock. The stale SOCKET file is unlinked only AFTER
+    // we win the lock below — the atomic lock is the sole mutual-exclusion gate,
+    // so a concurrent `luca start` can never unlink the winner's live socket.
     forcePipelineUnlock({ cwd })
-    if (existsSync(sockPath)) {
-        try {
-            unlinkSync(sockPath)
-        } catch {
-            // best-effort
-        }
-    }
 
     // --- Acquire the coarse pipeline lock for the run -------------------
     const runId = `runner-${process.pid}`
@@ -99,6 +94,16 @@ export async function runDaemon(cwd: string): Promise<void> {
             throw new Error(
                 `could not acquire .luca/lock.json (held by pid ${acq.holder?.pid ?? '?'})`
             )
+        }
+    }
+
+    // Now that we hold the lock, remove any stale socket file left by a crashed
+    // predecessor (safe: no live daemon can be listening — it would hold the lock).
+    if (existsSync(sockPath)) {
+        try {
+            unlinkSync(sockPath)
+        } catch {
+            // best-effort
         }
     }
 
@@ -232,6 +237,17 @@ export async function runDaemon(cwd: string): Promise<void> {
                             cleanup()
                             process.exit(0)
                         }, 20)
+                    }
+                }).catch((err) => {
+                    // A request handler rejected (e.g. a corrupt state.json read
+                    // in the `status` branch). Reply with an error rather than
+                    // hanging the client / throwing an unhandledRejection.
+                    try {
+                        socket.write(
+                            `${JSON.stringify({ ok: false, error: String(err) })}\n`
+                        )
+                    } catch {
+                        // client may have gone away
                     }
                 })
             },
