@@ -32,6 +32,7 @@ import type {
     PipelineGuardReason,
 } from '../../orchestration/pipeline-guard.ts'
 import type { PipelineStep } from '../schemas.ts'
+import { FIX_LOOP_EDGES, type FixLoopCounter } from './actions.ts'
 import {
     pipelineMachine,
     STEP_TO_STATE_VALUE,
@@ -47,15 +48,48 @@ import {
 const VALID_STEPS = new Set<string>(Object.keys(PIPELINE_TRANSITIONS))
 
 /**
+ * Additive, OPTIONAL input for the fix-loop counter write-back (DAD-P1c).
+ *
+ * A superset of `PipelineGuardInput`: every field here is optional, so the
+ * existing 2-arg call `machineVerdict({currentStep, requestedStep})` in the
+ * parity harness still type-checks (protects anti-01). Absent counters + an
+ * absent `budgetMode` mean advisory — the machine runs exactly as it did in
+ * P1b, and `counterUpdate` is only produced when the persisted counter for the
+ * traversed edge was tracked.
+ */
+export interface MachineVerdictInput extends PipelineGuardInput {
+    checksFixIteration?: number
+    verifyIteration?: number
+    reviewIteration?: number
+    maxChecksFixIterations?: number
+    maxVerifyIterations?: number
+    maxReviewIterations?: number
+    budgetMode?: 'advisory' | 'enforce'
+}
+
+/**
+ * The post-transition value of the counter mutated on a fix-loop edge, ready
+ * for the write path to persist. Present only when the advance traversed one
+ * of the 6 fix-loop edges AND the counter was tracked in the input.
+ */
+export interface CounterUpdate {
+    field: FixLoopCounter
+    value: number
+}
+
+/**
  * The verdict shape this adapter returns. A structural subset of
  * `PipelineGuardVerdict` (no `message`/`telemetry`) plus `resultingStep` —
- * exactly what the parity harness compares.
+ * exactly what the parity harness compares. `counterUpdate` is additive +
+ * optional, so the parity assertions (which ignore it) are unchanged.
  */
 export interface MachineVerdict {
     allowed: boolean
     reason: PipelineGuardReason
     /** Where the machine ends up: the destination on allow, or `from` on deny. */
     resultingStep: string
+    /** Fix-loop counter write-back (DAD-P1c); absent on non-fix-loop advances. */
+    counterUpdate?: CounterUpdate
 }
 
 /**
@@ -69,9 +103,21 @@ export interface MachineVerdict {
  * context because the machine's context type differs from XState's default
  * `MachineContext`).
  */
-export function machineVerdict(input: PipelineGuardInput): MachineVerdict {
+export function machineVerdict(input: MachineVerdictInput): MachineVerdict {
     const { currentStep, requestedStep, complexity, oversight } = input
-    const context: PipelineContext = { complexity, oversight }
+    // Thread persisted counters/caps/budgetMode into context (all optional —
+    // undefined ⇒ advisory, and an untracked counter makes the assign a no-op).
+    const context: PipelineContext = {
+        complexity,
+        oversight,
+        checksFixIteration: input.checksFixIteration,
+        verifyIteration: input.verifyIteration,
+        reviewIteration: input.reviewIteration,
+        maxChecksFixIterations: input.maxChecksFixIterations,
+        maxVerifyIterations: input.maxVerifyIterations,
+        maxReviewIterations: input.maxReviewIterations,
+        budgetMode: input.budgetMode,
+    }
 
     // 1 + 2: unknown steps are gated ABOVE the machine (resolveState throws).
     if (!VALID_STEPS.has(currentStep)) {
@@ -101,12 +147,27 @@ export function machineVerdict(input: PipelineGuardInput): MachineVerdict {
     const event = { type: 'ADVANCE', to } as const
 
     if (snapshot.can(event)) {
-        // 3: legal. Drive the real transition to get the resulting leaf.
+        // 3: legal. Drive the real transition to get the resulting leaf AND the
+        // post-assign context (the fix-loop actions ran synchronously inside
+        // `transition`).
         const [next] = transition(pipelineMachine, snapshot, event)
+        // If this edge is one of the 6 fix-loop edges, report the counter's
+        // post-transition value for the write path to persist. The assign is a
+        // no-op when the counter was untracked, so we only surface an update
+        // when the input actually carried that counter.
+        const edge = FIX_LOOP_EDGES[`${from}->${to}`]
+        let counterUpdate: CounterUpdate | undefined
+        if (edge !== undefined) {
+            const value = (next.context as PipelineContext)[edge.counter]
+            if (value !== undefined) {
+                counterUpdate = { field: edge.counter, value }
+            }
+        }
         return {
             allowed: true,
             reason: 'ok',
             resultingStep: stateValueToLeaf(next.value),
+            ...(counterUpdate ? { counterUpdate } : {}),
         }
     }
 

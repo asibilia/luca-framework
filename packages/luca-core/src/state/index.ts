@@ -50,7 +50,11 @@ export {
 
 // Machine verdict (XState-backed transition oracle — live write-path authority)
 export { machineVerdict } from './machine/machine-verdict.ts'
-export type { MachineVerdict } from './machine/machine-verdict.ts'
+export type {
+    MachineVerdict,
+    MachineVerdictInput,
+    CounterUpdate,
+} from './machine/machine-verdict.ts'
 
 // Per-step artifact map + write-command phase table (v13 plan, D3)
 export {
