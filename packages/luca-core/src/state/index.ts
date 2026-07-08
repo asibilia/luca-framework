@@ -48,6 +48,10 @@ export {
     isLegalTransition,
 } from './configs/pipeline-transitions.ts'
 
+// Machine verdict (XState-backed transition oracle — live write-path authority)
+export { machineVerdict } from './machine/machine-verdict.ts'
+export type { MachineVerdict } from './machine/machine-verdict.ts'
+
 // Per-step artifact map + write-command phase table (v13 plan, D3)
 export {
     STEP_ARTIFACTS,
