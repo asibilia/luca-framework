@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
     lucaStateSchema,
     machineVerdict,
+    readTelemetry,
     type PipelineStep as PipelineStepType,
 } from '@alecsibilia/luca-core'
 
@@ -191,10 +192,10 @@ describe('luca_state_advance', () => {
         }
     })
 
-    test('preserves all 11 counter/cap fields on a LOOP-BACK advance (checks → execute)', async () => {
-        // checks → execute is the fix-loop-back that P1c will eventually
-        // increment (checksFixIteration). In P1b it must leave EVERY counter
-        // untouched — this is the sharp no-increment-yet guard.
+    test('increments checksFixIteration on a LOOP-BACK advance (checks → execute), other 10 fields unchanged', async () => {
+        // P1c: checks → execute is a REWORK edge — it increments
+        // checksFixIteration by 1 (the live fix-loop counter). The other 10
+        // counter/cap fields must be preserved byte-identical.
         await writeFile(
             join(cwd, '.luca/state.json'),
             JSON.stringify({ pipelineStep: 'checks', ...COUNTER_FIELDS })
@@ -210,9 +211,91 @@ describe('luca_state_advance', () => {
             await readFile(join(cwd, '.luca/state.json'), 'utf-8')
         )
         expect(state.pipelineStep).toBe('execute')
+        // checksFixIteration incremented (1 → 2)…
+        expect(state.checksFixIteration).toBe(COUNTER_FIELDS.checksFixIteration + 1)
+        // …every OTHER field untouched.
         for (const [field, value] of Object.entries(COUNTER_FIELDS)) {
+            if (field === 'checksFixIteration') continue
             expect(state[field]).toBe(value)
         }
+    })
+
+    test('resets checksFixIteration to 0 on a FORWARD-EXIT advance (checks → verify)', async () => {
+        // P1c: checks → verify is the forward-exit edge — it zeroes the
+        // checksFixIteration loop counter. Other counters are untouched.
+        await writeFile(
+            join(cwd, '.luca/state.json'),
+            JSON.stringify({ pipelineStep: 'checks', ...COUNTER_FIELDS })
+        )
+
+        const result = await lucaStateAdvanceTool.handler(
+            { toStep: 'verify' },
+            { cwd }
+        )
+        expect(result.isError).toBeFalsy()
+
+        const state = JSON.parse(
+            await readFile(join(cwd, '.luca/state.json'), 'utf-8')
+        )
+        expect(state.pipelineStep).toBe('verify')
+        expect(state.checksFixIteration).toBe(0)
+        // Other counters/caps preserved.
+        for (const [field, value] of Object.entries(COUNTER_FIELDS)) {
+            if (field === 'checksFixIteration') continue
+            expect(state[field]).toBe(value)
+        }
+    })
+
+    test('emits one advisory fixloop.counted telemetry record on a rework advance (checks → execute)', async () => {
+        // COMPLEX maxChecksFixIterations = 5; checksFixIteration 1 → 2 is
+        // within budget. The record is advisory (logged, never blocking).
+        await writeFile(
+            join(cwd, '.luca/state.json'),
+            JSON.stringify({
+                pipelineStep: 'checks',
+                complexity: 'COMPLEX',
+                sessionId: 'run-fixloop',
+                checksFixIteration: 1,
+            })
+        )
+
+        const result = await lucaStateAdvanceTool.handler(
+            { toStep: 'execute' },
+            { cwd }
+        )
+        expect(result.isError).toBeFalsy()
+
+        const records = readTelemetry({ cwd, runId: 'run-fixloop' }).filter(
+            (r) => r.kind === 'fixloop.counted'
+        )
+        expect(records.length).toBe(1)
+        expect(records[0]?.meta).toEqual({
+            edge: 'checks->execute',
+            counterField: 'checksFixIteration',
+            nextValue: 2,
+            budget: 5,
+            verdict: 'within',
+            phaseOfRollout: 'advisory',
+        })
+    })
+
+    test('does NOT emit fixloop.counted on a forward-exit reset (checks → verify)', async () => {
+        await writeFile(
+            join(cwd, '.luca/state.json'),
+            JSON.stringify({
+                pipelineStep: 'checks',
+                complexity: 'COMPLEX',
+                sessionId: 'run-noemit',
+                checksFixIteration: 3,
+            })
+        )
+
+        await lucaStateAdvanceTool.handler({ toStep: 'verify' }, { cwd })
+
+        const records = readTelemetry({ cwd, runId: 'run-noemit' }).filter(
+            (r) => r.kind === 'fixloop.counted'
+        )
+        expect(records.length).toBe(0)
     })
 
     test('creates state.json from defaults when missing (idle → triage)', async () => {
