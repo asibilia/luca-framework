@@ -2,11 +2,15 @@
  * Pipeline state machine (XState v5) — parity edition.
  *
  * PATH B: this machine is GENERATED from the canonical typed tables
- * (`PipelineStepValues`, `PIPELINE_TRANSITIONS`, `PIPELINE_STEP_TO_COARSE_PHASE`)
- * so it can never drift from the source-of-truth transition table. It exists
- * to reproduce EVERY allow/deny verdict of `checkPipelineGuard` /
- * `PIPELINE_TRANSITIONS`, proven by the golden parity harness in
- * `pipeline-machine.parity.test.ts`.
+ * (`PipelineStepValues`, `PIPELINE_TRANSITIONS`) so it can never drift from the
+ * source-of-truth transition table. It exists to reproduce EVERY allow/deny
+ * verdict of `checkPipelineGuard` / `PIPELINE_TRANSITIONS`, proven by the
+ * golden parity harness in `pipeline-machine.parity.test.ts`.
+ *
+ * The machine is ALSO the source of truth for the coarse-phase mapping: each
+ * compound parent (and the atomic `idle` leaf) carries its coarse phase on
+ * `meta.coarsePhase`, and `STEP_TO_COARSE_PHASE` is derived at module load via
+ * `snapshot.getMeta()`. There is no hand-maintained step→coarse-phase table.
  *
  * PARITY-CRITICAL INVARIANTS (do not violate — they keep the machine's
  * verdicts identical to the legacy guard):
@@ -17,7 +21,8 @@
  *  - Unknown steps are handled ABOVE the machine (see `machine-verdict.ts`);
  *    a bogus value is never fed to `resolveState` (spike 3: it throws).
  *
- * STRUCTURE mirrors `PIPELINE_STEP_TO_COARSE_PHASE`:
+ * STRUCTURE (the coarse-phase hierarchy, carried on each parent's
+ * `meta.coarsePhase`):
  *  - `idle` is a top-level ATOMIC leaf (the IDLE coarse phase = one leaf).
  *  - 4 compound parents: planning / executing / reviewing / finalizing.
  *  - 13 leaves total (idle + 12 nested). Cross-branch targets use `#id`.
@@ -28,7 +33,6 @@
 import { assign, setup } from 'xstate'
 import type { StateValue } from 'xstate'
 
-import { PIPELINE_STEP_TO_COARSE_PHASE } from '../configs/coarse-phase-map.ts'
 import { PIPELINE_TRANSITIONS } from '../configs/pipeline-transitions.ts'
 import { PipelineStepValues } from '../constants.ts'
 import type {
@@ -166,6 +170,10 @@ export const pipelineMachine = setup({
     types: {
         context: {} as PipelineContext,
         events: {} as AdvanceEvent,
+        // The coarse-phase label carried on each top-level node's `meta`.
+        // Read back at module load via `snapshot.getMeta()` to derive
+        // `STEP_TO_COARSE_PHASE` — the machine IS the source of truth.
+        meta: {} as { coarsePhase?: CoarsePhase },
     },
     guards: {
         // The ONLY guard WIRED onto an edge. Requested-step matcher — no
@@ -199,10 +207,15 @@ export const pipelineMachine = setup({
     context: {},
     states: {
         // IDLE coarse phase — single atomic top-level leaf.
-        idle: { id: 'idle', on: { ADVANCE: STEP_TRANSITIONS.idle } },
+        idle: {
+            id: 'idle',
+            meta: { coarsePhase: 'IDLE' },
+            on: { ADVANCE: STEP_TRANSITIONS.idle },
+        },
 
         // PLANNING coarse phase.
         planning: {
+            meta: { coarsePhase: 'PLANNING' },
             initial: 'triage',
             states: {
                 triage: {
@@ -234,6 +247,7 @@ export const pipelineMachine = setup({
 
         // EXECUTING coarse phase.
         executing: {
+            meta: { coarsePhase: 'EXECUTING' },
             initial: 'execute',
             states: {
                 execute: {
@@ -249,6 +263,7 @@ export const pipelineMachine = setup({
 
         // REVIEWING coarse phase.
         reviewing: {
+            meta: { coarsePhase: 'REVIEWING' },
             initial: 'verify',
             states: {
                 verify: {
@@ -268,6 +283,7 @@ export const pipelineMachine = setup({
 
         // FINALIZING coarse phase.
         finalizing: {
+            meta: { coarsePhase: 'FINALIZING' },
             initial: 'finalize',
             states: {
                 finalize: {
@@ -290,24 +306,73 @@ export type PipelineMachine = typeof pipelineMachine
 // its coarse-phase parent ({ planning: 'triage' }, etc.).
 // ---------------------------------------------------------------------------
 
-/** coarse phase -> compound parent key. IDLE is atomic (no parent). */
-const COARSE_TO_PARENT: Record<Exclude<CoarsePhase, 'IDLE'>, string> = {
-    PLANNING: 'planning',
-    EXECUTING: 'executing',
-    REVIEWING: 'reviewing',
-    FINALIZING: 'finalizing',
-}
+/**
+ * Leaf-step -> its XState `StateValue`, derived by walking the machine's own
+ * hierarchy (no hand-maintained coarse-phase table). An atomic top-level node
+ * (`idle`) maps to its bare key string; every child of a compound parent maps
+ * to `{ [parentKey]: childKey }`. This is the inverse of the machine STRUCTURE
+ * above, so it can never drift from it.
+ */
+const STEP_STATE_VALUE_INDEX: Record<string, StateValue> = (() => {
+    const index: Record<string, StateValue> = {}
+    for (const [parentKey, node] of Object.entries(pipelineMachine.states)) {
+        const childKeys = Object.keys(node.states)
+        if (childKeys.length === 0) {
+            // Atomic top-level leaf (e.g. `idle`) — bare key string.
+            index[parentKey] = parentKey
+        } else {
+            for (const childKey of childKeys) {
+                index[childKey] = { [parentKey]: childKey }
+            }
+        }
+    }
+    return index
+})()
 
 function stateValueForStep(step: PipelineStep): StateValue {
-    const coarse = PIPELINE_STEP_TO_COARSE_PHASE[step]
-    if (coarse === 'IDLE') return step // 'idle' — atomic top-level leaf
-    return { [COARSE_TO_PARENT[coarse]]: step }
+    const value = STEP_STATE_VALUE_INDEX[step]
+    if (value === undefined) {
+        throw new Error(
+            `pipeline-machine: no state value for step "${step}" — machine hierarchy is missing a leaf`
+        )
+    }
+    return value
 }
 
 /** step -> the XState `StateValue` used to rehydrate the machine at that leaf. */
 export const STEP_TO_STATE_VALUE = Object.fromEntries(
     PipelineStepValues.map((s) => [s, stateValueForStep(s)])
 ) as Record<PipelineStep, StateValue>
+
+/**
+ * step -> coarse phase, DERIVED at module load from the machine's `meta`.
+ * Each step's `StateValue` is rehydrated via `resolveState` and its active
+ * nodes' `meta.coarsePhase` labels are read back with `getMeta()`. The one
+ * non-undefined label (carried by the top-level parent / atomic leaf) is the
+ * step's coarse phase. This REPLACES the former hand-maintained
+ * step→coarse-phase table — the machine is the source of truth.
+ *
+ * The `throw` is a fail-fast module-load backstop: if any step resolves to no
+ * coarse-phase label the module refuses to load. (Compile-time exhaustiveness
+ * over the step set is still held by `STEP_TRANSITIONS satisfies Record<…>`.)
+ */
+export const STEP_TO_COARSE_PHASE: Record<PipelineStep, CoarsePhase> =
+    Object.fromEntries(
+        PipelineStepValues.map((step) => {
+            const metas = pipelineMachine
+                .resolveState({ value: STEP_TO_STATE_VALUE[step], context: {} })
+                .getMeta()
+            const coarse = Object.values(metas).find(
+                (m) => m?.coarsePhase
+            )?.coarsePhase
+            if (coarse === undefined) {
+                throw new Error(
+                    `pipeline-machine: no coarsePhase meta resolved for step "${step}"`
+                )
+            }
+            return [step, coarse]
+        })
+    ) as Record<PipelineStep, CoarsePhase>
 
 /** Extract the deepest leaf step name from an XState `StateValue`. */
 export function stateValueToLeaf(value: StateValue): PipelineStep {
