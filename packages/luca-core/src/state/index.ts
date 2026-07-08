@@ -54,6 +54,15 @@ export {
     pipelineGraphEdges,
 } from './machine/graph-render.ts'
 
+// Pipeline actor handle (DAD-P2) — opaque mirror over createActor; keeps
+// xstate out of luca-cli. The persistent runner holds this; it never writes
+// state.json (the cold decideAdvance+mutateState path does).
+export { createPipelineActorHandle } from './machine/actor-handle.ts'
+export type {
+    PipelineActorHandle,
+    PipelineActorSnapshot,
+} from './machine/actor-handle.ts'
+
 // Machine verdict (XState-backed transition oracle — live write-path authority)
 export { machineVerdict } from './machine/machine-verdict.ts'
 export type {
@@ -82,6 +91,7 @@ export {
     release as releasePipelineLock,
     forceUnlock as forcePipelineUnlock,
     readLock as readPipelineLock,
+    isPidAlive as isPipelinePidAlive,
     PipelineLockSchema,
 } from './pipeline-lock.ts'
 export type {
