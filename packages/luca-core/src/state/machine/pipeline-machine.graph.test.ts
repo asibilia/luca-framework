@@ -3,10 +3,10 @@
  *
  * Complements the verdict-level parity harness with a graph-level check: the
  * machine's reachable transition graph must equal the 21 legal edges of
- * `PIPELINE_TRANSITIONS`, and its hierarchy must be the 13-leaf shape derived
- * from `PIPELINE_STEP_TO_COARSE_PHASE` (idle atomic + 12 across 4 compound
- * parents). If someone adds/removes a leaf or an edge in the machine without
- * a matching table change, this fails.
+ * `PIPELINE_TRANSITIONS`, and its hierarchy must be the 13-leaf shape carried
+ * by the machine's coarse-phase structure (`meta.coarsePhase`: idle atomic +
+ * 12 across 4 compound parents). If someone adds/removes a leaf or an edge in
+ * the machine without a matching table change, this fails.
  *
  * Spike-6 note: `getAdjacencyMap` records a "stay" self-edge for EVERY state
  * under events that match no transition (XState keeps the snapshot when no
