@@ -3,8 +3,8 @@ import { join } from 'node:path'
 
 import {
     appendLedger,
-    isLegalTransition,
     lucaStateSchema,
+    machineVerdict,
     phasePathFor,
     PIPELINE_STEP_TO_COARSE_PHASE,
     PipelineStep,
@@ -94,6 +94,48 @@ function expectedArtifactPath(
     }
 }
 
+/**
+ * Pure decision seam for a pipeline-step advance.
+ *
+ * This is the P1b write-path swap: the transition gate is delegated to the
+ * XState-backed `machineVerdict` oracle (the same oracle the P1a parity
+ * harness proves equivalent to the legacy `checkPipelineGuard`) rather than
+ * the direct `isLegalTransition` table lookup. `machineVerdict` takes a
+ * `PipelineGuardInput`-shaped object, so it drops in cleanly here.
+ *
+ * Returns the resulting `pipelineStep` (the machine's destination leaf) on a
+ * legal advance, or THROWS a generic `Error` on rejection. Callers catch the
+ * generic `Error` and surface `stringifyError(err)` — so this keeps the throw
+ * shape stable while enriching the message with the machine's reason code.
+ *
+ * The rejection message embeds the machine's `reason` code (e.g.
+ * `illegal-transition`, `same-step-no-op`) — so the illegal-transition case
+ * naturally retains the substring `illegal` (back-compat with callers/tests
+ * that match on it) while a same-step no-op is distinguishable by its own
+ * reason code. The message also enumerates the legal next steps from
+ * `PIPELINE_TRANSITIONS[from]`.
+ *
+ * NO counter-increment logic lives here — that is P1c. This function only
+ * decides the next `pipelineStep`; the caller preserves every other field.
+ */
+export function decideAdvance(s: LucaState, to: PipelineStep): PipelineStep {
+    const from = s.pipelineStep
+    const verdict = machineVerdict({
+        currentStep: from,
+        requestedStep: to,
+        complexity: s.complexity,
+        oversight: s.oversight,
+    })
+    if (!verdict.allowed) {
+        const allowed = PIPELINE_TRANSITIONS[from].join(', ')
+        throw new Error(
+            `rejected transition [${verdict.reason}]: '${from}' → '${to}'. ` +
+                `Allowed next steps from '${from}': [${allowed}].`
+        )
+    }
+    return verdict.resultingStep as PipelineStep
+}
+
 export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
     {
         name: 'luca_state_advance',
@@ -119,14 +161,13 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     ctx.cwd,
                     (s) => {
                         from = s.pipelineStep
-                        if (!isLegalTransition(s.pipelineStep, to)) {
-                            const allowed =
-                                PIPELINE_TRANSITIONS[s.pipelineStep].join(', ')
-                            throw new Error(
-                                `illegal transition: '${s.pipelineStep}' → '${to}'. Allowed next steps from '${s.pipelineStep}': [${allowed}].`
-                            )
-                        }
-                        return { ...s, pipelineStep: to }
+                        // P1b: the transition gate is now the XState machine
+                        // oracle (via `decideAdvance` → `machineVerdict`), not
+                        // the legacy `isLegalTransition` table lookup. On a
+                        // legal advance it returns the machine's destination
+                        // leaf; on rejection it throws a generic Error whose
+                        // message carries the reason code.
+                        return { ...s, pipelineStep: decideAdvance(s, to) }
                     },
                     { bootstrapIfMissing: lucaStateSchema.parse({}) }
                 )
