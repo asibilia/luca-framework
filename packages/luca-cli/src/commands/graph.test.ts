@@ -89,7 +89,10 @@ describe('luca graph — invalid format', () => {
             expect(process.exitCode).toBe(1)
             expect(writes).toHaveLength(0)
         } finally {
-            process.exitCode = prevExit
+            // Restore to 0 when there was no prior code — assigning `undefined`
+            // does not clear a set exitCode in Bun, which would leak a non-zero
+            // exit to the test runner and fail the file despite 0 test failures.
+            process.exitCode = prevExit ?? 0
         }
     })
 })
