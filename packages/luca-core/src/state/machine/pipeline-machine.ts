@@ -49,23 +49,16 @@ export interface AdvanceEvent {
 
 /**
  * Machine context. Surface-only in P1a — no guard reads it. `complexity`
- * and `oversight` mirror `PipelineGuardInput`'s advisory fields; the
- * iteration/budget fields are intentionally left OPEN (optional) so a
- * future P1c fix-budget (3 or 5 iterations) is not precluded by the shape.
+ * and `oversight` mirror `PipelineGuardInput`'s advisory fields, the only
+ * context P1a actually threads through `resolveState`.
+ *
+ * Budget is deliberately ABSENT: no iteration/max fields until P1c wires the
+ * budget guard. P1c will add the exact iteration/max fields it consumes then —
+ * the foundation does not pre-commit a half-built budget shape.
  */
 export interface PipelineContext {
     complexity?: ComplexityLevel
     oversight?: OversightMode
-    checksFixIteration?: number
-    verifyIteration?: number
-    planReviewIteration?: number
-    researchReviewIteration?: number
-    reviewIteration?: number
-    maxChecksFixIterations?: number
-    maxVerifyIterations?: number
-    maxPlanReviewIterations?: number
-    maxResearchReviewIterations?: number
-    maxReviewIterations?: number
 }
 
 /**

@@ -37,7 +37,7 @@ describe('pipeline-machine parity — allow/deny over all 169 pairs (ac-09)', ()
             currentStep: from,
             requestedStep: to,
         })
-        const mv = machineVerdict(from, to, parityContext())
+        const mv = machineVerdict({ currentStep: from, requestedStep: to })
         expect(mv.allowed).toBe(legacy.allowed)
     })
 })
@@ -65,15 +65,16 @@ describe('pipeline-machine parity — resulting step (ac-10)', () => {
             expect(stateValueToLeaf(next.value) as string).toBe(to)
 
             // And the adapter agrees on the resulting step.
-            expect(machineVerdict(from, to, parityContext()).resultingStep).toBe(
-                to
-            )
+            expect(
+                machineVerdict({ currentStep: from, requestedStep: to })
+                    .resultingStep
+            ).toBe(to)
         }
     )
 
     // For every DENIED pair, the machine must NOT move off `from`.
     test.each(ILLEGAL_ROWS)('%s -> %s : denied stays on from', (from, to) => {
-        const mv = machineVerdict(from, to, parityContext())
+        const mv = machineVerdict({ currentStep: from, requestedStep: to })
         expect(mv.allowed).toBe(false)
         expect(mv.resultingStep).toBe(from)
 
@@ -97,7 +98,7 @@ describe('pipeline-machine parity — reason codes over 148 illegal pairs (ac-11
             currentStep: from,
             requestedStep: to,
         })
-        const mv = machineVerdict(from, to, parityContext())
+        const mv = machineVerdict({ currentStep: from, requestedStep: to })
         expect(mv.reason).toBe(legacy.reason)
     })
 
@@ -109,7 +110,7 @@ describe('pipeline-machine parity — reason codes over 148 illegal pairs (ac-11
                 currentStep: from,
                 requestedStep: to,
             })
-            const mv = machineVerdict(from, to, parityContext())
+            const mv = machineVerdict({ currentStep: from, requestedStep: to })
             expect(mv.reason).toBe(legacy.reason)
             expect(mv.reason).toBe('ok')
         }
@@ -122,7 +123,10 @@ describe('pipeline-machine parity — unknown-step fixtures (ac-12, ac-13)', () 
             currentStep: BOGUS_STEP,
             requestedStep: 'triage',
         })
-        const mv = machineVerdict(BOGUS_STEP, 'triage', parityContext())
+        const mv = machineVerdict({
+            currentStep: BOGUS_STEP,
+            requestedStep: 'triage',
+        })
         expect(legacy.reason).toBe('unknown-current-step')
         expect(mv.reason).toBe('unknown-current-step')
         expect(mv.allowed).toBe(false)
@@ -133,7 +137,10 @@ describe('pipeline-machine parity — unknown-step fixtures (ac-12, ac-13)', () 
             currentStep: 'idle',
             requestedStep: BOGUS_STEP,
         })
-        const mv = machineVerdict('idle', BOGUS_STEP, parityContext())
+        const mv = machineVerdict({
+            currentStep: 'idle',
+            requestedStep: BOGUS_STEP,
+        })
         expect(legacy.reason).toBe('unknown-requested-step')
         expect(mv.reason).toBe('unknown-requested-step')
         expect(mv.allowed).toBe(false)

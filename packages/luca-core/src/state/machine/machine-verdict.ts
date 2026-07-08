@@ -27,7 +27,10 @@
 import { transition } from 'xstate'
 
 import { PIPELINE_TRANSITIONS } from '../configs/pipeline-transitions.ts'
-import type { PipelineGuardReason } from '../../orchestration/pipeline-guard.ts'
+import type {
+    PipelineGuardInput,
+    PipelineGuardReason,
+} from '../../orchestration/pipeline-guard.ts'
 import type { PipelineStep } from '../schemas.ts'
 import {
     pipelineMachine,
@@ -56,23 +59,20 @@ export interface MachineVerdict {
 }
 
 /**
- * Default parity context. Surface-only — no guard reads it. Provided because
- * `resolveState` requires a context when the machine's context type differs
- * from the XState default `MachineContext`.
+ * Compute the machine's verdict for a guard input. Pure; identical output for
+ * identical input.
+ *
+ * Takes a single `PipelineGuardInput`-shaped object (same shape as
+ * `checkPipelineGuard`) so P1b can drop this in as a verdict-equivalent
+ * replacement. `complexity`/`oversight` are threaded into the machine context
+ * (surface-only in P1a — no guard reads them — but `resolveState` requires a
+ * context because the machine's context type differs from XState's default
+ * `MachineContext`).
  */
-function defaultContext(): PipelineContext {
-    return {}
-}
+export function machineVerdict(input: PipelineGuardInput): MachineVerdict {
+    const { currentStep, requestedStep, complexity, oversight } = input
+    const context: PipelineContext = { complexity, oversight }
 
-/**
- * Compute the machine's verdict for a `(from, to)` step pair. Pure; identical
- * output for identical input.
- */
-export function machineVerdict(
-    currentStep: string,
-    requestedStep: string,
-    context: PipelineContext = defaultContext()
-): MachineVerdict {
     // 1 + 2: unknown steps are gated ABOVE the machine (resolveState throws).
     if (!VALID_STEPS.has(currentStep)) {
         return {
