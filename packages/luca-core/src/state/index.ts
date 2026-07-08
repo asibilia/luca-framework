@@ -56,6 +56,10 @@ export type {
     CounterUpdate,
 } from './machine/machine-verdict.ts'
 
+// Fix-loop edge map (DAD-P1c) — single source of the rework edge→cap mapping
+export { REWORK_EDGE_CAPS } from './machine/actions.ts'
+export type { FixLoopCap } from './machine/actions.ts'
+
 // Per-step artifact map + write-command phase table (v13 plan, D3)
 export {
     STEP_ARTIFACTS,

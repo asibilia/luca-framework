@@ -25,6 +25,12 @@ export type FixLoopCounter =
     | 'verifyIteration'
     | 'reviewIteration'
 
+/** The cap paired with each fix-loop counter (used by advisory telemetry / enforce). */
+export type FixLoopCap =
+    | 'maxChecksFixIterations'
+    | 'maxVerifyIterations'
+    | 'maxReviewIterations'
+
 /** Params carried by both fix-loop actions: which counter to touch. */
 export interface FixLoopParams {
     counter: FixLoopCounter
@@ -43,19 +49,45 @@ export interface FixLoopParams {
 export interface FixLoopEdge {
     action: 'incFixLoop' | 'resetFixLoop'
     counter: FixLoopCounter
+    /** The counter's cap. Set only on rework (`incFixLoop`) edges — a reset needs none. */
+    cap?: FixLoopCap
 }
 
 /** `${from}->${to}` → descriptor. Exactly 6 edges (3 rework + 3 forward-exit). */
 export const FIX_LOOP_EDGES: Record<string, FixLoopEdge> = {
-    // Rework edges — increment.
-    'checks->execute': { action: 'incFixLoop', counter: 'checksFixIteration' },
-    'verify->checks': { action: 'incFixLoop', counter: 'verifyIteration' },
-    'review->execute': { action: 'incFixLoop', counter: 'reviewIteration' },
+    // Rework edges — increment. `cap` pairs the counter for advisory telemetry / enforce.
+    'checks->execute': {
+        action: 'incFixLoop',
+        counter: 'checksFixIteration',
+        cap: 'maxChecksFixIterations',
+    },
+    'verify->checks': {
+        action: 'incFixLoop',
+        counter: 'verifyIteration',
+        cap: 'maxVerifyIterations',
+    },
+    'review->execute': {
+        action: 'incFixLoop',
+        counter: 'reviewIteration',
+        cap: 'maxReviewIterations',
+    },
     // Forward-exit edges — reset the same loop's counter to 0.
     'checks->verify': { action: 'resetFixLoop', counter: 'checksFixIteration' },
     'verify->review': { action: 'resetFixLoop', counter: 'verifyIteration' },
     'review->learn': { action: 'resetFixLoop', counter: 'reviewIteration' },
 }
+
+/**
+ * Derived single-source map of the 3 rework edges → their cap field. Consumers
+ * (the CLI advance handler's `fixloop.counted` budget resolution) import this
+ * instead of re-declaring the edge→cap mapping — so the rework-edge set has ONE
+ * home (`FIX_LOOP_EDGES`).
+ */
+export const REWORK_EDGE_CAPS: Record<string, FixLoopCap> = Object.fromEntries(
+    Object.entries(FIX_LOOP_EDGES)
+        .filter(([, e]) => e.action === 'incFixLoop' && e.cap)
+        .map(([edge, e]) => [edge, e.cap as FixLoopCap])
+)
 
 /**
  * Increment patch for the parameterized counter. Pure — the `incFixLoop`

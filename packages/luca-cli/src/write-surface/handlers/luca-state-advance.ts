@@ -14,9 +14,9 @@ import {
     PipelineStepValues,
     PIPELINE_TRANSITIONS,
     resolveActiveSlug,
+    REWORK_EDGE_CAPS,
     STEP_ARTIFACTS,
     stringifyError,
-    type BudgetLimits,
     type CoarsePhase,
     type CounterUpdate,
     type LucaState,
@@ -163,17 +163,6 @@ export function decideAdvance(s: LucaState, to: PipelineStep): AdvanceDecision {
             ? { counterUpdate: verdict.counterUpdate }
             : {}),
     }
-}
-
-/**
- * The 3 rework edges that emit `fixloop.counted` telemetry, mapped to the cap
- * used to resolve the advisory budget from complexity. Forward-exit (reset)
- * edges are intentionally absent — a reset is not a fix-loop iteration.
- */
-const REWORK_EDGE_CAPS: Record<string, keyof BudgetLimits> = {
-    'checks->execute': 'maxChecksFixIterations',
-    'verify->checks': 'maxVerifyIterations',
-    'review->execute': 'maxReviewIterations',
 }
 
 export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
