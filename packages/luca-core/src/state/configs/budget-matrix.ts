@@ -12,6 +12,9 @@ export interface BudgetLimits {
 // Budget limits per complexity level.
 // Values correspond to the 'balanced' profile of the legacy (complexity ×
 // profile) matrix. Re-introducing profile later requires reverting to 2D.
+//
+// DEMOTED (DAD-P1t): this is data referenced BY the machine state (iteration
+// budgets), not control flow. It does not encode the pipeline's structure.
 export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
     TRIVIAL: {
         maxChecksFixIterations: 2,

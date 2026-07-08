@@ -37,6 +37,9 @@ export type StepArtifact =
     | 'execute/wave'
     | 'audits/*'
 
+// DEMOTED (DAD-P1t): this is data referenced BY the machine state (per-step
+// artifact expectations), not control flow. It does not encode the pipeline's
+// structure.
 export const STEP_ARTIFACTS: Record<PipelineStep, StepArtifact[]> = {
     idle: [],
     triage: [],
