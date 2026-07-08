@@ -47,6 +47,13 @@ export {
     isLegalTransition,
 } from './configs/pipeline-transitions.ts'
 
+// Pipeline machine visualization (pure — powers the `luca graph` CLI verb)
+export {
+    renderPipelineMermaid,
+    pipelineDefinitionJson,
+    pipelineGraphEdges,
+} from './machine/graph-render.ts'
+
 // Machine verdict (XState-backed transition oracle — live write-path authority)
 export { machineVerdict } from './machine/machine-verdict.ts'
 export type {
