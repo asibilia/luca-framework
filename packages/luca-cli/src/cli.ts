@@ -36,6 +36,11 @@ const main = defineCommand({
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
 
+        // DAD-P2 persistent-runner POC verbs.
+        start: () => import('./commands/runner').then((m) => m.startCommand),
+        stop: () => import('./commands/runner').then((m) => m.stopCommand),
+        status: () => import('./commands/runner').then((m) => m.statusCommand),
+
         // v13 write-surface noun-group commands (structured/operational
         // mutations). The 9 freeform artifact writes are NOT here — they
         // use the native Write tool (v13 plan, Phase C).
