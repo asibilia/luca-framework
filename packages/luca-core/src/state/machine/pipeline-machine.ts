@@ -25,7 +25,7 @@
  * The machine is READ-ONLY over the config tables — it imports them, never
  * edits them.
  */
-import { setup } from 'xstate'
+import { assign, setup } from 'xstate'
 import type { StateValue } from 'xstate'
 
 import { PIPELINE_STEP_TO_COARSE_PHASE } from '../configs/coarse-phase-map.ts'
@@ -37,6 +37,13 @@ import type {
     OversightMode,
     PipelineStep,
 } from '../schemas.ts'
+import {
+    FIX_LOOP_EDGES,
+    incFixLoopPatch,
+    resetFixLoopPatch,
+    type FixLoopParams,
+} from './actions.ts'
+import { withinFixBudget, type WithinFixBudgetParams } from './guards.ts'
 
 /**
  * The `ADVANCE` event: request a transition to `to`. Mirrors the
@@ -48,17 +55,40 @@ export interface AdvanceEvent {
 }
 
 /**
- * Machine context. Surface-only in P1a — no guard reads it. `complexity`
- * and `oversight` mirror `PipelineGuardInput`'s advisory fields, the only
- * context P1a actually threads through `resolveState`.
+ * Machine context. `complexity` and `oversight` mirror `PipelineGuardInput`'s
+ * advisory fields, threaded through `resolveState` since P1a.
  *
- * Budget is deliberately ABSENT: no iteration/max fields until P1c wires the
- * budget guard. P1c will add the exact iteration/max fields it consumes then —
- * the foundation does not pre-commit a half-built budget shape.
+ * P1c makes the iteration budget LIVE: the three fix-loop counters
+ * (`checksFixIteration`, `verifyIteration`, `reviewIteration`) are incremented
+ * by `incFixLoop` on the rework edges and zeroed by `resetFixLoop` on the
+ * forward-exit edges. The three caps (`max*`) and `budgetMode` feed the
+ * enforce-mode `withinFixBudget` guard — which is authored + registered but
+ * EDGE-UNWIRED (advisory-first: `budgetMode` undefined ⇒ never denies), so the
+ * parity harness stays green. All fields are optional: `parityContext()`
+ * supplies none, and the increment uses a nullish base.
  */
 export interface PipelineContext {
     complexity?: ComplexityLevel
     oversight?: OversightMode
+
+    // --- Fix-loop counters (live via assign actions) ---
+    checksFixIteration?: number
+    verifyIteration?: number
+    reviewIteration?: number
+
+    // --- Fix-loop caps (enforce-mode ceilings) ---
+    maxChecksFixIterations?: number
+    maxVerifyIterations?: number
+    maxReviewIterations?: number
+
+    /** undefined ⇒ advisory (never denies); 'enforce' arms `withinFixBudget`. */
+    budgetMode?: 'advisory' | 'enforce'
+}
+
+/** A parameterized fix-loop action reference, wired onto a rework/exit edge. */
+interface FixLoopActionRef {
+    type: 'incFixLoop' | 'resetFixLoop'
+    params: FixLoopParams
 }
 
 /**
@@ -66,10 +96,17 @@ export interface PipelineContext {
  * cross-branch targets resolve regardless of which compound parent holds
  * the destination leaf. The guard is ALWAYS `toIs` — the requested-step
  * matcher and nothing else (parity invariant).
+ *
+ * `actions` is optional and carries ONLY fix-loop counter `assign`s on the 6
+ * budget edges. Actions are side-effects (they mutate `context`), NOT gates —
+ * so `.can()`, the target, and `next.value` are unchanged. Adding them does
+ * not alter which edges are legal, so parity is preserved (anti-02: `toIs`
+ * remains the only guard on every edge).
  */
 interface AdvanceTransition {
     target: string
     guard: { type: 'toIs'; params: { step: PipelineStep } }
+    actions?: FixLoopActionRef[]
 }
 
 /**
@@ -77,12 +114,24 @@ interface AdvanceTransition {
  * straight from the canonical `PIPELINE_TRANSITIONS` table. Multi-target
  * leaves become first-match-wins guarded arrays; because each guard matches
  * a distinct `to` value the guards are mutually exclusive.
+ *
+ * The 6 fix-loop edges (from `FIX_LOOP_EDGES`) additionally get their
+ * `incFixLoop`/`resetFixLoop` `assign` action appended — parameterized by the
+ * loop's counter. The guard is untouched (`toIs` only), so parity holds.
  */
 function advanceFor(from: PipelineStep): AdvanceTransition[] {
-    return PIPELINE_TRANSITIONS[from].map((to) => ({
-        target: `#${to}`,
-        guard: { type: 'toIs', params: { step: to } },
-    }))
+    return PIPELINE_TRANSITIONS[from].map((to) => {
+        const base: AdvanceTransition = {
+            target: `#${to}`,
+            guard: { type: 'toIs', params: { step: to } },
+        }
+        const edge = FIX_LOOP_EDGES[`${from}->${to}`]
+        if (edge === undefined) return base
+        return {
+            ...base,
+            actions: [{ type: edge.action, params: { counter: edge.counter } }],
+        }
+    })
 }
 
 /**
@@ -119,10 +168,30 @@ export const pipelineMachine = setup({
         events: {} as AdvanceEvent,
     },
     guards: {
-        // The ONLY guard type. Requested-step matcher — no verdict/budget
-        // reads. Keeps the machine's allow/deny identical to legacy.
+        // The ONLY guard WIRED onto an edge. Requested-step matcher — no
+        // verdict/budget reads. Keeps the machine's allow/deny identical to
+        // legacy.
         toIs: ({ event }, params: { step: PipelineStep }) =>
             event.to === params.step,
+        // Authored + registered but EDGE-UNWIRED (advisory-first). Available
+        // for the enforce flip in a later slice; never gates a transition
+        // today, so parity is untouched (anti-02).
+        withinFixBudget: (
+            { context },
+            params: WithinFixBudgetParams
+        ): boolean => withinFixBudget(context, params),
+    },
+    actions: {
+        // Fix-loop counter side-effects on the 6 budget edges. Parameterized
+        // by counter; they mutate context only (never gate). Defined inline so
+        // XState infers the machine's context+event types; the pure patch
+        // logic lives in `actions.ts`.
+        incFixLoop: assign(({ context }, params: FixLoopParams) =>
+            incFixLoopPatch(context, params)
+        ),
+        resetFixLoop: assign(({ context }, params: FixLoopParams) =>
+            resetFixLoopPatch(context, params)
+        ),
     },
 }).createMachine({
     id: 'luca',
