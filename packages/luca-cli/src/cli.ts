@@ -29,6 +29,7 @@ const main = defineCommand({
         rules: () => import('./commands/rules').then((m) => m.rulesCommand),
         classify: () =>
             import('./commands/classify').then((m) => m.classifyCommand),
+        graph: () => import('./commands/graph').then((m) => m.graphCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
