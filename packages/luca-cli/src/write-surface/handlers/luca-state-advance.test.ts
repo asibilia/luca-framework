@@ -284,6 +284,21 @@ describe('decideAdvance ⇔ machineVerdict equivalence', () => {
         })
     }
 
+    test('unknown current step: decideAdvance rejects cleanly, no TypeError on the allowed-list guard', () => {
+        // A persisted pipelineStep that is not a table key is unreachable via
+        // the Zod-validated read, but the exported seam must surface a clean
+        // unknown-current-step rejection rather than TypeError-ing on the
+        // `PIPELINE_TRANSITIONS[from].join` lookup (the `?? []` guard). A
+        // TypeError message would not match /unknown-current-step/.
+        const state = {
+            ...lucaStateSchema.parse({}),
+            pipelineStep: 'bogus-current',
+        } as unknown as Parameters<typeof decideAdvance>[0]
+        expect(() =>
+            decideAdvance(state, 'triage' as PipelineStepType)
+        ).toThrow(/unknown-current-step/)
+    })
+
     test('barrel-import smoke: machineVerdict resolves from @alecsibilia/luca-core (no cycle)', () => {
         // If exporting machineVerdict through the state barrel introduced an
         // import cycle, this symbol would evaluate to `undefined` at module

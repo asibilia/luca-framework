@@ -127,7 +127,11 @@ export function decideAdvance(s: LucaState, to: PipelineStep): PipelineStep {
         oversight: s.oversight,
     })
     if (!verdict.allowed) {
-        const allowed = PIPELINE_TRANSITIONS[from].join(', ')
+        // Guard the lookup: an unknown `from` (reason `unknown-current-step`)
+        // is not a table key, so default to [] rather than TypeError-ing on
+        // `.join`. Unreachable via the live Zod-validated read, but this seam
+        // is exported and machineVerdict can legitimately return unknown-*.
+        const allowed = (PIPELINE_TRANSITIONS[from] ?? []).join(', ')
         throw new Error(
             `rejected transition [${verdict.reason}]: '${from}' → '${to}'. ` +
                 `Allowed next steps from '${from}': [${allowed}].`
