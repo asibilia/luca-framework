@@ -5,11 +5,11 @@ import {
     appendLedger,
     appendTelemetry,
     BUDGET_BY_COMPLEXITY,
+    coarsePhaseOf,
     DEFAULT_BUDGET,
     lucaStateSchema,
     machineVerdict,
     phasePathFor,
-    PIPELINE_STEP_TO_COARSE_PHASE,
     PipelineStep,
     PipelineStepValues,
     PIPELINE_TRANSITIONS,
@@ -402,9 +402,8 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
             // as `plan-tick-result` — never throws, never blocks the
             // state advance.
             try {
-                const fromCoarse: CoarsePhase =
-                    PIPELINE_STEP_TO_COARSE_PHASE[from]
-                const toCoarse: CoarsePhase = PIPELINE_STEP_TO_COARSE_PHASE[to]
+                const fromCoarse: CoarsePhase = coarsePhaseOf(from)
+                const toCoarse: CoarsePhase = coarsePhaseOf(to)
                 if (fromCoarse === 'EXECUTING' && toCoarse !== 'EXECUTING') {
                     const slugResult = resolveActiveSlug(state)
                     if (slugResult.ok) {

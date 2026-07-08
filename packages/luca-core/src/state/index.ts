@@ -21,7 +21,6 @@ export {
     DEFAULT_BUDGET,
 } from './configs/budget-matrix.ts'
 export type { BudgetLimits } from './configs/budget-matrix.ts'
-export { PIPELINE_STEP_TO_COARSE_PHASE } from './configs/coarse-phase-map.ts'
 
 // Helpers
 export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
