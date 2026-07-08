@@ -269,12 +269,13 @@ describe('decideAdvance ⇔ machineVerdict equivalence', () => {
             })
 
             if (verdict.allowed) {
-                // Accept: decideAdvance returns the machine's resulting step.
-                // Compare as strings (decideAdvance is typed to the PipelineStep
-                // union; machineVerdict.resultingStep is a flat string).
-                expect(decideAdvance(state, to as PipelineStepType) as string).toBe(
-                    verdict.resultingStep
-                )
+                // Accept: decideAdvance returns the machine's resulting step in
+                // `.pipelineStep`. Compare as strings (decideAdvance is typed to
+                // the PipelineStep union; machineVerdict.resultingStep is flat).
+                expect(
+                    decideAdvance(state, to as PipelineStepType)
+                        .pipelineStep as string
+                ).toBe(verdict.resultingStep)
             } else {
                 // Reject: decideAdvance throws (generic Error the caller catches).
                 expect(() =>

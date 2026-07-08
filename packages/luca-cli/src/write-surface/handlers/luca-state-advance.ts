@@ -3,6 +3,9 @@ import { join } from 'node:path'
 
 import {
     appendLedger,
+    appendTelemetry,
+    BUDGET_BY_COMPLEXITY,
+    DEFAULT_BUDGET,
     lucaStateSchema,
     machineVerdict,
     phasePathFor,
@@ -13,7 +16,9 @@ import {
     resolveActiveSlug,
     STEP_ARTIFACTS,
     stringifyError,
+    type BudgetLimits,
     type CoarsePhase,
+    type CounterUpdate,
     type LucaState,
     type StepArtifact,
 } from '@alecsibilia/luca-core'
@@ -115,16 +120,31 @@ function expectedArtifactPath(
  * reason code. The message also enumerates the legal next steps from
  * `PIPELINE_TRANSITIONS[from]`.
  *
- * NO counter-increment logic lives here — that is P1c. This function only
- * decides the next `pipelineStep`; the caller preserves every other field.
+ * P1c: the fix-loop counters are now LIVE. `decideAdvance` threads the
+ * persisted counters/caps into `machineVerdict` (advisory — no `budgetMode`,
+ * so nothing is denied) and returns the machine's post-transition
+ * `counterUpdate` alongside the next `pipelineStep`. The caller spreads the
+ * update into the atomic state write; every other field is preserved.
  */
-export function decideAdvance(s: LucaState, to: PipelineStep): PipelineStep {
+export interface AdvanceDecision {
+    pipelineStep: PipelineStep
+    counterUpdate?: CounterUpdate
+}
+
+export function decideAdvance(s: LucaState, to: PipelineStep): AdvanceDecision {
     const from = s.pipelineStep
     const verdict = machineVerdict({
         currentStep: from,
         requestedStep: to,
         complexity: s.complexity,
         oversight: s.oversight,
+        // Persisted counters/caps threaded in (advisory: budgetMode omitted).
+        checksFixIteration: s.checksFixIteration,
+        verifyIteration: s.verifyIteration,
+        reviewIteration: s.reviewIteration,
+        maxChecksFixIterations: s.maxChecksFixIterations,
+        maxVerifyIterations: s.maxVerifyIterations,
+        maxReviewIterations: s.maxReviewIterations,
     })
     if (!verdict.allowed) {
         // Guard the lookup: an unknown `from` (reason `unknown-current-step`)
@@ -137,7 +157,23 @@ export function decideAdvance(s: LucaState, to: PipelineStep): PipelineStep {
                 `Allowed next steps from '${from}': [${allowed}].`
         )
     }
-    return verdict.resultingStep as PipelineStep
+    return {
+        pipelineStep: verdict.resultingStep as PipelineStep,
+        ...(verdict.counterUpdate
+            ? { counterUpdate: verdict.counterUpdate }
+            : {}),
+    }
+}
+
+/**
+ * The 3 rework edges that emit `fixloop.counted` telemetry, mapped to the cap
+ * used to resolve the advisory budget from complexity. Forward-exit (reset)
+ * edges are intentionally absent — a reset is not a fix-loop iteration.
+ */
+const REWORK_EDGE_CAPS: Record<string, keyof BudgetLimits> = {
+    'checks->execute': 'maxChecksFixIterations',
+    'verify->checks': 'maxVerifyIterations',
+    'review->execute': 'maxReviewIterations',
 }
 
 export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
@@ -149,6 +185,7 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
         async handler(args, ctx) {
             const to = args.toStep
             let from!: PipelineStep
+            let counterUpdate: CounterUpdate | undefined
             let state: LucaState
             try {
                 // Serialized read-modify-write under the .luca/state.json lock,
@@ -165,13 +202,29 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     ctx.cwd,
                     (s) => {
                         from = s.pipelineStep
-                        // P1b: the transition gate is now the XState machine
-                        // oracle (via `decideAdvance` → `machineVerdict`), not
-                        // the legacy `isLegalTransition` table lookup. On a
-                        // legal advance it returns the machine's destination
-                        // leaf; on rejection it throws a generic Error whose
-                        // message carries the reason code.
-                        return { ...s, pipelineStep: decideAdvance(s, to) }
+                        // P1b: the transition gate is the XState machine oracle
+                        // (via `decideAdvance` → `machineVerdict`), not the
+                        // legacy `isLegalTransition` table lookup. On a legal
+                        // advance it returns the machine's destination leaf; on
+                        // rejection it throws a generic Error whose message
+                        // carries the reason code.
+                        //
+                        // P1c: on a fix-loop edge the decision also carries a
+                        // `counterUpdate` (the post-transition counter value).
+                        // Spread it into the atomic write so the incremented /
+                        // reset counter is persisted with the step change.
+                        const decision = decideAdvance(s, to)
+                        counterUpdate = decision.counterUpdate
+                        return {
+                            ...s,
+                            pipelineStep: decision.pipelineStep,
+                            ...(decision.counterUpdate
+                                ? {
+                                      [decision.counterUpdate.field]:
+                                          decision.counterUpdate.value,
+                                  }
+                                : {}),
+                        }
                     },
                     { bootstrapIfMissing: lucaStateSchema.parse({}) }
                 )
@@ -247,6 +300,44 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                             targetMode: to,
                             from,
                             reason: `loop-back from '${from}' to '${to}' (rework / fix iteration)`,
+                        },
+                    })
+                }
+
+                // Conditional: fixloop.counted telemetry (DAD-P1c). When the
+                // advance traversed a REWORK edge (checks→execute, verify→checks,
+                // review→execute) and a counter was incremented, emit an
+                // advisory `fixloop.counted` record. Budget is resolved from
+                // complexity via BUDGET_BY_COMPLEXITY at emit time (advisory —
+                // the record is logged, never blocked; the enforce flip is a
+                // later slice). Forward-exit resets do NOT emit.
+                const reworkCap = REWORK_EDGE_CAPS[`${from}->${to}`]
+                if (counterUpdate !== undefined && reworkCap !== undefined) {
+                    const limits =
+                        state.complexity !== undefined
+                            ? BUDGET_BY_COMPLEXITY[state.complexity]
+                            : DEFAULT_BUDGET
+                    const budget = limits[reworkCap]
+                    const nextValue = counterUpdate.value
+                    appendTelemetry({
+                        cwd: ctx.cwd,
+                        kind: 'fixloop.counted',
+                        ctx: {
+                            runId: runId || null,
+                            phase: null,
+                            slug: null,
+                            wave: null,
+                            complexity: state.complexity ?? null,
+                            oversight: state.oversight ?? null,
+                        },
+                        meta: {
+                            edge: `${from}->${to}`,
+                            counterField: counterUpdate.field,
+                            nextValue,
+                            budget,
+                            verdict:
+                                nextValue >= budget ? 'exceeded' : 'within',
+                            phaseOfRollout: 'advisory',
                         },
                     })
                 }
