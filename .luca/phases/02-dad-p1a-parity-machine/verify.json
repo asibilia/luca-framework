@@ -1,0 +1,49 @@
+{
+  "traceId": "DAD-P1a",
+  "phase": "02-dad-p1a-parity-machine",
+  "status": "PASS",
+  "mode": "full",
+  "recommendation": "pass",
+  "gate": "THE GATE — bun test packages/luca-core green (975 pass / 0 fail); machine-parity 516/0; tsc --noEmit exit 0",
+  "verifyRounds": 2,
+  "criteria": [
+    { "id": "ac-01", "pass": true, "evidence": "package.json pins xstate 5.32.2 (exact, no range prefix)" },
+    { "id": "ac-02", "pass": true, "evidence": "spike-1: transition/initialTransition/getAdjacencyMap/toDirectedGraph resolve in installed typings; resolveState is a machine method (import-and-used, proven by green tests)" },
+    { "id": "ac-03", "pass": true, "evidence": "spike 2 (.can true for research->research), spike 3 (resolveState throws on unknown -> gate above machine), spike 6 (getAdjacencyMap emits spurious stays -> .can-filter) recorded + embodied in tested code" },
+    { "id": "ac-04", "pass": true, "evidence": "STEP_TRANSITIONS satisfies Record<PipelineStep, AdvanceTransition[]>" },
+    { "id": "ac-05", "pass": true, "evidence": "graph.test countLeaves===13 (idle atomic + 6+2+3+1)" },
+    { "id": "ac-06", "pass": true, "evidence": "sole guard is toIs(step); no forward/budget/verdict guard on any edge (re-confirmed after context trim)" },
+    { "id": "ac-07", "pass": true, "evidence": "machine-verdict gates bogus step above machine via VALID_STEPS before resolveState" },
+    { "id": "ac-08", "pass": true, "evidence": "adapter emits all 5 reason codes; decision tree mirrors pipeline-guard exactly" },
+    { "id": "ac-09", "pass": true, "evidence": "parity test asserts machineVerdict.allowed === checkPipelineGuard.allowed over all 169 pairs" },
+    { "id": "ac-10", "pass": true, "evidence": "resulting-step asserted on all 21 legal pairs; stay-on-from on 148 illegal" },
+    { "id": "ac-11", "pass": true, "evidence": "reason-code parity over all 148 illegal pairs + 21 ok" },
+    { "id": "ac-12", "pass": true, "evidence": "unknown-step fixture bogus->triage === unknown-current-step" },
+    { "id": "ac-13", "pass": true, "evidence": "unknown-step fixture idle->bogus === unknown-requested-step" },
+    { "id": "ac-14", "pass": true, "evidence": "tripwire ALL_PAIRS.length===169" },
+    { "id": "ac-15", "pass": true, "evidence": "tripwire LEGAL_PAIRS.length===21" },
+    { "id": "ac-16", "pass": true, "evidence": "graph test: .can-filtered getAdjacencyMap edge set size===21 AND toEqual(LEGAL_EDGE_SET)" },
+    { "id": "ac-17", "pass": true, "evidence": "bun test packages/luca-core = 975 pass / 0 fail (THE GATE)" },
+    { "id": "ac-18", "pass": true, "evidence": "bunx --bun tsc --noEmit exit 0" }
+  ],
+  "antiCriteria": [
+    { "id": "anti-01", "pass": true, "evidence": "configs/pipeline-transitions.ts unchanged" },
+    { "id": "anti-02", "pass": true, "evidence": "orchestration/pipeline-guard.ts unchanged" },
+    { "id": "anti-03", "pass": true, "evidence": "no file under luca-cli/src/write-surface/ touched" },
+    { "id": "anti-04", "pass": true, "evidence": "no file under luca-tools/src/hooks/pipeline-guard/ touched" },
+    { "id": "anti-05", "pass": true, "evidence": "budget-matrix/coarse-phase-map/stage-tool-matrix/step-artifacts/relaxation-paths unchanged" }
+  ],
+  "parityJudgment": "REAL, not vacuous — machineVerdict routes through resolveState -> snapshot.can -> transition(), never shortcutting to isLegalTransition/checkPipelineGuard. Independent 169-pair sweep: 0 mismatches.",
+  "reviewFixes": [
+    { "item": "simplification SHOULD-FIX 1", "resolution": "PipelineContext trimmed from ~10 speculative budget fields to {complexity?,oversight?}; budget deliberately absent until P1c (comment added). Re-verified guard-free (ac-06)." },
+    { "item": "simplification SHOULD-FIX 2", "resolution": "machineVerdict reshaped to take PipelineGuardInput object (P1b drop-in seam); PipelineGuardInput reused not redefined; return shape unchanged {allowed,reason,resultingStep}." }
+  ],
+  "deviations": [
+    { "id": "dev-2", "judgment": "accepted", "detail": "state-value helpers in pipeline-machine.ts re-exported from fixtures.ts (DRY; adapter needs them before fixtures)" },
+    { "id": "dev-3", "judgment": "accepted", "detail": ".can-filtered getAdjacencyMap edge derivation (sound given spike-6 spurious stays; drift guard intact via size + set-equality)" }
+  ],
+  "crossPhaseNotes": [
+    "P1b must reproduce legacy illegal-transition/unknown-step MESSAGES (they enumerate allowed-next-steps + recovery hints) or keep checkPipelineGuard for messaging — machineVerdict deliberately omits message parity in P1a.",
+    "P1b: two enforcement surfaces share the table — the hook (checkPipelineGuard) and luca-state-advance.ts mutateState (generic throw). Both need repointing."
+  ]
+}

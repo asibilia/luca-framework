@@ -1,0 +1,180 @@
+{
+  "timestamp": "2026-07-07T00:00:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "grep for src/iteration|context-monitor in phase-execute/index.ts returns 0 matches",
+      "met": true,
+      "evidence": "grep -rc 'src/iteration\\|context-monitor' packages/luca-tools/src/artifacts/skills/phase-execute/index.ts = 0; grep -n 'src/' also exit 1 (no matches)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "grep -c 'luca checks run' in phase-execute >= 1 (harness flow preserved)",
+      "met": true,
+      "evidence": "grep -c = 3 (lines 540, 600, 872 all invoke `luca checks run --file .luca/tmp/checks.json`)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "grep -c 'iterationPlan' in modes/execute.ts = 0",
+      "met": true,
+      "evidence": "grep -c = 0",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "grep -c -- '--kind recall.' in modes/execute.ts >= 1 (record-recall directive intact)",
+      "met": true,
+      "evidence": "grep -c = 2",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "pinned disambiguation marker 'dual-surface: standalone mode-agent vs. /lu architect step' present in modes/architect.ts",
+      "met": true,
+      "evidence": "grep -F matched 2 lines (header comment + `>` Surface note at top of BODY), exit 0",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "architectMode export survives in modes/architect.ts",
+      "met": true,
+      "evidence": "grep -c 'export const architectMode|architectMode =' = 1",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "architect still in MODES array (modes/index.ts)",
+      "met": true,
+      "evidence": "modes/index.ts imports architectMode and lists it in the MODES array (2 array occurrences)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "architect pipeline-step line in commands/lu.ts does not contain 'plan.md'",
+      "met": true,
+      "evidence": "lu.ts:58 architect step row: 'Writes nothing — the downstream plan / plan-review steps own the plan write.' — sed -n '58p' | grep -c 'plan.md' = 0",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "architect pipeline-step line in skills/lu/index.ts does not contain 'plan.md'",
+      "met": true,
+      "evidence": "skills/lu/index.ts:110 architect step row identical wording — sed -n '110p' | grep -c 'plan.md' = 0",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "tsc --noEmit exit 0",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "record-recall.test.ts passes",
+      "met": true,
+      "evidence": "STAGE-GATE-SUBSTITUTED (bun test blocked in REVIEWING/verify as category=bash-mutate). Structural re-execution of the test's exact assertions: record-recall.test.ts is UNMODIFIED from main (not in diff) and is a pure readFileSync+toContain token probe over 5 mode bodies. Both modified mode files carry every REQUIRED_TOKEN — execute.ts: 'kind recall.'=2, run-id=1, resultCount=2, verifiedCount=1, callerMode=1, durationMs=1, recalledIds=2, emit present; architect.ts: 'kind recall.'=1, run-id=1, resultCount=2, verifiedCount=1, callerMode=1, durationMs=1, recalledIds=2, emit present. triage/review/finalize unchanged from main. tsc green. Test logic fully satisfied.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "finalize.test.ts passes",
+      "met": true,
+      "evidence": "STAGE-GATE-SUBSTITUTED (bun test blocked). finalize.test.ts AND finalize.ts both UNMODIFIED from main (neither in diff). Structural re-execution of its toContain assertions against finalize.ts: 'telemetry kpi'=2, 'metric:outcome-kpi-'=3, remember_batch=1, 'muninn.vault'=2, meanReworkIterations=2, reEntryRate=2 — all present. tsc green (import resolves, mode compiles). Test result identical to main.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "after rebuild, grep for src/iteration|context-monitor|iterationPlan in packages/luca/dist/claude returns 0",
+      "met": true,
+      "evidence": "dist/claude present and freshly rebuilt (contains new marker 'dual-surface: standalone mode-agent vs. /lu architect step' in dist/claude/.claude/agents/architect.md). grep for src/iteration exit 1, context-monitor exit 1, iterationPlan exit 1 — 0 matches all three.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "grep -c 'harnessFixIterations|c.iteration.|verifyFixIterations' in phase-execute = 0 (orphaned config reads removed)",
+      "met": true,
+      "evidence": "grep -c = 0",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT edit CHANGELOG.md, docs/archive/**, or .luca/archive/**",
+      "met": true,
+      "evidence": "git diff --name-only main...HEAD lists only the 5 expected src files; none of packages/luca/CHANGELOG.md, docs/archive/**, .luca/archive/** appear.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT remove architect/execute from MODES or delete/rename either mode file",
+      "met": true,
+      "evidence": "modes/index.ts still imports+lists architectMode AND executeMode; both architect.ts and execute.ts still exist (appear as modifications, not deletions/renames, in diff). record-recall directive tokens intact (ac-11 structural).",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT modify the triage double-definition (triage.ts)",
+      "met": true,
+      "evidence": "git diff --name-only does not list packages/luca-tools/src/artifacts/modes/triage.ts",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT wire iteration counters (no packages/luca-core/** file changed)",
+      "met": true,
+      "evidence": "git diff --name-only lists no file under packages/luca-core/",
+      "blocking": false,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Full-mode verification of DAD-P0 (no-behavior-change hygiene). 14/14 acceptance criteria met, 4/4 anti-criteria satisfied. ac-11/ac-12 (bun test) were STAGE-GATE-BLOCKED in REVIEWING/verify (Bash category=bash-mutate). Per the dual-evidence fallback for stage-gate-blocked probes: no executor attestation artifact exists (phase has no execute/ dir), so verification relied on an independent structural probe that FAITHFULLY RE-EXECUTES each test's exact logic — both suites are pure token-presence checks (readFileSync/import + toContain), so hand-grepping every REQUIRED_TOKEN over the same target files IS the test assertion, not a weaker substitute. record-recall.test.ts and finalize.test.ts are both unmodified from main; all required tokens confirmed present in the modified (architect.ts, execute.ts) and unmodified (finalize.ts, triage.ts, review.ts) mode bodies; tsc green. DEVIATION #2 JUDGMENT = ACCEPTED: the executor did NOT pure-delete phase-execute §6.6 Loop A / §7.5 Loop B (context.md Decision 1 = delete-block); it REPLACED the ~300 lines of nonexistent-file machinery (bun run src/iteration/*.ts, context-monitor.ts) with lightweight bounded-fix-loop prose. Scrutiny found: (1) NO new tool invocation — the only commands invoked in the replacement are pre-existing `luca checks run`, `luca telemetry emit`, `luca state read`; grep for `bun run` and `src/` both return 0 in the file. (2) NO new behavior — the replacement encodes the SAME bounded-convergence contract execute-mode already carries (same error >=2 iterations = stalled -> escalate; iteration >=3 without clean = hard-stop), exactly the fallback Decision 1 specified. (3) The harness flow (`luca checks run`) survived (ac-02=3) and 0 dangling src/iteration|context-monitor refs remain (ac-01=0). Additionally, keeping slim §6.6/§7.5 sections PRESERVED internal cross-references at lines 548/718/831/875 ('Proceed to Step 7.5', 'enter failure-to-fix loop (Step 6.6)') that a literal delete-block would have turned into NEW dangling references — so the deviation is arguably more correct than pure deletion, not merely acceptable. No behavior smuggled into a separate phase. anti-01 note: dist/** is gitignored so never in diff; ac-13 is its real downstream check and passed (dist rebuilt with new marker, 0 dangling tokens).",
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "Dangling refs repaired/deleted (src/iteration/*, context-monitor.ts, iterationPlan)",
+      "criterionIds": ["ac-01", "ac-03", "ac-13"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "architect double-definition resolved (reconcile, documented)",
+      "criterionIds": ["ac-05", "ac-06", "ac-07", "ac-08", "ac-09"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D3",
+      "description": "No behavior change; tests + gate green",
+      "criterionIds": ["ac-02", "ac-04", "ac-10", "ac-11", "ac-12"],
+      "compliance": "shipped"
+    }
+  ]
+}

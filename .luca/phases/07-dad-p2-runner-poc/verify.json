@@ -1,0 +1,208 @@
+{
+  "timestamp": "2026-07-08T16:30:00.000Z",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "goEarned": true,
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "createPipelineActorHandle exported from luca-core as an opaque handle (luca-cli imports without xstate).",
+      "met": true,
+      "evidence": "packages/luca-core/src/state/index.ts:59 exports createPipelineActorHandle; actor-handle.ts returns plain {send,contextSnapshot,stop} — no xstate types cross the boundary. daemon.ts imports it from @alecsibilia/luca-core with no xstate import.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "luca start holds createActor(pipelineMachine) bound to .luca/tmp/runner.sock for the run.",
+      "met": true,
+      "evidence": "runner/daemon.ts:107 createPipelineActorHandle(seedState.pipelineStep); :210 Bun.listen({unix: sockPath}) where sockPath=.luca/tmp/runner.sock (protocol.ts:16).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "start/stop/status registered in cli.ts.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/cli.ts:40-42 register startCommand/stopCommand/statusCommand.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "state-advance client routes over the socket when daemon is up, else falls back to lucaStateAdvanceTool.handler.",
+      "met": true,
+      "evidence": "commands/write-surface/state.ts:67-84 — sendRequest advance first; on non-unreachable advance response surfaces it, otherwise runWriteHandler cold. anti-06 default-cold behavior.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "test 1 parity — same event sequence yields byte-identical state.json daemon-up vs down.",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:148-180 — real seq [checks,execute,checks,verify] via spawned `luca state advance` into daemon-up + cold-only repos; daemon liveness confirmed by startDaemon ping + post-seq status (:164-165 asserts not unreachable); readFileSync state.json a===b (:177-179). Write is code-identical (daemon calls lucaStateAdvanceTool.handler, daemon.ts:196).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "test 2 degradation — killing daemon mid-run leaves next advance succeeding via cold (exit 0, no error text). POSIX.",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:182-203 — real daemon.kill(9) on a spawned process, sleep 120ms, then real `luca state advance --to-step=execute`: asserts code 0, stdout `→ 'execute'`, stderr empty, state.json.pipelineStep==='execute'. Real process kill, not a mock.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "test 3 governance — ownerSessionId bystander exemption identical daemon-vs-cold.",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:205-242 — owner-1 vs bystander-2 payloads through handleStageGateHook cold and with a live daemon; asserts ownerHot.decision===ownerCold, bystanderHot===bystanderCold, AND owner blocked / bystander allowed (real owner≠bystander distinction). Hook reads state.json only, daemon-independent.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "test 4a — luca stop removes lock.json (+ socket).",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:244-253 — start daemon, assert lock.json exists, `luca stop` exit 0, assert lock.json and runner.sock both gone.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-09.1",
+      "description": "test 4b — after kill -9 a cold-path advance exits 0 (state.json.lock independent of daemon lock).",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:255-268 — real kill(9), asserts stale dead-pid lock.json still exists, then cold `luca state advance --to-step=checks` exit 0.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-09.2",
+      "description": "test 4b — forceUnlock reaps the stale dead-pid lock so a fresh luca start re-acquires under a NEW pid.",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:270-276 — fresh startDaemon (confirmed live via ping); newLock.pid asserted NOT deadPid AND === daemon2.pid. Proves the reap+re-acquire under a new pid, not just that cold advance works. Closes the plan-review 'passes for the wrong reason' flag. daemon.ts:82,96-97 forcePipelineUnlock reap path.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "test 5 latency — daemon advance p95 (>=20 samples, warmup) <= cold p95 + 15ms. POSIX.",
+      "met": true,
+      "evidence": "runner-acceptance.test.ts:278-322 — 24 samples/4 warmup; cold = in-process handler (isolates IPC), daemon = 28 real socket advance round-trips each asserted reachable; asserts hotP95 <= coldP95+15. Summary reports delta -0.07ms. Real measurement.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "a test asserts the machine declares only assign actions (actor-vs-cold parity guardrail).",
+      "met": true,
+      "evidence": "actor-handle.test.ts:53-83 — collectLifecycleActions asserts no entry/exit anywhere (lifecycle==={}) and every registered action fn.type==='xstate.assign' (incFixLoop/resetFixLoop).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "machine context is JSON-serializable (no functions/actor-refs).",
+      "met": true,
+      "evidence": "actor-handle.test.ts:110-119 — JSON.stringify(contextSnapshot()) does not throw; round-trips step+context. contextSnapshot returns plain leaf+context (actor-handle.ts:75-81).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "explicit written go/no-go decision exists in execute/summary.md.",
+      "met": true,
+      "evidence": ".luca/phases/07-dad-p2-runner-poc/execute/summary.md:3 '## Decision: GO' with per-test evidence table and NO-GO-sought rationale.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "checks-step evidence (green): tsc 0 errors. Structural review of the diff surfaces no type-level issues; new code is additive.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "timeout 120 bun test packages/luca-core passes (bounded).",
+      "met": true,
+      "evidence": "checks-step evidence (green): bun test packages/luca-core 1026 pass / 0 fail; runner-acceptance.test.ts 6 pass / 0 fail. Bash test-run stage-gate-blocked in verify; relied on checks-step evidence per protocol.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT modify decideAdvance/mutateState/machineVerdict/stage-gate hook — files unchanged (additive).",
+      "met": true,
+      "evidence": "git show --name-status across 24d786f2e/9036b0853/76b068b16 — luca-state-advance.ts, mutate-state.ts, machine-verdict.ts, handle-stage-gate-hook.ts ABSENT from the changeset. pipeline-lock.ts change is export-only (`function isPidAlive`→`export function isPidAlive`, no logic). state/index.ts adds exports only.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "daemon MUST NOT spawn agents/subagents.",
+      "met": true,
+      "evidence": "grep of runner/ + commands/runner.ts — zero Bun.spawn/child_process/Task in daemon.ts (only a doc comment). The only Bun.spawn occurrences are in the test harness spawning real luca CLI processes.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "actor MUST NOT write state.json — only mutateState does.",
+      "met": true,
+      "evidence": "daemon.ts:196-203 — the write is lucaStateAdvanceTool.handler; handle.send(to) mirrors position ONLY after a successful write. actor-handle.ts wraps createActor (pure xstate, no fs). Actor has no state.json write path.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "daemon MUST NOT hold state.json.lock across requests (per-mutation via mutateState only).",
+      "met": true,
+      "evidence": "daemon.ts holds only the coarse .luca/lock.json (acquirePipelineLock, distinct from state.json.lock) for the run; each advance calls the unchanged handler where mutateState owns state.json.lock per-call. No state.json.lock reference in daemon.ts.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT persist the actor snapshot — re-seeded from state.json on (re)connect.",
+      "met": true,
+      "evidence": "grep — no getPersistedSnapshot / snapshot-to-disk write. actor-handle.ts:64-68 seeds via resolveState({value: STEP_TO_STATE_VALUE[step]}); daemon.ts:106-109 re-seeds from loadCurrentState().pipelineStep on every start.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "when daemon is down, the cold path remains the default working advance (proven by ac-06).",
+      "met": true,
+      "evidence": "state.ts:67-84 sendRequest→unreachable falls through to cold runWriteHandler; protocol.ts:60-118 sendRequest NEVER throws, returns Unreachable on ENOENT/ECONNREFUSED/timeout. ac-06 test proves it at runtime.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "daemon route entered ONLY from within luca state advance (hook still stamps ownerSessionId) — no bypassing raw client.",
+      "met": true,
+      "evidence": "grep `cmd: 'advance'` in production code — only state.ts:68 (inside `luca state advance`) and the protocol.ts type def. The sole other occurrence is the test harness (runner-acceptance.test.ts:306), not a production client.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-core", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "runner-acceptance.test.ts", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "pass",
+  "notes": "GO is genuinely earned. All 5 acceptance tests are real runtime integration spikes (spawned luca processes, real unix sockets, real kill -9, real reap-and-reacquire, 24 real latency samples) — none vacuous or mocked. The plan-review-flagged ac-09.2 concern is closed: test 4b asserts newLock.pid===daemon2.pid AND !==deadPid, proving the stale dead-pid lock is reaped and a fresh daemon re-acquires under a NEW pid (not merely that cold advance works). Additive-only safety holds: the 4 protected files (luca-state-advance/mutate-state/machine-verdict/stage-gate-hook) are absent from the changeset; pipeline-lock.ts and state/index.ts are export-only. Deviations judged acceptable for a POC: (1) `luca start` foreground-blocking with full daemonization deferred is spec-endorsed (plan allows stopping at Phase 1) and documented in summary caveat #1; (2) position-only mirror with counters authoritative in state.json is by-design (status handler reads counters from state.json, daemon.ts:161-167) and honors the persistence caveat (ac-12 serializable, anti-05 no snapshot). Minor observation (non-blocking): the ac-05 parity test asserts daemon reachability via status but does not assert mirrorStep advanced to 'verify'; the daemon advance WRITE route is instead independently exercised by ac-10 (28 direct socket advances, each asserted reachable), so the route is genuinely proven live across the suite. Bash was stage-gate-blocked for tsc/bun-test in verify — ac-14/ac-15 rely on the provided green checks-step evidence per the deferred/dual-evidence protocol; read-only git and grep probes were used for all structural anti-criteria.",
+  "deliverables": [
+    { "id": "D1", "description": "runner is a state-holder — createActor per run on the socket, spawns no agents", "criterionIds": ["ac-01", "ac-02", "ac-03", "anti-02"], "compliance": "shipped" },
+    { "id": "D2", "description": "the 5 acceptance tests pass, incl. graceful degradation", "criterionIds": ["ac-04", "ac-05", "ac-06", "ac-07", "ac-08", "ac-09.1", "ac-09.2", "ac-10", "anti-06", "anti-07"], "compliance": "shipped" },
+    { "id": "D3", "description": "persistence caveats honored plus an explicit go/no-go decision", "criterionIds": ["ac-11", "ac-12", "ac-13", "anti-03", "anti-05"], "compliance": "shipped" },
+    { "id": "D4", "description": "additive-only, gate green", "criterionIds": ["ac-14", "ac-15", "anti-01", "anti-04"], "compliance": "shipped" }
+  ]
+}

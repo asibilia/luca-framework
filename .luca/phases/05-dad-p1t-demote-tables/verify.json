@@ -1,0 +1,159 @@
+{
+  "timestamp": "2026-07-07T00:00:00.000Z",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "PIPELINE_STEP_TO_COARSE_PHASE no longer exists in source (grep returns 0).",
+      "met": true,
+      "evidence": "grep -rn 'PIPELINE_STEP_TO_COARSE_PHASE' packages/{luca-core,luca-cli,luca-tools,luca}/src returned 0 matches. coarse-phase-map.ts confirmed deleted (Read: file does not exist). derivation.test.ts assembles the token at runtime so it never appears as a contiguous literal. All comment mentions scrubbed (continuation-messages.ts + graph.test.ts diffs repoint away from the deleted file).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "Each of the 5 top-level machine nodes carries a meta.coarsePhase label.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:212 (idle IDLE), :218 (planning PLANNING), :250 (executing EXECUTING), :266 (reviewing REVIEWING), :286 (finalizing FINALIZING). meta type declared in setup at :176.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "coarse-phase-of.ts derives from the machine map, no longer imports the raw table.",
+      "met": true,
+      "evidence": "coarse-phase-of.ts:1 imports STEP_TO_COARSE_PHASE from '../machine/pipeline-machine.ts'; body (:20) returns STEP_TO_COARSE_PHASE[step]. No import of coarse-phase-map.ts.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "coarse-phase-of.test.ts (13-case golden mapping) passes unchanged.",
+      "met": true,
+      "evidence": "Full change-range diff (a4defb27a~1..bb4071acd) does NOT list coarse-phase-of.test.ts — file untouched. Test asserts coarsePhaseOf(step) against HARDCODED literals (idle→IDLE ... finalize→FINALIZING); a genuine oracle, not a tautology. Checks-step evidence: coarse-phase-of 14/0 green.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "Derivation-lock test asserts coarsePhaseOf(step) equals the machine getMeta() phase across the 13-step set.",
+      "met": true,
+      "evidence": "pipeline-machine.derivation.test.ts:27-37 loops PipelineStepValues, re-derives via resolveState().getMeta() and asserts equals coarsePhaseOf(step). This lock is tautological in isolation (both read the same machine meta) but the zero-behavior-change oracle is the SEPARATE hardcoded golden test (ac-04); the two together prove hardcoded-golden === coarsePhaseOf === getMeta-derived.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "STEP_TO_STATE_VALUE derived from pipelineMachine.states (no PIPELINE_STEP_TO_COARSE_PHASE dep); parity + graph green, byte-identical output.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:316-345 builds STEP_STATE_VALUE_INDEX by walking Object.entries(pipelineMachine.states) and derives STEP_TO_STATE_VALUE from it; no coarse-phase-map dependency. Checks-step: parity+graph green in luca-core 1011/0.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "luca-state-advance.ts uses coarsePhaseOf (raw table grep = 0).",
+      "met": true,
+      "evidence": "luca-state-advance.ts:8 imports coarsePhaseOf; :405-406 use coarsePhaseOf(from)/coarsePhaseOf(to). grep for PIPELINE_STEP_TO_COARSE_PHASE in that file = 0.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Module-load assertion fails fast if any step yields an invalid CoarsePhase.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:368-372 throws 'no coarsePhase meta resolved for step' at module load when getMeta yields no coarsePhase; compile-time exhaustiveness held by STEP_TRANSITIONS satisfies Record<PipelineStep,...> (:163).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "stage-gate hook test (handle-stage-gate-hook.test.ts) passes.",
+      "met": true,
+      "evidence": "Checks-step evidence (green): stage-gate hook 34/0. Independent re-run blocked by verify-step stage-gate (bash-mutate); relying on checks-step artifact per verifier fallback.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "bun test packages/luca-core passes.",
+      "met": true,
+      "evidence": "Checks-step evidence (green): bun test packages/luca-core 1011/0 (incl coarse-phase-of 14/0, parity, graph, derivation). Independent re-run blocked in verify step (bash-mutate); relying on checks-step artifact.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "Checks-step evidence (green): tsc 0 errors. Independent re-run blocked in verify step (bash-mutate); relying on checks-step artifact per fallback.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "Explicit golden-snapshot test of STEP_TO_STATE_VALUE (13 entries) passes.",
+      "met": true,
+      "evidence": "pipeline-machine.derivation.test.ts:40-61 asserts STEP_TO_STATE_VALUE toEqual a HARDCODED 13-entry shape and length === 13. A real oracle (hardcoded expected shape).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT edit coarse-phase-of.test.ts (zero-behavior-change guarantee).",
+      "met": true,
+      "evidence": "git diff --stat a4defb27a~1..bb4071acd does NOT list coarse-phase-of.test.ts — unchanged.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT drift STEP_TO_STATE_VALUE output — parity + graph tests stay green.",
+      "met": true,
+      "evidence": "Golden snapshot (derivation.test.ts:42-56) matches expected shape; parity+graph green in checks-step (luca-core 1011/0). STEP_TO_STATE_VALUE now derived from machine structure, output byte-identical.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT add any guard or action via the meta change — toIs stays the sole edge guard.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:178-191: only toIs is wired onto edges; withinFixBudget authored but EDGE-UNWIRED. meta is non-structural (:176). Parity green in checks-step confirms no verdict change.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT change DATA of the 4 demote tables — only doc comments.",
+      "met": true,
+      "evidence": "git diff of budget-matrix.ts, stage-tool-matrix.ts, relaxation-paths.ts, step-artifacts.ts shows ONLY +3 comment-line additions (DEMOTED (DAD-P1t) annotations) above each export; zero value/data changes.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT modify checkPipelineGuard or configs/pipeline-transitions.ts.",
+      "met": true,
+      "evidence": "Full change-range diff --stat lists neither pipeline-transitions.ts nor any checkPipelineGuard file — both unchanged.",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-core", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "stage-gate hook test", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "ZERO-BEHAVIOR-CHANGE PROOF: genuinely established. coarse-phase-of.test.ts (unchanged, anti-01) asserts coarsePhaseOf against HARDCODED golden literals (idle→IDLE; triage/research/discuss/architect/plan/plan-review→PLANNING; execute/checks→EXECUTING; verify/review/learn→REVIEWING; finalize→FINALIZING) — a real oracle, NOT a tautology. Since coarsePhaseOf reads the getMeta-derived STEP_TO_COARSE_PHASE, the golden test proves the machine-derived map == golden mapping for all 13 steps. The derivation-lock test (ac-05) is tautological in isolation (both sides read the same machine meta) but is a valid extra lock chaining hardcoded-golden===helper===getMeta. STEP_TO_STATE_VALUE golden snapshot (ac-12) also uses hardcoded literals. DEVIATION JUDGMENT: continuation-messages.ts doc-comment repoint (named deleted coarse-phase-map.ts as source of truth → repointed to machine meta / STEP_TO_COARSE_PHASE) is ACCEPTABLE in-scope doc hygiene, NOT scope creep — leaving it would dangle a reference to a file DAD-P1t deleted; doc-only, no logic, no PIPELINE_STEP_TO_COARSE_PHASE literal reintroduced. GATE FALLBACK: ac-09/10/11 rely on green checks-step evidence (tsc 0; luca-core 1011/0 incl coarse-phase-of 14/0, parity, graph, derivation; stage-gate 34/0) — independent re-run of tsc/bun test blocked by the verify-step stage-gate (bash-mutate category); grep and git diff probes ran successfully and independently confirm ac-01/03/07 and all anti-criteria.",
+  "deliverables": [
+    { "id": "D1", "description": "PIPELINE_STEP_TO_COARSE_PHASE deleted; coarse phase derived from machine via getMeta()", "criterionIds": ["ac-01", "ac-02", "ac-03", "ac-06"], "compliance": "shipped" },
+    { "id": "D2", "description": "zero behavior change — golden mapping preserved", "criterionIds": ["ac-04", "ac-05", "ac-07", "ac-12", "anti-01"], "compliance": "shipped" },
+    { "id": "D3", "description": "the 4 tables demoted (data referenced by machine state; no logic change)", "criterionIds": ["anti-04"], "compliance": "shipped" },
+    { "id": "D4", "description": "gate green, no parity regression", "criterionIds": ["ac-09", "ac-10", "ac-11", "anti-02", "anti-03", "anti-05"], "compliance": "shipped" }
+  ]
+}
