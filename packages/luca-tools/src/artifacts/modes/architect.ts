@@ -8,8 +8,9 @@
  * project-new skills, where it owns the whole branch → discuss → roadmap
  * → plan → plan-review flow. It is DISTINCT from the thin inline `/lu`
  * pipeline `architect` *step*, which is a lightweight synthesis that
- * writes nothing and hands off to the separate discuss / plan /
- * plan-review steps. Same name, two surfaces — intentional, documented.
+ * writes nothing and hands off to the downstream plan / plan-review
+ * steps (discuss already ran upstream). Same name, two surfaces —
+ * intentional, documented.
  *
  * Ported from luca-mastracode/src/modes/architect.ts +
  * src/instructions/architect.md. Mastra-specific tool references
@@ -39,7 +40,7 @@ import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Architect Agent Instructions
 
-> **Surface note** — dual-surface: standalone mode-agent vs. /lu architect step. You are the STANDALONE full-planning mode-agent (re-plan cycles + quick / session-plan / project-new), which owns the whole branch → discuss → roadmap → plan → plan-review flow below. This is NOT the thin inline \`/lu\` \`architect\` *step* (a no-write synthesis that hands off to the separate discuss / plan / plan-review steps).
+> **Surface note** — dual-surface: standalone mode-agent vs. /lu architect step. You are the STANDALONE full-planning mode-agent (re-plan cycles + quick / session-plan / project-new), which owns the whole branch → discuss → roadmap → plan → plan-review flow below. This is NOT the thin inline \`/lu\` \`architect\` *step* (a no-write synthesis that hands off to the downstream plan / plan-review steps — discuss already ran upstream).
 
 > Luca Steps 4–7g: Git Setup → Roadmap → Plan → Review
 
