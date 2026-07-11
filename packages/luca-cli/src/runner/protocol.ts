@@ -17,9 +17,17 @@ export function runnerSocketPath(cwd: string): string {
     return join(cwd, '.luca', 'tmp', 'runner.sock')
 }
 
-/** A request sent from a client to the daemon. */
+/**
+ * A request sent from a client to the daemon.
+ *
+ * NOTE — no peer/session field: governance is enforced by the PreToolUse
+ * stage-gate hook reading `state.json` (anti-07), NOT by the socket. The
+ * daemon does not authenticate its peer; the sole trusted client is
+ * `luca state advance`, a Bash command the hook has already gated. See the
+ * trust-boundary note in `daemon.ts`.
+ */
 export type RunnerRequest =
-    | { cmd: 'advance'; to: string; session_id?: string }
+    | { cmd: 'advance'; to: string }
     | { cmd: 'status' }
     | { cmd: 'stop' }
     | { cmd: 'ping' }

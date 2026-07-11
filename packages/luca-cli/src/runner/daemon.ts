@@ -19,6 +19,20 @@
  * The daemon holds the coarse `.luca/lock.json` (pipeline lock) for the run,
  * guarded by PID-liveness so a stale socket / dead-pid lock is reaped but a live
  * daemon is never clobbered.
+ *
+ * TRUST BOUNDARY (POC scope) — the socket is UNAUTHENTICATED. The daemon
+ * accepts `advance`/`stop` from ANY peer that can connect to the repo-local
+ * `.luca/tmp/runner.sock`; it performs no session or peer check. Pipeline
+ * governance is NOT hook-enforced on this path: the sole intended client is
+ * `luca state advance` (a Bash call the PreToolUse stage-gate hook already
+ * gated), but a process connecting directly to the socket performs a real
+ * `state.json` mutation while BYPASSING the stage-gate hook entirely. This is
+ * acceptable only because (a) the write still routes through `decideAdvance`,
+ * so illegal step jumps are rejected, and (b) the socket is a repo-local file
+ * created with `0700` perms on the containing dir, for a single-user local dev
+ * tool. Do NOT mistake this for hook-enforced governance. A non-POC runner
+ * that opens the socket beyond the local user must add socket-level peer/session
+ * auth here.
  */
 import { existsSync, mkdirSync, unlinkSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -55,7 +69,10 @@ function joinResultText(content: { type: string; text: string }[]): string {
  */
 export async function runDaemon(cwd: string): Promise<void> {
     const sockPath = runnerSocketPath(cwd)
-    mkdirSync(dirname(sockPath), { recursive: true })
+    // 0700: the socket dir is owner-only — a bystander user on a shared host
+    // cannot connect to the unauthenticated advance socket (see trust-boundary
+    // note above). recursive mode is applied to created leaf dirs only.
+    mkdirSync(dirname(sockPath), { recursive: true, mode: 0o700 })
 
     // --- Stale-socket / lock guard (PID-liveness) -----------------------
     // Never unlink a live daemon's socket. If a lock is held by a live pid,
