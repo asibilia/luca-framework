@@ -33,6 +33,8 @@ const main = defineCommand({
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
+        statusline: () =>
+            import('./commands/statusline').then((m) => m.statuslineCommand),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
 
