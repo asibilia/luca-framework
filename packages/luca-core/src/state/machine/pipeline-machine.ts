@@ -69,7 +69,10 @@ export interface AdvanceEvent {
  * enforce-mode `withinFixBudget` guard — which is authored + registered but
  * EDGE-UNWIRED (advisory-first: `budgetMode` undefined ⇒ never denies), so the
  * parity harness stays green. All fields are optional: `parityContext()`
- * supplies none, and the increment uses a nullish base.
+ * supplies none, and the increment NO-OPS when the counter is untracked
+ * (`undefined`) rather than seeding from a nullish base — it never mints a
+ * counter into the machine's default `{}` context, which keeps XState's
+ * structural graph exploration finite (see `incFixLoopPatch` in `actions.ts`).
  */
 export interface PipelineContext {
     complexity?: ComplexityLevel
