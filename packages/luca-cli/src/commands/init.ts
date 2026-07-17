@@ -48,6 +48,7 @@ import {
     defaultAntigravityHome,
     defaultClaudeHome,
     enrichTraceMetadata,
+    ensureCompactInstructions,
     installHooks,
     installSkills,
     writeProjectSkeleton,
@@ -281,6 +282,14 @@ export const initCommand = defineCommand({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
+            // Seed the consumer repo's CLAUDE.md with the managed
+            // `## Compact Instructions` block so the next agent can rehydrate
+            // pipeline handoff state (pipelineStep, run id, vault, phase-boundary
+            // handoff memory) after a context compaction. Idempotent.
+            await ensureCompactInstructions(
+                projectCwd,
+                (msg) => p.log.info(msg)
+            )
             // B3: copy bundled Claude Code hook handlers + merge the
             // bundled settings.json into the project's .claude/
             // directory. Without this the compiled settings.json's
