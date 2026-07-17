@@ -47,6 +47,7 @@ import {
     HARNESSES,
     defaultAntigravityHome,
     defaultClaudeHome,
+    enrichTraceMetadata,
     installHooks,
     installSkills,
     writeProjectSkeleton,
@@ -287,6 +288,15 @@ export const initCommand = defineCommand({
             // pipeline-guard / continuation / context-refresher hooks
             // are dead on arrival.
             await installHooks({
+                cwd: projectCwd,
+                log: (msg) => p.log.info(msg),
+            })
+            // Trace-insights P4: when the global TRACE_TO_LANGSMITH gate
+            // is on, merge repo + luca_version into the project's
+            // .claude/settings.local.json CC_LANGSMITH_METADATA so
+            // langsmith traces are attributable per repo. Silent no-op
+            // when tracing is not configured.
+            await enrichTraceMetadata({
                 cwd: projectCwd,
                 log: (msg) => p.log.info(msg),
             })
