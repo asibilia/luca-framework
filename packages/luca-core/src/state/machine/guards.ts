@@ -13,15 +13,13 @@
  * the guard returns `true` unconditionally — it never denies. Only an explicit
  * `budgetMode: 'enforce'` context makes it compare `counter < cap`.
  */
+import type { FixLoopCounter, FixLoopCap } from './actions.ts'
 import type { PipelineContext } from './pipeline-machine.ts'
 
-/** The three fix-loop caps checked in enforce mode. */
-export type FixLoopCap =
-    | 'maxChecksFixIterations'
-    | 'maxVerifyIterations'
-    | 'maxReviewIterations'
-
-import type { FixLoopCounter } from './actions.ts'
+// Single source of truth for the cap-field union is `actions.ts`. Re-exported
+// here so existing importers of `guards.ts` (e.g. budget-guard.test.ts) keep
+// resolving `FixLoopCap` without a second, drift-prone definition.
+export type { FixLoopCap }
 
 /** Params carried by the guard: which counter/cap pair to compare. */
 export interface WithinFixBudgetParams {
