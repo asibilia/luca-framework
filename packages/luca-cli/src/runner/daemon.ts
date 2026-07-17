@@ -130,8 +130,8 @@ export async function runDaemon(cwd: string): Promise<void> {
         seedState.pipelineStep
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let server: any
+    // Narrow to the only method we call (`server.stop(true)`) — no `any`.
+    let server: { stop(closeActiveConnections?: boolean): void } | undefined
     let stopping = false
     const cleanup = (): void => {
         try {

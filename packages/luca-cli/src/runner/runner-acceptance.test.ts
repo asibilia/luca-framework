@@ -48,8 +48,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 const createdDirs: string[] = []
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const liveDaemons: any[] = []
+const liveDaemons: ReturnType<typeof Bun.spawn>[] = []
 
 afterEach(async () => {
     for (const proc of liveDaemons.splice(0)) {
@@ -115,8 +114,7 @@ async function runCli(
     return { code, stdout, stderr }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function startDaemon(cwd: string): Promise<any> {
+async function startDaemon(cwd: string): Promise<ReturnType<typeof Bun.spawn>> {
     const proc = Bun.spawn(['bun', CLI, 'start'], {
         cwd,
         stdout: 'pipe',

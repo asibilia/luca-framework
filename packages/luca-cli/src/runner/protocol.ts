@@ -119,6 +119,18 @@ export async function sendRequest(
             },
         })
             .then((s) => {
+                // If we already settled (timeout / error / close fired before
+                // connect resolved), `done()` couldn't close `sock` because it
+                // was still undefined — close the now-open socket here instead
+                // of leaking it.
+                if (settled) {
+                    try {
+                        s.end()
+                    } catch {
+                        // best-effort close
+                    }
+                    return
+                }
                 sock = s
             })
             .catch(() => done({ unreachable: true }))
