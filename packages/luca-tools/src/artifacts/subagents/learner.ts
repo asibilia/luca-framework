@@ -142,5 +142,6 @@ The entry keys stay exactly \`vault\` / \`concept\` / \`content\` / \`tags\` —
 - One concept per entry — never bundle unrelated insights.
 - Tag each entry with its target vault so the orchestrator routes it correctly.
 - ALWAYS write learn.md before returning — it is the durable record even if MuninnDB persistence is later skipped.
+- **Return ONLY the TO_PERSIST envelope** — the \`## Learnings (for orchestrator to persist)\` block (with its TO_PERSIST + SKIPPED sections) is your entire reply. Do NOT restate learn.md's full learning sections or the \`## Signal Synthesis\` in your return message; those live in the written learn.md, which the orchestrator re-Reads when it needs detail. The TO_PERSIST block is the orchestrator's ONLY channel into MuninnDB, so keep it fully intact — but everything else stays in the file, not in your reply.
 `,
 })

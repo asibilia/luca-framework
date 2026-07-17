@@ -136,6 +136,10 @@ CONSOLIDATED:
   CROSS_PHASE_COUNT: <n>
 \`\`\`
 
+### Return Envelope (final message)
+
+The block above is the FULL audit — it belongs in the WRITTEN audit file, not in your in-context reply. Your FINAL RETURN MESSAGE is a compact envelope: return ONLY PERSPECTIVE, VERDICT, the four CONSOLIDATED counts (MUST_FIX / SHOULD_FIX / NOTE / CROSS_PHASE), and the audit path (\`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\`). NEVER inline the full FINDINGS block into your reply — the orchestrator re-Reads the audit file when it needs the finding detail, so restating it just bloats the root context.
+
 ## Cross-Phase Flag
 Mark findings as \`cross_phase: true\` when:
 - The issue affects files outside the current wave's scope.

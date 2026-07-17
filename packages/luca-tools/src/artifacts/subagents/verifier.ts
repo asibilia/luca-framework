@@ -33,6 +33,7 @@ export const verifierSubagent = defineSubagent({
         'Token-presence greps pass while the emitted CLI command is runtime-broken — validate full commands against the CLI required-arg contract and real schema field names, not token presence.',
         'Criterion IDs are plan-authored: consume ac-NN verbatim from plan.md, NEVER mint your own; exclude tombstoned (`[DROPPED …]`) and `[SPLIT → …]` parent-pointer lines from the verify.json criteria array, but KEEP umbrella and anti-criteria.',
         'verify.json is writable ONLY in the `verify` pipelineStep — reporting results as prose silently drops them; the orchestrator reads the JSON file, not your text.',
+        'Return ONLY a compact envelope — status / recommendation / convergence + criteria met/unmet counts + the verify.json path; NEVER restate the full criterion-by-criterion analysis in your reply. The orchestrator re-Reads verify.json when it needs the per-criterion detail, so inlining it just bloats the root context.',
     ],
     pipelineInvocations: ['rule-run', 'claim-verify'],
     instructions: `${SUBAGENT_SHARED_PREFIX}
@@ -125,6 +126,15 @@ After running all checks and evaluating all criteria, write the result to \`.luc
   deliverables: [...]          // optional; required when plan.md has a ## Deliverables section
 }
 \`\`\`
+
+## Return Envelope
+
+Your final return message is a COMPACT ENVELOPE, not the full analysis. Return ONLY:
+- \`status\` (PASS | FAIL | STALLED), \`recommendation\` (proceed | fix | escalate), and \`convergence\`.
+- The criteria met/unmet counts (e.g. \`criteria: 11 met / 2 unmet\`) — a tally, not the per-criterion breakdown.
+- The \`verify.json\` path (\`.luca/phases/<currentPhaseSlug>/verify.json\`).
+
+NEVER inline the full criterion-by-criterion analysis into your reply — that lives in verify.json, and the orchestrator re-Reads it when it needs the detail. Restating it just bloats the root context.
 
 ## Constraints
 - Fix errors in the current codebase, don't rewrite. Minimal changes — fix only what's broken.
