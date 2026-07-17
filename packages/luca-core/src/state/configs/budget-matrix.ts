@@ -7,6 +7,11 @@ export interface BudgetLimits {
     maxResearchReviewIterations: number
     maxReviewIterations: number
     maxPhases: number
+    // --- Run-budget ceilings (#319). Wall-time is the guaranteed trip wire;
+    // tool-call is best-effort; softCostCeilingUsd = 0 means disabled. ---
+    maxWallClockMs: number
+    maxToolCalls: number
+    softCostCeilingUsd: number
 }
 
 // Budget limits per complexity level.
@@ -23,6 +28,9 @@ export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
         maxResearchReviewIterations: 0,
         maxReviewIterations: 1,
         maxPhases: 1,
+        maxWallClockMs: 1_200_000,
+        maxToolCalls: 150,
+        softCostCeilingUsd: 0,
     },
     SIMPLE: {
         maxChecksFixIterations: 3,
@@ -31,6 +39,9 @@ export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
         maxResearchReviewIterations: 1,
         maxReviewIterations: 1,
         maxPhases: 3,
+        maxWallClockMs: 2_400_000,
+        maxToolCalls: 300,
+        softCostCeilingUsd: 0,
     },
     MODERATE: {
         maxChecksFixIterations: 4,
@@ -39,6 +50,9 @@ export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
         maxResearchReviewIterations: 2,
         maxReviewIterations: 2,
         maxPhases: 5,
+        maxWallClockMs: 4_500_000,
+        maxToolCalls: 550,
+        softCostCeilingUsd: 0,
     },
     COMPLEX: {
         maxChecksFixIterations: 5,
@@ -47,6 +61,9 @@ export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
         maxResearchReviewIterations: 3,
         maxReviewIterations: 2,
         maxPhases: 7,
+        maxWallClockMs: 7_200_000,
+        maxToolCalls: 850,
+        softCostCeilingUsd: 0,
     },
     CRITICAL: {
         maxChecksFixIterations: 6,
@@ -55,6 +72,9 @@ export const BUDGET_BY_COMPLEXITY: Record<ComplexityLevel, BudgetLimits> = {
         maxResearchReviewIterations: 4,
         maxReviewIterations: 3,
         maxPhases: 10,
+        maxWallClockMs: 9_000_000,
+        maxToolCalls: 1200,
+        softCostCeilingUsd: 0,
     },
 }
 
@@ -65,4 +85,7 @@ export const DEFAULT_BUDGET: BudgetLimits = {
     maxResearchReviewIterations: 2,
     maxReviewIterations: 2,
     maxPhases: 5,
+    maxWallClockMs: 7_200_000,
+    maxToolCalls: 850,
+    softCostCeilingUsd: 0,
 }
