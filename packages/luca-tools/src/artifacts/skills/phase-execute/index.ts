@@ -411,24 +411,9 @@ luca telemetry emit --kind=phase.suspend --data='{"phase":"{phase_number}","reas
 
 The execute step appends per-wave progress to \`.luca/phases/<currentPhaseSlug>/execute/progress.jsonl\` — that JSONL is the durable resume record.
 
-2. **Write \`.continue-here.md\`** as a handoff document for the next session:
+2. **Persist the cognitive handoff to MuninnDB** via \`Skill(skill: "lu-handoff")\`. It writes the durable \`session:phase-boundary-handoff\` memory (decisions this wave, open threads, and a resume prompt that names the phase + the wave to resume at). Do NOT write a \`.continue-here.md\` file — that path is not in \`LUCA_DIR_CONTRACT\` and the stage-gate hook blocks the write. The \`execute/progress.jsonl\` from step 1 is the mechanical resume record; the handoff memory carries the cognitive layer a fresh session needs.
 
-\`\`\`
-# Continue Here
-
-**Phase:** {phase_number}
-**Suspended at wave:** {current_wave_index}
-**Reason:** Context exhaustion (zone: stop)
-**Completed plans:** {list of completed plan IDs}
-**Remaining waves:** {list of remaining wave numbers}
-
-## Resume Instructions
-
-Run: \`/phase-execute {phase_number}\`
-
-The phase-execute skill will detect the suspend checkpoint and resume
-from the last incomplete wave automatically.
-\`\`\`
+   The resume prompt should say: run \`/phase-execute {phase_number}\` — it detects the suspend checkpoint in \`progress.jsonl\` and resumes from the last incomplete wave automatically.
 
 3. **Stop execution** and inform the user:
 

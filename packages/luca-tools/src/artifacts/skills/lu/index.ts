@@ -103,9 +103,11 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 2. Run the step using the table below.
 3. Advance to the next step with \`luca state advance --to-step <step>\`. Transitions are validated against the pipeline-transitions table — illegal jumps are rejected.
 
+**The loop yields at each phase boundary** (after \`learn\`) — see "Phase-boundary handoff & yield" below. This bounds the orchestrator's resident context: each phase runs in a fresh turn instead of accumulating every phase's artifacts and subagent returns in one continuous transcript (the dominant cost driver — see \`docs/decisions/orchestrator-context-pruning.md\`).
+
 | Step          | How to run it                                                              |
 |---------------|----------------------------------------------------------------------------|
-| \`research\`    | Spawn \`researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
+| \`research\`    | Get the phase dir from \`luca phase current\` and pass it to \`researcher\` (Agent tool) so **it writes \`research.md\` itself**; hold ONLY the compact summary it returns. Do NOT inline the researcher's full findings or re-write the file yourself — the full findings transiting your context is the largest per-phase context bloat (see \`docs/decisions/orchestrator-context-pruning.md\`). |
 | \`discuss\`     | Invoke \`Skill(skill: "phase-discuss")\`.                                    |
 | \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Writes nothing — the downstream \`plan\` / \`plan-review\` steps own the plan write. Advance to \`plan\`. |
 | \`plan\`        | Invoke \`Skill(skill: "phase-plan")\`.                                       |
@@ -114,7 +116,7 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 | \`checks\`      | Run \`luca checks run --file .luca/tmp/checks.json\` (stage the commands array there — never in shared /tmp/) with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
 | \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
 | \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`learner\` (Agent tool), injecting the run's signal digest into its prompt (see "Learner prompt injection" below); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access). FIRST resolve the repo vault once: read \`.luca/config.json\` → \`muninn.vault\` (fallback \`"default"\`). Then for each \`TO_PERSIST\` entry, substitute the literal \`<repo-vault>\` placeholder (or any non-\`default\` placeholder the learner emitted) in its \`vault:\` with that resolved name — a literal \`<repo-vault>\`/\`repo_vault\` must NEVER reach muninn. Call \`mcp__muninn__muninn_remember_batch\` with the substituted vaults (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the resolved repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then, if more phases remain: run \`luca phase advance\` (bumps \`currentPhase\` and marks the finished phase complete) **before** advancing the step to \`plan\`. On the last phase, do NOT run \`luca phase advance\`; advance to \`finalize\`. |
+| \`learn\`       | Spawn \`learner\` (Agent tool), injecting the run's signal digest into its prompt (see "Learner prompt injection" below); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access). FIRST resolve the repo vault once: read \`.luca/config.json\` → \`muninn.vault\` (fallback \`"default"\`). Then for each \`TO_PERSIST\` entry, substitute the literal \`<repo-vault>\` placeholder (or any non-\`default\` placeholder the learner emitted) in its \`vault:\` with that resolved name — a literal \`<repo-vault>\`/\`repo_vault\` must NEVER reach muninn. Call \`mcp__muninn__muninn_remember_batch\` with the substituted vaults (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the resolved repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then, if more phases remain: run \`luca phase advance\` (bumps \`currentPhase\` and marks the finished phase complete), advance the step to \`plan\`, then **hand off and yield at the phase boundary** per "Phase-boundary handoff & yield" below — do NOT loop straight into the next phase's work in the same turn. On the last phase, do NOT run \`luca phase advance\`; advance to \`finalize\` and run the finalize step in this same turn (no boundary yield before finalize). |
 | \`finalize\`    | Spawn the \`finalize\` agent (Agent tool): gap detection, postmortem gate, PR creation, milestone close (invokes \`Skill(skill: "milestone-complete")\` for the versioned snapshot + phase archive). On a gap/postmortem block it re-enters via \`--to-step execute\`/\`review\`; on success it resets the run with \`--to-step idle\`. |
 
 ### Satisfaction signal (outcome) — PRIMARY, always-on
@@ -233,6 +235,18 @@ Before spawning the \`learner\` (Agent tool) at the \`learn\` step, gather the r
 \`\`\`
 
 The learner clusters the digest to surface recurring satisfaction/failure patterns alongside the artifacts it reads for \`learn.md\`.
+
+### Phase-boundary handoff & yield
+
+After \`luca phase advance\` at a phase boundary (more phases remain), bound the resident context instead of chaining the next phase into the same turn:
+
+1. **Persist the cognitive handoff.** Invoke \`Skill(skill: "lu-handoff")\`. It writes the \`session:phase-boundary-handoff\` memory to the repo vault (decisions made this phase, open threads, and a 2-4 sentence resume prompt for the next phase) and surfaces a preservation-steered \`/compact\` command. This is the layer a turn boundary would otherwise drop — the mechanical state (\`pipelineStep\`, \`currentPhase\`, artifacts) is already durable in \`.luca/state.json\` + on disk, so Step 0 resumes phase N+1 losslessly.
+2. **Emit boundary telemetry:** \`luca telemetry emit --kind phase.boundary --run-id <RUN_ID> --slug <finishedPhaseSlug>\`.
+3. **Then act by \`oversight\`:**
+   - \`checkpoint\` / \`human-in-loop\` — this IS the post-\`learn\` pause: surface the handoff summary + the \`/compact\` command and **END YOUR TURN**. The user compacts and re-invokes \`/lu\`, which resumes phase N+1 from state with a small context. (This is where the context-compaction win lands today.)
+   - \`full-auto\` — persist the handoff (done in step 1, so recovery is durable and any auto-compact is steered), then **continue** into phase N+1 in this turn. Full-auto does NOT yield yet: current source has no autonomous re-invoker (autopilot was removed in \`433c78080\`, #290), so yielding would stall the run. Restoring an outer-loop re-invoker so full-auto also yields-and-resumes is tracked follow-up (see \`docs/decisions/orchestrator-context-pruning.md\` and luca-framework#319).
+
+Regardless of oversight, the researcher/reviewer/verifier/learner subagents already keep their verbose output in their own context and return only compact envelopes (see the \`research\` row) — so per-phase bloat is cut in **every** mode, and the boundary yield additionally caps cross-phase growth where a re-invoker exists.
 
 ### Oversight
 
