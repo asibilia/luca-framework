@@ -48,7 +48,7 @@ import type {
 export interface BodyRenderInput {
     /** The agent's own instruction body — verbatim, trusted. */
     instructions: string
-    /** Guidance flags (all four are always present thanks to the schema's `.prefault({})`). */
+    /** Guidance flags (all five are always present thanks to the schema's `.prefault({})`). */
     guidance: SubagentGuidance
     /** Telemetry hooks declared on the agent. */
     telemetryHooks: readonly TelemetryHook[]
@@ -119,6 +119,20 @@ function renderGuidancePrelude(guidance: SubagentGuidance): string {
                 'every assumption with a concrete tool call (Read, Grep, Glob, ' +
                 'or a CLI invocation) before acting on it. Do not infer file ' +
                 'state from memory or prior context.'
+        )
+    }
+    if (guidance.toolEconomy) {
+        items.push(
+            '- **Tool economy.** Prefer the native tools over shell ' +
+                'probing: `Grep` (not `grep`/`rg` in Bash) to search file ' +
+                'contents, `Glob` (not `find`/`ls`) for path discovery, ' +
+                '`Read` (not `cat`/`head`/`tail`) to read a file. Reserve ' +
+                '`Bash` for commands with no tool equivalent (builds, tests, ' +
+                'git, the `luca` CLI). When you DO need several independent ' +
+                'shell checks, batch them into ONE Bash call (`a; b; c` or a ' +
+                'single script) rather than many serial invocations. Do not ' +
+                're-derive facts a prior Read/Grep already established (this ' +
+                'never overrides the Self-verification pre-edit re-read).'
         )
     }
     if (guidance.antiSycophancy) {

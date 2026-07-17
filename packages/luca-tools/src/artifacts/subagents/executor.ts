@@ -57,6 +57,7 @@ export const executorSubagent = defineSubagent({
         verticalSlice: true,
         tdd: true,
         selfVerify: true,
+        toolEconomy: true,
     },
     telemetryHooks: ['wave-start', 'wave-end'],
     gotchas: [

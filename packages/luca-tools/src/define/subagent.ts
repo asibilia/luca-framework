@@ -109,6 +109,14 @@ export const SubagentGuidanceSchema = z
          */
         selfVerify: z.boolean().default(true),
         /**
+         * Tool-economy discipline — batch independent shell checks into one
+         * Bash message; prefer the native Grep/Glob/Read tools over serial
+         * grep/find/cat probing. Grounded in Claude Code tool-use best
+         * practice (prefer Grep>grep, Glob>find, Read>cat; batch independent
+         * calls). Opt-in: only agents with heavy Bash exposure need it.
+         */
+        toolEconomy: z.boolean().default(false),
+        /**
          * Anti-sycophancy — every APPROVE verdict requires specific
          * evidence. Required for review-like subagents; opt-in
          * elsewhere.

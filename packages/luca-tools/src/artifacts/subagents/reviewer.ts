@@ -25,6 +25,7 @@ export const reviewerSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
         antiSycophancy: true,
+        toolEconomy: true,
     },
     telemetryHooks: ['subagent-end'],
     gotchas: [

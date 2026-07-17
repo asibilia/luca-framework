@@ -437,6 +437,7 @@ export const executeMode = defineAgent({
         verticalSlice: true,
         tdd: true,
         selfVerify: true,
+        toolEconomy: true,
     },
     telemetryHooks: [
         'phase-start',
