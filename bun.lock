@@ -24,7 +24,7 @@
     },
     "packages/luca": {
       "name": "@alecsibilia/luca",
-      "version": "13.0.1",
+      "version": "13.1.0-alpha.0",
       "bin": {
         "luca": "./bin/luca.js",
       },
@@ -52,7 +52,7 @@
     },
     "packages/luca-cli": {
       "name": "@alecsibilia/luca-cli",
-      "version": "13.0.1",
+      "version": "13.1.0-alpha.0",
       "dependencies": {
         "@alecsibilia/luca-core": "workspace:*",
         "@alecsibilia/luca-tools": "workspace:*",
@@ -75,9 +75,9 @@
     },
     "packages/luca-core": {
       "name": "@alecsibilia/luca-core",
-      "version": "13.0.1",
+      "version": "13.1.0-alpha.0",
       "dependencies": {
-        "xstate": "^5.32.2",
+        "xstate": "5.32.2",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -87,7 +87,7 @@
     },
     "packages/luca-tools": {
       "name": "@alecsibilia/luca-tools",
-      "version": "13.0.1",
+      "version": "13.1.0-alpha.0",
       "dependencies": {
         "@alecsibilia/luca-core": "workspace:*",
         "zod": "catalog:",
