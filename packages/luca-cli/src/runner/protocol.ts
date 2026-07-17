@@ -77,8 +77,8 @@ export async function sendRequest(
     return new Promise<RunnerResponse | Unreachable>((resolve) => {
         let buf = ''
         let settled = false
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let sock: any
+        // Narrow to the only method we call — no `any`, no eslint-disable.
+        let sock: { end(): void } | undefined
         const done = (r: RunnerResponse | Unreachable): void => {
             if (settled) return
             settled = true

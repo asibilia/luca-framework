@@ -274,8 +274,8 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                 // Conditional: pipeline-re-entered. We emit when `to` is at
                 // an earlier ordinal than `from` in PipelineStepValues —
                 // i.e. a documented loop-back transition (e.g.
-                // checks → execute, verify → checks, learn → plan,
-                // plan-review → plan, complete → idle). Same-step
+                // checks → execute, verify → checks, review → execute,
+                // learn → plan, plan-review → plan). Same-step
                 // self-loops (research → research) are NOT re-entries;
                 // they're advisory re-research signals captured by
                 // mode-transition. The reader (postmortem.ts) keys on

@@ -68,7 +68,13 @@ const advanceCommand = defineCommand({
             cmd: 'advance',
             to: toStep,
         })
-        if (!('unreachable' in resp) && resp.kind === 'advance') {
+        // ANY reachable reply is authoritative — the daemon already performed
+        // (or rejected) the write. Surface it and exit; NEVER fall through to
+        // the cold path, which would re-run the advance (double-apply) or mask
+        // a daemon-side error. Includes a `kind: 'error'` frame (e.g. an
+        // internal handler failure). Only a genuinely unreachable daemon
+        // (ENOENT/ECONNREFUSED/timeout) falls through to cold below (anti-06).
+        if (!('unreachable' in resp)) {
             const text = resp.text ?? ''
             if (!resp.ok) {
                 console.error(text)

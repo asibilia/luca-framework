@@ -233,6 +233,13 @@ export async function runDaemon(cwd: string): Promise<void> {
         unix: sockPath,
         socket: {
             data(socket, chunk): void {
+                // Framing is ONE request per connection (see protocol.ts):
+                // dispatch the first newline-delimited line only. Any bytes
+                // after that first `\n` are a protocol violation — they are
+                // buffered but never drained on this connection (a client that
+                // pipelines a second request would see it ignored until close).
+                // That is intentional: the sole client (`luca state advance`)
+                // sends exactly one line, then reads one response.
                 const prev = buffers.get(socket) ?? ''
                 const buf = prev + chunk.toString()
                 const nl = buf.indexOf('\n')
@@ -260,8 +267,11 @@ export async function runDaemon(cwd: string): Promise<void> {
                     // in the `status` branch). Reply with an error rather than
                     // hanging the client / throwing an unhandledRejection.
                     try {
+                        // Protocol-conforming error frame (RunnerResponse:
+                        // ok/kind/text) so the client surfaces it instead of
+                        // misreading a stray shape and falling through to cold.
                         socket.write(
-                            `${JSON.stringify({ ok: false, error: String(err) })}\n`
+                            `${JSON.stringify({ ok: false, kind: 'error', text: String(err) } satisfies RunnerResponse)}\n`
                         )
                     } catch {
                         // client may have gone away
