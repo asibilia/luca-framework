@@ -96,3 +96,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # skill-opt staging outputs (candidate skills, reports, baseline cache)
 packages/luca-tools/skill-opt/staging/
+
+# AI-session debris — never commit run logs or harness caches
+*.log
+.claude/cache/

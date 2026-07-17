@@ -1,9 +1,0 @@
-[skill-opt] task=complexity backend=claude epochs=3 k=3 gate=on
-[skill-opt] WARNING: real Claude backend — this spends API budget.
-[skill-opt] seed VAL reward: 0.729
-[skill-opt] epoch 1: 2 edit(s), VAL 0.729 → 0.875 ⇒ ACCEPT
-[skill-opt] epoch 2: 3 edit(s), VAL 0.875 → 0.854 ⇒ REJECT
-[skill-opt] epoch 3: 3 edit(s), VAL 0.875 → 0.813 ⇒ REJECT
-
-[skill-opt] done. VAL 0.729 → 0.875, TEST 0.625 → 0.875
-[skill-opt] staged: packages/luca-tools/skill-opt/staging/complexity/2026-07-08T21-42-10-649Z/
