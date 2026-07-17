@@ -26,6 +26,13 @@ Run \`luca state read\`. Branch on \`pipelineStep\`:
 
 If the user passed a request but the pipeline is already mid-flight, surface that to the user and ask whether to resume the current run or finish it first — do NOT silently discard either.
 
+**Run id for telemetry.** Establish \`RUN_ID\` ONCE here and reuse it as \`--run-id\` on every \`luca telemetry emit\` below (it also names the per-run log \`.luca/telemetry/<RUN_ID>.jsonl\`). It is the state's \`sessionId\`; if that is empty, mint one with \`luca telemetry new-run\`:
+
+\`\`\`bash
+RUN_ID=$(luca state read | jq -r '.sessionId // empty')
+[ -z "$RUN_ID" ] && RUN_ID=$(luca telemetry new-run)
+\`\`\`
+
 ## Triage
 
 Triage runs once, at the start of a run. It is inline here — there is no separate triage skill.
@@ -48,6 +55,10 @@ Triage runs once, at the start of a run. It is inline here — there is no separ
 Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \`idle\`):
 
 1. Run \`luca state read\` to get the current \`pipelineStep\`.
+1a. **Budget guard (always-on stop).** Run \`luca budget check --complexity <level>\` and parse \`.status\` (always exits 0). This fires ONLY here, at the top-of-loop clean boundary — \`state.json\` is already resumable via Step 0, so nothing mid-flight is left dangling.
+   - \`ok\` → continue to step 2.
+   - \`warn\` → note the \`tripped\` dimensions in your reasoning (surface once to the user if you haven't) and keep going.
+   - \`halt\` → **do NOT advance the pipeline.** Checkpoint-and-pause: (a) invoke \`Skill(skill: "lu-handoff")\` (or persist a resumable \`session:*\` handoff memory to the repo vault) capturing the current \`pipelineStep\`/\`currentPhase\`, the verdict's \`tripped\` dimensions, and the next action; (b) emit \`luca telemetry emit --kind budget.halt --run-id <RUN_ID> --meta '{"tripped":"<dims>","status":"halt"}'\` — the verdict's \`tripped\` is a string array, so join it into a single comma-separated string for \`<dims>\` (e.g. \`wallClock,toolCalls\`); the \`--meta\` JSON must stay single-line and quote-free; (c) surface a paste-ready resume message ("Budget guard tripped (<dims>). Run checkpointed at step <step>; re-run /lu to resume."). Then END YOUR TURN.
 2. Run the step using the table below.
 3. Advance to the next step with \`luca state advance --to-step <step>\`. Transitions are validated against the pipeline-transitions table — illegal jumps are rejected.
 
@@ -90,9 +101,10 @@ After \`plan-reviewer\` returns \`APPROVED\`, run the gate before advancing to \
 
 Read \`oversight\` from \`luca state read\`:
 
-- \`full-auto\` — autonomous: the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable) and CRITICAL safety. All other steps run without interruption.
+- \`full-auto\` — autonomous: the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable), CRITICAL safety, and the always-on budget halt (see below). All other steps run without interruption.
 - \`checkpoint\` — pause after \`plan-review\` (post-gate), \`verify\`, and \`learn\` for user confirmation; confidence-gate \`ask\` items also pause.
 - \`human-in-loop\` — pause after every step; confidence-gate \`ask\` items pause within the plan-review step as well.
+- **always-on budget stop** — the top-of-loop budget guard (step 1a) is the one stop that fires even in \`full-auto\`: a \`halt\` verdict checkpoints-and-pauses regardless of oversight mode. Wall-clock, tool-call, and cost ceilings apply in every mode.
 
 ## What you must NOT do
 

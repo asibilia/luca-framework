@@ -401,6 +401,8 @@ Execute this plan. Return SUMMARY when complete.
 
 **Before each wave**, self-assess your context usage to decide if suspension is needed. You (the orchestrator) already know your own context budget — no external tooling is required. Apply the quality-degradation curve: peak (0-50%) → keep going; degrading (50-70%) → finish the current wave and prepare to suspend; stop (70%+) → suspend now to preserve quality.
 
+**Also before each wave**, run \`luca budget check --complexity <level>\` (always exits 0) and read \`.status\` — reuse the complexity the skill already computes (\`COMPLEXITY=$(luca state read | jq -r '.complexity // "MODERATE"')\`, see §8.6) so the wave check uses the SAME ceilings as the /lu loop rather than falling back to the loosest defaults. (Always-on stop — this halt fires regardless of oversight mode; do NOT gate it behind checkpoint/full-auto.) On \`halt\`, checkpoint at THIS wave boundary and stop — never mid-wave. Reuse the EXISTING suspend path below: append the wave/task progress to \`execute/progress.jsonl\` and emit \`luca telemetry emit --kind=phase.suspend --data='{"phase":"{phase_number}","reason":"budget_halt","wave":{current_wave_index},"completed":"{comma_separated_completed_task_ids}"}' 2>/dev/null || true\`, then persist the cognitive handoff and stop (same as the context-exhaustion suspend). \`ok\`/\`warn\` → proceed with the wave (note a \`warn\` in your reasoning).
+
 **If you assess context exhaustion is imminent** (the "stop" zone):
 
 1. **Create checkpoint:** Record current progress so a new session can resume. Emit a telemetry suspend event and persist the wave/task progress to the active phase's \`execute/progress.jsonl\` so the next session can resume from there:
