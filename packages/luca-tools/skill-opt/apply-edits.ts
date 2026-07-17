@@ -1,7 +1,11 @@
 /**
- * Apply bounded edits to a skill body. Edits whose `target` is not found (or is
- * empty where required) are skipped rather than applied blindly — the optimizer
- * only earns a change when its anchor actually matches the current document.
+ * Apply bounded edits to a skill body. Two skip rules, matching the
+ * implementation below:
+ *  - an `append` edit with empty (whitespace-only) `content` is skipped;
+ *  - an anchored edit (`replace` / `insert_after` / `delete`) whose `target` is
+ *    absent from the current document is skipped.
+ * Everything else is applied. The optimizer only earns a change when its anchor
+ * actually matches — no blind application.
  */
 import type { Edit } from './types.ts'
 

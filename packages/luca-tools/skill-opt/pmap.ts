@@ -16,7 +16,11 @@ export async function pMap<T, R>(
             const i = next++
             if (i >= items.length) return
             const item = items[i]
-            if (item === undefined) return
+            // Skip a hole (sparse array / `undefined` entry) but KEEP the
+            // worker alive to claim the next index — a `return` here would kill
+            // the worker and silently truncate all its remaining indices,
+            // breaking the "preserving input order" contract.
+            if (item === undefined) continue
             results[i] = await fn(item, i)
         }
     }

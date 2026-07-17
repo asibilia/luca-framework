@@ -66,14 +66,16 @@ writes the live skill.
 | File | Role |
 |------|------|
 | `types.ts` | Zod schemas: corpus item, edit, patch, equivalence, rollout |
-| `corpus/caveman.jsonl` · `corpus.ts` | Fixed train/val/test task set + loader |
+| `corpus/*.jsonl` · `load-jsonl.ts` | Fixed train/val/test task sets + generic JSONL loader |
 | `backend.ts` | `ChatFn` backends: deterministic `mock` and `claude` CLI |
-| `prompts.ts` | Analyst + equivalence-judge prompts (adapted from SkillOpt) |
-| `scorer.ts` | Baseline/candidate rollout, judge, reward, the gate |
+| `task.ts` · `tasks/*.ts` | The `Task` interface + per-skill definitions (analyst/judge prompts, rollout, reward) |
 | `reflect.ts` | Worst-rollout → bounded edits (budget-clipped) |
-| `apply-edits.ts` | The four bounded edit ops |
-| `loop.ts` | The epoch loop |
+| `apply-edits.ts` | The four bounded edit ops (append / insert_after / replace / delete) |
+| `loop.ts` | The epoch loop: rollout → reflect → gate → accept/reject |
 | `run.ts` | CLI entry + report/staging writer |
+| `json.ts` | Tolerant JSON extraction from LLM output |
+| `estimate-tokens.ts` | Rough token estimate for the length-ratio reward |
+| `pmap.ts` | Bounded-concurrency async map |
 
 ## Next targets
 
