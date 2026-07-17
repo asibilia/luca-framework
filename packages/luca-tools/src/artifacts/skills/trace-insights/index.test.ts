@@ -1,6 +1,6 @@
 /**
  * Regression guard for the load-bearing directives in the trace-insights
- * skill body (P1: Stages A–D + GitHub issue feed).
+ * skill body (P2: Stages A–E + Stage F MuninnDB persistence & analysis cursor).
  *
  * Each directive family is asserted in a SEPARATELY-NAMED describe block so
  * a partial drop of any single directive fails that block independently.
@@ -14,9 +14,16 @@ import { traceInsightsSkill } from './index.ts'
 const body = traceInsightsSkill.body
 
 describe('scope-guard', () => {
-    it('forbids MuninnDB writes in P1', () => {
+    it('bounds MuninnDB writes to the Stage F routing table', () => {
         expect(body).toContain('mcp__muninn__muninn_remember')
-        expect(body).toContain('MuninnDB persistence is P2')
+        expect(body).toContain('Stage F routing table')
+        expect(body).not.toContain('MuninnDB persistence is P2')
+    })
+
+    it('keeps destructive MuninnDB tools forbidden', () => {
+        expect(body).toContain('muninn_forget')
+        expect(body).toContain('muninn_state')
+        expect(body).toContain('muninn_consolidate')
     })
 
     it('forbids .luca/ writes and luca CLI mutations', () => {
@@ -130,6 +137,35 @@ describe('github-issue-feed', () => {
 
     it('renders would-be issues under --dry-run', () => {
         expect(body).toContain('would-be issues')
+    })
+})
+
+describe('memory-persistence', () => {
+    it('routes each concept family to its vault', () => {
+        expect(body).toContain('pitfall:trace-')
+        expect(body).toContain('pattern:trace-')
+        expect(body).toContain('metric:trace-report-')
+        expect(body).toContain('metric:trace-insights-cursor')
+    })
+
+    it('dedups insight memories via recall-then-evolve, phrased best-effort', () => {
+        expect(body).toContain('mcp__muninn__muninn_recall')
+        expect(body).toContain('muninn_evolve')
+        expect(body).toContain('best-effort')
+    })
+
+    it('resumes from the analysis cursor with a 7d fallback', () => {
+        expect(body).toContain(
+            '`--since auto` resolves the window from the analysis cursor'
+        )
+        expect(body).toContain('mode: "recent"')
+        expect(body).toContain('lastAnalyzedUntil')
+        expect(body).toContain('seenTraceIds')
+        expect(body).toContain('fall back to a `7d` window')
+    })
+
+    it('skips every MuninnDB write under --dry-run, cursor included', () => {
+        expect(body).toContain('no MuninnDB writes (including the cursor)')
     })
 })
 
