@@ -7,9 +7,12 @@
  * evidence-backed insight report. High-confidence actionable findings are
  * auto-logged as GitHub issues on luca-framework for user weigh-in.
  *
- * P1 scope (design: dad-xstate-migration session, 2026-07-16): Stages A–D +
- * GitHub issue feed. MuninnDB persistence (pitfall/pattern/metric/cursor
- * memories) is P2 and is explicitly FORBIDDEN in this version's scope guard.
+ * P2 scope (design: dad-xstate-migration session, 2026-07-16): Stages A–E plus
+ * Stage F — MuninnDB persistence (pitfall/pattern insight memories with
+ * recall-then-evolve dedup, a metric:trace-report-<date> JSON digest, and a
+ * remember-latest-wins analysis cursor powering the new `--since auto`
+ * default). Destructive/administrative MuninnDB tools (muninn_forget,
+ * muninn_state, muninn_consolidate) remain FORBIDDEN in the scope guard.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
@@ -19,14 +22,16 @@ Mine recent LangSmith traces of Claude Code sessions for evidence-backed insight
 
 ## Scope guard — read first
 
-This skill is **read-only over LangSmith and the repository**, with exactly two permitted write surfaces:
+This skill is **read-only over LangSmith and the repository**, with exactly three permitted write surfaces:
 
 1. Scratchpad files (fetched trace JSON, aggregation scripts, intermediate results).
 2. \`gh issue create\` / \`gh label create\` on the **luca-framework** repo only, only with the \`trace-insights\` label, and only after the dedup search (Stage E).
+3. Bounded MuninnDB writes — \`mcp__muninn__muninn_remember\` / \`mcp__muninn__muninn_evolve\` only, only for the concepts named in the Stage F routing table, only via the Stage F procedure, and never under \`--dry-run\`.
 
-The following operations are FORBIDDEN inside this skill (P1). Do not perform them under any circumstance:
+The following operations are FORBIDDEN inside this skill. Do not perform them under any circumstance:
 
-- \`mcp__muninn__muninn_remember\`, \`mcp__muninn__muninn_remember_batch\`, \`mcp__muninn__muninn_evolve\`, \`mcp__muninn__muninn_forget\`, \`mcp__muninn__muninn_state\`, \`mcp__muninn__muninn_consolidate\` (MuninnDB persistence is P2)
+- \`mcp__muninn__muninn_forget\`, \`mcp__muninn__muninn_state\`, \`mcp__muninn__muninn_consolidate\` — destructive/administrative MuninnDB surfaces stay out of scope
+- Any MuninnDB write outside the Stage F routing table (no \`session:*\`, no \`brain:*\`, no free-form concepts)
 - Any \`luca\` CLI write/mutation command (\`luca state advance\`, \`luca todo add\`, \`luca workflow reset\`, …)
 - Any \`Write\` under \`.luca/\`
 - Any PATCH/POST that mutates LangSmith data (runs, feedback, annotations) — the LangSmith API is queried read-only
@@ -48,14 +53,16 @@ If either is missing, abort with a message pointing at the langsmith-tracing plu
 
 | Flag | Type | Default | Validation |
 |---|---|---|---|
-| \`--since <window>\` | duration or ISO date | \`7d\` | \`^\\d+[dh]$\` or \`^\\d{4}-\\d{2}-\\d{2}\` |
+| \`--since <window>\` | \`auto\`, duration, or ISO date | \`auto\` | \`auto\`, \`^\\d+[dh]$\`, or \`^\\d{4}-\\d{2}-\\d{2}\` |
 | \`--repo <substring>\` | string | unset (**all repos**) | non-empty; matched against trace cwd metadata |
 | \`--max-deep-reads <N>\` | integer | 8 | \`N >= 1 && N <= 24\` |
-| \`--dry-run\` | boolean | false | report only; no GitHub issues created |
+| \`--dry-run\` | boolean | false | report only; no GitHub issues created; no MuninnDB writes (including the cursor) |
 | \`--artifact\` | boolean | false | additionally publish the report as a private Artifact page |
 | \`--project <name>\` | string | \`$CC_LANGSMITH_PROJECT\` | non-empty |
 
 If validation fails, abort with a clear error message — do not silently continue with defaults.
+
+\`--since auto\` resolves the window from the analysis cursor (Stage F3): the window starts at the cursor's \`lastAnalyzedUntil\` minus a 1-hour trailing overlap. When no cursor exists or it fails validation, fall back to a \`7d\` window. The cursor READ is permitted under \`--dry-run\` — only writes are suppressed.
 
 Default scope is **all repos** deliberately: every repo the user works in runs the Luca framework, so every trace is evidence. \`--repo\` narrows when investigating one codebase.
 
@@ -192,6 +199,62 @@ Medium/low-confidence findings and findings without a \`luca_surface\` go in the
 
 The issues are the **user weigh-in surface**: accepted ones get pulled into the backlog via the existing \`/gh-issue-triage\` flow; rejected ones get closed (and their fingerprint keeps them from being re-filed).
 
+## Stage F — Memory persistence (skipped under \`--dry-run\`)
+
+Persist the run's durable outputs to MuninnDB. Runs AFTER the report and the issue feed. Resolve \`<repo_vault>\` from \`.luca/config.json\` → \`muninn.vault\`, falling back to \`"default"\`. Under \`--dry-run\` this stage is skipped entirely — zero MuninnDB writes, cursor included (the pre-flight cursor READ for \`--since auto\` still happens).
+
+### Vault routing table (binding — the ONLY writable concepts)
+
+| Concept | Vault | Content |
+|---|---|---|
+| \`pitfall:trace-<fingerprint>\` | \`default\` (cross-cutting) | Recurring failure/friction insight from a finding |
+| \`pattern:trace-<fingerprint>\` | \`default\` (cross-cutting) | Validated positive approach observed in traces |
+| \`metric:trace-report-<date>\` | \`<repo_vault>\` | Compact JSON run digest, one per run |
+| \`metric:trace-insights-cursor\` | \`<repo_vault>\` | Analysis cursor JSON (remember-latest-wins) |
+
+Any MuninnDB write outside this table violates the scope guard.
+
+### F1. Insight memories (recall-then-evolve dedup)
+
+For each **high-confidence** finding, derive a distinctive, stable fingerprint-derived concept slug — \`pitfall:trace-<fingerprint>\` for failure/friction findings, \`pattern:trace-<fingerprint>\` for validated positive approaches — where \`<fingerprint>\` is the Stage E fingerprint (\`<category>/<luca_surface-slug>/<summary-slug>\`) kebab-cased with \`/\` → \`-\`.
+
+**Dedup search — mandatory before every insight write**: \`mcp__muninn__muninn_recall({ vault: "default", context: ["<the finding's natural-language summary, NOT its slug>"], mode: "balanced", limit: 5 })\` and inspect whether any returned engram's \`concept\` exactly equals the target concept.
+
+- If a returned engram's concept matches AND it is a **FLAT** engram: capture its \`id\` (ULID) and \`mcp__muninn__muninn_evolve(id, new_content)\` it — increment the occurrence count and append the latest evidence quote + trace URL. Evolve is safe for flat engrams only.
+- Otherwise (no match): create it via \`mcp__muninn__muninn_remember({ vault: "default", concept: "<slug>", content: <summary + evidence + trace URL + suggested change> })\`.
+
+This dedup is **best-effort, NOT guaranteed** — MuninnDB has no concept lookup, and on a vault with no/weak embedder the recall can miss an existing engram, in which case a re-run will create a duplicate. The distinctive fingerprint-derived slugs are the mitigation: duplicates stay identifiable for later consolidation (outside this skill — \`muninn_consolidate\` is forbidden here).
+
+### F2. Run digest
+
+Persist one memory per run to the repo vault: \`mcp__muninn__muninn_remember({ vault: <repo_vault>, concept: "metric:trace-report-<date>", content: <compact JSON digest> })\` where \`<date>\` is the run's ISO date (\`YYYY-MM-DD\`). The digest is compact JSON, **never full report prose**: window analyzed, trace count, spend totals, error rate, finding fingerprints, and GitHub issue numbers created/deduped.
+
+### F3. Analysis cursor (remember-latest-wins)
+
+The analysis cursor is a single MuninnDB memory in the repo vault — concept \`metric:trace-insights-cursor\`, with a JSON content body:
+
+\`\`\`json
+{
+  "schemaVersion": 1,
+  "lastAnalyzedUntil": "<ISO-timestamp>",
+  "seenTraceIds": ["<trace-id>", "..."],
+  "updatedAt": "<ISO-timestamp>"
+}
+\`\`\`
+
+Field semantics:
+
+- \`schemaVersion\` — literal \`1\`; bump on any shape change.
+- \`lastAnalyzedUntil\` — end of the analyzed window (ISO). The next \`--since auto\` run starts here minus the 1-hour trailing overlap so boundary traces are not missed.
+- \`seenTraceIds\` — trace ids whose \`start_time\` falls within the trailing overlap window ONLY (bounded — NEVER an all-time seen set). The next run skips these already-analyzed boundary traces.
+- \`updatedAt\` — set to the current ISO timestamp immediately before persisting.
+
+**Read (pre-flight, when \`--since auto\`)**: \`mcp__muninn__muninn_recall({ vault: <repo_vault>, context: ["metric:trace-insights-cursor"], mode: "recent", limit: 1 })\` and parse the latest one's JSON content as the cursor state — latest wins. Validate: \`schemaVersion === 1\`, \`lastAnalyzedUntil\` parses as an ISO timestamp, \`seenTraceIds\` an array of strings. On a parse/validation failure treat the cursor as corrupt: seed a fresh state, fall back to a \`7d\` window, and log a warning in the report. Do not abort — re-scanning is safer than propagating a corrupt cursor.
+
+**Write (last, only on success)**: write the cursor only AFTER the report, the issue feed, and all F1/F2 writes complete — a fresh \`mcp__muninn__muninn_remember({ vault: <repo_vault>, concept: "metric:trace-insights-cursor", content: JSON.stringify(cursor) })\` each run. Remember-latest-wins: do NOT \`muninn_evolve\` the cursor (evolve is reserved for F1 insight recurrence); the latest cursor memory wins on the next recall. If the run fails partway, skip the cursor write so the next \`--since auto\` run re-covers the window.
+
+**Vault pinning**: the cursor lives in the invoking repo's vault (\`<repo_vault>\` resolves from that repo's \`.luca/config.json\`) — running this skill from a different repo resolves a different vault and silently starts a fresh cursor there.
+
 ## Summary to caller
 
 After the report, print one block:
@@ -199,6 +262,7 @@ After the report, print one block:
 - Traces in window / deep-read / dropped
 - Findings by confidence tier
 - Issues created / deduped-skipped (or "dry-run: N would-be issues")
+- Memories created / evolved + cursor advanced-to timestamp (or "dry-run: memory persistence skipped")
 - A one-line headline, e.g. \`"142 traces, 8 deep-read, 3 findings, 2 issues filed"\`
 
 ## Failure Modes
@@ -217,17 +281,17 @@ After the report, print one block:
 
 ## Notes
 
-- LangSmith retention on the shortlived tier is ~14 days: run this at least biweekly (weekly recommended) or the tail of the window silently vanishes. Re-runs over an overlapping window are safe — the issue fingerprint dedup absorbs repeats. (An analysis cursor memory arrives in P2.)
-- This skill records nothing to \`.luca/\` and is external to the pipeline.
+- LangSmith retention on the shortlived tier is ~14 days: run this at least biweekly (weekly recommended) or the tail of the window silently vanishes. \`--since auto\` + the analysis cursor (Stage F3) keep successive runs contiguous automatically. Re-runs over an overlapping window are safe — the issue fingerprint dedup absorbs repeats on the GitHub side, and the Stage F1 recall-then-evolve path folds recurring insights into their existing engrams instead of duplicating them (best-effort).
+- This skill records nothing to \`.luca/\` and is external to the pipeline. Its only persistent state — the analysis cursor — lives in MuninnDB.
 - \`.luca/telemetry/*.jsonl\` remains the semantic pipeline record; \`/luca-telemetry-report\` covers it. A trace↔ledger join for per-phase dollar attribution is P3.
 `
 
 export const traceInsightsSkill = defineSkill({
     name: 'trace-insights',
-    description: `Mine recent LangSmith traces of Claude Code sessions for evidence-backed Luca framework improvement insights: deterministic spend/reliability aggregation, bounded deep-reads of outlier traces via parallel subagents, an inline markdown report (optionally published as an Artifact), and auto-logged deduped GitHub issues on luca-framework for user weigh-in. Read-only over LangSmith; no MuninnDB writes (P1).
+    description: `Mine recent LangSmith traces of Claude Code sessions for evidence-backed Luca framework improvement insights: deterministic spend/reliability aggregation, bounded deep-reads of outlier traces via parallel subagents, an inline markdown report (optionally published as an Artifact), auto-logged deduped GitHub issues on luca-framework for user weigh-in, and bounded MuninnDB persistence (pitfall/pattern insight memories with recall-then-evolve dedup, a metric run digest, and a remember-latest-wins analysis cursor). Read-only over LangSmith.
 
 Use when user says "trace insights", "analyze traces", "mine langsmith", "langsmith review", "what do the traces say", or invokes \`/trace-insights\`.
 
-Arguments: \`--since <7d|ISO>\` (default 7d), \`--repo <substring>\` (default all repos), \`--max-deep-reads <N>\` (default 8), \`--dry-run\`, \`--artifact\`, \`--project <name>\`.`,
+Arguments: \`--since <auto|Nd/Nh|ISO>\` (default auto — resume from the analysis cursor, 7d fallback), \`--repo <substring>\` (default all repos), \`--max-deep-reads <N>\` (default 8), \`--dry-run\`, \`--artifact\`, \`--project <name>\`.`,
     body: BODY,
 })
