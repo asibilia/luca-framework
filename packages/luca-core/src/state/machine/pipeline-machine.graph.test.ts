@@ -64,7 +64,6 @@ describe('pipeline-machine graph — adjacency edge set (ac-16)', () => {
 })
 
 describe('pipeline-machine graph — directed-graph hierarchy snapshot', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type DirectedNode = { children?: DirectedNode[]; stateNode?: { key?: string } }
 
     function countLeaves(node: DirectedNode): number {
