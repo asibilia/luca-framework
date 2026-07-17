@@ -56,6 +56,7 @@ import { sessionPlanSkill } from './session-plan/index.ts'
 import { sessionResumeSkill } from './session-resume/index.ts'
 import { todoAddSkill } from './todo-add/index.ts'
 import { todoCheckSkill } from './todo-check/index.ts'
+import { traceInsightsSkill } from './trace-insights/index.ts'
 import { workflowSaveSkill } from './workflow-save/index.ts'
 
 import type { Artifact } from '../../define/index.ts'
@@ -101,6 +102,7 @@ export {
     sessionResumeSkill,
     todoAddSkill,
     todoCheckSkill,
+    traceInsightsSkill,
     workflowSaveSkill,
 }
 
@@ -149,5 +151,6 @@ export const SKILLS: readonly Artifact[] = [
     sessionResumeSkill,
     todoAddSkill,
     todoCheckSkill,
+    traceInsightsSkill,
     workflowSaveSkill,
 ]

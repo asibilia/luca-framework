@@ -1,0 +1,4 @@
+[skill-opt] task=caveman backend=claude epochs=3 k=3 gate=on
+[skill-opt] WARNING: real Claude backend — this spends API budget.
+[skill-opt] baselines: computed 0, cached 34
+[skill-opt] seed VAL reward: 0.206

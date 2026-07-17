@@ -52,6 +52,10 @@
     }
   },
   "muninn": {
-    "vault": "luca-monorepo"
+    "vault": "luca-monorepo",
+    "todoBacklog": {
+      "vault": "luca-monorepo",
+      "rootId": "01KXPMVKMMG9SW62BB3Z5GESKV"
+    }
   }
 }

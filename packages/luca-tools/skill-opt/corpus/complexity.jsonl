@@ -1,0 +1,30 @@
+{"id":"c01","split":"train","question":"Fix a typo in the README installation section.","label":"TRIVIAL"}
+{"id":"c02","split":"train","question":"Bump the axios dependency from 1.6.0 to 1.7.2 in package.json.","label":"TRIVIAL"}
+{"id":"c03","split":"train","question":"Rename the getUser function to fetchUser everywhere it is used.","label":"TRIVIAL"}
+{"id":"c04","split":"train","question":"Add a formatCurrency utility that turns cents into a display string.","label":"SIMPLE"}
+{"id":"c05","split":"train","question":"Fix the off-by-one bug in the pagination page count.","label":"SIMPLE"}
+{"id":"c06","split":"train","question":"Add a --verbose flag to the existing CLI export command.","label":"SIMPLE"}
+{"id":"c07","split":"train","question":"Add a new REST endpoint POST /invoices that validates and stores an invoice.","label":"MODERATE"}
+{"id":"c08","split":"train","question":"Refactor the notifications module to separate transport from templating.","label":"MODERATE"}
+{"id":"c09","split":"train","question":"Add server-side pagination and sorting to the orders table across the API and UI.","label":"MODERATE"}
+{"id":"c10","split":"train","question":"Introduce a background job queue subsystem with workers, retries, and a dashboard.","label":"COMPLEX"}
+{"id":"c11","split":"train","question":"Migrate the app from REST to GraphQL across all clients and the gateway.","label":"COMPLEX"}
+{"id":"c12","split":"train","question":"Replace the JWT auth system with OAuth2 and session revocation.","label":"CRITICAL"}
+{"id":"c13","split":"train","question":"Run a live schema migration that splits the users table and backfills data.","label":"CRITICAL"}
+{"id":"c14","split":"train","question":"Update the copyright year in the site footer.","label":"TRIVIAL"}
+{"id":"v01","split":"val","question":"Correct a broken relative import path in one component file.","label":"TRIVIAL"}
+{"id":"v02","split":"val","question":"Add a debounce helper and use it in the search box.","label":"SIMPLE"}
+{"id":"v03","split":"val","question":"Add rate limiting to the public API endpoints with a shared middleware.","label":"MODERATE"}
+{"id":"v04","split":"val","question":"Extract the billing logic into its own module and add unit tests.","label":"MODERATE"}
+{"id":"v05","split":"val","question":"Design and build a multi-tenant permissions subsystem used across every service.","label":"COMPLEX"}
+{"id":"v06","split":"val","question":"Change the primary key strategy from auto-increment to UUID and migrate all tables.","label":"CRITICAL"}
+{"id":"v07","split":"val","question":"Add a null-check to prevent a crash when the profile avatar is missing.","label":"SIMPLE"}
+{"id":"v08","split":"val","question":"Swap the logging library and update all call sites.","label":"MODERATE"}
+{"id":"t01","split":"test","question":"Update a hardcoded API base URL constant to read from an env var.","label":"SIMPLE"}
+{"id":"t02","split":"test","question":"Fix the alphabetical ordering of an enum's members.","label":"TRIVIAL"}
+{"id":"t03","split":"test","question":"Add a CSV export option to the reports page, reusing the existing report data.","label":"MODERATE"}
+{"id":"t04","split":"test","question":"Re-architect the frontend from a monolith into micro-frontends.","label":"COMPLEX"}
+{"id":"t05","split":"test","question":"Encrypt personally identifiable data at rest and rotate the encryption keys.","label":"CRITICAL"}
+{"id":"t06","split":"test","question":"Add a tooltip to the save button explaining the keyboard shortcut.","label":"SIMPLE"}
+{"id":"t07","split":"test","question":"Introduce a caching layer (Redis) in front of the product catalog service.","label":"COMPLEX"}
+{"id":"t08","split":"test","question":"Change a log message's wording to be clearer.","label":"TRIVIAL"}
