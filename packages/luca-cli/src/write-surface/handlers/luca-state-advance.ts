@@ -204,9 +204,25 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                         // reset counter is persisted with the step change.
                         const decision = decideAdvance(s, to)
                         counterUpdate = decision.counterUpdate
+                        // Run-start stamp (#319): the canonical run-start moment
+                        // is the first entry into `research` (idle→…→triage→
+                        // research). This edge fires exactly once per run, so it
+                        // is the authoritative run-start and must ALWAYS refresh
+                        // `runStartedAt` — including overwriting a stale stamp
+                        // left by a prior in-place re-run on the same state.json
+                        // (finalize→idle→triage→research). `to === 'research'` is
+                        // load-bearing; the `from` set is defensive against a
+                        // direct idle→research jump. The CLI lazy-stamp keeps its
+                        // unset-only guard as the legacy fallback.
+                        const stampRunStart =
+                            to === 'research' &&
+                            (from === 'idle' || from === 'triage')
                         return {
                             ...s,
                             pipelineStep: decision.pipelineStep,
+                            ...(stampRunStart
+                                ? { runStartedAt: new Date().toISOString() }
+                                : {}),
                             ...(decision.counterUpdate
                                 ? {
                                       [decision.counterUpdate.field]:

@@ -88,6 +88,10 @@ const main = defineCommand({
             import('./commands/write-surface/workflow').then(
                 (m) => m.workflowCommand
             ),
+        budget: () =>
+            import('./commands/write-surface/budget').then(
+                (m) => m.budgetCommand
+            ),
         confidence: () =>
             import('./commands/write-surface/confidence').then(
                 (m) => m.confidenceCommand
