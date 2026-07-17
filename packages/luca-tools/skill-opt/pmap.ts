@@ -16,11 +16,17 @@ export async function pMap<T, R>(
             const i = next++
             if (i >= items.length) return
             const item = items[i]
-            // Skip a hole (sparse array / `undefined` entry) but KEEP the
-            // worker alive to claim the next index — a `return` here would kill
-            // the worker and silently truncate all its remaining indices,
-            // breaking the "preserving input order" contract.
-            if (item === undefined) continue
+            // `noUncheckedIndexedAccess` types `item` as `T | undefined`, but a
+            // valid index into the dense input is never actually `undefined`.
+            // Fail fast rather than skip: skipping would leave a hole in
+            // `results` while the return is still typed `R[]`, silently handing
+            // callers a partially-computed array. A genuine `undefined` here
+            // means a sparse/short input — a bug — so surface it.
+            if (item === undefined) {
+                throw new Error(
+                    `pMap: unexpected undefined at index ${i} — dense input expected`
+                )
+            }
             results[i] = await fn(item, i)
         }
     }
