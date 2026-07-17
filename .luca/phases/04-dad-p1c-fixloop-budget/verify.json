@@ -1,0 +1,200 @@
+{
+  "timestamp": "2026-07-07T00:00:00.000Z",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01.1",
+      "description": "PipelineContext declares a budgetMode field.",
+      "met": true,
+      "evidence": "packages/luca-core/src/state/machine/pipeline-machine.ts:85 (budgetMode?: 'advisory' | 'enforce')",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-01.2",
+      "description": "PipelineContext declares six counter/cap numeric fields (3 counters + 3 caps).",
+      "met": true,
+      "evidence": "pipeline-machine.ts:75-82 — checksFixIteration/verifyIteration/reviewIteration + maxChecksFixIterations/maxVerifyIterations/maxReviewIterations",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "incFixLoop assign attached to exactly checks→execute, verify→checks, review→execute.",
+      "met": true,
+      "evidence": "actions.ts:49-53 FIX_LOOP_EDGES (3 incFixLoop entries); pipeline-machine.ts:122-135 advanceFor appends only the edge's action, guard stays toIs",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "resetFixLoop assign attached to exactly checks→verify, verify→review, review→learn.",
+      "met": true,
+      "evidence": "actions.ts:55-57 FIX_LOOP_EDGES (3 resetFixLoop entries)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "withinFixBudget guard registered in setup({guards}).",
+      "met": true,
+      "evidence": "pipeline-machine.ts:179-182 registers withinFixBudget in setup guards; guards.ts:41-49 implementation",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "undefined/absent budgetMode is treated as advisory (never denies).",
+      "met": true,
+      "evidence": "guards.ts:45 (if context.budgetMode !== 'enforce' return true); budget-guard.test.ts:163-187 (advisory / undefined never denies even over cap)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "advisory over-budget rework advance still returns allowed===true (snapshot.can true).",
+      "met": true,
+      "evidence": "budget-guard.test.ts:62-97 — checksFixIteration:99, no budgetMode, snapshot.can(event) true, transition → 100; checks-step luca-core 995/0 green",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "checks→execute advance persists checksFixIteration incremented by 1.",
+      "met": true,
+      "evidence": "handler test luca-state-advance.test.ts:195-221 (checksFixIteration 1→2, other 10 fields unchanged); machine-verdict.ts:158-165 returns counterUpdate; handler:216-227 spreads into mutateState write; checks-step handler test green",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "checks→verify advance persists checksFixIteration reset to 0.",
+      "met": true,
+      "evidence": "luca-state-advance.test.ts:223-247 (checksFixIteration→0, others preserved); resetFixLoopPatch actions.ts:93-101",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "rework-edge advance emits one fixloop.counted telemetry record (phaseOfRollout advisory).",
+      "met": true,
+      "evidence": "handler luca-state-advance.ts:314-343 emits fixloop.counted with budget from BUDGET_BY_COMPLEXITY; test:249-280 asserts exactly one record with meta {edge:'checks->execute',counterField:'checksFixIteration',nextValue:2,budget:5,verdict:'within',phaseOfRollout:'advisory'}; test:282-299 asserts no emit on forward-exit reset",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "enforce mode: withinFixBudget returns false at counter===cap.",
+      "met": true,
+      "evidence": "budget-guard.test.ts:124-147 cap-boundary (atCap denies, cap-1 allows); guards.ts:48 (count < cap)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "enforce property test asserts withinFixBudget allows iff counter < cap across BUDGET_BY_COMPLEXITY tiers.",
+      "met": true,
+      "evidence": "budget-guard.test.ts:100-122 — property over 5 complexities × 3 edges, samples {0,cap-1,cap,cap+1}",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "zero-cap edge denies first attempt in enforce mode (0 < 0 false).",
+      "met": true,
+      "evidence": "budget-guard.test.ts:149-161 (reviewIteration:0, maxReviewIterations:0, enforce → false)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "169-pair parity test passes unchanged.",
+      "met": true,
+      "evidence": "git diff be8b9a9fb^..f200924a8 shows pipeline-machine.parity.test.ts NOT in changed set; checks-step parity 516/0 green. Dual evidence: structural (byte-unchanged) + checks attestation (verify-stage bash blocked).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "bun test packages/luca-core passes.",
+      "met": true,
+      "evidence": "checks-step attestation: luca-core 995/0 (parity 516/0 incl graph). Independent re-run bun test stage-gate-blocked in verify; relying on checks green + Read of budget-guard.test.ts structure.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "checks-step attestation: tsc 0. Independent tsc probe stage-gate-blocked in verify (bash-mutate BLOCK). Substitution noted; MachineVerdictInput superset keeps 2-arg parity call type-checking (machine-verdict.ts:60-68).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "pipeline-machine.graph.test.ts passes unchanged after machine changes.",
+      "met": true,
+      "evidence": "git diff shows graph test NOT in changed set; graph.test.ts:38-52 observes only .can()-derived edge set + countLeaves(13) — no action-name assertions. no-op-on-undefined keeps getAdjacencyMap {} context invariant so exploration stays finite. checks-step green.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT change parity test assertions — file unchanged.",
+      "met": true,
+      "evidence": "git diff --stat be8b9a9fb^..f200924a8: pipeline-machine.parity.test.ts absent from the 8-file changed set. Parity call stays 2-arg (parity.test.ts:40).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT wire a blocking guard onto a rework edge — toIs remains sole edge guard.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:122-135 advanceFor sets guard:{type:'toIs'} only, appends actions (assigns, not guards). withinFixBudget registered (line 179) but never referenced in any transition's guard field.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT ship enforce as default budgetMode — default is advisory.",
+      "met": true,
+      "evidence": "pipeline-machine.ts:199 context:{} (no budgetMode); guards.ts:45 undefined⇒true (advisory); decideAdvance omits budgetMode (luca-state-advance.ts:141).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT modify checkPipelineGuard or PIPELINE_TRANSITIONS.",
+      "met": true,
+      "evidence": "git diff shows orchestration/pipeline-guard.ts and state/configs/pipeline-transitions.ts absent from changed set; both files present on disk.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT change RELAXATION_PATHS to force enforce.",
+      "met": true,
+      "evidence": "git diff shows state/configs/relaxation-paths.ts absent from changed set.",
+      "blocking": false,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-core", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "parity (169-pair, incl graph)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "handler test (luca-state-advance)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "deliverables": [
+    { "id": "D1", "description": "counters live as machine assign actions written back to state", "criterionIds": ["ac-01.1","ac-01.2","ac-02","ac-03","ac-07","ac-08"], "compliance": "shipped" },
+    { "id": "D2", "description": "advisory-first — parity-safe, telemetry not deny", "criterionIds": ["ac-04","ac-05","ac-06","ac-09","ac-13"], "compliance": "shipped" },
+    { "id": "D3", "description": "enforce guard authored + tested but not shipped default", "criterionIds": ["ac-10","ac-11","ac-12","anti-03"], "compliance": "shipped" },
+    { "id": "D4", "description": "gate green, no parity/structural regression", "criterionIds": ["ac-14","ac-15","ac-16","anti-01","anti-04","anti-05"], "compliance": "shipped" }
+  ],
+  "notes": "DEVIATION JUDGMENT (no-op-on-undefined increment/reset): SOUND, not a masked bug. Plan specified `(ctx[counter] ?? 0) + 1`; executor changed incFixLoopPatch/resetFixLoopPatch (actions.ts:76-101) to no-op when the counter field is undefined, mutating only when it is already a number. (1) Structural: getAdjacencyMap (graph.test.ts:38-52) explores from the machine's `{}` default context and JSON-serializes context; a nullish-base increment would mint an ever-growing checksFixIteration across the checks<->execute loop → infinite distinct serialized states → hang. no-op-on-undefined keeps the `{}` context invariant during exploration → finite 21-edge graph, and keeps parityContext() (no counters) parity-green. (2) Production correctness: the live write path is mutateState → lucaStateSchemaTolerant.parse (schemas.ts:146 = lucaStateSchema.passthrough()), which inherits checksFixIteration/verifyIteration/reviewIteration .default(0) (schemas.ts:116-120); the bootstrap path uses lucaStateSchema.parse({}) (advance handler:229) which also defaults them. Therefore decideAdvance ALWAYS threads defined numbers → increments/resets ALWAYS fire in production (verified no live path reads counters without the schema default). The no-op branch is UNREACHABLE in production. (3) Deviation does not weaken any ac: ac-07 tested with seeded checksFixIteration (1→2), ac-08 reset→0, ac-06 advisory over-budget still allowed. VERDICT: the deviation reinforces the advisory/parity invariant rather than hiding a real increment bug. VERIFY-STAGE SUBSTITUTION: independent tsc and bun-test re-runs were stage-gate-blocked (bash-mutate BLOCK in pipelineStep=verify); ac-13/14/15/16 rely on DUAL evidence — structural probes (git diff --stat proving parity/guard/transitions/relaxation/graph files byte-unchanged; Read of test bodies) PLUS the checks-step attestation (tsc 0, luca-core 995/0, parity 516/0 incl graph, handler green). git diff and Read probes ran successfully in-stage."
+}

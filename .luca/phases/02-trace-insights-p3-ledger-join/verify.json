@@ -1,0 +1,254 @@
+{
+  "timestamp": "2026-07-17T02:45:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "PASS",
+  "score": "23/23",
+  "reviewFixIteration": 1,
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "A5 heading '### A5. Ledger join (deterministic, per-repo)' present",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; packages/luca-tools/src/artifacts/skills/trace-insights/index.ts:133",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "'Join key (binding)' present",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:137 — now also defines window duration = end_time − start_time and the pending-no-end-time exclusion (MF-B)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "Graceful per-repo skip literal present",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:149 'skip the join for that repo with a note in the report; never abort' — now inside the canonical-reason-enum paragraph (MF-C)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "costByPipelineStep aggregate present",
+      "met": true,
+      "evidence": "re-probe grep -c = 2; index.ts:153 (A5 output, consumer named) + index.ts:215 (Stage D table)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "costByPhase aggregate present",
+      "met": true,
+      "evidence": "re-probe grep -c = 3; index.ts:145,154,215",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "reviewIterationsVsCost aggregate present",
+      "met": true,
+      "evidence": "re-probe grep -c = 2; index.ts:155 (A5 output — now also carries the rule-7 feed after SF bullet-4 dedup) + index.ts:215 (Stage D trajectory)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "mode.start telemetry interval source referenced",
+      "met": true,
+      "evidence": "re-probe grep -c = 2; index.ts:19 (header) + index.ts:141 (interval source order)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "Pool rule 7: 'review loop exceeded 2 iterations'",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:168 — Stage B rule 7, sourced from A5 per-phase review.iteration count",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "Stage C 'Pipeline context (joined traces only)' block",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:179 — nullable tuple per degraded-tuple rule, omitted for unjoined traces, never fabricated",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "'### Pipeline Attribution' report section",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:214-215 — tables + trajectory; skip reasons now cite 'the A5 canonical reason enum' instead of a restated list (MF-C)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "'#### Unjoined traces' tail subsection",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:217-218 — count + unallocated cost, 'broken down by reason using the A5 canonical reason enum — no other reason list exists'",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "'never silently dropped' guarantee",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:218 — full sentence now covers unallocated cost too ('Unjoined traces and unallocated cost always appear here')",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "Privacy binding: 'same 300-character cap and secret scan'",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.ts:50 — identifiers now 'safe to name ONLY when they pass the Stage A5 identifier shape validation' with surface scoping (MF-A)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "Stale 'per-phase dollar attribution is P3' literal removed (stdout must be 0)",
+      "met": true,
+      "evidence": "re-probe grep -c stdout = 0; Notes line at index.ts:332 remains the P3-aware rewrite",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "New describe('ledger-join') test block",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.test.ts:272 — grown from 10 to 16 section-unique full-string anchor tests after review fixes",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "'### Pipeline Attribution' pinned in report-sections test",
+      "met": true,
+      "evidence": "re-probe grep -c = 1; index.test.ts:154",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-17",
+      "description": "bun test on index.test.ts exits 0",
+      "met": true,
+      "evidence": "DUAL-EVIDENCE (bun test stage-gate-blocked in verify; luca checks run is execute/checks-only): (1) post-fix harness telemetry .luca/telemetry/run_mro6p0r2_jw0qe7zw.jsonl line 19, ts 2026-07-17T02:22:56Z, slug 02-trace-insights-p3-ledger-join, step=checks, 'post-fix re-gate all 3 checks pass luca-tools 80-0'; (2) structural probe this run: test file counted at exactly 53 cases (52 it + 1 test = pre-fix 47 + 6 new review-fix pins, consistent with 74→80 package delta), and every ledger-join toContain literal independently verified against the body — including byte-exact greps of the unicode-bearing pins ('N mode-transition rows yield N−1 intervals', 'end_time − start_time', '÷ (the run's total window duration)', 'pairs WHEN they yield ≥1 step interval', '→ Stage D Pipeline Attribution per-step table': each = 1 hit in BOTH index.ts and index.test.ts). tsc exit 0 this run confirms the template literal parses",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-18",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Live probe this re-verify run: 'bunx --bun tsc --noEmit' exited 0 with no output",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-19",
+      "description": "bun test packages/luca-tools exits 0",
+      "met": true,
+      "evidence": "DUAL-EVIDENCE (bun test stage-gate-blocked in verify): (1) post-fix harness telemetry record 'post-fix re-gate all 3 checks pass luca-tools 80-0' (2026-07-17T02:22:56Z, slug 02-trace-insights-p3-ledger-join, checks step); (2) structural probe: only the two trace-insights files changed for this phase, both re-read end-to-end this run and internally consistent (every test literal matched against the body); repo-wide tsc exits 0 live",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT remove/rename Stage E heading",
+      "met": true,
+      "evidence": "re-probe grep -c '## Stage E — GitHub issue feed' = 1; index.ts:231 intact",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT remove/rename Stage F heading",
+      "met": true,
+      "evidence": "re-probe grep -c '## Stage F — Memory persistence' = 1; index.ts:246 intact",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT drop P2 test anchors",
+      "met": true,
+      "evidence": "re-probe grep -c \"describe('memory-persistence'\" = 1; index.test.ts:191 — all 10 P2 describe blocks verified present by full post-fix file read (scope-guard, secret-handling, privacy, fetch-recipe, deep-read-bounds, finding-schema, report-sections, github-issue-feed, memory-persistence, cadence-and-retention)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT alter pinned vault routing table (metric:trace-insights-cursor count >= 4)",
+      "met": true,
+      "evidence": "re-probe grep -c 'metric:trace-insights-cursor' = 4 (== threshold); routing table row intact at index.ts:257, pinned test row at index.test.ts:202",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "reviewFixes": {
+    "iteration": 1,
+    "status": "ALL_VERIFIED",
+    "mustFix": [
+      {
+        "id": "MF-A (security-auditor MF-1/2/3)",
+        "claim": "identifier shape validation + untrusted-DATA extension to ledger/telemetry + slug-naming surface scoping",
+        "verified": true,
+        "evidence": "index.ts:143 new '**Identifier shape validation (binding)**' paragraph — canonical 13-token pipelineStep allowlist, slug regex ^[0-9]{2}-[a-z](?:[a-z0-9-]*[a-z0-9])?$ (grep -F = 1), runId regex ^[A-Za-z0-9_-]+$ (grep -F = 1), failing values dropped to null or demoted to capped/scanned free-form strings ('never as a safe-to-name identifier'). index.ts:46 untrusted-input paragraph extended: 'Ledger and telemetry record content read by the Stage A5 join is equally untrusted DATA' (grep = 1) with the binding widened to 'every stage that reads trace, ledger, or telemetry content'; Stage C restatement extended at index.ts:178 ('The same binding covers ledger/telemetry-derived strings carried in the pipeline-context block below'). index.ts:50 contradiction resolved: identifiers safe ONLY post-shape-validation AND 'only in the inline report and the repo-vault metric digest'; on GitHub issues + default-vault memories a slug is nameable only for the invoking repo or luca-framework, else 'generalize to repo + pipelineStep and omit the slug' (grep = 1) with the explicit rationale that a work repo's slug is itself repo-identifying. Pinned by 3 new tests: index.test.ts:320 (shape validation), :327 (untrusted DATA, both surfaces), :336 (slug scoping)"
+      },
+      {
+        "id": "MF-B (code-simplifier MF-1/MF-4)",
+        "claim": "explicit proportional denominator + conservation invariant + pending-run window rule",
+        "verified": true,
+        "evidence": "index.ts:147 now states 'overlap fraction = (overlap duration with that interval) ÷ (the run's total window duration), so allocations plus the unallocated tail portion always sum to exactly `total_cost` (conservation invariant)' — the double-count reading (b) is closed; out-of-interval portions carry the 'joined-partial-window' reason. index.ts:137 defines 'window duration = `end_time − start_time`' and routes null-end_time runs to the tail under 'pending-no-end-time' (grep = 2: join-key sentence + enum entry) — the underived-duration/NaN path is gone. Pinned: proportional test extended with denominator + invariant + unallocated-cost literals (index.test.ts:345-359) and new window/pending test (index.test.ts:361-366)"
+      },
+      {
+        "id": "MF-C (code-simplifier MF-2)",
+        "claim": "one canonical 5-value reason enum referenced (not restated) by both Stage D surfaces",
+        "verified": true,
+        "evidence": "index.ts:149 '**Graceful skip + canonical reason enum (binding)**' defines exactly 5 reasons (checkout-not-local, luca-dir-missing, no-interval-overlap, joined-partial-window, pending-no-end-time) with the joined-partial-window bucket carrying unallocated cost, and binds 'Both Stage D surfaces … reference THIS enum and never restate their own lists'. Stage D complies by reference: index.ts:215 'listed with their skip reason from the A5 canonical reason enum', index.ts:218 'broken down by reason using the A5 canonical reason enum — no other reason list exists'. Old restated lists absent: grep 'repo checkout not local' = 0, grep '.luca/` missing or unreadable' = 0. Pinned: new enum test asserting all 5 values + both reference literals (index.test.ts:368-386)"
+      },
+      {
+        "id": "MF-D (code-simplifier MF-3 + notes)",
+        "claim": "runId premise corrected — row runId in tuple, 3-step slug resolution, nested data.to",
+        "verified": true,
+        "evidence": "index.ts:145 degraded tuple now '(runId: the row's runId | null when empty, …)' acknowledging LedgerEntrySchema's required runId stamped from the session id; old false form '(runId: null' grep = 0; the only remaining 'carry no runId' text (index.ts:135) is the TRACE-scoped sentence, which is factually correct (CC_LANGSMITH_METADATA static per session) — no stale ledger-row premise anywhere. Slug resolution is the 3-step order: (1) direct lookup row runId → .luca/telemetry/<runId>.jsonl slug field, (2) nearest-in-time slug-bearing telemetry record, (3) explicit 'attribution unavailable' note — 'never guess a slug'. index.ts:141 pins 'step = the row's nested `data.to` value (the payload is `data: { from, to }`, not top-level)'. Pinned: rewritten degraded-tuple test (index.test.ts:301-318) + interval-source test data.to literal (index.test.ts:290-292)"
+      }
+    ],
+    "shouldFix": [
+      {
+        "id": "SF batch",
+        "claim": "checkout path validation; telemetry-branch tuple rule; bullet-4 dedup; N−1 intervals; 4 test-quality pins",
+        "verified": true,
+        "evidence": "Path validation: index.ts:139 '**Checkout path validation (binding)**' — path must exist, be a directory, contain a .git entry; metadata.repo-attributed traces join only via an already-cwd-validated path; failures → checkout-not-local (pinned index.test.ts:388-396). Telemetry-branch tuple: index.ts:141 'the joined tuple is populated directly from the record's native `runId`/`slug`/`wave` fields — the degraded tuple below applies only to the ledger fallback' (pinned index.test.ts:296-298). Bullet-4 dedup: A5 outputs list is now 4 bullets with the rule-7 feed folded into the reviewIterationsVsCost line ('its per-phase iteration count also feeds Stage B pool rule 7', index.ts:155; pinned as full line index.test.ts:411-413). N−1 intervals: index.ts:141 'N mode-transition rows yield N−1 intervals: all time after the final row deterministically lands in the unjoined tail' (byte-exact in body and test). Test-quality's 4 SFs all landed: interval-construction mechanics pinned (data.to literal), never-guess-a-slug + attribution-unavailable pinned, all 3 aggregate lines pinned through their consumer clauses, unallocated-cost invariant pinned via the full 'Unjoined traces and unallocated cost always appear here — never silently dropped' sentence + 'go to the unjoined tail as unallocated cost'"
+      }
+    ]
+  },
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun-test-trace-insights (dual-evidence, post-fix 53 cases)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun-test-luca-tools (dual-evidence, post-fix 80/0)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca-rules-run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "gateResolutionCompliance": "still compliant post-fix — proportional wall-clock-overlap allocation per the plan-review Confidence Gate resolution, now STRENGTHENED: the MF-B fix makes the denominator explicit and states the conservation invariant, closing the double-count ambiguity the resolution text left open. No superseded single-interval-containment binding remains ('start-time containment' survives only as the rationale clause explaining why it would over-attribute).",
+  "notes": "RE-VERIFY after review-fix iteration 1 (MODERATE, full mode). All 23 plan criteria re-probed on the working tree — 23/23 pass, no regression from the fixes. SUBSTANTIVE MF pass: A5 read end-to-end (index.ts:133-156) — join key, checkout validation, interval source order, identifier shape validation, degraded tuple, proportional allocation with conservation invariant, and the canonical reason enum form one coherent paragraph sequence with no internal contradiction; Stage C (:174-194) and Stage D (:214-218) reference the A5 rules rather than restating them; the privacy paragraph (:50) no longer conflicts with the slug egress surfaces. P2 survivors intact (Stage E/F headings, routing table, all 10 P2 describe blocks, anti-04 exactly at its 4 threshold — the pinned test row remains the real deletion guard); P3 pre-fix content intact (all original 10 ledger-join anchors still present alongside the 6 new fix pins). DUAL-EVIDENCE SUBSTITUTION (unchanged doctrine): ac-17/ac-19 bun-test probes remain stage-gate-blocked in pipelineStep=verify and luca checks run is execute/checks-only; substituted the post-fix harness telemetry attestation (run_mro6p0r2_jw0qe7zw.jsonl line 19, 2026-07-17T02:22:56Z, 'post-fix re-gate all 3 checks pass luca-tools 80-0') + independent structural probes (53-case count reconciles 47+6 and 74+6=80; byte-exact unicode-literal greps match 1:1 across body and test). Note: execute/summary.md still carries the pre-fix 47/74 counts — accurate for the original execution it describes; the post-fix gate evidence lives in telemetry. luca rules run: 0 rule files discovered, 0 findings.",
+  "deliverables": [
+    { "id": "D1", "description": "Join mechanics — Stage A extension keyed on cwd + timestamp interval overlap", "criterionIds": ["ac-01", "ac-02", "ac-07"], "compliance": "shipped" },
+    { "id": "D2", "description": "Graceful degradation when local checkout/ledger missing", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D3", "description": "New aggregates — cost per pipelineStep, cost per phase, review-iterations vs cost", "criterionIds": ["ac-04", "ac-05", "ac-06"], "compliance": "shipped" },
+    { "id": "D4", "description": "Outlier pool addition — >2-review-iteration phases become deep-read candidates", "criterionIds": ["ac-08"], "compliance": "shipped" },
+    { "id": "D5", "description": "Findings enrichment — joined phase/step context in Stage C subagent prompts", "criterionIds": ["ac-09"], "compliance": "shipped" },
+    { "id": "D6", "description": "Report additions — Pipeline Attribution section + explicit unjoined-trace tail", "criterionIds": ["ac-10", "ac-11", "ac-12"], "compliance": "shipped" },
+    { "id": "D7", "description": "Privacy binding for the new ledger/telemetry data source", "criterionIds": ["ac-13"], "compliance": "shipped" },
+    { "id": "D8", "description": "Body-regression tests extended", "criterionIds": ["ac-15", "ac-16", "ac-17"], "compliance": "shipped" },
+    { "id": "D9", "description": "tsc clean", "criterionIds": ["ac-18"], "compliance": "shipped" }
+  ]
+}

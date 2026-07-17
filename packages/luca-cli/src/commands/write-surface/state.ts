@@ -14,6 +14,7 @@ import { defineCommand } from 'citty'
 
 import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
 
+import { sendRequest } from '../../runner/protocol.ts'
 import {
     lucaStateAdvanceTool,
     lucaStateClaimOwnerTool,
@@ -54,8 +55,38 @@ const advanceCommand = defineCommand({
     },
     async run({ args, rawArgs, cmd }) {
         rejectUnknownFlags('state advance', cmd, rawArgs)
+        const toStep = args['to-step']
+
+        // DAD-P2: daemon-if-up / cold-if-down routing. Probe the runner socket;
+        // if a daemon answers, it performs the SAME cold write (byte-identical
+        // state.json) and we surface its result. On any unreachable condition
+        // (ENOENT/ECONNREFUSED/timeout) we fall through to the unchanged cold
+        // handler below — cold is the default (anti-06). This socket route is
+        // reached ONLY here, inside `luca state advance`, so the PreToolUse hook
+        // has already stamped ownerSessionId on the command (anti-07).
+        const resp = await sendRequest(process.cwd(), {
+            cmd: 'advance',
+            to: toStep,
+        })
+        // ANY reachable reply is authoritative — the daemon already performed
+        // (or rejected) the write. Surface it and exit; NEVER fall through to
+        // the cold path, which would re-run the advance (double-apply) or mask
+        // a daemon-side error. Includes a `kind: 'error'` frame (e.g. an
+        // internal handler failure). Only a genuinely unreachable daemon
+        // (ENOENT/ECONNREFUSED/timeout) falls through to cold below (anti-06).
+        if (!('unreachable' in resp)) {
+            const text = resp.text ?? ''
+            if (!resp.ok) {
+                console.error(text)
+                process.exit(1)
+            }
+            console.log(text)
+            process.exit(0)
+        }
+
+        // Cold path (daemon down) — the unchanged write-surface handler.
         await runWriteHandler('state advance', lucaStateAdvanceTool, {
-            toStep: args['to-step'],
+            toStep,
         })
     },
 })

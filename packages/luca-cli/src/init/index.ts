@@ -31,6 +31,15 @@ export { installHooks, mergeLucaHookSettings } from './helpers/install-hooks.ts'
 export type { InstallHooksOptions } from './helpers/install-hooks.ts'
 
 export {
+    enrichTraceMetadata,
+    mergeTraceMetadata,
+} from './helpers/enrich-trace-metadata.ts'
+export type {
+    EnrichTraceMetadataOptions,
+    TraceMetadataIds,
+} from './helpers/enrich-trace-metadata.ts'
+
+export {
     installStatusline,
     mergeStatuslineRegistration,
 } from './helpers/install-statusline.ts'

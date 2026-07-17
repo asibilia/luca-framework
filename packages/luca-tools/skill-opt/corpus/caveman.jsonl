@@ -1,0 +1,34 @@
+{"id":"q01","split":"train","question":"Why does a React component re-render when you pass an inline object as a prop?"}
+{"id":"q02","split":"train","question":"Explain database connection pooling and why it helps under load."}
+{"id":"q03","split":"train","question":"What is the difference between TCP and UDP?"}
+{"id":"q04","split":"train","question":"How does a bloom filter work and what are its false-positive tradeoffs?"}
+{"id":"q05","split":"train","question":"What causes a deadlock and how do you prevent one?"}
+{"id":"q06","split":"train","question":"Explain how HTTPS establishes a secure connection via the TLS handshake."}
+{"id":"q07","split":"train","question":"What is the difference between a process and a thread?"}
+{"id":"q08","split":"train","question":"How does garbage collection work in a generational collector?"}
+{"id":"q09","split":"train","question":"Why is indexing a database column a tradeoff, not a free win?"}
+{"id":"q10","split":"train","question":"Explain the CAP theorem and what it forces you to choose."}
+{"id":"q11","split":"train","question":"What is the difference between optimistic and pessimistic locking?"}
+{"id":"q12","split":"train","question":"How does a CDN reduce latency for static assets?"}
+{"id":"q13","split":"train","question":"What is memoization and when does it backfire?"}
+{"id":"q14","split":"train","question":"Explain how DNS resolves a domain name to an IP address."}
+{"id":"v01","split":"val","question":"What is the difference between authentication and authorization?"}
+{"id":"v02","split":"val","question":"How does a hash map achieve average O(1) lookups and when does it degrade?"}
+{"id":"v03","split":"val","question":"Explain what a race condition is and how a mutex prevents it."}
+{"id":"v04","split":"val","question":"Why does the N+1 query problem hurt performance and how do you fix it?"}
+{"id":"v05","split":"val","question":"What is the difference between a stack and a heap in memory?"}
+{"id":"v06","split":"val","question":"How does HTTP caching work with ETags and Cache-Control?"}
+{"id":"v07","split":"val","question":"What is a database transaction and what do the ACID properties guarantee?"}
+{"id":"v08","split":"val","question":"Explain the difference between horizontal and vertical scaling."}
+{"id":"v09","split":"val","question":"How does a binary search work and what must be true of the input?"}
+{"id":"v10","split":"val","question":"What is the difference between REST and gRPC?"}
+{"id":"t01","split":"test","question":"What is the difference between synchronous and asynchronous I/O?"}
+{"id":"t02","split":"test","question":"Explain how a load balancer distributes traffic and what health checks add."}
+{"id":"t03","split":"test","question":"What is eventual consistency and where is it acceptable?"}
+{"id":"t04","split":"test","question":"How does copy-on-write reduce memory usage when forking a process?"}
+{"id":"t05","split":"test","question":"What is the difference between a compiler and an interpreter?"}
+{"id":"t06","split":"test","question":"How does a write-ahead log help a database recover from a crash?"}
+{"id":"t07","split":"test","question":"What is the difference between symmetric and asymmetric encryption?"}
+{"id":"t08","split":"test","question":"Explain how virtual memory and paging work."}
+{"id":"t09","split":"test","question":"What is backpressure in a streaming system and how do you handle it?"}
+{"id":"t10","split":"test","question":"How does a rate limiter using the token bucket algorithm work?"}

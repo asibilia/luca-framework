@@ -100,7 +100,7 @@ function safeHostname(): string | undefined {
  * (PID-exists-but-owned-by-another-user) as live (conservative — better
  * to refuse a force-unlock than to clobber a cross-user run).
  */
-function isPidAlive(pid: number): boolean {
+export function isPidAlive(pid: number): boolean {
     try {
         process.kill(pid, 0)
         return true

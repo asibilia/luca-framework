@@ -29,11 +29,19 @@ const main = defineCommand({
         rules: () => import('./commands/rules').then((m) => m.rulesCommand),
         classify: () =>
             import('./commands/classify').then((m) => m.classifyCommand),
+        graph: () => import('./commands/graph').then((m) => m.graphCommand),
         doctor: () => import('./commands/doctor').then((m) => m.default),
         hook: () => import('./commands/hook').then((m) => m.hookCommand),
         repair: () => import('./commands/repair').then((m) => m.repairCommand),
+        statusline: () =>
+            import('./commands/statusline').then((m) => m.statuslineCommand),
         version: () =>
             import('./commands/version').then((m) => m.versionCommand),
+
+        // DAD-P2 persistent-runner POC verbs.
+        start: () => import('./commands/runner').then((m) => m.startCommand),
+        stop: () => import('./commands/runner').then((m) => m.stopCommand),
+        status: () => import('./commands/runner').then((m) => m.statusCommand),
 
         // v13 write-surface noun-group commands (structured/operational
         // mutations). The 9 freeform artifact writes are NOT here — they

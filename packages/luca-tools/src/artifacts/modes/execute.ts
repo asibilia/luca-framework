@@ -399,17 +399,15 @@ Read \`luca state read\` for:
 - Plan and research data.
 - \`currentPhase\` / \`totalPhases\` — phase progress.
 - \`oversight\` — checkpoint behavior.
-- \`iterationPlan\` — if set, this is a **review iteration** (see below).
-- \`reviewIteration\` — current review loop count.
+- \`reviewIteration\` — current review loop count; non-zero means you are re-entering from **Review** (see below).
 
 ### Review Iteration Re-entry
 
-When \`iterationPlan\` is present in workflow state, you are re-entering from **Review mode** to fix must-fix issues:
+When you re-enter via the \`review → execute\` pipeline edge (Review found must-fix issues), you are fixing a focused list rather than re-executing the plan:
 
-1. **Read \`iterationPlan\`** from state — focused list of fixes from the reviewer.
-2. **Read** the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` for full audit context.
-3. **Scope your work** to the iteration plan items ONLY — do not re-execute the full plan.
-4. After fixes, run checks + rule gate, then transition back to Review.
+1. **Read** the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` for the focused must-fix list and full audit context.
+2. **Scope your work** to those must-fix items ONLY — do not re-execute the full plan.
+3. After fixes, run checks + rule gate, then transition back to Review.
 
 ### TODO Progress
 

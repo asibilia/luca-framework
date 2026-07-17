@@ -30,6 +30,9 @@ export type ToolCategory =
  * Source of truth: decision:luca-stage-tool-matrix-2026-05-19. IDLE is
  * permissive (no enforcement). Every other phase has explicit allow/deny
  * for each category.
+ *
+ * DEMOTED (DAD-P1t): this is data referenced BY the machine state (keyed by
+ * coarse phase), not control flow. It does not encode the pipeline's structure.
  */
 export const STAGE_TOOL_MATRIX: Record<
     CoarsePhase,

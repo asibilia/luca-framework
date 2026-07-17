@@ -2,6 +2,16 @@
  * architect mode-agent — Luca Steps 4-7g: git setup, roadmap, plan,
  * plan review. The third stage of the pipeline.
  *
+ * dual-surface: standalone mode-agent vs. /lu architect step. This file
+ * is the STANDALONE full-planning mode-agent — spawned directly for
+ * re-plan cycles (by phase-execute) and by the quick / session-plan /
+ * project-new skills, where it owns the whole branch → discuss → roadmap
+ * → plan → plan-review flow. It is DISTINCT from the thin inline `/lu`
+ * pipeline `architect` *step*, which is a lightweight synthesis that
+ * writes nothing and hands off to the downstream plan / plan-review
+ * steps (discuss already ran upstream). Same name, two surfaces —
+ * intentional, documented.
+ *
  * Ported from luca-mastracode/src/modes/architect.ts +
  * src/instructions/architect.md. Mastra-specific tool references
  * (workflowState, writePlanningFile, manageRoadmap, ensureFeatureBranch,
@@ -29,6 +39,8 @@ import { defineAgent } from '../../define/index.ts'
 import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
 
 const BODY = `# Architect Agent Instructions
+
+> **Surface note** — dual-surface: standalone mode-agent vs. /lu architect step. You are the STANDALONE full-planning mode-agent (re-plan cycles + quick / session-plan / project-new), which owns the whole branch → discuss → roadmap → plan → plan-review flow below. This is NOT the thin inline \`/lu\` \`architect\` *step* (a no-write synthesis that hands off to the downstream plan / plan-review steps — discuss already ran upstream).
 
 > Luca Steps 4–7g: Git Setup → Roadmap → Plan → Review
 

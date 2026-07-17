@@ -33,10 +33,11 @@
  * `coarsePhaseOf()` rather than hand-curated: every step whose coarse
  * phase is one of PLANNING / EXECUTING / REVIEWING / FINALIZING earns a
  * continuation; transitions INTO `idle` (coarse phase IDLE) emit none.
- * The exhaustive coarse-phase map in `state/configs/coarse-phase-map.ts`
- * is the single source of truth; if a new step is added there, this
- * module either picks up the right default or fails a compile-time
- * exhaustiveness check.
+ * The coarse-phase mapping is derived from the pipeline machine's
+ * `meta.coarsePhase` (see `STEP_TO_COARSE_PHASE` in
+ * `state/machine/pipeline-machine.ts`), which is the single source of
+ * truth; if a new step is added, this module either picks up the right
+ * default or fails a compile-time exhaustiveness check.
  */
 import { coarsePhaseOf } from '../state/helpers/coarse-phase-of.ts'
 import type {

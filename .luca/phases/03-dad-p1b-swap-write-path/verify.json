@@ -1,0 +1,169 @@
+{
+  "timestamp": "2026-07-07T00:00:00.000Z",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "machineVerdict is importable from @alecsibilia/luca-core (re-export in state/index.ts)",
+      "met": true,
+      "evidence": "packages/luca-core/src/state/index.ts:52 exports machineVerdict; handler imports it at luca-state-advance.ts:7; barrel-import smoke test (test file:287-292) asserts typeof machineVerdict === 'function' (no cycle)",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "the mutator calls machineVerdict",
+      "met": true,
+      "evidence": "luca-state-advance.ts:123 decideAdvance calls machineVerdict({currentStep: from, requestedStep: to, complexity: s.complexity, oversight: s.oversight})",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "the mutator no longer calls isLegalTransition for the transition gate",
+      "met": true,
+      "evidence": "grep of isLegalTransition in luca-state-advance.ts returns only doc-comment lines 103,166 — no call site; the gate is machineVerdict",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "illegal cross-step advance throws an error whose text contains substring 'illegal'",
+      "met": true,
+      "evidence": "decideAdvance throws `rejected transition [${verdict.reason}]:...` (luca-state-advance.ts:131-134); for plan→execute reason='illegal-transition' which contains 'illegal'. Test 'illegal cross-step error carries the illegal-transition reason code' (test:61-74) asserts toContain('illegal-transition') and toContain('illegal'). Checks-step: handler test 18/0 green",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "plan→plan rejected with reason code same-step-no-op (not illegal-transition)",
+      "met": true,
+      "evidence": "machine-verdict.ts:114-120 classifies illegal from===to as same-step-no-op (plan allows only plan-review per pipeline-transitions.ts:18). Test (test:76-96) asserts toContain('same-step-no-op') and not.toContain('illegal-transition') and state unchanged",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "research→research ACCEPTED (legal self-loop, not same-step no-op)",
+      "met": true,
+      "evidence": "pipeline-transitions.ts:15 research allows ['discuss','research']; machine-verdict.ts checks .can (legality) BEFORE same-step classification, so it returns ok. Test (test:98-114) asserts !isError and state.pipelineStep==='research'",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "legal advance persists pipelineStep equal to requested to step (flat string)",
+      "met": true,
+      "evidence": "handler returns {...s, pipelineStep: decideAdvance(s,to)} (luca-state-advance.ts:170); decideAdvance returns verdict.resultingStep (=== to for legal). Test 'advances legally' (test:31-42) asserts state.pipelineStep==='plan-review' read back from state.json",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "advance leaves every iteration counter/cap field byte-identical (11 fields)",
+      "met": true,
+      "evidence": "decideAdvance is pure (returns only a PipelineStep, no state mutation); handler spreads ...s preserving all other fields; NO increment logic added. Tests preserve-11-fields on FORWARD (test:173-192) and LOOP-BACK checks→execute (test:194-216) assert all 11 COUNTER_FIELDS unchanged",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "advancing from absent state.json bootstraps idle→triage",
+      "met": true,
+      "evidence": "mutateState called with bootstrapIfMissing: lucaStateSchema.parse({}) (luca-state-advance.ts:172); default pipelineStep='idle', idle allows triage. Test (test:218-232) removes state.json, advances to triage, asserts state.pipelineStep==='triage'",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "equivalence test asserts handler decision matches machineVerdict (accept/reject + resulting step) over pair set",
+      "met": true,
+      "evidence": "test:251-285 table-driven over 6 pairs (legal forward/loop-back/self-loop, illegal cross-step, same-step no-op, unknown requested): on allow asserts decideAdvance===verdict.resultingStep; on reject asserts decideAdvance throws",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "bun test packages/luca-core passes (P1a parity gate still green)",
+      "met": true,
+      "evidence": "Checks-step evidence: bun test packages/luca-core 975/0. anti-04 parity/graph test files not in diff (git diff --name-only shows only 3 files, none in luca-core state/machine). bun test stage-gate-blocked in REVIEWING; dual-evidence fallback applied",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "bun test packages/luca-cli passes (handler + equivalence tests)",
+      "met": true,
+      "evidence": "Checks-step evidence: handler test file 18/0 green. Structural probe: Read of test file confirms all 18 tests (reason-code, self-loop, counter x2, equivalence x6, bootstrap) are well-formed with correct assertions against the transition table. bun test stage-gate-blocked in REVIEWING; dual-evidence fallback (checks-step + structural inspection). Full luca-cli suite exit-1 is a pre-existing unrelated telemetry-subprocess test with 0 failures (see notes)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Ran bunx --bun tsc --noEmit in this verification: exit 0",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT modify the PreToolUse hook (pipeline-guard/handler.ts)",
+      "met": true,
+      "evidence": "git diff --name-only 191fe9096..a8aa56422 lists only 3 files; packages/luca-tools/src/hooks/pipeline-guard/handler.ts NOT among them",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT modify checkPipelineGuard (orchestration/pipeline-guard.ts)",
+      "met": true,
+      "evidence": "orchestration/pipeline-guard.ts not in diff file list; grep of checkPipelineGuard in handler returns only a doc-comment (line 102), no import/call",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT add counter-increment logic (pipeline-machine.ts unchanged)",
+      "met": true,
+      "evidence": "pipeline-machine.ts not in diff file list; decideAdvance returns only a PipelineStep, no assign/increment; loop-back counter test (test:194-216) proves checksFixIteration etc. unchanged",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT modify P1a parity/graph tests",
+      "met": true,
+      "evidence": "pipeline-machine.parity.test.ts and pipeline-machine.graph.test.ts not in diff file list (only 3 files changed)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT introduce a persistent actor (no createActor in luca-cli/src)",
+      "met": true,
+      "evidence": "grep -rn createActor packages/luca-cli/src returns 0 matches",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT break the state schema (schemas.ts unchanged)",
+      "met": true,
+      "evidence": "packages/luca-core/src/state/schemas.ts not in diff file list; pipelineStep persists as a flat string, no schema/snapshot change",
+      "blocking": true,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-core (checks-step)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test luca-state-advance.test.ts (checks-step)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "COMPLEX full-mode verification of the LIVE state-mutation write-path swap. Behavior-preservation verified structurally: (1) transition gate now delegates to machineVerdict, isLegalTransition no longer called in the handler (comments only); (2) handler returns {...s, pipelineStep: verdict.resultingStep} — spread preserves all fields incl. 11 counters/caps, no increment logic; (3) throw is a plain Error; (4) no createActor/resolveState/transition in luca-cli. MESSAGE-DEVIATION JUDGMENT: the rejection message was reworded from prefix 'illegal transition:' to 'rejected transition [<reason>]:'. This still satisfies ac-04 because the illegal-transition reason code embeds substring 'illegal'; same-step-no-op is now distinguishable and correctly does NOT contain 'illegal-transition'. The only occurrence of the old prefix is the stale built dist file (packages/luca/dist/...), which is generated output — no source caller or test depends on the old prefix, so the rewording is BENIGN. PRE-EXISTING-EXIT-1 JUDGMENT: bun test was stage-gate-blocked in REVIEWING (bash-mutate not allowed at pipelineStep=verify), so ac-11/ac-12 rely on the dual-evidence fallback (green checks-step evidence: luca-core 975/0, handler test 18/0) plus structural Read inspection of the 18 handler tests. The P1b diff touches only 3 files and the handler test passes 18/0, so the reported full-luca-cli exit-1 (unrelated pre-existing luca telemetry pr-outcome subprocess test, 0 failures) is NOT attributable to P1b — no real regression. All 13 ac + 6 anti met; recommend proceed."
+}

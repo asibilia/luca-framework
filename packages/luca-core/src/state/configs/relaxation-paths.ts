@@ -35,6 +35,9 @@ export type RelaxationPath = {
  * It is intentionally a static `readonly` array, NOT a parsed/validated schema:
  * it is authored data, the closed set is the point, and nothing here is parsed
  * from untrusted input.
+ *
+ * DEMOTED (DAD-P1t): this is data referenced BY the machine state (relaxation
+ * escape hatches), not control flow. It does not encode the pipeline's structure.
  */
 export const RELAXATION_PATHS: readonly RelaxationPath[] = [
     // ----- Hard floors: structurally non-bypassable -----

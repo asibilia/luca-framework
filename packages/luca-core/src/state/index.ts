@@ -21,7 +21,6 @@ export {
     DEFAULT_BUDGET,
 } from './configs/budget-matrix.ts'
 export type { BudgetLimits } from './configs/budget-matrix.ts'
-export { PIPELINE_STEP_TO_COARSE_PHASE } from './configs/coarse-phase-map.ts'
 
 // Helpers
 export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
@@ -48,6 +47,34 @@ export {
     isLegalTransition,
 } from './configs/pipeline-transitions.ts'
 
+// Pipeline machine visualization (pure — powers the `luca graph` CLI verb)
+export {
+    renderPipelineMermaid,
+    pipelineDefinitionJson,
+    pipelineGraphEdges,
+} from './machine/graph-render.ts'
+
+// Pipeline actor handle (DAD-P2) — opaque mirror over createActor; keeps
+// xstate out of luca-cli. The persistent runner holds this; it never writes
+// state.json (the cold decideAdvance+mutateState path does).
+export { createPipelineActorHandle } from './machine/actor-handle.ts'
+export type {
+    PipelineActorHandle,
+    PipelineActorSnapshot,
+} from './machine/actor-handle.ts'
+
+// Machine verdict (XState-backed transition oracle — live write-path authority)
+export { machineVerdict } from './machine/machine-verdict.ts'
+export type {
+    MachineVerdict,
+    MachineVerdictInput,
+    CounterUpdate,
+} from './machine/machine-verdict.ts'
+
+// Fix-loop edge map (DAD-P1c) — single source of the rework edge→cap mapping
+export { REWORK_EDGE_CAPS } from './machine/actions.ts'
+export type { FixLoopCap } from './machine/actions.ts'
+
 // Per-step artifact map + write-command phase table (v13 plan, D3)
 export {
     STEP_ARTIFACTS,
@@ -64,6 +91,7 @@ export {
     release as releasePipelineLock,
     forceUnlock as forcePipelineUnlock,
     readLock as readPipelineLock,
+    isPidAlive as isPipelinePidAlive,
     PipelineLockSchema,
 } from './pipeline-lock.ts'
 export type {

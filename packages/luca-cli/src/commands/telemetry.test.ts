@@ -182,7 +182,11 @@ describe('telemetry pr-outcome leaf — numeric validation (VAL-02)', () => {
                 existsSync(join(cwd, '.luca', 'telemetry', 'pr-outcomes.jsonl'))
             ).toBe(false)
         } finally {
-            process.exitCode = prevExit
+            // Bun (1.3.11) does NOT reset the exit status when exitCode is
+            // assigned `undefined` — the previously-set 1 sticks and poisons
+            // the runner's exit despite 0 test failures. Restore to an
+            // explicit 0 when there was no prior code.
+            process.exitCode = prevExit ?? 0
         }
     })
 })

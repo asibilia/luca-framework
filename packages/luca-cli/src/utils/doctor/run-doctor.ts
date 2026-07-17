@@ -43,6 +43,8 @@ export async function executeDoctor(
         await import('./checks/config-version-skew')
     const { vaultConfigLocationCheck } =
         await import('./checks/vault-config-location')
+    const { statuslineRegisteredCheck } =
+        await import('./checks/statusline-registered')
 
     const allChecks: DoctorCheck[] = [
         // Prerequisites
@@ -55,6 +57,7 @@ export async function executeDoctor(
         legacyPackageCheck,
         legacyClaudeArtifactsCheck,
         sharedTmpPayloadsCheck,
+        statuslineRegisteredCheck,
         // Project (cwd-dependent)
         strayLocalInstallCheck,
         configVersionSkewCheck,
