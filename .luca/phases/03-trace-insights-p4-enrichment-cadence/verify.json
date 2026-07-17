@@ -1,0 +1,148 @@
+{
+  "timestamp": "2026-07-17T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "score": 1.0,
+  "polishDelta": {
+    "verifiedAt": "2026-07-17T00:00:00.000Z",
+    "filesTouched": [
+      "packages/luca-cli/src/init/helpers/enrich-trace-metadata.ts",
+      "packages/luca-cli/src/init/helpers/enrich-trace-metadata.test.ts"
+    ],
+    "itemsClosed": [
+      "gate-hardening: isTraceGateEnabled now accepts BOTH the env-var string form 'true' AND the JSON boolean true (settings.json may type the gate as a real boolean). Verified fail-closed-preserving — `value === 'true' || value === true` at enrich-trace-metadata.ts:246 is strict equality (NOT truthy-permissive): unset/undefined, 'false', 'yes', 0, 1, and boolean false all resolve false. Independently probed by the new fail-closed loop test (.test.ts:258 asserts existsSync(localSettingsPath())===false for each of [false,'false','yes',0,1]) and the accept-boolean test (.test.ts:241 asserts metadata.repo==='bool-gated-repo').",
+      "4th-fail-open-path coverage: the typeof-guard skip (enrich-trace-metadata.ts:184-193, non-string env.CC_LANGSMITH_METADATA) was the only fail-open branch previously untested. New test .test.ts:222 writes env.CC_LANGSMITH_METADATA:123 (JSON number) and asserts readFile(localSettingsPath())===original (byte-identical, non-vacuous). All 4 fail-open paths now have byte-identical/zero-write assertions: malformed file (:188), malformed nested metadata (:204), non-string metadata (:222), gate-off (:128,:258)."
+    ],
+    "regression": "none",
+    "evidence": {
+      "tsc": "Independent probe: `cd packages/luca-cli && bunx --bun tsc --noEmit` -> TSC_EXIT=0 (post-polish).",
+      "tests": "Dual-evidence (bun test stage-gate-blocked in verify step): harness record 'luca-cli/src/init 50 pass' + 'full bun test packages/luca-cli 394 pass / 0 fail' (was 391 pre-polish; +3 = the 3 new tests) + structural read of enrich-trace-metadata.test.ts (15 well-formed tests: 5 mergeTraceMetadata + 10 enrichTraceMetadata; all value/byte-identical assertions, none presence-only).",
+      "changedFiles": "git diff HEAD --name-only lists only prior-phase working-tree content (init.ts, init/index.ts, telemetry.test.ts, trace-insights skill index.ts+index.test.ts) plus gitignored .claude/cache noise. The 2 polish files are NEW untracked files (git diff HEAD -- enrich-trace-metadata.ts yields no output; no enrich commit in git log) — the polish touched ONLY those 2 files. No unexpected tracked file mutated.",
+      "unchangedSurface": "mergeTraceMetadata (enrich-trace-metadata.ts:110-137, three-tier ownership merge) and readLocalSettings (:256-277) are byte-for-byte unchanged; only isTraceGateEnabled (:230-247) and its doc comment changed. Merge-don't-clobber and other fail-open behavior untouched — prior 11/11 verify remains valid for the unchanged surface."
+    }
+  },
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "Independent probe: `cd packages/luca-cli && bunx --bun tsc --noEmit` -> TSC_EXIT=0.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "timeout 120 bun test packages/luca-cli/src/init exits 0.",
+      "met": true,
+      "evidence": "Dual-evidence (bun test is stage-gate-blocked in verify step): harness record 'luca-cli/src/init 50 pass' (post-polish) + full structural read of enrich-trace-metadata.test.ts (15 well-formed tests, post-polish: merge, gate incl. JSON-boolean-true + fail-closed loop, fresh-repo, all 4 fail-open paths byte-identical, passthrough).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "grep -q 'custom' in test file (collision test: pre-existing user CC_LANGSMITH_METADATA custom key survives merge).",
+      "met": true,
+      "evidence": "grep -c 'custom' -> 5 matches; test at .test.ts:26-40 asserts custom_billing_team === 'infra-observability' (value assertion, non-vacuous) AND environment 'staging' survives default clobber.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "grep -q 'TRACE_TO_LANGSMITH' in test file (unconfigured -> no write test present).",
+      "met": true,
+      "evidence": ".test.ts:128 'no-op when TRACE_TO_LANGSMITH is not configured anywhere — zero writes' asserts existsSync(localSettingsPath())===false and no .claude dir.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "grep -q 'enrich-trace-metadata' in src/init/index.ts (barrel export wired).",
+      "met": true,
+      "evidence": "src/init/index.ts:33-40 exports enrichTraceMetadata, mergeTraceMetadata + EnrichTraceMetadataOptions, TraceMetadataIds from './helpers/enrich-trace-metadata.ts'.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "grep -q 'enrichTraceMetadata' in commands/init.ts (Step 5 call wired).",
+      "met": true,
+      "evidence": "commands/init.ts:50 imports enrichTraceMetadata; :299 awaits enrichTraceMetadata({cwd:projectCwd,...}) inside Step 5, after installHooks (:290), per-project.",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "test -f docs/guides/trace-insights-cadence.md exits 0.",
+      "met": true,
+      "evidence": "File read successfully (89 lines): Trace-Insights Weekly Cadence Runbook.",
+      "blocking": true,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "grep -qi 'disable' in cadence doc (inspect/disable runbook present).",
+      "met": true,
+      "evidence": "docs/guides/trace-insights-cadence.md:8, :57 ('Disabling or removing the routine' — /schedule pause + delete), :64. Inspect section at :45-53 (/schedule list, show).",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "timeout 120 bun test packages/luca-cli exits 0.",
+      "met": true,
+      "evidence": "Dual-evidence (bun test stage-gate-blocked in verify step): harness record 'full bun test packages/luca-cli 394 pass / 0 fail' (post-polish; +3 vs pre-polish 391 = the 3 new gate/fail-open tests). telemetry.test.ts gate-bug fix (prevExit ?? 0) confirmed present + correct via structural read.",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "grep -q 'luca_version' in test file (merged output asserts repo + luca_version).",
+      "met": true,
+      "evidence": ".test.ts:48 asserts merged luca_version==='9.9.9'; :123 luca_version==='1.2.3' (fresh repo); :184 luca_version==='2.0.0' (re-run refresh).",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "grep -q 'safeParse' in helper (Zod schema-first parsing).",
+      "met": true,
+      "evidence": "enrich-trace-metadata.ts:122 metadataObjectSchema.safeParse, :229 claudeSettingsSchema.safeParse (global gate), :269 claudeSettingsSchema.safeParse (local settings).",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "antiResults": [
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT modify any file under packages/luca-tools/src/artifacts/skills/trace-insights/.",
+      "met": true,
+      "evidence": "Working tree shows trace-insights/index.ts + index.test.ts modified, BUT the diff is PRIOR-PHASE (P3) content — diff header reads 'P3 scope (this phase): Stage A5 — analysis-time trace ledger join'. P4 contributed ZERO bytes (plan: 'Skill Stage A already prefers extra.metadata.repo — NO trace-insights skill change needed'). The only P4 reference in the skill is a passing mention '(P4 enrichment)' authored by the P3 change. This phase's changed-file set excludes the skill entirely.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT clobber pre-existing user keys inside CC_LANGSMITH_METADATA or unrelated settings.local.json sections.",
+      "met": true,
+      "evidence": "Structural read: mergeTraceMetadata places ...existing AFTER defaults (user wins over fill-if-absent) and repo/luca_version last (luca-owned refresh). Collision test (.test.ts:26) + passthrough test (.test.ts:222, permissions/hooks/OTHER_KEY preserved) are non-vacuous value assertions. Dual-evidence for the bun test exit: harness green + structural read.",
+      "blocking": false,
+      "probeType": "command"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-cli/src/init (50 pass)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun test packages/luca-cli (394 pass/0 fail)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Full goal-backward MODERATE verify. SUBSTANTIVE: three-tier ownership merge is correct (defaults fill-if-absent, ...existing user-wins, repo/luca_version luca-owned refresh last). Fail-open on every malformed path: unreadable/invalid-JSON settings.local.json (readLocalSettings->null->skip), metadata not-a-string (typeof guard->skip), metadata invalid-JSON/non-object (mergeTraceMetadata->null->skip); no unparseable file is ever rewritten (verified by malformed-file/malformed-nested tests asserting byte-identical content). Gate off -> zero writes (isTraceGateEnabled early-return before any IO). Fresh repo -> file created (readLocalSettings treats absent as {}, mkdir recursive). Collision test asserts user value survives non-vacuously. telemetry.test.ts fix (prevExit ?? 0 in finally) is correct + minimal — restores exit status Bun 1.3.11 does not reset, needed for ac-09 green; out-of-scope but justified. WIRED: barrel exports helper; init.ts Step 5 calls enrichTraceMetadata after installHooks per-project; runbook has retention (<~14d) + cost (Stage A-B free, C ~8 subagents low single-digit $) guardrails, inspect/disable, and explicit operational post-merge /schedule demarcation. anti-01 literal git-diff probe matches on prior-phase P3 content only; P4 skill delta is zero.",
+  "deliverables": [
+    { "id": "D1", "description": "init metadata enrichment — merged (not clobbered) CC_LANGSMITH_METADATA with repo + luca_version", "criterionIds": ["ac-02", "ac-03", "ac-05", "ac-06", "ac-10", "ac-11"], "compliance": "shipped" },
+    { "id": "D2", "description": "silent skip when TRACE_TO_LANGSMITH not configured", "criterionIds": ["ac-04"], "compliance": "shipped" },
+    { "id": "D3", "description": "weekly cadence runbook + guardrails (operator /schedule step documented)", "criterionIds": ["ac-07", "ac-08"], "compliance": "shipped" },
+    { "id": "D4", "description": "quality gates green (tsc + init tests + package suite)", "criterionIds": ["ac-01", "ac-02", "ac-09"], "compliance": "shipped" }
+  ]
+}
