@@ -1,7 +1,7 @@
 {
   "name": "@alecsibilia/luca-core",
   "description": "Core types, schemas, and deterministic contracts shared by the luca toolchain (state machine, .luca/ directory contract, coarse-phase mapping)",
-  "version": "13.0.1",
+  "version": "13.1.0-alpha.0",
   "dependencies": {
     "xstate": "5.32.2",
     "zod": "catalog:"
