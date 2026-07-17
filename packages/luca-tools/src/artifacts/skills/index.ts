@@ -25,6 +25,7 @@ import { ghPrAddressSkill } from './gh-pr-address/index.ts'
 import { ghPrepareSkill } from './gh-prepare/index.ts'
 import { grillMeSkill } from './grill-me/index.ts'
 import { luSkill } from './lu/index.ts'
+import { luHandoffSkill } from './lu-handoff/index.ts'
 import { luReviewSkill } from './lu-review/index.ts'
 import { lucaInitSkill } from './luca-init/index.ts'
 import { lucaTelemetryReportSkill } from './luca-telemetry-report/index.ts'
@@ -71,6 +72,7 @@ export {
     ghPrepareSkill,
     grillMeSkill,
     luSkill,
+    luHandoffSkill,
     luReviewSkill,
     lucaInitSkill,
     lucaTelemetryReportSkill,
@@ -120,6 +122,7 @@ export const SKILLS: readonly Artifact[] = [
     ghPrepareSkill,
     grillMeSkill,
     luSkill,
+    luHandoffSkill,
     luReviewSkill,
     lucaInitSkill,
     lucaTelemetryReportSkill,
