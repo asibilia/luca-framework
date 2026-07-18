@@ -881,6 +881,24 @@ FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || echo "0")
 
 **If no changed files:** Skip to step 9.
 
+**Re-entry diff gate (\`--quality-fixes\` re-review only):** On a first-pass review (no prior CRITICAL round this phase), skip this gate entirely and proceed below. When re-entering Step 8 after a \`--quality-fixes\` fix round, the gate may skip round-2 — the full reviewer fan-out below — but **only when provably safe**. When in doubt, re-review.
+
+1. Read the pre-fix stash \`.luca/tmp/review-prefix-sha.json\` (payload \`{"sha": "<HEAD>", "phase": "<phase slug>"}\`, stashed at Step 8.1 before the \`--quality-fixes\` exit). File missing or unparsable, \`phase\` not matching the active phase slug, or a \`sha\` that no longer resolves (\`git rev-parse --verify\` fails) → treat the stash as ABSENT → full round-2 (proceed with the fan-out below).
+2. Compute the changed set: \`git diff <pre-fix-sha> --name-only\` unioned with \`git ls-files --others --exclude-standard\`. Scoping note: \`.luca/\` paths in the untracked union are pipeline-generated artifacts, not reviewable code — exclude them from the union (this keeps the empty-diff branch reachable).
+3. Collect the prior round's MUST-FIX and SHOULD-FIX \`File:line\` cites (in this skill's severity scheme: the CRITICAL and HIGH/MEDIUM findings recorded in the fix plan and the active phase's audit artifact).
+4. Decide:
+   - **diff is empty** (both outputs empty after the \`.luca/\` exclusion) → skip round-2.
+   - The prior cite set is **EMPTY** and the diff is NON-EMPTY → full round-2 (proceed with the fan-out below) — never a vacuous skip on an empty cite set.
+   - Changed paths have **provable zero overlap** with the prior MUST-FIX and SHOULD-FIX \`File:line\` cites → skip round-2.
+   - ANY overlap, ANY parse failure, or ANY ambiguity (a cite whose path cannot be resolved, a malformed findings record) → full round-2 (proceed with the fan-out below).
+5. **Consume the stash**: whichever branch step 4 selects (skip OR full round-2 — and also when step 1 treats the stash as ABSENT), delete \`.luca/tmp/review-prefix-sha.json\` now. The stash is consume-once; every Step 8.1 CRITICAL exit re-stashes a fresh value.
+
+**Post-skip routing** (when the gate skips round-2):
+
+1. Capture every unresolved finding as a backlog todo: \`luca todo add --status backlog --source review-finding …\` — nothing is lost.
+2. Note the skip reason (empty diff or zero overlap, citing the pre-fix SHA) in the active phase's audit artifact.
+3. Skip directly to step 9. A skip exits the review loop — it NEVER re-fires the \`--quality-fixes\` re-review.
+
 Display:
 
 \`\`\`
@@ -1234,6 +1252,7 @@ Planning fixes automatically...
 
 - Re-invoke the architect mode-agent (in quality-fixes context) to produce a fix plan
 - Spawn the \`plan-reviewer\` subagent to verify the fix plan
+- Stash the pre-fix HEAD SHA — write \`{"sha": "<HEAD>", "phase": "<current phase slug>"}\` (SHA from \`git rev-parse HEAD\`, phase from the active phase slug) to \`.luca/tmp/review-prefix-sha.json\` via the native Write tool — so the Step 8 re-entry diff gate can compare against it on the \`--quality-fixes\` pass
 - Present ready status for \`/phase-execute {phase} --quality-fixes\`
 - **EXIT** (user must run execute again with --quality-fixes)
 

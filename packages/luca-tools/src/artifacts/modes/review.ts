@@ -84,6 +84,27 @@ Criteria tombstoned as \`[DROPPED — see decisions <date>]\` are excluded from 
 
 Run \`luca checks run --file .luca/tmp/checks.json\` for TypeScript compilation (stage the commands array at that repo-scoped path — never in the shared OS \`/tmp/\`). Record results for the audit report.
 
+### Step 3.5: Re-entry Diff Gate
+
+Applies ONLY when \`reviewIteration > 0\` (re-review after an execute fix loop). On the first pass (\`reviewIteration == 0\`), skip this gate entirely and proceed to Step 4.
+
+The gate may skip round-2 — the Step 4 re-review fan-out; NOT re-verify, which has already run — but **only when provably safe**. When in doubt, re-review.
+
+1. Read the pre-fix stash \`.luca/tmp/review-prefix-sha.json\` (payload \`{"sha": "<HEAD>", "phase": "<phase slug>"}\`, stashed at Route B before the previous \`--to-step execute\` transition). File missing or unparsable, \`phase\` not matching the active phase slug, or a \`sha\` that no longer resolves (\`git rev-parse --verify\` fails) → treat the stash as ABSENT → full round-2 (proceed to Step 4).
+2. Compute the changed set: \`git diff <pre-fix-sha> --name-only\` unioned with \`git ls-files --others --exclude-standard\`. Scoping note: \`.luca/\` paths in the untracked union are pipeline-generated artifacts, not reviewable code — exclude them from the union (this keeps the empty-diff branch reachable).
+3. Collect the prior MUST-FIX and SHOULD-FIX \`File: {path:line}\` cites from the previous wave's \`audits/<reviewer>.md\` files.
+4. Decide:
+   - **diff is empty** (both outputs empty after the \`.luca/\` exclusion) → skip round-2.
+   - The prior cite set is **EMPTY** and the diff is NON-EMPTY → full round-2 (proceed to Step 4) — never a vacuous skip on an empty cite set.
+   - Changed paths have **provable zero overlap** with the prior MUST-FIX and SHOULD-FIX \`File:line\` cites → skip round-2.
+   - ANY overlap, ANY parse failure, or ANY ambiguity (a cite whose path cannot be resolved, a malformed audit file) → full round-2 (proceed to Step 4).
+5. **Consume the stash**: whichever branch step 4 selects (skip OR full round-2 — and also when step 1 treats the stash as ABSENT), delete \`.luca/tmp/review-prefix-sha.json\` now. The stash is consume-once; every Route B loop-back re-stashes a fresh value.
+
+**Post-skip routing** (when the gate skips round-2 — part of the gate algorithm, not Step 7):
+1. Capture every unresolved MUST-FIX and SHOULD-FIX item as a backlog todo: \`luca todo add --status backlog --source review-finding …\` (same mechanism as the budget-exhausted path in Step 7 Route B) — nothing is lost.
+2. Note the skip reason (empty diff or zero overlap, citing the pre-fix SHA) in the active phase's audit artifact.
+3. Transition forward via \`luca state advance --to-step learn\`. A skip **exits the review loop** — it NEVER re-enters Route B.
+
 ### Step 4: Parallel Code Review
 
 Spawn **5 reviewer subagents in parallel** via the Claude Code \`Task\` tool. Generate 5 distinct correlationIds (\`reviewer-arch-<ts>\`, \`reviewer-dx-<ts>\`, \`reviewer-sec-<ts>\`, \`reviewer-simpl-<ts>\`, \`reviewer-test-<ts>\`) before the batch. Emit \`subagent-start\` for each before spawn, \`subagent-end\` after each return. Parse \`<!-- usage: ... -->\` from each result's last 256 chars for token counts.
@@ -237,7 +258,7 @@ In \`full-auto\`, route automatically based on findings.
 
 **Route B — Actionable findings exist (MUST-FIX or SHOULD-FIX)**:
 1. Check iteration count against \`maxReviewIterations\`.
-2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
+2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, stash the pre-fix HEAD SHA — write \`{"sha": "<HEAD>", "phase": "<currentPhaseSlug>"}\` (SHA from \`git rev-parse HEAD\`, phase from the active phase slug) to \`.luca/tmp/review-prefix-sha.json\` via the native Write tool — immediately before the transition, then transition back to execute via \`luca state advance --to-step execute\`. The Step 3.5 re-entry gate reads this SHA on the next review pass.
 3. At budget limit: capture every remaining MUST-FIX and SHOULD-FIX item as a backlog todo (\`luca todo add --status backlog --source review-finding …\`) so nothing is lost, save the report with a budget-exhausted warning in the audit artifact, then transition forward via \`luca state advance --to-step learn\`.
 
 ### Step 8: Learn-Step Outcome Correlation
