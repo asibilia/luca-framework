@@ -1,0 +1,262 @@
+{
+    "timestamp": "2026-07-18T18:00:00.000Z",
+    "wave": 3,
+    "mode": "full",
+    "reviewFixIteration": 2,
+    "status": "PASS",
+    "score": "25/25",
+    "criteria": [
+        {
+            "criterionId": "ac-01",
+            "description": "review-prefix-tree.json renders in all four bodies (REVIEW/EXEC/LUREV/PHEXEC)",
+            "met": true,
+            "evidence": "Live grep -LF over surviving CHECKS-rendered tree (scratchpad/rendered2) returned EMPTY; source counts 2/1/2/2 across the four artifact .ts files; rendered tree confirmed current (git status: all changes staged-only, no worktree drift since compile)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-02",
+            "description": "Conservative default 'When in doubt, re-review' carried in all four bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; 1 occurrence in each of the four source bodies",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-03",
+            "description": "'luca snapshot create' renders in all four bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; 1 occurrence per source body (review.ts Route B, execute.ts cross-ref, lu-review MUST-FIX exit, phase-execute Step 8.1)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-04",
+            "description": "'luca snapshot diff' renders in the three gate bodies (REVIEW/LUREV/PHEXEC)",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; source counts 1/1/2",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-05",
+            "description": "'zero-overlap' verdict vocabulary in the three gate bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; 3 occurrences per source gate body, anchored in the verdict enumeration and routing lines (staged diffs read)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-06",
+            "description": "'ambiguous' fail-safe verdict in the three gate bodies (non-vacuous)",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; staged diffs show 'ambiguous' inside the verdict enumeration `empty` | `zero-overlap` | `overlap` | `ambiguous` and the full-round-2 routing line in all three gate bodies — not unrelated prose",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-07",
+            "description": "'skip round-2' gated action carried in the three gate bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; 2 occurrences per source gate body",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-08",
+            "description": "Post-skip backlog capture 'luca todo add --status backlog --source review-finding' in the three gate bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; present in post-skip routing of all three gate bodies (staged diffs: findings never dropped on skip)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-09",
+            "description": "'consume-once' lifecycle prose preserved in the three gate bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; each gate body states consume-once lives in the CLI with 'do NOT delete the file yourself' — no body-side rm instruction anywhere (G-ARCH-002/G-DX-004 honored)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-10",
+            "description": "'snapshot tree' key semantics (never a commit sha) documented in the three gate bodies",
+            "met": true,
+            "evidence": "Live grep -LF over rendered tree EMPTY; each capture site spells out 'the `tree` key is a `snapshot tree` sha, never a commit sha'",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-11",
+            "description": "Rendered-body compile exits 0",
+            "met": true,
+            "evidence": "Dual evidence: checks-step attestation (execute/summary.md, harness 25/25) AND structural proof — the compile's output tree survives at scratchpad/rendered2 containing review.md/execute.md/SKILL.md files with every new literal, and source is unchanged since (git status staged-only). Compile re-run is bash-mutate-blocked in REVIEWING",
+            "blocking": false,
+            "probeType": "file-read"
+        },
+        {
+            "criterionId": "ac-12",
+            "description": "bunx --bun tsc --noEmit exits 0",
+            "met": true,
+            "evidence": "Re-run LIVE at verify three times — base implementation, after review-fix iteration 1, and after review-fix iteration 2: exit 0, no output each time",
+            "blocking": false,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "ac-13",
+            "description": "Snapshot create + diff handler tests pass (bounded bun test)",
+            "met": true,
+            "evidence": "Dual evidence (bun test bash-mutate-blocked at verify): iteration-2 checks attestation 45/45 (7 create + 38 diff) AND structural probe — test suites enumerate every plan-required case plus both review-fix rounds: payload shape (create.test.ts:69), real-index non-mutation (:88, diff.test.ts:404), unborn-branch capture (:117), untracked capture (:137); verdicts empty/zero-overlap/overlap incl. untracked no-commit path (diff.test.ts:120,131,144,196,211), rename-detection guard (:160), non-ASCII quotepath guard (:178), fail-safes empty-cite/no-audits/parse-fail/absolute-cite/dot-prefixed-cite/line-col-cite/multi-path-cite/uncited-actionable/phase-mismatch/missing/unparsable+consumed/bad-tree+consumed (:228-387), parseAuditCitePaths unit cases incl. ../-traversal, backslashed (:479), Windows-drive (:484), line:col (:489), multi-path prose (:494), positive anchor plain path:line still parses (:501), uncited-at-EOF and uncited-followed-by-finding, NOTE-without-cite parses, empty-section parses (:437-525). Handler source independently re-read and verified correct after each fix iteration",
+            "blocking": false,
+            "probeType": "file-read"
+        },
+        {
+            "criterionId": "ac-14",
+            "description": "Classifier tests pass (bounded bun test)",
+            "met": true,
+            "evidence": "Dual evidence: checks attestation 86/86 (summary.md) AND structural probe — classify-bash-command.test.ts:22 asserts 'git ls-files --others --exclude-standard' in the readonly group and :280-290 asserts 'luca snapshot create|diff → luca-write (legal in REVIEWING)'",
+            "blocking": false,
+            "probeType": "file-read"
+        },
+        {
+            "criterionId": "ac-15",
+            "description": "Source-mode CLI smoke: snapshot create executes and exits 0",
+            "met": true,
+            "evidence": "Dual evidence (live run bash-mutate-blocked at verify): checks attestation 'run.ts snapshot create exit 0' (summary.md 1.3.1) AND structural wiring probe — run.ts:9 unconditionally `void runMain()`, cli.ts staged diff registers `snapshot` in subCommands, snapshot.ts defines create/diff via runWriteHandler(lucaSnapshotCreateTool/lucaSnapshotDiffTool), both barrels export. SANCTIONED DEVIATION: probe entry is pre-existing run.ts, NOT the plan's import.meta.main guard — resolved at the confidence gate (plan-review.md:85, supersedes G-CRIT-001 option b) with zero production-code change",
+            "blocking": false,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "ac-16",
+            "description": "Smoke payload carries the \"tree\" key; cleaned up after",
+            "met": true,
+            "evidence": "Dual evidence: checks attestation 'payload written+cleaned' (summary.md 1.3.1) AND structural probes — handler writes {tree, phase} JSON (luca-snapshot-create.ts:180) with REVIEW_PREFIX_TREE_RELPATH='.luca/tmp/review-prefix-tree.json' (:16); live ls of .luca/tmp/ confirms review-prefix-tree.json ABSENT now (G-DX-002 cleanup done, no stale baseline stranded)",
+            "blocking": false,
+            "probeType": "config-read"
+        },
+        {
+            "criterionId": "ac-17",
+            "description": "Anti-drift note 'CLI parsing contract' at reviewer.ts audit-format prose",
+            "met": true,
+            "evidence": "Live grep: packages/luca-tools/src/artifacts/subagents/reviewer.ts:140 — note names luca snapshot diff and the ambiguous fail-safe degradation",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-18",
+            "description": "'ls-files' entry present in GIT_READONLY_SUBCOMMANDS",
+            "met": true,
+            "evidence": "Live grep: packages/luca-cli/src/hook/helpers/classify-bash-command.ts:98 \"'ls-files',\" inside GIT_READONLY_SUBCOMMANDS (staged diff context confirms the set); semantics asserted by ac-14 test case",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-01",
+            "description": "MUST NOT retain 'review-prefix-sha.json' anywhere in the rendered tree",
+            "met": true,
+            "evidence": "Live `grep -rF \"review-prefix-sha.json\"` over the full rendered tree: zero matches; also zero matches in packages/luca-tools/src/artifacts/ source",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-02",
+            "description": "MUST NOT retain 'git diff <pre-fix-sha> --name-only' in the rendered tree",
+            "met": true,
+            "evidence": "Live recursive grep over rendered tree: zero matches; source tree also clean",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-03",
+            "description": "MUST NOT retain 'git ls-files --others --exclude-standard' in the rendered tree",
+            "met": true,
+            "evidence": "Live recursive grep over rendered tree: zero matches; source artifacts tree clean (the literal survives ONLY in classify-bash-command.test.ts as a classifier test input — outside the rendered tree, correct)",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-04",
+            "description": "MUST NOT reduce reviewer fan-out (PHEXEC guard literal)",
+            "met": true,
+            "evidence": "Live grep -LF 'Spawn ALL applicable reviewers in a SINGLE message' on rendered PHEXEC SKILL.md: EMPTY (present); source count 1; staged diff touches only the gate section, not the fan-out prose",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-05",
+            "description": "MUST NOT reduce perspective count (REVIEW '5 reviewer subagents in parallel')",
+            "met": true,
+            "evidence": "Live grep -LF on rendered review.md: EMPTY (present); source count 1",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-06",
+            "description": "MUST NOT weaken the independence auditor (PHEXEC 'anchoring on prior reviewers')",
+            "met": true,
+            "evidence": "Live grep -LF on rendered PHEXEC SKILL.md: EMPTY (present); source count 1",
+            "blocking": false,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-07",
+            "description": "MUST NOT touch luca-core",
+            "met": true,
+            "evidence": "Live `git status --porcelain packages/luca-core/`: no output; staged diff stat lists only luca-cli + luca-tools files (15 files, 1210 insertions)",
+            "blocking": false,
+            "probeType": "command"
+        }
+    ],
+    "checks": [
+        { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "rendered-grep-ac-01..10", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "rendered-grep-anti-01..06", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "luca-rules-run", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "handler-tests (checks-step attestation)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "classifier-tests (checks-step attestation)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "run.ts-smoke (checks-step attestation)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+    ],
+    "convergence": "resolved",
+    "errorFingerprints": [],
+    "recommendation": "proceed",
+    "gaps": [],
+    "deliverables": [
+        {
+            "id": "D1",
+            "description": "luca snapshot create + diff CLI verbs (temp-index snapshot, tree-to-tree diff, machine verdict with coded fail-safes)",
+            "criterionIds": ["ac-13", "ac-15", "ac-16"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D2",
+            "description": "classifier registration (snapshot noun) + ls-files readonly fix with tests",
+            "criterionIds": ["ac-14", "ac-18"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D3",
+            "description": "4 gate bodies reworked to run-command-act-on-verdict with review-prefix-tree.json/tree rename, lifecycle preserved",
+            "criterionIds": ["ac-01", "ac-03", "ac-04", "ac-05", "ac-06", "ac-07", "ac-09", "ac-10"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D4",
+            "description": "retired tokens absent + #320 quality guards carried forward",
+            "criterionIds": ["anti-01", "anti-02", "anti-03", "anti-04", "anti-05", "anti-06", "ac-02", "ac-08"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D5",
+            "description": "reviewer.ts anti-drift note (audit format = CLI contract)",
+            "criterionIds": ["ac-17"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D6",
+            "description": "builds clean, no luca-core touch",
+            "criterionIds": ["ac-11", "ac-12", "anti-07"],
+            "compliance": "shipped"
+        }
+    ],
+    "notes": "Full goal-backward verification at EXISTS/SUBSTANTIVE/WIRED levels. SUBSTANTIVE: handler sources read line-by-line — create uses a UUID temp GIT_INDEX_FILE scoped to exactly the read-tree/add -A/write-tree spawns with finally-block cleanup (luca-snapshot-create.ts:85-133), unborn branch falls back to `read-tree --empty` as BASE only (:94); diff deletes the payload immediately after read BEFORE any validation so consume-once holds on every branch (luca-snapshot-diff.ts:196-202), runs a two-arg tree-to-tree `git diff <prior> <current> --name-only` (:278-283), excludes .luca/ in code (:158-160,:295), and codes the locked fail-safes: missing/unparsable payload, phase mismatch, unresolvable tree, cite-parse failure, and empty-cite+non-empty-diff all -> ambiguous (:204-357). HARD CONSTRAINT verified: staged diffs touch only gate sections; skip fires only on empty/zero-overlap in all three gate bodies; overlap/ambiguous -> full re-review; backlog capture retained post-skip; fan-out/isolation/auditor/promotion literals untouched (anti-04/05/06 live-probed). DUAL-EVIDENCE SUBSTITUTIONS (bash-mutate probes stage-gate-blocked in REVIEWING): ac-11 compile, ac-13/ac-14 bun test, ac-15 smoke, ac-16 payload write — each backed by checks-step attestation PLUS an independent structural probe; attestation lives in execute/summary.md (no execute/waves/NN.md files were written this phase — summary.md's per-task evidence table is the executor attestation record). ac-01..10 and anti-01..06 were re-probed LIVE against the surviving CHECKS-step rendered tree (scratchpad/rendered2), validated fresh via git status showing staged-only changes. SANCTIONED DEVIATION: ac-15 probes via pre-existing run.ts entry instead of the plan's import.meta.main cli.ts guard — resolved at the confidence gate (plan-review.md:85). Non-blocking observation (no action required): a cite written with an absolute path would parse as valid path:line and never intersect repo-relative changed paths — the reviewer.ts:140 contract note pinning the repo-relative File: format is the mitigation; any drift degrades to ambiguous (fail-safe). Executor follow-up flag preserved: WRITE_COMMAND_PHASES in luca-core has no snapshot entries (phase-agnostic by design; possible future explicit entries). REVIEW-FIX ITERATION 1 (re-verified at SUBSTANTIVE level, all changes in packages/luca-cli only): MF1 CLOSED — isPlainRepoRelativePath (luca-snapshot-diff.ts:63-69) rejects absolute POSIX (startsWith '/'), any backslash (includes('\\\\') — subsumes C:\\ drives), Windows forward-slash drives (/^[A-Za-z]:[\\/]/), and '.'/'..' segments anywhere (covers ./ prefix and ..-traversal); applied at :143 -> parse failure -> ambiguous; the prior verification's non-blocking absolute-path observation is now structurally closed. MF2 CLOSED — --no-renames added to the tree-to-tree diff argv (:330) with rationale comment (:320-325); rename regression test diff.test.ts:160 asserts the old cited path stays in the intersection. MF3 CLOSED — diff spawned as git -c core.quotepath=false (:327-328); literal non-ASCII path test at diff.test.ts:178. MF4 CLOSED — uncitedActionable tracking (:103,:107-111,:116,:149,:152-157) fails parsing when a MUST-FIX/SHOULD-FIX bullet reaches the next bullet or EOF without a File: cite, while NOTE bullets never arm the tracker (test :459) and finding-free audits/empty sections still parse to an empty cite set (test :465) — the cite-less-actionable vs empty-section distinction is exactly encoded. SHOULD-FIX changes verified semantics-neutral: prior_tree added to the output JSON only (null on missing/unparsable payload; verdict ladder :397-431 unchanged); runGit/GitRunResult now exported from luca-snapshot-create.ts:30-69 and imported by the diff handler (duplicate deleted — single definition remains); payload validated via exported Zod snapshotPayloadSchema (create.ts:24-27, min(1) both fields — equivalent to the prior truthiness check, same ambiguous reason string); ls-files comment reworded only (set membership unchanged, classify-bash-command.ts:101 — ac-18 grep still matches). NO REGRESSION: luca-tools staged stat byte-identical to the previously verified iteration (2/18/19/20/2 line deltas — prose untouched, so all rendered-body probes ac-01..10/anti-01..06 stand); tsc re-run LIVE post-fix exit 0; anti-07 unaffected (no luca-core files in status). REVIEW-FIX ITERATION 2 (re-verified at SUBSTANTIVE level, luca-snapshot-diff.ts + test only): (1) CITE regex tightened to /^([^:\\s]+):(\\d+)$/ (luca-snapshot-diff.ts:62 with rationale comment :54-61) — verified against both exhibits by regex inspection AND exact-exhibit tests: 'src/a.ts:12:5' cannot match (path group excludes colons, anchored \\d+$ cannot consume ':5') -> unparsable-cite -> ambiguous (unit test :489, handler-level test :304); 'src/a.ts:12 and src/b.ts:30' cannot match (path group excludes whitespace) -> ambiguous (unit :494, handler :320); plain 'src/a.ts:12' and deep colon-free paths still parse (positive-anchor test :501, deep-path test :458 unweakened — uses src/dir/deep/file.test.ts:104). isPlainRepoRelativePath retained at :153 as defense-in-depth. Closes the independence auditor's residual false-zero-overlap route: a garbage-parsed cite path can no longer silently replace the real cite in the intersection. (2) computeDiffVerdict() extraction (:318-470) compared line-against-line with the iteration-1 pipeline: identical stage order (phase resolve -> mismatch -> rev-parse verify -> tree rebuild -> quotepath/no-renames diff -> .luca exclusion -> audit parse -> 4-verdict ladder), identical reason strings, identical diffResult envelopes — zero behavior drift on existing paths; the ONLY new behavior is the handler-side try/catch (:287-301) mapping an unexpected post-consumption throw to controlled ambiguous carrying prior_tree (payload rm at :246 still precedes the try — consume-once unbroken; strictly fail-safe addition). (3) Prior iteration-1 coverage note CLOSED: backslashed (:479) and Windows-drive (:484) cite unit tests added. NO REGRESSION: luca-tools staged stat byte-identical again (2/18/19/20/2 — rendered probes ac-01..10/anti-01..06 stand); tsc re-run LIVE post-iteration-2 exit 0; anti-07 unaffected; 45 handler + 86 classifier tests and the full 25-probe harness attested green post-fix. Residual non-blocking note: the crash-after-consumption try/catch itself has no dedicated unit test (forcing an unexpected throw is impractical; the guarded branch is trivially fail-safe)."
+}
