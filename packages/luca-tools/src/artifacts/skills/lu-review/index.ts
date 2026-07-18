@@ -26,24 +26,19 @@ Run \`luca phase current\` to get the active slug. If no phase is active, abort.
 
 ## Re-run gate
 
-Applies ONLY when \`.luca/tmp/review-prefix-sha.json\` exists — i.e., a previous review pass directed the user back to \`/phase-execute\` and stashed the pre-fix HEAD SHA. On a first pass (no stash file), skip this gate entirely and run the reviewers.
+Applies ONLY when \`.luca/tmp/review-prefix-tree.json\` exists — i.e., a previous review pass directed the user back to \`/phase-execute\` and captured a pre-fix worktree snapshot (Aggregate below). **ABSENT check**: if the payload file is MISSING, the snapshot is ABSENT → this is a first pass, skip this gate entirely and run the full review (run the reviewers). That is the ONLY body-side check — ALL validation (phase mismatch, unresolvable tree, parse failures) is delegated to the CLI; never short-circuit on payload contents here.
 
 The gate may skip round-2 — the reviewer fan-out below — but **only when provably safe**. When in doubt, re-review.
 
-1. Read the pre-fix stash \`.luca/tmp/review-prefix-sha.json\` (payload \`{"sha": "<HEAD>", "phase": "<phase slug>"}\`). File unparsable, \`phase\` not matching the active phase slug, or a \`sha\` that no longer resolves (\`git rev-parse --verify\` fails) → treat the stash as ABSENT — this is a first pass, run the full review (run the reviewers).
-2. Compute the changed set: \`git diff <pre-fix-sha> --name-only\` unioned with \`git ls-files --others --exclude-standard\`. Scoping note: \`.luca/\` paths in the untracked union are pipeline-generated artifacts, not reviewable code — exclude them from the union (this keeps the empty-diff branch reachable).
-3. Collect the prior MUST-FIX and SHOULD-FIX \`File:line\` cites from the previous pass's \`audits/<reviewer>.md\` files.
-4. Decide:
-   - **diff is empty** (both outputs empty after the \`.luca/\` exclusion) → skip round-2.
-   - The prior cite set is **EMPTY** and the diff is NON-EMPTY → full re-review (run the reviewers) — never a vacuous skip on an empty cite set.
-   - Changed paths have **provable zero overlap** with the prior MUST-FIX and SHOULD-FIX \`File:line\` cites → skip round-2.
-   - ANY overlap, ANY parse failure, or ANY ambiguity (a cite whose path cannot be resolved, a malformed audit file) → full re-review (run the reviewers).
-5. **Consume the stash**: whichever branch step 4 selects (skip OR full re-review — and also when step 1 treats the stash as ABSENT), delete \`.luca/tmp/review-prefix-sha.json\` now. The stash is consume-once; every loop-back re-stashes a fresh value (Aggregate below).
+1. Run \`luca snapshot diff\`. The CLI rebuilds the current worktree snapshot tree, performs the tree-to-tree compare against the stashed snapshot tree (\`.luca/\` excluded), parses the prior MUST-FIX and SHOULD-FIX \`File:line\` cites from the previous pass's \`audits/<reviewer>.md\` files, and returns a verdict: \`empty\` | \`zero-overlap\` | \`overlap\` | \`ambiguous\`. The command also CONSUMES the payload — consume-once lives in the CLI, so do NOT delete the file yourself; every loop-back re-creates a fresh snapshot (Aggregate below).
+2. Act on the verdict:
+   - \`empty\` or \`zero-overlap\` → skip round-2 (the reviewer fan-out).
+   - \`overlap\` or \`ambiguous\` → full re-review (run the reviewers).
 
 **Post-skip routing** (when the gate skips round-2):
 
 1. Capture every unresolved MUST-FIX and SHOULD-FIX item as a backlog todo: \`luca todo add --status backlog --source review-finding …\` — nothing is lost.
-2. Note the skip reason (empty diff or zero overlap, citing the pre-fix SHA) in the active phase's audit artifact.
+2. Note the skip reason (verdict \`empty\` or \`zero-overlap\`, citing the snapshot tree sha) in the active phase's audit artifact.
 3. Advance with \`luca state advance --to-step learn\`. A skip proceeds toward learn — it NEVER loops back into this gate.
 
 ## Run the reviewers
@@ -67,7 +62,7 @@ When all reviewers return, summarize for the user:
 - Total MUST-FIX / SHOULD-FIX / NOTE counts across audits
 - Whether any reviewer returned \`REQUEST_CHANGES\`
 
-If there are MUST-FIX findings, the phase is not ready to advance — first stash the pre-fix HEAD SHA: write \`{"sha": "<HEAD>", "phase": "<active phase slug>"}\` (SHA from \`git rev-parse HEAD\`, phase from \`luca phase current\`) to \`.luca/tmp/review-prefix-sha.json\` via the native Write tool, then direct the user back to \`/phase-execute\` to address them (the \`verify → checks → execute\` loop-back path). The re-run gate reads this SHA on the next review pass. If all reviewers APPROVE, advance with \`luca state advance --to-step learn\`.
+If there are MUST-FIX findings, the phase is not ready to advance — first run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — then direct the user back to \`/phase-execute\` to address them (the \`verify → checks → execute\` loop-back path). The re-run gate consumes this snapshot on the next review pass. If all reviewers APPROVE, advance with \`luca state advance --to-step learn\`.
 
 ## What you must NOT do
 

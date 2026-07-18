@@ -19,6 +19,7 @@ describe('classifyBashCommand — read-only', () => {
         'git diff main',
         'git show HEAD',
         'git branch',
+        'git ls-files --others --exclude-standard',
         'gh pr view 262',
         'gh issue view 100',
         'gh pr list --state=open',
@@ -274,6 +275,18 @@ describe('classifyBashCommand — read-only-phase regressions', () => {
         expect(
             classifyBashCommand('luca verification aggregate').category
         ).toBe('bash-readonly')
+    })
+
+    test('luca snapshot create|diff → luca-write (legal in REVIEWING)', () => {
+        expect(classifyBashCommand('luca snapshot create').category).toBe(
+            'luca-write'
+        )
+        expect(classifyBashCommand('luca snapshot diff').category).toBe(
+            'luca-write'
+        )
+        expect(
+            classifyBashCommand('luca snapshot diff --json').category
+        ).toBe('luca-write')
     })
 
     test('luca <noun> --help / --version is read-only for any noun', () => {

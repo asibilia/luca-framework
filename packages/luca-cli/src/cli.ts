@@ -84,6 +84,10 @@ const main = defineCommand({
             import('./commands/write-surface/branch').then(
                 (m) => m.branchCommand
             ),
+        snapshot: () =>
+            import('./commands/write-surface/snapshot').then(
+                (m) => m.snapshotCommand
+            ),
         workflow: () =>
             import('./commands/write-surface/workflow').then(
                 (m) => m.workflowCommand

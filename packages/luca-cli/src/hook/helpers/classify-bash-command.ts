@@ -93,6 +93,12 @@ const GIT_READONLY_SUBCOMMANDS = new Set([
     'config',
     'describe',
     'blame',
+    // Worktree/index file listing (e.g. `git ls-files --others
+    // --exclude-standard`) — genuinely read-only regardless of caller: it
+    // never mutates files, the index, or repo state. (The snapshot capture
+    // path does NOT go through this classifier — it spawns
+    // read-tree/add -A/write-tree directly against a temp index.)
+    'ls-files',
 ])
 
 const GIT_COMMIT_SUBCOMMANDS = new Set(['commit', 'push', 'tag'])
@@ -260,6 +266,11 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     verification: new Set(['read', 'aggregate']),
     // Read-only plan-quality linter over a plan.md file.
     plan: new Set(['lint']),
+    // Worktree snapshot capture/compare for the REVIEWING diff gate. Neither
+    // verb is in LUCA_READ_VERBS, so both classify as `luca-write` (legal in
+    // REVIEWING) — intended: `create` writes the snapshot artifact and `diff`
+    // is invoked on the same gated path.
+    snapshot: new Set(['create', 'diff']),
 }
 
 /**
