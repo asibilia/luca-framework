@@ -213,14 +213,33 @@ const ALWAYS_DENIED_COMMANDS = new Set(['eval', 'source', '.'])
 // safe to allow in any phase. Without these, `luca version`, `luca telemetry`,
 // etc. fell through to the unknown-command → bash-mutate path and got blocked
 // at plan/REVIEWING (v13 run report, M1).
-const LUCA_TOPLEVEL_READ = new Set(['version', 'telemetry', 'rules'])
+export const LUCA_TOPLEVEL_READ: ReadonlySet<string> = new Set([
+    'version',
+    'telemetry',
+    'rules',
+    'graph',
+    'status',
+])
 
 // Top-level `luca` commands that mutate (or may mutate). Classified as
 // `luca-write` — the matrix allows `luca-write` in every non-IDLE phase and
 // each command self-enforces its own preconditions, so they are never wrongly
-// blocked as a generic bash-mutate (e.g. `luca repair`). `hook` is omitted
-// deliberately (internal; invoked by wrappers, not agents).
-const LUCA_TOPLEVEL_WRITE = new Set([
+// blocked as a generic bash-mutate (e.g. `luca repair`).
+//
+// Deliberately UNCLASSIFIED (fall through to the conservative
+// unknown-command → bash-mutate path, blocked in gated phases). The
+// `luca-write` classification rests on the invariant that the command
+// self-enforces its own phase preconditions — these do NOT:
+//   - `hook`: internal; invoked by shell wrappers, not agents.
+//   - `statusline`: `install` rewrites `~/.claude/settings.json`
+//     (harness settings, no phase guard).
+//   - `start` / `stop`: runner daemon lifecycle; `stop` unconditionally
+//     calls forcePipelineUnlock (deletes .luca/lock.json, no phase guard).
+// All are harness/user-invoked, never called from instruction bodies, so
+// blocking them in gated phases is the intended pre-phase status quo.
+// The registry-completeness test's DELIBERATELY_UNCLASSIFIED set mirrors
+// this list — keep the two in sync.
+export const LUCA_TOPLEVEL_WRITE: ReadonlySet<string> = new Set([
     'init',
     'vault:init',
     'retro',
@@ -231,6 +250,12 @@ const LUCA_TOPLEVEL_WRITE = new Set([
 ])
 
 // Read-only `luca` verbs — these do not mutate state.
+//
+// Cross-noun leak (G-ARCH-001): these verbs are GLOBAL — any noun's verb
+// matching a name in this list classifies `bash-readonly`, regardless of the
+// noun. A FUTURE noun that registers a MUTATING verb by one of these names
+// (e.g. a hypothetical `foo summary` that writes) would wrongly classify as
+// read-only — check this list whenever adding verbs to LUCA_NOUN_VERBS.
 const LUCA_READ_VERBS = new Set([
     'read',
     'current',
@@ -241,11 +266,14 @@ const LUCA_READ_VERBS = new Set([
     'detect-convergence',
     'regression-check',
     'lint',
+    'summary',
+    'render',
+    'gate',
 ])
 
 // Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
 // noun-group commands registered in src/cli.ts and their leaf subcommands.
-const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
+export const LUCA_NOUN_VERBS: Readonly<Record<string, ReadonlySet<string>>> = {
     state: new Set(['read', 'advance', 'claim-owner', 'set-current-phase']),
     phase: new Set(['current', 'advance', 'archive']),
     roadmap: new Set(['read', 'create']),
@@ -261,7 +289,7 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     checks: new Set(['run']),
     branch: new Set(['guard']),
     workflow: new Set(['reset']),
-    confidence: new Set(['log']),
+    confidence: new Set(['log', 'read', 'summary', 'render', 'gate']),
     // Read-side surfaces over the per-phase verify.json files.
     verification: new Set(['read', 'aggregate']),
     // Read-only plan-quality linter over a plan.md file.
@@ -271,6 +299,12 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     // REVIEWING) — intended: `create` writes the snapshot artifact and `diff`
     // is invoked on the same gated path.
     snapshot: new Set(['create', 'diff']),
+    // Budget guard over the run's token/cost spend. `check` lazily stamps
+    // `runStartedAt` into state.json on first invocation — a genuine write —
+    // so it is deliberately NOT in LUCA_READ_VERBS and classifies as
+    // `luca-write` (legal in every non-IDLE phase), mirroring the `snapshot`
+    // precedent above.
+    budget: new Set(['check']),
 }
 
 /**
@@ -280,17 +314,29 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
  * falls through to the generic command classification).
  */
 function classifyLucaCommand(rest: string[]): BashCategory | undefined {
-    // `--help`/`-h`/`--version` anywhere → usage/version output, which
-    // mutates nothing. This holds for ANY noun (e.g. `luca verification --help`,
-    // `luca state --help`), so check it before noun resolution — otherwise a
-    // help probe on a noun with no read verb fell through to bash-mutate.
+    // `--help`/`-h` anywhere → usage output, which mutates nothing. citty
+    // intercepts these flags at ANY position and prints usage WITHOUT running
+    // the command, so the shortcut holds for any noun (e.g. `luca
+    // verification --help`, `luca state --help`) — check before noun
+    // resolution, otherwise a help probe on a noun with no read verb fell
+    // through to bash-mutate.
     //
     // NOTE: `-v` is deliberately EXCLUDED. The CLI uses `-v` as an alias for
     // `--verbose` (e.g. `luca doctor`), not `--version`. Treating `-v` as a
     // version probe would classify a mutating command like `luca doctor --fix
-    // -v` as read-only and let it bypass the stage gate. Only the unambiguous
-    // help/version flags get the shortcut.
-    if (rest.some((t) => ['--help', '-h', '--version'].includes(t))) {
+    // -v` as read-only and let it bypass the stage gate.
+    if (rest.some((t) => t === '--help' || t === '-h')) {
+        return 'bash-readonly'
+    }
+    // NOTE: `--version` gets the shortcut ONLY in its sole-argument form
+    // (`luca --version`). Unlike `--help`, citty 0.2.2 handles `--version`
+    // only when it is the single top-level argument — runCommand has no
+    // version interception, so `luca stop --version` or `luca --version stop`
+    // still EXECUTES the subcommand (stop → forcePipelineUnlock). An
+    // anywhere-match here would classify those runs read-only and let them
+    // bypass the stage gate — same bypass class as the `-v` exclusion above,
+    // other flag.
+    if (rest.length === 1 && rest[0] === '--version') {
         return 'bash-readonly'
     }
     const noun = rest.find((t) => !t.startsWith('-'))

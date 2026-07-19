@@ -289,16 +289,43 @@ describe('classifyBashCommand — read-only-phase regressions', () => {
         ).toBe('luca-write')
     })
 
-    test('luca <noun> --help / --version is read-only for any noun', () => {
+    test('luca <noun> --help is read-only for any noun', () => {
+        // citty intercepts --help/-h at any position without running the
+        // command, so the anywhere-shortcut is sound for help flags.
         expect(classifyBashCommand('luca verification --help').category).toBe(
             'bash-readonly'
         )
         expect(classifyBashCommand('luca state --help').category).toBe(
             'bash-readonly'
         )
-        expect(classifyBashCommand('luca phase --version').category).toBe(
+    })
+
+    test('--version is read-only ONLY as the sole argument', () => {
+        // citty 0.2.2 handles --version only as the single top-level
+        // argument; anywhere else the subcommand still EXECUTES, so only
+        // the sole-argument form gets the read-only shortcut.
+        expect(classifyBashCommand('luca --version').category).toBe(
             'bash-readonly'
         )
+        // Known noun + trailing --version: the command runs (citty does not
+        // intercept), so it takes the known-noun/no-verb conservative
+        // luca-write branch — previously wrongly bash-readonly.
+        expect(classifyBashCommand('luca phase --version').category).toBe(
+            'luca-write'
+        )
+    })
+
+    test('--version does not launder unclassified nouns past the gate', () => {
+        // Bypass pins (independence audit round 2): these EXECUTE the
+        // subcommand (stop → forcePipelineUnlock; statusline install →
+        // ~/.claude/settings.json rewrite), so they must keep the
+        // conservative unknown-noun → bash-mutate classification.
+        expect(classifyBashCommand('luca stop --version').category).toBe(
+            'bash-mutate'
+        )
+        expect(
+            classifyBashCommand('luca statusline install --version').category
+        ).toBe('bash-mutate')
     })
 
     test('`-v` (=--verbose) does NOT make a mutating luca command read-only', () => {
@@ -312,5 +339,51 @@ describe('classifyBashCommand — read-only-phase regressions', () => {
         expect(classifyBashCommand('luca doctor -v').category).not.toBe(
             'bash-readonly'
         )
+    })
+})
+
+describe('classifyBashCommand — luca registry gaps (budget/confidence/graph/statusline)', () => {
+    test('luca budget check → luca-write (lazily stamps runStartedAt)', () => {
+        // `check` deliberately NOT in LUCA_READ_VERBS — first invocation
+        // writes `runStartedAt` into state.json (snapshot precedent).
+        expect(classifyBashCommand('luca budget check').category).toBe(
+            'luca-write'
+        )
+    })
+
+    test.each([
+        'luca confidence read',
+        'luca confidence summary',
+        'luca confidence gate',
+        'luca confidence render',
+    ])('%s → bash-readonly', (cmd) => {
+        expect(classifyBashCommand(cmd).category).toBe('bash-readonly')
+    })
+
+    test('luca graph → bash-readonly (top-level read noun)', () => {
+        expect(classifyBashCommand('luca graph').category).toBe(
+            'bash-readonly'
+        )
+    })
+
+    test('luca statusline → bash-mutate (deliberately unclassified)', () => {
+        // `statusline` is deliberately NOT in LUCA_TOPLEVEL_WRITE — its
+        // `install` verb rewrites `~/.claude/settings.json` with no phase
+        // self-enforcement, so it must keep falling through to the
+        // conservative unknown-noun → bash-mutate default (blocked in gated
+        // phases). See the deliberate-exclusion comment on
+        // LUCA_TOPLEVEL_WRITE in classify-bash-command.ts.
+        expect(classifyBashCommand('luca statusline').category).toBe(
+            'bash-mutate'
+        )
+    })
+
+    test('luca start|stop → bash-mutate (deliberately unclassified)', () => {
+        // Runner daemon lifecycle — `stop` unconditionally calls
+        // forcePipelineUnlock (deletes .luca/lock.json) with no phase
+        // self-enforcement, so both stay on the conservative unknown-noun →
+        // bash-mutate fallthrough (blocked in gated phases).
+        expect(classifyBashCommand('luca start').category).toBe('bash-mutate')
+        expect(classifyBashCommand('luca stop').category).toBe('bash-mutate')
     })
 })
