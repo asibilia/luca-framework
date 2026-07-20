@@ -19,7 +19,7 @@
  *     telemetry stream and runs final verification aggregation.
  *   - rule-run invocation — Step 4.5 (recurring-pitfall rule
  *     suggestions) calls \`luca rules suggest\` with a threshold to
- *     promote recurring pitfalls to draft .luca/rules/*.ts templates.
+ *     surface recurring pitfalls as suggested rules printed to stdout.
  *   - claim-verify invocation — Steps 3c (PLAN.md reconciliation) and
  *     5b.2 (changeset + PR body gate) both call \`luca claim-verify\`.
  *     Restored per plan §3 #7.
@@ -40,7 +40,7 @@ const BODY = `# Finalize Agent Instructions
 
 > Caveman mode (full) is active — activate the \`caveman\` skill and follow its rules for all output.
 
-> **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`verify.json\`, \`learn.md\`, \`audits/<reviewer>.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root. The \`luca\` CLI surfaces are phase-aware: \`luca claim-verify\`, \`luca retro\`, \`luca rules suggest\`, \`luca verification aggregate\`, \`luca repo-cleanup\` all resolve paths from state and recurse into \`phases/*/\` automatically.
+> **Artifact paths**: Per-phase artifacts (\`plan.md\`, \`verify.json\`, \`learn.md\`, \`audits/<reviewer>.md\`) live under \`.luca/phases/<currentPhaseSlug>/\`. Cross-phase files (\`roadmap.md\`, \`state.json\`, \`config.json\`, \`ledger.jsonl\`) stay at \`.luca/\` root. The \`luca\` CLI surfaces are phase-aware: \`luca claim-verify\`, \`luca retro\`, \`luca rules suggest\`, \`luca verification aggregate\`, \`luca repo cleanup-apply\` all resolve paths from state and recurse into \`phases/*/\` automatically.
 
 ## Role
 
@@ -156,7 +156,7 @@ Advisory scan for AI-session debris before PR:
 
 1. Spawn the **shadow-scanner** subagent with \`scan_mode: "standard"\` via the \`Task\` tool. Emit \`subagent-start\` / \`subagent-end\` telemetry.
 2. Parse the scanner's JSON report.
-3. **Critical** findings: fix via \`luca repo-cleanup apply-fix\` or report to user.
+3. **Critical** findings: fix via \`luca repo cleanup-apply\` or report to user.
 4. **High/medium/low** findings: log in session archive, don't block.
 5. Store metrics via MuninnDB (\`metric:shadow-debt-scan-<timestamp>\` in repo vault).
 
@@ -283,14 +283,14 @@ Scan all available runs (current + archived) for pitfalls that have recurred at 
 luca rules suggest --threshold 3
 \`\`\`
 
-The engine groups violations by \`code\` across runs, counts the number of *distinct runs* each code appeared in, and renders draft \`.luca/rules/*.ts\` templates for any code meeting the threshold.
+The engine groups violations by \`code\` across runs, counts the number of *distinct runs* each code appeared in, and prints suggested rules to stdout for any code meeting the threshold.
 
-Drafts are **not** auto-applied — they are starting templates, not finished rules. The recurrence detection answers "what should we have a machine-checkable rule for?" but the user implements the matcher.
+The suggestions are printed for review, not written to disk — they are starting points, not finished rules. The recurrence detection answers "what should we have a machine-checkable rule for?" but the user implements the matcher.
 
 **Result handling:**
 
 - \`report.recurring.length === 0\` — nothing to suggest. Continue.
-- \`report.recurring.length > 0\` — a suggestion artifact was written. Reference it in the PR body so the user sees the suggestions on review. **Do not block the PR** on suggestions; this is advisory.
+- \`report.recurring.length > 0\` — suggestions were printed to stdout. Reference them in the PR body so the user sees the suggestions on review. **Do not block the PR** on suggestions; this is advisory.
 
 ## Step 5: PR Creation
 
@@ -303,9 +303,7 @@ If git workflow was used (issue + branch created):
 Consult structured project preferences for PR/release/tracker conventions:
 
 \`\`\`
-luca preferences consult --section pr
-luca preferences consult --section release
-luca preferences consult --section tracker
+luca preferences read
 \`\`\`
 
 Use the consulted values to determine:

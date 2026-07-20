@@ -101,9 +101,14 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     // Operational mutations — phase-agnostic
     'repo cleanup-apply': [],
     'state advance': [],
+    'state claim-owner': [],
+    'state set-current-phase': [],
     'workflow reset': [],
     'preferences write': [],
     'confidence log': [],
+    'snapshot create': [],
+    'snapshot diff': [],
+    'budget check': [],
 
     // Phase-restricted structured mutations
     'roadmap create': ['idle', 'triage'],

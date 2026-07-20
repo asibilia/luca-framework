@@ -188,6 +188,37 @@ describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
     })
 })
 
+describe('classifyWritePath — release-artifact (.changeset)', () => {
+    test('classifies .changeset/<name>.md as release-artifact', () => {
+        expect(classifyWritePath('.changeset/foo.md').class).toBe(
+            'release-artifact'
+        )
+        expect(
+            classifyWritePath('.changeset/tricky-mongoose-jump.md').class
+        ).toBe('release-artifact')
+    })
+
+    test('excludes changesets own docs/config — README.md + config.json stay code', () => {
+        // README.md is changesets' own documentation and config.json its
+        // configuration; finalize may ADD a release note, never reconfigure
+        // the tool. Both fall through to the code-write column.
+        expect(classifyWritePath('.changeset/README.md').class).toBe('code')
+        expect(classifyWritePath('.changeset/config.json').class).toBe('code')
+    })
+
+    test('does NOT match nested .changeset/<dir>/<name>.md (one level deep only)', () => {
+        expect(classifyWritePath('.changeset/sub/x.md').class).toBe('code')
+    })
+
+    test('recognizes an absolute .changeset/<name>.md path', () => {
+        // Claude Code passes ABSOLUTE file_paths; the segment-anchored
+        // pattern matches both spellings.
+        expect(
+            classifyWritePath('/Users/dev/proj/.changeset/foo.md').class
+        ).toBe('release-artifact')
+    })
+})
+
 describe('classifyWritePath — reason field', () => {
     test('returns a human-readable reason for denied paths', () => {
         const r = classifyWritePath('.git/HEAD')

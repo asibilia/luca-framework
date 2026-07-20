@@ -16,6 +16,14 @@ export type WritePathClass =
     // pipeline state, so the stage-gate allows it in ANY pipelineStep
     // (the matrix is bypassed for this class — see the hook).
     | 'ephemeral'
+    // Release artifact — a changeset markdown file (`.changeset/<name>.md`).
+    // The finalize step is INSTRUCTED to author one, but FINALIZING denies
+    // `code-write`, so without its own class the instructed action is
+    // illegal. Narrow by construction: markdown only, one level deep, and
+    // `.changeset/README.md` / `.changeset/config.json` (the tool's own
+    // docs and configuration) stay `code` so finalize cannot reconfigure
+    // changesets — it may only add release notes.
+    | 'release-artifact'
     | 'denied'
 
 export interface ClassifyResult {
@@ -56,7 +64,7 @@ const HOME_DENIED_SUBDIRS = ['.claude', '.luca']
 // `/tmp/luca-checks-07.json`) was the pre-v13 staging convention for
 // LLM→CLI `--file` payloads. The OS tmp dir is GLOBAL, so two repos
 // running pipelines concurrently overwrite each other's payloads. The
-// canonical replacement is repo-scoped `.luca/tmp/<kebab-name>.json`
+// canonical replacement is repo-scoped `.luca/tmp/<kebab-name>.{json,md}`
 // (TMP_PATH_PATTERN below); writes to the legacy location are denied
 // outright so a model reverting to old habits gets redirected instead
 // of silently corrupting another project's run. `/private/tmp` is
@@ -69,6 +77,21 @@ const SHARED_TMP_LUCA_PATTERN = /^\/(private\/)?tmp\/luca-/
 // Platform-specific roots (macOS `/var/folders/…/T`, a custom `$TMPDIR`)
 // arrive via ClassifyOptions.tmpdirs.
 const BUILTIN_TMP_PREFIXES = ['/tmp/', '/private/tmp/']
+
+/**
+ * Changeset release-note file: `.changeset/<name>.md`, exactly one level
+ * deep, markdown only.
+ *
+ * Segment-anchored (`(^|/)`) so it matches both the repo-relative
+ * `.changeset/foo.md` and the ABSOLUTE `file_path` Claude Code passes,
+ * while `src/foo.changeset/bar.md` cannot match. `[^/]` forbids nesting.
+ *
+ * `README.md` is excluded explicitly (it is changesets' own documentation,
+ * not a release note); `config.json` is excluded by the `.md` requirement.
+ * This keeps the grant to the minimum finalize needs: ADD a release note,
+ * never edit the changesets tool's docs or configuration.
+ */
+const CHANGESET_FILE_PATTERN = /(^|\/)\.changeset\/(?!README\.md$)[^/]+\.md$/
 
 /**
  * Is `path` a write into a genuine OS temp directory? Such writes are inert
@@ -116,7 +139,7 @@ export const AUDIT_PATH_PATTERN = new RegExp(
 )
 
 /**
- * Canonical scratch-handoff path pattern: `.luca/tmp/<kebab-name>.json`.
+ * Canonical scratch-handoff path pattern: `.luca/tmp/<kebab-name>.{json,md}`.
  *
  * Exported so the v13 stage-gate hook can recognise an ephemeral
  * CLI-handoff payload and allow it in ANY pipelineStep — these
@@ -170,7 +193,7 @@ export function toLucaRelative(path: string, cwd?: string): string {
 }
 
 /**
- * Classify a write-target path into one of four classes used by the
+ * Classify a write-target path into one of the classes used by the
  * stage-gate matrix.
  *
  *   - 'code': normal project file (src/, packages/, package.json, …)
@@ -178,6 +201,8 @@ export function toLucaRelative(path: string, cwd?: string): string {
  *   - 'planning-audit': .luca/phases/<slug>/audits/<reviewer>.md
  *   - 'ephemeral': inert OS-temp scratch or `.luca/tmp/previews/<name>`
  *                  (browser previews, screenshots) — allowed in any phase
+ *   - 'release-artifact': `.changeset/<name>.md` release note (NOT README.md
+ *                  or config.json, which remain 'code')
  *   - 'denied': must never be written regardless of phase
  *               (.git/, ~/.claude/, ~/.luca/, /etc/, /usr/, /var/, /System/,
  *               /bin/, /sbin/, and legacy shared-tmp /tmp/luca-* payloads)
@@ -206,7 +231,7 @@ export function classifyWritePath(
         return {
             class: 'denied',
             reason:
-                'luca CLI handoff payloads must be repo-scoped — write to .luca/tmp/<kebab-name>.json instead ' +
+                'luca CLI handoff payloads must be repo-scoped — write to .luca/tmp/<kebab-name>.{json,md} instead ' +
                 '(shared /tmp/luca-* files collide across concurrently-running repos)',
         }
     }
@@ -266,6 +291,15 @@ export function classifyWritePath(
         return { class: 'planning-general' }
     }
 
-    // 7. Default: code
+    // 7. Release artifact: `.changeset/<name>.md`. Checked BEFORE the 'code'
+    //    fallback so the finalize step can author the changeset it is
+    //    instructed to write (FINALIZING denies 'code-write'). Anything else
+    //    under `.changeset/` — README.md, config.json, a .ts file — falls
+    //    through to 'code' and stays governed by the code-write column.
+    if (CHANGESET_FILE_PATTERN.test(path.replace(/\\/g, '/'))) {
+        return { class: 'release-artifact' }
+    }
+
+    // 8. Default: code
     return { class: 'code' }
 }

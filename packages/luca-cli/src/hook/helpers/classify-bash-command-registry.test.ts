@@ -9,9 +9,12 @@
  */
 import { describe, expect, test } from 'bun:test'
 
+import { WRITE_COMMAND_PHASES } from '@alecsibilia/luca-core'
+
 import { CLI_SUBCOMMANDS } from '../../cli.ts'
 import {
     LUCA_NOUN_VERBS,
+    LUCA_READ_VERBS,
     LUCA_TOPLEVEL_READ,
     LUCA_TOPLEVEL_WRITE,
 } from './classify-bash-command.ts'
@@ -152,4 +155,35 @@ describe('classifier registry — invariant 4: registries are pairwise disjoint'
             })
         }
     }
+})
+
+/**
+ * Every `<noun> <verb>` pair whose verb is NOT a global read verb
+ * (LUCA_READ_VERBS) classifies `luca-write`, so the CLI's own
+ * WRITE_COMMAND_PHASES self-check is the ONLY phase enforcement it gets. A
+ * missing key there is a silent SKIP of the phase check (never a deny), so an
+ * unregistered write verb would ship without phase enforcement. This binds
+ * the classifier's write surface to the luca-core phase table so that gap
+ * fails loudly here.
+ *
+ * Read verbs are exempt: they classify `bash-readonly` and are governed by
+ * the phase matrix, not WRITE_COMMAND_PHASES.
+ */
+const writeVerbPairs: Array<[string, string]> = classifierNouns.flatMap(
+    (noun) =>
+        [...LUCA_NOUN_VERBS[noun]!]
+            .filter((verb) => !LUCA_READ_VERBS.has(verb))
+            .map((verb): [string, string] => [noun, verb])
+)
+
+describe('classifier registry — invariant 5: every write verb has a WRITE_COMMAND_PHASES key', () => {
+    test.each(writeVerbPairs)(
+        '`luca %s %s` (verb ∉ LUCA_READ_VERBS) has a WRITE_COMMAND_PHASES key',
+        (noun, verb) => {
+            const key = `${noun} ${verb}`
+            const registered = key in WRITE_COMMAND_PHASES
+            // On failure the diff names the unregistered write pair explicitly.
+            expect({ key, registered }).toEqual({ key, registered: true })
+        }
+    )
 })

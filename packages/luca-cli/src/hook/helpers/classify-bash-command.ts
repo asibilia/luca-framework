@@ -2,6 +2,7 @@ import { parse, type ParseEntry } from 'shell-quote'
 
 export type BashCategory =
     | 'bash-readonly'
+    | 'bash-stage'
     | 'bash-mutate'
     | 'bash-commit'
     | 'luca-write'
@@ -103,8 +104,12 @@ const GIT_READONLY_SUBCOMMANDS = new Set([
 
 const GIT_COMMIT_SUBCOMMANDS = new Set(['commit', 'push', 'tag'])
 
+// NOTE: `add` is deliberately NOT here — it classifies as `bash-stage` via
+// the dedicated branch in classifySubcommand. Staging is not committing, and
+// the finalize step must stage the changeset it authored. Re-adding it here
+// would both make the `bash-stage` branch unreachable and re-block `git add`
+// in FINALIZING.
 const GIT_MUTATE_SUBCOMMANDS = new Set([
-    'add',
     'mv',
     'rm',
     'checkout',
@@ -256,7 +261,7 @@ export const LUCA_TOPLEVEL_WRITE: ReadonlySet<string> = new Set([
 // noun. A FUTURE noun that registers a MUTATING verb by one of these names
 // (e.g. a hypothetical `foo summary` that writes) would wrongly classify as
 // read-only — check this list whenever adding verbs to LUCA_NOUN_VERBS.
-const LUCA_READ_VERBS = new Set([
+export const LUCA_READ_VERBS = new Set([
     'read',
     'current',
     'list',
@@ -369,16 +374,24 @@ function classifyLucaCommand(rest: string[]): BashCategory | undefined {
 // Severity ordering for max-merge across subcommands
 // ---------------------------------------------------------------------------
 
-const SEVERITY: Record<BashCategory, number> = {
+export const SEVERITY: Record<BashCategory, number> = {
     'bash-readonly': 0,
+    // `bash-stage` sits STRICTLY below `bash-mutate`. `maxCategory` keeps the
+    // first-seen on a tie, so a tier tie with `bash-mutate` would launder
+    // `git add . && rm -rf build` into FINALIZING as `bash-stage` (where
+    // `bash-mutate` is denied). Tier 1 keeps staging distinctly less severe
+    // than any file/repo mutation.
+    'bash-stage': 1,
     // `luca-write` and `bash-mutate` share a tier: both are "mutating" but
     // neither escalates past a commit. In a mixed pipeline `maxCategory`
     // keeps the first-seen at equal severity — acceptable, mixed
-    // `luca`+mutate command strings are not a real pattern.
-    'luca-write': 1,
-    'bash-mutate': 1,
-    'bash-commit': 2,
-    denied: 3,
+    // `luca`+mutate command strings are not a real pattern. This shared tier
+    // is deliberate: bumping only `bash-mutate` would flip
+    // `luca checks run && rm -f x` from `luca-write` to `bash-mutate`.
+    'luca-write': 2,
+    'bash-mutate': 2,
+    'bash-commit': 3,
+    denied: 4,
 }
 
 function maxCategory(a: BashCategory, b: BashCategory): BashCategory {
@@ -485,6 +498,26 @@ function classifySubcommand(sub: Subcommand): {
             return {
                 category: 'bash-commit',
                 targetPaths: targetsFromRedirect,
+            }
+        }
+        // `git add` — staging, not committing. Modeled on the mutate branch
+        // (NOT the commit branch): it must keep the `lastNonFlag(rest)` target
+        // extraction so the hook's always-denied path check still sees the
+        // staged path (the commit branch returns targetPaths: [] and would
+        // silently drop it). `bash-stage` is allowed in EXECUTING/FINALIZING
+        // so finalize can stage the changeset it authored. An output redirect
+        // escalates to `bash-mutate` (mirroring the readonly/gh siblings): the
+        // shell `>` truncates the redirect target, so `git add . > src/x.ts`
+        // is a write, not a stage, and must be denied where `bash-stage` is
+        // allowed but `bash-mutate` is not.
+        if (sub1 === 'add') {
+            const target = lastNonFlag(rest)
+            return {
+                category: sub.redirect ? 'bash-mutate' : 'bash-stage',
+                targetPaths: [
+                    ...targetsFromRedirect,
+                    ...(target ? [target] : []),
+                ],
             }
         }
         if (GIT_MUTATE_SUBCOMMANDS.has(sub1)) {

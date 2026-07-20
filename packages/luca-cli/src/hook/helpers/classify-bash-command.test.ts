@@ -102,11 +102,54 @@ describe('classifyBashCommand — mutate', () => {
         'bun install',
         'bun add lodash',
         'bun run build',
-        'git add .',
         'git checkout -b feature',
         'unknown-command arg',
     ])('%s → bash-mutate', (cmd) => {
         const r = classifyBashCommand(cmd)
+        expect(r.category).toBe('bash-mutate')
+    })
+})
+
+describe('classifyBashCommand — stage (git add)', () => {
+    test('git add . → bash-stage (staging is not committing)', () => {
+        // Reclassified out of bash-mutate: `bash-stage` is allowed in
+        // EXECUTING/FINALIZING so finalize can stage the changeset it authored,
+        // while staying denied in PLANNING/REVIEWING.
+        const r = classifyBashCommand('git add .')
+        expect(r.category).toBe('bash-stage')
+    })
+
+    test('git add <path> → bash-stage with the staged target preserved', () => {
+        // The bash-stage branch is modeled on the mutate branch (NOT the commit
+        // branch) precisely so the staged path survives into targetPaths, where
+        // the hook's always-denied path check consumes it.
+        const r = classifyBashCommand('git add secrets.env')
+        expect(r.category).toBe('bash-stage')
+        expect(r.targetPaths).toContain('secrets.env')
+    })
+
+    test('git add . && git commit -m x → bash-commit (max-merge keeps higher tier)', () => {
+        // A compound that both stages and commits must classify at the commit
+        // tier — bash-stage sits below bash-commit in SEVERITY, so max-merge
+        // escalates.
+        const r = classifyBashCommand('git add . && git commit -m x')
+        expect(r.category).toBe('bash-commit')
+    })
+
+    test('git add . && rm -rf build → bash-mutate (no laundering into stage tier)', () => {
+        // bash-stage is STRICTLY below bash-mutate, so a stage+mutate compound
+        // stays bash-mutate and cannot ride into FINALIZING as bash-stage.
+        const r = classifyBashCommand('git add . && rm -rf build')
+        expect(r.category).toBe('bash-mutate')
+    })
+
+    test('git add . > src/x.ts → bash-mutate (redirect escalation, not stage)', () => {
+        // A redirect on `git add` is a write: the shell `>` truncates the
+        // redirect target before git ever runs. Classifying it `bash-stage`
+        // would let `git add . > packages/luca-core/src/x.ts` through in
+        // FINALIZING (bash-stage allowed, bash-mutate denied) and truncate a
+        // source file — the pre-fix bypass this test pins shut.
+        const r = classifyBashCommand('git add . > src/x.ts')
         expect(r.category).toBe('bash-mutate')
     })
 })
@@ -165,6 +208,25 @@ describe('classifyBashCommand — multi-stage commands', () => {
 
     test('cat file | tee /tmp/x → mutate (tee writes)', () => {
         const r = classifyBashCommand('cat file | tee /tmp/x')
+        expect(r.category).toBe('bash-mutate')
+    })
+
+    test('luca checks run && rm -f x → luca-write (shared tier, first-seen tie-break)', () => {
+        // `luca-write` and `bash-mutate` share SEVERITY tier by design, so a
+        // luca-write + mutate compound resolves by first-seen tie-break — the
+        // leading `luca checks run` keeps the result at `luca-write` so
+        // REVIEWING (luca-write allowed, bash-mutate denied) is not blocked.
+        // Bumping `bash-mutate` above `luca-write` would flip this to denied.
+        const r = classifyBashCommand('luca checks run && rm -f x')
+        expect(r.category).toBe('luca-write')
+    })
+
+    test('rm -rf build && luca state read → bash-mutate (mutate outranks readonly luca)', () => {
+        // Order-flip companion to the case above: pairing the mutate with a
+        // read-only luca command (bash-readonly, below bash-mutate) resolves
+        // to bash-mutate by SEVERITY, so a mutate can never be laundered into
+        // a gated phase by a trailing read-only luca invocation.
+        const r = classifyBashCommand('rm -rf build && luca state read')
         expect(r.category).toBe('bash-mutate')
     })
 })
@@ -362,6 +424,16 @@ describe('classifyBashCommand — luca registry gaps (budget/confidence/graph/st
 
     test('luca graph → bash-readonly (top-level read noun)', () => {
         expect(classifyBashCommand('luca graph').category).toBe(
+            'bash-readonly'
+        )
+    })
+
+    test('luca rules suggest → bash-readonly (rules is a top-level read noun; it prints to stdout, never writes)', () => {
+        // `rules` lives in LUCA_TOPLEVEL_READ — `rules suggest` renders markdown
+        // to stdout and performs no filesystem write, so it stays read-only
+        // regardless of the trailing verb (anti-06: the `rules` noun must not be
+        // reclassified as a write).
+        expect(classifyBashCommand('luca rules suggest').category).toBe(
             'bash-readonly'
         )
     })

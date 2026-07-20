@@ -241,7 +241,8 @@ export async function handleStageGateHook(
             )
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         } else {
-            // pc.class === 'code' — normal project file. Matrix decides.
+            // pc.class === 'code' | 'release-artifact' — a repo file (normal
+            // project file, or a `.changeset/*.md` release note). Matrix decides.
             category = pathClassToToolCategory(pc.class)
         }
     } else if (
@@ -417,7 +418,7 @@ function artifactPathGate(
     pipelineStep: LucaState['pipelineStep'],
     state: LucaState
 ): ArtifactGateDecision {
-    // Sanctioned ephemeral CLI-handoff scratch: `.luca/tmp/<name>.json` is a
+    // Sanctioned ephemeral CLI-handoff scratch: `.luca/tmp/<name>.{json,md}` is a
     // repo-scoped payload file bridging the LLM orchestrator and the `luca`
     // CLI (`--file`). It is NOT a pipeline artifact, so it is allowed in ANY
     // pipelineStep (including steps with no legal artifact). This replaces the
@@ -524,6 +525,10 @@ function pathClassToToolCategory(c: WritePathClass): ToolCategory {
             return 'planning-write-general'
         case 'planning-audit':
             return 'planning-write-audit'
+        case 'release-artifact':
+            // `.changeset/<name>.md` — its own matrix column so FINALIZING
+            // can author a changeset without opening 'code-write'.
+            return 'release-artifact'
         case 'ephemeral':
             // Caller short-circuits 'ephemeral' to allow before this is
             // called — it has no phase/tool-matrix category.
@@ -534,10 +539,15 @@ function pathClassToToolCategory(c: WritePathClass): ToolCategory {
     }
 }
 
-function bashCategoryToToolCategory(c: BashCategory): ToolCategory {
+export function bashCategoryToToolCategory(c: BashCategory): ToolCategory {
     switch (c) {
         case 'bash-readonly':
             return 'bash-readonly'
+        case 'bash-stage':
+            // `git add` — staging, not committing. Allowed in
+            // EXECUTING/FINALIZING so finalize can stage the changeset it
+            // authored; denied in PLANNING/REVIEWING.
+            return 'bash-stage'
         case 'bash-mutate':
             return 'bash-mutate'
         case 'bash-commit':

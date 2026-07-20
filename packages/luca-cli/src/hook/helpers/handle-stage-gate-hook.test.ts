@@ -156,6 +156,15 @@ describe('handleStageGateHook — PLANNING', () => {
         })
         expect(r.exitCode).toBe(2)
     })
+
+    test('blocks Edit on .changeset/happy-cats.md (release-artifact not in PLANNING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
+    })
 })
 
 describe('handleStageGateHook — EXECUTING', () => {
@@ -198,6 +207,15 @@ describe('handleStageGateHook — EXECUTING', () => {
         })
         expect(r.exitCode).toBe(2)
     })
+
+    test('allows Edit on .changeset/happy-cats.md (release-artifact legal in EXECUTING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
 })
 
 describe('handleStageGateHook — REVIEWING', () => {
@@ -231,6 +249,15 @@ describe('handleStageGateHook — REVIEWING', () => {
             cwd,
         })
         expect(r.exitCode).toBe(2)
+    })
+
+    test('blocks Edit on .changeset/happy-cats.md (release-artifact not in REVIEWING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
     })
 })
 
@@ -348,6 +375,27 @@ describe('handleStageGateHook — FINALIZING', () => {
             cwd,
         })
         expect(r.exitCode).toBe(2)
+    })
+
+    test('allows Edit on .changeset/happy-cats.md (release-artifact legal in FINALIZING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
+
+    test('allows Write to .luca/tmp/pr-body-draft.md (widened ephemeral path)', async () => {
+        const r = await handleStageGateHook({
+            stdin: JSON.stringify({
+                tool_name: 'Write',
+                tool_input: { file_path: '.luca/tmp/pr-body-draft.md' },
+            }),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
     })
 })
 
