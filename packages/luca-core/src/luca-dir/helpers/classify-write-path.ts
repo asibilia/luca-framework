@@ -277,6 +277,23 @@ export function classifyWritePath(
     //    the repo root (see its docstring).
     const rel = toLucaRelative(path, opts.cwd)
     if (rel.startsWith('.luca/') || rel === '.luca') {
+        // Cross-repo handoff mailbox. Denied UNCONDITIONALLY here, not just by
+        // the home-deny in step 5: that check is skipped whenever `opts.homedir`
+        // is falsy, and `toLucaRelative`'s segment fallback then rewrites an
+        // ABSOLUTE `<home>/.luca/handoff/x.json` to its relative form, which
+        // would fall through to `planning-general` — an ALLOWED artifact write.
+        // That fails OPEN: an agent could hand-forge an envelope straight into
+        // the machine-global mailbox, bypassing the schema-validated CLI that
+        // is the mailbox's core invariant. `.luca/handoff/` is not part of the
+        // repo-scoped `.luca/` contract, so nothing legitimate writes here.
+        if (rel === '.luca/handoff' || rel.startsWith('.luca/handoff/')) {
+            return {
+                class: 'denied',
+                reason:
+                    'writes into the cross-repo handoff mailbox <home>/.luca/handoff/ are never allowed — ' +
+                    'every envelope must go through the schema-validated luca CLI',
+            }
+        }
         // Sanctioned in-repo preview scratch: `.luca/tmp/previews/<name>`.
         // Ephemeral, gitignored browser previews — not a pipeline artifact,
         // so allowed in any pipelineStep (intercepted before the generic

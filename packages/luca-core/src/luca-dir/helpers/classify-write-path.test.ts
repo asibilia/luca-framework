@@ -123,6 +123,45 @@ describe('classifyWritePath — always-denied paths', () => {
             }).class
         ).toBe('denied')
     })
+
+    test('denies the cross-repo handoff mailbox under the user home', () => {
+        // Guard (risk G1): the machine-global mailbox at `<home>/.luca/handoff/`
+        // is CLI-only. Agents must not hand-forge envelopes with a direct
+        // Write — every envelope goes through the schema-validated transport.
+        // The always-deny on `<home>/.luca/` must never be narrowed to carve
+        // out this directory.
+        const homedir = '/Users/alec'
+        const r = classifyWritePath(`${homedir}/.luca/handoff/x.json`, {
+            homedir,
+        })
+        expect(r.class).toBe('denied')
+        expect(r.reason).toContain('user tooling dir')
+
+        // A nested envelope path is denied by the same rule.
+        expect(
+            classifyWritePath(`${homedir}/.luca/handoff/nested/x.json`, {
+                homedir,
+            }).class
+        ).toBe('denied')
+    })
+
+    test('denies the handoff mailbox even when no homedir is supplied', () => {
+        // Fail CLOSED: with `homedir` absent the home-deny above never runs,
+        // and `toLucaRelative`'s segment fallback recovers `.luca/handoff/x.json`
+        // from the absolute path — which previously classified as the ALLOWED
+        // `planning-general`, letting an agent hand-forge an envelope into the
+        // machine-global mailbox.
+        const r = classifyWritePath('/Users/alec/.luca/handoff/x.json')
+        expect(r.class).not.toBe('planning-general')
+        expect(r.class).toBe('denied')
+        expect(r.reason).toContain('/.luca/handoff/')
+
+        // Same for the repo-relative spelling and a nested envelope path.
+        expect(classifyWritePath('.luca/handoff/x.json').class).toBe('denied')
+        expect(
+            classifyWritePath('/Users/alec/.luca/handoff/nested/x.json').class
+        ).toBe('denied')
+    })
 })
 
 describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
