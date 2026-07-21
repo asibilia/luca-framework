@@ -76,6 +76,10 @@ export const CLI_SUBCOMMANDS = {
         import('./commands/write-surface/checks').then((m) => m.checksCommand),
     branch: () =>
         import('./commands/write-surface/branch').then((m) => m.branchCommand),
+    handoff: () =>
+        import('./commands/write-surface/handoff').then(
+            (m) => m.handoffCommand
+        ),
     snapshot: () =>
         import('./commands/write-surface/snapshot').then(
             (m) => m.snapshotCommand

@@ -110,6 +110,18 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     'snapshot diff': [],
     'budget check': [],
 
+    // Cross-repo handoff mailbox — deliberately phase-agnostic. A repo may
+    // need to post or read a work order at any point in its own pipeline, and
+    // the phase-3 SessionStart triage fires at `pipelineStep: 'idle'`, so any
+    // non-empty restriction would make the mailbox unreachable exactly where
+    // it is consumed. `[]` adds no exposure: the envelope is schema-validated
+    // and never auto-executed.
+    'handoff send': [],
+    'handoff list': [],
+    'handoff accept': [],
+    'handoff complete': [],
+    'handoff reject': [],
+
     // Phase-restricted structured mutations
     'roadmap create': ['idle', 'triage'],
     'checks run': ['execute', 'checks'],

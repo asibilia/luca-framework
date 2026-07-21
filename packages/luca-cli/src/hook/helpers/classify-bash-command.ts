@@ -164,6 +164,10 @@ const MUTATE_COMMANDS = new Set([
     'touch',
     'ln',
     'install',
+    // `tee` writes every positional arg (see the READONLY_COMMANDS note) —
+    // listed here so step 7 extracts those destinations into targetPaths
+    // instead of letting it fall to the unknown-command default with none.
+    'tee',
     'unlink',
     'chmod',
     'chown',
@@ -310,6 +314,13 @@ export const LUCA_NOUN_VERBS: Readonly<Record<string, ReadonlySet<string>>> = {
     // `luca-write` (legal in every non-IDLE phase), mirroring the `snapshot`
     // precedent above.
     budget: new Set(['check']),
+    // Cross-repo handoff mailbox. `list` is already a global LUCA_READ_VERBS
+    // member so it classifies `bash-readonly`; `send`, `accept`, `complete`
+    // and `reject` are deliberately NOT read verbs — each writes an envelope
+    // into `~/.luca/handoff/` — so they classify `luca-write` (legal in every
+    // non-IDLE phase, with the CLI self-enforcing the matching
+    // `WRITE_COMMAND_PHASES['handoff <verb>']` entry).
+    handoff: new Set(['send', 'list', 'accept', 'complete', 'reject']),
 }
 
 /**
@@ -667,17 +678,24 @@ function classifySubcommand(sub: Subcommand): {
 
     // 7. Single-token mutate
     if (MUTATE_COMMANDS.has(cmd)) {
-        // For cp/mv/ln, target = last positional arg.
+        // For cp/mv/ln/install, target = last positional arg. `install` was
+        // previously extracted-from-nothing, so
+        // `install -m 644 f ~/.luca/handoff/x.json` reached the hook with an
+        // empty targetPaths list and its always-denied path loop had nothing
+        // to inspect.
         const lastArg =
-            cmd === 'cp' || cmd === 'mv' || cmd === 'ln'
+            cmd === 'cp' || cmd === 'mv' || cmd === 'ln' || cmd === 'install'
                 ? lastNonFlag(rest)
                 : undefined
+        // `tee` writes EVERY positional arg, not just the last one.
+        const teeTargets =
+            cmd === 'tee' ? rest.filter((a) => !a.startsWith('-')) : []
         // For sed -i FILE, target = file after -i
         const sedTarget =
             cmd === 'sed' && rest.includes('-i')
                 ? rest[rest.length - 1]
                 : undefined
-        const additionalTargets = [lastArg, sedTarget].filter(
+        const additionalTargets = [lastArg, sedTarget, ...teeTargets].filter(
             (x): x is string => Boolean(x)
         )
         return {
@@ -722,6 +740,42 @@ function extractFilenameFlag(args: string[]): string | undefined {
         }
     }
     return undefined
+}
+
+/**
+ * Cross-repo mailbox path shapes, matched ANYWHERE inside a token.
+ *
+ * Per-command target extraction (redirects, `git add`, `cp`/`mv`/`ln`,
+ * `sed -i`, `tee`, `install`, `playwright-cli --filename`) can only ever cover
+ * the binaries it knows. Everything else — `dd`, `bun -e`, `python -c`, a
+ * shell function, tomorrow's tool — falls to the unknown-command default with
+ * `targetPaths: []`, and the hook's always-denied path loop then has nothing
+ * to inspect while `bash-mutate` is allowed in EXECUTING. That let
+ * `echo '<forged>' | tee ~/.luca/handoff/x.json` (or a `Bun.write` one-liner)
+ * plant an arbitrary envelope in the machine-global mailbox during a normal
+ * execute wave.
+ *
+ * This scan is BINARY-INDEPENDENT: any token mentioning the mailbox
+ * contributes its path to `targetPaths`, so `classifyWritePath`'s
+ * unconditional `.luca/handoff` deny fires no matter what command carried it.
+ * The leading/trailing character classes stop at whitespace and quote/operator
+ * characters, so a path embedded in a `-e` script string is still recovered.
+ * Segment anchoring (`foo.luca/handoff` must NOT match) is left to
+ * `toLucaRelative`/`classifyWritePath`; an over-broad extraction here is inert
+ * because a non-denied path in `targetPaths` changes no decision.
+ */
+const MAILBOX_PATH_RE = /[^\s"'`;|&()<>]*\.luca\/handoff(?:\/[^\s"'`;|&()<>]*)?/g
+
+/** Every mailbox-shaped path mentioned by any token of the command. */
+function extractMailboxPaths(tokens: string[]): string[] {
+    const found: string[] = []
+    for (const token of tokens) {
+        for (const match of token.matchAll(MAILBOX_PATH_RE)) {
+            const path = match[0]
+            if (path && !found.includes(path)) found.push(path)
+        }
+    }
+    return found
 }
 
 function lastNonFlag(args: string[]): string | undefined {
@@ -826,7 +880,16 @@ export function classifyBashCommand(cmd: string): ClassifyBashResult {
         const r = classifySubcommand(sub)
         category = maxCategory(category, r.category)
         if (r.category === 'denied' && !reason) reason = r.reason
-        for (const p of r.targetPaths) {
+        const paths = [...r.targetPaths]
+        // Binary-independent mailbox scan (see MAILBOX_PATH_RE): the deny must
+        // not depend on this command having a target extractor. Scoped to
+        // subcommands that can WRITE — a `bash-readonly` stage (`cat`/`ls` on
+        // the mailbox) and the sanctioned `luca-write` CLI itself are left
+        // alone, so inspecting the mailbox stays possible.
+        if (r.category !== 'bash-readonly' && r.category !== 'luca-write') {
+            paths.push(...extractMailboxPaths(sub.tokens))
+        }
+        for (const p of paths) {
             if (!targetPaths.includes(p)) targetPaths.push(p)
         }
     }

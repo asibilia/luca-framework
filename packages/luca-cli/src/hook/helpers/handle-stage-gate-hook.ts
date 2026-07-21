@@ -1,4 +1,4 @@
-import { tmpdir } from 'node:os'
+import { homedir as osHomedir, tmpdir } from 'node:os'
 
 import {
     AUDIT_PATH_PATTERN,
@@ -107,7 +107,13 @@ export async function handleStageGateHook(
         (parsed.sessionId as string | undefined)
 
     const cwd = opts.cwd ?? process.cwd()
-    const homedir = opts.homedir ?? process.env.HOME
+    // FAIL-CLOSED homedir resolution. `process.env.HOME` alone is a fail-OPEN
+    // hole: with HOME unset (or empty — hence `||`, not `??`) `homedir` was
+    // `undefined`, `classifyWritePath` skipped the home-deny step entirely, and
+    // a Write to `~/.claude/settings.json` or `~/.luca/handoff/` classified as
+    // ordinary `code` and was ALLOWED in EXECUTING. `os.homedir()` reads the
+    // passwd database, so it still resolves when the environment does not.
+    const homedir = opts.homedir || process.env.HOME || osHomedir()
     const tmpdirs =
         opts.tmpdirs ??
         [process.env.TMPDIR, tmpdir()].filter((d): d is string => Boolean(d))
@@ -158,6 +164,37 @@ export async function handleStageGateHook(
 
     const phase = coarsePhaseOf(state.pipelineStep)
 
+    // ALWAYS-DENIED PATHS AND COMMANDS — EVERY PHASE, IDLE INCLUDED.
+    //
+    // This MUST run before the IDLE short-circuit below. When it ran after,
+    // "blocked regardless of phase" (this file's docstring, and the
+    // write-surface skill body) was false at `pipelineStep: 'idle'`: a native
+    // `Write` to `<home>/.luca/handoff/x.json` returned `allow` outright, so an
+    // agent could hand-forge a mailbox envelope with an id, `status:
+    // 'accepted'` and `statusHistory` of its choosing — bypassing the
+    // schema-validated `luca handoff` CLI that is the mailbox's core
+    // invariant. The SessionStart handoff triage runs in exactly that state.
+    //
+    // Only the SECURITY FLOOR moves up here. The phase/tool matrix and the
+    // `.luca/` artifact gate stay below, so IDLE remains permissive for
+    // everything that is not always-denied.
+    const alwaysDenied = alwaysDeniedReason(toolName, toolInput, {
+        homedir,
+        cwd,
+        tmpdirs,
+    })
+    if (alwaysDenied) {
+        const msg = `stage-gate BLOCK: ${alwaysDenied}`
+        log(msg)
+        return {
+            exitCode: 2,
+            toolName,
+            toolInput,
+            decision: 'block',
+            reason: msg,
+        }
+    }
+
     // IDLE: no enforcement.
     if (phase === 'IDLE') {
         log(
@@ -173,18 +210,8 @@ export async function handleStageGateHook(
     let category: ToolCategory | undefined
     let pathBlockReason: string | undefined
 
-    if (
-        toolName === 'Edit' ||
-        toolName === 'Write' ||
-        toolName === 'NotebookEdit' ||
-        toolName === 'replace' ||
-        toolName === 'write_file'
-    ) {
-        const targetPath =
-            (toolInput as { file_path?: string; path?: string } | undefined)
-                ?.file_path ??
-            (toolInput as { file_path?: string; path?: string } | undefined)
-                ?.path
+    if (isWriteTool(toolName)) {
+        const targetPath = writeTargetOf(toolInput)
         if (!targetPath) {
             // Can't classify without a target. Allow conservatively —
             // shouldn't happen in real Claude Code/Antigravity invocations.
@@ -200,6 +227,10 @@ export async function handleStageGateHook(
         const relTarget = toLucaRelative(targetPath, cwd)
         const pc = classifyWritePath(targetPath, { homedir, cwd, tmpdirs })
         if (pc.class === 'denied') {
+            // Unreachable in practice — `alwaysDeniedReason` above already
+            // blocked this, in EVERY phase. Kept as defence in depth so the
+            // classification never falls through to the matrix if the two
+            // ever drift.
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`
         } else if (pc.class === 'ephemeral') {
             // Inert ephemeral scratch (OS-temp file or .luca/tmp/previews/<name>):
@@ -245,15 +276,11 @@ export async function handleStageGateHook(
             // project file, or a `.changeset/*.md` release note). Matrix decides.
             category = pathClassToToolCategory(pc.class)
         }
-    } else if (
-        toolName === 'Bash' ||
-        toolName === 'run_shell_command' ||
-        toolName === 'run_command'
-    ) {
-        const command =
-            (toolInput as { command?: string } | undefined)?.command ?? ''
+    } else if (isBashTool(toolName)) {
+        const command = bashCommandOf(toolInput)
         const bashResult = classifyBashCommand(command)
         if (bashResult.category === 'denied') {
+            // Defence in depth — see the note on the write-path branch above.
             pathBlockReason = `Bash command is always denied: ${
                 bashResult.reason ?? 'forbidden command'
             }`
@@ -334,6 +361,94 @@ export async function handleStageGateHook(
         `stage-gate: ${toolName} (category=${category}) allowed in phase=${phase}`
     )
     return { exitCode: 0, toolName, toolInput, decision: 'allow' }
+}
+
+/** Is this tool name a native file-write tool (Claude Code / Antigravity)? */
+function isWriteTool(toolName: string | undefined): boolean {
+    return (
+        toolName === 'Edit' ||
+        toolName === 'Write' ||
+        toolName === 'NotebookEdit' ||
+        toolName === 'replace' ||
+        toolName === 'write_file'
+    )
+}
+
+/** Is this tool name a shell-execution tool? */
+function isBashTool(toolName: string | undefined): boolean {
+    return (
+        toolName === 'Bash' ||
+        toolName === 'run_shell_command' ||
+        toolName === 'run_command'
+    )
+}
+
+/** The write target of a write-tool payload (`file_path` or `path`). */
+function writeTargetOf(toolInput: unknown): string | undefined {
+    const input = toolInput as
+        | { file_path?: string; path?: string }
+        | undefined
+    return input?.file_path ?? input?.path
+}
+
+/** The command string of a shell-tool payload. */
+function bashCommandOf(toolInput: unknown): string {
+    return (toolInput as { command?: string } | undefined)?.command ?? ''
+}
+
+/**
+ * The SECURITY FLOOR: evaluate the always-denied path / command rules that
+ * apply in EVERY pipelineStep, IDLE included.
+ *
+ * Split out of the main classification block so it can run BEFORE the IDLE
+ * short-circuit. It answers one question only — "is this call always denied?"
+ * — and never consults the phase/tool matrix or the `.luca/` artifact gate,
+ * both of which stay phase-scoped.
+ *
+ * @param toolName  the incoming tool name (may be undefined / non-write)
+ * @param toolInput the raw tool payload
+ * @param opts      homedir / cwd / tmpdirs, exactly as the main block passes
+ *                  them to `classifyWritePath`
+ * @returns the block reason, or `undefined` when nothing is always-denied
+ */
+function alwaysDeniedReason(
+    toolName: string | undefined,
+    toolInput: unknown,
+    opts: { homedir?: string; cwd: string; tmpdirs: string[] }
+): string | undefined {
+    if (isWriteTool(toolName)) {
+        const targetPath = writeTargetOf(toolInput)
+        if (!targetPath) return undefined
+        const pc = classifyWritePath(targetPath, opts)
+        if (pc.class === 'denied') {
+            return `${toolName} to '${targetPath}' is always denied: ${
+                pc.reason ?? 'forbidden path'
+            }`
+        }
+        return undefined
+    }
+
+    if (isBashTool(toolName)) {
+        const bashResult = classifyBashCommand(bashCommandOf(toolInput))
+        if (bashResult.category === 'denied') {
+            return `Bash command is always denied: ${
+                bashResult.reason ?? 'forbidden command'
+            }`
+        }
+        for (const target of bashResult.targetPaths) {
+            const pc = classifyWritePath(target, {
+                homedir: opts.homedir,
+                tmpdirs: opts.tmpdirs,
+            })
+            if (pc.class === 'denied') {
+                return `Bash writes to denied path '${target}': ${
+                    pc.reason ?? 'forbidden path'
+                }`
+            }
+        }
+    }
+
+    return undefined
 }
 
 /**
