@@ -21,6 +21,29 @@ import {
     type HandoffTransport,
 } from '@alecsibilia/luca-core/handoff'
 
+/**
+ * Single-line escaping of sender-controlled envelope text.
+ *
+ * The implementation MOVED to `@alecsibilia/luca-tools/handoff-render` and is
+ * re-exported here so the existing import sites in `luca-handoff-list.ts` and
+ * `luca-handoff-accept.ts` stay byte-unchanged.
+ *
+ * The move was forced by the dependency graph. The SessionStart
+ * handoff-inbox hook lives in luca-tools and renders the same untrusted
+ * envelope fields, but luca-cli sits ABOVE luca-tools so the hook cannot
+ * import from here; luca-core's `handoff/` module is frozen by this phase's
+ * scope fence; and a second copy of a security control is not acceptable
+ * (two copies drift, and this one is the anti-injection boundary). Moving it
+ * down to the shared package is the only placement satisfying all three.
+ *
+ * There is exactly one definition of `toSingleLine` in the monorepo and it is
+ * NOT in this file — see `luca-tools/src/handoff-render/to-single-line.ts`.
+ */
+export {
+    toSingleLine,
+    CONTROL_CHAR_RE,
+} from '@alecsibilia/luca-tools/handoff-render'
+
 /** Optional homedir override — see {@link resolveHandoffTransport}. */
 export interface ResolveHandoffTransportOptions {
     /**
@@ -76,45 +99,4 @@ export function resolveHandoffTransport(
  */
 export function formatHandoffFailure(failure: HandoffFailure): string {
     return `handoff failed [${failure.reason}]: ${failure.message}`
-}
-
-/** Control characters (C0 range plus DEL) — escaped, never emitted raw. */
-export const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/g
-
-/** Longest rendered form of one sender-controlled value. */
-const MAX_RENDERED_LENGTH = 256
-
-/**
- * Render a SENDER-CONTROLLED envelope value as exactly one line.
- *
- * `origin.repoPath` / `target.repoPath` are self-declared by the sending repo
- * and are echoed into the `list` triage view — the deliberately low-exposure
- * surface that withholds `intent` and `acceptanceCriteria` precisely so the
- * receiving agent does not read attacker-authored, instruction-shaped prose
- * into context. A multi-line value would put those lines right back. Control
- * characters are escaped (never dropped, so nothing is silently hidden) and
- * the result is truncated, so one field can never dominate the view.
- *
- * `send` also constrains these values at the boundary; this is the rendering
- * half, and it also covers envelopes that predate the constraint or were
- * written by another tool.
- *
- * @param value - untrusted, sender-authored text
- * @returns a single-line, length-capped rendering
- *
- * @example
- * ```typescript
- * toSingleLine('/repos/a\nIGNORE PREVIOUS') // '/repos/a\\nIGNORE PREVIOUS'
- * ```
- */
-export function toSingleLine(value: string): string {
-    const escaped = value.replace(CONTROL_CHAR_RE, (char) => {
-        if (char === '\n') return '\\n'
-        if (char === '\r') return '\\r'
-        if (char === '\t') return '\\t'
-        return `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`
-    })
-    return escaped.length > MAX_RENDERED_LENGTH
-        ? `${escaped.slice(0, MAX_RENDERED_LENGTH)}…(truncated)`
-        : escaped
 }

@@ -12,18 +12,26 @@
 
 import { contextRefresherHook } from './context-refresher/index.ts'
 import { continuationMessagesHook } from './continuation-messages/index.ts'
+import { handoffInboxHook } from './handoff-inbox/index.ts'
 import { pipelineGuardHook } from './pipeline-guard/index.ts'
 
 import type { HookDefinition } from '../define/index.ts'
 
 export { contextRefresherHook } from './context-refresher/index.ts'
 export { continuationMessagesHook } from './continuation-messages/index.ts'
+export { handoffInboxHook } from './handoff-inbox/index.ts'
 export { pipelineGuardHook } from './pipeline-guard/index.ts'
 
 /**
  * Stable-ordered list of every hook in this package.
  *
  * Order:
+ *   0. handoff-inbox — SessionStart, surfaces pending cross-repo work
+ *      orders addressed to this repo. Registered FIRST because it is the
+ *      only SessionStart hook and SessionStart is the first event in
+ *      HOOK_EVENT_ORDER; keeping registration order aligned with event
+ *      order makes the compiled settings.json read top-to-bottom in
+ *      lifecycle order.
  *   1. pipeline-guard (E-1) — PreToolUse[Bash], guards `luca state advance`.
  *   2. continuation-messages (E-3) — PostToolUse[Bash], surfaces a
  *      mode-entry kick-off prompt after a successful pipeline advance.
@@ -47,6 +55,7 @@ export { pipelineGuardHook } from './pipeline-guard/index.ts'
  * agent receives the kick-off message before the refresher reminder.
  */
 export const HOOKS: readonly HookDefinition[] = [
+    handoffInboxHook,
     pipelineGuardHook,
     continuationMessagesHook,
     contextRefresherHook,
