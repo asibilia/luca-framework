@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@alecsibilia/luca-cli": "workspace:*",
+    "@alecsibilia/luca-code": "workspace:*",
     "@alecsibilia/luca-core": "workspace:*",
     "@alecsibilia/luca-tools": "workspace:*",
     "@types/bun": "latest",

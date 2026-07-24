@@ -40,6 +40,7 @@
       },
       "devDependencies": {
         "@alecsibilia/luca-cli": "workspace:*",
+        "@alecsibilia/luca-code": "workspace:*",
         "@alecsibilia/luca-core": "workspace:*",
         "@alecsibilia/luca-tools": "workspace:*",
         "@types/bun": "latest",
@@ -54,6 +55,7 @@
       "name": "@alecsibilia/luca-cli",
       "version": "13.1.0-alpha.0",
       "dependencies": {
+        "@alecsibilia/luca-code": "workspace:*",
         "@alecsibilia/luca-core": "workspace:*",
         "@alecsibilia/luca-tools": "workspace:*",
         "@clack/prompts": "^1.0.0",
@@ -70,6 +72,20 @@
         "@types/semver": "^7.5.8",
         "@types/shell-quote": "^1.7.5",
         "@types/update-notifier": "^6.0.8",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/luca-code": {
+      "name": "@alecsibilia/luca-code",
+      "version": "0.1.0",
+      "bin": {
+        "luca-code": "./src/cli.ts",
+      },
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
         "typescript": "catalog:",
       },
     },
@@ -108,6 +124,8 @@
     "@alecsibilia/luca": ["@alecsibilia/luca@workspace:packages/luca"],
 
     "@alecsibilia/luca-cli": ["@alecsibilia/luca-cli@workspace:packages/luca-cli"],
+
+    "@alecsibilia/luca-code": ["@alecsibilia/luca-code@workspace:packages/luca-code"],
 
     "@alecsibilia/luca-core": ["@alecsibilia/luca-core@workspace:packages/luca-core"],
 
@@ -1227,6 +1245,8 @@
 
     "@alecsibilia/luca-cli/@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 
+    "@alecsibilia/luca-code/@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
+
     "@alecsibilia/luca-core/@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 
     "@alecsibilia/luca-tools/@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
@@ -1318,6 +1338,8 @@
     "@alecsibilia/commit/@clack/prompts/@clack/core": ["@clack/core@0.5.0", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow=="],
 
     "@alecsibilia/luca-cli/@types/bun/bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
+
+    "@alecsibilia/luca-code/@types/bun/bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 
     "@alecsibilia/luca-core/@types/bun/bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 

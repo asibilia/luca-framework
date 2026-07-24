@@ -3,6 +3,7 @@
   "description": "Luca CLI — the luca command surface (private; bundled into @alecsibilia/luca)",
   "version": "13.1.0-alpha.0",
   "dependencies": {
+    "@alecsibilia/luca-code": "workspace:*",
     "@alecsibilia/luca-core": "workspace:*",
     "@alecsibilia/luca-tools": "workspace:*",
     "@clack/prompts": "^1.0.0",

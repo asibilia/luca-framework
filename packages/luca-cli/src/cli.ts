@@ -39,6 +39,7 @@ export const CLI_SUBCOMMANDS = {
     statusline: () =>
         import('./commands/statusline').then((m) => m.statuslineCommand),
     version: () => import('./commands/version').then((m) => m.versionCommand),
+    code: () => import('./commands/code').then((m) => m.codeCommand),
 
     // DAD-P2 persistent-runner POC verbs.
     start: () => import('./commands/runner').then((m) => m.startCommand),
