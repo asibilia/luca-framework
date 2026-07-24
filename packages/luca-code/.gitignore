@@ -1,2 +1,5 @@
 dist
 *.tgz
+
+# Harness cache (runtime, per-package)
+.claude/cache/

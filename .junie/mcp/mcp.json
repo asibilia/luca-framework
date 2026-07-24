@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "muninn": {
+            "url": "http://127.0.0.1:8750/mcp",
+            "headers": {
+                "Authorization": "Bearer mdb_f2991025fd367424056ff22f3eab5cff68589b40e982d410"
+            }
+        }
+    }
+}

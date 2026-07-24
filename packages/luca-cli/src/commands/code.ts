@@ -57,14 +57,17 @@ function mapExitCode(code: number | null): number {
  * Spawn a binary with inherited stdio and return its mapped exit code.
  * Returns `127` when the binary is not on PATH.
  */
-async function spawnBinary(
-    cmd: string[],
+async function spawnBinary({
+    args,
+    binaryName,
+}: {
+    args: string[]
     binaryName: string
-): Promise<number> {
+}): Promise<number> {
     const exe = typeof Bun !== 'undefined' ? Bun.which(binaryName) : null
     if (!exe) return 127
     const proc = Bun.spawn({
-        cmd: [exe, ...cmd],
+        cmd: [exe, ...args],
         stdin: 'inherit',
         stdout: 'inherit',
         stderr: 'inherit',
@@ -90,13 +93,13 @@ export const codeCommand = defineCommand({
             code = await runLucaCode(['claude', ...rest])
         } else if (provider === 'ollama') {
             // Fixed model per spec; forwarded args follow it.
-            code = await spawnBinary(
-                ['launch', 'claude', '--model', 'glm-5.2:cloud', ...rest],
-                'ollama'
-            )
+            code = await spawnBinary({
+                args: ['launch', 'claude', '--model', 'glm-5.2:cloud', ...rest],
+                binaryName: 'ollama',
+            })
         } else {
             // `claude` (default) — plain Claude Code, no gateway.
-            code = await spawnBinary(rest, 'claude')
+            code = await spawnBinary({ args: rest, binaryName: 'claude' })
         }
 
         process.exit(code)
