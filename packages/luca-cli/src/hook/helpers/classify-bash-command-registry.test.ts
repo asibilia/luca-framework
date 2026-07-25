@@ -41,6 +41,8 @@ const DELIBERATELY_UNCLASSIFIED = new Set([
     // `stop` unconditionally calls forcePipelineUnlock (deletes
     // .luca/lock.json, runner.ts) — no phase guard.
     'stop',
+    // Interactive Claude Code runner launcher — no phase guard.
+    'code',
 ])
 
 const cliNouns = Object.keys(CLI_SUBCOMMANDS)

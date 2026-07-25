@@ -14,6 +14,9 @@
  *   - `handoff complete --id <id> --file <p>` — -> complete, result attached (write)
  *   - `handoff reject --id <id>`    — -> rejected (write)
  *
+ * TODO: Add a retention/cleanup policy (e.g. `luca handoff prune`) to
+ * auto-archive completed/rejected envelopes from `~/.luca/handoff/`.
+ *
  * There is deliberately NO `--homedir` flag: the mailbox root is a
  * `ToolContext` test seam, not caller-controllable input, so an agent cannot
  * redirect the mailbox to a path of its choosing.

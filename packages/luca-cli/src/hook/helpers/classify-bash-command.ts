@@ -244,6 +244,7 @@ export const LUCA_TOPLEVEL_READ: ReadonlySet<string> = new Set([
 //     (harness settings, no phase guard).
 //   - `start` / `stop`: runner daemon lifecycle; `stop` unconditionally
 //     calls forcePipelineUnlock (deletes .luca/lock.json, no phase guard).
+//   - `code`: Claude Code runner launcher (no phase guard).
 // All are harness/user-invoked, never called from instruction bodies, so
 // blocking them in gated phases is the intended pre-phase status quo.
 // The registry-completeness test's DELIBERATELY_UNCLASSIFIED set mirrors
