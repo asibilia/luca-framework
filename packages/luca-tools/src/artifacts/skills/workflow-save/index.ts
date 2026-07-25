@@ -129,7 +129,7 @@ luca state read
 
 - MuninnDB session memories — current session findings (via \`muninn_recall\`)
 - MuninnDB long-term memories — existing learnings (via \`muninn_recall\`)
-- \`.continue-here.md\` — session continuation context (if pausing)
+- \`session:phase-boundary-handoff\` memory — session continuation context if pausing, persisted via the \`lu-handoff\` skill (recall via \`muninn_recall\`); the mechanical resume record is \`execute/progress.jsonl\` under the active phase. See \`docs/decisions/orchestrator-context-pruning.md\`.
 
 ### Git history
 

@@ -50,7 +50,7 @@
  * `~/.claude/luca-statusline.ts` by `luca init` (see
  * `packages/luca-cli/src/init/helpers/install-statusline.ts`).
  */
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 
 // ─── ANSI palette ────────────────────────────────────────────────────────────
@@ -86,6 +86,8 @@ interface StatuslinePayload {
     cost?: {
         total_lines_added?: number
         total_lines_removed?: number
+        total_cost_usd?: number
+        total_duration_ms?: number
     }
 }
 
@@ -287,6 +289,50 @@ function linesSegment(cost: StatuslinePayload['cost']): string | null {
     return `${GREEN}+${added}${RESET}${DIM}/${RESET}${RED}-${removed}${RESET}`
 }
 
+/**
+ * Best-effort bridge: write the harness session cost to the sidecar the
+ * Phase-1 budget guard reads (`luca budget check`). The reader
+ * (`packages/luca-cli/src/commands/write-surface/budget.ts`
+ * `UsageSidecarSchema`) consumes ONLY `{ totalCostUsd, updatedAt }`, so
+ * the write is deliberately minimal — extra fields would be inert.
+ *
+ * Cache-dir resolution mismatch (assumption): the reader resolves the
+ * cache dir from process **cwd**, whereas this writer uses
+ * `workspace.project_dir`. They coincide at the repo root in normal
+ * harness runs; a subdir invocation would miss the sidecar. Cost is
+ * best-effort only — wall-time (Phase-1, deterministic) is the guaranteed
+ * trip wire — so a missed cost write degrades gracefully.
+ *
+ * The write must NEVER throw: the statusline fires on every TUI tick and
+ * a crash here would break the harness, so mkdir + write are fully
+ * swallowed. Only writes when `total_cost_usd` is a finite number (a
+ * missing/non-number cost yields no sidecar rather than a null cost), and
+ * always stamps a fresh `updatedAt` so the reader's staleness gate passes
+ * in live runs.
+ */
+function writeUsageSignal(
+    projectDir: string,
+    cost: StatuslinePayload['cost']
+): void {
+    try {
+        const totalCostUsd = cost?.total_cost_usd
+        if (typeof totalCostUsd !== 'number' || !Number.isFinite(totalCostUsd))
+            return
+        const cacheDir = join(projectDir, '.claude', 'cache')
+        mkdirSync(cacheDir, { recursive: true })
+        writeFileSync(
+            join(cacheDir, 'luca-usage-signal.json'),
+            JSON.stringify({
+                schemaVersion: 1,
+                totalCostUsd,
+                updatedAt: new Date().toISOString(),
+            })
+        )
+    } catch {
+        // Best-effort — never break the statusline over a sidecar write.
+    }
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -306,6 +352,8 @@ async function main(): Promise<void> {
 
     const used = await readContextTokens(payload.transcript_path)
     const limit = contextLimit(payload.model?.id)
+
+    writeUsageSignal(projectDir, payload.cost)
 
     const segments = [
         `${CYAN}${modelName}${RESET}`,

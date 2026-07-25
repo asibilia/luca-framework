@@ -1,0 +1,177 @@
+{
+  "timestamp": "2026-07-17T00:00:00.001Z",
+  "wave": 2,
+  "mode": "quick",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0.",
+      "met": true,
+      "evidence": "tsc exit: 0 (live re-run in verify step, post-fix re-verify)",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "bun test ensure-compact-instructions.test.ts exits 0 — fresh-append, no-op-re-run, modified-block-untouched.",
+      "met": true,
+      "evidence": "Dual-evidence fallback (bun test stage-gate-blocked in verify step): harness attestation 6 pass / 0 fail + structural probe — test file grew to 6 test() cases at .test.ts:26/36/52/64/82/90. Original coverage still present: fresh-append (:26), no-op-re-run (:82), modified-block-untouched (:90). New cases: append-to-existing-without-header (:36), no-trailing-newline own-line + count==1 (:52), deeper-heading '### Compact Instructions Notes' must-still-append (:64).",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "ensureCompactInstructions exported from init/index.ts.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/init/index.ts:9",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "ensureCompactInstructions wired into init flow.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/commands/init.ts:51,289",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "Helper block carries session:phase-boundary-handoff concept.",
+      "met": true,
+      "evidence": "packages/luca-cli/src/init/helpers/ensure-compact-instructions.ts:24 (block content intact after guard change)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "CLAUDE.md references session:phase-boundary-handoff concept.",
+      "met": true,
+      "evidence": "CLAUDE.md:62",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "CLAUDE.md carries run-id (sessionId) pointer.",
+      "met": true,
+      "evidence": "CLAUDE.md:56",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "CLAUDE.md carries explicit pipelineStep preservation line.",
+      "met": true,
+      "evidence": "CLAUDE.md:55 — '- The current pipelineStep (read .luca/state.json)'",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "verifier.ts return-envelope instruction added.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/subagents/verifier.ts:36,132,135",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "reviewer.ts final-message envelope constrained.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/subagents/reviewer.ts:139,141",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "learner.ts new return-scoping line 'Return ONLY the TO_PERSIST envelope'.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/subagents/learner.ts:145 (grep -c returns 1)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "skills/lu verify row 're-Read verify.json before branching' clause added.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts (grep -c returns 1)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12.1",
+      "description": "skills/lu review row 'hold only the per-perspective verdict' clause added.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts (grep -c returns 1)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-12.2",
+      "description": "skills/lu learn row 'hold the TO_PERSIST block until persisted' clause added.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/skills/lu/index.ts (grep -c returns 1)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "commands/lu.ts row 56 no longer says 'Persist its output by writing'.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/commands/lu.ts (grep -c returns 0)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "commands/lu.ts row 65 handoff/yield/boundary note present.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/commands/lu.ts:65 (handoff + boundary + yield references)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-15",
+      "description": ".continue-here hits only in phase-execute prohibition line — none in session-pause/workflow-save.",
+      "met": true,
+      "evidence": "grep -rn '\\.continue-here' packages/luca-tools/src → only phase-execute/index.ts:414 (prohibition line)",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT change any luca-core file.",
+      "met": true,
+      "evidence": "git diff --name-only main...HEAD -- packages/luca-core → empty; git status --porcelain packages/luca-core → empty",
+      "blocking": true,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT remove the learner TO_PERSIST contract.",
+      "met": true,
+      "evidence": "packages/luca-tools/src/artifacts/subagents/learner.ts:118 (### TO_PERSIST header) + :145 still present",
+      "blocking": true,
+      "probeType": "grep-symbol"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun-test:ensure-compact-instructions", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "QUICK re-verify after an isolated review-fix touching only packages/luca-cli/src/init/helpers/ensure-compact-instructions.ts (idempotency guard: bare substring -> whole-line trim match of '## Compact Instructions') + its .test.ts (3 added cases). Prior full result (18/0) preserved. Re-ran the criteria whose targets the two files could affect: ac-01 tsc live exit 0; ac-02 test grew 4->6 cases, original fresh-append/no-op-re-run/modified-block-untouched still present + 3 new branches (bun test stage-gate-blocked -> dual-evidence fallback, harness 6 pass/0 fail); ac-05 session:phase-boundary-handoff block content intact (helper:24); anti-01 luca-core clean via git porcelain (only the two luca-cli files changed). CONVERGED REVIEW FINDING RESOLVED: guard now matches the header on a line boundary (content.split('\\n').some(line => line.trim() === HEADER), helper:51-53); a deeper '### Compact Instructions Notes' heading no longer false-positives — new test at .test.ts:64 proves the block still appends. All 18 live criteria remain met; no regression.",
+  "deliverables": [
+    { "id": "D1", "description": "ensureCompactInstructions init helper + wiring + export", "criterionIds": ["ac-03", "ac-04", "ac-05"], "compliance": "shipped" },
+    { "id": "D2", "description": "This repo's CLAUDE.md Compact Instructions update", "criterionIds": ["ac-06", "ac-07", "ac-08"], "compliance": "shipped" },
+    { "id": "D3", "description": "Envelope prose on verifier/reviewer/learner + skills/lu rows", "criterionIds": ["ac-09", "ac-10", "ac-11", "ac-12", "ac-12.1", "ac-12.2", "anti-02"], "compliance": "shipped" },
+    { "id": "D4", "description": "commands/lu.ts sync (rows 56 + 65)", "criterionIds": ["ac-13", "ac-14"], "compliance": "shipped" },
+    { "id": "D5", "description": ".continue-here.md removal (session-pause + workflow-save)", "criterionIds": ["ac-15"], "compliance": "shipped" },
+    { "id": "D6", "description": "Idempotent helper test", "criterionIds": ["ac-02"], "compliance": "shipped" },
+    { "id": "D7", "description": "Green build gate", "criterionIds": ["ac-01", "anti-01"], "compliance": "shipped" }
+  ]
+}

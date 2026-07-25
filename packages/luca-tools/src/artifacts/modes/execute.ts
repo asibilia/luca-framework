@@ -409,6 +409,8 @@ When you re-enter via the \`review → execute\` pipeline edge (Review found mus
 2. **Scope your work** to those must-fix items ONLY — do not re-execute the full plan.
 3. After fixes, run checks + rule gate, then transition back to Review.
 
+**Round-2 diff gate (cross-reference)**: Before the previous \`review → execute\` transition, review mode's Route B ran \`luca snapshot create\`, which snapshotted the worktree to \`.luca/tmp/review-prefix-tree.json\` (a snapshot tree sha, commit-agnostic — works on the no-commit path). When you transition back to Review, the round-2 re-review is diff-gated by \`luca snapshot diff\`'s verdict and skipped **only when provably safe** — When in doubt, re-review. Only the reviewer fan-out is gated: the re-verification at the \`verify\` pipeline step (the verifier re-spawn on loop-back, which runs before review) is NOT gated, and review mode's automated checks also run ungated as today. The gate algorithm lives in review mode's Step 3.5 (Re-entry Diff Gate); this note is a cross-reference only.
+
 ### TODO Progress
 
 After completing a task, promote its todo: \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <ac-id>\`. Todos are addressed by stable kebab-case id and transitioned one per call; \`--verification-criterion\` must point at a met PASS criterion in \`verify.json\` (the guard rejects \`done\` without it).
@@ -437,6 +439,7 @@ export const executeMode = defineAgent({
         verticalSlice: true,
         tdd: true,
         selfVerify: true,
+        toolEconomy: true,
     },
     telemetryHooks: [
         'phase-start',

@@ -401,6 +401,8 @@ Execute this plan. Return SUMMARY when complete.
 
 **Before each wave**, self-assess your context usage to decide if suspension is needed. You (the orchestrator) already know your own context budget — no external tooling is required. Apply the quality-degradation curve: peak (0-50%) → keep going; degrading (50-70%) → finish the current wave and prepare to suspend; stop (70%+) → suspend now to preserve quality.
 
+**Also before each wave**, run \`luca budget check --complexity <level>\` (always exits 0) and read \`.status\` — reuse the complexity the skill already computes (\`COMPLEXITY=$(luca state read | jq -r '.complexity // "MODERATE"')\`, see §8.6) so the wave check uses the SAME ceilings as the /lu loop rather than falling back to the loosest defaults. (Always-on stop — this halt fires regardless of oversight mode; do NOT gate it behind checkpoint/full-auto.) On \`halt\`, checkpoint at THIS wave boundary and stop — never mid-wave. Reuse the EXISTING suspend path below: append the wave/task progress to \`execute/progress.jsonl\` and emit \`luca telemetry emit --kind=phase.suspend --data='{"phase":"{phase_number}","reason":"budget_halt","wave":{current_wave_index},"completed":"{comma_separated_completed_task_ids}"}' 2>/dev/null || true\`, then persist the cognitive handoff and stop (same as the context-exhaustion suspend). \`ok\`/\`warn\` → proceed with the wave (note a \`warn\` in your reasoning).
+
 **If you assess context exhaustion is imminent** (the "stop" zone):
 
 1. **Create checkpoint:** Record current progress so a new session can resume. Emit a telemetry suspend event and persist the wave/task progress to the active phase's \`execute/progress.jsonl\` so the next session can resume from there:
@@ -411,24 +413,9 @@ luca telemetry emit --kind=phase.suspend --data='{"phase":"{phase_number}","reas
 
 The execute step appends per-wave progress to \`.luca/phases/<currentPhaseSlug>/execute/progress.jsonl\` — that JSONL is the durable resume record.
 
-2. **Write \`.continue-here.md\`** as a handoff document for the next session:
+2. **Persist the cognitive handoff to MuninnDB** via \`Skill(skill: "lu-handoff")\`. It writes the durable \`session:phase-boundary-handoff\` memory (decisions this wave, open threads, and a resume prompt that names the phase + the wave to resume at). Do NOT write a \`.continue-here.md\` file — that path is not in \`LUCA_DIR_CONTRACT\` and the stage-gate hook blocks the write. The \`execute/progress.jsonl\` from step 1 is the mechanical resume record; the handoff memory carries the cognitive layer a fresh session needs.
 
-\`\`\`
-# Continue Here
-
-**Phase:** {phase_number}
-**Suspended at wave:** {current_wave_index}
-**Reason:** Context exhaustion (zone: stop)
-**Completed plans:** {list of completed plan IDs}
-**Remaining waves:** {list of remaining wave numbers}
-
-## Resume Instructions
-
-Run: \`/phase-execute {phase_number}\`
-
-The phase-execute skill will detect the suspend checkpoint and resume
-from the last incomplete wave automatically.
-\`\`\`
+   The resume prompt should say: run \`/phase-execute {phase_number}\` — it detects the suspend checkpoint in \`progress.jsonl\` and resumes from the last incomplete wave automatically.
 
 3. **Stop execution** and inform the user:
 
@@ -894,6 +881,22 @@ FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' || echo "0")
 
 **If no changed files:** Skip to step 9.
 
+**Re-entry diff gate (\`--quality-fixes\` re-review only):** On a first-pass review (no prior CRITICAL round this phase), skip this gate entirely and proceed below. When re-entering Step 8 after a \`--quality-fixes\` fix round, the gate may skip round-2 — the full reviewer fan-out below — but **only when provably safe**. When in doubt, re-review.
+
+1. **ABSENT check**: if the file \`.luca/tmp/review-prefix-tree.json\` is MISSING, the snapshot is ABSENT → full round-2 (proceed with the fan-out below). That is the ONLY body-side check — ALL validation (phase mismatch, unresolvable tree, parse failures) is delegated to the CLI; never short-circuit on payload contents here.
+2. Run \`luca snapshot diff\`. The CLI rebuilds the current worktree snapshot tree, performs the tree-to-tree compare against the stashed snapshot tree (\`.luca/\` excluded), parses the prior MUST-FIX and SHOULD-FIX \`File: {path:line}\` cites from \`audits/<reviewer>.md\` files, and returns a verdict: \`empty\` | \`zero-overlap\` | \`overlap\` | \`ambiguous\`. The command also CONSUMES the payload — consume-once lives in the CLI, so do NOT delete the file yourself; every Step 8.1 CRITICAL exit re-creates a fresh snapshot.
+3. Act on the verdict:
+   - \`empty\` or \`zero-overlap\` → skip round-2.
+   - \`overlap\` or \`ambiguous\` → full round-2 (proceed with the fan-out below).
+
+**Accepted limitation (G-ARCH-001, option c):** this path's reviewers return inline YAML findings (see the Return format blocks below) and do not persist parseable \`audits/<reviewer>.md\` files — so \`luca snapshot diff\` finds an empty cite set and returns \`ambiguous\`, meaning this path always takes the full re-review (fail-safe; the skip optimization is live on the review-mode and lu-review paths).
+
+**Post-skip routing** (when the gate skips round-2):
+
+1. Capture every unresolved finding as a backlog todo: \`luca todo add --status backlog --source review-finding …\` — nothing is lost.
+2. Note the skip reason (verdict \`empty\` or \`zero-overlap\`, citing the snapshot tree sha) in the active phase's audit artifact.
+3. Skip directly to step 9. A skip exits the review loop — it NEVER re-fires the \`--quality-fixes\` re-review.
+
 Display:
 
 \`\`\`
@@ -1247,6 +1250,7 @@ Planning fixes automatically...
 
 - Re-invoke the architect mode-agent (in quality-fixes context) to produce a fix plan
 - Spawn the \`plan-reviewer\` subagent to verify the fix plan
+- Run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — so the Step 8 re-entry diff gate can compare against it on the \`--quality-fixes\` pass
 - Present ready status for \`/phase-execute {phase} --quality-fixes\`
 - **EXIT** (user must run execute again with --quality-fixes)
 

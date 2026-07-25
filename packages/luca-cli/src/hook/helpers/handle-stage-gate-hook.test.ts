@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir as osHomedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
@@ -156,6 +156,15 @@ describe('handleStageGateHook — PLANNING', () => {
         })
         expect(r.exitCode).toBe(2)
     })
+
+    test('blocks Edit on .changeset/happy-cats.md (release-artifact not in PLANNING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
+    })
 })
 
 describe('handleStageGateHook — EXECUTING', () => {
@@ -198,6 +207,15 @@ describe('handleStageGateHook — EXECUTING', () => {
         })
         expect(r.exitCode).toBe(2)
     })
+
+    test('allows Edit on .changeset/happy-cats.md (release-artifact legal in EXECUTING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
 })
 
 describe('handleStageGateHook — REVIEWING', () => {
@@ -231,6 +249,15 @@ describe('handleStageGateHook — REVIEWING', () => {
             cwd,
         })
         expect(r.exitCode).toBe(2)
+    })
+
+    test('blocks Edit on .changeset/happy-cats.md (release-artifact not in REVIEWING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
     })
 })
 
@@ -349,6 +376,27 @@ describe('handleStageGateHook — FINALIZING', () => {
         })
         expect(r.exitCode).toBe(2)
     })
+
+    test('allows Edit on .changeset/happy-cats.md (release-artifact legal in FINALIZING)', async () => {
+        const r = await handleStageGateHook({
+            stdin: editStdin('.changeset/happy-cats.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
+
+    test('allows Write to .luca/tmp/pr-body-draft.md (widened ephemeral path)', async () => {
+        const r = await handleStageGateHook({
+            stdin: JSON.stringify({
+                tool_name: 'Write',
+                tool_input: { file_path: '.luca/tmp/pr-body-draft.md' },
+            }),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+    })
 })
 
 describe('handleStageGateHook — always-denied (any phase)', () => {
@@ -406,6 +454,148 @@ describe('handleStageGateHook — always-denied (any phase)', () => {
     })
 })
 
+describe('handleStageGateHook — the handoff mailbox is CLI-only in EVERY phase', () => {
+    let cwd: string
+    const HOME = '/Users/alec'
+    const MAILBOX = `${HOME}/.luca/handoff/x.json`
+
+    afterEach(async () => {
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    // MF-1 regression guard. The IDLE fast path used to `return allow` BEFORE
+    // any path classification, so at pipelineStep='idle' this Write was
+    // allowed outright and an agent could forge an envelope (chosen id,
+    // status: 'accepted', fabricated statusHistory) straight into the
+    // machine-global mailbox. Moving the always-denied evaluation back below
+    // the IDLE short-circuit turns this test red.
+    test('blocks a Write into <home>/.luca/handoff/ at pipelineStep=idle', async () => {
+        cwd = await makeProjectAtStep('idle')
+        const r = await handleStageGateHook({
+            stdin: JSON.stringify({
+                tool_name: 'Write',
+                tool_input: { file_path: MAILBOX },
+            }),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+        expect(r.reason).toContain('handoff')
+    })
+
+    test('blocks a Write into <home>/.luca/handoff/ in EXECUTING too', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: JSON.stringify({
+                tool_name: 'Write',
+                tool_input: { file_path: MAILBOX },
+            }),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+    })
+
+    // MF-2 regression guards. `tee`, `touch` and `bun -e` have no (or had no)
+    // per-command target extractor, so each reached the hook with an empty
+    // targetPaths list, the deny loop saw nothing, and bash-mutate is ALLOWED
+    // in EXECUTING — an arbitrary envelope during a normal execute wave.
+    test('blocks `echo … | tee ~/.luca/handoff/x.json` in EXECUTING', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: bashStdin(
+                `echo '{"id":"forged"}' | tee ~/.luca/handoff/x.json`
+            ),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+        expect(r.reason).toContain('handoff')
+    })
+
+    test('blocks `touch ~/.luca/handoff/x.json` in EXECUTING', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: bashStdin('touch ~/.luca/handoff/x.json'),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+    })
+
+    test('blocks a `bun -e` one-liner that writes into the mailbox', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: bashStdin(
+                `bun -e "await Bun.write('${HOME}/.luca/handoff/x.json', '{}')"`
+            ),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+    })
+
+    test('blocks `install -m 644 f ~/.luca/handoff/x.json`', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: bashStdin('install -m 644 f.json ~/.luca/handoff/x.json'),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+    })
+
+    // The scan is scoped to write-class subcommands on purpose: READING the
+    // mailbox must stay possible, or triage has to guess.
+    test('still allows `cat ~/.luca/handoff/x.json` (read, not write)', async () => {
+        cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: bashStdin('cat ~/.luca/handoff/x.json'),
+            cwd,
+            homedir: HOME,
+        })
+        expect(r.decision).toBe('allow')
+        expect(r.exitCode).toBe(0)
+    })
+
+    // Moved here from the "homedir fail-closed" block, where it was filed as a
+    // guard for the `|| osHomedir()` fallback but proved nothing about it:
+    // `.luca/handoff` is denied UNCONDITIONALLY by classify-write-path, so
+    // deleting the fallback left it green. It IS a real guard for that
+    // unconditional deny, which is what it now claims to be.
+    test('blocks the mailbox Write even when HOME is unset and no homedir is passed', async () => {
+        const savedHome = process.env.HOME
+        const realHome = osHomedir()
+        delete process.env.HOME
+        try {
+            cwd = await makeProjectAtStep('execute')
+            const r = await handleStageGateHook({
+                stdin: JSON.stringify({
+                    tool_name: 'Write',
+                    tool_input: {
+                        file_path: join(realHome, '.luca/handoff/evil.json'),
+                    },
+                }),
+                cwd,
+            })
+            expect(r.decision).toBe('block')
+            expect(r.exitCode).toBe(2)
+        } finally {
+            if (savedHome === undefined) {
+                delete process.env.HOME
+            } else {
+                process.env.HOME = savedHome
+            }
+        }
+    })
+})
+
 describe('handleStageGateHook — non-write tools (Read, Grep, Glob)', () => {
     test('Read in PLANNING is allowed (not a write tool)', async () => {
         const cwd = await makeProjectAtStep('plan')
@@ -419,4 +609,45 @@ describe('handleStageGateHook — non-write tools (Read, Grep, Glob)', () => {
         expect(r.exitCode).toBe(0)
         await rm(cwd, { recursive: true, force: true })
     })
+})
+
+describe('handleStageGateHook — homedir fail-closed when HOME is unset', () => {
+    const savedHome = process.env.HOME
+
+    afterEach(() => {
+        if (savedHome === undefined) {
+            delete process.env.HOME
+        } else {
+            process.env.HOME = savedHome
+        }
+    })
+
+    // Regression guard for the fail-OPEN hole: with HOME unset and no
+    // `opts.homedir`, `homedir` used to be `undefined`, `classifyWritePath`
+    // skipped the home-deny step, and a Write to `~/.claude/settings.json`
+    // classified as ordinary `code` — which EXECUTING allows. The
+    // `os.homedir()` fallback closes it. Deleting `|| osHomedir()` from
+    // handle-stage-gate-hook.ts turns this test red.
+    test('blocks a Write to ~/.claude/settings.json with HOME unset and no homedir option', async () => {
+        const realHome = osHomedir()
+        delete process.env.HOME
+        const cwd = await makeProjectAtStep('execute')
+        const r = await handleStageGateHook({
+            stdin: JSON.stringify({
+                tool_name: 'Write',
+                tool_input: {
+                    file_path: join(realHome, '.claude/settings.json'),
+                },
+            }),
+            cwd,
+        })
+        expect(r.decision).toBe('block')
+        expect(r.exitCode).toBe(2)
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    // NOTE: the former second test in this block (a mailbox Write with HOME
+    // unset) has moved to the mailbox describe above — it exercised the
+    // UNCONDITIONAL `.luca/handoff` deny, not the homedir fallback, so it was
+    // green with `|| osHomedir()` deleted.
 })

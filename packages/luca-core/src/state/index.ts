@@ -24,6 +24,17 @@ export type { BudgetLimits } from './configs/budget-matrix.ts'
 
 // Helpers
 export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
+export {
+    evaluateRunBudget,
+    resolveRunBudgetOverrides,
+} from './helpers/resolve-run-budget.ts'
+export type {
+    RunBudgetVerdict,
+    RunBudgetStatus,
+    RunBudgetSignal,
+    RunBudgetDimension,
+    EvaluateRunBudgetInput,
+} from './helpers/resolve-run-budget.ts'
 export { coarsePhaseOf } from './helpers/coarse-phase-of.ts'
 export { isToolAllowed } from './helpers/is-tool-allowed.ts'
 export type { ToolCategory } from './helpers/is-tool-allowed.ts'

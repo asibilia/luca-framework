@@ -11,9 +11,9 @@ import { defineSkill } from '../../../define/skill.ts'
 const BODY = `<main>
 # Luca Pause Work
 
-Create \`.continue-here.md\` handoff file to preserve complete work state across sessions.
+Persist a context handoff through the durable, contract-legal channel so work state survives across sessions and a fresh session resumes with full context.
 
-Enables seamless resumption in fresh session with full context restoration.
+The handoff routes through the \`lu-handoff\` skill (a \`session:phase-boundary-handoff\` memory in the repo MuninnDB vault) plus the on-disk \`execute/progress.jsonl\` record — NOT a loose continue-here file at the phase root. That legacy path is outside \`LUCA_DIR_CONTRACT\` and the stage-gate hook rejects the write (see \`docs/decisions/orchestrator-context-pruning.md\`).
 
 ## Process
 
@@ -41,55 +41,11 @@ Collect complete state for handoff:
 
 Ask user for clarifications if needed.
 
-### Step 3: Write Handoff
+### Step 3: Persist the Handoff
 
-Write to \`.luca/phases/XX-name/.continue-here.md\`:
+Invoke \`Skill(skill: "lu-handoff")\`. It persists the \`session:phase-boundary-handoff\` memory to the repo MuninnDB vault — the cognitive layer (decisions made this session, open threads, blockers, and a 2-4 sentence resume prompt naming the phase + the task/wave to resume at). Feed it the context gathered in Step 2.
 
-\`\`\`markdown
----
-phase: XX-name
-task: 3
-total_tasks: 7
-status: in_progress
-last_updated: [timestamp]
----
-
-<current_state>
-[Where exactly are we? Immediate context]
-</current_state>
-
-<completed_work>
-
-- Task 1: [name] - Done
-- Task 2: [name] - Done
-- Task 3: [name] - In progress, [what's done]
-  </completed_work>
-
-<remaining_work>
-
-- Task 3: [what's left]
-- Task 4: Not started
-- Task 5: Not started
-  </remaining_work>
-
-<decisions_made>
-
-- Decided to use [X] because [reason]
-- Chose [approach] over [alternative] because [reason]
-  </decisions_made>
-
-<blockers>
-- [Blocker 1]: [status/workaround]
-</blockers>
-
-<context>
-[Mental state, what were you thinking, the plan]
-</context>
-
-<next_action>
-Start with: [specific first action when resuming]
-</next_action>
-\`\`\`
+The **mechanical** resume record already lives on disk: \`execute/progress.jsonl\` under the active phase captures per-wave progress, and \`.luca/state.json\` holds \`pipelineStep\` / \`currentPhase\`. Together with the handoff memory, a fresh \`/lu\` turn resumes losslessly — no loose handoff file needed.
 
 ### Step 4: Commit
 
@@ -101,7 +57,8 @@ git commit -m "chore(wip): [phase-name] paused at task [X]/[Y]"
 ### Step 5: Confirm
 
 \`\`\`
-✓ Handoff created: .luca/phases/[XX-name]/.continue-here.md
+✓ Handoff persisted: session:phase-boundary-handoff (repo vault)
+  Mechanical record: .luca/phases/[XX-name]/execute/progress.jsonl
 
 Current state:
 - Phase: [XX-name]
@@ -109,15 +66,15 @@ Current state:
 - Status: [in_progress/blocked]
 - Committed as WIP
 
-To resume: /session-resume
+To resume: /lu (Step 0 resumes from state) or /session-resume
 \`\`\`
 
 ## Success Criteria
 
-- [ ] .continue-here.md created in correct phase directory
-- [ ] All sections filled with specific content
+- [ ] \`session:phase-boundary-handoff\` memory persisted via \`lu-handoff\`
+- [ ] All context sections filled with specific content
 - [ ] Committed as WIP
-- [ ] User knows location and how to resume
+- [ ] User knows how to resume
 
 ## Next Steps
 

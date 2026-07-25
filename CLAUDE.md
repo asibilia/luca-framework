@@ -52,8 +52,11 @@ For anything more detailed than this, prefer the main `README.md`, `AGENTS.md`, 
 When compacting, preserve:
 
 - Current phase, task position, and complexity level
+- The current `pipelineStep` (read `.luca/state.json`)
+- The run id via `.luca/state.json` → `sessionId`
 - Key decisions made this session with rationale
 - The current approach and next planned action
 - Any blockers or open questions
 - File paths recently modified and why
 - The MuninnDB vault name (luca-framework)
+- Recall the MuninnDB memory concept `session:phase-boundary-handoff` for decisions/blockers

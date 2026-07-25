@@ -1,0 +1,400 @@
+{
+  "timestamp": "2026-07-20T00:00:00.000Z",
+  "wave": 4,
+  "mode": "full",
+  "status": "PASS",
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "classifyWritePath('.changeset/happy-cats-sing.md') returns class release-artifact",
+      "met": true,
+      "evidence": "classify-write-path.ts:104 CHANGESET_FILE_PATTERN /(^|\\/)\\.changeset\\/(?!README\\.md$)[^/]+\\.md$/ + step 7 at :296-299 returns release-artifact before code fallback; test classify-write-path.test.ts:192-198",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "classifyWritePath('.changeset/README.md') returns class code",
+      "met": true,
+      "evidence": "negative-lookahead (?!README\\.md$) excludes README.md from CHANGESET_FILE_PATTERN → falls to code (classify-write-path.ts:96,300); test :201-206",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "classifyWritePath('.changeset/config.json') returns class code",
+      "met": true,
+      "evidence": ".json fails the pattern's `.md$` requirement → code (classify-write-path.ts:96); test :201-206",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "STAGE_TOOL_MATRIX.FINALIZING['release-artifact'] === true",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:124 FINALIZING 'release-artifact': true",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-05.1",
+      "description": "release-artifact is false in PLANNING and REVIEWING",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:76 PLANNING false, :112 REVIEWING false",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-05.2",
+      "description": "release-artifact is true in EXECUTING (matches EXECUTING['code-write'])",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:97 EXECUTING 'release-artifact': true (code-write:69 also true)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "classifyBashCommand('git add .') returns category bash-stage",
+      "met": true,
+      "evidence": "'add' removed from GIT_MUTATE_SUBCOMMANDS (classify-bash-command.ts:108) + dedicated branch :507-515 returns bash-stage; test classify-bash-command.test.ts:114-119",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-08.1",
+      "description": "bash-stage is true in EXECUTING and FINALIZING",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:66 EXECUTING true, :106 FINALIZING true",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-08.2",
+      "description": "bash-stage is false in PLANNING and REVIEWING",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:73 PLANNING false, :107 REVIEWING false",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "classifyBashCommand('git add . && git commit -m x') returns bash-commit",
+      "met": true,
+      "evidence": "max-merge: bash-stage(SEVERITY 1) vs bash-commit(3) → bash-commit; test classify-bash-command.test.ts:135-140",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "TMP_PATH_PATTERN.test('.luca/tmp/pr-body-draft.md') === true",
+      "met": true,
+      "evidence": "TMP_FILE_RE widened to /^[a-z][a-z0-9-]*\\.(?:json|md)$/ (constants.ts:39); TMP_PATH_PATTERN wraps it (classify-write-path.ts:150-152); 'pr-body-draft.md' matches; hook test handle-stage-gate-hook.test.ts:389-398",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11.1",
+      "description": "WRITE_COMMAND_PHASES has keys for snapshot create/diff, budget check, state claim-owner/set-current-phase",
+      "met": true,
+      "evidence": "step-artifacts.ts:104-105,109-111",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11.2",
+      "description": "each of those five keys has value []",
+      "met": true,
+      "evidence": "step-artifacts.ts:104-111 all values are []",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-12.1",
+      "description": "no draft-.luca/rules / rule-template / promote-to-draft prose in finalize.ts",
+      "met": true,
+      "evidence": "grep -icE pattern returned 0; finalize.ts:22,286 reworded to 'printed to stdout'",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-12.3",
+      "description": "no 'preferences consult' in finalize.ts",
+      "met": true,
+      "evidence": "grep -c 'preferences consult' = 0; collapsed to 'luca preferences read' (finalize.ts:306)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "no 'apply-fix' in finalize.ts",
+      "met": true,
+      "evidence": "grep -c 'apply-fix' = 0; replaced with 'luca repo cleanup-apply' (finalize.ts:159)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "no 'luca repo-cleanup' in finalize.ts",
+      "met": true,
+      "evidence": "grep -c 'luca repo-cleanup' = 0; retargeted to 'luca repo cleanup-apply' (finalize.ts:43,159)",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15.1",
+      "description": "changeset count >= 3 in classify-write-path.test.ts",
+      "met": true,
+      "evidence": "grep -c 'changeset' = 12",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15.2",
+      "description": "bun test classify-write-path.test.ts exits 0",
+      "met": true,
+      "evidence": "checks harness ran suite green (orchestrator, ungated); new cases classify-write-path.test.ts:191-220 assert release-artifact, README/config exclusion, nested denial, absolute path. bun exec gate-blocked for this REVIEWING subagent — dual-evidence: harness + test-source review",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-16.1",
+      "description": "changeset count >= 4 in handle-stage-gate-hook.test.ts",
+      "met": true,
+      "evidence": "grep -c 'changeset' = 8",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-16.2",
+      "description": "bun test handle-stage-gate-hook.test.ts exits 0",
+      "met": true,
+      "evidence": "checks harness green; new cases at :160-168 (PLANNING block), :210-218 (EXECUTING allow), :253-261 (REVIEWING block), :379-398 (FINALIZING allow + pr-body-draft.md). bun exec gate-blocked — dual-evidence: harness + test-source review",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-17.1",
+      "description": "bash-stage count >= 2 in classify-bash-command.test.ts",
+      "met": true,
+      "evidence": "grep -c 'bash-stage' = 9",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-17.2",
+      "description": "bun test classify-bash-command.test.ts exits 0",
+      "met": true,
+      "evidence": "checks harness green; new stage suite classify-bash-command.test.ts:113-146 asserts git add→bash-stage, target preserved, compound→bash-commit, git add+rm→bash-mutate; :402-410 luca rules suggest→bash-readonly. bun exec gate-blocked — dual-evidence",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-18.1",
+      "description": "bun test classify-bash-command-registry.test.ts exits 0",
+      "met": true,
+      "evidence": "checks harness green; invariant-5 test at :179-189. bun exec gate-blocked — dual-evidence: harness + test-source review",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-18.2",
+      "description": "each LUCA_NOUN_VERBS pair whose verb is not in LUCA_READ_VERBS has a WRITE_COMMAND_PHASES key",
+      "met": true,
+      "evidence": "Manually enumerated all 20 write-verb pairs from LUCA_NOUN_VERBS (classify-bash-command.ts:281-313) against WRITE_COMMAND_PHASES (step-artifacts.ts:88-131); every pair (state advance/claim-owner/set-current-phase, phase advance/archive, roadmap create, preferences write, todo add/update/migrate/set-root, brain set-root/recall-root, repo cleanup-apply, checks run, workflow reset, confidence log, snapshot create/diff, budget check) has a key — complete",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-19",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "Ran directly (tsc classifies bash-readonly, allowed in REVIEWING): TSC_EXIT=0",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-20.1",
+      "description": "bashCategoryToToolCategory is importable from handle-stage-gate-hook.ts",
+      "met": true,
+      "evidence": "handle-stage-gate-hook.ts:542 export function bashCategoryToToolCategory",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.2",
+      "description": "LUCA_READ_VERBS is importable from classify-bash-command.ts",
+      "met": true,
+      "evidence": "classify-bash-command.ts:264 export const LUCA_READ_VERBS",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.3",
+      "description": "SEVERITY is importable from classify-bash-command.ts",
+      "met": true,
+      "evidence": "classify-bash-command.ts:377 export const SEVERITY",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.1",
+      "description": "SEVERITY['bash-readonly'] < SEVERITY['bash-stage']",
+      "met": true,
+      "evidence": "classify-bash-command.ts:378 bash-readonly:0, :383 bash-stage:1",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.2",
+      "description": "SEVERITY['bash-stage'] < SEVERITY['bash-mutate']",
+      "met": true,
+      "evidence": "bash-stage:1 < bash-mutate:2 (classify-bash-command.ts:383,391)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.3",
+      "description": "SEVERITY['luca-write'] === SEVERITY['bash-mutate'] (shared tier preserved)",
+      "met": true,
+      "evidence": "luca-write:2 === bash-mutate:2 (classify-bash-command.ts:390-391)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.4",
+      "description": "SEVERITY['bash-mutate'] < SEVERITY['bash-commit']",
+      "met": true,
+      "evidence": "bash-mutate:2 < bash-commit:3 (classify-bash-command.ts:391-392)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.5",
+      "description": "SEVERITY['bash-commit'] < SEVERITY['denied']",
+      "met": true,
+      "evidence": "bash-commit:3 < denied:4 (classify-bash-command.ts:392-393)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-22",
+      "description": "stale .json-only tmp error string reworded in is-valid-luca-path.ts",
+      "met": true,
+      "evidence": "grep -c 'handoff files or previews' = 0; is-valid-luca-path.ts:111 now names both .json and .md",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT grant code-write in FINALIZING",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:118 FINALIZING 'code-write': false — regression guard holds",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT allow arbitrary .changeset non-markdown write (.changeset/evil.ts stays code)",
+      "met": true,
+      "evidence": "CHANGESET_FILE_PATTERN requires .md; .ts falls to code (classify-write-path.ts:96,300)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT newly block bare git add in EXECUTING",
+      "met": true,
+      "evidence": "git add.→bash-stage→bashCategoryToToolCategory('bash-stage')='bash-stage' (handle-stage-gate-hook.ts:546-549); STAGE_TOOL_MATRIX.EXECUTING['bash-stage']=true (stage-tool-matrix.ts:66) → isToolAllowed true",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT grant bash-commit in EXECUTING",
+      "met": true,
+      "evidence": "stage-tool-matrix.ts:70 EXECUTING 'bash-commit': false",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT let widened TMP_FILE_RE admit a nested path (.luca/tmp/sub/x.md stays false)",
+      "met": true,
+      "evidence": "name class [a-z][a-z0-9-]* admits no '/'; TMP_PATH_PATTERN (classify-write-path.ts:150-152) anchors basename → nested rejected",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT reclassify rules noun as write (LUCA_TOPLEVEL_READ still contains 'rules')",
+      "met": true,
+      "evidence": "classify-bash-command.ts:224 'rules' in LUCA_TOPLEVEL_READ; verified rules.ts:122-134 suggestCommand only process.stdout.write, no fs write — read classification is correct, defect was finalize prose (D5)",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "MUST NOT let a mutation ride into FINALIZING on a bash-stage tie ('git add . && rm -rf build' → bash-mutate)",
+      "met": true,
+      "evidence": "bash-stage(1) strictly below bash-mutate(2); max-merge picks bash-mutate; test classify-bash-command.test.ts:141-145",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-08",
+      "description": "MUST NOT drop git add target extraction ('git add secrets.env'.targetPaths contains secrets.env)",
+      "met": true,
+      "evidence": "bash-stage branch keeps lastNonFlag(rest) target extraction (classify-bash-command.ts:508-515); test classify-bash-command.test.ts:122-129",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "anti-09",
+      "description": "MUST NOT break luca-write/bash-mutate shared tier ('luca checks run && rm -f x' → luca-write)",
+      "met": true,
+      "evidence": "luca-write:2 === bash-mutate:2; maxCategory keeps first-seen on tie (classify-bash-command.ts:385-388) → luca-write; test classify-bash-command.test.ts covers rules read case",
+      "blocking": false,
+      "probeType": "file-read"
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "stage-gate-test-suites", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Full goal-backward verification. All 35 live acceptance criteria (ac-*) and 9 anti-criteria met. Direct-execution evidence: ac-19 (tsc, ran green), all grep-based command probes (ac-12.1, ac-12.3, ac-13, ac-14, ac-15.1, ac-16.1, ac-17.1, ac-22). STAGE-GATE SUBSTITUTION: `bun -e`/`bun <script>` structural probes and `bun test` classify as bash-mutate (unknown-command fallback) and are BLOCKED for this verifier subagent, which inherits the owner session_id in REVIEWING (the phase's own live finding). Per the dual-evidence fallback, each behavioral/structural criterion is backed by BOTH (a) direct source reading of the exact classifier/matrix/regex/export value (file-read probeType) AND (b) the five stage-gate test suites which the checks harness ran green (orchestrator, ungated) and whose new cases I read and confirmed non-vacuous. D4 anti-vacuity CONFIRMED: invariant-5 test (classify-bash-command-registry.test.ts:179-189) iterates 20 real write-verb pairs via test.each; removing any one of the five newly-added WRITE_COMMAND_PHASES keys (e.g. 'snapshot create') would fail that pair's case with registered:false — genuine guard, not a tautology. D5 CONFIRMED sound: rules.ts:122-134 performs no fs write (process.stdout.write only), so LUCA_TOPLEVEL_READ membership is correct and the defect was purely finalize prose. D3 replacement prose verified: real verbs `luca repo cleanup-apply` (repo.ts:21) and `luca preferences read` (preferences.ts:24-37, declares no args so --section hard-exits via rejectUnknownFlags) exist; `luca rules suggest` prose now correctly says prints-to-stdout. OBSERVATION (non-blocking): the phase directory has no execute/summary.md or execute/waves/*.md — execution artifacts were not written though the code changes are present in the working tree; this is a pipeline-artifact gap, not a code-correctness gap, and does not affect the verdict.",
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "Core fix — narrow .changeset/*.md path class, matrix column, hook switch, git add reclassification, .luca/tmp extension",
+      "criterionIds": ["ac-01", "ac-02", "ac-03", "ac-04", "ac-05.1", "ac-05.2", "ac-07", "ac-08.1", "ac-08.2", "ac-09", "ac-10", "ac-19", "ac-21.1", "ac-21.2", "ac-21.3", "ac-21.4", "ac-21.5", "ac-22"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "Pin untested load-bearing behavior — compound max-merge, .changeset FINALIZING decision, pr-body-draft path",
+      "criterionIds": ["ac-15.1", "ac-15.2", "ac-16.1", "ac-16.2", "ac-17.1", "ac-17.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D3",
+      "description": "Phantom verbs in modes/finalize.ts corrected",
+      "criterionIds": ["ac-13", "ac-14", "ac-12.3"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D4",
+      "description": "WRITE_COMMAND_PHASES completeness plus a genuine guard test",
+      "criterionIds": ["ac-11.1", "ac-11.2", "ac-18.1", "ac-18.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D5",
+      "description": "luca rules suggest misclassification resolved — classifier correct, finalize prose was wrong",
+      "criterionIds": ["ac-12.1", "ac-20.1", "ac-20.2", "ac-20.3", "anti-06"],
+      "compliance": "shipped"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-07-17T00:00:00.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "passed",
+  "score": "17/17",
+  "reviewFixIteration": 1,
+  "criteria": [
+    {
+      "id": "ac-01",
+      "status": "pass",
+      "evidence": "Re-verified post-fix: grep -LF 'review-prefix-sha.json' across the 4 source bodies = EMPTY. Staged diff now stashes {\"sha\": \"<HEAD>\", \"phase\": \"<slug>\"} (MF1 payload) at all 3 writer sites: review.ts:261 Route B, lu-review/index.ts:70 loop-back, phase-execute/index.ts:1255 Step 8.1; execute.ts:412 carries the cross-reference. Rendered grep passed at post-fix CHECKS harness (17/17)."
+    },
+    {
+      "id": "ac-02",
+      "status": "pass",
+      "evidence": "grep -LF 'When in doubt, re-review' across all 4 source bodies = EMPTY (re-run post-fix at verify). Clause present in each gate block and the rewritten execute.ts mirror. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-03",
+      "status": "pass",
+      "evidence": "grep -LF 'provable zero overlap' across the 3 gate bodies = EMPTY (re-run post-fix). Overlap condition now tied to 'prior MUST-FIX and SHOULD-FIX File:line cites' in all three gates (MF2 widening), with the explicit empty-cite guard ('never a vacuous skip on an empty cite set', 1 occurrence per gate body). Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-04",
+      "status": "pass",
+      "evidence": "grep -LF 'diff is empty' across the 3 gate bodies = EMPTY (re-run post-fix). Each defines it as BOTH outputs empty (working-tree diff + untracked union) after the .luca/ exclusion, matching G-ARCH-001. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-05",
+      "status": "pass",
+      "evidence": "grep -LF 'skip round-2' across the 3 gate bodies = EMPTY (re-run post-fix). review.ts Step 3.5 scopes it to 'the Step 4 re-review fan-out; NOT re-verify, which has already run'. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-06",
+      "status": "pass",
+      "evidence": "bunx --bun tsc --noEmit re-run at review-fix re-verify: exit 0, no output."
+    },
+    {
+      "id": "ac-07",
+      "status": "pass",
+      "evidence": "[dual-evidence] Compile-smoke exit 0 attested by the post-fix 17/17 CHECKS harness run (rendered bodies compiled and probed); independent re-compile at verify remains stage-gate-blocked (bash-mutate in pipelineStep=verify). Structural substitute: tsc exit 0 post-fix + all token greps re-pass at source level after the fix diff."
+    },
+    {
+      "id": "ac-08",
+      "status": "pass",
+      "evidence": "grep -LF 'git diff <pre-fix-sha> --name-only' across the 3 gate bodies = EMPTY; grep -rnF 'pre-fix-sha>..HEAD' across packages/luca-tools/src/artifacts/ = NO MATCH (re-run post-fix; the always-empty ..HEAD form is still absent, honoring G-ARCH-001). Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-09",
+      "status": "pass",
+      "evidence": "grep -LF 'git ls-files --others --exclude-standard' across the 3 gate bodies = EMPTY (re-run post-fix); union + .luca/ exclusion scoping note intact in all three. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "ac-10",
+      "status": "pass",
+      "evidence": "grep -LF 'luca todo add --status backlog --source review-finding' across the 3 gate bodies = EMPTY (re-run post-fix); post-skip routing (backlog capture, skip-reason note, forward exit) unchanged by the fix iteration in all three gates. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "anti-01",
+      "status": "pass",
+      "evidence": "grep -lF 'Spawn ALL applicable reviewers in a SINGLE message' returns phase-execute/index.ts (re-run post-fix); fix hunks touch only the Step 8 gate block and Step 8.1 stash bullet, no fan-out lines. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "anti-02",
+      "status": "pass",
+      "evidence": "grep -lF '5 reviewer subagents in parallel' returns modes/review.ts (re-run post-fix); Step 4 fan-out prose visible unchanged in staged diff context. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "anti-03",
+      "status": "pass",
+      "evidence": "grep -lF 'prevents the independence auditor from anchoring on prior reviewers' returns phase-execute/index.ts (re-run post-fix); cold-isolation/auditor prose absent from all fix hunks. Rendered grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "anti-04",
+      "status": "pass",
+      "evidence": "git status --porcelain packages/luca-core/ = EMPTY at review-fix re-verify (fixes touched only the four luca-tools instruction bodies; convergence.ts promotion untouched)."
+    },
+    {
+      "id": "anti-05",
+      "status": "pass",
+      "evidence": "grep -riF 'single multi-perspective reviewer' packages/luca-tools/src/artifacts/ = NO MATCH (re-run post-fix). Rendered-tree grep passed at post-fix CHECKS."
+    },
+    {
+      "id": "anti-06",
+      "status": "pass",
+      "evidence": "grep -LF 'only when provably safe' across the 3 gate bodies = EMPTY (re-run post-fix). The fix iteration STRENGTHENED the guard: missing/unparsable stash, phase mismatch, unresolvable SHA (git rev-parse --verify fails), empty cite set + non-empty diff, any overlap, any parse failure, any ambiguity all route to full round-2."
+    },
+    {
+      "id": "anti-07",
+      "status": "pass",
+      "evidence": "grep -riF 'precomputed diff artifact' packages/luca-tools/src/artifacts/ = NO MATCH (re-run post-fix; Lever-1a still absent). Rendered-tree grep passed at post-fix CHECKS."
+    }
+  ],
+  "gaps": [],
+  "recommendation": "pass",
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "checks-harness (rendered greps + compile-smoke, post-fix)", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "deliverables": [
+    { "id": "D1", "description": "capture the pre-fix HEAD SHA to .luca/tmp/review-prefix-sha.json in each review-driving body", "criterionIds": ["ac-01"], "compliance": "shipped" },
+    { "id": "D2", "description": "gate on empty-diff / no-op fix — working-tree-inclusive diff union + 'diff is empty -> skip round-2'", "criterionIds": ["ac-04", "ac-05", "ac-08", "ac-09"], "compliance": "shipped" },
+    { "id": "D3", "description": "gate on provable zero overlap", "criterionIds": ["ac-03", "ac-05"], "compliance": "shipped" },
+    { "id": "D4", "description": "conservative default-to-re-review", "criterionIds": ["ac-02", "anti-06"], "compliance": "shipped" },
+    { "id": "D5", "description": "applied to each review-driving body (four bodies)", "criterionIds": ["ac-01", "ac-02"], "compliance": "shipped" },
+    { "id": "D6", "description": "compiles + renders cleanly", "criterionIds": ["ac-06", "ac-07"], "compliance": "shipped" },
+    { "id": "D7", "description": "post-skip disposition — findings backlog-captured, never dropped", "criterionIds": ["ac-10"], "compliance": "shipped" }
+  ],
+  "notes": "reviewFixIteration=1 re-verify after 3 MUST-FIX fixes. MF1 (stash lifecycle) CONFIRMED: payload {\"sha\": \"<HEAD>\", \"phase\": \"<slug>\"} at all 3 writer sites (review.ts:261, lu-review/index.ts:70, phase-execute/index.ts:1255); all 3 gates treat missing/unparsable/phase-mismatch/unresolvable-SHA (git rev-parse --verify, 1 hit per gate) as ABSENT -> full review; consume-once deletion (item 5, 1 'consume-once' hit per gate) fires on skip, full round-2, AND the ABSENT branch — the stale-stash first-pass-skip hole (lu-review file-existence trigger) is closed by phase check + consume-once + the empty-cite guard together. MF2 CONFIRMED: cite collection is 'MUST-FIX and SHOULD-FIX' in all 3 gates (phase-execute maps to its CRITICAL/HIGH/MEDIUM scheme in a parenthetical), and the explicit vacuous-skip guard ('The prior cite set is EMPTY and the diff is NON-EMPTY -> full round-2') is present verbatim in all 3 decision lists. MF3 CONFIRMED: execute.ts:412 rewritten — no step-number mislabel; correctly states the verify-pipeline-step re-verification (verifier re-spawn, runs before review) is NOT gated AND review mode's automated checks run ungated, and defers the algorithm to 'review mode's Step 3.5 (Re-entry Diff Gate)', which exists verbatim at review.ts:87. WIRED post-fix: identical 5-step gate structure (read/validate -> changed set -> cite collect -> 4-branch decide -> consume) across all 3 gates; same payload shape at all writers; no contradictions between authoritative gate and mirrors. No plan criterion regressed: all 15 source-level grep probes re-run at verify (EMPTY/expected), tsc exit 0, anti-04 porcelain empty, luca rules run 0 findings; ac-07 + rendered greps under the dual-evidence fallback (post-fix CHECKS harness 17/17 attestation + independent source-level probes; compile is bash-mutate, stage-gate-blocked at verify — observed live this run). Disposition transparency: independence-auditor raised 3 additional MUST-FIX-severity objections (zero-overlap-branch soundness, post-skip backlog demotion, HEAD capture under the no-commit path) that were NOT fixed — each contradicts an explicit plan decision (D3/ac-03 zero-overlap skip, G-SCOPE-001/ac-10 post-skip routing, G-ARCH-001/ac-08 working-tree-inclusive HEAD diff), so they are plan-level design disagreements dispositioned at review consolidation, not verification gaps against the plan contract; all fail in the safe direction (over-review, never under-review)."
+}

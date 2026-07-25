@@ -35,6 +35,14 @@ export type {
 } from './helpers/resolve-brain-root.ts'
 export { writeAtomicFile } from './helpers/write-atomic.ts'
 export {
+    formatHandoffFailure,
+    resolveHandoffTransport,
+} from './helpers/handoff-transport.ts'
+export type {
+    ResolveHandoffTransportOptions,
+    ResolvedHandoffTransport,
+} from './helpers/handoff-transport.ts'
+export {
     buildMuninnInstruction,
     buildMuninnProcedure,
     ROOT_ID_PLACEHOLDER,
@@ -60,6 +68,14 @@ export { lucaBrainSetRootTool } from './handlers/luca-brain-set-root.ts'
 export { lucaBranchGuardTool } from './handlers/luca-branch-guard.ts'
 export { lucaChecksRunTool } from './handlers/luca-checks-run.ts'
 export { lucaConfidenceLogTool } from './handlers/luca-confidence-log.ts'
+export { lucaHandoffAcceptTool } from './handlers/luca-handoff-accept.ts'
+export {
+    describeCompleteHopFailure,
+    lucaHandoffCompleteTool,
+} from './handlers/luca-handoff-complete.ts'
+export { lucaHandoffListTool } from './handlers/luca-handoff-list.ts'
+export { lucaHandoffRejectTool } from './handlers/luca-handoff-reject.ts'
+export { lucaHandoffSendTool } from './handlers/luca-handoff-send.ts'
 export { lucaPhaseAdvanceTool } from './handlers/luca-phase-advance.ts'
 export { lucaPhaseArchiveTool } from './handlers/luca-phase-archive.ts'
 export { lucaPhaseCurrentTool } from './handlers/luca-phase-current.ts'
@@ -82,6 +98,8 @@ export { lucaPreferencesWriteTool } from './handlers/luca-preferences-write.ts'
 export { lucaRepoCleanupApplyTool } from './handlers/luca-repo-cleanup-apply.ts'
 export { lucaRoadmapCreateTool } from './handlers/luca-roadmap-create.ts'
 export { lucaRoadmapReadTool } from './handlers/luca-roadmap-read.ts'
+export { lucaSnapshotCreateTool } from './handlers/luca-snapshot-create.ts'
+export { lucaSnapshotDiffTool } from './handlers/luca-snapshot-diff.ts'
 export { lucaStateAdvanceTool } from './handlers/luca-state-advance.ts'
 export { lucaStateClaimOwnerTool } from './handlers/luca-state-claim-owner.ts'
 export { lucaStateReadTool } from './handlers/luca-state-read.ts'

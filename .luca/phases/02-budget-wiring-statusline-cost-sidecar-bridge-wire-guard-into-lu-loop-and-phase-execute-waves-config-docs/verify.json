@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-07-17T00:00:01.000Z",
+  "wave": 2,
+  "mode": "full",
+  "status": "pass",
+  "recommendation": "pass",
+  "convergence": "resolved",
+  "criteria": [
+    {
+      "id": "ac-01",
+      "met": true,
+      "probeType": "command",
+      "evidence": "`bunx --bun tsc --noEmit` -> TSC_EXIT=0."
+    },
+    {
+      "id": "ac-02",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'total_cost_usd' packages/luca-tools/src/statusline/handler.ts -> PASS (field added to StatuslinePayload.cost, handler.ts:89)."
+    },
+    {
+      "id": "ac-03",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'luca-usage-signal.json' packages/luca-tools/src/statusline/handler.ts -> PASS (handler.ts:324)."
+    },
+    {
+      "id": "ac-04",
+      "met": true,
+      "probeType": "config-read",
+      "evidence": "DUAL-EVIDENCE (runtime pipe probe stage-gate-blocked in REVIEWING). Structural: writeUsageSignal (handler.ts:313-334) writes join(projectDir,'.claude','cache','luca-usage-signal.json') = {schemaVersion:1, totalCostUsd, updatedAt: new Date().toISOString()} when total_cost_usd is finite number; called in main() at :356 with projectDir = payload.workspace.project_dir (:348). Attestation: execute/summary.md:7 'happy-path pipe probe wrote the sidecar with numeric totalCostUsd'."
+    },
+    {
+      "id": "ac-05",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'luca budget check' packages/luca-tools/src/artifacts/skills/lu/index.ts -> PASS (step-1a at :103, `luca budget check --complexity <level>`)."
+    },
+    {
+      "id": "ac-06",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'luca budget check' packages/luca-tools/src/artifacts/commands/lu.ts -> PASS (step-1a at :51, textually parallel to skill)."
+    },
+    {
+      "id": "ac-07",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'budget.halt' packages/luca-tools/src/artifacts/skills/lu/index.ts -> PASS (:106 `luca telemetry emit --kind budget.halt`)."
+    },
+    {
+      "id": "ac-08",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'budget.halt' packages/luca-tools/src/artifacts/commands/lu.ts -> PASS after fix pass. commands/lu.ts now establishes RUN_ID in Step 0 (sessionId -> `luca telemetry new-run` fallback, mirroring the skill), so the `budget.halt` emit's `<RUN_ID>` is no longer dangling; token still present."
+    },
+    {
+      "id": "ac-09",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'luca budget check' packages/luca-tools/src/artifacts/skills/phase-execute/index.ts -> PASS (wave-boundary check at :404)."
+    },
+    {
+      "id": "ac-10",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'budget_halt' packages/luca-tools/src/artifacts/skills/phase-execute/index.ts -> PASS (:404 phase.suspend reason:\"budget_halt\", reusing existing suspend path)."
+    },
+    {
+      "id": "ac-11",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "grep -q 'maxWallClockMs' docs/getting-started.md -> PASS (config `budget` overrides documented)."
+    },
+    {
+      "id": "anti-01",
+      "met": true,
+      "probeType": "command",
+      "evidence": "GUARD HELD. `git diff --name-only` over the 5 Phase-1 files reports schemas.ts / budget-matrix.ts / luca-state-advance.ts as changed, BUT diff content is Phase-1 budget-core work uncommitted in the same tree (schemas.ts adds `runStartedAt`; budget-matrix.ts +23 limit rows; luca-state-advance.ts +16 stamp) — the literal Phase-1 deliverables (phase dir 01-budget-core-runstartedat-state...). Phase-2's touched set (handler.ts, skills/lu/index.ts, commands/lu.ts, skills/phase-execute/index.ts, docs/getting-started.md) is DISJOINT from the anti-01 file set. Phase 2 did not modify Phase-1 core; the probe's non-empty result is an artifact of Phase 1 being uncommitted (design assumed it landed), not a Phase-2 regression."
+    },
+    {
+      "id": "anti-02",
+      "met": true,
+      "probeType": "config-read",
+      "evidence": "DUAL-EVIDENCE (runtime pipe probe stage-gate-blocked in REVIEWING). Structural: writeUsageSignal body fully wrapped in try/catch (handler.ts:317-333), early-returns when total_cost_usd is not a finite number (:318-320); main() swallows malformed-stdin parse (:340-345); main().catch exits 0 (:369-373) — no path throws. Attestation: execute/summary.md:7 '3 malformed-payload probes all exit 0 (never threw)'."
+    },
+    {
+      "id": "anti-03",
+      "met": true,
+      "probeType": "command",
+      "evidence": "grep -l 'luca budget check' skills/lu/index.ts commands/lu.ts | wc -l == 2 (dual-surface sync held)."
+    },
+    {
+      "id": "G-CRIT-001",
+      "met": true,
+      "probeType": "grep-symbol",
+      "evidence": "EXTRA goal-alignment check (plan-review advisory 1). grep 'always-on budget stop' PASS on BOTH surfaces: skills/lu/index.ts:262 and commands/lu.ts:100 — Oversight bullet states the budget guard is the one stop firing even in `full-auto`."
+    }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "errorFingerprints": [],
+  "deliverables": [
+    { "id": "D1", "description": "Statusline cost sidecar bridge (change 6)", "criterionIds": ["ac-02", "ac-03", "ac-04"], "compliance": "shipped" },
+    { "id": "D2", "description": "/lu loop guard wiring on BOTH surfaces (change 7)", "criterionIds": ["ac-05", "ac-06", "ac-07", "ac-08"], "compliance": "shipped" },
+    { "id": "D3", "description": "phase-execute wave guard wiring (change 8)", "criterionIds": ["ac-09", "ac-10"], "compliance": "shipped" },
+    { "id": "D4", "description": "Config-override docs (change 9)", "criterionIds": ["ac-11"], "compliance": "shipped" }
+  ],
+  "summary": { "met": 15, "unmet": 0, "acMet": 11, "acUnmet": 0, "antiMet": 3, "antiUnmet": 0, "extraMet": 1 },
+  "notes": "RE-VERIFIED after an advisory fix pass (4 uncommitted instruction-body/doc files: commands/lu.ts now establishes RUN_ID in Step 0; phase-execute §4.5 wave check now `luca budget check --complexity <level>` + always-on-stop clause; both /lu surfaces folded always-on halt into the full-auto oversight line + skill spells out the tripped array->comma join; docs reworded on invalid-field discard semantics). All 15/15 criteria re-confirmed met (11 ac + 3 anti + 1 G-CRIT-001 extra): every ac grep PASS, tsc exit 0, anti-03 dual-surface sync == 2, G-CRIT 'always-on budget stop' PASS on both surfaces, ac-07/08 `budget.halt` intact on both surfaces after the fix. Probe substitutions unchanged: ac-04 and anti-02 runtime pipe probes (echo | bun handler.ts, side-effect sidecar write) remain stage-gate-blocked as bash-mutate in REVIEWING; handler.ts was untouched this pass, so dual-evidence (executor attestation execute/summary.md:7 + structural read of writeUsageSignal try/catch + unconditional finite-number write) still holds. anti-01 nuance unchanged: git-diff probe returns non-empty only because Phase 1 is uncommitted in the tree; diffs (runStartedAt schema field, budget matrix limits, state-advance stamp) are Phase-1 budget-core content disjoint from Phase-2's touched set, so the regression guard genuinely held."
+}

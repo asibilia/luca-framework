@@ -79,17 +79,12 @@ Otherwise, enforce via the branch-guard surface plus direct git inspection:
    \`\`\`
    luca preferences read --section branching
    \`\`\`
-2. **Inspect current branch directly via git**:
-   \`\`\`
-   git branch --show-current
-   git rev-parse --abbrev-ref HEAD
-   \`\`\`
-   Compare against \`branching.guardedBranches[]\` (runtime fallback \`['main']\`) and \`branching.defaultBranch\`.
-3. **Guard against committing on a protected branch** — call:
+2. **Read the current branch via \`luca branch guard\`**:
    \`\`\`
    luca branch guard
    \`\`\`
-   On \`ok: false\`, stop and report.
+   This single CLI read encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) — do NOT shell out to raw git to discover the current branch. Use its reported \`current\` against \`branching.guardedBranches[]\` (runtime fallback \`['main']\`) and \`branching.defaultBranch\`. The same call also returns \`ok\` for the protected-branch guard below.
+3. **Guard against committing on a protected branch** — reuse the Step 2 result: that same \`luca branch guard\` call already returned \`ok\` (do NOT invoke it a second time — re-deriving a fact you already have). On \`ok: false\`, stop and report.
 4. **Create the feature branch** — if not already on one, switch via \`git switch -c <branchName>\` rendered against the consulted preferences (ticket id, intent slug, conventional-commit type). The policy table tells you the shape.
 
 ## Step 1.5: Historical Context (Optional)
@@ -146,7 +141,7 @@ Only store **significant** decisions: technology selections, architectural patte
 
 ## Step 2.5: Read Research
 
-If research phase ran (complexity MODERATE+ and \`skipResearch\` not set), read \`.luca/phases/<currentPhaseSlug>/research.md\` via the \`Read\` tool. Use findings for task design, risk identification, and verification criteria. If \`research.md\` doesn't exist, proceed without it.
+Consume research.md and context.md first — before probing the codebase. If research phase ran (complexity MODERATE+ and \`skipResearch\` not set), read \`.luca/phases/<currentPhaseSlug>/research.md\` and \`.luca/phases/<currentPhaseSlug>/context.md\` via the \`Read\` tool. Treat research + context as the primary source of repo facts for task design, risk identification, and verification criteria; probe the codebase fresh only to fill gaps those documents leave open. If \`research.md\` doesn't exist, proceed with \`context.md\` alone.
 
 ## Step 3: Roadmap Creation
 
@@ -498,6 +493,7 @@ export const architectMode = defineAgent({
     guidance: {
         verticalSlice: true,
         selfVerify: true,
+        toolEconomy: true,
     },
     telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'confidence-log'],

@@ -1,0 +1,42 @@
+{
+  "name": "@alecsibilia/luca-code",
+  "description": "Local Bun proxy that runs Claude Code on a ChatGPT subscription (OpenAI Responses API). Translates Anthropic Messages <-> OpenAI Responses and launches claude pointed at a loopback gateway.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "Alec Sibilia <sibilia.alec@gmail.com>",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "luca-code": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "src/index.ts",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build": "bun build src/cli.ts --target bun --outfile dist/luca-code.js",
+    "compile": "bun build src/cli.ts --compile --target bun --outfile dist/luca-code",
+    "test": "bun test",
+    "typecheck": "bunx --bun tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "catalog:"
+  },
+  "keywords": [
+    "claude-code",
+    "openai",
+    "chatgpt",
+    "proxy",
+    "bridge",
+    "anthropic",
+    "responses-api"
+  ]
+}

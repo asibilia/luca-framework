@@ -6,6 +6,12 @@ export {
 export type { WriteProjectSkeletonOptions } from './helpers/write-project-skeleton.ts'
 
 export {
+    ensureCompactInstructions,
+    COMPACT_INSTRUCTIONS_HEADER,
+    COMPACT_INSTRUCTIONS_BLOCK,
+} from './helpers/ensure-compact-instructions.ts'
+
+export {
     wireClaudeHooks,
     wireAntigravityHooks,
     wireAntigravityMcp,

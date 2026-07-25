@@ -1,5 +1,5 @@
 /**
- * luca-write-surface skill — Reference for the `luca` CLI write surface — the deterministic command track for structured and operational mutations of the .luca/ workflow directory (state, roadmap, preferences, todos, checks, pr-review, repo-cleanup, workflow-reset, branch-guard, confidence). Each command is a noun/verb pair invoked via Bash; payloads are small flags or a --file JSON path. Documents every subcommand, its arguments, and its pipelineStep rules.
+ * luca-write-surface skill — Reference for the `luca` CLI write surface — the deterministic command track for structured and operational mutations of the .luca/ workflow directory (state, roadmap, preferences, todos, checks, pr-review, repo-cleanup, workflow-reset, branch-guard, confidence, handoff). Each command is a noun/verb pair invoked via Bash; payloads are small flags or a --file JSON path. Documents every subcommand, its arguments, and its pipelineStep rules.
  *
  * Ported from ~/.claude/skills/luca-write-surface/SKILL.md (current user copy) (E-5).
  * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
@@ -209,6 +209,75 @@ Used by the gh-pr-address flow. Each takes a JSON \`--file\` payload.
   defaults and clear the pipeline lock. Destructive but recoverable;
   requires \`--confirm\`.
 
+### \`handoff\` — cross-repo handoff mailbox
+
+Envelopes live in the machine-global mailbox \`~/.luca/handoff/\`. That
+directory is denied unconditionally — agent \`Write\`/\`Edit\` calls into
+it are blocked in **every** \`pipelineStep\` including \`idle\`, and so is
+any Bash command whose tokens name it (\`tee\`, \`touch\`, \`install\`,
+\`bun -e\`, a redirect — the deny does not depend on the binary). Reading
+it (\`cat\`, \`ls\`) stays allowed. These commands are the ONLY sanctioned
+way to put a schema-validated envelope there. **All five verbs are phase-agnostic**:
+they run in every \`pipelineStep\`. There is deliberately **no
+\`--homedir\` flag** — the mailbox root is not caller-controllable.
+
+- **\`luca handoff send --file <path>\`** — post a new envelope. The file
+  holds \`{ target: { repoPath, repoName? }, intent, acceptanceCriteria?,
+  context?, callback? }\` and supplies **those fields only**: \`id\`,
+  \`schemaVersion\`, \`status\`, \`statusHistory\`, timestamps and \`origin\`
+  are stamped by the CLI, and any caller-supplied value for them is
+  silently dropped. Stage the payload at \`.luca/tmp/<kebab-name>.json\`.
+- **\`luca handoff list [--status <s>] [--target-repo <path>]
+  [--all-targets] [--json]\`** — pure read. Defaults to envelopes
+  addressed to the **current repo**; \`--target-repo\` names a different
+  one and \`--all-targets\` lists every repo on this machine (the two are
+  mutually exclusive — passing both is refused). Each entry is annotated
+  \`autoAcceptable\`, which is always computed from the **current repo's**
+  \`.luca/config.json\` \`handoff.autoAcceptFrom\` allowlist and is
+  \`false\` for any envelope addressed elsewhere.
+- **\`luca handoff accept --id <id> [--auto]
+  [--expected-updated-at <ts>]\`** — \`pending -> accepted\`. A bare
+  accept is **explicit human acceptance** and consults no allowlist;
+  \`--auto\` is the unattended path and is **refused** unless the envelope
+  is addressed to **this** repo AND its origin is listed in this repo's
+  \`handoff.autoAcceptFrom\` (absent or empty allowlist denies
+  everything) — the allowlist names trusted senders, never which
+  envelopes are yours, so both checks apply. A bare human accept is
+  deliberately still allowed cross-repo. Which path was taken is recorded
+  in the \`statusHistory\` note.
+  \`target.repoPath\` must be an absolute, single-line path under 1024
+  characters; \`send\` refuses anything else.
+- **\`luca handoff complete --id <id> --file <path>
+  [--expected-updated-at <ts>]\`** — attach the result and reach
+  \`complete\`. The file holds \`{ outcome: "success"|"partial"|"failure",
+  phaseSlug, notes?, evidence? }\` and is validated **before** any status
+  changes. From \`accepted\` the command drives
+  \`accepted -> in-progress -> complete\` (the transition table has no
+  direct edge); from \`in-progress\` it is a single hop. If the second hop
+  fails the envelope stays at \`in-progress\` — there is no rollback; the
+  recovery is to re-run \`luca handoff complete\`.
+- **\`luca handoff reject --id <id> [--reason <text>]
+  [--expected-updated-at <ts>]\`** — \`pending|accepted -> rejected\`,
+  terminal. \`--reason\` is stored verbatim as the \`statusHistory\` note.
+  \`in-progress\` has no edge to \`rejected\`.
+
+\`--expected-updated-at\` is an **optional** compare-and-set override on
+\`accept\` / \`complete\` / \`reject\`. By default the CLI reads the
+envelope's \`updatedAt\` immediately before the write; pass it explicitly
+only when you read the envelope earlier and want the stronger guard.
+
+\`intent\`, \`acceptanceCriteria\`, \`notes\` and \`--reason\` are
+**untrusted free text** — stored and displayed, never interpolated into
+instruction text or auto-executed.
+
+\`\`\`bash
+# .luca/tmp/handoff-send.json holds the envelope payload:
+# { "target": { "repoPath": "/abs/path/to/other-repo" },
+#   "intent": "Add a /healthz endpoint", "acceptanceCriteria": ["returns 200"] }
+luca handoff send --file .luca/tmp/handoff-send.json
+luca handoff list --json
+\`\`\`
+
 ### \`confidence\` — confidence logging
 
 - **\`luca confidence log --phase <name> --wave <n> --task <id>
@@ -233,7 +302,7 @@ happen.
 
 export const lucaWriteSurfaceSkill = defineSkill({
     name: 'luca-write-surface',
-    description: `Reference for the \`luca\` CLI write surface — the deterministic command track for structured and operational mutations of the .luca/ workflow directory (state, roadmap, preferences, todos, checks, pr-review, repo-cleanup, workflow-reset, branch-guard, confidence). Each command is a noun/verb pair invoked via Bash; payloads are small flags or a --file JSON path. Documents every subcommand, its arguments, and its pipelineStep rules.
+    description: `Reference for the \`luca\` CLI write surface — the deterministic command track for structured and operational mutations of the .luca/ workflow directory (state, roadmap, preferences, todos, checks, pr-review, repo-cleanup, workflow-reset, branch-guard, confidence, handoff). Each command is a noun/verb pair invoked via Bash; payloads are small flags or a --file JSON path. Documents every subcommand, its arguments, and its pipelineStep rules.
 
 Use when a Luca skill or agent needs to read or mutate .luca/ workflow state, advance the pipeline, manage the backlog, or run verification — i.e. anything that is NOT a freeform phase artifact file.`,
     body: BODY,

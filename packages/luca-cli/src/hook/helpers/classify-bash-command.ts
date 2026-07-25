@@ -2,6 +2,7 @@ import { parse, type ParseEntry } from 'shell-quote'
 
 export type BashCategory =
     | 'bash-readonly'
+    | 'bash-stage'
     | 'bash-mutate'
     | 'bash-commit'
     | 'luca-write'
@@ -93,12 +94,22 @@ const GIT_READONLY_SUBCOMMANDS = new Set([
     'config',
     'describe',
     'blame',
+    // Worktree/index file listing (e.g. `git ls-files --others
+    // --exclude-standard`) — genuinely read-only regardless of caller: it
+    // never mutates files, the index, or repo state. (The snapshot capture
+    // path does NOT go through this classifier — it spawns
+    // read-tree/add -A/write-tree directly against a temp index.)
+    'ls-files',
 ])
 
 const GIT_COMMIT_SUBCOMMANDS = new Set(['commit', 'push', 'tag'])
 
+// NOTE: `add` is deliberately NOT here — it classifies as `bash-stage` via
+// the dedicated branch in classifySubcommand. Staging is not committing, and
+// the finalize step must stage the changeset it authored. Re-adding it here
+// would both make the `bash-stage` branch unreachable and re-block `git add`
+// in FINALIZING.
 const GIT_MUTATE_SUBCOMMANDS = new Set([
-    'add',
     'mv',
     'rm',
     'checkout',
@@ -153,6 +164,10 @@ const MUTATE_COMMANDS = new Set([
     'touch',
     'ln',
     'install',
+    // `tee` writes every positional arg (see the READONLY_COMMANDS note) —
+    // listed here so step 7 extracts those destinations into targetPaths
+    // instead of letting it fall to the unknown-command default with none.
+    'tee',
     'unlink',
     'chmod',
     'chown',
@@ -207,14 +222,34 @@ const ALWAYS_DENIED_COMMANDS = new Set(['eval', 'source', '.'])
 // safe to allow in any phase. Without these, `luca version`, `luca telemetry`,
 // etc. fell through to the unknown-command → bash-mutate path and got blocked
 // at plan/REVIEWING (v13 run report, M1).
-const LUCA_TOPLEVEL_READ = new Set(['version', 'telemetry', 'rules'])
+export const LUCA_TOPLEVEL_READ: ReadonlySet<string> = new Set([
+    'version',
+    'telemetry',
+    'rules',
+    'graph',
+    'status',
+])
 
 // Top-level `luca` commands that mutate (or may mutate). Classified as
 // `luca-write` — the matrix allows `luca-write` in every non-IDLE phase and
 // each command self-enforces its own preconditions, so they are never wrongly
-// blocked as a generic bash-mutate (e.g. `luca repair`). `hook` is omitted
-// deliberately (internal; invoked by wrappers, not agents).
-const LUCA_TOPLEVEL_WRITE = new Set([
+// blocked as a generic bash-mutate (e.g. `luca repair`).
+//
+// Deliberately UNCLASSIFIED (fall through to the conservative
+// unknown-command → bash-mutate path, blocked in gated phases). The
+// `luca-write` classification rests on the invariant that the command
+// self-enforces its own phase preconditions — these do NOT:
+//   - `hook`: internal; invoked by shell wrappers, not agents.
+//   - `statusline`: `install` rewrites `~/.claude/settings.json`
+//     (harness settings, no phase guard).
+//   - `start` / `stop`: runner daemon lifecycle; `stop` unconditionally
+//     calls forcePipelineUnlock (deletes .luca/lock.json, no phase guard).
+//   - `code`: Claude Code runner launcher (no phase guard).
+// All are harness/user-invoked, never called from instruction bodies, so
+// blocking them in gated phases is the intended pre-phase status quo.
+// The registry-completeness test's DELIBERATELY_UNCLASSIFIED set mirrors
+// this list — keep the two in sync.
+export const LUCA_TOPLEVEL_WRITE: ReadonlySet<string> = new Set([
     'init',
     'vault:init',
     'retro',
@@ -225,7 +260,13 @@ const LUCA_TOPLEVEL_WRITE = new Set([
 ])
 
 // Read-only `luca` verbs — these do not mutate state.
-const LUCA_READ_VERBS = new Set([
+//
+// Cross-noun leak (G-ARCH-001): these verbs are GLOBAL — any noun's verb
+// matching a name in this list classifies `bash-readonly`, regardless of the
+// noun. A FUTURE noun that registers a MUTATING verb by one of these names
+// (e.g. a hypothetical `foo summary` that writes) would wrongly classify as
+// read-only — check this list whenever adding verbs to LUCA_NOUN_VERBS.
+export const LUCA_READ_VERBS = new Set([
     'read',
     'current',
     'list',
@@ -235,11 +276,14 @@ const LUCA_READ_VERBS = new Set([
     'detect-convergence',
     'regression-check',
     'lint',
+    'summary',
+    'render',
+    'gate',
 ])
 
 // Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
 // noun-group commands registered in src/cli.ts and their leaf subcommands.
-const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
+export const LUCA_NOUN_VERBS: Readonly<Record<string, ReadonlySet<string>>> = {
     state: new Set(['read', 'advance', 'claim-owner', 'set-current-phase']),
     phase: new Set(['current', 'advance', 'archive']),
     roadmap: new Set(['read', 'create']),
@@ -255,11 +299,29 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
     checks: new Set(['run']),
     branch: new Set(['guard']),
     workflow: new Set(['reset']),
-    confidence: new Set(['log']),
+    confidence: new Set(['log', 'read', 'summary', 'render', 'gate']),
     // Read-side surfaces over the per-phase verify.json files.
     verification: new Set(['read', 'aggregate']),
     // Read-only plan-quality linter over a plan.md file.
     plan: new Set(['lint']),
+    // Worktree snapshot capture/compare for the REVIEWING diff gate. Neither
+    // verb is in LUCA_READ_VERBS, so both classify as `luca-write` (legal in
+    // REVIEWING) — intended: `create` writes the snapshot artifact and `diff`
+    // is invoked on the same gated path.
+    snapshot: new Set(['create', 'diff']),
+    // Budget guard over the run's token/cost spend. `check` lazily stamps
+    // `runStartedAt` into state.json on first invocation — a genuine write —
+    // so it is deliberately NOT in LUCA_READ_VERBS and classifies as
+    // `luca-write` (legal in every non-IDLE phase), mirroring the `snapshot`
+    // precedent above.
+    budget: new Set(['check']),
+    // Cross-repo handoff mailbox. `list` is already a global LUCA_READ_VERBS
+    // member so it classifies `bash-readonly`; `send`, `accept`, `complete`
+    // and `reject` are deliberately NOT read verbs — each writes an envelope
+    // into `~/.luca/handoff/` — so they classify `luca-write` (legal in every
+    // non-IDLE phase, with the CLI self-enforcing the matching
+    // `WRITE_COMMAND_PHASES['handoff <verb>']` entry).
+    handoff: new Set(['send', 'list', 'accept', 'complete', 'reject']),
 }
 
 /**
@@ -269,17 +331,29 @@ const LUCA_NOUN_VERBS: Record<string, Set<string>> = {
  * falls through to the generic command classification).
  */
 function classifyLucaCommand(rest: string[]): BashCategory | undefined {
-    // `--help`/`-h`/`--version` anywhere → usage/version output, which
-    // mutates nothing. This holds for ANY noun (e.g. `luca verification --help`,
-    // `luca state --help`), so check it before noun resolution — otherwise a
-    // help probe on a noun with no read verb fell through to bash-mutate.
+    // `--help`/`-h` anywhere → usage output, which mutates nothing. citty
+    // intercepts these flags at ANY position and prints usage WITHOUT running
+    // the command, so the shortcut holds for any noun (e.g. `luca
+    // verification --help`, `luca state --help`) — check before noun
+    // resolution, otherwise a help probe on a noun with no read verb fell
+    // through to bash-mutate.
     //
     // NOTE: `-v` is deliberately EXCLUDED. The CLI uses `-v` as an alias for
     // `--verbose` (e.g. `luca doctor`), not `--version`. Treating `-v` as a
     // version probe would classify a mutating command like `luca doctor --fix
-    // -v` as read-only and let it bypass the stage gate. Only the unambiguous
-    // help/version flags get the shortcut.
-    if (rest.some((t) => ['--help', '-h', '--version'].includes(t))) {
+    // -v` as read-only and let it bypass the stage gate.
+    if (rest.some((t) => t === '--help' || t === '-h')) {
+        return 'bash-readonly'
+    }
+    // NOTE: `--version` gets the shortcut ONLY in its sole-argument form
+    // (`luca --version`). Unlike `--help`, citty 0.2.2 handles `--version`
+    // only when it is the single top-level argument — runCommand has no
+    // version interception, so `luca stop --version` or `luca --version stop`
+    // still EXECUTES the subcommand (stop → forcePipelineUnlock). An
+    // anywhere-match here would classify those runs read-only and let them
+    // bypass the stage gate — same bypass class as the `-v` exclusion above,
+    // other flag.
+    if (rest.length === 1 && rest[0] === '--version') {
         return 'bash-readonly'
     }
     const noun = rest.find((t) => !t.startsWith('-'))
@@ -312,16 +386,24 @@ function classifyLucaCommand(rest: string[]): BashCategory | undefined {
 // Severity ordering for max-merge across subcommands
 // ---------------------------------------------------------------------------
 
-const SEVERITY: Record<BashCategory, number> = {
+export const SEVERITY: Record<BashCategory, number> = {
     'bash-readonly': 0,
+    // `bash-stage` sits STRICTLY below `bash-mutate`. `maxCategory` keeps the
+    // first-seen on a tie, so a tier tie with `bash-mutate` would launder
+    // `git add . && rm -rf build` into FINALIZING as `bash-stage` (where
+    // `bash-mutate` is denied). Tier 1 keeps staging distinctly less severe
+    // than any file/repo mutation.
+    'bash-stage': 1,
     // `luca-write` and `bash-mutate` share a tier: both are "mutating" but
     // neither escalates past a commit. In a mixed pipeline `maxCategory`
     // keeps the first-seen at equal severity — acceptable, mixed
-    // `luca`+mutate command strings are not a real pattern.
-    'luca-write': 1,
-    'bash-mutate': 1,
-    'bash-commit': 2,
-    denied: 3,
+    // `luca`+mutate command strings are not a real pattern. This shared tier
+    // is deliberate: bumping only `bash-mutate` would flip
+    // `luca checks run && rm -f x` from `luca-write` to `bash-mutate`.
+    'luca-write': 2,
+    'bash-mutate': 2,
+    'bash-commit': 3,
+    denied: 4,
 }
 
 function maxCategory(a: BashCategory, b: BashCategory): BashCategory {
@@ -428,6 +510,26 @@ function classifySubcommand(sub: Subcommand): {
             return {
                 category: 'bash-commit',
                 targetPaths: targetsFromRedirect,
+            }
+        }
+        // `git add` — staging, not committing. Modeled on the mutate branch
+        // (NOT the commit branch): it must keep the `lastNonFlag(rest)` target
+        // extraction so the hook's always-denied path check still sees the
+        // staged path (the commit branch returns targetPaths: [] and would
+        // silently drop it). `bash-stage` is allowed in EXECUTING/FINALIZING
+        // so finalize can stage the changeset it authored. An output redirect
+        // escalates to `bash-mutate` (mirroring the readonly/gh siblings): the
+        // shell `>` truncates the redirect target, so `git add . > src/x.ts`
+        // is a write, not a stage, and must be denied where `bash-stage` is
+        // allowed but `bash-mutate` is not.
+        if (sub1 === 'add') {
+            const target = lastNonFlag(rest)
+            return {
+                category: sub.redirect ? 'bash-mutate' : 'bash-stage',
+                targetPaths: [
+                    ...targetsFromRedirect,
+                    ...(target ? [target] : []),
+                ],
             }
         }
         if (GIT_MUTATE_SUBCOMMANDS.has(sub1)) {
@@ -577,17 +679,24 @@ function classifySubcommand(sub: Subcommand): {
 
     // 7. Single-token mutate
     if (MUTATE_COMMANDS.has(cmd)) {
-        // For cp/mv/ln, target = last positional arg.
+        // For cp/mv/ln/install, target = last positional arg. `install` was
+        // previously extracted-from-nothing, so
+        // `install -m 644 f ~/.luca/handoff/x.json` reached the hook with an
+        // empty targetPaths list and its always-denied path loop had nothing
+        // to inspect.
         const lastArg =
-            cmd === 'cp' || cmd === 'mv' || cmd === 'ln'
+            cmd === 'cp' || cmd === 'mv' || cmd === 'ln' || cmd === 'install'
                 ? lastNonFlag(rest)
                 : undefined
+        // `tee` writes EVERY positional arg, not just the last one.
+        const teeTargets =
+            cmd === 'tee' ? rest.filter((a) => !a.startsWith('-')) : []
         // For sed -i FILE, target = file after -i
         const sedTarget =
             cmd === 'sed' && rest.includes('-i')
                 ? rest[rest.length - 1]
                 : undefined
-        const additionalTargets = [lastArg, sedTarget].filter(
+        const additionalTargets = [lastArg, sedTarget, ...teeTargets].filter(
             (x): x is string => Boolean(x)
         )
         return {
@@ -632,6 +741,42 @@ function extractFilenameFlag(args: string[]): string | undefined {
         }
     }
     return undefined
+}
+
+/**
+ * Cross-repo mailbox path shapes, matched ANYWHERE inside a token.
+ *
+ * Per-command target extraction (redirects, `git add`, `cp`/`mv`/`ln`,
+ * `sed -i`, `tee`, `install`, `playwright-cli --filename`) can only ever cover
+ * the binaries it knows. Everything else — `dd`, `bun -e`, `python -c`, a
+ * shell function, tomorrow's tool — falls to the unknown-command default with
+ * `targetPaths: []`, and the hook's always-denied path loop then has nothing
+ * to inspect while `bash-mutate` is allowed in EXECUTING. That let
+ * `echo '<forged>' | tee ~/.luca/handoff/x.json` (or a `Bun.write` one-liner)
+ * plant an arbitrary envelope in the machine-global mailbox during a normal
+ * execute wave.
+ *
+ * This scan is BINARY-INDEPENDENT: any token mentioning the mailbox
+ * contributes its path to `targetPaths`, so `classifyWritePath`'s
+ * unconditional `.luca/handoff` deny fires no matter what command carried it.
+ * The leading/trailing character classes stop at whitespace and quote/operator
+ * characters, so a path embedded in a `-e` script string is still recovered.
+ * Segment anchoring (`foo.luca/handoff` must NOT match) is left to
+ * `toLucaRelative`/`classifyWritePath`; an over-broad extraction here is inert
+ * because a non-denied path in `targetPaths` changes no decision.
+ */
+const MAILBOX_PATH_RE = /[^\s"'`;|&()<>]*\.luca\/handoff(?:\/[^\s"'`;|&()<>]*)?/g
+
+/** Every mailbox-shaped path mentioned by any token of the command. */
+function extractMailboxPaths(tokens: string[]): string[] {
+    const found: string[] = []
+    for (const token of tokens) {
+        for (const match of token.matchAll(MAILBOX_PATH_RE)) {
+            const path = match[0]
+            if (path && !found.includes(path)) found.push(path)
+        }
+    }
+    return found
 }
 
 function lastNonFlag(args: string[]): string | undefined {
@@ -736,7 +881,16 @@ export function classifyBashCommand(cmd: string): ClassifyBashResult {
         const r = classifySubcommand(sub)
         category = maxCategory(category, r.category)
         if (r.category === 'denied' && !reason) reason = r.reason
-        for (const p of r.targetPaths) {
+        const paths = [...r.targetPaths]
+        // Binary-independent mailbox scan (see MAILBOX_PATH_RE): the deny must
+        // not depend on this command having a target extractor. Scoped to
+        // subcommands that can WRITE — a `bash-readonly` stage (`cat`/`ls` on
+        // the mailbox) and the sanctioned `luca-write` CLI itself are left
+        // alone, so inspecting the mailbox stays possible.
+        if (r.category !== 'bash-readonly' && r.category !== 'luca-write') {
+            paths.push(...extractMailboxPaths(sub.tokens))
+        }
+        for (const p of paths) {
             if (!targetPaths.includes(p)) targetPaths.push(p)
         }
     }

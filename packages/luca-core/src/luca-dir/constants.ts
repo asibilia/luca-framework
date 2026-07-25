@@ -31,11 +31,12 @@ export const REVIEWER_NAME_RE = /^[a-z][a-z0-9-]*[a-z0-9]$/
 // kebab/alphanumeric token.
 export const RUN_ID_RE = /^[A-Za-z0-9_-]+$/
 
-// tmp/ handoff file: a kebab-case basename with a .json extension.
+// tmp/ handoff file: a kebab-case basename with a .json or .md extension.
 // These are ephemeral, repo-scoped payload files that bridge an LLM
 // orchestrator and the deterministic `luca` CLI (`--file <path>`); they
-// are NOT pipeline artifacts. Examples: "roadmap.json", "pr-findings.json"
-export const TMP_FILE_RE = /^[a-z][a-z0-9-]*\.json$/
+// are NOT pipeline artifacts. Examples: "roadmap.json", "pr-findings.json",
+// "pr-body-draft.md"
+export const TMP_FILE_RE = /^[a-z][a-z0-9-]*\.(?:json|md)$/
 
 // tmp/previews/ scratch file: a kebab-case basename with any single
 // extension. These are ephemeral, repo-scoped, gitignored browser previews

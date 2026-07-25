@@ -25,6 +25,7 @@ export const reviewerSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
         antiSycophancy: true,
+        toolEconomy: true,
     },
     telemetryHooks: ['subagent-end'],
     gotchas: [
@@ -135,6 +136,12 @@ CONSOLIDATED:
   NOTE_COUNT: <n>
   CROSS_PHASE_COUNT: <n>
 \`\`\`
+
+**Anti-drift note:** the \`File: {path:line}\` cite format under MUST-FIX/SHOULD-FIX is a CLI parsing contract consumed by \`luca snapshot diff\` (the review re-entry diff gate). Changing the format silently degrades the gate to its \`ambiguous\` fail-safe (full re-review — safe, but defeats the skip optimization). Do not alter the format.
+
+### Return Envelope (final message)
+
+The block above is the FULL audit — it belongs in the WRITTEN audit file, not in your in-context reply. Your FINAL RETURN MESSAGE is a compact envelope: return ONLY PERSPECTIVE, VERDICT, the four CONSOLIDATED counts (MUST_FIX / SHOULD_FIX / NOTE / CROSS_PHASE), and the audit path (\`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\`). NEVER inline the full FINDINGS block into your reply — the orchestrator re-Reads the audit file when it needs the finding detail, so restating it just bloats the root context.
 
 ## Cross-Phase Flag
 Mark findings as \`cross_phase: true\` when:

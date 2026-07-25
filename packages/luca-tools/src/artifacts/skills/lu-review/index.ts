@@ -24,6 +24,23 @@ Run \`luca state read\`. The review step has exactly one legal entry: \`verify �
 
 Run \`luca phase current\` to get the active slug. If no phase is active, abort.
 
+## Re-run gate
+
+Applies ONLY when \`.luca/tmp/review-prefix-tree.json\` exists — i.e., a previous review pass directed the user back to \`/phase-execute\` and captured a pre-fix worktree snapshot (Aggregate below). **ABSENT check**: if the payload file is MISSING, the snapshot is ABSENT → this is a first pass, skip this gate entirely and run the full review (run the reviewers). That is the ONLY body-side check — ALL validation (phase mismatch, unresolvable tree, parse failures) is delegated to the CLI; never short-circuit on payload contents here.
+
+The gate may skip round-2 — the reviewer fan-out below — but **only when provably safe**. When in doubt, re-review.
+
+1. Run \`luca snapshot diff\`. The CLI rebuilds the current worktree snapshot tree, performs the tree-to-tree compare against the stashed snapshot tree (\`.luca/\` excluded), parses the prior MUST-FIX and SHOULD-FIX \`File:line\` cites from the previous pass's \`audits/<reviewer>.md\` files, and returns a verdict: \`empty\` | \`zero-overlap\` | \`overlap\` | \`ambiguous\`. The command also CONSUMES the payload — consume-once lives in the CLI, so do NOT delete the file yourself; every loop-back re-creates a fresh snapshot (Aggregate below).
+2. Act on the verdict:
+   - \`empty\` or \`zero-overlap\` → skip round-2 (the reviewer fan-out).
+   - \`overlap\` or \`ambiguous\` → full re-review (run the reviewers).
+
+**Post-skip routing** (when the gate skips round-2):
+
+1. Capture every unresolved MUST-FIX and SHOULD-FIX item as a backlog todo: \`luca todo add --status backlog --source review-finding …\` — nothing is lost.
+2. Note the skip reason (verdict \`empty\` or \`zero-overlap\`, citing the snapshot tree sha) in the active phase's audit artifact.
+3. Advance with \`luca state advance --to-step learn\`. A skip proceeds toward learn — it NEVER loops back into this gate.
+
 ## Run the reviewers
 
 Spawn the \`reviewer\` subagent via the \`Agent\` tool — once per perspective, in parallel:
@@ -45,7 +62,7 @@ When all reviewers return, summarize for the user:
 - Total MUST-FIX / SHOULD-FIX / NOTE counts across audits
 - Whether any reviewer returned \`REQUEST_CHANGES\`
 
-If there are MUST-FIX findings, the phase is not ready to advance — direct the user back to \`/phase-execute\` to address them (the \`verify → checks → execute\` loop-back path). If all reviewers APPROVE, advance with \`luca state advance --to-step learn\`.
+If there are MUST-FIX findings, the phase is not ready to advance — first run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — then direct the user back to \`/phase-execute\` to address them (the \`verify → checks → execute\` loop-back path). The re-run gate consumes this snapshot on the next review pass. If all reviewers APPROVE, advance with \`luca state advance --to-step learn\`.
 
 ## What you must NOT do
 

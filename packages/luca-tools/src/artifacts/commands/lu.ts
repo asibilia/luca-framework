@@ -26,6 +26,13 @@ Run \`luca state read\`. Branch on \`pipelineStep\`:
 
 If the user passed a request but the pipeline is already mid-flight, surface that to the user and ask whether to resume the current run or finish it first — do NOT silently discard either.
 
+**Run id for telemetry.** Establish \`RUN_ID\` ONCE here and reuse it as \`--run-id\` on every \`luca telemetry emit\` below (it also names the per-run log \`.luca/telemetry/<RUN_ID>.jsonl\`). It is the state's \`sessionId\`; if that is empty, mint one with \`luca telemetry new-run\`:
+
+\`\`\`bash
+RUN_ID=$(luca state read | jq -r '.sessionId // empty')
+[ -z "$RUN_ID" ] && RUN_ID=$(luca telemetry new-run)
+\`\`\`
+
 ## Triage
 
 Triage runs once, at the start of a run. It is inline here — there is no separate triage skill.
@@ -48,12 +55,16 @@ Triage runs once, at the start of a run. It is inline here — there is no separ
 Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \`idle\`):
 
 1. Run \`luca state read\` to get the current \`pipelineStep\`.
+1a. **Budget guard (always-on stop).** Run \`luca budget check --complexity <level>\` and parse \`.status\` (always exits 0). This fires ONLY here, at the top-of-loop clean boundary — \`state.json\` is already resumable via Step 0, so nothing mid-flight is left dangling.
+   - \`ok\` → continue to step 2.
+   - \`warn\` → note the \`tripped\` dimensions in your reasoning (surface once to the user if you haven't) and keep going.
+   - \`halt\` → **do NOT advance the pipeline.** Checkpoint-and-pause: (a) invoke \`Skill(skill: "lu-handoff")\` (or persist a resumable \`session:*\` handoff memory to the repo vault) capturing the current \`pipelineStep\`/\`currentPhase\`, the verdict's \`tripped\` dimensions, and the next action; (b) emit \`luca telemetry emit --kind budget.halt --run-id <RUN_ID> --meta '{"tripped":"<dims>","status":"halt"}'\` — the verdict's \`tripped\` is a string array, so join it into a single comma-separated string for \`<dims>\` (e.g. \`wallClock,toolCalls\`); the \`--meta\` JSON must stay single-line and quote-free; (c) surface a paste-ready resume message ("Budget guard tripped (<dims>). Run checkpointed at step <step>; re-run /lu to resume."). Then END YOUR TURN.
 2. Run the step using the table below.
 3. Advance to the next step with \`luca state advance --to-step <step>\`. Transitions are validated against the pipeline-transitions table — illegal jumps are rejected.
 
 | Step          | How to run it                                                              |
 |---------------|----------------------------------------------------------------------------|
-| \`research\`    | Spawn \`researcher\` (Agent tool). Persist its output by writing \`research.md\` with the \`Write\` tool to the canonical phase path (get the dir from \`luca phase current\`). |
+| \`research\`    | Get the phase dir from \`luca phase current\` and pass it to \`researcher\` (Agent tool) so **it writes \`research.md\` itself**; hold ONLY the compact summary it returns. Do NOT inline the researcher's full findings or re-write the file yourself — the full findings transiting your context is the largest per-phase context bloat (see \`docs/decisions/orchestrator-context-pruning.md\`). |
 | \`discuss\`     | Invoke the \`/phase-discuss\` skill.                                         |
 | \`architect\`   | Lightweight synthesis: read research + context, confirm the plan-ready brief. Writes nothing — the downstream \`plan\` / \`plan-review\` steps own the plan write. Advance to \`plan\`. |
 | \`plan\`        | Invoke the \`/phase-plan\` skill.                                            |
@@ -62,7 +73,7 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 | \`checks\`      | Run \`luca checks run --file .luca/tmp/checks.json\` (stage the commands array there — never in shared /tmp/) with the project's typecheck (and tests, if present). On failure, loop back to \`execute\`. |
 | \`verify\`      | Spawn \`verifier\` (Agent tool). On \`recommendation: fix\`, loop back to \`checks\`; on \`escalate\`, stop and surface to the user. |
 | \`review\`      | Spawn \`reviewer\` (Agent tool) — one per perspective, in parallel.     |
-| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access). FIRST resolve the repo vault once: read \`.luca/config.json\` → \`muninn.vault\` (fallback \`"default"\`). Then for each \`TO_PERSIST\` entry, take its \`vault:\` value and substitute the literal placeholder \`<repo-vault>\` (or any non-\`default\` placeholder the learner emitted) with that resolved name — a literal \`<repo-vault>\`/\`repo_vault\` must NEVER be passed to muninn. Call \`mcp__muninn__muninn_remember_batch\` with the substituted vaults (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the resolved repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\`; last phase → advance to \`finalize\`. |
+| \`learn\`       | Spawn \`learner\` (Agent tool); it writes \`learn.md\` and returns a \`TO_PERSIST\` block. **You persist those learnings to MuninnDB** (subagents have no MCP access). FIRST resolve the repo vault once: read \`.luca/config.json\` → \`muninn.vault\` (fallback \`"default"\`). Then for each \`TO_PERSIST\` entry, take its \`vault:\` value and substitute the literal placeholder \`<repo-vault>\` (or any non-\`default\` placeholder the learner emitted) with that resolved name — a literal \`<repo-vault>\`/\`repo_vault\` must NEVER be passed to muninn. Call \`mcp__muninn__muninn_remember_batch\` with the substituted vaults (\`default\` for \`pattern:\`/\`pitfall:\`/\`procedure:\`, the resolved repo vault for \`convention:\`/\`decision:\`), deduping against existing memories. Then: more phases remain → run \`luca phase advance\`, then advance to \`plan\` and **hand off at the phase boundary** (invoke \`Skill(skill: "lu-handoff")\` to persist the \`session:phase-boundary-handoff\` memory) — in \`checkpoint\`/\`human-in-loop\` this is the post-\`learn\` pause: surface the \`/compact\` command and yield; \`full-auto\` continues in-turn (no re-invoker yet). Last phase → advance to \`finalize\` (no boundary yield). See \`docs/decisions/orchestrator-context-pruning.md\`. |
 | \`finalize\`    | Spawn the \`finalize\` agent (Agent tool): gap detection, postmortem gate, PR creation, milestone close (invokes \`/milestone-complete\` for the versioned snapshot + phase archive). On a gap/postmortem block it re-enters via \`--to-step execute\`/\`review\`; on success it resets the run with \`--to-step idle\`. |
 
 ## Confidence Gate (between plan-review and execute)
@@ -90,9 +101,10 @@ After \`plan-reviewer\` returns \`APPROVED\`, run the gate before advancing to \
 
 Read \`oversight\` from \`luca state read\`:
 
-- \`full-auto\` — autonomous: the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable) and CRITICAL safety. All other steps run without interruption.
+- \`full-auto\` — autonomous: the only pauses are confidence-gate \`ask\` items (low-confidence + unresearchable), CRITICAL safety, and the always-on budget halt (see below). All other steps run without interruption.
 - \`checkpoint\` — pause after \`plan-review\` (post-gate), \`verify\`, and \`learn\` for user confirmation; confidence-gate \`ask\` items also pause.
 - \`human-in-loop\` — pause after every step; confidence-gate \`ask\` items pause within the plan-review step as well.
+- **always-on budget stop** — the top-of-loop budget guard (step 1a) is the one stop that fires even in \`full-auto\`: a \`halt\` verdict checkpoints-and-pauses regardless of oversight mode. Wall-clock, tool-call, and cost ceilings apply in every mode.
 
 ## What you must NOT do
 
