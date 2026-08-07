@@ -4,18 +4,21 @@
  * Pairs with todo-ingest: ingest plans and persists todos, goal-brief turns
  * them into a compact prompt the user pastes into `/goal`.
  *
- * Design notes (both learned from a real failed run of its predecessor,
- * which was named `todo-execute` and went straight into implementing):
- * - The skill NEVER executes. The prior name literally said "execute" and
- *   its description sanctioned "or have run directly as a workflow", so the
- *   model collapsed offer-then-run into run. The name now describes the
- *   artifact, the run branch is gone, and the hard stop sits near the top
- *   (mirroring todo-ingest, which held at 100% across three eval runs).
- * - `/goal` has a hard length cap, so the brief targets ~200 words. The
- *   executing team shares this environment and can read the backlog itself,
- *   so the brief carries only what it cannot re-derive: wave order,
- *   same-file conflicts, blocked work, and the rejected approaches from the
- *   ingestion session memory.
+ * Design notes, all earned from A/B evaluation and one real dogfood run:
+ * - The skill NEVER executes. Given go-ahead phrasing against a populated
+ *   backlog, unaided baselines implemented the work every time — editing
+ *   source, writing tests, spawning executors. The boundary has to be stated
+ *   early or it does not exist. Its predecessor was named `todo-execute` and
+ *   did exactly that.
+ * - `/goal` caps at 4000 chars. Real briefs land near 1500, and the headroom
+ *   is deliberately not spent: the executing team shares this environment and
+ *   can read the backlog itself, so the brief carries only what it cannot
+ *   re-derive — wave order, same-file conflicts, blocked work, rejected
+ *   approaches, and premise corrections.
+ * - Open decision todos are routed to the user, never staffed. Nobody can
+ *   staff "decide which approach we want".
+ * - Inferences the backlog does not record are marked as the composer's own,
+ *   because the executing team has no way to check them otherwise.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
@@ -32,7 +35,7 @@ workflow team along the real dependency graph, with adversarial verification bui
 0. LOAD     → pending todos, ingestion memory, conversation framing
 1. GRAPH    → waves from the dependency links; find blockers
 2. COMPRESS → keep only what the executing team cannot re-derive
-3. COMPOSE  → the /goal prompt, ~200 words
+3. COMPOSE  → the /goal prompt, ~250 words
 4. DELIVER  → show the prompt block; stop
 \`\`\`
 
@@ -82,10 +85,11 @@ what seems related. Todos with no unmet dependencies form wave 1; each later wav
 those unblock.
 
 **Open decision todos.** If ingestion left a \`critical\` decision todo — a question that
-couldn't be answered, filed as a blocker — everything downstream is not ready to run. Don't
-quietly include the dependents. Name the blocked work in the brief as explicitly out of
-scope, and tell the user which decision is holding it. A brief that runs past an unmade
-decision is how a team builds the wrong thing efficiently.
+couldn't be answered, filed as a blocker — it is *not work for the team*. Nobody can staff
+"decide which approach we want"; answering it is the user's call. Leave the decision todo out
+of the brief entirely, leave its dependents out too, and say in the handoff which decision is
+holding which work. A brief that runs past an unmade decision is how a team builds the wrong
+thing efficiently, and one that hands the decision to an agent gets an answer nobody agreed to.
 
 **File conflicts inside a wave.** Two todos in one wave touching the same file collide when
 run in parallel. Sequence them across waves, or say in the brief that they share a file and
@@ -95,7 +99,7 @@ must not run concurrently. Parallelism that produces merge carnage is slower tha
 
 ## Stage 2 — Compress
 
-**\`/goal\` has a hard length cap. Target about 200 words — a couple of paragraphs.** This is
+**\`/goal\` caps at 4000 characters. Target ~250 words (~2000 chars); never exceed 3000.** This is
 the constraint that shapes the whole brief, so decide what earns its place before writing.
 
 The executing team runs in this same environment. It can read the backlog itself. So don't
@@ -106,11 +110,17 @@ carry anything it can look up:
 | Full acceptance criteria (point at the todo bodies) | Which todos, and the wave order |
 | Per-todo context, file lists, approach | Same-file conflicts within a wave |
 | Anything already in a todo body | Rejected approaches, and why |
+| Detail the backlog already holds | Premise corrections from ingestion |
 | Restating what \`/goal\` already does well | Work that is blocked and must not start |
 | | The verification lens rule |
 
 Pointing beats inlining: "read each todo's body for acceptance criteria" costs eight words and
 replaces several hundred. Identify todos by number and short title, not by pasting them.
+
+The ceiling is not a target. Real briefs land near 1500 chars, and the extra room exists for the
+things below that genuinely cannot be re-derived — not for restoring detail the backlog already
+holds. A longer brief is not a better one: an unaided attempt ran 30% longer than the skill's and
+was not 30% more useful.
 
 If the backlog is too big to summarize in a couple of paragraphs, brief **one wave at a
 time** and say so — a truncated brief that silently drops half the work is worse than an
@@ -148,8 +158,21 @@ Rules:
 - **The "don't relitigate" clause earns its words.** It's the only content that can't be
   recovered from the backlog, and skipping it means paying twice for the same analysis.
   One clause each, not a section.
+- **Carry premise corrections too, not just rejected approaches.** If research overturned how a
+  task was framed — "the handler is NOT tangled, the goal is testability not a rewrite" — that
+  line is scope-creep armour. Without it a team re-derives the original wrong framing from the
+  code and quietly widens the work.
 - **Name the dependency reason when it's short and load-bearing** — "#2 needs #1's extracted
   hook" survives #1 landing differently; bare "#2 needs #1" doesn't. Drop it if it costs a line.
+- **Mark your inferences as inferences.** Where the brief asserts an ordering or constraint the
+  backlog does not record, say so inline — "guard before extract is my call, not the backlog's".
+  It costs six words. Presenting your own judgment as recorded fact is a claim the executing team
+  has no way to check, and they will defend it as if it came from the plan.
+- **Name the repo's actual verification gate**, not "run the tests". Check how this repo
+  verifies (its typecheck command, its test runner) and put the real command in the brief. Where
+  a todo's criterion is a before/after comparison, say the fixture must be captured BEFORE
+  anything is touched — after the fact it is unrecoverable, and the criterion silently becomes
+  unfalsifiable.
 - **Don't restate \`/goal\`'s own competence.** It knows how to organize a team. Tell it the
   things specific to *this* backlog.
 - **Verbatim acceptance criteria are out** — they live in the todo bodies, which the team reads.
@@ -172,10 +195,13 @@ request to *write* the brief is never a request to run it.
 ## Success criteria
 
 - [ ] Nothing implemented, edited, tested, or orchestrated — the only deliverable is prompt text
-- [ ] Prompt is roughly 200 words; nothing in it could have been looked up in the backlog
+- [ ] Prompt is ~250 words and under 3000 chars; nothing in it could have been looked up in the backlog
 - [ ] Pending todos loaded by executing the procedure \`luca todo list\` returns, not its stdout
 - [ ] Waves derived from the todos' own dependency links, not topical similarity
-- [ ] Blocked-on-decision todos named as out of scope, not silently included
+- [ ] Open decision todos excluded and routed to the user; their dependents excluded too
+- [ ] Inferences the backlog does not record are marked as the composer's own
+- [ ] Premise corrections carried across alongside rejected approaches
+- [ ] The repo's real verification command named, not a generic "run the tests"
 - [ ] Same-file conflicts within a wave called out
 - [ ] Rejected approaches carried across as a "don't relitigate" clause
 - [ ] Verification names DIFFERENT lenses and the two-lens-convergence blocking rule
