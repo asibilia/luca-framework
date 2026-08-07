@@ -23,6 +23,7 @@ import { chooseSkill } from './choose/index.ts'
 import { ghIssueTriageSkill } from './gh-issue-triage/index.ts'
 import { ghPrAddressSkill } from './gh-pr-address/index.ts'
 import { ghPrepareSkill } from './gh-prepare/index.ts'
+import { goalBriefSkill } from './goal-brief/index.ts'
 import { grillMeSkill } from './grill-me/index.ts'
 import { luSkill } from './lu/index.ts'
 import { luHandoffSkill } from './lu-handoff/index.ts'
@@ -57,6 +58,7 @@ import { sessionPlanSkill } from './session-plan/index.ts'
 import { sessionResumeSkill } from './session-resume/index.ts'
 import { todoAddSkill } from './todo-add/index.ts'
 import { todoCheckSkill } from './todo-check/index.ts'
+import { todoIngestSkill } from './todo-ingest/index.ts'
 import { traceInsightsSkill } from './trace-insights/index.ts'
 import { workflowSaveSkill } from './workflow-save/index.ts'
 
@@ -70,6 +72,7 @@ export {
     ghIssueTriageSkill,
     ghPrAddressSkill,
     ghPrepareSkill,
+    goalBriefSkill,
     grillMeSkill,
     luSkill,
     luHandoffSkill,
@@ -104,6 +107,7 @@ export {
     sessionResumeSkill,
     todoAddSkill,
     todoCheckSkill,
+    todoIngestSkill,
     traceInsightsSkill,
     workflowSaveSkill,
 }
@@ -120,6 +124,7 @@ export const SKILLS: readonly Artifact[] = [
     ghIssueTriageSkill,
     ghPrAddressSkill,
     ghPrepareSkill,
+    goalBriefSkill,
     grillMeSkill,
     luSkill,
     luHandoffSkill,
@@ -154,6 +159,7 @@ export const SKILLS: readonly Artifact[] = [
     sessionResumeSkill,
     todoAddSkill,
     todoCheckSkill,
+    todoIngestSkill,
     traceInsightsSkill,
     workflowSaveSkill,
 ]
