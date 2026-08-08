@@ -33,7 +33,9 @@ export type {
     TelemetryOverrides,
 } from './telemetry.ts'
 
-export { generateRunId } from './helpers/generate-run-id.ts'
+// `generateRunId` is NOT re-exported here: it is owned by the ledger domain
+// (`ledger/helpers/generate-run-id.ts`) because it mints `state.sessionId`.
+// Both are surfaced from the package root barrel, so importers are unaffected.
 
 export { computeOutcomeKpis } from './outcome-kpi.ts'
 export type {

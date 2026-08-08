@@ -7,6 +7,7 @@ import {
     isToolAllowed,
     loadCurrentState,
     phasePathFor,
+    RAW_FILE_RE,
     resolveActiveSlug,
     STEP_ARTIFACTS,
     TMP_PATH_PATTERN,
@@ -483,9 +484,10 @@ function isStateAdvanceCommand(command: string): boolean {
 
 /**
  * The set of `StepArtifact` keys that are also `PhaseFile` keys, i.e. map
- * to a single fixed canonical path via `phasePathFor`. The two synthetic
- * keys `'execute/wave'` and `'audits/*'` are parameterised and handled
- * separately (a wave-file regex and `AUDIT_PATH_PATTERN`).
+ * to a single fixed canonical path via `phasePathFor`. The three synthetic
+ * keys `'execute/wave'`, `'audits/*'` and `'raw'` are parameterised and
+ * handled separately (a wave-file regex, `AUDIT_PATH_PATTERN`, and a
+ * raw-file regex).
  */
 const FIXED_PHASE_FILE_ARTIFACTS = new Set<StepArtifact>([
     'research',
@@ -514,8 +516,10 @@ type ArtifactGateDecision =
  *
  * The rule: in any non-IDLE phase, a `.luca/` write is allowed ONLY when
  * its path is exactly a legal artifact for the active `pipelineStep`
- * (computed from `STEP_ARTIFACTS` + `phasePathFor`), or — for the `review`
- * step — a per-reviewer audit file matched by `AUDIT_PATH_PATTERN`.
+ * (computed from `STEP_ARTIFACTS` + `phasePathFor`), or one of the
+ * parameterised shapes that step declares: a per-reviewer audit file
+ * (`AUDIT_PATH_PATTERN`), a per-wave detail file, or a per-stage raw
+ * capture (`raw/<stage>-<NN>.md`, declared by `research` and `review`).
  * EVERY other `.luca/` write is blocked, including writes to `.luca/`
  * root files (`state.json`, `config.json`, `roadmap.md`, `ledger.jsonl`)
  * which are mutated only through the `luca` CLI.
@@ -597,6 +601,20 @@ function artifactPathGate(
             }
             continue
         }
+        if (artifact === 'raw') {
+            // Per-stage raw capture: .luca/phases/<slug>/raw/<stage>-<NN>.md.
+            // Parameterised like the wave file (the stage label and index
+            // vary per write), so it needs its own branch — the fixed
+            // PhaseFile table below cannot express it.
+            const rawDir = `.luca/phases/${slug}/raw/`
+            if (targetPath.startsWith(rawDir)) {
+                const filename = targetPath.slice(rawDir.length)
+                if (RAW_FILE_RE.test(filename)) {
+                    return { kind: 'allow' }
+                }
+            }
+            continue
+        }
         // Fixed PhaseFile artifact — exactly one canonical path.
         if (FIXED_PHASE_FILE_ARTIFACTS.has(artifact)) {
             legalPaths.push(phasePathFor(slug, artifact as PhaseFile))
@@ -627,6 +645,8 @@ function describeLegalArtifacts(
             parts.push(`.luca/phases/${slug}/audits/<reviewer>.md`)
         } else if (a === 'execute/wave') {
             parts.push(`.luca/phases/${slug}/execute/waves/NN.md`)
+        } else if (a === 'raw') {
+            parts.push(`.luca/phases/${slug}/raw/<stage>-NN.md`)
         }
     }
     return parts.length > 0 ? parts.join(', ') : '(none)'

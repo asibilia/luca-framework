@@ -117,6 +117,15 @@ The researcher model tier is set by the agent’s own definition.
     - \`[user-input]\` — Non-researchable item answered by user
 11a. **Offer next steps** (research or plan)
 
+### Final Step — Advance out of discuss (self-gate)
+
+Once \`context.md\` is written, re-run \`luca state read\` and check \`pipelineStep\`:
+
+- \`pipelineStep\` is **still** \`discuss\` → run \`luca state advance --to-step architect\`. Nothing else advances you; \`discuss → architect\` is the only legal successor.
+- \`pipelineStep\` already moved on (typically \`architect\`) → do nothing. Under \`/lu\` the orchestrator advances on your behalf, so the step is already correct.
+
+The re-read is the guard, and it is load-bearing: there is no \`architect → architect\` self-edge, so an unconditional second advance is an illegal transition and errors. Do NOT suppress that with \`2>/dev/null\` or \`|| true\` — skip the advance instead of masking the failure.
+
 ## Critical: Scope Guardrail
 
 - Phase boundary from roadmap.md is FIXED

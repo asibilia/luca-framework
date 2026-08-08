@@ -99,7 +99,10 @@ For each **phase** in the plan:
 \`\`\`
 for each phase in PLAN:
   luca telemetry emit --kind=phase.start
-  luca state advance --to-step execute   # one-time entry per phase
+  # entry: you are ALREADY at 'execute' when this mode runs — the caller
+  # (/phase-execute self-gate, or /lu) owns the plan-review -> execute edge.
+  # Never re-advance to 'execute' from here; a later phase re-enters through
+  # learn -> plan -> ... -> execute, not from inside this loop.
   for each wave in phase:
     luca telemetry emit --kind=wave.start
     1. EXECUTE  → spawn executor subagent (Task tool)
@@ -110,7 +113,9 @@ for each phase in PLAN:
     6. LEARN    → spawn learner subagent
     7. COMMIT   → atomic commit per task
     luca telemetry emit --kind=wave.end
-  # phase-close transition; pipeline checks/verify steps follow per the transition table
+  # phase-close transition — the ONE and ONLY pipeline advance this mode owns.
+  # execute: ['checks'], so 'checks' is the sole legal target; verify /
+  # review / learn are reached on later edges by the steps that own them.
   luca state advance --to-step checks
   luca telemetry emit --kind=phase.end
 \`\`\`
@@ -119,7 +124,7 @@ for each phase in PLAN:
 
 - The pipeline step itself is the phase-tracking primitive — read it via \`luca state read\`. Wave counters are internal to the execute step.
 - Per-iteration telemetry: \`luca telemetry emit --kind=iteration\` (or the specific event names \`wave.start\`/\`wave.end\`) after each execute→checks→verify cycle.
-- Phase advance: \`luca state advance --to-step <next-step>\` per the pipeline-transitions table (execute → checks → verify → review → learn).
+- Phase advance: this mode emits exactly one transition — \`luca state advance --to-step checks\`. The tail \`checks → verify → review → learn\` is walked one edge at a time by the downstream steps; each edge must be a legal successor in the pipeline-transitions table, and a jump (e.g. \`execute → verify\`) is rejected rather than silently applied.
 
 Read progress with \`luca state read\` → \`pipelineStep\`, \`currentPhase\`, \`totalPhases\`, \`iteration\`, \`phaseResults\`.
 
@@ -375,7 +380,7 @@ After verification and review pass for each task:
 When all phases complete:
 
 1. Report execution summary (tasks completed, checks passing, review findings).
-2. Transition through the verification + review steps via \`luca state advance --to-step verify\` then \`luca state advance --to-step review\`.
+2. Close the execute step with \`luca state advance --to-step checks\`. That is the ONLY legal successor of \`execute\` — \`verify\` and \`review\` are NOT reachable from \`execute\` and an attempt to jump to them is rejected. The rest of the tail (\`checks → verify → review → learn\`) is walked one edge at a time by the steps that own those artifacts; never jump.
 
 ---
 
@@ -407,7 +412,7 @@ When you re-enter via the \`review → execute\` pipeline edge (Review found mus
 
 1. **Read** the latest \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` for the focused must-fix list and full audit context.
 2. **Scope your work** to those must-fix items ONLY — do not re-execute the full plan.
-3. After fixes, run checks + rule gate, then transition back to Review.
+3. After fixes, run checks + rule gate, then walk back to Review one legal edge at a time — \`execute → checks\`, \`checks → verify\`, \`verify → review\`. There is no \`execute → review\` edge; do not attempt the jump.
 
 **Round-2 diff gate (cross-reference)**: Before the previous \`review → execute\` transition, review mode's Route B ran \`luca snapshot create\`, which snapshotted the worktree to \`.luca/tmp/review-prefix-tree.json\` (a snapshot tree sha, commit-agnostic — works on the no-commit path). When you transition back to Review, the round-2 re-review is diff-gated by \`luca snapshot diff\`'s verdict and skipped **only when provably safe** — When in doubt, re-review. Only the reviewer fan-out is gated: the re-verification at the \`verify\` pipeline step (the verifier re-spawn on loop-back, which runs before review) is NOT gated, and review mode's automated checks also run ungated as today. The gate algorithm lives in review mode's Step 3.5 (Re-entry Diff Gate); this note is a cross-reference only.
 
@@ -419,7 +424,7 @@ After completing a task, promote its todo: \`luca todo update --id <id> --title 
 
 After each wave: (1) \`luca checks run\` → (2) if fail: fix → re-check → (3) if pass: \`luca rules run\` → (4) if rule violations: fix → re-gate → (5) if pass: spawn verifier and emit \`luca telemetry emit --kind=wave.end\`. Do NOT advance the pipeline step without passing checks AND the rule gate.
 
-After all waves: \`luca state advance --to-step verify\` → \`luca state advance --to-step review\` per the pipeline-transitions table.
+After all waves: \`luca state advance --to-step checks\` — the single legal successor of \`execute\`. \`verify\` and \`review\` follow on later edges (\`checks → verify → review\`), each advanced by the step that owns it. Do NOT advance to \`verify\` or \`review\` from here — neither is a legal successor of \`execute\`.
 `
 
 export const executeMode = defineAgent({

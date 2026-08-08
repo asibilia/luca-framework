@@ -54,11 +54,11 @@ If the user passed a request but the pipeline is already mid-flight, surface tha
 
 **Run id for telemetry.** \`luca telemetry emit\` REQUIRES a \`--run-id <runId>\` flag, and it is also what names the per-run log \`.luca/telemetry/<runId>.jsonl\`. Establish the run id ONCE here and re-use that exact value as \`--run-id\` on EVERY \`luca telemetry emit\` below, and as the filename when you read back the log at the learn step. Emit and readback MUST use the identical run id so the filename lines up.
 
-Resolve it like this: the run id is the state's \`sessionId\` (the generated pipeline RUN id, normally stamped at init). Read it from the same \`luca state read\` output (the \`.sessionId\` field). **But \`sessionId\` can be empty/unset** — recovery and partial runs don't always stamp it — and passing an empty \`--run-id\` (a REQUIRED flag) makes every emit exit 1. So if \`sessionId\` is empty, mint one with \`luca telemetry new-run\` (it prints a fresh run id) and reuse that minted value as the run id for the rest of this run. Equivalent to:
+Resolve it like this: the run id is the state's \`sessionId\` (the generated pipeline RUN id, normally stamped at init). Read it from the same \`luca state read\` output (the \`.sessionId\` field). **But \`sessionId\` can be empty/unset** — recovery and partial runs don't always stamp it — and passing an empty \`--run-id\` (a REQUIRED flag) makes every emit exit 1. So if \`sessionId\` is empty, mint one with \`luca state new-run\` (it prints a fresh run id and writes nothing) and reuse that minted value as the run id for the rest of this run. Equivalent to:
 
 \`\`\`bash
 RUN_ID=$(luca state read | jq -r '.sessionId // empty')
-[ -z "$RUN_ID" ] && RUN_ID=$(luca telemetry new-run)
+[ -z "$RUN_ID" ] && RUN_ID=$(luca state new-run)
 # then: --run-id "$RUN_ID" on every emit; the run's log is .luca/telemetry/$RUN_ID.jsonl
 \`\`\`
 
@@ -223,7 +223,7 @@ The executor subagent uses these resolutions to resolve ambiguities without re-a
 
 Before spawning the \`learner\` (Agent tool) at the \`learn\` step, gather the run's signal telemetry and build a **compact signal digest** so the learner can cluster it (subagents have no telemetry/MCP access — the digest must travel in the prompt, exactly as gate resolutions travel to the executor above):
 
-1. **Collect \`signal.*\` records** from \`.luca/telemetry/<RUN_ID>.jsonl\` (the run id established at Step 0 — the \`sessionId\`, or the \`luca telemetry new-run\` fallback if \`sessionId\` was unset — the same value you passed as \`--run-id\` on every emit). Read the file with the \`Read\` tool and keep the \`signal.satisfaction\` and \`signal.failure-dump\` records emitted this run. For large failure dumps referenced via \`meta.dumpRef\`, include the ref path, not the inlined payload.
+1. **Collect \`signal.*\` records** from \`.luca/telemetry/<RUN_ID>.jsonl\` (the run id established at Step 0 — the \`sessionId\`, or the \`luca state new-run\` fallback if \`sessionId\` was unset — the same value you passed as \`--run-id\` on every emit). Read the file with the \`Read\` tool and keep the \`signal.satisfaction\` and \`signal.failure-dump\` records emitted this run. For large failure dumps referenced via \`meta.dumpRef\`, include the ref path, not the inlined payload.
 2. **Collect the confidence journal** — the executor's recorded confidence entries (decision, category, confidence level, the gate bucket each was routed to, and any gate resolution from \`plan-review.md\`).
 3. **Compact it.** One line per signal: source/kind, valence (for satisfaction), step, and a short detail. One line per confidence entry: level, category, decision. Aggregate where it helps (e.g. \`outcome: 3 positive / 1 negative across checks,verify,review\`) — keep the whole digest to a handful of lines, not a transcript.
 4. **Inject** the digest into the learner's opening prompt as a \`<signal-digest>\` block (mirror the \`<confidence-gate-resolutions>\` shape above):

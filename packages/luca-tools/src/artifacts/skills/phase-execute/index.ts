@@ -184,6 +184,7 @@ Run \`luca state read\`. This skill drives the \`execute → checks → verify �
 
 - \`pipelineStep === "execute"\` → already there, proceed.
 - \`pipelineStep === "plan-review"\` → run \`luca state advance --to-step execute\`, then proceed.
+- \`pipelineStep === "review"\` **and** \`--quality-fixes\` was passed → this is the Step 8.1 CRITICAL re-entry. Run \`luca state advance --to-step execute\` (\`review → execute\` is the MUST-FIX loop-back edge in the transitions table), then proceed. Without \`--quality-fixes\`, treat \`review\` as "anything else" and STOP.
 - anything else → STOP. The pipeline must reach \`plan-review\` before execution can run — point the user at \`/lu\`. Do NOT force the transition. This guard intentionally surfaces a mis-routing caller — e.g. an orchestrator that delegated here while the state was still at \`architect\`.
 
 ### 0.5. Verify GitHub Tracking (Gate)
@@ -500,7 +501,7 @@ Sub-agents can return very large outputs (50-100k+ tokens each). If you keep the
 
 **Why:** Parallel sub-agents returning ~200k+ combined tokens cause the orchestrator context to spike into the degradation zone (70%+), leading to freezes or extremely slow responses. This pruning step keeps the orchestrator lean for the remaining 6+ steps it must complete.
 
-> **Future work:** A structured context-budget system will replace this manual pruning. See \`docs/decisions/orchestrator-context-pruning.md\` for the decision record and migration plan.
+> **Why this is here, not superseded:** the compact-envelope contract is the accepted decision — see \`docs/decisions/orchestrator-context-pruning.md\` (status: accepted). The \`researcher\`/\`verifier\`/\`reviewer\`/\`learner\` subagents satisfy it at the source, returning envelopes rather than payloads. Executor sub-agents fanned out here do not, so this step is where the same contract is applied on the orchestrator side. Prune at the boundary; do not wait for something else to do it.
 
 ### 6. Commit Orchestrator Corrections
 
@@ -518,6 +519,14 @@ git commit -m "fix({phase}): orchestrator corrections"
 ### 6.5. Run Verification Harness
 
 **Run automated quality checks before agent verification.**
+
+**First, close the \`execute\` step.** All waves are done and committed, so advance one edge — \`checks\` is the only legal successor of \`execute\`:
+
+\`\`\`bash
+luca state advance --to-step checks
+\`\`\`
+
+Do NOT mask this with \`2>/dev/null || true\`. An illegal or rejected transition must fail loudly; a swallowed advance strands the pipeline at \`execute\` and every downstream artifact write is then blocked by the stage gate for reasons that never surface.
 
 Run the project's checks via the \`luca\` CLI (stage the commands array at the repo-scoped \`.luca/tmp/checks.json\` — never in shared \`/tmp/\`):
 
@@ -619,7 +628,13 @@ This ensures that:
 
 **MANDATORY**: You MUST spawn a verifier sub-agent. Do NOT attempt to verify yourself.
 
-First, read the required context:
+**First, advance into the \`verify\` step.** \`verify.json\` is a legal artifact ONLY in the \`verify\` pipelineStep — spawning the verifier while still at \`checks\` makes its write illegal and the stage gate BLOCKs it:
+
+\`\`\`bash
+luca state advance --to-step verify
+\`\`\`
+
+Then read the required context:
 
 \`\`\`bash
 PHASE_DIR=".luca/phases/{phase_number}-*"
@@ -825,7 +840,13 @@ For each iteration, IN ORDER:
 
 1. **Extract gap-targeted plans.** Parse the verifier's VERIFICATION.md frontmatter for gaps with \`source_plan\` attribution; the unique \`source_plan\` values are the plans to re-execute. If no \`source_plan\` fields are present, re-execute ALL plans in the last wave with gap context (backward-compatible fallback).
 
-2. **Spawn targeted fix executors in PARALLEL** — one per plan with gaps (same message, multiple Task calls):
+2. **Drop back to the \`checks\` step BEFORE spawning anything.** You are at \`verify\` (Step 7 advanced there), which is in the REVIEWING coarse phase — \`STAGE_TOOL_MATRIX.REVIEWING\` denies \`code-write\` and \`bash-mutate\`, so every fix-executor \`Edit\`/\`Write\` and every \`bun test\` would be BLOCKED by the stage gate. \`verify → checks\` is the loop-back edge the transitions table provides for exactly this, and \`checks\` is EXECUTING, where code writes are legal:
+
+\`\`\`bash
+luca state advance --to-step checks
+\`\`\`
+
+3. **Spawn targeted fix executors in PARALLEL** — one per plan with gaps (same message, multiple Task calls). Do this only once you are at \`checks\`; the sub-agents inherit the same stage gate as the orchestrator, so spawning them from \`verify\` strands every fix:
 
 \`\`\`python
 Task(
@@ -853,21 +874,35 @@ Fix the verification gaps for this plan.
 )
 \`\`\`
 
-3. **Re-run the harness** so gap fixes didn't break mechanical checks:
+4. **Re-run the harness** so gap fixes didn't break mechanical checks. Stay at \`checks\` for this — do NOT step forward yet:
 
 \`\`\`bash
 HARNESS_OUTPUT=$(luca checks run --file .luca/tmp/checks.json)
 \`\`\`
 
-   If it fails, run one bounded harness-fix pass (Step 6.6) before continuing.
+   If it fails, run one bounded harness-fix pass (Step 6.6) before continuing — that pass edits code too, so it must also run at \`checks\`. If it still fails after that pass, hard-stop **at \`checks\`** and surface to the user; do NOT fall through to Step 8, whose \`verify → review\` advance assumes you are at \`verify\`.
 
-4. **Re-run the verifier** (same context as Step 7, updated with new summaries). If it returns "passed": exit with outcome "all_passed" and continue to Step 8. If "human_needed": exit and proceed to human verification. If "gaps_found": continue to the convergence check.
+5. **Step back into \`verify\`, then re-run the verifier** (same context as Step 7, updated with new summaries). \`verify.json\` is a legal artifact ONLY in the \`verify\` step, so advance before the spawn — and only once the harness is clean:
 
-5. **Bounded convergence** (same rule as the harness loop): if the SAME gaps persist across ≥2 iterations, the loop is **stalled** → stop; on reaching iteration ≥3 without a clean verifier, **hard-stop**. On any non-passing exit, display the remaining gaps and offer \`/phase-plan {X} --gaps\` to the user.
+\`\`\`bash
+luca state advance --to-step verify
+\`\`\`
+
+   If the verifier returns "passed": exit with outcome "all_passed" and continue to Step 8. If "human_needed": exit and proceed to human verification. If "gaps_found": continue to the convergence check.
+
+6. **Bounded convergence** (same rule as the harness loop): if the SAME gaps persist across ≥2 iterations, the loop is **stalled** → stop; on reaching iteration ≥3 without a clean verifier, **hard-stop**. On any non-passing exit, display the remaining gaps and offer \`/phase-plan {X} --gaps\` to the user.
+
+Every iteration therefore starts at \`verify\` and walks \`verify → checks\` (item 2) then \`checks → verify\` (item 5) — both legal edges, and every instruction lands in a step whose stage-tool matrix permits it. On every branch that continues the pipeline you leave this step at \`verify\`, which is what Step 8's \`verify → review\` advance expects; the only branch that ends at \`checks\` is the hard-stop in item 4, which does not continue.
 
 ### 8. Code Quality Review
 
-**Skip if:** \`--skip-review\` flag passed OR \`workflow.code_review: false\` in config.
+**Advance into the \`review\` step first — unconditionally.** Run this BEFORE evaluating any skip condition below. \`review\` is the only legal successor of \`verify\` on the forward path, it is where \`audits/<reviewer>.md\` becomes a legal artifact, and Step 9's \`review → learn\` edge depends on it. Skipping the fan-out does NOT skip the transition; if you stay at \`verify\`, Step 9 tries an illegal \`verify → learn\` jump and the pipeline strands:
+
+\`\`\`bash
+luca state advance --to-step review
+\`\`\`
+
+**Skip if:** \`--skip-review\` flag passed OR \`workflow.code_review: false\` in config. (Skips the reviewer fan-out only — the advance above still ran.)
 
 **Always runs** (model tier comes from the agent definition). Each reviewer agent inherits its model tier from its agent definition.
 
@@ -1281,11 +1316,13 @@ Wait for user response, then proceed accordingly.
 
 ### 9. Signal Verification and Update State
 
-Advance the workflow state to the next pipeline step. Do NOT advance straight to \`complete\` here — the pipeline transitions through \`learn\` (postmortem capture) before commit:
+Advance the workflow state to the next pipeline step. You are at \`review\` (Step 8 advanced there unconditionally), and \`learn\` is its legal successor on the forward path:
 
 \`\`\`bash
-luca state advance --to-step learn 2>/dev/null || true
+luca state advance --to-step learn
 \`\`\`
+
+Do NOT mask this with \`2>/dev/null || true\`. If the transition is rejected you are not where you thought you were — stop and read \`luca state read\` rather than continuing against a stranded pipeline.
 
 The state machine's \`pipelineStep\` field in \`.luca/state.json\` is the authoritative signal.
 
@@ -1293,21 +1330,16 @@ The state machine's \`pipelineStep\` field in \`.luca/state.json\` is the author
 
 ### 10. Update Requirements
 
-Mark phase requirements as Complete in the active phase's \`audits/\` traceability artifact (or in the active milestone audit at \`.luca/milestones/v<SEMVER>-audit.md\` once milestone is open). Requirements live in MuninnDB engrams; the per-phase \`audits/\` files surface them durably.
+Requirements live in MuninnDB engrams. Record their completion in the learner's \`learn.md\` — a per-requirement "Requirements Closed" list naming each ac-ID and its verifying evidence — because \`learn.md\` is the ONLY artifact \`STEP_ARTIFACTS.learn\` permits, so a write to the phase's \`audits/\` files or to \`.luca/milestones/v<SEMVER>-audit.md\` is BLOCKED by the stage gate at this step. The milestone audit is updated by the \`finalize\` step owner, which reads that list.
 
-### 11. Commit Phase Completion
+### 11. Hand Back at \`learn\` — Do NOT Commit or Finalize Here
 
-\`\`\`bash
-git add .
-git commit -m "docs({phase}): complete {phase-name} phase"
-\`\`\`\`
+**This skill's ownership ends at \`learn\`** (see Step 0: it drives the \`execute → checks → verify → review → learn\` back half, and no further). Two things that used to live here belong to the caller:
 
-Advance the workflow state after the actual commit succeeds. From \`learn\` the next step is \`finalize\` (which then resets to \`idle\`) per the pipeline-transitions table:
+- **The phase-completion commit.** Do NOT run \`git add\`/\`git commit\` at this step. \`learn\` is in the REVIEWING coarse phase, where \`STAGE_TOOL_MATRIX\` denies BOTH \`bash-stage\` and \`bash-commit\` — the gate BLOCKS them. \`FINALIZING\` is the only non-IDLE phase granted either, which is why the \`finalize\` mode explicitly states it runs its commits and \`gh pr create\` there. Leave the phase's artifacts in the working tree; finalize stages and commits them.
+- **The \`learn → finalize → idle\` walk.** Do NOT advance past \`learn\`. \`learn\`'s successors are \`plan\` (more phases remain) and \`finalize\` (last phase), and choosing between them is the orchestrator's call, not this skill's: \`/lu\` runs \`luca phase advance\` and advances to \`plan\` at a phase boundary, or advances to \`finalize\` and spawns the \`finalize\` agent on the last phase. Walking straight to \`finalize\`/\`idle\` from here never bumps \`currentPhase\` (dropping phases 2..N) and reaches \`idle\` without the finalize agent ever running — no gap detection, no postmortem gate, no PR, no milestone close.
 
-\`\`\`bash
-luca state advance --to-step finalize 2>/dev/null || true
-luca state advance --to-step idle 2>/dev/null || true
-\`\`\`
+Leave the pipeline at \`learn\` with the learner's output persisted, then run the remaining reporting/UAT steps below and hand back. Emit no \`luca state advance\` after this point.
 
 ### 12. User Acceptance Testing (UAT)
 
@@ -1461,12 +1493,7 @@ git add .
 git commit -m "docs({phase}-{plan}): complete {plan-name} plan"
 \`\`\`
 
-**Phase Completion Commit:**
-
-\`\`\`bash
-git add .
-git commit -m "docs({phase}): complete {phase-name} phase"
-\`\`\`
+**Phase Completion Commit:** NOT this skill's — see Step 11. It lands at \`finalize\` (\`FINALIZING\` is the only non-IDLE coarse phase whose stage-tool matrix grants \`bash-stage\` + \`bash-commit\`), so leave the phase artifacts uncommitted in the working tree when you hand back at \`learn\`.
 
 ## Success Criteria
 
@@ -1480,7 +1507,7 @@ git commit -m "docs({phase}): complete {phase-name} phase"
 - [ ] UAT.md created with tests from SUMMARY.md
 - [ ] UAT tests presented one at a time
 - [ ] UAT issues diagnosed and fix plans created (if any)
-- [ ] \`.luca/state.json\` reflects phase completion (advanced through learn/milestone steps)
+- [ ] \`.luca/state.json\` \`pipelineStep\` is \`learn\` on hand-back — every edge walked one at a time (\`execute → checks → verify → review → learn\`), none past \`learn\`
 - [ ] \`.luca/roadmap.md\` updated (phase marked complete)
 - [ ] MuninnDB \`brain:project-requirements\` traceability updated (per-phase REQ-IDs marked complete)
 - [ ] User routed to next phase or fix execution

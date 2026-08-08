@@ -105,7 +105,7 @@ Spawn researcher subagents in parallel for each dimension:
 
 \`<NN>\` is zero-padded by dimension order: \`01\` = scope, \`02\` = architecture, \`03\` = patterns, \`04\` = dependencies, \`05\` = risk. The raw files are NOT the canonical artifact — \`research.md\` (produced by synthesis below) is. Treat \`raw/research-*.md\` as recovery state.
 
-Write each via the standard artifact write — the path \`.luca/phases/<currentPhaseSlug>/raw/research-<NN>.md\` is in the LUCA_DIR_CONTRACT \`raw/\` slot per the validator.
+Write each with the native \`Write\` tool — \`raw\` is a declared \`STEP_ARTIFACTS\` entry for the \`research\` pipelineStep, so the stage gate allows \`.luca/phases/<currentPhaseSlug>/raw/research-<NN>.md\` at this step (filename shape: \`<stage>-<NN>.md\`, lowercase kebab stage plus a two-digit index).
 
 Template:
 \`\`\`markdown

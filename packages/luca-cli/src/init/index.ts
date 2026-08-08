@@ -24,6 +24,8 @@ export type { WireClaudeHooksOptions } from './helpers/wire-claude-hooks.ts'
 export {
     installSkills,
     listBundledArtifacts,
+    pruneRetiredArtifacts,
+    RETIRED_ARTIFACTS,
     defaultClaudeHome,
     defaultAntigravityHome,
 } from './helpers/install-skills.ts'
@@ -31,6 +33,9 @@ export type {
     InstallSkillsOptions,
     InstallSkillsArtifacts,
     BundledArtifacts,
+    PruneRetiredArtifactsOptions,
+    RetiredArtifact,
+    RetiredArtifactKind,
 } from './helpers/install-skills.ts'
 
 export { installHooks, mergeLucaHookSettings } from './helpers/install-hooks.ts'

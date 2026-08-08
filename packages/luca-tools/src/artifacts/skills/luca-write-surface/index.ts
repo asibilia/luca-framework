@@ -125,6 +125,11 @@ block — advance the pipeline to the correct step first.
 - **\`luca state advance --to-step <step>\`** — atomically advance the
   pipelineStep. The transition is validated against the pipeline-transitions
   table; illegal jumps are rejected.
+- **\`luca state new-run\`** — mint and print a fresh run id
+  (\`run_<ts36>_<rand36>\`). Pure: prints to stdout and writes nothing. Use it
+  only as the fallback when \`state read\`'s \`sessionId\` is empty (recovery or
+  partial runs never stamped it) and something downstream requires a real run
+  id. Do NOT mint a second id mid-run.
 
 ### \`phase\` — active phase inspection (read only)
 

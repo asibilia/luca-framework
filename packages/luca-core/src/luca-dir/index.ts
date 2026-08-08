@@ -12,6 +12,7 @@ export {
 export {
     PHASE_SLUG_RE,
     WAVE_FILE_RE,
+    RAW_FILE_RE,
     SEMVER_TAG_RE,
     REVIEWER_NAME_RE,
     RUN_ID_RE,

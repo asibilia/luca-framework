@@ -60,6 +60,7 @@ import { todoAddSkill } from './todo-add/index.ts'
 import { todoCheckSkill } from './todo-check/index.ts'
 import { todoIngestSkill } from './todo-ingest/index.ts'
 import { traceInsightsSkill } from './trace-insights/index.ts'
+import { workflowAuthoringSkill } from './workflow-authoring/index.ts'
 import { workflowSaveSkill } from './workflow-save/index.ts'
 
 import type { Artifact } from '../../define/index.ts'
@@ -109,6 +110,7 @@ export {
     todoCheckSkill,
     todoIngestSkill,
     traceInsightsSkill,
+    workflowAuthoringSkill,
     workflowSaveSkill,
 }
 
@@ -161,5 +163,6 @@ export const SKILLS: readonly Artifact[] = [
     todoCheckSkill,
     todoIngestSkill,
     traceInsightsSkill,
+    workflowAuthoringSkill,
     workflowSaveSkill,
 ]

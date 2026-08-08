@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
-import { classifyBashCommand } from './classify-bash-command.ts'
+import {
+    classifyBashCommand,
+    LUCA_NOUN_VERBS,
+} from './classify-bash-command.ts'
 
 describe('classifyBashCommand — read-only', () => {
     test.each([
@@ -457,5 +460,50 @@ describe('classifyBashCommand — luca registry gaps (budget/confidence/graph/st
         // bash-mutate fallthrough (blocked in gated phases).
         expect(classifyBashCommand('luca start').category).toBe('bash-mutate')
         expect(classifyBashCommand('luca stop').category).toBe('bash-mutate')
+    })
+})
+
+describe('classifyBashCommand — roadmap add-phase / remove-phase (3-point registration)', () => {
+    // These verbs are the deterministic replacement for skills that used to
+    // `mkdir -p .luca/phases/...` and hand-edit the GENERATED .luca/roadmap.md.
+    // Registration has three independent points and ALL are load-bearing:
+    //   1. the citty leaf + handler,
+    //   2. a WRITE_COMMAND_PHASES entry (asserted in the registry test),
+    //   3. LUCA_NOUN_VERBS here — without it the verb falls through to the
+    //      unknown-command → bash-mutate path and is stage-gate blocked in
+    //      exactly the mid-run steps where phases get added.
+    test('luca roadmap add-phase → luca-write (not the bash-mutate fallthrough)', () => {
+        expect(
+            classifyBashCommand('luca roadmap add-phase --name "fix auth"')
+                .category
+        ).toBe('luca-write')
+    })
+
+    test('luca roadmap remove-phase → luca-write', () => {
+        expect(
+            classifyBashCommand('luca roadmap remove-phase --nn 3').category
+        ).toBe('luca-write')
+    })
+
+    test('the roadmap grant is exactly four verbs — no silent widening', () => {
+        // Each allowlist entry is a permission grant; pin the exact set so a
+        // future verb cannot inherit the luca-write classification without a
+        // deliberate edit here (and a matching WRITE_COMMAND_PHASES key, which
+        // the registry test then demands).
+        expect([...LUCA_NOUN_VERBS.roadmap!].sort()).toEqual([
+            'add-phase',
+            'create',
+            'read',
+            'remove-phase',
+        ])
+    })
+
+    test('neither verb is a global read verb (they mutate state.json + roadmap.md)', () => {
+        // LUCA_READ_VERBS is cross-noun: a verb named there classifies
+        // bash-readonly for EVERY noun. Both of these write, so membership
+        // would be a real bypass.
+        expect(
+            classifyBashCommand('luca roadmap add-phase --name x').category
+        ).not.toBe('bash-readonly')
     })
 })

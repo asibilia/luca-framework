@@ -1,4 +1,4 @@
-import { generateRunId } from '../../telemetry/helpers/generate-run-id.ts'
+import { generateRunId } from '../../ledger/helpers/generate-run-id.ts'
 import { ENVELOPE_ID_RE } from '../constants.ts'
 
 /** Fallback stem when a repo name sanitizes down to nothing. */

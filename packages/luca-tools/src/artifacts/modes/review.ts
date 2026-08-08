@@ -121,7 +121,7 @@ Immediately after all 5 reviewers return, persist each perspective's raw output 
 
 \`<reviewer>\` is the perspective name (\`architecture\`, \`dx\`, \`security\`, \`simplification\`, \`test-quality\`). \`<NN>\` is the zero-padded review wave (\`reviewIteration\` from \`luca state read\`; default \`01\`). The raw files are NOT the canonical artifact — the per-reviewer \`audits/<reviewer>.md\` files (and the consolidated report below) are. Treat \`raw/review-*.md\` as recovery state; on re-review iterations, the previous wave's raw files remain in place so subsequent iterations can diff.
 
-Write each via the standard artifact write — the path \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` is in the LUCA_DIR_CONTRACT \`raw/\` slot per the validator.
+Write each with the native \`Write\` tool — \`raw\` is a declared \`STEP_ARTIFACTS\` entry for the \`review\` pipelineStep, so the stage gate allows \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` at this step (filename shape: \`<stage>-<NN>.md\`, lowercase kebab stage plus a two-digit index).
 
 Template:
 \`\`\`markdown

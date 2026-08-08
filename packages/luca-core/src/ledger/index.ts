@@ -17,3 +17,8 @@ export type {
     RunSummary,
     SessionMetrics,
 } from './ledger.ts'
+
+// Mints `state.sessionId` — the ledger's run-grouping key and the pipeline
+// lock's `run_id`. Owned by the ledger domain (not telemetry) so it survives
+// retirement of the local telemetry sink.
+export { generateRunId } from './helpers/generate-run-id.ts'

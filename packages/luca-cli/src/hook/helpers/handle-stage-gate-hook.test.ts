@@ -651,3 +651,85 @@ describe('handleStageGateHook — homedir fail-closed when HOME is unset', () =>
     // UNCONDITIONAL `.luca/handoff` deny, not the homedir fallback, so it was
     // green with `|| osHomedir()` deleted.
 })
+
+// The `raw/` safety-net slot: research mode's 5-way fan-out and review
+// mode's 5-reviewer fan-out both persist each subagent's raw output to
+// `.luca/phases/<slug>/raw/<stage>-<NN>.md` BEFORE consolidating into the
+// canonical artifact, and both re-read those files when context was
+// compressed mid-stage. LUCA_DIR_CONTRACT and `isValidLucaPath` always
+// reserved the slot, but STEP_ARTIFACTS did not list it — so the gate
+// blocked the write both shipped mode bodies instruct. These tests pin the
+// reconciliation (option A: the slot is legal at `research` and `review`).
+describe('handleStageGateHook — raw/ safety-net slot', () => {
+    function rawWriteStdin(filePath: string): string {
+        return JSON.stringify({
+            tool_name: 'Write',
+            tool_input: { file_path: filePath },
+        })
+    }
+
+    test('allows Write to raw/research-01.md at pipelineStep=research', async () => {
+        const cwd = await makeProjectAtStep('research')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/01-x/raw/research-01.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    test('allows Write to raw/review-code-review-01.md at pipelineStep=review', async () => {
+        const cwd = await makeProjectAtStep('review')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/01-x/raw/review-code-review-01.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        expect(r.decision).toBe('allow')
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    test('allows the canonical artifact alongside raw/ (research.md still legal at research)', async () => {
+        const cwd = await makeProjectAtStep('research')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/01-x/research.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(0)
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    test('blocks a malformed raw filename (no zero-padded NN suffix)', async () => {
+        const cwd = await makeProjectAtStep('research')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/01-x/raw/research.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    test('blocks a raw/ write scoped to a NON-active phase slug', async () => {
+        const cwd = await makeProjectAtStep('research')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/07-other/raw/research-01.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
+        await rm(cwd, { recursive: true, force: true })
+    })
+
+    test('blocks a raw/ write at a step that does not capture raw output (plan)', async () => {
+        const cwd = await makeProjectAtStep('plan')
+        const r = await handleStageGateHook({
+            stdin: rawWriteStdin('.luca/phases/01-x/raw/research-01.md'),
+            cwd,
+        })
+        expect(r.exitCode).toBe(2)
+        expect(r.decision).toBe('block')
+        await rm(cwd, { recursive: true, force: true })
+    })
+})

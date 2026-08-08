@@ -15,6 +15,7 @@ import type { PipelineStep } from '../schemas.ts'
  *
  *   - `'execute/wave'`  — a per-wave detail file `execute/waves/NN.md`
  *   - `'audits/*'`      — a per-reviewer audit file `audits/<reviewer>.md`
+ *   - `'raw'`           — a per-stage raw-capture file `raw/<stage>-<NN>.md`
  *
  * A step mapped to `[]` produces no freeform phase artifact (its writes,
  * if any, are structured mutations routed through the `luca` CLI).
@@ -36,14 +37,32 @@ export type StepArtifact =
     | 'execute/progress'
     | 'execute/wave'
     | 'audits/*'
+    | 'raw'
 
 // DEMOTED (DAD-P1t): this is data referenced BY the machine state (per-step
 // artifact expectations), not control flow. It does not encode the pipeline's
 // structure.
+//
+// `raw/` reconciliation — decision: ADD the entries (option A), not strip the
+// slot (option B). Three surfaces already agreed the `raw/` slot exists
+// (LUCA_DIR_CONTRACT, `isValidLucaPath`, and both shipped mode bodies); only
+// this table and the stage gate lagged, so the gate blocked a write the
+// research and review modes instruct. Option B was rejected because the
+// capture is load-bearing, not decorative: both modes explicitly RE-READ the
+// raw files when context was compressed between capture and consolidation
+// (research synthesis, review consolidation), so deleting the slot would
+// remove the only recovery state for a 5-way subagent fan-out with no
+// replacement.
 export const STEP_ARTIFACTS: Record<PipelineStep, StepArtifact[]> = {
     idle: [],
     triage: [],
-    research: ['research'],
+    // `raw` is the pre-consolidation safety net: research mode's 5-way
+    // fan-out persists each dimension's raw subagent output to
+    // `raw/research-<NN>.md` BEFORE synthesizing `research.md`, and
+    // re-reads it if context was compressed mid-stage. The slot has
+    // always been in LUCA_DIR_CONTRACT / `isValidLucaPath`; listing it
+    // here is what makes the instructed write survive the stage gate.
+    research: ['research', 'raw'],
     discuss: ['context'],
     architect: [],
     plan: ['plan'],
@@ -51,7 +70,10 @@ export const STEP_ARTIFACTS: Record<PipelineStep, StepArtifact[]> = {
     execute: ['execute/summary', 'execute/wave'],
     checks: [],
     verify: ['verify'],
-    review: ['audits/*'],
+    // Same safety net on the review side: `raw/review-<reviewer>-<NN>.md`
+    // captures each of the 5 reviewers' raw output before consolidation
+    // into `audits/<reviewer>.md`.
+    review: ['audits/*', 'raw'],
     learn: ['learn'],
     // finalize writes the postmortem learn.md and records gap summaries in
     // audit artifacts before re-entry; see finalize mode.
@@ -109,6 +131,16 @@ export const WRITE_COMMAND_PHASES: Record<string, PipelineStep[]> = {
     'snapshot create': [],
     'snapshot diff': [],
     'budget check': [],
+
+    // Incremental roadmap edits — deliberately phase-agnostic, UNLIKE the
+    // full-replace `roadmap create` below. Phases get added mid-run (that is
+    // the whole point of `/note` and `/phase-add`), so any non-empty
+    // restriction would make these unreachable exactly where they are used.
+    // `[]` adds no clobber exposure: neither verb replaces the roadmap —
+    // `add-phase` only appends/inserts, and `remove-phase` refuses any phase
+    // at or before `currentPhase`.
+    'roadmap add-phase': [],
+    'roadmap remove-phase': [],
 
     // Cross-repo handoff mailbox — deliberately phase-agnostic. A repo may
     // need to post or read a work order at any point in its own pipeline, and

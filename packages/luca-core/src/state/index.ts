@@ -94,7 +94,11 @@ export {
 export type { StepArtifact } from './configs/step-artifacts.ts'
 
 // CLI invocation parsers (shared by hooks, future surfaces)
-export { parseAdvanceCommand, stripQuotes } from './cli-parse.ts'
+export {
+    parseAdvanceCommand,
+    parseAllAdvanceCommands,
+    stripQuotes,
+} from './cli-parse.ts'
 
 // Pipeline lock (inner single-flight protection for .luca/state.json)
 export {

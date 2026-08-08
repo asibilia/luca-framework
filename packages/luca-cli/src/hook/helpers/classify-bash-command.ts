@@ -279,14 +279,32 @@ export const LUCA_READ_VERBS = new Set([
     'summary',
     'render',
     'gate',
+    // `state new-run` mints a run id to stdout and writes nothing — read-only
+    // despite living under a mutating noun. Guard the cross-noun leak above:
+    // no future `<noun> new-run` may mutate.
+    'new-run',
 ])
 
 // Every noun → verbs pair on the v13 `luca` CLI surface. Mirrors the
 // noun-group commands registered in src/cli.ts and their leaf subcommands.
 export const LUCA_NOUN_VERBS: Readonly<Record<string, ReadonlySet<string>>> = {
-    state: new Set(['read', 'advance', 'claim-owner', 'set-current-phase']),
+    state: new Set([
+        'read',
+        'advance',
+        'claim-owner',
+        'set-current-phase',
+        'new-run',
+    ]),
     phase: new Set(['current', 'advance', 'archive']),
-    roadmap: new Set(['read', 'create']),
+    // `add-phase` / `remove-phase` are incremental roadmap edits. Neither is
+    // in LUCA_READ_VERBS, so both classify `luca-write` (legal in every
+    // non-IDLE phase) with the CLI self-enforcing their (deliberately
+    // phase-agnostic) `WRITE_COMMAND_PHASES` entries. Registering them here is
+    // load-bearing: an unregistered verb falls through to the conservative
+    // unknown-command → bash-mutate path and is stage-gate blocked wherever
+    // STAGE_TOOL_MATRIX[step]['bash-mutate'] is false — i.e. exactly the
+    // mid-run steps where phases get added.
+    roadmap: new Set(['read', 'create', 'add-phase', 'remove-phase']),
     preferences: new Set(['read', 'write']),
     todo: new Set(['add', 'list', 'update', 'migrate', 'set-root']),
     brain: new Set(['set-root', 'recall-root']),
