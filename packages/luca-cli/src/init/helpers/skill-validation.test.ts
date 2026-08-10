@@ -115,11 +115,28 @@ async function listSkillFiles(skillsDir: string): Promise<string[]> {
 }
 
 describe('bundled skill markdown — structural validation', () => {
-    test('commands/ and agents/ exist with at least one .md each', async () => {
-        const commands = await listMarkdownFiles(COMMANDS_DIR)
+    test('agents/ exists with at least one .md', async () => {
         const agents = await listMarkdownFiles(AGENTS_DIR)
-        expect(commands.length).toBeGreaterThan(0)
         expect(agents.length).toBeGreaterThan(0)
+    })
+
+    /**
+     * The commands bucket is deliberately EMPTY — all 17 slash commands
+     * were folded into their same-named skills (see
+     * `luca-tools/src/artifacts/commands/index.ts`). Two assertions, and
+     * both matter:
+     *
+     *   - the directory EXISTS, because `installSkills` only authorizes
+     *     the retired-command prune for a bucket whose source directory
+     *     it can enumerate. Lose the directory and every
+     *     `{ kind: 'command' }` entry in `RETIRED_ARTIFACTS` goes inert.
+     *   - it holds no `.md`, because a command reappearing here means the
+     *     fold regressed and two drifting bodies are shipping again.
+     */
+    test('commands/ exists and is empty — the surface is folded into skills', async () => {
+        expect(existsSync(COMMANDS_DIR)).toBe(true)
+        const commands = await listMarkdownFiles(COMMANDS_DIR)
+        expect(commands).toEqual([])
     })
 
     test('every command markdown file has frontmatter with name + description', async () => {

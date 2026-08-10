@@ -163,6 +163,19 @@ export const RETIRED_ARTIFACTS: readonly RetiredArtifact[] = [
     { kind: 'command', name: 'luca-init.md', retiredIn: '13.1.0' },
     { kind: 'command', name: 'memory-audit.md', retiredIn: '13.1.0' },
     { kind: 'command', name: 'repo-cleanup.md', retiredIn: '13.1.0' },
+    // The second fold pass, emptying the command surface entirely. These
+    // seven were held back because their bodies had genuinely DIVERGED
+    // from the skill's (`luca-telemetry-report` excepted — it was a thin
+    // pointer that the earlier pass simply missed). Every command-only
+    // directive was ported into the skill first; the fold is what makes
+    // these deletions safe, not the deletions themselves.
+    { kind: 'command', name: 'luca-telemetry-report.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'milestone-new.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-discuss.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-execute.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-plan.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'todo-add.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'todo-check.md', retiredIn: '13.1.0' },
     // Orphaned, not broken: fully functional but unreferenced by any
     // workflow, and both described themselves inaccurately.
     // `post-init-tour` claimed to run after `/project-new` (which never
@@ -172,6 +185,13 @@ export const RETIRED_ARTIFACTS: readonly RetiredArtifact[] = [
     // explicit user decision.
     { kind: 'skill', name: 'post-init-tour', retiredIn: '13.1.0' },
     { kind: 'skill', name: 'workflow-save', retiredIn: '13.1.0' },
+    // Collapsed onto `luca roadmap add-phase`. `note`'s default mode was a
+    // VERBATIM duplicate of this skill — same seven steps, down to the
+    // `mkdir -p` and the hand-edit of the generated `.luca/roadmap.md` —
+    // and `note` is the strict superset (it also owns `--next`/`--whenever`).
+    // The survivor is `note`, now routed through the verb; nothing this
+    // skill did is unreachable.
+    { kind: 'skill', name: 'phase-add', retiredIn: '13.1.0' },
 ]
 
 /**
@@ -403,6 +423,13 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
         return
     }
 
+    // Retained deliberately: luca bundles zero commands today (all 17 were
+    // folded into their same-named skills), so this copies nothing. It
+    // stays because the same `artifacts.commands` flag authorizes the
+    // retired-COMMAND prune below, and because the bucket is a supported
+    // artifact kind that a future bundle could repopulate. Removing the
+    // branch would quietly disable the uninstall path for every folded
+    // command.
     if (artifacts.commands) {
         await copyDir({
             from: join(claudeArtifactsRoot, 'commands'),

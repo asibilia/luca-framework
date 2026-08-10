@@ -187,6 +187,8 @@ Run \`luca state read\`. This skill drives the \`execute → checks → verify �
 - \`pipelineStep === "review"\` **and** \`--quality-fixes\` was passed → this is the Step 8.1 CRITICAL re-entry. Run \`luca state advance --to-step execute\` (\`review → execute\` is the MUST-FIX loop-back edge in the transitions table), then proceed. Without \`--quality-fixes\`, treat \`review\` as "anything else" and STOP.
 - anything else → STOP. The pipeline must reach \`plan-review\` before execution can run — point the user at \`/lu\`. Do NOT force the transition. This guard intentionally surfaces a mis-routing caller — e.g. an orchestrator that delegated here while the state was still at \`architect\`.
 
+Then run \`luca phase current\` for the active slug and \`dir\`, and read \`<dir>/plan.md\`. **If the plan does not exist or is empty, abort** and send the user back to \`/phase-plan\` — there is nothing to execute, and improvising one here bypasses both the architect and the plan-reviewer.
+
 ### 0.5. Verify GitHub Tracking (Gate)
 
 **Before executing any plans, verify issue/branch tracking is configured.**
@@ -344,7 +346,7 @@ Task(
 
 <execution_rules>
 - Execute each task in the plan sequentially
-- Commit atomically after each task (git add . && git commit with a conventional message: \`{type}({scope}): {subject}\`)
+- Do NOT \`git commit\` — \`EXECUTING\` denies \`bash-commit\` in the stage-tool matrix and the gate will block you. Leave each task's work in the working tree; \`finalize\` owns the commit. (\`git add\` is permitted if you need an index.)
 - Create SUMMARY.md when complete
 - Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
@@ -381,7 +383,7 @@ Task(
 
 <execution_rules>
 - Execute each task in the plan sequentially
-- Commit atomically after each task (git add . && git commit with a conventional message: \`{type}({scope}): {subject}\`)
+- Do NOT \`git commit\` — \`EXECUTING\` denies \`bash-commit\` in the stage-tool matrix and the gate will block you. Leave each task's work in the working tree; \`finalize\` owns the commit. (\`git add\` is permitted if you need an index.)
 - Create SUMMARY.md when complete
 - Log findings to MuninnDB session memory
 - Handle deviations per deviation rules
@@ -505,18 +507,17 @@ Sub-agents can return very large outputs (50-100k+ tokens each). If you keep the
 git status --porcelain
 \`\`\`
 
-If changes exist:
+If changes exist, leave them in the working tree — do NOT commit. \`EXECUTING\` denies \`bash-commit\`, so \`git commit\` is blocked here; the corrections travel to \`finalize\` with the rest of the phase diff:
 
 \`\`\`bash
 git add .
-git commit -m "fix({phase}): orchestrator corrections"
 \`\`\`
 
 ### 6.5. Run Verification Harness
 
 **Run automated quality checks before agent verification.**
 
-**First, close the \`execute\` step.** All waves are done and committed, so advance one edge — \`checks\` is the only legal successor of \`execute\`:
+**First, close the \`execute\` step.** All waves are done (their work left in the working tree — see Commit Rules), so advance one edge — \`checks\` is the only legal successor of \`execute\`:
 
 \`\`\`bash
 luca state advance --to-step checks
@@ -1473,23 +1474,13 @@ During execution, handle discoveries automatically:
 
 ## Commit Rules
 
-**IMPORTANT:** Always commit with \`git commit\` using a conventional message (\`{type}({scope}): {subject}\`, types/scopes per \`luca preferences read\`). Always stage ALL files with \`git add .\` before committing. Partial commits are not allowed in standard workflow. Do NOT push — pushing happens at finalize.
+**Do NOT commit during execute — not per task, not per plan, not on the user's behalf.** \`STAGE_TOOL_MATRIX\` grants \`bash-commit\` in exactly one non-IDLE coarse phase, and it is \`FINALIZING\`. \`EXECUTING\` is \`'bash-commit': false\`, so the stage gate BLOCKS \`git commit\` here — for the orchestrator and for every executor subagent, which inherit the same gate. An instruction to commit per task is not a stricter policy that some runs get away with; it is an instruction the harness refuses.
 
-**Per-Task Commits:**
+\`git add\` IS granted in \`EXECUTING\` (\`'bash-stage': true\`), so staging is fine when something downstream needs an index. Committing is not.
 
-\`\`\`bash
-git add .
-git commit -m "{type}({phase}-{plan}): {task-name}"
-\`\`\`
+**What to do instead:** leave the work in the working tree. Accumulated changes are carried to \`finalize\`, which is the step granted \`bash-stage\` + \`bash-commit\` and which owns staging, the conventional commit message (\`{type}({scope}): {subject}\`, types/scopes per \`luca preferences read\`), the changeset, and the push/PR. Nothing is lost by not committing here; the diff is still the diff.
 
-**Plan Metadata Commit:**
-
-\`\`\`bash
-git add .
-git commit -m "docs({phase}-{plan}): complete {plan-name} plan"
-\`\`\`
-
-**Phase Completion Commit:** NOT this skill's — see Step 11. It lands at \`finalize\` (\`FINALIZING\` is the only non-IDLE coarse phase whose stage-tool matrix grants \`bash-stage\` + \`bash-commit\`), so leave the phase artifacts uncommitted in the working tree when you hand back at \`learn\`.
+**Phase Completion Commit:** likewise NOT this skill's — see Step 11. Leave the phase artifacts uncommitted in the working tree when you hand back at \`learn\`.
 
 ## Success Criteria
 

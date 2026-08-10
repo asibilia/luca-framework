@@ -36,7 +36,6 @@ import { milestoneCompleteSkill } from './milestone-complete/index.ts'
 import { milestoneGapsSkill } from './milestone-gaps/index.ts'
 import { milestoneNewSkill } from './milestone-new/index.ts'
 import { noteSkill } from './note/index.ts'
-import { phaseAddSkill } from './phase-add/index.ts'
 import { phaseAssumptionsSkill } from './phase-assumptions/index.ts'
 import { phaseDiscussSkill } from './phase-discuss/index.ts'
 import { phaseExecuteSkill } from './phase-execute/index.ts'
@@ -81,7 +80,6 @@ export {
     milestoneGapsSkill,
     milestoneNewSkill,
     noteSkill,
-    phaseAddSkill,
     phaseAssumptionsSkill,
     phaseDiscussSkill,
     phaseExecuteSkill,
@@ -129,7 +127,6 @@ export const SKILLS: readonly Artifact[] = [
     milestoneGapsSkill,
     milestoneNewSkill,
     noteSkill,
-    phaseAddSkill,
     phaseAssumptionsSkill,
     phaseDiscussSkill,
     phaseExecuteSkill,

@@ -24,9 +24,18 @@ Create phases to close gaps identified by milestone audit.
    - Prioritize by requirement priority (must/should/nice)
    - Create coherent phase boundaries
 
-3. **Add phases to roadmap:**
-   - Use \`/phase-add\` pattern for each new phase
-   - Include gap references in phase description
+3. **Register each phase (one call per phase):**
+
+   \\\`\\\`\\\`bash
+   luca roadmap add-phase --name "<phase name, referencing the gaps it closes>"
+   \\\`\\\`\\\`
+
+   The verb owns numbering, slugification, directory creation, and the
+   regeneration of the GENERATED \`.luca/roadmap.md\`. Never \`mkdir\` a phase
+   directory, and treat \`.luca/roadmap.md\` as generated output — the verb
+   rewrites it. Take the phase number and
+   directory from the \`{ nn, slug, dir }\` it prints; add \`--deps "<name>"\`
+   when one gap-closure phase depends on another.
 
 4. **Update audit status:**
    - Mark gaps as "planned"
@@ -51,7 +60,7 @@ Create phases to close gaps identified by milestone audit.
 
 - [ ] Audit gaps loaded
 - [ ] Gaps grouped into coherent phases
-- [ ] Phases added to \`.luca/roadmap.md\`
+- [ ] Each phase registered via \`luca roadmap add-phase\` (no \`mkdir\`, no roadmap hand-edit)
 - [ ] Audit file updated with planning status
 - [ ] User knows next steps
 

@@ -102,6 +102,15 @@ Run \`luca state read\`. This skill writes \`plan.md\`, which the stage-gate hoo
 - \`pipelineStep === "architect"\` → run \`luca state advance --to-step plan\`, then proceed.
 - anything else → STOP. The pipeline must reach \`architect\` before planning can run — point the user at \`/lu\`. Do NOT force the transition or write \`plan.md\` from the wrong step (the hook will BLOCK it). This guard intentionally surfaces a mis-routing caller — e.g. an orchestrator that delegated here while the state was still at \`architect\` without advancing.
 
+Then run \`luca phase current\` to resolve the active phase. If there is no active phase, abort. The \`dir\` field it returns is the canonical phase directory — prefer it over any path you derive by globbing, and use it as \`<dir>\` throughout this skill.
+
+**Read the inputs before drafting anything**, via the \`Read\` tool and in this order:
+
+- \`<dir>/research.md\` — research findings
+- \`<dir>/context.md\` — user decisions
+
+**If either is missing, abort** with a clear error naming the missing step (\`/lu\` or \`/phase-research\` for research.md, \`/phase-discuss\` for context.md). A plan drafted without them is ungrounded, and the whole point of the two prior steps is that the plan inherits their conclusions.
+
 ### 1. Validate Environment
 
 \`\`\`bash
@@ -142,16 +151,24 @@ grep -A5 "Phase \${PHASE}:" .luca/roadmap.md 2>/dev/null
 
 If not found: Error with available phases. If found: Extract phase number, name, description.
 
-### 4. Ensure Phase Directory Exists
+### 4. Resolve the Phase Directory
 
 \`\`\`bash
 PHASE_DIR=$(ls -d .luca/phases/\${PHASE}-* 2>/dev/null | head -1)
-if [ -z "$PHASE_DIR" ]; then
-  PHASE_NAME=$(grep "Phase \${PHASE}:" .luca/roadmap.md | sed 's/.*Phase [0-9]*: //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-  mkdir -p ".luca/phases/\${PHASE}-\${PHASE_NAME}"
-  PHASE_DIR=".luca/phases/\${PHASE}-\${PHASE_NAME}"
-fi
 \`\`\`
+
+**If empty, stop.** Do NOT create the directory here. A registered phase always
+has one: \`luca roadmap add-phase\` creates it at registration time, validating
+the \`<NN>-<slug>\` name against the contract. A missing directory means the
+phase was never registered — surface that, and register it with:
+
+\`\`\`bash
+luca roadmap add-phase --name "<phase name>"
+\`\`\`
+
+which prints \`{ nn, slug, dir }\`. Use its \`dir\` verbatim. Never \`mkdir\` a
+phase directory or hand-build its slug — a raw \`mkdir\` bypasses the validator
+and the stage gate then blocks every artifact written into it.
 
 ### 5. Handle Research
 
@@ -443,6 +460,15 @@ If issues found and iteration_count < planVerificationIterations:
 - Re-verify with the plan-reviewer subagent
 - Repeat until passed or max iterations
 
+### 12.5 Advance out of plan (self-gate)
+
+The plan is written and reviewed, so close the \`plan\` step. Re-run \`luca state read\` and check \`pipelineStep\`:
+
+- \`pipelineStep\` is **still** \`plan\` → run \`luca state advance --to-step plan-review\`. \`plan-review\` is the only legal successor of \`plan\`; nothing else advances you.
+- \`pipelineStep\` already moved on → do nothing. Under \`/lu\` the orchestrator advances on your behalf.
+
+The re-read is the guard and it is load-bearing: there is no \`plan-review → plan-review\` self-edge, so an unconditional second advance is an illegal transition and errors. Do NOT mask that with \`2>/dev/null\` or \`|| true\` — skip the advance instead of swallowing the failure.
+
 ### 13. Present Final Status
 
 \`\`\`
@@ -464,9 +490,17 @@ If issues found and iteration_count < planVerificationIterations:
 /phase-execute {X}
 \`\`\`
 
+## What you must NOT do
+
+- Do NOT write code. \`plan\` sits in the PLANNING coarse phase, where the stage gate denies \`code-write\`.
+- Do NOT skip the synthesis step — read \`research.md\` + \`context.md\` before drafting. The plan must be grounded in those inputs, not in your priors.
+- Do NOT write \`plan.md\` to any path other than \`<dir>/plan.md\`, and do NOT use \`Edit\` — the hook blocks every other \`.luca/\` write.
+
 ## Success Criteria
 
 - [ ] .luca/ directory validated
+- [ ] research.md + context.md read (or the step aborted naming the missing one)
+- [ ] Pipeline advanced \`plan → plan-review\` once the plan was written (or already there)
 - [ ] Phase validated against roadmap
 - [ ] Phase directory created if needed
 - [ ] Research completed (unless --skip-research or --gaps or exists)

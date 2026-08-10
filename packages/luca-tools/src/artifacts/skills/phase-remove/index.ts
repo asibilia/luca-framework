@@ -5,106 +5,80 @@
  * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
  * (PLAN.md, RESEARCH.md, CONTEXT.md, POSTMORTEM.md) → LUCA_DIR_CONTRACT
  * canonicals (plan.md, research.md, context.md, learn.md).
+ *
+ * KEPT, not deleted, but reduced to a thin surface over `luca roadmap
+ * remove-phase`. The old body was twelve prose steps that validated the target
+ * against `currentPhase`, deleted the directory, renumbered every later
+ * directory "in descending order to avoid conflicts", renamed files inside
+ * them, and hand-edited the GENERATED `.luca/roadmap.md` — all of which the
+ * verb now does atomically and correctly. What survives is the part a CLI verb
+ * cannot do: showing the user what is about to disappear and waiting for a
+ * confirmation. (Deleting the skill outright would have removed the only
+ * confirmation gate in front of a destructive, renumbering operation.)
+ *
+ * Guarded by `../../roadmap-phase-verb-callers.test.ts`.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
 const BODY = `<main>
 # Luca Remove Phase
 
-Remove an unstarted future phase from the roadmap and renumber all subsequent phases to maintain a clean, linear sequence.
+Remove an unstarted future phase from the roadmap. Every later phase is renumbered so the sequence stays linear — \`<NN>\` is derived from roadmap order, so a gap is not representable.
 
-**Arguments:** \`<phase-number>\` (integer or decimal)
+**Arguments:** \`<phase-number>\` (1-based integer; decimals are not valid phase numbers)
 
 **Purpose:** Clean removal of work you've decided not to do, without polluting context with cancelled/deferred markers.
-
-**Output:** Phase deleted, all subsequent phases renumbered, git commit as historical record.
 
 ## Process
 
 1. **Parse arguments:**
 
-   - Argument is the phase number to remove
+   - The argument is the 1-based phase number to remove
    - Error if not provided
 
-2. **Load state:**
+2. **Show what will change:**
 
    \\\`\\\`\\\`bash
-   STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+   luca roadmap read
    \\\`\\\`\\\`
 
-   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\`)
-   - Parse current phase number from the workflow state JSON
+   Present to the user: the target phase's name, and the fact that every phase after it shifts down by one (its number AND its \`.luca/phases/\` directory name change).
 
-3. **Validate phase exists:**
+3. **Confirm:**
 
-   - Search for \`### Phase {target}:\` heading
-   - Error with available phases if not found
+   - Wait for explicit confirmation. This is destructive and renumbers directories.
 
-4. **Validate future phase:**
+4. **Remove it:**
 
-   - Target must be > current phase number
-   - Check for SUMMARY.md files (can't remove completed work)
+   \\\`\\\`\\\`bash
+   luca roadmap remove-phase --nn <phase-number>
+   \\\`\\\`\\\`
 
-5. **Gather phase info:**
+   The verb owns every deterministic step: it refuses anything that is not strictly greater than \`currentPhase\` (you cannot remove the active or a past phase), renumbers the roadmap, renames the affected \`.luca/phases/\` directories, and regenerates \`.luca/roadmap.md\`. A phase directory holding artifacts is PRESERVED rather than deleted, and reported back — only an empty one is removed.
 
-   - Extract phase name
-   - Find phase directory
-   - Find all subsequent phases that need renumbering
+5. **Report:**
 
-6. **Confirm removal:**
+   Relay the verb's output — what was removed, what was renamed, and the resulting phase count. If it reported a preserved directory, tell the user where it is so they can deal with it deliberately.
 
-   - Present what will be deleted/renumbered
-   - Wait for confirmation
+6. **Commit** (optional, user's call):
 
-7. **Delete phase directory:**
-
-   - Remove \`.luca/phases/{target}-{slug}/\`
-
-8. **Renumber directories:**
-
-   - Process in descending order to avoid conflicts
-   - Rename integer and decimal phase directories
-
-9. **Rename files in directories:**
-
-   - Rename plan files inside renumbered directories
-
-10. **Update \`.luca/roadmap.md\`:**
-
-    - Remove phase section entirely
-    - Renumber all subsequent phases
-    - Update dependency references
-
-11. **Roadmap update:**
-
-    The roadmap edit is the durable change. Confirm via \`luca roadmap read\`. The workflow state in \`.luca/state.json\` reads phase counts from the roadmap on demand — no separate state snapshot step is needed.
-
-12. **Commit:**
-    - \`chore: remove phase {target} ({original-phase-name})\`
+   \`\`\`
+   chore: remove phase {target} ({original-phase-name})
+   \`\`\`
 
 ## Anti-Patterns
 
-- Don't remove completed phases (have SUMMARY.md files)
-- Don't remove current or past phases
-- Don't leave gaps in numbering - always renumber
-- Don't add "removed phase" notes to \`.luca/state.json\` — the git commit is the record
-
-## Edge Cases
-
-- **Removing decimal phase:** Only affects other decimals in same series
-- **No subsequent phases:** Just delete and update \`.luca/roadmap.md\`
-- **Phase directory doesn't exist:** Skip deletion, proceed with updates
-- **Decimal phases under removed integer:** Renumber to previous integer
+- Don't rename or delete \`.luca/phases/\` directories yourself — the verb renumbers them atomically, highest-first, and a hand-rolled pass corrupts the sequence
+- Don't write \`.luca/roadmap.md\`. It is GENERATED output; the verb regenerates it
+- Don't try to remove the current or a past phase — the verb rejects it, and it is a signal the user meant something else
+- Don't invent decimal phase numbers to dodge renumbering; \`PHASE_SLUG_RE\` rejects them
+- Don't skip the confirmation step
 
 ## Success Criteria
 
-- [ ] Target phase validated as future/unstarted
-- [ ] Phase directory deleted (if existed)
-- [ ] All subsequent phase directories renumbered
-- [ ] Files inside directories renamed
-- [ ] \`.luca/roadmap.md\` updated (section removed, all references renumbered)
-- [ ] \`.luca/state.json\` reflects the new phase numbering (read back via \`luca state read\` to confirm)
-- [ ] Changes committed with descriptive message
+- [ ] User confirmed the removal after seeing what gets renumbered
+- [ ] Exactly one \`luca roadmap remove-phase --nn <N>\` call; no manual renames, deletes, or roadmap edits
+- [ ] The verb's report (removed / renamed / preserved directory) relayed to the user
 - [ ] No gaps in phase numbering
 
 ## Next Steps

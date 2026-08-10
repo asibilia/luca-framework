@@ -134,12 +134,59 @@ export async function compile(
         }
     }
 
+    // An artifact bucket that ships NOTHING still has to exist on disk.
+    // `luca init` authorizes its retired-artifact prune per bucket, and the
+    // signal it uses is "does the bundled source directory for this bucket
+    // exist?" (`install-skills.ts` → `prunable`). That test cannot tell
+    // "the bucket was never built" from "the bucket is deliberately empty"
+    // — and it must fail CLOSED on the former, since pruning off an
+    // unreadable bundle would quarantine live artifacts.
+    //
+    // So the compiler answers the question instead: emitting the directory
+    // unconditionally is the bundle asserting "this bucket is enumerable
+    // and it is empty", which re-authorizes the prune. Without it, every
+    // `{ kind: 'command' }` entry in `RETIRED_ARTIFACTS` becomes inert the
+    // moment the last command is folded away, and the folded commands stay
+    // slash-invocable in every existing install forever.
+    //
+    // Commands are the only bucket that empties out today; any future
+    // bucket that can reach zero needs the same treatment.
+    if (counts.command === 0) {
+        await ensureEmptyBucket(join(outputRoot, '.claude', 'commands'))
+    }
+
     let settingsPath: string | null = null
     if (hookSlices.length > 0) {
         settingsPath = await writeSettings(hookSlices, outputRoot)
     }
 
     return { counts, paths, settingsPath }
+}
+
+/**
+ * Create an artifact bucket directory that holds no artifacts.
+ *
+ * The directory alone is not enough: `npm pack` drops empty directories,
+ * so a bucket marked only by `mkdir` would exist in a dev tree and vanish
+ * from the published tarball — exactly the environment where the prune
+ * needs to run. The placeholder is a real file so the directory survives
+ * packing.
+ *
+ * The `.txt` extension is load-bearing. `installSkills`'s `copyDir` and
+ * `listBundledArtifacts` both filter the bucket to `*.md`, so a non-`.md`
+ * placeholder is invisible to both: it never installs into the user's
+ * harness home and never reads back as a shipped artifact.
+ */
+async function ensureEmptyBucket(dir: string): Promise<void> {
+    await ensureDir(dir)
+    await writeFileBytes(
+        join(dir, 'EMPTY-BUCKET.txt'),
+        'This artifact bucket intentionally ships nothing.\n' +
+            '\n' +
+            'It exists so `luca init` can tell "deliberately empty" from\n' +
+            '"not built", which is what authorizes evicting retired\n' +
+            'artifacts of this kind from an existing install. Do not delete.\n'
+    )
 }
 
 /**

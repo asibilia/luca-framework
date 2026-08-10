@@ -5,6 +5,19 @@
  * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
  * (PLAN.md, RESEARCH.md, CONTEXT.md, POSTMORTEM.md) → LUCA_DIR_CONTRACT
  * canonicals (plan.md, research.md, context.md, learn.md).
+ *
+ * Collapsed onto the CLI verbs: `note` is now the SINGLE thin LLM surface for
+ * phase capture. Its default mode used to be a verbatim duplicate of the
+ * `phase-add` skill (deleted with this change, see RETIRED_ARTIFACTS) — both
+ * computed the next NN, kebab-slugified the description, `mkdir -p`-ed the
+ * phase directory, and hand-edited the GENERATED `.luca/roadmap.md`. All four
+ * steps now belong to `luca roadmap add-phase`, which validates the slug
+ * against PHASE_SLUG_RE and prints `{ nn, slug, dir }` back, so the body never
+ * picks a path. The `--next` / `--whenever` modes were already one
+ * `luca todo add --priority` call and are unchanged.
+ *
+ * Guarded by `../../roadmap-phase-verb-callers.test.ts`, which asserts against
+ * the bytes the compiler emits.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
@@ -15,78 +28,71 @@ Capture ideas as roadmap phases (default) or queue notes for agent pickup.
 
 **Arguments:** \`[--next|--whenever] <message>\`
 
-- **Default (phase):** Creates a new phase in the roadmap for the message
-- \`--next\` flag: Queue an urgent note (picked up within 60 seconds via context-check hook)
-- \`--whenever\` flag: Queue a deferred note (picked up at commit boundaries only)
+- **Default (phase):** Registers a new phase on the roadmap for the message
+- \`--next\` flag: Queue an urgent note (high-priority todo, surfaced into agent context)
+- \`--whenever\` flag: Queue a deferred note (low-priority todo, picked up at boundaries)
 
 ---
 
 ## Default Mode — Add Phase
 
-When no flag is provided, the message becomes a new phase in the current milestone.
+When no flag is provided, the message becomes a new phase at the end of the roadmap.
 
 ### Process
 
 1. **Parse arguments:**
-   - If first argument is \`--next\` or \`--whenever\`, use note mode (see below)
+   - If the first argument is \`--next\` or \`--whenever\`, use note mode (see below)
    - Otherwise, all arguments become the phase description
    - Error if no arguments provided
 
-2. **Load roadmap:**
-   - Read \`.luca/roadmap.md\` (or call \`luca roadmap read\` for a typed view)
-   - Error if not found
-
-3. **Find current milestone:**
-   - Locate "## Current Milestone:" heading
-   - Extract milestone name and version
-   - Identify all phases under this milestone
-
-4. **Calculate next phase:**
-   - Find highest integer phase number (ignore decimals)
-   - Add 1 to get next phase number
-   - Format as two-digit
-
-5. **Generate slug:**
-   - Convert description to kebab-case
-   - Example: "Add authentication" → \`07-add-authentication\`
-
-6. **Create phase directory:**
-
-   \`\`\`bash
-   mkdir -p ".luca/phases/\${phase_num}-\${slug}"
-   \`\`\`
-
-7. **Update roadmap:**
-   - Insert new phase entry after last phase in current milestone
-   - Include Goal, Depends on, Plans placeholders
-
-8. **Update roadmap:**
+2. **Register the phase:**
 
    \\\`\\\`\\\`bash
-   # The roadmap is the durable view; the workflow state machine in .luca/state.json
-   # is updated separately by the pipeline when a phase becomes active.
-   luca roadmap create --file <payload.json>   # if creating a fresh roadmap
-   # or edit .luca/roadmap.md directly for incremental additions, then read it back via
-   luca roadmap read 2>/dev/null || true
+   luca roadmap add-phase --name "<description>"
    \\\`\\\`\\\`
 
-9. **Confirm:**
+   The verb owns everything that used to be prose here: it computes the next
+   phase number from roadmap order, slugifies the name, validates the slug,
+   creates the directory, and regenerates \`.luca/roadmap.md\`. It is callable
+   in every \`pipelineStep\`, so a phase can be captured mid-run.
 
-    \`\`\`
-    Phase {N} added to current milestone:
-    - Description: {description}
-    - Directory: .luca/phases/{phase-num}-{slug}/
+   Optional flags:
+   - \`--deps "<name>,<name>"\` — names of phases this one depends on
+   - \`--complexity TRIVIAL|SIMPLE|MODERATE|COMPLEX|CRITICAL\` — recorded on the entry
+   - \`--after <N>\` — insert after phase N instead of appending. **This
+     RENUMBERS every later phase and renames its directory.** Omit it unless
+     the user explicitly asked for the work to jump the queue.
 
-    Next: /phase-plan {N}
-    \`\`\`
+3. **Read the verb's output — never assemble a path yourself:**
+
+   \\\`\\\`\\\`json
+   { "nn": "07", "slug": "07-add-authentication", "dir": ".luca/phases/07-add-authentication" }
+   \\\`\\\`\\\`
+
+   Use \`.dir\` verbatim wherever the phase directory is needed, and \`.nn\` for
+   the next-step suggestion.
+
+4. **Confirm:**
+
+   \`\`\`
+   Phase {nn} added:
+   - Description: {description}
+   - Directory: {dir}
+
+   Next: /phase-plan {nn}
+   \`\`\`
 
 ### Anti-Patterns
 
-See \`/phase-add\` for detailed anti-patterns. Key rules:
-- Don't modify phases outside current milestone
-- Don't renumber existing phases
-- Don't use decimal numbering — phase directories must be \`NN-slug\` with a
-  zero-padded two-digit \`NN\`; anything else is rejected by the stage gate
+- Don't compute the phase number or build the slug yourself — \`luca roadmap
+  add-phase\` owns both, and a hand-built one fails the contract validator
+- Don't \`mkdir\` a phase directory. A raw \`mkdir\` bypasses the \`<NN>-<slug>\`
+  validator; decimal numbering (\`7.1-slug\`) is rejected outright
+- Don't write \`.luca/roadmap.md\`. It is GENERATED output — the verb
+  regenerates it, and a direct write is a contract violation the stage gate
+  blocks
+- Don't renumber existing phases by hand (use \`--after\`, which renumbers
+  atomically, or don't reorder at all)
 - Don't create plans yet (that's \`/phase-plan\`)
 - Don't commit changes (user decides when to commit)
 
@@ -143,15 +149,15 @@ Advisory backlog entry. Not auto-consumed — agent reads via \`luca todo list\`
 
 | Mode | Trigger | Output |
 |------|---------|--------|
-| Default (phase) | No flag | Roadmap phase + directory |
-| \`--next\` | \`--next\` flag | MuninnDB todo (priority high) |
-| \`--whenever\` | \`--whenever\` flag | MuninnDB todo (priority low) |
+| Default (phase) | No flag | \`luca roadmap add-phase\` → roadmap entry + phase directory |
+| \`--next\` | \`--next\` flag | \`luca todo add\` (priority high) |
+| \`--whenever\` | \`--whenever\` flag | \`luca todo add\` (priority low) |
 
 ## Success Criteria
 
-- [ ] Phase mode: directory created, roadmap updated, state updated
-- [ ] Note modes: MuninnDB todo created via \`luca todo add\`
-- [ ] Observer event emitted (fire-and-forget)
+- [ ] Phase mode: exactly one \`luca roadmap add-phase\` call, its \`dir\` taken from the verb's output
+- [ ] Phase mode: no \`mkdir\`, no slugification, and \`.luca/roadmap.md\` left untouched by this skill (the verb regenerates it)
+- [ ] Note modes: MuninnDB todo created via \`luca todo add\` with the right \`--priority\`
 - [ ] User sees confirmation with appropriate next steps
 </main>
 `

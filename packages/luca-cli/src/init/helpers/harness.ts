@@ -67,6 +67,13 @@ export const claudeHarness: Harness = {
     displayName: 'Claude Code',
     home: defaultClaudeHome,
     isInstalled: () => existsSync(defaultClaudeHome()),
+    // `commands: true` is RETAINED even though luca now bundles zero
+    // commands (all 17 were folded into their same-named skills). The flag
+    // does double duty: it gates the install copy AND the retired-artifact
+    // prune (`KIND_BUCKET` maps `command` → `commands`, and
+    // `pruneRetiredArtifacts` skips any bucket the harness does not own).
+    // Flipping it to false would strand every folded command in every
+    // existing `~/.claude/commands/`, still slash-invocable, forever.
     installArtifacts: { agents: true, commands: true, skills: true },
     wireHooks: (opts) => wireClaudeHooks(opts),
     mcp: { wire: (opts) => wireClaudeMcp(opts) },
