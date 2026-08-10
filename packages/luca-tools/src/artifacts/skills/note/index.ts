@@ -85,7 +85,8 @@ When no flag is provided, the message becomes a new phase in the current milesto
 See \`/phase-add\` for detailed anti-patterns. Key rules:
 - Don't modify phases outside current milestone
 - Don't renumber existing phases
-- Don't use decimal numbering (that's \`/phase-insert\`)
+- Don't use decimal numbering — phase directories must be \`NN-slug\` with a
+  zero-padded two-digit \`NN\`; anything else is rejected by the stage gate
 - Don't create plans yet (that's \`/phase-plan\`)
 - Don't commit changes (user decides when to commit)
 

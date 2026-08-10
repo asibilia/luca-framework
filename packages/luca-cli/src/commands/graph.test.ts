@@ -1,11 +1,16 @@
 /**
  * Tests for the `luca graph` CLI verb (DAD-P1d).
  *
- * The verb must emit a Mermaid stateDiagram-v2 (default) or JSON to stdout,
- * reject an invalid --format with a non-zero exit + zero output, and stay
- * pure (never touch `.luca/`).
+ * The verb must emit a Mermaid stateDiagram-v2 to stdout, reject an invalid
+ * --format (including the RETIRED `json`) with a non-zero exit + zero output,
+ * and stay pure (never touch `.luca/`).
+ *
+ * THE GATE is `emits the golden bytes` below: it drives the REAL command `run`
+ * with stdout captured and compares the emitted bytes to the golden captured
+ * from the pre-deletion renderer. This is the end of the production call
+ * path — `luca graph --format mermaid | diff - <golden>` in test form.
  */
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -58,7 +63,35 @@ function captureStdout(args: Record<string, unknown>): string[] {
     }
 }
 
+/** The pre-deletion golden captures, read as raw bytes. */
+const GOLDEN_DIR = join(
+    import.meta.dir,
+    '..',
+    '..',
+    '..',
+    'luca-core',
+    'src',
+    'state',
+    '__golden__'
+)
+const goldenBytes = (name: string): string =>
+    readFileSync(join(GOLDEN_DIR, name), 'utf8')
+
 describe('luca graph — mermaid output', () => {
+    test('emits the golden bytes for --format mermaid (byte-for-byte)', () => {
+        const writes = captureStdout({ format: 'mermaid', annotate: false })
+        expect(writes).toHaveLength(1)
+        expect(writes[0]!).toBe(goldenBytes('pipeline-graph.mermaid'))
+    })
+
+    test('emits the golden bytes for --format mermaid --annotate', () => {
+        const writes = captureStdout({ format: 'mermaid', annotate: true })
+        expect(writes).toHaveLength(1)
+        expect(writes[0]!).toBe(
+            goldenBytes('pipeline-graph.annotated.mermaid')
+        )
+    })
+
     test('first line is stateDiagram-v2 and declares all 13 leaves', () => {
         const writes = captureStdout({ format: 'mermaid', annotate: false })
         expect(writes).toHaveLength(1)
@@ -71,11 +104,20 @@ describe('luca graph — mermaid output', () => {
     })
 })
 
-describe('luca graph — json output', () => {
-    test('emits valid JSON', () => {
-        const writes = captureStdout({ format: 'json', annotate: false })
-        expect(writes).toHaveLength(1)
-        expect(() => JSON.parse(writes[0]!)).not.toThrow()
+describe('luca graph — retired json format', () => {
+    // `--format json` was `JSON.stringify(pipelineMachine.toJSON())`. The
+    // machine is deleted and no honest table equivalent exists, so the format
+    // is dropped: it must now be rejected like any other unknown format rather
+    // than silently emitting a fabricated schema.
+    test('--format json is rejected (exitCode 1, no output)', () => {
+        const prevExit = process.exitCode
+        try {
+            const writes = captureStdout({ format: 'json', annotate: false })
+            expect(process.exitCode).toBe(1)
+            expect(writes).toHaveLength(0)
+        } finally {
+            process.exitCode = prevExit ?? 0
+        }
     })
 })
 

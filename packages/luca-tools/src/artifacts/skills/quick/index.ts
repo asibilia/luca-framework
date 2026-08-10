@@ -1,264 +1,176 @@
 /**
- * quick skill — Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.
+ * quick skill — Register a small ad-hoc task as a real phase and hand the
+ * pipeline to `/lu`.
  *
- * Ported from fd0b169be:packages/luca-framework/.cursor/skills/quick/SKILL.md (pre-D-4) (E-5).
- * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
- * (PLAN.md, RESEARCH.md, CONTEXT.md, POSTMORTEM.md) → LUCA_DIR_CONTRACT
- * canonicals (plan.md, research.md, context.md, learn.md).
+ * REWRITTEN (Luca retro). The ported v12 body was broken in five
+ * independent ways and one of them hard-failed in the user's face:
+ *
+ *   1. It ran `idle → learn → finalize → idle`. From `idle` the only legal
+ *      successor is `triage` (`pipeline-transitions.ts`), and unlike the
+ *      `phase-execute` sites this one carried no `|| true`, so the FIRST
+ *      advance exited non-zero every single time the skill was used.
+ *   2. It `mkdir -p`-ed a top-level `quick/` directory inside `.luca/`,
+ *      which `LUCA_DIR_CONTRACT` does not list (`is-valid-luca-path`
+ *      rejects it as an unknown top-level directory).
+ *   3. It slugified the user's prose with a `sed` pipeline; phase slugs are
+ *      derived from roadmap ORDER and are never LLM-named.
+ *   4. It numbered directories with three digits; `PHASE_SLUG_RE` requires
+ *      exactly two.
+ *   5. It told subagents to write `plan.md` and the execute summary, both
+ *      stage-gated to steps this skill never entered.
+ *
+ * The rewrite takes the "thin router" option: `quick` now does exactly the
+ * deterministic half of triage (one phase, registered through
+ * `luca roadmap add-phase`, which owns numbering, slugification, validation
+ * and directory creation), walks the two LEGAL advances into the pipeline,
+ * and hands off to `/lu`. It writes no artifacts, creates no directories,
+ * picks no paths, and issues no commits.
+ *
+ * Guarded by `index.test.ts`, which asserts against the bytes `emitSkill`
+ * writes — including a fold of every emitted `--to-step` through
+ * `isLegalTransition` starting at `idle`.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
 const BODY = `<main>
 # Luca Quick
 
-Execute small, ad-hoc tasks with Luca guarantees (atomic commits, workflow-state tracking) while skipping optional agents (research, plan-reviewer, verifier).
+Register a small, well-understood task as a real roadmap phase and hand it straight to the pipeline — without the roadmap-decomposition conversation \`/lu\` normally opens with.
 
-Quick mode is the same system with a shorter path:
+**Arguments:** \`[task-description]\` (optional — you'll be asked if omitted)
 
-- Invokes the architect mode-agent (planning) + the \`executor\` subagent
-- Skips researcher, plan-reviewer, verifier
-- Quick tasks live in a phase directory like any other phase (per LUCA_DIR_CONTRACT)
-- Tracked via the canonical workflow state machine
+**Use when:** you know exactly what to do, it is one deliverable, and you don't want to be interviewed about milestone structure first.
 
-**Use when:** You know exactly what to do and the task is small enough to not need research or verification.
+## What quick is, and what it is not
 
-## Sub-agent Delegation Requirements
+Quick is a **router**, not a shortcut around the state machine. It does the deterministic half of triage (one phase, one complexity call) and then delegates.
 
-This skill is an **orchestrator**. YOU MUST delegate work to subagents using the Task tool.
-
-**Required subagents for this skill:**
-
-- The \`architect\` mode-agent performs the planning work in v13 (the v12-era \`lu-planner\` subagent was dropped per plan §5.6)
-- \`executor\` - Executes the plan
-
-**DO NOT** attempt to plan or execute yourself. Spawn the appropriate subagents via the \`Task\` tool, or invoke the architect mode-agent.
+- It does **not** skip the researcher, plan-reviewer, or verifier. The pipeline is a fixed transition table (\`PIPELINE_TRANSITIONS\`) and there is no step-skipping edge in it. Depth is tuned by *complexity*, not by omitting steps. Anything claiming otherwise is stale documentation.
+- It writes **no** phase artifacts. Every artifact is stage-gated to the step that owns it, and quick is never in those steps — the downstream \`/lu\` steps own them.
+- It creates **no** directories and picks **no** paths. \`luca roadmap add-phase\` owns numbering, slugification, validation, and directory creation, and prints the path back.
+- It does **not** commit. Commits happen only in the finalizing flow.
 
 ## Process
 
-> Model tiers come from each agent's own definition (and the harness default); this orchestrator never picks model strings.
-
-### Step 1: Pre-flight Validation
-
-Check that an active Luca project exists:
+### Step 1: Pre-flight
 
 \`\`\`bash
-# Auto-initialize the canonical .luca/ skeleton if missing (quick mode works without a full roadmap)
-if [ ! -d .luca ]; then
-  luca init 2>/dev/null || true
-fi
+luca state read
 \`\`\`
 
-Quick tasks work independently — no \`roadmap.md\` required. The \`luca init\` command writes the canonical \`.luca/\` skeleton per LUCA_DIR_CONTRACT.
+- If the command fails because there is no \`.luca/\`, stop and tell the user to run \`luca init\` first. Do **not** auto-run it — it is an interactive installer.
+- Read \`pipelineStep\` and \`currentPhase\` from the output.
 
-### Step 2: Get Task Description
+**Gate on \`pipelineStep\`.** Quick is only legal from \`idle\`:
 
-Use AskQuestion tool:
+- \`pipelineStep\` is \`idle\` → continue.
+- \`pipelineStep\` is anything else → a run is already in flight. **Stop.** Do not advance, do not register anything. Tell the user their options: \`Skill(skill: "lu")\` to resume the live run, or \`Skill(skill: "note", args: "<task>")\` to queue this task for later. Then end your turn.
+
+This gate is what makes every advance below legal: from \`idle\` the only successor is \`triage\`, and from \`triage\` the only successor is \`research\`.
+
+### Step 2: Get the task description
+
+If the invocation carried a description, use it. Otherwise use the AskQuestion tool:
 
 - header: "Quick Task"
 - question: "What do you want to do?"
 
-Store response as \`$DESCRIPTION\`.
+Hold the answer as \`$DESCRIPTION\`. Do not transform it — pass the prose through verbatim in Step 4.
 
-Generate slug from description:
-
-\`\`\`bash
-slug=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//' | cut -c1-40)
-\`\`\`
-
-### Step 3: Calculate Next Quick Task Number
+### Step 3: Confirm it really is quick
 
 \`\`\`bash
-mkdir -p .luca/quick
-last=$(ls -1d .luca/quick/[0-9][0-9][0-9]-* 2>/dev/null | sort -r | head -1 | xargs -I{} basename {} | grep -oE '^[0-9]+')
-
-if [ -z "$last" ]; then
-  next_num="001"
-else
-  next_num=$(printf "%03d" $((10#$last + 1)))
-fi
+luca classify --task "$DESCRIPTION" --files <estimated-file-count> --domains "<comma-list>" --concerns "<comma-list>" --json
 \`\`\`
 
-### Step 4: Create Quick Task Directory
+Read the \`.complexity\` field, then take the **higher** of that and your own read — the heuristic scores breadth only and systematically under-rates deep single-file work, so it is a floor, never a ceiling.
+
+- \`TRIVIAL\` or \`SIMPLE\` → this is a quick task. Hold that level as \`$COMPLEXITY\` and continue.
+- \`MODERATE\` or above → **decline**. Nothing has been mutated yet, so this is a clean exit: tell the user the task is bigger than quick is for and hand it to the full entry point with \`Skill(skill: "lu", args: "$DESCRIPTION")\`. End your turn.
+
+### Step 4: Register the phase
+
+One phase, appended immediately after the current position so it is the next thing worked on:
 
 \`\`\`bash
-QUICK_DIR=".luca/quick/\${next_num}-\${slug}"
-mkdir -p "$QUICK_DIR"
+luca roadmap add-phase --name "$DESCRIPTION" --complexity "$COMPLEXITY" --after "$CURRENT_PHASE"
 \`\`\`
 
-### Step 5: Spawn Planner (Quick Mode)
+The verb prints the phase it created:
 
-**MANDATORY**: Invoke the architect mode-agent (which performs planning in v13 — the v12-era \`lu-planner\` subagent was dropped per plan §5.6). Do NOT attempt to plan yourself.
+\`\`\`json
+{ "nn": "07", "slug": "07-fix-flaky-auth-test", "dir": ".luca/phases/07-fix-flaky-auth-test" }
+\`\`\`
 
-First, read context:
+Use \`.dir\` verbatim wherever you need the phase directory — never assemble that path yourself. Hold \`.nn\` for the next step.
+
+Two things to know about the verb:
+
+- With \`--after "$CURRENT_PHASE"\` the new phase lands at \`currentPhase + 1\`. On an empty roadmap (\`currentPhase\` is \`0\`) it becomes phase \`01\` and is activated automatically.
+- Inserting **renumbers** every later pending phase and renames its directory. That is by design — decimal phase numbers are not valid slugs. Mention it to the user if the roadmap had pending phases after the current one.
+
+### Step 5: Position onto the new phase
 
 \`\`\`bash
-# Read workflow state from .luca/state.json via the luca CLI
-STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
-# Recall session context from MuninnDB:
-# mcp__muninn__muninn_recall(vault: "default", context: "current session context for quick task")
-WORKING_CONTENT="[recalled from MuninnDB session context]"
+luca state set-current-phase --phase-number "$NN"
 \`\`\`
 
-Then spawn the architect mode-agent:
+Where \`$NN\` is the \`nn\` printed in Step 4. Idempotent when the verb already activated it; it also marks the phase in-progress.
 
-\`\`\`python
-Task(
-  prompt="""
-<planning_context>
+### Step 6: Enter the pipeline
 
-**Mode:** quick
-**Task:** {description}
-**Quick Task Number:** {next_num}
-**Quick Task Directory:** {quick_dir}
-
-**Project State:**
-{state_content}
-
-**Working Memory:**
-{working_content}
-
-</planning_context>
-
-<quick_mode_constraints>
-- Create a SINGLE plan with 1-3 focused tasks
-- Target ~30% context usage (simple, focused)
-- No research or verification needed
-- Tasks should be directly actionable
-</quick_mode_constraints>
-
-<output_requirements>
-- Create plan.md in {quick_dir} (canonical filename per LUCA_DIR_CONTRACT)
-- Plan should have clear tasks whose Verification lines reference ac-IDs from a ## Verification Criteria section (- **ac-NN**: <one binary probe> — exactly one binary probe per criterion)
-- Return summary of plan created
-</output_requirements>
-
-Create a quick plan for this task.
-""",
-  subagent_type="luca: Architect",
-  description="Quick plan: {description}"
-)
-\`\`\`
-
-**Do NOT proceed until the Task returns.**
-
-### Step 6: Spawn Executor
-
-**MANDATORY**: You MUST spawn an executor sub-agent. Do NOT attempt to execute yourself.
-
-First, read the plan:
+Two advances, both legal from \`idle\`, both unmasked — a failure here is a real contract violation and must surface:
 
 \`\`\`bash
-PLAN_CONTENT=$(cat "\${QUICK_DIR}/plan.md")
-# Read workflow state from .luca/state.json via the luca CLI
-STATE_JSON=$(luca state read 2>/dev/null || echo '{"initialized":false}')
+luca state advance --to-step triage
+luca state advance --to-step research
 \`\`\`
 
-Then spawn the executor:
+That is the whole of quick's triage: one phase on the roadmap, a complexity level recorded on it, and the run positioned at the first working step.
 
-\`\`\`python
-Task(
-  prompt="""
-<execution_context>
-
-**Mode:** quick
-**Quick Task Number:** {next_num}
-**Quick Task Directory:** {quick_dir}
-
-**Plan:**
-{plan_content}
-
-**Project State:**
-{state_content}
-
-</execution_context>
-
-<execution_rules>
-- Execute all tasks in the plan
-- Commit each task atomically
-- Do NOT update \`.luca/roadmap.md\` (quick tasks are separate phases per the contract)
-- Write the execution summary to the canonical \`execute/summary.md\`
-</execution_rules>
-
-<output_requirements>
-- Create \`execute/summary.md\` in \`{quick_dir}\` (canonical per LUCA_DIR_CONTRACT)
-- Return commit hash and summary of what was done
-</output_requirements>
-
-Execute this quick task plan.
-""",
-  subagent_type="executor",
-  description="Execute quick: {description}"
-)
-\`\`\`
-
-**Do NOT proceed until the Task returns.**
-
-### Step 7: Advance Workflow State
-
-Advance the pipeline through learn → finalize → idle via the standard transitions:
-
-\`\`\`bash
-luca state advance --to-step learn
-luca state advance --to-step finalize
-luca state advance --to-step idle
-\`\`\`
-
-### Step 8: Final Commit and Completion
-
-\`\`\`bash
-git add .
-git commit -m "docs(quick-\${next_num}): \${DESCRIPTION}"
-\`\`\`
-
-Display completion:
+### Step 7: Hand off
 
 \`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Luca ► QUICK TASK COMPLETE ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Quick Task \${next_num}: \${DESCRIPTION}
-
-Summary: \${QUICK_DIR}/execute/summary.md
-Commit: \${commit_hash}
-
-Ready for next task: /quick
+Skill(skill: "lu")
 \`\`\`
+
+Invoke it with **no arguments**. The run is already staged in \`.luca/state.json\`, so \`/lu\` sees a mid-flight pipeline, skips its own triage (which would otherwise call \`luca roadmap create\` and reset the roadmap you just built), and resumes at \`research\`. The complexity you settled on in Step 3 is on the roadmap entry, so \`/lu\` can read it back rather than re-classifying.
+
+From here \`/lu\` owns the run. Quick is done.
 
 ## Success Criteria
 
-- [ ] \`.luca/\` directory exists (auto-created via \`luca init\` if needed)
-- [ ] \`.luca/state.json\` exists (auto-created via \`luca init\` if needed)
-- [ ] User provides task description
-- [ ] Slug generated (lowercase, hyphens, max 40 chars)
-- [ ] Next phase number calculated (zero-padded NN per LUCA_DIR_CONTRACT)
-- [ ] Phase directory created at \`.luca/phases/NN-slug/\`
-- [ ] \`plan.md\` written by the architect mode-agent
-- [ ] \`execute/summary.md\` written by the \`executor\` subagent
-- [ ] Workflow state advanced through learn → finalize → idle
-- [ ] Artifacts committed
+- [ ] \`luca state read\` succeeded and \`pipelineStep\` was \`idle\` (otherwise: routed and stopped)
+- [ ] Task description obtained
+- [ ] Complexity resolved to \`TRIVIAL\` or \`SIMPLE\` (otherwise: routed to \`/lu\` and stopped)
+- [ ] Exactly one phase registered via \`luca roadmap add-phase\`, its \`dir\` taken from the verb's output
+- [ ] \`currentPhase\` positioned onto the new phase
+- [ ] \`idle → triage → research\` completed with zero non-zero exits
+- [ ] \`/lu\` invoked with no arguments
+- [ ] No directories created, no artifacts written, no commits made by this skill
+
+## Anti-Patterns
+
+- Don't build a slug or a phase number yourself — \`luca roadmap add-phase\` owns both, and hand-built ones fail the contract validator.
+- Don't invent a directory outside \`.luca/phases/<NN>-<slug>/\`. There is no quick-specific home.
+- Don't advance past \`research\`. Every later step is \`/lu\`'s to drive.
+- Don't mask an advance with \`|| true\` or \`2>/dev/null\`. If a transition is rejected, the skill is wrong and you need to see it.
+- Don't promise the user that research or review will be skipped. They won't be.
 
 ## Next Steps
 
-| Condition | Action | Command |
-|-----------|--------|---------|
-| Task complete | Check project status | \`/progress\` |
-| More quick tasks | Run another | \`/quick\` |
-| Want to commit | Commit changes | \`git commit\` with a conventional message |
-| Want PR | Create pull request | Run \`gh pr create\` |
-
-**Primary:** \`/progress\` — See project status after quick task
+**Primary:** \`/lu\` — already invoked in Step 7; it drives the run to completion.
 
 **Also available:**
 
-- \`/quick\` — Run another quick task
-- \`/help\` — See all available commands
+- \`/progress\` — check where the run got to
+- \`/note <message>\` — queue a task instead of starting one
 </main>
 `
 
 export const quickSkill = defineSkill({
     name: 'quick',
     description:
-        'Execute a quick ad-hoc task with Luca quality guarantees but minimal ceremony.',
+        'Register a small ad-hoc task as a roadmap phase and hand it to the /lu pipeline, skipping the roadmap-decomposition conversation. Use when the task is one small, well-understood deliverable.',
     body: BODY,
 })

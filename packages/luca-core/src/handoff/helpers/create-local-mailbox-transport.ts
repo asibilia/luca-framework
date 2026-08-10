@@ -7,7 +7,7 @@
  *
  * Shape notes:
  *   - A factory closure returning a narrow interface, mirroring
- *     `createPipelineActorHandle` (`state/machine/actor-handle.ts`). No classes.
+ *     `mutateState` (`luca-cli/src/write-surface/helpers/mutate-state.ts`). No classes.
  *   - Methods are `async` and RESOLVE their results; the filesystem calls inside
  *     stay synchronous. The Promise surface is what the phase-5 hub needs, and
  *     nothing here benefits from an async fs layer.

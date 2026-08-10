@@ -5,9 +5,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+    checkPipelineGuard,
+    fixLoopCounterUpdate,
     getLedgerByEvent,
     lucaStateSchema,
-    machineVerdict,
     type PipelineStep as PipelineStepType,
 } from '@alecsibilia/luca-core'
 
@@ -333,11 +334,12 @@ describe('luca_state_advance', () => {
 
 /**
  * Equivalence harness: the handler's pure decision seam (`decideAdvance`) must
- * agree with `machineVerdict` on accept/reject AND the resulting step for every
- * representative transition class. This proves the P1b swap is a true drop-in —
- * the persisted mutation and the machine oracle can never disagree.
+ * agree with `checkPipelineGuard` — the SOLE verdict engine, and the one the
+ * PreToolUse pipeline-guard hook calls — on accept/reject AND the resulting
+ * step for every representative transition class. The persisted mutation and
+ * the hook's gate can never disagree.
  */
-describe('decideAdvance ⇔ machineVerdict equivalence', () => {
+describe('decideAdvance ⇔ checkPipelineGuard equivalence', () => {
     const pairs: Array<{ from: string; to: string; kind: string }> = [
         { from: 'plan', to: 'plan-review', kind: 'legal forward' },
         { from: 'checks', to: 'execute', kind: 'legal loop-back' },
@@ -350,7 +352,7 @@ describe('decideAdvance ⇔ machineVerdict equivalence', () => {
     for (const { from, to, kind } of pairs) {
         test(`${kind}: ${from} → ${to}`, () => {
             const state = lucaStateSchema.parse({ pipelineStep: from })
-            const verdict = machineVerdict({
+            const verdict = checkPipelineGuard({
                 currentStep: from,
                 requestedStep: to,
                 complexity: state.complexity,
@@ -358,13 +360,13 @@ describe('decideAdvance ⇔ machineVerdict equivalence', () => {
             })
 
             if (verdict.allowed) {
-                // Accept: decideAdvance returns the machine's resulting step in
-                // `.pipelineStep`. Compare as strings (decideAdvance is typed to
-                // the PipelineStep union; machineVerdict.resultingStep is flat).
+                // Accept: decideAdvance lands on exactly the requested step.
+                // Compare as strings (decideAdvance is typed to the
+                // PipelineStep union; the guard input is flat).
                 expect(
                     decideAdvance(state, to as PipelineStepType)
                         .pipelineStep as string
-                ).toBe(verdict.resultingStep)
+                ).toBe(to)
             } else {
                 // Reject: decideAdvance throws (generic Error the caller catches).
                 expect(() =>
@@ -389,10 +391,36 @@ describe('decideAdvance ⇔ machineVerdict equivalence', () => {
         ).toThrow(/unknown-current-step/)
     })
 
-    test('barrel-import smoke: machineVerdict resolves from @alecsibilia/luca-core (no cycle)', () => {
-        // If exporting machineVerdict through the state barrel introduced an
-        // import cycle, this symbol would evaluate to `undefined` at module
-        // load. A live function reference is the no-cycle probe.
-        expect(typeof machineVerdict).toBe('function')
+    test('barrel-import smoke: the verdict + counter seams resolve from @alecsibilia/luca-core (no cycle)', () => {
+        // If exporting these through the state barrel introduced an import
+        // cycle, the symbols would evaluate to `undefined` at module load. A
+        // live function reference is the no-cycle probe.
+        expect(typeof checkPipelineGuard).toBe('function')
+        expect(typeof fixLoopCounterUpdate).toBe('function')
+    })
+
+    test('the counter write-back seam is wired into decideAdvance (not just exported)', () => {
+        // REGRESSION GUARD. Swapping the verdict engine without relocating the
+        // counter patch would freeze the fix-loop counters at their persisted
+        // value forever AND silently starve the `fixloop-counted` ledger
+        // emission (which is gated on `counterUpdate !== undefined`). Assert
+        // decideAdvance itself returns the update.
+        const atChecks = lucaStateSchema.parse({
+            pipelineStep: 'checks',
+            checksFixIteration: 2,
+        })
+        expect(decideAdvance(atChecks, 'execute' as PipelineStepType)).toEqual({
+            pipelineStep: 'execute',
+            counterUpdate: { field: 'checksFixIteration', value: 3 },
+        })
+        expect(decideAdvance(atChecks, 'verify' as PipelineStepType)).toEqual({
+            pipelineStep: 'verify',
+            counterUpdate: { field: 'checksFixIteration', value: 0 },
+        })
+        // A non-fix-loop edge carries no update.
+        const atPlan = lucaStateSchema.parse({ pipelineStep: 'plan' })
+        expect(
+            decideAdvance(atPlan, 'plan-review' as PipelineStepType)
+        ).toEqual({ pipelineStep: 'plan-review' })
     })
 })

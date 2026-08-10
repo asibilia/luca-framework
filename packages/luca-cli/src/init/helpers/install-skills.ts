@@ -131,13 +131,48 @@ export interface RetiredArtifact {
  *      uses.)
  *
  * Empty is a legitimate state: it means every artifact luca has ever
- * shipped is still shipped. Candidates awaiting their deletion —
- * `phase-insert`, `repo-audit`, `choose`, `post-init-tour`,
- * `workflow-save`, and any commands folded into their skills — belong
- * here only once the source and its `SKILLS`/`COMMANDS` registration are
- * actually gone.
+ * shipped is still shipped. Any future candidate awaiting deletion
+ * belongs here only once the source and its `SKILLS`/`COMMANDS`
+ * registration are actually gone.
  */
-export const RETIRED_ARTIFACTS: readonly RetiredArtifact[] = []
+export const RETIRED_ARTIFACTS: readonly RetiredArtifact[] = [
+    // Emitted decimal phase directories (`7.1-slug`) that `PHASE_SLUG_RE`
+    // rejects, so every artifact it wrote was blocked by the stage gate.
+    { kind: 'skill', name: 'phase-insert', retiredIn: '13.1.0' },
+    // Shelled out to `scripts/check-domain-boundaries.ts` and
+    // `bun run check:drift`; neither has existed since the restructure.
+    // Superseded by `repo-cleanup`.
+    { kind: 'skill', name: 'repo-audit', retiredIn: '13.1.0' },
+    // Its issue-workflow branch routed to `/project:git*` commands that
+    // exist nowhere in the repo.
+    { kind: 'skill', name: 'choose', retiredIn: '13.1.0' },
+    // Commands folded into their same-named skill. Claude Code already
+    // exposes each SKILL.md as `/<name>`, and Antigravity installs skills
+    // but not commands, so the skill is the surface that survives. Each
+    // fold was diffed first: the three verbatim pairs
+    // (`gh-pr-address`, `repo-cleanup`, plus the effectively-identical
+    // `lu-review`) lost nothing, the seven thin pointers held no
+    // procedure at all, and `lu`'s skill strictly contains its command.
+    { kind: 'command', name: 'bug-diagnose.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-issue-triage.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-pr-address.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-prepare.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'grill-me.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'lu.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'lu-review.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'luca-init.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'memory-audit.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'repo-cleanup.md', retiredIn: '13.1.0' },
+    // Orphaned, not broken: fully functional but unreferenced by any
+    // workflow, and both described themselves inaccurately.
+    // `post-init-tour` claimed to run after `/project-new` (which never
+    // invoked it) and pointed at `/help`, `/config-settings`, `/debug`;
+    // `workflow-save` claimed to be the final step of `/phase-execute`
+    // and `/session-pause`, neither of which referenced it. Deleted by
+    // explicit user decision.
+    { kind: 'skill', name: 'post-init-tour', retiredIn: '13.1.0' },
+    { kind: 'skill', name: 'workflow-save', retiredIn: '13.1.0' },
+]
 
 /**
  * Quarantine directory inside the harness home. Dot-prefixed so no harness

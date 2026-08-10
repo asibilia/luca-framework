@@ -147,12 +147,12 @@ Luca's caps live at
 (\`BUDGET_BY_COMPLEXITY\` — \`maxChecksFixIterations\`,
 \`maxVerifyIterations\`, \`maxReviewIterations\`, scaled by complexity level).
 The counters are bumped deterministically on rework edges and reset to 0 on
-forward-exit edges: \`packages/luca-core/src/state/machine/actions.ts:57\`
+forward-exit edges: \`packages/luca-core/src/state/configs/fix-loop-edges.ts:45\`
 (\`FIX_LOOP_EDGES\` — exactly six edges, three increment, three reset).
 
 **Learn from the gap.** In Luca the counters are deterministic but the caps are
-**advisory** — the state machine tracks them; the decision to stop is prose in
-an orchestrating body. That is precisely the weakness a Workflow script fixes,
+**advisory** — the \`luca state advance\` write path bumps them; the decision to
+stop is prose in an orchestrating body. That is precisely the weakness a Workflow script fixes,
 because the comparison can be a real \`if\`:
 
 \`\`\`js

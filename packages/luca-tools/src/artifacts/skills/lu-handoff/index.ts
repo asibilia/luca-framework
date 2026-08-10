@@ -35,10 +35,10 @@ Your job is to rescue that layer: write it somewhere durable that survives compa
   trust the machine to execute it.
 - **Not snapshotting mechanical repo state.** Branch, uncommitted files, test output — git and
   \`.luca/\` already hold those. Capturing them again is noise. Stay on the cognitive layer.
-- **Not replacing \`/workflow-save\` or \`/session-pause\`.** Those persist run telemetry and mid-phase
-  WIP. This writes a *different*, complementary memory (\`session:phase-boundary-handoff\`) aimed only
-  at surviving the compaction boundary. If the user also wants full run-data persisted, suggest
-  \`/workflow-save\` — don't duplicate it here.
+- **Not replacing \`/session-pause\`.** That persists mid-phase WIP. This writes a *different*,
+  complementary memory (\`session:phase-boundary-handoff\`) aimed only at surviving the compaction
+  boundary. If the user also wants mid-phase WIP captured, suggest \`/session-pause\` — don't
+  duplicate it here.
 
 ## Workflow
 
@@ -144,8 +144,8 @@ compaction finishes, run \`/lu\` and the next agent will restore context from th
 - **Survives compaction**: the full handoff is in a durable MuninnDB memory, and the \`/compact\`
   description names the exact vault + concept to recall it. The summary alone is never the only copy.
 - **Honest**: thin sessions get a short, true handoff — not padding.
-- **Complementary**: writes the \`session:phase-boundary-handoff\` memory only; defers run-data
-  persistence to \`/workflow-save\` and mid-phase WIP to \`/session-pause\`.
+- **Complementary**: writes the \`session:phase-boundary-handoff\` memory only; defers mid-phase WIP
+  to \`/session-pause\`.
 
 $ARGUMENTS
 `

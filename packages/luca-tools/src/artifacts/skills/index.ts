@@ -19,7 +19,6 @@
 import { archAuditSkill } from './arch-audit/index.ts'
 import { bugDiagnoseSkill } from './bug-diagnose/index.ts'
 import { cavemanSkill } from './caveman/index.ts'
-import { chooseSkill } from './choose/index.ts'
 import { ghIssueTriageSkill } from './gh-issue-triage/index.ts'
 import { ghPrAddressSkill } from './gh-pr-address/index.ts'
 import { ghPrepareSkill } from './gh-prepare/index.ts'
@@ -41,16 +40,13 @@ import { phaseAddSkill } from './phase-add/index.ts'
 import { phaseAssumptionsSkill } from './phase-assumptions/index.ts'
 import { phaseDiscussSkill } from './phase-discuss/index.ts'
 import { phaseExecuteSkill } from './phase-execute/index.ts'
-import { phaseInsertSkill } from './phase-insert/index.ts'
 import { phasePlanSkill } from './phase-plan/index.ts'
 import { phaseRemoveSkill } from './phase-remove/index.ts'
 import { phaseResearchSkill } from './phase-research/index.ts'
-import { postInitTourSkill } from './post-init-tour/index.ts'
 import { progressSkill } from './progress/index.ts'
 import { projectNewSkill } from './project-new/index.ts'
 import { quickSkill } from './quick/index.ts'
 import { renameAuditSkill } from './rename-audit/index.ts'
-import { repoAuditSkill } from './repo-audit/index.ts'
 import { repoCleanupSkill } from './repo-cleanup/index.ts'
 import { seedMemorySkill } from './seed-memory/index.ts'
 import { sessionPauseSkill } from './session-pause/index.ts'
@@ -61,7 +57,6 @@ import { todoCheckSkill } from './todo-check/index.ts'
 import { todoIngestSkill } from './todo-ingest/index.ts'
 import { traceInsightsSkill } from './trace-insights/index.ts'
 import { workflowAuthoringSkill } from './workflow-authoring/index.ts'
-import { workflowSaveSkill } from './workflow-save/index.ts'
 
 import type { Artifact } from '../../define/index.ts'
 
@@ -69,7 +64,6 @@ export {
     archAuditSkill,
     bugDiagnoseSkill,
     cavemanSkill,
-    chooseSkill,
     ghIssueTriageSkill,
     ghPrAddressSkill,
     ghPrepareSkill,
@@ -91,16 +85,13 @@ export {
     phaseAssumptionsSkill,
     phaseDiscussSkill,
     phaseExecuteSkill,
-    phaseInsertSkill,
     phasePlanSkill,
     phaseRemoveSkill,
     phaseResearchSkill,
-    postInitTourSkill,
     progressSkill,
     projectNewSkill,
     quickSkill,
     renameAuditSkill,
-    repoAuditSkill,
     repoCleanupSkill,
     seedMemorySkill,
     sessionPauseSkill,
@@ -111,7 +102,6 @@ export {
     todoIngestSkill,
     traceInsightsSkill,
     workflowAuthoringSkill,
-    workflowSaveSkill,
 }
 
 /**
@@ -122,7 +112,6 @@ export const SKILLS: readonly Artifact[] = [
     archAuditSkill,
     bugDiagnoseSkill,
     cavemanSkill,
-    chooseSkill,
     ghIssueTriageSkill,
     ghPrAddressSkill,
     ghPrepareSkill,
@@ -144,16 +133,13 @@ export const SKILLS: readonly Artifact[] = [
     phaseAssumptionsSkill,
     phaseDiscussSkill,
     phaseExecuteSkill,
-    phaseInsertSkill,
     phasePlanSkill,
     phaseRemoveSkill,
     phaseResearchSkill,
-    postInitTourSkill,
     progressSkill,
     projectNewSkill,
     quickSkill,
     renameAuditSkill,
-    repoAuditSkill,
     repoCleanupSkill,
     seedMemorySkill,
     sessionPauseSkill,
@@ -164,5 +150,4 @@ export const SKILLS: readonly Artifact[] = [
     todoIngestSkill,
     traceInsightsSkill,
     workflowAuthoringSkill,
-    workflowSaveSkill,
 ]

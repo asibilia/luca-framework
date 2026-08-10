@@ -5,6 +5,24 @@
  * Body path-retargeting: .planning/ → .luca/; uppercase artifacts
  * (PLAN.md, RESEARCH.md, CONTEXT.md, POSTMORTEM.md) → LUCA_DIR_CONTRACT
  * canonicals (plan.md, research.md, context.md, learn.md).
+ *
+ * ## Why this skill still exists alongside `progress`
+ *
+ * It was slated for deletion on the premise that its only non-`progress`
+ * value was replaying `signal.*` records out of `.luca/telemetry/`, which
+ * the telemetry narrowing killed. That premise did not survive: the readback
+ * was migrated to `.luca/ledger.jsonl` rather than dropped, so Step 3 is
+ * live, telemetry-independent, and has no `progress` equivalent — `progress`
+ * reads position and routes, it never replays what the run had been looping
+ * on. Step 4's partially-filled `audits/` (mid-review abandonment) check is
+ * likewise absent from `progress`'s routing table, which only compares
+ * summaries against plans.
+ *
+ * The pause↔resume loop is closed through MuninnDB, NOT a checkpoint file:
+ * `/session-pause` routes its handoff through `lu-handoff`, which writes
+ * `session:phase-boundary-handoff`. The legacy `.continue-here.md` path is
+ * outside `LUCA_DIR_CONTRACT` (the stage-gate hook rejects the write) and no
+ * producer remains, so Step 3 recalls the memory instead.
  */
 import { defineSkill } from '../../../define/skill.ts'
 
@@ -35,9 +53,13 @@ Follow the resume-project workflow which handles:
 
    If state not initialized, reconstruct from artifacts (research.md, context.md, plan.md, audits/ under the active phase directory).
 
-3. **Rework + synthesis readback**
+3. **Cognitive handoff + rework/synthesis readback**
 
-   Surface this run's rework record plus the clustered \`Signal Synthesis\` themes from the prior phase's \`learn.md\`, so the resuming session sees where the run had been looping before the break.
+   First, recall the phase-boundary handoff from MuninnDB — the repo vault's \`session:phase-boundary-handoff\` memory, written by \`lu-handoff\` (which \`/session-pause\` and end-of-wave \`/phase-execute\` both route through). It carries the decisions, open threads, and resume prompt that a context-stripped session would otherwise lose. If no such memory exists, say so and continue — it is optional, never an error.
+
+   There is **no checkpoint file to read.** \`.continue-here.md\` is outside \`LUCA_DIR_CONTRACT\`, the stage-gate hook rejects the write, and no skill produces it. Do not look for it, and do not resurrect it.
+
+   Then surface this run's rework record plus the clustered \`Signal Synthesis\` themes from the prior phase's \`learn.md\`, so the resuming session sees where the run had been looping before the break.
 
    \`\`\`bash
    # The run id is the state's sessionId (the generated pipeline RUN id) —
@@ -72,7 +94,7 @@ Follow the resume-project workflow which handles:
    - Show progress bar
    - Summarize recent work
    - Display current position
-   - Include the signal readback digest (satisfaction/failure tally + Signal Synthesis themes) from step 3
+   - Include the step 3 digest: the handoff memory's open threads, the rework tally (\`pipeline-re-entered\` / \`fixloop-counted\` counts), and the Signal Synthesis themes
 
 6. **Context-aware option offering**
    - Check the active phase's \`context.md\` before suggesting plan vs discuss
@@ -89,7 +111,7 @@ Follow the resume-project workflow which handles:
 ## Success Criteria
 
 - [ ] Project context fully restored
-- [ ] Checkpoint file processed (if exists)
+- [ ] \`session:phase-boundary-handoff\` recalled from MuninnDB (if one exists)
 - [ ] Rework record + Signal Synthesis themes surfaced
 - [ ] Incomplete work detected
 - [ ] Clear next steps presented

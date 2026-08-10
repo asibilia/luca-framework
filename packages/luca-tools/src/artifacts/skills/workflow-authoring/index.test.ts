@@ -120,7 +120,7 @@ describe('the four techniques', () => {
         expect(body).toContain('Bounded iteration')
         expect(body).toContain('hard stop')
         expect(cited('configs/budget-matrix.ts')).toBe(true)
-        expect(cited('machine/actions.ts')).toBe(true)
+        expect(cited('configs/fix-loop-edges.ts')).toBe(true)
     })
 
     it('documents orchestrator output pruning, citing the decision record', () => {

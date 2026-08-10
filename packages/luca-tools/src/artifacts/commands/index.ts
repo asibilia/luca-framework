@@ -7,63 +7,59 @@
  *
  * Command bodies are markdown text (the body Claude Code inlines when
  * the user types `/<name>`) authored as JS template literals. Source
- * provenance per command is documented in the file header — all 17 were
- * ported from the user's `~/.claude/commands/<name>.md` (the canonical
- * working copy at E-6 time).
+ * provenance per command is documented in the file header — the original
+ * 17 were ported from the user's `~/.claude/commands/<name>.md` (the
+ * canonical working copy at E-6 time).
  *
- * Why we ship BOTH SKILL.md and commands/<name>.md for these 17:
- * Claude Code's SKILL.md surface auto-triggers based on the skill's
- * description, and the harness ALSO exposes SKILL.md as a `/<name>`
- * slash command. But the user has maintained `~/.claude/commands/`
- * separately, with bodies that are meaningfully different from the
- * corresponding SKILL.md bodies — the commands are tighter, more
- * imperative "what to do right now when the user explicitly types
- * /<name>" prompts (e.g. `/lu` is the orchestrator script that drives
- * the pipeline loop end-to-end, distinct from the `lu` skill which is
- * the routing surface). Per the E-6 decision algorithm, we port the
- * user's command bodies verbatim (with .planning/ → .luca/ already
- * applied by the user). E-5's SKILL.md ports stand as-is.
+ * ## Why this list is shrinking: the fold-to-skill decision
+ *
+ * Every command here has (or had) a same-named skill. The two surfaces
+ * were populated by two independent ports that were never reconciled —
+ * skills at E-5 from the pre-D-4 `SKILL.md` files, commands at E-6 from
+ * the user's `~/.claude/commands/` as "tighter, more imperative" prompts
+ * — so the pair drifted, and the drift was load-bearing in both
+ * directions. Shipping both means two bodies to keep in sync and a
+ * coin-flip about which one a change lands in.
+ *
+ * The fold direction is forced, not chosen: the Antigravity harness
+ * descriptor installs `{agents, skills}` and NOT commands
+ * (`luca-cli/src/init/helpers/harness.ts`), so folding toward the command
+ * surface would delete Luca from Antigravity entirely. Claude Code
+ * already exposes each `SKILL.md` as `/<name>`, so the slash-invocation
+ * surface survives the fold. Nothing in the repo programmatically invokes
+ * a command; every `Skill(...)` call site lives in a skill body.
+ *
+ * Folded so far (command deleted, skill is now the only surface):
+ * `bug-diagnose`, `gh-issue-triage`, `gh-pr-address`, `gh-prepare`,
+ * `grill-me`, `lu`, `lu-review`, `luca-init`, `memory-audit`,
+ * `repo-cleanup`. Each deletion is paired with a `RETIRED_ARTIFACTS`
+ * entry in `luca-cli/src/init/helpers/install-skills.ts` — without it the
+ * command survives forever in every existing `~/.claude/commands/`.
+ *
+ * The commands still listed below are the pairs whose command body
+ * carries directives the skill does not; they fold only once those
+ * directives are ported into the skill.
  *
  * Order is fixed (alphabetical) so the compile output is byte-stable
  * across runs.
  */
 
-import { bugDiagnoseCommand } from './bug-diagnose.ts'
-import { ghIssueTriageCommand } from './gh-issue-triage.ts'
-import { ghPrAddressCommand } from './gh-pr-address.ts'
-import { ghPrepareCommand } from './gh-prepare.ts'
-import { grillMeCommand } from './grill-me.ts'
-import { luReviewCommand } from './lu-review.ts'
-import { luCommand } from './lu.ts'
-import { lucaInitCommand } from './luca-init.ts'
 import { lucaTelemetryReportCommand } from './luca-telemetry-report.ts'
-import { memoryAuditCommand } from './memory-audit.ts'
 import { milestoneNewCommand } from './milestone-new.ts'
 import { phaseDiscussCommand } from './phase-discuss.ts'
 import { phaseExecuteCommand } from './phase-execute.ts'
 import { phasePlanCommand } from './phase-plan.ts'
-import { repoCleanupCommand } from './repo-cleanup.ts'
 import { todoAddCommand } from './todo-add.ts'
 import { todoCheckCommand } from './todo-check.ts'
 
 import type { Artifact } from '../../define/index.ts'
 
 export {
-    bugDiagnoseCommand,
-    ghIssueTriageCommand,
-    ghPrAddressCommand,
-    ghPrepareCommand,
-    grillMeCommand,
-    luCommand,
-    luReviewCommand,
-    lucaInitCommand,
     lucaTelemetryReportCommand,
-    memoryAuditCommand,
     milestoneNewCommand,
     phaseDiscussCommand,
     phaseExecuteCommand,
     phasePlanCommand,
-    repoCleanupCommand,
     todoAddCommand,
     todoCheckCommand,
 }
@@ -74,21 +70,11 @@ export {
  * output.
  */
 export const COMMANDS: readonly Artifact[] = [
-    bugDiagnoseCommand,
-    ghIssueTriageCommand,
-    ghPrAddressCommand,
-    ghPrepareCommand,
-    grillMeCommand,
-    luCommand,
-    luReviewCommand,
-    lucaInitCommand,
     lucaTelemetryReportCommand,
-    memoryAuditCommand,
     milestoneNewCommand,
     phaseDiscussCommand,
     phaseExecuteCommand,
     phasePlanCommand,
-    repoCleanupCommand,
     todoAddCommand,
     todoCheckCommand,
 ]

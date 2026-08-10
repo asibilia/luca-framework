@@ -10,7 +10,7 @@
  *
  * Design constraints:
  *  - PURE. No I/O, no globals.
- *  - NO new dependencies. `luca-core` depends only on `xstate` + `zod`,
+ *  - NO new dependencies. `luca-core` depends only on `zod`,
  *    and it is imported by every package *and* by both hook cold-start
  *    paths — which run on every Bash tool call. `shell-quote` (used by
  *    the equivalent scan in `luca-cli`'s `handle-stage-gate-hook.ts`)

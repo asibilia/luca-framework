@@ -57,10 +57,8 @@ export interface EvaluateRunBudgetInput {
 const DEFAULT_WARN_FRACTION = 0.8
 
 /**
- * Pure, I/O-free run-budget evaluator. Mirrors the pure-core style of
- * `withinFixBudget` (state/machine/guards.ts). For each PRESENT signal whose
- * limit is enabled (> 0), it computes fraction-of-limit and takes a worst-of
- * status.
+ * Pure, I/O-free run-budget evaluator. For each PRESENT signal whose limit is
+ * enabled (> 0), it computes fraction-of-limit and takes a worst-of status.
  *
  * Undefined optional signals are SKIPPED — never coerced to 0 or NaN, and never
  * force a halt. A dimension whose limit is 0 (disabled, e.g. the default
