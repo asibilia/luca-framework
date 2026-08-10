@@ -123,7 +123,7 @@ luca state read
 - \`.luca/phases/<slug>/execute/progress.jsonl\` — append-only per-wave progress
 - \`.luca/phases/<slug>/execute/summary.md\` — durable execute-step summary
 - \`.luca/phases/<slug>/verify.json\` — verification result
-- \`.luca/telemetry/<runId>.jsonl\` — per-run event log
+- \`.luca/telemetry/<runId>.jsonl\` — per-run recall-quality log
 
 ### Session context
 

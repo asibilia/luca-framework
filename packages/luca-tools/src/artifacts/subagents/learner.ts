@@ -31,10 +31,9 @@ export const learnerSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     gotchas: [
         'You have no MCP/Bash — do NOT attempt `mcp__muninn__*` calls or `luca retro`; return the structured persist block for the orchestrator (which HAS MuninnDB) to persist, and always write learn.md as the durable record.',
-        'The signal digest is orchestrator-injected inside `<signal-digest>…</signal-digest>` — you cannot fetch it via telemetry reads; if the block is absent, skip the synthesis step and note its absence.',
+        'The signal digest is orchestrator-injected inside `<signal-digest>…</signal-digest>` — you cannot fetch it via ledger or telemetry reads; if the block is absent, skip the synthesis step and note its absence.',
         'Keep entry keys exactly `vault`/`concept`/`content`/`tags` — the C/R/L narrative rides INSIDE `content:` as prose; do not add a top-level conjectured/refuted_by/learned/criterion_now field.',
     ],
     pipelineInvocations: [],
@@ -76,11 +75,11 @@ LEARNING_TYPE/CONCEPT/CONFIDENCE drive routing and dedup; the CONJECTURED/REFUTE
 
 ## Step 1b — Synthesize the signal digest
 
-The orchestrator injects this run's SIGNAL DIGEST into your prompt inside a \`<signal-digest>...</signal-digest>\` block. It contains the run's \`signal.*\` telemetry events (failure signals, satisfaction/valence signals) and the confidence journal (per-task confidence entries logged during execution). You CANNOT fetch this yourself — you have NO Bash and NO MuninnDB/MCP. Do NOT attempt \`luca telemetry\` reads or \`mcp__muninn__*\` calls to obtain it; the digest is ORCHESTRATOR-INJECTED and is the only signal source you use. If no \`<signal-digest>\` block is present, skip this step and note its absence in the synthesis section.
+The orchestrator injects this run's SIGNAL DIGEST into your prompt inside a \`<signal-digest>...</signal-digest>\` block. It contains the confidence journal (per-task confidence entries logged during execution) and the run's rework record from \`.luca/ledger.jsonl\` (which steps looped back, and how close each fix-loop came to its budget). You CANNOT fetch this yourself — you have NO Bash and NO MuninnDB/MCP. Do NOT attempt \`.luca/\` reads or \`mcp__muninn__*\` calls to obtain it; the digest is ORCHESTRATOR-INJECTED and is the only signal source you use. If no \`<signal-digest>\` block is present, skip this step and note its absence in the synthesis section.
 
 Cluster the digested signals into THEMES rather than restating raw events:
-- **Recurring failure themes**: group failure/low-confidence signals by root cause or affected area (e.g. "type-check failures clustered in the write-surface handlers", "repeated plan-gap confidence dips in wave 3"). Note the count and which steps/waves they span.
-- **Satisfaction valence trends**: track positive vs negative valence by pipeline step and by signal source. Call out steps/sources trending negative (friction hotspots) and those trending positive (what worked).
+- **Recurring failure themes**: group low-confidence entries and rework loops by root cause or affected area (e.g. "type-check failures clustered in the write-surface handlers", "repeated plan-gap confidence dips in wave 3"). Note the count and which steps/waves they span.
+- **Rework trends**: track which pipeline steps looped back and how often. Call out steps trending toward their fix-loop budget (friction hotspots) and steps that passed first time (what worked).
 - **Cross-cutting patterns**: signals that recur across multiple steps/sources and likely indicate a systemic issue or a reusable win — these are prime candidates to promote into the Step 3 learnings.
 
 ## Step 1c — Extract reusable procedures
@@ -99,7 +98,7 @@ Only emit a procedure when it is genuinely reusable across phases; most phases y
 
 Write the learnings to the canonical artifact at \`.luca/phases/<currentPhaseSlug>/learn.md\` with the Write tool. The orchestrator supplies \`<currentPhaseSlug>\` in your prompt — you have no Bash and cannot run \`luca phase current\` to discover it yourself; use the slug exactly as given. One markdown section per learning — type, concept, confidence, and the C/R/L narrative rendered as four labelled lines: **Conjectured** (the assumption going in), **Refuted by** (the evidence that broke it), **Learned** (the corrected understanding), **Criterion now** (the check that catches a recurrence). This file is the durable record and is YOUR responsibility; it survives even if MuninnDB persistence is skipped.
 
-Include a \`## Signal Synthesis\` section capturing the Step 1b clusters: recurring failure themes, satisfaction valence trends by step/source, and any cross-cutting patterns. This section is derived SOLELY from the orchestrator-injected \`<signal-digest>\` block — do not invent signals not present in it.
+Include a \`## Signal Synthesis\` section capturing the Step 1b clusters: recurring failure themes, rework trends by step, and any cross-cutting patterns. This section is derived SOLELY from the orchestrator-injected \`<signal-digest>\` block — do not invent signals not present in it.
 
 ## Step 3 — Return structured learnings for the orchestrator to persist
 

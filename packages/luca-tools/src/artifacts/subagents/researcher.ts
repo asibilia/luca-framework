@@ -16,7 +16,7 @@
  *     (see SUBAGENT_SHARED_PREFIX). Prior research patterns are supplied in
  *     the prompt by the orchestrator.
  *
- * No telemetry hooks at the subagent level: subagent-start/end events
+ * No telemetry at the subagent level: the retired subagent-start/end events
  * are emitted by the SPAWNING mode-agent (research mode), not by the
  * subagent itself. This avoids double-counting and matches the original
  * mastracode emission boundary.

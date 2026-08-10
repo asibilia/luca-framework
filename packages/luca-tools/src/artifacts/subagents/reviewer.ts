@@ -6,7 +6,6 @@
  *
  * - selfVerify / antiSycophancy: verify every cited file:line; APPROVE
  *   requires ≥3 verified code locations (see body).
- * - telemetry hook `subagent-end` tracks per-perspective completion.
  * - No muninn-recall: subagents have no MCP access; prior
  *   pitfalls/anti-patterns are supplied in the prompt.
  */
@@ -27,7 +26,6 @@ export const reviewerSubagent = defineSubagent({
         antiSycophancy: true,
         toolEconomy: true,
     },
-    telemetryHooks: ['subagent-end'],
     gotchas: [
         "You have no Task-spawn and no write to pipeline state — your ONLY write is your one audit file at `.luca/phases/<slug>/audits/<reviewer>.md`; never touch another reviewer's audit or state.json.",
         'An APPROVE verdict with no cited evidence is a rubber-stamp — APPROVE requires ≥3 specific file:line locations you actually verified; if you find 0 issues, state what you checked and why each passed.',

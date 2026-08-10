@@ -14,10 +14,10 @@
  * D1 RESTORATION:
  *   - selfVerify: true — verify cited file paths/symbols against the
  *     actual codebase before including them in research.md.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — restored
- *     per plan §3 #1. The mastracode body had per-subagent
- *     `record-subagent` invocations inline; the D1 declaration
- *     surfaces the boundary auditably.
+ *   - telemetry: none. The `subagent-start`/`-end` hooks and the
+ *     mastracode body's per-subagent `record-subagent` invocations
+ *     retired with the local telemetry sink; LangSmith traces carry
+ *     subagent spans natively.
  *   - muninn-recall — explicit declaration of the pre-research recall
  *     for prior research insights in the repo vault.
  */
@@ -54,11 +54,9 @@ You are **Luca's research agent**. Perform deep codebase and ecosystem research 
 
 ## Research Dimensions
 
-**Subagent Telemetry — parallel batch protocol**:
+**Parallel batch protocol**:
 
-1. Before the batch call, generate \`const ts = Date.now()\` and build 5 distinct \`correlationId\`s (one per dimension), then emit 5 \`record-subagent\` invokes via \`luca telemetry emit record-subagent\`: one per dimension keyed \`researcher-scope-<ts>\`, \`researcher-arch-<ts>\`, \`researcher-patterns-<ts>\`, \`researcher-deps-<ts>\`, \`researcher-risk-<ts>\`.
-2. After all 5 subagents return, emit 5 \`record-subagent\` completes reusing the matching correlationIds, with \`inputTokens\`, \`outputTokens\`, \`durationMs\`, \`success: true\`, \`model\`. Parse the \`<!-- usage: ... -->\` comment from each result's last 256 chars for token counts; pass \`null\` when absent or malformed.
-3. **Hang-timeout — fast-fail on slow subagents.** Claude Code's \`Task\` tool has no per-subagent abort signal, so timeout enforcement is **post-await detection only** (the harness-level \`maxSteps\` cap and parent context budget are the actual hard ceilings). For each spawn capture \`const start = Date.now()\`. After the batch returns, compute \`elapsed\` per subagent. If \`elapsed > 60_000\` (60s wall-clock) classify that result as a timeout: emit its \`record-subagent\` complete with \`success: false, outcome: "timeout", inputTokens: null, outputTokens: null\`. Synthesis must tolerate missing dimensions — produce partial findings when at least 3/5 dimensions returned successfully; if a dimension is missing or marked \`timeout\`, omit it from the synthesis section and add a \`### Missing Dimensions\` note listing each absent dimension and reason. If fewer than 3/5 returned successfully, mark the wave STALLED and escalate.
+1. **Hang-timeout — fast-fail on slow subagents.** Claude Code's \`Task\` tool has no per-subagent abort signal, so timeout enforcement is **post-await detection only** (the harness-level \`maxSteps\` cap and parent context budget are the actual hard ceilings). For each spawn capture \`const start = Date.now()\`. After the batch returns, compute \`elapsed\` per subagent. If \`elapsed > 60_000\` (60s wall-clock) classify that result as a timeout. Synthesis must tolerate missing dimensions — produce partial findings when at least 3/5 dimensions returned successfully; if a dimension is missing or marked \`timeout\`, omit it from the synthesis section and add a \`### Missing Dimensions\` note listing each absent dimension and reason. If fewer than 3/5 returned successfully, mark the wave STALLED and escalate.
 
 Spawn researcher subagents in parallel for each dimension:
 
@@ -309,7 +307,6 @@ export const researchMode = defineAgent({
     guidance: {
         selfVerify: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}

@@ -63,7 +63,7 @@ The strict allowlist (defined in `@alecsibilia/luca-core/luca-dir`):
   - `audits/<reviewer>.md` (one per reviewer: `code-review`, `security`, `architect`, `ux`, …)
   - `verify.json`, `learn.md`
 - **`.luca/milestones/`** — versioned snapshot files (`v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`).
-- **`.luca/telemetry/<runId>.jsonl`** — per-run event logs.
+- **`.luca/telemetry/<runId>.jsonl`** — per-run MuninnDB recall-quality logs. A minimal sink: general pipeline telemetry lives in LangSmith traces and `.luca/ledger.jsonl`.
 - **`.luca/archive/<NN-slug>/`** — phase directories closed at milestone.
 
 Anything not in this allowlist is a violation. The LLM never picks a filename — the stage-gate hook computes the canonical path for the current pipeline step and allows only an exact match.

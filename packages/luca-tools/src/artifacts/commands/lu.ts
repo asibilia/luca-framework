@@ -26,12 +26,14 @@ Run \`luca state read\`. Branch on \`pipelineStep\`:
 
 If the user passed a request but the pipeline is already mid-flight, surface that to the user and ask whether to resume the current run or finish it first — do NOT silently discard either.
 
-**Run id for telemetry.** Establish \`RUN_ID\` ONCE here and reuse it as \`--run-id\` on every \`luca telemetry emit\` below (it also names the per-run log \`.luca/telemetry/<RUN_ID>.jsonl\`). It is the state's \`sessionId\`; if that is empty, mint one with \`luca telemetry new-run\`:
+**Run id for recall telemetry.** Establish \`RUN_ID\` ONCE here and reuse it as \`--run-id\` on every \`luca telemetry emit --kind recall.*\` the pipeline steps run (it also names the per-run recall log \`.luca/telemetry/<RUN_ID>.jsonl\`). Recall quality is the only local telemetry still emitted — everything else lives in LangSmith traces and \`.luca/ledger.jsonl\`. \`RUN_ID\` is the state's \`sessionId\`; if that is empty, mint one with \`luca state new-run\`:
 
 \`\`\`bash
 RUN_ID=$(luca state read | jq -r '.sessionId // empty')
-[ -z "$RUN_ID" ] && RUN_ID=$(luca telemetry new-run)
+[ -z "$RUN_ID" ] && RUN_ID=$(luca state new-run)
 \`\`\`
+
+**Recall attribution.** Post-triage \`recall.*\` emits also carry \`--slug\`, \`--complexity\` and \`--oversight\` (plus \`--wave\` in execute). These records are the ONLY remaining producer of the \`slug\`/\`wave\` keys the \`trace-insights\` Stage A5 join reads, and \`luca telemetry emit\` takes them from flags alone — an unflagged emit still exits 0 and joins to nothing. Pass the classified complexity level into every mode-agent prompt you spawn (\`luca state read\` does NOT carry it — nothing writes top-level \`state.complexity\`); the mode resolves \`--slug\` from \`luca phase current\` and \`--oversight\` from \`luca state read\` itself.
 
 ## Triage
 
@@ -58,7 +60,7 @@ Repeat until the \`finalize\` step resets the run (\`pipelineStep\` returns to \
 1a. **Budget guard (always-on stop).** Run \`luca budget check --complexity <level>\` and parse \`.status\` (always exits 0). This fires ONLY here, at the top-of-loop clean boundary — \`state.json\` is already resumable via Step 0, so nothing mid-flight is left dangling.
    - \`ok\` → continue to step 2.
    - \`warn\` → note the \`tripped\` dimensions in your reasoning (surface once to the user if you haven't) and keep going.
-   - \`halt\` → **do NOT advance the pipeline.** Checkpoint-and-pause: (a) invoke \`Skill(skill: "lu-handoff")\` (or persist a resumable \`session:*\` handoff memory to the repo vault) capturing the current \`pipelineStep\`/\`currentPhase\`, the verdict's \`tripped\` dimensions, and the next action; (b) emit \`luca telemetry emit --kind budget.halt --run-id <RUN_ID> --meta '{"tripped":"<dims>","status":"halt"}'\` — the verdict's \`tripped\` is a string array, so join it into a single comma-separated string for \`<dims>\` (e.g. \`wallClock,toolCalls\`); the \`--meta\` JSON must stay single-line and quote-free; (c) surface a paste-ready resume message ("Budget guard tripped (<dims>). Run checkpointed at step <step>; re-run /lu to resume."). Then END YOUR TURN.
+   - \`halt\` → **do NOT advance the pipeline.** Checkpoint-and-pause: (a) invoke \`Skill(skill: "lu-handoff")\` (or persist a resumable \`session:*\` handoff memory to the repo vault) capturing the current \`pipelineStep\`/\`currentPhase\`, the verdict's \`tripped\` dimensions, and the next action, including the verdict's \`tripped\` dimensions joined into a single comma-separated string (e.g. \`wallClock,toolCalls\`); (b) surface a paste-ready resume message ("Budget guard tripped (<dims>). Run checkpointed at step <step>; re-run /lu to resume."). Then END YOUR TURN.
 2. Run the step using the table below.
 3. Advance to the next step with \`luca state advance --to-step <step>\`. Transitions are validated against the pipeline-transitions table — illegal jumps are rejected.
 

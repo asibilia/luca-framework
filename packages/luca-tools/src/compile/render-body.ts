@@ -2,10 +2,10 @@
  * render-body — shared markdown body assembly for compiled artifacts.
  *
  * D1 (locked design): the v13 hand-rewrite dropped vertical-slice
- * planning guidance, TDD guidance, telemetry instrumentation, and the
+ * planning guidance, TDD guidance, and the
  * rule/postmortem/claim-verify invocations from the agent prompts. The
  * factories (D-1) capture all of that declaratively as
- * `guidance` flags, `telemetryHooks[]`, and `pipelineInvocations[]`.
+ * `guidance` flags and `pipelineInvocations[]`.
  *
  * The COMPILER'S job (this file) is to expand those declarations into a
  * deterministic, well-formed markdown prelude that prefixes the
@@ -23,7 +23,13 @@
  *   1. The agent's own instructions body (verbatim).
  *   2. A `## Guidance` block if any guidance flags are set.
  *   3. A `## Pipeline Invocations` block if any are declared.
- *   4. A `## Telemetry` block if any hooks are declared.
+ *
+ * The `## Telemetry` block (and the `telemetryHooks[]` vocabulary that
+ * drove it) is RETIRED: it instructed every compiled prompt to emit
+ * phase/wave/subagent/verification events to `.luca/telemetry/`, a sink
+ * that no longer accepts them. LangSmith traces cover those boundaries;
+ * the only telemetry the pipeline still emits is the recall-quality
+ * family, which the recall directives in the mode bodies carry directly.
  *
  * Why instructions come FIRST: the agent's own prose sets the role and
  * the task. The prelude blocks are cross-cutting reminders attached at
@@ -35,7 +41,6 @@
 import type {
     PipelineInvocation,
     SubagentGuidance,
-    TelemetryHook,
 } from '../define/index.ts'
 
 /**
@@ -50,8 +55,6 @@ export interface BodyRenderInput {
     instructions: string
     /** Guidance flags (all five are always present thanks to the schema's `.prefault({})`). */
     guidance: SubagentGuidance
-    /** Telemetry hooks declared on the agent. */
-    telemetryHooks: readonly TelemetryHook[]
     /** Pipeline invocations declared on the agent. */
     pipelineInvocations: readonly PipelineInvocation[]
     /**
@@ -79,8 +82,6 @@ export function renderBody(input: BodyRenderInput): string {
         input.pipelineInvocations
     )
     if (invocationPrelude) sections.push(invocationPrelude)
-    const telemetryPrelude = renderTelemetryPrelude(input.telemetryHooks)
-    if (telemetryPrelude) sections.push(telemetryPrelude)
     return sections.join('\n\n') + '\n'
 }
 
@@ -227,79 +228,6 @@ function describeInvocation(inv: PipelineInvocation): string {
                 'decisions, and pitfalls from the repo vault AND the ' +
                 '`default` vault. Merge by score and surface the top ' +
                 'matches in your reasoning.'
-            )
-    }
-}
-
-/**
- * Render a `## Telemetry` block from the declared hooks. Each hook
- * names a symbolic pipeline point at which the agent should emit a
- * telemetry event via the `luca telemetry emit` CLI (or the matching
- * MCP tool when available).
- *
- * Why declarative: the v13 hand-rewrite dropped these emissions
- * silently. Naming them by symbolic point lets a single compiler
- * change re-emit them consistently across all agents.
- */
-function renderTelemetryPrelude(hooks: readonly TelemetryHook[]): string {
-    if (hooks.length === 0) return ''
-    const lines: string[] = ['## Telemetry', '']
-    for (const hook of hooks) {
-        lines.push(`- ${describeTelemetryHook(hook)}`)
-    }
-    return lines.join('\n')
-}
-
-/**
- * One-line description per telemetry hook. Phrasing tells the agent
- * WHEN to emit and WHAT the symbolic event name is. Argument shape is
- * defined by the telemetry CLI, not here.
- */
-function describeTelemetryHook(hook: TelemetryHook): string {
-    switch (hook) {
-        case 'phase-start':
-            return (
-                '`phase-start` — emit at the moment the agent enters a new ' +
-                'phase. Carries the phase id and the run id.'
-            )
-        case 'phase-end':
-            return (
-                '`phase-end` — emit at the moment the agent declares a phase ' +
-                'closed (regardless of outcome). Carries the phase id, the ' +
-                'outcome, and the run id.'
-            )
-        case 'wave-start':
-            return (
-                '`wave-start` — emit at the start of each execution wave. ' +
-                'Carries the wave index and the phase id.'
-            )
-        case 'wave-end':
-            return (
-                '`wave-end` — emit at the end of each execution wave. Carries ' +
-                'the wave index, the outcome, and any failure-count summary.'
-            )
-        case 'subagent-start':
-            return (
-                '`subagent-start` — emit when the agent spawns a subagent ' +
-                'via the Task tool. Carries the subagent id and the spawn ' +
-                'reason.'
-            )
-        case 'subagent-end':
-            return (
-                '`subagent-end` — emit when a spawned subagent returns. ' +
-                'Carries the subagent id, the outcome, and the result ' +
-                'summary.'
-            )
-        case 'verification-start':
-            return (
-                '`verification-start` — emit at the start of the verification ' +
-                'harness for the phase. Carries the phase id.'
-            )
-        case 'verification-end':
-            return (
-                '`verification-end` — emit at the end of the verification ' +
-                'harness for the phase. Carries the phase id, the outcome, ' +
-                'and the failure-count summary.'
             )
     }
 }

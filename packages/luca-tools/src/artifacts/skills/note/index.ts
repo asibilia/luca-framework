@@ -70,13 +70,7 @@ When no flag is provided, the message becomes a new phase in the current milesto
    luca roadmap read 2>/dev/null || true
    \\\`\\\`\\\`
 
-9. **Emit observer event:**
-
-   \\\`\\\`\\\`bash
-   luca telemetry emit --kind=phase.added --data='{"phase":"<N>","description":"<message>","directory":"<path>"}' 2>/dev/null || true
-   \\\`\\\`\\\`
-
-10. **Confirm:**
+9. **Confirm:**
 
     \`\`\`
     Phase {N} added to current milestone:
@@ -113,13 +107,7 @@ Queue a note as a high-priority MuninnDB-backed todo. The context-check hook sur
    luca todo add --title "<first-line>" --area "note" --priority high --source note --body "<full message>"
    \\\`\\\`\\\`
 
-3. **Emit observer event:**
-
-   \\\`\\\`\\\`bash
-   luca telemetry emit --kind=note.added --data='{"priority":"next","title":"<first-line>"}' 2>/dev/null || true
-   \\\`\\\`\\\`
-
-4. **Confirm:**
+3. **Confirm:**
 
    \`\`\`
    Note queued: {message preview}
@@ -152,11 +140,11 @@ Advisory backlog entry. Not auto-consumed — agent reads via \`luca todo list\`
 
 ## Summary
 
-| Mode | Trigger | Output | Event |
-|------|---------|--------|-------|
-| Default (phase) | No flag | Roadmap phase + directory | \`phase.added\` |
-| \`--next\` | \`--next\` flag | MuninnDB todo (priority high) | \`note.added\` |
-| \`--whenever\` | \`--whenever\` flag | MuninnDB todo (priority low) | \`note.added\` |
+| Mode | Trigger | Output |
+|------|---------|--------|
+| Default (phase) | No flag | Roadmap phase + directory |
+| \`--next\` | \`--next\` flag | MuninnDB todo (priority high) |
+| \`--whenever\` | \`--whenever\` flag | MuninnDB todo (priority low) |
 
 ## Success Criteria
 

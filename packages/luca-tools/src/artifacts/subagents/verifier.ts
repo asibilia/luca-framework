@@ -4,7 +4,7 @@
  *
  * - selfVerify / antiSycophancy: verify claims against actual file
  *   contents; RESOLVED requires fingerprinted evidence.
- * - telemetry hooks (`verification-start`/`-end`), rule-run, and
+ * - rule-run and
  *   claim-verify put each finding on the durable log.
  * - The orchestrator reads the verify.json file (native Write tool),
  *   not the subagent's prose.
@@ -28,7 +28,6 @@ export const verifierSubagent = defineSubagent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: ['verification-start', 'verification-end'],
     gotchas: [
         'Token-presence greps pass while the emitted CLI command is runtime-broken — validate full commands against the CLI required-arg contract and real schema field names, not token presence.',
         'Criterion IDs are plan-authored: consume ac-NN verbatim from plan.md, NEVER mint your own; exclude tombstoned (`[DROPPED …]`) and `[SPLIT → …]` parent-pointer lines from the verify.json criteria array, but KEEP umbrella and anti-criteria.',

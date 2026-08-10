@@ -100,7 +100,7 @@ Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defin
 
 - **`milestones/`** — versioned snapshot files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
 
-- **`telemetry/<runId>.jsonl`** — per-run event logs.
+- **`telemetry/<runId>.jsonl`** — per-run MuninnDB recall-quality logs (`recall.hit` / `recall.miss` / `recall.utilization`). This is a minimal sink: general pipeline telemetry lives in LangSmith traces (see `/trace-insights`) and `.luca/ledger.jsonl`.
 
 - **`archive/<NN-slug>/`** — phase directories closed at milestone (frozen, never resurfaces).
 

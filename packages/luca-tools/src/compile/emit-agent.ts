@@ -58,7 +58,6 @@ export async function emitAgent(
         instructions: def.instructions,
         guidance: def.guidance,
         gotchas: def.gotchas,
-        telemetryHooks: def.telemetryHooks,
         pipelineInvocations: def.pipelineInvocations,
     })
 

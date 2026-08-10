@@ -8,6 +8,13 @@
  * idempotence guarantee.
  */
 export { INPHASE_TERSENESS_DIRECTIVE } from './inphase-terseness.ts'
+export {
+    RECALL_ATTRIBUTION_FLAGS,
+    RECALL_WAVE_FLAG,
+    recallUtilizationDirective,
+    recordRecallDirective,
+    recordRecallDirectiveUnattributed,
+} from './record-recall.ts'
 export { MEMORY_TIER_DISCIPLINE } from './memory-tier-discipline.ts'
 export { SUBAGENT_SHARED_PREFIX } from './shared-prefix.ts'
 export { VERIFICATION_DOCTRINE } from './verification-doctrine.ts'

@@ -33,29 +33,6 @@ import { z } from 'zod'
 export const SubagentAllowedToolSchema = z.string().min(1)
 
 /**
- * Pipeline points at which a subagent should emit a telemetry event.
- * The compiler injects the matching `mcp__luca-telemetry__...` /
- * `luca telemetry emit ...` invocations into the prompt body.
- *
- * Why declarative instead of free-form prose: the v13 hand-rewrite
- * dropped these instrumentation lines silently. Declaring them by
- * symbolic name lets a single compiler change re-emit them consistently
- * across all 9 subagents — and lets the §3 parity audit verify each
- * one is present.
- */
-export const TelemetryHookSchema = z.enum([
-    'phase-start',
-    'phase-end',
-    'wave-start',
-    'wave-end',
-    'subagent-start',
-    'subagent-end',
-    'verification-start',
-    'verification-end',
-])
-export type TelemetryHook = z.infer<typeof TelemetryHookSchema>
-
-/**
  * Pipeline invocation points the subagent should perform. These map to
  * the cross-cutting subsystems the v13 hand-rewrite either dropped or
  * scattered into per-subagent prose:
@@ -129,7 +106,7 @@ export type SubagentGuidance = z.infer<typeof SubagentGuidanceSchema>
 /**
  * Subagent definition — the input to `defineSubagent`. The compiler
  * consumes this to emit `.claude/agents/<id>.md` with the shared-prefix
- * + guidance blocks + telemetry/invocation hooks + the body.
+ * + guidance blocks + invocation hooks + the body.
  */
 export const SubagentDefinitionSchema = z.object({
     /**
@@ -178,12 +155,6 @@ export const SubagentDefinitionSchema = z.object({
      */
     guidance: SubagentGuidanceSchema,
     /**
-     * Telemetry hooks — symbolic pipeline points at which the subagent
-     * should emit a telemetry event. Compiler injects the matching
-     * `luca telemetry emit` lines.
-     */
-    telemetryHooks: z.array(TelemetryHookSchema).default([]),
-    /**
      * Pipeline invocations — cross-cutting subsystems the subagent
      * should call at the appropriate boundary (see
      * `PipelineInvocationSchema`).
@@ -200,7 +171,7 @@ export const SubagentDefinitionSchema = z.object({
     gotchas: z.array(z.string()).default([]),
     /**
      * The prompt body. Markdown — what the subagent should actually
-     * do. The shared-prefix and the guidance/telemetry blocks are
+     * do. The shared-prefix and the guidance/invocation blocks are
      * composed in at compile time; this body is the subagent-specific
      * instruction set.
      */

@@ -3,8 +3,11 @@
  * run.
  *
  * Data layer: `.luca/telemetry/<runId>.jsonl` (machine-readable, append-only).
- * Records are produced at pipeline-mode and PLAN.md-phase boundaries and
- * consumed by the `/luca-telemetry-report` aggregator skill.
+ * This is the MINIMAL retained sink: producers emit only the recall-quality
+ * family (`recall.hit` / `recall.miss` / `recall.utilization`), which LangSmith
+ * cannot observe. Consumers are the `/luca-telemetry-report` recall aggregator
+ * and the `/trace-insights` Stage A5 slug/wave join. See `./schemas.ts` for the
+ * retire/retain rationale.
  *
  * ## Fail-safe contract
  *

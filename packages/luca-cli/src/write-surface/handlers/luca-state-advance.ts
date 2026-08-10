@@ -3,7 +3,6 @@ import { join } from 'node:path'
 
 import {
     appendLedger,
-    appendTelemetry,
     BUDGET_BY_COMPLEXITY,
     coarsePhaseOf,
     DEFAULT_BUDGET,
@@ -309,13 +308,19 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     })
                 }
 
-                // Conditional: fixloop.counted telemetry (DAD-P1c). When the
-                // advance traversed a REWORK edge (checks→execute, verify→checks,
-                // review→execute) and a counter was incremented, emit an
-                // advisory `fixloop.counted` record. Budget is resolved from
+                // Conditional: fixloop-counted (DAD-P1c). When the advance
+                // traversed a REWORK edge (checks→execute, verify→checks,
+                // review→execute) and a counter was incremented, record an
+                // advisory `fixloop-counted` entry. Budget is resolved from
                 // complexity via BUDGET_BY_COMPLEXITY at emit time (advisory —
                 // the record is logged, never blocked; the enforce flip is a
                 // later slice). Forward-exit resets do NOT emit.
+                //
+                // This used to be a `fixloop.counted` telemetry record. The
+                // local telemetry sink was narrowed to recall quality only, so
+                // the payload moved onto the ledger — the live local sink,
+                // which already carries the matching `pipeline-re-entered`
+                // entry for the same edge.
                 const reworkCap = REWORK_EDGE_CAPS[`${from}->${to}`]
                 if (counterUpdate !== undefined && reworkCap !== undefined) {
                     const limits =
@@ -324,24 +329,19 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                             : DEFAULT_BUDGET
                     const budget = limits[reworkCap]
                     const nextValue = counterUpdate.value
-                    appendTelemetry({
+                    appendLedger({
                         cwd: ctx.cwd,
-                        kind: 'fixloop.counted',
-                        ctx: {
-                            runId: runId || null,
-                            phase: null,
-                            slug: null,
-                            wave: null,
-                            complexity: state.complexity ?? null,
-                            oversight: state.oversight ?? null,
-                        },
-                        meta: {
+                        runId,
+                        event: 'fixloop-counted',
+                        data: {
                             edge: `${from}->${to}`,
                             counterField: counterUpdate.field,
                             nextValue,
                             budget,
                             verdict:
                                 nextValue >= budget ? 'exceeded' : 'within',
+                            complexity: state.complexity ?? null,
+                            oversight: state.oversight ?? null,
                             phaseOfRollout: 'advisory',
                         },
                     })

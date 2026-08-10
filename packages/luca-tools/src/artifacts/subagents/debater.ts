@@ -29,7 +29,6 @@ export const debaterSubagent = defineSubagent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: ['subagent-end'],
     gotchas: [
         'You are read-only — argue from evidence, never edit. Empirical settlement (writing/running a repro) is the test-writer\'s job, not yours; do not attempt to "prove" your stance by changing code.',
         'A dishonest 0.9 confidence is worse than an honest 0.4 — the arbiter relies on calibrated confidence; if the evidence undercuts your assigned stance, concede it and lower CONFIDENCE accordingly.',

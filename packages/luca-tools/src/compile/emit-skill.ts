@@ -53,7 +53,7 @@ export async function emitSkill(
     }
 
     const frontmatter = renderFrontmatter(entries)
-    // Skills don't get a D1 prelude — guidance/telemetry/invocation
+    // Skills don't get a D1 prelude — guidance/invocation
     // hooks are agent concerns, not skill concerns. Body is verbatim
     // with a trailing newline normalized.
     const body = def.body.replace(/\s+$/u, '') + '\n'

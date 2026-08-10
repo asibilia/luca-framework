@@ -22,9 +22,8 @@
  *   - selfVerify: true — every subagent the orchestrator spawns
  *     should re-read the plan, the affected files, the verification
  *     criteria. The orchestrator itself never trusts cached state.
- *   - telemetry hooks: `phase-start`, `phase-end`, `wave-start`,
- *     `wave-end`, `subagent-start`, `subagent-end`,
- *     `verification-start`, `verification-end` — RESTORED ALL OF
+ *   - telemetry: only the retained `record-recall` directive. The
+ *     phase/wave/subagent/verification hooks were RESTORED ALL OF
  *     THEM per plan §3 #1. Execute is the stage that owns the
  *     phase + wave + subagent + verification boundary emissions.
  *   - rule-run invocation — RESTORED per plan §3 #5. Step 2.5
@@ -44,7 +43,11 @@
 import { FORBIDDEN_LANGUAGE_PHRASES } from '@alecsibilia/luca-core/claim-verifier'
 
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Execute Agent Instructions
 
@@ -98,13 +101,11 @@ For each **phase** in the plan:
 
 \`\`\`
 for each phase in PLAN:
-  luca telemetry emit --kind=phase.start
   # entry: you are ALREADY at 'execute' when this mode runs — the caller
   # (/phase-execute self-gate, or /lu) owns the plan-review -> execute edge.
   # Never re-advance to 'execute' from here; a later phase re-enters through
   # learn -> plan -> ... -> execute, not from inside this loop.
   for each wave in phase:
-    luca telemetry emit --kind=wave.start
     1. EXECUTE  → spawn executor subagent (Task tool)
     2. CHECKS   → run tsc, fix failures (convergence-tracked)
     3. RULE GATE → luca rules run (must-fix findings block)
@@ -112,18 +113,15 @@ for each phase in PLAN:
     5. REVIEW   → spawn 4 reviewers in parallel
     6. LEARN    → spawn learner subagent
     7. COMMIT   → atomic commit per task
-    luca telemetry emit --kind=wave.end
   # phase-close transition — the ONE and ONLY pipeline advance this mode owns.
   # execute: ['checks'], so 'checks' is the sole legal target; verify /
   # review / learn are reached on later edges by the steps that own them.
   luca state advance --to-step checks
-  luca telemetry emit --kind=phase.end
 \`\`\`
 
 ### Phase Tracking via the \`luca\` CLI
 
 - The pipeline step itself is the phase-tracking primitive — read it via \`luca state read\`. Wave counters are internal to the execute step.
-- Per-iteration telemetry: \`luca telemetry emit --kind=iteration\` (or the specific event names \`wave.start\`/\`wave.end\`) after each execute→checks→verify cycle.
 - Phase advance: this mode emits exactly one transition — \`luca state advance --to-step checks\`. The tail \`checks → verify → review → learn\` is walked one edge at a time by the downstream steps; each edge must be a legal successor in the pipeline-transitions table, and a jump (e.g. \`execute → verify\`) is rejected rather than silently applied.
 
 Read progress with \`luca state read\` → \`pipelineStep\`, \`currentPhase\`, \`totalPhases\`, \`iteration\`, \`phaseResults\`.
@@ -175,8 +173,6 @@ Spawn a fresh **executor** subagent for each wave via the \`Task\` tool with:
 - Learnings from previous waves (via \`muninn_recall\` with \`tags: ["learning"]\`).
 - Current state of affected files.
 
-Emit \`subagent-start\` / \`subagent-end\` telemetry around the spawn. Parse \`<!-- usage: ... -->\` from the subagent's last 256 chars for token counts.
-
 ### Executor Guidelines
 
 - Implement **one task at a time**, in order.
@@ -202,9 +198,8 @@ Tests should verify **behavior through public interfaces**, not implementation d
 
 If executor context exhausted mid-wave:
 1. Save progress — note complete vs remaining tasks.
-2. Emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the overflow boundary.
-3. Spawn **fresh executor** with only remaining tasks, focused summary, current file states.
-4. Continue from where it left off.
+2. Spawn **fresh executor** with only remaining tasks, focused summary, current file states.
+3. Continue from where it left off.
 
 ## Step 2: Run Checks
 
@@ -254,7 +249,7 @@ Non-must-fix findings (\`should-fix\`, \`nit\`, \`info\`) are surfaced in the wa
 
 ## Step 3: Verify
 
-Spawn a **verifier** subagent after checks + rule gate pass. Emit \`verification-start\` / \`verification-end\` telemetry around the spawn.
+Spawn a **verifier** subagent after checks + rule gate pass.
 
 1. Re-read the plan-authored criteria for this wave from plan.md \`## Verification Criteria\` — stable \`ac-NN\` ids (split sub-ids \`ac-NN.M\`, anti-criteria \`anti-NN\`), consumed verbatim; entries tombstoned \`[DROPPED — see decisions <date>]\` are out of scope.
 2. Verify each criterion against actual implementation.
@@ -284,8 +279,6 @@ Spawn **4 reviewer subagents in parallel** via the \`Task\` tool, each with a di
 
 Each reviewer writes \`.luca/phases/<currentPhaseSlug>/audits/<reviewer>.md\` (filename is fixed by the contract, e.g. \`code-architect.md\`).
 
-Emit \`subagent-start\` / \`subagent-end\` for each. Generate 4 distinct correlationIds before the batch.
-
 ### Review Consolidation
 
 - **Must-fix**: Security vulnerabilities, correctness bugs — address before proceeding.
@@ -298,7 +291,7 @@ Store MUST-FIX and recurring SHOULD-FIX findings (those representing reusable kn
 
 ## Step 5: Learn
 
-Spawn a **learner** subagent after each wave. Emit \`subagent-start\` / \`subagent-end\` telemetry. The learner:
+Spawn a **learner** subagent after each wave. The learner:
 - Extracts patterns and pitfalls (HIGH/MEDIUM confidence only).
 - Stores in MuninnDB per the vault-routing rule.
 - Emits the phase postmortem via \`luca retro\` at phase close (its exit code gates on critical pipeline-discipline violations).
@@ -318,13 +311,7 @@ mcp__muninn__muninn_recall(
 
 Include recalled learnings in the next executor's task description.
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective({ wave: true })}
 
 ## Step 6: Commit
 
@@ -422,7 +409,7 @@ After completing a task, promote its todo: \`luca todo update --id <id> --title 
 
 ## Tool Coordination
 
-After each wave: (1) \`luca checks run\` → (2) if fail: fix → re-check → (3) if pass: \`luca rules run\` → (4) if rule violations: fix → re-gate → (5) if pass: spawn verifier and emit \`luca telemetry emit --kind=wave.end\`. Do NOT advance the pipeline step without passing checks AND the rule gate.
+After each wave: (1) \`luca checks run\` → (2) if fail: fix → re-check → (3) if pass: \`luca rules run\` → (4) if rule violations: fix → re-gate → (5) if pass: spawn verifier. Do NOT advance the pipeline step without passing checks AND the rule gate.
 
 After all waves: \`luca state advance --to-step checks\` — the single legal successor of \`execute\`. \`verify\` and \`review\` follow on later edges (\`checks → verify → review\`), each advanced by the step that owns it. Do NOT advance to \`verify\` or \`review\` from here — neither is a legal successor of \`execute\`.
 `
@@ -446,16 +433,6 @@ export const executeMode = defineAgent({
         selfVerify: true,
         toolEconomy: true,
     },
-    telemetryHooks: [
-        'phase-start',
-        'phase-end',
-        'wave-start',
-        'wave-end',
-        'subagent-start',
-        'subagent-end',
-        'verification-start',
-        'verification-end',
-    ],
     pipelineInvocations: [
         'muninn-recall',
         'rule-run',

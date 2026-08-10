@@ -14,9 +14,8 @@
  *   - antiSycophancy: true — the PR body cannot claim work that isn't
  *     verifiable on the branch. The per-file \`luca claim-verify\` loop
  *     in Step 5b.2 enforces this.
- *   - telemetry hooks: `phase-end`, `verification-start`,
- *     `verification-end` — the finalize stage closes the phase
- *     telemetry stream and runs final verification aggregation.
+ *   - telemetry: the `record-recall` directive only. The `phase-end`
+ *     and `verification-*` hooks retired with the local sink.
  *   - rule-run invocation — Step 4.5 (recurring-pitfall rule
  *     suggestions) calls \`luca rules suggest\` with a threshold to
  *     surface recurring pitfalls as suggested rules printed to stdout.
@@ -30,7 +29,11 @@
  *   - confidence-log — preserved from execute → review hand-off.
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Finalize Agent Instructions
 
@@ -75,7 +78,7 @@ Vault from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\`. U
 
 ### Milestone-Level Learning
 
-Spawn a **learner** subagent for milestone synthesis via the \`Task\` tool. Emit \`subagent-start\` / \`subagent-end\` telemetry around the spawn.
+Spawn a **learner** subagent for milestone synthesis via the \`Task\` tool.
 
 The learner aggregates wave-level learnings, identifies cross-cutting patterns spanning multiple waves, distills top 5–10 lessons (not everything), and compares initial estimates vs actual outcomes. It stores findings in MuninnDB (per the vault-routing rule) and writes the session archive.
 
@@ -91,13 +94,7 @@ mcp__muninn__muninn_recall(
 )
 \`\`\`
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 Review results. NOTE: \`mcp__muninn__muninn_forget\` requires an explicit engram **ULID** — there is no concept/similarity/wildcard forget. So to prune, work from the engrams the recall above already returned (each has an \`id\`), and forget by that id. Never pass a concept string or \`*\` to forget.
 - **Remove duplicates**: among the recalled patterns, identify less-specific overlapping ones and call \`mcp__muninn__muninn_forget(vault: "<vault>", id: "<that engram's ULID>")\` for each.
@@ -130,9 +127,9 @@ Persist complexity-bucketed OUTCOME KPIs as milestone-stamped \`metric:*\` memor
 luca telemetry kpi --json
 \`\`\`
 
-The output shape is \`{ buckets: { <COMPLEXITY>: { lowConfidenceRatio, firstPassVerifyRate, meanReworkIterations, reEntryRate, sampleSize } }, unattributed: { phases, records } }\`. The verb reads \`.luca/\` artifacts only and appends NO telemetry.
+The output shape is \`{ buckets: { <COMPLEXITY>: { lowConfidenceRatio, firstPassVerifyRate, sampleSize } }, unattributed: { phases } }\`. The verb reads \`.luca/\` phase artifacts only — it reads no telemetry and appends none.
 
-2. **Persist** one memory per complexity bucket to the repo vault (resolved from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\` — the same vault already resolved at Step 1) via a single batched write. Concept is \`metric:outcome-kpi-<version>-<complexity>\` (lowercase complexity, e.g. \`metric:outcome-kpi-v13.1.0-moderate\`), and the payload carries all four KPIs for that bucket:
+2. **Persist** one memory per complexity bucket to the repo vault (resolved from \`.luca/config.json\` → \`muninn.vault\`, fallback \`"default"\` — the same vault already resolved at Step 1) via a single batched write. Concept is \`metric:outcome-kpi-<version>-<complexity>\` (lowercase complexity, e.g. \`metric:outcome-kpi-v13.1.0-moderate\`), and the payload carries both KPIs for that bucket:
 
 \`\`\`
 mcp__muninn__muninn_remember_batch(
@@ -140,7 +137,7 @@ mcp__muninn__muninn_remember_batch(
   memories: [
     {
       concept: "metric:outcome-kpi-<version>-<complexity>",
-      content: "<complexity> bucket @ <version>: lowConfidenceRatio=<n>, firstPassVerifyRate=<n>, meanReworkIterations=<n>, reEntryRate=<n>, sampleSize=<n>",
+      content: "<complexity> bucket @ <version>: lowConfidenceRatio=<n>, firstPassVerifyRate=<n>, sampleSize=<n>",
       tags: ["metric", "outcome-kpi", "<version>", "<complexity>"]
     }
     // ...one entry per bucket returned by \`luca telemetry kpi --json\`
@@ -154,7 +151,7 @@ Substitute \`<version>\` with the milestone version and emit one \`metric:outcom
 
 Advisory scan for AI-session debris before PR:
 
-1. Spawn the **shadow-scanner** subagent with \`scan_mode: "standard"\` via the \`Task\` tool. Emit \`subagent-start\` / \`subagent-end\` telemetry.
+1. Spawn the **shadow-scanner** subagent with \`scan_mode: "standard"\` via the \`Task\` tool.
 2. Parse the scanner's JSON report.
 3. **Critical** findings: fix via \`luca repo cleanup-apply\` or report to user.
 4. **High/medium/low** findings: log in session archive, don't block.
@@ -324,13 +321,7 @@ mcp__muninn__muninn_recall(
 )
 \`\`\`
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 ### 5b.1. Write release artifacts (AFTER review iteration converged)
 
@@ -374,14 +365,6 @@ The gate verdict is the exit codes: **any non-zero exit blocks**. The CLI prints
    - **Labels**: match issue labels.
    - **Reviewers**: if configured.
 5. Record the PR URL — log it as a confidence-journal entry via \`luca confidence log\` (with the post-F1 schema, category \`design-choice\`, decision \`"PR opened at <url>"\`) so it surfaces in the session summary and in the durable session ledger.
-6. **Emit the run→PR map** — emit a \`pr.created\` telemetry record under THIS session's live runId so a later \`pr.outcome\` (which rides the fixed \`pr-outcomes\` synthetic runId because the merge happens outside this session) can correlate back to this run via the join key \`meta.prNumber\`:
-
-\`\`\`
-luca telemetry emit --kind pr.created --run-id <sessionId> --meta '{"prNumber":<#>,"branch":"<branch>","issue":<#>,"originRunId":"<sessionId>"}'
-\`\`\`
-
-Substitute \`<sessionId>\` with the current session's runId, \`<#>\` (prNumber) with the number from the \`gh pr create\` output, \`<branch>\` with the feature branch, and \`<#>\` (issue) with the tracker issue this PR closes. This durable run→PR map is what lets the post-merge \`luca telemetry pr-outcome\` writeback (keyed by \`prNumber\`) trace back to the originating run that opened the PR.
-
 If \`--skip-branch\` was set, skip.
 
 ## Step 6: Surface Remaining Work
@@ -420,7 +403,7 @@ luca verification aggregate
 luca retro
 \`\`\`
 
-The session ledger is the source for mode-transition + iteration metrics; read it via the JSONL at \`.luca/ledger.jsonl\` if a detailed cross-event aggregate is needed. \`luca telemetry\` aggregations live in \`.luca/telemetry/<runId>.jsonl\`.
+The session ledger is the source for mode-transition + iteration metrics; read it via the JSONL at \`.luca/ledger.jsonl\` if a detailed cross-event aggregate is needed. Recall-quality records live in \`.luca/telemetry/<runId>.jsonl\`; everything else is in LangSmith.
 
 Returns: total events, mode transitions, phases completed, total iterations, session duration.
 
@@ -537,13 +520,6 @@ export const finalizeMode = defineAgent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: [
-        'phase-end',
-        'verification-start',
-        'verification-end',
-        'subagent-start',
-        'subagent-end',
-    ],
     pipelineInvocations: [
         'muninn-recall',
         'rule-run',

@@ -228,7 +228,7 @@ In \`full-auto\` the yield is **not active**: there is **no autonomous re-invoke
 in current source (the autopilot loop was removed), so yielding would stall the
 run outright rather than resume it. The handoff is still persisted for
 durability, but control continues in the same turn. See
-\`packages/luca-tools/src/artifacts/skills/lu/index.ts:251\`.
+\`packages/luca-tools/src/artifacts/skills/lu/index.ts:198\`.
 
 If your Workflow script relies on a boundary yield, it needs its own outer
 loop to re-enter — the script itself can be that re-invoker, which is one of

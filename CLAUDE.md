@@ -33,7 +33,7 @@ Luca's pipeline writes artifacts under `.luca/` (replaces the legacy `.planning/
 - **Root files**: `state.json`, `config.json`, `lock.json`, `roadmap.md` (generated), `ledger.jsonl`.
 - **`phases/<NN-slug>/`** — one directory per work phase, slug is zero-padded NN plus kebab-case description. Allowed files: `research.md`, `context.md`, `plan.md`, `plan-review.md`, `verify.json`, `learn.md`, `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`, `audits/<reviewer>.md`.
 - **`milestones/`** — versioned files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
-- **`telemetry/<runId>.jsonl`** — per-run event logs.
+- **`telemetry/<runId>.jsonl`** — per-run MuninnDB recall-quality logs (`recall.hit` / `recall.miss` / `recall.utilization`). This is a minimal sink: general pipeline telemetry lives in LangSmith traces (see `/trace-insights`) and `.luca/ledger.jsonl`.
 - **`archive/<NN-slug>/`** — phase directories closed at milestone.
 - **`tmp/<kebab-name>.json`** — ephemeral, repo-scoped CLI-handoff payloads (LLM orchestrator → `luca <cmd> --file`). Gitignored, writable in any pipelineStep, NOT a pipeline artifact. Replaces the old shared `/tmp/luca-*.json` paths that collided across repos.
 

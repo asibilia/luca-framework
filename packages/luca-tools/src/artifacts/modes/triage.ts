@@ -16,9 +16,9 @@
  * D1 RESTORATION:
  *   - selfVerify: true — verify intent against the actual user
  *     message and any cited todo IDs before classifying.
- *   - telemetry hooks: `phase-start` — triage opens the phase
- *     telemetry stream. The mastracode body declared `record-recall`
- *     emission inline; we keep that prose AND surface phase-start at
+ *   - telemetry: the `record-recall` directive only. The mastracode
+ *     body declared `record-recall` emission inline; we keep that
+ *     prose. The `phase-start` hook was surfaced at
  *     the D1 boundary so the orchestrator can timeline-align it.
  *   - muninn-recall — explicit declaration of the Step 1.5 similar-
  *     task lookup. The body keeps the per-call prose; D1 makes the
@@ -28,7 +28,11 @@
  *     borderline and the agent erred toward higher complexity).
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recordRecallDirectiveUnattributed,
+} from '../shared/index.ts'
 
 const BODY = `# Triage Agent Instructions
 
@@ -78,13 +82,7 @@ Query MuninnDB for historical context (≤1 tool call, vault from \`.luca/config
 mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<parsed intent summary>", tags: ["milestone"])
 \`\`\`
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirectiveUnattributed()}
 
 If results found, factor prior complexity levels and learnings into classification. If MuninnDB is unavailable, skip — never delay triage.
 
@@ -212,7 +210,6 @@ export const triageMode = defineAgent({
     guidance: {
         selfVerify: true,
     },
-    telemetryHooks: ['phase-start'],
     pipelineInvocations: ['muninn-recall', 'confidence-log'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}

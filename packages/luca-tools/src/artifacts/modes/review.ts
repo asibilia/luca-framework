@@ -17,10 +17,11 @@
  *     specific evidence that supports it (which criteria pass with
  *     which file:line). The mastracode body already had this gate;
  *     D1 makes it auditable.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — the
+ *   - telemetry: only the retained `record-recall` /
+ *     `recall.utilization` directives; the subagent hooks were the
  *     review mode spawns 5 reviewers in parallel; boundary telemetry
  *     per spawn (each reviewer subagent ALSO emits its own
- *     `subagent-end`).
+ *     subagent-completion pair).
  *   - claim-verify invocation — the optional self-check claim
  *     verifier on the audit output (Step 6 in the source) is now
  *     surfaced declaratively. The mastracode body's prose is
@@ -29,7 +30,12 @@
  *     `review-finding:*` engrams.
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recallUtilizationDirective,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Review Mode
 
@@ -103,7 +109,7 @@ The gate may skip round-2 — the Step 4 re-review fan-out; NOT re-verify, which
 
 ### Step 4: Parallel Code Review
 
-Spawn **5 reviewer subagents in parallel** via the Claude Code \`Task\` tool. Generate 5 distinct correlationIds (\`reviewer-arch-<ts>\`, \`reviewer-dx-<ts>\`, \`reviewer-sec-<ts>\`, \`reviewer-simpl-<ts>\`, \`reviewer-test-<ts>\`) before the batch. Emit \`subagent-start\` for each before spawn, \`subagent-end\` after each return. Parse \`<!-- usage: ... -->\` from each result's last 256 chars for token counts.
+Spawn **5 reviewer subagents in parallel** via the Claude Code \`Task\` tool. Parse \`<!-- usage: ... -->\` from each result's last 256 chars for token counts.
 
 1. **Architecture** — structural correctness, dependency direction, API surface quality.
 2. **DX** — readability, error messages, testing patterns, docs.
@@ -161,13 +167,7 @@ mcp__muninn__muninn_recall(
 
 If matches found, note **recurring issues** (increases severity signal) and reference prior occurrence.
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run it with \`--kind recall.hit\` when results were returned, or \`--kind recall.miss\` when \`resultCount\` is 0:
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 After producing the audit report, store notable findings (MUST-FIX and recurring SHOULD-FIX). Per vault-routing rule, \`review-finding:*\` is project-scoped → repo vault.
 
@@ -254,16 +254,14 @@ In \`full-auto\`, route automatically based on findings.
 
 **Route B — Actionable findings exist (MUST-FIX or SHOULD-FIX)**:
 1. Check iteration count against \`maxReviewIterations\`.
-2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, then run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — immediately before the transition, then transition back to execute via \`luca state advance --to-step execute\`. The Step 3.5 re-entry gate consumes this snapshot on the next review pass.
+2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, then run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — immediately before the transition, then transition back to execute via \`luca state advance --to-step execute\`. The Step 3.5 re-entry gate consumes this snapshot on the next review pass.
 3. At budget limit: capture every remaining MUST-FIX and SHOULD-FIX item as a backlog todo (\`luca todo add --status backlog --source review-finding …\`) so nothing is lost, save the report with a budget-exhausted warning in the audit artifact, then transition forward via \`luca state advance --to-step learn\`.
 
 ### Step 8: Learn-Step Outcome Correlation
 
 At the learn step, correlate recalled memories to this run's outcome. Gather the \`recalledIds\` captured in the run's \`recall.hit\`/\`recall.miss\` records (from \`.luca/telemetry/<runId>.jsonl\`) and the terminal outcome valence at verify/review, then emit one \`recall.utilization\` record so the read-time aggregator can join recalled memories to outcomes:
 
-\`\`\`
-luca telemetry emit --kind recall.utilization --run-id <runId> --meta '{"recalledIds":["<recalled concept ULID>", "..."],"outcome":"<positive|negative|neutral>","step":"<verify|review>"}'
-\`\`\`
+${recallUtilizationDirective()}
 
 Correlation is post-hoc/statistical by \`runId\`+\`step\` (MVP — no per-memory write-back).
 
@@ -329,7 +327,6 @@ export const reviewMode = defineAgent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'claim-verify'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}

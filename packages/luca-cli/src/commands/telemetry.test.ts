@@ -1,5 +1,4 @@
 import {
-    existsSync,
     mkdirSync,
     mkdtempSync,
     readdirSync,
@@ -13,6 +12,8 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 
 import { telemetryCommand } from './telemetry.ts'
+
+import { logger } from '../utils/logger.ts'
 
 // ---------------------------------------------------------------------------
 // ac-05 / ac-06 — the read-only `kpi` leaf
@@ -60,7 +61,7 @@ describe('telemetry kpi leaf', () => {
                 v: 1,
                 ts: new Date().toISOString(),
                 runId: 'run_seed',
-                kind: 'phase.start',
+                kind: 'recall.hit',
                 phase: null,
                 slug: null,
                 wave: null,
@@ -116,17 +117,17 @@ describe('telemetry kpi leaf', () => {
 })
 
 // ---------------------------------------------------------------------------
-// VAL-02 — the pr-outcome leaf rejects non-numeric flags before writing
+// The retained `emit` leaf — the minimal recall-quality sink
 // ---------------------------------------------------------------------------
 
-describe('telemetry pr-outcome leaf — numeric validation (VAL-02)', () => {
+describe('telemetry emit leaf — retained recall sink', () => {
     let cwd: string
     let originalCwd: string
 
     beforeEach(() => {
         originalCwd = process.cwd()
         cwd = cleanDir()
-        mkdirSync(join(cwd, '.luca', 'telemetry'), { recursive: true })
+        mkdirSync(join(cwd, '.luca'), { recursive: true })
         process.chdir(cwd)
     })
 
@@ -139,54 +140,44 @@ describe('telemetry pr-outcome leaf — numeric validation (VAL-02)', () => {
 
     const subCommands = telemetryCommand.subCommands as Record<string, unknown>
 
-    test('rejects a non-numeric --review-rounds and writes nothing', async () => {
-        const leaf = subCommands['pr-outcome']
-        expect(leaf).toBeDefined()
-        const runFn = (leaf as { run?: unknown }).run
-        expect(typeof runFn).toBe('function')
+    test('emit is the only write leaf; new-run and pr-outcome are retired', () => {
+        expect(subCommands.emit).toBeDefined()
+        expect(subCommands['new-run']).toBeUndefined()
+        expect(subCommands['pr-outcome']).toBeUndefined()
+    })
 
-        // Setting process.exitCode would poison the test runner's exit status,
-        // so snapshot and restore it around the invocation.
-        const prevExit = process.exitCode
-        try {
-            await (
-                runFn as (ctx: {
-                    args: Record<string, unknown>
-                    rawArgs: string[]
-                    cmd: unknown
-                }) => unknown
-            )({
-                args: {
-                    'pr-number': '5',
-                    result: 'merged',
-                    'review-rounds': 'abc',
-                    'time-to-merge-ms': '1000',
-                },
-                rawArgs: [
-                    '--pr-number',
-                    '5',
-                    '--result',
-                    'merged',
-                    '--review-rounds',
-                    'abc',
-                    '--time-to-merge-ms',
-                    '1000',
-                ],
-                cmd: leaf,
-            })
-
-            // Guarded: non-zero exit, and NO pr-outcomes.jsonl written (a NaN
-            // would otherwise serialize as null in the log).
-            expect(process.exitCode).toBe(1)
-            expect(
-                existsSync(join(cwd, '.luca', 'telemetry', 'pr-outcomes.jsonl'))
-            ).toBe(false)
-        } finally {
-            // Bun (1.3.11) does NOT reset the exit status when exitCode is
-            // assigned `undefined` — the previously-set 1 sticks and poisons
-            // the runner's exit despite 0 test failures. Restore to an
-            // explicit 0 when there was no prior code.
-            process.exitCode = prevExit ?? 0
+    test('appends a recall.hit record to .luca/telemetry/<runId>.jsonl', () => {
+        const leaf = subCommands.emit as {
+            run: (ctx: { args: Record<string, unknown> }) => unknown
         }
+        const successSpy = spyOn(logger, 'success').mockImplementation(() => {})
+        try {
+            leaf.run({
+                args: {
+                    kind: 'recall.hit',
+                    'run-id': 'run_emit_test',
+                    slug: '01-foo',
+                    meta: JSON.stringify({ resultCount: 3, verifiedCount: 2 }),
+                },
+            })
+        } finally {
+            successSpy.mockRestore()
+        }
+
+        const log = readFileSync(
+            join(cwd, '.luca', 'telemetry', 'run_emit_test.jsonl'),
+            'utf-8'
+        )
+        const record = JSON.parse(log.trim()) as {
+            kind: string
+            runId: string
+            slug: string | null
+            meta: Record<string, unknown>
+        }
+        expect(record.kind).toBe('recall.hit')
+        expect(record.runId).toBe('run_emit_test')
+        // The slug field is what the trace-insights Stage A5 join resolves on.
+        expect(record.slug).toBe('01-foo')
+        expect(record.meta.verifiedCount).toBe(2)
     })
 })

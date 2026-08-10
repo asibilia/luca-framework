@@ -128,7 +128,8 @@ export const LUCA_DIR_CONTRACT = {
         },
         telemetry: {
             path: 'telemetry/',
-            description: 'Per-run JSONL event logs',
+            description:
+                'Per-run JSONL MuninnDB recall-quality logs (recall.* kinds only)',
             pattern: '<runId>.jsonl',
         },
         archive: {

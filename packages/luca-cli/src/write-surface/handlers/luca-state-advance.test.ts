@@ -5,9 +5,9 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+    getLedgerByEvent,
     lucaStateSchema,
     machineVerdict,
-    readTelemetry,
     type PipelineStep as PipelineStepType,
 } from '@alecsibilia/luca-core'
 
@@ -246,7 +246,7 @@ describe('luca_state_advance', () => {
         }
     })
 
-    test('emits one advisory fixloop.counted telemetry record on a rework advance (checks → execute)', async () => {
+    test('emits one advisory fixloop-counted ledger entry on a rework advance (checks → execute)', async () => {
         // COMPLEX maxChecksFixIterations = 5; checksFixIteration 1 → 2 is
         // within budget. The record is advisory (logged, never blocking).
         await writeFile(
@@ -265,21 +265,25 @@ describe('luca_state_advance', () => {
         )
         expect(result.isError).toBeFalsy()
 
-        const records = readTelemetry({ cwd, runId: 'run-fixloop' }).filter(
-            (r) => r.kind === 'fixloop.counted'
-        )
+        const records = getLedgerByEvent({
+            cwd,
+            event: 'fixloop-counted',
+            runId: 'run-fixloop',
+        })
         expect(records.length).toBe(1)
-        expect(records[0]?.meta).toEqual({
+        expect(records[0]?.data).toEqual({
             edge: 'checks->execute',
             counterField: 'checksFixIteration',
             nextValue: 2,
             budget: 5,
             verdict: 'within',
+            complexity: 'COMPLEX',
+            oversight: 'full-auto',
             phaseOfRollout: 'advisory',
         })
     })
 
-    test('does NOT emit fixloop.counted on a forward-exit reset (checks → verify)', async () => {
+    test('does NOT emit fixloop-counted on a forward-exit reset (checks → verify)', async () => {
         await writeFile(
             join(cwd, '.luca/state.json'),
             JSON.stringify({
@@ -292,9 +296,11 @@ describe('luca_state_advance', () => {
 
         await lucaStateAdvanceTool.handler({ toStep: 'verify' }, { cwd })
 
-        const records = readTelemetry({ cwd, runId: 'run-noemit' }).filter(
-            (r) => r.kind === 'fixloop.counted'
-        )
+        const records = getLedgerByEvent({
+            cwd,
+            event: 'fixloop-counted',
+            runId: 'run-noemit',
+        })
         expect(records.length).toBe(0)
     })
 

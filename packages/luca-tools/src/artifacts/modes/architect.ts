@@ -26,7 +26,8 @@
  *     planning artifacts.
  *   - selfVerify: true — verify file paths and symbols referenced in
  *     the plan against the actual codebase.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — restored
+ *   - telemetry: only the retained `record-recall` directive; the
+ *     `subagent-start` / `subagent-end` hooks were restored
  *     per plan §3 #1. The architect spawns discussion + plan-reviewer
  *     subagents and must emit boundary telemetry for each.
  *   - muninn-recall — explicit declaration of the Step 1.5 prior-
@@ -36,7 +37,11 @@
  *     to a confidence-journal entry with the F1-aligned schema.
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Architect Agent Instructions
 
@@ -98,17 +103,9 @@ mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<task intent>", tags
 
 If results found, note past decisions, patterns, and pitfalls. Include relevant context for the discussion subagent. If unavailable, proceed normally. **Budget**: ≤2 tool calls.
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id established at pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 ## Step 2: Discussion
-
-> **Subagent Telemetry**: emit \`subagent-start\` / \`subagent-end\` via \`luca telemetry emit\` around the Task spawn. Parse \`<!-- usage: ... -->\` from the subagent's last 256 chars for token counts.
 
 Spawn the **discussion** subagent before creating any plan via the Claude Code \`Task\` tool:
 
@@ -367,7 +364,7 @@ The linter is warn-only (always exits 0 on lint findings) and checks mechanical 
 
 ### Spawning the Reviewer
 
-Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan against the criteria above. Emit \`subagent-start\` / \`subagent-end\` telemetry around the spawn.
+Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan against the criteria above.
 
 ### Review Criteria
 
@@ -495,7 +492,6 @@ export const architectMode = defineAgent({
         selfVerify: true,
         toolEconomy: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'confidence-log'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}
