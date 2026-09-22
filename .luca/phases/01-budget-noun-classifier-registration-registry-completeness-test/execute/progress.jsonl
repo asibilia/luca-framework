@@ -1,0 +1,6 @@
+{"wave":1,"task":"1.1.1","status":"complete","files":["packages/luca-cli/src/hook/helpers/classify-bash-command.ts"]}
+{"wave":1,"task":"1.1.2","status":"complete","files":["packages/luca-cli/src/cli.ts"]}
+{"wave":2,"task":"1.2.2","status":"complete","files":["packages/luca-cli/src/hook/helpers/classify-bash-command.test.ts"]}
+{"wave":2,"task":"1.2.1","status":"complete","files":["packages/luca-cli/src/hook/helpers/classify-bash-command-registry.test.ts"]}
+{"wave":3,"task":"review-fix-1","status":"complete","files":["packages/luca-cli/src/hook/helpers/classify-bash-command.ts","packages/luca-cli/src/hook/helpers/classify-bash-command-registry.test.ts","packages/luca-cli/src/hook/helpers/classify-bash-command.test.ts"]}
+{"wave":4,"task":"review-fix-2","status":"complete","files":["packages/luca-cli/src/hook/helpers/classify-bash-command.ts","packages/luca-cli/src/hook/helpers/classify-bash-command.test.ts"]}

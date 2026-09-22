@@ -24,7 +24,6 @@ export const testWriterSubagent = defineSubagent({
     guidance: {
         selfVerify: true,
     },
-    telemetryHooks: ['subagent-end'],
     gotchas: [
         'A passing test that never exercises the production path proves nothing — avoid presence-only assertions and vacuous mocks; confirm the test FAILS for the right reason if the behavior were wrong.',
         "Do NOT modify production code to make a test pass — if a green test requires a production change, say so and stop; that is the executor's job. A FAIL is a valid outcome when settling a dispute — report it honestly, never weaken the assertion.",

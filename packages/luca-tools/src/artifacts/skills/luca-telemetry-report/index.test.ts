@@ -1,17 +1,20 @@
 /**
- * Regression guard for the cost-analytics directives in the
- * luca-telemetry-report skill body (phase 02-cost-per-outcome-report, Wave 1).
+ * Regression guard for the luca-telemetry-report skill body.
  *
- * Wave 1 added 3 cost-analytics directive sections to the skill BODY:
- *   - cost compute (Model rate table + per-call cost math)
- *   - Cost per Outcome (cost / phases-completed + cost / first-pass-success)
- *   - Structure vs Executor Attribution (meta.role bucketing)
+ * The skill was NARROWED when the local telemetry sink was narrowed: the
+ * cost-analytics / PR-outcome / subagent-attribution directives were removed
+ * along with the kinds that fed them, leaving MuninnDB recall quality — the
+ * one signal LangSmith cannot observe.
+ *
+ * These blocks assert BOTH halves of that decision so a future edit cannot
+ * silently drift either way:
+ *   - the recall directives that MUST be present (the retained sink), and
+ *   - the retired directives that MUST NOT come back (they have no producer).
  *
  * Each ask is asserted in a SEPARATELY-NAMED describe block so a partial drop
- * of any single directive fails that block independently (not an aggregate
- * "≥1 directive present" probe). The BODY is obtained via the real export
- * (`lucaTelemetryReportSkill.body`), so the assertions run against the
- * rendered skill body the harness actually inlines.
+ * of any single directive fails that block independently. The BODY is obtained
+ * via the real export (`lucaTelemetryReportSkill.body`), so the assertions run
+ * against the rendered skill body the harness actually inlines.
  */
 import { describe, it, expect, test } from 'bun:test'
 
@@ -19,60 +22,70 @@ import { lucaTelemetryReportSkill } from './index.ts'
 
 const body = lucaTelemetryReportSkill.body
 
-describe('cost-compute', () => {
-    it('substring-matches the three model tiers', () => {
-        expect(body).toContain('opus')
-        expect(body).toContain('sonnet')
-        expect(body).toContain('haiku')
+describe('recall-stats', () => {
+    it('accumulates both recall outcome kinds', () => {
+        expect(body).toContain('recall.hit')
+        expect(body).toContain('recall.miss')
     })
 
-    it('reads the token sources from the record meta', () => {
-        expect(body).toContain('inputTokens')
-        expect(body).toContain('outputTokens')
+    it('reads the hit-rate inputs from the record meta', () => {
+        expect(body).toContain('meta.callerMode')
+        expect(body).toContain('meta.resultCount')
+        expect(body).toContain('meta.verifiedCount')
     })
 
-    test('renders the Cost Summary section', () => {
-        expect(body).toContain('### Cost Summary')
-    })
-})
-
-describe('cost-per-outcome', () => {
-    test('renders the Cost per Outcome section', () => {
-        expect(body).toContain('### Cost per Outcome')
-    })
-
-    it('defines both cost-efficiency ratios', () => {
-        expect(body).toContain('phases-completed')
-        expect(body).toContain('first-pass')
+    test('renders the Recall Stats section', () => {
+        expect(body).toContain('### Recall Stats')
     })
 })
 
-describe('structure-vs-executor', () => {
-    it('buckets spend by the role attribution key', () => {
-        expect(body).toContain('meta.role')
-        expect(body).toContain('executor')
+describe('recall-utilization', () => {
+    it('accumulates the recall.utilization kind', () => {
+        expect(body).toContain('recall.utilization')
     })
 
-    test('renders the Structure vs Executor Attribution section', () => {
-        expect(body).toContain('### Structure vs Executor Attribution')
+    it('correlates recalled ids to outcome valence', () => {
+        expect(body).toContain('meta.recalledIds')
+        expect(body).toContain('meta.outcome')
+    })
+
+    test('renders the Recall Utilization section', () => {
+        expect(body).toContain('### Recall Utilization')
     })
 })
 
-describe('pr-outcomes', () => {
-    it('accumulates the pr.outcome telemetry kind', () => {
-        expect(body).toContain('pr.outcome')
+describe('retired-directives', () => {
+    // Nothing emits these kinds any more — a report section for them would
+    // render permanently empty and mislead the reader.
+    for (const section of [
+        '### Cost Summary',
+        '### Cost per Outcome',
+        '### Structure vs Executor Attribution',
+        '### PR Outcomes',
+        '### Subagent Costs',
+        '### Step Durations',
+        '### Review Convergence',
+    ]) {
+        test(`does not render "${section}"`, () => {
+            expect(body).not.toContain(section)
+        })
+    }
+
+    it('does not instruct aggregation of retired kinds', () => {
+        expect(body).not.toContain('meta.inputTokens')
+        expect(body).not.toContain('meta.role')
+        expect(body).not.toContain('meta.correlationId')
+        expect(body).not.toContain('meta.prNumber')
+    })
+})
+
+describe('replacement-pointers', () => {
+    it('routes spend and latency questions to LangSmith', () => {
+        expect(body).toContain('LangSmith')
+        expect(body).toContain('/trace-insights')
     })
 
-    test('renders the PR Outcomes section', () => {
-        expect(body).toContain('### PR Outcomes')
-    })
-
-    it('reports the merge-rate and time-to-merge KPIs', () => {
-        expect(body).toContain('merge rate')
-        expect(body).toContain('time-to-merge')
-    })
-
-    it('teaches the pr.created run→PR join key', () => {
-        expect(body).toContain('pr.created')
+    it('routes mode-transition questions to the ledger', () => {
+        expect(body).toContain('.luca/ledger.jsonl')
     })
 })

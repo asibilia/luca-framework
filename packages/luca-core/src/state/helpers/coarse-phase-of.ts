@@ -1,4 +1,4 @@
-import { STEP_TO_COARSE_PHASE } from '../machine/pipeline-machine.ts'
+import { STEP_TO_COARSE_PHASE } from '../configs/coarse-phases.ts'
 import type { CoarsePhase, PipelineStep } from '../schemas.ts'
 
 /**
@@ -9,9 +9,10 @@ import type { CoarsePhase, PipelineStep } from '../schemas.ts'
  * commit only in FINALIZING). The mapping is exhaustive — every
  * PipelineStep value has a single CoarsePhase home.
  *
- * The mapping is DERIVED from the pipeline machine's `meta.coarsePhase`
- * (see `STEP_TO_COARSE_PHASE` in `pipeline-machine.ts`) — the machine is the
- * single source of truth; there is no hand-maintained step→phase table.
+ * The mapping is the LITERAL table in `configs/coarse-phases.ts`. (It was
+ * briefly derived from the generated pipeline machine's `meta.coarsePhase`;
+ * that machine is gone, and deriving a 13-entry constant is not worth a
+ * state-machine-library import on every cold-start hook process.)
  *
  * @param step - The current pipelineStep from .luca/state.json
  * @returns The coarse phase that step belongs to

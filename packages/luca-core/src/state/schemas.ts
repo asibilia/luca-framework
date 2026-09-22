@@ -129,6 +129,7 @@ export const lucaStateSchema = z.object({
 
     // --- Review-mode entry timestamp ---
     reviewStartedAt: z.string().optional(),
+    runStartedAt: z.string().optional(),
 
     // --- Crash recovery ---
     lockPid: z.number().optional(),

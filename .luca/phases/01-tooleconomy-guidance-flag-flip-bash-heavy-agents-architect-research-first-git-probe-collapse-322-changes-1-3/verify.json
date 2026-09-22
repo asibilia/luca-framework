@@ -1,0 +1,44 @@
+{
+  "phase": "01-tooleconomy-guidance-flag-flip-bash-heavy-agents-architect-research-first-git-probe-collapse-322-changes-1-3",
+  "timestamp": "2026-07-17T00:00:00.000Z",
+  "mode": "full",
+  "overall": "pass",
+  "status": "PASS",
+  "recommendation": "pass",
+  "convergence": "resolved",
+  "criteria": [
+    { "id": "ac-01", "status": "pass", "met": true, "blocking": true, "probeType": "command", "evidence": "bunx --bun tsc --noEmit exited 0 (checks harness + every executor run)." },
+    { "id": "ac-02", "status": "pass", "met": true, "blocking": true, "probeType": "command", "evidence": "bun compile-smoke fixture exited 0 (SMOKE OK) via luca checks run." },
+    { "id": "ac-03", "status": "pass", "met": true, "blocking": true, "probeType": "grep-symbol", "evidence": "grep 'toolEconomy' subagent.ts matched (schema field at L118)." },
+    { "id": "ac-04", "status": "pass", "met": true, "blocking": true, "probeType": "grep-symbol", "evidence": "grep 'Tool economy' render-body.ts matched (branch L124-136, inside if(guidance.toolEconomy))." },
+    { "id": "ac-05", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: compiled real manifest -> rendered executor.md contains 'Tool economy'." },
+    { "id": "ac-06", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: rendered architect.md contains 'Tool economy'." },
+    { "id": "ac-07", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: rendered execute.md contains 'Tool economy'." },
+    { "id": "ac-08", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: rendered reviewer.md contains 'Tool economy'." },
+    { "id": "ac-09", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: rendered architect.md contains exact literal 'research.md and context.md first'." },
+    { "id": "ac-10", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "DIRECT RENDER: rendered architect.md contains 'luca branch guard'." },
+    { "id": "anti-01", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "GUARD HELD (DIRECT RENDER): rendered learner.md has NO 'Tool economy'. Exactly {reviewer, architect, executor, execute} carry the bullet across all 20 rendered agent bodies." },
+    { "id": "anti-02", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "GUARD HELD (DIRECT RENDER): rendered architect.md has 0 'git rev-parse --abbrev-ref HEAD'." },
+    { "id": "anti-05", "status": "pass", "met": true, "blocking": true, "probeType": "rendered", "evidence": "GUARD HELD (DIRECT RENDER): rendered architect.md has 0 'git branch --show-current' (the string survives only in executor.md's own warning text — out of scope, architect-only guard)." },
+    { "id": "anti-03", "status": "pass", "met": true, "blocking": true, "probeType": "grep-symbol", "evidence": "GUARD HELD. grep 'Tests are intentionally absent' render-body.ts matched (L111) — stale tdd prose untouched." },
+    { "id": "anti-04", "status": "pass", "met": true, "blocking": true, "probeType": "command", "evidence": "GUARD HELD. git status --porcelain lists only the 5 modified source files (+ config/cache + untracked phase dir); NO new *loop-guard* / *tool-*-guard* file. Change 4 not implemented." }
+  ],
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "compile-smoke", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "rendered-artifact-grep", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "errorFingerprints": [],
+  "deliverables": [
+    { "id": "D1", "description": "Add toolEconomy flag to SubagentGuidanceSchema", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D2", "description": "renderGuidancePrelude emits Tool economy bullet when flag set", "criterionIds": ["ac-04"], "compliance": "shipped" },
+    { "id": "D3", "description": "Flip flag ON for executor", "criterionIds": ["ac-05"], "compliance": "shipped" },
+    { "id": "D4", "description": "Flip flag ON for architect-mode", "criterionIds": ["ac-06"], "compliance": "shipped" },
+    { "id": "D5", "description": "Flip flag ON for execute-mode", "criterionIds": ["ac-07"], "compliance": "shipped" },
+    { "id": "D6", "description": "Flip flag ON for reviewer", "criterionIds": ["ac-08"], "compliance": "shipped" },
+    { "id": "D7", "description": "Architect consumes research.md/context.md before probing", "criterionIds": ["ac-09"], "compliance": "shipped" },
+    { "id": "D8", "description": "Architect Step 1 git block collapsed to single luca branch guard read", "criterionIds": ["ac-10", "anti-02", "anti-05"], "compliance": "shipped" },
+    { "id": "D9", "description": "Backward-compatible — no rendered-body change for no-flag agents", "criterionIds": ["ac-02", "anti-01"], "compliance": "shipped" }
+  ],
+  "notes": "COMPLEX full-mode verify of #322 Changes 1-3. ALL 10 ac PASS, ALL 5 anti guards HELD => overall pass, all with DIRECT evidence. The rendered-artifact probes (ac-05..10, anti-01/02/05) were executed via a scratchpad wrapper (compile the real manifest to an OS tmpdir + fs asserts); compile-to-out is stage-gate bash-mutate and blocked in REVIEWING, so the wrapper ran at the checks pipelineStep (EXECUTING). Rendered matrix over all 20 agent bodies confirmed 'Tool economy' in exactly {reviewer.md, architect.md, executor.md, execute.md}; architect.md carries the research-first literal + 'luca branch guard' and zero raw git commands; learner.md is clean. Mechanical gates direct: ac-01 tsc=0; ac-02 compile-smoke SMOKE OK; source greps ac-03/ac-04/anti-03 matched; anti-04 git status clean. Scope guards intact: Change 4 not implemented, stale tdd prose untouched."
+}

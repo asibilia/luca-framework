@@ -6,6 +6,12 @@ export {
 export type { WriteProjectSkeletonOptions } from './helpers/write-project-skeleton.ts'
 
 export {
+    ensureCompactInstructions,
+    COMPACT_INSTRUCTIONS_HEADER,
+    COMPACT_INSTRUCTIONS_BLOCK,
+} from './helpers/ensure-compact-instructions.ts'
+
+export {
     wireClaudeHooks,
     wireAntigravityHooks,
     wireAntigravityMcp,
@@ -18,6 +24,8 @@ export type { WireClaudeHooksOptions } from './helpers/wire-claude-hooks.ts'
 export {
     installSkills,
     listBundledArtifacts,
+    pruneRetiredArtifacts,
+    RETIRED_ARTIFACTS,
     defaultClaudeHome,
     defaultAntigravityHome,
 } from './helpers/install-skills.ts'
@@ -25,6 +33,9 @@ export type {
     InstallSkillsOptions,
     InstallSkillsArtifacts,
     BundledArtifacts,
+    PruneRetiredArtifactsOptions,
+    RetiredArtifact,
+    RetiredArtifactKind,
 } from './helpers/install-skills.ts'
 
 export { installHooks, mergeLucaHookSettings } from './helpers/install-hooks.ts'

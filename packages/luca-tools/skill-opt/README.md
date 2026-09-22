@@ -80,7 +80,7 @@ writes the live skill.
 ## Next targets
 
 Once this loop is trusted, point the same harness at the other gradable
-sub-steps: **complexity classification** (5-class label, exact-match), `choose`
-routing, `rename-audit` / `repo-audit` (set precision/recall). Open-ended skills
+sub-steps: **complexity classification** (5-class label, exact-match),
+`rename-audit` / `repo-cleanup` (set precision/recall). Open-ended skills
 (`phase-execute`, `bug-diagnose`) are NOT gradable this way — they belong on the
 telemetry-metric / SkillOpt-Sleep track instead.

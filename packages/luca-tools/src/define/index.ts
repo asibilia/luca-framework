@@ -30,13 +30,11 @@ export {
     SubagentAllowedToolSchema,
     SubagentDefinitionSchema,
     SubagentGuidanceSchema,
-    TelemetryHookSchema,
 } from './subagent.ts'
 export type {
     PipelineInvocation,
     SubagentDefinition,
     SubagentGuidance,
-    TelemetryHook,
 } from './subagent.ts'
 
 export { CommandDefinitionSchema } from './command.ts'

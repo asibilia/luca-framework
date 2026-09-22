@@ -9,7 +9,9 @@
  *   - `state advance`           — atomically advance the pipelineStep
  *   - `state claim-owner`       — record the session_id that owns the run
  *   - `state set-current-phase` — position currentPhase (recovery primitive)
+ *   - `state new-run`           — mint and print a fresh run id (pure, no write)
  */
+import { generateRunId } from '@alecsibilia/luca-core'
 import { defineCommand } from 'citty'
 
 import { rejectUnknownFlags, runWriteHandler } from './__helpers/run-handler.ts'
@@ -142,6 +144,21 @@ const setCurrentPhaseCommand = defineCommand({
     },
 })
 
+const newRunCommand = defineCommand({
+    meta: {
+        name: 'new-run',
+        description:
+            'Mint and print a fresh run identifier (run_<ts36>_<rand36>). ' +
+            'Pure — prints to stdout and writes nothing. Fallback for runs ' +
+            'where state.sessionId was never stamped (recovery/partial runs), ' +
+            'so ledger and telemetry writes still carry a real run id.',
+    },
+    async run({ rawArgs, cmd }) {
+        rejectUnknownFlags('state new-run', cmd, rawArgs)
+        process.stdout.write(`${generateRunId()}\n`)
+    },
+})
+
 export const stateCommand = defineCommand({
     meta: {
         name: 'state',
@@ -152,5 +169,6 @@ export const stateCommand = defineCommand({
         advance: advanceCommand,
         'claim-owner': claimOwnerCommand,
         'set-current-phase': setCurrentPhaseCommand,
+        'new-run': newRunCommand,
     },
 })

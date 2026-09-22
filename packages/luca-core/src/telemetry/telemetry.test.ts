@@ -46,13 +46,13 @@ const fullCtx: TelemetryContext = {
 
 describe('buildTelemetryRecord', () => {
     test('stamps v:1 and a round-trippable ISO timestamp', () => {
-        const rec = buildTelemetryRecord('phase.start', emptyCtx)
+        const rec = buildTelemetryRecord('recall.miss', emptyCtx)
         expect(rec.v).toBe(1)
         expect(rec.ts).toBe(new Date(rec.ts).toISOString())
     })
 
     test('pulls phase / slug / wave / complexity / oversight from context', () => {
-        const rec = buildTelemetryRecord('wave.start', fullCtx)
+        const rec = buildTelemetryRecord('recall.hit', fullCtx)
         expect(rec.runId).toBe('run_abc_def')
         expect(rec.phase).toBe('Phase One')
         expect(rec.slug).toBe('01-phase-one')
@@ -62,7 +62,7 @@ describe('buildTelemetryRecord', () => {
     })
 
     test('defaults runId to "" and other state fields to null when absent', () => {
-        const rec = buildTelemetryRecord('mode.start', emptyCtx)
+        const rec = buildTelemetryRecord('recall.hit', emptyCtx)
         expect(rec.runId).toBe('')
         expect(rec.phase).toBeNull()
         expect(rec.wave).toBeNull()
@@ -71,7 +71,7 @@ describe('buildTelemetryRecord', () => {
 
     test('overrides take precedence over context', () => {
         const rec = buildTelemetryRecord(
-            'wave.end',
+            'recall.utilization',
             fullCtx,
             {},
             { wave: 1, durationMs: 1234 }
@@ -87,7 +87,7 @@ describe('buildTelemetryRecord', () => {
 
     test('produces a record that satisfies TelemetryRecordSchema', () => {
         const rec = buildTelemetryRecord(
-            'phase.end',
+            'recall.utilization',
             fullCtx,
             { x: 1 },
             { durationMs: 9 }
@@ -99,34 +99,51 @@ describe('buildTelemetryRecord', () => {
 describe('appendTelemetry', () => {
     test('writes a JSONL line to .luca/telemetry/<runId>.jsonl', () => {
         const cwd = cleanDir()
-        appendTelemetry({ cwd, kind: 'phase.start', ctx: fullCtx })
+        appendTelemetry({ cwd, kind: 'recall.hit', ctx: fullCtx })
         const recs = readTelemetry({ cwd, runId: 'run_abc_def' })
         expect(recs.length).toBe(1)
-        expect(recs[0]?.kind).toBe('phase.start')
+        expect(recs[0]?.kind).toBe('recall.hit')
     })
 
     test('appends multiple records in order', () => {
         const cwd = cleanDir()
-        appendTelemetry({ cwd, kind: 'phase.start', ctx: fullCtx })
-        appendTelemetry({ cwd, kind: 'wave.start', ctx: fullCtx })
+        appendTelemetry({ cwd, kind: 'recall.hit', ctx: fullCtx })
+        appendTelemetry({ cwd, kind: 'recall.miss', ctx: fullCtx })
         appendTelemetry({
             cwd,
-            kind: 'phase.end',
+            kind: 'recall.utilization',
             ctx: fullCtx,
             overrides: { durationMs: 5 },
         })
         const recs = readTelemetry({ cwd, runId: 'run_abc_def' })
         expect(recs.map((r) => r.kind)).toEqual([
-            'phase.start',
-            'wave.start',
-            'phase.end',
+            'recall.hit',
+            'recall.miss',
+            'recall.utilization',
         ])
+    })
+
+    test('still READS legacy kinds written before the sink was narrowed', () => {
+        // Schema contract clause 3 (forward-compatible reads): `kind` is not
+        // an enum, so historical logs carrying retired kinds keep parsing.
+        // Producers emit only recall.*; consumers must not choke on the rest.
+        const cwd = cleanDir()
+        const dir = join(cwd, '.luca', 'telemetry')
+        mkdirSync(dir, { recursive: true })
+        const legacy = JSON.stringify({
+            ...buildTelemetryRecord('recall.hit', fullCtx),
+            kind: 'signal.satisfaction',
+        })
+        writeFileSync(join(dir, 'run_abc_def.jsonl'), `${legacy}\n`)
+        const recs = readTelemetry({ cwd, runId: 'run_abc_def' })
+        expect(recs.length).toBe(1)
+        expect(recs[0]?.kind).toBe('signal.satisfaction')
     })
 
     test('skips silently when runId is empty (pre-triage)', () => {
         const cwd = cleanDir()
         expect(() =>
-            appendTelemetry({ cwd, kind: 'mode.start', ctx: emptyCtx })
+            appendTelemetry({ cwd, kind: 'recall.hit', ctx: emptyCtx })
         ).not.toThrow()
         expect(readTelemetry({ cwd, runId: 'run_abc_def' })).toEqual([])
     })
@@ -137,7 +154,7 @@ describe('appendTelemetry', () => {
         expect(() =>
             appendTelemetry({
                 cwd,
-                kind: 'phase.start',
+                kind: 'recall.hit',
                 ctx: { ...emptyCtx, runId: '../../etc/evil' },
             })
         ).not.toThrow()
@@ -151,7 +168,7 @@ describe('appendTelemetry', () => {
         writeFileSync(join(cwd, '.luca'), 'not a directory')
         const warn = spyOn(console, 'warn').mockImplementation(() => {})
         expect(() =>
-            appendTelemetry({ cwd, kind: 'phase.start', ctx: fullCtx })
+            appendTelemetry({ cwd, kind: 'recall.hit', ctx: fullCtx })
         ).not.toThrow()
         expect(warn).toHaveBeenCalled()
         warn.mockRestore()
@@ -174,7 +191,7 @@ describe('readTelemetry', () => {
         const dir = join(cwd, '.luca', 'telemetry')
         mkdirSync(dir, { recursive: true })
         const good = JSON.stringify(
-            buildTelemetryRecord('phase.start', fullCtx)
+            buildTelemetryRecord('recall.hit', fullCtx)
         )
         writeFileSync(
             join(dir, 'run_abc_def.jsonl'),
@@ -183,7 +200,7 @@ describe('readTelemetry', () => {
         const warn = spyOn(console, 'warn').mockImplementation(() => {})
         const recs = readTelemetry({ cwd, runId: 'run_abc_def' })
         expect(recs.length).toBe(1)
-        expect(recs[0]?.kind).toBe('phase.start')
+        expect(recs[0]?.kind).toBe('recall.hit')
         expect(warn).toHaveBeenCalled()
         warn.mockRestore()
     })
@@ -191,7 +208,7 @@ describe('readTelemetry', () => {
 
 describe('TelemetryRecordSchema', () => {
     test('rejects a record whose v is not the literal 1', () => {
-        const rec = { ...buildTelemetryRecord('phase.start', fullCtx), v: 2 }
+        const rec = { ...buildTelemetryRecord('recall.hit', fullCtx), v: 2 }
         expect(TelemetryRecordSchema.safeParse(rec).success).toBe(false)
     })
 })

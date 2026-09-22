@@ -278,31 +278,56 @@ describe('ledger-join', () => {
         )
     })
 
-    it('orders interval sources: telemetry preferred only when populated, ledger deltas otherwise', () => {
+    it('names the ledger as the sole interval source', () => {
+        // `mode.start`/`mode.end` telemetry retired with the local sink; the
+        // ledger `mode-transition` row is now the only interval source. A
+        // re-introduced telemetry-preferred branch must fail this block.
         expect(body).toContain(
-            'prefer telemetry `mode.start`/`mode.end` pairs WHEN they yield ≥1 step interval'
+            '**Interval source**: ledger `mode-transition` rows are the sole interval source.'
         )
-        expect(body).toContain(
-            'fall back per repo to ledger `mode-transition` rows'
-        )
+        expect(body).not.toContain('prefer telemetry `mode.start`')
         // Interval-construction mechanics: a `data.to` -> `data.from` flip
         // (attributing cost to the outgoing step) must fail this literal.
         expect(body).toContain(
             "interval = [row N ts, row N+1 ts), step = the row's nested `data.to` value"
         )
         expect(body).toContain('N mode-transition rows yield N−1 intervals')
-        // Telemetry-preferred branch has its own tuple rule; degraded tuple
-        // is scoped to the ledger fallback only.
+        // One tuple rule now covers every interval.
+        expect(body).toContain('The degraded tuple below therefore applies to every interval.')
+    })
+
+    it('keeps the retained recall family as a slug-resolution source', () => {
+        // Stage A5 slug resolution is the reason the telemetry sink was kept
+        // alive at all — the recall records are what still stamp `slug`.
+        //
+        // This claim is only true because the mode directives pass `--slug`;
+        // the CLI never infers it. `artifacts/modes/record-recall.test.ts`
+        // guards the producer side against the COMPILED bodies — the two
+        // suites are a pair, and this one alone would happily pin a lie.
         expect(body).toContain(
-            "the joined tuple is populated directly from the record's native `runId`/`slug`/`wave` fields"
+            'the retained recall family (`recall.hit`, `recall.miss`, `recall.utilization`) stamps `slug`'
+        )
+    })
+
+    it('rejects null-slug records as a slug source', () => {
+        // The triage-stage recall fires pre-classification and carries
+        // `slug: null` by design. A reader that took "nearest recall record"
+        // literally would mis-key `costByPhase` on it.
+        expect(body).toContain(
+            '**A record whose `slug` is `null` is NOT slug-bearing**'
+        )
+        expect(body).toContain(
+            '`wave` resolves from the SAME record the slug came from'
         )
     })
 
     it('pins the degraded tuple with its slug resolution order', () => {
         // Ledger rows DO carry a runId (LedgerEntrySchema requires it); the
         // tuple nulls it only when the stamped value is the empty string.
+        // `wave` is nullable rather than always-null: the execute-stage recall
+        // directive stamps `--wave`.
         expect(body).toContain(
-            "`(runId: the row's runId | null when empty, pipelineStep, phase slug | null, wave: null)`"
+            "`(runId: the row's runId | null when empty, pipelineStep, phase slug | null, wave | null)`"
         )
         // Resolution order: direct runId -> telemetry-file lookup first,
         // nearest-in-time heuristic second, explicit unavailability third.
@@ -409,7 +434,12 @@ describe('ledger-join', () => {
             '`costByPhase` — dollar cost per phase slug (slug per the degraded-tuple rule; intervals without a slug source are marked unavailable) → Stage D Pipeline Attribution per-phase table'
         )
         expect(body).toContain(
-            "`reviewIterationsVsCost` — per-phase `review.iteration` count paired with that phase's joined cost → Stage D review-convergence cost trajectory; its per-phase iteration count also feeds Stage B pool rule 7"
+            "`reviewIterationsVsCost` — per-phase review-loop count paired with that phase's joined cost → Stage D review-convergence cost trajectory; its per-phase iteration count also feeds Stage B pool rule 7"
+        )
+        // The `review.iteration` telemetry kind retired with the local sink;
+        // the count must be sourced from the live ledger instead.
+        expect(body).toContain(
+            'count the run\'s ledger `pipeline-re-entered` rows whose `data.targetMode` is `execute` and whose `data.from` is `review`'
         )
     })
 

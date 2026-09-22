@@ -17,10 +17,11 @@
  *     specific evidence that supports it (which criteria pass with
  *     which file:line). The mastracode body already had this gate;
  *     D1 makes it auditable.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — the
+ *   - telemetry: only the retained `record-recall` /
+ *     `recall.utilization` directives; the subagent hooks were the
  *     review mode spawns 5 reviewers in parallel; boundary telemetry
  *     per spawn (each reviewer subagent ALSO emits its own
- *     `subagent-end`).
+ *     subagent-completion pair).
  *   - claim-verify invocation — the optional self-check claim
  *     verifier on the audit output (Step 6 in the source) is now
  *     surfaced declaratively. The mastracode body's prose is
@@ -29,7 +30,12 @@
  *     `review-finding:*` engrams.
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recallUtilizationDirective,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Review Mode
 
@@ -84,9 +90,26 @@ Criteria tombstoned as \`[DROPPED — see decisions <date>]\` are excluded from 
 
 Run \`luca checks run --file .luca/tmp/checks.json\` for TypeScript compilation (stage the commands array at that repo-scoped path — never in the shared OS \`/tmp/\`). Record results for the audit report.
 
+### Step 3.5: Re-entry Diff Gate
+
+Applies ONLY when \`reviewIteration > 0\` (re-review after an execute fix loop). On the first pass (\`reviewIteration == 0\`), skip this gate entirely and proceed to Step 4.
+
+The gate may skip round-2 — the Step 4 re-review fan-out; NOT re-verify, which has already run — but **only when provably safe**. When in doubt, re-review.
+
+1. **ABSENT check**: if the file \`.luca/tmp/review-prefix-tree.json\` is MISSING, the snapshot is ABSENT → full round-2 (proceed to Step 4). That is the ONLY body-side check — ALL validation (phase mismatch, unresolvable tree, parse failures) is delegated to the CLI; never short-circuit on payload contents here.
+2. Run \`luca snapshot diff\`. The CLI rebuilds the current worktree snapshot tree, performs the tree-to-tree compare against the stashed snapshot tree (\`.luca/\` excluded), parses the prior MUST-FIX and SHOULD-FIX \`File: {path:line}\` cites from the previous wave's \`audits/<reviewer>.md\` files, and returns a verdict: \`empty\` | \`zero-overlap\` | \`overlap\` | \`ambiguous\`. The command also CONSUMES the payload — consume-once lives in the CLI, so do NOT delete the file yourself; every Route B loop-back re-creates a fresh snapshot.
+3. Act on the verdict:
+   - \`empty\` or \`zero-overlap\` → skip round-2 (the Step 4 re-review fan-out; re-verify is not gated and unchanged).
+   - \`overlap\` or \`ambiguous\` → full round-2 (proceed to Step 4).
+
+**Post-skip routing** (when the gate skips round-2 — part of the gate algorithm, not Step 7):
+1. Capture every unresolved MUST-FIX and SHOULD-FIX item as a backlog todo: \`luca todo add --status backlog --source review-finding …\` (same mechanism as the budget-exhausted path in Step 7 Route B) — nothing is lost.
+2. Note the skip reason (verdict \`empty\` or \`zero-overlap\`, citing the snapshot tree sha) in the active phase's audit artifact.
+3. Transition forward via \`luca state advance --to-step learn\`. A skip **exits the review loop** — it NEVER re-enters Route B.
+
 ### Step 4: Parallel Code Review
 
-Spawn **5 reviewer subagents in parallel** via the Claude Code \`Task\` tool. Generate 5 distinct correlationIds (\`reviewer-arch-<ts>\`, \`reviewer-dx-<ts>\`, \`reviewer-sec-<ts>\`, \`reviewer-simpl-<ts>\`, \`reviewer-test-<ts>\`) before the batch. Emit \`subagent-start\` for each before spawn, \`subagent-end\` after each return. Parse \`<!-- usage: ... -->\` from each result's last 256 chars for token counts.
+Spawn **5 reviewer subagents in parallel** via the Claude Code \`Task\` tool. Parse \`<!-- usage: ... -->\` from each result's last 256 chars for token counts.
 
 1. **Architecture** — structural correctness, dependency direction, API surface quality.
 2. **DX** — readability, error messages, testing patterns, docs.
@@ -104,7 +127,7 @@ Immediately after all 5 reviewers return, persist each perspective's raw output 
 
 \`<reviewer>\` is the perspective name (\`architecture\`, \`dx\`, \`security\`, \`simplification\`, \`test-quality\`). \`<NN>\` is the zero-padded review wave (\`reviewIteration\` from \`luca state read\`; default \`01\`). The raw files are NOT the canonical artifact — the per-reviewer \`audits/<reviewer>.md\` files (and the consolidated report below) are. Treat \`raw/review-*.md\` as recovery state; on re-review iterations, the previous wave's raw files remain in place so subsequent iterations can diff.
 
-Write each via the standard artifact write — the path \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` is in the LUCA_DIR_CONTRACT \`raw/\` slot per the validator.
+Write each with the native \`Write\` tool — \`raw\` is a declared \`STEP_ARTIFACTS\` entry for the \`review\` pipelineStep, so the stage gate allows \`.luca/phases/<currentPhaseSlug>/raw/review-<reviewer>-<NN>.md\` at this step (filename shape: \`<stage>-<NN>.md\`, lowercase kebab stage plus a two-digit index).
 
 Template:
 \`\`\`markdown
@@ -144,13 +167,7 @@ mcp__muninn__muninn_recall(
 
 If matches found, note **recurring issues** (increases severity signal) and reference prior occurrence.
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run it with \`--kind recall.hit\` when results were returned, or \`--kind recall.miss\` when \`resultCount\` is 0:
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id from pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 After producing the audit report, store notable findings (MUST-FIX and recurring SHOULD-FIX). Per vault-routing rule, \`review-finding:*\` is project-scoped → repo vault.
 
@@ -237,16 +254,14 @@ In \`full-auto\`, route automatically based on findings.
 
 **Route B — Actionable findings exist (MUST-FIX or SHOULD-FIX)**:
 1. Check iteration count against \`maxReviewIterations\`.
-2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, emit \`luca telemetry emit --kind=iteration\` so the aggregator sees the re-execute loop, and transition back to execute via \`luca state advance --to-step execute\`.
+2. Within budget: write the iteration plan — covering **both** MUST-FIX and SHOULD-FIX items — into the active phase's audit artifact, then run \`luca snapshot create\` — it snapshots the current worktree (temp-index tree, commit-agnostic) and writes \`{"tree": "<snapshot tree sha>", "phase": "<slug>"}\` to \`.luca/tmp/review-prefix-tree.json\`; the \`tree\` key is a \`snapshot tree\` sha, never a commit sha — immediately before the transition, then transition back to execute via \`luca state advance --to-step execute\`. The Step 3.5 re-entry gate consumes this snapshot on the next review pass.
 3. At budget limit: capture every remaining MUST-FIX and SHOULD-FIX item as a backlog todo (\`luca todo add --status backlog --source review-finding …\`) so nothing is lost, save the report with a budget-exhausted warning in the audit artifact, then transition forward via \`luca state advance --to-step learn\`.
 
 ### Step 8: Learn-Step Outcome Correlation
 
 At the learn step, correlate recalled memories to this run's outcome. Gather the \`recalledIds\` captured in the run's \`recall.hit\`/\`recall.miss\` records (from \`.luca/telemetry/<runId>.jsonl\`) and the terminal outcome valence at verify/review, then emit one \`recall.utilization\` record so the read-time aggregator can join recalled memories to outcomes:
 
-\`\`\`
-luca telemetry emit --kind recall.utilization --run-id <runId> --meta '{"recalledIds":["<recalled concept ULID>", "..."],"outcome":"<positive|negative|neutral>","step":"<verify|review>"}'
-\`\`\`
+${recallUtilizationDirective()}
 
 Correlation is post-hoc/statistical by \`runId\`+\`step\` (MVP — no per-memory write-back).
 
@@ -312,7 +327,6 @@ export const reviewMode = defineAgent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'claim-verify'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}

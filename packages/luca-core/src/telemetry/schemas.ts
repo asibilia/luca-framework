@@ -1,9 +1,27 @@
 /**
  * Telemetry record schema — v1 (LOCKED).
  *
- * The append-only JSONL event log at `.luca/telemetry/<runId>.jsonl` records
- * pipeline-mode and PLAN.md-phase boundaries; it is consumed by the
- * `/luca-telemetry-report` aggregator skill.
+ * ## Scope — the MINIMAL sink
+ *
+ * `.luca/telemetry/<runId>.jsonl` used to be a general-purpose pipeline event
+ * log. That role is now LangSmith's (see
+ * `luca-cli/src/init/helpers/enrich-trace-metadata.ts`, gated on
+ * `TRACE_TO_LANGSMITH`). What remains here is the deliberate residue —
+ * the two things LangSmith cannot observe:
+ *
+ *  1. **MuninnDB recall quality** (`recall.hit` / `recall.miss` /
+ *     `recall.utilization`). Recall happens inside an MCP tool call; the trace
+ *     records that a call happened, never whether the recalled engrams were
+ *     any good. This is measured nowhere else.
+ *  2. **The `trace-insights` Stage A5 join input.** Traces carry no runId, so
+ *     the LangSmith→pipeline join is an analysis-time join over
+ *     `.luca/ledger.jsonl` (intervals) and `.luca/telemetry/<runId>.jsonl`
+ *     (slug/wave resolution). Retiring this file would remove half the input
+ *     of the very skill meant to replace it.
+ *
+ * Everything else — phase/wave/mode boundaries, subagent correlation pairing,
+ * satisfaction + failure-dump signals, classifier overrides, PR outcomes —
+ * is retired in favour of LangSmith traces and `.luca/ledger.jsonl`.
  *
  * ## Schema contract (v1 — LOCKED)
  *
@@ -20,28 +38,16 @@ import { z } from 'zod'
 /**
  * Known event kinds at schema v1.
  *
- * Typed as `union | string` so future telemetry consumers (subagent.*,
- * recall.*, review.*, …) can extend the set without amending this file.
+ * Narrowed to the retained recall family. Still typed as `union | string` so
+ * historical logs (which carry retired kinds such as `phase.start` or
+ * `signal.satisfaction`) continue to READ without error — the schema never
+ * validated `kind` as an enum, and forward-compatible reads are contract
+ * clause 3. New producers must emit only the recall kinds.
  */
 export type TelemetryKind =
-    | 'phase.start'
-    | 'phase.end'
-    | 'wave.start'
-    | 'wave.end'
-    | 'mode.start'
-    | 'mode.end'
-    | 'subagent.invoke'
-    | 'subagent.complete'
-    | 'subagent.cancelled'
     | 'recall.hit'
     | 'recall.miss'
     | 'recall.utilization'
-    | 'review.iteration'
-    | 'signal.satisfaction'
-    | 'signal.failure-dump'
-    | 'classifier.override'
-    | 'pr.created'
-    | 'pr.outcome'
     | (string & {})
 
 export interface TelemetryRecord {
@@ -88,84 +94,6 @@ export const TelemetryRecordSchema: z.ZodType<TelemetryRecord> = z.object({
 })
 
 /**
- * Provenance of a classifier override — why the pipeline's automatic
- * classification was superseded.
- *
- * - `cli-flag`: operator passed an explicit CLI flag.
- * - `force-complex`: complexity was forced up to COMPLEX.
- * - `human-ask`: a human gate/ask resolved the classification.
- * - `heuristic-promotion`: a heuristic promoted the classification.
- */
-export const OverrideSourceSchema = z.enum([
-    'cli-flag',
-    'force-complex',
-    'human-ask',
-    'heuristic-promotion',
-])
-
-/** Inferred type for {@link OverrideSourceSchema}. */
-export type OverrideSource = z.infer<typeof OverrideSourceSchema>
-
-/**
- * ADVISORY shape for `signal.satisfaction` event `meta`.
- *
- * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
- * rejection. This schema documents the expected shape for IDE/tooling and
- * MUST NOT be wired into any throwing validation path (no `.parse()` in emit).
- */
-export const SatisfactionSignalMetaSchema = z
-    .object({
-        source: z.enum(['gate-ask', 'oversight-pause', 'outcome']),
-        valence: z.enum(['positive', 'negative', 'neutral']),
-        step: z.string().optional(),
-        detail: z.string().optional(),
-    })
-    .passthrough()
-
-/** Inferred type for {@link SatisfactionSignalMetaSchema}. */
-export type SatisfactionSignalMeta = z.infer<
-    typeof SatisfactionSignalMetaSchema
->
-
-/**
- * ADVISORY shape for `classifier.override` event `meta`.
- *
- * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
- * rejection. Documentation-only; MUST NOT be wired into a throwing path.
- */
-export const ClassifierOverrideMetaSchema = z
-    .object({
-        classifier: z.string(),
-        from: z.string(),
-        to: z.string(),
-        source: OverrideSourceSchema,
-    })
-    .passthrough()
-
-/** Inferred type for {@link ClassifierOverrideMetaSchema}. */
-export type ClassifierOverrideMeta = z.infer<
-    typeof ClassifierOverrideMetaSchema
->
-
-/**
- * ADVISORY shape for `signal.failure-dump` event `meta`.
- *
- * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
- * rejection. Documentation-only; MUST NOT be wired into a throwing path.
- */
-export const FailureDumpMetaSchema = z
-    .object({
-        step: z.string().optional(),
-        reason: z.string().optional(),
-        dump: z.string().optional(),
-        dumpRef: z.string().optional(),
-    })
-    .passthrough()
-
-/** Inferred type for {@link FailureDumpMetaSchema}. */
-export type FailureDumpMeta = z.infer<typeof FailureDumpMetaSchema>
-
-/**
  * ADVISORY shape for `recall.utilization` event `meta`.
  *
  * Records which recalled engrams (by concept ULID) were associated with a
@@ -186,29 +114,22 @@ export const RecallUtilizationMetaSchema = z
 export type RecallUtilizationMeta = z.infer<typeof RecallUtilizationMetaSchema>
 
 /**
- * ADVISORY shape for `pr.outcome` event `meta`.
- *
- * Records the post-merge (or post-revert) outcome of a pull request so the
- * aggregator can correlate it back to the originating run via the `pr.created`
- * run→PR map (join key `prNumber`). The `pr.outcome` record itself rides a
- * fixed synthetic runId (`pr-outcomes`) because the merge/revert event happens
- * outside the originating session; `originRunId` carries the originating run
- * for the correlation.
+ * ADVISORY shape for `recall.hit` / `recall.miss` event `meta`.
  *
  * Fail-safe by design: `.passthrough()` ensures extra keys never cause a
  * rejection. Documentation-only; MUST NOT be wired into a throwing path.
  */
-export const PrOutcomeMetaSchema = z
+export const RecallOutcomeMetaSchema = z
     .object({
-        prNumber: z.number(),
-        result: z.enum(['merged', 'reverted']),
-        reviewRounds: z.number(),
-        timeToMergeMs: z.number(),
-        branch: z.string().optional(),
-        issue: z.number().optional(),
-        originRunId: z.string().optional(),
+        query: z.string().optional(),
+        resultCount: z.number().optional(),
+        verifiedCount: z.number().optional(),
+        vault: z.string().optional(),
+        callerMode: z.string().optional(),
+        durationMs: z.number().optional(),
+        recalledIds: z.array(z.string()).optional(),
     })
     .passthrough()
 
-/** Inferred type for {@link PrOutcomeMetaSchema}. */
-export type PrOutcomeMeta = z.infer<typeof PrOutcomeMetaSchema>
+/** Inferred type for {@link RecallOutcomeMetaSchema}. */
+export type RecallOutcomeMeta = z.infer<typeof RecallOutcomeMetaSchema>

@@ -21,7 +21,8 @@
  * `.planning/phases/<slug>/runs/` run-archival layer (`archivePriorRun`,
  * `listArchivedRuns`, `resolveRunArtifactDir`) and `routing-history.jsonl`
  * (`appendRoutingHistory`/`readRoutingHistory` — zero consumers, absent from
- * the `.luca/` contract). `generateRunId` now lives in the telemetry domain.
+ * the `.luca/` contract). `generateRunId` lives beside this file in
+ * `ledger/helpers/` — it mints `state.sessionId`, this log's run-grouping key.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

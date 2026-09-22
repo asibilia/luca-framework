@@ -5,10 +5,18 @@ import { z } from 'zod'
  * Runtime-agnostic context handed to every write-surface handler.
  *
  * `cwd` is the project root; handlers resolve `.luca/` paths relative
- * to it. This is the only environmental dependency a handler receives.
+ * to it.
+ *
+ * `homedir` is an OPTIONAL test seam for handlers that address the
+ * machine-global handoff mailbox at `<homedir>/.luca/handoff/`. It is
+ * deliberately part of the CONTEXT and NOT a tool input: `runWriteHandler`
+ * never sets it, so there is no `--homedir` CLI flag and no way for an
+ * agent to redirect the mailbox. Tests (and only tests) pass a temp dir so
+ * a probe never writes into the developer's real `~/.luca/handoff/`.
  */
 export interface ToolContext {
     cwd: string
+    homedir?: string
 }
 
 /**

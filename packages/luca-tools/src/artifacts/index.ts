@@ -32,12 +32,13 @@
  *      utility set plus the Luca-pipeline-essential extras like
  *      seed-memory, session-*, etc.). Each skill compiles to
  *      `skills/<name>/SKILL.md`.
- *   5. Commands — `/<name>` filesystem surface for the slash-command
- *      picker (17 of them after E-6). Most user-facing artifacts have
- *      BOTH a SKILL.md and a commands/<name>.md — the command bodies
- *      are tighter "do this right now" prompts, distinct from the
- *      SKILL.md procedural guides. Each command compiles to
- *      `.claude/commands/<name>.md`.
+ *   5. Commands — EMPTY. All 17 were folded into their same-named
+ *      skills; Claude Code exposes each `SKILL.md` as `/<name>`, and
+ *      Antigravity installs skills but not commands, so the skill is the
+ *      surface that reaches both harnesses. See `commands/index.ts` for
+ *      the full rationale. The bucket is still compiled (as an empty
+ *      directory) so `luca init` can evict the retired commands from
+ *      existing installs.
  *
  * D-4 will point `--out` at the host repo's tracked artifact dirs to
  * supersede the hand-written copies under packages/luca-framework/.

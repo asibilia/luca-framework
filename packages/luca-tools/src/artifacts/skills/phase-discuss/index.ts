@@ -51,6 +51,10 @@ Run \`luca state read\`. This skill writes \`context.md\`, which the stage-gate 
 - \`pipelineStep === "research"\` → run \`luca state advance --to-step discuss\`, then proceed.
 - anything else → STOP. The pipeline must reach \`research\` before discuss can run — point the user at \`/lu\`. Do NOT force the transition or write \`context.md\` from the wrong step (the hook will BLOCK it).
 
+Then run \`luca phase current\` to resolve the active phase. **If \`active\` is false, abort** and ask the user to set the roadmap first — there is no phase directory to write into. Keep the \`dir\` field from that response: it is the canonical phase directory and the only legal target for the context write below.
+
+Ground the questions in what research already found: read \`<dir>/research.md\` with the \`Read\` tool before asking anything.
+
 ### Complexity-Aware Discussion
 
 Read complexity from the canonical workflow state:
@@ -116,6 +120,32 @@ The researcher model tier is set by the agent’s own definition.
     - \`[user-override]\` — User overrode the researched recommendation
     - \`[user-input]\` — Non-researchable item answered by user
 11a. **Offer next steps** (research or plan)
+
+### Writing context.md — the canonical path
+
+Write the consolidated decisions with the \`Write\` tool. Use the \`dir\` field from \`luca phase current\`; the context path is \`<dir>/context.md\`:
+
+\`\`\`
+Write tool → <dir>/context.md
+content: "<markdown summary of decisions>"
+\`\`\`
+
+The stage-gate hook permits this \`Write\` to \`<dir>/context.md\` **only** while \`pipelineStep === "discuss"\` — any other path, or an \`Edit\` instead of a \`Write\`, is blocked. Do not improvise the path; it comes from the CLI, not from you.
+
+### Final Step — Advance out of discuss (self-gate)
+
+Once \`context.md\` is written, re-run \`luca state read\` and check \`pipelineStep\`:
+
+- \`pipelineStep\` is **still** \`discuss\` → run \`luca state advance --to-step architect\`. Nothing else advances you; \`discuss → architect\` is the only legal successor.
+- \`pipelineStep\` already moved on (typically \`architect\`) → do nothing. Under \`/lu\` the orchestrator advances on your behalf, so the step is already correct.
+
+The re-read is the guard, and it is load-bearing: there is no \`architect → architect\` self-edge, so an unconditional second advance is an illegal transition and errors. Do NOT suppress that with \`2>/dev/null\` or \`|| true\` — skip the advance instead of masking the failure.
+
+## What you must NOT do
+
+- Do NOT write \`context.md\` to any path other than \`<dir>/context.md\`, and do NOT use \`Edit\` — the hook blocks every other \`.luca/\` write.
+- Do NOT skip the question-asking step just because you have an opinion. The point of this skill is to surface the USER's decisions, not yours.
+- Do NOT write code in this step. \`discuss\` sits in the PLANNING coarse phase, where the stage gate denies \`code-write\` outright.
 
 ## Critical: Scope Guardrail
 

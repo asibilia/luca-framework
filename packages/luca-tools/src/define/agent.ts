@@ -27,7 +27,6 @@ import { z } from 'zod'
 import {
     PipelineInvocationSchema,
     SubagentGuidanceSchema,
-    TelemetryHookSchema,
 } from './subagent.ts'
 
 /**
@@ -112,12 +111,6 @@ export const AgentDefinitionSchema = z.object({
      * when this field is omitted.
      */
     guidance: SubagentGuidanceSchema,
-    /**
-     * Telemetry hooks — symbolic pipeline points at which the
-     * mode-agent should emit a telemetry event. Mode-agents typically
-     * own `phase-start` / `phase-end` events that subagents do not.
-     */
-    telemetryHooks: z.array(TelemetryHookSchema).default([]),
     /**
      * Pipeline invocations — cross-cutting subsystems the mode-agent
      * should call at the appropriate boundary.

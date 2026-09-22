@@ -8,7 +8,7 @@
  *
  * Authoring contract: each mode-agent's `instructions` field is composed
  * as `${CORE_OPERATING_RULES}\n${stage body}\n${getAgentConstraints()}`.
- * The D-2 compiler then appends the D1 guidance/telemetry/pipeline-
+ * The D-2 compiler then appends the D1 guidance/pipeline-
  * invocation preludes BELOW the rendered body.
  *
  * Ported from luca-mastracode/src/agent-constraints.ts. The mastracode

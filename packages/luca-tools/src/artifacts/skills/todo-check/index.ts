@@ -13,7 +13,7 @@ const BODY = `<main>
 
 List pending todos and select one to work on.
 
-**Arguments:** \`[area]\` (optional - filter by area like 'api', 'ui', etc.)
+**Arguments:** \`[area]\` (optional — filter by area like 'api', 'ui') and/or a status filter (\`pending\`, \`backlog\`, \`done\`)
 
 ## Process
 
@@ -29,46 +29,57 @@ List pending todos and select one to work on.
 
    If todos created before the tree-backed backlog are missing from the list, run \`luca todo migrate\` once (re-run until it links nothing new) to pull legacy flat \`todo:\` engrams under the root.
 
-2. **Filter by area (if provided):**
-   - Inspect each todo's area metadata (returned by \`luca todo list\`)
+2. **Execute the returned procedure — the CLI does not read MuninnDB for you:**
+
+   \`luca todo list\` emits a \`muninn_recall_tree\` procedure (delegation pattern): resolve the cached backlog root by its ULID, walk the tree, then \`muninn_read\` each non-deleted child for its content. Follow it **exactly as returned**. If the backlog is uninitialized the CLI prints a plain notice instead of a procedure — report that and stop; there is nothing to walk.
+
+3. **Parse each entry.** Each child's \`content\` is JSON conforming to \`TodoSchema\` (\`id\`, \`title\`, \`body?\`, \`status\`, \`priority?\`, \`area?\`, \`source?\`, \`updatedAt\`). Parse every entry and key off **\`content.id\`, not the concept string**. Apply any requested status filter against \`content.status\`.
+
+4. **Filter by area (if provided):**
+   - Inspect each todo's \`content.area\`
    - Filter to matching area
 
-3. **Present list:**
+5. **Present list**, grouped by status in this order — ⬜ **Pending** (\`pending\`), then 📋 **Backlog** (\`backlog\`), then ✅ **Done** (\`done\`). Show each todo's \`id\`, \`title\`, \`priority\` (if set), \`area\` (if set), \`source\` (if set), and \`updatedAt\`:
 
    \`\`\`
    ## Pending Todos
-   
-   | # | Title | Area | Age |
-   |---|-------|------|-----|
-   | 1 | Fix modal z-index | ui | 3 days |
-   | 2 | Add auth refresh | api | 1 day |
-   | 3 | Update docs | docs | 5 hours |
-   
+
+   | # | Id | Title | Priority | Area | Updated |
+   |---|----|-------|----------|------|---------|
+   | 1 | fix-modal-z-index | Fix modal z-index | high | ui | 3 days ago |
+   | 2 | add-auth-refresh  | Add auth refresh  | medium | api | 1 day ago |
+
    Select a number to view details, or:
    - /todo-add — capture new idea
    - /progress — return to main workflow
    \`\`\`
 
-4. **Handle selection:**
+   **Empty backlog:** if nothing came back, say so plainly and suggest \`/todo-add\` to start building it. Do not invent entries.
+
+6. **Handle selection:**
    - Load full todo content
    - Present context and task details
    - Offer options:
-     - "Work on now" - move to done/, start work
+     - "Work on now" - start work
      - "Add to phase" - suggest adding to current phase
      - "Brainstorm" - discuss approach
      - "Back" - return to list
 
-5. **If "Work on now":**
-   - There is no "in-progress" status — valid statuses are \`pending\`, \`backlog\`, \`done\`. Leave it \`pending\` while you work; mark it \`done\` only when verified: \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <criterionId>\` (the criterion must be met=true with evidence in the active phase's verify.json). Updates evolve the todo in place — no duplicate is created.
+7. **If "Work on now":**
+   - There is no "in-progress" status — valid statuses are \`pending\`, \`backlog\`, \`done\`. Leave it \`pending\` while you work; mark it \`done\` only when verified: \`luca todo update --id <id> --title "<title>" --status done --verification-criterion <criterionId>\` (the criterion must be met=true with evidence in the active phase's verify.json).
+   - \`luca todo update\` is also a delegation: it returns a multi-step procedure that REPLACES the node (\`muninn_add_child\` the new version, then \`muninn_forget\` the old) — **not** \`muninn_evolve\`, which orphans tree members. Run the returned steps exactly as returned, and re-send the FULL payload: update is full-replace, so any optional field you omit (body, source, metadata, priority, area) is dropped.
    - Route to appropriate action
 
 ## Success Criteria
 
-- [ ] Pending todos listed with title, area, age
-- [ ] Area filter works (if provided)
+- [ ] The \`muninn_recall_tree\` procedure returned by \`luca todo list\` was EXECUTED, not just printed
+- [ ] Entries parsed from \`content\` JSON, keyed on \`content.id\`
+- [ ] Todos listed with id, title, priority, area, updatedAt — grouped pending → backlog → done
+- [ ] Area/status filters work (if provided)
+- [ ] Empty backlog reported honestly (no invented entries)
 - [ ] Selected todo shows full context
 - [ ] Options appropriate to todo content
-- [ ] Completed todos marked \`done\` via \`luca todo update\` (evolved in place — no duplicate)
+- [ ] Completed todos marked \`done\` via \`luca todo update\` (full-replace payload; procedure executed)
 
 ## Next Steps
 

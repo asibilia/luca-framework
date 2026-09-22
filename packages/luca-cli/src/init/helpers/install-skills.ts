@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { copyFile, lstat, mkdir, readdir, rm } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, readdir, rename, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -53,6 +53,21 @@ export interface InstallSkillsOptions {
      * tree. Defaults to `<luca-pkg-root>/dist/claude/skills/`.
      */
     skillsRoot?: string
+    /**
+     * Override the retired-artifact list consulted by the uninstall
+     * pass. **Test-only.** Production callers must leave this unset so
+     * the prune runs against `RETIRED_ARTIFACTS`, which the drift test
+     * holds to "names nothing that is still bundled".
+     *
+     * It exists because `RETIRED_ARTIFACTS` is legitimately empty
+     * whenever nothing has been deleted, and the prune wiring — which
+     * buckets are authorized, which names the live bundle protects —
+     * still has to be exercised through this function rather than
+     * through `pruneRetiredArtifacts` directly. Injecting the list keeps
+     * the bundle enumeration, the per-bucket gate, and the move on the
+     * real path.
+     */
+    retired?: readonly RetiredArtifact[]
     log?: (msg: string) => void
 }
 
@@ -67,6 +82,269 @@ export interface BundledArtifacts {
     agents: string[]
     /** Skill directory names (e.g. `luca-init`). */
     skills: string[]
+}
+
+/** Which bucket a retired artifact lived in. */
+export type RetiredArtifactKind = 'command' | 'agent' | 'skill'
+
+/** One artifact luca used to ship and no longer does. */
+export interface RetiredArtifact {
+    kind: RetiredArtifactKind
+    /**
+     * File name including `.md` for `command`/`agent`; bare directory
+     * name for `skill`. Matches how `BundledArtifacts` names entries, so
+     * the "still bundled?" guard is a direct comparison.
+     */
+    name: string
+    /** luca version that dropped it — informational, printed in the summary. */
+    retiredIn: string
+}
+
+/**
+ * Artifacts luca shipped at some point and no longer bundles.
+ *
+ * `installSkills` only ever *copies*, so anything dropped from the bundle
+ * survives forever in a user's `~/.claude/` and stays slash-invocable —
+ * pointing at infrastructure that no longer exists. This list is the
+ * uninstall path: every entry is evicted from the harness home on the
+ * next `luca init`.
+ *
+ * **Adding an entry is mandatory when you delete a bundled artifact —
+ * in the SAME change that deletes it, never ahead of it.** Deleting the
+ * source alone leaves every existing install broken; listing a name that
+ * is still bundled is worse than useless, because
+ * `pruneRetiredArtifacts` skips it and the entry silently does nothing
+ * while reading as an uninstall that shipped. `install-skills.test.ts`
+ * enforces the invariant: no entry here may name an artifact still
+ * reachable from the luca-tools registries or present in the built
+ * bundle.
+ *
+ * Two safety properties bound the blast radius:
+ *   1. An entry that is STILL in the current bundle is skipped (see
+ *      `pruneRetiredArtifacts`). That is defence-in-depth against a
+ *      stale list — NOT a licence to add entries early; the drift test
+ *      is the real gate.
+ *   2. Eviction *moves* the artifact into `<home>/.luca-retired-backup/`
+ *      rather than deleting it, so a user-authored artifact that happens
+ *      to collide with a retired name is recoverable by hand. (Same
+ *      reversible remediation the `legacy-claude-artifacts` doctor check
+ *      uses.)
+ *
+ * Empty is a legitimate state: it means every artifact luca has ever
+ * shipped is still shipped. Any future candidate awaiting deletion
+ * belongs here only once the source and its `SKILLS`/`COMMANDS`
+ * registration are actually gone.
+ */
+export const RETIRED_ARTIFACTS: readonly RetiredArtifact[] = [
+    // Emitted decimal phase directories (`7.1-slug`) that `PHASE_SLUG_RE`
+    // rejects, so every artifact it wrote was blocked by the stage gate.
+    { kind: 'skill', name: 'phase-insert', retiredIn: '13.1.0' },
+    // Shelled out to `scripts/check-domain-boundaries.ts` and
+    // `bun run check:drift`; neither has existed since the restructure.
+    // Superseded by `repo-cleanup`.
+    { kind: 'skill', name: 'repo-audit', retiredIn: '13.1.0' },
+    // Its issue-workflow branch routed to `/project:git*` commands that
+    // exist nowhere in the repo.
+    { kind: 'skill', name: 'choose', retiredIn: '13.1.0' },
+    // Commands folded into their same-named skill. Claude Code already
+    // exposes each SKILL.md as `/<name>`, and Antigravity installs skills
+    // but not commands, so the skill is the surface that survives. Each
+    // fold was diffed first: the three verbatim pairs
+    // (`gh-pr-address`, `repo-cleanup`, plus the effectively-identical
+    // `lu-review`) lost nothing, the seven thin pointers held no
+    // procedure at all, and `lu`'s skill strictly contains its command.
+    { kind: 'command', name: 'bug-diagnose.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-issue-triage.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-pr-address.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'gh-prepare.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'grill-me.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'lu.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'lu-review.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'luca-init.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'memory-audit.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'repo-cleanup.md', retiredIn: '13.1.0' },
+    // The second fold pass, emptying the command surface entirely. These
+    // seven were held back because their bodies had genuinely DIVERGED
+    // from the skill's (`luca-telemetry-report` excepted — it was a thin
+    // pointer that the earlier pass simply missed). Every command-only
+    // directive was ported into the skill first; the fold is what makes
+    // these deletions safe, not the deletions themselves.
+    { kind: 'command', name: 'luca-telemetry-report.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'milestone-new.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-discuss.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-execute.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'phase-plan.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'todo-add.md', retiredIn: '13.1.0' },
+    { kind: 'command', name: 'todo-check.md', retiredIn: '13.1.0' },
+    // Orphaned, not broken: fully functional but unreferenced by any
+    // workflow, and both described themselves inaccurately.
+    // `post-init-tour` claimed to run after `/project-new` (which never
+    // invoked it) and pointed at `/help`, `/config-settings`, `/debug`;
+    // `workflow-save` claimed to be the final step of `/phase-execute`
+    // and `/session-pause`, neither of which referenced it. Deleted by
+    // explicit user decision.
+    { kind: 'skill', name: 'post-init-tour', retiredIn: '13.1.0' },
+    { kind: 'skill', name: 'workflow-save', retiredIn: '13.1.0' },
+    // Collapsed onto `luca roadmap add-phase`. `note`'s default mode was a
+    // VERBATIM duplicate of this skill — same seven steps, down to the
+    // `mkdir -p` and the hand-edit of the generated `.luca/roadmap.md` —
+    // and `note` is the strict superset (it also owns `--next`/`--whenever`).
+    // The survivor is `note`, now routed through the verb; nothing this
+    // skill did is unreachable.
+    { kind: 'skill', name: 'phase-add', retiredIn: '13.1.0' },
+]
+
+/**
+ * Quarantine directory inside the harness home. Dot-prefixed so no harness
+ * ever loads what it holds, and kept inside `<home>` so the move is a
+ * same-filesystem rename.
+ */
+const RETIRED_BACKUP_DIR_NAME = '.luca-retired-backup'
+
+/**
+ * Retired-artifact kind → the `<home>` subdirectory it lives in. The
+ * subdirectory names are also the `InstallSkillsArtifacts` flag names, so
+ * one map drives both the path and the "does this harness install this
+ * bucket?" gate.
+ */
+const KIND_BUCKET: Record<RetiredArtifactKind, keyof InstallSkillsArtifacts> = {
+    command: 'commands',
+    agent: 'agents',
+    skill: 'skills',
+}
+
+export interface PruneRetiredArtifactsOptions {
+    /** Harness config home to clean. Defaults to `~/.claude`. */
+    home?: string
+    /**
+     * Which buckets this harness installs. A bucket the harness does not
+     * own is left completely alone. Defaults to all three.
+     */
+    artifacts?: InstallSkillsArtifacts
+    /**
+     * The CURRENT bundle. Any name still present here is live and is
+     * never pruned, whatever `RETIRED_ARTIFACTS` claims.
+     *
+     * REQUIRED to authorize any eviction. Omitted or `null` means "the
+     * bundle could not be enumerated", which prunes NOTHING — it does
+     * NOT mean "luca ships nothing". Defaulting an unknown bundle to
+     * empty would make a partial or older-layout install read as a
+     * bundle with no skills at all, and quarantine live ones.
+     */
+    bundled?: BundledArtifacts | null
+    /** Override the retired list (tests). Defaults to `RETIRED_ARTIFACTS`. */
+    retired?: readonly RetiredArtifact[]
+    log?: (msg: string) => void
+}
+
+/**
+ * Evict artifacts luca used to ship from a harness home.
+ *
+ * The counterpart to `installSkills`: install copies the current bundle
+ * in, this moves the retired bundle out. Without it a deleted skill or
+ * command stays invocable in every existing install forever.
+ *
+ * Conservative by construction:
+ *   - only curated `RETIRED_ARTIFACTS` names are ever touched, so an
+ *     unrelated user-authored artifact is never a candidate;
+ *   - eviction is authorized by an explicitly enumerated `bundled`; an
+ *     unknown bundle (omitted/`null`) prunes nothing at all;
+ *   - a name still present in `bundled` is skipped, so a stale list
+ *     entry can't evict a live artifact;
+ *   - matches are *moved* to `<home>/.luca-retired-backup/<bucket>/`,
+ *     with a numeric suffix on collision, so nothing is destroyed and a
+ *     name-collision false positive is reversible by hand.
+ *
+ * Returns the `<bucket>/<name>` paths that were evicted (empty when there
+ * was nothing to do). Never throws: a failed move is logged and skipped
+ * so a permissions problem can't abort `luca init`.
+ */
+export async function pruneRetiredArtifacts(
+    opts: PruneRetiredArtifactsOptions = {}
+): Promise<string[]> {
+    const log = opts.log ?? (() => {})
+    const home = opts.home ?? defaultClaudeHome()
+    const artifacts = opts.artifacts ?? {
+        agents: true,
+        commands: true,
+        skills: true,
+    }
+    const retired = opts.retired ?? RETIRED_ARTIFACTS
+    const bundled = opts.bundled
+    if (bundled === undefined || bundled === null) {
+        // An unknown bundle authorizes nothing. Treating it as an empty
+        // bundle would read every retired name as "no longer shipped"
+        // and quarantine artifacts that are in fact live.
+        if (retired.length > 0) {
+            log(
+                '  skip:  retired-artifact prune — the current bundle could not be enumerated, so nothing is evicted'
+            )
+        }
+        return []
+    }
+
+    const removed: string[] = []
+
+    for (const entry of retired) {
+        const bucket = KIND_BUCKET[entry.kind]
+        if (!artifacts[bucket]) continue
+        // The current bundle always wins over the retired list.
+        if (bundled[bucket].includes(entry.name)) continue
+
+        const from = join(home, bucket, entry.name)
+        if (!(await pathPresent(from))) continue
+
+        const backupDir = join(home, RETIRED_BACKUP_DIR_NAME, bucket)
+        const to = await uniqueBackupPath(backupDir, entry.name)
+        try {
+            await mkdir(backupDir, { recursive: true })
+            await rename(from, to)
+            removed.push(`${bucket}/${entry.name}`)
+            log(
+                `  prune: ${bucket}/${entry.name} (retired in ${entry.retiredIn}) → ${RETIRED_BACKUP_DIR_NAME}/${bucket}/`
+            )
+        } catch (err) {
+            log(
+                `  warn:  could not prune ${bucket}/${entry.name}: ${(err as Error).message}`
+            )
+        }
+    }
+
+    if (removed.length > 0) {
+        log(
+            `  ${removed.length} retired luca artifact(s) moved to ${join(home, RETIRED_BACKUP_DIR_NAME)} — delete that directory once you're happy, or move an entry back to restore it.`
+        )
+    }
+
+    return removed
+}
+
+/** True when `p` exists as any entry, including a dangling symlink. */
+async function pathPresent(p: string): Promise<boolean> {
+    try {
+        await lstat(p)
+        return true
+    } catch {
+        return false
+    }
+}
+
+/**
+ * `<backupDir>/<name>`, suffixed `.1`, `.2`, … when already taken, so a
+ * repeated prune of a re-appearing artifact never clobbers an earlier
+ * backup.
+ */
+async function uniqueBackupPath(
+    backupDir: string,
+    name: string
+): Promise<string> {
+    let candidate = join(backupDir, name)
+    let attempt = 1
+    while (await pathPresent(candidate)) {
+        candidate = join(backupDir, `${name}.${attempt}`)
+        attempt += 1
+    }
+    return candidate
 }
 
 /** The default global Claude config directory: `~/.claude`. */
@@ -145,6 +423,13 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
         return
     }
 
+    // Retained deliberately: luca bundles zero commands today (all 17 were
+    // folded into their same-named skills), so this copies nothing. It
+    // stays because the same `artifacts.commands` flag authorizes the
+    // retired-COMMAND prune below, and because the bucket is a supported
+    // artifact kind that a future bundle could repopulate. Removing the
+    // branch would quietly disable the uninstall path for every folded
+    // command.
     if (artifacts.commands) {
         await copyDir({
             from: join(claudeArtifactsRoot, 'commands'),
@@ -170,6 +455,46 @@ export async function installSkills(opts: InstallSkillsOptions): Promise<void> {
             log,
         })
     }
+
+    // Uninstall path. Copying alone can only ever ADD, so artifacts luca
+    // has since dropped would linger in `home` forever and stay invocable
+    // against infrastructure that no longer exists. Runs after the copies
+    // and is guarded by the freshly-resolved bundle, so a name that is
+    // still shipped can never be evicted.
+    //
+    // A bucket whose SOURCE directory is absent is not "a bucket that
+    // ships nothing" — it is a bucket we cannot enumerate, and the copy
+    // step above deliberately treats that as non-fatal (`skip: <label>s
+    // source missing`). Authorizing a prune off an unreadable bucket
+    // would quarantine live artifacts out of a partial or older-layout
+    // bundle, so each bucket must prove it is enumerable before it is
+    // allowed to evict anything.
+    const prunable: InstallSkillsArtifacts = {
+        commands:
+            artifacts.commands &&
+            existsSync(join(claudeArtifactsRoot, 'commands')),
+        agents:
+            artifacts.agents && existsSync(join(claudeArtifactsRoot, 'agents')),
+        skills: artifacts.skills && existsSync(skillsRoot),
+    }
+    for (const bucket of ['commands', 'agents', 'skills'] as const) {
+        if (artifacts[bucket] && !prunable[bucket]) {
+            log(
+                `  skip:  retired-${bucket} prune — the bundled ${bucket} source is missing, so nothing in ${bucket}/ is evicted`
+            )
+        }
+    }
+
+    await pruneRetiredArtifacts({
+        home,
+        artifacts: prunable,
+        retired: opts.retired,
+        bundled: await listBundledArtifacts({
+            claudeArtifactsRoot,
+            skillsRoot,
+        }),
+        log,
+    })
 }
 
 /**

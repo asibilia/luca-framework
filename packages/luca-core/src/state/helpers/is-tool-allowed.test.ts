@@ -11,8 +11,10 @@ describe('isToolAllowed — matrix coverage', () => {
         'planning-write-general',
         'planning-write-audit',
         'bash-readonly',
+        'bash-stage',
         'bash-mutate',
         'bash-commit',
+        'release-artifact',
     ])('IDLE allows %s', (cat) => {
         expect(isToolAllowed({ phase: 'IDLE', category: cat })).toBe(true)
     })
@@ -24,9 +26,11 @@ describe('isToolAllowed — matrix coverage', () => {
         'planning-write-general': true,
         'planning-write-audit': true,
         'bash-readonly': true,
+        'bash-stage': false,
         'bash-mutate': false,
         'bash-commit': false,
         'luca-write': true,
+        'release-artifact': false,
     }
     for (const [cat, expected] of Object.entries(planningExpect)) {
         test(`PLANNING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -45,9 +49,11 @@ describe('isToolAllowed — matrix coverage', () => {
         'planning-write-general': true,
         'planning-write-audit': true,
         'bash-readonly': true,
+        'bash-stage': true,
         'bash-mutate': true,
         'bash-commit': false,
         'luca-write': true,
+        'release-artifact': true,
     }
     for (const [cat, expected] of Object.entries(executingExpect)) {
         test(`EXECUTING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -67,9 +73,11 @@ describe('isToolAllowed — matrix coverage', () => {
         'planning-write-general': false,
         'planning-write-audit': true,
         'bash-readonly': true,
+        'bash-stage': false,
         'bash-mutate': false,
         'bash-commit': false,
         'luca-write': true,
+        'release-artifact': false,
     }
     for (const [cat, expected] of Object.entries(reviewingExpect)) {
         test(`REVIEWING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -88,9 +96,11 @@ describe('isToolAllowed — matrix coverage', () => {
         'planning-write-general': true,
         'planning-write-audit': true,
         'bash-readonly': true,
+        'bash-stage': true,
         'bash-mutate': false,
         'bash-commit': true,
         'luca-write': true,
+        'release-artifact': true,
     }
     for (const [cat, expected] of Object.entries(finalizingExpect)) {
         test(`FINALIZING ${expected ? 'allows' : 'blocks'} ${cat}`, () => {
@@ -118,8 +128,10 @@ describe('isToolAllowed — sanity', () => {
             'planning-write-general',
             'planning-write-audit',
             'bash-readonly',
+            'bash-stage',
             'bash-mutate',
             'bash-commit',
+            'release-artifact',
         ]
         for (const phase of phases) {
             for (const category of cats) {

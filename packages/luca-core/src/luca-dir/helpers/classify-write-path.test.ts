@@ -123,6 +123,45 @@ describe('classifyWritePath — always-denied paths', () => {
             }).class
         ).toBe('denied')
     })
+
+    test('denies the cross-repo handoff mailbox under the user home', () => {
+        // Guard (risk G1): the machine-global mailbox at `<home>/.luca/handoff/`
+        // is CLI-only. Agents must not hand-forge envelopes with a direct
+        // Write — every envelope goes through the schema-validated transport.
+        // The always-deny on `<home>/.luca/` must never be narrowed to carve
+        // out this directory.
+        const homedir = '/Users/alec'
+        const r = classifyWritePath(`${homedir}/.luca/handoff/x.json`, {
+            homedir,
+        })
+        expect(r.class).toBe('denied')
+        expect(r.reason).toContain('user tooling dir')
+
+        // A nested envelope path is denied by the same rule.
+        expect(
+            classifyWritePath(`${homedir}/.luca/handoff/nested/x.json`, {
+                homedir,
+            }).class
+        ).toBe('denied')
+    })
+
+    test('denies the handoff mailbox even when no homedir is supplied', () => {
+        // Fail CLOSED: with `homedir` absent the home-deny above never runs,
+        // and `toLucaRelative`'s segment fallback recovers `.luca/handoff/x.json`
+        // from the absolute path — which previously classified as the ALLOWED
+        // `planning-general`, letting an agent hand-forge an envelope into the
+        // machine-global mailbox.
+        const r = classifyWritePath('/Users/alec/.luca/handoff/x.json')
+        expect(r.class).not.toBe('planning-general')
+        expect(r.class).toBe('denied')
+        expect(r.reason).toContain('/.luca/handoff/')
+
+        // Same for the repo-relative spelling and a nested envelope path.
+        expect(classifyWritePath('.luca/handoff/x.json').class).toBe('denied')
+        expect(
+            classifyWritePath('/Users/alec/.luca/handoff/nested/x.json').class
+        ).toBe('denied')
+    })
 })
 
 describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
@@ -185,6 +224,37 @@ describe('classifyWritePath — ephemeral OS-temp + preview scratch', () => {
         expect(classifyWritePath('.luca/tmp/roadmap.json').class).toBe(
             'planning-general'
         )
+    })
+})
+
+describe('classifyWritePath — release-artifact (.changeset)', () => {
+    test('classifies .changeset/<name>.md as release-artifact', () => {
+        expect(classifyWritePath('.changeset/foo.md').class).toBe(
+            'release-artifact'
+        )
+        expect(
+            classifyWritePath('.changeset/tricky-mongoose-jump.md').class
+        ).toBe('release-artifact')
+    })
+
+    test('excludes changesets own docs/config — README.md + config.json stay code', () => {
+        // README.md is changesets' own documentation and config.json its
+        // configuration; finalize may ADD a release note, never reconfigure
+        // the tool. Both fall through to the code-write column.
+        expect(classifyWritePath('.changeset/README.md').class).toBe('code')
+        expect(classifyWritePath('.changeset/config.json').class).toBe('code')
+    })
+
+    test('does NOT match nested .changeset/<dir>/<name>.md (one level deep only)', () => {
+        expect(classifyWritePath('.changeset/sub/x.md').class).toBe('code')
+    })
+
+    test('recognizes an absolute .changeset/<name>.md path', () => {
+        // Claude Code passes ABSOLUTE file_paths; the segment-anchored
+        // pattern matches both spellings.
+        expect(
+            classifyWritePath('/Users/dev/proj/.changeset/foo.md').class
+        ).toBe('release-artifact')
     })
 })
 

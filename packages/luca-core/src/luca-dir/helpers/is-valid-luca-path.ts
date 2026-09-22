@@ -86,8 +86,8 @@ export function isValidLucaPath(relPath: string): ValidationResult {
  * Validate `.luca/tmp/` — the sanctioned, repo-scoped scratch area. Two
  * shapes are legal, both gitignored and NOT pipeline artifacts:
  *
- *   - `tmp/<kebab-name>.json` — ephemeral CLI-handoff payloads (LLM
- *     orchestrator → `luca` CLI via `--file`). Flat, `.json` only. They
+ *   - `tmp/<kebab-name>.{json,md}` — ephemeral CLI-handoff payloads (LLM
+ *     orchestrator → `luca` CLI via `--file`). Flat, `.json`/`.md` only. They
  *     exist so a large payload (e.g. `roadmap create`'s phases array) never
  *     has to ride a shared global `/tmp` path that collides across repos.
  *   - `tmp/previews/<name>.<ext>` — ephemeral browser previews (e.g. a
@@ -104,11 +104,11 @@ function validateTmpSubtree(parts: string[]): ValidationResult {
             error: 'tmp/previews/ contains <kebab-name>.<ext> preview files only',
         }
     }
-    // tmp/<kebab-name>.json
+    // tmp/<kebab-name>.{json,md}
     if (parts.length !== 1 || !TMP_FILE_RE.test(parts[0]!)) {
         return {
             valid: false,
-            error: 'tmp/ contains <kebab-name>.json handoff files or previews/<name>.<ext> only',
+            error: 'tmp/ contains <kebab-name>.json or <kebab-name>.md handoff files, or previews/<name>.<ext>, only',
         }
     }
     return { valid: true, kind: 'tmp.handoff' }

@@ -100,3 +100,5 @@ packages/luca-tools/skill-opt/staging/
 # AI-session debris — never commit run logs or harness caches
 *.log
 .claude/cache/
+# Harness caches live under .claude/cache/ in every package too
+**/.claude/cache/

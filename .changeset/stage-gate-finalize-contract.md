@@ -1,0 +1,17 @@
+---
+"@alecsibilia/luca-cli": patch
+"@alecsibilia/luca-core": patch
+"@alecsibilia/luca-tools": patch
+---
+
+fix(stage-gate): make finalize's genuine writes legal without widening the boundary, and close four adjacent soundness holes
+
+The finalize step is instructed to write a `.changeset/*.md` file and stage it, but the stage-gate classified the changeset write as `code-write` and a standalone `git add` as `bash-mutate` — both denied in the FINALIZING coarse phase. (Contrary to the original framing, `git commit`/`git push`/`gh pr create` were never blocked: FINALIZING is the one phase that permits `bash-commit`. The intermittency across prior runs was a severity max-merge quirk — `git add . && git commit` passes while bare `git add` fails.) A live probe settled the load-bearing unknown: subagents are **not** bystander-exempt (they inherit the owner `session_id`), so moving `git add` into the commit set would have regressed executors in EXECUTING — hence a distinct category rather than a reclassification.
+
+- **`release-artifact` write-path class** (luca-core): a segment-anchored `.changeset/*.md` matcher (excludes `README.md` and `config.json`, forbids nesting/traversal), recognized before the `code` fallback, with a new `ToolCategory` matrix column allowed only in EXECUTING/FINALIZING/IDLE. `EXECUTING['code-write']` is already `true`, so a FINALIZING-only grant would have tightened a legal path.
+- **`bash-stage` bash category** (luca-cli + luca-core): `git add` reclassified out of `GIT_MUTATE_SUBCOMMANDS` into `bash-stage`, allowed in EXECUTING/FINALIZING (staging is not committing), denied in PLANNING/REVIEWING. `SEVERITY` renumbered as a full order-preserving embedding (`bash-readonly:0, bash-stage:1, luca-write:2, bash-mutate:2, bash-commit:3, denied:4`) — `bash-stage` strictly below `bash-mutate` so a compound like `git add . && rm -rf build` cannot launder a mutation into FINALIZING on a severity tie, while the deliberate `luca-write === bash-mutate` shared tier is preserved. The new branch keeps the `lastNonFlag(rest)` target extraction and escalates to `bash-mutate` on an output redirect (a bare `git add . > src/x.ts` would otherwise truncate an arbitrary file).
+- **`TMP_FILE_RE` widened to `.md`** (luca-core): the ephemeral `.luca/tmp/` allow accepts `.md` alongside `.json`, unblocking the `pr-body-draft.md` handoff without forcing markdown into a `.json` extension. Anchor and no-nesting invariants preserved.
+- **`WRITE_COMMAND_PHASES` completeness** (luca-core): the five classifier-registered write verbs that lacked a phase entry (`state claim-owner`, `state set-current-phase`, `snapshot create`, `snapshot diff`, `budget check`) now carry an explicit `[]` (phase-agnostic; a missing key is a silent skip, not a deny), plus a registry-completeness invariant test so a registered write verb cannot ship without a phase precondition.
+- **finalize prose corrections** (luca-tools): `luca repo-cleanup apply-fix` → `luca repo cleanup-apply`; `luca preferences consult --section …` → `luca preferences read`; and the false `luca rules suggest` write-claims corrected to stdout-only (the verb performs no filesystem write, so its `LUCA_TOPLEVEL_READ` classification was already correct — the defect was the prose).
+
+Every new grant carries a justifying comment and an anti-criterion that fails if it widens beyond intent. Instruction-body edits reach installed harnesses via `bun run build` + a `luca init` re-run.

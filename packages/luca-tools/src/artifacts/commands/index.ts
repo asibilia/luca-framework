@@ -1,94 +1,71 @@
 /**
- * Commands barrel — the canonical list of `CommandDefinition`s shipped
- * with luca-tools.
+ * Commands barrel — now empty by design.
  *
- * Each command lives in its own file:
- *   commands/<name>.ts → exports the `defineCommand` definition.
+ * luca ships NO slash-command artifacts. Every one of the original 17
+ * has been folded into its same-named skill, and this list is the
+ * record of that decision rather than a staging area for new ones.
  *
- * Command bodies are markdown text (the body Claude Code inlines when
- * the user types `/<name>`) authored as JS template literals. Source
- * provenance per command is documented in the file header — all 17 were
- * ported from the user's `~/.claude/commands/<name>.md` (the canonical
- * working copy at E-6 time).
+ * ## Why the surface is gone
  *
- * Why we ship BOTH SKILL.md and commands/<name>.md for these 17:
- * Claude Code's SKILL.md surface auto-triggers based on the skill's
- * description, and the harness ALSO exposes SKILL.md as a `/<name>`
- * slash command. But the user has maintained `~/.claude/commands/`
- * separately, with bodies that are meaningfully different from the
- * corresponding SKILL.md bodies — the commands are tighter, more
- * imperative "what to do right now when the user explicitly types
- * /<name>" prompts (e.g. `/lu` is the orchestrator script that drives
- * the pipeline loop end-to-end, distinct from the `lu` skill which is
- * the routing surface). Per the E-6 decision algorithm, we port the
- * user's command bodies verbatim (with .planning/ → .luca/ already
- * applied by the user). E-5's SKILL.md ports stand as-is.
+ * Each command had a same-named skill. The two were populated by two
+ * independent ports that were never reconciled — skills at E-5 from the
+ * pre-D-4 `SKILL.md` files, commands at E-6 from the user's
+ * `~/.claude/commands/` as "tighter, more imperative" prompts — so every
+ * pair drifted, and the drift was load-bearing in both directions.
+ * Shipping both meant two bodies to keep in sync and a coin-flip about
+ * which one a change landed in.
  *
- * Order is fixed (alphabetical) so the compile output is byte-stable
- * across runs.
+ * The fold DIRECTION was forced, not chosen: the Antigravity harness
+ * descriptor installs `{agents, skills}` and NOT commands
+ * (`luca-cli/src/init/helpers/harness.ts`), so folding toward the command
+ * surface would have deleted Luca from Antigravity entirely. Claude Code
+ * already exposes each `SKILL.md` as `/<name>`, so the slash-invocation
+ * surface survives the fold intact. Nothing in the repo programmatically
+ * invokes a command; every `Skill(...)` call site lives in a skill body.
+ *
+ * The fold happened in two passes:
+ *
+ *   - The MECHANICAL pairs (`bug-diagnose`, `gh-issue-triage`,
+ *     `gh-pr-address`, `gh-prepare`, `grill-me`, `lu`, `lu-review`,
+ *     `luca-init`, `memory-audit`, `repo-cleanup`, and
+ *     `luca-telemetry-report`) — verbatim duplicates, thin
+ *     "activate the skill" pointers, or a command strictly contained by
+ *     its skill. Deleting them lost nothing.
+ *
+ *   - The DIVERGENT pairs (`milestone-new`, `phase-discuss`,
+ *     `phase-execute`, `phase-plan`, `todo-add`, `todo-check`) — pairs
+ *     whose two bodies genuinely disagreed. Each command-only directive
+ *     was ported into the skill BEFORE the command was deleted, because
+ *     several were the only copy of a load-bearing instruction: the
+ *     `todo-add` "execute the returned muninn procedure" delegation
+ *     (without it a todo validates and never persists), the
+ *     `phase-plan` advance to `plan-review`, the `phase-discuss`
+ *     canonical `<dir>/context.md` write recipe, the `milestone-new`
+ *     `luca workflow reset --confirm` (the skill's bare form is refused
+ *     by the handler and the refusal was being swallowed), and the
+ *     `phase-execute` "do not commit during execute" rule that
+ *     `STAGE_TOOL_MATRIX.EXECUTING['bash-commit'] === false` makes
+ *     mandatory.
+ *
+ * Every deletion is paired with a `RETIRED_ARTIFACTS` entry in
+ * `luca-cli/src/init/helpers/install-skills.ts` — without it the command
+ * survives forever in every existing `~/.claude/commands/`. Note that the
+ * eviction depends on the compiler still EMITTING an (empty) commands
+ * bucket: see the `counts.command === 0` branch in `compile/index.ts`.
+ *
+ * ## Adding a command
+ *
+ * Don't. Author a skill instead — it reaches both harnesses and is
+ * already slash-invocable in Claude Code. The `defineCommand` factory and
+ * the `emitCommand` emitter are retained because the artifact kind is
+ * still part of the compiler's contract, not because a command is
+ * expected.
  */
-
-import { bugDiagnoseCommand } from './bug-diagnose.ts'
-import { ghIssueTriageCommand } from './gh-issue-triage.ts'
-import { ghPrAddressCommand } from './gh-pr-address.ts'
-import { ghPrepareCommand } from './gh-prepare.ts'
-import { grillMeCommand } from './grill-me.ts'
-import { luReviewCommand } from './lu-review.ts'
-import { luCommand } from './lu.ts'
-import { lucaInitCommand } from './luca-init.ts'
-import { lucaTelemetryReportCommand } from './luca-telemetry-report.ts'
-import { memoryAuditCommand } from './memory-audit.ts'
-import { milestoneNewCommand } from './milestone-new.ts'
-import { phaseDiscussCommand } from './phase-discuss.ts'
-import { phaseExecuteCommand } from './phase-execute.ts'
-import { phasePlanCommand } from './phase-plan.ts'
-import { repoCleanupCommand } from './repo-cleanup.ts'
-import { todoAddCommand } from './todo-add.ts'
-import { todoCheckCommand } from './todo-check.ts'
 
 import type { Artifact } from '../../define/index.ts'
 
-export {
-    bugDiagnoseCommand,
-    ghIssueTriageCommand,
-    ghPrAddressCommand,
-    ghPrepareCommand,
-    grillMeCommand,
-    luCommand,
-    luReviewCommand,
-    lucaInitCommand,
-    lucaTelemetryReportCommand,
-    memoryAuditCommand,
-    milestoneNewCommand,
-    phaseDiscussCommand,
-    phaseExecuteCommand,
-    phasePlanCommand,
-    repoCleanupCommand,
-    todoAddCommand,
-    todoCheckCommand,
-}
-
 /**
  * Ordered list of every Luca-specific slash command shipped with
- * luca-tools. Alphabetical by command name for diff-friendly compile
- * output.
+ * luca-tools. Intentionally empty — see the module docstring.
  */
-export const COMMANDS: readonly Artifact[] = [
-    bugDiagnoseCommand,
-    ghIssueTriageCommand,
-    ghPrAddressCommand,
-    ghPrepareCommand,
-    grillMeCommand,
-    luCommand,
-    luReviewCommand,
-    lucaInitCommand,
-    lucaTelemetryReportCommand,
-    memoryAuditCommand,
-    milestoneNewCommand,
-    phaseDiscussCommand,
-    phaseExecuteCommand,
-    phasePlanCommand,
-    repoCleanupCommand,
-    todoAddCommand,
-    todoCheckCommand,
-]
+export const COMMANDS: readonly Artifact[] = []

@@ -26,7 +26,8 @@
  *     planning artifacts.
  *   - selfVerify: true — verify file paths and symbols referenced in
  *     the plan against the actual codebase.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — restored
+ *   - telemetry: only the retained `record-recall` directive; the
+ *     `subagent-start` / `subagent-end` hooks were restored
  *     per plan §3 #1. The architect spawns discussion + plan-reviewer
  *     subagents and must emit boundary telemetry for each.
  *   - muninn-recall — explicit declaration of the Step 1.5 prior-
@@ -36,7 +37,11 @@
  *     to a confidence-journal entry with the F1-aligned schema.
  */
 import { defineAgent } from '../../define/index.ts'
-import { CORE_OPERATING_RULES, getAgentConstraints } from '../shared/index.ts'
+import {
+    CORE_OPERATING_RULES,
+    getAgentConstraints,
+    recordRecallDirective,
+} from '../shared/index.ts'
 
 const BODY = `# Architect Agent Instructions
 
@@ -79,17 +84,12 @@ Otherwise, enforce via the branch-guard surface plus direct git inspection:
    \`\`\`
    luca preferences read --section branching
    \`\`\`
-2. **Inspect current branch directly via git**:
-   \`\`\`
-   git branch --show-current
-   git rev-parse --abbrev-ref HEAD
-   \`\`\`
-   Compare against \`branching.guardedBranches[]\` (runtime fallback \`['main']\`) and \`branching.defaultBranch\`.
-3. **Guard against committing on a protected branch** — call:
+2. **Read the current branch via \`luca branch guard\`**:
    \`\`\`
    luca branch guard
    \`\`\`
-   On \`ok: false\`, stop and report.
+   This single CLI read encapsulates default-branch detection (origin/HEAD with main/master/trunk fallback) — do NOT shell out to raw git to discover the current branch. Use its reported \`current\` against \`branching.guardedBranches[]\` (runtime fallback \`['main']\`) and \`branching.defaultBranch\`. The same call also returns \`ok\` for the protected-branch guard below.
+3. **Guard against committing on a protected branch** — reuse the Step 2 result: that same \`luca branch guard\` call already returned \`ok\` (do NOT invoke it a second time — re-deriving a fact you already have). On \`ok: false\`, stop and report.
 4. **Create the feature branch** — if not already on one, switch via \`git switch -c <branchName>\` rendered against the consulted preferences (ticket id, intent slug, conventional-commit type). The policy table tells you the shape.
 
 ## Step 1.5: Historical Context (Optional)
@@ -103,17 +103,9 @@ mcp__muninn__muninn_recall(vault: "<repo_vault>", context: "<task intent>", tags
 
 If results found, note past decisions, patterns, and pitfalls. Include relevant context for the discussion subagent. If unavailable, proceed normally. **Budget**: ≤2 tool calls.
 
-After the recall returns, emit \`record-recall\` telemetry so the aggregator can compute hit/miss + verified-tier rates per mode. Run (use \`--kind recall.hit\` when results were returned, \`--kind recall.miss\` when \`resultCount\` is 0):
-
-\`\`\`
-luca telemetry emit --kind recall.hit --run-id <runId> --meta '{"query":"<recall query>","resultCount":<N>,"verifiedCount":<M>,"vault":"<vault>","callerMode":"<semantic|recent|balanced|deep>","durationMs":<D>,"recalledIds":["<recalled concept ULID>", "..."]}'
-\`\`\`
-
-\`recalledIds\` is the array of recalled concept ULIDs in scope (REQ-12 recall-time capture). \`<runId>\` is the run id established at pipeline Step 0 (REQUIRED flag).
+${recordRecallDirective()}
 
 ## Step 2: Discussion
-
-> **Subagent Telemetry**: emit \`subagent-start\` / \`subagent-end\` via \`luca telemetry emit\` around the Task spawn. Parse \`<!-- usage: ... -->\` from the subagent's last 256 chars for token counts.
 
 Spawn the **discussion** subagent before creating any plan via the Claude Code \`Task\` tool:
 
@@ -146,7 +138,7 @@ Only store **significant** decisions: technology selections, architectural patte
 
 ## Step 2.5: Read Research
 
-If research phase ran (complexity MODERATE+ and \`skipResearch\` not set), read \`.luca/phases/<currentPhaseSlug>/research.md\` via the \`Read\` tool. Use findings for task design, risk identification, and verification criteria. If \`research.md\` doesn't exist, proceed without it.
+Consume research.md and context.md first — before probing the codebase. If research phase ran (complexity MODERATE+ and \`skipResearch\` not set), read \`.luca/phases/<currentPhaseSlug>/research.md\` and \`.luca/phases/<currentPhaseSlug>/context.md\` via the \`Read\` tool. Treat research + context as the primary source of repo facts for task design, risk identification, and verification criteria; probe the codebase fresh only to fill gaps those documents leave open. If \`research.md\` doesn't exist, proceed with \`context.md\` alone.
 
 ## Step 3: Roadmap Creation
 
@@ -372,7 +364,7 @@ The linter is warn-only (always exits 0 on lint findings) and checks mechanical 
 
 ### Spawning the Reviewer
 
-Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan against the criteria above. Emit \`subagent-start\` / \`subagent-end\` telemetry around the spawn.
+Spawn a **plan-reviewer** subagent via the \`Task\` tool to validate the plan against the criteria above.
 
 ### Review Criteria
 
@@ -498,8 +490,8 @@ export const architectMode = defineAgent({
     guidance: {
         verticalSlice: true,
         selfVerify: true,
+        toolEconomy: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     pipelineInvocations: ['muninn-recall', 'confidence-log'],
     instructions: `${CORE_OPERATING_RULES}
 ${BODY}

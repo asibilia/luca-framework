@@ -90,8 +90,10 @@ directories and reset workflow state for the next milestone:
 # roadmap is created, or stale phase dirs collide on phase number with it.
 luca phase archive 2>/dev/null || true
 
-luca workflow reset 2>/dev/null || true
+luca workflow reset --confirm
 \`\`\`
+
+\`--confirm\` is REQUIRED: the handler refuses the reset without it (it is the one destructive command in the write surface). \`luca workflow reset 2>/dev/null || true\` is INERT — it swallows the refusal, so the workflow is never reset and the failure never surfaces. Let a genuine failure here be loud.
 
 Milestone identity (\`milestone:v<version>\`) is stored as an atomic engram in MuninnDB — there is no separate \`current_milestone\` state field on \`.luca/state.json\`. After completion, store the completed-milestone marker:
 

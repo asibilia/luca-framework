@@ -1,0 +1,412 @@
+{
+  "timestamp": "2026-07-21T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Full goal-backward verification. Criterion IDs consumed verbatim from plan.md '## Verification Criteria' (ac-01..ac-38, anti-01..anti-08); none minted, none tombstoned, no SPLIT parents. EVIDENCE-SUBSTITUTION DISCLOSURE: at pipelineStep=verify the stage-gate blocks every bare `bun` invocation (category=bash-mutate) — `bun test`, `bun -e`, even `bun --version` all returned 'stage-gate BLOCK'. The verifier therefore could NOT independently re-run ac-02, ac-03, ac-09, ac-10, ac-11, ac-17, ac-18, ac-23, ac-24, ac-25, ac-35, ac-36, ac-37, ac-38. Dual-evidence fallback applied to those 14: (a) orchestrator-run harness supplied in the verifier prompt (luca checks run passed; bunx --bun tsc --noEmit exit 0; `timeout 120 bun test packages/luca-core/src/handoff` 106 pass / 0 fail / 206 assertions / 7 files; `timeout 120 bun test .../classify-write-path.test.ts` 42 pass / 0 fail) PLUS executor attestation at execute/summary.md:21-35, AND (b) an independent structural probe — the verifier READ every one of the 7 handoff test files end to end and the guard test diff, confirming each mandated block contains real, behavior-specific assertions rather than an empty or tautological body. The verifier DID independently execute ac-01 (bunx --bun tsc --noEmit, exit 0, no output), every grep-based criterion (ac-04..ac-08, ac-12..ac-16, ac-19..ac-22, ac-26..ac-34), anti-01, anti-02, anti-05, anti-07, anti-08, the anti-03/anti-04 scope fence, and `luca rules run` (0 rules discovered, no findings). VACUITY AUDIT (the review rounds' core concern) came back CLEAN: no mandated test block is empty or tautological. Every block asserts a concrete reason string, on-disk state, or a filtered id list — e.g. duplicate-id also asserts the original intent survived the rejected write (test:122-127), illegal-transition also asserts status and updatedAt are unchanged (test:190-194), corrupt-skip asserts the exact surviving id list (test:562-564), 0o700 asserts statSync(mode & 0o777) === 0o700 (test:428-430), 'send invalid' asserts the mailbox directory was never even created (test:148). anti-06's literal command is NOT portable and the verifier reproduced the failure (`grep -rzPn` => 'grep: invalid option -- P', exit 2 on this BSD grep) — the guard's INTENT was independently confirmed by portable substitute scans instead; see the anti-06 entry. Three non-blocking nits recorded in the anti-06/ac-19 entries and returned in prose. All four executor deviations judged sound and in scope.",
+  "checks": [
+    { "name": "tsc", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun-test-handoff", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "bun-test-classify-write-path", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca-checks-run", "status": "pass", "errorCount": 0, "warningCount": 0 },
+    { "name": "luca-rules-run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+  ],
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "Verifier ran `bunx --bun tsc --noEmit` at repo root: exit 0, zero output. Independently executed (not attested)."
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "timeout 120 bun test packages/luca-core/src/handoff exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "Orchestrator harness: 106 pass / 0 fail / 206 assertions / 7 files. Structural probe: verifier read all 7 test files (schemas.test.ts, configs/handoff-transitions.test.ts, helpers/{mailbox-path-for,generate-envelope-id,create-local-mailbox-transport,create-remote-transport,is-auto-acceptable}.test.ts) — every test body contains concrete assertions. Verifier could not re-run: `bun` is stage-gate-blocked at pipelineStep=verify."
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "luca-cli subpath import of @alecsibilia/luca-core/handoff resolves 4 symbols",
+      "met": true,
+      "blocking": true,
+      "probeType": "config-read",
+      "evidence": "packages/luca-core/package.json:31 `\"./handoff\": \"./src/handoff/index.ts\"`; barrel exports HandoffEnvelopeSchema (index.ts:24), createLocalMailboxTransport (:37), createRemoteTransport (:38), isAutoAcceptable (:39); packages/luca-cli/package.json:6 declares `\"@alecsibilia/luca-core\": \"workspace:*\"`; packages/luca-cli/node_modules/@alecsibilia/luca-core symlink present. Orchestrator/executor runtime probe exit 0 (summary.md:25). Verifier could not re-run (`bun -e` blocked)."
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "package.json exports entry for ./handoff",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: 1 match, packages/luca-core/package.json:31."
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "schemas.test.ts contains a 'defaults' block",
+      "met": true,
+      "blocking": false,
+      "probeType": "file-read",
+      "evidence": "schemas.test.ts:29-62 — asserts schemaVersion, status='pending', acceptanceCriteria=[], statusHistory=[], context/callback default objects, result undefined; plus HandoffResultSchema notes=''/evidence=[]. Non-vacuous."
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "schemas.test.ts contains 'invariant' blocks",
+      "met": true,
+      "blocking": false,
+      "probeType": "file-read",
+      "evidence": "schemas.test.ts:64-121 — five superRefine invariants asserted: complete-without-result rejected (issue path contains 'result'), complete-with-result parses, remote callback requires address, updatedAt<createdAt rejected, illegal id charset rejected."
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "schemas.test.ts contains an 'unknown keys' block",
+      "met": true,
+      "blocking": false,
+      "probeType": "file-read",
+      "evidence": "schemas.test.ts:123-133 — asserts `'somethingNobodyDeclared' in parsed === false` and that a declared field survives."
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "schemas.test.ts contains a 'schemaVersion' block",
+      "met": true,
+      "blocking": false,
+      "probeType": "file-read",
+      "evidence": "schemas.test.ts:135-155 — mismatch rejected with issue path 'schemaVersion'; absent version defaults to HANDOFF_SCHEMA_VERSION."
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "handoff-transitions.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "configs/handoff-transitions.test.ts — 5 test.each registry invariants (every status is a key; every key is a status; every target valid; terminals have no exits; no unreachable status) using the expect({status,registered}).toEqual(...) diff-naming pattern, plus a direct isLegalHandoffTransition edge test (:58-64). Green in orchestrator run. Verifier could not re-run (`bun` blocked)."
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "mailbox-path-for.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "helpers/mailbox-path-for.test.ts:7-30 asserts exact path construction for two homedirs and purity. Green in orchestrator run."
+    },
+    {
+      "criterionId": "ac-11",
+      "description": "generate-envelope-id.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "helpers/generate-envelope-id.test.ts — shape regex, test.each ENVELOPE_ID_RE conformance over 6 hostile repo names incl. '../../.claude/settings', fallback stem, no '/' or '.' survives, 200-id uniqueness. Green in orchestrator run."
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "transport test contains a 'round-trip' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:40-69 — asserts read-back id/status/target/intent/statusHistory AND re-reads the raw file from disk (:60-65). Non-vacuous."
+    },
+    {
+      "criterionId": "ac-13",
+      "description": "transport test contains a 'duplicate-id' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:107-132 — second send resolves reason 'duplicate-id' (:119) AND the original intent survived the rejected write (:125-127)."
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "transport test contains an 'illegal-transition' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:171-243 — pending→complete refused (:188) with status and updatedAt unchanged (:193-194); terminal 'rejected' accepts nothing further (:224); unknown id yields not-found not illegal-transition (:239)."
+    },
+    {
+      "criterionId": "ac-15",
+      "description": "transport test contains a 'conflict' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:246-312 — stale expectedUpdatedAt reused after a successful write resolves 'conflict' (:271); companion test asserts each write stamps a strictly greater updatedAt (:293-308)."
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "transport test contains a 'corrupt' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:135-152 (send invalid → corrupt, nothing written), :378-419 (complete without result → corrupt, message contains 'result', envelope left in-progress), :547-631 (list-skip, read corrupt, schema-invalid corrupt, schema-version-mismatch)."
+    },
+    {
+      "criterionId": "ac-17",
+      "description": "create-remote-transport.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "helpers/create-remote-transport.test.ts — all 4 methods resolve ok:false/reason 'not-implemented' with non-empty message; `.resolves.toMatchObject` proves resolution rather than throw (:29-32); factory shape parity (:35-41). Green in orchestrator run."
+    },
+    {
+      "criterionId": "ac-18",
+      "description": "is-auto-acceptable.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "helpers/is-auto-acceptable.test.ts — absent/empty allowlist deny; exact-match only (no prefix/substring, :40-43); non-pending statuses denied (:45-60); purity (:62-67). Green in orchestrator run."
+    },
+    {
+      "criterionId": "ac-19",
+      "description": "classify-write-path.test.ts contains the literal /.luca/handoff/",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: 3 matches (0 at HEAD, so non-vacuous). Real assertion at classify-write-path.test.ts:130-134 — classifyWritePath('/Users/alec/.luca/handoff/x.json', {homedir}).class === 'denied' with a defined reason. NIT: the trailing line :137 `expect(`${homedir}/.luca/handoff/x.json`).toContain('/.luca/handoff/')` is tautological (a template literal containing its own substring); it is redundant because the literal already appears in the classifyWritePath argument at :130. Non-blocking — the criterion is carried by the real denial assertion."
+    },
+    {
+      "criterionId": "ac-20",
+      "description": "transport test contains a '0o700' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:422-435 — statSync(mailboxDirFor({homedir})).mode & 0o777 asserted === 0o700 after a real send."
+    },
+    {
+      "criterionId": "ac-21",
+      "description": "root barrel re-exports ./handoff/index.ts",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: 1 match, packages/luca-core/src/index.ts:24 `export * from './handoff/index.ts'` (added between orchestration and utils)."
+    },
+    {
+      "criterionId": "ac-22",
+      "description": "transport test contains a 'status filter' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:438-463 — two envelopes sent, one advanced to accepted; list({status:'accepted'}) asserted to equal ['repo-a_one'] and list({status:'pending'}) ['repo-a_two']."
+    },
+    {
+      "criterionId": "ac-23",
+      "description": "schemas.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "Full file read; 10 tests across defaults / invariant / unknown keys / schemaVersion / reason union / filter / status enum, all with concrete assertions. Green in orchestrator run."
+    },
+    {
+      "criterionId": "ac-24",
+      "description": "create-local-mailbox-transport.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "633-line file read end to end: 20 tests over per-test mkdtempSync temp homedirs with rmSync cleanup; every mandated block asserts behavior. Green in orchestrator run (part of the 106)."
+    },
+    {
+      "criterionId": "ac-25",
+      "description": "classify-write-path.test.ts exits 0",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "Verifier read the git diff of the added guard test (+15 lines after the existing home-deny test at :123). Orchestrator harness: 42 pass / 0 fail (was 41), i.e. the new test ran and passed."
+    },
+    {
+      "criterionId": "ac-26",
+      "description": "'reason union' test enumerates the 8-member union",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "schemas.test.ts:157-179 — asserts sorted HandoffFailureReason.options equals the exact 8-member list AND options.length === 8 AND that an unlisted member fails safeParse. Source schemas.ts:59-68 declares exactly: not-found, corrupt, illegal-transition, conflict, duplicate-id, schema-version-mismatch, io-error, not-implemented. No invented members anywhere in the module."
+    },
+    {
+      "criterionId": "ac-27",
+      "description": "transport test contains a 'read corrupt' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:570-588 (truncated JSON → reason 'corrupt') and :590-608 (well-formed JSON, schema-invalid → 'corrupt', explicitly not 'not-found')."
+    },
+    {
+      "criterionId": "ac-28",
+      "description": "transport test contains a 'target filter' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:465-496 — list({targetRepoPath:'/Users/x/repo-b'}) equals ['repo-a_to_b'], unmatched path equals []; :498-529 asserts status+target filters compose to []."
+    },
+    {
+      "criterionId": "ac-29",
+      "description": "untrusted-input contract recorded in schemas.ts docstrings",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep 'untrusted': 1 match (schemas.ts:9-14 SECURITY block: intent/acceptanceCriteria/result.notes MUST NEVER be interpolated into instruction text); 7 further 'UNTRUSTED' markers on individual fields (:117, :148, :165, :167, :202, :206). Also mirrored in create-local-mailbox-transport.ts:24-26 and is-auto-acceptable.ts:9-21."
+    },
+    {
+      "criterionId": "ac-30",
+      "description": "targetRepoPath filter key present in schemas.ts",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: 1 match, schemas.ts:265 in HandoffFilterSchema. Paired with required HandoffTargetSchema.repoPath (schemas.ts:106-111) and the transport filter branch (create-local-mailbox-transport.ts:328-333)."
+    },
+    {
+      "criterionId": "ac-31",
+      "description": "UpdateStatusOptions exported from the handoff barrel",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: 1 match, index.ts:56 (in the `export type` block). Definition at create-local-mailbox-transport.ts:80-86 — named interface { expectedUpdatedAt: string; result?: HandoffResult; note?: string }."
+    },
+    {
+      "criterionId": "ac-32",
+      "description": "mailbox-path-for.test.ts contains a 'traversal' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "mailbox-path-for.test.ts:32-56 — test.each over 10 illegal ids ('../../.claude/settings', '/etc/passwd', 'sub/dir', '.', '..', 'has space', 'dotted.name', '', …) each asserted to return null via the diff-naming expect({id,path}).toEqual({id,path:null}); plus a named HOME_DENIED_SUBDIRS attack test (:50-56). Source guard at mailbox-path-for.ts:37."
+    },
+    {
+      "criterionId": "ac-33",
+      "description": "transport test contains a 'send invalid' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:134-168 — invalid envelope resolves 'corrupt' with a non-empty message, list() stays empty, AND statSync(mailboxDir) is asserted to throw, proving no directory was created (:148). Second test proves an illegal id charset cannot escape the mailbox (:154-168). Source ordering confirmed at create-local-mailbox-transport.ts:238-244 — safeParse precedes all fs work."
+    },
+    {
+      "criterionId": "ac-34",
+      "description": "transport test contains an 'empty mailbox' block",
+      "met": true,
+      "blocking": true,
+      "probeType": "file-read",
+      "evidence": "create-local-mailbox-transport.test.ts:532-545 — list() on a fresh homedir equals {ok:true, envelopes:[]} and statSync(mailboxDir) still throws, proving list does not create the directory. Source ENOENT branch at create-local-mailbox-transport.ts:310-313."
+    },
+    {
+      "criterionId": "ac-35",
+      "description": "E4 wx duplicate rejection proven at runtime",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "DUAL-EVIDENCE (verifier could not re-run: `bun -e` stage-gate-blocked at pipelineStep=verify). (a) Executor/orchestrator attestation: execute/summary.md:28 — probe exit 0, observed reason 'duplicate-id', with the probe asserting the FIRST send succeeded. (b) Independent structural probe: source create-local-mailbox-transport.ts:272 uses openSync(path,'wx',0o600) and maps EEXIST→'duplicate-id' (:274-278) with no truncating fallback; test:107-131 asserts the same behavior plus non-overwrite and is green in the orchestrator's 106-pass run."
+    },
+    {
+      "criterionId": "ac-36",
+      "description": "D1 CAS conflict proven at runtime",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "DUAL-EVIDENCE (bun blocked for verifier). (a) execute/summary.md:29 — probe exit 0, second write with a stale token → 'conflict'. (b) Structural: create-local-mailbox-transport.ts:364-369 compares current.updatedAt to options.expectedUpdatedAt; nextUpdatedAt (:171-177) guarantees a strictly greater stamp (previousMs+1 on same-ms collision), so two same-millisecond writers cannot both pass; test:246-312 asserts both the conflict and the strict-monotonicity property and is green."
+    },
+    {
+      "criterionId": "ac-37",
+      "description": "L4 0o700 mailbox mode proven at runtime",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "DUAL-EVIDENCE (bun blocked for verifier). (a) execute/summary.md:30 — probe exit 0, observed mode 700. (b) Structural: create-local-mailbox-transport.ts:256-260 calls mkdirSync(dir,{recursive:true,mode:MAILBOX_DIR_MODE}) then chmodSync(dir, MAILBOX_DIR_MODE) — the chmod is load-bearing because mkdirSync's mode is ignored when ~/.luca already exists and is umask-masked otherwise; constants.ts:35 MAILBOX_DIR_MODE = 0o700; test:422-434 asserts statSync mode & 0o777 === 0o700 and is green."
+    },
+    {
+      "criterionId": "ac-38",
+      "description": "G5 corrupt-skip proven at runtime",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "DUAL-EVIDENCE (bun blocked for verifier). (a) execute/summary.md:31 — probe exit 0, list count 1 with a 'not json' sibling present. (b) Structural: parseEnvelopeFile (create-local-mailbox-transport.ts:141-150) returns null on any throw or schema failure and list continues rather than throwing (:326); the atomic tmp file is named `<path>.tmp` so the `.json` filter at :322 also excludes in-flight writes; test:548-568 asserts the exact surviving id list and is green."
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT introduce a class in the handoff module",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier ran the plan's literal `grep -rnE \"(^|[^A-Za-z])class[[:space:]]+[A-Za-z{]\" packages/luca-core/src/handoff` → no matches. All four factories are closures returning a narrow interface (createLocalMailboxTransport, createRemoteTransport)."
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT reach into luca-cli from luca-core",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier ran the plan's literal `grep -rnE \"from ['\\\"][^'\\\"]*luca-cli\" packages/luca-core/src/handoff` → no matches. The only cross-module import is the same-package generate-run-id (generate-envelope-id.ts:1)."
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT touch luca-tools",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "`git diff --name-only be715aa4..HEAD -- packages/luca-tools` prints nothing. NOTE: the phase work is intentionally uncommitted, which would make the literal committed-diff probe vacuous, so the verifier additionally ran `git status --porcelain -- packages/luca-tools` → empty. Worktree-wide status shows only packages/luca-core/{package.json,src/index.ts,src/luca-dir/helpers/classify-write-path.test.ts} modified plus untracked packages/luca-core/src/handoff/."
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT touch luca-cli (incl. CLI_SUBCOMMANDS, classify-bash-command.ts, WRITE_COMMAND_PHASES)",
+      "met": true,
+      "blocking": true,
+      "probeType": "command",
+      "evidence": "`git diff --name-only be715aa4..HEAD -- packages/luca-cli` prints nothing AND `git status --porcelain -- packages/luca-cli` is empty (worktree probe added because the work is uncommitted). Scope fence holds: E3's registry straddle risk is not realized."
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT weaken the home deny list",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier grep: classify-write-path.ts:61 still reads `const HOME_DENIED_SUBDIRS = ['.claude', '.luca']`. The git diff of that file's TEST adds only a guard test; classify-write-path.ts source itself is unmodified (absent from git status)."
+    },
+    {
+      "criterionId": "anti-06",
+      "description": "MUST NOT set defaults during destructuring",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "INTENT CONFIRMED; LITERAL COMMAND NON-PORTABLE. The verifier reproduced the executor's failure: `grep -rzPn ...` → 'grep: invalid option -- P', exit 2 (BSD grep). Because the pass condition is 'returns no matches', the literal probe is an always-passes command here — a real (non-blocking) defect in the criterion, not in the code. Portable substitute scans run by the verifier over packages/luca-core/src/handoff: (1) `grep -rnE \"\\{[^{}]*[^=!<>]=[^=][^{}]*\\}[[:space:]]*=\"` → 0 matches; (2) `grep -rnE \"^[[:space:]]*\\}[[:space:]]*=\"` (formatter-wrapped closer) → 0 matches; (3) `grep -rnE \"(const|let|var)[[:space:]]+\\{\"` → 0 matches, i.e. there is ZERO variable destructuring anywhere in the module; (4) `grep -rnE \"\\([[:space:]]*\\{\"` → matches inspected one by one, all object-literal call arguments, no parameter destructuring. Corroborated by a full read of all 16 .ts files: every option is accessed by property (opts.homedir, options.result, filter?.status) and every default lives in the Zod schema (schemas.ts:124-128, 134-139, 166-168, 188, 207-218). Follow-up recommended: rewrite anti-06 portably."
+    },
+    {
+      "criterionId": "anti-07",
+      "description": "MUST NOT let any criterion probe be a name-filtered test run",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier ran the plan's literal `grep -nE '^- \\*\\*(ac|anti)-[0-9.]+\\*\\*:.*( [-]t |--test[-]name-pattern)' plan.md` → no matches. Manual confirmation: every ac-NN runtime probe targets a whole file path (ac-09, ac-10, ac-11, ac-17, ac-18, ac-23, ac-24, ac-25) or a `bun -e` harness (ac-35..38); no -t / --test-name-pattern anywhere."
+    },
+    {
+      "criterionId": "anti-08",
+      "description": "MUST NOT create a lock file",
+      "met": true,
+      "blocking": true,
+      "probeType": "grep-symbol",
+      "evidence": "Verifier ran the plan's literal `grep -rnE \"lockPath|withStateLock|(openSync|writeFileSync|mkdirSync)\\([^)]*\\.lock\" packages/luca-core/src/handoff` → no matches. Exclusivity comes from openSync(path,'wx') (:272) and CAS on updatedAt (:364), exactly as E4 requires; the module docstring records the no-lock decision (create-local-mailbox-transport.ts:18-20) without tripping the creation-scoped pattern."
+    }
+  ],
+  "deliverables": [
+    { "id": "D1", "description": "handoff/constants.ts", "criterionIds": ["ac-01"], "compliance": "shipped" },
+    { "id": "D2", "description": "handoff/schemas.ts (HandoffEnvelopeSchema, HandoffStatus)", "criterionIds": ["ac-05", "ac-06", "ac-07", "ac-08", "ac-23"], "compliance": "shipped" },
+    { "id": "D3", "description": "configs/handoff-transitions.ts + isLegalHandoffTransition", "criterionIds": ["ac-09"], "compliance": "shipped" },
+    { "id": "D4", "description": "helpers/mailbox-path-for.ts (+ test)", "criterionIds": ["ac-10", "ac-32"], "compliance": "shipped" },
+    { "id": "D5", "description": "helpers/is-auto-acceptable.ts (+ test)", "criterionIds": ["ac-18"], "compliance": "shipped" },
+    { "id": "D6", "description": "helpers/create-local-mailbox-transport.ts (+ test)", "criterionIds": ["ac-12", "ac-13", "ac-14", "ac-15", "ac-16", "ac-20", "ac-22", "ac-24", "ac-27", "ac-28", "ac-33", "ac-34"], "compliance": "shipped" },
+    { "id": "D7", "description": "helpers/create-remote-transport.ts (+ test)", "criterionIds": ["ac-17"], "compliance": "shipped" },
+    { "id": "D8", "description": "handoff/index.ts barrel", "criterionIds": ["ac-03"], "compliance": "shipped" },
+    { "id": "D9", "description": "package.json \"./handoff\" exports entry", "criterionIds": ["ac-04"], "compliance": "shipped" },
+    { "id": "D10", "description": "Envelope id generator", "criterionIds": ["ac-11"], "compliance": "shipped" },
+    { "id": "D11", "description": "Write-path guard test", "criterionIds": ["ac-19", "ac-25"], "compliance": "shipped" },
+    { "id": "D12", "description": "bunx --bun tsc --noEmit clean", "criterionIds": ["ac-01"], "compliance": "shipped" },
+    { "id": "D13", "description": "Bounded bun test packages/luca-core/src/handoff green", "criterionIds": ["ac-02"], "compliance": "shipped" },
+    { "id": "D14", "description": "Zero changes under luca-tools / luca-cli", "criterionIds": ["anti-03", "anti-04"], "compliance": "shipped" },
+    { "id": "D15", "description": "Root-barrel re-export", "criterionIds": ["ac-21"], "compliance": "shipped" },
+    { "id": "D16", "description": "Complete 8-member failure reason union", "criterionIds": ["ac-26"], "compliance": "shipped" },
+    { "id": "D17", "description": "target.repoPath addressing + filter", "criterionIds": ["ac-28", "ac-30"], "compliance": "shipped" },
+    { "id": "D18", "description": "Named and typed UpdateStatusOptions", "criterionIds": ["ac-31"], "compliance": "shipped" },
+    { "id": "D19", "description": "Untrusted-input contract in docstrings", "criterionIds": ["ac-29"], "compliance": "shipped" },
+    { "id": "D20", "description": "Path-traversal rejection on the consumption side", "criterionIds": ["ac-32"], "compliance": "shipped" },
+    { "id": "D21", "description": "send schema validation before any write", "criterionIds": ["ac-33"], "compliance": "shipped" },
+    { "id": "D22", "description": "list tolerates a missing mailbox dir", "criterionIds": ["ac-34"], "compliance": "shipped" },
+    { "id": "D23", "description": "Runtime proof of the four sole-evidence locked decisions", "criterionIds": ["ac-35", "ac-36", "ac-37", "ac-38"], "compliance": "shipped" }
+  ]
+}

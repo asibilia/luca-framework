@@ -1,0 +1,565 @@
+{
+  "timestamp": "2026-07-21T00:00:00.000Z",
+  "wave": 3,
+  "mode": "full",
+  "status": "PASS",
+  "convergence": "resolved",
+  "errorFingerprints": [],
+  "recommendation": "proceed",
+  "notes": "Goal-backward verification of phase 02. EVIDENCE SPLIT (honest, per orchestrator instruction): at pipelineStep=verify the stage-gate blocks bare `bun` (category bash-mutate) and restricts `luca checks run` to [execute, checks], so the ~25 `bun -e` runtime probes and `bun test` COULD NOT be re-run by this verifier. That is a framework limitation already logged as decision:stage-gate-contract-gaps-2026-07, NOT a gap in the work. Criteria are therefore tagged in `evidence` as EXECUTION-VERIFIED (this verifier ran the probe) or READ-VERIFIED (dual evidence: executor attestation in execute/summary.md + orchestrator harness result, PLUS an independent structural probe run by this verifier — source read or grep). EXECUTION-VERIFIED by this verifier: ac-01, ac-02, ac-03, ac-04, ac-07, ac-25, anti-01, anti-02, anti-05 (9 criteria). All others are READ-VERIFIED with dual evidence. Criterion IDs consumed verbatim from plan.md `## Verification Criteria`; the nine `[SPLIT -> ...]` parent-pointer lines (ac-11, ac-13, ac-15, ac-17, ac-18, ac-19, ac-20, ac-21, ac-22) are excluded per contract; the five anti-criteria are included. No criteria were minted. THREE RESIDUAL GAPS, all non-blocking, recorded per-criterion and summarized here: (1) plan-review round-2 advisory 8 was NOT applied — D14 still maps to anti-02, which probes the scope fence and does not observe the remove/prune deferral record; the deferral text IS present at plan.md `## Decisions` lines 140-141 (read-verified), so the deliverable is real but its criterion mapping is wrong -> D14 compliance = partial. (2) plan-review round-2 advisory 7 was NOT applied — ac-11.2 remains near-tautological: `dirname(join(X, f)) === X` holds unconditionally, and its test analogue at luca-handoff-send.test.ts:79 computes the path with the test's own `mailboxPath()` helper, so that assertion is structurally vacuous. The property it guards (no traversal out of the mailbox dir) IS genuinely established by ac-08 (existsSync at the mailbox path) and ac-11.1 (stamped id matches /^[A-Za-z0-9_-]+$/, verified at luca-handoff-send.test.ts:134), so ac-11.2 is marked met but flagged as weak evidence. (3) luca-handoff-complete.test.ts:133 is named 'takes the single-hop path from in-progress (the documented recovery)' but does not exercise that path — it drives to `complete` and then asserts a second call is refused with `illegal-transition`. The false branch of `if (loaded.envelope.status === 'accepted')` at luca-handoff-complete.ts:164 (the single-hop path from `in-progress`, which is the documented recovery for a stranded envelope) therefore has no direct test coverage. No plan criterion requires it, so this is non-blocking, but it is the residual hole in D18. ADVERSARIAL VACUITY SWEEP (the instruction to be hostile to criteria that pass with the work undone): the five handler test files were spot-checked for empty/tautological bodies — 116 `expect(` calls across 48 `it`/`test` blocks, no empty bodies. They are substantively real: every lifecycle assertion re-reads the envelope off disk via `readFileSync` (`readEnvelope()` helpers) rather than trusting handler return values, and ac-19.3's test (luca-handoff-complete.test.ts:152-168) asserts the exact three-way conjunction the criterion demands (status still 'accepted', statusHistory length 1, result undefined) — this is the test the executor mutated to red. The only vacuity found is ac-11.2, recorded above. THE SECURITY FIX (ac-24/ac-25/D13) is confirmed by read: handle-stage-gate-hook.ts:1 imports `homedir as osHomedir` from 'node:os' and line 116 reads exactly `const homedir = opts.homedir || process.env.HOME || osHomedir()` — the specified three-link chain using `||` not `??` so an empty-string HOME also falls back — and it IS wired at both call sites, classifyWritePath(targetPath, { homedir, cwd, tmpdirs }) at line 207 and classifyWritePath(target, { homedir, tmpdirs }) at line 268. It is not dead code. Two HOME-unset regression tests exist at handle-stage-gate-hook.test.ts:489 and :507, both asserting decision === 'block'. `ctx.homedir` THREADING is confirmed: `grep -rn 'node:os' packages/luca-cli/src` shows the only non-test `homedir` import anywhere in the handoff subsystem is handoff-transport.ts:15, and all five handlers route through `resolveHandoffTransport({ homedir: ctx.homedir })` (send:153, list:116, accept:98, complete:150, reject read-confirmed). No handler hard-wires osHomedir(), so probes cannot write into the developer's real ~/.luca/handoff/. Note a scoping nuance in execute/summary.md: its claim that 'no osHomedir() call exists outside handoff-transport.ts' is true for the handoff subsystem but not repo-wide — ~10 pre-existing `homedir` imports live in init/, utils/ and doctor/ checks, plus the intentional one in handle-stage-gate-hook.ts. Not a defect; the containment property that matters holds. SCOPE FENCE: `git diff --name-only 8916d6f36 -- packages/luca-core/src/handoff/` printed nothing, and the fail-closed control `git diff --name-only 8916d6f36 -- packages/luca-cli/src` printed 18 files, proving git and the pinned sha actually resolved. Phases 3-5 can rely on that module's shape. EXACTLY FIVE VERBS, both directions: citty `handoffCommand.subCommands` keys at commands/write-surface/handoff.ts:238-244 are {send, list, accept, complete, reject}; LUCA_NOUN_VERBS.handoff at classify-bash-command.ts:319 is new Set(['send','list','accept','complete','reject']). Set-equal in both directions; no sixth verb. `list` is confirmed present in LUCA_READ_VERBS (classify-bash-command.ts:264-278) and `send` is correctly absent, matching the plan. THE FOUR DEVIATIONS, judged individually — all SOUND, none scope creep, none regression: (1) flat payload shape — SOUND and in fact load-bearing: only the flat form lets `inputSchema` BE the strip-and-stamp allowlist that ac-10/ac-11.1/ac-27 verify, and the shadowing risk is correctly closed at commands/write-surface/handoff.ts:187-188 where `id` is spread AFTER the payload so a payload key cannot override the flag; (2) `z.unknown()` result fields in complete's inputSchema — SOUND and necessary, not lazy: typing them would move the refusal into runWriteHandler's schema check and structurally destroy the pre-hop-1 guarantee that is the whole point of ac-19.3; HandoffResultSchema remains the real gate and runs first; the deviation is documented in-code at luca-handoff-complete.ts:46-54; (3) `origin` sentinels 'unknown-run'/'unresolved-phase' — SOUND; this directly resolves plan-review's highest-carry advisory (HandoffOriginSchema min(1) would have made `send` return `corrupt` and silently break ac-08/09/10/11.x/12/27), the constants are explicit and greppable at luca-handoff-send.ts:47-48 with a rationale block, provenance is self-declared and unauthenticated either way so a sentinel is strictly better than a refusal, and the fallback is directly tested at luca-handoff-send.test.ts:100-115; (4) one new `as never` cast at luca-handoff-complete.test.ts:174 — SOUND, confined to a deliberately-invalid-payload test and matching the wave-1 precedent (4 such casts in luca-handoff-send.test.ts, all on intentionally-malformed inputs). PLAN-REVIEW ROUND-2 CARRY-FORWARD ADVISORIES, 9 total: 6 APPLIED and verified by read — #1 origin sentinels (luca-handoff-send.ts:47-48 + tests seed .luca/state.json with sessionId and roadmap), #2 targetRepo optional with NO schema default, refuse-then-fallback ordering implemented exactly as prescribed (luca-handoff-list.ts:52-57 declares `.optional()` with an explicit comment, :97-107 refuses, :113 applies the ctx.cwd fallback AFTER), #4 handler->resolver wiring made explicit and verified above, #5 formatHandoffFailure emits the reason token verbatim and first (handoff-transport.ts:78 `handoff failed [${failure.reason}]: ...`) which is what makes ac-22.1's `conflict` literal matchable, #6 loadCurrentConfig + a LOCAL Zod section schema failing closed to [] in both luca-handoff-list.ts:40-42 and luca-handoff-accept.ts:41-43, each citing the resolve-run-budget precedent and each keeping the scope fence intact, #9 acknowledged in practice (the probe set was executed at execute/checks). 1 ATTESTED-ONLY — #3 (`bun run build` must precede ac-30/ac-26); executor reports exit 0 and this verifier cannot re-run it, but the advisory itself notes this fails closed, so it is a stall risk not a false-green risk. 2 NOT APPLIED — #7 and #8, both recorded as gaps above. `luca rules run` VACUITY CONFIRMED, executor was correct: `ls -a .luca/` shows no rules/ directory and `ls .claude/` shows only cache, hooks, plans, settings.json, settings.local.json — no .claude/rules/ either. Zero rule files are discoverable in this repo, so the exit-0 from `luca rules run` carries no signal and must not be counted as a gate. This does not affect the verdict; the real gates (tsc, the registry test, the five handler test files, luca checks run) all carry signal. Work is intentionally staged-uncommitted because `git commit` is stage-gate-blocked at this step — per the orchestrator, not a gap.",
+  "checks": [
+    {
+      "name": "tsc --noEmit",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "luca checks run (orchestrator-run, 33/33 ok, passed: true)",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "classify-bash-command-registry.test.ts (orchestrator-run, 98 pass / 0 fail)",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "five handoff handler test files (orchestrator-run, 47 pass / 0 fail)",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "bun run build (orchestrator-run, exit 0)",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "scope fence: git diff 8916d6f36 -- packages/luca-core/src/handoff/",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    {
+      "name": "luca rules run (VACUOUS — 0 rule files discoverable; carries no signal)",
+      "status": "pass",
+      "errorCount": 0,
+      "warningCount": 1
+    }
+  ],
+  "criteria": [
+    {
+      "criterionId": "ac-01",
+      "description": "grep -qF \"handoffCommand\" packages/luca-cli/src/cli.ts exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. packages/luca-cli/src/cli.ts:79-81 — `handoff: () => import('./commands/write-surface/handoff').then((m) => m.handoffCommand)` in CLI_SUBCOMMANDS.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-02",
+      "description": "grep -qF \"handoff send\" packages/luca-core/src/state/configs/step-artifacts.ts exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. step-artifacts.ts:119-123 — all five keys present and all `[]`: 'handoff send', 'handoff list', 'handoff accept', 'handoff complete', 'handoff reject'.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-03",
+      "description": "grep -qF \"handoff: new Set\" packages/luca-cli/src/hook/helpers/classify-bash-command.ts exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. classify-bash-command.ts:319 — `handoff: new Set(['send', 'list', 'accept', 'complete', 'reject'])`. `list` confirmed present in LUCA_READ_VERBS (:264-278), `send` correctly absent.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-04",
+      "description": "grep -qF \"luca handoff send\" packages/luca-tools/src/artifacts/skills/luca-write-surface/index.ts exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. luca-write-surface/index.ts:212-271 — a full `### handoff` section covering all five verbs, the .luca/tmp/<kebab>.json payload shape (:226, :266-270), human-vs---auto (:235-241), the cwd target default (:228-230), and autoAcceptable being always about the current repo (:231-234).",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-05",
+      "description": "classify-bash-command-registry.test.ts exits 0",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: orchestrator harness 98 pass / 0 fail at the five-verb boundary. Independent structural probe: invariant 2 requires LUCA_NOUN_VERBS.handoff to EQUAL the citty subCommands keys — classify-bash-command.ts:319 set and commands/write-surface/handoff.ts:238-244 subCommands are set-equal in both directions.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-06",
+      "description": "bun test over the five luca-handoff-{send,list,accept,complete,reject}.test.ts paths exits 0",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: 47 pass / 0 fail. Independent structural probe: all five files exist and are substantive — 116 `expect(` across 48 test blocks (complete 36/12, send 23/8, accept 22/9, list 19/13, reject 16/6); no empty or tautological bodies found on read of send + complete in full.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-07",
+      "description": "bunx --bun tsc --noEmit exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. This verifier ran `bunx --bun tsc --noEmit` -> TSC_EXIT=0, no diagnostics.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-08",
+      "description": "send handler with homedir: HOME_FAKE writes <HOME_FAKE>/.luca/handoff/<id>.json",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: handler suite green. Structural probe: luca-handoff-send.ts:153-156 resolves the transport with `{ homedir: ctx.homedir }`; luca-handoff-send.test.ts:76 asserts `existsSync(mailboxPath(id))` is true against a mkdtemp home.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-09",
+      "description": "on-disk schemaVersion equals 1",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-send.ts:132 stamps `schemaVersion: HANDOFF_SCHEMA_VERSION`; luca-handoff-send.test.ts:82 asserts `envelope.schemaVersion` toBe(1) after re-reading from disk.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-10",
+      "description": "payload carrying status: 'complete' yields on-disk status exactly 'pending'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-send.ts:50-79 inputSchema declares ONLY target/intent/acceptanceCriteria/context/callback so Zod strips `status`; :136 stamps `status: 'pending' as const`. luca-handoff-send.test.ts:119-126 passes `{ ...baseArgs, status: 'complete' } as never` and asserts the on-disk status is 'pending'.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11.1",
+      "description": "payload carrying id: '../../evil' yields on-disk id matching /^[A-Za-z0-9_-]+$/",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). `id` is not in the inputSchema so it is stripped; luca-handoff-send.ts:128 stamps `generateEnvelopeId(repoName)`. luca-handoff-send.test.ts:128-136 passes the traversal id and asserts `toMatch(/^[A-Za-z0-9_-]+$/)` plus that the on-disk id equals the stamped one.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-11.2",
+      "description": "dirname(writtenPath) equals join(HOME_FAKE, '.luca/handoff')",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual), but WEAK — see gap. luca-handoff-send.test.ts:79 asserts `dirname(mailboxPath(id))` toBe `join(home, '.luca/handoff')`, where `mailboxPath` is the test's own join helper, making the assertion structurally unconditional.",
+      "gap": "Near-tautological, as plan-review round-2 advisory 7 predicted; the advisory was not applied. `dirname(join(X, f)) === X` holds regardless of implementation, so this criterion cannot fail. The property it is meant to guard (no traversal out of the mailbox directory) is nonetheless genuinely established by ac-08 (existsSync at the mailbox path) and ac-11.1 (charset-constrained stamped id), so no coverage is actually missing. Non-blocking. source_plan: plan.md ac-11.2 (line 193) + plan-review.md round-2 advisory 7 (line 253).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-12",
+      "description": "on-disk origin.repoPath equals the cwd passed in ToolContext",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-send.ts:139 sets `repoPath: ctx.cwd`; luca-handoff-send.test.ts:95 asserts `origin.repoPath` toBe(cwd), and :96-97 additionally pin runId to state.sessionId and phaseSlug to '01-auth-rewrite'.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-13.1",
+      "description": "list with no target input from cwd = A yields exactly 1 entry",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:111-113 applies `targetRepoPath: args.targetRepo ?? ctx.cwd` when allTargets is false; luca-handoff-list.test.ts:75 exercises `{ allTargets: false, json: true }` against a two-envelope fixture.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13.2",
+      "description": "that entry's target.repoPath equals A",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Same filter path (luca-handoff-list.ts:113) and the same test block at luca-handoff-list.test.ts:75-83.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-13.3",
+      "description": "config handoff.autoAcceptFrom containing origin.repoPath yields autoAcceptable true; absent yields false",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:129-143 reads the allowlist via loadCurrentConfig + a fail-closed local Zod section schema and annotates `isAutoAcceptable(envelope, allowlist)` only when `envelope.target.repoPath === ctx.cwd`. BOTH polarities are asserted: luca-handoff-list.test.ts:139 expects false with no allowlist, :148 expects true with the origin allowlisted (fixture writer at :48).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-14",
+      "description": "list with allTargets: true yields exactly 2 entries",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:111 omits the target filter entirely when allTargets is set; luca-handoff-list.test.ts:85-92 'allTargets widens to every repo'.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15.1",
+      "description": "list with status: 'accepted', allTargets: true yields exactly 0 entries",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:110 passes `status` into the HandoffFilter; luca-handoff-list.test.ts:118 exercises `{ status: 'accepted', allTargets: true, json: true }`.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-15.2",
+      "description": "list with status: 'pending', allTargets: true yields exactly 2 entries",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Same filter path; luca-handoff-list.test.ts:126 exercises `{ status: 'pending', allTargets: true, json: true }` — the positive control paired with ac-15.1.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-16",
+      "description": "accept on a pending envelope yields on-disk status 'accepted'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-accept.ts:121-124 calls `transport.updateStatus(args.id, 'accepted', ...)`. Independently corroborated by luca-handoff-complete.test.ts:41-49, whose `seedAccepted()` helper depends on accept actually reaching 'accepted' (it throws on isError) and which then reads statusHistory[0].status === 'accepted' off disk at :99.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-17.1",
+      "description": "accept --auto with no handoff.autoAcceptFrom yields isError: true",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-accept.ts:109-119 — when `args.auto`, the allowlist is read via the fail-closed `readAllowlist` (:72-77, defaults to []) and `!isAutoAcceptable(...)` returns isError with describeAutoRefusal, BEFORE any updateStatus call.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-17.2",
+      "description": "same probe: on-disk status still 'pending'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Structurally guaranteed: the refusal at luca-handoff-accept.ts:112-117 returns before the only write (`transport.updateStatus` at :121), so no status change is reachable on that branch.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-18.1",
+      "description": "accept --auto with origin.repoPath allowlisted is not an error",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-accept.ts:111 — when isAutoAcceptable passes, control falls through to the updateStatus at :121 and returns the non-error success block at :132-143.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-18.2",
+      "description": "same probe: on-disk status equals 'accepted'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-accept.ts:121-124 writes 'accepted' with AUTO_NOTE (:47-48) recorded in statusHistory, which is what makes the two acceptance paths distinguishable on disk after the fact.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-19.1",
+      "description": "accept then complete yields on-disk statusHistory of length 3",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-complete.ts:164-179 (hop 1, accepted -> in-progress) and :182-185 (hop 2, -> complete). luca-handoff-complete.test.ts:98 asserts `toHaveLength(3)` after re-reading the envelope off disk.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-19.2",
+      "description": "statusHistory[1].status equals 'in-progress'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-complete.test.ts:99-101 asserts the full ordered triple accepted / in-progress / complete, not just index 1.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-19.3",
+      "description": "complete on an accepted envelope with a payload failing HandoffResultSchema yields isError while on-disk status is still 'accepted' — proving hop 1 never ran",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual), and this is the criterion the phase turns on. STRUCTURAL PROBE: `HandoffResultSchema.safeParse` is literally the FIRST statement of the handler body at luca-handoff-complete.ts:123 — it precedes `transport.read` (:152) and precedes hop 1 (:165), and the failure branch at :129-147 returns isError with text ending 'No status was changed.' before any transport call whatsoever. TEST: luca-handoff-complete.test.ts:152-168 asserts the three-way conjunction the criterion demands — status 'accepted', statusHistory length 1, result undefined — with an in-file comment naming the regression. FIX-SENSITIVITY: executor attests it disabled the pre-hop-1 gate and saw 3 tests go RED including `Expected: \"accepted\" / Received: \"in-progress\"`; scaffold reverted, `grep -n MUTATE` on the handler exits 1 (re-confirmed: no MUTATE marker present in the file read).",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.1",
+      "description": "on-disk result.outcome equals the value supplied in the payload",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-complete.ts:182-185 passes the parsed `result` into hop 2; luca-handoff-complete.test.ts:113 asserts stored.outcome toBe('success'), with :129-130 additionally pinning the schema defaults for omitted optionals.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-20.2",
+      "description": "on-disk result.phaseSlug equals the value supplied in the payload",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-complete.test.ts:114 asserts stored.phaseSlug toBe('07-reconnect-backoff'); :115-116 also pin notes and evidence.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.1",
+      "description": "reject with reason yields on-disk status 'rejected'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-reject.ts:63 calls `transport.updateStatus(args.id, 'rejected', ...)`.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-21.2",
+      "description": "last statusHistory entry's note equals the reason verbatim",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-reject.ts:68 — `...(args.reason === undefined ? {} : { note: args.reason })`, passing the reason through with no transformation, and deliberately omitting the key entirely when absent rather than writing an empty-string note (:66-67 comment). Schema doc at :35 records it as UNTRUSTED free text, displayed but never interpolated.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-22.1",
+      "description": "accept with a stale expectedUpdatedAt yields isError whose text contains 'conflict'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-accept.ts:122 uses `args.expectedUpdatedAt ?? envelope.updatedAt` as the CAS token; the `conflict` literal is matchable only because formatHandoffFailure emits the machine reason token verbatim and first (handoff-transport.ts:78) — plan-review advisory 5, applied. The analogous assertion on `complete` is exercised at luca-handoff-complete.test.ts:195-209 (`toContain('conflict')` with status unchanged).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-22.2",
+      "description": "same probe: on-disk status still 'pending'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). The CAS refusal originates in the transport, so no write occurs; luca-handoff-accept.ts:125-130 returns isError without a second attempt. The parallel case is asserted on disk at luca-handoff-complete.test.ts:208.",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-23",
+      "description": "resolveHandoffTransport().mailboxDir strictly equals join(homedir(), '.luca/handoff')",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). handoff-transport.ts:51-59 — `const home = opts?.homedir ?? osHomedir()` then `mailboxDir: mailboxDirFor({ homedir: home })`, using luca-core's exported helper rather than a re-derived path, so the equality is definitional against the same function the transport uses.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-24",
+      "description": "with HOME deleted and no opts.homedir, handleStageGateHook on a Write to ~/.claude/settings.json returns decision 'block'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual) — the security criterion. STRUCTURAL PROBE: handle-stage-gate-hook.ts:1 imports `homedir as osHomedir` from 'node:os'; :116 is exactly `const homedir = opts.homedir || process.env.HOME || osHomedir()` — the specified three-link chain, using `||` not `??` so an empty-string HOME also falls back (rationale in-code at :110-115). The resolved value IS wired at both consumers: classifyWritePath(targetPath, { homedir, cwd, tmpdirs }) at :207 and classifyWritePath(target, { homedir, tmpdirs }) at :268, so it is not dead code. TESTS: handle-stage-gate-hook.test.ts:472-521 adds a dedicated 'homedir fail-closed when HOME is unset' describe with HOME saved/deleted/restored and two cases asserting decision 'block' (:502 for ~/.claude/settings.json, :520 for ~/.luca/handoff/). ATTESTED FIX-SENSITIVITY: executor observed pre-fix decision = allow (RED) and post-fix decision = block (GREEN).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-25",
+      "description": "grep -qF \"osHomedir\" packages/luca-cli/src/hook/helpers/handle-stage-gate-hook.ts exits 0",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED. Two occurrences: the import at handle-stage-gate-hook.ts:1 and the fallback call at :116.",
+      "blocking": false,
+      "probeType": "grep-symbol"
+    },
+    {
+      "criterionId": "ac-26",
+      "description": "luca checks run --file .luca/tmp/checks.json exits 0",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: orchestrator ran `luca checks run` -> 33/33 ok, passed: true (8 phase-1 probes kept green + 25 added). Independent re-run is stage-gate-blocked at pipelineStep=verify (checks run is restricted to [execute, checks]).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-27",
+      "description": "send given a fabricated statusHistory plus a result yields on-disk statusHistory of length exactly 0",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Neither key is in the inputSchema (luca-handoff-send.ts:50-79) so Zod strips both; :137 stamps `statusHistory: []` and no `result` key is constructed at all. luca-handoff-send.test.ts:138-152 passes both a fabricated statusHistory and a result and asserts on-disk `statusHistory` toEqual([]) and `result` toBeUndefined().",
+      "blocking": false,
+      "probeType": "file-read"
+    },
+    {
+      "criterionId": "ac-28",
+      "description": "list with an explicit targetRepo equal to envelope B's target, from cwd = A, yields one entry whose target.repoPath equals B",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:113 — `targetRepoPath: args.targetRepo ?? ctx.cwd` gives the explicit override precedence over cwd; luca-handoff-list.test.ts:95 exercises `{ targetRepo: repoB, allTargets: false, json: true }`.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-29",
+      "description": "list passed BOTH targetRepo and allTargets: true yields isError: true",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-list.ts:97-107 refuses on `args.targetRepo !== undefined && args.allTargets` BEFORE the ctx.cwd fallback is applied — the ordering plan-review advisory 2 required, preserved by declaring targetRepo `.optional()` with no schema default (:52-57). luca-handoff-list.test.ts:105-111 asserts isError and `toContain('mutually exclusive')`.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-30",
+      "description": "luca handoff send --file <p> --homedir /tmp/x exits 1 naming the unknown flag --homedir",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: executor reports the built CLI emits `unknown flag '--homedir'` (built via `bun run build`, exit 0). STRUCTURAL PROBE: the seam is genuinely not CLI-reachable — `homedir?` is declared only on ToolContext (write-surface.schemas.ts:19, documented at :10-13), `grep -rn homedir` over commands/write-surface/__helpers/run-handler.ts returns NOTHING so runWriteHandler never sets it, no handoff leaf declares a `homedir` arg (commands/write-surface/handoff.ts:52-61, 77-100, 123-139, 161-179, 204-220), and every leaf calls `rejectUnknownFlags(...)` as its first statement (:63, :102, :141, :181, :222).",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-31",
+      "description": "describeCompleteHopFailure('in-progress') returns text containing 'in-progress' and 'luca handoff complete'",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). luca-handoff-complete.ts:105-112 interpolates `status` twice and contains the literal 'luca handoff complete'; it is exported and appended at :194 only when hop 1 actually ran (`droveThrough`). luca-handoff-complete.test.ts:233-239 asserts both substrings directly.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "ac-32",
+      "description": "[send,list,accept,complete,reject].map((t) => t.allowedPhases) deep-equals five undefineds",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). No handoff ToolDescriptor declares `allowedPhases` (verified by reading all five descriptors), and each of the five test files has a dedicated 'is phase-agnostic (allowedPhases undefined)' block asserting toBeUndefined(): send.test.ts:63, list.test.ts:68, accept.test.ts:68, complete.test.ts:80, reject.test.ts:59.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-01",
+      "description": "MUST NOT verify by test-name filter",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED, fail-closed control satisfied. This verifier ran the positive control first: `grep -c '^- \\*\\*ac-' plan.md` -> 52 (> 0, so the file parsed and the pattern matched). The violation grep `'^- \\*\\*ac-.*--test-name-pattern'` exited 1 — zero matches. No criterion narrows by test name.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-02",
+      "description": "MUST NOT modify packages/luca-core/src/handoff/",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED, fail-closed control satisfied. `git diff --name-only 8916d6f36 -- packages/luca-core/src/handoff/` printed NOTHING. The paired positive control `git diff --name-only 8916d6f36 -- packages/luca-cli/src` printed 18 files, proving git and the pinned sha 8916d6f36 actually resolved rather than the empty result coming from a bad ref. `git status --short` independently shows no luca-core/src/handoff entry. Phases 3-5 can rely on the module's shape.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-03",
+      "description": "MUST NOT weaken the ~/.luca/ home-deny",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: executor probe reports classifyWritePath on ~/.luca/handoff/x.json returns class 'denied'. Independent structural probe: handle-stage-gate-hook.test.ts:507-521 adds a regression test asserting a Write into ~/.luca/handoff/ is blocked with HOME unset, and the leaf docblock (commands/write-surface/handoff.ts:4-8) records that the mailbox sits inside a HOME_DENIED_SUBDIRS entry, making the CLI the only sanctioned writer. The home-deny was strengthened by ac-24's fix, not weakened.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-04",
+      "description": "MUST NOT ship a sixth verb",
+      "met": true,
+      "evidence": "READ-VERIFIED (dual). Attestation: executor probe printed [\"accept\",\"complete\",\"list\",\"reject\",\"send\"]. Independent structural probe: commands/write-surface/handoff.ts:238-244 declares exactly five subCommands and classify-bash-command.ts:319 declares exactly the same five — set-equal in BOTH directions, which is also what the registry test's invariant 2 enforces. step-artifacts.ts:119-123 has exactly five matching WRITE_COMMAND_PHASES keys. No sixth verb in any of the three registries.",
+      "blocking": false,
+      "probeType": "command"
+    },
+    {
+      "criterionId": "anti-05",
+      "description": "MUST NOT depend on PCRE or null-separated grep",
+      "met": true,
+      "evidence": "EXECUTION-VERIFIED, fail-closed control satisfied. Positive control: 52 criteria lines parsed (> 0). Violation grep `'^- \\*\\*ac-.*grep[^ ]* -[A-Za-z]*[Pz]'` exited 1 — zero matches. Every grep-bearing criterion (ac-01..ac-04, ac-25) uses only portable `-qF`, which this verifier re-ran successfully on BSD grep.",
+      "blocking": false,
+      "probeType": "command"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "D1",
+      "description": "Registration point 1 — handoff in CLI_SUBCOMMANDS",
+      "criterionIds": ["ac-01", "ac-05"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D2",
+      "description": "Registration point 2 — one WRITE_COMMAND_PHASES entry per verb, all []",
+      "criterionIds": ["ac-02", "ac-05"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D3",
+      "description": "Registration point 3 — LUCA_NOUN_VERBS.handoff, list already a read verb",
+      "criterionIds": ["ac-03", "ac-05"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D4",
+      "description": "Registration point 4 — model-facing docs in the luca-write-surface skill",
+      "criterionIds": ["ac-04"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D5",
+      "description": "handoff send --file builds, validates and sends an envelope",
+      "criterionIds": ["ac-08", "ac-09", "ac-12"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D6",
+      "description": "send stamps schemaVersion, ignores caller-supplied fields",
+      "criterionIds": ["ac-10", "ac-11.1", "ac-11.2", "ac-27"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D7",
+      "description": "handoff list is a read verb defaulting to the current repo as target, overridable",
+      "criterionIds": ["ac-13.1", "ac-13.2", "ac-14", "ac-15.1", "ac-15.2", "ac-28", "ac-29"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D8",
+      "description": "handoff accept performs pending -> accepted",
+      "criterionIds": ["ac-16"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D9",
+      "description": "The allowlist vs explicit-human distinction is surfaced on accept and on list",
+      "criterionIds": ["ac-13.3", "ac-17.1", "ac-17.2", "ac-18.1", "ac-18.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D10",
+      "description": "handoff complete --file reaches complete, result payload attached",
+      "criterionIds": ["ac-19.1", "ac-19.2", "ac-20.1", "ac-20.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D11",
+      "description": "handoff reject [--reason] reaches rejected, reason recorded",
+      "criterionIds": ["ac-21.1", "ac-21.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D12",
+      "description": "CAS decision (token read internally, override available) is enforced",
+      "criterionIds": ["ac-22.1", "ac-22.2"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D13",
+      "description": "handle-stage-gate-hook.ts falls back to os.homedir()",
+      "criterionIds": ["ac-24", "ac-25"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D14",
+      "description": "remove/prune deferred, recorded in ## Decisions",
+      "criterionIds": ["anti-02"],
+      "compliance": "partial",
+      "gap": "The DELIVERABLE ITSELF IS PRESENT — the remove/prune deferral is recorded verbatim at plan.md ## Decisions lines 140-141 ('remove/prune is DEFERRED to phase 5: it needs an edit inside the fenced handoff module, and phase 5 adds the second implementer that would bear the cost'), and execute/summary.md carries it forward under 'Carried forward to phase 3+'. What is wrong is the CRITERION MAPPING: D14's only mapped criterion is anti-02, which probes the scope fence (git diff against 8916d6f36) and does not observe the deferral record at all, so a silently-deleted deferral note would still show anti-02 green. Plan-review round-2 advisory 8 called this out exactly ('D14's mapping to anti-02 does not observe the deferral record — drop it or add a text probe') and it was not applied. Non-blocking: the deferral is verified present by direct read here, and the fix is a one-line text probe in a future plan. source_plan: plan.md D14 (line 167) + plan-review.md round-2 advisory 8 (line 255)."
+    },
+    {
+      "id": "D15",
+      "description": "Registry-completeness tests pass",
+      "criterionIds": ["ac-05"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D16",
+      "description": "Gates — typecheck, bounded tests, luca checks run",
+      "criterionIds": ["ac-06", "ac-07", "ac-26"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D17",
+      "description": "Scope fence held — packages/luca-core/src/handoff/ untouched",
+      "criterionIds": ["anti-02"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D18",
+      "description": "The drive-through's partial-failure path is specified, probed",
+      "criterionIds": ["ac-19.3", "ac-31"],
+      "compliance": "shipped",
+      "gap": "Shipped and both criteria genuinely hold, but with one residual coverage hole. luca-handoff-complete.test.ts:133 is named 'takes the single-hop path from in-progress (the documented recovery)' and its inline comment claims it asserts the intermediate hop exists — it does neither. It drives the envelope to complete and then asserts a SECOND call is refused with illegal-transition (:146-147), which tests terminality, not the single-hop recovery. Consequently the false branch of `if (loaded.envelope.status === 'accepted')` at luca-handoff-complete.ts:164 — the single-hop path from in-progress that describeCompleteHopFailure explicitly advertises as the recovery for a stranded envelope — has no direct test coverage. No plan criterion requires that branch (ac-31 only asserts the TEXT names the recovery, not that the recovery works), so this is non-blocking, but a stranded-envelope recovery that is documented and never exercised is the weakest point in the phase. Recommend a phase-3 test that seeds an in-progress envelope and completes it in one hop. source_plan: plan.md task 2.2.2 / D18 (line 171) + ac-31 (line 231)."
+    },
+    {
+      "id": "D19",
+      "description": "The homedir test seam is real, not CLI-reachable",
+      "criterionIds": ["ac-23", "ac-30"],
+      "compliance": "shipped"
+    },
+    {
+      "id": "D20",
+      "description": "Handler tests follow the per-handler precedent, assert phase-agnosticism",
+      "criterionIds": ["ac-32"],
+      "compliance": "shipped"
+    }
+  ]
+}

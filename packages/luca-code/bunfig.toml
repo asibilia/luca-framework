@@ -1,0 +1,6 @@
+# luca-code — Bun configuration.
+# Root bunfig.toml owns install policy (minimumReleaseAge, blockExoticSubdeps).
+# This file only scopes test discovery to the package.
+
+[test]
+# bun test discovers *.test.ts under src/ and test/ by default.

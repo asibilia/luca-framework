@@ -12,7 +12,7 @@
  *   - antiSycophancy: true — reviewers must cite specific evidence
  *     for any APPROVAL. Bare approvals are a known failure mode for
  *     plan reviewers.
- *   - telemetry hooks: `subagent-start`, `subagent-end` — the
+ *   - telemetry: none. The retired `subagent-start`/`-end` hooks were the
  *     plan-reviewer subagent emits start/end events on its own
  *     iteration boundary so the orchestrator can track convergence
  *     loops in the durable telemetry log.
@@ -34,7 +34,6 @@ export const planReviewerSubagent = defineSubagent({
         selfVerify: true,
         antiSycophancy: true,
     },
-    telemetryHooks: ['subagent-start', 'subagent-end'],
     gotchas: [
         'You have no write to pipeline state and no Task-spawn — return findings in the STATUS/GAPS format; the orchestrator persists the plan-review.md artifact, you never hand-write a path outside the contract.',
         'Cold isolation is the point: you receive ONLY plan files + phase context — do NOT reference execution state, prior review results, or implementation details, or the review is biased.',

@@ -1,0 +1,175 @@
+{
+    "timestamp": "2026-07-19T19:05:00.000Z",
+    "wave": 2,
+    "reviewFixIteration": 2,
+    "mode": "full",
+    "status": "PASS",
+    "score": 1.0,
+    "criteria": [
+        {
+            "criterionId": "ac-01",
+            "description": "budget: new Set(['check']) present in classify-bash-command.ts",
+            "met": true,
+            "evidence": "Re-probed post-fix: grep -cF prints 1; classify-bash-command.ts:307 with runStartedAt stamp-write comment (:302-306). Budget fix intact through review-fix wave.",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-02",
+            "description": "Exactly 3 registry consts exported (LUCA_NOUN_VERBS, LUCA_TOPLEVEL_READ, LUCA_TOPLEVEL_WRITE)",
+            "met": true,
+            "evidence": "Re-probed: grep -cE prints 3; exports at :216, :242, :276, now typed ReadonlySet<string> / Readonly<Record<string, ReadonlySet<string>>> (SF3)",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-03",
+            "description": "export const CLI_SUBCOMMANDS in cli.ts",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 1; cli.ts diff stat unchanged from base verification (pure hoist, 32 keys, satisfies SubCommandsDef)",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-04",
+            "description": "behavioral case `luca budget check` in classify-bash-command.test.ts",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 2; staged diff shows case unchanged, asserts 'luca-write'",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-05",
+            "description": "behavioral case `luca confidence read` in classify-bash-command.test.ts",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 1; test.each (read/summary/gate/render → bash-readonly) unchanged",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-06",
+            "description": "behavioral case `luca graph` in classify-bash-command.test.ts",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 2; case unchanged, asserts bash-readonly; 'graph' still in LUCA_TOPLEVEL_READ (:220)",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-07",
+            "description": "bounded bun test on classify-bash-command.test.ts exits 0",
+            "met": true,
+            "evidence": "Dual-evidence (bun test stage-gate-blocked in pipelineStep=verify): (1) iteration-2 harness re-run attestation 15/15 + coordinator-attested 167 total pass / 205 expects; (2) structural probe — every behavioral assertion re-traced against post-fix code: budget check→luca-write (:365 path, check ∉ READ_VERBS), confidence 4 verbs→bash-readonly, graph ∈ TOPLEVEL_READ→bash-readonly, statusline/start/stop → traced fallthrough (classifyLucaCommand undefined :345-352 → caller conservative bash-mutate), and the iteration-2 --version cases each traced: sole-arg `luca --version` → bash-readonly (:339-341), `luca phase --version` → known-noun/no-verb luca-write (:356-364), `luca stop --version` and `luca statusline install --version` → unregistered-noun bash-mutate. Baseline coverage preserved: 25 original blocks — 24 untouched, 1 sanctioned correction (see notes); 96 behavioral tests (93 + 3 iteration-2 blocks).",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "ac-08",
+            "description": "bounded bun test on classify-bash-command-registry.test.ts exits 0",
+            "met": true,
+            "evidence": "Dual-evidence (same substitution): (1) iteration-2 harness attestation incl. this argv, 167 total pass; (2) structural probes — registry test file UNCHANGED in iteration 2 (diff stat still 155 new lines; 0 --version references, so no stale expectations); noun arithmetic 32 CLI nouns = 16 NOUN_VERBS + 5 TOPLEVEL_READ + 7 TOPLEVEL_WRITE + 4 excluded, disjoint and complete (inv-1/inv-3); inv-2 statically verified for changed nouns (budget.ts:222-224 = {check}; confidence.ts:315-321 = {log,read,summary,render,gate}); inv-4 binding — pairwise overlap of the 3 real exported registries, expects []; test-count identity 71 registry + 96 behavioral = 167 matches attested count exactly",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "ac-09",
+            "description": "DELIBERATELY_UNCLASSIFIED present in registry test",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 4; registry.test.ts:30-41 with per-noun justification comments and do-not-grow-without-justification comment (:21-28)",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "ac-09.1",
+            "description": "[REDEFINED per review-fix MF1] exclusion set pinned to exactly {hook, statusline, start, stop} via structural probe (original single-noun {hook} pin invalidated by the security fix)",
+            "met": true,
+            "evidence": "Structural probe: sed 30,41p + quoted-literal extraction yields exactly 'hook' 'start' 'statusline' 'stop' (4 entries, no more); harness carries an equivalent bun -e parse probe requiring exactly these 4 (.luca/tmp/checks.json line 11); disjointness describe (:119-131) additionally asserts all 4 absent from every classifier set at runtime",
+            "blocking": true,
+            "probeType": "file-read"
+        },
+        {
+            "criterionId": "ac-10",
+            "description": "bunx --bun tsc --noEmit exits 0",
+            "met": true,
+            "evidence": "Re-run directly by verifier post-fix: tsc-exit=0 (also validates SF3 ReadonlySet/Readonly<Record> export typing)",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "ac-11",
+            "description": "behavioral case `luca confidence gate` in classify-bash-command.test.ts",
+            "met": true,
+            "evidence": "Re-probed: grep -cF prints 1; unchanged",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        },
+        {
+            "criterionId": "anti-01",
+            "description": "MUST NOT edit packages/luca-core",
+            "met": true,
+            "evidence": "Re-probed post-fix: git status --porcelain packages/luca-core/ empty (0 lines); fix wave stayed in packages/luca-cli",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "anti-02",
+            "description": "MUST NOT edit packages/luca-tools",
+            "met": true,
+            "evidence": "Re-probed post-fix: git status --porcelain packages/luca-tools/ empty (0 lines)",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "anti-03",
+            "description": "MUST NOT break/remove existing classifier tests (≥25 pass, 0 fail)",
+            "met": true,
+            "evidence": "25 baseline blocks: 24 byte-untouched; 1 sanctioned correction at iteration 2 — the combined '--help / --version' block's `luca phase --version → bash-readonly` expectation encoded the FALSE citty-anywhere premise (round-2 audit bypass) and was split: --help assertions preserved verbatim in the renamed block, the --version assertion moved to a dedicated test with corrected luca-write expectation + comment. No coverage removed, ≥25 blocks still passing (96 behavioral); criterion's operative clause (≥25 pass, 0 fail) satisfied per harness attestation 167/0",
+            "blocking": true,
+            "probeType": "command"
+        },
+        {
+            "criterionId": "anti-04",
+            "description": "MUST NOT register 'hook' in any classifier set",
+            "met": true,
+            "evidence": "Re-probed: grep -cF \"'hook'\" classify-bash-command.ts prints 0 (deliberate-exclusion comment block :229-241 uses backticks); registry test disjointness describe pins hook + the 3 newly excluded nouns at runtime",
+            "blocking": true,
+            "probeType": "grep-symbol"
+        }
+    ],
+    "checks": [
+        { "name": "tsc (re-run post iteration-2 fix)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "ac/anti grep + porcelain + structural probes (re-run at iteration 2)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "checks-step harness re-run (15 commands incl. redefined ac-09.1 + both suites; 167 pass / 205 expects attested)", "status": "pass", "errorCount": 0, "warningCount": 0 },
+        { "name": "luca rules run", "status": "pass", "errorCount": 0, "warningCount": 0 }
+    ],
+    "convergence": "resolved",
+    "errorFingerprints": [],
+    "recommendation": "proceed",
+    "gaps": [],
+    "notes": "REVIEW-FIX ITERATION 2 (targeted; base pass 16/16, iteration-1 pass 16/16). ITERATION-2 FIX VERIFIED SUBSTANTIVE: classifyLucaCommand's --version shortcut restricted to the sole-argument form (`rest.length === 1 && rest[0] === '--version'`, classify-bash-command.ts:339-341) with a rationale comment citing the citty 0.2.2 behavior (runCommand has no version interception). All three bypass forms traced closed: (a) `luca stop --version` — rest=['stop','--version'], sole-arg check fails, noun='stop' unregistered → undefined → conservative bash-mutate; (b) `luca --version stop` — noun resolution `rest.find(t => !t.startsWith('-'))` (:342) skips the flag and finds 'stop' regardless of position → same bash-mutate path; (c) `luca statusline install --version` — noun='statusline' unregistered → bash-mutate. Sole `luca --version` still bash-readonly (length-1 branch; pre-existing test :235-242 and new test :303-309 both assert it). `luca phase --version` correctly luca-write via the known-noun/no-verb conservative branch (:356-364). --help/-h anywhere-legs unchanged (:328-330, citty intercepts at any position). Stale-expectation sweep: grep of every --version occurrence in both test files — behavioral file has only the traced cases; registry test has zero. anti-03 nuance: 1 of 25 baseline blocks corrected (sanctioned) — the old `luca phase --version → bash-readonly` expectation encoded the false premise the audit disproved; --help coverage preserved verbatim, --version moved to a dedicated corrected test. Behavioral now 96 tests (93 + sole-arg test + launder-pin test + start|stop test); registry unchanged at 71; 96+71=167 matches attested total exactly. No regression: budget/confidence/graph registrations, TOPLEVEL_WRITE 7-entry membership, exclusion set {hook, statusline, start, stop}, anti-01/02/04 all re-probed green; tsc exit 0. --- ITERATION-1 RECORD: DOCUMENTED DEVIATION from context.md D1 (user's close-all-gaps), DOCUMENTED DEVIATION from context.md D1 (user's close-all-gaps), partially reversed for 3 nouns on security grounds with review evidence: audits/code-architect.md MUST-FIX shows the plan premise 'registering is safer than excluding' was FALSE where the command does not self-enforce phase preconditions — `stop` unconditionally calls forcePipelineUnlock (runner.ts:69; deletes .luca/lock.json, no WRITE_COMMAND_PHASES entry), `start` shares the gap plus a foreground-hang hazard, `statusline install` rewrites ~/.claude/settings.json (statusline.ts:39-62). Registering them had PROMOTED them from blocked (bash-mutate fallthrough) to allowed (luca-write) in gated phases. Fix verified WIRED: all three removed from LUCA_TOPLEVEL_WRITE (now exactly the 7 pre-phase self-enforcing entries — membership probe), absent from all three registries, so classifyLucaCommand returns undefined (:323-329) and the caller (:536-538) falls through to conservative bash-mutate — the pre-phase status quo restored. `status` remains TOPLEVEL_READ; budget/confidence/graph registrations intact (original phase goal unregressed). ac-09.1 REDEFINED (coordinator-sanctioned) from pin-to-{hook} to pin-to-{hook, statusline, start, stop}; verified by file-read structural probe + the harness's bun -e parse probe. New invariant 4 (SF1) is binding: pairwise disjointness over the real exported sets with empty-overlap assertion. Dual-evidence substitution for ac-07/ac-08/anti-03 unchanged in kind: bun test blocked as bash-mutate in pipelineStep=verify; substituted harness attestation (15/15, 164 total pass) + structural re-traces; test-count identity (71 registry + 93 behavioral = 164) independently corroborates. Scope: staged diff still confined to the same 4 packages/luca-cli files.",
+    "deliverables": [
+        {
+            "id": "D1",
+            "description": "budget classified luca-write — luca budget check unblocked in PLANNING/REVIEWING",
+            "criterionIds": ["ac-01", "ac-04", "ac-07"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D2",
+            "description": "Registry gaps + confidence verb drift closed (AMENDED at review-fix 1: statusline/start/stop moved to documented deliberate exclusions on security grounds — see notes; graph/status/confidence dispositions shipped as planned)",
+            "criterionIds": ["ac-05", "ac-06", "ac-08", "ac-11"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D3",
+            "description": "Registry-completeness test binding cli.ts to classifier, exclusion set pinned to {hook, statusline, start, stop} (redefined ac-09.1), plus invariant-4 pairwise disjointness",
+            "criterionIds": ["ac-02", "ac-03", "ac-08", "ac-09", "ac-09.1"],
+            "compliance": "shipped"
+        },
+        {
+            "id": "D4",
+            "description": "Green gates — typecheck + both bounded test files",
+            "criterionIds": ["ac-07", "ac-08", "ac-10"],
+            "compliance": "shipped"
+        }
+    ]
+}

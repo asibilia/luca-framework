@@ -1,49 +1,50 @@
 /**
  * CLI command group: `luca telemetry`
  *
- * Wires the luca-core telemetry writer to the CLI so skills and agents can
- * emit structured pipeline telemetry. Closes §3 functional gap #1 — the
- * `/luca-telemetry-report` reader skill existed but nothing wrote telemetry.
+ * The MINIMAL retained sink. General pipeline telemetry moved to LangSmith
+ * (see `init/helpers/enrich-trace-metadata.ts`, gated on `TRACE_TO_LANGSMITH`);
+ * what remains here is the recall-quality family LangSmith cannot observe, plus
+ * the slug/wave records the `trace-insights` Stage A5 join reads.
  *
  * Leaves:
- *   - `telemetry emit`    — append one record to `.luca/telemetry/<runId>.jsonl`
- *   - `telemetry new-run` — mint and print a fresh runId
+ *   - `telemetry emit` — append one `recall.*` record to
+ *     `.luca/telemetry/<runId>.jsonl`
+ *   - `telemetry kpi`  — compute artifact-derived outcome KPIs (reads no
+ *     telemetry; lives here only because the KPI module is co-located)
+ *
+ * Retired leaves: `new-run` (superseded by `luca state new-run`, which mints
+ * the same `state.sessionId`-shaped id) and `pr-outcome` (PR outcomes retired
+ * with the bulk sink).
  */
 import {
     appendTelemetry,
     computeOutcomeKpis,
-    generateRunId,
     loadCurrentState,
     stringifyError,
 } from '@alecsibilia/luca-core'
 import type { OutcomeKpis, TelemetryContext } from '@alecsibilia/luca-core'
 import { defineCommand } from 'citty'
 
-import {
-    rejectUnknownFlags,
-    runWriteHandler,
-} from './write-surface/__helpers/run-handler.ts'
-
 import { logger } from '../utils/logger.ts'
-import { lucaPrOutcomeTool } from '../write-surface/index.ts'
 
 const emitCommand = defineCommand({
     meta: {
         name: 'emit',
         description:
-            'Append one telemetry record to .luca/telemetry/<runId>.jsonl.',
+            'Append one recall.* telemetry record to ' +
+            '.luca/telemetry/<runId>.jsonl.',
     },
     args: {
         kind: {
             type: 'string',
             required: true,
             description:
-                'Event kind, e.g. phase.start, wave.end, mode.start, recall.hit.',
+                'Event kind — recall.hit, recall.miss, or recall.utilization.',
         },
         'run-id': {
             type: 'string',
             required: true,
-            description: 'Run identifier (see `luca telemetry new-run`).',
+            description: 'Run identifier (see `luca state new-run`).',
         },
         phase: { type: 'string', description: 'Phase name from the roadmap.' },
         slug: { type: 'string', description: 'Phase slug.' },
@@ -111,131 +112,13 @@ const emitCommand = defineCommand({
     },
 })
 
-const newRunCommand = defineCommand({
-    meta: {
-        name: 'new-run',
-        description: 'Mint and print a fresh telemetry run identifier.',
-    },
-    run() {
-        process.stdout.write(`${generateRunId()}\n`)
-    },
-})
-
-const prOutcomeCommand = defineCommand({
-    meta: {
-        name: 'pr-outcome',
-        description:
-            'Append a pr.outcome telemetry record to the fixed ' +
-            'pr-outcomes.jsonl log. Explicit flags only — no `gh pr view` ' +
-            'derivation. Correlates back to the pr.created run→PR map via ' +
-            'prNumber.',
-    },
-    args: {
-        'pr-number': {
-            type: 'string',
-            alias: 'pr',
-            required: true,
-            description: 'The PR number (join key to the pr.created map).',
-        },
-        result: {
-            type: 'string',
-            required: true,
-            description: 'Terminal PR outcome: merged | reverted.',
-        },
-        'review-rounds': {
-            type: 'string',
-            required: true,
-            description: 'How many review iterations the PR went through.',
-        },
-        'time-to-merge-ms': {
-            type: 'string',
-            required: true,
-            description:
-                'Wall-clock from PR open to merge/revert, in milliseconds.',
-        },
-        branch: {
-            type: 'string',
-            description: 'The feature branch the PR was opened from.',
-        },
-        issue: {
-            type: 'string',
-            description: 'The tracker issue number the PR closes.',
-        },
-        'origin-run-id': {
-            type: 'string',
-            description: "The originating session's runId, for correlation.",
-        },
-    },
-    async run({ args, rawArgs, cmd }) {
-        rejectUnknownFlags('telemetry pr-outcome', cmd, rawArgs)
-
-        // Validate --result enum value with a friendly message before the
-        // handler runs (mirrors the confidence leaf's --resolution guard).
-        if (args.result !== 'merged' && args.result !== 'reverted') {
-            logger.error(
-                `luca telemetry pr-outcome: --result must be one of: merged, reverted (got "${args.result}"). Run \`luca telemetry pr-outcome --help\` for usage.`
-            )
-            process.exitCode = 1
-            return
-        }
-
-        // Validate numeric flags up front. `Number("abc")` is NaN, which Zod's
-        // `z.number()` accepts and then serializes as `null` in the JSONL —
-        // silently corrupting telemetry and breaking the prNumber join. Reject
-        // non-numeric input with a friendly error instead.
-        const numericFlags: ReadonlyArray<
-            [flag: string, raw: string | undefined]
-        > = [
-            ['--pr-number', args['pr-number']],
-            ['--review-rounds', args['review-rounds']],
-            ['--time-to-merge-ms', args['time-to-merge-ms']],
-            ['--issue', args.issue],
-        ]
-        for (const [flag, raw] of numericFlags) {
-            if (raw !== undefined && Number.isNaN(Number(raw))) {
-                logger.error(
-                    `luca telemetry pr-outcome: ${flag} must be a number (got "${raw}"). Run \`luca telemetry pr-outcome --help\` for usage.`
-                )
-                process.exitCode = 1
-                return
-            }
-        }
-
-        const payload = {
-            prNumber:
-                args['pr-number'] !== undefined
-                    ? Number(args['pr-number'])
-                    : undefined,
-            result: args.result,
-            reviewRounds:
-                args['review-rounds'] !== undefined
-                    ? Number(args['review-rounds'])
-                    : undefined,
-            timeToMergeMs:
-                args['time-to-merge-ms'] !== undefined
-                    ? Number(args['time-to-merge-ms'])
-                    : undefined,
-            ...(args.branch !== undefined ? { branch: args.branch } : {}),
-            ...(args.issue !== undefined ? { issue: Number(args.issue) } : {}),
-            ...(args['origin-run-id'] !== undefined
-                ? { originRunId: args['origin-run-id'] }
-                : {}),
-        }
-        await runWriteHandler(
-            'telemetry pr-outcome',
-            lucaPrOutcomeTool,
-            payload
-        )
-    },
-})
-
 const kpiCommand = defineCommand({
     meta: {
         name: 'kpi',
         description:
             'Compute complexity-bucketed outcome KPIs (low-confidence ratio, ' +
-            'first-pass verify rate, mean rework iterations, re-entry rate) ' +
-            'from .luca/ artifacts. Read-only — appends no telemetry.',
+            'first-pass verify rate) from .luca/ phase artifacts. Read-only — ' +
+            'reads no telemetry and appends none.',
     },
     args: {
         json: {
@@ -278,27 +161,20 @@ function renderOutcomeKpis(kpis: OutcomeKpis): string {
             `  ${complexity.padEnd(8)} ` +
                 `lowConf=${fmtRatio(b.lowConfidenceRatio)} ` +
                 `firstPass=${fmtRatio(b.firstPassVerifyRate)} ` +
-                `rework=${b.meanReworkIterations.toFixed(2)} ` +
-                `reEntry=${fmtRatio(b.reEntryRate)} ` +
                 `n=${b.sampleSize}`
         )
     }
-    lines.push(
-        `  unattributed: ${kpis.unattributed.phases} phase(s), ` +
-            `${kpis.unattributed.records} record(s)`
-    )
+    lines.push(`  unattributed: ${kpis.unattributed.phases} phase(s)`)
     return lines.join('\n')
 }
 
 export const telemetryCommand = defineCommand({
     meta: {
         name: 'telemetry',
-        description: 'Emit Luca pipeline telemetry.',
+        description: 'Emit Luca recall-quality telemetry.',
     },
     subCommands: {
         emit: emitCommand,
-        'new-run': newRunCommand,
-        'pr-outcome': prOutcomeCommand,
         kpi: kpiCommand,
     },
 })

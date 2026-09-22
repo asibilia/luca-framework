@@ -24,6 +24,17 @@ export type { BudgetLimits } from './configs/budget-matrix.ts'
 
 // Helpers
 export { resolveBudgetLimits } from './helpers/resolve-budget-limits.ts'
+export {
+    evaluateRunBudget,
+    resolveRunBudgetOverrides,
+} from './helpers/resolve-run-budget.ts'
+export type {
+    RunBudgetVerdict,
+    RunBudgetStatus,
+    RunBudgetSignal,
+    RunBudgetDimension,
+    EvaluateRunBudgetInput,
+} from './helpers/resolve-run-budget.ts'
 export { coarsePhaseOf } from './helpers/coarse-phase-of.ts'
 export { isToolAllowed } from './helpers/is-tool-allowed.ts'
 export type { ToolCategory } from './helpers/is-tool-allowed.ts'
@@ -47,33 +58,35 @@ export {
     isLegalTransition,
 } from './configs/pipeline-transitions.ts'
 
-// Pipeline machine visualization (pure — powers the `luca graph` CLI verb)
+// Pipeline visualization (pure — powers the `luca graph` CLI verb)
 export {
     renderPipelineMermaid,
-    pipelineDefinitionJson,
     pipelineGraphEdges,
-} from './machine/graph-render.ts'
+} from './helpers/graph-render.ts'
 
-// Pipeline actor handle (DAD-P2) — opaque mirror over createActor; keeps
-// xstate out of luca-cli. The persistent runner holds this; it never writes
-// state.json (the cold decideAdvance+mutateState path does).
-export { createPipelineActorHandle } from './machine/actor-handle.ts'
+// Pipeline position mirror (DAD-P2) — plain-data view of the pipeline
+// position. The persistent runner holds this; it never writes state.json
+// (the cold decideAdvance+mutateState path does).
+export { createPipelineActorHandle } from './helpers/pipeline-position-mirror.ts'
 export type {
     PipelineActorHandle,
     PipelineActorSnapshot,
-} from './machine/actor-handle.ts'
+} from './helpers/pipeline-position-mirror.ts'
 
-// Machine verdict (XState-backed transition oracle — live write-path authority)
-export { machineVerdict } from './machine/machine-verdict.ts'
+// Fix-loop counter write-back — consumed by the `luca state advance` write path
+export { fixLoopCounterUpdate } from './helpers/fix-loop-counters.ts'
 export type {
-    MachineVerdict,
-    MachineVerdictInput,
     CounterUpdate,
-} from './machine/machine-verdict.ts'
+    FixLoopCounters,
+} from './helpers/fix-loop-counters.ts'
 
 // Fix-loop edge map (DAD-P1c) — single source of the rework edge→cap mapping
-export { REWORK_EDGE_CAPS } from './machine/actions.ts'
-export type { FixLoopCap } from './machine/actions.ts'
+export { FIX_LOOP_EDGES, REWORK_EDGE_CAPS } from './configs/fix-loop-edges.ts'
+export type {
+    FixLoopCap,
+    FixLoopCounter,
+    FixLoopEdge,
+} from './configs/fix-loop-edges.ts'
 
 // Per-step artifact map + write-command phase table (v13 plan, D3)
 export {
@@ -83,7 +96,11 @@ export {
 export type { StepArtifact } from './configs/step-artifacts.ts'
 
 // CLI invocation parsers (shared by hooks, future surfaces)
-export { parseAdvanceCommand, stripQuotes } from './cli-parse.ts'
+export {
+    parseAdvanceCommand,
+    parseAllAdvanceCommands,
+    stripQuotes,
+} from './cli-parse.ts'
 
 // Pipeline lock (inner single-flight protection for .luca/state.json)
 export {

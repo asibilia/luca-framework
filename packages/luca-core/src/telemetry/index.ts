@@ -1,22 +1,19 @@
 // Barrel exports for the telemetry domain.
-// Append-only per-run event log at `.luca/telemetry/<runId>.jsonl`.
+//
+// MINIMAL SINK. `.luca/telemetry/<runId>.jsonl` is no longer a general pipeline
+// event log — LangSmith owns that. What remains is the recall-quality family
+// (`recall.hit` / `recall.miss` / `recall.utilization`), which LangSmith cannot
+// observe, plus the slug/wave records the `trace-insights` Stage A5 join reads.
+// See `./schemas.ts` for the full rationale.
 
 export {
-    ClassifierOverrideMetaSchema,
-    FailureDumpMetaSchema,
-    OverrideSourceSchema,
-    PrOutcomeMetaSchema,
+    RecallOutcomeMetaSchema,
     RecallUtilizationMetaSchema,
-    SatisfactionSignalMetaSchema,
     TelemetryRecordSchema,
 } from './schemas.ts'
 export type {
-    ClassifierOverrideMeta,
-    FailureDumpMeta,
-    OverrideSource,
-    PrOutcomeMeta,
+    RecallOutcomeMeta,
     RecallUtilizationMeta,
-    SatisfactionSignalMeta,
     TelemetryKind,
     TelemetryRecord,
 } from './schemas.ts'
@@ -33,7 +30,9 @@ export type {
     TelemetryOverrides,
 } from './telemetry.ts'
 
-export { generateRunId } from './helpers/generate-run-id.ts'
+// `generateRunId` is NOT re-exported here: it is owned by the ledger domain
+// (`ledger/helpers/generate-run-id.ts`) because it mints `state.sessionId`.
+// Both are surfaced from the package root barrel, so importers are unaffected.
 
 export { computeOutcomeKpis } from './outcome-kpi.ts'
 export type {

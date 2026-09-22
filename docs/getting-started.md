@@ -37,6 +37,12 @@ All Luca projects have a `.luca/` directory at the root. This is where your proj
 
 - `state.json`: Workflow state — pipeline step, current phase, iteration counters.
 - `config.json`: Project configuration (MuninnDB vault, oversight defaults, complexity defaults).
+  - Optional `budget` overrides tune the always-on budget guard, overriding the per-complexity defaults:
+    - `maxWallClockMs`: run-wall-clock ceiling in milliseconds (must be a positive number).
+    - `maxToolCalls`: cap on tool invocations for the run (`0` disables this dimension).
+    - `softCostCeilingUsd`: soft cost ceiling in USD (`0` disables this dimension).
+
+    The override object fails closed as a whole: if ANY field is malformed or invalid, the ENTIRE `budget` override is discarded and every dimension reverts to the built-in per-complexity ceilings — an invalid field never disables the guard. Only `maxToolCalls` and `softCostCeilingUsd` accept `0` (meaning that dimension is disabled); `maxWallClockMs` must always be a positive number.
 - Memory is stored in **MuninnDB** (via MCP tools): brain tree for project identity, engrams for long-term learnings (patterns, decisions, pitfalls), and session engrams for active task context.
 - Backlog/todos live in **MuninnDB** (not on disk). Per-milestone snapshots export to `milestones/v<SEMVER>-backlog-snapshot.{json,md}` for portability + disaster recovery.
 - `phases/`: One directory per work phase, named `<NN-slug>` (zero-padded NN + kebab-case description).
@@ -57,7 +63,7 @@ The strict allowlist (defined in `@alecsibilia/luca-core/luca-dir`):
   - `audits/<reviewer>.md` (one per reviewer: `code-review`, `security`, `architect`, `ux`, …)
   - `verify.json`, `learn.md`
 - **`.luca/milestones/`** — versioned snapshot files (`v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`).
-- **`.luca/telemetry/<runId>.jsonl`** — per-run event logs.
+- **`.luca/telemetry/<runId>.jsonl`** — per-run MuninnDB recall-quality logs. A minimal sink: general pipeline telemetry lives in LangSmith traces and `.luca/ledger.jsonl`.
 - **`.luca/archive/<NN-slug>/`** — phase directories closed at milestone.
 
 Anything not in this allowlist is a violation. The LLM never picks a filename — the stage-gate hook computes the canonical path for the current pipeline step and allows only an exact match.

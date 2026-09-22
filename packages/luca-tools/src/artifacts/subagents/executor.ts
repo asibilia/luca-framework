@@ -19,7 +19,7 @@
  *   - selfVerify: true — re-read files before editing; verify
  *     assumptions with tool calls. Mastracode embedded this prose
  *     under "Self-Distrust Mandate"; D1 makes it auditable.
- *   - telemetry hooks: `wave-start`, `wave-end` — restored per plan
+ *   - telemetry: none. The `wave-start`/`wave-end` hooks were restored per plan
  *     §3 #1 (telemetry at phase/wave boundaries). The mastracode
  *     prose did not enforce these; the v13 rewrite dropped them
  *     entirely.
@@ -57,8 +57,8 @@ export const executorSubagent = defineSubagent({
         verticalSlice: true,
         tdd: true,
         selfVerify: true,
+        toolEconomy: true,
     },
-    telemetryHooks: ['wave-start', 'wave-end'],
     gotchas: [
         "git commit is stage-gate-blocked in EXECUTING — stage with `git add <explicit files>` only; never `git add .` or `git add -A` (sweeps concurrent executors' and pipeline-generated work into your commit).",
         'You have no MuninnDB/MCP access — do NOT attempt `mcp__muninn__*` to recall commit conventions or prior pitfalls; read `luca preferences read` (commits section) and apply the orchestrator-supplied learnings from your prompt.',

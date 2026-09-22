@@ -16,8 +16,8 @@
  *
  * P3 scope (this phase): Stage A5 — analysis-time trace ↔ Luca ledger join
  * (cwd-attributed repo + step-interval overlap; ledger mode-transition deltas
- * as the working interval source, telemetry mode.start/mode.end preferred
- * when populated) feeding proportional real-dollar cost per pipelineStep and
+ * are the interval source — the telemetry mode.start/mode.end path retired
+ * with the local sink) feeding proportional real-dollar cost per pipelineStep and
  * phase, a review-loop outlier pool rule, Stage C pipeline context, and the
  * Stage D Pipeline Attribution section with an explicit unjoined-trace tail.
  */
@@ -138,11 +138,11 @@ Extend the Stage A3 script (script-computed, zero LLM reads, same discipline as 
 
 **Checkout path validation (binding)**: the cwd-derived path is data from a remote API — before reading anything under it, validate it: the path must exist, be a directory, and contain a \`.git\` entry (a plausible git checkout). Traces attributed via \`extra.metadata.repo\` (a name, not a path) join only when that repo name maps to a path already validated via cwd attribution. Validation failures route to the \`checkout-not-local\` reason.
 
-**Interval source order**: prefer telemetry \`mode.start\`/\`mode.end\` pairs WHEN they yield ≥1 step interval for the repo; otherwise (the currently-real case — real telemetry files contain zero such records) fall back per repo to ledger \`mode-transition\` rows: consecutive-timestamp deltas, interval = [row N ts, row N+1 ts), step = the row's nested \`data.to\` value (the payload is \`data: { from, to }\`, not top-level). N mode-transition rows yield N−1 intervals: all time after the final row deterministically lands in the unjoined tail — the currently-active step is unattributed by construction. On the telemetry-sourced path the joined tuple is populated directly from the record's native \`runId\`/\`slug\`/\`wave\` fields — the degraded tuple below applies only to the ledger fallback.
+**Interval source**: ledger \`mode-transition\` rows are the sole interval source. (Telemetry \`mode.start\`/\`mode.end\` pairs were the nominal preferred source; that kind was RETIRED when the local telemetry sink was narrowed to the recall family, and real telemetry files never contained such records anyway — so the former fallback is now the only path.) Per repo: consecutive-timestamp deltas, interval = [row N ts, row N+1 ts), step = the row's nested \`data.to\` value (the payload is \`data: { from, to }\`, not top-level). N mode-transition rows yield N−1 intervals: all time after the final row deterministically lands in the unjoined tail — the currently-active step is unattributed by construction. The degraded tuple below therefore applies to every interval.
 
 **Identifier shape validation (binding)**: pipelineStep/slug/runId values read from ledger or telemetry records are not schema-enforced at read time — the A5 script validates their shape before they may be treated as nameable identifiers. pipelineStep must be one of the canonical step tokens (\`idle\`, \`triage\`, \`research\`, \`discuss\`, \`architect\`, \`plan\`, \`plan-review\`, \`execute\`, \`checks\`, \`verify\`, \`review\`, \`learn\`, \`finalize\`); phase slug must match \`^[0-9]{2}-[a-z](?:[a-z0-9-]*[a-z0-9])?$\`; runId must match \`^[A-Za-z0-9_-]+$\`. A value that fails validation is dropped from the tuple (null); if it must be surfaced at all, it is treated as a free-form detail string under the 300-character cap + secret scan — never as a safe-to-name identifier.
 
-**Degraded tuple (ledger-fallback path)**: ledger \`mode-transition\` rows carry a required \`runId\` (stamped from the session id — possibly the empty string) but no slug/wave, so the joined tuple is \`(runId: the row's runId | null when empty, pipelineStep, phase slug | null, wave: null)\`. Slug resolution order for the interval (the slug also feeds \`costByPhase\`): (1) direct lookup — the row's \`runId\` → \`.luca/telemetry/<runId>.jsonl\` → that file's \`slug\` field; (2) the nearest-in-time slug-bearing telemetry record (\`wave.start\`/\`wave.end\`, \`review.iteration\`, \`signal.satisfaction\`) within the same interval; (3) mark per-phase attribution for that interval unavailable with an explicit note in the Pipeline Attribution section — never guess a slug.
+**Degraded tuple**: ledger \`mode-transition\` rows carry a required \`runId\` (stamped from the session id — possibly the empty string) but no slug/wave, so the joined tuple is \`(runId: the row's runId | null when empty, pipelineStep, phase slug | null, wave | null)\`. Slug resolution order for the interval (the slug also feeds \`costByPhase\`): (1) direct lookup — the row's \`runId\` → \`.luca/telemetry/<runId>.jsonl\` → that file's \`slug\` field; (2) the nearest-in-time slug-bearing telemetry record within the same interval — the retained recall family (\`recall.hit\`, \`recall.miss\`, \`recall.utilization\`) stamps \`slug\`, and historical logs may also carry retired slug-bearing kinds (\`wave.start\`/\`wave.end\`, \`review.iteration\`, \`signal.satisfaction\`), which remain readable and usable for this lookup; (3) mark per-phase attribution for that interval unavailable with an explicit note in the Pipeline Attribution section — never guess a slug. **A record whose \`slug\` is \`null\` is NOT slug-bearing** — skip it and keep looking; the triage-stage recall fires before a phase is active and legitimately carries \`slug: null\`, so treating null as a hit would silently mis-key \`costByPhase\`. \`wave\` resolves from the SAME record the slug came from (the execute-stage recall stamps both); when that record carries \`wave: null\`, the tuple's wave stays null — never borrow a wave from a different record.
 
 **Cost allocation (proportional)**: allocate each joined root run's \`total_cost\` proportionally across ALL step intervals its \`[start_time, end_time)\` window overlaps, by wall-clock overlap fraction — overlap fraction = (overlap duration with that interval) ÷ (the run's total window duration), so allocations plus the unallocated tail portion always sum to exactly \`total_cost\` (conservation invariant). Window portions that fall outside every known interval go to the unjoined tail as unallocated cost under the \`joined-partial-window\` reason. A run whose window is contained in a single interval degrades exactly to full-cost-to-that-interval. Pure arithmetic, fully deterministic (real ledgers show millisecond-to-second step intervals against multi-minute turns, so start-time containment alone would systematically over-attribute cost to the prompt-time step).
 
@@ -152,7 +152,7 @@ Extend the Stage A3 script (script-computed, zero LLM reads, same discipline as 
 
 - \`costByPipelineStep\` — dollar cost per pipelineStep → Stage D Pipeline Attribution per-step table.
 - \`costByPhase\` — dollar cost per phase slug (slug per the degraded-tuple rule; intervals without a slug source are marked unavailable) → Stage D Pipeline Attribution per-phase table.
-- \`reviewIterationsVsCost\` — per-phase \`review.iteration\` count paired with that phase's joined cost → Stage D review-convergence cost trajectory; its per-phase iteration count also feeds Stage B pool rule 7.
+- \`reviewIterationsVsCost\` — per-phase review-loop count paired with that phase's joined cost → Stage D review-convergence cost trajectory; its per-phase iteration count also feeds Stage B pool rule 7. **Source (binding)**: count the run's ledger \`pipeline-re-entered\` rows whose \`data.targetMode\` is \`execute\` and whose \`data.from\` is \`review\`, falling back to \`fixloop-counted\` rows whose \`data.counterField\` is \`reviewIteration\` (take the max \`data.nextValue\`). The former \`review.iteration\` telemetry kind retired with the local sink and has no producer — never read it.
 - Joined \`(runId, pipelineStep, phase slug, wave)\` tuple (nullable fields per the degraded-tuple rule) → Stage C pipeline-context prompt block.
 
 ## Stage B — Outlier selection
@@ -165,7 +165,7 @@ Build a ranked candidate pool from the Stage A aggregates:
 4. Root runs with wall-clock > p90
 5. Traces with ≥2 compaction events in one session
 6. Traces with a loop signature (repeated-identical-tool-call runs)
-7. Traces joined (Stage A5) to a phase whose review loop exceeded 2 iterations (per-phase \`review.iteration\` count from A5) — review-loop outlier phases are where the pipeline burned convergence budget
+7. Traces joined (Stage A5) to a phase whose review loop exceeded 2 iterations (per-phase review-loop count from A5, ledger-sourced) — review-loop outlier phases are where the pipeline burned convergence budget
 
 Rank by \`(severity × cost)\` where errors rank above cost outliers at equal cost. **Dedup by session (\`thread_id\`)** — at most 2 traces per session so one pathological session cannot consume the whole budget. Truncate the pool to \`--max-deep-reads\`. Log what was dropped and why (no silent caps).
 
@@ -212,7 +212,7 @@ Error rate, error taxonomy, orphaned/pending runs.
 Compaction frequency, loop signatures, context-bloat sessions — counts with one-line examples.
 
 ### Pipeline Attribution
-Real-dollar pipeline tables from the Stage A5 join: the per-pipelineStep cost table (\`costByPipelineStep\`), the per-phase cost table (\`costByPhase\`, with an explicit "attribution unavailable" note for intervals lacking a slug source), and the review-convergence cost trajectory (\`reviewIterationsVsCost\` — joined cost vs \`review.iteration\` count per phase, flagging phases past the 2-iteration threshold). Repos where the join was skipped are listed with their skip reason from the A5 canonical reason enum.
+Real-dollar pipeline tables from the Stage A5 join: the per-pipelineStep cost table (\`costByPipelineStep\`), the per-phase cost table (\`costByPhase\`, with an explicit "attribution unavailable" note for intervals lacking a slug source), and the review-convergence cost trajectory (\`reviewIterationsVsCost\` — joined cost vs ledger-sourced review-loop count per phase, flagging phases past the 2-iteration threshold). Repos where the join was skipped are listed with their skip reason from the A5 canonical reason enum.
 
 #### Unjoined traces
 The explicit tail: count of unjoined root runs and total unallocated cost (including window portions of joined runs that fell outside every known interval), broken down by reason using the A5 canonical reason enum — no other reason list exists. Unjoined traces and unallocated cost always appear here — never silently dropped.
@@ -329,7 +329,7 @@ After the report, print one block:
 
 - LangSmith retention on the shortlived tier is ~14 days: run this at least biweekly (weekly recommended) or the tail of the window silently vanishes. \`--since auto\` + the analysis cursor (Stage F3) keep successive runs contiguous automatically. Re-runs over an overlapping window are safe — the issue fingerprint dedup absorbs repeats on the GitHub side, and the Stage F1 recall-then-evolve path folds recurring insights into their existing engrams instead of duplicating them (best-effort).
 - This skill records nothing to \`.luca/\` and is external to the pipeline. Its only persistent state — the analysis cursor — lives in MuninnDB.
-- \`.luca/telemetry/*.jsonl\` remains the semantic pipeline record; \`/luca-telemetry-report\` covers it. The Stage A5 join (P3) additionally READS it — together with \`.luca/ledger.jsonl\` — at analysis time to power the Pipeline Attribution section; the read stays within the scope guard (no \`.luca/\` writes).
+- \`.luca/telemetry/*.jsonl\` is now a MINIMAL sink carrying only MuninnDB recall quality (\`recall.*\`); \`/luca-telemetry-report\` covers that. The Stage A5 join (P3) READS it — together with \`.luca/ledger.jsonl\`, which is the live semantic pipeline record — at analysis time to power the Pipeline Attribution section; the read stays within the scope guard (no \`.luca/\` writes).
 `
 
 export const traceInsightsSkill = defineSkill({

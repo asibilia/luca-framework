@@ -1,4 +1,4 @@
-import { tmpdir } from 'node:os'
+import { homedir as osHomedir, tmpdir } from 'node:os'
 
 import {
     AUDIT_PATH_PATTERN,
@@ -7,6 +7,7 @@ import {
     isToolAllowed,
     loadCurrentState,
     phasePathFor,
+    RAW_FILE_RE,
     resolveActiveSlug,
     STEP_ARTIFACTS,
     TMP_PATH_PATTERN,
@@ -107,7 +108,13 @@ export async function handleStageGateHook(
         (parsed.sessionId as string | undefined)
 
     const cwd = opts.cwd ?? process.cwd()
-    const homedir = opts.homedir ?? process.env.HOME
+    // FAIL-CLOSED homedir resolution. `process.env.HOME` alone is a fail-OPEN
+    // hole: with HOME unset (or empty — hence `||`, not `??`) `homedir` was
+    // `undefined`, `classifyWritePath` skipped the home-deny step entirely, and
+    // a Write to `~/.claude/settings.json` or `~/.luca/handoff/` classified as
+    // ordinary `code` and was ALLOWED in EXECUTING. `os.homedir()` reads the
+    // passwd database, so it still resolves when the environment does not.
+    const homedir = opts.homedir || process.env.HOME || osHomedir()
     const tmpdirs =
         opts.tmpdirs ??
         [process.env.TMPDIR, tmpdir()].filter((d): d is string => Boolean(d))
@@ -158,6 +165,37 @@ export async function handleStageGateHook(
 
     const phase = coarsePhaseOf(state.pipelineStep)
 
+    // ALWAYS-DENIED PATHS AND COMMANDS — EVERY PHASE, IDLE INCLUDED.
+    //
+    // This MUST run before the IDLE short-circuit below. When it ran after,
+    // "blocked regardless of phase" (this file's docstring, and the
+    // write-surface skill body) was false at `pipelineStep: 'idle'`: a native
+    // `Write` to `<home>/.luca/handoff/x.json` returned `allow` outright, so an
+    // agent could hand-forge a mailbox envelope with an id, `status:
+    // 'accepted'` and `statusHistory` of its choosing — bypassing the
+    // schema-validated `luca handoff` CLI that is the mailbox's core
+    // invariant. The SessionStart handoff triage runs in exactly that state.
+    //
+    // Only the SECURITY FLOOR moves up here. The phase/tool matrix and the
+    // `.luca/` artifact gate stay below, so IDLE remains permissive for
+    // everything that is not always-denied.
+    const alwaysDenied = alwaysDeniedReason(toolName, toolInput, {
+        homedir,
+        cwd,
+        tmpdirs,
+    })
+    if (alwaysDenied) {
+        const msg = `stage-gate BLOCK: ${alwaysDenied}`
+        log(msg)
+        return {
+            exitCode: 2,
+            toolName,
+            toolInput,
+            decision: 'block',
+            reason: msg,
+        }
+    }
+
     // IDLE: no enforcement.
     if (phase === 'IDLE') {
         log(
@@ -173,18 +211,8 @@ export async function handleStageGateHook(
     let category: ToolCategory | undefined
     let pathBlockReason: string | undefined
 
-    if (
-        toolName === 'Edit' ||
-        toolName === 'Write' ||
-        toolName === 'NotebookEdit' ||
-        toolName === 'replace' ||
-        toolName === 'write_file'
-    ) {
-        const targetPath =
-            (toolInput as { file_path?: string; path?: string } | undefined)
-                ?.file_path ??
-            (toolInput as { file_path?: string; path?: string } | undefined)
-                ?.path
+    if (isWriteTool(toolName)) {
+        const targetPath = writeTargetOf(toolInput)
         if (!targetPath) {
             // Can't classify without a target. Allow conservatively —
             // shouldn't happen in real Claude Code/Antigravity invocations.
@@ -200,6 +228,10 @@ export async function handleStageGateHook(
         const relTarget = toLucaRelative(targetPath, cwd)
         const pc = classifyWritePath(targetPath, { homedir, cwd, tmpdirs })
         if (pc.class === 'denied') {
+            // Unreachable in practice — `alwaysDeniedReason` above already
+            // blocked this, in EVERY phase. Kept as defence in depth so the
+            // classification never falls through to the matrix if the two
+            // ever drift.
             pathBlockReason = `${toolName} to '${targetPath}' is always denied: ${pc.reason ?? 'forbidden path'}`
         } else if (pc.class === 'ephemeral') {
             // Inert ephemeral scratch (OS-temp file or .luca/tmp/previews/<name>):
@@ -241,18 +273,15 @@ export async function handleStageGateHook(
             )
             return { exitCode: 0, toolName, toolInput, decision: 'allow' }
         } else {
-            // pc.class === 'code' — normal project file. Matrix decides.
+            // pc.class === 'code' | 'release-artifact' — a repo file (normal
+            // project file, or a `.changeset/*.md` release note). Matrix decides.
             category = pathClassToToolCategory(pc.class)
         }
-    } else if (
-        toolName === 'Bash' ||
-        toolName === 'run_shell_command' ||
-        toolName === 'run_command'
-    ) {
-        const command =
-            (toolInput as { command?: string } | undefined)?.command ?? ''
+    } else if (isBashTool(toolName)) {
+        const command = bashCommandOf(toolInput)
         const bashResult = classifyBashCommand(command)
         if (bashResult.category === 'denied') {
+            // Defence in depth — see the note on the write-path branch above.
             pathBlockReason = `Bash command is always denied: ${
                 bashResult.reason ?? 'forbidden command'
             }`
@@ -335,6 +364,94 @@ export async function handleStageGateHook(
     return { exitCode: 0, toolName, toolInput, decision: 'allow' }
 }
 
+/** Is this tool name a native file-write tool (Claude Code / Antigravity)? */
+function isWriteTool(toolName: string | undefined): boolean {
+    return (
+        toolName === 'Edit' ||
+        toolName === 'Write' ||
+        toolName === 'NotebookEdit' ||
+        toolName === 'replace' ||
+        toolName === 'write_file'
+    )
+}
+
+/** Is this tool name a shell-execution tool? */
+function isBashTool(toolName: string | undefined): boolean {
+    return (
+        toolName === 'Bash' ||
+        toolName === 'run_shell_command' ||
+        toolName === 'run_command'
+    )
+}
+
+/** The write target of a write-tool payload (`file_path` or `path`). */
+function writeTargetOf(toolInput: unknown): string | undefined {
+    const input = toolInput as
+        | { file_path?: string; path?: string }
+        | undefined
+    return input?.file_path ?? input?.path
+}
+
+/** The command string of a shell-tool payload. */
+function bashCommandOf(toolInput: unknown): string {
+    return (toolInput as { command?: string } | undefined)?.command ?? ''
+}
+
+/**
+ * The SECURITY FLOOR: evaluate the always-denied path / command rules that
+ * apply in EVERY pipelineStep, IDLE included.
+ *
+ * Split out of the main classification block so it can run BEFORE the IDLE
+ * short-circuit. It answers one question only — "is this call always denied?"
+ * — and never consults the phase/tool matrix or the `.luca/` artifact gate,
+ * both of which stay phase-scoped.
+ *
+ * @param toolName  the incoming tool name (may be undefined / non-write)
+ * @param toolInput the raw tool payload
+ * @param opts      homedir / cwd / tmpdirs, exactly as the main block passes
+ *                  them to `classifyWritePath`
+ * @returns the block reason, or `undefined` when nothing is always-denied
+ */
+function alwaysDeniedReason(
+    toolName: string | undefined,
+    toolInput: unknown,
+    opts: { homedir?: string; cwd: string; tmpdirs: string[] }
+): string | undefined {
+    if (isWriteTool(toolName)) {
+        const targetPath = writeTargetOf(toolInput)
+        if (!targetPath) return undefined
+        const pc = classifyWritePath(targetPath, opts)
+        if (pc.class === 'denied') {
+            return `${toolName} to '${targetPath}' is always denied: ${
+                pc.reason ?? 'forbidden path'
+            }`
+        }
+        return undefined
+    }
+
+    if (isBashTool(toolName)) {
+        const bashResult = classifyBashCommand(bashCommandOf(toolInput))
+        if (bashResult.category === 'denied') {
+            return `Bash command is always denied: ${
+                bashResult.reason ?? 'forbidden command'
+            }`
+        }
+        for (const target of bashResult.targetPaths) {
+            const pc = classifyWritePath(target, {
+                homedir: opts.homedir,
+                tmpdirs: opts.tmpdirs,
+            })
+            if (pc.class === 'denied') {
+                return `Bash writes to denied path '${target}': ${
+                    pc.reason ?? 'forbidden path'
+                }`
+            }
+        }
+    }
+
+    return undefined
+}
+
 /**
  * Detect a `luca state advance` invocation anywhere in a (possibly compound)
  * bash command — the ownership signal for the session-scoped gate. Parses
@@ -367,9 +484,10 @@ function isStateAdvanceCommand(command: string): boolean {
 
 /**
  * The set of `StepArtifact` keys that are also `PhaseFile` keys, i.e. map
- * to a single fixed canonical path via `phasePathFor`. The two synthetic
- * keys `'execute/wave'` and `'audits/*'` are parameterised and handled
- * separately (a wave-file regex and `AUDIT_PATH_PATTERN`).
+ * to a single fixed canonical path via `phasePathFor`. The three synthetic
+ * keys `'execute/wave'`, `'audits/*'` and `'raw'` are parameterised and
+ * handled separately (a wave-file regex, `AUDIT_PATH_PATTERN`, and a
+ * raw-file regex).
  */
 const FIXED_PHASE_FILE_ARTIFACTS = new Set<StepArtifact>([
     'research',
@@ -398,8 +516,10 @@ type ArtifactGateDecision =
  *
  * The rule: in any non-IDLE phase, a `.luca/` write is allowed ONLY when
  * its path is exactly a legal artifact for the active `pipelineStep`
- * (computed from `STEP_ARTIFACTS` + `phasePathFor`), or — for the `review`
- * step — a per-reviewer audit file matched by `AUDIT_PATH_PATTERN`.
+ * (computed from `STEP_ARTIFACTS` + `phasePathFor`), or one of the
+ * parameterised shapes that step declares: a per-reviewer audit file
+ * (`AUDIT_PATH_PATTERN`), a per-wave detail file, or a per-stage raw
+ * capture (`raw/<stage>-<NN>.md`, declared by `research` and `review`).
  * EVERY other `.luca/` write is blocked, including writes to `.luca/`
  * root files (`state.json`, `config.json`, `roadmap.md`, `ledger.jsonl`)
  * which are mutated only through the `luca` CLI.
@@ -417,7 +537,7 @@ function artifactPathGate(
     pipelineStep: LucaState['pipelineStep'],
     state: LucaState
 ): ArtifactGateDecision {
-    // Sanctioned ephemeral CLI-handoff scratch: `.luca/tmp/<name>.json` is a
+    // Sanctioned ephemeral CLI-handoff scratch: `.luca/tmp/<name>.{json,md}` is a
     // repo-scoped payload file bridging the LLM orchestrator and the `luca`
     // CLI (`--file`). It is NOT a pipeline artifact, so it is allowed in ANY
     // pipelineStep (including steps with no legal artifact). This replaces the
@@ -481,6 +601,20 @@ function artifactPathGate(
             }
             continue
         }
+        if (artifact === 'raw') {
+            // Per-stage raw capture: .luca/phases/<slug>/raw/<stage>-<NN>.md.
+            // Parameterised like the wave file (the stage label and index
+            // vary per write), so it needs its own branch — the fixed
+            // PhaseFile table below cannot express it.
+            const rawDir = `.luca/phases/${slug}/raw/`
+            if (targetPath.startsWith(rawDir)) {
+                const filename = targetPath.slice(rawDir.length)
+                if (RAW_FILE_RE.test(filename)) {
+                    return { kind: 'allow' }
+                }
+            }
+            continue
+        }
         // Fixed PhaseFile artifact — exactly one canonical path.
         if (FIXED_PHASE_FILE_ARTIFACTS.has(artifact)) {
             legalPaths.push(phasePathFor(slug, artifact as PhaseFile))
@@ -511,6 +645,8 @@ function describeLegalArtifacts(
             parts.push(`.luca/phases/${slug}/audits/<reviewer>.md`)
         } else if (a === 'execute/wave') {
             parts.push(`.luca/phases/${slug}/execute/waves/NN.md`)
+        } else if (a === 'raw') {
+            parts.push(`.luca/phases/${slug}/raw/<stage>-NN.md`)
         }
     }
     return parts.length > 0 ? parts.join(', ') : '(none)'
@@ -524,6 +660,10 @@ function pathClassToToolCategory(c: WritePathClass): ToolCategory {
             return 'planning-write-general'
         case 'planning-audit':
             return 'planning-write-audit'
+        case 'release-artifact':
+            // `.changeset/<name>.md` — its own matrix column so FINALIZING
+            // can author a changeset without opening 'code-write'.
+            return 'release-artifact'
         case 'ephemeral':
             // Caller short-circuits 'ephemeral' to allow before this is
             // called — it has no phase/tool-matrix category.
@@ -534,10 +674,15 @@ function pathClassToToolCategory(c: WritePathClass): ToolCategory {
     }
 }
 
-function bashCategoryToToolCategory(c: BashCategory): ToolCategory {
+export function bashCategoryToToolCategory(c: BashCategory): ToolCategory {
     switch (c) {
         case 'bash-readonly':
             return 'bash-readonly'
+        case 'bash-stage':
+            // `git add` — staging, not committing. Allowed in
+            // EXECUTING/FINALIZING so finalize can stage the changeset it
+            // authored; denied in PLANNING/REVIEWING.
+            return 'bash-stage'
         case 'bash-mutate':
             return 'bash-mutate'
         case 'bash-commit':

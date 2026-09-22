@@ -3,12 +3,12 @@ import { join } from 'node:path'
 
 import {
     appendLedger,
-    appendTelemetry,
     BUDGET_BY_COMPLEXITY,
+    checkPipelineGuard,
     coarsePhaseOf,
     DEFAULT_BUDGET,
+    fixLoopCounterUpdate,
     lucaStateSchema,
-    machineVerdict,
     phasePathFor,
     PipelineStep,
     PipelineStepValues,
@@ -102,29 +102,32 @@ function expectedArtifactPath(
 /**
  * Pure decision seam for a pipeline-step advance.
  *
- * This is the P1b write-path swap: the transition gate is delegated to the
- * XState-backed `machineVerdict` oracle (the same oracle the P1a parity
- * harness proves equivalent to the legacy `checkPipelineGuard`) rather than
- * the direct `isLegalTransition` table lookup. `machineVerdict` takes a
- * `PipelineGuardInput`-shaped object, so it drops in cleanly here.
+ * The transition gate is `checkPipelineGuard` — the SOLE verdict engine, and
+ * the same one the PreToolUse pipeline-guard hook calls. (It was briefly
+ * fronted by an machine-backed `machineVerdict` oracle whose machine was
+ * GENERATED from `PIPELINE_TRANSITIONS`; a 169-pair parity harness proved the
+ * two could never disagree, so deleting the machine left the guard as the sole
+ * engine at zero behavioural cost.)
  *
- * Returns the resulting `pipelineStep` (the machine's destination leaf) on a
- * legal advance, or THROWS a generic `Error` on rejection. Callers catch the
- * generic `Error` and surface `stringifyError(err)` — so this keeps the throw
- * shape stable while enriching the message with the machine's reason code.
+ * Returns the resulting `pipelineStep` on a legal advance, or THROWS a generic
+ * `Error` on rejection. Callers catch the generic `Error` and surface
+ * `stringifyError(err)` — so this keeps the throw shape stable while enriching
+ * the message with the guard's reason code.
  *
- * The rejection message embeds the machine's `reason` code (e.g.
+ * The rejection message embeds the guard's `reason` code (e.g.
  * `illegal-transition`, `same-step-no-op`) — so the illegal-transition case
  * naturally retains the substring `illegal` (back-compat with callers/tests
  * that match on it) while a same-step no-op is distinguishable by its own
  * reason code. The message also enumerates the legal next steps from
  * `PIPELINE_TRANSITIONS[from]`.
  *
- * P1c: the fix-loop counters are now LIVE. `decideAdvance` threads the
- * persisted counters/caps into `machineVerdict` (advisory — no `budgetMode`,
- * so nothing is denied) and returns the machine's post-transition
- * `counterUpdate` alongside the next `pipelineStep`. The caller spreads the
- * update into the atomic state write; every other field is preserved.
+ * P1c: the fix-loop counters are LIVE. On one of the 6 fix-loop edges,
+ * `fixLoopCounterUpdate` computes the post-transition counter value (rework
+ * edges increment, forward-exit edges reset to 0) and it is returned alongside
+ * the next `pipelineStep`. The caller spreads the update into the ATOMIC state
+ * write; every other field is preserved. Dropping it would silently freeze the
+ * fix-loop counters at their persisted value and starve the `fixloop-counted`
+ * ledger emission below.
  */
 export interface AdvanceDecision {
     pipelineStep: PipelineStep
@@ -133,35 +136,32 @@ export interface AdvanceDecision {
 
 export function decideAdvance(s: LucaState, to: PipelineStep): AdvanceDecision {
     const from = s.pipelineStep
-    const verdict = machineVerdict({
+    const verdict = checkPipelineGuard({
         currentStep: from,
         requestedStep: to,
         complexity: s.complexity,
         oversight: s.oversight,
-        // Persisted counters/caps threaded in (advisory: budgetMode omitted).
-        checksFixIteration: s.checksFixIteration,
-        verifyIteration: s.verifyIteration,
-        reviewIteration: s.reviewIteration,
-        maxChecksFixIterations: s.maxChecksFixIterations,
-        maxVerifyIterations: s.maxVerifyIterations,
-        maxReviewIterations: s.maxReviewIterations,
     })
     if (!verdict.allowed) {
         // Guard the lookup: an unknown `from` (reason `unknown-current-step`)
         // is not a table key, so default to [] rather than TypeError-ing on
         // `.join`. Unreachable via the live Zod-validated read, but this seam
-        // is exported and machineVerdict can legitimately return unknown-*.
+        // is exported and the guard can legitimately return unknown-*.
         const allowed = (PIPELINE_TRANSITIONS[from] ?? []).join(', ')
         throw new Error(
             `rejected transition [${verdict.reason}]: '${from}' → '${to}'. ` +
                 `Allowed next steps from '${from}': [${allowed}].`
         )
     }
+    // A legal advance always lands on exactly `to`.
+    const counterUpdate = fixLoopCounterUpdate(from, to, {
+        checksFixIteration: s.checksFixIteration,
+        verifyIteration: s.verifyIteration,
+        reviewIteration: s.reviewIteration,
+    })
     return {
-        pipelineStep: verdict.resultingStep as PipelineStep,
-        ...(verdict.counterUpdate
-            ? { counterUpdate: verdict.counterUpdate }
-            : {}),
+        pipelineStep: to,
+        ...(counterUpdate ? { counterUpdate } : {}),
     }
 }
 
@@ -191,12 +191,12 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     ctx.cwd,
                     (s) => {
                         from = s.pipelineStep
-                        // P1b: the transition gate is the XState machine oracle
-                        // (via `decideAdvance` → `machineVerdict`), not the
-                        // legacy `isLegalTransition` table lookup. On a legal
-                        // advance it returns the machine's destination leaf; on
-                        // rejection it throws a generic Error whose message
-                        // carries the reason code.
+                        // The transition gate is `checkPipelineGuard` (via
+                        // `decideAdvance`) — the same engine the PreToolUse
+                        // pipeline-guard hook uses. On a legal advance it
+                        // returns the destination step; on rejection it throws
+                        // a generic Error whose message carries the reason
+                        // code.
                         //
                         // P1c: on a fix-loop edge the decision also carries a
                         // `counterUpdate` (the post-transition counter value).
@@ -204,9 +204,25 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                         // reset counter is persisted with the step change.
                         const decision = decideAdvance(s, to)
                         counterUpdate = decision.counterUpdate
+                        // Run-start stamp (#319): the canonical run-start moment
+                        // is the first entry into `research` (idle→…→triage→
+                        // research). This edge fires exactly once per run, so it
+                        // is the authoritative run-start and must ALWAYS refresh
+                        // `runStartedAt` — including overwriting a stale stamp
+                        // left by a prior in-place re-run on the same state.json
+                        // (finalize→idle→triage→research). `to === 'research'` is
+                        // load-bearing; the `from` set is defensive against a
+                        // direct idle→research jump. The CLI lazy-stamp keeps its
+                        // unset-only guard as the legacy fallback.
+                        const stampRunStart =
+                            to === 'research' &&
+                            (from === 'idle' || from === 'triage')
                         return {
                             ...s,
                             pipelineStep: decision.pipelineStep,
+                            ...(stampRunStart
+                                ? { runStartedAt: new Date().toISOString() }
+                                : {}),
                             ...(decision.counterUpdate
                                 ? {
                                       [decision.counterUpdate.field]:
@@ -293,13 +309,19 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                     })
                 }
 
-                // Conditional: fixloop.counted telemetry (DAD-P1c). When the
-                // advance traversed a REWORK edge (checks→execute, verify→checks,
-                // review→execute) and a counter was incremented, emit an
-                // advisory `fixloop.counted` record. Budget is resolved from
+                // Conditional: fixloop-counted (DAD-P1c). When the advance
+                // traversed a REWORK edge (checks→execute, verify→checks,
+                // review→execute) and a counter was incremented, record an
+                // advisory `fixloop-counted` entry. Budget is resolved from
                 // complexity via BUDGET_BY_COMPLEXITY at emit time (advisory —
                 // the record is logged, never blocked; the enforce flip is a
                 // later slice). Forward-exit resets do NOT emit.
+                //
+                // This used to be a `fixloop.counted` telemetry record. The
+                // local telemetry sink was narrowed to recall quality only, so
+                // the payload moved onto the ledger — the live local sink,
+                // which already carries the matching `pipeline-re-entered`
+                // entry for the same edge.
                 const reworkCap = REWORK_EDGE_CAPS[`${from}->${to}`]
                 if (counterUpdate !== undefined && reworkCap !== undefined) {
                     const limits =
@@ -308,24 +330,19 @@ export const lucaStateAdvanceTool: ToolDescriptor<z.infer<typeof inputSchema>> =
                             : DEFAULT_BUDGET
                     const budget = limits[reworkCap]
                     const nextValue = counterUpdate.value
-                    appendTelemetry({
+                    appendLedger({
                         cwd: ctx.cwd,
-                        kind: 'fixloop.counted',
-                        ctx: {
-                            runId: runId || null,
-                            phase: null,
-                            slug: null,
-                            wave: null,
-                            complexity: state.complexity ?? null,
-                            oversight: state.oversight ?? null,
-                        },
-                        meta: {
+                        runId,
+                        event: 'fixloop-counted',
+                        data: {
                             edge: `${from}->${to}`,
                             counterField: counterUpdate.field,
                             nextValue,
                             budget,
                             verdict:
                                 nextValue >= budget ? 'exceeded' : 'within',
+                            complexity: state.complexity ?? null,
+                            oversight: state.oversight ?? null,
                             phaseOfRollout: 'advisory',
                         },
                     })

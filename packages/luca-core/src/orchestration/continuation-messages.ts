@@ -35,7 +35,7 @@
  * continuation; transitions INTO `idle` (coarse phase IDLE) emit none.
  * The coarse-phase mapping is derived from the pipeline machine's
  * `meta.coarsePhase` (see `STEP_TO_COARSE_PHASE` in
- * `state/machine/pipeline-machine.ts`), which is the single source of
+ * `state/configs/pipeline-transitions.ts`), which is the single source of
  * truth; if a new step is added, this module either picks up the right
  * default or fails a compile-time exhaustiveness check.
  */
