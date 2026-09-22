@@ -230,14 +230,14 @@ What not to copy:
 
 ## What this means for the engine
 
-**Launch path.** The guards the engine needs are all available from the Agent SDK and `claude -p`, and not from Paseo's stock Claude provider. That favors the engine starting sessions itself (SDK, or a Paseo provider plugin that wraps the SDK), which is #346's call. If agents must run through stock Paseo, the engine loses `dontAsk`, strict MCP, clean setting sources, and hook callbacks. It must then (a) use a custom provider ID with `paseoTools.enabled: false`, (b) set tools, rules, and sandbox through an `agent.create` plugin hook, (c) auto-deny every permission request from a plugin, and (d) accept that the user's hooks, plugins, and MCP servers still load.
+**Launch path.** The guards the engine needs are all available from the Agent SDK and `claude -p`, and not from Paseo's stock Claude provider. That favors the engine starting sessions itself (SDK, or a Paseo provider plugin that wraps the SDK), which is #346's call. If agents must run through stock Paseo, the engine loses `dontAsk`, strict MCP, clean setting sources, and hook callbacks. It must then (a) use a custom provider ID with `paseoTools.enabled: false`, (b) set tools, rules, and sandbox through an `agent.create` plugin hook, (c) auto-deny every permission request from a plugin, and (d) accept that the user's hooks, plugins, and MCP servers still load. Billing doesn't separate the two paths: Paseo also runs Claude through the SDK, and #345's draft finds SDK and `claude -p` sessions on the plan login draw from the plan today, with a paused Anthropic change that could later move headless use to a separate credit.
 
 **Guard setup for every role** (SDK names; `claude -p` flags are the same ideas):
 
 - `permissionMode: "dontAsk"` and `permissionPrompts: "none"`.
 - `tools`: only the role's built-in tools. `disallowedTools`: `Agent`, `Workflow`, `Skill`, `WebFetch`, `WebSearch`, `Monitor`, `PowerShell`, `NotebookEdit`, `SendMessage`, `Artifact`, `RemoteTrigger`, `CronCreate`, `PushNotification`, `SendUserFile`, `EnterWorktree`, `ExitWorktree`, `mcp__*`, `ListMcpResourcesTool`, `ReadMcpResourceTool`, and `Bash(run_in_background:true)`.
 - `settingSources: []`, `strictMcpConfig: true`, `mcpServers: {}`, `skills: []`. The engine passes the repo's `CLAUDE.md` text in the prompt instead of loading the project source. (Loading `project` would also run the target repo's own hooks and `.mcp.json`.)
-- `env`: the normal env plus `ENABLE_CLAUDEAI_MCP_SERVERS=false` and `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`.
+- `env`: the normal env plus `ENABLE_CLAUDEAI_MCP_SERVERS=false` and `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, minus `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` (a key silently wins over the plan login in `-p`; see #345).
 - `sandbox`: `enabled: true`, `failIfUnavailable: true`, `allowUnsandboxedCommands: false`, `autoAllowBashIfSandboxed: false`, no `excludedCommands`, `network: { allowedDomains: [], strictAllowlist: true, allowLocalBinding: false }`, `filesystem: { denyWrite: [<main repo>/.git], denyRead: ["~/.claude.json", "~/.claude", "~/.paseo", "~/.ssh", "~/.config/gh"] }`. Add `<worktree>/node_modules` to `denyWrite` if the test runner doesn't write caches there; otherwise leave it to the backstop.
 - `hooks.PreToolUse`: one engine callback, matching every tool. It resolves real paths, checks them against the worktree and the role, parses Bash with the fixed classifier, journals every decision, and returns `deny` on anything unknown. It wraps its own errors so it never throws.
 - `hooks.ConfigChange`: block every change. This matters only if some settings source is loaded, as on the Paseo path.
@@ -263,7 +263,7 @@ What not to copy:
 
 - **#334 "Tracer bullet"**: prove the SDK launch with `dontAsk`, strict MCP, the sandbox with a denied `.git`, and one PreToolUse callback, and run the experiments below in it.
 - **"Exact guard rules for each role"** (not yet specified): the two tables above are the input. Open choices: the test-infrastructure glob list, and whether reviewers may run tests.
-- **#346** (how the engine drives agents): the stock Paseo provider can't carry these guards; an SDK launch or a Paseo provider plugin can.
+- **#346** (how the engine drives agents): the stock Paseo provider can't carry these guards; an SDK launch or a Paseo provider plugin can. #346's section on keeping the user's MCP servers and skills out overlaps §3 here.
 - **#345** (billing): `--bare` needs an API key, so it's out. Relocating `CLAUDE_CONFIG_DIR` for a clean config home may lose the subscription login; untested.
 - **#340's added scope** (no global MuninnDB connection in agents): answered in §3. Strict MCP plus a loopback-closed sandbox keeps MuninnDB out.
 - **#336 and #337**: the backstop is shared plumbing with the red check and the leftover scan.
