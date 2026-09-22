@@ -2,29 +2,25 @@
 
 > Universal instructions for AI coding agents working on this repository.
 
-## Project Overview
+## This repo
 
-- **Luca is a developer tooling monorepo**, not a web app. It produces the `luca` CLI plus the skills, agents, and slash commands that install into a coding harness (Claude Code and Antigravity) for AI-powered development workflows.
-- **Primary goal**: orchestrate structured AI coding workflows (pipeline modes, subagents, tools) on top of existing repos.
-- **Runtime & language**: Bun + TypeScript across a multi-package monorepo.
-- **Documentation for humans**: see `README.md` and the docs under `docs/`.
+- **Old Luca is gone.** The `luca` CLI and its packages (`packages/luca`, `luca-cli`, `luca-core`, `luca-tools`, `luca-code`) have been deleted, along with the npm release workflow and changesets, so old Luca no longer publishes to npm. The last old-Luca code is at the tag `old-luca-final`. To read or copy from it, run `git show old-luca-final:<path>`, or check the tag out in a separate worktree.
+- **New work goes in `packages/engine`.**
+- **Read these before you build.** `CONTEXT.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
+- `.luca/` is old Luca's data, kept for now. Don't build on it, and don't delete it without asking Alec.
 
-## Quickstart for agents
+## Setup
 
-- **Install dependencies**: `bun install`
-- **Type check**: `bunx --bun tsc --noEmit`
-- **Build the luca CLI**: `bun run build`
+- Bun is required. The repo uses `bun.lock` and `bunfig.toml`. If Bun is missing, install it with `curl -fsSL https://bun.sh/install | bash`.
+- Use Bun instead of Node.js, npm, yarn, or pnpm: `bun <file>`, `bun install`, `bun run <script>`. Bun loads `.env` by itself, so don't use dotenv.
+- No `.env` is needed.
 
-## Packages
-
-Luca ships as one public package, `@alecsibilia/luca`, bundling three private workspaces.
-
-| Package | Description |
-| ------- | ----------- |
-| `packages/luca` | Public umbrella (`@alecsibilia/luca`) — the `luca` CLI bin; bundles `luca-cli`, `luca-core`, `luca-tools` |
-| `packages/luca-cli` | CLI command surface — init, harness wiring, vault setup, write surface, diagnostics |
-| `packages/luca-core` | Pipeline state machine, complexity routing, orchestration, `.luca/` directory contract |
-| `packages/luca-tools` | Mode/subagent/skill instruction bodies materialized into each harness |
+| Action | Command |
+| ------ | ------- |
+| Install deps | `bun install` |
+| Type check | `bunx --bun tsc --noEmit` |
+| Lint | `bun run lint` |
+| Interactive conventional commit | `bun run commit` |
 
 ## Intent-First Response
 
@@ -43,24 +39,6 @@ Before responding to a request, consider what the user **actually needs**, not j
 
 **Do not** pad every response with follow-up questions. The goal is signal, not noise.
 
-## Development Setup
-
-**Prerequisite:** Bun (v1.0+). Node.js 20+ is useful but not required for core workflows.
-
-No `.env` is required for core development.
-
-## Commands
-
-| Action | Command |
-| ------ | ------- |
-| Install deps | `bun install` |
-| Type check | `bunx --bun tsc --noEmit` |
-| Run tests (on-demand only — not in pre-commit) | `bun run --filter '*' test` |
-| Build the luca CLI | `bun run build` |
-| Luca CLI (from source) | `bun run packages/luca/bin/luca.js <command>` |
-| Migrate `.planning/` → `.luca/` | `luca migrate-planning [--dry-run] [--force]` |
-| Release locally | `bun run release:local` |
-
 ## Coding Standards
 
 **IMPORTANT**: Read [docs/guides/coding-standards.md](docs/guides/coding-standards.md) for complete rules.
@@ -76,85 +54,7 @@ Key patterns:
 
 ## PR Guidelines
 
-1. Run `bun run build` and `bunx --bun tsc --noEmit` before committing
-2. Use `bun commit` for interactive conventional commits
+1. Run `bunx --bun tsc --noEmit` before committing
+2. Use `bun run commit` for interactive conventional commits
 3. Format: `type(scope): #issue description` (lowercase, present tense verb)
 4. Branch naming: `{issue_number}--{dash-cased-description}`
-
-## `.luca/` Artifact Layout
-
-Luca's pipeline writes artifacts under `.luca/`. The canonical contract is defined in `@alecsibilia/luca-core` (`packages/luca-core/src/luca-dir/configs.ts`):
-
-- **Root files** (cross-phase state):
-  - `state.json` — workflow state (pipelineStep, currentPhase, iteration counters)
-  - `config.json` — project config (vault, oversight defaults)
-  - `lock.json` — pipeline lock (PID + acquired_at)
-  - `roadmap.md` — **generated** from MuninnDB-backed roadmap
-  - `ledger.jsonl` — append-only session events
-
-- **`phases/<NN-slug>/`** — one directory per work phase. Slug is zero-padded NN plus kebab-case description (derived from roadmap order, **not** LLM-named). Allowed files:
-  - `research.md`, `context.md`, `plan.md`, `plan-review.md`
-  - `verify.json`, `learn.md`
-  - `execute/summary.md`, `execute/progress.jsonl`, `execute/waves/NN.md`
-  - `audits/<reviewer>.md` (reviewer = `code-review`, `security`, `architect`, `ux`, etc.)
-
-- **`milestones/`** — versioned snapshot files: `v<SEMVER>-roadmap.md`, `v<SEMVER>-audit.md`, `v<SEMVER>-backlog-snapshot.{json,md}`.
-
-- **`telemetry/<runId>.jsonl`** — per-run MuninnDB recall-quality logs (`recall.hit` / `recall.miss` / `recall.utilization`). This is a minimal sink: general pipeline telemetry lives in LangSmith traces (see `/trace-insights`) and `.luca/ledger.jsonl`.
-
-- **`archive/<NN-slug>/`** — phase directories closed at milestone (frozen, never resurfaces).
-
-**Strict allowlist.** Anything not in the contract is a violation. Backlog/todos no longer live on disk — they're in MuninnDB (per-milestone snapshots are exported to `milestones/v<SEMVER>-backlog-snapshot.{json,md}`). Path validation is exposed via `isValidLucaPath` in `@alecsibilia/luca-core/luca-dir`.
-
-**Migrating from `.planning/`** (legacy layout): run `luca migrate-planning [--dry-run] [--force]`. Moves root files, deletes ephemeral files (`.context-metrics.json`, `harness-result.json`), preserves git history via `git mv`. Phase directories under `.planning/phases/` are intentionally left in place by the initial migration.
-
-## Claude Code-first Architecture (v13+)
-
-`luca init` is **global except for one per-project artifact**: it installs the
-Claude skill set and stage-gate hook into `~/.claude/` (a single luca CLI version
-owns one canonical copy across every project), and writes only the `.luca/`
-skeleton into the repo. The write surface is a two-track design — both tracks
-share one deterministic core and one enforcing hook:
-
-1. **`.luca/` directory** (per-project) — the workflow state, schema-validated by `@alecsibilia/luca-core`. The only thing `luca init` writes into the repo.
-2. **Stage-gate hook** (registered in `~/.claude/settings.json` as the bare command `luca hook stage-gate` — no wrapper script) — enforces a coarse-phase × tool-category matrix on every Edit/Write/Bash. In a non-luca repo there is no `.luca/state.json`, so the handler defaults to IDLE and allows everything. Always-denied paths (.git/, ~/.claude/, /etc/, …) are blocked regardless of phase. Bash commands are tokenized via shell-quote AST so output redirects + cp/mv targets are checked against the path matrix — defeating the temp-file exfiltration pattern. For an Edit/Write under `.luca/phases/`, the hook computes the legal artifact path for the current `pipelineStep` and allows **only** an exact match — making the native `Write` tool the safe channel for freeform artifact files (plan, research, context, plan-review, summary, wave, audit, learn, verify.json). Writes to `.luca/` root files are blocked.
-3. **`luca` CLI** — a typed Bash-invoked CLI (`src/commands/write-surface/`, registered in `src/cli.ts`) handles structured/operational mutations: `luca state advance`, `luca roadmap create`, `luca todo add`, `luca preferences write`, `luca checks run`, etc. Each leaf self-checks its phase precondition against `.luca/state.json`. The CLI never writes freeform artifact files — those go through the `Write` tool above.
-
-**Two tracks, one guard.** Freeform artifact files → native `Write` tool, gated by the hook's per-step artifact-path check. Structured mutations → `luca` CLI, which self-enforces per-verb phase rules. The runtime-agnostic handlers live in `src/write-surface/`; the CLI commands front them. Together this makes the workflow discipline impossible to bypass without `--dangerously-skip-permissions`. (v13 replaced the former MCP server — see `docs/v13-write-surface-migration.md` for the historical migration plan.)
-
-### Phase skills + subagents
-
-Bundled with the npm package — skill and subagent instruction bodies live under `packages/luca-tools/src/artifacts/` and are materialized into each harness home by `luca init`:
-
-- `skills/phase-{discuss,plan,execute}/` — slash commands the user invokes; orchestrate state advances (via the `luca` CLI), artifact writes (via the `Write` tool to canonical paths), and subagent delegation.
-- `subagents/{executor,plan-reviewer,researcher,…}.ts` — Claude Code subagent definitions that do the cognitive/code-writing work.
-
-`luca init` copies these into the **global** `~/.claude/commands/`, `~/.claude/agents/`, and `~/.claude/skills/` — not into the repo. **Re-running `luca init` always overwrites luca's own files with the bundled versions** — the package is the source of truth; user customizations should be made by adding NEW files (not modifying the bundled ones). Stray per-repo copies left by pre-v13 `luca init` are detected and removed by `luca doctor --fix`.
-
-### Adding a new write-surface command
-
-1. Add a runtime-agnostic handler in `packages/luca-cli/src/write-surface/handlers/luca-<name>.ts` (Zod input schema + `(args, ctx) => Promise<WriteResult>` handler).
-2. Wire it into the appropriate noun-group command under `packages/luca-cli/src/commands/write-surface/<noun>.ts` as a leaf `defineCommand`, and ensure the noun group is registered in `packages/luca-cli/src/cli.ts`.
-3. Give every leaf a strong `meta.description` + `args` — the `--help` text is the discoverability surface.
-4. Run `bunx --bun tsc --noEmit` to verify.
-
-Freeform artifact files do **not** get a CLI command — they are written with the native `Write` tool and gated by the stage-gate hook's per-step artifact-path check.
-
-### Adding a new phase skill
-
-1. Add the skill's instruction body under `packages/luca-tools/src/artifacts/skills/<name>/` and register it in the artifacts index. The body is a prompt that names the right `luca` CLI subcommands and/or the `Write`-to-canonical-path convention.
-2. Skills are prompts, not code. The discipline is in the `luca` CLI + stage-gate hook they delegate to, not the instruction text.
-3. `luca init` materializes the skill into each harness home automatically (re-run it to install into `~/.claude/` and the Antigravity home).
-
-## Related Files
-
-- [docs/guides/coding-standards.md](docs/guides/coding-standards.md) - Complete coding standards
-- `.github/copilot-instructions.md` - GitHub Copilot instructions
-- `.github/agents/` - Agent persona configs
-- `.github/prompts/` - Reusable prompt templates
-
-## Non-obvious caveats
-
-- **No ESLint**: The project has no ESLint configuration. Linting is limited to TypeScript type checking.
-- **Bun is required**: The project uses `bun.lock` and `bunfig.toml`. Bun may not be pre-installed on Cloud Agent VMs — install via `curl -fsSL https://bun.sh/install | bash` if missing.
-- **No `.env` required**: No environment variables are needed for core development.

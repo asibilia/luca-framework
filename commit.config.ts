@@ -20,9 +20,7 @@ const config: CommitConfig = {
         },
     ],
     scopes: [
-        { value: 'cli', label: 'Luca CLI (@alecsibilia/luca, luca-cli)' },
-        { value: 'core', label: 'luca-core (state machine, orchestration)' },
-        { value: 'tools', label: 'luca-tools (harness instruction bodies)' },
+        { value: 'engine', label: 'Luca v1 engine (packages/engine)' },
         { value: 'config', label: 'Configuration' },
         { value: 'docs', label: 'Documentation' },
         { value: 'repo', label: 'Repository & Tooling' },
