@@ -1,0 +1,7 @@
+{
+  "id": "luca-board-prototype",
+  "description": "Throwaway prototype for luca-framework#343: one fake Luca run shown three ways (sidebar surface, workspace panel, timeline rows)",
+  "requirements": {
+    "paseo": ">=0.9.1"
+  }
+}
