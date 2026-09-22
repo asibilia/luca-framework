@@ -207,6 +207,7 @@ const ONE_MILLION_MODEL_IDS = [
     'opus-4-6',
     'opus-4-7',
     'opus-4-8',
+    'opus-5',
     'sonnet-4-6',
     'sonnet-5',
 ]
