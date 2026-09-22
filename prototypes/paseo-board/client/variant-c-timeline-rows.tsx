@@ -4,11 +4,12 @@ import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useMemo } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import type { EventRow, LimitRow, RunRow, StuckRow, TicketState } from "../shared/board";
+import { usageColor } from "./usage-color";
 
 /**
  * Variant C: rows the daemon appends into one agent's timeline while `/luca-board-demo`
  * runs. A header row and the stuck and limit-wait rows update in place; each stage move is
- * its own row. Its layout is its own; A and B share only the fake data.
+ * its own row. Its layout is its own; B shares only the fake data and the usage colors.
  */
 
 const MONO = Platform.select({ ios: "Menlo", default: "monospace" });
@@ -142,9 +143,14 @@ export function RunRowCard({ item, theme, layout }: PluginTimelineItemProps<RunR
           })}
       </View>
       <Text style={styles.muted}>Final review: {row.finalReview}</Text>
-      <Text style={styles.mono}>
-        {row.usage.map((plan) => `${plan.plan} 5h ${plan.fiveHour}% · week ${plan.weekly}%`).join("   ")}
-      </Text>
+      <View style={styles.counts}>
+        {row.usage.map((plan) => (
+          <Text key={plan.plan} style={styles.mono}>
+            {plan.plan} 5h <Text style={{ color: usageColor(plan.fiveHour, theme) }}>{plan.fiveHour}%</Text> · week{" "}
+            <Text style={{ color: usageColor(plan.weekly, theme) }}>{plan.weekly}%</Text>
+          </Text>
+        ))}
+      </View>
       <Text style={styles.muted}>{row.footer}</Text>
       <Text style={styles.mono}>{row.debug}</Text>
     </View>
@@ -242,6 +248,10 @@ export function LimitRowCard({ item, theme, layout }: PluginTimelineItemProps<Li
         <View style={styles.spacer} />
         <Text style={[styles.status, { color }]}>{status}</Text>
       </View>
+      <Text style={styles.mono}>
+        {row.plan} {row.window}{" "}
+        <Text style={{ color: usageColor(row.fiveHour, theme) }}>{row.fiveHour}%</Text>
+      </Text>
       <Text style={styles.muted}>{detail}</Text>
     </View>
   );

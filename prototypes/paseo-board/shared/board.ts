@@ -2,7 +2,9 @@ import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
 /**
- * Throwaway prototype for asibilia/luca-framework#343: one fake Luca run, shown three ways.
+ * Throwaway prototype for asibilia/luca-framework#343: one fake Luca run, shown two ways
+ * (B, a stage stack in a workspace panel; C, rows in an agent's timeline). Variant A, the
+ * sidebar surface, was retired in v2 and lives on in the branch history at 222e34c.
  * Everything here is shared by the app bundle and the daemon subprocess, so it holds only
  * Zod contracts and plain values. Words follow CONTEXT.md (ticket, gate, red check, fix loop,
  * ticket review, final review, lens, finding, stuck, escalation, skipped ticket, limit wait).
@@ -10,10 +12,26 @@ import { z } from "zod";
 
 /** How often the fake run advances one tick in the daemon subprocess. */
 export const TICK_MS = 3000;
-/** How often the surface (A) and the panel (B) poll the fake run. */
+/** How often the panel (B) polls the fake run. */
 export const POLL_MS = 2000;
 /** Fix loops and review rounds are capped at 3. */
 export const LOOP_CAP = 3;
+
+/** The steps every feature ticket goes through, shown as dots on B's cards. */
+export const STEP_NAMES = ["tests", "red check", "code", "checks", "review"] as const;
+/** Refactor tickets skip these steps: no new test can fail first. */
+export const REFACTOR_SKIPS_STEPS = 2;
+
+/** Plan usage colors, shared so B and C match: green below 60%, yellow 60-85%, red above 85%. */
+export const USAGE_YELLOW_FROM = 60;
+export const USAGE_RED_ABOVE = 85;
+export type UsageLevel = "ok" | "warn" | "high";
+export function usageLevel(percent: number): UsageLevel {
+  if (percent > USAGE_RED_ABOVE) {
+    return "high";
+  }
+  return percent >= USAGE_YELLOW_FROM ? "warn" : "ok";
+}
 
 export const familySchema = z.enum(["claude", "gpt"]);
 export const roleSchema = z.enum(["test-writer", "implementer", "reviewer"]);
@@ -66,6 +84,11 @@ export const ticketSchema = z.object({
   dependsOn: z.array(z.number()),
   /** One-word activity label. */
   activity: z.string(),
+  /**
+   * Index into STEP_NAMES of the current step. -1 means not started and 5 means every step
+   * is done. For stuck and skipped tickets it is the step where the ticket stopped.
+   */
+  step: z.number().int().min(-1).max(STEP_NAMES.length),
   /** Fix loop rounds used after failed gate runs, out of LOOP_CAP. */
   fix: z.number(),
   /** Ticket review round, out of LOOP_CAP. */
@@ -77,11 +100,20 @@ export const ticketSchema = z.object({
   note: z.string().nullable(),
 });
 
+/** The stages a final-review lens moves through, in order. */
+export const lensStateSchema = z.enum(["waiting", "reviewing", "fixing", "clean"]);
+
 export const lensSchema = z.object({
   name: lensNameSchema,
-  state: z.enum(["waiting", "running", "clean", "findings"]),
+  state: lensStateSchema,
+  /** One-word activity label. */
+  activity: z.string(),
   findings: findingsSchema,
   note: z.string().nullable(),
+  /** The lens's reviewer agent (a fresh GPT session per lens). */
+  model: z.string(),
+  family: familySchema,
+  tokens: z.number(),
 });
 
 export const finalReviewSchema = z.object({
@@ -141,6 +173,7 @@ export type Stuck = z.infer<typeof stuckSchema>;
 export type Ticket = z.infer<typeof ticketSchema>;
 export type TicketState = z.infer<typeof ticketStateSchema>;
 export type Lens = z.infer<typeof lensSchema>;
+export type LensState = z.infer<typeof lensStateSchema>;
 export type FinalReview = z.infer<typeof finalReviewSchema>;
 export type PlanUsage = z.infer<typeof planUsageSchema>;
 export type JournalEntry = z.infer<typeof journalEntrySchema>;
@@ -211,6 +244,8 @@ export const limitRowSchema = z.object({
   status: z.enum(["waiting", "over", "ended"]),
   plan: z.string(),
   window: z.string(),
+  /** The plan's 5-hour window usage when the row was last updated. */
+  fiveHour: z.number(),
   resetsInSeconds: z.number(),
   pausedAgents: z.number(),
 });

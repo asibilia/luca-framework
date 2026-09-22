@@ -3,6 +3,7 @@ import {
   ROW_KIND,
   ROW_VERSION,
   TICK_MS,
+  lensStateSchema,
   ticketStateSchema,
   type EventRow,
   type LimitRow,
@@ -57,14 +58,18 @@ async function appendEvent(session: FeedSession, event: EventRow) {
 
 function describeFinalReview(snapshot: RunSnapshot): string {
   const review = snapshot.finalReview;
-  const settled = review.lenses.filter((lens) => lens.state === "clean" || lens.state === "findings").length;
+  const lenses = lensStateSchema.options
+    .map((state) => ({ state, count: review.lenses.filter((lens) => lens.state === state).length }))
+    .filter((entry) => entry.count > 0)
+    .map((entry) => `${entry.count} ${entry.state}`)
+    .join(", ");
   switch (review.state) {
     case "waiting":
       return "waits until every ticket is done or skipped";
     case "reviewing":
-      return `round ${review.round}/3, ${settled} of 5 lenses reported`;
+      return `round ${review.round}/3 · lenses: ${lenses}`;
     case "fixing":
-      return `round ${review.round}/3, fix ${review.fix}/3 running`;
+      return `round ${review.round}/3, fix ${review.fix}/3 running · lenses: ${lenses}`;
     case "escalated":
       return "fix loop hit its cap, a stronger model has one more round";
     case "stuck":
@@ -160,6 +165,7 @@ async function syncStateRows(session: FeedSession, snapshot: RunSnapshot) {
     }
   }
 
+  const planUsage = (plan: string) => snapshot.usage.find((entry) => entry.plan === plan)?.fiveHour ?? 0;
   if (snapshot.limitWait) {
     const id = session.limitRowId ?? rowId(session, `limit-loop${snapshot.loop}-${snapshot.loopTick}`);
     session.limitRowId = id;
@@ -167,6 +173,7 @@ async function syncStateRows(session: FeedSession, snapshot: RunSnapshot) {
       status: "waiting",
       plan: snapshot.limitWait.plan,
       window: snapshot.limitWait.window,
+      fiveHour: planUsage(snapshot.limitWait.plan),
       resetsInSeconds: snapshot.limitWait.resetsInSeconds,
       pausedAgents: snapshot.tickets.flatMap((ticket) => ticket.agents).filter((agent) => agent.state === "paused").length,
     };
@@ -175,6 +182,7 @@ async function syncStateRows(session: FeedSession, snapshot: RunSnapshot) {
     await append(session, session.limitRowId, ROW_KIND.limit, {
       ...session.lastLimit,
       status: "over",
+      fiveHour: planUsage(session.lastLimit.plan),
       resetsInSeconds: 0,
     });
     session.limitRowId = null;

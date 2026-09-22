@@ -1,9 +1,11 @@
 import {
   LOOP_CAP,
+  STEP_NAMES,
   type Agent,
   type Family,
   type FinalReview,
   type JournalEntry,
+  type Lens,
   type RunSnapshot,
   type Ticket,
   type Tone,
@@ -17,8 +19,14 @@ import {
  * Scene 1 (loop ticks 0-27): tickets mid-run. Every ticket state is on the board, and a
  * limit wait covers ticks 8-12.
  * Scene 2 (loop ticks 28-47): a fake `skip #5` reply, the last ticket finishes, and the
- * final review runs until it gets stuck and waits for `retry`, `stop`, or `ship`.
+ * final review runs. Its lenses move through waiting, reviewing, fixing and clean until the
+ * security lens gets stuck and the run waits for `retry`, `stop`, or `ship`.
  */
+
+/** Tickets and lenses before `snapshotAt` derives their step, activity and tokens. */
+type DraftTicket = Omit<Ticket, "step">;
+type DraftLens = Pick<Lens, "name" | "state" | "findings" | "note">;
+type DraftReview = Omit<FinalReview, "lenses"> & { lenses: DraftLens[] };
 
 export const LOOP_LENGTH = 48;
 /** One tick is 3 s of real time and 30 s of run time, so the run moves in time-lapse. */
@@ -35,8 +43,8 @@ const REVIEWER_MODEL = "gpt-5.5";
 const LENS_NAMES = ["architecture", "simplification", "security", "integration", "rules"] as const;
 
 interface Draft {
-  tickets: Ticket[];
-  finalReview: FinalReview;
+  tickets: DraftTicket[];
+  finalReview: DraftReview;
   limitWait: boolean;
   claude5h: number;
   claudeWeek: number;
@@ -66,10 +74,11 @@ function noFindings() {
 function startingDraft(): Draft {
   return {
     limitWait: false,
+    // Chosen so green, yellow and red all show up during a loop.
     claude5h: 86,
-    claudeWeek: 43,
-    gpt5h: 18,
-    gptWeek: 7,
+    claudeWeek: 61,
+    gpt5h: 44,
+    gptWeek: 22,
     stuckAt: { "ticket-5": -28 },
     tickets: [
       {
@@ -212,14 +221,14 @@ function startingDraft(): Draft {
       state: "waiting",
       round: 0,
       fix: 0,
-      lenses: LENS_NAMES.map((name) => ({ name, state: "waiting" as const, findings: noFindings(), note: null })),
+      lenses: LENS_NAMES.map((name) => ({ name, state: "waiting", findings: noFindings(), note: null })),
       agents: [],
       stuck: null,
     },
   };
 }
 
-function ticket(draft: Draft, number: number): Ticket {
+function ticket(draft: Draft, number: number): DraftTicket {
   const found = draft.tickets.find((candidate) => candidate.number === number);
   if (!found) {
     throw new Error(`Fake run has no ticket #${number}`);
@@ -235,7 +244,7 @@ function lastAgent(owner: { agents: Agent[] }): Agent {
   return found;
 }
 
-function lens(draft: Draft, name: (typeof LENS_NAMES)[number]) {
+function lens(draft: Draft, name: (typeof LENS_NAMES)[number]): DraftLens {
   const found = draft.finalReview.lenses.find((candidate) => candidate.name === name);
   if (!found) {
     throw new Error(`Fake run has no ${name} lens`);
@@ -503,7 +512,7 @@ const STEPS: Step[] = [
       review.state = "reviewing";
       review.round = 1;
       for (const item of review.lenses) {
-        item.state = "running";
+        item.state = "reviewing";
       }
       review.agents = LENS_NAMES.map((name) => agent("reviewer", "gpt", REVIEWER_MODEL, "running", 0, `${name} lens`));
     },
@@ -524,14 +533,12 @@ const STEPS: Step[] = [
     at: 32,
     ticket: null,
     tone: "info",
-    text: "Final review: simplification has 2 nits, rules has 1 should-fix",
+    text: "Final review: simplification found 2 nits, rules found 1 should-fix",
     apply(draft) {
       const simplification = lens(draft, "simplification");
-      simplification.state = "findings";
       simplification.findings = { blocker: 0, shouldFix: 0, nit: 2 };
       simplification.note = "Two CSV helpers could be one.";
       const rules = lens(draft, "rules");
-      rules.state = "findings";
       rules.findings = { blocker: 0, shouldFix: 1, nit: 0 };
       rules.note = "The export helper isn't listed in the reports module's index.";
       lensAgent(draft, "simplification").state = "done";
@@ -545,7 +552,6 @@ const STEPS: Step[] = [
     text: "Final review: the security lens found 1 blocker. The export route skips the report's access check",
     apply(draft) {
       const security = lens(draft, "security");
-      security.state = "findings";
       security.findings = { blocker: 1, shouldFix: 0, nit: 0 };
       security.note = "The export route skips the report's access check.";
       lensAgent(draft, "security").state = "done";
@@ -555,27 +561,66 @@ const STEPS: Step[] = [
     at: 34,
     ticket: null,
     tone: "info",
-    text: "Final review round 1: 1 blocker and 1 should-fix → fix 1/3",
+    text: "Final review round 1: 1 blocker, 1 should-fix and 2 nits → fix 1/3",
     apply(draft) {
       const review = draft.finalReview;
       review.state = "fixing";
       review.fix = 1;
-      review.agents.push(agent("implementer", "claude", WRITER_MODEL, "running", 0, "final review fix"));
+      for (const name of ["simplification", "rules", "security"] as const) {
+        lens(draft, name).state = "fixing";
+      }
+      review.agents.push(agent("implementer", "claude", WRITER_MODEL, "running", 0, "final review fix 1/3"));
+    },
+  },
+  {
+    at: 35,
+    ticket: null,
+    tone: "info",
+    text: "Fix 1/3 is in → final review round 2 re-checks simplification, rules and security",
+    apply(draft) {
+      const review = draft.finalReview;
+      lastAgent(review).state = "done";
+      review.state = "reviewing";
+      review.round = 2;
+      for (const name of ["simplification", "rules", "security"] as const) {
+        lens(draft, name).state = "reviewing";
+        lensAgent(draft, name).state = "running";
+      }
     },
   },
   {
     at: 36,
     ticket: null,
     tone: "warning",
-    text: "Final review round 2: rules is clean now, security still has 1 blocker → fix 2/3",
+    text: "Final review round 2: simplification and rules are clean, security still has 1 blocker → fix 2/3",
     apply(draft) {
       const review = draft.finalReview;
-      review.round = 2;
+      for (const name of ["simplification", "rules"] as const) {
+        const item = lens(draft, name);
+        item.state = "clean";
+        item.findings = noFindings();
+        item.note = "Fixed in fix 1/3.";
+        lensAgent(draft, name).state = "done";
+      }
+      lens(draft, "security").state = "fixing";
+      lensAgent(draft, "security").state = "done";
+      review.state = "fixing";
       review.fix = 2;
-      const rules = lens(draft, "rules");
-      rules.state = "clean";
-      rules.findings = noFindings();
-      rules.note = null;
+      review.agents.push(agent("implementer", "claude", WRITER_MODEL, "running", 0, "final review fix 2/3"));
+    },
+  },
+  {
+    at: 37,
+    ticket: null,
+    tone: "info",
+    text: "Fix 2/3 is in → final review round 3 re-checks security",
+    apply(draft) {
+      const review = draft.finalReview;
+      lastAgent(review).state = "done";
+      review.state = "reviewing";
+      review.round = LOOP_CAP;
+      lens(draft, "security").state = "reviewing";
+      lensAgent(draft, "security").state = "running";
     },
   },
   {
@@ -585,11 +630,23 @@ const STEPS: Step[] = [
     text: "Final review round 3: security still has 1 blocker. The fix loop hit its cap → escalation to a stronger model",
     apply(draft) {
       const review = draft.finalReview;
-      review.round = LOOP_CAP;
       review.fix = LOOP_CAP;
       review.state = "escalated";
-      lastAgent(review).state = "failed";
+      lens(draft, "security").state = "fixing";
+      lensAgent(draft, "security").state = "done";
       review.agents.push(agent("implementer", "claude", STRONG_MODEL, "running", 0, "escalation: one more round"));
+    },
+  },
+  {
+    at: 40,
+    ticket: null,
+    tone: "info",
+    text: "The stronger model's fix is in → security re-checks it",
+    apply(draft) {
+      const review = draft.finalReview;
+      lastAgent(review).state = "done";
+      lens(draft, "security").state = "reviewing";
+      lensAgent(draft, "security").state = "running";
     },
   },
   {
@@ -601,14 +658,16 @@ const STEPS: Step[] = [
       const review = draft.finalReview;
       review.state = "stuck";
       lastAgent(review).state = "failed";
+      lens(draft, "security").state = "fixing";
+      lensAgent(draft, "security").state = "done";
       review.stuck = {
         reason:
-          "The security lens keeps finding 1 blocker: the export route skips the report's access check. 3 fix rounds and the stronger model couldn't clear it.",
+          "The security lens keeps finding 1 blocker: the export route skips the report's access check. 3 review rounds and the stronger model couldn't clear it.",
         tried: [
-          "Fix 1/3: added a check in the route → the lens says it checks the wrong role",
-          "Fix 2/3: moved the check into the report loader → the bulk export skips the loader",
-          "Fix 3/3: checked access in both places → the bulk export path is still open",
-          "Escalation: claude-opus took one more round → the bulk export path is still open",
+          "Round 1 found the missing check → fix 1/3 added a check in the route",
+          "Round 2: the check tests the wrong role → fix 2/3 moved it into the report loader",
+          "Round 3: the bulk export skips the loader → the fix loop hit its cap",
+          "Escalation: claude-opus checked access in both places → the bulk export path is still open",
         ],
         replies: ["retry", "stop", "ship"],
         waitingSeconds: 0,
@@ -657,6 +716,54 @@ export function formatClock(seconds: number): string {
 
 function elapsedAt(loopTick: number): number {
   return START_ELAPSED_SECONDS + loopTick * RUN_SECONDS_PER_TICK;
+}
+
+const STEP_OF_ACTIVITY: Record<string, number> = {
+  writing: 0,
+  "red-check": 1,
+  editing: 2,
+  fixing: 2,
+  gates: 3,
+  reading: 4,
+};
+const STEP_OF_ROLE: Record<Agent["role"], number> = { "test-writer": 0, implementer: 2, reviewer: 4 };
+const CHECKS_STEP = 3;
+
+/** Where the ticket is among STEP_NAMES (see the `step` field in shared/board.ts). */
+function stepOf(item: DraftTicket): number {
+  if (item.state === "done") {
+    return STEP_NAMES.length;
+  }
+  if (item.state === "blocked") {
+    return -1;
+  }
+  if (item.state === "stuck" || item.state === "skipped") {
+    // In this fake run, every stuck or skipped ticket that started stopped at the checks.
+    return item.agents.length === 0 ? -1 : CHECKS_STEP;
+  }
+  const byActivity = STEP_OF_ACTIVITY[item.activity];
+  if (byActivity !== undefined) {
+    return byActivity;
+  }
+  const paused = item.agents.find((candidate) => candidate.state === "paused");
+  return paused ? STEP_OF_ROLE[paused.role] : -1;
+}
+
+function finishLens(review: DraftReview, item: DraftLens): Lens {
+  const reviewer = review.agents.find((candidate) => candidate.note === `${item.name} lens`);
+  const activity = {
+    waiting: "waiting",
+    reviewing: reviewer && reviewer.state === "running" ? "reading" : "reported",
+    fixing: review.state === "stuck" ? "stuck" : review.state === "escalated" ? "escalated" : "fixing",
+    clean: "clean",
+  }[item.state];
+  return {
+    ...item,
+    activity,
+    model: REVIEWER_MODEL,
+    family: "gpt",
+    tokens: reviewer ? reviewer.tokens : 0,
+  };
 }
 
 export function snapshotAt(tick: number): RunSnapshot {
@@ -715,8 +822,11 @@ export function snapshotAt(tick: number): RunSnapshot {
       { plan: "Claude plan", family: "claude", fiveHour: Math.round(draft.claude5h), weekly: Math.round(draft.claudeWeek) },
       { plan: "ChatGPT plan", family: "gpt", fiveHour: Math.round(draft.gpt5h), weekly: Math.round(draft.gptWeek) },
     ],
-    tickets: draft.tickets,
-    finalReview: draft.finalReview,
+    tickets: draft.tickets.map((item) => ({ ...item, step: stepOf(item) })),
+    finalReview: {
+      ...draft.finalReview,
+      lenses: draft.finalReview.lenses.map((item) => finishLens(draft.finalReview, item)),
+    },
     journal,
   };
 }

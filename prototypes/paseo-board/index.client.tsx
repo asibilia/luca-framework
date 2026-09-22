@@ -1,6 +1,5 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
-import { MissionControlSurface } from "./client/variant-a-mission-control";
-import { DenseListPanel } from "./client/variant-b-dense-list";
+import { StageStackPanel } from "./client/variant-b-stage-stack";
 import { EventRowLine, LimitRowCard, RunRowCard, StuckRowCard } from "./client/variant-c-timeline-rows";
 import {
   ROW_KIND,
@@ -13,29 +12,11 @@ import {
 } from "./shared/board";
 
 /**
- * Throwaway prototype for asibilia/luca-framework#343: the same fake Luca run in three places.
- * A: sidebar surface. B: workspace panel. C: rows in an agent's timeline via /luca-board-demo.
+ * Throwaway prototype for asibilia/luca-framework#343: the same fake Luca run in two places.
+ * B: a stage-stack workspace panel. C: rows in an agent's timeline via /luca-board-demo.
+ * Variant A (the sidebar surface) was retired in v2; it lives on in the branch history at 222e34c.
  */
 export default function contribute(client: PluginClientContext) {
-  // A: sidebar surface.
-  client.addSurface("board", MissionControlSurface);
-  client.addSidebarItem({
-    id: "board",
-    title: "Luca board (prototype)",
-    icon: "Kanban",
-    surface: "board",
-  });
-  client.addCommandCenterItem({
-    id: "open-board",
-    title: "Luca board (prototype): A, mission control",
-    icon: "Kanban",
-    keywords: ["luca", "board", "prototype", "run", "tickets"],
-    context: "global",
-    onSelect({ openSurface }) {
-      openSurface("board");
-    },
-  });
-
   // B: workspace panel, a tab beside agents, terminals and files.
   client.addWorkspacePanel({
     id: "board-list",
@@ -43,13 +24,13 @@ export default function contribute(client: PluginClientContext) {
     icon: "Rows3",
     context: "workspace",
     locations: ["workspace", "explorer"],
-    Component: DenseListPanel,
+    Component: StageStackPanel,
   });
   client.addCommandCenterItem({
     id: "open-board-list",
-    title: "Luca board (prototype): B, dense list tab",
+    title: "Luca board (prototype)",
     icon: "Rows3",
-    keywords: ["luca", "board", "prototype", "panel", "list"],
+    keywords: ["luca", "board", "prototype", "run", "tickets", "stages"],
     context: "workspace",
     onSelect({ openPanel }) {
       openPanel("board-list");
@@ -57,9 +38,9 @@ export default function contribute(client: PluginClientContext) {
   });
   client.addCommandCenterItem({
     id: "open-board-list-explorer",
-    title: "Luca board (prototype): B, dense list in the Explorer",
+    title: "Luca board (prototype) in the Explorer",
     icon: "Rows3",
-    keywords: ["luca", "board", "prototype", "explorer", "list"],
+    keywords: ["luca", "board", "prototype", "explorer", "stages"],
     context: "workspace",
     onSelect({ openPanel }) {
       openPanel("board-list", { location: "explorer" });
