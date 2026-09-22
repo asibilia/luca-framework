@@ -5,7 +5,6 @@
   },
   "devDependencies": {
     "@alecsibilia/commit": "^1.0.8",
-    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^9",
     "@types/bun": "latest",
     "eslint": "^9",
@@ -14,20 +13,13 @@
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.8.3",
     "typescript": "^5.0.0",
-    "typescript-eslint": "^8.59.0",
-    "unbuild": "^3.5.0"
+    "typescript-eslint": "^8.59.0"
   },
   "private": true,
   "scripts": {
-    "build": "cd packages/luca && bun run build",
-    "changeset": "changeset",
     "commit": "bunx --bun @alecsibilia/commit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "release": "changeset publish",
-    "release:local": "bun run build && cd packages/luca && bun link",
-    "test": "bun run --filter '*' test",
-    "version": "changeset version && bun install"
+    "lint:fix": "eslint . --fix"
   },
   "type": "module",
   "workspaces": {
