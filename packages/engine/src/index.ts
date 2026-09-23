@@ -1,4 +1,11 @@
-export { type AgentLauncher, type AgentTurn } from './agents/agent-launcher'
+export {
+    AgentSessionSchema,
+    LauncherFailureSchema,
+    type AgentLauncher,
+    type AgentSession,
+    type AgentTurn,
+    type LauncherFailure,
+} from './agents/agent-launcher'
 export { rolePrompt } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
@@ -19,7 +26,9 @@ export {
     decideBuild,
     isRefactorTicket,
     MAX_BAD_TEST_BOUNCES,
+    MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
+    mayEditTests,
     type BuildAction,
 } from './core/decide-build'
 export {
@@ -29,6 +38,7 @@ export {
 } from './core/execute-build'
 export {
     failedChecks,
+    failedTryMessage,
     gateFixMessage,
     redFixMessage,
 } from './core/fix-loop-text'
@@ -51,6 +61,35 @@ export {
     type FileChange,
     type GitAdapter,
 } from './git/git-adapter'
+export {
+    changedPaths,
+    DELETED,
+    describeViolations,
+    gitViolations,
+    pathViolations,
+    type GitState,
+    type Violation,
+    type WorktreeState,
+} from './guards/after-turn-check'
+export {
+    BASE_DISALLOWED_TOOLS,
+    checkCommands,
+    checkToolCall,
+    GuardRoleSchema,
+    guardRoleOf,
+    isWriter,
+    mayWrite,
+    permissionRules,
+    READ_ONLY_COMMANDS,
+    type GuardRole,
+    type ToolDecision,
+} from './guards/role-rules'
+export { SECRET_PATHS, sandboxSettings } from './guards/sandbox-settings'
+export {
+    enforceAfterTurn,
+    snapshotWorktree,
+    type TurnSnapshot,
+} from './guards/worktree-state'
 export {
     blockedBySectionRefs,
     blockerNumbers,

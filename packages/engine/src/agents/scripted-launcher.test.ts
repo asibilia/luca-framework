@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { createScriptedLauncher } from './scripted-launcher'
 
+import { BUILD_CONFIG } from '../testing/build-fixtures'
+
 let cwd = ''
 
 beforeEach(async () => {
@@ -30,6 +32,7 @@ describe('scripted launcher: follow-ups', () => {
             prompt: 'p',
             cwd,
             may_edit_tests: true,
+            config: BUILD_CONFIG,
         })
         const second = await launcher.launch({
             role: 'test-writer',
@@ -37,6 +40,7 @@ describe('scripted launcher: follow-ups', () => {
             prompt: 'p',
             cwd,
             may_edit_tests: true,
+            config: BUILD_CONFIG,
         })
 
         expect(first.ok && second.ok).toBe(true)
@@ -62,6 +66,7 @@ describe('scripted launcher: follow-ups', () => {
             prompt: 'p',
             cwd,
             may_edit_tests: false,
+            config: BUILD_CONFIG,
         })
         if (!first.ok) throw new Error(first.error)
         const next = await launcher.followUp({
@@ -70,6 +75,7 @@ describe('scripted launcher: follow-ups', () => {
             ticket: 11,
             message: 'lint failed',
             cwd,
+            config: BUILD_CONFIG,
         })
 
         expect(next).toEqual({
@@ -109,8 +115,9 @@ describe('scripted launcher: follow-ups', () => {
                 ticket: 11,
                 message: 'm',
                 cwd,
+                config: BUILD_CONFIG,
             })
-        ).toMatchObject({ ok: false, session_id: 'nope' })
+        ).toMatchObject({ ok: false, failure: 'engine', session_id: 'nope' })
     })
 
     test('a follow-up with no turn left fails', async () => {
@@ -123,6 +130,7 @@ describe('scripted launcher: follow-ups', () => {
             prompt: 'p',
             cwd,
             may_edit_tests: false,
+            config: BUILD_CONFIG,
         })
         if (!first.ok) throw new Error(first.error)
 
@@ -133,6 +141,7 @@ describe('scripted launcher: follow-ups', () => {
                 ticket: 11,
                 message: 'm',
                 cwd,
+                config: BUILD_CONFIG,
             })
         ).toMatchObject({ ok: false })
     })

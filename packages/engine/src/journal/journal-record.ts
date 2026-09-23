@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { AgentSessionSchema } from '../agents/agent-launcher'
 import { AgentRoleSchema, RoleResultSchema } from '../agents/role-results'
 import { EngineConfigSchema } from '../config/engine-config'
 import {
@@ -136,14 +137,51 @@ const AgentFinishedEntrySchema = z.object({
     ]),
 })
 
-/** An agent's turn failed, or its result did not fit its role's schema. */
+/**
+ * How an agent's turn failed:
+ * - `agent`: the turn itself failed (an error result, a timeout).
+ * - `result`: no structured output, or output that misfits the role's schema.
+ * - `guard`: the after-turn check found a change the role may not make.
+ * - `engine`: the engine's side failed (the SDK crashed, or a follow-up's
+ *   session is gone).
+ *
+ * The decision step counts the first three as failed tries; an engine
+ * failure starts a fresh agent without using one.
+ */
+export const AgentFailureSchema = z.enum(['agent', 'result', 'guard', 'engine'])
+
+export type AgentFailure = z.infer<typeof AgentFailureSchema>
+
+/** An agent's turn failed, journaled once per turn with how it failed. */
 const AgentFailedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_failed'),
     content: z.object({
         role: AgentRoleSchema,
         error: z.string(),
+        failure: AgentFailureSchema.default('agent'),
         ...SESSION_FIELDS,
+    }),
+})
+
+/** The launcher's summary of one agent turn's model session. */
+const AgentSessionEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('agent_session'),
+    content: z.object({ role: AgentRoleSchema, session: AgentSessionSchema }),
+})
+
+/**
+ * The run stopped because going on was unsafe: the wrong credentials or
+ * plan, the wrong model, a foreign MCP server, a rejected rate limit, or
+ * overage. A later `runEngine` on the same journal picks the step up again.
+ */
+const RunStoppedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_stopped'),
+    content: z.object({
+        reason: z.string(),
+        role: AgentRoleSchema.nullable().default(null),
     }),
 })
 
@@ -329,6 +367,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JevAskedEntrySchema,
     JevAnsweredEntrySchema,
     JevFailedEntrySchema,
+    AgentSessionEntrySchema,
+    RunStoppedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -360,6 +400,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JevAskedEntrySchema.extend(STAMP_FIELDS),
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
     JevFailedEntrySchema.extend(STAMP_FIELDS),
+    AgentSessionEntrySchema.extend(STAMP_FIELDS),
+    RunStoppedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -390,6 +432,8 @@ export const JournalKindSchema = z.enum([
     'jev_asked',
     'jev_answered',
     'jev_failed',
+    'agent_session',
+    'run_stopped',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

@@ -1,6 +1,11 @@
 import omit from 'lodash/omit'
 
-import type { CommitStage, JournalRecord, StuckReason } from './journal-record'
+import type {
+    AgentFailure,
+    CommitStage,
+    JournalRecord,
+    StuckReason,
+} from './journal-record'
 
 import type {
     AgentRole,
@@ -84,8 +89,23 @@ export type TicketProgress = {
     /** Every assumption any agent on the ticket made, oldest first. */
     assumptions: string[]
     review: TicketReviewResult | null
-    /** The latest failed agent turn, if it came after that role's last result. */
-    agent_failure: { role: string; error: string } | null
+    /**
+     * The latest failed agent turn, if no agent finished after it: its role,
+     * error, how it failed, and the session it ran in (for a follow-up).
+     */
+    agent_failure: {
+        role: AgentRole
+        error: string
+        failure: AgentFailure
+        session_id: string | null
+    } | null
+    /**
+     * Failed tries (agent, result, and guard failures) each role has used on
+     * this ticket, in all. Engine failures never count here.
+     */
+    failed_tries: Partial<Record<AgentRole, number>>
+    /** Engine failures in a row; any other turn's end resets it. */
+    engine_failures: number
     leftovers: Record<CommitStage, LeftoverHit[] | null>
     commits: Record<CommitStage, string | null>
     gates: ReplayedGates | null
@@ -128,6 +148,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     assumptions: [],
     review: null,
     agent_failure: null,
+    failed_tries: {},
+    engine_failures: 0,
     leftovers: { red: null, green: null },
     commits: { red: null, green: null },
     gates: null,
@@ -222,6 +244,11 @@ const applyRecord = ({
         case 'jev_answered':
         case 'jev_failed':
             return next
+        // A session summary and a stop change nothing: the stopped step is
+        // simply picked up again by the next run of the engine.
+        case 'agent_session':
+        case 'run_stopped':
+            return next
         default:
             return applyTicketRecord({ state: next, record })
     }
@@ -242,6 +269,8 @@ type TicketRecord = Exclude<
             | 'jev_asked'
             | 'jev_answered'
             | 'jev_failed'
+            | 'agent_session'
+            | 'run_stopped'
     }
 >
 
@@ -330,6 +359,7 @@ const progressChange = ({
             const finished = record.content
             return {
                 agent_failure: null,
+                engine_failures: 0,
                 sessions: sessionsAfter({
                     sessions: progress.sessions,
                     role: finished.role,
@@ -343,8 +373,24 @@ const progressChange = ({
             }
         }
         case 'agent_failed': {
-            const { role, error } = record.content
-            return { agent_failure: { role, error } }
+            const { role, error, failure, session_id } = record.content
+            const agent_failure = { role, error, failure, session_id }
+            if (failure === 'engine') {
+                return {
+                    agent_failure,
+                    engine_failures: progress.engine_failures + 1,
+                }
+            }
+            // The engine's side worked this time, so the run of engine
+            // failures is over.
+            return {
+                agent_failure,
+                engine_failures: 0,
+                failed_tries: {
+                    ...progress.failed_tries,
+                    [role]: (progress.failed_tries[role] ?? 0) + 1,
+                },
+            }
         }
         case 'red_check': {
             const { ok, problems, notes, tests } = record.content
