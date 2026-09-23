@@ -1,5 +1,11 @@
 import type { BoardRecord } from './board-vocabulary'
-import { failureText, reasonText, startKind } from './reduce-board'
+import {
+    countFindings,
+    failureText,
+    reasonText,
+    reviewCountsText,
+    startKind,
+} from './reduce-board'
 
 import {
     ROW_KIND,
@@ -114,6 +120,13 @@ export const headerRow = ({
     return { id: runRowId({ run_id: run.run_id }), kind: ROW_KIND.run, data }
 }
 
+/** What a commit's `stage` committed, in words. */
+const COMMITTED: Record<string, string> = {
+    red: 'tests',
+    green: 'code',
+    fix: 'review fixes',
+}
+
 const on = ({ ticket }: { ticket: number | null }): string =>
     ticket === null ? '' : `#${ticket}: `
 
@@ -165,7 +178,7 @@ export const describeRecord = ({
         case 'agent_started':
             return startedText({ before, after, record })
         case 'agent_finished':
-            return finishedText({ record })
+            return finishedText({ before, record })
         case 'agent_failed': {
             const { role, error, failure } = record.content
             return event({
@@ -206,7 +219,7 @@ export const describeRecord = ({
                   })
         case 'commit_made':
             return event({
-                text: `${at}${record.content.stage === 'green' ? 'code' : 'tests'} committed.`,
+                text: `${at}${COMMITTED[record.content.stage] ?? 'tests'} committed.`,
                 tone: 'info',
             })
         case 'gates_run': {
@@ -311,10 +324,18 @@ const startedText = ({
     const at = on({ ticket: record.ticket })
     const { role, follow_up_of } = record.content
     const card = before.tickets.find(({ number }) => number === record.ticket)
-    const round = after.tickets.find(
-        ({ number }) => number === record.ticket
-    )?.fix_round
-    switch (startKind({ card, follow_up_of })) {
+    const next = after.tickets.find(({ number }) => number === record.ticket)
+    const round = next?.fix_round
+    switch (startKind({ card, role, follow_up_of })) {
+        case 'review_fix':
+            return event({
+                text: `${at}review fix round ${next?.review_fix_round ?? 1}/${LOOP_CAP}: ${
+                    role === 'test-writer'
+                        ? 'a fresh test-writer fixes the test findings.'
+                        : `the ${role} got the findings back.`
+                }`,
+                tone: 'warning',
+            })
         case 'fix':
             return event({
                 text: `${at}fix round ${round ?? 0}/${LOOP_CAP}: the ${role} got the failure back.`,
@@ -328,17 +349,37 @@ const startedText = ({
                 tone: 'warning',
             })
         case 'fresh':
-            return event({ text: `${at}the ${role} started.`, tone: 'info' })
+            return role === 'ticket-reviewer' &&
+                card !== undefined &&
+                card.review_fix_round > 0
+                ? event({
+                      text: `${at}re-review ${next?.review_round ?? 0} of the new changes.`,
+                      tone: 'info',
+                  })
+                : event({ text: `${at}the ${role} started.`, tone: 'info' })
     }
 }
 
 const finishedText = ({
+    before,
     record,
 }: {
+    before: BoardState
     record: Extract<BoardRecord, { kind: 'agent_finished' }>
 }): { text: string; tone: Tone } => {
     const at = on({ ticket: record.ticket })
     const { role, result } = record.content
+    const card = before.tickets.find(({ number }) => number === record.ticket)
+    if (card?.open_check === 'review' && role !== 'ticket-reviewer') {
+        const responses = result.finding_responses
+        const wontFix = responses.filter(
+            ({ response }) => response === 'wont_fix'
+        ).length
+        return event({
+            text: `${at}the ${role} answered the findings: ${responses.length - wontFix} fixed, ${wontFix} won't fix.`,
+            tone: 'info',
+        })
+    }
     if (role === 'test-writer') {
         return result.outcome === 'nothing_new_to_test'
             ? event({ text: `${at}nothing new to test.`, tone: 'info' })
@@ -353,13 +394,19 @@ const finishedText = ({
             : event({ text: `${at}code written.`, tone: 'info' })
     }
     if (role === 'ticket-reviewer') {
+        const counts = result.findings
+            ? reviewCountsText({
+                  findings: countFindings({ findings: result.findings }),
+                  nits: true,
+              })
+            : null
         return result.verdict === 'approve'
             ? event({
-                  text: `${at}the ticket review approved it.`,
+                  text: `${at}the ticket review approved it${counts ? ` (${counts})` : ''}.`,
                   tone: 'success',
               })
             : event({
-                  text: `${at}the ticket review asked for changes.`,
+                  text: `${at}the ticket review asked for changes${counts ? `: ${counts}` : ''}.`,
                   tone: 'warning',
               })
     }

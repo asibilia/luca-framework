@@ -440,7 +440,7 @@ export const leftoverScan = ({
     hits = [],
 }: {
     ticket: number
-    stage: 'red' | 'green'
+    stage: 'red' | 'green' | 'fix'
     hits?: { path: string; reason: string }[]
 }): Entry => entry({ kind: 'leftover_scan', ticket, content: { stage, hits } })
 
@@ -449,7 +449,7 @@ export const commitMade = ({
     stage,
 }: {
     ticket: number
-    stage: 'red' | 'green'
+    stage: 'red' | 'green' | 'fix'
 }): Entry =>
     entry({
         kind: 'commit_made',
@@ -458,7 +458,94 @@ export const commitMade = ({
             stage,
             sha: `${stage}-${ticket}`,
             message: `${stage} #${ticket}`,
-            files: ['a.ts'],
+            files: stage === 'fix' ? [] : ['a.ts'],
+        },
+    })
+
+/** One ticket-review finding, as the ticket-reviewer reports it. */
+export type Finding = {
+    id: string
+    severity: 'blocker' | 'should_fix' | 'nit'
+    kind: 'code' | 'test'
+    file: string | null
+    title: string
+    detail: string
+}
+
+export const finding = ({
+    id,
+    severity,
+    kind = 'code',
+}: {
+    id: string
+    severity: Finding['severity']
+    kind?: Finding['kind']
+}): Finding => ({
+    id,
+    severity,
+    kind,
+    file: kind === 'test' ? 'src/a.test.ts' : 'src/a.ts',
+    title: `Finding ${id}`,
+    detail: `The detail of ${id}.`,
+})
+
+/** A re-reviewer's ruling on a fixer's "won't fix". */
+export type Ruling = {
+    finding_id: string
+    ruling: 'accepted' | 'rejected'
+    reason: string
+}
+
+/**
+ * The ticket-reviewer's result: `changes_requested` exactly when some
+ * finding is a blocker or a should-fix.
+ */
+export const reviewFinished = ({
+    ticket,
+    findings = [],
+    rulings = [],
+}: {
+    ticket: number
+    findings?: Finding[]
+    rulings?: Ruling[]
+}): Entry =>
+    agentFinished({
+        ticket,
+        role: 'ticket-reviewer',
+        result: {
+            verdict: findings.some(({ severity }) => severity !== 'nit')
+                ? 'changes_requested'
+                : 'approve',
+            findings,
+            rulings,
+            summary: '',
+            assumptions: [],
+        },
+    })
+
+/** A fixer's answer to one review finding. */
+export type FindingResponse = {
+    finding_id: string
+    response: 'fixed' | 'wont_fix'
+    reason: string
+}
+
+/** A review fixer's (test-writer or implementer) result. */
+export const fixerFinished = ({
+    ticket,
+    role,
+    responses,
+}: {
+    ticket: number
+    role: 'test-writer' | 'implementer'
+    responses: FindingResponse[]
+}): Entry =>
+    agentFinished({
+        ticket,
+        role,
+        result: {
+            ...(RESULTS[role] as Record<string, unknown>),
+            finding_responses: responses,
         },
     })
 

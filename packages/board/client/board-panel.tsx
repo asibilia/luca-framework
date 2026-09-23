@@ -76,7 +76,7 @@ const TICKET_STAGES: {
     {
         stage: 'reviewing',
         title: 'Reviewing',
-        hint: 'a fresh ticket review',
+        hint: 'a fresh ticket review and its fix rounds',
         icon: 'ScanSearch',
         folded: false,
     },
@@ -588,6 +588,11 @@ const TicketDetail = ({
                     findings: {ticket.findings.blocker} blocker ·{' '}
                     {ticket.findings.should_fix} should-fix ·{' '}
                     {ticket.findings.nit} nit
+                </Text>
+            ) : null}
+            {ticket.review_fix_round > 0 ? (
+                <Text style={styles.muted}>
+                    review fix rounds: {ticket.review_fix_round}/{LOOP_CAP}
                 </Text>
             ) : null}
             {Object.keys(ticket.agent_tokens).length > 0 ? (

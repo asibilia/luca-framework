@@ -164,6 +164,7 @@ const newTicket = ({
     role: null,
     fix_round: 0,
     review_round: 0,
+    review_fix_round: 0,
     open_check: null,
     failed_turn: null,
     tests: null,
@@ -270,7 +271,8 @@ const testCounts = ({
     total: cases.length,
 })
 
-const countFindings = ({
+/** A ticket review's findings counted by severity. */
+export const countFindings = ({
     findings,
 }: {
     findings: { severity: 'blocker' | 'should_fix' | 'nit' }[]
@@ -341,23 +343,65 @@ const usageAfter = ({
     }
 }
 
+/** The roles that fix a ticket review's findings. */
+const REVIEW_FIXERS = new Set(['test-writer', 'implementer'])
+
+const plural = ({ count, word }: { count: number; word: string }) =>
+    `${count} ${word}${count === 1 ? '' : 's'}`
+
+/**
+ * A ticket review's finding counts in words, such as "1 blocker, 2
+ * should-fix, 2 nits". Nits are left out unless `nits` is set; `null` when
+ * nothing is left to say.
+ *
+ * @example
+ * reviewCountsText({ findings: { blocker: 2, should_fix: 1, nit: 1 }, nits: false })
+ * // '2 blockers, 1 should-fix'
+ */
+export const reviewCountsText = ({
+    findings,
+    nits,
+}: {
+    findings: FindingCounts
+    nits: boolean
+}): string | null => {
+    const parts = [
+        findings.blocker > 0
+            ? plural({ count: findings.blocker, word: 'blocker' })
+            : null,
+        findings.should_fix > 0 ? `${findings.should_fix} should-fix` : null,
+        nits && findings.nit > 0
+            ? plural({ count: findings.nit, word: 'nit' })
+            : null,
+    ].filter((part) => part !== null)
+    return parts.length > 0 ? parts.join(', ') : null
+}
+
 /**
  * What an `agent_started` is, from the ticket's card before it:
  * - `retry`: a new try after the role's (or any) turn failed;
+ * - `review_fix`: a test-writer (always fresh) or the implementer (a
+ *   follow-up, or fresh if its session was lost) sent a ticket review's
+ *   findings, in a review fix round;
  * - `fix`: a follow-up answering a failed red check or gates, a new round;
- * - `resent`: the same fix round sent again (its turn never ended, such as
- *   after a crash);
+ * - `resent`: the same fix sent again (its turn never ended, such as after
+ *   a crash);
  * - `fresh`: anything else.
  */
 export const startKind = ({
     card,
+    role,
     follow_up_of,
 }: {
     card: TicketCard | undefined
+    role: string
     follow_up_of: string | null
-}): 'retry' | 'fix' | 'resent' | 'fresh' => {
+}): 'retry' | 'review_fix' | 'fix' | 'resent' | 'fresh' => {
     if (card === undefined) return 'fresh'
     if (card.failed_turn !== null) return 'retry'
+    if (card.open_check === 'review' && REVIEW_FIXERS.has(role)) {
+        return card.role === null ? 'review_fix' : 'resent'
+    }
     if (follow_up_of === null || card.open_check === null) return 'fresh'
     return card.role === null ? 'fix' : 'resent'
 }
@@ -625,10 +669,23 @@ const applyKind = ({
             return updateTicket({
                 state,
                 number: ticket,
-                update: (card) =>
-                    record.content.stage === 'green'
-                        ? { ...card, step: 4, activity: 'code committed' }
-                        : { ...card, activity: 'tests committed' },
+                update: (card) => {
+                    switch (record.content.stage) {
+                        case 'green':
+                            return {
+                                ...card,
+                                step: 4,
+                                activity: 'code committed',
+                            }
+                        case 'fix':
+                            return {
+                                ...card,
+                                activity: 'review fixes committed',
+                            }
+                        default:
+                            return { ...card, activity: 'tests committed' }
+                    }
+                },
             })
         case 'gates_run':
             return gatesRun({ state, record })
@@ -826,7 +883,44 @@ const applyKind = ({
     }
 }
 
-const OPEN_CHECK_TEXT = { red_check: 'red check', gates: 'checks' } as const
+const OPEN_CHECK_TEXT = {
+    red_check: 'red check',
+    gates: 'checks',
+    review: 'ticket review',
+} as const
+
+/**
+ * A fixer's start in a review fix round. The round is the review's round (a
+ * round follows each review that asked for changes); only the round's first
+ * fixer adds its "tried" line. The card stays in Reviewing at its step.
+ */
+const reviewFixStarted = ({
+    card,
+    role,
+}: {
+    card: TicketCard
+    role: string
+}): TicketCard => {
+    const round = Math.max(card.review_round, 1)
+    const counts = card.findings
+        ? reviewCountsText({ findings: card.findings, nits: false })
+        : null
+    return {
+        ...card,
+        started: true,
+        role,
+        stage: 'reviewing',
+        review_fix_round: round,
+        activity: `fixing the review's findings (${round}/${LOOP_CAP})`,
+        tried:
+            card.review_fix_round < round
+                ? withTried({
+                      tried: card.tried,
+                      line: `Review fix round ${round}/${LOOP_CAP}${counts ? `: ${counts}` : ''}`,
+                  })
+                : card.tried,
+    }
+}
 
 const agentStarted = ({
     state,
@@ -840,7 +934,13 @@ const agentStarted = ({
         state,
         number: record.ticket,
         update: (card) => {
-            const kind = startKind({ card, follow_up_of })
+            const kind = startKind({ card, role, follow_up_of })
+            if (
+                kind === 'review_fix' ||
+                (kind === 'resent' && card.open_check === 'review')
+            ) {
+                return reviewFixStarted({ card, role })
+            }
             const fix_round =
                 kind === 'fix' ? card.fix_round + 1 : card.fix_round
             const started = { ...card, started: true, role, fix_round }
@@ -853,11 +953,14 @@ const agentStarted = ({
                     : card.tried
             const fixing = kind === 'fix' || kind === 'resent'
             if (role === 'test-writer') {
+                // During a ticket review (a retried review fixer) the card
+                // stays in Reviewing at its step.
+                const reviewing = card.stage === 'reviewing'
                 return {
                     ...started,
                     tried,
-                    stage: 'building',
-                    step: 0,
+                    stage: reviewing ? 'reviewing' : 'building',
+                    step: reviewing ? card.step : 0,
                     activity: fixing
                         ? `fixing tests (${fix_round}/${LOOP_CAP})`
                         : kind === 'retry'
@@ -880,16 +983,20 @@ const agentStarted = ({
                 }
             }
             if (role === 'ticket-reviewer') {
+                const retry = kind === 'retry'
                 return {
                     ...started,
                     stage: 'reviewing',
                     step: 4,
-                    review_round:
-                        kind === 'retry'
-                            ? Math.max(card.review_round, 1)
-                            : card.review_round + 1,
-                    activity:
-                        kind === 'retry' ? 'reviewing again' : 'reviewing',
+                    open_check: retry ? card.open_check : null,
+                    review_round: retry
+                        ? Math.max(card.review_round, 1)
+                        : card.review_round + 1,
+                    activity: retry
+                        ? 'reviewing again'
+                        : card.review_fix_round > 0
+                          ? 're-reviewing'
+                          : 'reviewing',
                 }
             }
             return { ...started, activity: role }
@@ -909,8 +1016,26 @@ const agentFinished = ({
         state,
         number: record.ticket,
         update: (card) => {
-            const done = { ...card, role: null, failed_turn: null }
+            const wontFix = result.finding_responses.filter(
+                ({ response }) => response === 'wont_fix'
+            )
+            const done = {
+                ...card,
+                role: null,
+                failed_turn: null,
+                tried: wontFix.reduce(
+                    (tried, { finding_id, reason }) =>
+                        withTried({
+                            tried,
+                            line: `Won't fix ${finding_id}: ${reason}`,
+                        }),
+                    card.tried
+                ),
+            }
             if (role === 'test-writer') {
+                if (card.open_check === 'review') {
+                    return { ...done, activity: 'test findings answered' }
+                }
                 return result.outcome === 'nothing_new_to_test'
                     ? { ...done, step: 2, activity: 'nothing new to test' }
                     : { ...done, step: 1, activity: 'red check' }
@@ -924,14 +1049,33 @@ const agentFinished = ({
                 const findings = result.findings
                     ? countFindings({ findings: result.findings })
                     : card.findings
+                const ruled = result.rulings.reduce(
+                    (tried, { finding_id, ruling, reason }) =>
+                        withTried({
+                            tried,
+                            line:
+                                ruling === 'accepted'
+                                    ? `Declined ${finding_id} accepted: ${reason}`
+                                    : `${finding_id} still stands: ${reason}`,
+                        }),
+                    done.tried
+                )
                 return result.verdict === 'approve'
                     ? {
                           ...done,
                           step: ALL_STEPS_DONE,
                           findings,
+                          open_check: null,
+                          tried: ruled,
                           activity: 'approved',
                       }
-                    : { ...done, findings, activity: 'changes requested' }
+                    : {
+                          ...done,
+                          findings,
+                          open_check: 'review',
+                          tried: ruled,
+                          activity: 'changes requested',
+                      }
             }
             return done
         },
