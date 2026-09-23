@@ -1,3 +1,5 @@
+import type { BoardRecord } from './board-vocabulary'
+
 import {
     ALL_STEPS_DONE,
     LENS_NAMES,
@@ -12,8 +14,6 @@ import {
     type RunStatus,
     type TicketCard,
 } from '../shared/board-state'
-
-import type { BoardRecord } from './board-vocabulary'
 
 /**
  * The board's reducer: pure functions that turn journal records into board
@@ -31,7 +31,8 @@ const DETAIL_MAX = 2000
 const STUCK_REASONS: Record<string, string> = {
     agent_failed: 'An agent failed.',
     red_check_failed: 'The red check failed.',
-    leftovers_found: 'The leftover scan found files that must not be committed.',
+    leftovers_found:
+        'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks failed.',
     bad_test: 'The implementer sent back a bad test.',
     changes_requested: 'The ticket review asked for changes.',
@@ -486,7 +487,9 @@ const applyKind = ({
                 state,
                 number: ticket,
                 update: (card) =>
-                    card.stage === 'done' ? { ...card, activity: 'pushed' } : card,
+                    card.stage === 'done'
+                        ? { ...card, activity: 'pushed' }
+                        : card,
             })
         case 'ticket_stuck': {
             if (ticket === null) return state
@@ -705,7 +708,8 @@ const agentStarted = ({
             if (role === 'implementer') {
                 return {
                     ...started,
-                    stage: card.stage === 'reviewing' ? 'reviewing' : 'building',
+                    stage:
+                        card.stage === 'reviewing' ? 'reviewing' : 'building',
                     step: 2,
                     activity: card.fix_round > 0 ? 'fixing' : 'coding',
                 }

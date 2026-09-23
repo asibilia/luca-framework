@@ -1,3 +1,6 @@
+import type { BoardRecord } from './board-vocabulary'
+import { reasonText } from './reduce-board'
+
 import {
     ROW_KIND,
     type BoardRow,
@@ -14,9 +17,6 @@ import {
     type NeedsYou,
     type Usage,
 } from '../shared/board-state'
-
-import type { BoardRecord } from './board-vocabulary'
-import { reasonText } from './reduce-board'
 
 /**
  * The row-maker: pure functions that turn a record and the board before and
@@ -204,7 +204,10 @@ export const describeRecord = ({
                 .filter((check) => !check.ok)
                 .map((check) => check.name)
             return record.content.ok
-                ? event({ text: `${at}checks passed${where}.`, tone: 'success' })
+                ? event({
+                      text: `${at}checks passed${where}.`,
+                      tone: 'success',
+                  })
                 : event({
                       text: `${at}checks failed${where}: ${failed.join(', ') || 'no detail'}.`,
                       tone: 'danger',
@@ -238,8 +241,7 @@ export const describeRecord = ({
         case 'review_finished':
             return event({
                 text: `${at}review round ${record.content.round}: ${findingsText({ findings: record.content.findings })}.`,
-                tone:
-                    record.content.findings.blocker > 0 ? 'warning' : 'info',
+                tone: record.content.findings.blocker > 0 ? 'warning' : 'info',
             })
         case 'reply_received': {
             const ticket = record.content.ticket ?? record.ticket
@@ -306,12 +308,18 @@ const finishedText = ({
     }
     if (role === 'implementer') {
         return result.outcome === 'bad_test'
-            ? event({ text: `${at}the implementer sent back a bad test.`, tone: 'warning' })
+            ? event({
+                  text: `${at}the implementer sent back a bad test.`,
+                  tone: 'warning',
+              })
             : event({ text: `${at}code written.`, tone: 'info' })
     }
     if (role === 'ticket-reviewer') {
         return result.verdict === 'approve'
-            ? event({ text: `${at}the ticket review approved it.`, tone: 'success' })
+            ? event({
+                  text: `${at}the ticket review approved it.`,
+                  tone: 'success',
+              })
             : event({
                   text: `${at}the ticket review asked for changes.`,
                   tone: 'warning',
@@ -372,7 +380,9 @@ export const rowsForRecord = ({
     }
 
     for (const item of after.needs_you) {
-        const previous = before.needs_you.find((entry) => entry.key === item.key)
+        const previous = before.needs_you.find(
+            (entry) => entry.key === item.key
+        )
         if (previous && sameItem({ left: previous, right: item })) continue
         rows.push({
             id: stuckRowId({ run_id, item }),

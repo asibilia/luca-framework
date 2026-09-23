@@ -170,7 +170,9 @@ describe('engine.event: bad and unknown records', () => {
         expect(state.event_count).toBe(10)
         expect(state.needs_you).toEqual([])
         expect(state.tickets.find((t) => t.number === 13)?.step).toBe(0)
-        expect(harness.logs.join('\n')).toContain('skipped record 9 (ticket_stuck)')
+        expect(harness.logs.join('\n')).toContain(
+            'skipped record 9 (ticket_stuck)'
+        )
     })
 })
 
@@ -210,7 +212,10 @@ describe('a plugin restart', () => {
     test('a broken registry file starts empty and is logged', async () => {
         const registry_dir = await mkdtemp(join(tmpdir(), 'luca-board-reg-'))
         dirs.push(registry_dir)
-        await Bun.write(join(registry_dir, 'runs.json'), '{"version":1,"runs":[{}]}')
+        await Bun.write(
+            join(registry_dir, 'runs.json'),
+            '{"version":1,"runs":[{}]}'
+        )
 
         harness = await createHarness({ registry_dir })
 
@@ -249,9 +254,9 @@ describe('chat rows', () => {
             new Set([`${first.run_id}-run`, `${second.run_id}-run`])
         )
         expect(headers.length).toBeGreaterThan(2)
-        expect(harness.rows.every(({ agent_id }) => agent_id === 'agent-1')).toBe(
-            true
-        )
+        expect(
+            harness.rows.every(({ agent_id }) => agent_id === 'agent-1')
+        ).toBe(true)
     })
 
     test('the header row is appended at start as "starting"', async () => {
@@ -329,9 +334,9 @@ describe('the engine ending', () => {
             message: 'The Claude login check failed.',
         })
         expect(state.run.status).toBe('ended_with_error')
-        const header = harness.latestRows().find(
-            ({ row }) => row.kind === 'luca-board-run'
-        )
+        const header = harness
+            .latestRows()
+            .find(({ row }) => row.kind === 'luca-board-run')
         expect(header?.row).toMatchObject({
             data: {
                 status: 'ended_with_error',
@@ -364,7 +369,7 @@ describe('the engine ending', () => {
 })
 
 describe('board.read', () => {
-    test('lists only this workspace\'s runs, newest first, and selects by id', async () => {
+    test("lists only this workspace's runs, newest first, and selects by id", async () => {
         harness = await createHarness()
         const older = await harness.start({ args: '10' })
         const newer = await harness.start({ args: 'demo' })
@@ -380,6 +385,8 @@ describe('board.read', () => {
 
         const picked = await harness.read({ run_id: older.run_id })
         expect(picked.selected?.run.run_id).toBe(older.run_id)
-        expect((await harness.read({ workspace_id: 'ws-9' })).selected).toBeNull()
+        expect(
+            (await harness.read({ workspace_id: 'ws-9' })).selected
+        ).toBeNull()
     })
 })

@@ -32,7 +32,11 @@ describe('engine.event: records in, board state out', () => {
             entries: intakeOfThree(),
         })
 
-        expect(reply).toEqual({ ok: true, next_seq: 8, message: expect.any(String) })
+        expect(reply).toEqual({
+            ok: true,
+            next_seq: 8,
+            message: expect.any(String),
+        })
         const state = await harness.state()
         expect(state.run).toMatchObject({
             run_id,
@@ -151,7 +155,9 @@ describe('engine.event: records in, board state out', () => {
         const events = harness
             .latestRows()
             .filter(({ row }) => row.kind === 'luca-board-event')
-            .map(({ row }) => (row.kind === 'luca-board-event' ? row.data.text : ''))
+            .map(({ row }) =>
+                row.kind === 'luca-board-event' ? row.data.text : ''
+            )
         expect(events).toContain('#13: red check passed (2 new tests fail).')
         expect(events).toContain('#13: joined the run branch.')
         expect(events.join('\n')).not.toContain('leftover')

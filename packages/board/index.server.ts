@@ -9,8 +9,8 @@ import type {
 import { createBoardServer } from './server/board-server'
 import { defaultRegistryPath } from './server/run-registry'
 import { spawnDetached } from './server/spawn-detached'
-import { boardReadRpc, engineEventRpc, runStartRpc } from './shared/board-rpc'
 import { ROW_VERSION } from './shared/board-rows'
+import { boardReadRpc, engineEventRpc, runStartRpc } from './shared/board-rpc'
 import { PLUGIN_ID } from './shared/board-state'
 import {
     EngineSettingsSchema,

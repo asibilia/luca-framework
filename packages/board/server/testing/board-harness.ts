@@ -2,8 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import type { BoardReadOutput, EngineRecord } from '../../shared/board-rpc'
+import { stamp, type Entry } from './journal-fixtures'
+
 import type { BoardRow } from '../../shared/board-rows'
+import type { BoardReadOutput, EngineRecord } from '../../shared/board-rpc'
 import type { BoardState } from '../../shared/board-state'
 import type { EngineSettings } from '../../shared/engine-settings'
 import {
@@ -11,8 +13,6 @@ import {
     type BoardServer,
     type SpawnRequest,
 } from '../board-server'
-
-import { stamp, type Entry } from './journal-fixtures'
 
 /** The engine path the default fake settings point at. */
 export const ENGINE_PATH = '/opt/luca/packages/engine/src/luca-run.ts'
@@ -83,7 +83,12 @@ export const createHarness = async ({
         workspace_id?: string
         cwd?: string
     } = {}) => {
-        const output = await board.startRun({ agent_id, workspace_id, cwd, args })
+        const output = await board.startRun({
+            agent_id,
+            workspace_id,
+            cwd,
+            args,
+        })
         const token = spawns.at(-1)?.env.LUCA_BOARD_TOKEN ?? ''
         return { output, run_id: output.run_id ?? '', token }
     }
@@ -114,9 +119,11 @@ export const createHarness = async ({
     const read = async ({
         workspace_id = 'ws-1',
         run_id = null,
-    }: { workspace_id?: string; run_id?: string | null } = {}): Promise<
-        BoardReadOutput
-    > => board.readBoard({ workspace_id, run_id })
+    }: {
+        workspace_id?: string
+        run_id?: string | null
+    } = {}): Promise<BoardReadOutput> =>
+        board.readBoard({ workspace_id, run_id })
 
     /** The full state of the newest run in `ws-1`; throws when there is none. */
     const state = async (): Promise<BoardState> => {

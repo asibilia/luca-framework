@@ -67,9 +67,13 @@ const readEntries = ({
     try {
         const parsed = RegistryFileSchema.safeParse(JSON.parse(text))
         if (parsed.success) return parsed.data.runs
-        log(`The run registry ${path} is not valid, starting empty: ${z.prettifyError(parsed.error)}`)
+        log(
+            `The run registry ${path} is not valid, starting empty: ${z.prettifyError(parsed.error)}`
+        )
     } catch (error) {
-        log(`The run registry ${path} is not JSON, starting empty: ${String(error)}`)
+        log(
+            `The run registry ${path} is not JSON, starting empty: ${String(error)}`
+        )
     }
     return []
 }

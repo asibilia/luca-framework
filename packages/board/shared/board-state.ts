@@ -14,6 +14,13 @@ export const PLUGIN_ID = 'luca-board'
 /** How often the side panel polls `board.read`. */
 export const POLL_MS = 2000
 
+/** How to call the slash command, as shown to people. */
+export const RUN_USAGE = '/luca-run <spec number> | demo'
+
+/** The side panel's text when this workspace has no run yet. */
+export const EMPTY_BOARD_TEXT =
+    'Type /luca-run <spec> in a chat to start a run, or /luca-run demo for a safe practice run.'
+
 /** Fix loops and review rounds are capped at 3. */
 export const LOOP_CAP = 3
 
@@ -168,7 +175,12 @@ export const LensNameSchema = z.enum(LENS_NAMES)
 
 export type LensName = z.infer<typeof LensNameSchema>
 
-export const LensStateSchema = z.enum(['waiting', 'reviewing', 'fixing', 'clean'])
+export const LensStateSchema = z.enum([
+    'waiting',
+    'reviewing',
+    'fixing',
+    'clean',
+])
 
 export type LensState = z.infer<typeof LensStateSchema>
 

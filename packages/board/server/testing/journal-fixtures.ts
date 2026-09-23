@@ -343,7 +343,8 @@ export const ticketStuck = ({
     ticket: number
     reason: string
     detail: string
-}): Entry => entry({ kind: 'ticket_stuck', ticket, content: { reason, detail } })
+}): Entry =>
+    entry({ kind: 'ticket_stuck', ticket, content: { reason, detail } })
 
 export const pullRequestOpened = ({
     number,

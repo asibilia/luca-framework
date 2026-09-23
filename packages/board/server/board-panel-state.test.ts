@@ -220,16 +220,14 @@ describe('limit waits', () => {
             since: expect.any(String),
         })
         expect(waiting.run.status).toBe('limit_wait')
-        expect(rowsOfKind({ kind: 'luca-board-limit' })[0]?.row).toMatchObject(
-            {
-                id: `${run_id}-limit`,
-                data: {
-                    status: 'waiting',
-                    resets_at,
-                    usage: { five_hour_level: 'high' },
-                },
-            }
-        )
+        expect(rowsOfKind({ kind: 'luca-board-limit' })[0]?.row).toMatchObject({
+            id: `${run_id}-limit`,
+            data: {
+                status: 'waiting',
+                resets_at,
+                usage: { five_hour_level: 'high' },
+            },
+        })
 
         await harness.send({
             run_id,
@@ -294,7 +292,10 @@ describe('the final review', () => {
             round: 1,
         })
         expect(
-            reviewing.final_review.lenses.map(({ name, state }) => [name, state])
+            reviewing.final_review.lenses.map(({ name, state }) => [
+                name,
+                state,
+            ])
         ).toEqual([
             ['architecture', 'waiting'],
             ['simplification', 'waiting'],
@@ -331,12 +332,10 @@ describe('the final review', () => {
                 ticket: null,
                 subject: 'The final review is stuck',
                 replies: ['retry', 'stop', 'ship'],
-                tried: ['Fix round 3/3 on the lenses\' findings'],
+                tried: ["Fix round 3/3 on the lenses' findings"],
             }),
         ])
-        expect(
-            rowsOfKind({ kind: 'luca-board-stuck' })[0]?.row
-        ).toMatchObject({
+        expect(rowsOfKind({ kind: 'luca-board-stuck' })[0]?.row).toMatchObject({
             id: `${run_id}-stuck-final`,
             data: { status: 'waiting', replies: ['retry', 'stop', 'ship'] },
         })
@@ -357,8 +356,8 @@ describe('the final review', () => {
         expect(
             passed.final_review.lenses.every((lens) => lens.state === 'clean')
         ).toBe(true)
-        expect(rowsOfKind({ kind: 'luca-board-stuck' })[0]?.row).toMatchObject(
-            { data: { status: 'resolved', resolution: 'You replied `retry`.' } }
-        )
+        expect(rowsOfKind({ kind: 'luca-board-stuck' })[0]?.row).toMatchObject({
+            data: { status: 'resolved', resolution: 'You replied `retry`.' },
+        })
     })
 })

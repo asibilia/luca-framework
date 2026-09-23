@@ -1,19 +1,6 @@
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { join } from 'node:path'
 
-import type {
-    BoardReadInput,
-    BoardReadOutput,
-    EngineEventInput,
-    EngineEventOutput,
-    EngineRecord,
-    RunStartInput,
-    RunStartOutput,
-} from '../shared/board-rpc'
-import type { BoardRow } from '../shared/board-rows'
-import type { BoardState, EngineEnded } from '../shared/board-state'
-import type { EngineSettings } from '../shared/engine-settings'
-
 import { readRecord } from './board-vocabulary'
 import {
     engineArgs,
@@ -24,6 +11,19 @@ import {
 import { describeRecord, headerRow, rowsForRecord } from './make-rows'
 import { applyEnded, applyRecord, createBoardState } from './reduce-board'
 import { createRunRegistry, type RunEntry } from './run-registry'
+
+import type { BoardRow } from '../shared/board-rows'
+import type {
+    BoardReadInput,
+    BoardReadOutput,
+    EngineEventInput,
+    EngineEventOutput,
+    EngineRecord,
+    RunStartInput,
+    RunStartOutput,
+} from '../shared/board-rpc'
+import type { BoardState, EngineEnded } from '../shared/board-state'
+import type { EngineSettings } from '../shared/engine-settings'
 
 /** What the server asks the host to spawn: detached, output to a log file. */
 export type SpawnRequest = {
@@ -246,7 +246,8 @@ export const createBoardServer = ({
      */
     const startRun = async (input: RunStartInput): Promise<RunStartOutput> => {
         const parsed = parseRunArgs({ args: input.args })
-        if (!parsed.ok) return { ok: false, message: parsed.message, run_id: null }
+        if (!parsed.ok)
+            return { ok: false, message: parsed.message, run_id: null }
 
         let settings: EngineSettings = { engine_path: '', bun_path: '' }
         try {
@@ -255,7 +256,8 @@ export const createBoardServer = ({
             log(`Couldn't read the engine settings: ${errorText({ error })}`)
         }
         const engine = resolveEngine({ settings, env, home_dir, file_exists })
-        if (!engine.ok) return { ok: false, message: engine.message, run_id: null }
+        if (!engine.ok)
+            return { ok: false, message: engine.message, run_id: null }
 
         let run_id = mintRunId({ now: now(), suffix: randomSuffix() })
         while (runs.has(run_id)) {
@@ -296,7 +298,9 @@ export const createBoardServer = ({
                 cwd: input.cwd,
                 log_path,
                 on_error: (error) => {
-                    log(`[${run_id}] the engine process failed: ${errorText({ error })}`)
+                    log(
+                        `[${run_id}] the engine process failed: ${errorText({ error })}`
+                    )
                     void enqueue({
                         run_id,
                         work: () =>
@@ -319,7 +323,9 @@ export const createBoardServer = ({
                 run_id: null,
             }
         }
-        log(`[${run_id}] started ${engine.command} (pid ${pid ?? '?'}), log ${log_path}`)
+        log(
+            `[${run_id}] started ${engine.command} (pid ${pid ?? '?'}), log ${log_path}`
+        )
 
         const headerAdded = enqueue({
             run_id,
@@ -334,7 +340,8 @@ export const createBoardServer = ({
         ])
         clearTimeout(timer)
 
-        const what = target.kind === 'demo' ? 'a demo run' : `spec #${target.spec}`
+        const what =
+            target.kind === 'demo' ? 'a demo run' : `spec #${target.spec}`
         return {
             ok: true,
             run_id,
@@ -404,13 +411,19 @@ export const createBoardServer = ({
     }
 
     /** `board.read`: the workspace's runs, newest first, and one in full. */
-    const readBoard = async (input: BoardReadInput): Promise<BoardReadOutput> => {
+    const readBoard = async (
+        input: BoardReadInput
+    ): Promise<BoardReadOutput> => {
         const list = [...runs.values()]
-            .filter((memory) => memory.entry.workspace_id === input.workspace_id)
+            .filter(
+                (memory) => memory.entry.workspace_id === input.workspace_id
+            )
             .toSorted((left, right) =>
                 right.entry.started_at === left.entry.started_at
                     ? right.entry.run_id.localeCompare(left.entry.run_id)
-                    : right.entry.started_at.localeCompare(left.entry.started_at)
+                    : right.entry.started_at.localeCompare(
+                          left.entry.started_at
+                      )
             )
         const selected =
             (input.run_id

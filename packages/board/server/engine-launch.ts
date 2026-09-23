@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 
-import { PLUGIN_ID } from '../shared/board-state'
+import { PLUGIN_ID, RUN_USAGE } from '../shared/board-state'
 import type { EngineSettings } from '../shared/engine-settings'
 
 /**
@@ -9,8 +9,6 @@ import type { EngineSettings } from '../shared/engine-settings'
  * the argv. Never uses the plugin's own folder: inside the plugin process
  * `import.meta.url` is undefined and the cwd is `/`.
  */
-
-export const USAGE = '/luca-run <spec number> | demo'
 
 /** What a run builds: one spec, or the engine's safe practice run. */
 export type RunTarget = { kind: 'spec'; spec: number } | { kind: 'demo' }
@@ -40,8 +38,8 @@ export const parseRunArgs = ({
         ok: false,
         message:
             text === ''
-                ? `Which spec? Usage: ${USAGE}`
-                : `"${text}" isn't a spec number. Usage: ${USAGE}`,
+                ? `Which spec? Usage: ${RUN_USAGE}`
+                : `"${text}" isn't a spec number. Usage: ${RUN_USAGE}`,
     }
 }
 

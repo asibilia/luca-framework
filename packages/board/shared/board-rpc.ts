@@ -1,7 +1,11 @@
 import { defineRpc } from '@getpaseo/plugin'
 import { z } from 'zod'
 
-import { BoardStateSchema, EngineEndedSchema, RunSummarySchema } from './board-state'
+import {
+    BoardStateSchema,
+    EngineEndedSchema,
+    RunSummarySchema,
+} from './board-state'
 
 /**
  * The plugin's RPCs. Payload keys are snake_case (API convention).
