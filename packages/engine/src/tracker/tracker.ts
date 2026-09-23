@@ -14,13 +14,33 @@ export const TrackerIssueSchema = z.object({
 
 export type TrackerIssue = z.infer<typeof TrackerIssueSchema>
 
+/** A pull request the engine asks the tracker to open. */
+export const PullRequestRequestSchema = z.object({
+    /** The run branch. */
+    head: z.string().min(1),
+    /** The branch it merges into. */
+    base: z.string().min(1),
+    title: z.string().min(1),
+    body: z.string(),
+})
+
+export type PullRequestRequest = z.infer<typeof PullRequestRequestSchema>
+
+/** A pull request the tracker opened. */
+export const OpenedPullRequestSchema = z.object({
+    number: z.number().int().positive(),
+    url: z.string(),
+})
+
+export type OpenedPullRequest = z.infer<typeof OpenedPullRequestSchema>
+
 /**
  * What the engine needs from an issue tracker. A plain object of async
  * functions, so a real tracker (GitHub via `gh`) and an in-memory one for
  * tests are interchangeable.
  *
- * Later tickets add reading the user's replies and opening the pull request;
- * they are left out on purpose until then.
+ * Later tickets add reading the user's replies; it is left out on purpose
+ * until then.
  */
 export type Tracker = {
     /** Reads the spec issue. Throws if it does not exist. */
@@ -35,6 +55,8 @@ export type Tracker = {
     addLabel: (args: { number: number; label: string }) => Promise<void>
     /** Removes a label from an issue. Removing a missing label does nothing. */
     removeLabel: (args: { number: number; label: string }) => Promise<void>
+    /** Opens a pull request from `head` into `base`. */
+    openPullRequest: (args: PullRequestRequest) => Promise<OpenedPullRequest>
 }
 
 /** The label a ticket needs before intake lets a run build it. */

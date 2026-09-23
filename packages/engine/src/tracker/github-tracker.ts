@@ -2,7 +2,12 @@ import { $ } from 'bun'
 
 import { z } from 'zod'
 
-import { TrackerIssueSchema, type Tracker, type TrackerIssue } from './tracker'
+import {
+    OpenedPullRequestSchema,
+    TrackerIssueSchema,
+    type Tracker,
+    type TrackerIssue,
+} from './tracker'
 
 /** An issue as GitHub's REST API returns it (only the fields we use). */
 const GitHubIssueSchema = z.object({
@@ -123,6 +128,19 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             await $`gh issue edit ${number} --repo ${repo} --remove-label ${label}`
                 .quiet()
                 .nothrow()
+        },
+        openPullRequest: async ({ head, base, title, body }) => {
+            const url = (
+                await $`gh pr create --repo ${repo} --head ${head} --base ${base} --title ${title} --body ${body}`.quiet()
+            ).stdout
+                .toString()
+                .trim()
+            const number = Number(/\/pull\/(\d+)/.exec(url)?.[1])
+            return parseOrThrow({
+                schema: OpenedPullRequestSchema,
+                value: { number, url },
+                what: `the pull request from ${head}`,
+            })
         },
     }
 }

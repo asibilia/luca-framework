@@ -1,7 +1,16 @@
 import cloneDeep from 'lodash/cloneDeep'
 import uniq from 'lodash/uniq'
 
-import { TrackerIssueSchema, type Tracker, type TrackerIssue } from './tracker'
+import {
+    TrackerIssueSchema,
+    type OpenedPullRequest,
+    type PullRequestRequest,
+    type Tracker,
+    type TrackerIssue,
+} from './tracker'
+
+/** A pull request the in-memory tracker opened. */
+export type InMemoryPullRequest = PullRequestRequest & OpenedPullRequest
 
 /** An in-memory tracker, plus what tests need to look inside it. */
 export type InMemoryTracker = Tracker & {
@@ -9,6 +18,8 @@ export type InMemoryTracker = Tracker & {
     commentsOn: (args: { number: number }) => string[]
     /** An issue's labels right now. */
     labelsOf: (args: { number: number }) => string[]
+    /** Every pull request opened, oldest first. */
+    pullRequests: () => InMemoryPullRequest[]
     /** Changes an issue, as a person editing it on the tracker would. */
     updateIssue: (args: {
         number: number
@@ -38,6 +49,7 @@ export const createInMemoryTracker = ({
         issues.map((issue) => [issue.number, cloneDeep(issue)])
     )
     const comments = new Map<number, string[]>()
+    const pulls: InMemoryPullRequest[] = []
 
     const find = (number: number): TrackerIssue => {
         const issue = store.get(number)
@@ -67,6 +79,23 @@ export const createInMemoryTracker = ({
                 number,
                 find(number).labels.filter((each) => each !== label)
             ),
+        openPullRequest: async (request) => {
+            // Pull requests share numbers with issues, as on GitHub.
+            const number =
+                Math.max(
+                    0,
+                    ...store.keys(),
+                    ...pulls.map((pull) => pull.number)
+                ) + 1
+            const pull = {
+                ...cloneDeep(request),
+                number,
+                url: `https://tracker.invalid/pull/${number}`,
+            }
+            pulls.push(pull)
+            return { number, url: pull.url }
+        },
+        pullRequests: () => cloneDeep(pulls),
         commentsOn: ({ number }) => [...(comments.get(number) ?? [])],
         labelsOf: ({ number }) => [...find(number).labels],
         updateIssue: ({ number, changes }) => {
