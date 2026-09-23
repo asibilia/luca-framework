@@ -20,7 +20,7 @@ const replacer = (_key: string, value: unknown) => {
 export const createJournal = (file: string, runId: string): Journal => {
   mkdirSync(dirname(file), { recursive: true })
   const write = (kind: string, data: Record<string, unknown> = {}) => {
-    const line = JSON.stringify({ ts: new Date().toISOString(), run_id: runId, kind, ...data }, replacer)
+    const line = JSON.stringify({ ts: new Date().toISOString(), run_id: runId, ...data, kind }, replacer)
     appendFileSync(file, line + '\n')
   }
   return { file, runId, write }

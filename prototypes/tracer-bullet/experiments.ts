@@ -9,18 +9,32 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import type { SandboxSettings } from '@anthropic-ai/claude-agent-sdk'
+import { query, type SandboxSettings } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 
-import { createEngineCtx, isRunStopped, preflight, startAgent, type AgentSession, type EngineCtx } from './lib/agent'
+import {
+  claudeBinary,
+  createEngineCtx,
+  createInputChannel,
+  isRunStopped,
+  preflight,
+  startAgent,
+  type AgentSession,
+  type EngineCtx,
+} from './lib/agent'
 import { LOCAL_SERVICES, makeRunId, MODELS, RUNS_DIR } from './lib/config'
 import { createRunWorktree, git, removeRunWorktree, type RunWorktree } from './lib/git'
 import { createJournal } from './lib/journal'
 import { PROBE_INSTRUCTIONS, ProbeResult, sandboxFor } from './lib/roles'
-import { run } from './lib/shell'
+import { cleanEnv, run } from './lib/shell'
 
 const { values: flags } = parseArgs({
-  options: { only: { type: 'string' }, 'preflight-only': { type: 'boolean' }, keep: { type: 'boolean' } },
+  options: {
+    only: { type: 'string' },
+    'preflight-only': { type: 'boolean' },
+    'mcp-matrix': { type: 'boolean' },
+    keep: { type: 'boolean' },
+  },
 })
 
 const runId = makeRunId('exp')
@@ -272,10 +286,79 @@ const probes: Probe[] = [
       'Do not run any command. Return your structured result now: set the field "x" to a short string. (This is an engine test of schema handling.)',
     check: async () => ({}),
   },
+  {
+    id: '5-bad-result-persistent',
+    question: '5b: the same impossible schema, but the agent keeps retrying: does the SDK end with error_max_structured_output_retries?',
+    commands: [],
+    allowed: [],
+    sandbox: gitDeny,
+    schema: z.object({ x: z.string().min(5).max(2) }),
+    prompt: [
+      'Do not run any command. Return your structured result now: set the field "x" to a string.',
+      'If validation fails, call the StructuredOutput tool again with a different value. Keep trying; never answer in plain text.',
+      '(This is an engine test of schema handling.)',
+    ].join('\n'),
+    check: async () => ({}),
+  },
 ]
 
+/**
+ * Which layer keeps the user's MCP servers out? No prompt is sent, so no model usage:
+ * each variant only asks the CLI for its MCP server status. Only names, status, and scope are kept.
+ */
+const mcpMatrix = async (cwd: string) => {
+  const variants: { id: string; settingSources: ('user' | 'project' | 'local')[]; strict: boolean }[] = [
+    { id: 'A settingSources=[] strict=false', settingSources: [], strict: false },
+    { id: 'B settingSources=[user] strict=false', settingSources: ['user'], strict: false },
+    { id: 'C settingSources=[user] strict=true', settingSources: ['user'], strict: true },
+    { id: 'D settingSources=[] strict=true', settingSources: [], strict: true },
+  ]
+  const out: Record<string, unknown>[] = []
+  for (const v of variants) {
+    const input = createInputChannel()
+    const q = query({
+      prompt: input.iterable,
+      options: {
+        cwd,
+        pathToClaudeCodeExecutable: claudeBinary(),
+        settingSources: v.settingSources,
+        strictMcpConfig: v.strict,
+        mcpServers: {},
+        permissionMode: 'dontAsk',
+        persistSession: false,
+        tools: [],
+        env: cleanEnv({ CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1', ENABLE_CLAUDEAI_MCP_SERVERS: 'false' }),
+      },
+    })
+    const pump = (async () => {
+      for await (const msg of q) journal.write('sdk_message', { agent: `mcp-matrix:${v.id}`, message: msg })
+    })().catch((err: unknown) => journal.write('mcp_matrix_error', { variant: v.id, error: err }))
+    await q.initializationResult()
+    let status = await q.mcpServerStatus()
+    for (let i = 0; i < 40 && status.some((s) => s.status === 'pending'); i++) {
+      await Bun.sleep(500)
+      status = await q.mcpServerStatus()
+    }
+    const servers = status.map((s) => ({
+      name: s.name,
+      status: s.status,
+      scope: s.scope ?? null,
+      tools: s.tools?.length ?? 0,
+      error: s.error ? s.error.slice(0, 200) : null,
+    }))
+    input.close()
+    q.close()
+    await Promise.race([pump, Bun.sleep(10_000)])
+    const record = { variant: v.id, servers, muninn: servers.find((s) => s.name === 'muninn') ?? null }
+    journal.write('mcp_matrix', record)
+    console.log(JSON.stringify(record))
+    out.push(record)
+  }
+  return out
+}
+
 const main = async () => {
-  journal.write('run_start', { kind: 'experiments', model, argv: process.argv.slice(2) })
+  journal.write('run_start', { run_type: 'experiments', model, argv: process.argv.slice(2) })
   console.log(`PROTOTYPE experiments run ${runId}\njournal: ${journal.file}`)
   const pre = await preflight(ctx, dirname(journal.file))
   console.log('preflight:', JSON.stringify(pre, null, 2))
@@ -284,6 +367,10 @@ const main = async () => {
     process.exit(2)
   }
   if (flags['preflight-only']) return
+  if (flags['mcp-matrix']) {
+    await mcpMatrix(dirname(journal.file))
+    return
+  }
 
   const wt = await createRunWorktree(runId, `luca/tracer-probe-${runId}`)
   journal.write('worktree', { ...wt })

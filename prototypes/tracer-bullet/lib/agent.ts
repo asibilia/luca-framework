@@ -127,7 +127,7 @@ export const createMessageBus = (journal: Journal) => {
 
 // ---------- input channel for streaming-input mode ----------
 
-const createInputChannel = () => {
+export const createInputChannel = () => {
   const queue: SDKUserMessage[] = []
   let wake: (() => void) | null = null
   let closed = false
@@ -583,7 +583,7 @@ export const startAgent = async <T>(spec: AgentSpec<T>, ctx: EngineCtx): Promise
       agent: spec.name,
       turn: info.turns,
       ok: outcome.ok,
-      kind: outcome.ok ? 'ok' : outcome.kind,
+      outcome_kind: outcome.ok ? 'ok' : outcome.kind,
       detail: outcome.ok ? null : outcome.detail,
       output: outcome.ok ? outcome.output : null,
       structured_output: outcome.result && outcome.result.subtype === 'success' ? outcome.result.structured_output : null,
