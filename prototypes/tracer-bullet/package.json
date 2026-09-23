@@ -1,0 +1,10 @@
+{
+  "name": "tracer-bullet-prototype",
+  "private": true,
+  "type": "module",
+  "description": "PROTOTYPE. Throwaway tracer bullet for Luca v1 (#334). Not part of any workspace.",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.273",
+    "zod": "4.6.5"
+  }
+}

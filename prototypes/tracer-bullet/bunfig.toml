@@ -1,0 +1,6 @@
+# PROTOTYPE. Mirrors the root bunfig.toml install policy, which bun does not
+# apply to this folder on its own (bun reads bunfig.toml from the project dir).
+[install]
+# Refuse package versions newer than 7 days (supply-chain defense).
+minimumReleaseAge = 604800
+blockExoticSubdeps = true

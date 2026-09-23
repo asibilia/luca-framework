@@ -1,0 +1,2 @@
+# PROTOTYPE: journals are committed one by one (git add -f), after a secret scan.
+runs/*
