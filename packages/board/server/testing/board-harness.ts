@@ -15,7 +15,7 @@ import {
 } from '../board-server'
 
 /** The engine path the default fake settings point at. */
-export const ENGINE_PATH = '/opt/luca/packages/engine/src/luca-run.ts'
+export const ENGINE_PATH = '/opt/luca/packages/engine/src/cli/luca-run.ts'
 
 /** Bun where the fake file system has it. */
 export const BUN_PATH = '/home/me/.bun/bin/bun'

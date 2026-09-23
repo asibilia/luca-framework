@@ -73,7 +73,7 @@ export const EngineSettingsScreen = ({ theme, layout }: PluginSurfaceProps) => {
                     <SettingsInput
                         label="Engine path"
                         hint="The absolute path to the engine's luca-run.ts. Leave it empty to use an installed luca-run command (~/.bun/bin, /opt/homebrew/bin, or /usr/local/bin)."
-                        placeholder="/Users/you/luca-framework/packages/engine/src/luca-run.ts"
+                        placeholder="/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts"
                         initialValue={settings.values.engine_path}
                         onChangeText={(engine_path) =>
                             setDraft((current) => ({ ...current, engine_path }))
