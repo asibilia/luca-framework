@@ -13,6 +13,7 @@ import {
     ticketWorktreeCreated,
     agentSession,
     rateLimit,
+    usageRecorded,
     wholeTicket,
 } from './testing/journal-fixtures'
 
@@ -156,6 +157,10 @@ describe('engine.event: bad and unknown records', () => {
         const records = stamp({
             entries: [
                 ...intakeOfThree(),
+                usageRecorded({
+                    ticket: null,
+                    windows: { five_hour: { from: 0, to: 1, used: 1 } },
+                }),
                 {
                     kind: 'jev_label',
                     ticket: null,
@@ -174,14 +179,18 @@ describe('engine.event: bad and unknown records', () => {
 
         const reply = await harness.send({ run_id, token, records })
 
-        expect(reply).toMatchObject({ ok: true, next_seq: 11 })
+        expect(reply).toMatchObject({ ok: true, next_seq: 12 })
         const state = await harness.state()
-        expect(state.event_count).toBe(10)
+        expect(state.event_count).toBe(11)
+        expect(state.run_plan_used).toEqual([
+            { window: 'five-hour', percent: 1 },
+        ])
         expect(state.needs_you).toEqual([])
         expect(state.tickets.find((t) => t.number === 13)?.step).toBe(0)
         expect(harness.logs.join('\n')).toContain(
-            'skipped record 9 (ticket_stuck)'
+            'skipped record 10 (ticket_stuck)'
         )
+        expect(harness.logs.join('\n')).not.toContain('usage_recorded')
     })
 })
 

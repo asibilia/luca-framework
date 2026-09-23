@@ -4,10 +4,11 @@ The board is the live view of a Luca run inside Paseo. You start a run by typing
 
 - **The side panel** ("Luca board", a workspace tab that also opens in the Explorer). From top to bottom it shows:
   - plan usage (five-hour and weekly), from the rate-limit readings in the agents' sessions, colored green below 60%, yellow from 60% to 85%, and red above 85%
-  - a banner when the run stopped (for example, the wrong credentials) or its engine stopped
-  - a limit-wait banner
+  - how much of the plan the whole run used, once the engine records it
+  - a banner when the run stopped (for example, the wrong credentials, or a billing stop) or its engine stopped
+  - a limit-wait banner that names the window that was hit
   - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and the exact reply to post on the spec issue (tap a reply to copy it)
-  - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. Tap a card for its details.
+  - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. A card shows how much of the plan its ticket used, once the engine records it. Tap a card for its details.
   - the final review's 5 lenses, as a second stack (Waiting → Reviewing → Fixing → Clean). It stays dimmed until every ticket is done or skipped.
 - **Live rows in the chat where you started the run**: a header row that updates in place, one row per meaningful event, stuck rows with the exact reply, and a limit-wait row. The rows never reach the model.
 
@@ -88,7 +89,7 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `agent_started` | card's role, step, and activity. With `follow_up_of` after a failed red check or failed checks, it's a **fix round**: the card's fix counter goes up and a "tried" line is added. The same follow-up sent again (it never ended, as after a crash) isn't counted twice. After a failed turn it's a **retry** ("coding again"). A reviewer's launch counts a review round, but a reviewer's retry doesn't. After a review asked for changes, a fixer's start is a **review fix round** r (r is the review's round, at most 3): a fresh test-writer (`follow_up_of: null`) for test findings, then the implementer (a follow-up in its build session, or fresh if that session was lost) for code findings. The card stays in Reviewing, its activity is "fixing the review's findings (r/3)", and the round's first fixer adds a "tried" line with the blocker and should-fix counts. Failed checks inside the round run the usual checks' fix loop. A reviewer's launch after a review fix round is a **re-review** ("re-reviewing"). | "started", "fix round n/3: the implementer got the failure back." (warning), "tries again." (warning), "review fix round r/3: the implementer got the findings back." or "...: a fresh test-writer fixes the test findings." (warning), or "re-review n of the new changes.". A resent follow-up adds no row. |
 | `agent_finished` | card's step and activity; clears a failed turn. A reviewer's `findings` set the card's counts by severity (the latest review's). `changes_requested` opens the review, so the next fixer starts a review fix round; `approve` closes it. A fixer's `finding_responses` add a "tried" line for each `wont_fix` ("Won't fix R1-2: reason"). A re-reviewer's `rulings` on those add "Declined R1-2 accepted: reason" (`accepted`: the finding goes in the PR, not fixed) or "R1-2 still stands: reason" (`rejected`). | tests written / code written / bad test / "approved it (2 nits)" / "asked for changes: 1 blocker, 1 should-fix, 2 nits" (warning). A fixer in a review fix round: "answered the findings: n fixed, n won't fix." |
 | `agent_failed` | a "tried" line with how it failed: `agent` (failed), `result` (no usable result), `guard` (broke its role's rules, undone), `engine` (could not run; a fresh agent starts) | the same (danger; `engine` is a warning) |
-| `agent_session` | the card's tokens, in all and per role: input, output, cache reads, and cache writes. Its `rate_limit_events` set **plan usage**: the latest `five_hour` reading sets the five-hour percent and when it resets, the latest `seven_day*` reading sets the weekly percent. `utilization` is 0 to 1, shown as a whole percent: green below 60, yellow from 60 to 85, red above 85. A window with no reading shows "–". | none |
+| `agent_session` | the card's tokens, in all and per role: input, output, cache reads, and cache writes. Its `rate_limit_events` set **plan usage**: the latest `five_hour` reading sets the five-hour percent and when it resets, the latest `seven_day*` reading sets the weekly percent. A reading names its window in one of two ways: a top-level `rateLimitType` with `utilization`, or `unifiedWindows`, a map of window name to `{ utilization, resetsAt }` (real runs send this one, with no top-level `utilization`). When one reading has several `seven_day*` windows, the highest one sets the weekly percent, since the tightest weekly cap is the one that binds. `utilization` is 0 to 1, shown as a whole percent: green below 60, yellow from 60 to 85, red above 85. `resetsAt` is in seconds since the epoch. A window with no reading shows "–". | none |
 | `red_check` | card's step and test counts. A failure opens the red-check fix loop; a pass closes it and resets the fix counter. | passed (with how many new tests fail) or failed |
 | `leftover_scan` | a "tried" line if it found files. `stage` is `red`, `green`, or `fix` (a review fix round). | only if it found files (warning) |
 | `commit_made` | card's activity. `stage` is `red`, `green`, or `fix` (a review fix round; its `files` may be empty). | tests / code / review fixes committed |
@@ -98,7 +99,10 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `run_branch_pushed` | card's activity | none |
 | `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies | a stuck row |
 | `pull_request_opened` | run status `done`, the PR link | the PR |
-| `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. | the reason, and how to pick the run up again (danger) |
+| `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. With `billing: true` (default false) it's a **billing stop**: the session would bill per token, so the run won't go on, and the banner says to start a new run once per-token billing is off. | the reason, and how to pick the run up again, or for a billing stop, that the run won't go on (danger) |
+| `limit_wait_started` | run status `limit_wait` and a banner: "Plan limit hit (five-hour window). The run waits until 17:00 and then carries on by itself." The time is `resets_at`, or `until` when the reset time isn't known. | a limit row with the same words |
+| `limit_wait_ended` | the banner is gone | the limit row turns to "over" |
+| `usage_recorded` | with scope `ticket`, the card's plan used ("plan: five-hour +1%, weekly +1%"); with scope `run`, a line under plan usage ("This run used: five-hour 3%, weekly 1%"). Each window's `used`, rounded to a whole percent, in the order five-hour, weekly, the other weekly windows, then the rest. | none |
 | `jev_asked`, `jev_answered`, `jev_failed` | **Jev in shadow mode**: only counted (asked, answered, without an answer), in a dim footer line. The engine never acts on Jev's answers, so they change no ticket, status, or "latest" line. | none |
 
 ### Kinds not journaled yet
@@ -107,8 +111,6 @@ The board already understands these, so the tickets that add them should journal
 
 | kind | ticket that adds it | `ticket` | `content` | Board effect |
 | --- | --- | --- | --- | --- |
-| `limit_wait_started` | #368 | `null` | `{ resets_at }` | limit-wait banner, limit row, run status `limit_wait` |
-| `limit_wait_ended` | #368 | `null` | `{}` | banner gone, limit row "over" |
 | `reply_received` | #366 | ticket/null | `{ word: 'retry' \| 'skip' \| 'stop' \| 'ship', ticket: number \| null }` | resolves the stuck item and row |
 | `ticket_skipped` | #366 | ticket | `{}` | card to Skipped |
 | `final_review_started` | #367 | `null` | `{}` | run status `final_review`, next round |
@@ -121,6 +123,35 @@ The board already understands these, so the tickets that add them should journal
 The replies a stuck item offers (`retry #n`, `skip #n`, `stop`; `retry`, `stop`, `ship` for the final review) are what #366 will read. Until it lands, the engine ends the run when a ticket is stuck.
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
+
+### The limit and usage shapes
+
+The engine journals these with `ticket` and `role` set to `null`, except `usage_recorded` with scope `ticket`, whose `ticket` is that ticket.
+
+```ts
+// limit_wait_started
+{
+    resets_at: string | null // when the limit resets; null if not known
+    until: string // when the engine wakes; always set
+    rate_limit_type: string | null // 'five_hour', 'seven_day', 'seven_day_opus', ...
+    hit_ticket: number | null
+    hit_role: string | null
+}
+
+// limit_wait_ended
+{ until: string }
+
+// usage_recorded
+{
+    scope: 'ticket' | 'run'
+    ticket: number | null
+    agent_turns: number
+    tokens: { input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens }
+    windows: Record<string, { from: number; to: number; used: number }> // percents, 0 to 100
+}
+```
+
+Windows in words: `five_hour` is "five-hour", `seven_day` is "weekly", `seven_day_opus` is "weekly Opus", and `seven_day_sonnet` is "weekly Sonnet". Any other window shows its raw name.
 
 ## Settings
 

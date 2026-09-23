@@ -28,10 +28,14 @@ import {
     ticketSkipped,
     ticketStuck,
     ticketWorktreeCreated,
+    unifiedRateLimit,
+    usageRecorded,
     wholeTicket,
     worktreeReset,
     type Entry,
 } from './testing/journal-fixtures'
+
+import { planUsedText, stoppedText } from '../shared/board-state'
 
 let harness: Harness
 
@@ -318,14 +322,91 @@ describe('plan usage, from the rate-limit readings in agent sessions', () => {
         })
     })
 
+    test("a real run's reading sets both windows from unifiedWindows", async () => {
+        const five_hour_resets = '2026-09-23T17:00:00.000Z'
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [
+                        unifiedRateLimit({
+                            windows: {
+                                five_hour: {
+                                    utilization: 0.03,
+                                    resets_at: five_hour_resets,
+                                },
+                                seven_day: {
+                                    utilization: 0.17,
+                                    resets_at: '2026-09-26T09:00:00.000Z',
+                                },
+                            },
+                        }),
+                    ],
+                }),
+            ],
+        })
+
+        expect((await harness.state()).usage).toEqual({
+            five_hour_percent: 3,
+            weekly_percent: 17,
+            five_hour_level: 'ok',
+            weekly_level: 'ok',
+            resets_at: five_hour_resets,
+            read_at: expect.any(String),
+        })
+    })
+
+    test('the tightest weekly window in a reading sets the weekly percent', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [
+                        unifiedRateLimit({
+                            windows: {
+                                seven_day: { utilization: 0.17 },
+                                seven_day_opus: { utilization: 0.62 },
+                                seven_day_sonnet: { utilization: 0.05 },
+                            },
+                        }),
+                    ],
+                }),
+            ],
+        })
+
+        expect((await harness.state()).usage).toMatchObject({
+            five_hour_percent: null,
+            weekly_percent: 62,
+            weekly_level: 'warn',
+        })
+    })
+
+    test('a reading with no utilization anywhere changes nothing', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [unifiedRateLimit({ windows: {} })],
+                }),
+            ],
+        })
+        expect((await harness.state()).usage).toBeNull()
+    })
+
     test('no reading yet means no usage', async () => {
         await runWith({ entries: [] })
         expect((await harness.state()).usage).toBeNull()
     })
 })
 
-describe('limit waits (not journaled yet, #368)', () => {
-    test('a limit wait shows a banner and a limit row, and both clear when it ends', async () => {
+describe('limit waits', () => {
+    test('a limit wait shows a banner and a limit row with its window, and both clear when it ends', async () => {
         const resets_at = '2026-09-23T17:00:00.000Z'
         const { run_id, token, next } = await runWith({
             entries: [
@@ -344,6 +425,7 @@ describe('limit waits (not journaled yet, #368)', () => {
         const waiting = await harness.state()
         expect(waiting.limit_wait).toEqual({
             resets_at,
+            window: 'five-hour',
             since: expect.any(String),
         })
         expect(waiting.run.status).toBe('limit_wait')
@@ -352,6 +434,7 @@ describe('limit waits (not journaled yet, #368)', () => {
             data: {
                 status: 'waiting',
                 resets_at,
+                window: 'five-hour',
                 usage: { five_hour_level: 'high' },
             },
         })
@@ -368,7 +451,153 @@ describe('limit waits (not journaled yet, #368)', () => {
         expect(over.run.status).toBe('building')
         const limit = rowsOfKind({ kind: 'luca-board-limit' })
         expect(limit).toHaveLength(1)
-        expect(limit[0]?.row).toMatchObject({ data: { status: 'over' } })
+        expect(limit[0]?.row).toMatchObject({
+            data: { status: 'over', window: 'five-hour' },
+        })
+    })
+
+    test.each([
+        ['seven_day', 'weekly'],
+        ['seven_day_opus', 'weekly Opus'],
+        ['seven_day_sonnet', 'weekly Sonnet'],
+        ['overage', 'overage'],
+    ])('a %s limit reads as the %s window', async (type, words) => {
+        await runWith({
+            entries: [
+                limitWaitStarted({
+                    resets_at: '2026-09-26T09:00:00.000Z',
+                    rate_limit_type: type,
+                }),
+            ],
+        })
+
+        expect((await harness.state()).limit_wait).toMatchObject({
+            window: words,
+        })
+        expect(rowsOfKind({ kind: 'luca-board-limit' })[0]?.row).toMatchObject({
+            data: { window: words },
+        })
+    })
+
+    test('with no known reset time, the wait shows when the engine wakes', async () => {
+        const until = '2026-09-23T17:05:00.000Z'
+        await runWith({
+            entries: [
+                limitWaitStarted({
+                    resets_at: null,
+                    until,
+                    rate_limit_type: null,
+                }),
+            ],
+        })
+
+        expect((await harness.state()).limit_wait).toEqual({
+            resets_at: until,
+            window: null,
+            since: expect.any(String),
+        })
+    })
+
+    test('the older placeholder shape still reads', async () => {
+        const resets_at = '2026-09-23T17:00:00.000Z'
+        await runWith({
+            entries: [
+                {
+                    kind: 'limit_wait_started',
+                    ticket: null,
+                    role: null,
+                    content: { resets_at },
+                },
+            ],
+        })
+
+        expect((await harness.state()).limit_wait).toEqual({
+            resets_at,
+            window: null,
+            since: expect.any(String),
+        })
+    })
+})
+
+describe('plan used by a ticket and by the run', () => {
+    test("a ticket's usage record shows on its card, windows in order, with no row", async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                usageRecorded({
+                    ticket: 11,
+                    windows: {
+                        seven_day_opus: { from: 20, to: 22.4, used: 2.4 },
+                        extra: { from: 0, to: 5, used: 5 },
+                        seven_day: { from: 10, to: 10.6, used: 0.6 },
+                        five_hour: { from: 3, to: 4.4, used: 1.4 },
+                    },
+                }),
+            ],
+        })
+        expect((await harness.ticket({ number: 11 })).plan_used).toEqual([
+            { window: 'five-hour', percent: 1 },
+            { window: 'weekly', percent: 1 },
+            { window: 'weekly Opus', percent: 2 },
+            { window: 'extra', percent: 5 },
+        ])
+        // No chat row: the last event row is still the worktree's.
+        expect(eventRows().at(-1)?.text).toBe('#11: started.')
+    })
+
+    test("the run's usage record sets the run total; tickets keep theirs", async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                usageRecorded({
+                    ticket: 11,
+                    windows: { five_hour: { from: 1, to: 2, used: 1 } },
+                }),
+                usageRecorded({
+                    ticket: null,
+                    windows: {
+                        seven_day: { from: 10, to: 11, used: 1 },
+                        five_hour: { from: 0, to: 3, used: 3 },
+                    },
+                }),
+            ],
+        })
+
+        const state = await harness.state()
+        expect(state.run_plan_used).toEqual([
+            { window: 'five-hour', percent: 3 },
+            { window: 'weekly', percent: 1 },
+        ])
+        expect(state.tickets.find((t) => t.number === 11)?.plan_used).toEqual([
+            { window: 'five-hour', percent: 1 },
+        ])
+        expect(state.tickets.find((t) => t.number === 13)?.plan_used).toEqual(
+            []
+        )
+    })
+
+    test('a usage record after a stop keeps the stop', async () => {
+        await runWith({
+            entries: [
+                runStopped({ ticket: null, role: null, reason: 'x' }),
+                usageRecorded({
+                    ticket: null,
+                    windows: { five_hour: { from: 0, to: 3, used: 3 } },
+                }),
+            ],
+        })
+        expect((await harness.state()).run.status).toBe('stopped')
+    })
+
+    test('the plan used in words', () => {
+        const used = [
+            { window: 'five-hour', percent: 1 },
+            { window: 'weekly', percent: 0 },
+        ]
+        expect(planUsedText({ used, sign: '+' })).toBe(
+            'five-hour +1%, weekly +0%'
+        )
+        expect(planUsedText({ used, sign: '' })).toBe('five-hour 1%, weekly 0%')
     })
 })
 
@@ -658,6 +887,7 @@ describe('a stopped run', () => {
             reason,
             role: 'test-writer',
             ticket: 11,
+            billing: false,
             since: expect.any(String),
         })
         expect(await harness.ticket({ number: 11 })).toMatchObject({
@@ -682,6 +912,51 @@ describe('a stopped run', () => {
         const resumed = await harness.state()
         expect(resumed.run.stopped).toBeNull()
         expect(resumed.run.status).toBe('building')
+    })
+
+    test('a billing stop says the run will not go on', async () => {
+        const reason = 'the session bills per token (overage in use)'
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentStarted({ ticket: 11, role: 'implementer' }),
+                runStopped({
+                    ticket: 11,
+                    role: 'implementer',
+                    reason,
+                    billing: true,
+                }),
+            ],
+        })
+
+        const state = await harness.state()
+        expect(state.run.status).toBe('stopped')
+        expect(state.run.stopped).toMatchObject({ reason, billing: true })
+        const words = `Stopped for billing: ${reason}. This run will not go on; start a new run once per-token billing is off.`
+        expect(stoppedText({ reason, billing: true })).toBe(words)
+        expect(eventRows().at(-1)).toEqual({
+            text: `#11: stopped for billing: ${reason}. This run will not go on; start a new run once per-token billing is off.`,
+            tone: 'danger',
+        })
+    })
+
+    test('a stop with no billing flag is not a billing stop', async () => {
+        await runWith({
+            entries: [
+                {
+                    kind: 'run_stopped',
+                    ticket: null,
+                    role: null,
+                    content: { reason: 'x', role: null },
+                },
+            ],
+        })
+        expect((await harness.state()).run.stopped).toMatchObject({
+            billing: false,
+        })
+        expect(stoppedText({ reason: 'x', billing: false })).toBe(
+            'The run stopped: x. Start it again with the same run id to pick up where it stopped.'
+        )
     })
 })
 

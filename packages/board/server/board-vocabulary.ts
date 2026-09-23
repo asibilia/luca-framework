@@ -7,8 +7,8 @@ import { z } from 'zod'
  * engine's code. A record whose content doesn't fit is skipped and logged.
  *
  * Kinds marked "not journaled yet" have no engine record yet; the tickets
- * that add them (#366 replies and skips, #367 the final review, #368 limit
- * waits) should journal these shapes. See the README.
+ * that add them (#366 replies and skips, #367 the final review) should
+ * journal these shapes. See the README.
  */
 
 const FindingCountsSchema = z.looseObject({
@@ -54,14 +54,26 @@ const WorktreeSchema = z.looseObject({ branch: z.string() })
 
 const tokenCount = z.number().min(0).catch(0)
 
+/** One plan window's reading: `utilization` 0 to 1, `resetsAt` in seconds. */
+const WindowReadingSchema = z.looseObject({
+    utilization: z.number().optional().catch(undefined),
+    resetsAt: z.number().optional().catch(undefined),
+})
+
 /**
  * One `rate_limit_event`'s info, as the Claude Agent SDK sends it:
- * `utilization` is 0 to 1, `resetsAt` is in seconds since the epoch.
+ * `utilization` is 0 to 1, `resetsAt` is in seconds since the epoch. Real
+ * readings carry no top-level `utilization`; each window's is in
+ * `unifiedWindows`, keyed by window name (`five_hour`, `seven_day`, ...).
  */
 const RateLimitReadingSchema = z.looseObject({
     rateLimitType: z.string().optional().catch(undefined),
     utilization: z.number().optional().catch(undefined),
     resetsAt: z.number().optional().catch(undefined),
+    unifiedWindows: z
+        .record(z.string(), WindowReadingSchema.catch({}))
+        .optional()
+        .catch(undefined),
 })
 
 /** The launcher's summary of an agent's session: tokens and readings. */
@@ -143,6 +155,8 @@ export const BOARD_VOCABULARY = {
     run_stopped: z.looseObject({
         reason: z.string(),
         role: z.string().nullable().catch(null),
+        /** A billing stop: the session would bill per token. */
+        billing: z.boolean().catch(false),
     }),
     worktree_reset: z.looseObject({}),
     red_check: z.looseObject({
@@ -179,12 +193,26 @@ export const BOARD_VOCABULARY = {
     jev_asked: JevJobSchema,
     jev_answered: JevJobSchema,
     jev_failed: JevJobSchema,
-
-    // Not journaled yet.
     limit_wait_started: z.looseObject({
-        resets_at: z.string().nullable().optional(),
+        /** When the limit resets; `null` when not known. */
+        resets_at: z.string().nullable().catch(null),
+        /** When the engine wakes; always set by the engine. */
+        until: z.string().nullable().catch(null),
+        /** The window that was hit: `five_hour`, `seven_day`, ... */
+        rate_limit_type: z.string().nullable().catch(null),
     }),
     limit_wait_ended: z.looseObject({}),
+    /** How much of the plan a ticket (scope `ticket`) or the run used. */
+    usage_recorded: z.looseObject({
+        scope: z.enum(['ticket', 'run']),
+        ticket: z.number().int().nullable().catch(null),
+        /** Percents 0 to 100 per window, before and after, and the difference. */
+        windows: z
+            .record(z.string(), z.looseObject({ used: z.number() }))
+            .catch({}),
+    }),
+
+    // Not journaled yet.
     reply_received: z.looseObject({
         word: z.enum(['retry', 'skip', 'stop', 'ship']),
         ticket: z.number().int().nullable().optional(),
@@ -241,6 +269,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'jev_failed' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
+    entry({ kind: 'usage_recorded' }),
     entry({ kind: 'reply_received' }),
     entry({ kind: 'ticket_skipped' }),
     entry({ kind: 'final_review_started' }),

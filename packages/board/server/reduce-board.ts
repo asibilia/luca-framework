@@ -5,12 +5,15 @@ import {
     LENS_NAMES,
     LOOP_CAP,
     usageLevel,
+    windowRank,
+    windowWords,
     type BoardState,
     type EngineEnded,
     type FinalReview,
     type FindingCounts,
     type LensCard,
     type NeedsYou,
+    type PlanUsed,
     type RunStatus,
     type TicketCard,
     type Usage,
@@ -65,6 +68,7 @@ export const failureText = ({ failure }: { failure: string }): string =>
 const QUIET_KINDS = new Set([
     'run_stopped',
     'agent_session',
+    'usage_recorded',
     'jev_asked',
     'jev_answered',
     'jev_failed',
@@ -127,6 +131,7 @@ export const createBoardState = ({
     },
     usage: null,
     limit_wait: null,
+    run_plan_used: [],
     needs_you: [],
     tickets: [],
     final_review: {
@@ -172,6 +177,7 @@ const newTicket = ({
     tokens: 0,
     agent_tokens: {},
     tried: [],
+    plan_used: [],
 })
 
 const withTried = ({
@@ -297,11 +303,48 @@ const sessionTokens = ({ session }: SessionContent): number =>
 const percentOf = ({ utilization }: { utilization: number }): number =>
     Math.min(100, Math.max(0, Math.round(utilization * 100)))
 
+/** Epoch seconds as an ISO time. */
+const isoOf = ({ seconds }: { seconds: number }): string =>
+    new Date(seconds * 1000).toISOString()
+
+type Reading = SessionContent['session']['rate_limit_events'][number]
+
+/**
+ * One reading's windows as `{ type, utilization, resetsAt }`: its top-level
+ * `rateLimitType` form, then each of its `unifiedWindows`.
+ */
+const windowsOf = ({
+    reading,
+}: {
+    reading: Reading
+}): { type: string; utilization: number; resetsAt: number | undefined }[] => {
+    const { rateLimitType, utilization, resetsAt, unifiedWindows } = reading
+    const top =
+        rateLimitType !== undefined && utilization !== undefined
+            ? [{ type: rateLimitType, utilization, resetsAt }]
+            : []
+    const unified = Object.entries(unifiedWindows ?? {}).flatMap(
+        ([type, window]) =>
+            window.utilization === undefined
+                ? []
+                : [
+                      {
+                          type,
+                          utilization: window.utilization,
+                          resetsAt: window.resetsAt,
+                      },
+                  ]
+    )
+    return [...top, ...unified]
+}
+
 /**
  * The plan usage after a session's rate-limit readings. The latest
  * `five_hour` reading sets the five-hour window (and when it resets); the
- * latest reading of any `seven_day*` type sets the weekly one. A window with
- * no reading keeps what it had. `null` while no window has a reading.
+ * latest reading of any `seven_day*` type sets the weekly one, and inside
+ * one reading the highest `seven_day*` window wins, since the tightest
+ * weekly cap is the one that binds. A window with no reading keeps what it
+ * had. `null` while no window has a reading.
  */
 const usageAfter = ({
     usage,
@@ -317,17 +360,22 @@ const usageAfter = ({
     let resets_at = usage?.resets_at ?? null
     let read = false
     for (const reading of session.rate_limit_events) {
-        const { rateLimitType, utilization, resetsAt } = reading
-        if (utilization === undefined) continue
-        if (rateLimitType === 'five_hour') {
-            five_hour = percentOf({ utilization })
+        const windows = windowsOf({ reading })
+        const fiveHour = windows.filter(({ type }) => type === 'five_hour')
+        const latest = fiveHour.at(-1)
+        if (latest) {
+            five_hour = percentOf({ utilization: latest.utilization })
             resets_at =
-                resetsAt === undefined
+                latest.resetsAt === undefined
                     ? resets_at
-                    : new Date(resetsAt * 1000).toISOString()
+                    : isoOf({ seconds: latest.resetsAt })
             read = true
-        } else if (rateLimitType?.startsWith('seven_day')) {
-            weekly = percentOf({ utilization })
+        }
+        const weeklies = windows
+            .filter(({ type }) => type.startsWith('seven_day'))
+            .map(({ utilization }) => percentOf({ utilization }))
+        if (weeklies.length > 0) {
+            weekly = Math.max(...weeklies)
             read = true
         }
     }
@@ -376,6 +424,28 @@ export const reviewCountsText = ({
     ].filter((part) => part !== null)
     return parts.length > 0 ? parts.join(', ') : null
 }
+
+/**
+ * A usage record's windows as whole percents in words: five-hour first,
+ * then the weekly ones, then the rest, each group in the record's order.
+ */
+const planUsedOf = ({
+    windows,
+}: {
+    windows: Record<string, { used: number }>
+}): PlanUsed[] =>
+    Object.entries(windows)
+        .map(([window, { used }], index) => ({ window, used, index }))
+        .toSorted(
+            (left, right) =>
+                windowRank({ window: left.window }) -
+                    windowRank({ window: right.window }) ||
+                left.index - right.index
+        )
+        .map(({ window, used }) => ({
+            window: windowWords({ window }),
+            percent: Math.round(used),
+        }))
 
 /**
  * What an `agent_started` is, from the ticket's card before it:
@@ -585,7 +655,7 @@ const applyKind = ({
             }
         }
         case 'run_stopped': {
-            const { reason, role } = record.content
+            const { reason, role, billing } = record.content
             const stopped = updateTicket({
                 state,
                 number: ticket,
@@ -595,7 +665,7 @@ const applyKind = ({
                     activity: 'run stopped',
                     tried: withTried({
                         tried: card.tried,
-                        line: `The run stopped: ${reason}`,
+                        line: `${billing ? 'Stopped for billing' : 'The run stopped'}: ${reason}`,
                     }),
                 }),
             })
@@ -607,6 +677,7 @@ const applyKind = ({
                         reason,
                         role,
                         ticket,
+                        billing,
                         since: record.time,
                     },
                 },
@@ -775,16 +846,33 @@ const applyKind = ({
                 ...state,
                 jev: { ...state.jev, failed: state.jev.failed + 1 },
             }
-        case 'limit_wait_started':
+        case 'limit_wait_started': {
+            const { resets_at, until, rate_limit_type } = record.content
             return {
                 ...state,
                 limit_wait: {
-                    resets_at: record.content.resets_at ?? null,
+                    resets_at: resets_at ?? until,
+                    window:
+                        rate_limit_type === null
+                            ? null
+                            : windowWords({ window: rate_limit_type }),
                     since: record.time,
                 },
             }
+        }
         case 'limit_wait_ended':
             return { ...state, limit_wait: null }
+        case 'usage_recorded': {
+            const plan_used = planUsedOf({ windows: record.content.windows })
+            if (record.content.scope === 'run') {
+                return { ...state, run_plan_used: plan_used }
+            }
+            return updateTicket({
+                state,
+                number: record.content.ticket ?? ticket,
+                update: (card) => ({ ...card, plan_used }),
+            })
+        }
         case 'reply_received':
             return replyReceived({ state, record })
         case 'ticket_skipped':

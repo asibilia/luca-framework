@@ -64,6 +64,79 @@ export const usageLevel = ({ percent }: { percent: number }): UsageLevel => {
     return 'ok'
 }
 
+/** Plan windows in words; any other window keeps its raw name. */
+const WINDOW_WORDS: Record<string, string> = {
+    five_hour: 'five-hour',
+    seven_day: 'weekly',
+    seven_day_opus: 'weekly Opus',
+    seven_day_sonnet: 'weekly Sonnet',
+}
+
+/**
+ * A plan window's name in words.
+ *
+ * @example
+ * windowWords({ window: 'seven_day_opus' }) // 'weekly Opus'
+ * windowWords({ window: 'overage' }) // 'overage'
+ */
+export const windowWords = ({ window }: { window: string }): string =>
+    WINDOW_WORDS[window] ?? window
+
+/**
+ * The order windows are shown in: five-hour, weekly, the other weekly ones
+ * (Opus, Sonnet, ...), then the rest.
+ */
+export const windowRank = ({ window }: { window: string }): number => {
+    if (window === 'five_hour') return 0
+    if (window === 'seven_day') return 1
+    if (window.startsWith('seven_day')) return 2
+    return 3
+}
+
+/** How much of one plan window something used, as a whole percent. */
+export const PlanUsedSchema = z.object({
+    /** The window in words, such as "five-hour" or "weekly". */
+    window: z.string(),
+    percent: z.number(),
+})
+
+export type PlanUsed = z.infer<typeof PlanUsedSchema>
+
+/**
+ * The plan used, in words, windows in their shown order.
+ *
+ * @example
+ * planUsedText({ used, sign: '+' }) // 'five-hour +1%, weekly +1%'
+ * planUsedText({ used, sign: '' }) // 'five-hour 3%, weekly 1%'
+ */
+export const planUsedText = ({
+    used,
+    sign,
+}: {
+    used: PlanUsed[]
+    sign: '+' | ''
+}): string =>
+    used.map(({ window, percent }) => `${window} ${sign}${percent}%`).join(', ')
+
+/**
+ * Why the run stopped and what to do, in words. A billing stop won't go on;
+ * any other stop picks up again when the run is started with its run id.
+ *
+ * @example
+ * stoppedText({ reason: 'overage in use', billing: true })
+ * // 'Stopped for billing: overage in use. This run will not go on; ...'
+ */
+export const stoppedText = ({
+    reason,
+    billing,
+}: {
+    reason: string
+    billing: boolean
+}): string =>
+    billing
+        ? `Stopped for billing: ${reason}. This run will not go on; start a new run once per-token billing is off.`
+        : `The run stopped: ${reason}. Start it again with the same run id to pick up where it stopped.`
+
 /** Where a run stands, as one word for the header row and the panel. */
 export const RunStatusSchema = z.enum([
     'starting',
@@ -162,6 +235,8 @@ export const TicketCardSchema = z.object({
     agent_tokens: z.record(z.string(), z.number().min(0)),
     /** What was tried on it so far (failed checks, fix rounds), oldest first. */
     tried: z.array(z.string()),
+    /** How much of the plan the ticket used, per window; empty until known. */
+    plan_used: z.array(PlanUsedSchema),
 })
 
 export type TicketCard = z.infer<typeof TicketCardSchema>
@@ -261,12 +336,14 @@ export type EngineEnded = z.infer<typeof EngineEndedSchema>
 /**
  * The run stopped because going on was unsafe (wrong credentials or plan,
  * a rejected rate limit, overage, ...). Starting it again with the same run
- * id picks the step up again.
+ * id picks the step up again, except after a billing stop, which won't go on.
  */
 export const RunStoppedSchema = z.object({
     reason: z.string(),
     role: z.string().nullable(),
     ticket: z.number().int().nullable(),
+    /** The session would bill per token; this run won't go on. */
+    billing: z.boolean(),
     since: z.string(),
 })
 
@@ -310,9 +387,18 @@ export type JevCounts = z.infer<typeof JevCountsSchema>
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
     usage: UsageSchema.nullable(),
+    /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
-        .object({ resets_at: z.string().nullable(), since: z.string() })
+        .object({
+            /** When the wait ends: the reset time, or when the engine wakes. */
+            resets_at: z.string().nullable(),
+            /** The window that was hit, in words; `null` when not known. */
+            window: z.string().nullable(),
+            since: z.string(),
+        })
         .nullable(),
+    /** How much of the plan the whole run used, per window. */
+    run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),
     tickets: z.array(TicketCardSchema),
     final_review: FinalReviewSchema,
