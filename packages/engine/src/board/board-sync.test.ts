@@ -193,7 +193,7 @@ describe('board sync: the engine sends its journal to the board', () => {
         await board.end({
             records: journal.read(),
             ok: false,
-            message: 'the Claude agent launcher arrives with #362',
+            message: 'Run stopped: a rejected rate limit',
         })
 
         expect(plugin.sends()).toEqual([
@@ -202,7 +202,7 @@ describe('board sync: the engine sends its journal to the board', () => {
                 seqs: [],
                 ended: {
                     ok: false,
-                    message: 'the Claude agent launcher arrives with #362',
+                    message: 'Run stopped: a rejected rate limit',
                 },
             },
         ])

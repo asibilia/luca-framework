@@ -55,7 +55,7 @@ the Paseo board plugin, and has a command line, `luca-run` (#374).
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
 | `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
 | `src/jev/jev-shadow.ts` | Asks Jev in **shadow mode** and journals each call and answer. |
-| `src/testing/practice-run.ts` | The `--demo` run: the practice repo with a second, blocked ticket and its scripted turns. |
+| `src/testing/practice-run.ts` | The `--demo` run: `practice-repo.ts`'s repo and turns, plus a second ticket (#12, blocked by #11) and its turns. |
 | `src/board/board-sync.ts` | Keeps the board in step with the journal: a cursor, batches, replays. Never throws. |
 | `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
@@ -149,7 +149,9 @@ keeps the latest snapshot of each ticket.
 The engine sends its journal records to the board plugin as they are
 appended, verbatim: the event *is* the record (`seq`, `time`, `kind`,
 `ticket`, `role`, `content`). The plugin keeps and reduces the run's state;
-the engine computes nothing for the board.
+the engine computes nothing for the board. Every kind above maps onto the
+board, Jev's included (only counted, since shadow mode decides nothing); see
+"The board's vocabulary" in `packages/board/README.md`.
 
 `runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
 once before its first step, so a resumed run catches the board up, and after
@@ -199,18 +201,27 @@ with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
 
 It logs to stdout, always tells the board how it ended, and exits 0 when the
 run finished (PR opened, or nothing to do), 1 when it stopped (refused,
-stuck, crashed), and 2 on bad flags.
+stuck, stopped by the launcher, crashed), and 2 on bad flags.
 
-**No agent launcher yet.** The real Claude launcher is #362. Until then a
-real run does intake, then stops before making the run branch, and the board
-is told: "the Claude agent launcher arrives with #362".
+**A real run** (`--spec`) builds with real Claude agents: `runSpec` gets
+`createClaudeLauncher({})` (Claude Opus 5.5 at `high` effort, every guard on,
+paid by your Claude plan; see Guards) and closes its open sessions with
+`closeAll()` however the run ends. It asks Jev in shadow mode with
+`jev: { client: createTypeSafeJev() }`, which reads `TYPESAFE_API_KEY`; with
+no key each ask is journaled as `jev_failed` (`missing_key`), nothing is
+sent, and the run goes on. A launcher stop (`run_stopped`) ends the process
+with "Run stopped: <reason>"; run it again with the same `--run-id` to pick
+the step up again. `runSpec` takes the launcher as an argument, so its tests
+hand in scripted agents and never call a model.
 
 **The demo** (`--demo`) is safe to try the board with: it makes the practice
-repo (with a local bare `origin`) in a temp folder, fills an in-memory
-tracker with the practice spec and two tickets (#12 blocked by #11), and runs
-the engine with scripted agents that take 1.5 s per turn. No GitHub, no
-models. It prints the temp paths and the PR it opened in memory, then removes
-the temp folder (which also holds its journal).
+repo (`src/testing/practice-repo.ts`, with a local bare `origin`) in a temp
+folder, fills an in-memory tracker with the practice spec and two tickets
+(#12 blocked by #11), and runs the engine with scripted agents that take
+1.5 s per turn. Jev is asked in shadow mode with no key, so its records show
+up but nothing leaves the machine. No GitHub, no models. It prints the temp
+paths and the PR it opened in memory, then removes the temp folder (which
+also holds its journal).
 
 ## Choices made
 
@@ -401,8 +412,11 @@ the TypeSafe client with a fake `fetch`; no test reaches the network.
 
 `src/board/board-sync.test.ts` runs the engine with a board in memory: records
 arrive in seq order, a board that restarted gets a replay, and a failing board
-never breaks the run. `src/cli/run-modes.test.ts` runs the demo and the
-real-run path with the in-memory tracker.
+never breaks the run. `src/cli/run-modes.test.ts` runs the demo, and the
+real-run path with the in-memory tracker and a scripted stand-in for the
+Claude launcher: it builds to a PR and closes the sessions, passes Jev
+through, ends on a launcher stop, resumes a journal, and reports a missing
+config.
 
 ```bash
 bun test              # in packages/engine

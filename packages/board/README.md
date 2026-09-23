@@ -3,7 +3,8 @@
 The board is the live view of a Luca run inside Paseo. You start a run by typing `/luca-run <spec>` in a Paseo chat. The engine runs as its own background process and sends its journal to this plugin. The plugin shows the run in two places:
 
 - **The side panel** ("Luca board", a workspace tab that also opens in the Explorer). From top to bottom it shows:
-  - plan usage, colored green below 60%, yellow from 60% to 85%, and red above 85%
+  - plan usage (five-hour and weekly), from the rate-limit readings in the agents' sessions, colored green below 60%, yellow from 60% to 85%, and red above 85%
+  - a banner when the run stopped (for example, the wrong credentials) or its engine stopped
   - a limit-wait banner
   - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and the exact reply to post on the spec issue (tap a reply to copy it)
   - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. Tap a card for its details.
@@ -69,27 +70,55 @@ The engine calls the plugin RPC `engine.event`, through Paseo's `invokePluginRpc
 
 The plugin reads only the fields it needs. It never imports the engine: its loose Zod schemas are in `server/board-vocabulary.ts`, and extra fields are fine.
 
-**Kinds the engine journals today:** `run_started`, `intake_read`, `intake_refused`, `nothing_to_do`, `spec_snapshot`, `ticket_snapshot` (a `refactor` label makes a refactor ticket; `blockers` make it Blocked until they're done), `run_branch_created`, `ticket_worktree_created`, `baseline_tests`, `agent_started`, `agent_finished`, `agent_failed`, `red_check`, `leftover_scan`, `commit_made`, `gates_run`, `ticket_joined`, `run_branch_pushed`, `ticket_stuck`, `pull_request_opened`.
+A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skipped quietly, so the engine can add kinds before the board reads them.
 
-For per-card tokens, `agent_finished` content may carry `usage: { total_tokens }` (or `usage: { input_tokens, output_tokens }`, or a top-level `total_tokens`).
+### Kinds the engine journals today
 
-**Kinds later tickets add.** The board already understands these, so journal them with these shapes (#363 fix loops, #364 reviews, #366 limit waits and replies, #367/#368 the final review):
+| kind | Panel | Chat row |
+| --- | --- | --- |
+| `run_started` | run status `intake`, the spec number | "The run started on spec #n." |
+| `intake_read` | the spec's title | none |
+| `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
+| `nothing_to_do` | run status `nothing to do` | one line |
+| `spec_snapshot` | run status `building` | "Intake passed" with the ticket count |
+| `ticket_snapshot` | a card; a `refactor` label makes a refactor ticket; `blockers` keep it Blocked until they're done | none |
+| `run_branch_created` | the run branch | one line |
+| `ticket_worktree_created` | card to Building, started | "#n: started." |
+| `baseline_tests` | card's test counts | none |
+| `agent_started` | card's role, step, and activity. With `follow_up_of` after a failed red check or failed checks, it's a **fix round**: the card's fix counter goes up and a "tried" line is added. The same follow-up sent again (it never ended, as after a crash) isn't counted twice. After a failed turn it's a **retry** ("coding again"). A reviewer's launch counts a review round, but a reviewer's retry doesn't. | "started", "fix round n/3: the implementer got the failure back." (warning), or "tries again." (warning). A resent follow-up adds no row. |
+| `agent_finished` | card's step and activity; a reviewer's `findings` by severity; clears a failed turn | tests written / code written / bad test / approved / changes requested |
+| `agent_failed` | a "tried" line with how it failed: `agent` (failed), `result` (no usable result), `guard` (broke its role's rules, undone), `engine` (could not run; a fresh agent starts) | the same (danger; `engine` is a warning) |
+| `agent_session` | the card's tokens, in all and per role: input, output, cache reads, and cache writes. Its `rate_limit_events` set **plan usage**: the latest `five_hour` reading sets the five-hour percent and when it resets, the latest `seven_day*` reading sets the weekly percent. `utilization` is 0 to 1, shown as a whole percent: green below 60, yellow from 60 to 85, red above 85. A window with no reading shows "–". | none |
+| `red_check` | card's step and test counts. A failure opens the red-check fix loop; a pass closes it and resets the fix counter. | passed (with how many new tests fail) or failed |
+| `leftover_scan` | a "tried" line if it found files | only if it found files (warning) |
+| `commit_made` | card's activity | tests / code committed |
+| `worktree_reset` | card back to the tests step, fix counter reset, "Started over from the tests after a bad test" | one line (warning) |
+| `gates_run` | card's step. A failure (any check: `install`, `test`, `types`, `lint`) opens the checks' fix loop and adds a "tried" line; a pass closes it and resets the fix counter. On the run branch (`target: run_branch`) it's "after joining". | passed or failed, naming the failed checks |
+| `ticket_joined` | card to Done, or a "tried" line | joined, or why not |
+| `run_branch_pushed` | card's activity | none |
+| `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies | a stuck row |
+| `pull_request_opened` | run status `done`, the PR link | the PR |
+| `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. | the reason, and how to pick the run up again (danger) |
+| `jev_asked`, `jev_answered`, `jev_failed` | **Jev in shadow mode**: only counted (asked, answered, without an answer), in a dim footer line. The engine never acts on Jev's answers, so they change no ticket, status, or "latest" line. | none |
 
-| kind                   | `ticket`     | `content`                                                                   | Board effect                                             |
-| ---------------------- | ------------ | --------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `usage_reading`        | `null`       | `{ five_hour_percent, weekly_percent, resets_at? }`                         | usage line, colored per level                            |
-| `limit_wait_started`   | `null`       | `{ resets_at }`                                                             | limit-wait banner, limit row, run status `limit_wait`    |
-| `limit_wait_ended`     | `null`       | `{}`                                                                        | banner gone, limit row "over"                            |
-| `fix_round`            | ticket       | `{ loop: 'red_check' \| 'gates' \| 'review', round }`                       | card's fix counter, "tried" line                         |
-| `review_finished`      | ticket       | `{ round, findings: { blocker, should_fix, nit } }`                         | card's review counter and findings                       |
-| `reply_received`       | ticket/null  | `{ word: 'retry' \| 'skip' \| 'stop' \| 'ship', ticket: number \| null }`   | resolves the stuck item and row                          |
-| `ticket_skipped`       | ticket       | `{}`                                                                        | card to Skipped                                          |
-| `final_review_started` | `null`       | `{}`                                                                        | run status `final_review`, next round                    |
-| `lens_started`         | `null`       | `{ lens }`                                                                  | lens to Reviewing                                        |
-| `lens_finished`        | `null`       | `{ lens, findings: { blocker, should_fix, nit } }`                          | lens to Fixing (blocker or should-fix) or Clean          |
-| `final_review_fixing`  | `null`       | `{ round }`                                                                 | final review's fix counter                               |
-| `final_review_stuck`   | `null`       | `{ reason, detail }`                                                        | Needs you with `retry`, `stop`, `ship`                   |
-| `final_review_passed`  | `null`       | `{}`                                                                        | every lens Clean                                         |
+### Kinds not journaled yet
+
+The board already understands these, so the tickets that add them should journal these shapes. Until then nothing sends them.
+
+| kind | ticket that adds it | `ticket` | `content` | Board effect |
+| --- | --- | --- | --- | --- |
+| `limit_wait_started` | #368 | `null` | `{ resets_at }` | limit-wait banner, limit row, run status `limit_wait` |
+| `limit_wait_ended` | #368 | `null` | `{}` | banner gone, limit row "over" |
+| `reply_received` | #366 | ticket/null | `{ word: 'retry' \| 'skip' \| 'stop' \| 'ship', ticket: number \| null }` | resolves the stuck item and row |
+| `ticket_skipped` | #366 | ticket | `{}` | card to Skipped |
+| `final_review_started` | #367 | `null` | `{}` | run status `final_review`, next round |
+| `lens_started` | #367 | `null` | `{ lens }` | lens to Reviewing |
+| `lens_finished` | #367 | `null` | `{ lens, findings: { blocker, should_fix, nit } }` | lens to Fixing (blocker or should-fix) or Clean |
+| `final_review_fixing` | #367 | `null` | `{ round }` | final review's fix counter |
+| `final_review_stuck` | #367 | `null` | `{ reason, detail }` | Needs you with `retry`, `stop`, `ship` |
+| `final_review_passed` | #367 | `null` | `{}` | every lens Clean |
+
+The replies a stuck item offers (`retry #n`, `skip #n`, `stop`; `retry`, `stop`, `ship` for the final review) are what #366 will read. Until it lands, the engine ends the run when a ticket is stuck.
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 
@@ -134,9 +163,11 @@ Once this plugin is installed, remove the prototype: `paseo plugin remove luca-b
 ```bash
 cd packages/board
 bun test                          # the board at its RPC seam (seam 3): events in, state and rows out
-bunx --bun tsc --noEmit -p .      # typecheck (no DOM lib)
+bunx --bun tsc --noEmit -p .      # typecheck (no DOM lib); the repo's root check leaves this package out
 paseo plugin reload luca-board    # after edits
 ```
+
+The repo's root `bunx --bun tsc --noEmit` leaves this package out: React Native's globals (such as `AbortSignal`) clash with Bun's in the engine. The engine config's `types` gate runs both checks.
 
 Layout:
 
