@@ -23,7 +23,9 @@ const ROLE_TASKS: Record<AgentRole, string> = {
         'Map each criterion id to the tests that check it.',
     implementer:
         'Make every gate pass. Never edit a test file. ' +
-        'If a test is wrong, answer "bad_test" with your reason.',
+        'If a test is wrong, answer "bad_test" with your reason. ' +
+        'Never run the package install: when you change a package manifest, ' +
+        'the engine runs the install and commits the lockfile.',
     'ticket-reviewer':
         "Review this ticket's committed diff. Check that it meets every acceptance criterion with honest tests. " +
         'Write nothing.',
