@@ -7,7 +7,8 @@
       "ES2023"
     ],
     "types": [
-      "react"
+      "react",
+      "bun"
     ],
     "jsx": "react-jsx",
     "strict": true,

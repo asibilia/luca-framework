@@ -828,5 +828,6 @@ export function snapshotAt(tick: number): RunSnapshot {
       lenses: draft.finalReview.lenses.map((item) => finishLens(draft.finalReview, item)),
     },
     journal,
+    source: "fake run",
   };
 }

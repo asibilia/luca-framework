@@ -1,7 +1,9 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { advanceFeeds, startFeed, stopAllFeeds, stopFeed } from "./server/feed";
 import { LOOP_LENGTH, snapshotAt } from "./server/fake-run";
-import { TICK_MS, feedControlRpc, readBoardRpc } from "./shared/board";
+import { currentReplaySnapshot, handleEngineEvent } from "./server/replay-feed";
+import { startEngine } from "./server/start-engine";
+import { TICK_MS, engineEventRpc, feedControlRpc, lucaRunRpc, readBoardRpc } from "./shared/board";
 
 /**
  * One fake Luca run lives in this daemon subprocess. A timer advances it one tick every
@@ -26,7 +28,12 @@ export default function contribute(server: PluginServerContext) {
     });
   }, TICK_MS);
 
-  server.handle(readBoardRpc, () => snapshotAt(tick));
+  // PROTOTYPE (#353): a live or recently finished /luca-run replay wins over the fake run.
+  server.handle(readBoardRpc, () => currentReplaySnapshot() ?? snapshotAt(tick));
+
+  server.handle(engineEventRpc, (input, { paseo }) => enqueue(() => handleEngineEvent(input, paseo)));
+
+  server.handle(lucaRunRpc, ({ agentId, args }) => startEngine(agentId, args));
 
   server.handle(feedControlRpc, async ({ agentId, action }, { paseo }) => {
     try {

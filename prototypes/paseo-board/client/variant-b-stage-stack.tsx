@@ -777,7 +777,7 @@ export function StageStackPanel({ theme, layout }: PluginWorkspacePanelProps) {
           <Text style={styles.title}>Luca board</Text>
         </View>
         <Text style={styles.muted}>
-          {board.isError ? `Couldn't read the fake run: ${String(board.error)}` : "Loading the fake run…"}
+          {board.isError ? `Couldn't read the run: ${String(board.error)}` : "Loading the run…"}
         </Text>
       </ScrollView>
     );
@@ -898,7 +898,7 @@ export function StageStackPanel({ theme, layout }: PluginWorkspacePanelProps) {
 
       <View style={styles.sectionRule} />
       <Text style={styles.debug}>
-        fake run · tick {run.tick} · loop {run.loop} · {run.loopTick}/{run.loopLength} · polls every {POLL_MS / 1000}s
+        {run.source} · tick {run.tick} · loop {run.loop} · {run.loopTick}/{run.loopLength} · polls every {POLL_MS / 1000}s
       </Text>
       {latest ? <Text style={styles.debug}>latest: {latest.text}</Text> : null}
     </ScrollView>

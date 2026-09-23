@@ -7,6 +7,7 @@ import {
   eventRowSchema,
   feedControlRpc,
   limitRowSchema,
+  lucaRunRpc,
   runRowSchema,
   stuckRowSchema,
 } from "./shared/board";
@@ -56,6 +57,20 @@ export default function contribute(client: PluginClientContext) {
     async onSubmit({ args, agent, rpc }) {
       const action = args.trim().toLowerCase() === "stop" ? "stop" : "start";
       const result = await rpc(feedControlRpc, { agentId: agent.id, action });
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
+    },
+  });
+  // PROTOTYPE (#353): real events. The daemon spawns a Bun process that replays a real run.
+  client.addSlashCommand({
+    name: "luca-run",
+    description:
+      "Prototype: start the stand-in Bun engine that replays the tracer bullet's real run into this chat and the Luca board panel",
+    argumentHint: "",
+    context: "agent",
+    async onSubmit({ args, agent, rpc }) {
+      const result = await rpc(lucaRunRpc, { agentId: agent.id, args });
       if (!result.ok) {
         throw new Error(result.message);
       }

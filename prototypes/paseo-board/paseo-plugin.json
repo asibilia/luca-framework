@@ -1,6 +1,6 @@
 {
   "id": "luca-board-prototype",
-  "description": "Throwaway prototype for luca-framework#343: one fake Luca run shown three ways (sidebar surface, workspace panel, timeline rows)",
+  "description": "Throwaway prototype for luca-framework#343: one fake Luca run shown two ways (workspace panel, timeline rows) plus a /luca-run replay of a real run",
   "requirements": {
     "paseo": ">=0.9.1"
   }

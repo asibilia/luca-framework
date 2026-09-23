@@ -10,6 +10,9 @@ import { z } from "zod";
  * ticket review, final review, lens, finding, stuck, escalation, skipped ticket, limit wait).
  */
 
+/** The plugin id, as in paseo-plugin.json. The stand-in engine calls RPCs on it. */
+export const PLUGIN_ID = "luca-board-prototype";
+
 /** How often the fake run advances one tick in the daemon subprocess. */
 export const TICK_MS = 3000;
 /** How often the panel (B) polls the fake run. */
@@ -164,6 +167,8 @@ export const runSnapshotSchema = z.object({
   finalReview: finalReviewSchema,
   /** Most recent journal lines of this loop, newest last. */
   journal: z.array(journalEntrySchema),
+  /** Debug label: "fake run" or "replay · <runId> · event n/N". */
+  source: z.string(),
 });
 
 export type Family = z.infer<typeof familySchema>;
@@ -192,6 +197,59 @@ export const readBoardRpc = defineRpc({
 export const feedControlRpc = defineRpc({
   name: "feed.control",
   input: z.object({ agentId: z.string().min(1), action: z.enum(["start", "stop"]) }),
+  output: z.object({ ok: z.boolean(), message: z.string() }),
+});
+
+/** PROTOTYPE (#353): one board event the stand-in engine derived from a real run journal. */
+export const boardEventKindSchema = z.enum([
+  "run_start",
+  "usage",
+  "intake",
+  "worktree",
+  "gates",
+  "agent_start",
+  "agent_result",
+  "red_check",
+  "commit",
+  "review",
+  "ticket_stage",
+  "agent_end",
+  "pr",
+  "cleanup",
+  "run_end",
+]);
+
+export const boardEventSchema = z.object({
+  seq: z.number().int(),
+  total: z.number().int(),
+  kind: boardEventKindSchema,
+  ts: z.string(),
+  clock: z.string(),
+  ticket: z.number().nullable(),
+  text: z.string(),
+  tone: toneSchema,
+});
+
+export type BoardEventKind = z.infer<typeof boardEventKindSchema>;
+export type BoardEvent = z.infer<typeof boardEventSchema>;
+
+/** The stand-in engine (a Bun process) pushes each event plus the full snapshot after it. */
+export const engineEventRpc = defineRpc({
+  name: "engine.event",
+  input: z.object({
+    runId: z.string().min(1),
+    agentId: z.string().min(1),
+    event: boardEventSchema,
+    snapshot: runSnapshotSchema,
+    done: z.boolean(),
+  }),
+  output: z.object({ ok: z.boolean(), message: z.string() }),
+});
+
+/** /luca-run: the daemon spawns the stand-in engine for one agent. */
+export const lucaRunRpc = defineRpc({
+  name: "run.start",
+  input: z.object({ agentId: z.string().min(1), args: z.string() }),
   output: z.object({ ok: z.boolean(), message: z.string() }),
 });
 

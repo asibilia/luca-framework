@@ -57,6 +57,28 @@ Still, try C in a scratch agent first. Some caveats:
 - Each append counts as agent activity.
 - Other plugins' `agent.turn_ended` hooks can see the rows.
 
+## Real events: `/luca-run` (#353)
+
+`/luca-run` replays a real run instead of the fake one: the tracer bullet's Opus run of spec #351 (ticket #352, "Add a slugify helper", draft PR #354). Its journal is `engine-replay/tracer-run-l47v.jsonl`. A stand-in engine turns the journal into about 37 board events, each with a full snapshot, and plays them over about 90 s. While it runs, and for 10 minutes after, B shows the replay instead of the fake run, and C rows land in the agent you typed the command in.
+
+The route:
+
+1. The slash command calls the plugin RPC `run.start`.
+2. The daemon spawns a detached Bun process, `engine-replay/replay.ts`, and returns at once.
+3. The engine connects to the daemon with `@getpaseo/client` and calls `invokePluginRpc(…, "engine.event", …)` once per event.
+4. The plugin keeps the latest snapshot for B's `board.read` and appends C rows (a header row updated in place plus one row per event).
+
+Run the engine by hand:
+
+```bash
+bun engine-replay/replay.ts --agent-id <agent id>            # sends to the live daemon
+bun engine-replay/replay.ts --agent-id test --dry-run        # prints every event and snapshot, sends nothing
+```
+
+Options: `--seconds 90`, `--journal <path>`, `--plugin-id luca-board-prototype`. It reads the daemon address from `~/.paseo/paseo.pid` (or `PASEO_HOME`, or `PASEO_HOST`), and `PASEO_PASSWORD` if set. The daemon finds Bun at `LUCA_BUN`, `~/.bun/bin/bun`, `/opt/homebrew/bin/bun`, or `/usr/local/bin/bun`.
+
+Logs: the engine writes to `/tmp/luca-run-*.log`; the plugin side is in `paseo plugin logs luca-board-prototype`.
+
 ## Develop
 
 ```bash
