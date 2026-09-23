@@ -1,0 +1,21 @@
+{
+    "name": "@luca/engine",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "main": "src/index.ts",
+    "scripts": {
+        "test": "bun test",
+        "typecheck": "bunx --bun tsc --noEmit -p .",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "lodash": "^4.17.21",
+        "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "@types/lodash": "^4.17.20",
+        "typescript": "catalog:"
+    }
+}

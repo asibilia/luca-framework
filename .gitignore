@@ -61,9 +61,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Eval results (generated, per-run)
 .planning/evals/
 
-# Luca workflow runtime state under the new .luca/ contract.
-# Committed: config.json, roadmap.md (generated view), milestones/, archive/, phases/<slug>/{plan,research,context,verify,learn,audits/*}
-# Ignored: per-run state, lock, ledger, telemetry, ephemeral CLI-handoff scratch
+# .luca/ holds the engine config (.luca/config.json, committed).
+# Old Luca's local-only files stay ignored; its tracked data is at the tag old-luca-final.
 .luca/state.json
 .luca/lock.json
 .luca/ledger.jsonl
