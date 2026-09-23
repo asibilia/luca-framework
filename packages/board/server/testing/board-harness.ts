@@ -32,11 +32,14 @@ export const createHarness = async ({
     files = [ENGINE_PATH, BUN_PATH],
     registry_dir,
     fail_appends = false,
+    spawn_throws = null,
 }: {
     settings?: EngineSettings
     files?: string[]
     registry_dir?: string
     fail_appends?: boolean
+    /** When set, spawning throws this message. */
+    spawn_throws?: string | null
 } = {}) => {
     const dir = registry_dir ?? (await mkdtemp(join(tmpdir(), 'luca-board-')))
     const rows: AppendedRow[] = []
@@ -52,6 +55,7 @@ export const createHarness = async ({
             rows.push({ agent_id, row })
         },
         spawn_engine: (request) => {
+            if (spawn_throws) throw new Error(spawn_throws)
             spawns.push(request)
             return { pid: 4242 }
         },
