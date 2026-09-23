@@ -14,6 +14,13 @@ import {
     SpecSnapshotSchema,
     TicketSnapshotSchema,
 } from '../intake/intake-schemas'
+import {
+    JevAnswerSchema,
+    JevFailureReasonSchema,
+    JevFixedSchema,
+    JevJobSchema,
+    JevRequestSchema,
+} from '../jev/jev-schemas'
 
 const ENTRY_FIELDS = {
     /** The ticket (or spec) a record is about, `null` for the whole run. */
@@ -221,6 +228,43 @@ const PullRequestOpenedEntrySchema = z.object({
     }),
 })
 
+/** The engine asked Jev, in shadow mode, with its own fixed choice beside. */
+const JevAskedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('jev_asked'),
+    content: z.object({
+        job: JevJobSchema,
+        request: JevRequestSchema,
+        fixed: JevFixedSchema,
+    }),
+})
+
+/** Jev's answers to the `jev_asked` record at `asked_seq`. The engine ignores them. */
+const JevAnsweredEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('jev_answered'),
+    content: z.object({
+        job: JevJobSchema,
+        asked_seq: z.number().int().min(1),
+        answers: z.record(z.string(), JevAnswerSchema),
+        /** How long the call took. */
+        ms: z.number().min(0),
+    }),
+})
+
+/** The Jev call at `asked_seq` gave no answers. The run goes on regardless. */
+const JevFailedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('jev_failed'),
+    content: z.object({
+        job: JevJobSchema,
+        asked_seq: z.number().int().min(1),
+        reason: JevFailureReasonSchema,
+        error: z.string(),
+        ms: z.number().min(0),
+    }),
+})
+
 /**
  * What a caller hands the journal to append: a kind, its content, and who it
  * is about. The journal adds `seq` and `time`.
@@ -248,6 +292,9 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     PullRequestOpenedEntrySchema,
+    JevAskedEntrySchema,
+    JevAnsweredEntrySchema,
+    JevFailedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -275,6 +322,9 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
     PullRequestOpenedEntrySchema.extend(STAMP_FIELDS),
+    JevAskedEntrySchema.extend(STAMP_FIELDS),
+    JevAnsweredEntrySchema.extend(STAMP_FIELDS),
+    JevFailedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -301,6 +351,9 @@ export const JournalKindSchema = z.enum([
     'run_branch_pushed',
     'ticket_stuck',
     'pull_request_opened',
+    'jev_asked',
+    'jev_answered',
+    'jev_failed',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>
