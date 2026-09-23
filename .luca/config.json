@@ -1,6 +1,6 @@
 {
     "checks": {
-        "test": "bun test packages/engine",
+        "test": "bun test packages",
         "types": "bunx --bun tsc --noEmit",
         "lint": "bun run lint"
     },

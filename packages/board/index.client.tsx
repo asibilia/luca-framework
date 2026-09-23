@@ -27,7 +27,7 @@ const PANEL_ID = 'board'
  * (a workspace tab, also in the Explorer), Command Center items to open it,
  * the chat row renderers, and the engine settings screen.
  */
-const contribute = (client: PluginClientContext) => {
+export default function contribute(client: PluginClientContext) {
     client.addSlashCommand({
         name: 'luca-run',
         description:
@@ -108,4 +108,3 @@ const contribute = (client: PluginClientContext) => {
     return () => {}
 }
 
-export default contribute

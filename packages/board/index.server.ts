@@ -28,7 +28,7 @@ const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
  * and `board.read` (the side panel's poll). The logic lives in
  * `createBoardServer`; this entry only wires it to Paseo.
  */
-const contribute = (server: PluginServerContext) => {
+export default function contribute(server: PluginServerContext) {
     const settings = server.registerSettings(engineSettings)
     // Every handler gets the same subprocess connection; keep the latest one
     // so rows can be appended from queued work.
@@ -87,4 +87,3 @@ const contribute = (server: PluginServerContext) => {
     }
 }
 
-export default contribute
