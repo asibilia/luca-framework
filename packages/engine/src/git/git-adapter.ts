@@ -1,4 +1,5 @@
 import sortBy from 'lodash/sortBy'
+import uniq from 'lodash/uniq'
 
 import { runCommand } from '../shell/run-command'
 
@@ -30,6 +31,11 @@ export type GitAdapter = {
     }) => Promise<{ base_sha: string }>
     /** Every changed, new, or deleted path in a worktree, untracked included. */
     changes: (args: { cwd: string }) => Promise<FileChange[]>
+    /**
+     * Paths that differ from commit `from`, committed or not, untracked
+     * included.
+     */
+    changedSince: (args: { cwd: string; from: string }) => Promise<string[]>
     /** Tracked and untracked files, minus ignored ones. */
     listFiles: (args: { cwd: string }) => Promise<string[]>
     /** Tracked files whose text contains `text`. */
@@ -157,6 +163,18 @@ export const createGitAdapter = ({
                     ],
                 }),
             }),
+        changedSince: async ({ cwd, from }) => {
+            const tracked = lines(
+                await gitOk({ cwd, args: ['diff', '--name-only', from] })
+            )
+            const untracked = lines(
+                await gitOk({
+                    cwd,
+                    args: ['ls-files', '--others', '--exclude-standard'],
+                })
+            )
+            return uniq([...tracked, ...untracked]).toSorted()
+        },
         listFiles: async ({ cwd }) =>
             lines(
                 await gitOk({

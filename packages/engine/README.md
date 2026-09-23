@@ -31,7 +31,8 @@ scripted stand-in **agents**, up to the run's one pull request, with capped
 | `src/git/git-adapter.ts` | Every git side effect: worktrees, commits, throwing away uncommitted work, replaying onto the run branch, pushes. |
 | `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
-| `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. |
+| `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. First, the install when a manifest changed. |
+| `src/gates/lockfile-install.ts` | Whether a manifest changed, and so which install to run. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
@@ -66,7 +67,7 @@ for each ticket, one at a time, in snapshot order:
   launch_agent implementer                                               ──> agent_started, agent_finished
     bad_test: reset_ticket_worktree, then a fresh test-writer, red check,
               second red commit, fresh implementer (once)               ──> worktree_reset
-  run_gates ticket        tests, types, lint from the config             ──> gates_run
+  run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
   commit_ticket green     leftover scan, then commit                     ──> leftover_scan, commit_made
   launch_agent ticket-reviewer                                           ──> agent_started, agent_finished
@@ -147,6 +148,14 @@ keeps the latest snapshot of each ticket.
   refactor ticket's implementer, false otherwise.
 - **The PR's assumptions** come from every agent turn on a ticket, fix rounds
   and bounced test-writers included, each listed once.
+- **Lockfile updates (#373):** agents never run the install; the implementer's
+  prompt says so, and the guards that deny it come with the Claude launcher
+  (#362). When a `package.json` differs from the worktree's base, the gates
+  start with an `install` check: `bun install` in a ticket worktree (it may
+  update `bun.lock`, which the green commit then takes), and
+  `bun install --frozen-lockfile` on the run branch. A failed install fails the
+  gates without running the rest, and goes through the gate fix loop like
+  any failed gate: the implementer gets its output in a follow-up.
 - **The ticket reviewer** is a scripted stand-in that approves for now (#364).
 
 ## Jev in shadow mode
@@ -190,7 +199,8 @@ given a journal), the engine with the in-memory tracker, the journal file
 throwaway git repo in a temp folder with a local bare repo as its `origin`,
 fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
-step are real. No GitHub, no models, no setup.
+step are real. No GitHub, no models, no setup. One ticket adds a local
+workspace package as a dependency, so the engine's install runs offline.
 
 `src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one
 that disagrees with everything, throws, never answers, or has no key, and

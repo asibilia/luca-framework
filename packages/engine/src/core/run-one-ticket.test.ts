@@ -74,6 +74,45 @@ const PASSING_SUM_TEST = SUM_TEST.replace(
     'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
 )
 
+/**
+ * A repo with a local workspace package that nothing depends on yet. Bun
+ * installs workspace packages offline, and auto-install is off, so nothing
+ * here reaches the network.
+ */
+const WORKSPACE_FILES = {
+    'package.json': JSON.stringify(
+        { name: 'practice', private: true, workspaces: ['packages/*'] },
+        null,
+        4
+    ),
+    'bunfig.toml': '[install]\nauto = "disable"\n',
+    'packages/math/package.json': JSON.stringify(
+        { name: '@practice/math', version: '1.0.0', main: 'index.ts' },
+        null,
+        4
+    ),
+    'packages/math/index.ts':
+        'export const add = (a: number, b: number): number => a + b\n',
+}
+
+/** The implementer adds the workspace package as a dependency and uses it. */
+const MANIFEST_WITH_DEPENDENCY = JSON.stringify(
+    {
+        name: 'practice',
+        private: true,
+        workspaces: ['packages/*'],
+        dependencies: { '@practice/math': 'workspace:*' },
+    },
+    null,
+    4
+)
+
+const SUM_WITH_DEPENDENCY = `import { add } from '@practice/math'
+
+export const sum = ({ numbers }: { numbers: number[] }): number =>
+    numbers.reduce(add, 0)
+`
+
 const TEST_WRITER_RESULT = {
     outcome: 'tests_written',
     criteria: [
@@ -122,7 +161,11 @@ const git = (cwd: string, ...args: string[]) =>
     $`git -C ${cwd} ${args}`.quiet().text()
 
 /** A small repo with no tests yet, pushed to a local bare `origin`. */
-const makePracticeRepo = async () => {
+const makePracticeRepo = async ({
+    files,
+}: {
+    files: Record<string, string> | undefined
+}) => {
     await $`git init -q --bare -b main ${origin}`.quiet()
     await $`git init -q -b main ${repo}`.quiet()
     const hooks = join(root, 'no-hooks')
@@ -139,6 +182,13 @@ const makePracticeRepo = async () => {
         join(repo, '.luca', 'config.json'),
         JSON.stringify(ENGINE_CONFIG, null, 4)
     )
+    for (const [path, content] of Object.entries(files ?? {})) {
+        await Bun.write(join(repo, path), content)
+    }
+    if (files?.['package.json'] !== undefined) {
+        // The starting lockfile. Workspace packages install offline.
+        await $`bun install`.cwd(repo).quiet()
+    }
     await git(repo, 'add', '-A')
     await git(repo, 'commit', '-q', '-m', 'initial')
     await git(repo, 'remote', 'add', 'origin', origin)
@@ -182,11 +232,15 @@ const HAPPY_TURNS: Turn[] = [
 const runPractice = async ({
     turns,
     launcher,
+    files,
 }: {
     turns: Turn[]
     /** Defaults to a scripted launcher playing `turns`. */
     launcher?: ScriptedLauncher
+    /** More files for the practice repo's first commit. */
+    files?: Record<string, string>
 }) => {
+    await makePracticeRepo({ files })
     const loaded = await loadEngineConfig({ repo_root: repo })
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = practiceTracker()
@@ -212,7 +266,6 @@ beforeEach(async () => {
     journal = createJournal({
         file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
     })
-    await makePracticeRepo()
 })
 
 afterEach(async () => {
@@ -618,5 +671,147 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(records.some((record) => record.kind === 'commit_made')).toBe(
             false
         )
+    }, 60_000)
+
+    test('a ticket that adds a package gets the install from the engine, and the lockfile in its green commit', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const { action, records } = await runPractice({
+            files: WORKSPACE_FILES,
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    files: {
+                        'package.json': MANIFEST_WITH_DEPENDENCY,
+                        'src/sum.ts': SUM_WITH_DEPENDENCY,
+                        'src/index.ts': "export { sum } from './sum'\n",
+                    },
+                },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // Agents are told the engine runs the install, not them.
+        const implementerStart = records.find(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.content.role === 'implementer'
+        )
+        expect(
+            implementerStart?.kind === 'agent_started'
+                ? implementerStart.content.prompt
+                : ''
+        ).toContain('Never run the package install')
+
+        // The engine ran the install before the other gates, on the ticket
+        // and again on the joined run branch.
+        const gates = records.flatMap((record) =>
+            record.kind === 'gates_run' ? [record.content] : []
+        )
+        expect(gates.map(({ target, ok }) => ({ target, ok }))).toEqual([
+            { target: 'ticket', ok: true },
+            { target: 'run_branch', ok: true },
+        ])
+        for (const { checks } of gates) {
+            expect(checks.map(({ name }) => name)).toEqual([
+                'install',
+                'test',
+                'types',
+                'lint',
+            ])
+        }
+
+        // The green commit holds the updated lockfile next to the manifest.
+        const commits = records.flatMap((record) =>
+            record.kind === 'commit_made' ? [record.content] : []
+        )
+        expect(commits.map(({ stage, files }) => ({ stage, files }))).toEqual([
+            { stage: 'red', files: ['src/sum.test.ts'] },
+            {
+                stage: 'green',
+                files: [
+                    'bun.lock',
+                    'package.json',
+                    'src/index.ts',
+                    'src/sum.ts',
+                ],
+            },
+        ])
+        const branch = (await git(origin, 'branch', '--list', 'luca/*'))
+            .trim()
+            .replace(/^\* /, '')
+        const lockfile = await git(origin, 'show', `${branch}:bun.lock`)
+        expect(lockfile).toContain('"@practice/math": "workspace:*"')
+    }, 60_000)
+
+    test('a failed install goes back to the implementer like any failed gate', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const fixedFiles = {
+            'package.json': MANIFEST_WITH_DEPENDENCY,
+            'src/sum.ts': SUM_WITH_DEPENDENCY,
+            'src/index.ts': "export { sum } from './sum'\n",
+        }
+        const { action, records } = await runPractice({
+            files: WORKSPACE_FILES,
+            turns: [
+                testWriter,
+                // First try: a dependency on a package that doesn't exist.
+                {
+                    ...implementer,
+                    files: {
+                        ...fixedFiles,
+                        'package.json': MANIFEST_WITH_DEPENDENCY.replace(
+                            '@practice/math',
+                            '@practice/missing'
+                        ),
+                    },
+                },
+                // Its follow-up names the right package.
+                { ...implementer, files: fixedFiles },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // The failed install stopped the gates; the next round passed.
+        const ticketGates = records.flatMap((record) =>
+            record.kind === 'gates_run' && record.content.target === 'ticket'
+                ? [record.content]
+                : []
+        )
+        expect(
+            ticketGates.map(({ ok, checks }) => ({
+                ok,
+                names: checks.map(({ name }) => name),
+            }))
+        ).toEqual([
+            { ok: false, names: ['install'] },
+            { ok: true, names: ['install', 'test', 'types', 'lint'] },
+        ])
+
+        // The same implementer session got the install's output.
+        const followUp = records.find(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.content.follow_up_of !== null
+        )
+        expect(followUp?.role).toBe('implementer')
+        expect(
+            followUp?.kind === 'agent_started' ? followUp.content.prompt : ''
+        ).toContain('install failed')
+
+        const green = records.find(
+            (record) =>
+                record.kind === 'commit_made' &&
+                record.content.stage === 'green'
+        )
+        expect(
+            green?.kind === 'commit_made' ? green.content.files : []
+        ).toContain('bun.lock')
     }, 60_000)
 })

@@ -11,6 +11,7 @@ import { parseRoleResult, type AgentRole } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
 import { runGates } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
+import { installCommand } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import { runTests, testFilesAmong } from '../gates/test-runner'
 import type { GitAdapter } from '../git/git-adapter'
@@ -413,13 +414,20 @@ export const executeBuildAction = async ({
         case 'commit_ticket':
             return commitTicket({ context, action })
         case 'run_gates': {
-            const cwd =
+            const { path: cwd, base_sha } =
                 action.target === 'ticket'
-                    ? ticketWorktree({ state, ticket: action.ticket }).path
-                    : need({ value: state.run_branch, what: 'run branch' }).path
+                    ? ticketWorktree({ state, ticket: action.ticket })
+                    : need({ value: state.run_branch, what: 'run branch' })
             const result = await runGates({
                 cwd,
                 config,
+                install: installCommand({
+                    changed_files: await git.changedSince({
+                        cwd,
+                        from: base_sha,
+                    }),
+                    target: action.target,
+                }),
                 test_files: await testFilesIn({ context, cwd }),
                 report_file: await reportFile({
                     context,

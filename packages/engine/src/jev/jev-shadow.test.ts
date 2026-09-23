@@ -56,6 +56,16 @@ const baseline = ({
 
 const isJev = (record: JournalRecord): boolean => record.kind.startsWith('jev_')
 
+/**
+ * Launches with test-run timings ("[7.00ms]") blanked out: a fix-loop
+ * follow-up quotes test output, and its timings differ between two runs.
+ */
+const withoutTimings = (launches: PracticeRun['launches']) =>
+    launches.map((launch) => ({
+        ...launch,
+        prompt: launch.prompt.replace(/\[\d+(\.\d+)?m?s\]/g, '[time]'),
+    }))
+
 /** The run as it would look without Jev: the same steps, prompts, and PR. */
 const expectSameRun = ({
     run,
@@ -68,7 +78,9 @@ const expectSameRun = ({
     expect(
         run.records.filter((record) => !isJev(record)).map(({ kind }) => kind)
     ).toEqual(without.records.map(({ kind }) => kind))
-    expect(run.launches).toEqual(without.launches)
+    expect(withoutTimings(run.launches)).toEqual(
+        withoutTimings(without.launches)
+    )
     expect(run.tracker.pullRequests()).toEqual(without.tracker.pullRequests())
 }
 
@@ -324,6 +336,9 @@ describe('Jev in shadow mode', () => {
                     ),
                 },
             },
+            // The engine sends the failed red check back to the test-writer's
+            // session, and this follow-up fixes the tests.
+            testWriter,
             implementer,
             reviewer,
         ]
@@ -334,11 +349,13 @@ describe('Jev in shadow mode', () => {
             jev: { client: disagreeingJev() },
         })
 
-        expect(run.action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
-            reason: 'red_check_failed',
-        })
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const followUps = run.records.flatMap((record) =>
+            record.kind === 'agent_started' && record.content.follow_up_of
+                ? [record.role]
+                : []
+        )
+        expect(followUps).toEqual(['test-writer'])
         expectSameRun({
             run,
             without: await baseline({ name: 'red', turns }),
