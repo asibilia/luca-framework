@@ -20,9 +20,6 @@ export { makePracticeRepo }
 /** The practice spec's issue number. Its tickets are #11 and #12. */
 export const PRACTICE_SPEC_NUMBER = 10
 
-/** The scripted turns that build ticket #11 (sum): tests, code, review. */
-export const PRACTICE_TURNS: ScriptedTurn[] = HAPPY_TURNS
-
 const AVERAGE_TEST = `import { describe, expect, test } from 'bun:test'
 
 import { average } from './average'
@@ -45,7 +42,7 @@ export const average = ({ numbers }: { numbers: number[] }): number =>
 `
 
 /** The scripted turns that build ticket #12 (average, blocked by #11). */
-export const SECOND_TICKET_TURNS: ScriptedTurn[] = [
+const SECOND_TICKET_TURNS: ScriptedTurn[] = [
     {
         role: 'test-writer',
         ticket: 12,
@@ -96,38 +93,39 @@ export const SECOND_TICKET_TURNS: ScriptedTurn[] = [
     { role: 'ticket-reviewer', ticket: 12, result: APPROVE },
 ]
 
+/** The demo's scripted turns: ticket #11 (sum), then ticket #12 (average). */
+export const DEMO_TURNS: ScriptedTurn[] = [
+    ...HAPPY_TURNS,
+    ...SECOND_TICKET_TURNS,
+]
+
 /**
  * The practice spec (#10) in an in-memory tracker, with ticket #11 (sum)
- * and, if asked, ticket #12 (average), which is blocked by #11.
+ * and ticket #12 (average), which is blocked by #11.
  */
-export const practiceTracker = ({
-    second_ticket,
-}: {
-    second_ticket: boolean
-}): InMemoryTracker => {
-    const sum = ticketIssue({
-        number: 11,
-        title: 'Add sum',
-        criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
-    })
-    const average = ticketIssue({
-        number: 12,
-        title: 'Add average',
-        criteria: [
-            'average of two numbers is the one between them',
-            'average of no numbers is zero',
-        ],
-        blocked_by_section: '- #11',
-        blocked_by: [11],
-    })
-    const tickets = second_ticket ? [sum, average] : [sum]
+export const demoTracker = (): InMemoryTracker => {
+    const tickets = [
+        ticketIssue({
+            number: 11,
+            title: 'Add sum',
+            criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
+        }),
+        ticketIssue({
+            number: 12,
+            title: 'Add average',
+            criteria: [
+                'average of two numbers is the one between them',
+                'average of no numbers is zero',
+            ],
+            blocked_by_section: '- #11',
+            blocked_by: [11],
+        }),
+    ]
     return createInMemoryTracker({
         issues: [
             specIssue({ number: PRACTICE_SPEC_NUMBER, title: 'Practice spec' }),
             ...tickets,
         ],
-        sub_tickets: {
-            [PRACTICE_SPEC_NUMBER]: tickets.map((ticket) => ticket.number),
-        },
+        sub_tickets: { [PRACTICE_SPEC_NUMBER]: [11, 12] },
     })
 }

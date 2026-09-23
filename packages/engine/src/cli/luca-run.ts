@@ -6,19 +6,26 @@
  *   bun <abs>/packages/engine/src/cli/luca-run.ts --spec <n> --repo <abs repo>
  *       --run-id <id> --board-plugin luca-board      (token in $LUCA_BOARD_TOKEN)
  *
+ * A real run builds with real Claude agents (`createClaudeLauncher`: Claude
+ * Opus 5.5, every guard on, paid by your Claude plan) and asks Jev in shadow
+ * mode (`createTypeSafeJev`, which reads `TYPESAFE_API_KEY`; with no key each
+ * ask is journaled as `missing_key` and the run goes on).
+ *
  * `--demo` runs a practice spec in a throwaway repo instead: no GitHub, no
  * models. See `RUN_USAGE` for every flag.
  *
  * Exits 0 when the run finished (PR opened, or nothing to do), 1 when it
- * stopped (refused, stuck, crashed, or no launcher yet), 2 on bad flags.
+ * stopped (refused, stuck, stopped by the launcher, crashed), 2 on bad flags.
  */
 import { $ } from 'bun'
 
 import { parseRunArgs, type RunArgs } from './run-args'
 import { DEMO_TURN_DELAY_MS, runDemo, runSpec, type RunEnd } from './run-modes'
 
+import { createClaudeLauncher } from '../agents/claude-launcher'
 import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
+import { createTypeSafeJev } from '../jev/jev-client'
 import { defaultRunsDir } from '../journal/journal'
 import { createGitHubTracker } from '../tracker/github-tracker'
 
@@ -72,6 +79,8 @@ const run = async ({
         base_branch: args.base_branch,
         runs_dir: defaultRunsDir(),
         tracker,
+        launcher: createClaudeLauncher({}),
+        jev: { client: createTypeSafeJev() },
         board,
         log,
     })
