@@ -1,4 +1,5 @@
 import { decide, type EngineAction } from './decide'
+import { executeBuildAction, type BuildDeps } from './execute-build'
 
 import type { EngineConfig } from '../config/engine-config'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
@@ -29,16 +30,19 @@ export const startRun = ({
     journal,
     spec_number,
     config,
+    base_branch,
 }: {
     journal: Journal
     spec_number: number
     config: EngineConfig
+    /** The branch the run branch starts from. Defaults to `main`. */
+    base_branch?: string
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
-        content: { spec_number, config },
+        content: { spec_number, config, base_branch },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
@@ -121,10 +125,13 @@ export const executeAction = async ({
     action,
     journal,
     tracker,
+    build,
 }: {
     action: EngineAction
     journal: Journal
     tracker: Tracker
+    /** Needed for every step after intake. */
+    build?: BuildDeps
 }): Promise<void> => {
     switch (action.type) {
         case 'read_intake':
@@ -170,17 +177,23 @@ export const executeAction = async ({
             }
             return
         }
-        case 'create_run_branch':
-            throw new Error('Building tickets is not wired up yet.')
         case 'invalid_journal':
         case 'done':
             return
+        default:
+            if (build === undefined) {
+                throw new Error(
+                    `The engine needs a git adapter and an agent launcher to ${action.type}.`
+                )
+            }
+            return executeBuildAction({ action, journal, tracker, ...build })
     }
 }
 
 /**
  * Runs the engine: decide the next action from the journal, carry it out,
- * repeat, until the run is done or reaches the build seam. Safe to call on a
+ * repeat, until the run is done: refused, nothing to do, stuck, or its PR
+ * opened. Building tickets needs `git` and `launcher`. Safe to call on a
  * journal left by a crashed engine; it picks up where the journal ends.
  *
  * @returns The action the loop stopped on.
@@ -190,7 +203,9 @@ export const runEngine = async ({
     tracker,
     max_steps,
     stop_before,
-}: {
+    git,
+    launcher,
+}: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
     /** Defaults to `DEFAULT_MAX_STEPS`. */
@@ -203,7 +218,11 @@ export const runEngine = async ({
     for (let step = 0; step < limit; step += 1) {
         const action = decide({ records: journal.read() })
         if (stops.has(action.type)) return action
-        await executeAction({ action, journal, tracker })
+        const build =
+            git === undefined || launcher === undefined
+                ? undefined
+                : { git, launcher }
+        await executeAction({ action, journal, tracker, build })
     }
     throw new Error(`The engine took ${limit} steps without finishing.`)
 }

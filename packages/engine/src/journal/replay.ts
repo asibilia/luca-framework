@@ -2,6 +2,7 @@ import type { CommitStage, JournalRecord, StuckReason } from './journal-record'
 
 import type {
     ImplementerResult,
+    RoleResult,
     TestWriterResult,
     TicketReviewResult,
 } from '../agents/role-results'
@@ -207,6 +208,18 @@ type TicketRecord = Exclude<
     }
 >
 
+/** Where a finished agent's result goes in its ticket's progress. */
+const resultChange = (finished: RoleResult): Partial<TicketProgress> => {
+    switch (finished.role) {
+        case 'test-writer':
+            return { test_writer: finished.result }
+        case 'implementer':
+            return { implementer: finished.result }
+        case 'ticket-reviewer':
+            return { review: finished.result }
+    }
+}
+
 const progressChange = ({
     progress,
     record,
@@ -221,18 +234,8 @@ const progressChange = ({
             return { baseline: record.content }
         case 'agent_started':
             return {}
-        case 'agent_finished': {
-            const cleared = { agent_failure: null }
-            switch (record.content.role) {
-                case 'test-writer':
-                    return { ...cleared, test_writer: record.content.result }
-                case 'implementer':
-                    return { ...cleared, implementer: record.content.result }
-                case 'ticket-reviewer':
-                    return { ...cleared, review: record.content.result }
-            }
-            break
-        }
+        case 'agent_finished':
+            return { agent_failure: null, ...resultChange(record.content) }
         case 'agent_failed':
             return { agent_failure: record.content }
         case 'red_check': {
