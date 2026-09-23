@@ -1,7 +1,7 @@
 {
     "checks": {
-        "test": "bun test packages/engine",
-        "types": "bunx --bun tsc --noEmit",
+        "test": "bun test packages",
+        "types": "bunx --bun tsc --noEmit && bunx --bun tsc --noEmit -p packages/board",
         "lint": "bun run lint"
     },
     "test_file_patterns": ["packages/**/*.test.ts"],

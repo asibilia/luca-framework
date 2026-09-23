@@ -1,0 +1,7 @@
+{
+    "id": "luca-board",
+    "description": "Luca's board: /luca-run <spec> starts a Luca run, and a side panel plus live chat rows show its tickets, reviews, usage, and anything that needs you",
+    "requirements": {
+        "paseo": ">=0.9.1"
+    }
+}

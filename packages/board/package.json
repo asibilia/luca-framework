@@ -1,0 +1,31 @@
+{
+    "name": "@luca/board",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "files": [
+        "paseo-plugin.json",
+        "index.client.tsx",
+        "index.server.ts",
+        "client/",
+        "server/",
+        "shared/"
+    ],
+    "scripts": {
+        "test": "bun test",
+        "typecheck": "bunx --bun tsc --noEmit -p .",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@getpaseo/plugin": "0.9.1",
+        "@tanstack/react-query": "^5.90.11",
+        "@types/bun": "latest",
+        "@types/react": "~19.2.0",
+        "react": "19.1.0",
+        "react-native": "0.81.5",
+        "typescript": "catalog:"
+    }
+}

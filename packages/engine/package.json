@@ -4,6 +4,9 @@
     "private": true,
     "type": "module",
     "main": "src/index.ts",
+    "bin": {
+        "luca-run": "src/cli/luca-run.ts"
+    },
     "scripts": {
         "test": "bun test",
         "typecheck": "bunx --bun tsc --noEmit -p .",
@@ -11,6 +14,7 @@
     },
     "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.273",
+        "@getpaseo/client": "0.9.1",
         "lodash": "^4.17.21",
         "zod": "catalog:"
     },
