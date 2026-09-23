@@ -28,6 +28,10 @@ _Avoid_: stuck, waiting
 One trip of the engine through a spec's tickets, ending in a pull request.
 _Avoid_: build, pipeline, session
 
+**Run branch**:
+The branch a run's finished tickets join one at a time, and that its one pull request is opened from.
+_Avoid_: integration branch, feature branch
+
 **Intake**:
 The check, before a run starts, that a spec and all its open tickets are ready to build. If anything fails, the run does not start.
 _Avoid_: preflight, validation
@@ -76,6 +80,10 @@ _Avoid_: perspective, reviewer type
 One problem a reviewer reports, tagged as a blocker, a should-fix, or a nit.
 _Avoid_: issue, comment
 
+**Assumption**:
+A call an agent made by itself when something was unclear, listed in the pull request for a person to check.
+_Avoid_: guess, open question
+
 **Guard**:
 The rules that block an agent's action when its role doesn't allow it.
 _Avoid_: stage-gate, permission
@@ -85,7 +93,7 @@ The state of a ticket, or of the final review, when the engine can't safely pick
 _Avoid_: blocked, halted
 
 **Escalation**:
-Stuck work asking a person, or a stronger model, for help.
+Stuck work asking a person for help.
 _Avoid_: halt
 
 **Skipped ticket**:
@@ -96,6 +104,14 @@ _Avoid_: dropped, abandoned
 A pause while the plan's usage limit resets. The run carries on by itself afterwards, so it isn't stuck.
 _Avoid_: stuck, throttled
 
+**Agent message**:
+A one-way heads-up one agent sends another during a run, handed over by the engine at the receiver's next tool call.
+_Avoid_: chat, ping, prompt
+
+**Run note**:
+A short fact about the repo that an agent learned during a run, handed to later agents in the same run.
+_Avoid_: scratchpad, shared context
+
 **Memory**:
 A lesson that outlives a run, such as a pattern or a pitfall, kept for future runs to find.
 _Avoid_: engram, note, learning
@@ -104,11 +120,19 @@ _Avoid_: engram, note, learning
 A fixed moment in a run when the engine searches memory and hands the results to an agent.
 _Avoid_: pre-flight, lookup
 
+**Shadow mode**:
+A trial setup for a labeling model: the engine asks it every time and records its answer in the journal, but acts on a fixed choice until the journal shows the labels are right.
+_Avoid_: dry run, trial mode
+
 ### Seeing the work
 
 **Journal**:
-The record of everything that happened in a run, step by step.
+The record of everything that happened in a run, step by step. It only ever grows, and it is the one source of truth for where a run stands.
 _Avoid_: ledger, telemetry, log
+
+**Checkpoint**:
+A step whose finish is written in the journal. A restarted run picks up each ticket from its last checkpoint and redoes any step that was only half done.
+_Avoid_: savepoint, snapshot
 
 **Board**:
 The live view of a run: its tickets, its agents, and what each one is doing.
