@@ -11,6 +11,7 @@ import {
     implemented,
     intakePassed,
     leftoverScan,
+    nothingNewToTest,
     practiceTicket,
     redCheck,
     reviewed,
@@ -22,6 +23,7 @@ import {
     ticketWorktreeCreated,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
+import { REFACTOR_LABEL } from '../tracker/tracker'
 
 const TICKET = practiceTicket({ number: 11 })
 
@@ -229,21 +231,40 @@ describe('decision step: building a ticket', () => {
         })
     })
 
-    test('a test-writer with nothing new to test skips the red check and commit', () => {
+    test('a test-writer with nothing new to test makes the ticket stuck at once, with a hint to add the refactor label', () => {
+        const action = decideAfter([
+            ...stepsUpTo(1),
+            nothingNewToTest({ ticket: 11 }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'nothing_new_to_test',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain(`\`${REFACTOR_LABEL}\` label`)
+    })
+
+    test('a ticket stuck with nothing new to test ends the run with that reason', () => {
         expect(
             decideAfter([
                 ...stepsUpTo(1),
+                nothingNewToTest({ ticket: 11 }),
                 {
-                    kind: 'agent_finished',
+                    kind: 'ticket_stuck',
                     ticket: 11,
-                    role: 'test-writer',
-                    content: {
-                        role: 'test-writer',
-                        result: { outcome: 'nothing_new_to_test' },
-                    },
+                    role: null,
+                    content: { reason: 'nothing_new_to_test', detail: 'why' },
                 },
             ])
-        ).toMatchObject({ type: 'launch_agent', role: 'implementer' })
+        ).toEqual({
+            type: 'done',
+            outcome: 'stuck',
+            ticket: 11,
+            reason: 'nothing_new_to_test',
+            detail: 'why',
+        })
     })
 })
 

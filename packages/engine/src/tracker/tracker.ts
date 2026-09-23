@@ -62,5 +62,11 @@ export type Tracker = {
 /** The label a ticket needs before intake lets a run build it. */
 export const READY_LABEL = 'ready-for-agent'
 
+/**
+ * The label that makes a ticket a refactor ticket: it changes how the code is
+ * shaped, not what it does, so it skips the test-writer and the red check.
+ */
+export const REFACTOR_LABEL = 'refactor'
+
 /** The label intake moves a bad ticket to. */
 export const NEEDS_INFO_LABEL = 'needs-info'

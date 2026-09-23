@@ -16,6 +16,7 @@ import {
     type RunState,
     type TicketProgress,
 } from '../journal/replay'
+import { REFACTOR_LABEL } from '../tracker/tracker'
 
 /**
  * Follow-ups an agent gets to fix a failed red check or failed gates, after
@@ -183,18 +184,129 @@ const commitStep = ({
     }
 }
 
+type StepArgs = {
+    snapshot: ReplayedSnapshot
+    ticket: TicketSnapshot
+    progress: TicketProgress
+}
+
+/**
+ * The test-writer's half of a ticket: fresh tests, the red check and its fix
+ * loop, then the red commit. `null` once the red commit is made.
+ */
+const testStep = ({
+    snapshot,
+    ticket,
+    progress,
+}: StepArgs): BuildAction | null => {
+    const number = ticket.number
+    const { test_writer, red_check } = progress
+    if (test_writer === null) {
+        return launch({ role: 'test-writer', snapshot, ticket })
+    }
+    if (test_writer.outcome === 'nothing_new_to_test') {
+        return stuck({
+            ticket: number,
+            reason: 'nothing_new_to_test',
+            detail:
+                `The test-writer found nothing new to test: ${test_writer.summary || 'no reason given'}\n` +
+                `If this ticket changes no behavior, add the \`${REFACTOR_LABEL}\` label and start the run again.`,
+        })
+    }
+    if (red_check === null) {
+        return {
+            type: 'run_red_check',
+            ticket: number,
+            criteria_ids: ticket.criteria.map(({ id }) => id),
+            mapping: test_writer.criteria,
+        }
+    }
+    if (!red_check.ok) {
+        const problems = red_check.problems.join('\n')
+        if (progress.red_fix_rounds >= MAX_FIX_ROUNDS) {
+            return stuck({
+                ticket: number,
+                reason: 'red_check_failed',
+                detail: `The red check still fails after ${MAX_FIX_ROUNDS} fix rounds:\n${problems}`,
+            })
+        }
+        const session_id = progress.sessions['test-writer']
+        if (session_id === undefined) {
+            return stuck({
+                ticket: number,
+                reason: 'red_check_failed',
+                detail: `The red check failed and there is no test-writer session to send it back to:\n${problems}`,
+            })
+        }
+        return {
+            type: 'follow_up_agent',
+            ticket: number,
+            role: 'test-writer',
+            session_id,
+            message: redFixMessage({ red_check }),
+        }
+    }
+    return commitStep({ stage: 'red', ticket, progress })
+}
+
+/**
+ * The implementer's half of a ticket: the code, the gates and their fix
+ * loop, then the green commit. `null` once the green commit is made.
+ */
+const codeStep = ({
+    snapshot,
+    ticket,
+    progress,
+}: StepArgs): BuildAction | null => {
+    const number = ticket.number
+    const { implementer, gates } = progress
+    if (implementer === null) {
+        return launch({ role: 'implementer', snapshot, ticket })
+    }
+    if (implementer.outcome === 'bad_test') {
+        return stuck({
+            ticket: number,
+            reason: 'bad_test',
+            detail: implementer.bad_test?.reason ?? implementer.summary,
+        })
+    }
+    if (gates === null) {
+        return { type: 'run_gates', ticket: number, target: 'ticket' }
+    }
+    if (!gates.ok) {
+        if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
+            return stuck({
+                ticket: number,
+                reason: 'gates_failed',
+                detail: `The gates still fail after ${MAX_FIX_ROUNDS} fix rounds:\n${failedChecks({ gates })}`,
+            })
+        }
+        const session_id = progress.sessions.implementer
+        if (session_id === undefined) {
+            return stuck({
+                ticket: number,
+                reason: 'gates_failed',
+                detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
+            })
+        }
+        return {
+            type: 'follow_up_agent',
+            ticket: number,
+            role: 'implementer',
+            session_id,
+            message: gateFixMessage({ gates }),
+        }
+    }
+    return commitStep({ stage: 'green', ticket, progress })
+}
+
 /** The next step for one ticket, or `null` once it has joined and pushed. */
 const nextTicketStep = ({
     snapshot,
     ticket,
     progress,
     run_branch,
-}: {
-    snapshot: ReplayedSnapshot
-    ticket: TicketSnapshot
-    progress: TicketProgress
-    run_branch: ReplayedWorktree
-}): BuildAction | null => {
+}: StepArgs & { run_branch: ReplayedWorktree }): BuildAction | null => {
     const number = ticket.number
     if (progress.stuck !== null) {
         return {
@@ -221,88 +333,10 @@ const nextTicketStep = ({
     if (progress.baseline === null) {
         return { type: 'run_baseline_tests', ticket: number }
     }
-    const { test_writer } = progress
-    if (test_writer === null) {
-        return launch({ role: 'test-writer', snapshot, ticket })
-    }
-    if (test_writer.outcome === 'tests_written') {
-        if (progress.red_check === null) {
-            return {
-                type: 'run_red_check',
-                ticket: number,
-                criteria_ids: ticket.criteria.map(({ id }) => id),
-                mapping: test_writer.criteria,
-            }
-        }
-        if (!progress.red_check.ok) {
-            const red_check = progress.red_check
-            const session_id = progress.sessions['test-writer']
-            if (progress.red_fix_rounds >= MAX_FIX_ROUNDS) {
-                return stuck({
-                    ticket: number,
-                    reason: 'red_check_failed',
-                    detail: `The red check still fails after ${MAX_FIX_ROUNDS} fix rounds:\n${red_check.problems.join('\n')}`,
-                })
-            }
-            if (session_id === undefined) {
-                return stuck({
-                    ticket: number,
-                    reason: 'red_check_failed',
-                    detail: `The red check failed and there is no test-writer session to send it back to:\n${red_check.problems.join('\n')}`,
-                })
-            }
-            return {
-                type: 'follow_up_agent',
-                ticket: number,
-                role: 'test-writer',
-                session_id,
-                message: redFixMessage({ red_check }),
-            }
-        }
-        const red = commitStep({ stage: 'red', ticket, progress })
-        if (red !== null) return red
-    }
-    const { implementer } = progress
-    if (implementer === null) {
-        return launch({ role: 'implementer', snapshot, ticket })
-    }
-    if (implementer.outcome === 'bad_test') {
-        return stuck({
-            ticket: number,
-            reason: 'bad_test',
-            detail: implementer.bad_test?.reason ?? implementer.summary,
-        })
-    }
-    if (progress.gates === null) {
-        return { type: 'run_gates', ticket: number, target: 'ticket' }
-    }
-    if (!progress.gates.ok) {
-        const gates = progress.gates
-        const session_id = progress.sessions.implementer
-        if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
-            return stuck({
-                ticket: number,
-                reason: 'gates_failed',
-                detail: `The gates still fail after ${MAX_FIX_ROUNDS} fix rounds:\n${failedChecks({ gates })}`,
-            })
-        }
-        if (session_id === undefined) {
-            return stuck({
-                ticket: number,
-                reason: 'gates_failed',
-                detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
-            })
-        }
-        return {
-            type: 'follow_up_agent',
-            ticket: number,
-            role: 'implementer',
-            session_id,
-            message: gateFixMessage({ gates }),
-        }
-    }
-    const green = commitStep({ stage: 'green', ticket, progress })
-    if (green !== null) return green
+    const tests = testStep({ snapshot, ticket, progress })
+    if (tests !== null) return tests
+    const code = codeStep({ snapshot, ticket, progress })
+    if (code !== null) return code
     if (progress.review === null) {
         return launch({ role: 'ticket-reviewer', snapshot, ticket })
     }
