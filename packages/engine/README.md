@@ -7,7 +7,8 @@ domain words, and spec #359 for the plan.
 This package covers the start of a run (#360): the engine config, the
 **journal**, and **intake**. It also builds each ticket end to end (#361), with
 scripted stand-in **agents**, up to the run's one pull request, with capped
-**fix loops** for a failed red check, failed gates, and a bad test (#363).
+**fix loops** for a failed red check, failed gates, and a bad test (#363), and
+runs real Claude agents under the **guard** (#362).
 
 ## Modules
 
@@ -20,14 +21,22 @@ scripted stand-in **agents**, up to the run's one pull request, with capped
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, next action out. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, then the PR. |
-| `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output. |
+| `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, or a failed try's error. |
 | `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes and the agents' **assumptions**. |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends) and the `runEngine` loop. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. |
-| `src/agents/agent-launcher.ts` | The agent launcher interface: `launch` a fresh session, or `followUp` in an open one. The real Claude launcher comes in #362. |
-| `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write the files a test gives them, return the role's result, and record each launch and follow-up with its session. |
+| `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
+| `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
+| `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
+| `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt. |
+| `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act, return a result or a failure, and record each launch and follow-up with its session. |
 | `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
 | `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids). |
+| `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`). |
+| `src/guards/guard-hook.ts` | The guard as the SDK's `PreToolUse` hook. |
+| `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths. |
+| `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
+| `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. |
 | `src/git/git-adapter.ts` | Every git side effect: worktrees, commits, throwing away uncommitted work, replaying onto the run branch, pushes. |
 | `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
@@ -40,7 +49,7 @@ scripted stand-in **agents**, up to the run's one pull request, with capped
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
-| `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns. |
+| `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). |
 | `src/jev/jev-schemas.ts` | Jev's questions, requests, and answers, and the engine's fixed choices, as Zod schemas. |
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
 | `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
@@ -78,6 +87,10 @@ open_pull_request         tracker: one PR from the run branch            ──>
 done (pr_opened)
 ```
 
+Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
+`agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
+how it failed), or `run_stopped` (see Guards).
+
 A refactor ticket (labelled `refactor`) skips the test-writer, the red check,
 and the red commit: its implementer may follow renames into test files, but
 must not change what a test checks.
@@ -99,10 +112,25 @@ commit (`test: replace a bad test for ...`), then a fresh implementer builds.
 The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
 test on a refactor ticket.
 
-Anything else that fails (an agent, the leftover scan, the review, the join),
-a fix loop at its cap, a second bad test, or a test-writer with nothing new to
-test becomes `mark_stuck` ──> `ticket_stuck` with its reason, and the run ends
-without a PR. Real reviews (#364) and many tickets at once (#365) build on
+**Failed tries.** A failed agent turn is journaled once as `agent_failed`
+with its `failure` kind and session; the decision step picks what comes next,
+so a crashed run decides the same way again. An `agent` (an error result, a
+timeout), `result` (no structured output, or output that misfits the role's
+schema), or `guard` failure uses up one of the role's tries on the ticket
+(`MAX_FIX_ROUNDS`, 3, in all): the test-writer or implementer gets a
+follow-up in the same session saying what failed, the error, and that the
+disallowed changes were undone (`failedTryMessage`); a reviewer, or an agent
+with no session, gets a fresh launch. The last try's failure is stuck. An
+`engine` failure (the SDK crashed, or a follow-up's session is gone) starts a
+fresh agent of that role without using up a try; three in a row
+(`MAX_ENGINE_FAILURES`) are stuck. A retry that finishes flows on like any
+result: it can set the role's first result, or answer a fix round and rerun
+the red check or the gates.
+
+Anything else that fails (the leftover scan, the review, the join), a fix loop
+or failed tries at their cap, a second bad test, or a test-writer with nothing
+new to test becomes `mark_stuck` ──> `ticket_stuck` with its reason, and the
+run ends without a PR. Real reviews (#364) and many tickets at once (#365) build on
 this.
 
 `runEngine` reads the journal before every step, so it can resume a journal
@@ -143,20 +171,101 @@ keeps the latest snapshot of each ticket.
 - **A test-writer answering "nothing new to test"** makes the ticket stuck at
   once, with a hint: if the ticket changes no behavior, add the `refactor`
   label and start the run again.
-- **`may_edit_tests`** on each launch tells the launcher's guards (#362)
-  whether the agent may edit test files: true for the test-writer and for a
-  refactor ticket's implementer, false otherwise.
+- **`may_edit_tests`** on each launch tells the launcher's guards whether the
+  agent may edit test files: true for the test-writer and for a refactor
+  ticket's implementer, false otherwise (`mayEditTests`). A follow-up keeps
+  the guards its session was launched with; the engine looks the value up
+  again from the ticket for its after-turn check.
 - **The PR's assumptions** come from every agent turn on a ticket, fix rounds
   and bounced test-writers included, each listed once.
-- **Lockfile updates (#373):** agents never run the install; the implementer's
-  prompt says so, and the guards that deny it come with the Claude launcher
-  (#362). When a `package.json` differs from the worktree's base, the gates
+- **Lockfile updates (#373):** agents never run the install; the prompts say
+  so, and the guards deny `bun install`, `bun i`, `bun add`, `npm`, and
+  `bunx <package>` for every role. The engine runs it itself, between agent
+  turns, so its changes are never blamed on an agent: each turn's after-turn
+  snapshot is taken right before that turn. When a `package.json` differs from the worktree's base, the gates
   start with an `install` check: `bun install` in a ticket worktree (it may
   update `bun.lock`, which the green commit then takes), and
   `bun install --frozen-lockfile` on the run branch. A failed install fails the
   gates without running the rest, and goes through the gate fix loop like
   any failed gate: the implementer gets its output in a follow-up.
 - **The ticket reviewer** is a scripted stand-in that approves for now (#364).
+- **SDK version:** `@anthropic-ai/claude-agent-sdk` 0.3.273, pinned. Newer
+  releases were younger than `bunfig.toml`'s 7-day minimum release age.
+- **Reviewers can't run the tests.** They get read-only commands only; the
+  engine already ran the gates.
+- **A check command with shell syntax** (such as `... > /dev/null`) runs only
+  exactly as configured. The test command may take extra arguments.
+- **`rm` takes files one by one** (`-f` at most): no folders, wildcards, or
+  `~`, so every path is checked against the role's rules.
+- **`sed` is `sed -n '<from>,<to>p'` only**, and `git` only `status`, `diff`,
+  `log`, `show`, `ls-files`, and `blame` with no options before the
+  subcommand, no `--output`, and no `--ext-diff`.
+- **Undoing a violation** puts back each offending path's bytes from before
+  the turn (tracked paths from HEAD, new paths removed), and moves HEAD and
+  the branch back with a mixed reset, which keeps the files. New refs,
+  stashes, and `.git` config or hook changes are reported but not undone;
+  the sandbox should never let them happen.
+- **Engine retries live in the decision step,** not the executor: the
+  executor journals each failed turn once, and replay counts `failed_tries`
+  per role (cumulative on the ticket) and `engine_failures` (in a row, reset
+  when any other turn ends), so a crash never loses or repeats a count.
+- **Follow-ups use the SDK's streaming input.** The Claude launcher keeps
+  each session open after its turn, keyed by the `session_id` from its init
+  message, and `followUp` pushes the next user message into the same
+  session, with the same checks on its messages. A session with no init id
+  is closed at once, so a follow-up to it fails as `engine`. A stop, an
+  engine failure, or a timeout closes the session; so does sitting idle past
+  `idle_timeout_ms` (30 minutes by default). `closeAll()` closes the rest;
+  call it when the run ends.
+- **A stop leaves the step open.** `run_stopped` changes no ticket's state, so
+  a later `runEngine` on the same journal starts that step again.
+- **Denial counts** come from the result's `permission_denials` only (the
+  tracer counted them twice), plus the guard hook's own denials.
+
+## Guards
+
+Every agent runs Claude Opus 5.5 (`claude-opus-5-5`) at `high` effort. The
+launcher refuses Fable and non-Claude models. Three layers keep each **role**
+to its rules; each one alone should hold.
+
+| Role | Writes | Runs |
+| --- | --- | --- |
+| test-writer | test files only (`test_file_patterns`), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
+| implementer | anything but `test_setup_files`, and test files only with `may_edit_tests` (a refactor ticket) | the same |
+| reviewer | nothing | read-only commands only |
+| learner (#370) | nothing | no shell |
+
+No agent writes a test setup file, git, or GitHub, installs packages, reaches
+the network or local ports, or gets Paseo or any MCP tool but the engine's own
+(`mcp__luca__*`).
+
+1. **Before a call.** `checkToolCall` runs as a `PreToolUse` hook and fails
+   closed: unknown tools, paths outside the worktree, and shell commands off
+   the list are denied. A shell call is one plain command: no chains, pipes,
+   redirects, or subshells. Under `dontAsk`, only the role's pre-approved
+   calls (`permissionRules`) run at all.
+2. **The sandbox.** Absolute paths only: git's shared folder, the worktree's
+   `.git`, and the test setup files are never writable; an implementer that
+   may not edit tests can't write test files; reviewers can't write the
+   worktree. No network, no local ports, no unsandboxed commands.
+   `~/.claude*`, `~/.paseo`, `~/.ssh`, and `~/.config/gh` can't be read.
+3. **After the turn.** The engine, not the launcher, compares the worktree
+   and its git state with a snapshot from right before the turn (content
+   hashes, never mtimes). Any path the agent may not write, or any git change
+   (HEAD, the branch, other refs at HEAD, the branch's stash, the index,
+   `.git/config`, `.git/hooks`), is undone and fails the turn as `guard`.
+   This holds for every launcher and every turn, follow-ups too.
+
+Before each launch, the launcher checks `accountInfo()` for a Claude plan
+(pro, max, team, or enterprise) and no API key, before the prompt is sent.
+The agent's environment comes from an allow-list, so `ANTHROPIC_API_KEY`,
+`ANTHROPIC_AUTH_TOKEN`, and `ANTHROPIC_BASE_URL` never reach it. It loads no
+settings, MCP servers, or skills, and keeps no session on disk.
+
+The launcher stops the run (`run_stopped`, and `runEngine` throws) on the
+wrong credentials or plan, an init with an API key, a Fable or non-Claude
+model, a foreign MCP server, a rejected rate limit, overage, or a billing
+error, in a launch or a follow-up alike. Waiting out limits is #368's.
 
 ## Jev in shadow mode
 
@@ -201,6 +310,13 @@ fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
 step are real. No GitHub, no models, no setup. One ticket adds a local
 workspace package as a dependency, so the engine's install runs offline.
+`src/core/agent-guards.test.ts` runs the practice ticket with agents that
+break their role's rules, fail, crash, or stop, and checks the failed tries
+and retries that follow.
+
+`src/agents/claude-launcher.test.ts` drives the real launcher with a fake
+`query` that plays back SDK messages, follow-ups included.
+`src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
 `src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one
 that disagrees with everything, throws, never answers, or has no key, and
@@ -212,3 +328,21 @@ bun test              # in packages/engine
 bun run typecheck
 bun run lint
 ```
+
+## Smoke run (manual, uses your plan)
+
+Real Claude agents are never part of `bun test`. Before a release, run one
+tiny ticket end to end with real agents, in a throwaway repo with the
+in-memory tracker:
+
+```bash
+bun packages/engine/scripts/smoke-run.ts
+```
+
+It prints each agent's tokens and rate-limit readings and where the journal
+is, and closes every agent session at the end. The first run (2026-09-23, Opus
+5.5, ticket "Add isEven", before follow-ups used open sessions) built,
+reviewed, joined, and opened its PR in 0.8 min: 3 agents, 22 model turns,
+3,192 output and about 139k cache tokens, list-price estimate $0.38 (paid by
+the plan). The five-hour window stayed at 15% and the weekly at 25%. No guard
+or permission denials; every `rate_limit_event` was `allowed`, no overage.
