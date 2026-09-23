@@ -1,6 +1,7 @@
 import { decide, type EngineAction } from './decide'
 import { executeBuildAction, type BuildDeps } from './execute-build'
 
+import type { BoardSync } from '../board/board-sync'
 import type { EngineConfig } from '../config/engine-config'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
@@ -240,6 +241,9 @@ const executeWithJev = async ({
  * With `jev`, Jev is asked around each step in **shadow mode** and its
  * answers are journaled but never acted on. Without it, nothing changes.
  *
+ * With `board`, the whole journal is sent to the board once before the
+ * first step and again after each step.
+ *
  * @returns The action the loop stopped on.
  */
 export const runEngine = async ({
@@ -250,6 +254,7 @@ export const runEngine = async ({
     git,
     launcher,
     jev,
+    board,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -259,9 +264,13 @@ export const runEngine = async ({
     stop_before?: EngineAction['type'][]
     /** Jev in shadow mode. Leave it out to run without Jev. */
     jev?: JevShadow
+    /** Sends the journal to the board after every step. Never throws. */
+    board?: BoardSync
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
+    // A resumed run catches the board up before its first step.
+    await board?.sync({ records: journal.read() })
     for (let step = 0; step < limit; step += 1) {
         const action = decide({ records: journal.read() })
         if (stops.has(action.type)) return action
@@ -274,6 +283,7 @@ export const runEngine = async ({
         } else {
             await executeWithJev({ jev, action, journal, tracker, build })
         }
+        await board?.sync({ records: journal.read() })
     }
     throw new Error(`The engine took ${limit} steps without finishing.`)
 }
