@@ -3,12 +3,31 @@
 > Research for wayfinder ticket [#345](https://github.com/asibilia/luca-framework/issues/345) on the map "Luca v1 on Paseo + Claude Code" (#325).
 > Date: 2026-09-22. Checked: Claude Code 2.1.280 (`claude --version`), Paseo v0.9.1 (bundles `@anthropic-ai/claude-agent-sdk` 0.3.246, per `packages/server/package.json` at tag `v0.9.1`), Pi 0.87.0 (`@earendil-works/pi-coding-agent`). Codex CLI is not installed on this machine (`codex: command not found`), so Codex facts come from OpenAI's docs and source.
 > Local account state (from `claude auth status`, key names and non-secret values only): `authMethod: claude.ai`, `apiProvider: firstParty`, `subscriptionType: max`.
->
-> **DRAFT, work in progress.** Codex, Copilot, and cc-openai-bridge sections are still TODO.
+> No model session was started for this research. Every claim below comes from docs, terms, source, or local files.
 
 ## Answer
 
-TODO (short answer first, after the Codex sections land).
+**Today, anything that runs the real `claude` binary on your own plan login bills the plan.** That covers interactive `claude`, `claude -p`, the Agent SDK, dynamic workflows, and Paseo. Per-token billing comes from three places: an API key in the environment, `--bare`, and third-party harnesses like Pi that do their own Claude login. **Codex on a ChatGPT login bills the ChatGPT plan** the same way, including `codex exec` and the `codex app-server` that Paseo drives.
+
+| Way of running | Plan or per token? | Allowed for scripted, many-agent, personal use? |
+|---|---|---|
+| Interactive `claude` | Plan | Yes |
+| `claude -p` (no `--bare`, no API key in env) | Plan, for now | Yes |
+| Agent SDK with your own login | Plan, for now | Yes, in your own projects; not for products you give to others |
+| Claude Code dynamic workflows | Plan | Yes |
+| Paseo running Claude Code | Plan, for now | Yes: unmodified binary, your own login |
+| Pi (or any harness with its own Claude login) | Anthropic may bill it to usage credits, per token | No: it holds your Claude tokens and poses as Claude Code, which the login rules forbid |
+| Anything with `ANTHROPIC_API_KEY` or `--bare` | Per token (API) | n/a |
+| Interactive `codex`, `codex exec`, `codex app-server` (Paseo) on a ChatGPT login | ChatGPT plan, then credits if you hold any | Yes; OpenAI prefers API keys for automation but documents this |
+| Copilot CLI | Monthly token allowance, then paid budget | Yes; but it's metered per token even inside the plan |
+| cc-openai-bridge (your own code) | Probably the ChatGPT plan | Gray zone: undocumented endpoint, borrowed Codex login |
+
+Key caveats:
+
+- **The "for now" is real.** Anthropic planned to move `claude -p`, the Agent SDK, and third-party apps like Paseo off plan limits on June 15, 2026, onto a monthly credit and then per-token usage credits. It paused the change and promised notice before any new version takes effect.
+- **Limits:** a five-hour window and a weekly window, counted together, plus weekly Opus, Sonnet, and Fable caps. Parallel sessions all drain one pool. Anthropic publishes no absolute numbers.
+- **At a limit, `-p` and the SDK stop; they don't wait.** They report a structured `rate_limit_event` with `resetsAt`. The engine must run its own limit wait, or opt in to `CLAUDE_CODE_RETRY_WATCHDOG=1`.
+- **Hidden per-token paths.** With usage credits turned on, a limit hit can spill onto per-token billing. In `-p` and the SDK, Fable models bill usage credits "without asking". Codex spends any ChatGPT credit balance after a limit.
 
 ## Findings: Claude Code
 
@@ -51,7 +70,7 @@ One Paseo caveat, outside billing: Paseo's usage meter reads the Claude Code OAu
 
 #### What "third-party harness" means
 
-The Pi warning is Pi's own text, not a message from Anthropic's servers. Pi 0.87.0 hard-codes it: "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits." (`pi-coding-agent/dist/modes/interactive/interactive-mode.js:140`). Pi shows it whenever its Anthropic login is OAuth (`:4248-4269`), whatever Anthropic actually bills. Pi added it in 0.66.0 on 2026-04-08 (`CHANGELOG.md:2309`). Press coverage dates Anthropic's change to April 4, 2026, announced by email to subscribers ([TechCrunch](https://techcrunch.com/2026/04/04/anthropic-says-claude-code-subscribers-will-need-to-pay-extra-for-openclaw-support/), secondary; I found no public Anthropic page for the email).
+The Pi warning is Pi's own text, not a message from Anthropic's servers. Pi 0.87.0 hard-codes it: "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits." (`pi-coding-agent/dist/modes/interactive/interactive-mode.js:140`). Pi shows it whenever its Anthropic login is OAuth (`:4248-4269`), whatever Anthropic actually bills. Pi added it in 0.66.0 on 2026-04-08 (`CHANGELOG.md:2309`). The phrase itself comes from Anthropic's email to subscribers about a change at noon Pacific on April 4, 2026: you would "no longer be able to use your Claude subscription limits for third-party harnesses including OpenClaw", and the change "applies to all third-party harnesses" (as quoted by [TechCrunch](https://techcrunch.com/2026/04/04/anthropic-says-claude-code-subscribers-will-need-to-pay-extra-for-openclaw-support/); secondary, because I found no public Anthropic copy of the email). Anthropic's public pages say "third-party tools" instead.
 
 The Anthropic rule behind it is on the help-center page "Log in to your Claude account", section "Authenticating to subscription plans" ([13189465](https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account), updated 2026-05-19):
 
@@ -64,7 +83,7 @@ So a "third-party harness" is software other than Anthropic's native apps that t
 ### 2. The plan's limits under heavy automated use
 
 - **Two windows, counted at once.** A five-hour session limit, and a weekly limit "that applies across all models", reset "at a fixed time each week that is assigned to your account" ([Max plan](https://support.claude.com/en/articles/11049741-what-is-the-max-plan), [Pro plan](https://support.claude.com/en/articles/8325606-what-is-the-pro-plan), both updated 2026-09-22). "Usage counts against the session and weekly allowances at the same time. A single burst of heavy activity, such as a large workflow fanout, can exhaust the weekly allowance before the session window resets" ([errors doc](https://code.claude.com/docs/en/errors#youve-hit-your-session-limit)).
-- **Per-model caps exist.** Claude Code's limit messages include `You've hit your Opus limit` and `You've hit your Sonnet limit`; "The Opus and Sonnet limits each apply only to requests to that model family, so switching to a model outside the family with `/model` keeps you working" (errors doc). Fable models may use at most 50% of the weekly limit on Max (Fable help article). Anthropic "may limit your usage in other ways, such as weekly and monthly caps or model and feature usage, at our discretion" (Max and Pro articles).
+- **Per-model caps exist.** Claude Code's limit messages include `You've hit your Opus limit` and `You've hit your Sonnet limit`; "The Opus and Sonnet limits each apply only to requests to that model family, so switching to a model outside the family with `/model` keeps you working" (errors doc). The SDK's types name them as weekly windows: `rateLimitType` is one of `'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet' | 'seven_day_overage_included' | 'overage'` (`@anthropic-ai/claude-agent-sdk` 0.3.280, `sdk.d.ts:5426`; the same in Paseo's pinned 0.3.246). Fable models may use at most 50% of the weekly limit on Max (Fable help article). Anthropic "may limit your usage in other ways, such as weekly and monthly caps or model and feature usage, at our discretion" (Max and Pro articles).
 - **No published token numbers.** Max 5x gives "five times the Pro plan's per-session usage allowance", Max 20x "20 times" (Max article). Anthropic publishes no absolute size for any window.
 - **No documented cap on parallel sessions.** Parallel sessions just share one pool: "running ten agents in parallel uses quota roughly ten times as fast as running one" (agent-view doc). Dynamic workflows cap themselves at 16 concurrent agents by default and 1,000 agents per run, to bound local resources (workflows doc).
 - **Routines have their own daily cap** on runs started per account, on top of plan limits (routines doc).
@@ -83,14 +102,15 @@ So a "third-party harness" is software other than Anthropic's native apps that t
 
 | Launch path | Signal | Reset time? |
 |---|---|---|
-| Agent SDK | `rate_limit_event` message: `rate_limit_info.status` is `"allowed"`, `"allowed_warning"`, or `"rejected"`, with `resetsAt`, `utilization`, and `errorCode: "credits_required"` when plan usage is used up (SDK reference, `SDKRateLimitEvent`) | Yes, `resetsAt` (a number; the docs don't name the unit, and the status line uses Unix epoch seconds) |
+| Agent SDK | `rate_limit_event` message: `rate_limit_info.status` is `"allowed"`, `"allowed_warning"`, or `"rejected"`, with `resetsAt`, `utilization`, and `errorCode: "credits_required"` when plan usage is used up (SDK reference, `SDKRateLimitEvent`). The package types add more than the docs show: `rateLimitType` (which window), `surpassedThreshold`, and usage-credit fields `isUsingOverage`, `overageStatus`, `overageResetsAt`, and `overageDisabledReason` (e.g. `'out_of_credits'`) (`sdk.d.ts:5423-5445`, SDK 0.3.280) | Yes, `resetsAt` (a number; neither docs nor types name the unit, and the status line uses Unix epoch seconds) |
+| Agent SDK | `usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET()`: the data behind `/usage`, with `subscription_type`, `rate_limits.five_hour`, `seven_day`, `seven_day_opus`, `seven_day_sonnet`, `seven_day_oauth_apps`, per-model `model_scoped` rows, and `extra_usage.is_enabled` (`sdk.d.ts:2886-2903`, `:4050-4160`). Marked "do not rely on it yet" | Yes, ISO 8601 `resets_at` |
 | Agent SDK | An assistant message with `error: "rate_limit"` ("a 429 against your quota"), distinct from `"overloaded"` (a 529) (SDK reference, `SDKAssistantMessage`) | No |
 | `claude -p` | Non-zero exit code; "When a failure happens inside the run, such as missing authentication, Claude Code prints the failure as the result on stdout" ([headless doc](https://code.claude.com/docs/en/headless#basic-usage)) | Only inside the human text, e.g. `You've hit your session limit · resets 3:45pm` (errors doc) |
 | `claude -p --output-format stream-json` | `system/api_retry` events with `error: "rate_limit"`, `error_status`, and `retry_delay_ms` (headless doc). The SDK reads this same stream, so `rate_limit_event` lines should appear here too; not confirmed | Via `rate_limit_event`, if present |
 | Interactive session | Status line JSON: `rate_limits.five_hour` and `rate_limits.seven_day`, each with `used_percentage` (0 to 100) and `resets_at` (Unix epoch seconds); "only present for claude.ai Pro and Max subscribers [...] and only after the first API response" ([status line doc](https://code.claude.com/docs/en/statusline#rate-limit-usage)) | Yes |
 | Any session | `StopFailure` hook with matcher `rate_limit`; input has `error`, `error_details` (e.g. `"429 Too Many Requests"`), and the error text ([hooks doc](https://code.claude.com/docs/en/hooks#stopfailure)) | No |
 | Interactive session | `/usage` shows plan windows and reset times ([commands doc](https://code.claude.com/docs/en/commands)) | Yes, for people |
-| Before a run | SDK init message `apiKeySource` (`"none"` means no API key is in use, e.g. a claude.ai login) and `accountInfo()` with `subscriptionType` and `tokenSource` (SDK reference) | n/a; proves the plan is in use |
+| Before a run | SDK init message `apiKeySource`, and `accountInfo()` with `subscriptionType` and `tokenSource` (SDK reference). `"none"` rules out an API key, but it also covers "a bearer token, or a cloud provider", so pair it with `subscriptionType` and a clean environment | n/a; shows which credential is in use |
 
 Claude Code can also warn before a window runs out: `You've used 85% of your session limit · resets 3:45pm` (errors doc). Under `CLAUDE_CODE_RETRY_WATCHDOG=1`, each wait should surface as a `system/api_retry` event whose `retry_delay_ms` reaches to the reset; the docs imply this but don't show it, so it is an experiment below.
 
@@ -162,7 +182,7 @@ Checked against the Codex docs (now served from `learn.chatgpt.com/docs`), OpenA
 ## Findings: cc-openai-bridge
 
 - **What it is: the user's own code.** `cc-openai-bridge` is the earlier name of `packages/luca-code` in this repo, which old Luca shipped as `luca code --openai` (added 2026-07-24 in `45fed9ab3`; last copy at tag `old-luca-final`). The README calls it "A local Bun/TypeScript proxy that runs **Claude Code on a ChatGPT subscription**". It "ports the device-flow, endpoint dialect, and gateway architecture of the upstream macaz client" ([macaz-dev/macaz-cli](https://github.com/macaz-dev/macaz-cli)). The source code keeps the old name on purpose: "the literal `cc-openai-bridge` value is intentionally preserved even though the package was renamed to `luca-code`" (`old-luca-final:packages/luca-code/src/config.ts:30-40`). It is not an installed package: no `cc-openai-bridge` binary is on `PATH`, and no separate repo exists under `~/Github` or the `asibilia` GitHub account.
-- **How it runs Claude Code.** It starts a gateway on `127.0.0.1` that speaks the Anthropic Messages API, then launches `claude` "with `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`" pointing at that gateway, from an isolated profile (README, "How the bridge works"). So Claude Code sends no model calls to Anthropic, and no Claude plan usage.
+- **How it runs Claude Code.** It starts a gateway on `127.0.0.1` that speaks the Anthropic Messages API, then launches `claude` "with `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`" pointing at that gateway, from an isolated profile (README, "How the bridge works"). `ANTHROPIC_AUTH_TOKEN` outranks the `/login` credential (authentication doc), so Claude Code's model calls never reach Anthropic and use no Claude plan.
 - **It signs in with a ChatGPT account, not an API key.** `luca-code login` "runs the OAuth 2.0 device authorization grant against `auth.openai.com`, tuned for the codex backend", using the Codex CLI's public OAuth client ID (README, "OAuth login flow"). The README gives the credential's shape: `{type:"openai_account_oauth", method:"chatgpt_headless", access, refresh, expires_at (ms epoch), account_id, id_token}`. The user's `~/.config/cc-openai-bridge/cc-openai-bridge-cred.json` has exactly those key names: `type`, `method`, `access`, `refresh`, `expires_at`, `account_id`, `id_token`. The profile at `~/.claude/cc-openai-bridge/profile/` holds a `provider.json` (keys `provider`, `createdAt`) and a Claude Code `settings.json`. (Key names only; no values read.)
 - **It calls an undocumented endpoint.** "All generation goes through `https://chatgpt.com/backend-api/codex/responses`, which is not a public, documented API. It can change shape, add new anti-abuse checks, or reject the client at any time without notice" (README, "Known risks"). It sends `originator: cc-openai-bridge` and pins a Codex client version, and it can switch to the Codex CLI's `codex_cli_rs/<version>` User-Agent "if it is ever blocked" (README).
 - **Billing.** It should draw from the ChatGPT plan's Codex limits, since it uses a ChatGPT login against the backend Codex uses. Not verified; see experiments.
@@ -170,12 +190,125 @@ Checked against the Codex docs (now served from `learn.chatgpt.com/docs`), OpenA
 
 ## What this means for the engine
 
-TODO
+**Launch paths the engine may use:**
+
+- Claude Code agents through Paseo, or directly through the Agent SDK or `claude -p`, always on the user's own `/login` and the unmodified `claude` binary.
+- Codex agents through Paseo (`codex app-server`) or `codex exec`, signed in with ChatGPT. This is the plan-billed way to get GPT reviewers.
+
+**Paths the engine must avoid:**
+
+- Pi, or any harness that holds Claude tokens itself.
+- `--bare`, and any agent environment that carries `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` (#347 already requires stripping these) or `CODEX_API_KEY`.
+- Fable models for any automated role, unless per-token billing is accepted. In `-p` and the SDK they bill usage credits without asking: always on Pro, and past 50% of the weekly limit on Max.
+- Reading Claude or ChatGPT tokens from the keychain or `auth.json`, the way Paseo's usage meter does. Use the documented signals instead.
+
+**Fallbacks, not defaults:** cc-openai-bridge (gray zone, can break without notice) and Copilot CLI (metered per token inside a small monthly allowance).
+
+**Rules this implies:**
+
+1. **Check the credential before each run.** Claude: `claude auth status` shows `authMethod: claude.ai`; each SDK session's init message shows `apiKeySource: "none"`; `accountInfo()` shows a `subscriptionType`; and the agent's environment has no `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, or `ANTHROPIC_BASE_URL`. Codex: app-server `account/read` shows `authMode: chatgpt`. Refuse to start otherwise.
+2. **Turn a limit hit into a limit wait, never into spend.** Watch `rate_limit_event`: `rejected` starts a limit wait until `resetsAt`, for the window named in `rateLimitType`; `allowed_warning` colors the board. Treat `isUsingOverage: true` or `rateLimitType: "overage"` as stop-now, so no policy change can quietly bill per token. For Codex, watch `account/rateLimits/updated` and `codexErrorInfo: UsageLimitExceeded`. A weekly window can reset days out, so a limit wait must survive that long. Optional: `CLAUDE_CODE_RETRY_WATCHDOG=1` lets a Claude agent wait inside its own turn; the engine still has to see the wait and show it.
+3. **Account settings back the code up.** With Claude usage credits off, and a zero ChatGPT credit balance with auto-reload off, a limit is a hard stop even if the engine misses a signal.
+4. **Budgets are shares of one pool.** Every parallel agent, and the user's own claude.ai chats, drain the same five-hour and weekly windows. Codex draws on a separate ChatGPT pool, so GPT reviewers don't eat Claude limits. With no published sizes, the tracer bullet has to measure plan usage per ticket (`utilization` in `rate_limit_event`, or the status line's `rate_limits`).
+5. **Watch for the paused change.** If Anthropic revives the June 15 plan, `-p`, the SDK, and Paseo move to a monthly credit and then usage credits, while interactive Claude Code stays on the plan. Rule 2's stop-on-overage catches it at run time. Re-read help article 15036540 before relying on plan billing in a release.
+6. **Packaging.** If Luca is ever shared, it must stay a harness that runs each user's own unmodified `claude` and `codex` with their own logins, and never touches their tokens. This feeds the map's open item "Packaging the harness".
+
+**Open tickets this feeds:**
+
+- [#339 Which model does what?](https://github.com/asibilia/luca-framework/issues/339): GPT reviewers can run plan-billed as Codex through Paseo. Skip Fable for automated roles. Opus and Sonnet have separate weekly caps, so splitting roles across families stretches the plan, and Codex is a separate pool entirely.
+- [#341 Does a Paseo message interrupt a busy agent?](https://github.com/asibilia/luca-framework/issues/341): safe to run on the plan through Paseo, for Claude Code and for Codex, if usage credits are off, no API keys are in the environment, the model isn't Fable, and Codex is installed and signed in with ChatGPT (it isn't installed yet).
+- [#334 Tracer bullet](https://github.com/asibilia/luca-framework/issues/334): run it through Paseo on the plan, check `apiKeySource` first, and record `utilization` before and after each ticket. That gives the first real numbers for "how a run shares the plan's usage limits".
+- [#346 How plain code drives agents](https://github.com/asibilia/luca-framework/issues/346) and [#347 Guard tools](https://github.com/asibilia/luca-framework/issues/347): `-p` and the SDK don't wait at a limit unless `CLAUDE_CODE_RETRY_WATCHDOG=1` is set, `--bare` never uses the plan (and may become the `-p` default), and the limit signals are listed in section 3.
 
 ## Unknowns and experiments to run later
 
-TODO
+**Unknowns the sources don't settle:**
+
+1. Whether `claude -p` and the SDK ask, or just bill, when a plan window runs out and usage credits are on. The docs only say it for Fable ("without asking").
+2. Whether Anthropic still bills Pi-style harnesses to usage credits today. The public text only "reserves the right", and the April email isn't public. Moot for Luca, since we avoid them.
+3. What the SDK's `seven_day_oauth_apps` window counts. The types list it, but no doc explains it. It may be where third-party app usage would go if the paused change returns.
+4. The unit of `resetsAt` in `rate_limit_event`.
+5. Whether `rate_limit_event` lines appear in `claude -p --output-format stream-json`, or only through the SDK.
+6. The absolute size of any window, for Claude or Codex, and where "ordinary, individual usage" ends.
+7. Whether `-p` will keep a way to use the plan login once `--bare` becomes its default.
+8. Whether cc-openai-bridge counts against Codex limits exactly like Codex does, and whether it spends ChatGPT credits past a limit.
+9. The user's ChatGPT plan tier, and whether Claude usage credits, ChatGPT credits, or auto-reload are on. Only the account settings pages show these.
+10. `codex exec`'s exit code at a usage limit.
+
+**Experiments** (each small and on the plan; run them only after usage credits are off, because the "credits on" case costs money by design):
+
+1. **Paseo bills the plan.** Note the bars at claude.ai Settings > Usage, run one tiny Claude Code agent through Paseo, and confirm the plan bar moved and no usage-credit spend appeared. Repeat for a Codex agent against chatgpt.com/codex/settings/usage.
+2. **What `-p` reports.** Run `claude -p --output-format stream-json --verbose "say hi"`. Check the init message's `apiKeySource`, whether `rate_limit_event` lines appear, and the shape of `resetsAt`.
+3. **Behavior at a limit.** When a window is nearly used anyway, run `-p` into the limit. Record the exit code, stdout, and the `rate_limit_event` (`status`, `rateLimitType`, `errorCode`). Repeat with `CLAUDE_CODE_RETRY_WATCHDOG=1` and confirm it waits and resumes, recording the `api_retry` events.
+4. **SDK account checks.** Under a Paseo-style launch, call `accountInfo()` and `usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET()`, and confirm `subscriptionType` and `extra_usage.is_enabled`.
+5. **Codex account checks.** Through app-server, call `account/read` (expect `authMode: chatgpt` and a `planType`) and `account/rateLimits/read`.
+6. **cc-openai-bridge billing**, only if the user accepts the gray zone: make one small request and compare the Codex usage page before and after.
 
 ## Sources
 
-TODO
+Anthropic (all fetched live 2026-09-22; help-center "updated" dates in the text):
+
+- https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan
+- https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account
+- https://support.claude.com/en/articles/11145838-use-claude-code-with-your-pro-or-max-plan
+- https://support.claude.com/en/articles/11049741-what-is-the-max-plan
+- https://support.claude.com/en/articles/8325606-what-is-the-pro-plan
+- https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work
+- https://support.claude.com/en/articles/12429409-manage-usage-credits-for-paid-claude-plans
+- https://support.claude.com/en/articles/15424964-claude-fable-models-on-your-plan
+- https://support.claude.com/en/articles/16049681-why-claude-switched-models-in-your-conversation-with-opus-5-or-opus-5-5
+- https://code.claude.com/docs/en/legal-and-compliance
+- https://code.claude.com/docs/en/authentication
+- https://code.claude.com/docs/en/headless
+- https://code.claude.com/docs/en/errors
+- https://code.claude.com/docs/en/interactive-mode
+- https://code.claude.com/docs/en/model-config
+- https://code.claude.com/docs/en/statusline
+- https://code.claude.com/docs/en/hooks
+- https://code.claude.com/docs/en/env-vars
+- https://code.claude.com/docs/en/costs
+- https://code.claude.com/docs/en/commands
+- https://code.claude.com/docs/en/workflows
+- https://code.claude.com/docs/en/agent-view
+- https://code.claude.com/docs/en/routines
+- https://code.claude.com/docs/en/github-actions
+- https://code.claude.com/docs/en/whats-new/2026-w21
+- https://code.claude.com/docs/en/agent-sdk/overview
+- https://code.claude.com/docs/en/agent-sdk/typescript
+- https://code.claude.com/docs/en/agent-sdk/cost-tracking
+- https://www.anthropic.com/legal/consumer-terms (effective October 8, 2025)
+- https://www.anthropic.com/legal/aup (effective September 15, 2025)
+- `@anthropic-ai/claude-agent-sdk` 0.3.280 from npm (`sdk.d.ts:2886-2903`, `:4050-4160`, `:5410-5445`; pairs with Claude Code 2.1.280), and 0.3.246 (Paseo's pin)
+- `claude --help` and `claude auth status`, Claude Code 2.1.280
+
+OpenAI and GitHub:
+
+- https://learn.chatgpt.com/docs/auth
+- https://learn.chatgpt.com/docs/auth/ci-cd-auth
+- https://learn.chatgpt.com/docs/non-interactive-mode
+- https://learn.chatgpt.com/docs/app-server
+- https://learn.chatgpt.com/docs/pricing
+- https://learn.chatgpt.com/docs/developer-commands
+- https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan
+- https://help.openai.com/articles/12642688 (credits for personal plans)
+- https://openai.com/policies/terms-of-use/ (effective January 1, 2026)
+- https://developers.openai.com/community/codex-for-oss
+- `openai/codex` at tag `rust-v0.156.0`: `codex-rs/login/src/auth/manager.rs`, `codex-rs/tui/src/onboarding/auth.rs`, `codex-rs/protocol/src/error.rs`, `codex-rs/exec/src/exec_events.rs`
+- https://docs.github.com/en/copilot/concepts/billing/billing-for-individuals
+- https://docs.github.com/en/copilot/concepts/billing/copilot-requests
+- https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing
+- https://docs.github.com/en/copilot/concepts/rate-limits
+- https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically
+- https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli
+- https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features
+- https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies
+
+Local and third-party source:
+
+- Paseo v0.9.1 source (`getpaseo/paseo` at tag `v0.9.1`): `packages/server/package.json:107`; `packages/server/src/server/agent/providers/claude/agent.ts:1696`, `:1735`, `:3283`; `packages/server/src/server/agent/providers/codex-app-server-agent.ts:535`, `:7094`; `packages/server/src/services/quota-fetcher/providers/claude.ts`, `codex.ts`
+- Pi 0.87.0 (`~/.bun/install/global/node_modules/@earendil-works/`): `pi-coding-agent/dist/modes/interactive/interactive-mode.js:140`, `:4248-4269`; `pi-coding-agent/CHANGELOG.md:2309`; `pi-coding-agent/docs/providers.md:36`; `pi-ai/dist/auth/oauth/anthropic.js:13-14`; `pi-ai/dist/api/anthropic-messages.js:725-822`
+- This repo at tag `old-luca-final`: `packages/luca-code/README.md`, `packages/luca-code/src/config.ts:30-40`; `.claude/plans/ccoob-stream-parity.md`
+- Local files, key names only: `~/.config/cc-openai-bridge/cc-openai-bridge-cred.json`, `~/.claude/cc-openai-bridge/profile/{provider,settings}.json`
+- https://github.com/macaz-dev/macaz-cli (upstream of the bridge)
+
+Secondary, for dates only: [TechCrunch, 2026-04-04](https://techcrunch.com/2026/04/04/anthropic-says-claude-code-subscribers-will-need-to-pay-extra-for-openclaw-support/) (April 4 email), [VentureBeat](https://venturebeat.com/technology/anthropic-reinstates-openclaw-and-third-party-agent-usage-on-claude-subscriptions-with-a-catch) (May 13 announcement).
