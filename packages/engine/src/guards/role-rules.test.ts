@@ -89,6 +89,17 @@ describe('mayWrite', () => {
         ['reviewer', true, 'src/sum.ts', false],
         ['learner', false, 'src/sum.ts', false],
         ['learner', false, 'notes.md', false],
+        // What the package install writes belongs to the engine: no role
+        // writes a lockfile or anything under node_modules.
+        ['implementer', false, 'bun.lock', false],
+        ['implementer', true, 'bun.lockb', false],
+        ['implementer', false, 'packages/app/package-lock.json', false],
+        ['implementer', false, 'yarn.lock', false],
+        ['implementer', false, 'pnpm-lock.yaml', false],
+        ['implementer', false, 'node_modules/zod/index.js', false],
+        ['implementer', true, 'packages/app/node_modules/x/a.js', false],
+        ['test-writer', true, 'node_modules/x/a.test.ts', false],
+        ['implementer', false, 'src/node_modules_notes.ts', true],
     ]
     test.each(cases)(
         '%s (may edit tests: %p) writing %s: %p',
@@ -276,6 +287,17 @@ describe('checkToolCall: Bash', () => {
         'bun add x',
         'npm install',
         'bunx some-pkg',
+        'bun remove zod',
+        'bun update',
+        'bun pm cache rm',
+        'npm ci',
+        'npx some-pkg',
+        'yarn',
+        'pnpm install',
+        // Bun installs missing packages itself when told to, even in a test run.
+        'bun test --install=force',
+        'bun test src -i',
+        'bun test --install fallback',
     ]
     const roles: GuardRole[] = [
         'test-writer',
@@ -382,6 +404,26 @@ describe('checkToolCall: other tools', () => {
         expect(decide({ role, tool_name, tool_input: {} })).toBe(expected)
     })
 
+    test('an install is denied because the engine runs it', () => {
+        for (const command of ['bun add zod', 'bun test --install=force']) {
+            expect(
+                checkToolCall({
+                    role: 'implementer',
+                    may_edit_tests: false,
+                    tool_name: 'Bash',
+                    tool_input: { command },
+                    worktree: WORKTREE,
+                    config: CONFIG,
+                })
+            ).toEqual({
+                allow: false,
+                reason: expect.stringContaining(
+                    'The engine runs the package install'
+                ),
+            })
+        }
+    })
+
     test('a denial says why', () => {
         const decision = checkToolCall({
             role: 'implementer',
@@ -395,6 +437,62 @@ describe('checkToolCall: other tools', () => {
             allow: false,
             reason: expect.stringContaining('git commit -m x'),
         })
+    })
+})
+
+describe('check commands with shell syntax', () => {
+    // Checked against the live CLI (2.1.280, SDK 0.3.273) for #384: under
+    // `dontAsk`, an exact `Bash(<command>)` rule runs a command with a
+    // redirect or `&&`, and the hook lets the exact copy through.
+    const config: EngineConfig = {
+        ...CONFIG,
+        checks: {
+            test: 'bun test > test.log 2>&1',
+            types: 'bun build src/index.ts --target=bun > /dev/null',
+            lint: 'bun run lint && bun run format:check',
+        },
+    }
+    const run = (role: GuardRole, command: string) =>
+        checkToolCall({
+            role,
+            may_edit_tests: usual(role),
+            tool_name: 'Bash',
+            tool_input: { command },
+            worktree: WORKTREE,
+            config,
+        }).allow
+
+    test('a writer may run the exact commands, and nothing made from them', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(run(role, 'bun test > test.log 2>&1')).toBe(true)
+            expect(
+                run(role, 'bun build src/index.ts --target=bun > /dev/null')
+            ).toBe(true)
+            expect(run(role, 'bun run lint && bun run format:check')).toBe(
+                true
+            )
+            expect(run(role, 'bun test > other.log 2>&1')).toBe(false)
+            expect(run(role, 'bun test src > test.log 2>&1')).toBe(false)
+            expect(
+                run(role, 'bun build src/index.ts --target=bun > src/sum.ts')
+            ).toBe(false)
+            expect(run(role, 'bun run lint && rm src/sum.ts')).toBe(false)
+        }
+        expect(run('reviewer', 'bun test > test.log 2>&1')).toBe(false)
+    })
+
+    test('each gets one exact permission rule, with no wildcard after it', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun test > test.log 2>&1)')
+        expect(allowed).not.toContain('Bash(bun test > test.log 2>&1 *)')
+        expect(allowed).toContain(
+            'Bash(bun build src/index.ts --target=bun > /dev/null)'
+        )
+        expect(allowed).toContain('Bash(bun run lint && bun run format:check)')
     })
 })
 
@@ -440,6 +538,44 @@ describe('permissionRules', () => {
                     )
                 )
             ).toEqual([])
+        }
+    })
+
+    test('every role is denied the package install and what it writes', () => {
+        for (const role of [
+            'test-writer',
+            'implementer',
+            'reviewer',
+            'learner',
+        ] as const) {
+            for (const may_edit_tests of [true, false]) {
+                const { allowed, disallowed } = permissionRules({
+                    role,
+                    may_edit_tests,
+                    config: CONFIG,
+                })
+                expect(disallowed).toEqual(
+                    expect.arrayContaining([
+                        'Bash(bun install)',
+                        'Bash(bun install *)',
+                        'Bash(bun add *)',
+                        'Bash(bun remove *)',
+                        'Bash(npm *)',
+                        'Bash(pnpm *)',
+                        'Edit(node_modules/**)',
+                        'Edit(**/node_modules/**)',
+                        'Edit(bun.lock)',
+                        'Edit(**/bun.lock)',
+                    ])
+                )
+                // The type check runs through bunx, so bunx is left to the hook.
+                expect(
+                    disallowed.filter((rule) => rule.startsWith('Bash(bunx'))
+                ).toEqual([])
+                if (role === 'implementer') {
+                    expect(allowed).toContain('Bash(bunx --bun tsc --noEmit)')
+                }
+            }
         }
     })
 

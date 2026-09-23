@@ -2,7 +2,7 @@ import { isAbsolute, join } from 'node:path'
 
 import type { SandboxSettings } from '@anthropic-ai/claude-agent-sdk'
 
-import type { GuardRole } from './role-rules'
+import { LOCKFILES, type GuardRole } from './role-rules'
 
 import type { EngineConfig } from '../config/engine-config'
 
@@ -31,8 +31,8 @@ const mustBeAbsolute = (paths: Record<string, string>): void => {
  * temp folders through `/private/var`), as the launcher does.
  *
  * Every role: no network, no local ports, no unsandboxed commands, no shell
- * call approved just for being sandboxed, no writes to git, and no writes
- * to test setup files. The implementer also may not write test files unless
+ * call approved just for being sandboxed, no writes to git, to what the
+ * package install writes (`node_modules`, lockfiles), or to test setup files. The implementer also may not write test files unless
  * it may edit tests (a refactor ticket's implementer); reviewers, the
  * learner, and a test-writer that may not edit tests may not write the
  * worktree at all.
@@ -63,11 +63,20 @@ export const sandboxSettings = ({
     const inWorktree = (patterns: string[]) =>
         patterns.map((pattern) => join(worktree, pattern))
     const setup = inWorktree(config.test_setup_files)
+    const install = inWorktree([
+        'node_modules',
+        '**/node_modules',
+        ...LOCKFILES,
+    ])
     const byRole: Record<GuardRole, string[]> = {
-        'test-writer': may_edit_tests ? setup : [worktree],
+        'test-writer': may_edit_tests ? [...install, ...setup] : [worktree],
         implementer: may_edit_tests
-            ? setup
-            : [...inWorktree(config.test_file_patterns), ...setup],
+            ? [...install, ...setup]
+            : [
+                  ...install,
+                  ...inWorktree(config.test_file_patterns),
+                  ...setup,
+              ],
         reviewer: [worktree],
         learner: [worktree],
     }

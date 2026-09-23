@@ -1,4 +1,4 @@
-import { isAbsolute, normalize, relative, resolve } from 'node:path'
+import { basename, isAbsolute, normalize, relative, resolve } from 'node:path'
 
 import { z } from 'zod'
 
@@ -74,6 +74,30 @@ const isTestFile = ({
         test_file_patterns: config.test_file_patterns,
     }).length > 0
 
+/** The lockfiles a package install writes. The engine owns them. */
+export const LOCKFILES = [
+    'bun.lock',
+    'bun.lockb',
+    'package-lock.json',
+    'npm-shrinkwrap.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+]
+
+/**
+ * Whether a worktree-relative path is the package install's: a lockfile, or
+ * anything under a `node_modules` folder. Only the engine's install gate
+ * writes these; no agent does.
+ *
+ * @example
+ * isInstallPath('bun.lock') // true
+ * isInstallPath('packages/app/node_modules/zod/index.js') // true
+ * isInstallPath('src/sum.ts') // false
+ */
+export const isInstallPath = (path: string): boolean =>
+    LOCKFILES.includes(basename(path)) ||
+    normalize(path).split('/').includes('node_modules')
+
 /** The rules an agent's guards check it against: its role, and whether it may edit tests. */
 type GuardArgs = {
     role: GuardRole
@@ -89,8 +113,9 @@ type GuardArgs = {
  * Whether an agent may create, change, or delete a worktree-relative path.
  * Test-writers write test files only; implementers write anything but test
  * files (unless they may edit tests) and test setup files; reviewers and the
- * learner write nothing. No role writes a test setup file, `.git`, or
- * outside its worktree.
+ * learner write nothing. No role writes a test setup file, `.git`, what
+ * the package install writes (lockfiles, `node_modules`), or outside its
+ * worktree.
  *
  * @example
  * mayWrite({ role: 'test-writer', may_edit_tests: true, path: 'src/sum.test.ts', config }) // true
@@ -111,6 +136,7 @@ export const mayWrite = ({
     if (clean === '.' || clean.startsWith('..')) return false
     if (clean === '.git' || clean.startsWith('.git/')) return false
     if (config.test_setup_files.includes(clean)) return false
+    if (isInstallPath(clean)) return false
     const test = isTestFile({ path: clean, config })
     if (role === 'test-writer') return test && may_edit_tests
     return !test || may_edit_tests
@@ -269,6 +295,46 @@ export const READ_ONLY_COMMANDS = [
     `git ${GIT_READ_SUBCOMMANDS.join('|')} (no options before the subcommand)`,
 ]
 
+/** Package managers other than Bun: any use of one may install. */
+const PACKAGE_MANAGERS = ['npm', 'npx', 'yarn', 'pnpm', 'pnpx']
+
+/** `bun` subcommands that install, remove, or fetch packages. */
+const BUN_INSTALLS = [
+    'install',
+    'i',
+    'add',
+    'a',
+    'remove',
+    'rm',
+    'update',
+    'upgrade',
+    'link',
+    'unlink',
+    'pm',
+    'patch',
+    'create',
+    'x',
+]
+
+/** Bun's flags that turn on installing missing packages in any command. */
+const isInstallFlag = (word: string): boolean =>
+    word === '-i' || word === '--install' || word.startsWith('--install=')
+
+/**
+ * Whether a command runs a package install, or may: a package manager, a
+ * `bun` install subcommand, `bunx`, or `bun` with an auto-install flag.
+ */
+const isInstallCommand = (words: string[]): boolean => {
+    const [name, sub] = words
+    if (name === undefined) return false
+    if (PACKAGE_MANAGERS.includes(name) || name === 'bunx') return true
+    if (name !== 'bun') return false
+    return BUN_INSTALLS.includes(sub ?? '') || words.some(isInstallFlag)
+}
+
+const INSTALL_DENIED =
+    'The engine runs the package install, never an agent: if you change a package manifest, the engine installs after your turn and commits the lockfile.'
+
 const checkRm = ({
     role,
     may_edit_tests,
@@ -353,11 +419,12 @@ const checkBash = ({
     const words = split.words.map(({ text }) => text)
     const [name] = words
     if (name === undefined) return deny('An empty command.')
-    const testWords = test === null ? null : wordsOf(test)
-    if (testWords !== null && startsWith({ words, prefix: testWords })) {
+    if (others.some((other) => wordsOf(other)?.join(' ') === words.join(' '))) {
         return ALLOW
     }
-    if (others.some((other) => wordsOf(other)?.join(' ') === words.join(' '))) {
+    if (isInstallCommand(words)) return deny(INSTALL_DENIED)
+    const testWords = test === null ? null : wordsOf(test)
+    if (testWords !== null && startsWith({ words, prefix: testWords })) {
         return ALLOW
     }
     if (name === 'rm') {
@@ -503,6 +570,22 @@ export const BASE_DISALLOWED_TOOLS = [
     'Read(~/.config/gh/**)',
 ]
 
+/**
+ * Deny rules every role gets, so the package install and what it writes are
+ * shut at the SDK's permission layer too. `bunx` is left to the guard hook:
+ * a config's type check may run through it.
+ */
+export const INSTALL_DENY_RULES = [
+    ...['install', 'i', 'add', 'remove', 'update', 'pm'].flatMap((sub) => [
+        `Bash(bun ${sub})`,
+        `Bash(bun ${sub} *)`,
+    ]),
+    ...PACKAGE_MANAGERS.flatMap((name) => [`Bash(${name})`, `Bash(${name} *)`]),
+    'Edit(node_modules/**)',
+    'Edit(**/node_modules/**)',
+    ...LOCKFILES.flatMap((name) => [`Edit(${name})`, `Edit(**/${name})`]),
+]
+
 const readOnlyRules = (): string[] => [
     'Bash(ls)',
     'Bash(ls *)',
@@ -536,8 +619,16 @@ export const permissionRules = ({
 }): { tools: string[]; allowed: string[]; disallowed: string[] } => {
     const { test, others } = checkCommands({ role, config })
     const shell = role === 'learner' ? [] : readOnlyRules()
+    // A test command takes extra args (a file, `-t`) only when it is one
+    // plain command; one with shell syntax runs as its exact copy.
+    const testRules =
+        test === null
+            ? []
+            : wordsOf(test) === null
+              ? [`Bash(${test})`]
+              : [`Bash(${test})`, `Bash(${test} *)`]
     const checks = [
-        ...(test === null ? [] : [`Bash(${test})`, `Bash(${test} *)`]),
+        ...testRules,
         ...others.map((command) => `Bash(${command})`),
     ]
     const setup = config.test_setup_files.map((path) => `Edit(${path})`)
@@ -565,6 +656,10 @@ export const permissionRules = ({
             ...shell,
             'mcp__luca',
         ],
-        disallowed: [...BASE_DISALLOWED_TOOLS, ...writes[role].disallowed],
+        disallowed: [
+            ...BASE_DISALLOWED_TOOLS,
+            ...INSTALL_DENY_RULES,
+            ...writes[role].disallowed,
+        ],
     }
 }
