@@ -312,8 +312,11 @@ also holds its journal).
 - **The PR's assumptions** come from every agent turn on a ticket, fix rounds
   and bounced test-writers included, each listed once.
 - **Lockfile updates (#373):** agents never run the install; the prompts say
-  so, and the guards deny `bun install`, `bun i`, `bun add`, `npm`, and
-  `bunx <package>` for every role. The engine runs it itself, between agent
+  so, and every guard layer blocks it (#384). The hook denies package
+  managers, `bun` install subcommands, `bunx <package>`, and Bun's
+  auto-install flags (`-i`, `--install`) even on the test command; the
+  permission rules deny the same for every role; no role writes a lockfile
+  or `node_modules`, and the sandbox shuts both. The engine runs it itself, between agent
   turns, so its changes are never blamed on an agent: each turn's after-turn
   snapshot is taken right before that turn. When a `package.json` differs from the worktree's base, the gates
   start with an `install` check: `bun install` in a ticket worktree (it may
@@ -339,8 +342,13 @@ also holds its journal).
   releases were younger than `bunfig.toml`'s 7-day minimum release age.
 - **Reviewers can't run the tests.** They get read-only commands only; the
   engine already ran the gates.
-- **A check command with shell syntax** (such as `... > /dev/null`) runs only
-  exactly as configured. The test command may take extra arguments.
+- **A check command with shell syntax** (such as `... > /dev/null` or
+  `a && b`) runs only exactly as configured, and gets one exact permission
+  rule. Checked against the live CLI (Claude Code 2.1.280, SDK 0.3.273) for
+  #384: under `dontAsk` both a redirect and `&&` run. The test command may
+  take extra arguments only when it is one plain command. A check that
+  redirects into the worktree writes a file there, which a test-writer may
+  not: prefer `> /dev/null`.
 - **`rm` takes files one by one** (`-f` at most): no folders, wildcards, or
   `~`, so every path is checked against the role's rules.
 - **`sed` is `sed -n '<from>,<to>p'` only**, and `git` only `status`, `diff`,
@@ -348,9 +356,25 @@ also holds its journal).
   subcommand, no `--output`, and no `--ext-diff`.
 - **Undoing a violation** puts back each offending path's bytes from before
   the turn (tracked paths from HEAD, new paths removed), and moves HEAD and
-  the branch back with a mixed reset, which keeps the files. New refs,
-  stashes, and `.git` config or hook changes are reported but not undone;
-  the sandbox should never let them happen.
+  the branch back with a mixed reset, which keeps the files (#384):
+  - The shared `.git/config`, `.git/info/exclude`, and `.git/hooks` go back
+    to their saved bytes first, before the engine runs any git command, so a
+    planted `core.fsmonitor` or hook never runs for it.
+  - A new branch or tag at HEAD is moved to `refs/luca-undone/...`, never
+    deleted: refs are shared, and the engine can't tell who made one. The
+    engine's own run and ticket branches are left out of this check.
+  - A new stash entry on the ticket branch is dropped.
+  - A changed or deleted file under `node_modules` can't be put back from
+    saved bytes (there are too many), so its package folder is removed and
+    the engine runs `bun install --frozen-lockfile`. If that fails, the
+    turn's error says so.
+- **Ignored files the after-turn check watches:** anything under
+  `node_modules`, lockfiles, test and test setup files, and `.env` files
+  (Bun loads them into every check). Other ignored paths, such as build
+  output and caches, are what check commands write, so they are not
+  watched. Under `node_modules` a file's fingerprint is its size, inode, and
+  change time, not a content hash: hashing every file each turn takes
+  seconds, and no process can set a change time back.
 - **Engine retries live in the decision step,** not the executor: the
   executor journals each failed turn once, and replay counts `failed_tries`
   per role (cumulative on the ticket) and `engine_failures` (in a row, reset
@@ -392,15 +416,17 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
    redirects, or subshells. Under `dontAsk`, only the role's pre-approved
    calls (`permissionRules`) run at all.
 2. **The sandbox.** Absolute paths only: git's shared folder, the worktree's
-   `.git`, and the test setup files are never writable; an implementer that
+   `.git`, `node_modules`, lockfiles, and the test setup files are never
+   writable; an implementer that
    may not edit tests can't write test files; reviewers can't write the
    worktree. No network, no local ports, no unsandboxed commands.
    `~/.claude*`, `~/.paseo`, `~/.ssh`, and `~/.config/gh` can't be read.
 3. **After the turn.** The engine, not the launcher, compares the worktree
    and its git state with a snapshot from right before the turn (content
-   hashes, never mtimes). Any path the agent may not write, or any git change
-   (HEAD, the branch, other refs at HEAD, the branch's stash, the index,
-   `.git/config`, `.git/hooks`), is undone and fails the turn as `guard`.
+   hashes, never mtimes), ignored files that matter included. Any path the
+   agent may not write, or any git change (HEAD, the branch, other refs at
+   HEAD, the branch's stash, the index, `.git/config`, `.git/info/exclude`,
+   `.git/hooks`), is undone and fails the turn as `guard`.
    This holds for every launcher and every turn, follow-ups too.
 
 Before each launch, the launcher checks `accountInfo()` for a Claude plan
