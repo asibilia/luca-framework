@@ -1,6 +1,18 @@
-import type { JournalRecord } from './journal-record'
+import type { CommitStage, JournalRecord, StuckReason } from './journal-record'
 
+import type {
+    ImplementerResult,
+    RoleResult,
+    TestWriterResult,
+    TicketReviewResult,
+} from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
+import type {
+    GateCheck,
+    LeftoverHit,
+    RedCheckResult,
+    TestRun,
+} from '../gates/gate-schemas'
 import type {
     IntakeProblem,
     IntakeRead,
@@ -28,24 +40,85 @@ export type ReplayedSnapshot = {
     tickets: Record<number, TicketSnapshot>
 }
 
+/** A worktree the engine made, as journaled. */
+export type ReplayedWorktree = {
+    branch: string
+    path: string
+    base_sha: string
+}
+
+/** One gate run, as journaled. */
+export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
+
+/**
+ * How far one ticket got, from its journal records. Each field holds the
+ * latest record of its kind; `null` means the step has not finished.
+ */
+export type TicketProgress = {
+    worktree: ReplayedWorktree | null
+    baseline: TestRun | null
+    test_writer: TestWriterResult | null
+    red_check: RedCheckResult | null
+    implementer: ImplementerResult | null
+    review: TicketReviewResult | null
+    /** The latest failed agent turn, if it came after that role's last result. */
+    agent_failure: { role: string; error: string } | null
+    leftovers: Record<CommitStage, LeftoverHit[] | null>
+    commits: Record<CommitStage, string | null>
+    gates: ReplayedGates | null
+    joined: { ok: true; shas: string[] } | { ok: false; error: string } | null
+    join_gates: ReplayedGates | null
+    pushed: string | null
+    stuck: { reason: StuckReason; detail: string } | null
+}
+
+/** The run's pull request, once opened. */
+export type ReplayedPullRequest = { number: number; url: string }
+
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
     phase: RunPhase
     spec_number: number | null
     config: EngineConfig | null
+    base_branch: string | null
     intake: IntakeRead | null
     problems: IntakeProblem[] | null
     snapshot: ReplayedSnapshot | null
+    run_branch: ReplayedWorktree | null
+    tickets: Record<number, TicketProgress>
+    pull_request: ReplayedPullRequest | null
     last_seq: number
+}
+
+/** A ticket nothing has happened to yet. */
+export const EMPTY_TICKET_PROGRESS: TicketProgress = {
+    worktree: null,
+    baseline: null,
+    test_writer: null,
+    red_check: null,
+    implementer: null,
+    review: null,
+    agent_failure: null,
+    leftovers: { red: null, green: null },
+    commits: { red: null, green: null },
+    gates: null,
+    joined: null,
+    join_gates: null,
+    pushed: null,
+    stuck: null,
 }
 
 const EMPTY_STATE: RunState = {
     phase: 'new',
     spec_number: null,
     config: null,
+    base_branch: null,
     intake: null,
     problems: null,
     snapshot: null,
+    run_branch: null,
+    tickets: {},
+    pull_request: null,
     last_seq: 0,
 }
 
@@ -73,6 +146,7 @@ const applyRecord = ({
                 phase: 'started',
                 spec_number: record.content.spec_number,
                 config: record.content.config,
+                base_branch: record.content.base_branch,
             }
         case 'intake_read':
             return { ...next, phase: 'intake_read', intake: record.content }
@@ -104,6 +178,117 @@ const applyRecord = ({
             }
             return { ...next, snapshot, phase: snapshotPhase({ snapshot }) }
         }
+        case 'run_branch_created':
+            return { ...next, run_branch: record.content }
+        case 'pull_request_opened':
+            return {
+                ...next,
+                pull_request: {
+                    number: record.content.number,
+                    url: record.content.url,
+                },
+            }
+        default:
+            return applyTicketRecord({ state: next, record })
+    }
+}
+
+type TicketRecord = Exclude<
+    JournalRecord,
+    {
+        kind:
+            | 'run_started'
+            | 'intake_read'
+            | 'intake_refused'
+            | 'nothing_to_do'
+            | 'spec_snapshot'
+            | 'ticket_snapshot'
+            | 'run_branch_created'
+            | 'pull_request_opened'
+    }
+>
+
+/** Where a finished agent's result goes in its ticket's progress. */
+const resultChange = (finished: RoleResult): Partial<TicketProgress> => {
+    switch (finished.role) {
+        case 'test-writer':
+            return { test_writer: finished.result }
+        case 'implementer':
+            return { implementer: finished.result }
+        case 'ticket-reviewer':
+            return { review: finished.result }
+    }
+}
+
+const progressChange = ({
+    progress,
+    record,
+}: {
+    progress: TicketProgress
+    record: TicketRecord
+}): Partial<TicketProgress> => {
+    switch (record.kind) {
+        case 'ticket_worktree_created':
+            return { worktree: record.content }
+        case 'baseline_tests':
+            return { baseline: record.content }
+        case 'agent_started':
+            return {}
+        case 'agent_finished':
+            return { agent_failure: null, ...resultChange(record.content) }
+        case 'agent_failed':
+            return { agent_failure: record.content }
+        case 'red_check': {
+            const { ok, problems, notes } = record.content
+            return { red_check: { ok, problems, notes } }
+        }
+        case 'leftover_scan':
+            return {
+                leftovers: {
+                    ...progress.leftovers,
+                    [record.content.stage]: record.content.hits,
+                },
+            }
+        case 'commit_made':
+            return {
+                commits: {
+                    ...progress.commits,
+                    [record.content.stage]: record.content.sha,
+                },
+            }
+        case 'gates_run': {
+            const { ok, checks } = record.content
+            return record.content.target === 'ticket'
+                ? { gates: { ok, checks } }
+                : { join_gates: { ok, checks } }
+        }
+        case 'ticket_joined':
+            return { joined: record.content }
+        case 'run_branch_pushed':
+            return { pushed: record.content.sha }
+        case 'ticket_stuck':
+            return { stuck: record.content }
+    }
+}
+
+const applyTicketRecord = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: TicketRecord
+}): RunState => {
+    if (record.ticket === null) return state
+    const progress = state.tickets[record.ticket] ?? EMPTY_TICKET_PROGRESS
+    return {
+        ...state,
+        tickets: {
+            ...state.tickets,
+            [record.ticket]: {
+                ...progress,
+                ...progressChange({ progress, record }),
+            },
+        },
     }
 }
 

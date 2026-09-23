@@ -1,3 +1,5 @@
+import { decideBuild, type BuildAction } from './decide-build'
+
 import { checkIntake } from '../intake/intake-checks'
 import type { IntakeProblem, IntakeSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
@@ -15,12 +17,9 @@ export type EngineAction =
     | { type: 'finish_nothing_to_do'; closed_tickets: number[] }
     /** Write the spec and every ticket into the journal. */
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
-    /**
-     * Intake passed and every ticket is snapshotted. This is the seam where
-     * building tickets starts; #361 replaces it with the build steps.
-     */
-    | { type: 'await_build'; tickets: number[] }
-    /** The run is over. */
+    /** Intake passed and every ticket is snapshotted: build the tickets. */
+    | BuildAction
+    /** The run ended at intake. */
     | { type: 'done'; outcome: 'refused' | 'nothing_to_do' }
 
 /**
@@ -37,7 +36,7 @@ export const decide = ({
     records: JournalRecord[]
 }): EngineAction => {
     const state = replayRun({ records })
-    const { phase, spec_number, config, intake, snapshot } = state
+    const { phase, spec_number, config, intake } = state
 
     if (phase === 'new' || spec_number === null || config === null) {
         return {
@@ -53,10 +52,7 @@ export const decide = ({
         case 'nothing_to_do':
             return { type: 'done', outcome: 'nothing_to_do' }
         case 'intake_passed':
-            return {
-                type: 'await_build',
-                tickets: snapshot === null ? [] : snapshot.ticket_order,
-            }
+            return decideBuild({ state, spec_number })
         case 'intake_read':
         case 'snapshotting': {
             if (intake === null) {

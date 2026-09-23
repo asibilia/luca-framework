@@ -1,4 +1,5 @@
 import { decide, type EngineAction } from './decide'
+import { executeBuildAction, type BuildDeps } from './execute-build'
 
 import type { EngineConfig } from '../config/engine-config'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
@@ -15,11 +16,10 @@ import {
 /** How many actions `runEngine` takes before it gives up, as a safety net. */
 export const DEFAULT_MAX_STEPS = 1000
 
-/** Actions that end `runEngine`'s loop: the run is over or waits on later work. */
+/** Actions that end `runEngine`'s loop: the run is over. */
 const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'done',
     'invalid_journal',
-    'await_build',
 ])
 
 /**
@@ -30,16 +30,19 @@ export const startRun = ({
     journal,
     spec_number,
     config,
+    base_branch,
 }: {
     journal: Journal
     spec_number: number
     config: EngineConfig
+    /** The branch the run branch starts from. Defaults to `main`. */
+    base_branch?: string
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
-        content: { spec_number, config },
+        content: { spec_number, config, base_branch },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
@@ -116,16 +119,19 @@ const refuseIntake = async ({
  * Carries out one action: talks to the tracker, then records what happened in
  * the journal. The only impure half of the engine; `decide` picks the action.
  *
- * Stop actions (`done`, `invalid_journal`, `await_build`) do nothing here.
+ * Stop actions (`done`, `invalid_journal`) do nothing here.
  */
 export const executeAction = async ({
     action,
     journal,
     tracker,
+    build,
 }: {
     action: EngineAction
     journal: Journal
     tracker: Tracker
+    /** Needed for every step after intake. */
+    build?: BuildDeps
 }): Promise<void> => {
     switch (action.type) {
         case 'read_intake':
@@ -172,15 +178,22 @@ export const executeAction = async ({
             return
         }
         case 'invalid_journal':
-        case 'await_build':
         case 'done':
             return
+        default:
+            if (build === undefined) {
+                throw new Error(
+                    `The engine needs a git adapter and an agent launcher to ${action.type}.`
+                )
+            }
+            return executeBuildAction({ action, journal, tracker, ...build })
     }
 }
 
 /**
  * Runs the engine: decide the next action from the journal, carry it out,
- * repeat, until the run is done or reaches the build seam. Safe to call on a
+ * repeat, until the run is done: refused, nothing to do, stuck, or its PR
+ * opened. Building tickets needs `git` and `launcher`. Safe to call on a
  * journal left by a crashed engine; it picks up where the journal ends.
  *
  * @returns The action the loop stopped on.
@@ -189,17 +202,27 @@ export const runEngine = async ({
     journal,
     tracker,
     max_steps,
-}: {
+    stop_before,
+    git,
+    launcher,
+}: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
     /** Defaults to `DEFAULT_MAX_STEPS`. */
     max_steps?: number
+    /** Action types to stop at without carrying them out, such as in tests. */
+    stop_before?: EngineAction['type'][]
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
+    const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
     for (let step = 0; step < limit; step += 1) {
         const action = decide({ records: journal.read() })
-        if (STOP_ACTIONS.has(action.type)) return action
-        await executeAction({ action, journal, tracker })
+        if (stops.has(action.type)) return action
+        const build =
+            git === undefined || launcher === undefined
+                ? undefined
+                : { git, launcher }
+        await executeAction({ action, journal, tracker, build })
     }
     throw new Error(`The engine took ${limit} steps without finishing.`)
 }

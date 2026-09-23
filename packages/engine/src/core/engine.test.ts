@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import type { EngineAction } from './decide'
 import { runEngine, startRun } from './execute'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -12,6 +13,13 @@ import { replayRun } from '../journal/replay'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 import type { TrackerIssue } from '../tracker/tracker'
+
+/** Intake passed: the next step is making the run branch. */
+const BUILD_STARTS: EngineAction = {
+    type: 'create_run_branch',
+    spec_number: 10,
+    base_branch: 'main',
+}
 
 const CONFIG: EngineConfig = {
     checks: { test: 'bun test' },
@@ -48,7 +56,11 @@ const runSpec = async ({
         sub_tickets: { 10: sub_tickets },
     })
     startRun({ journal, spec_number: 10, config })
-    const action = await runEngine({ journal, tracker })
+    const action = await runEngine({
+        journal,
+        tracker,
+        stop_before: ['create_run_branch'],
+    })
     return { tracker, action, kinds: journal.read().map((r) => r.kind) }
 }
 
@@ -169,7 +181,7 @@ describe('engine: intake passes', () => {
             sub_tickets: [11, 12],
         })
 
-        expect(action).toEqual({ type: 'await_build', tickets: [12, 11] })
+        expect(action).toEqual(BUILD_STARTS)
         expect(kinds).toEqual([
             'run_started',
             'intake_read',
@@ -210,9 +222,13 @@ describe('engine: intake passes', () => {
             number: 11,
             changes: { title: 'Pay (edited)', body: 'Rewritten.' },
         })
-        const again = await runEngine({ journal, tracker })
+        const again = await runEngine({
+            journal,
+            tracker,
+            stop_before: ['create_run_branch'],
+        })
 
-        expect(again).toEqual({ type: 'await_build', tickets: [12, 11] })
+        expect(again).toEqual(BUILD_STARTS)
         const state = replayRun({ records: journal.read() })
         expect(state.snapshot?.tickets[11]?.title).toBe('Pay')
         expect(journal.read()).toHaveLength(5)
@@ -226,9 +242,13 @@ describe('engine: intake passes', () => {
         startRun({ journal, spec_number: 10, config: CONFIG })
 
         const reopened = createJournal({ file: journal.file })
-        const action = await runEngine({ journal: reopened, tracker })
+        const action = await runEngine({
+            journal: reopened,
+            tracker,
+            stop_before: ['create_run_branch'],
+        })
 
-        expect(action).toEqual({ type: 'await_build', tickets: [12, 11] })
+        expect(action).toEqual(BUILD_STARTS)
         expect(reopened.read().map((r) => r.seq)).toEqual([1, 2, 3, 4, 5])
     })
 })
