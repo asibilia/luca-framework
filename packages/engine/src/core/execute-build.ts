@@ -234,7 +234,7 @@ const launchAgent = async ({
     context: BuildContext
     action: Extract<BuildAction, { type: 'launch_agent' }>
 }) => {
-    const { ticket, role, prompt } = action
+    const { ticket, role, prompt, may_edit_tests } = action
     const { path } = ticketWorktree({ state: context.state, ticket })
     context.journal.append({
         kind: 'agent_started',
@@ -247,6 +247,7 @@ const launchAgent = async ({
         ticket,
         prompt,
         cwd: path,
+        may_edit_tests,
     })
     const checked = turn.ok
         ? parseRoleResult({ role, output: turn.structured_output })

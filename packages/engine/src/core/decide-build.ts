@@ -24,8 +24,18 @@ export type BuildAction =
     | { type: 'create_ticket_worktree'; ticket: number; run_branch: string }
     /** Run the tests before any agent works, to know the old tests. */
     | { type: 'run_baseline_tests'; ticket: number }
-    /** Start an agent in the ticket's worktree with this prompt. */
-    | { type: 'launch_agent'; ticket: number; role: AgentRole; prompt: string }
+    /**
+     * Start a fresh agent session in the ticket's worktree with this prompt.
+     * `may_edit_tests` is true for the test-writer and for a refactor
+     * ticket's implementer; the launcher's guards enforce it.
+     */
+    | {
+          type: 'launch_agent'
+          ticket: number
+          role: AgentRole
+          prompt: string
+          may_edit_tests: boolean
+      }
     /** Prove every criterion has a test, new tests fail, old tests pass. */
     | {
           type: 'run_red_check'
@@ -103,6 +113,7 @@ const launch = ({
     ticket: ticket.number,
     role,
     prompt: rolePrompt({ role, spec: snapshot.spec, ticket }),
+    may_edit_tests: role === 'test-writer',
 })
 
 const stuck = ({

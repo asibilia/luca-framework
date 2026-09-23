@@ -3,6 +3,7 @@ export { rolePrompt } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
     createScriptedLauncher,
+    type ScriptedCall,
     type ScriptedLauncher,
     type ScriptedTurn,
 } from './agents/scripted-launcher'
