@@ -19,6 +19,7 @@ export const TestWriterResult = z.object({
   outcome: z.enum(['tests_written', 'nothing_new_to_test']),
   criteria: z.array(z.object({ criterion_id: z.string(), tests: z.array(TestRef) })),
   summary: z.string(),
+  wont_fix: z.array(z.object({ finding_id: z.string(), reason: z.string() })),
   assumptions: z.array(z.string()),
   run_notes: z.array(z.string()),
 })
@@ -106,12 +107,14 @@ Rules:
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 - Every acceptance criterion needs at least one test. Name tests so a reader can tell which criterion each checks.
 - Old tests must keep passing. Don't edit or delete existing tests unless the ticket requires it.
-- Use bun's test runner: import { describe, expect, test } from "bun:test". You may run \`bun test\` yourself; only the engine's own run counts.${COMMON}
+- Use bun's test runner: import { describe, expect, test } from "bun:test". You may run \`bun test\` yourself; only the engine's own run counts.
+- Give every test a plain string-literal name (no test.each, no template names), so the engine can find each named test even before the module exists.
+- If the engine sends you review findings about tests, fix them in the test files. For a finding you disagree with, list it under "wont_fix" with your reason.${COMMON}
 
 Your result (structured output):
 - outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor).
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
-- summary, assumptions, run_notes.`
+- summary, wont_fix (usually empty), assumptions, run_notes.`
 
 export const IMPLEMENTER_INSTRUCTIONS = `
 # Your role: implementer (Luca engine, tracer bullet)
@@ -164,7 +167,8 @@ export const testWriterSpec = (b: Base): AgentSpec<TestWriterResult> => ({
   instructions: TEST_WRITER_INSTRUCTIONS,
   schema: TestWriterResult,
   tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
-  allowedTools: [`Edit(${TEST_GLOB})`, 'Bash(bun test)', 'Bash(bun test *)'],
+  // rm is allowed so an agent can delete its own leftovers; the sandbox keeps it inside the worktree.
+  allowedTools: [`Edit(${TEST_GLOB})`, 'Bash(bun test)', 'Bash(bun test *)', 'Bash(rm *)'],
   disallowedTools: BASE_DISALLOWED,
   sandbox: sandboxFor({ mainGitDir: b.mainGitDir }),
   messaging: true,
@@ -182,6 +186,7 @@ export const implementerSpec = (b: Base & { testDenyGlob: string }): AgentSpec<I
   tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
   allowedTools: [
     'Edit(**)',
+    'Bash(rm *)',
     'Bash(bun test)',
     'Bash(bun test *)',
     'Bash(bunx --bun tsc --noEmit)',

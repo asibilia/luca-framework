@@ -77,7 +77,7 @@ export const runTests = async (cwd: string, junitFile: string): Promise<TestRun>
     timeoutMs: 180_000,
     env: cleanEnv(),
   })
-  const noTestFiles = /0 test files matching/.test(shell.stderr + shell.stdout)
+  const noTestFiles = /0 test files matching|No tests found!/.test(shell.stderr + shell.stdout)
   const cases = existsSync(junitFile) ? parseJunit(readFileSync(junitFile, 'utf8')) : []
   const testFiles = await listTestFiles(cwd)
   const filesWithResults = new Set(cases.map((c) => c.file))
@@ -91,11 +91,17 @@ export const runTests = async (cwd: string, junitFile: string): Promise<TestRun>
 export type NamedTest = { file: string; name: string }
 export type CriterionMap = { criterion_id: string; tests: NamedTest[] }[]
 
-const normPath = (p: string) => p.replace(/^\.\//, '').trim()
+const normPath = (p: string, cwd: string) => {
+  let s = p.trim().replace(/^\/tmp\//, '/private/tmp/')
+  if (s.startsWith(cwd + '/')) s = s.slice(cwd.length + 1)
+  return s.replace(/^\.\//, '')
+}
 const lastSegment = (name: string) => (name.split(' > ').pop() ?? name).trim()
+/** Quote- and escape-insensitive text, so a test title found in source matches its printed name. */
+const loose = (s: string) => s.replace(/[\\'"`]/g, '')
 
-const findCase = (cases: TestCase[], t: NamedTest) => {
-  const inFile = cases.filter((c) => c.file === normPath(t.file))
+const findCase = (cases: TestCase[], t: NamedTest, cwd: string) => {
+  const inFile = cases.filter((c) => c.file === normPath(t.file, cwd))
   const exact = inFile.find((c) => c.fullName.trim() === t.name.trim())
   if (exact) return exact
   const byLast = inFile.filter((c) => c.name.trim() === lastSegment(t.name))
@@ -121,7 +127,7 @@ export const redCheck = (args: {
   }
   for (const m of mapping) if (!criterionIds.includes(m.criterion_id)) notes.push(`unknown criterion id ${m.criterion_id}`)
   for (const t of mapping.flatMap((m) => m.tests)) {
-    const file = normPath(t.file)
+    const file = normPath(t.file, cwd)
     const label = `"${t.name}" in ${file}`
     if (!glob.match(file)) {
       problems.push(`${label}: file does not match ${TEST_GLOB}`)
@@ -131,7 +137,7 @@ export const redCheck = (args: {
       problems.push(`${label}: file does not exist`)
       continue
     }
-    const found = findCase(current.cases, t)
+    const found = findCase(current.cases, t, cwd)
     if (found) {
       if (found.status === 'passed') problems.push(`${label}: passes already (it must fail before any code is written)`)
       else if (found.status === 'skipped') problems.push(`${label}: is skipped`)
@@ -140,8 +146,8 @@ export const redCheck = (args: {
     }
     if (current.filesWithoutResults.includes(file)) {
       const source = readFileSync(join(cwd, file), 'utf8')
-      if (source.includes(lastSegment(t.name))) notes.push(`${label}: fails (its file does not load yet)`)
-      else problems.push(`${label}: not found in the file`)
+      if (loose(source).includes(loose(lastSegment(t.name)))) notes.push(`${label}: fails (its file does not load yet)`)
+      else problems.push(`${label}: not found in the file (use a plain string test name the engine can find)`)
       continue
     }
     problems.push(`${label}: not found in the test results`)
