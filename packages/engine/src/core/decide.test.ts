@@ -488,14 +488,15 @@ describe('decision step: intake passes', () => {
         ]
     }
 
-    test('once every ticket is snapshotted, the run waits to build them in order', () => {
+    test('once every ticket is snapshotted, the run starts building', () => {
         const records = recordsFrom({
             entries: snapshotEntries({ ticket_numbers: [11, 12, 14] }),
         })
 
         expect(decide({ records })).toEqual({
-            type: 'await_build',
-            tickets: [12, 11, 14],
+            type: 'create_run_branch',
+            spec_number: 10,
+            base_branch: 'main',
         })
     })
 

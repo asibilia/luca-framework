@@ -15,11 +15,10 @@ import {
 /** How many actions `runEngine` takes before it gives up, as a safety net. */
 export const DEFAULT_MAX_STEPS = 1000
 
-/** Actions that end `runEngine`'s loop: the run is over or waits on later work. */
+/** Actions that end `runEngine`'s loop: the run is over. */
 const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'done',
     'invalid_journal',
-    'await_build',
 ])
 
 /**
@@ -116,7 +115,7 @@ const refuseIntake = async ({
  * Carries out one action: talks to the tracker, then records what happened in
  * the journal. The only impure half of the engine; `decide` picks the action.
  *
- * Stop actions (`done`, `invalid_journal`, `await_build`) do nothing here.
+ * Stop actions (`done`, `invalid_journal`) do nothing here.
  */
 export const executeAction = async ({
     action,
@@ -171,8 +170,9 @@ export const executeAction = async ({
             }
             return
         }
+        case 'create_run_branch':
+            throw new Error('Building tickets is not wired up yet.')
         case 'invalid_journal':
-        case 'await_build':
         case 'done':
             return
     }
@@ -189,16 +189,20 @@ export const runEngine = async ({
     journal,
     tracker,
     max_steps,
+    stop_before,
 }: {
     journal: Journal
     tracker: Tracker
     /** Defaults to `DEFAULT_MAX_STEPS`. */
     max_steps?: number
+    /** Action types to stop at without carrying them out, such as in tests. */
+    stop_before?: EngineAction['type'][]
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
+    const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
     for (let step = 0; step < limit; step += 1) {
         const action = decide({ records: journal.read() })
-        if (STOP_ACTIONS.has(action.type)) return action
+        if (stops.has(action.type)) return action
         await executeAction({ action, journal, tracker })
     }
     throw new Error(`The engine took ${limit} steps without finishing.`)
