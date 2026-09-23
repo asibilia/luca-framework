@@ -86,4 +86,3 @@ export default function contribute(server: PluginServerContext) {
         await board.idle()
     }
 }
-
