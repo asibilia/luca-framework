@@ -7,6 +7,7 @@ import type { JournalEntry } from '../journal/journal-record'
 import {
     agentStarted,
     baselineTests,
+    commitMade,
     gatesRun,
     implemented,
     intakePassed,
@@ -21,6 +22,7 @@ import {
     testsWritten,
     ticketBuilt,
     ticketWorktreeCreated,
+    worktreeReset,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
@@ -495,6 +497,122 @@ describe('decision step: the gates fix loop', () => {
     })
 })
 
+/** Ticket #11 up to its first bad-test bounce and the worktree reset. */
+const bounced = (): JournalEntry[] => [
+    ...stepsUpTo(5),
+    implemented({ ticket: 11, outcome: 'bad_test' }),
+    worktreeReset({ ticket: 11 }),
+]
+
+/** After the bounce: fresh tests, a passing red check, the second red commit. */
+const replaced = (): JournalEntry[] => [
+    ...bounced(),
+    testsWritten({ ticket: 11, session_id: 'tw-2' }),
+    redCheck({ ticket: 11, ok: true }),
+    leftoverScan({ ticket: 11, stage: 'red' }),
+    commitMade({ ticket: 11, stage: 'red' }),
+]
+
+describe('decision step: a bad test bounces to a fresh test-writer once', () => {
+    test("the first bad test throws away the implementer's uncommitted work", () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(5),
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+            ])
+        ).toEqual({ type: 'reset_ticket_worktree', ticket: 11 })
+    })
+
+    test("after the reset, a fresh test-writer gets the bad test's file, name, and reason", () => {
+        const action = decideAfter(bounced())
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+            may_edit_tests: true,
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain('bad test')
+        expect(action.prompt).toContain('src/sum.test.ts')
+        expect(action.prompt).toContain('sum adds two numbers')
+        expect(action.prompt).toContain('Wrong sum.')
+        expect(action.prompt).toContain('every criterion')
+    })
+
+    test("the fresh test-writer's tests go through the red check", () => {
+        expect(
+            decideAfter([
+                ...bounced(),
+                testsWritten({ ticket: 11, session_id: 'tw-2' }),
+            ])
+        ).toMatchObject({ type: 'run_red_check', ticket: 11 })
+    })
+
+    test('a failed red check after the bounce goes to the fresh test-writer, with fresh rounds', () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(2),
+                ...redRounds(MAX_FIX_ROUNDS),
+                redCheck({ ticket: 11, ok: true }),
+                ...ticketBuilt({ ticket: 11 }).slice(4, 6),
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+                worktreeReset({ ticket: 11 }),
+                testsWritten({ ticket: 11, session_id: 'tw-2' }),
+                redCheck({ ticket: 11, ok: false }),
+            ])
+        ).toMatchObject({
+            type: 'follow_up_agent',
+            role: 'test-writer',
+            session_id: 'tw-2',
+        })
+    })
+
+    test('the new tests get their own red commit, which says a bad test was replaced', () => {
+        expect(
+            decideAfter([
+                ...bounced(),
+                testsWritten({ ticket: 11, session_id: 'tw-2' }),
+                redCheck({ ticket: 11, ok: true }),
+            ])
+        ).toEqual({
+            type: 'commit_ticket',
+            ticket: 11,
+            stage: 'red',
+            message: 'test: replace a bad test for #11 Add sum',
+        })
+    })
+
+    test('then a fresh implementer writes the code', () => {
+        expect(decideAfter(replaced())).toMatchObject({
+            type: 'launch_agent',
+            role: 'implementer',
+            may_edit_tests: false,
+        })
+    })
+
+    test('a second bad test makes the ticket stuck, with its reason', () => {
+        const action = decideAfter([
+            ...replaced(),
+            implemented({
+                ticket: 11,
+                outcome: 'bad_test',
+                session_id: 'impl-2',
+                reason: 'Still wrong.',
+            }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'bad_test',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain('second time')
+        expect(action.detail).toContain('Still wrong.')
+    })
+})
+
 describe('decision step: a ticket gets stuck', () => {
     test('leftovers found before a commit make the ticket stuck, with no commit', () => {
         expect(
@@ -531,15 +649,6 @@ describe('decision step: a ticket gets stuck', () => {
             reason: 'agent_failed',
             detail: 'The test-writer failed: No result.',
         })
-    })
-
-    test('an implementer that calls a test bad makes the ticket stuck', () => {
-        expect(
-            decideAfter([
-                ...stepsUpTo(5),
-                implemented({ ticket: 11, outcome: 'bad_test' }),
-            ])
-        ).toMatchObject({ type: 'mark_stuck', reason: 'bad_test' })
     })
 
     test('a reviewer asking for changes makes the ticket stuck', () => {

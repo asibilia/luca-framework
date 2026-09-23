@@ -119,30 +119,44 @@ export type BuildAction =
           detail: string
       }
 
+/** A red commit after a bad-test bounce says so, so the history shows it. */
 const commitMessage = ({
     stage,
     ticket,
+    progress,
 }: {
     stage: CommitStage
     ticket: TicketSnapshot
-}): string =>
-    stage === 'red'
-        ? `test: add failing tests for #${ticket.number} ${ticket.title}`
-        : `feat: build #${ticket.number} ${ticket.title}`
+    progress: TicketProgress
+}): string => {
+    if (stage === 'green')
+        return `feat: build #${ticket.number} ${ticket.title}`
+    return progress.bad_test_bounces > 0
+        ? `test: replace a bad test for #${ticket.number} ${ticket.title}`
+        : `test: add failing tests for #${ticket.number} ${ticket.title}`
+}
 
+/** A fresh agent session. Only the test-writer may edit tests. */
 const launch = ({
     role,
     snapshot,
     ticket,
+    progress,
 }: {
     role: AgentRole
     snapshot: ReplayedSnapshot
     ticket: TicketSnapshot
+    progress: TicketProgress
 }): BuildAction => ({
     type: 'launch_agent',
     ticket: ticket.number,
     role,
-    prompt: rolePrompt({ role, spec: snapshot.spec, ticket }),
+    prompt: rolePrompt({
+        role,
+        spec: snapshot.spec,
+        ticket,
+        bad_test: progress.bad_test,
+    }),
     may_edit_tests: role === 'test-writer',
 })
 
@@ -180,8 +194,15 @@ const commitStep = ({
         type: 'commit_ticket',
         ticket: ticket.number,
         stage,
-        message: commitMessage({ stage, ticket }),
+        message: commitMessage({ stage, ticket, progress }),
     }
+}
+
+const badTestText = ({ progress }: { progress: TicketProgress }): string => {
+    const { bad_test } = progress
+    if (bad_test === null) return 'no reason given'
+    const where = [bad_test.file, bad_test.name].filter(Boolean).join(' > ')
+    return where === '' ? bad_test.reason : `${where}: ${bad_test.reason}`
 }
 
 type StepArgs = {
@@ -202,7 +223,7 @@ const testStep = ({
     const number = ticket.number
     const { test_writer, red_check } = progress
     if (test_writer === null) {
-        return launch({ role: 'test-writer', snapshot, ticket })
+        return launch({ role: 'test-writer', snapshot, ticket, progress })
     }
     if (test_writer.outcome === 'nothing_new_to_test') {
         return stuck({
@@ -261,14 +282,19 @@ const codeStep = ({
     const number = ticket.number
     const { implementer, gates } = progress
     if (implementer === null) {
-        return launch({ role: 'implementer', snapshot, ticket })
+        return launch({ role: 'implementer', snapshot, ticket, progress })
     }
     if (implementer.outcome === 'bad_test') {
-        return stuck({
-            ticket: number,
-            reason: 'bad_test',
-            detail: implementer.bad_test?.reason ?? implementer.summary,
-        })
+        if (progress.bad_test_bounces > MAX_BAD_TEST_BOUNCES) {
+            return stuck({
+                ticket: number,
+                reason: 'bad_test',
+                detail: `The implementer sent a test back as bad a second time: ${badTestText({ progress })}`,
+            })
+        }
+        // Throw away the implementer's work; replay then clears the ticket's
+        // tests and code, so a fresh test-writer replaces the bad test.
+        return { type: 'reset_ticket_worktree', ticket: number }
     }
     if (gates === null) {
         return { type: 'run_gates', ticket: number, target: 'ticket' }
@@ -338,7 +364,7 @@ const nextTicketStep = ({
     const code = codeStep({ snapshot, ticket, progress })
     if (code !== null) return code
     if (progress.review === null) {
-        return launch({ role: 'ticket-reviewer', snapshot, ticket })
+        return launch({ role: 'ticket-reviewer', snapshot, ticket, progress })
     }
     if (progress.review.verdict !== 'approve') {
         return stuck({
