@@ -384,6 +384,20 @@ export const JevCountsSchema = z.object({
 
 export type JevCounts = z.infer<typeof JevCountsSchema>
 
+/**
+ * Agent messages: `sent` counts the queued and the not delivered ones,
+ * `refused` the ones the engine turned down, and `delivered` the messages
+ * handed over, once per receiver (a message to `all` can count more than
+ * once). Messages happen inside a turn, so the board only counts them.
+ */
+export const MessageCountsSchema = z.object({
+    sent: z.number().int().min(0),
+    refused: z.number().int().min(0),
+    delivered: z.number().int().min(0),
+})
+
+export type MessageCounts = z.infer<typeof MessageCountsSchema>
+
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
     usage: UsageSchema.nullable(),
@@ -403,6 +417,12 @@ export const BoardStateSchema = z.object({
     tickets: z.array(TicketCardSchema),
     final_review: FinalReviewSchema,
     jev: JevCountsSchema,
+    /** Defaulted, so a board state from before messages still parses. */
+    messages: MessageCountsSchema.default({
+        sent: 0,
+        refused: 0,
+        delivered: 0,
+    }),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

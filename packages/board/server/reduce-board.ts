@@ -47,7 +47,8 @@ const STUCK_REASONS: Record<string, string> = {
     install_failed: 'Installing the dependencies failed.',
 }
 
-const clip = ({ text, max }: { text: string; max: number }): string =>
+/** Cuts `text` to `max` characters, ending in "…" when it was longer. */
+export const clip = ({ text, max }: { text: string; max: number }): string =>
     text.length > max ? `${text.slice(0, max - 1)}…` : text
 
 const firstLine = ({ text }: { text: string }): string =>
@@ -73,6 +74,8 @@ const QUIET_KINDS = new Set([
     'jev_asked',
     'jev_answered',
     'jev_failed',
+    'agent_message',
+    'agent_message_delivered',
 ])
 
 /** A stuck reason code in words. */
@@ -144,6 +147,7 @@ export const createBoardState = ({
         tried: [],
     },
     jev: { asked: 0, answered: 0, failed: 0 },
+    messages: { sent: 0, refused: 0, delivered: 0 },
     event_count: 0,
     latest: null,
 })
@@ -867,6 +871,26 @@ const applyKind = ({
             return {
                 ...state,
                 jev: { ...state.jev, failed: state.jev.failed + 1 },
+            }
+        case 'agent_message': {
+            const refused = record.content.status === 'refused'
+            return {
+                ...state,
+                messages: {
+                    ...state.messages,
+                    sent: state.messages.sent + (refused ? 0 : 1),
+                    refused: state.messages.refused + (refused ? 1 : 0),
+                },
+            }
+        }
+        case 'agent_message_delivered':
+            return {
+                ...state,
+                messages: {
+                    ...state.messages,
+                    delivered:
+                        state.messages.delivered + record.content.ids.length,
+                },
             }
         case 'limit_wait_started': {
             const { resets_at, until, rate_limit_type } = record.content
