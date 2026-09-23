@@ -212,6 +212,14 @@ export const executeAction = async ({
     clock?: EngineClock
 }): Promise<void> => {
     switch (action.type) {
+        case 'record_usage':
+            journal.append({
+                kind: 'usage_recorded',
+                ticket: action.usage.ticket,
+                role: null,
+                content: action.usage,
+            })
+            return
         case 'start_limit_wait':
         case 'wait_for_limit':
         case 'stop_for_billing':

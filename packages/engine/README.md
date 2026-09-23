@@ -10,7 +10,9 @@ scripted stand-in **agents**, up to the run's one pull request, with capped
 **fix loops** for a failed red check, failed gates, and a bad test (#363), and
 runs real Claude agents under the **guard** (#362). A fresh reviewer checks
 each ticket, with a capped review fix loop (#364). And it sends its journal to
-the Paseo board plugin, and has a command line, `luca-run` (#374).
+the Paseo board plugin, and has a command line, `luca-run` (#374). A hit plan
+limit is a **limit wait**, any sign of per-token billing stops the run for
+good, and usage is journaled per ticket and per run (#368).
 
 ## Modules
 
@@ -23,6 +25,11 @@ the Paseo board plugin, and has a command line, `luca-run` (#374).
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, next action out. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, then the PR. |
+| `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
+| `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
+| `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
+| `src/limits/plan-usage.ts` | Pure: a ticket's or the run's tokens and plan-window movement. |
+| `src/limits/limit-wait.ts` | The engine's clock, waiting until a time, and the spec's limit-wait comment. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, or a failed try's error. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings, and what each review fixer is sent. |
 | `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings. |
@@ -104,7 +111,9 @@ done (pr_opened)
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
-how it failed), or `run_stopped` (see Guards).
+how it failed), or `run_stopped` (see Guards). Any step may be preceded by a
+limit wait or a billing stop, and a finished ticket and the run's end by
+`usage_recorded` (see Plan limits and billing).
 
 A refactor ticket (labelled `refactor`) skips the test-writer, the red check,
 and the red commit: its implementer may follow renames into test files, but
@@ -344,7 +353,8 @@ also holds its journal).
   `idle_timeout_ms` (30 minutes by default). `closeAll()` closes the rest;
   call it when the run ends.
 - **A stop leaves the step open.** `run_stopped` changes no ticket's state, so
-  a later `runEngine` on the same journal starts that step again.
+  a later `runEngine` on the same journal starts that step again. A billing
+  stop (`billing: true`) is the exception: it sticks.
 - **Denial counts** come from the result's `permission_denials` only (the
   tracer counted them twice), plus the guard hook's own denials.
 
@@ -390,8 +400,69 @@ settings, MCP servers, or skills, and keeps no session on disk.
 
 The launcher stops the run (`run_stopped`, and `runEngine` throws) on the
 wrong credentials or plan, an init with an API key, a Fable or non-Claude
-model, a foreign MCP server, a rejected rate limit, overage, or a billing
-error, in a launch or a follow-up alike. Waiting out limits is #368's.
+model, or a foreign MCP server, in a launch or a follow-up alike. A rejected
+rate limit, overage, or a billing error cuts the turn off as `plan` instead;
+see "Plan limits and billing".
+
+## Plan limits and billing
+
+Every agent turn's `agent_session` holds its `rate_limit_event` readings
+(`status`, `rateLimitType`, `resetsAt` in Unix seconds, and each window's
+`utilization`, a 0-to-1 fraction, under `unifiedWindows`), and
+`billing_error` when an assistant message came back with one. The launcher
+cuts a turn off (`failure: 'plan'`, the session closed) at the first
+reading that isn't fine. The executor journals the session and nothing
+else: the turn uses up no try, and its step stays open. The decision step
+reads the journal (`decidePlan`, `src/limits/plan-signals.ts`):
+
+| Reading | What the run does |
+| --- | --- |
+| `allowed`, `allowed_warning` | Goes on. The board colors plan usage. |
+| `rejected` | A **limit wait** for the whole run, for the window it names. |
+| `isUsingOverage` or `overageInUse` true, or `rateLimitType: "overage"` (any status) | Stops at once, for good. |
+| an assistant `billing_error` | Stops at once, for good. |
+
+Billing beats a limit. `overageStatus: "rejected"` alone (overage off) is fine.
+
+```
+agent_session with a rejected reading
+  decide ──> start_limit_wait     comment on the spec (once per reset) ──> limit_wait_started
+  decide ──> wait_for_limit       sleep by the clock until `until`    ──> limit_wait_ended
+  decide ──> the step the limit cut off, again, on the same model
+agent_session with a billing sign
+  decide ──> stop_for_billing                                          ──> run_stopped (billing: true)
+  decide ──> record_usage (the run's), then done (stopped), however often the engine starts again
+```
+
+- **Until when.** A limit wait ends at `resetsAt` plus
+  `LIMIT_WAIT_MARGIN_MS` (1 minute). A reading with no `resetsAt` waits
+  `DEFAULT_LIMIT_WAIT_MS` (15 minutes) from the hit. A weekly window can
+  reset days out; the engine sleeps in naps of at most 5 minutes and checks
+  the clock after each, so a laptop that slept wakes on time.
+- **Restarts.** The wait is in the journal, so a restarted engine waits out
+  only what is left, and one whose reset already passed goes on at once. The
+  spec hears of each new reset once (`announce` is false for a reset it
+  already heard of).
+- **No model switch.** When Opus's weekly cap (`seven_day_opus`) runs out,
+  the whole run waits like any other limit. The launcher always runs Opus.
+- **A cut-off follow-up.** The session closed with the limit, so after the
+  wait the follow-up fails as `engine` and a fresh agent of that role
+  starts, as for any lost session.
+- **A plan cut-off with no sign in its session** (it shouldn't happen) is
+  journaled as an ordinary `run_stopped`, and `runEngine` throws.
+- **The clock.** `runEngine({ ..., clock })` takes an `EngineClock`
+  (`now`, `sleep`); it defaults to `SYSTEM_CLOCK`. Tests fake it, so nothing
+  really waits.
+
+**Usage** (`decideUsage`, `src/limits/plan-usage.ts`). Tokens per agent are
+each `agent_session`'s `usage`. Once a ticket is pushed or stuck, and once
+the run is about to end (its next action is `done`), the engine journals
+`usage_recorded`: the agent turns, tokens summed, and each plan window's
+`{ from, to, used }` in percent. A ticket's window starts from the last
+reading before its first agent; a reading lower than the one before means
+the window reset, so it counts from 0 again. Readings come in hundredths, so
+per-ticket numbers are rough, and other sessions on the same plan count too.
+A ticket or run with no agent sessions (scripted agents) records nothing.
 
 ## Jev in shadow mode
 
@@ -456,6 +527,13 @@ and retries that follow.
 that disagrees with everything, throws, never answers, or has no key, and
 checks the run matches a run without Jev. `src/jev/jev-client.test.ts` tests
 the TypeSafe client with a fake `fetch`; no test reaches the network.
+
+`src/core/decide-limits.test.ts` hands the decision step scripted
+rate-limit readings (allowed, allowed_warning, rejected days away, the Opus
+weekly cap, overage, isUsingOverage, a billing error) and usage readings.
+`src/core/limit-wait.test.ts` runs the practice ticket with an agent the
+plan cuts off, a fake clock, and the in-memory tracker: the wait, its one
+comment, a restart mid-wait, and a billing stop that sticks.
 
 `src/board/board-sync.test.ts` runs the engine with a board in memory: records
 arrive in seq order, a board that restarted gets a replay, and a failing board

@@ -115,6 +115,16 @@ describe('limit waits', () => {
             },
         })
         expect(kinds(records)).toContain('limit_wait_ended')
+        expect(
+            records.flatMap((record) =>
+                record.kind === 'usage_recorded'
+                    ? [[record.content.scope, record.content.agent_turns]]
+                    : []
+            )
+        ).toEqual([
+            ['ticket', 1],
+            ['run', 1],
+        ])
         const comments = tracker.commentsOn({ number: 10 })
         expect(comments).toHaveLength(1)
         expect(comments[0]).toContain('five-hour')
@@ -200,10 +210,11 @@ describe('billing stops', () => {
             outcome: 'stopped',
             reason: 'rate_limit_event isUsingOverage=true (five_hour)',
         })
-        expect(records.at(-1)).toMatchObject({
-            kind: 'run_stopped',
-            content: { billing: true },
-        })
+        expect(kinds(records).slice(-2)).toEqual([
+            'run_stopped',
+            'usage_recorded',
+        ])
+        expect(records.at(-2)).toMatchObject({ content: { billing: true } })
         expect(time.slept).toEqual([])
 
         const again = await practice.run({
