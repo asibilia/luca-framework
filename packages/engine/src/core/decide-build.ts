@@ -1,4 +1,9 @@
-import { failedChecks, gateFixMessage, redFixMessage } from './fix-loop-text'
+import {
+    failedChecks,
+    failedTryMessage,
+    gateFixMessage,
+    redFixMessage,
+} from './fix-loop-text'
 import { pullRequestText } from './pull-request-text'
 
 import { rolePrompt } from '../agents/role-prompts'
@@ -29,6 +34,13 @@ export const MAX_FIX_ROUNDS = 3
  * test-writer. The bounce after these makes the ticket stuck.
  */
 export const MAX_BAD_TEST_BOUNCES = 1
+
+/**
+ * Engine failures in a row (the SDK crashed, or a follow-up's session was
+ * gone) after which a ticket is stuck. Each one before it starts a fresh
+ * agent without using up a try.
+ */
+export const MAX_ENGINE_FAILURES = 3
 
 /** The next build step for a run whose intake passed. */
 export type BuildAction =
@@ -150,9 +162,25 @@ const commitMessage = ({
 }
 
 /**
- * A fresh agent session. Only the test-writer and a refactor ticket's
- * implementer may edit tests.
+ * Whether an agent of this role may edit test files on this ticket: only
+ * the test-writer, and a refactor ticket's implementer (who may follow
+ * renames into tests). The engine hands it to the launcher's guards and
+ * uses it for its own after-turn check, on launches and follow-ups alike.
+ *
+ * @example
+ * mayEditTests({ role: 'implementer', ticket }) // true only on a refactor ticket
  */
+export const mayEditTests = ({
+    role,
+    ticket,
+}: {
+    role: AgentRole
+    ticket: TicketSnapshot
+}): boolean =>
+    role === 'test-writer' ||
+    (role === 'implementer' && isRefactorTicket({ ticket }))
+
+/** A fresh agent session. */
 const launch = ({
     role,
     snapshot,
@@ -174,9 +202,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
     }),
-    may_edit_tests:
-        role === 'test-writer' ||
-        (role === 'implementer' && isRefactorTicket({ ticket })),
+    may_edit_tests: mayEditTests({ role, ticket }),
 })
 
 const stuck = ({
@@ -352,6 +378,53 @@ const codeStep = ({
     return commitStep({ stage: 'green', ticket, progress })
 }
 
+/**
+ * The next step after a failed agent turn. An engine failure starts a fresh
+ * agent of the same role without using up a try, until
+ * `MAX_ENGINE_FAILURES` in a row. Any other failure uses up one of the
+ * role's tries on the ticket; with tries left, a test-writer or implementer
+ * gets a follow-up in the session that failed, and a reviewer (or an agent
+ * with no session) a fresh launch. The last try's failure is stuck.
+ */
+const failedTurnStep = ({
+    snapshot,
+    ticket,
+    progress,
+    failed,
+}: StepArgs & {
+    failed: NonNullable<TicketProgress['agent_failure']>
+}): BuildAction => {
+    const { role, error, failure, session_id } = failed
+    if (failure === 'engine') {
+        if (progress.engine_failures >= MAX_ENGINE_FAILURES) {
+            return stuck({
+                ticket: ticket.number,
+                reason: 'agent_failed',
+                detail: `The engine failed to run the ${role} ${progress.engine_failures} times in a row: ${error}`,
+            })
+        }
+        return launch({ role, snapshot, ticket, progress })
+    }
+    const tries = progress.failed_tries[role] ?? 0
+    if (tries >= MAX_FIX_ROUNDS) {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'agent_failed',
+            detail: `The ${role} failed ${tries} tries; the last one: ${error}`,
+        })
+    }
+    if (role === 'ticket-reviewer' || session_id === null) {
+        return launch({ role, snapshot, ticket, progress })
+    }
+    return {
+        type: 'follow_up_agent',
+        ticket: ticket.number,
+        role,
+        session_id,
+        message: failedTryMessage({ failure, error }),
+    }
+}
+
 /** The next step for one ticket, or `null` once it has joined and pushed. */
 const nextTicketStep = ({
     snapshot,
@@ -369,10 +442,11 @@ const nextTicketStep = ({
         }
     }
     if (progress.agent_failure !== null) {
-        return stuck({
-            ticket: number,
-            reason: 'agent_failed',
-            detail: `The ${progress.agent_failure.role} failed: ${progress.agent_failure.error}`,
+        return failedTurnStep({
+            snapshot,
+            ticket,
+            progress,
+            failed: progress.agent_failure,
         })
     }
     if (progress.worktree === null) {
@@ -445,8 +519,13 @@ const nextTicketStep = ({
  * throws away the implementer's work and goes to a fresh test-writer, whose
  * tests get their own red check and red commit; the next bad test is stuck.
  * "Nothing new to test" is stuck at once. A refactor ticket skips the
- * test-writer and the red check. A review asking for changes, a leftover, a
- * failed agent, and a failed join are still stuck.
+ * test-writer and the red check.
+ *
+ * Failed tries: a failed agent turn goes back to the same session with what
+ * failed (a reviewer gets a fresh launch), up to `MAX_FIX_ROUNDS` failed
+ * tries per role on a ticket; an engine failure starts a fresh agent without
+ * using up a try, up to `MAX_ENGINE_FAILURES` in a row. A review asking for
+ * changes, a leftover, and a failed join are still stuck.
  */
 export const decideBuild = ({
     state,

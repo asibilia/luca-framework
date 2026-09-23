@@ -745,6 +745,10 @@ describe('one ticket, end to end, with scripted agents', () => {
             .replace(/^\* /, '')
         const lockfile = await git(origin, 'show', `${branch}:bun.lock`)
         expect(lockfile).toContain('"@practice/math": "workspace:*"')
+        // The engine's own install is never blamed on an agent.
+        expect(records.some((record) => record.kind === 'agent_failed')).toBe(
+            false
+        )
     }, 60_000)
 
     test('a failed install goes back to the implementer like any failed gate', async () => {
@@ -813,5 +817,54 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(
             green?.kind === 'commit_made' ? green.content.files : []
         ).toContain('bun.lock')
+        // What the engine's install left between turns is never blamed on
+        // the implementer's follow-up.
+        expect(records.some((record) => record.kind === 'agent_failed')).toBe(
+            false
+        )
+    }, 60_000)
+
+    test("the engine's install updating the lockfile between turns is not blamed on the implementer", async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const fixedFiles = {
+            'package.json': MANIFEST_WITH_DEPENDENCY,
+            'src/sum.ts': SUM_WITH_DEPENDENCY,
+            'src/index.ts': "export { sum } from './sum'\n",
+        }
+        const { action, records } = await runPractice({
+            files: WORKSPACE_FILES,
+            turns: [
+                testWriter,
+                // First try: the install passes (and updates bun.lock), lint fails.
+                {
+                    ...implementer,
+                    files: {
+                        ...fixedFiles,
+                        'src/sum.ts': `${SUM_WITH_DEPENDENCY}console.log('debug')\n`,
+                    },
+                },
+                { ...implementer, files: fixedFiles },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const ticketGates = records.flatMap((record) =>
+            record.kind === 'gates_run' && record.content.target === 'ticket'
+                ? [record.content]
+                : []
+        )
+        expect(
+            ticketGates.map(({ checks }) =>
+                checks.map(({ name, ok: passed }) => `${name}:${passed}`)
+            )
+        ).toEqual([
+            ['install:true', 'test:true', 'types:true', 'lint:false'],
+            ['install:true', 'test:true', 'types:true', 'lint:true'],
+        ])
+        expect(records.some((record) => record.kind === 'agent_failed')).toBe(
+            false
+        )
     }, 60_000)
 })

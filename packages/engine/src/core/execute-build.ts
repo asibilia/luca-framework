@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'node:path'
 
 import uniq from 'lodash/uniq'
 
-import type { BuildAction } from './decide-build'
+import { mayEditTests, type BuildAction } from './decide-build'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
 import { parseRoleResult, type AgentRole } from '../agents/role-results'
@@ -15,7 +15,11 @@ import { installCommand } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import { runTests, testFilesAmong } from '../gates/test-runner'
 import type { GitAdapter } from '../git/git-adapter'
+import { describeViolations } from '../guards/after-turn-check'
+import { guardRoleOf } from '../guards/role-rules'
+import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
 import type { Journal } from '../journal/journal'
+import type { AgentFailure } from '../journal/journal-record'
 import {
     replayRun,
     type ReplayedWorktree,
@@ -228,31 +232,100 @@ const commitTicket = async ({
     })
 }
 
-/** Journals an agent turn's result: finished if it fits the role, else failed. */
-const journalTurn = ({
+const failTurn = ({
     context,
     ticket,
     role,
-    turn,
+    error,
+    failure,
+    session_id,
 }: {
     context: BuildContext
     ticket: number
     role: AgentRole
-    turn: AgentTurn
+    error: string
+    failure: AgentFailure
+    session_id: string | null
 }) => {
-    const session_id = turn.session_id ?? null
-    const checked = turn.ok
-        ? parseRoleResult({ role, output: turn.structured_output })
-        : turn
-    if (!checked.ok) {
+    context.journal.append({
+        kind: 'agent_failed',
+        ticket,
+        role,
+        content: { role, error, failure, session_id },
+    })
+}
+
+/**
+ * Runs one agent turn, a launch or a follow-up, and journals how it ended.
+ * Before the turn the engine snapshots the worktree; after it, the
+ * after-turn check undoes and reports anything the role may not change, for
+ * every launcher alike. Then the result is judged by its structured output.
+ * Each failed turn is journaled once as `agent_failed` with how it failed;
+ * the decision step picks what happens next. A launcher stop journals
+ * `run_stopped` and ends the run.
+ */
+const runTurn = async ({
+    context,
+    ticket,
+    role,
+    may_edit_tests,
+    start,
+}: {
+    context: BuildContext
+    ticket: number
+    role: AgentRole
+    may_edit_tests: boolean
+    start: (cwd: string) => Promise<AgentTurn>
+}) => {
+    const { path, branch } = ticketWorktree({ state: context.state, ticket })
+    const before = await snapshotWorktree({ cwd: path, branch })
+    const turn = await start(path)
+    if (turn.session !== undefined) {
         context.journal.append({
-            kind: 'agent_failed',
+            kind: 'agent_session',
             ticket,
             role,
-            content: { role, error: checked.error, session_id },
+            content: { role, session: turn.session },
         })
-        return
     }
+    const guard_role = guardRoleOf({ role })
+    const { violations } = await enforceAfterTurn({
+        cwd: path,
+        branch,
+        role: guard_role,
+        may_edit_tests,
+        config: context.config,
+        before,
+    })
+    if (!turn.ok && turn.failure === 'stop') {
+        context.journal.append({
+            kind: 'run_stopped',
+            ticket,
+            role,
+            content: { reason: turn.error, role },
+        })
+        throw new Error(`Run stopped: ${turn.error}`)
+    }
+    const session_id = turn.session_id ?? null
+    const fail = (failure: AgentFailure, error: string) =>
+        failTurn({ context, ticket, role, error, failure, session_id })
+    if (violations.length > 0) {
+        return fail(
+            'guard',
+            describeViolations({ role: guard_role, violations })
+        )
+    }
+    if (!turn.ok) {
+        return fail(turn.failure === 'engine' ? 'engine' : 'agent', turn.error)
+    }
+    if (
+        turn.structured_output === undefined ||
+        turn.structured_output === null
+    ) {
+        return fail('result', `The ${role} finished with no structured output.`)
+    }
+    const checked = parseRoleResult({ role, output: turn.structured_output })
+    if (!checked.ok) return fail('result', checked.error)
     context.journal.append({
         kind: 'agent_finished',
         ticket,
@@ -269,21 +342,27 @@ const launchAgent = async ({
     action: Extract<BuildAction, { type: 'launch_agent' }>
 }) => {
     const { ticket, role, prompt, may_edit_tests } = action
-    const { path } = ticketWorktree({ state: context.state, ticket })
     context.journal.append({
         kind: 'agent_started',
         ticket,
         role,
         content: { role, prompt, follow_up_of: null },
     })
-    const turn = await context.launcher.launch({
-        role,
+    await runTurn({
+        context,
         ticket,
-        prompt,
-        cwd: path,
+        role,
         may_edit_tests,
+        start: (cwd) =>
+            context.launcher.launch({
+                role,
+                ticket,
+                prompt,
+                cwd,
+                may_edit_tests,
+                config: context.config,
+            }),
     })
-    journalTurn({ context, ticket, role, turn })
 }
 
 const followUpAgent = async ({
@@ -294,21 +373,31 @@ const followUpAgent = async ({
     action: Extract<BuildAction, { type: 'follow_up_agent' }>
 }) => {
     const { ticket, role, session_id, message } = action
-    const { path } = ticketWorktree({ state: context.state, ticket })
+    const snapshot = need({
+        value: context.state.snapshot?.tickets[ticket],
+        what: `snapshot of #${ticket}`,
+    })
     context.journal.append({
         kind: 'agent_started',
         ticket,
         role,
         content: { role, prompt: message, follow_up_of: session_id },
     })
-    const turn = await context.launcher.followUp({
-        session_id,
-        role,
+    await runTurn({
+        context,
         ticket,
-        message,
-        cwd: path,
+        role,
+        may_edit_tests: mayEditTests({ role, ticket: snapshot }),
+        start: (cwd) =>
+            context.launcher.followUp({
+                session_id,
+                role,
+                ticket,
+                message,
+                cwd,
+                config: context.config,
+            }),
     })
-    journalTurn({ context, ticket, role, turn })
 }
 
 /**

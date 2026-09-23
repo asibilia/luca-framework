@@ -346,6 +346,33 @@ export const reviewed = ({
     },
 })
 
+/** An agent turn failed, in the session its role's fixtures use unless told otherwise. */
+export const agentFailed = ({
+    ticket,
+    role,
+    failure,
+    error,
+    session_id,
+}: {
+    ticket: number
+    role: 'test-writer' | 'implementer' | 'ticket-reviewer'
+    failure: 'agent' | 'result' | 'guard' | 'engine'
+    /** Defaults to "It broke." */
+    error?: string
+    /** Defaults to `SESSIONS[role]`; `null` for a turn with no session. */
+    session_id?: string | null
+}): JournalEntry => ({
+    kind: 'agent_failed',
+    ticket,
+    role,
+    content: {
+        role,
+        failure,
+        error: error ?? 'It broke.',
+        session_id: session_id === undefined ? SESSIONS[role] : session_id,
+    },
+})
+
 /** The engine threw away a ticket worktree's uncommitted changes. */
 export const worktreeReset = ({
     ticket,

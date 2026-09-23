@@ -5,8 +5,10 @@ import { $ } from 'bun'
 
 import { specIssue, ticketIssue } from './intake-fixtures'
 
+import type { AgentLauncher } from '../agents/agent-launcher'
 import {
     createScriptedLauncher,
+    type ScriptedCall,
     type ScriptedTurn,
 } from '../agents/scripted-launcher'
 import { loadEngineConfig } from '../config/engine-config'
@@ -20,6 +22,7 @@ import {
     createInMemoryTracker,
     type InMemoryTracker,
 } from '../tracker/in-memory-tracker'
+import type { TrackerIssue } from '../tracker/tracker'
 
 /**
  * A practice repo for end-to-end engine tests: a throwaway git repo with a
@@ -71,65 +74,71 @@ export const SUM = `export const sum = ({ numbers }: { numbers: number[] }): num
     numbers.reduce((total, each) => total + each, 0)
 `
 
-/** The happy path: tests, then code, then an approving review. */
-export const HAPPY_TURNS: ScriptedTurn[] = [
-    {
+export const TEST_WRITER_RESULT = {
+    outcome: 'tests_written',
+    criteria: [
+        {
+            criterion_id: 'AC1',
+            tests: [
+                { file: 'src/sum.test.ts', name: 'sum > adds two numbers' },
+            ],
+        },
+        {
+            criterion_id: 'AC2',
+            tests: [
+                {
+                    file: 'src/sum.test.ts',
+                    name: 'sum > of no numbers is zero',
+                },
+            ],
+        },
+    ],
+    summary: 'One test per criterion.',
+    assumptions: ['sum takes a list of numbers.'],
+    run_notes: [],
+}
+
+export const IMPLEMENTER_RESULT = {
+    outcome: 'done',
+    bad_test: null,
+    summary: 'Added sum and exported it.',
+    assumptions: [],
+    run_notes: [],
+}
+
+export const APPROVE = {
+    verdict: 'approve',
+    findings: [],
+    summary: 'Both criteria are met with honest tests.',
+    assumptions: [],
+}
+
+/** The three turns of a clean ticket, by role: tests, code, approval. */
+export const happyTurns = (): {
+    testWriter: ScriptedTurn
+    implementer: ScriptedTurn
+    reviewer: ScriptedTurn
+} => ({
+    testWriter: {
         role: 'test-writer',
         ticket: 11,
         files: { 'src/sum.test.ts': SUM_TEST },
-        result: {
-            outcome: 'tests_written',
-            criteria: [
-                {
-                    criterion_id: 'AC1',
-                    tests: [
-                        {
-                            file: 'src/sum.test.ts',
-                            name: 'sum > adds two numbers',
-                        },
-                    ],
-                },
-                {
-                    criterion_id: 'AC2',
-                    tests: [
-                        {
-                            file: 'src/sum.test.ts',
-                            name: 'sum > of no numbers is zero',
-                        },
-                    ],
-                },
-            ],
-            summary: 'One test per criterion.',
-            assumptions: ['sum takes a list of numbers.'],
-            run_notes: [],
-        },
+        result: TEST_WRITER_RESULT,
     },
-    {
+    implementer: {
         role: 'implementer',
         ticket: 11,
         files: {
             'src/sum.ts': SUM,
             'src/index.ts': "export { sum } from './sum'\n",
         },
-        result: {
-            outcome: 'done',
-            bad_test: null,
-            summary: 'Added sum and exported it.',
-            assumptions: [],
-            run_notes: [],
-        },
+        result: IMPLEMENTER_RESULT,
     },
-    {
-        role: 'ticket-reviewer',
-        ticket: 11,
-        result: {
-            verdict: 'approve',
-            findings: [],
-            summary: 'Both criteria are met with honest tests.',
-            assumptions: [],
-        },
-    },
-]
+    reviewer: { role: 'ticket-reviewer', ticket: 11, result: APPROVE },
+})
+
+/** The happy path: tests, then code, then an approving review. */
+export const HAPPY_TURNS: ScriptedTurn[] = Object.values(happyTurns())
 
 /** Runs git in `cwd` and returns its output. */
 export const git = (cwd: string, ...args: string[]): Promise<string> =>
@@ -138,8 +147,11 @@ export const git = (cwd: string, ...args: string[]): Promise<string> =>
 /** A small repo with no tests yet, pushed to a local bare `origin`. */
 export const makePracticeRepo = async ({
     root,
+    config,
 }: {
     root: string
+    /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
+    config?: object
 }): Promise<{ repo: string; origin: string }> => {
     const repo = join(root, 'repo')
     const origin = join(root, 'origin.git')
@@ -157,7 +169,7 @@ export const makePracticeRepo = async ({
     await Bun.write(join(repo, 'scripts', 'lint.ts'), LINT_SCRIPT)
     await Bun.write(
         join(repo, '.luca', 'config.json'),
-        JSON.stringify(PRACTICE_ENGINE_CONFIG, null, 4)
+        JSON.stringify(config ?? PRACTICE_ENGINE_CONFIG, null, 4)
     )
     await git(repo, 'add', '-A')
     await git(repo, 'commit', '-q', '-m', 'initial')
@@ -166,16 +178,27 @@ export const makePracticeRepo = async ({
     return { repo, origin }
 }
 
-/** Spec #10 with one open ticket, #11 "Add sum", with two criteria. */
-export const practiceTracker = (): InMemoryTracker =>
+/**
+ * Spec #10 with one open ticket, #11: "Add sum" with two criteria, or the
+ * ticket given.
+ */
+export const practiceTracker = ({
+    ticket,
+}: {
+    ticket?: TrackerIssue
+} = {}): InMemoryTracker =>
     createInMemoryTracker({
         issues: [
             specIssue({ number: 10, title: 'Practice spec' }),
-            ticketIssue({
-                number: 11,
-                title: 'Add sum',
-                criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
-            }),
+            ticket ??
+                ticketIssue({
+                    number: 11,
+                    title: 'Add sum',
+                    criteria: [
+                        'sum adds two numbers',
+                        'sum of no numbers is zero',
+                    ],
+                }),
         ],
         sub_tickets: { 10: [11] },
     })
@@ -185,7 +208,7 @@ export type PracticeRun = {
     action: EngineAction
     tracker: InMemoryTracker
     records: JournalRecord[]
-    launches: { role: string; ticket: number; prompt: string }[]
+    launches: ScriptedCall[]
     origin: string
 }
 
@@ -231,4 +254,67 @@ export const runPractice = async ({
         launches: launcher.launches(),
         origin,
     }
+}
+
+/**
+ * Makes the practice repo under `root`, with this engine config committed,
+ * and returns what a test needs to run the engine on it, as often as it
+ * likes, with scripted turns or any launcher (such as the real Claude one
+ * for a smoke run). Every run appends to the same journal,
+ * `<root>/runs/run-1`.
+ *
+ * @example
+ * const practice = await createPracticeRepo({ root })
+ * const { action, records } = await practice.run({ turns })
+ */
+export const createPracticeRepo = async ({
+    root,
+    config,
+}: {
+    root: string
+    /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
+    config?: object
+}) => {
+    const { repo, origin } = await makePracticeRepo({ root, config })
+    const journal = createJournal({
+        file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
+    })
+
+    const run = async ({
+        turns,
+        launcher,
+        ticket,
+    }: {
+        /** Scripted agents' turns; ignored when `launcher` is given. */
+        turns?: ScriptedTurn[]
+        /** Any launcher, such as the real Claude one for a smoke run. */
+        launcher?: AgentLauncher
+        /** Ticket #11. Defaults to "Add sum". */
+        ticket?: TrackerIssue
+    }) => {
+        const loaded = await loadEngineConfig({ repo_root: repo })
+        if (!loaded.ok) throw new Error(loaded.error)
+        const tracker = practiceTracker({ ticket })
+        const scripted = createScriptedLauncher({ turns: turns ?? [] })
+        startRun({
+            journal,
+            spec_number: 10,
+            config: loaded.config,
+            base_branch: 'main',
+        })
+        const action = await runEngine({
+            journal,
+            tracker,
+            git: createGitAdapter({ repo_root: repo }),
+            launcher: launcher ?? scripted,
+        })
+        return {
+            action,
+            tracker,
+            records: journal.read(),
+            launches: scripted.launches(),
+        }
+    }
+
+    return { repo, origin, journal, run }
 }

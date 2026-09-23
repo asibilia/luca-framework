@@ -1,3 +1,4 @@
+import type { AgentFailure } from '../journal/journal-record'
 import type { ReplayedGates, ReplayedRedCheck } from '../journal/replay'
 import { clipOutput } from '../shell/run-command'
 
@@ -41,4 +42,32 @@ export const gateFixMessage = ({ gates }: { gates: ReplayedGates }): string =>
     [
         'The gates failed. Fix the code so every gate passes, then answer again.',
         failedChecks({ gates }),
+    ].join('\n\n')
+
+const FAILED_TRY_OPENINGS: Record<Exclude<AgentFailure, 'engine'>, string> = {
+    agent: 'Your last turn failed before it gave a result.',
+    result: "Your last turn ended without a result that fits your role's schema.",
+    guard: 'Your last turn changed things your role may not change.',
+}
+
+/**
+ * The follow-up an agent gets after a failed try (its turn failed, gave no
+ * usable result, or broke its role's rules): what failed, the error, that
+ * the engine undid every change the role may not make, and to try again.
+ * The engine journals it word for word.
+ *
+ * @example
+ * const message = failedTryMessage({ failure: 'guard', error: '- wrote src/sum.ts, which a test-writer may not write' })
+ */
+export const failedTryMessage = ({
+    failure,
+    error,
+}: {
+    failure: Exclude<AgentFailure, 'engine'>
+    error: string
+}): string =>
+    [
+        FAILED_TRY_OPENINGS[failure],
+        `## Error\n\n${clipOutput({ text: error })}`,
+        "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result.",
     ].join('\n\n')
