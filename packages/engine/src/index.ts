@@ -6,6 +6,24 @@ export {
     type AgentTurn,
     type LauncherFailure,
 } from './agents/agent-launcher'
+export {
+    createClaudeLauncher,
+    DEFAULT_IDLE_TIMEOUT_MS,
+    DEFAULT_TURN_TIMEOUT_MS,
+    type AgentQuery,
+    type AgentQuerySession,
+} from './agents/claude-launcher'
+export {
+    AGENT_EFFORT,
+    agentEnv,
+    agentOptions,
+    BANNED_ENV,
+    CLAUDE_MODEL,
+    checkModel,
+    MAX_TURNS,
+    resultJsonSchema,
+} from './agents/claude-options'
+export { roleInstructions } from './agents/role-instructions'
 export { rolePrompt } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
@@ -71,6 +89,7 @@ export {
     type Violation,
     type WorktreeState,
 } from './guards/after-turn-check'
+export { createGuardHook } from './guards/guard-hook'
 export {
     BASE_DISALLOWED_TOOLS,
     checkCommands,
