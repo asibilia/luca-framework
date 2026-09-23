@@ -93,6 +93,23 @@ export type AgentTurn =
       }
 
 /**
+ * An agent's line to the engine's message rules, for the launcher to wire
+ * into the agent's session: the `send_message` tool calls `send`, and the
+ * hook after every tool call calls `deliver`. Reviewers get none.
+ */
+export type AgentMessaging = {
+    /** The agent's own address, such as `implementer#11`. */
+    address: string
+    /** Journals the message (queued, not delivered, or refused) and says what happened, for the tool's answer. */
+    send: (args: { to: string; text: string }) => {
+        ok: boolean
+        detail: string
+    }
+    /** Hands over this agent's pending messages, journals the delivery, and returns the text to add, or null if none. */
+    deliver: (args: { tool_name: string | null }) => string | null
+}
+
+/**
  * Starts agents. The engine hands it a role, a ticket, a prompt, the
  * worktree the agent works in, and the engine config; the launcher runs the
  * agent and returns its result. Agents never touch git; the engine commits
@@ -116,6 +133,11 @@ export type AgentLauncher = {
          */
         may_edit_tests: boolean
         config: EngineConfig
+        /**
+         * The agent's messaging, `null` for a reviewer. The session keeps it
+         * for its follow-ups.
+         */
+        messaging: AgentMessaging | null
     }) => Promise<AgentTurn>
     /**
      * Sends a follow-up message to an agent session that is still open, such

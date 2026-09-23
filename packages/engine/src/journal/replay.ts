@@ -507,6 +507,11 @@ const applyRecord = ({
                         : { tickets: [...tickets, ticket], run },
             }
         }
+        // Agent messages change no ticket's progress; the message rules
+        // read them from the records themselves.
+        case 'agent_message':
+        case 'agent_message_delivered':
+            return next
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
@@ -537,6 +542,8 @@ type TicketRecord = Exclude<
             | 'limit_wait_started'
             | 'limit_wait_ended'
             | 'usage_recorded'
+            | 'agent_message'
+            | 'agent_message_delivered'
     }
 >
 

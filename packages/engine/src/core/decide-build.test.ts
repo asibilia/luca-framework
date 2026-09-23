@@ -184,6 +184,18 @@ describe('decision step: building a ticket', () => {
         expect(action.prompt).toContain('AC1: sum adds two numbers')
     })
 
+    test('a test-writer or implementer prompt names its address for agent messages; a reviewer has none', () => {
+        const address = (action: ReturnType<typeof decideAfter>) =>
+            action.type === 'launch_agent'
+                ? /Your address for agent messages: (\S+)/.exec(
+                      action.prompt
+                  )?.[1]
+                : action.type
+        expect(address(decideAfter(stepsUpTo(1)))).toBe('test-writer#11')
+        expect(address(decideAfter(stepsUpTo(5)))).toBe('implementer#11')
+        expect(address(decideAfter(stepsUpTo(9)))).toBeUndefined()
+    })
+
     test('the red check runs on the tests the test-writer mapped', () => {
         expect(decideAfter(stepsUpTo(2))).toEqual({
             type: 'run_red_check',

@@ -208,6 +208,7 @@ const launch = ({
         cwd: repo,
         may_edit_tests: role === 'test-writer',
         config: CONFIG,
+        messaging: null,
     })
 
 describe('the model', () => {
@@ -679,6 +680,7 @@ describe('follow-ups', () => {
             cwd: repo,
             may_edit_tests: false,
             config: CONFIG,
+            messaging: null,
         })
 
     const followUp = (

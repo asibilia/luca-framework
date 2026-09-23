@@ -2,6 +2,7 @@ import type { AgentRole, BadTest, Finding } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 import type { RejoinCause } from '../journal/journal-record'
+import { agentAddress, canMessage } from '../messages/agent-messages'
 
 /**
  * Why and how a ticket was sent back onto the run branch, for the prompts of
@@ -123,8 +124,9 @@ const ROLE_TASKS: Record<AgentRole, string> = {
 }
 
 /**
- * The prompt an agent starts with: its task, the spec, and its ticket with
- * each criterion's id. The engine journals it word for word.
+ * The prompt an agent starts with: its task, its address for agent messages
+ * (test-writers and implementers only), the spec, and its ticket with each
+ * criterion's id. The engine journals it word for word.
  *
  * The real per-role instructions come with the Claude launcher (#362); this
  * is the part every launcher gets.
@@ -163,6 +165,11 @@ export const rolePrompt = ({
         role === 'implementer' && refactor ? REFACTOR_TASK : ROLE_TASKS[role],
         ...(role === 'ticket-reviewer' && refactor
             ? [REFACTOR_REVIEW_TASK]
+            : []),
+        ...(canMessage({ role })
+            ? [
+                  `Your address for agent messages: ${agentAddress({ role, ticket: ticket.number })}`,
+              ]
             : []),
         `## Spec #${spec.number}: ${spec.title}`,
         spec.body,
