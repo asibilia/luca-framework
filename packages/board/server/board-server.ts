@@ -219,7 +219,11 @@ export const createBoardServer = ({
         }
         const before = memory.state
         const after = applyRecord({ state: before, record: read.record })
-        const described = describeRecord({ after, record: read.record })
+        const described = describeRecord({
+            before,
+            after,
+            record: read.record,
+        })
         memory.state = described ? { ...after, latest: described.text } : after
         return rowsForRecord({
             run_id: memory.entry.run_id,

@@ -19,14 +19,18 @@ export const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' })
 /** Opacity for dimmed parts: empty stages, the final review before it starts. */
 export const DIMMED = 0.45
 
-/** Plan usage color: green below 60%, yellow 60–85%, red above 85%. */
+/**
+ * Plan usage color: green below 60%, yellow 60–85%, red above 85%, muted
+ * with no reading.
+ */
 export const usageColor = ({
     level,
     theme,
 }: {
-    level: UsageLevel
+    level: UsageLevel | null
     theme: PluginTheme
 }): string => {
+    if (level === null) return theme.colors.foregroundMuted
     switch (level) {
         case 'ok':
             return theme.colors.statusSuccess
@@ -107,6 +111,7 @@ export const statusColor = ({
         case 'done':
             return theme.colors.statusSuccess
         case 'stuck':
+        case 'stopped':
         case 'refused':
         case 'ended_with_error':
             return theme.colors.statusDanger
@@ -143,10 +148,16 @@ export const statusText = ({ status }: { status: RunStatus }): string => {
             return 'nothing to do'
         case 'stuck':
             return 'stuck'
+        case 'stopped':
+            return 'run stopped'
         case 'ended_with_error':
             return 'engine stopped'
     }
 }
+
+/** A usage percent, or "–" for a window with no reading yet. */
+export const percentText = ({ percent }: { percent: number | null }): string =>
+    percent === null ? '–' : `${percent}%`
 
 /** 1234 → "1.2k". */
 export const tokensText = ({ tokens }: { tokens: number }): string =>

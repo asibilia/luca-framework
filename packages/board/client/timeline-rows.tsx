@@ -15,6 +15,7 @@ import {
     statusColor,
     statusText,
     toneColor,
+    percentText,
     usageColor,
 } from './board-look'
 
@@ -138,13 +139,13 @@ const UsageText = ({
                 color: usageColor({ level: usage.five_hour_level, theme }),
             }}
         >
-            {usage.five_hour_percent}%
+            {percentText({ percent: usage.five_hour_percent })}
         </Text>{' '}
         · week{' '}
         <Text
             style={{ color: usageColor({ level: usage.weekly_level, theme }) }}
         >
-            {usage.weekly_percent}%
+            {percentText({ percent: usage.weekly_percent })}
         </Text>
     </Text>
 )

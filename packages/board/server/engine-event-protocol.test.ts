@@ -11,7 +11,8 @@ import {
     stamp,
     ticketStuck,
     ticketWorktreeCreated,
-    usageReading,
+    agentSession,
+    rateLimit,
     wholeTicket,
 } from './testing/journal-fixtures'
 
@@ -34,7 +35,15 @@ const journal = () =>
             ...wholeTicket({ ticket: 11 }),
             ticketWorktreeCreated({ ticket: 13 }),
             ticketStuck({ ticket: 13, reason: 'gates_failed', detail: 'x' }),
-            usageReading({ five_hour: 70, weekly: 20 }),
+            agentSession({
+                ticket: 13,
+                role: 'implementer',
+                output: 500,
+                rate_limits: [
+                    rateLimit({ type: 'five_hour', utilization: 0.7 }),
+                    rateLimit({ type: 'seven_day', utilization: 0.2 }),
+                ],
+            }),
         ],
     })
 

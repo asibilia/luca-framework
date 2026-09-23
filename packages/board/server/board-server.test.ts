@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { createHarness, type Harness } from './testing/board-harness'
 import {
     agentFinished,
+    agentSession,
     agentStarted,
     baselineTests,
     commitMade,
@@ -81,11 +82,13 @@ describe('engine.event: records in, board state out', () => {
             },
             {
                 entries: [
-                    agentFinished({
+                    agentSession({
                         ticket,
                         role: 'test-writer',
-                        usage: { total_tokens: 1200 },
+                        input: 200,
+                        output: 1000,
                     }),
+                    agentFinished({ ticket, role: 'test-writer' }),
                     redCheck({ ticket, ok: true, failing: 2, passing: 4 }),
                 ],
                 expected: {
@@ -95,6 +98,7 @@ describe('engine.event: records in, board state out', () => {
                     role: null,
                     tests: { failing: 2, total: 6 },
                     tokens: 1200,
+                    agent_tokens: { 'test-writer': 1200 },
                 },
             },
             {
@@ -107,13 +111,21 @@ describe('engine.event: records in, board state out', () => {
             },
             {
                 entries: [
-                    agentFinished({
+                    agentSession({
                         ticket,
                         role: 'implementer',
-                        usage: { total_tokens: 800 },
+                        output: 300,
+                        cache_read: 400,
+                        cache_creation: 100,
                     }),
+                    agentFinished({ ticket, role: 'implementer' }),
                 ],
-                expected: { step: 3, activity: 'checks', tokens: 2000 },
+                expected: {
+                    step: 3,
+                    activity: 'checks',
+                    tokens: 2000,
+                    agent_tokens: { 'test-writer': 1200, implementer: 800 },
+                },
             },
             {
                 entries: [

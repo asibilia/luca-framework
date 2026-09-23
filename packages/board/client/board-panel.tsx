@@ -22,6 +22,7 @@ import {
     statusColor,
     statusText,
     tokensText,
+    percentText,
     usageColor,
 } from './board-look'
 
@@ -589,6 +590,17 @@ const TicketDetail = ({
                     {ticket.findings.nit} nit
                 </Text>
             ) : null}
+            {Object.keys(ticket.agent_tokens).length > 0 ? (
+                <Text style={styles.muted}>
+                    tokens:{' '}
+                    {Object.entries(ticket.agent_tokens)
+                        .map(
+                            ([role, tokens]) =>
+                                `${role} ${tokensText({ tokens })}`
+                        )
+                        .join(' · ')}
+                </Text>
+            ) : null}
             {ticket.tried.length > 0 ? (
                 <>
                     <Text style={styles.label}>Tried</Text>
@@ -868,7 +880,7 @@ const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
                             }),
                         }}
                     >
-                        {usage.five_hour_percent}%
+                        {percentText({ percent: usage.five_hour_percent })}
                     </Text>{' '}
                     · week{' '}
                     <Text
@@ -879,7 +891,7 @@ const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
                             }),
                         }}
                     >
-                        {usage.weekly_percent}%
+                        {percentText({ percent: usage.weekly_percent })}
                     </Text>
                 </Text>
             ) : (
@@ -1069,6 +1081,16 @@ export const BoardPanel = ({
                     . The run carries on by itself, so it isn't stuck.
                 </Banner>
             ) : null}
+            {run.stopped ? (
+                <Banner
+                    icon="OctagonX"
+                    color={theme.colors.statusDanger}
+                    styles={styles}
+                >
+                    The run stopped: {run.stopped.reason}. Start it again with
+                    the same run id to pick up where it stopped.
+                </Banner>
+            ) : null}
             {run.engine_ended && !run.engine_ended.ok ? (
                 <Banner
                     icon="OctagonX"
@@ -1162,6 +1184,13 @@ export const BoardPanel = ({
             {state.latest ? (
                 <Text style={styles.small} numberOfLines={2}>
                     latest: {state.latest}
+                </Text>
+            ) : null}
+            {state.jev.asked > 0 ? (
+                <Text style={styles.small}>
+                    Jev, in shadow mode: {state.jev.asked} asked,{' '}
+                    {state.jev.answered} answered, {state.jev.failed} without an
+                    answer. The engine doesn't act on them.
                 </Text>
             ) : null}
         </ScrollView>

@@ -1,5 +1,5 @@
 import type { BoardRecord } from './board-vocabulary'
-import { reasonText } from './reduce-board'
+import { failureText, reasonText, startKind } from './reduce-board'
 
 import {
     ROW_KIND,
@@ -121,12 +121,15 @@ const event = ({ text, tone }: { text: string; tone: Tone }) => ({ text, tone })
 
 /**
  * What a record means in one line, or `null` for records that are noise in
- * a chat (snapshots, usage readings, a clean leftover scan, ...).
+ * a chat (snapshots, session summaries, a clean leftover scan, Jev in shadow
+ * mode, ...).
  */
 export const describeRecord = ({
+    before,
     after,
     record,
 }: {
+    before: BoardState
     after: BoardState
     record: BoardRecord
 }): { text: string; tone: Tone } | null => {
@@ -160,16 +163,25 @@ export const describeRecord = ({
         case 'ticket_worktree_created':
             return event({ text: `${at}started.`, tone: 'info' })
         case 'agent_started':
-            return event({
-                text: `${at}the ${record.content.role} started.`,
-                tone: 'info',
-            })
+            return startedText({ before, after, record })
         case 'agent_finished':
             return finishedText({ record })
-        case 'agent_failed':
+        case 'agent_failed': {
+            const { role, error, failure } = record.content
             return event({
-                text: `${at}the ${record.content.role} failed: ${record.content.error.split('\n')[0] ?? ''}`,
+                text: `${at}the ${role} ${failureText({ failure })}: ${error.split('\n')[0] ?? ''}`,
+                tone: failure === 'engine' ? 'warning' : 'danger',
+            })
+        }
+        case 'run_stopped':
+            return event({
+                text: `${at}the run stopped: ${record.content.reason}. Start it again with the same run id to pick up where it stopped.`,
                 tone: 'danger',
+            })
+        case 'worktree_reset':
+            return event({
+                text: `${at}starting over from the tests after a bad test.`,
+                tone: 'warning',
             })
         case 'red_check': {
             const failing = after.tickets.find(
@@ -233,16 +245,6 @@ export const describeRecord = ({
                 text: `Pull request #${record.content.number} opened: ${record.content.url}`,
                 tone: 'success',
             })
-        case 'fix_round':
-            return event({
-                text: `${at}fix round ${record.content.round}/${LOOP_CAP} after the ${record.content.loop.replaceAll('_', ' ')}.`,
-                tone: 'warning',
-            })
-        case 'review_finished':
-            return event({
-                text: `${at}review round ${record.content.round}: ${findingsText({ findings: record.content.findings })}.`,
-                tone: record.content.findings.blocker > 0 ? 'warning' : 'info',
-            })
         case 'reply_received': {
             const ticket = record.content.ticket ?? record.ticket
             return event({
@@ -286,11 +288,47 @@ export const describeRecord = ({
         case 'ticket_snapshot':
         case 'baseline_tests':
         case 'run_branch_pushed':
-        case 'usage_reading':
+        case 'agent_session':
+        case 'jev_asked':
+        case 'jev_answered':
+        case 'jev_failed':
         case 'limit_wait_started':
         case 'limit_wait_ended':
         case 'lens_started':
             return null
+    }
+}
+
+const startedText = ({
+    before,
+    after,
+    record,
+}: {
+    before: BoardState
+    after: BoardState
+    record: Extract<BoardRecord, { kind: 'agent_started' }>
+}): { text: string; tone: Tone } | null => {
+    const at = on({ ticket: record.ticket })
+    const { role, follow_up_of } = record.content
+    const card = before.tickets.find(({ number }) => number === record.ticket)
+    const round = after.tickets.find(
+        ({ number }) => number === record.ticket
+    )?.fix_round
+    switch (startKind({ card, follow_up_of })) {
+        case 'fix':
+            return event({
+                text: `${at}fix round ${round ?? 0}/${LOOP_CAP}: the ${role} got the failure back.`,
+                tone: 'warning',
+            })
+        case 'resent':
+            return null
+        case 'retry':
+            return event({
+                text: `${at}the ${role} tries again.`,
+                tone: 'warning',
+            })
+        case 'fresh':
+            return event({ text: `${at}the ${role} started.`, tone: 'info' })
     }
 }
 
@@ -365,7 +403,7 @@ export const rowsForRecord = ({
     record: BoardRecord
 }): BoardRow[] => {
     const rows: BoardRow[] = []
-    const described = describeRecord({ after, record })
+    const described = describeRecord({ before, after, record })
     if (described) {
         const data: EventRow = {
             time: record.time,

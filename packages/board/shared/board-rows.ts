@@ -27,10 +27,10 @@ export const ToneSchema = z.enum(['info', 'success', 'warning', 'danger'])
 export type Tone = z.infer<typeof ToneSchema>
 
 const UsageLineSchema = z.object({
-    five_hour_percent: z.number(),
-    weekly_percent: z.number(),
-    five_hour_level: UsageLevelSchema,
-    weekly_level: UsageLevelSchema,
+    five_hour_percent: z.number().nullable(),
+    weekly_percent: z.number().nullable(),
+    five_hour_level: UsageLevelSchema.nullable(),
+    weekly_level: UsageLevelSchema.nullable(),
 })
 
 /** The run's header row, updated in place. */

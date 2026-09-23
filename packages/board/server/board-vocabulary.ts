@@ -6,9 +6,9 @@ import { z } from 'zod'
  * add fields without breaking the board, and the plugin never needs the
  * engine's code. A record whose content doesn't fit is skipped and logged.
  *
- * Kinds marked "later" aren't journaled yet; the tickets that add them
- * (#363 fix loops, #364 reviews, #366 limit waits and replies, #367/#368 the
- * final review) should journal these shapes. See the README.
+ * Kinds marked "not journaled yet" have no engine record yet; the tickets
+ * that add them (#366 replies and skips, #367 the final review, #368 limit
+ * waits) should journal these shapes. See the README.
  */
 
 const FindingCountsSchema = z.looseObject({
@@ -27,12 +27,37 @@ const TestRunSchema = z.looseObject({
 
 const WorktreeSchema = z.looseObject({ branch: z.string() })
 
-/** Token counts are loose: any of these shapes is read. */
-const TokenUsageSchema = z.looseObject({
-    total_tokens: z.number().optional(),
-    input_tokens: z.number().optional(),
-    output_tokens: z.number().optional(),
+const tokenCount = z.number().min(0).catch(0)
+
+/**
+ * One `rate_limit_event`'s info, as the Claude Agent SDK sends it:
+ * `utilization` is 0 to 1, `resetsAt` is in seconds since the epoch.
+ */
+const RateLimitReadingSchema = z.looseObject({
+    rateLimitType: z.string().optional().catch(undefined),
+    utilization: z.number().optional().catch(undefined),
+    resetsAt: z.number().optional().catch(undefined),
 })
+
+/** The launcher's summary of an agent's session: tokens and readings. */
+const AgentSessionSchema = z.looseObject({
+    usage: z
+        .looseObject({
+            input_tokens: tokenCount,
+            output_tokens: tokenCount,
+            cache_read_input_tokens: tokenCount,
+            cache_creation_input_tokens: tokenCount,
+        })
+        .catch({
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_read_input_tokens: 0,
+            cache_creation_input_tokens: 0,
+        }),
+    rate_limit_events: z.array(RateLimitReadingSchema).catch([]),
+})
+
+const JevJobSchema = z.looseObject({ job: z.string() })
 
 export const BOARD_VOCABULARY = {
     run_started: z.looseObject({ spec_number: z.number().int() }),
@@ -61,7 +86,11 @@ export const BOARD_VOCABULARY = {
     run_branch_created: WorktreeSchema,
     ticket_worktree_created: WorktreeSchema,
     baseline_tests: TestRunSchema,
-    agent_started: z.looseObject({ role: z.string() }),
+    agent_started: z.looseObject({
+        role: z.string(),
+        /** The session a fix-loop or failed-try follow-up went to. */
+        follow_up_of: z.string().nullable().catch(null),
+    }),
     agent_finished: z.looseObject({
         role: z.string(),
         result: z
@@ -71,10 +100,22 @@ export const BOARD_VOCABULARY = {
                 findings: FindingListSchema.optional(),
             })
             .catch({}),
-        usage: TokenUsageSchema.optional(),
-        total_tokens: z.number().optional(),
     }),
-    agent_failed: z.looseObject({ role: z.string(), error: z.string() }),
+    agent_failed: z.looseObject({
+        role: z.string(),
+        error: z.string(),
+        /** `agent`, `result`, `guard`, or `engine`. */
+        failure: z.string().catch('agent'),
+    }),
+    agent_session: z.looseObject({
+        role: z.string(),
+        session: AgentSessionSchema,
+    }),
+    run_stopped: z.looseObject({
+        reason: z.string(),
+        role: z.string().nullable().catch(null),
+    }),
+    worktree_reset: z.looseObject({}),
     red_check: z.looseObject({
         ok: z.boolean(),
         problems: z.array(z.string()).catch([]),
@@ -103,25 +144,16 @@ export const BOARD_VOCABULARY = {
         number: z.number().int(),
         url: z.string(),
     }),
+    // Jev in shadow mode: counted, never acted on.
+    jev_asked: JevJobSchema,
+    jev_answered: JevJobSchema,
+    jev_failed: JevJobSchema,
 
-    // Later kinds.
-    usage_reading: z.looseObject({
-        five_hour_percent: z.number(),
-        weekly_percent: z.number(),
-        resets_at: z.string().nullable().optional(),
-    }),
+    // Not journaled yet.
     limit_wait_started: z.looseObject({
         resets_at: z.string().nullable().optional(),
     }),
     limit_wait_ended: z.looseObject({}),
-    fix_round: z.looseObject({
-        loop: z.enum(['red_check', 'gates', 'review']),
-        round: z.number().int().min(0),
-    }),
-    review_finished: z.looseObject({
-        round: z.number().int().min(0),
-        findings: FindingCountsSchema,
-    }),
     reply_received: z.looseObject({
         word: z.enum(['retry', 'skip', 'stop', 'ship']),
         ticket: z.number().int().nullable().optional(),
@@ -143,7 +175,7 @@ export const BOARD_VOCABULARY = {
 
 export type BoardKind = keyof typeof BOARD_VOCABULARY
 
-/** The kinds the board understands, today's and later ones. */
+/** The kinds the board understands, journaled ones and later ones. */
 export const BOARD_KINDS = Object.keys(BOARD_VOCABULARY)
 
 const entry = <Kind extends BoardKind>({ kind }: { kind: Kind }) =>
@@ -162,6 +194,9 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'agent_started' }),
     entry({ kind: 'agent_finished' }),
     entry({ kind: 'agent_failed' }),
+    entry({ kind: 'agent_session' }),
+    entry({ kind: 'run_stopped' }),
+    entry({ kind: 'worktree_reset' }),
     entry({ kind: 'red_check' }),
     entry({ kind: 'leftover_scan' }),
     entry({ kind: 'commit_made' }),
@@ -170,11 +205,11 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
     entry({ kind: 'pull_request_opened' }),
-    entry({ kind: 'usage_reading' }),
+    entry({ kind: 'jev_asked' }),
+    entry({ kind: 'jev_answered' }),
+    entry({ kind: 'jev_failed' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
-    entry({ kind: 'fix_round' }),
-    entry({ kind: 'review_finished' }),
     entry({ kind: 'reply_received' }),
     entry({ kind: 'ticket_skipped' }),
     entry({ kind: 'final_review_started' }),

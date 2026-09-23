@@ -5,7 +5,7 @@ import { z } from 'zod'
  * panel reads it. Shared by both runtimes, so it holds only Zod schemas and
  * plain values. Words follow CONTEXT.md: ticket, blocked, gate, red check,
  * fix loop, ticket review, final review, lens, finding, stuck, skipped ticket,
- * limit wait.
+ * limit wait, shadow mode.
  */
 
 /** The plugin id, as in paseo-plugin.json. The engine calls RPCs on it. */
@@ -75,6 +75,7 @@ export const RunStatusSchema = z.enum([
     'refused',
     'nothing_to_do',
     'stuck',
+    'stopped',
     'ended_with_error',
 ])
 
@@ -112,6 +113,11 @@ export const FindingCountsSchema = z.object({
 
 export type FindingCounts = z.infer<typeof FindingCountsSchema>
 
+/** A check whose failure went back to an agent: its fix loop is open. */
+export const OpenCheckSchema = z.enum(['red_check', 'gates'])
+
+export type OpenCheck = z.infer<typeof OpenCheckSchema>
+
 export const TicketCardSchema = z.object({
     number: z.number().int(),
     title: z.string(),
@@ -130,8 +136,13 @@ export const TicketCardSchema = z.object({
     activity: z.string(),
     /** The role working on it now, `null` when no agent is. */
     role: z.string().nullable(),
+    /** Fix rounds in the current fix loop; back to 0 once its check passes. */
     fix_round: z.number().int().min(0),
     review_round: z.number().int().min(0),
+    /** The check whose failure the next follow-up answers, if any. */
+    open_check: OpenCheckSchema.nullable(),
+    /** The role whose latest turn failed, until an agent finishes again. */
+    failed_turn: z.string().nullable(),
     tests: z
         .object({
             failing: z.number().int().min(0),
@@ -139,7 +150,10 @@ export const TicketCardSchema = z.object({
         })
         .nullable(),
     findings: FindingCountsSchema.nullable(),
+    /** Every token the ticket's agents read or wrote, cache reads included. */
     tokens: z.number().min(0),
+    /** The same tokens by role. */
+    agent_tokens: z.record(z.string(), z.number().min(0)),
     /** What was tried on it so far (failed checks, fix rounds), oldest first. */
     tried: z.array(z.string()),
 })
@@ -215,11 +229,16 @@ export const FinalReviewSchema = z.object({
 
 export type FinalReview = z.infer<typeof FinalReviewSchema>
 
+/**
+ * The plan's usage, from the rate-limit readings in agents' sessions. Each
+ * window keeps its latest reading; `null` until one arrives.
+ */
 export const UsageSchema = z.object({
-    five_hour_percent: z.number(),
-    weekly_percent: z.number(),
-    five_hour_level: UsageLevelSchema,
-    weekly_level: UsageLevelSchema,
+    five_hour_percent: z.number().nullable(),
+    weekly_percent: z.number().nullable(),
+    five_hour_level: UsageLevelSchema.nullable(),
+    weekly_level: UsageLevelSchema.nullable(),
+    /** When the five-hour window resets. */
     resets_at: z.string().nullable(),
     read_at: z.string(),
 })
@@ -232,6 +251,20 @@ export const EngineEndedSchema = z.object({
 })
 
 export type EngineEnded = z.infer<typeof EngineEndedSchema>
+
+/**
+ * The run stopped because going on was unsafe (wrong credentials or plan,
+ * a rejected rate limit, overage, ...). Starting it again with the same run
+ * id picks the step up again.
+ */
+export const RunStoppedSchema = z.object({
+    reason: z.string(),
+    role: z.string().nullable(),
+    ticket: z.number().int().nullable(),
+    since: z.string(),
+})
+
+export type RunStopped = z.infer<typeof RunStoppedSchema>
 
 export const RunInfoSchema = z.object({
     run_id: z.string(),
@@ -249,10 +282,24 @@ export const RunInfoSchema = z.object({
     started_at: z.string(),
     last_time: z.string().nullable(),
     engine_ended: EngineEndedSchema.nullable(),
+    /** Set by `run_stopped`, cleared once the engine moves on. */
+    stopped: RunStoppedSchema.nullable(),
     log_path: z.string().nullable(),
 })
 
 export type RunInfo = z.infer<typeof RunInfoSchema>
+
+/**
+ * Jev in shadow mode: how often the engine asked it and what came back. The
+ * engine never acts on the answers, so the board only counts them.
+ */
+export const JevCountsSchema = z.object({
+    asked: z.number().int().min(0),
+    answered: z.number().int().min(0),
+    failed: z.number().int().min(0),
+})
+
+export type JevCounts = z.infer<typeof JevCountsSchema>
 
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
@@ -263,6 +310,7 @@ export const BoardStateSchema = z.object({
     needs_you: z.array(NeedsYouSchema),
     tickets: z.array(TicketCardSchema),
     final_review: FinalReviewSchema,
+    jev: JevCountsSchema,
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

@@ -2,24 +2,34 @@ import { afterEach, describe, expect, test } from 'bun:test'
 
 import { createHarness, type Harness } from './testing/board-harness'
 import {
+    agentFailed,
+    agentFinished,
+    agentSession,
+    agentStarted,
     finalReviewFixing,
     finalReviewPassed,
     finalReviewStarted,
     finalReviewStuck,
-    fixRound,
     gatesRun,
     intakeOfThree,
+    jevAnswered,
+    jevAsked,
+    jevFailed,
     lensFinished,
     lensStarted,
     limitWaitEnded,
     limitWaitStarted,
     pullRequestOpened,
+    rateLimit,
+    redCheck,
     replyReceived,
+    runStopped,
+    sessionOf,
     ticketSkipped,
     ticketStuck,
     ticketWorktreeCreated,
-    usageReading,
     wholeTicket,
+    worktreeReset,
     type Entry,
 } from './testing/journal-fixtures'
 
@@ -44,13 +54,44 @@ const runWith = async ({ entries }: { entries: Entry[] }) => {
 const rowsOfKind = ({ kind }: { kind: string }) =>
     harness.latestRows().filter(({ row }) => row.kind === kind)
 
+/** The chat's event rows, as text and tone, oldest first. */
+const eventRows = () =>
+    harness
+        .latestRows()
+        .flatMap(({ row }) =>
+            row.kind === 'luca-board-event'
+                ? [{ text: row.data.text, tone: row.data.tone }]
+                : []
+        )
+
+/** Gates that failed, then the implementer's follow-up in its session. */
+const failedGatesRound = ({ ticket }: { ticket: number }): Entry[] => [
+    gatesRun({ ticket, ok: false }),
+    agentStarted({
+        ticket,
+        role: 'implementer',
+        follow_up_of: sessionOf({ ticket, role: 'implementer' }),
+    }),
+    agentFinished({ ticket, role: 'implementer' }),
+]
+
+/** Ticket 13 up to its first implementer result. */
+const codedTicket13 = (): Entry[] => [
+    ticketWorktreeCreated({ ticket: 13 }),
+    agentStarted({ ticket: 13, role: 'test-writer' }),
+    agentFinished({ ticket: 13, role: 'test-writer' }),
+    redCheck({ ticket: 13, ok: true, failing: 1, passing: 3 }),
+    agentStarted({ ticket: 13, role: 'implementer' }),
+    agentFinished({ ticket: 13, role: 'implementer' }),
+]
+
 describe('stuck work: "Needs you" and stuck rows', () => {
     test('a stuck ticket goes to Needs you with what was tried and the exact replies', async () => {
         const { run_id } = await runWith({
             entries: [
-                ticketWorktreeCreated({ ticket: 13 }),
+                ...codedTicket13(),
+                ...failedGatesRound({ ticket: 13 }),
                 gatesRun({ ticket: 13, ok: false }),
-                fixRound({ ticket: 13, loop: 'gates', round: 1 }),
                 ticketStuck({
                     ticket: 13,
                     reason: 'gates_failed',
@@ -69,7 +110,8 @@ describe('stuck work: "Needs you" and stuck rows', () => {
                 detail: 'bun test: 2 tests fail in menu.test.ts',
                 tried: [
                     'The checks failed: test',
-                    'Fix round 1/3 after the gates',
+                    'Fix round 1/3 after the checks',
+                    'The checks failed: test',
                 ],
                 replies: ['retry #13', 'skip #13', 'stop'],
                 since: expect.any(String),
@@ -176,25 +218,103 @@ describe('the pull request', () => {
     })
 })
 
-describe('plan usage', () => {
+describe('plan usage, from the rate-limit readings in agent sessions', () => {
     test.each([
-        [59, 'ok'],
-        [60, 'warn'],
-        [85, 'warn'],
-        [86, 'high'],
-    ])('%d%% reads as %s', async (percent, level) => {
+        [0.59, 59, 'ok'],
+        [0.6, 60, 'warn'],
+        [0.85, 85, 'warn'],
+        [0.86, 86, 'high'],
+    ])(
+        'a five-hour utilization of %d reads as %d%% (%s)',
+        async (utilization, percent, level) => {
+            await runWith({
+                entries: [
+                    ticketWorktreeCreated({ ticket: 11 }),
+                    agentSession({
+                        ticket: 11,
+                        role: 'implementer',
+                        rate_limits: [
+                            rateLimit({ type: 'five_hour', utilization }),
+                            rateLimit({ type: 'seven_day', utilization: 0.1 }),
+                        ],
+                    }),
+                ],
+            })
+
+            expect((await harness.state()).usage).toMatchObject({
+                five_hour_percent: percent,
+                five_hour_level: level,
+                weekly_percent: 10,
+                weekly_level: 'ok',
+            })
+            const header = rowsOfKind({ kind: 'luca-board-run' })[0]?.row
+            expect(header).toMatchObject({
+                data: { usage: { five_hour_level: level } },
+            })
+        }
+    )
+
+    test('each window keeps its latest reading, and the five-hour one says when it resets', async () => {
+        const resets_at = '2026-09-23T17:00:00.000Z'
         await runWith({
-            entries: [usageReading({ five_hour: percent, weekly: 10 })],
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'test-writer',
+                    rate_limits: [
+                        rateLimit({ type: 'seven_day_opus', utilization: 0.3 }),
+                    ],
+                }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [
+                        rateLimit({
+                            type: 'five_hour',
+                            utilization: 0.2,
+                            resets_at,
+                        }),
+                        rateLimit({
+                            type: 'five_hour',
+                            utilization: 0.25,
+                            resets_at,
+                        }),
+                    ],
+                }),
+                // A session with no readings changes nothing.
+                agentSession({ ticket: 11, role: 'ticket-reviewer' }),
+            ],
+        })
+
+        expect((await harness.state()).usage).toEqual({
+            five_hour_percent: 25,
+            weekly_percent: 30,
+            five_hour_level: 'ok',
+            weekly_level: 'ok',
+            resets_at,
+            read_at: expect.any(String),
+        })
+    })
+
+    test('a window with no reading yet stays unknown', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [
+                        rateLimit({ type: 'seven_day', utilization: 0.4 }),
+                    ],
+                }),
+            ],
         })
 
         expect((await harness.state()).usage).toMatchObject({
-            five_hour_percent: percent,
-            five_hour_level: level,
-            weekly_level: 'ok',
-        })
-        const header = rowsOfKind({ kind: 'luca-board-run' })[0]?.row
-        expect(header).toMatchObject({
-            data: { usage: { five_hour_level: level } },
+            five_hour_percent: null,
+            five_hour_level: null,
+            weekly_percent: 40,
         })
     })
 
@@ -204,12 +324,19 @@ describe('plan usage', () => {
     })
 })
 
-describe('limit waits', () => {
+describe('limit waits (not journaled yet, #368)', () => {
     test('a limit wait shows a banner and a limit row, and both clear when it ends', async () => {
         const resets_at = '2026-09-23T17:00:00.000Z'
         const { run_id, token, next } = await runWith({
             entries: [
-                usageReading({ five_hour: 100, weekly: 40 }),
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentSession({
+                    ticket: 11,
+                    role: 'implementer',
+                    rate_limits: [
+                        rateLimit({ type: 'five_hour', utilization: 1 }),
+                    ],
+                }),
                 limitWaitStarted({ resets_at }),
             ],
         })
@@ -242,6 +369,348 @@ describe('limit waits', () => {
         const limit = rowsOfKind({ kind: 'luca-board-limit' })
         expect(limit).toHaveLength(1)
         expect(limit[0]?.row).toMatchObject({ data: { status: 'over' } })
+    })
+})
+
+describe('fix loops', () => {
+    test('a failed red check sends the test-writer a follow-up: one fix round each', async () => {
+        const ticket = 13
+        const followUp = agentStarted({
+            ticket,
+            role: 'test-writer',
+            follow_up_of: sessionOf({ ticket, role: 'test-writer' }),
+        })
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket }),
+                agentStarted({ ticket, role: 'test-writer' }),
+                agentFinished({ ticket, role: 'test-writer' }),
+                redCheck({ ticket, ok: false, failing: 0, passing: 4 }),
+                followUp,
+                agentFinished({ ticket, role: 'test-writer' }),
+                redCheck({ ticket, ok: false, failing: 0, passing: 4 }),
+                followUp,
+            ],
+        })
+
+        expect(await harness.ticket({ number: ticket })).toMatchObject({
+            fix_round: 2,
+            open_check: 'red_check',
+            activity: 'fixing tests (2/3)',
+            role: 'test-writer',
+        })
+        expect(eventRows()).toContainEqual({
+            text: '#13: fix round 2/3: the test-writer got the failure back.',
+            tone: 'warning',
+        })
+    })
+
+    test('a follow-up sent again after a crash is the same round', async () => {
+        const ticket = 13
+        const followUp = agentStarted({
+            ticket,
+            role: 'implementer',
+            follow_up_of: sessionOf({ ticket, role: 'implementer' }),
+        })
+        await runWith({
+            entries: [
+                ...codedTicket13(),
+                gatesRun({ ticket, ok: false }),
+                followUp,
+                followUp,
+            ],
+        })
+
+        expect(await harness.ticket({ number: ticket })).toMatchObject({
+            fix_round: 1,
+            activity: 'fixing (1/3)',
+        })
+        expect(
+            eventRows().filter(({ text }) => text.includes('fix round'))
+        ).toHaveLength(1)
+    })
+
+    test('passing checks close the loop and reset the counter', async () => {
+        await runWith({
+            entries: [
+                ...codedTicket13(),
+                ...failedGatesRound({ ticket: 13 }),
+                gatesRun({ ticket: 13, ok: true }),
+            ],
+        })
+
+        expect(await harness.ticket({ number: 13 })).toMatchObject({
+            fix_round: 0,
+            open_check: null,
+            step: 4,
+            activity: 'checks passed',
+        })
+    })
+
+    test('a failed install is a failed check like any other', async () => {
+        await runWith({
+            entries: [
+                ...codedTicket13(),
+                {
+                    kind: 'gates_run',
+                    ticket: 13,
+                    role: null,
+                    content: {
+                        target: 'ticket',
+                        ok: false,
+                        checks: [
+                            {
+                                name: 'install',
+                                command: 'bun install',
+                                ok: false,
+                                exit_code: 1,
+                                output: 'error: lockfile',
+                            },
+                        ],
+                    },
+                },
+            ],
+        })
+
+        expect(eventRows().at(-1)).toEqual({
+            text: '#13: checks failed: install.',
+            tone: 'danger',
+        })
+        expect((await harness.ticket({ number: 13 }))?.open_check).toBe('gates')
+    })
+})
+
+describe('failed tries', () => {
+    test.each([
+        ['agent', 'failed', 'danger'],
+        ['result', 'gave no usable result', 'danger'],
+        ['guard', "broke its role's rules (the changes were undone)", 'danger'],
+        [
+            'engine',
+            'could not run (an engine-side failure; a fresh agent starts)',
+            'warning',
+        ],
+    ] as const)(
+        'a %s failure is a "tried" line and a %s row',
+        async (failure, words, tone) => {
+            await runWith({
+                entries: [
+                    ticketWorktreeCreated({ ticket: 13 }),
+                    agentStarted({ ticket: 13, role: 'implementer' }),
+                    agentFailed({
+                        ticket: 13,
+                        role: 'implementer',
+                        failure,
+                        error: 'it went wrong\nmore detail',
+                    }),
+                ],
+            })
+
+            expect(await harness.ticket({ number: 13 })).toMatchObject({
+                role: null,
+                failed_turn: 'implementer',
+                tried: [`The implementer ${words}: it went wrong`],
+            })
+            expect(eventRows().at(-1)).toEqual({
+                text: `#13: the implementer ${words}: it went wrong`,
+                tone,
+            })
+        }
+    )
+
+    test('the next turn is a retry, not a fix round, and a result clears the failure', async () => {
+        const ticket = 13
+        await runWith({
+            entries: [
+                ...codedTicket13(),
+                gatesRun({ ticket, ok: false }),
+                agentStarted({
+                    ticket,
+                    role: 'implementer',
+                    follow_up_of: sessionOf({ ticket, role: 'implementer' }),
+                }),
+                agentFailed({
+                    ticket,
+                    role: 'implementer',
+                    failure: 'guard',
+                    error: 'It edited a test file.',
+                }),
+                agentStarted({
+                    ticket,
+                    role: 'implementer',
+                    follow_up_of: sessionOf({ ticket, role: 'implementer' }),
+                }),
+            ],
+        })
+
+        expect(await harness.ticket({ number: ticket })).toMatchObject({
+            fix_round: 1,
+            activity: 'coding again',
+            failed_turn: 'implementer',
+        })
+        expect(eventRows().at(-1)).toEqual({
+            text: '#13: the implementer tries again.',
+            tone: 'warning',
+        })
+    })
+
+    test('a reviewer retried after a failure is the same review round', async () => {
+        const ticket = 13
+        await runWith({
+            entries: [
+                ...codedTicket13(),
+                gatesRun({ ticket, ok: true }),
+                agentStarted({ ticket, role: 'ticket-reviewer' }),
+                agentFailed({
+                    ticket,
+                    role: 'ticket-reviewer',
+                    failure: 'result',
+                    error: 'No structured output.',
+                }),
+                agentStarted({ ticket, role: 'ticket-reviewer' }),
+                agentFinished({ ticket, role: 'ticket-reviewer' }),
+            ],
+        })
+
+        expect(await harness.ticket({ number: ticket })).toMatchObject({
+            review_round: 1,
+            failed_turn: null,
+            activity: 'approved',
+        })
+    })
+})
+
+describe('a bad test', () => {
+    test('the worktree is reset and the ticket starts over from the tests', async () => {
+        const ticket = 13
+        await runWith({
+            entries: [
+                ...codedTicket13().slice(0, -1),
+                agentFinished({
+                    ticket,
+                    role: 'implementer',
+                    result: {
+                        outcome: 'bad_test',
+                        bad_test: {
+                            file: 'src/menu.test.ts',
+                            name: 'menu > opens',
+                            reason: 'It checks the wrong label.',
+                        },
+                        summary: 'The test is wrong.',
+                        assumptions: [],
+                        run_notes: [],
+                    },
+                }),
+                worktreeReset({ ticket }),
+            ],
+        })
+
+        expect(await harness.ticket({ number: ticket })).toMatchObject({
+            step: 0,
+            fix_round: 0,
+            activity: 'starting over',
+            tried: ['Started over from the tests after a bad test'],
+        })
+        expect(eventRows().slice(-2)).toEqual([
+            {
+                text: '#13: the implementer sent back a bad test.',
+                tone: 'warning',
+            },
+            {
+                text: '#13: starting over from the tests after a bad test.',
+                tone: 'warning',
+            },
+        ])
+    })
+
+    test('nothing new to test is stuck with its hint', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 13 }),
+                ticketStuck({
+                    ticket: 13,
+                    reason: 'nothing_new_to_test',
+                    detail: 'Every criterion is already tested.',
+                }),
+            ],
+        })
+
+        expect((await harness.state()).needs_you[0]?.reason).toBe(
+            'The test-writer found nothing new to test. If the ticket changes no behavior, label it refactor and start the run again.'
+        )
+    })
+})
+
+describe('a stopped run', () => {
+    test('run_stopped shows the reason until the engine moves on again', async () => {
+        const reason = 'accountInfo: an API key, not a Claude plan'
+        const { run_id, token, next } = await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                agentStarted({ ticket: 11, role: 'test-writer' }),
+                runStopped({ ticket: 11, role: 'test-writer', reason }),
+            ],
+        })
+
+        const stopped = await harness.state()
+        expect(stopped.run.status).toBe('stopped')
+        expect(stopped.run.stopped).toEqual({
+            reason,
+            role: 'test-writer',
+            ticket: 11,
+            since: expect.any(String),
+        })
+        expect(await harness.ticket({ number: 11 })).toMatchObject({
+            role: null,
+            activity: 'run stopped',
+        })
+        expect(eventRows().at(-1)).toEqual({
+            text: `#11: the run stopped: ${reason}. Start it again with the same run id to pick up where it stopped.`,
+            tone: 'danger',
+        })
+        expect(rowsOfKind({ kind: 'luca-board-run' })[0]?.row).toMatchObject({
+            data: { status: 'stopped' },
+        })
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [agentStarted({ ticket: 11, role: 'test-writer' })],
+        })
+
+        const resumed = await harness.state()
+        expect(resumed.run.stopped).toBeNull()
+        expect(resumed.run.status).toBe('building')
+    })
+})
+
+describe('Jev in shadow mode', () => {
+    test('its calls are counted quietly: no rows, and the tickets do not change', async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [ticketWorktreeCreated({ ticket: 11 })],
+        })
+        const before = await harness.state()
+        const rowsBefore = harness.latestRows().length
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [
+                jevAsked({ ticket: 11 }),
+                jevAnswered({ ticket: 11, asked_seq: next }),
+                jevAsked({ ticket: 11 }),
+                jevFailed({ ticket: 11, asked_seq: next + 2 }),
+            ],
+        })
+
+        const after = await harness.state()
+        expect(after.jev).toEqual({ asked: 2, answered: 1, failed: 1 })
+        expect(after.tickets).toEqual(before.tickets)
+        expect(after.run.status).toBe(before.run.status)
+        expect(after.latest).toBe(before.latest)
+        expect(harness.latestRows()).toHaveLength(rowsBefore)
     })
 })
 
