@@ -8,7 +8,8 @@ This package covers the start of a run (#360): the engine config, the
 **journal**, and **intake**. It also builds each ticket end to end (#361), with
 scripted stand-in **agents**, up to the run's one pull request, with capped
 **fix loops** for a failed red check, failed gates, and a bad test (#363), and
-runs real Claude agents under the **guard** (#362).
+runs real Claude agents under the **guard** (#362). And it sends its journal to
+the Paseo board plugin, and has a command line, `luca-run` (#374).
 
 ## Modules
 
@@ -54,6 +55,12 @@ runs real Claude agents under the **guard** (#362).
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
 | `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
 | `src/jev/jev-shadow.ts` | Asks Jev in **shadow mode** and journals each call and answer. |
+| `src/testing/practice-run.ts` | The `--demo` run: the practice repo with a second, blocked ticket and its scripted turns. |
+| `src/board/board-sync.ts` | Keeps the board in step with the journal: a cursor, batches, replays. Never throws. |
+| `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
+| `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
+| `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
+| `src/cli/run-modes.ts` | A real run of a spec, and the practice `--demo`. |
 
 ## How a run moves
 
@@ -136,6 +143,74 @@ this.
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
 keeps the latest snapshot of each ticket.
+
+## The board
+
+The engine sends its journal records to the board plugin as they are
+appended, verbatim: the event *is* the record (`seq`, `time`, `kind`,
+`ticket`, `role`, `content`). The plugin keeps and reduces the run's state;
+the engine computes nothing for the board.
+
+`runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
+once before its first step, so a resumed run catches the board up, and after
+every step. `createBoardSync` holds a cursor: the next seq the board wants,
+from 1. Each sync sends every record from the cursor on, at most 100 per send,
+and moves the cursor to the board's `next_seq`. A board that answers with a
+lower `next_seq` (it restarted, or saw a gap) gets the journal again from
+there. A failed send or a not-ok answer is logged once per message and
+swallowed: the board never breaks a run. `end` syncs what is left, sends
+`ended: { ok, message }`, and closes the link.
+
+Over Paseo, each send is one plugin RPC call,
+`invokePluginRpc(plugin_id, 'engine.event', input)`:
+
+```ts
+// input
+{ run_id: string, token: string, records: JournalRecord[], ended: { ok: boolean, message: string } | null }
+// output, checked with BoardReplySchema
+{ ok: boolean, next_seq: number, message: string }
+```
+
+The link finds the daemon at `PASEO_HOST`, or the `listen` field of
+`$PASEO_HOME/paseo.pid` (`~/.paseo/paseo.pid`), connects on the first send to
+`ws://<listen>/ws` as a `cli` client (with `PASEO_PASSWORD` if set), keeps
+that connection for the run, and reconnects once when a send fails.
+
+## The command line: `luca-run`
+
+```bash
+bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
+bun packages/engine/src/cli/luca-run.ts --demo [--run-id <id>] [--board-plugin <id>]
+```
+
+| Flag | What it does |
+| --- | --- |
+| `--spec <n>` | A real run of spec #n, on the repo's GitHub issues (through `gh`). |
+| `--demo` | A practice run instead (below). Give exactly one of `--spec` and `--demo`. |
+| `--repo <path>` | The repo to run on. Defaults to the current folder. |
+| `--run-id <id>` | The run's id: letters, digits, `-`, `_`. Defaults to a new one. The journal goes in `<runs folder>/<id>/`; a run id that already has a journal resumes it. |
+| `--base <branch>` | The branch the run starts from. Defaults to `main`. |
+| `--board-plugin <id>` | Send the journal to this Paseo plugin (such as `luca-board`). The per-run token comes from `LUCA_BOARD_TOKEN`. Without the flag, no board. |
+
+The board plugin launches it as a detached Bun process by absolute path:
+`bun <abs>/packages/engine/src/cli/luca-run.ts --spec <n> --repo <abs repo> --run-id <id> --board-plugin luca-board`,
+with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
+`bin` also names it `luca-run`, so an installed command can be found.
+
+It logs to stdout, always tells the board how it ended, and exits 0 when the
+run finished (PR opened, or nothing to do), 1 when it stopped (refused,
+stuck, crashed), and 2 on bad flags.
+
+**No agent launcher yet.** The real Claude launcher is #362. Until then a
+real run does intake, then stops before making the run branch, and the board
+is told: "the Claude agent launcher arrives with #362".
+
+**The demo** (`--demo`) is safe to try the board with: it makes the practice
+repo (with a local bare `origin`) in a temp folder, fills an in-memory
+tracker with the practice spec and two tickets (#12 blocked by #11), and runs
+the engine with scripted agents that take 1.5 s per turn. No GitHub, no
+models. It prints the temp paths and the PR it opened in memory, then removes
+the temp folder (which also holds its journal).
 
 ## Choices made
 
@@ -304,8 +379,9 @@ The tests go through the seams spec #359 sets: the decision step (`decide`
 given a journal), the engine with the in-memory tracker, the journal file
 (append and replay), and the config loader.
 
-`src/core/run-one-ticket.test.ts` is seam 2, the end-to-end test. It makes a
-throwaway git repo in a temp folder with a local bare repo as its `origin`,
+`src/core/run-one-ticket.test.ts` is seam 2, the end-to-end test. Through
+`src/testing/practice-repo.ts`, it makes a throwaway git repo in a temp folder
+with a local bare repo as its `origin`,
 fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
 step are real. No GitHub, no models, no setup. One ticket adds a local
@@ -322,6 +398,11 @@ and retries that follow.
 that disagrees with everything, throws, never answers, or has no key, and
 checks the run matches a run without Jev. `src/jev/jev-client.test.ts` tests
 the TypeSafe client with a fake `fetch`; no test reaches the network.
+
+`src/board/board-sync.test.ts` runs the engine with a board in memory: records
+arrive in seq order, a board that restarted gets a replay, and a failing board
+never breaks the run. `src/cli/run-modes.test.ts` runs the demo and the
+real-run path with the in-memory tracker.
 
 ```bash
 bun test              # in packages/engine

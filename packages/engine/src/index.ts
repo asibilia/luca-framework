@@ -33,6 +33,20 @@ export {
     type ScriptedTurn,
 } from './agents/scripted-launcher'
 export {
+    BOARD_BATCH_SIZE,
+    BoardEndedSchema,
+    BoardReplySchema,
+    createBoardSync,
+    type BoardEnded,
+    type BoardLink,
+    type BoardReply,
+    type BoardSync,
+} from './board/board-sync'
+export {
+    createPaseoBoardLink,
+    ENGINE_EVENT_METHOD,
+} from './board/paseo-board-link'
+export {
     ENGINE_CONFIG_FILE,
     EngineConfigSchema,
     loadEngineConfig,
