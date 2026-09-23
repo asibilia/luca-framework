@@ -4,6 +4,9 @@
     "private": true,
     "type": "module",
     "main": "src/index.ts",
+    "bin": {
+        "luca-run": "src/cli/luca-run.ts"
+    },
     "scripts": {
         "test": "bun test",
         "typecheck": "bunx --bun tsc --noEmit -p .",
