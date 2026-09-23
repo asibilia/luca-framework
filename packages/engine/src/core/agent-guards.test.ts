@@ -301,6 +301,181 @@ describe('the after-turn check', () => {
     }, 60_000)
 })
 
+describe('the after-turn check: what git ignores and git state', () => {
+    test('an implementer that installs under node_modules fails a try, and the new files are removed', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    act: async (cwd) => {
+                        await Bun.write(
+                            join(cwd, 'node_modules/left-pad/index.js'),
+                            'module.exports = () => 0\n'
+                        )
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(failures(records)).toEqual([
+            {
+                role: 'implementer',
+                failure: 'guard',
+                error: expect.stringContaining(
+                    'wrote node_modules/left-pad/index.js'
+                ),
+                session_id: 'scripted-implementer-11-2',
+            },
+        ])
+        expect(
+            existsSync(join(worktree(records), 'node_modules/left-pad'))
+        ).toBe(false)
+        expect(commits(records)).toEqual(CLEAN_COMMITS)
+    }, 60_000)
+
+    test('an agent that makes a branch and a tag at HEAD fails a try, and both are taken off', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                {
+                    ...testWriter,
+                    act: async (cwd) => {
+                        await git(cwd, 'branch', 'sneaky')
+                        await git(cwd, 'tag', '-a', 'v9', '-m', 'sneaky')
+                    },
+                },
+                testWriter,
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [failed] = failures(records)
+        expect(failed).toMatchObject({ role: 'test-writer', failure: 'guard' })
+        expect(failed?.error).toContain('refs/heads/sneaky')
+        expect(failed?.error).toContain('refs/tags/v9')
+        const refs = await git(
+            practice.repo,
+            'for-each-ref',
+            '--format=%(refname)'
+        )
+        expect(refs).not.toContain('refs/heads/sneaky')
+        expect(refs).not.toContain('refs/tags/v9')
+        // Kept aside, never lost: the engine can't tell who made a ref.
+        expect(refs).toContain('refs/luca-undone/heads/sneaky')
+    }, 60_000)
+
+    test('an agent that stashes its work fails a try, and the stash entry is dropped', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                {
+                    ...testWriter,
+                    act: async (cwd) => {
+                        await git(cwd, 'stash', 'push', '-u', '-q')
+                    },
+                },
+                testWriter,
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [failed] = failures(records)
+        expect(failed).toMatchObject({ role: 'test-writer', failure: 'guard' })
+        expect(failed?.error).toContain('new stash entries')
+        expect((await git(practice.repo, 'stash', 'list')).trim()).toBe('')
+        expect(commits(records)).toEqual(CLEAN_COMMITS)
+    }, 60_000)
+
+    test('an agent that changes the shared git config, hooks, or excludes fails a try, and each is put back', async () => {
+        const common = join(practice.repo, '.git')
+        const sample = join(common, 'hooks/pre-commit.sample')
+        const sampleBefore = await Bun.file(sample).text()
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    act: async (cwd) => {
+                        await git(cwd, 'config', 'luca.sneaky', 'yes')
+                        await Bun.write(
+                            join(common, 'hooks/pre-push'),
+                            '#!/bin/sh\nexit 0\n'
+                        )
+                        await Bun.write(sample, '#!/bin/sh\nexit 0\n')
+                        await Bun.write(
+                            join(common, 'info/exclude'),
+                            'src/sum.test.ts\n'
+                        )
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [failed] = failures(records)
+        expect(failed).toMatchObject({ role: 'implementer', failure: 'guard' })
+        expect(failed?.error).toContain('the shared .git/config changed')
+        expect(failed?.error).toContain('the shared .git/hooks changed')
+        expect(failed?.error).toContain('the shared .git/info/exclude changed')
+        const config = await Bun.$`git config --get luca.sneaky`
+            .cwd(practice.repo)
+            .nothrow()
+            .quiet()
+        expect(config.exitCode).not.toBe(0)
+        expect(existsSync(join(common, 'hooks/pre-push'))).toBe(false)
+        expect(await Bun.file(sample).text()).toBe(sampleBefore)
+        expect(
+            await Bun.file(join(common, 'info/exclude')).text()
+        ).not.toContain('src/sum.test.ts')
+    }, 60_000)
+
+    test('an excludes entry cannot hide a file its role may not write', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                {
+                    ...testWriter,
+                    files: { ...testWriter.files, 'src/sum.ts': SUM },
+                    act: async (cwd) => {
+                        const common = (
+                            await git(
+                                cwd,
+                                'rev-parse',
+                                '--path-format=absolute',
+                                '--git-common-dir'
+                            )
+                        ).trim()
+                        await Bun.write(
+                            join(common, 'info/exclude'),
+                            'src/sum.ts\n'
+                        )
+                    },
+                },
+                testWriter,
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [failed] = failures(records)
+        expect(failed?.error).toContain('wrote src/sum.ts')
+        expect(commits(records)).toEqual(CLEAN_COMMITS)
+    }, 60_000)
+})
+
 describe('judging a result', () => {
     test('a success with no structured output fails one try, and the follow-up carries on', async () => {
         const { testWriter, implementer, reviewer } = happyTurns()

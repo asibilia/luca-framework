@@ -1,9 +1,12 @@
+import { basename } from 'node:path'
+
 import sortBy from 'lodash/sortBy'
 import uniq from 'lodash/uniq'
 
-import { mayWrite, type GuardRole } from './role-rules'
+import { isInstallPath, mayWrite, type GuardRole } from './role-rules'
 
 import type { EngineConfig } from '../config/engine-config'
+import { testFilesAmong } from '../gates/test-runner'
 
 /** The hash the snapshot records for a path that is gone. */
 export const DELETED = '<deleted>'
@@ -27,13 +30,20 @@ export type GitState = {
     staged: string[]
     /** Hash of the shared `.git/config`. */
     config_hash: string
+    /** Hash of the shared `.git/info/exclude`, which hides files from git. */
+    exclude_hash: string
     /** Name, mode, and content hash of each shared `.git/hooks` entry. */
     hooks: string[]
 }
 
 /** A worktree as the after-turn check sees it. */
 export type WorktreeState = {
-    /** Content hash (or `DELETED`) of every path `git status` lists. */
+    /**
+     * Content hash (or `DELETED`) of every path `git status` lists, and of
+     * each ignored path that matters (see `watchesIgnored`). A path under
+     * `node_modules` gets a stat signature instead: its size, inode, and
+     * change time, which no process can set back.
+     */
     files: Record<string, string>
     git: GitState
 }
@@ -42,6 +52,34 @@ export type WorktreeState = {
 export type Violation =
     | { kind: 'path'; path: string; change: 'wrote' | 'deleted' }
     | { kind: 'git'; detail: string }
+    /** Something the engine could not put back; a person should look. */
+    | { kind: 'undo_failed'; detail: string }
+
+/**
+ * Whether the after-turn check watches a path git ignores: what the package
+ * install writes (`node_modules`, lockfiles), test and test setup files, and
+ * `.env` files (Bun loads them into every check). Other ignored paths, such
+ * as build output and caches, are what check commands write, so they are
+ * not watched.
+ *
+ * @example
+ * watchesIgnored({ path: 'node_modules/zod/index.js', config }) // true
+ * watchesIgnored({ path: 'dist/index.js', config }) // false
+ */
+export const watchesIgnored = ({
+    path,
+    config,
+}: {
+    path: string
+    config: EngineConfig
+}): boolean =>
+    isInstallPath(path) ||
+    basename(path).startsWith('.env') ||
+    config.test_setup_files.includes(path) ||
+    testFilesAmong({
+        files: [path],
+        test_file_patterns: config.test_file_patterns,
+    }).length > 0
 
 /** Paths whose content differs between two snapshots, sorted. */
 export const changedPaths = ({
@@ -128,6 +166,9 @@ export const gitViolations = ({
     if (before.config_hash !== after.config_hash) {
         details.push('the shared .git/config changed')
     }
+    if (before.exclude_hash !== after.exclude_hash) {
+        details.push('the shared .git/info/exclude changed')
+    }
     if (before.hooks.join('\n') !== after.hooks.join('\n')) {
         details.push('the shared .git/hooks changed')
     }
@@ -144,9 +185,11 @@ export const describeViolations = ({
 }): string =>
     [
         `The ${role} broke its role's rules, so the engine undid it:`,
-        ...violations.map((violation) =>
-            violation.kind === 'git'
-                ? `- git: ${violation.detail}`
-                : `- ${violation.change} ${violation.path}, which a ${role} may not ${violation.change === 'deleted' ? 'delete' : 'write'}`
-        ),
+        ...violations.map((violation) => {
+            if (violation.kind === 'git') return `- git: ${violation.detail}`
+            if (violation.kind === 'undo_failed') {
+                return `- could not undo: ${violation.detail}`
+            }
+            return `- ${violation.change} ${violation.path}, which a ${role} may not ${violation.change === 'deleted' ? 'delete' : 'write'}`
+        }),
     ].join('\n')

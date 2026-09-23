@@ -468,9 +468,7 @@ describe('check commands with shell syntax', () => {
             expect(
                 run(role, 'bun build src/index.ts --target=bun > /dev/null')
             ).toBe(true)
-            expect(run(role, 'bun run lint && bun run format:check')).toBe(
-                true
-            )
+            expect(run(role, 'bun run lint && bun run format:check')).toBe(true)
             expect(run(role, 'bun test > other.log 2>&1')).toBe(false)
             expect(run(role, 'bun test src > test.log 2>&1')).toBe(false)
             expect(

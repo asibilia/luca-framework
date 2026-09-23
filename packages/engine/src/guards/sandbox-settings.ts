@@ -72,11 +72,7 @@ export const sandboxSettings = ({
         'test-writer': may_edit_tests ? [...install, ...setup] : [worktree],
         implementer: may_edit_tests
             ? [...install, ...setup]
-            : [
-                  ...install,
-                  ...inWorktree(config.test_file_patterns),
-                  ...setup,
-              ],
+            : [...install, ...inWorktree(config.test_file_patterns), ...setup],
         reviewer: [worktree],
         learner: [worktree],
     }
