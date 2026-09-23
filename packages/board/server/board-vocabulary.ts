@@ -159,6 +159,13 @@ export const BOARD_VOCABULARY = {
         billing: z.boolean().catch(false),
     }),
     worktree_reset: z.looseObject({}),
+    /** The engine's install in a new worktree; `check` is null with no manifest. */
+    dependencies_installed: z.looseObject({
+        target: z.string(),
+        check: z
+            .looseObject({ command: z.string(), ok: z.boolean() })
+            .nullable(),
+    }),
     red_check: z.looseObject({
         ok: z.boolean(),
         problems: z.array(z.string()).catch([]),
@@ -256,6 +263,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'agent_session' }),
     entry({ kind: 'run_stopped' }),
     entry({ kind: 'worktree_reset' }),
+    entry({ kind: 'dependencies_installed' }),
     entry({ kind: 'red_check' }),
     entry({ kind: 'leftover_scan' }),
     entry({ kind: 'commit_made' }),

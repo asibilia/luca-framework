@@ -133,6 +133,32 @@ export const ticketWorktreeCreated = ({ ticket }: { ticket: number }): Entry =>
         },
     })
 
+/**
+ * The engine's install in a new worktree: a ticket's, or with no `ticket`,
+ * the run branch's checkout.
+ */
+export const dependenciesInstalled = ({
+    ticket,
+    ok,
+}: {
+    ticket?: number
+    ok: boolean
+}): Entry =>
+    entry({
+        kind: 'dependencies_installed',
+        ticket: ticket ?? null,
+        content: {
+            target: ticket === undefined ? 'run_branch' : 'ticket',
+            check: {
+                name: 'install',
+                command: 'bun install --frozen-lockfile',
+                ok,
+                exit_code: ok ? 0 : 1,
+                output: ok ? '' : 'error: lockfile had changes',
+            },
+        },
+    })
+
 const testRun = ({ passed, failed }: { passed: number; failed: number }) => ({
     command: 'bun test',
     ok: failed === 0,
