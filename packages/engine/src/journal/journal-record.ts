@@ -264,7 +264,7 @@ const CommitMadeEntrySchema = z.object({
     }),
 })
 
-/** Where the gates ran: a ticket's worktree, or the run branch after a join. */
+/** Where the gates or the install ran: a ticket's worktree, or the run branch. */
 export const GateTargetSchema = z.enum(['ticket', 'run_branch'])
 
 export type GateTarget = z.infer<typeof GateTargetSchema>
@@ -277,6 +277,21 @@ const WorktreeResetEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('worktree_reset'),
     content: z.object({ sha: z.string().min(1) }),
+})
+
+/**
+ * The engine installed the dependencies from the lockfile, without changing
+ * it, in a new ticket worktree or the run branch's checkout, before any agent
+ * or gate ran there. `check` is `null` when there is no `package.json`, so
+ * nothing to install. The run branch's record has no ticket.
+ */
+const DependenciesInstalledEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('dependencies_installed'),
+    content: z.object({
+        target: GateTargetSchema,
+        check: GateCheckSchema.nullable(),
+    }),
 })
 
 const GatesRunEntrySchema = z.object({
@@ -323,6 +338,7 @@ export const StuckReasonSchema = z.enum([
     'changes_requested',
     'join_failed',
     'join_gates_failed',
+    'install_failed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -406,6 +422,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     LeftoverScanEntrySchema,
     CommitMadeEntrySchema,
     WorktreeResetEntrySchema,
+    DependenciesInstalledEntrySchema,
     GatesRunEntrySchema,
     TicketJoinedEntrySchema,
     RunBranchPushedEntrySchema,
@@ -442,6 +459,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
     WorktreeResetEntrySchema.extend(STAMP_FIELDS),
+    DependenciesInstalledEntrySchema.extend(STAMP_FIELDS),
     GatesRunEntrySchema.extend(STAMP_FIELDS),
     TicketJoinedEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
@@ -477,6 +495,7 @@ export const JournalKindSchema = z.enum([
     'leftover_scan',
     'commit_made',
     'worktree_reset',
+    'dependencies_installed',
     'gates_run',
     'ticket_joined',
     'run_branch_pushed',

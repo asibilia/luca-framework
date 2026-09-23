@@ -1,7 +1,25 @@
 import { basename } from 'node:path'
 
 /** The package manifest a changed file must be for the engine to install. */
-const MANIFEST = 'package.json'
+export const MANIFEST = 'package.json'
+
+/** The install that must leave the committed lockfile as it is. */
+export const FROZEN_INSTALL = 'bun install --frozen-lockfile'
+
+/**
+ * The install the engine runs in a new ticket worktree or the run branch's
+ * checkout, before any agent or gate: from the lockfile, without changing
+ * it. `null` when the worktree has no `package.json`. Pure.
+ *
+ * @example
+ * newWorktreeInstall({ has_manifest: true })
+ * // 'bun install --frozen-lockfile'
+ */
+export const newWorktreeInstall = ({
+    has_manifest,
+}: {
+    has_manifest: boolean
+}): string | null => (has_manifest ? FROZEN_INSTALL : null)
 
 /**
  * The install the engine runs before the gates, or `null` when no package
@@ -34,5 +52,5 @@ export const installCommand = ({
             !path.split('/').includes('node_modules')
     )
     if (!manifestChanged) return null
-    return target === 'ticket' ? 'bun install' : 'bun install --frozen-lockfile'
+    return target === 'ticket' ? 'bun install' : FROZEN_INSTALL
 }

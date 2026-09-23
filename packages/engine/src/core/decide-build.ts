@@ -22,6 +22,7 @@ import type {
 } from '../journal/journal-record'
 import {
     EMPTY_TICKET_PROGRESS,
+    type ReplayedInstall,
     type ReplayedSnapshot,
     type ReplayedWorktree,
     type RunState,
@@ -54,6 +55,16 @@ export type BuildAction =
     | { type: 'create_run_branch'; spec_number: number; base_branch: string }
     /** Make the ticket's worktree on a new branch from the run branch. */
     | { type: 'create_ticket_worktree'; ticket: number; run_branch: string }
+    /**
+     * Install the dependencies from the lockfile, without changing it, in a
+     * new ticket worktree or the run branch's checkout (`ticket` is `null`),
+     * before any agent or gate runs there.
+     */
+    | {
+          type: 'install_dependencies'
+          target: GateTarget
+          ticket: number | null
+      }
     /** Run the tests before any agent works, to know the old tests. */
     | { type: 'run_baseline_tests'; ticket: number }
     /**
@@ -253,6 +264,19 @@ const stuck = ({
     reason: StuckReason
     detail: string
 }): BuildAction => ({ type: 'mark_stuck', ticket, reason, detail })
+
+/** Why an install failed, for the stuck detail, or `null` if it passed. */
+const installFailure = ({
+    install,
+    where,
+}: {
+    install: ReplayedInstall
+    where: string
+}): string | null => {
+    const { check } = install
+    if (check === null || check.ok) return null
+    return `\`${check.command}\` failed in ${where} (exit ${check.exit_code ?? 'none'}). Agents never run the install, so fix the manifest or lockfile on the base branch and retry.\n${check.output}`
+}
 
 const commitStep = ({
     stage,
@@ -545,7 +569,11 @@ const nextTicketStep = ({
     ticket,
     progress,
     run_branch,
-}: StepArgs & { run_branch: ReplayedWorktree }): BuildAction | null => {
+    run_branch_install,
+}: StepArgs & {
+    run_branch: ReplayedWorktree
+    run_branch_install: ReplayedInstall
+}): BuildAction | null => {
     const number = ticket.number
     if (progress.stuck !== null) {
         return {
@@ -563,12 +591,41 @@ const nextTicketStep = ({
             failed: progress.agent_failure,
         })
     }
+    const runBranchFailure = installFailure({
+        install: run_branch_install,
+        where: "the run branch's checkout",
+    })
+    if (runBranchFailure !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'install_failed',
+            detail: runBranchFailure,
+        })
+    }
     if (progress.worktree === null) {
         return {
             type: 'create_ticket_worktree',
             ticket: number,
             run_branch: run_branch.branch,
         }
+    }
+    if (progress.install === null) {
+        return {
+            type: 'install_dependencies',
+            target: 'ticket',
+            ticket: number,
+        }
+    }
+    const ticketFailure = installFailure({
+        install: progress.install,
+        where: `the worktree of #${number}`,
+    })
+    if (ticketFailure !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'install_failed',
+            detail: ticketFailure,
+        })
     }
     if (progress.baseline === null) {
         return { type: 'run_baseline_tests', ticket: number }
@@ -638,10 +695,18 @@ export const decideBuild = ({
     state: RunState
     spec_number: number
 }): BuildAction => {
-    const { snapshot, run_branch, pull_request, tickets } = state
+    const { snapshot, run_branch, run_branch_install, pull_request, tickets } =
+        state
     const base_branch = state.base_branch ?? 'main'
     if (run_branch === null || snapshot === null) {
         return { type: 'create_run_branch', spec_number, base_branch }
+    }
+    if (run_branch_install === null) {
+        return {
+            type: 'install_dependencies',
+            target: 'run_branch',
+            ticket: null,
+        }
     }
     for (const number of snapshot.ticket_order) {
         const ticket = snapshot.tickets[number]
@@ -651,6 +716,7 @@ export const decideBuild = ({
             ticket,
             progress: tickets[number] ?? EMPTY_TICKET_PROGRESS,
             run_branch,
+            run_branch_install,
         })
         if (step !== null) return step
     }

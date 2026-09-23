@@ -9,6 +9,7 @@ import {
     agentStarted,
     baselineTests,
     commitMade,
+    dependenciesInstalled,
     gatesRun,
     implemented,
     intakePassed,
@@ -22,6 +23,7 @@ import {
     testsWritten,
     ticketBuilt,
     ticketWorktreeCreated,
+    withInstalls,
     worktreeReset,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
@@ -29,11 +31,17 @@ import { REFACTOR_LABEL } from '../tracker/tracker'
 
 const TICKET = practiceTicket({ number: 11 })
 
-/** Decide on a run with one ticket (#11) and these entries after intake. */
+/**
+ * Decide on a run with one ticket (#11) and these entries after intake. Each
+ * new worktree gets a passing install unless the entries list one.
+ */
 const decideAfter = (entries: JournalEntry[]) =>
     decide({
         records: recordsFrom({
-            entries: [...intakePassed({ tickets: [TICKET] }), ...entries],
+            entries: [
+                ...intakePassed({ tickets: [TICKET] }),
+                ...withInstalls({ entries }),
+            ],
         }),
     })
 
@@ -50,6 +58,89 @@ describe('decision step: building a ticket', () => {
             spec_number: 10,
             base_branch: 'main',
         })
+    })
+
+    test("then the dependencies are installed in the run branch's checkout", () => {
+        expect(
+            decide({
+                records: recordsFrom({
+                    entries: [
+                        ...intakePassed({ tickets: [TICKET] }),
+                        runBranchCreated(),
+                    ],
+                }),
+            })
+        ).toEqual({
+            type: 'install_dependencies',
+            target: 'run_branch',
+            ticket: null,
+        })
+    })
+
+    test("a failed install in the run branch's checkout makes the first ticket stuck before its worktree", () => {
+        expect(
+            decideAfter([
+                runBranchCreated(),
+                dependenciesInstalled({ ok: false }),
+            ])
+        ).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'install_failed',
+            detail: expect.stringContaining(
+                "`bun install --frozen-lockfile` failed in the run branch's checkout"
+            ),
+        })
+    })
+
+    test('a new ticket worktree gets its dependencies installed before any test or agent', () => {
+        expect(
+            decide({
+                records: recordsFrom({
+                    entries: [
+                        ...intakePassed({ tickets: [TICKET] }),
+                        runBranchCreated(),
+                        dependenciesInstalled({}),
+                        ticketWorktreeCreated({ ticket: 11 }),
+                    ],
+                }),
+            })
+        ).toEqual({
+            type: 'install_dependencies',
+            target: 'ticket',
+            ticket: 11,
+        })
+    })
+
+    test('a failed install in a ticket worktree makes the ticket stuck with the output', () => {
+        const action = decideAfter([
+            runBranchCreated(),
+            ticketWorktreeCreated({ ticket: 11 }),
+            dependenciesInstalled({ ticket: 11, ok: false }),
+        ])
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'install_failed',
+        })
+        expect(action.type === 'mark_stuck' ? action.detail : '').toContain(
+            'lockfile is frozen'
+        )
+    })
+
+    test('a worktree with no package.json has nothing to install and moves on', () => {
+        expect(
+            decideAfter([
+                runBranchCreated(),
+                ticketWorktreeCreated({ ticket: 11 }),
+                {
+                    kind: 'dependencies_installed',
+                    ticket: 11,
+                    role: null,
+                    content: { target: 'ticket', check: null },
+                },
+            ])
+        ).toEqual({ type: 'run_baseline_tests', ticket: 11 })
     })
 
     test('the first ticket gets its own worktree from the run branch', () => {
@@ -222,7 +313,7 @@ describe('decision step: building a ticket', () => {
         const records = recordsFrom({
             entries: [
                 ...intakePassed({ tickets: [TICKET, second] }),
-                ...stepsUpTo(13),
+                ...withInstalls({ entries: stepsUpTo(13) }),
             ],
         })
 
@@ -625,8 +716,12 @@ const decideRefactorAfter = (entries: JournalEntry[]) =>
         records: recordsFrom({
             entries: [
                 ...intakePassed({ tickets: [REFACTOR_TICKET] }),
-                runBranchCreated(),
-                ticketWorktreeCreated({ ticket: 11 }),
+                ...withInstalls({
+                    entries: [
+                        runBranchCreated(),
+                        ticketWorktreeCreated({ ticket: 11 }),
+                    ],
+                }),
                 baselineTests({ ticket: 11 }),
                 ...entries,
             ],

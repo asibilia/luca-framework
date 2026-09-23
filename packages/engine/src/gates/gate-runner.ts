@@ -4,7 +4,14 @@ import { runTests } from './test-runner'
 import type { EngineConfig } from '../config/engine-config'
 import { clipOutput, runShell } from '../shell/run-command'
 
-const shellCheck = async ({
+/**
+ * Runs one shell command as a named check: `ok` on exit 0, with the clipped
+ * output only when it failed.
+ *
+ * @example
+ * const install = await shellCheck({ name: 'install', command: 'bun install', cwd })
+ */
+export const shellCheck = async ({
     name,
     command,
     cwd,

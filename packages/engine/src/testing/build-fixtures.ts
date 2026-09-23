@@ -111,6 +111,57 @@ export const ticketWorktreeCreated = ({
     },
 })
 
+/**
+ * The engine's install in a new worktree: the run branch's checkout
+ * (`ticket` unset) or a ticket's worktree. Passing unless `ok` is false.
+ */
+export const dependenciesInstalled = ({
+    ticket,
+    ok,
+}: {
+    ticket?: number
+    ok?: boolean
+}): JournalEntry => ({
+    kind: 'dependencies_installed',
+    ticket: ticket ?? null,
+    role: null,
+    content: {
+        target: ticket === undefined ? 'run_branch' : 'ticket',
+        check: {
+            name: 'install',
+            command: 'bun install --frozen-lockfile',
+            ok: ok ?? true,
+            exit_code: ok === false ? 1 : 0,
+            output:
+                ok === false
+                    ? 'error: lockfile had changes, but lockfile is frozen'
+                    : '',
+        },
+    },
+})
+
+/**
+ * The entries with a passing install after each new worktree that has none,
+ * so tests about later steps need not list the installs.
+ */
+export const withInstalls = ({
+    entries,
+}: {
+    entries: JournalEntry[]
+}): JournalEntry[] =>
+    entries.flatMap((entry, index) => {
+        const made =
+            entry.kind === 'run_branch_created' ||
+            entry.kind === 'ticket_worktree_created'
+        if (!made || entries[index + 1]?.kind === 'dependencies_installed') {
+            return [entry]
+        }
+        return [
+            entry,
+            dependenciesInstalled({ ticket: entry.ticket ?? undefined }),
+        ]
+    })
+
 /** A test run with no test files, as a fresh repo has. */
 export const emptyTestRun = (): TestRun => ({
     command: 'bun test',
