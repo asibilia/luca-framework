@@ -25,17 +25,24 @@ const CONFIG: EngineConfig = {
 
 const WORKTREE = '/runs/run-1/tickets/11'
 
+/** `may_edit_tests` as the engine sets it on a normal (not refactor) ticket. */
+const usual = (role: GuardRole): boolean => role === 'test-writer'
+
 const decide = ({
     role,
+    may_edit_tests,
     tool_name,
     tool_input,
 }: {
     role: GuardRole
+    /** Defaults to `usual(role)`. */
+    may_edit_tests?: boolean
     tool_name: string
     tool_input: unknown
 }): boolean =>
     checkToolCall({
         role,
+        may_edit_tests: may_edit_tests ?? usual(role),
         tool_name,
         tool_input,
         worktree: WORKTREE,
@@ -51,29 +58,46 @@ describe('guardRoleOf', () => {
 })
 
 describe('mayWrite', () => {
-    const cases: [GuardRole, string, boolean][] = [
-        ['test-writer', 'src/sum.test.ts', true],
-        ['test-writer', 'src/deep/a/b.test.ts', true],
-        ['test-writer', 'src/sum.ts', false],
-        ['test-writer', 'README.md', false],
-        ['test-writer', 'src/test-setup.ts', false],
-        ['implementer', 'src/sum.ts', true],
-        ['implementer', 'package.json', true],
-        ['implementer', 'src/sum.test.ts', false],
-        ['implementer', 'src/test-setup.ts', false],
-        ['implementer', '.git', false],
-        ['implementer', '.git/config', false],
-        ['implementer', '../other/src/sum.ts', false],
-        ['implementer', 'src/../../escape.ts', false],
-        ['implementer', '/etc/passwd', false],
-        ['reviewer', 'src/sum.ts', false],
-        ['reviewer', 'src/sum.test.ts', false],
-        ['learner', 'src/sum.ts', false],
-        ['learner', 'notes.md', false],
+    // [role, may_edit_tests, path, allowed]
+    const cases: [GuardRole, boolean, string, boolean][] = [
+        ['test-writer', true, 'src/sum.test.ts', true],
+        ['test-writer', true, 'src/deep/a/b.test.ts', true],
+        ['test-writer', true, 'src/sum.ts', false],
+        ['test-writer', true, 'README.md', false],
+        ['test-writer', true, 'src/test-setup.ts', false],
+        // A test-writer that may not edit tests writes nothing.
+        ['test-writer', false, 'src/sum.test.ts', false],
+        ['implementer', false, 'src/sum.ts', true],
+        ['implementer', false, 'package.json', true],
+        ['implementer', false, 'src/sum.test.ts', false],
+        ['implementer', false, 'src/test-setup.ts', false],
+        ['implementer', false, '.git', false],
+        ['implementer', false, '.git/config', false],
+        ['implementer', false, '../other/src/sum.ts', false],
+        ['implementer', false, 'src/../../escape.ts', false],
+        ['implementer', false, '/etc/passwd', false],
+        // A refactor ticket's implementer may follow renames into tests,
+        // but never into a test setup file.
+        ['implementer', true, 'src/a.test.ts', true],
+        ['implementer', true, 'src/sum.ts', true],
+        ['implementer', true, 'src/test-setup.ts', false],
+        ['implementer', true, '.git/config', false],
+        ['reviewer', false, 'src/sum.ts', false],
+        ['reviewer', false, 'src/sum.test.ts', false],
+        // Reviewers never write, whatever they are told.
+        ['reviewer', true, 'src/sum.test.ts', false],
+        ['reviewer', true, 'src/sum.ts', false],
+        ['learner', false, 'src/sum.ts', false],
+        ['learner', false, 'notes.md', false],
     ]
-    test.each(cases)('%s writing %s: %p', (role, path, expected) => {
-        expect(mayWrite({ role, path, config: CONFIG })).toBe(expected)
-    })
+    test.each(cases)(
+        '%s (may edit tests: %p) writing %s: %p',
+        (role, may_edit_tests, path, expected) => {
+            expect(
+                mayWrite({ role, may_edit_tests, path, config: CONFIG })
+            ).toBe(expected)
+        }
+    )
 })
 
 describe('checkToolCall: file tools', () => {
@@ -127,6 +151,36 @@ describe('checkToolCall: file tools', () => {
         '%s %s %j: %p',
         (role, tool_name, tool_input, expected) => {
             expect(decide({ role, tool_name, tool_input })).toBe(expected)
+        }
+    )
+
+    // [role, may_edit_tests, tool, input, allowed]
+    const refactorCases: [GuardRole, boolean, string, unknown, boolean][] = [
+        ['implementer', true, 'Edit', { file_path: 'src/a.test.ts' }, true],
+        [
+            'implementer',
+            true,
+            'Write',
+            { file_path: `${WORKTREE}/src/a.test.ts` },
+            true,
+        ],
+        [
+            'implementer',
+            true,
+            'Edit',
+            { file_path: 'src/test-setup.ts' },
+            false,
+        ],
+        ['implementer', false, 'Edit', { file_path: 'src/a.test.ts' }, false],
+        ['test-writer', false, 'Write', { file_path: 'src/a.test.ts' }, false],
+        ['reviewer', true, 'Write', { file_path: 'src/a.test.ts' }, false],
+    ]
+    test.each(refactorCases)(
+        '%s (may edit tests: %p) %s %j: %p',
+        (role, may_edit_tests, tool_name, tool_input, expected) => {
+            expect(
+                decide({ role, may_edit_tests, tool_name, tool_input })
+            ).toBe(expected)
         }
     )
 })
@@ -215,6 +269,57 @@ describe('checkToolCall: Bash', () => {
         ).toBe(expected)
     })
 
+    // The engine runs the install itself, between turns; no agent may.
+    const installs = [
+        'bun install',
+        'bun i',
+        'bun add x',
+        'npm install',
+        'bunx some-pkg',
+    ]
+    const roles: GuardRole[] = [
+        'test-writer',
+        'implementer',
+        'reviewer',
+        'learner',
+    ]
+    test.each(
+        roles.flatMap((role) =>
+            [true, false].flatMap((may_edit_tests) =>
+                installs.map((command): [GuardRole, boolean, string] => [
+                    role,
+                    may_edit_tests,
+                    command,
+                ])
+            )
+        )
+    )(
+        '%s (may edit tests: %p) may not run %j',
+        (role, may_edit_tests, command) => {
+            expect(
+                decide({
+                    role,
+                    may_edit_tests,
+                    tool_name: 'Bash',
+                    tool_input: { command },
+                })
+            ).toBe(false)
+        }
+    )
+
+    test('a refactor implementer may rm a test file, never a setup file', () => {
+        const rm = (command: string, may_edit_tests: boolean) =>
+            decide({
+                role: 'implementer',
+                may_edit_tests,
+                tool_name: 'Bash',
+                tool_input: { command },
+            })
+        expect(rm('rm src/old.test.ts', true)).toBe(true)
+        expect(rm('rm src/old.test.ts', false)).toBe(false)
+        expect(rm('rm src/test-setup.ts', true)).toBe(false)
+    })
+
     test('a background or unsandboxed shell call is denied', () => {
         expect(
             decide({
@@ -246,6 +351,7 @@ describe('checkToolCall: Bash', () => {
         const run = (command: string) =>
             checkToolCall({
                 role: 'implementer',
+                may_edit_tests: false,
                 tool_name: 'Bash',
                 tool_input: { command },
                 worktree: WORKTREE,
@@ -279,6 +385,7 @@ describe('checkToolCall: other tools', () => {
     test('a denial says why', () => {
         const decision = checkToolCall({
             role: 'implementer',
+            may_edit_tests: false,
             tool_name: 'Bash',
             tool_input: { command: 'git commit -m x' },
             worktree: WORKTREE,
@@ -292,8 +399,56 @@ describe('checkToolCall: other tools', () => {
 })
 
 describe('permissionRules', () => {
+    test('a refactor implementer may edit tests but not setup files', () => {
+        const refactor = permissionRules({
+            role: 'implementer',
+            may_edit_tests: true,
+            config: CONFIG,
+        })
+        expect(refactor.allowed).toContain('Edit(**)')
+        expect(refactor.disallowed).not.toContain('Edit(src/**/*.test.ts)')
+        expect(refactor.disallowed).toContain('Edit(src/test-setup.ts)')
+    })
+
+    test('a test-writer that may not edit tests may edit nothing', () => {
+        const rules = permissionRules({
+            role: 'test-writer',
+            may_edit_tests: false,
+            config: CONFIG,
+        })
+        expect(rules.allowed).not.toContain('Edit(src/**/*.test.ts)')
+        expect(rules.disallowed).toContain('Edit')
+        expect(rules.disallowed).toContain('Write')
+    })
+
+    test('no role is pre-approved to install packages', () => {
+        for (const role of [
+            'test-writer',
+            'implementer',
+            'reviewer',
+            'learner',
+        ] as const) {
+            const { allowed } = permissionRules({
+                role,
+                may_edit_tests: role === 'test-writer',
+                config: CONFIG,
+            })
+            expect(
+                allowed.filter((rule) =>
+                    /^Bash\((bun (install|i|add)|npm|bunx (?!--bun tsc))/.test(
+                        rule
+                    )
+                )
+            ).toEqual([])
+        }
+    })
+
     test('writers are pre-approved for their check commands; reviewers are not', () => {
-        const writer = permissionRules({ role: 'implementer', config: CONFIG })
+        const writer = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config: CONFIG,
+        })
         expect(writer.allowed).toContain('Bash(bun test)')
         expect(writer.allowed).toContain('Bash(bun test *)')
         expect(writer.allowed).toContain('Bash(bunx --bun tsc --noEmit)')
@@ -304,18 +459,28 @@ describe('permissionRules', () => {
 
         const testWriter = permissionRules({
             role: 'test-writer',
+            may_edit_tests: true,
             config: CONFIG,
         })
         expect(testWriter.allowed).toContain('Edit(src/**/*.test.ts)')
         expect(testWriter.allowed).not.toContain('Edit(**)')
 
-        const reviewer = permissionRules({ role: 'reviewer', config: CONFIG })
+        const reviewer = permissionRules({
+            role: 'reviewer',
+            may_edit_tests: false,
+            config: CONFIG,
+        })
         expect(reviewer.allowed).not.toContain('Bash(bun test)')
         expect(reviewer.allowed).toContain('Bash(git diff *)')
         expect(reviewer.disallowed).toContain('Write')
         expect(reviewer.disallowed).toContain('Edit')
 
-        const learner = permissionRules({ role: 'learner', config: CONFIG })
+        const learner = permissionRules({
+            role: 'learner',
+            may_edit_tests: false,
+            config: CONFIG,
+        })
+        expect(learner.allowed).not.toContain('Bash(bun test)')
         expect(learner.disallowed).toContain('Bash')
         for (const rules of [writer, testWriter, reviewer, learner]) {
             expect(rules.disallowed).toContain('WebFetch')
@@ -326,16 +491,32 @@ describe('permissionRules', () => {
 
     test('each role gets only its own tools', () => {
         expect(
-            permissionRules({ role: 'test-writer', config: CONFIG }).tools
+            permissionRules({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: CONFIG,
+            }).tools
         ).toEqual(['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'])
         expect(
-            permissionRules({ role: 'implementer', config: CONFIG }).tools
+            permissionRules({
+                role: 'implementer',
+                may_edit_tests: false,
+                config: CONFIG,
+            }).tools
         ).toEqual(['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'])
         expect(
-            permissionRules({ role: 'reviewer', config: CONFIG }).tools
+            permissionRules({
+                role: 'reviewer',
+                may_edit_tests: false,
+                config: CONFIG,
+            }).tools
         ).toEqual(['Read', 'Grep', 'Glob', 'Bash'])
         expect(
-            permissionRules({ role: 'learner', config: CONFIG }).tools
+            permissionRules({
+                role: 'learner',
+                may_edit_tests: false,
+                config: CONFIG,
+            }).tools
         ).toEqual(['Read', 'Grep', 'Glob'])
     })
 })

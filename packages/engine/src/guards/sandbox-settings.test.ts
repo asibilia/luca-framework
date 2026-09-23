@@ -35,7 +35,12 @@ describe('sandboxSettings', () => {
             'reviewer',
             'learner',
         ] as const) {
-            const sandbox = sandboxSettings({ role, config: CONFIG, ...PATHS })
+            const sandbox = sandboxSettings({
+                role,
+                may_edit_tests: role === 'test-writer',
+                config: CONFIG,
+                ...PATHS,
+            })
             expect(sandbox).toMatchObject({
                 enabled: true,
                 failIfUnavailable: true,
@@ -51,20 +56,59 @@ describe('sandboxSettings', () => {
         }
     })
 
-    test('the test-writer may not write git', () => {
+    test('the test-writer may not write git or test setup files', () => {
         expect(
-            sandboxSettings({ role: 'test-writer', config: CONFIG, ...PATHS })
-                .filesystem?.denyWrite
+            sandboxSettings({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: CONFIG,
+                ...PATHS,
+            }).filesystem?.denyWrite
         ).toEqual([
             '/Users/me/code/app/.git',
             '/private/var/runs/run-1/tickets/11/.git',
+            '/private/var/runs/run-1/tickets/11/src/test-setup.ts',
+        ])
+    })
+
+    test('a test-writer that may not edit tests may not write the worktree', () => {
+        expect(
+            sandboxSettings({
+                role: 'test-writer',
+                may_edit_tests: false,
+                config: CONFIG,
+                ...PATHS,
+            }).filesystem?.denyWrite
+        ).toEqual([
+            '/Users/me/code/app/.git',
+            '/private/var/runs/run-1/tickets/11/.git',
+            '/private/var/runs/run-1/tickets/11',
+        ])
+    })
+
+    test('a refactor implementer may write test files, but not git or test setup files', () => {
+        expect(
+            sandboxSettings({
+                role: 'implementer',
+                may_edit_tests: true,
+                config: CONFIG,
+                ...PATHS,
+            }).filesystem?.denyWrite
+        ).toEqual([
+            '/Users/me/code/app/.git',
+            '/private/var/runs/run-1/tickets/11/.git',
+            '/private/var/runs/run-1/tickets/11/src/test-setup.ts',
         ])
     })
 
     test('the implementer may not write git, test files, or test setup files', () => {
         expect(
-            sandboxSettings({ role: 'implementer', config: CONFIG, ...PATHS })
-                .filesystem?.denyWrite
+            sandboxSettings({
+                role: 'implementer',
+                may_edit_tests: false,
+                config: CONFIG,
+                ...PATHS,
+            }).filesystem?.denyWrite
         ).toEqual([
             '/Users/me/code/app/.git',
             '/private/var/runs/run-1/tickets/11/.git',
@@ -77,8 +121,12 @@ describe('sandboxSettings', () => {
     test('reviewers and the learner may not write the worktree at all', () => {
         for (const role of ['reviewer', 'learner'] as const) {
             expect(
-                sandboxSettings({ role, config: CONFIG, ...PATHS }).filesystem
-                    ?.denyWrite
+                sandboxSettings({
+                    role,
+                    may_edit_tests: true,
+                    config: CONFIG,
+                    ...PATHS,
+                }).filesystem?.denyWrite
             ).toEqual([
                 '/Users/me/code/app/.git',
                 '/private/var/runs/run-1/tickets/11/.git',
@@ -91,6 +139,7 @@ describe('sandboxSettings', () => {
         expect(() =>
             sandboxSettings({
                 role: 'implementer',
+                may_edit_tests: false,
                 config: CONFIG,
                 ...PATHS,
                 worktree: 'tickets/11',

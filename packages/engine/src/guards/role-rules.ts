@@ -74,22 +74,35 @@ const isTestFile = ({
         test_file_patterns: config.test_file_patterns,
     }).length > 0
 
+/** The rules an agent's guards check it against: its role, and whether it may edit tests. */
+type GuardArgs = {
+    role: GuardRole
+    /**
+     * Whether this agent may edit test files: true for the test-writer and a
+     * refactor ticket's implementer. A test-writer without it writes nothing;
+     * a reviewer or the learner never writes, whatever it says.
+     */
+    may_edit_tests: boolean
+}
+
 /**
- * Whether a role may create, change, or delete a worktree-relative path.
+ * Whether an agent may create, change, or delete a worktree-relative path.
  * Test-writers write test files only; implementers write anything but test
- * files and test setup files; reviewers and the learner write nothing. No
- * role writes `.git` or outside its worktree.
+ * files (unless they may edit tests) and test setup files; reviewers and the
+ * learner write nothing. No role writes a test setup file, `.git`, or
+ * outside its worktree.
  *
  * @example
- * mayWrite({ role: 'test-writer', path: 'src/sum.test.ts', config }) // true
- * mayWrite({ role: 'implementer', path: 'src/sum.test.ts', config }) // false
+ * mayWrite({ role: 'test-writer', may_edit_tests: true, path: 'src/sum.test.ts', config }) // true
+ * mayWrite({ role: 'implementer', may_edit_tests: false, path: 'src/sum.test.ts', config }) // false
+ * mayWrite({ role: 'implementer', may_edit_tests: true, path: 'src/sum.test.ts', config }) // true: a refactor ticket
  */
 export const mayWrite = ({
     role,
+    may_edit_tests,
     path,
     config,
-}: {
-    role: GuardRole
+}: GuardArgs & {
     path: string
     config: EngineConfig
 }): boolean => {
@@ -97,9 +110,10 @@ export const mayWrite = ({
     const clean = normalize(path).replace(/^\.\//, '')
     if (clean === '.' || clean.startsWith('..')) return false
     if (clean === '.git' || clean.startsWith('.git/')) return false
+    if (config.test_setup_files.includes(clean)) return false
     const test = isTestFile({ path: clean, config })
-    if (role === 'test-writer') return test
-    return !test && !config.test_setup_files.includes(clean)
+    if (role === 'test-writer') return test && may_edit_tests
+    return !test || may_edit_tests
 }
 
 /** One word of a shell command, and whether the shell would expand it. */
@@ -257,11 +271,11 @@ export const READ_ONLY_COMMANDS = [
 
 const checkRm = ({
     role,
+    may_edit_tests,
     words,
     worktree,
     config,
-}: {
-    role: GuardRole
+}: GuardArgs & {
     words: Word[]
     worktree: string
     config: EngineConfig
@@ -292,7 +306,7 @@ const checkRm = ({
                 `rm ${word.text}: name each file inside your worktree, with no wildcards or ~.`
             )
         }
-        if (!mayWrite({ role, path: inner, config })) {
+        if (!mayWrite({ role, may_edit_tests, path: inner, config })) {
             return deny(`A ${role} may not delete ${inner}.`)
         }
     }
@@ -320,11 +334,11 @@ const shellHelp = ({
 
 const checkBash = ({
     role,
+    may_edit_tests,
     command,
     worktree,
     config,
-}: {
-    role: GuardRole
+}: GuardArgs & {
     command: string
     worktree: string
     config: EngineConfig
@@ -347,7 +361,13 @@ const checkBash = ({
         return ALLOW
     }
     if (name === 'rm') {
-        return checkRm({ role, words: split.words, worktree, config })
+        return checkRm({
+            role,
+            may_edit_tests,
+            words: split.words,
+            worktree,
+            config,
+        })
     }
     const readOnly = READ_ONLY[name]
     if (readOnly !== undefined && readOnly(words)) return ALLOW
@@ -388,17 +408,17 @@ const TOOLS: Record<GuardRole, string[]> = {
  * is denied with a reason the agent can act on.
  *
  * @example
- * checkToolCall({ role: 'reviewer', tool_name: 'Bash', tool_input: { command: 'git commit' }, worktree, config })
+ * checkToolCall({ role: 'reviewer', may_edit_tests: false, tool_name: 'Bash', tool_input: { command: 'git commit' }, worktree, config })
  * // { allow: false, reason: '"git commit" is not allowed. ...' }
  */
 export const checkToolCall = ({
     role,
+    may_edit_tests,
     tool_name,
     tool_input,
     worktree,
     config,
-}: {
-    role: GuardRole
+}: GuardArgs & {
     tool_name: string
     tool_input: unknown
     /** The agent's worktree, as an absolute path. */
@@ -416,7 +436,7 @@ export const checkToolCall = ({
         if (inner === null) {
             return deny(`${input.data.file_path} is outside your worktree.`)
         }
-        return mayWrite({ role, path: inner, config })
+        return mayWrite({ role, may_edit_tests, path: inner, config })
             ? ALLOW
             : deny(`A ${role} may not write ${inner}.`)
     }
@@ -445,6 +465,7 @@ export const checkToolCall = ({
         }
         return checkBash({
             role,
+            may_edit_tests,
             command: input.data.command,
             worktree,
             config,
@@ -508,9 +529,9 @@ const readOnlyRules = (): string[] => [
  */
 export const permissionRules = ({
     role,
+    may_edit_tests,
     config,
-}: {
-    role: GuardRole
+}: GuardArgs & {
     config: EngineConfig
 }): { tools: string[]; allowed: string[]; disallowed: string[] } => {
     const { test, others } = checkCommands({ role, config })
@@ -519,21 +540,18 @@ export const permissionRules = ({
         ...(test === null ? [] : [`Bash(${test})`, `Bash(${test} *)`]),
         ...others.map((command) => `Bash(${command})`),
     ]
-    const guarded = [...config.test_file_patterns, ...config.test_setup_files]
+    const setup = config.test_setup_files.map((path) => `Edit(${path})`)
+    const tests = config.test_file_patterns.map((glob) => `Edit(${glob})`)
     const writes: Record<
         GuardRole,
         { allowed: string[]; disallowed: string[] }
     > = {
-        'test-writer': {
-            allowed: [
-                ...config.test_file_patterns.map((glob) => `Edit(${glob})`),
-                'Bash(rm *)',
-            ],
-            disallowed: [],
-        },
+        'test-writer': may_edit_tests
+            ? { allowed: [...tests, 'Bash(rm *)'], disallowed: setup }
+            : { allowed: [], disallowed: ['Edit', 'Write'] },
         implementer: {
             allowed: ['Edit(**)', 'Bash(rm *)'],
-            disallowed: guarded.map((glob) => `Edit(${glob})`),
+            disallowed: may_edit_tests ? setup : [...tests, ...setup],
         },
         reviewer: { allowed: [], disallowed: ['Edit', 'Write'] },
         learner: { allowed: [], disallowed: ['Edit', 'Write', 'Bash'] },

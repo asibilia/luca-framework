@@ -31,21 +31,26 @@ const mustBeAbsolute = (paths: Record<string, string>): void => {
  * temp folders through `/private/var`), as the launcher does.
  *
  * Every role: no network, no local ports, no unsandboxed commands, no shell
- * call approved just for being sandboxed, and no writes to git. The
- * implementer also may not write test files or test setup files; reviewers
- * and the learner may not write the worktree at all.
+ * call approved just for being sandboxed, no writes to git, and no writes
+ * to test setup files. The implementer also may not write test files unless
+ * it may edit tests (a refactor ticket's implementer); reviewers, the
+ * learner, and a test-writer that may not edit tests may not write the
+ * worktree at all.
  *
  * @example
- * const sandbox = sandboxSettings({ role: 'implementer', worktree, common_git_dir, home, config })
+ * const sandbox = sandboxSettings({ role: 'implementer', may_edit_tests: false, worktree, common_git_dir, home, config })
  */
 export const sandboxSettings = ({
     role,
+    may_edit_tests,
     worktree,
     common_git_dir,
     home,
     config,
 }: {
     role: GuardRole
+    /** Whether the agent may edit test files. */
+    may_edit_tests: boolean
     /** The agent's worktree, real and absolute. */
     worktree: string
     /** The repo's shared `.git` folder (`git rev-parse --git-common-dir`). */
@@ -55,12 +60,14 @@ export const sandboxSettings = ({
 }): SandboxSettings => {
     mustBeAbsolute({ worktree, common_git_dir, home })
     const git = [common_git_dir, join(worktree, '.git')]
+    const inWorktree = (patterns: string[]) =>
+        patterns.map((pattern) => join(worktree, pattern))
+    const setup = inWorktree(config.test_setup_files)
     const byRole: Record<GuardRole, string[]> = {
-        'test-writer': [],
-        implementer: [
-            ...config.test_file_patterns,
-            ...config.test_setup_files,
-        ].map((pattern) => join(worktree, pattern)),
+        'test-writer': may_edit_tests ? setup : [worktree],
+        implementer: may_edit_tests
+            ? setup
+            : [...inWorktree(config.test_file_patterns), ...setup],
         reviewer: [worktree],
         learner: [worktree],
     }
