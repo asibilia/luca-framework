@@ -4,9 +4,9 @@ The Luca v1 **engine**: plain Bun and TypeScript that drives a **run** of one
 **spec** and picks every next step. See `CONTEXT.md` at the repo root for the
 domain words, and spec #359 for the plan.
 
-This package so far covers the start of a run (#360): the engine config, the
-**journal**, and **intake**. Building tickets starts at the `await_build` seam
-(#361).
+This package covers the start of a run (#360): the engine config, the
+**journal**, and **intake**. It also builds each ticket end to end (#361), with
+scripted stand-in **agents**, up to the run's one pull request.
 
 ## Modules
 
@@ -18,11 +18,25 @@ This package so far covers the start of a run (#360): the engine config, the
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, next action out. |
+| `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, then the PR. |
+| `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes and the agents' **assumptions**. |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends) and the `runEngine` loop. |
+| `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. |
+| `src/agents/agent-launcher.ts` | The agent launcher interface. The real Claude launcher comes in #362. |
+| `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write the files a test gives them, return the role's result. |
+| `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
+| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids). |
+| `src/git/git-adapter.ts` | Every git side effect: worktrees, commits, replaying onto the run branch, pushes. |
+| `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
+| `src/gates/red-check.ts` | The **red check**. Pure. |
+| `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. |
+| `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
+| `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
-| `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. |
+| `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
+| `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
 
 ## How a run moves
 
@@ -32,8 +46,30 @@ startRun ──> run_started
   decide ──> refuse_intake        execute: comment + needs-info on each bad issue   ──> intake_refused
           or finish_nothing_to_do execute:                                          ──> nothing_to_do
           or snapshot_intake      execute: ──> spec_snapshot, ticket_snapshot × n
-  decide ──> done | await_build   (runEngine stops)
+  decide ──> done (refused, nothing to do) or build:
+
+create_run_branch       git: worktree for the run branch, from the base ──> run_branch_created
+for each ticket, one at a time, in snapshot order:
+  create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
+  run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
+  launch_agent test-writer                                               ──> agent_started, agent_finished
+  run_red_check           criteria covered, new tests fail, old pass     ──> red_check
+  commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
+  launch_agent implementer                                               ──> agent_started, agent_finished
+  run_gates ticket        tests, types, lint from the config             ──> gates_run
+  commit_ticket green     leftover scan, then commit                     ──> leftover_scan, commit_made
+  launch_agent ticket-reviewer                                           ──> agent_started, agent_finished
+  join_run_branch         git: cherry-pick the ticket's commits          ──> ticket_joined
+  run_gates run_branch    the gates again, on the joined run branch      ──> gates_run
+  push_run_branch         git: push to origin                            ──> run_branch_pushed
+open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
+done (pr_opened)
 ```
+
+Anything that fails (an agent, the red check, the leftover scan, a gate, the
+review, the join) becomes `mark_stuck` ──> `ticket_stuck`, and the run ends
+without a PR. Fix loops (#363), real reviews (#364), and many tickets at once
+(#365) build on this.
 
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
@@ -59,11 +95,32 @@ keeps the latest snapshot of each ticket.
   "Blocked by" section. A closed blocker is fine anywhere; an open one must be
   an open ticket of the same spec, and those must not form a loop.
 
+- **Run branch:** `luca/spec-<n>-<run_id>`, in a worktree at
+  `<run folder>/run-branch`. Each ticket's branch is `<run branch>--ticket-<n>`,
+  in `<run folder>/tickets/<n>`. Test reports go in `<run folder>/reports`, so
+  they are never leftovers.
+- **Test command:** it must be a `bun test` command. The engine adds bun's
+  JUnit reporter flags to its end to learn each test's outcome. A repo with no
+  test files passes the baseline.
+- **A new test file that doesn't load yet** (it imports code not written yet)
+  reports no results. Its tests count as failing if their names are in it.
+- **Engine commits skip git hooks** (`--no-verify`): the engine already ran
+  the gates, and hooks that run tests from inside a run have frozen machines.
+- **A test-writer answering "nothing new to test"** skips the red check and
+  the red commit.
+- **The ticket reviewer** is a scripted stand-in that approves for now (#364).
+
 ## Tests
 
 The tests go through the seams spec #359 sets: the decision step (`decide`
 given a journal), the engine with the in-memory tracker, the journal file
 (append and replay), and the config loader.
+
+`src/core/run-one-ticket.test.ts` is seam 2, the end-to-end test. It makes a
+throwaway git repo in a temp folder with a local bare repo as its `origin`,
+fills the in-memory tracker with a practice spec and ticket, and runs the
+engine with scripted agents. The gates, commits, join, push, journal, and PR
+step are real. No GitHub, no models, no setup.
 
 ```bash
 bun test              # in packages/engine
