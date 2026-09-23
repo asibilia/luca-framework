@@ -1,0 +1,10 @@
+{
+  "name": "tracer-sandbox",
+  "description": "Throwaway scratch package for the Luca v1 tracer bullet",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/slugify.ts"
+  }
+}
