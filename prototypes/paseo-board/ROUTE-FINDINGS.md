@@ -52,3 +52,8 @@ Nothing else broke: no timeouts, no rejected calls, no plugin errors.
 4. While it runs, press ⌘K → **Luca board (prototype)**. The panel's footer says `replay · run-20260923-123042-l47v · event n/37`, and ticket #352 moves through the stages.
 
 Logs: `paseo plugin logs luca-board-prototype` and `/tmp/luca-run-*.log`. For an offline check: `bun engine-replay/replay.ts --agent-id x --dry-run`.
+
+## Verified by the user (2026-09-23)
+
+- The user typed `/luca-run` in a real chat. Rows streamed into it, and the side panel showed the replay. **Verdict: pass.**
+- Gotcha: after a plugin's slash commands change, Paseo's chat menu only picks them up after you run `/reload-skills`. `paseo plugin reload` alone and a window reload weren't enough.
