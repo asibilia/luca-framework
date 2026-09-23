@@ -346,3 +346,7 @@ reviewed, joined, and opened its PR in 0.8 min: 3 agents, 22 model turns,
 3,192 output and about 139k cache tokens, list-price estimate $0.38 (paid by
 the plan). The five-hour window stayed at 15% and the weekly at 25%. No guard
 or permission denials; every `rate_limit_event` was `allowed`, no overage.
+A second run after the rebase onto the fix loops (same ticket, sessions now
+kept open for follow-ups) also opened its PR in 0.8 min: 22 model turns,
+3,159 output tokens, list-price estimate $0.38, no denials, no overage, and
+the process exited once `closeAll()` closed the sessions.
