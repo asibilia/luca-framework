@@ -51,7 +51,7 @@ good, and usage is journaled per ticket and per run (#368).
 | `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. First, the install when a manifest changed. |
-| `src/gates/lockfile-install.ts` | Whether a manifest changed, and so which install to run. Pure. |
+| `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
@@ -82,8 +82,10 @@ startRun ──> run_started
   decide ──> done (refused, nothing to do) or build:
 
 create_run_branch       git: worktree for the run branch, from the base ──> run_branch_created
+install_dependencies    bun install --frozen-lockfile, if there's a package.json ──> dependencies_installed
 for each ticket, one at a time, in snapshot order:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
+  install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -324,6 +326,15 @@ also holds its journal).
   by a fresh re-review. The 4th review still asking for changes is stuck.
 - **Findings are the truth** for what goes back: the verdict must agree with
   them, and only blockers and should-fixes are sent to fixers.
+- **Installs in new worktrees (#382):** a fresh worktree has no
+  `node_modules`, so right after the engine makes the run branch's checkout
+  or a ticket worktree it runs `bun install --frozen-lockfile` there, before
+  any test, agent, or gate, and journals `dependencies_installed` (`check` is
+  `null` when there's no `package.json`, so nothing to install). The install
+  must not change the lockfile. A failed install is stuck at once as
+  `install_failed`, with the command and its output: no agent can fix it,
+  since agents never run the install. A failure in the run branch's checkout
+  makes the first ticket stuck, before its worktree is made.
 - **SDK version:** `@anthropic-ai/claude-agent-sdk` 0.3.273, pinned. Newer
   releases were younger than `bunfig.toml`'s 7-day minimum release age.
 - **Reviewers can't run the tests.** They get read-only commands only; the
@@ -508,6 +519,10 @@ fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
 step are real. No GitHub, no models, no setup. One ticket adds a local
 workspace package as a dependency, so the engine's install runs offline.
+Another starts from a repo that already depends on its workspace package, so
+its first gates only pass after the engine's install in the new worktrees; and
+one whose committed manifest names a missing package, so that install fails
+and the ticket is stuck before any agent.
 `src/core/decide-review.test.ts` tests the ticket review through the decision
 step: the reviewer's prompt, findings to the right fixer in the right order,
 the gates and the fix commit, re-reviews of only the new changes, pushback,
