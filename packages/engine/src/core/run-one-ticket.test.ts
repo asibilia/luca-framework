@@ -746,4 +746,72 @@ describe('one ticket, end to end, with scripted agents', () => {
         const lockfile = await git(origin, 'show', `${branch}:bun.lock`)
         expect(lockfile).toContain('"@practice/math": "workspace:*"')
     }, 60_000)
+
+    test('a failed install goes back to the implementer like any failed gate', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const fixedFiles = {
+            'package.json': MANIFEST_WITH_DEPENDENCY,
+            'src/sum.ts': SUM_WITH_DEPENDENCY,
+            'src/index.ts': "export { sum } from './sum'\n",
+        }
+        const { action, records } = await runPractice({
+            files: WORKSPACE_FILES,
+            turns: [
+                testWriter,
+                // First try: a dependency on a package that doesn't exist.
+                {
+                    ...implementer,
+                    files: {
+                        ...fixedFiles,
+                        'package.json': MANIFEST_WITH_DEPENDENCY.replace(
+                            '@practice/math',
+                            '@practice/missing'
+                        ),
+                    },
+                },
+                // Its follow-up names the right package.
+                { ...implementer, files: fixedFiles },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // The failed install stopped the gates; the next round passed.
+        const ticketGates = records.flatMap((record) =>
+            record.kind === 'gates_run' && record.content.target === 'ticket'
+                ? [record.content]
+                : []
+        )
+        expect(
+            ticketGates.map(({ ok, checks }) => ({
+                ok,
+                names: checks.map(({ name }) => name),
+            }))
+        ).toEqual([
+            { ok: false, names: ['install'] },
+            { ok: true, names: ['install', 'test', 'types', 'lint'] },
+        ])
+
+        // The same implementer session got the install's output.
+        const followUp = records.find(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.content.follow_up_of !== null
+        )
+        expect(followUp?.role).toBe('implementer')
+        expect(
+            followUp?.kind === 'agent_started' ? followUp.content.prompt : ''
+        ).toContain('install failed')
+
+        const green = records.find(
+            (record) =>
+                record.kind === 'commit_made' &&
+                record.content.stage === 'green'
+        )
+        expect(
+            green?.kind === 'commit_made' ? green.content.files : []
+        ).toContain('bun.lock')
+    }, 60_000)
 })
