@@ -1,6 +1,7 @@
 import type {
     EffortLevel,
     HookCallback,
+    McpSdkServerConfigWithInstance,
     Options,
 } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
@@ -117,10 +118,13 @@ export const resultJsonSchema = ({
  * role's instructions, its result schema, `dontAsk` with only its own
  * pre-approved calls, the guard hook, the sandbox, a clean environment, and
  * nothing loaded from the machine: no settings, MCP servers, or skills.
- * Pure: the caller resolves every path.
+ * An agent with messaging also gets the engine's own `luca` server and the
+ * delivery hook after every tool call, failed ones too; a reviewer gets
+ * neither. Pure: the caller resolves every path and builds the server and
+ * hooks.
  *
  * @example
- * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: AGENT_EFFORT, claude_path, config, common_git_dir, home, env, guard_hook })
+ * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: AGENT_EFFORT, claude_path, config, common_git_dir, home, env, guard_hook, luca_server: null, delivery_hook: null })
  */
 export const agentOptions = ({
     role,
@@ -134,6 +138,8 @@ export const agentOptions = ({
     home,
     env,
     guard_hook,
+    luca_server,
+    delivery_hook,
     stderr,
 }: {
     role: AgentRole
@@ -150,6 +156,10 @@ export const agentOptions = ({
     home: string
     env: Record<string, string>
     guard_hook: HookCallback
+    /** The engine's `luca` server (`createLucaServer`), or `null` for none. */
+    luca_server: McpSdkServerConfigWithInstance | null
+    /** Hands over agent messages after each tool call, or `null` for none. */
+    delivery_hook: HookCallback | null
     stderr?: (data: string) => void
 }): Options => {
     const guard = guardRoleOf({ role })
@@ -175,9 +185,9 @@ export const agentOptions = ({
         disallowedTools: rules.disallowed,
         settingSources: [],
         strictMcpConfig: true,
-        // The engine's own tools will come as an in-process server named
-        // `luca`; there are none yet.
-        mcpServers: {},
+        // Only the engine's own in-process server, and only for an agent
+        // with messaging: `send_message`.
+        mcpServers: luca_server === null ? {} : { luca: luca_server },
         skills: [],
         sandbox: sandboxSettings({
             role: guard,
@@ -190,7 +200,15 @@ export const agentOptions = ({
         env,
         persistSession: false,
         maxTurns: MAX_TURNS[role],
-        hooks: { PreToolUse: [{ hooks: [guard_hook] }] },
+        hooks: {
+            PreToolUse: [{ hooks: [guard_hook] }],
+            ...(delivery_hook === null
+                ? {}
+                : {
+                      PostToolUse: [{ hooks: [delivery_hook] }],
+                      PostToolUseFailure: [{ hooks: [delivery_hook] }],
+                  }),
+        },
         ...(stderr === undefined ? {} : { stderr }),
     }
 }

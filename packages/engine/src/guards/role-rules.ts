@@ -461,6 +461,9 @@ const WRITE_TOOLS = ['Write', 'Edit', 'MultiEdit']
 const isEngineTool = (tool_name: string): boolean =>
     tool_name === 'StructuredOutput' || tool_name.startsWith('mcp__luca__')
 
+/** The engine's message tool: only test-writers and implementers send. */
+const SEND_MESSAGE_TOOL = 'mcp__luca__send_message'
+
 const TOOLS: Record<GuardRole, string[]> = {
     'test-writer': ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
     implementer: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
@@ -470,7 +473,8 @@ const TOOLS: Record<GuardRole, string[]> = {
 
 /**
  * The guard's decision for one tool call, made before it runs (the SDK's
- * PreToolUse hook). It fails closed: an unknown tool, an input of the wrong
+ * PreToolUse hook). Reviewers and the learner may not send agent messages.
+ * It fails closed: an unknown tool, an input of the wrong
  * shape, a path outside the worktree, or a shell command off the role's list
  * is denied with a reason the agent can act on.
  *
@@ -492,6 +496,9 @@ export const checkToolCall = ({
     worktree: string
     config: EngineConfig
 }): ToolDecision => {
+    if (tool_name === SEND_MESSAGE_TOOL && !isWriter(role)) {
+        return deny(`A ${role} may not send agent messages.`)
+    }
     if (isEngineTool(tool_name)) return ALLOW
     if (!TOOLS[role].includes(tool_name) && !WRITE_TOOLS.includes(tool_name)) {
         return deny(`A ${role} may not use ${tool_name}.`)
