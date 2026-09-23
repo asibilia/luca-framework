@@ -60,10 +60,13 @@ const isJev = (record: JournalRecord): boolean => record.kind.startsWith('jev_')
  * Launches with test-run timings ("[7.00ms]") blanked out: a fix-loop
  * follow-up quotes test output, and its timings differ between two runs.
  */
+/** Launches with test timings and commit shas (which carry the time) masked. */
 const withoutTimings = (launches: PracticeRun['launches']) =>
     launches.map((launch) => ({
         ...launch,
-        prompt: launch.prompt.replace(/\[\d+(\.\d+)?m?s\]/g, '[time]'),
+        prompt: launch.prompt
+            .replace(/\[\d+(\.\d+)?m?s\]/g, '[time]')
+            .replace(/\b[0-9a-f]{40}\b/g, '[sha]'),
     }))
 
 /** The run as it would look without Jev: the same steps, prompts, and PR. */
@@ -278,6 +281,25 @@ describe('Jev in shadow mode', () => {
                     assumptions: [],
                 },
             },
+            {
+                role: 'implementer',
+                ticket: 11,
+                result: {
+                    outcome: 'done',
+                    finding_responses: [
+                        {
+                            finding_id: 'F-1',
+                            response: 'wont_fix',
+                            reason: 'The spec names it sum.',
+                        },
+                    ],
+                },
+            },
+            {
+                role: 'ticket-reviewer',
+                ticket: 11,
+                result: { verdict: 'approve', findings: [] },
+            },
         ]
 
         const run = await runPractice({
@@ -286,11 +308,7 @@ describe('Jev in shadow mode', () => {
             jev: { client: disagreeingJev() },
         })
 
-        expect(run.action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
-            reason: 'changes_requested',
-        })
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         expectSameRun({
             run,
             without: await baseline({ name: 'changes', turns }),

@@ -5,6 +5,12 @@ import {
     redFixMessage,
 } from './fix-loop-text'
 import { pullRequestText } from './pull-request-text'
+import {
+    openFindingsText,
+    reviewFixMessage,
+    reviewFixSection,
+    reviewSections,
+} from './review-text'
 
 import { rolePrompt } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
@@ -151,6 +157,9 @@ const commitMessage = ({
     ticket: TicketSnapshot
     progress: TicketProgress
 }): string => {
+    if (stage === 'fix') {
+        return `fix: review round ${progress.review_fix?.round ?? progress.review_rounds} for #${ticket.number} ${ticket.title}`
+    }
     if (stage === 'green') {
         return isRefactorTicket({ ticket })
             ? `refactor: #${ticket.number} ${ticket.title}`
@@ -180,6 +189,35 @@ export const mayEditTests = ({
     role === 'test-writer' ||
     (role === 'implementer' && isRefactorTicket({ ticket }))
 
+/**
+ * The sections a launch adds for the ticket review: the reviewer's diff and
+ * gate results (a re-review's new changes and earlier findings), or a
+ * review fixer's findings while a review fix round is open.
+ */
+const reviewPromptSections = ({
+    role,
+    progress,
+}: {
+    role: AgentRole
+    progress: TicketProgress
+}): string[] => {
+    const fix = progress.review_fix
+    if (role === 'ticket-reviewer') {
+        return reviewSections({
+            progress,
+            base_sha: progress.worktree?.base_sha ?? 'HEAD',
+        })
+    }
+    if (fix === null || progress.commits.green === null) return []
+    if (role === 'test-writer' && !fix.tests_answered) {
+        return [reviewFixSection({ fix, kind: 'test' })]
+    }
+    if (role === 'implementer' && !fix.code_answered) {
+        return [reviewFixSection({ fix, kind: 'code' })]
+    }
+    return []
+}
+
 /** A fresh agent session. */
 const launch = ({
     role,
@@ -201,6 +239,7 @@ const launch = ({
         ticket,
         refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
+        sections: reviewPromptSections({ role, progress }),
     }),
     may_edit_tests: mayEditTests({ role, ticket }),
 })
@@ -325,7 +364,7 @@ const codeStep = ({
     progress,
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
-    const { implementer, gates } = progress
+    const { implementer } = progress
     if (implementer === null) {
         return launch({ role: 'implementer', snapshot, ticket, progress })
     }
@@ -348,34 +387,109 @@ const codeStep = ({
         // tests and code, so a fresh test-writer replaces the bad test.
         return { type: 'reset_ticket_worktree', ticket: number }
     }
+    return (
+        gateStep({ ticket, progress }) ??
+        commitStep({ stage: 'green', ticket, progress })
+    )
+}
+
+/**
+ * The ticket's gates and their fix loop: failed gates go back to the same
+ * implementer session, up to `MAX_FIX_ROUNDS` follow-ups. `null` once the
+ * gates pass.
+ */
+const gateStep = ({
+    ticket,
+    progress,
+}: {
+    ticket: TicketSnapshot
+    progress: TicketProgress
+}): BuildAction | null => {
+    const number = ticket.number
+    const { gates } = progress
     if (gates === null) {
         return { type: 'run_gates', ticket: number, target: 'ticket' }
     }
-    if (!gates.ok) {
-        if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
-            return stuck({
-                ticket: number,
-                reason: 'gates_failed',
-                detail: `The gates still fail after ${MAX_FIX_ROUNDS} fix rounds:\n${failedChecks({ gates })}`,
-            })
-        }
+    if (gates.ok) return null
+    if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
+        return stuck({
+            ticket: number,
+            reason: 'gates_failed',
+            detail: `The gates still fail after ${MAX_FIX_ROUNDS} fix rounds:\n${failedChecks({ gates })}`,
+        })
+    }
+    const session_id = progress.sessions.implementer
+    if (session_id === undefined) {
+        return stuck({
+            ticket: number,
+            reason: 'gates_failed',
+            detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
+        })
+    }
+    return {
+        type: 'follow_up_agent',
+        ticket: number,
+        role: 'implementer',
+        session_id,
+        message: gateFixMessage({ gates }),
+    }
+}
+
+/**
+ * The ticket review and its fix loop, after the green commit. A fresh
+ * reviewer checks the committed diff. Blockers and should-fixes open a fix
+ * round: test findings go to a fresh test-writer first, then code findings
+ * to the same implementer session (a fresh one if it is gone). The fixes
+ * pass the gates, get their own commit, and a fresh reviewer checks only
+ * the new changes. A review that still asks for changes after
+ * `MAX_FIX_ROUNDS` fix rounds is stuck. `null` once a review approves.
+ */
+const reviewStep = ({
+    snapshot,
+    ticket,
+    progress,
+}: StepArgs): BuildAction | null => {
+    const number = ticket.number
+    const reviewer = () =>
+        launch({ role: 'ticket-reviewer', snapshot, ticket, progress })
+    if (progress.review === null) return reviewer()
+    const fix = progress.review_fix
+    if (fix === null) return null
+    if (fix.round > MAX_FIX_ROUNDS) {
+        return stuck({
+            ticket: number,
+            reason: 'changes_requested',
+            detail: `The ticket review still asks for changes after ${MAX_FIX_ROUNDS} fix rounds:\n${openFindingsText({ findings: fix.findings })}`,
+        })
+    }
+    if (!fix.tests_answered) {
+        return launch({ role: 'test-writer', snapshot, ticket, progress })
+    }
+    if (!fix.code_answered) {
         const session_id = progress.sessions.implementer
         if (session_id === undefined) {
-            return stuck({
-                ticket: number,
-                reason: 'gates_failed',
-                detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
-            })
+            return launch({ role: 'implementer', snapshot, ticket, progress })
         }
         return {
             type: 'follow_up_agent',
             ticket: number,
             role: 'implementer',
             session_id,
-            message: gateFixMessage({ gates }),
+            message: reviewFixMessage({ fix }),
         }
     }
-    return commitStep({ stage: 'green', ticket, progress })
+    if (fix.bad_test !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'bad_test',
+            detail: `While fixing review findings, the implementer sent a test back as bad: ${badTestText({ progress: { ...progress, bad_test: fix.bad_test } })}`,
+        })
+    }
+    return (
+        gateStep({ ticket, progress }) ??
+        commitStep({ stage: 'fix', ticket, progress }) ??
+        reviewer()
+    )
 }
 
 /**
@@ -459,26 +573,16 @@ const nextTicketStep = ({
     if (progress.baseline === null) {
         return { type: 'run_baseline_tests', ticket: number }
     }
-    const tests = isRefactorTicket({ ticket })
-        ? null
-        : testStep({ snapshot, ticket, progress })
-    if (tests !== null) return tests
-    const code = codeStep({ snapshot, ticket, progress })
-    if (code !== null) return code
-    if (progress.review === null) {
-        return launch({ role: 'ticket-reviewer', snapshot, ticket, progress })
+    if (progress.commits.green === null) {
+        const tests = isRefactorTicket({ ticket })
+            ? null
+            : testStep({ snapshot, ticket, progress })
+        if (tests !== null) return tests
+        const code = codeStep({ snapshot, ticket, progress })
+        if (code !== null) return code
     }
-    if (progress.review.verdict !== 'approve') {
-        return stuck({
-            ticket: number,
-            reason: 'changes_requested',
-            detail: progress.review.findings
-                .map(
-                    ({ id, severity, title }) => `${id} (${severity}): ${title}`
-                )
-                .join('\n'),
-        })
-    }
+    const review = reviewStep({ snapshot, ticket, progress })
+    if (review !== null) return review
     if (progress.joined === null) {
         return { type: 'join_run_branch', ticket: number }
     }
