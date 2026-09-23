@@ -1,7 +1,7 @@
 /**
  * PROTOTYPE (tracer bullet, #334). Git and GitHub side effects. Only the engine calls these.
  */
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { PROTO_DIR, TMP_ROOT } from './config'
@@ -116,7 +116,19 @@ export const gitState = async (wt: RunWorktree): Promise<GitState> => {
   const staged = (await gitOk(wt.path, ['diff', '--cached', '--name-only'])).stdout.trim()
   const configPath = join(wt.commonGitDir, 'config')
   const configHash = existsSync(configPath) ? Bun.hash(readFileSync(configPath)).toString(16) : 'missing'
-  const hooksListing = (await run(['ls', '-la', join(wt.commonGitDir, 'hooks')], { cwd: wt.path })).stdout
+  // Names, modes, and content hashes only. (`ls -la` also listed `..`, the shared .git dir, whose
+  // mtime moves on any write to .git, so the backstop flagged a reviewer that wrote nothing.)
+  const hooksDir = join(wt.commonGitDir, 'hooks')
+  const hooksListing = existsSync(hooksDir)
+    ? readdirSync(hooksDir)
+        .sort()
+        .map((n) => {
+          const p = join(hooksDir, n)
+          const st = statSync(p)
+          return `${n} ${st.mode.toString(8)} ${st.isFile() ? Bun.hash(readFileSync(p)).toString(16) : 'dir'}`
+        })
+        .join('\n')
+    : 'missing'
   return { branch: wt.branch, head, branchRef, refsAtHead, stash, worktrees, staged, configHash, hooksListing }
 }
 
