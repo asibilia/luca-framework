@@ -119,7 +119,17 @@ export type BuildAction =
           detail: string
       }
 
-/** A red commit after a bad-test bounce says so, so the history shows it. */
+/** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
+export const isRefactorTicket = ({
+    ticket,
+}: {
+    ticket: TicketSnapshot
+}): boolean => ticket.labels.includes(REFACTOR_LABEL)
+
+/**
+ * A red commit after a bad-test bounce says so, so the history shows it. A
+ * refactor ticket's one commit says it is a refactor.
+ */
 const commitMessage = ({
     stage,
     ticket,
@@ -129,14 +139,20 @@ const commitMessage = ({
     ticket: TicketSnapshot
     progress: TicketProgress
 }): string => {
-    if (stage === 'green')
-        return `feat: build #${ticket.number} ${ticket.title}`
+    if (stage === 'green') {
+        return isRefactorTicket({ ticket })
+            ? `refactor: #${ticket.number} ${ticket.title}`
+            : `feat: build #${ticket.number} ${ticket.title}`
+    }
     return progress.bad_test_bounces > 0
         ? `test: replace a bad test for #${ticket.number} ${ticket.title}`
         : `test: add failing tests for #${ticket.number} ${ticket.title}`
 }
 
-/** A fresh agent session. Only the test-writer may edit tests. */
+/**
+ * A fresh agent session. Only the test-writer and a refactor ticket's
+ * implementer may edit tests.
+ */
 const launch = ({
     role,
     snapshot,
@@ -155,9 +171,12 @@ const launch = ({
         role,
         spec: snapshot.spec,
         ticket,
+        refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
     }),
-    may_edit_tests: role === 'test-writer',
+    may_edit_tests:
+        role === 'test-writer' ||
+        (role === 'implementer' && isRefactorTicket({ ticket })),
 })
 
 const stuck = ({
@@ -285,6 +304,13 @@ const codeStep = ({
         return launch({ role: 'implementer', snapshot, ticket, progress })
     }
     if (implementer.outcome === 'bad_test') {
+        if (isRefactorTicket({ ticket })) {
+            return stuck({
+                ticket: number,
+                reason: 'bad_test',
+                detail: `The implementer of a refactor ticket sent a test back as bad; there is no test-writer to fix it: ${badTestText({ progress })}`,
+            })
+        }
         if (progress.bad_test_bounces > MAX_BAD_TEST_BOUNCES) {
             return stuck({
                 ticket: number,
@@ -359,7 +385,9 @@ const nextTicketStep = ({
     if (progress.baseline === null) {
         return { type: 'run_baseline_tests', ticket: number }
     }
-    const tests = testStep({ snapshot, ticket, progress })
+    const tests = isRefactorTicket({ ticket })
+        ? null
+        : testStep({ snapshot, ticket, progress })
     if (tests !== null) return tests
     const code = codeStep({ snapshot, ticket, progress })
     if (code !== null) return code

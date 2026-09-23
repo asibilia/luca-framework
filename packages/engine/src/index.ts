@@ -1,5 +1,5 @@
 export { type AgentLauncher, type AgentTurn } from './agents/agent-launcher'
-export { rolePrompt } from './agents/role-prompts'
+export { rolePrompt, type BadTestReport } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
     createScriptedLauncher,
@@ -15,12 +15,23 @@ export {
     type LoadEngineConfigResult,
 } from './config/engine-config'
 export { decide, type EngineAction } from './core/decide'
-export { decideBuild, type BuildAction } from './core/decide-build'
+export {
+    decideBuild,
+    isRefactorTicket,
+    MAX_BAD_TEST_BOUNCES,
+    MAX_FIX_ROUNDS,
+    type BuildAction,
+} from './core/decide-build'
 export {
     executeBuildAction,
     runBranchName,
     type BuildDeps,
 } from './core/execute-build'
+export {
+    failedChecks,
+    gateFixMessage,
+    redFixMessage,
+} from './core/fix-loop-text'
 export { pullRequestText } from './core/pull-request-text'
 export {
     DEFAULT_MAX_STEPS,
@@ -61,6 +72,8 @@ export * from './journal/journal-record'
 export {
     replayRun,
     EMPTY_TICKET_PROGRESS,
+    type BadTest,
+    type ReplayedRedCheck,
     type ReplayedSnapshot,
     type ReplayedWorktree,
     type RunPhase,

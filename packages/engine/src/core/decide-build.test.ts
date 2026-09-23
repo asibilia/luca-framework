@@ -613,6 +613,103 @@ describe('decision step: a bad test bounces to a fresh test-writer once', () => 
     })
 })
 
+const REFACTOR_TICKET = practiceTicket({
+    number: 11,
+    title: 'Split sum into its own file',
+    labels: ['ready-for-agent', REFACTOR_LABEL],
+})
+
+/** Decide on a run whose one ticket (#11) is a refactor ticket. */
+const decideRefactorAfter = (entries: JournalEntry[]) =>
+    decide({
+        records: recordsFrom({
+            entries: [
+                ...intakePassed({ tickets: [REFACTOR_TICKET] }),
+                runBranchCreated(),
+                ticketWorktreeCreated({ ticket: 11 }),
+                baselineTests({ ticket: 11 }),
+                ...entries,
+            ],
+        }),
+    })
+
+describe('decision step: a refactor ticket', () => {
+    test('skips the test-writer: its implementer may follow renames into tests', () => {
+        const action = decideRefactorAfter([])
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'implementer',
+            may_edit_tests: true,
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain('refactor ticket')
+        expect(action.prompt).toContain('renames')
+        expect(action.prompt).toContain('must not change what a test checks')
+    })
+
+    test('skips the red check: after the implementer, the gates run', () => {
+        expect(decideRefactorAfter([implemented({ ticket: 11 })])).toEqual({
+            type: 'run_gates',
+            ticket: 11,
+            target: 'ticket',
+        })
+    })
+
+    test('passing gates make its one commit', () => {
+        expect(
+            decideRefactorAfter([
+                implemented({ ticket: 11 }),
+                gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+            ])
+        ).toEqual({
+            type: 'commit_ticket',
+            ticket: 11,
+            stage: 'green',
+            message: 'refactor: #11 Split sum into its own file',
+        })
+    })
+
+    test('failing gates go back to its implementer too', () => {
+        expect(
+            decideRefactorAfter([
+                implemented({ ticket: 11 }),
+                gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+            ])
+        ).toMatchObject({
+            type: 'follow_up_agent',
+            role: 'implementer',
+            session_id: SESSIONS.implementer,
+        })
+    })
+
+    test('then a ticket reviewer checks it', () => {
+        expect(
+            decideRefactorAfter([
+                implemented({ ticket: 11 }),
+                gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+                leftoverScan({ ticket: 11, stage: 'green' }),
+                commitMade({ ticket: 11, stage: 'green' }),
+            ])
+        ).toMatchObject({ type: 'launch_agent', role: 'ticket-reviewer' })
+    })
+
+    test('a bad test makes it stuck at once: there is no test-writer to send it to', () => {
+        const action = decideRefactorAfter([
+            implemented({ ticket: 11, outcome: 'bad_test' }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'bad_test',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain('Wrong sum.')
+    })
+})
+
 describe('decision step: a ticket gets stuck', () => {
     test('leftovers found before a commit make the ticket stuck, with no commit', () => {
         expect(

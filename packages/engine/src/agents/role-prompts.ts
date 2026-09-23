@@ -2,6 +2,12 @@ import type { AgentRole } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 
+/** A refactor ticket's implementer's task, in place of the usual one. */
+const REFACTOR_TASK =
+    'This is a refactor ticket: change how the code is shaped, not what it does. Add no new behavior. ' +
+    'Make every gate pass. You may follow renames and moves into test files, but you must not change what a test checks. ' +
+    'If a test is wrong, answer "bad_test" with your reason.'
+
 /** A test an implementer sent back as bad, with its reason. */
 export type BadTestReport = { file: string; name: string; reason: string }
 
@@ -33,6 +39,8 @@ const ROLE_TASKS: Record<AgentRole, string> = {
  * The real per-role instructions come with the Claude launcher (#362); this
  * is the part every launcher gets.
  *
+ * @param refactor - The ticket is a refactor ticket: the implementer gets
+ *   the refactor task (no new behavior; it may follow renames into tests).
  * @param bad_test - For a fresh test-writer after a bad-test bounce: the
  *   test the implementer sent back, and why.
  *
@@ -43,16 +51,18 @@ export const rolePrompt = ({
     role,
     spec,
     ticket,
+    refactor,
     bad_test,
 }: {
     role: AgentRole
     spec: SpecSnapshot
     ticket: TicketSnapshot
+    refactor?: boolean
     bad_test?: BadTestReport | null
 }): string =>
     [
         `# Your role: ${role}`,
-        ROLE_TASKS[role],
+        role === 'implementer' && refactor ? REFACTOR_TASK : ROLE_TASKS[role],
         `## Spec #${spec.number}: ${spec.title}`,
         spec.body,
         `## Ticket #${ticket.number}: ${ticket.title}`,
