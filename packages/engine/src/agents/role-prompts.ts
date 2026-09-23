@@ -1,4 +1,4 @@
-import type { AgentRole } from './role-results'
+import type { AgentRole, BadTest } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 
@@ -8,11 +8,8 @@ const REFACTOR_TASK =
     'Make every gate pass. You may follow renames and moves into test files, but you must not change what a test checks. ' +
     'If a test is wrong, answer "bad_test" with your reason.'
 
-/** A test an implementer sent back as bad, with its reason. */
-export type BadTestReport = { file: string; name: string; reason: string }
-
 /** What a fresh test-writer is told when it replaces a bad test. */
-const badTestSection = ({ bad_test }: { bad_test: BadTestReport }): string =>
+const badTestSection = ({ bad_test }: { bad_test: BadTest }): string =>
     [
         '## A test was sent back as a bad test',
         `The implementer says this test is wrong:\n\n- File: ${bad_test.file}\n- Test: ${bad_test.name}\n- Reason: ${bad_test.reason}`,
@@ -58,7 +55,7 @@ export const rolePrompt = ({
     spec: SpecSnapshot
     ticket: TicketSnapshot
     refactor?: boolean
-    bad_test?: BadTestReport | null
+    bad_test?: BadTest | null
 }): string =>
     [
         `# Your role: ${role}`,

@@ -439,8 +439,14 @@ const nextTicketStep = ({
  * The build half of the decision step: picks the next step of building the
  * run's tickets, one ticket at a time in snapshot order, then the PR. Pure.
  *
- * A failed red check, gate, or review makes the ticket stuck for now; the
- * fix loops (#363) turn these into capped retries.
+ * Fix loops: a failed red check goes back to the same test-writer session,
+ * and failed gates to the same implementer session, with their output, for
+ * up to `MAX_FIX_ROUNDS` follow-ups; then the ticket is stuck. A bad test
+ * throws away the implementer's work and goes to a fresh test-writer, whose
+ * tests get their own red check and red commit; the next bad test is stuck.
+ * "Nothing new to test" is stuck at once. A refactor ticket skips the
+ * test-writer and the red check. A review asking for changes, a leftover, a
+ * failed agent, and a failed join are still stuck.
  */
 export const decideBuild = ({
     state,

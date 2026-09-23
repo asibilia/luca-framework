@@ -4,6 +4,7 @@ import type { CommitStage, JournalRecord, StuckReason } from './journal-record'
 
 import type {
     AgentRole,
+    BadTest,
     ImplementerResult,
     TestWriterResult,
     TicketReviewResult,
@@ -54,9 +55,6 @@ export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
 
 /** The red check's verdict, plus the test run's (clipped) output. */
 export type ReplayedRedCheck = RedCheckResult & { output: string }
-
-/** The test an implementer sent back as bad. */
-export type BadTest = { file: string; name: string; reason: string }
 
 /**
  * How far one ticket got, from its journal records. Each field holds the

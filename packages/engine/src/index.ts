@@ -1,5 +1,5 @@
 export { type AgentLauncher, type AgentTurn } from './agents/agent-launcher'
-export { rolePrompt, type BadTestReport } from './agents/role-prompts'
+export { rolePrompt } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
     createScriptedLauncher,
@@ -72,7 +72,6 @@ export * from './journal/journal-record'
 export {
     replayRun,
     EMPTY_TICKET_PROGRESS,
-    type BadTest,
     type ReplayedRedCheck,
     type ReplayedSnapshot,
     type ReplayedWorktree,

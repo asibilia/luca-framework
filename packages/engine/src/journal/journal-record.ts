@@ -258,7 +258,7 @@ const PullRequestOpenedEntrySchema = z.object({
  * What a caller hands the journal to append: a kind, its content, and who it
  * is about. The journal adds `seq` and `time`.
  *
- * Later tickets add kinds here (fix rounds, findings, replies, ...).
+ * Later tickets add kinds here (findings, replies, ...).
  */
 export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunStartedEntrySchema,

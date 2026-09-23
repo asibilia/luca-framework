@@ -37,7 +37,8 @@ const SHARED_FIELDS = {
 
 /**
  * The test-writer's result. `nothing_new_to_test` is an honest answer for a
- * ticket that changes no behavior; the engine then skips the red check.
+ * ticket that changes no behavior; the engine then makes the ticket stuck,
+ * with a hint to label it `refactor`.
  */
 export const TestWriterResultSchema = z.object({
     outcome: z.enum(['tests_written', 'nothing_new_to_test']),
@@ -48,13 +49,19 @@ export const TestWriterResultSchema = z.object({
 
 export type TestWriterResult = z.infer<typeof TestWriterResultSchema>
 
+/** A test an implementer sends back as wrong, and why. */
+export const BadTestSchema = z.object({
+    file: z.string(),
+    name: z.string(),
+    reason: z.string(),
+})
+
+export type BadTest = z.infer<typeof BadTestSchema>
+
 /** The implementer's result. `bad_test` sends a wrong test back. */
 export const ImplementerResultSchema = z.object({
     outcome: z.enum(['done', 'bad_test']),
-    bad_test: z
-        .object({ file: z.string(), name: z.string(), reason: z.string() })
-        .nullable()
-        .default(null),
+    bad_test: BadTestSchema.nullable().default(null),
     ...SHARED_FIELDS,
 })
 
