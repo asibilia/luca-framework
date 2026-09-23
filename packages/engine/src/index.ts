@@ -49,6 +49,29 @@ export {
 } from './intake/intake-checks'
 export * from './intake/intake-schemas'
 export {
+    createTypeSafeJev,
+    JEV_MODEL,
+    JEV_URL,
+    type JevClient,
+    type JevFetch,
+    type JevReply,
+} from './jev/jev-client'
+export {
+    JEV_CANDIDATE_SKILLS,
+    JEV_FAILURE_TEXT_CHARS,
+    JEV_FIXED_MODEL,
+    JEV_MODEL_OPTIONS,
+    jevAsksAfter,
+    jevAsksBefore,
+    type JevAsk,
+} from './jev/jev-jobs'
+export * from './jev/jev-schemas'
+export {
+    askJevInShadow,
+    DEFAULT_JEV_TIMEOUT_MS,
+    type JevShadow,
+} from './jev/jev-shadow'
+export {
     createJournal,
     defaultRunsDir,
     JOURNAL_FILE,

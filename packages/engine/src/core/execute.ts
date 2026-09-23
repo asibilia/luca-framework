@@ -4,8 +4,11 @@ import { executeBuildAction, type BuildDeps } from './execute-build'
 import type { EngineConfig } from '../config/engine-config'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
+import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
+import { askJevInShadow, type JevShadow } from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
 import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
@@ -191,10 +194,51 @@ export const executeAction = async ({
 }
 
 /**
+ * Carries out one action with Jev in shadow mode: asks Jev before it (ticket
+ * order, model, skills), then after it about the records it appended
+ * (failure kinds, finding severities). Jev's answers change nothing.
+ */
+const executeWithJev = async ({
+    jev,
+    action,
+    journal,
+    tracker,
+    build,
+}: {
+    jev: JevShadow
+    action: EngineAction
+    journal: Journal
+    tracker: Tracker
+    build?: BuildDeps
+}): Promise<void> => {
+    const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
+    await askJevInShadow({
+        ...shadow,
+        asks: jevAsksBefore({
+            action,
+            state: replayRun({ records: journal.read() }),
+        }),
+    })
+    const lastSeq = journal.read().at(-1)?.seq ?? 0
+    await executeAction({ action, journal, tracker, build })
+    const records = journal.read()
+    await askJevInShadow({
+        ...shadow,
+        asks: jevAsksAfter({
+            records: records.filter(({ seq }) => seq > lastSeq),
+            state: replayRun({ records }),
+        }),
+    })
+}
+
+/**
  * Runs the engine: decide the next action from the journal, carry it out,
  * repeat, until the run is done: refused, nothing to do, stuck, or its PR
  * opened. Building tickets needs `git` and `launcher`. Safe to call on a
  * journal left by a crashed engine; it picks up where the journal ends.
+ *
+ * With `jev`, Jev is asked around each step in **shadow mode** and its
+ * answers are journaled but never acted on. Without it, nothing changes.
  *
  * @returns The action the loop stopped on.
  */
@@ -205,6 +249,7 @@ export const runEngine = async ({
     stop_before,
     git,
     launcher,
+    jev,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -212,6 +257,8 @@ export const runEngine = async ({
     max_steps?: number
     /** Action types to stop at without carrying them out, such as in tests. */
     stop_before?: EngineAction['type'][]
+    /** Jev in shadow mode. Leave it out to run without Jev. */
+    jev?: JevShadow
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -222,7 +269,11 @@ export const runEngine = async ({
             git === undefined || launcher === undefined
                 ? undefined
                 : { git, launcher }
-        await executeAction({ action, journal, tracker, build })
+        if (jev === undefined) {
+            await executeAction({ action, journal, tracker, build })
+        } else {
+            await executeWithJev({ jev, action, journal, tracker, build })
+        }
     }
     throw new Error(`The engine took ${limit} steps without finishing.`)
 }

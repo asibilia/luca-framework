@@ -37,6 +37,11 @@ scripted stand-in **agents**, up to the run's one pull request.
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
+| `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns. |
+| `src/jev/jev-schemas.ts` | Jev's questions, requests, and answers, and the engine's fixed choices, as Zod schemas. |
+| `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
+| `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
+| `src/jev/jev-shadow.ts` | Asks Jev in **shadow mode** and journals each call and answer. |
 
 ## How a run moves
 
@@ -110,6 +115,37 @@ keeps the latest snapshot of each ticket.
   the red commit.
 - **The ticket reviewer** is a scripted stand-in that approves for now (#364).
 
+## Jev in shadow mode
+
+Jev is TypeSafe's labeling model. `runEngine({ ..., jev })` asks it around
+each step in **shadow mode**: every call and answer goes in the journal, and
+the engine still acts on its own fixed choices. `decide` never reads Jev's
+records, so the run goes exactly as it would without Jev.
+
+| Job | Asked | The engine's fixed choice |
+| --- | --- | --- |
+| `ticket_order` | Before a ticket's worktree: which ticket next? | The ticket it is starting. |
+| `ticket_model` | Before a ticket's worktree: which model? | `claude-opus-5-5`. |
+| `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
+| `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
+| `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
+
+Each call writes `jev_asked` (the job, the request, the fixed choice), then
+`jev_answered` (the answers, each with its value and confidence) or
+`jev_failed` (`missing_key`, `timeout`, or `error`). Both point back with
+`asked_seq`. A Jev error, timeout, or missing key is journaled and the run
+goes on. Each call waits at most `timeout_ms` (default 10 seconds).
+
+```ts
+import { createTypeSafeJev, runEngine } from '@luca/engine'
+
+// Reads TYPESAFE_API_KEY on each call. With no key, each ask is journaled
+// as jev_failed with reason missing_key, and nothing is sent.
+await runEngine({ journal, tracker, git, launcher, jev: { client: createTypeSafeJev() } })
+```
+
+Leave `jev` out to run without Jev; the journal is then exactly as before.
+
 ## Tests
 
 The tests go through the seams spec #359 sets: the decision step (`decide`
@@ -121,6 +157,11 @@ throwaway git repo in a temp folder with a local bare repo as its `origin`,
 fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
 step are real. No GitHub, no models, no setup.
+
+`src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one
+that disagrees with everything, throws, never answers, or has no key, and
+checks the run matches a run without Jev. `src/jev/jev-client.test.ts` tests
+the TypeSafe client with a fake `fetch`; no test reaches the network.
 
 ```bash
 bun test              # in packages/engine
