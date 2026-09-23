@@ -227,6 +227,7 @@ export const testsWritten = ({
     session_id,
     assumptions,
     finding_responses,
+    run_notes,
 }: {
     ticket: number
     /** Defaults to `SESSIONS['test-writer']`. */
@@ -235,6 +236,8 @@ export const testsWritten = ({
     assumptions?: string[]
     /** A review fixer's answer to each finding it got. */
     finding_responses?: FindingResponse[]
+    /** Defaults to none. */
+    run_notes?: string[]
 }): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
@@ -257,7 +260,7 @@ export const testsWritten = ({
             ],
             summary: 'One test for AC1.',
             assumptions: assumptions ?? ['Numbers are integers.'],
-            run_notes: [],
+            run_notes: run_notes ?? [],
             finding_responses: finding_responses ?? [],
         },
     },
@@ -345,6 +348,7 @@ export const implemented = ({
     reason,
     assumptions,
     finding_responses,
+    run_notes,
 }: {
     ticket: number
     outcome?: 'done' | 'bad_test'
@@ -354,6 +358,8 @@ export const implemented = ({
     reason?: string
     assumptions?: string[]
     finding_responses?: FindingResponse[]
+    /** Defaults to none. */
+    run_notes?: string[]
 }): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
@@ -373,7 +379,7 @@ export const implemented = ({
                     : null,
             summary: 'Added sum.',
             assumptions: assumptions ?? [],
-            run_notes: [],
+            run_notes: run_notes ?? [],
             finding_responses: finding_responses ?? [],
         },
     },

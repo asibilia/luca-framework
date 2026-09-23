@@ -1029,3 +1029,49 @@ describe('one ticket, end to end, with scripted agents', () => {
         )
     }, 60_000)
 })
+
+describe('run notes, end to end', () => {
+    test("a test-writer's run note reaches the implementer's prompt, word for word", async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const note = 'Tests import from ./sum; export it from src/index.ts.'
+        const launcher = createScriptedLauncher({
+            turns: [
+                {
+                    ...testWriter,
+                    result: { ...TEST_WRITER_RESULT, run_notes: [note] },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+        const { action, records } = await runPractice({
+            turns: [],
+            launcher,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const prompts = launcher
+            .launches()
+            .map(({ role, prompt }) => ({ role, prompt }))
+        expect(prompts[0]?.prompt).not.toContain('Run notes')
+        expect(prompts[1]?.role).toBe('implementer')
+        expect(prompts[1]?.prompt).toContain(`- ${note} (test-writer, #11)`)
+        expect(prompts[2]?.prompt).toContain(`- ${note} (test-writer, #11)`)
+        const started = records.flatMap((record) =>
+            record.kind === 'agent_started' ? [record.content.prompt] : []
+        )
+        expect(started[1]).toBe(prompts[1]?.prompt ?? '')
+        const finished = records.find(
+            (record) =>
+                record.kind === 'agent_finished' &&
+                record.role === 'test-writer'
+        )
+        expect(
+            finished?.kind === 'agent_finished' &&
+                finished.content.role === 'test-writer'
+                ? finished.content.result.run_notes
+                : []
+        ).toEqual([note])
+    }, 60_000)
+})
