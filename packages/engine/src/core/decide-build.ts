@@ -1,3 +1,4 @@
+import { failedChecks, redFixMessage } from './fix-loop-text'
 import { pullRequestText } from './pull-request-text'
 
 import { rolePrompt } from '../agents/role-prompts'
@@ -15,6 +16,18 @@ import {
     type RunState,
     type TicketProgress,
 } from '../journal/replay'
+
+/**
+ * Follow-ups an agent gets to fix a failed red check or failed gates, after
+ * its first try. A failure after the last follow-up makes the ticket stuck.
+ */
+export const MAX_FIX_ROUNDS = 3
+
+/**
+ * Times an implementer may send a test back as bad, each to a fresh
+ * test-writer. The bounce after these makes the ticket stuck.
+ */
+export const MAX_BAD_TEST_BOUNCES = 1
 
 /** The next build step for a run whose intake passed. */
 export type BuildAction =
@@ -170,16 +183,6 @@ const commitStep = ({
     }
 }
 
-const failedChecks = ({
-    gates,
-}: {
-    gates: { checks: { name: string; ok: boolean; output: string }[] }
-}): string =>
-    gates.checks
-        .filter(({ ok }) => !ok)
-        .map(({ name, output }) => `${name} failed:\n${output}`)
-        .join('\n\n')
-
 /** The next step for one ticket, or `null` once it has joined and pushed. */
 const nextTicketStep = ({
     snapshot,
@@ -232,11 +235,29 @@ const nextTicketStep = ({
             }
         }
         if (!progress.red_check.ok) {
-            return stuck({
+            const red_check = progress.red_check
+            const session_id = progress.sessions['test-writer']
+            if (progress.red_fix_rounds >= MAX_FIX_ROUNDS) {
+                return stuck({
+                    ticket: number,
+                    reason: 'red_check_failed',
+                    detail: `The red check still fails after ${MAX_FIX_ROUNDS} fix rounds:\n${red_check.problems.join('\n')}`,
+                })
+            }
+            if (session_id === undefined) {
+                return stuck({
+                    ticket: number,
+                    reason: 'red_check_failed',
+                    detail: `The red check failed and there is no test-writer session to send it back to:\n${red_check.problems.join('\n')}`,
+                })
+            }
+            return {
+                type: 'follow_up_agent',
                 ticket: number,
-                reason: 'red_check_failed',
-                detail: progress.red_check.problems.join('\n'),
-            })
+                role: 'test-writer',
+                session_id,
+                message: redFixMessage({ red_check }),
+            }
         }
         const red = commitStep({ stage: 'red', ticket, progress })
         if (red !== null) return red

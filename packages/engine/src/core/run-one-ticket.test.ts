@@ -6,9 +6,13 @@ import { $ } from 'bun'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { MAX_FIX_ROUNDS } from './decide-build'
 import { runEngine, startRun } from './execute'
 
-import { createScriptedLauncher } from '../agents/scripted-launcher'
+import {
+    createScriptedLauncher,
+    type ScriptedLauncher,
+} from '../agents/scripted-launcher'
 import { loadEngineConfig } from '../config/engine-config'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
@@ -63,6 +67,12 @@ describe('sum', () => {
 const SUM = `export const sum = ({ numbers }: { numbers: number[] }): number =>
     numbers.reduce((total, each) => total + each, 0)
 `
+
+/** A sum test that defines sum itself, so it passes before any code exists. */
+const PASSING_SUM_TEST = SUM_TEST.replace(
+    "import { sum } from './sum'",
+    'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
+)
 
 const TEST_WRITER_RESULT = {
     outcome: 'tests_written',
@@ -169,7 +179,14 @@ const HAPPY_TURNS: Turn[] = [
     { role: 'ticket-reviewer', ticket: 11, result: APPROVE },
 ]
 
-const runPractice = async ({ turns }: { turns: Turn[] }) => {
+const runPractice = async ({
+    turns,
+    launcher,
+}: {
+    turns: Turn[]
+    /** Defaults to a scripted launcher playing `turns`. */
+    launcher?: ScriptedLauncher
+}) => {
     const loaded = await loadEngineConfig({ repo_root: repo })
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = practiceTracker()
@@ -183,7 +200,7 @@ const runPractice = async ({ turns }: { turns: Turn[] }) => {
         journal,
         tracker,
         git: createGitAdapter({ repo_root: repo }),
-        launcher: createScriptedLauncher({ turns }),
+        launcher: launcher ?? createScriptedLauncher({ turns }),
     })
     return { action, tracker, records: journal.read() }
 }
@@ -395,24 +412,25 @@ describe('one ticket, end to end, with scripted agents', () => {
         )
     }, 60_000)
 
-    test('a test that passes before any code is written fails the red check', async () => {
+    test(`a test that still passes after ${MAX_FIX_ROUNDS} fix rounds leaves the ticket stuck`, async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const { action, records } = await runPractice({
+        const passingAlready: Turn = {
+            ...testWriter,
+            files: { 'src/sum.test.ts': PASSING_SUM_TEST },
+        }
+        const launcher = createScriptedLauncher({
             turns: [
-                {
-                    ...testWriter,
-                    files: {
-                        'src/sum.test.ts': SUM_TEST.replace(
-                            "import { sum } from './sum'",
-                            'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
-                        ),
-                    },
-                },
+                // The first try, then one turn per follow-up.
+                ...Array.from(
+                    { length: MAX_FIX_ROUNDS + 1 },
+                    () => passingAlready
+                ),
                 implementer,
                 reviewer,
             ],
         })
+        const { action, records } = await runPractice({ turns: [], launcher })
 
         expect(action).toMatchObject({
             type: 'done',
@@ -422,6 +440,26 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(
             action.type === 'done' && 'detail' in action && action.detail
         ).toContain('passes already')
+        expect(
+            records.filter((record) => record.kind === 'red_check')
+        ).toHaveLength(MAX_FIX_ROUNDS + 1)
+        // Every follow-up went to the first test-writer's session.
+        const calls = launcher.launches()
+        const [first, ...followUps] = calls
+        expect(first?.kind).toBe('launch')
+        expect(followUps).toHaveLength(MAX_FIX_ROUNDS)
+        for (const call of followUps) {
+            expect(call).toMatchObject({
+                kind: 'follow_up',
+                role: 'test-writer',
+                session_id: first?.session_id,
+            })
+            expect(call.prompt).toContain('passes already')
+        }
+        expect(records.at(-1)).toMatchObject({
+            kind: 'ticket_stuck',
+            content: { reason: 'red_check_failed' },
+        })
         expect(records.some((record) => record.kind === 'commit_made')).toBe(
             false
         )

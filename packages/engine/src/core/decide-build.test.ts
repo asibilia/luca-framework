@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
 import { decide } from './decide'
+import { MAX_FIX_ROUNDS } from './decide-build'
 
 import type { JournalEntry } from '../journal/journal-record'
 import {
+    agentStarted,
+    baselineTests,
     gatesRun,
     implemented,
     intakePassed,
@@ -13,6 +16,8 @@ import {
     reviewed,
     RUN_BRANCH,
     runBranchCreated,
+    SESSIONS,
+    testsWritten,
     ticketBuilt,
     ticketWorktreeCreated,
 } from '../testing/build-fixtures'
@@ -242,18 +247,149 @@ describe('decision step: building a ticket', () => {
     })
 })
 
-describe('decision step: a ticket gets stuck (fix loops come in #363)', () => {
-    test('a failed red check makes the ticket stuck, with its problems', () => {
-        expect(
-            decideAfter([...stepsUpTo(2), redCheck({ ticket: 11, ok: false })])
-        ).toEqual({
-            type: 'mark_stuck',
+/** A failed red check, then a test-writer follow-up answered, `n` times. */
+const redRounds = (n: number): JournalEntry[] =>
+    Array.from({ length: n }, () => [
+        redCheck({ ticket: 11, ok: false }),
+        agentStarted({
             ticket: 11,
-            reason: 'red_check_failed',
-            detail: '"sum adds two numbers" passes already',
+            role: 'test-writer',
+            follow_up_of: SESSIONS['test-writer'],
+        }),
+        testsWritten({ ticket: 11 }),
+    ]).flat()
+
+describe('decision step: the red check fix loop', () => {
+    test('a failed red check goes back to the same test-writer session, with its problems and output', () => {
+        const action = decideAfter([
+            ...stepsUpTo(2),
+            redCheck({ ticket: 11, ok: false }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'follow_up_agent',
+            ticket: 11,
+            role: 'test-writer',
+            session_id: SESSIONS['test-writer'],
+        })
+        if (action.type !== 'follow_up_agent') throw new Error(action.type)
+        expect(action.message).toContain(
+            '"sum adds two numbers" passes already'
+        )
+        expect(action.message).toContain('(pass) sum adds two numbers')
+    })
+
+    test('once the test-writer answers the follow-up, the red check runs again', () => {
+        expect(decideAfter([...stepsUpTo(2), ...redRounds(1)])).toMatchObject({
+            type: 'run_red_check',
+            ticket: 11,
         })
     })
 
+    test('a red check that passes after a fix round is committed', () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(2),
+                ...redRounds(2),
+                redCheck({ ticket: 11, ok: true }),
+            ])
+        ).toMatchObject({ type: 'commit_ticket', stage: 'red' })
+    })
+
+    test(`it gets ${MAX_FIX_ROUNDS} fix rounds`, () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(2),
+                ...redRounds(MAX_FIX_ROUNDS - 1),
+                redCheck({ ticket: 11, ok: false }),
+            ])
+        ).toMatchObject({ type: 'follow_up_agent', role: 'test-writer' })
+    })
+
+    test(`a red check still failing after ${MAX_FIX_ROUNDS} fix rounds makes the ticket stuck`, () => {
+        const action = decideAfter([
+            ...stepsUpTo(2),
+            ...redRounds(MAX_FIX_ROUNDS),
+            redCheck({ ticket: 11, ok: false }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'red_check_failed',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain(`after ${MAX_FIX_ROUNDS} fix rounds`)
+        expect(action.detail).toContain('"sum adds two numbers" passes already')
+    })
+
+    test('a follow-up that started but never finished is sent again to the same session, not counted', () => {
+        const once = decideAfter([
+            ...stepsUpTo(2),
+            redCheck({ ticket: 11, ok: false }),
+        ])
+        const again = decideAfter([
+            ...stepsUpTo(2),
+            redCheck({ ticket: 11, ok: false }),
+            agentStarted({
+                ticket: 11,
+                role: 'test-writer',
+                follow_up_of: SESSIONS['test-writer'],
+            }),
+        ])
+
+        expect(again).toEqual(once)
+    })
+
+    test('a failed red check with no test-writer session to go back to makes the ticket stuck', () => {
+        expect(
+            decideAfter([
+                runBranchCreated(),
+                ticketWorktreeCreated({ ticket: 11 }),
+                baselineTests({ ticket: 11 }),
+                {
+                    kind: 'agent_finished',
+                    ticket: 11,
+                    role: 'test-writer',
+                    content: {
+                        role: 'test-writer',
+                        result: {
+                            outcome: 'tests_written',
+                            criteria: [
+                                {
+                                    criterion_id: 'AC1',
+                                    tests: [{ file: 'a.test.ts', name: 'a' }],
+                                },
+                            ],
+                        },
+                    },
+                },
+                redCheck({ ticket: 11, ok: false }),
+            ])
+        ).toMatchObject({ type: 'mark_stuck', reason: 'red_check_failed' })
+    })
+
+    test('the PR lists the assumptions from every round, once each', () => {
+        const action = decideAfter([
+            runBranchCreated(),
+            ...ticketBuilt({ ticket: 11 }).slice(0, 3),
+            redCheck({ ticket: 11, ok: false }),
+            testsWritten({
+                ticket: 11,
+                assumptions: ['Numbers are integers.', 'Sums may be negative.'],
+            }),
+            ...ticketBuilt({ ticket: 11 }).slice(3),
+        ])
+        if (action.type !== 'open_pull_request') throw new Error(action.type)
+
+        expect(action.body).toContain(
+            '- #11: Numbers are integers.\n- #11: Sums may be negative.'
+        )
+        expect(action.body.match(/Numbers are integers/g)).toHaveLength(1)
+    })
+})
+
+describe('decision step: a ticket gets stuck', () => {
     test('leftovers found before a commit make the ticket stuck, with no commit', () => {
         expect(
             decideAfter([
