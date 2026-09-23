@@ -217,6 +217,11 @@ const applyRecord = ({
                     url: record.content.url,
                 },
             }
+        // Jev's shadow-mode records change nothing: the engine ignores them.
+        case 'jev_asked':
+        case 'jev_answered':
+        case 'jev_failed':
+            return next
         default:
             return applyTicketRecord({ state: next, record })
     }
@@ -234,6 +239,9 @@ type TicketRecord = Exclude<
             | 'ticket_snapshot'
             | 'run_branch_created'
             | 'pull_request_opened'
+            | 'jev_asked'
+            | 'jev_answered'
+            | 'jev_failed'
     }
 >
 
