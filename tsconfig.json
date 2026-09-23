@@ -26,8 +26,11 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
   },
+  // The board plugin is checked on its own (`-p packages/board`): its
+  // React Native globals, such as AbortSignal, clash with Bun's.
   "exclude": [
     "dist",
-    "**/dist"
+    "**/dist",
+    "packages/board"
   ]
 }
