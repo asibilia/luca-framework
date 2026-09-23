@@ -1,4 +1,4 @@
-import { failedChecks, redFixMessage } from './fix-loop-text'
+import { failedChecks, gateFixMessage, redFixMessage } from './fix-loop-text'
 import { pullRequestText } from './pull-request-text'
 
 import { rolePrompt } from '../agents/role-prompts'
@@ -277,11 +277,29 @@ const nextTicketStep = ({
         return { type: 'run_gates', ticket: number, target: 'ticket' }
     }
     if (!progress.gates.ok) {
-        return stuck({
+        const gates = progress.gates
+        const session_id = progress.sessions.implementer
+        if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
+            return stuck({
+                ticket: number,
+                reason: 'gates_failed',
+                detail: `The gates still fail after ${MAX_FIX_ROUNDS} fix rounds:\n${failedChecks({ gates })}`,
+            })
+        }
+        if (session_id === undefined) {
+            return stuck({
+                ticket: number,
+                reason: 'gates_failed',
+                detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
+            })
+        }
+        return {
+            type: 'follow_up_agent',
             ticket: number,
-            reason: 'gates_failed',
-            detail: failedChecks({ gates: progress.gates }),
-        })
+            role: 'implementer',
+            session_id,
+            message: gateFixMessage({ gates }),
+        }
     }
     const green = commitStep({ stage: 'green', ticket, progress })
     if (green !== null) return green

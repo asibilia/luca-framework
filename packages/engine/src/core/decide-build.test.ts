@@ -389,6 +389,91 @@ describe('decision step: the red check fix loop', () => {
     })
 })
 
+/** Failed gates, then an implementer follow-up answered, `n` times. */
+const gateRounds = (n: number): JournalEntry[] =>
+    Array.from({ length: n }, () => [
+        gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+        agentStarted({
+            ticket: 11,
+            role: 'implementer',
+            follow_up_of: SESSIONS.implementer,
+        }),
+        implemented({ ticket: 11 }),
+    ]).flat()
+
+describe('decision step: the gates fix loop', () => {
+    test('failing gates go back to the same implementer session, with the failing output', () => {
+        const action = decideAfter([
+            ...stepsUpTo(6),
+            gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'follow_up_agent',
+            ticket: 11,
+            role: 'implementer',
+            session_id: SESSIONS.implementer,
+        })
+        if (action.type !== 'follow_up_agent') throw new Error(action.type)
+        expect(action.message).toContain('test failed:\n1 fail')
+    })
+
+    test('once the implementer answers the follow-up, the gates run again', () => {
+        expect(decideAfter([...stepsUpTo(6), ...gateRounds(1)])).toEqual({
+            type: 'run_gates',
+            ticket: 11,
+            target: 'ticket',
+        })
+    })
+
+    test('gates that pass after a fix round are committed as the green commit', () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(6),
+                ...gateRounds(MAX_FIX_ROUNDS),
+                gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+            ])
+        ).toMatchObject({ type: 'commit_ticket', stage: 'green' })
+    })
+
+    test(`failing gates after ${MAX_FIX_ROUNDS} fix rounds make the ticket stuck, with the output`, () => {
+        const action = decideAfter([
+            ...stepsUpTo(6),
+            ...gateRounds(MAX_FIX_ROUNDS),
+            gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'gates_failed',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain(`after ${MAX_FIX_ROUNDS} fix rounds`)
+        expect(action.detail).toContain('test failed:\n1 fail')
+    })
+
+    test('a gates follow-up that started but never finished is sent again, not counted', () => {
+        const entries = [
+            ...stepsUpTo(6),
+            ...gateRounds(MAX_FIX_ROUNDS - 1),
+            gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+        ]
+
+        expect(
+            decideAfter([
+                ...entries,
+                agentStarted({
+                    ticket: 11,
+                    role: 'implementer',
+                    follow_up_of: SESSIONS.implementer,
+                }),
+            ])
+        ).toEqual(decideAfter(entries))
+        expect(decideAfter(entries)).toMatchObject({ type: 'follow_up_agent' })
+    })
+})
+
 describe('decision step: a ticket gets stuck', () => {
     test('leftovers found before a commit make the ticket stuck, with no commit', () => {
         expect(
@@ -405,20 +490,6 @@ describe('decision step: a ticket gets stuck', () => {
             ticket: 11,
             reason: 'leftovers_found',
             detail: 'debug.log: a log file',
-        })
-    })
-
-    test('failing gates make the ticket stuck, with the failing output', () => {
-        expect(
-            decideAfter([
-                ...stepsUpTo(6),
-                gatesRun({ ticket: 11, target: 'ticket', ok: false }),
-            ])
-        ).toEqual({
-            type: 'mark_stuck',
-            ticket: 11,
-            reason: 'gates_failed',
-            detail: 'test failed:\n1 fail',
         })
     })
 
