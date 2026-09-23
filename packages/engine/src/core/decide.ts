@@ -19,7 +19,7 @@ export type EngineAction =
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
     /** Intake passed and every ticket is snapshotted: build the tickets. */
     | BuildAction
-    /** The run is over. */
+    /** The run ended at intake. */
     | { type: 'done'; outcome: 'refused' | 'nothing_to_do' }
 
 /**
