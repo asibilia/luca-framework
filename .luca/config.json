@@ -1,61 +1,13 @@
 {
-  "lucaVersion": "13.1.0-alpha.0",
-  "oversight": "full-auto",
-  "preferences": {
-    "schemaVersion": 1,
-    "branching": {
-      "types": [
-        "feat",
-        "fix",
-        "refactor",
-        "chore",
-        "docs",
-        "test",
-        "style"
-      ],
-      "template": "{type}/{slug}",
-      "defaultBranch": "main",
-      "guardedBranches": [
-        "main"
-      ],
-      "confirmBaseBeforeCreate": false
+    "checks": {
+        "test": "bun test packages/engine",
+        "types": "bunx --bun tsc --noEmit",
+        "lint": "bun run lint"
     },
-    "commits": {
-      "convention": "conventional",
-      "scopes": [
-        "cli",
-        "core",
-        "tools",
-        "deps",
-        "release",
-        "mcp",
-        "repo"
-      ],
-      "subjectMaxLength": 72
-    },
-    "pr": {
-      "titleFormat": "{type}({scope}): {description}",
-      "baseBranch": "main"
-    },
-    "release": {
-      "tool": "changesets",
-      "versionBump": {
-        "feat": "minor",
-        "fix": "patch",
-        "chore": "patch",
-        "refactor": "patch"
-      }
-    },
-    "tracker": {
-      "kind": "github",
-      "issuePrefix": ""
+    "test_file_patterns": ["packages/**/*.test.ts"],
+    "test_setup_files": [],
+    "rule_files": ["docs/guides/coding-standards.md", "AGENTS.md"],
+    "muninn": {
+        "vault": "luca-monorepo"
     }
-  },
-  "muninn": {
-    "vault": "luca-monorepo",
-    "todoBacklog": {
-      "vault": "luca-monorepo",
-      "rootId": "01KXPMVKMMG9SW62BB3Z5GESKV"
-    }
-  }
 }

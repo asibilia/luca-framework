@@ -2,12 +2,18 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
-/** The engine config file's name, at the root of the repo a run works on. */
-export const ENGINE_CONFIG_FILE = 'luca.config.json'
+/**
+ * The engine config file, relative to the root of the repo a run works on.
+ * `muninn.vault` sits at the same path old Luca used, because memory tooling
+ * outside the engine reads it from there.
+ */
+export const ENGINE_CONFIG_FILE = '.luca/config.json'
 
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule
  * files for the rules lens, and the project's memory vault.
+ *
+ * Unknown keys, such as old Luca's, are dropped when the file is read.
  *
  * The test command is optional here on purpose. A config without it still
  * loads, and intake refuses the run with a clear message instead.
@@ -23,7 +29,12 @@ export const EngineConfigSchema = z.object({
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
-    memory_vault: z.string().min(1).optional(),
+    muninn: z
+        .object({
+            /** The project's memory vault. */
+            vault: z.string().min(1),
+        })
+        .optional(),
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>
@@ -45,7 +56,7 @@ const parseJson = ({
 }
 
 /**
- * Reads and checks the engine config at `<repo_root>/luca.config.json`.
+ * Reads and checks the engine config at `<repo_root>/.luca/config.json`.
  *
  * Never throws: a missing file, bad JSON, or a config of the wrong shape comes
  * back as `{ ok: false, error }` with a message a person can act on.

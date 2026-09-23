@@ -12,7 +12,7 @@ This package so far covers the start of a run (#360): the engine config, the
 
 | Module | What it does |
 | --- | --- |
-| `src/config/engine-config.ts` | Loads the per-repo engine config (`luca.config.json`). |
+| `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
@@ -41,9 +41,12 @@ keeps the latest snapshot of each ticket.
 
 ## Choices made
 
-- **Config file:** `luca.config.json` at the root of the repo a run works on
-  (not inside old Luca's `.luca/`). The test command is optional in the schema
-  so a config without it loads and intake refuses the run with a clear reason.
+- **Config file:** `.luca/config.json` in the repo a run works on. Its
+  `muninn.vault` field names the project's memory vault; it stays at that path
+  because memory tooling outside the engine reads it there. Unknown keys (such
+  as old Luca's) are dropped on read. The test command is optional in the
+  schema so a config without it loads and intake refuses the run with a clear
+  reason.
 - **Runs folder:** `~/.local/state/luca/runs/<run_id>/journal.jsonl`, outside
   git. Set `LUCA_RUNS_DIR` to move it.
 - **Refusal beats nothing to do:** config and spec problems refuse even a spec

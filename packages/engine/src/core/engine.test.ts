@@ -115,7 +115,7 @@ describe('engine: intake refuses the run', () => {
             {
                 ticket: null,
                 missing: [
-                    'The engine config (luca.config.json) has no test command at checks.test.',
+                    'The engine config (.luca/config.json) has no test command at checks.test.',
                 ],
             },
         ])
