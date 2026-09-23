@@ -412,6 +412,161 @@ describe('one ticket, end to end, with scripted agents', () => {
         )
     }, 60_000)
 
+    test('fix loops and a bad-test bounce still end in one PR', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const launcher = createScriptedLauncher({
+            turns: [
+                // 1. The first test-writer's test passes already: red check fails.
+                {
+                    ...testWriter,
+                    files: { 'src/sum.test.ts': PASSING_SUM_TEST },
+                },
+                // 2. Its follow-up fixes that, but expects 1 + 2 to be 4.
+                {
+                    ...testWriter,
+                    files: {
+                        'src/sum.test.ts': SUM_TEST.replace(
+                            'toBe(3)',
+                            'toBe(4)'
+                        ),
+                    },
+                },
+                // 3. The implementer writes some code, then calls that test bad.
+                {
+                    role: 'implementer',
+                    ticket: 11,
+                    files: {
+                        'src/sum.ts': SUM,
+                        'src/half-done.ts': 'export const half = 1\n',
+                        'README.md': '# Changed by the implementer\n',
+                    },
+                    result: {
+                        ...IMPLEMENTER_RESULT,
+                        outcome: 'bad_test',
+                        bad_test: {
+                            file: 'src/sum.test.ts',
+                            name: 'sum > adds two numbers',
+                            reason: '1 + 2 is 3, not 4.',
+                        },
+                    },
+                },
+                // 4. A fresh test-writer replaces the bad test.
+                {
+                    ...testWriter,
+                    files: { 'src/sum.test.ts': SUM_TEST },
+                    result: {
+                        ...TEST_WRITER_RESULT,
+                        assumptions: ['1 + 2 is 3.'],
+                    },
+                },
+                // 5. A fresh implementer leaves a console.log: lint fails.
+                {
+                    ...implementer,
+                    files: {
+                        'src/sum.ts': `${SUM}console.log('sum loaded')\n`,
+                        'src/index.ts': "export { sum } from './sum'\n",
+                    },
+                },
+                // 6. Its follow-up removes it.
+                { ...implementer, files: { 'src/sum.ts': SUM } },
+                reviewer,
+            ],
+        })
+        const { action, tracker, records } = await runPractice({
+            turns: [],
+            launcher,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // Follow-ups went to the same session; fresh agents got new ones.
+        const calls = launcher.launches()
+        expect(calls.map(({ kind, role }) => `${kind} ${role}`)).toEqual([
+            'launch test-writer',
+            'follow_up test-writer',
+            'launch implementer',
+            'launch test-writer',
+            'launch implementer',
+            'follow_up implementer',
+            'launch ticket-reviewer',
+        ])
+        const [tw1, twFix, impl1, tw2, impl2, implFix] = calls
+        expect(twFix?.session_id).toBe(tw1?.session_id ?? '')
+        expect(implFix?.session_id).toBe(impl2?.session_id ?? '')
+        expect(tw2?.session_id).not.toBe(tw1?.session_id ?? '')
+        expect(impl2?.session_id).not.toBe(impl1?.session_id ?? '')
+        expect(twFix?.prompt).toContain('passes already')
+        expect(tw2?.prompt).toContain('1 + 2 is 3, not 4.')
+        expect(implFix?.prompt).toContain('no console.log')
+        expect(calls.map(({ may_edit_tests }) => may_edit_tests)).toEqual([
+            true,
+            undefined,
+            false,
+            true,
+            false,
+            undefined,
+            false,
+        ])
+
+        // The journal names the session each follow-up went to.
+        const followUps = records.flatMap((record) =>
+            record.kind === 'agent_started' && record.content.follow_up_of
+                ? [record.content.follow_up_of]
+                : []
+        )
+        expect(followUps).toEqual([
+            tw1?.session_id ?? '',
+            impl2?.session_id ?? '',
+        ])
+        expect(
+            records.filter((record) => record.kind === 'worktree_reset')
+        ).toHaveLength(1)
+
+        // Two red commits (the second replaces the bad test), then green.
+        // The implementer's first, thrown-away work is in none of them.
+        const commits = records.flatMap((record) =>
+            record.kind === 'commit_made'
+                ? [
+                      {
+                          message: record.content.message,
+                          files: record.content.files,
+                      },
+                  ]
+                : []
+        )
+        expect(commits).toEqual([
+            {
+                message: 'test: add failing tests for #11 Add sum',
+                files: ['src/sum.test.ts'],
+            },
+            {
+                message: 'test: replace a bad test for #11 Add sum',
+                files: ['src/sum.test.ts'],
+            },
+            {
+                message: 'feat: build #11 Add sum',
+                files: ['src/index.ts', 'src/sum.ts'],
+            },
+        ])
+        const branch = tracker.pullRequests()[0]?.head ?? ''
+        const pushedLog = await git(origin, 'log', '--format=%s', branch)
+        expect(pushedLog.trim().split('\n')).toEqual([
+            'feat: build #11 Add sum',
+            'test: replace a bad test for #11 Add sum',
+            'test: add failing tests for #11 Add sum',
+            'initial',
+        ])
+        expect(await git(origin, 'show', `${branch}:README.md`)).toBe(
+            '# Practice\n'
+        )
+
+        // The PR keeps the assumptions from both test-writers.
+        const body = tracker.pullRequests()[0]?.body ?? ''
+        expect(body).toContain('- #11: sum takes a list of numbers.')
+        expect(body).toContain('- #11: 1 + 2 is 3.')
+    }, 90_000)
+
     test(`a test that still passes after ${MAX_FIX_ROUNDS} fix rounds leaves the ticket stuck`, async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
