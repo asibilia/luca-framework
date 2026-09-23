@@ -36,6 +36,22 @@ export type BuildAction =
           prompt: string
           may_edit_tests: boolean
       }
+    /**
+     * Send a follow-up message, such as a failed check's output, to the agent
+     * session that is still open, in a fix loop.
+     */
+    | {
+          type: 'follow_up_agent'
+          ticket: number
+          role: AgentRole
+          session_id: string
+          message: string
+      }
+    /**
+     * Throw away every uncommitted change in the ticket's worktree, so a
+     * fresh test-writer starts clean after a bad test.
+     */
+    | { type: 'reset_ticket_worktree'; ticket: number }
     /** Prove every criterion has a test, new tests fail, old tests pass. */
     | {
           type: 'run_red_check'

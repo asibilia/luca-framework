@@ -36,6 +36,12 @@ export type GitAdapter = {
     filesMentioning: (args: { cwd: string; text: string }) => Promise<string[]>
     /** Stages everything and commits it, skipping hooks (the engine ran the gates). */
     commitAll: (args: { cwd: string; message: string }) => Promise<EngineCommit>
+    /**
+     * Throws away every uncommitted change at `cwd`, new untracked files
+     * included (ignored files such as `node_modules` stay), and returns the
+     * commit it went back to.
+     */
+    discardChanges: (args: { cwd: string }) => Promise<{ sha: string }>
     /** Commits after `from` up to `to`, oldest first. */
     commitsBetween: (args: {
         cwd: string
@@ -185,6 +191,11 @@ export const createGitAdapter = ({
                 })
             )
             return { sha, files: files.toSorted() }
+        },
+        discardChanges: async ({ cwd }) => {
+            await gitOk({ cwd, args: ['reset', '--quiet', '--hard', 'HEAD'] })
+            await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
+            return { sha: await head({ cwd }) }
         },
         commitsBetween: async ({ cwd, from, to }) =>
             lines(

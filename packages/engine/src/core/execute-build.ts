@@ -6,8 +6,8 @@ import uniq from 'lodash/uniq'
 
 import type { BuildAction } from './decide-build'
 
-import type { AgentLauncher } from '../agents/agent-launcher'
-import { parseRoleResult } from '../agents/role-results'
+import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
+import { parseRoleResult, type AgentRole } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
 import { runGates } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
@@ -227,6 +227,39 @@ const commitTicket = async ({
     })
 }
 
+/** Journals an agent turn's result: finished if it fits the role, else failed. */
+const journalTurn = ({
+    context,
+    ticket,
+    role,
+    turn,
+}: {
+    context: BuildContext
+    ticket: number
+    role: AgentRole
+    turn: AgentTurn
+}) => {
+    const session_id = turn.session_id ?? null
+    const checked = turn.ok
+        ? parseRoleResult({ role, output: turn.structured_output })
+        : turn
+    if (!checked.ok) {
+        context.journal.append({
+            kind: 'agent_failed',
+            ticket,
+            role,
+            content: { role, error: checked.error, session_id },
+        })
+        return
+    }
+    context.journal.append({
+        kind: 'agent_finished',
+        ticket,
+        role,
+        content: { ...checked.value, session_id },
+    })
+}
+
 const launchAgent = async ({
     context,
     action,
@@ -240,7 +273,7 @@ const launchAgent = async ({
         kind: 'agent_started',
         ticket,
         role,
-        content: { role, prompt },
+        content: { role, prompt, follow_up_of: null },
     })
     const turn = await context.launcher.launch({
         role,
@@ -249,24 +282,32 @@ const launchAgent = async ({
         cwd: path,
         may_edit_tests,
     })
-    const checked = turn.ok
-        ? parseRoleResult({ role, output: turn.structured_output })
-        : turn
-    if (!checked.ok) {
-        context.journal.append({
-            kind: 'agent_failed',
-            ticket,
-            role,
-            content: { role, error: checked.error },
-        })
-        return
-    }
+    journalTurn({ context, ticket, role, turn })
+}
+
+const followUpAgent = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'follow_up_agent' }>
+}) => {
+    const { ticket, role, session_id, message } = action
+    const { path } = ticketWorktree({ state: context.state, ticket })
     context.journal.append({
-        kind: 'agent_finished',
+        kind: 'agent_started',
         ticket,
         role,
-        content: checked.value,
+        content: { role, prompt: message, follow_up_of: session_id },
     })
+    const turn = await context.launcher.followUp({
+        session_id,
+        role,
+        ticket,
+        message,
+        cwd: path,
+    })
+    journalTurn({ context, ticket, role, turn })
 }
 
 /**
@@ -354,6 +395,19 @@ export const executeBuildAction = async ({
         }
         case 'launch_agent':
             return launchAgent({ context, action })
+        case 'follow_up_agent':
+            return followUpAgent({ context, action })
+        case 'reset_ticket_worktree': {
+            const { path } = ticketWorktree({ state, ticket: action.ticket })
+            const { sha } = await git.discardChanges({ cwd: path })
+            journal.append({
+                kind: 'worktree_reset',
+                ticket: action.ticket,
+                role: null,
+                content: { sha },
+            })
+            return
+        }
         case 'run_red_check':
             return runRedCheck({ context, action })
         case 'commit_ticket':

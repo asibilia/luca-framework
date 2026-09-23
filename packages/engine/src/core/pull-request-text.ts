@@ -1,11 +1,13 @@
 import compact from 'lodash/compact'
 import flatMap from 'lodash/flatMap'
+import uniq from 'lodash/uniq'
 
 import type { ReplayedSnapshot, TicketProgress } from '../journal/replay'
 
 /**
  * The run's pull request title and body, from the snapshot and each ticket's
- * progress: which tickets it closes and the assumptions agents made.
+ * progress: which tickets it closes and the assumptions agents made, from
+ * every round of every agent on each ticket.
  *
  * @example
  * const { title, body } = pullRequestText({ snapshot, tickets })
@@ -22,17 +24,11 @@ export const pullRequestText = ({
         (number) =>
             `- Closes #${number}: ${snapshot.tickets[number]?.title ?? ''}`
     )
-    const assumptions = flatMap(ticket_order, (number) => {
-        const progress = tickets[number]
-        const lists = [
-            progress?.test_writer?.assumptions,
-            progress?.implementer?.assumptions,
-            progress?.review?.assumptions,
-        ]
-        return flatMap(compact(lists), (list) =>
-            list.map((text) => `- #${number}: ${text}`)
+    const assumptions = flatMap(ticket_order, (number) =>
+        uniq(tickets[number]?.assumptions ?? []).map(
+            (text) => `- #${number}: ${text}`
         )
-    })
+    )
     const body = [
         `Built by the Luca engine from spec #${spec.number}.`,
         `## Tickets\n\n${closes.join('\n')}`,

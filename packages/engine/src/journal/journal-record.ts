@@ -100,25 +100,44 @@ const BaselineTestsEntrySchema = z.object({
     content: TestRunSchema,
 })
 
-/** An agent was started, with its prompt word for word. */
+/**
+ * An agent turn was started, with its prompt word for word. A follow-up in a
+ * fix loop names the session it went to in `follow_up_of`, and `prompt` holds
+ * the follow-up message.
+ */
 const AgentStartedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_started'),
-    content: z.object({ role: AgentRoleSchema, prompt: z.string() }),
+    content: z.object({
+        role: AgentRoleSchema,
+        prompt: z.string(),
+        follow_up_of: z.string().nullable().default(null),
+    }),
 })
+
+/** The session an agent turn ran in; `null` in journals from before #363. */
+const SESSION_FIELDS = { session_id: z.string().nullable().default(null) }
 
 /** An agent finished with a result that fits its role's schema. */
 const AgentFinishedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_finished'),
-    content: RoleResultSchema,
+    content: z.discriminatedUnion('role', [
+        RoleResultSchema.options[0].extend(SESSION_FIELDS),
+        RoleResultSchema.options[1].extend(SESSION_FIELDS),
+        RoleResultSchema.options[2].extend(SESSION_FIELDS),
+    ]),
 })
 
 /** An agent's turn failed, or its result did not fit its role's schema. */
 const AgentFailedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_failed'),
-    content: z.object({ role: AgentRoleSchema, error: z.string() }),
+    content: z.object({
+        role: AgentRoleSchema,
+        error: z.string(),
+        ...SESSION_FIELDS,
+    }),
 })
 
 const RedCheckEntrySchema = z.object({
@@ -158,6 +177,16 @@ export const GateTargetSchema = z.enum(['ticket', 'run_branch'])
 
 export type GateTarget = z.infer<typeof GateTargetSchema>
 
+/**
+ * The engine threw away every uncommitted change in a ticket's worktree, back
+ * to `sha`, so a fresh test-writer starts clean after a bad test.
+ */
+const WorktreeResetEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('worktree_reset'),
+    content: z.object({ sha: z.string().min(1) }),
+})
+
 const GatesRunEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('gates_run'),
@@ -188,10 +217,14 @@ const RunBranchPushedEntrySchema = z.object({
     content: z.object({ branch: z.string(), sha: z.string() }),
 })
 
-/** Why a ticket is stuck. Fix loops (#363) turn most of these into retries. */
+/**
+ * Why a ticket is stuck. A failed red check or gate is only stuck once its
+ * fix loop reaches its cap, and a bad test only on its second bounce.
+ */
 export const StuckReasonSchema = z.enum([
     'agent_failed',
     'red_check_failed',
+    'nothing_new_to_test',
     'leftovers_found',
     'gates_failed',
     'bad_test',
@@ -243,6 +276,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema,
     LeftoverScanEntrySchema,
     CommitMadeEntrySchema,
+    WorktreeResetEntrySchema,
     GatesRunEntrySchema,
     TicketJoinedEntrySchema,
     RunBranchPushedEntrySchema,
@@ -270,6 +304,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
+    WorktreeResetEntrySchema.extend(STAMP_FIELDS),
     GatesRunEntrySchema.extend(STAMP_FIELDS),
     TicketJoinedEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
@@ -296,6 +331,7 @@ export const JournalKindSchema = z.enum([
     'red_check',
     'leftover_scan',
     'commit_made',
+    'worktree_reset',
     'gates_run',
     'ticket_joined',
     'run_branch_pushed',
