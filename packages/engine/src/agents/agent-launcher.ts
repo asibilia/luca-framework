@@ -5,9 +5,10 @@ import type { AgentRole } from './role-results'
 import type { EngineConfig } from '../config/engine-config'
 
 /**
- * A summary of one agent's model session, as the launcher saw it. Raw
- * numbers only; usage recording proper is #368's. Every field has a
- * default, so a session cut short still fits.
+ * A summary of one agent's model session, as the launcher saw it: raw
+ * numbers and readings. The decision step reads its rate-limit readings for
+ * limit waits and billing stops, and sums its tokens into usage records.
+ * Every field has a default, so a session cut short still fits.
  */
 export const AgentSessionSchema = z.object({
     session_id: z.string().nullable().default(null),
@@ -44,6 +45,8 @@ export const AgentSessionSchema = z.object({
         .default([]),
     /** Every `rate_limit_event`'s info, as sent. */
     rate_limit_events: z.array(z.record(z.string(), z.unknown())).default([]),
+    /** An assistant message came back with `error: "billing_error"`. */
+    billing_error: z.boolean().default(false),
 })
 
 export type AgentSession = z.infer<typeof AgentSessionSchema>
@@ -56,10 +59,13 @@ export type AgentSession = z.infer<typeof AgentSessionSchema>
  *   or a follow-up's session is gone). The engine starts a fresh agent
  *   without using up a try.
  * - `stop`: continuing is unsafe (the wrong credentials or plan, a Fable or
- *   non-Claude model, a foreign MCP server, a rejected rate limit, overage,
- *   a billing error). The run stops.
+ *   non-Claude model, a foreign MCP server). The run stops.
+ * - `plan`: the plan said no. A rejected rate limit, overage, or a billing
+ *   error cut the turn off. The reason is in the turn's `session` (its
+ *   readings, or `billing_error`), and the decision step reads it from the
+ *   journal: a limit wait, or a billing stop. The turn uses up no try.
  */
-export const LauncherFailureSchema = z.enum(['agent', 'engine', 'stop'])
+export const LauncherFailureSchema = z.enum(['agent', 'engine', 'stop', 'plan'])
 
 export type LauncherFailure = z.infer<typeof LauncherFailureSchema>
 

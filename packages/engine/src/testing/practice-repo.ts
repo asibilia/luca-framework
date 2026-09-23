@@ -18,6 +18,7 @@ import { createGitAdapter } from '../git/git-adapter'
 import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
+import type { EngineClock } from '../limits/limit-wait'
 import {
     createInMemoryTracker,
     type InMemoryTracker,
@@ -284,6 +285,9 @@ export const createPracticeRepo = async ({
         turns,
         launcher,
         ticket,
+        tracker: given,
+        clock,
+        resume,
     }: {
         /** Scripted agents' turns; ignored when `launcher` is given. */
         turns?: ScriptedTurn[]
@@ -291,22 +295,31 @@ export const createPracticeRepo = async ({
         launcher?: AgentLauncher
         /** Ticket #11. Defaults to "Add sum". */
         ticket?: TrackerIssue
+        /** A tracker to keep across runs. Defaults to a fresh one. */
+        tracker?: InMemoryTracker
+        /** The clock limit waits sleep by. Defaults to the system's. */
+        clock?: EngineClock
+        /** Carry on the journal as it is, as a restarted engine does. */
+        resume?: boolean
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
-        const tracker = practiceTracker({ ticket })
+        const tracker = given ?? practiceTracker({ ticket })
         const scripted = createScriptedLauncher({ turns: turns ?? [] })
-        startRun({
-            journal,
-            spec_number: 10,
-            config: loaded.config,
-            base_branch: 'main',
-        })
+        if (resume !== true) {
+            startRun({
+                journal,
+                spec_number: 10,
+                config: loaded.config,
+                base_branch: 'main',
+            })
+        }
         const action = await runEngine({
             journal,
             tracker,
             git: createGitAdapter({ repo_root: repo }),
             launcher: launcher ?? scripted,
+            clock,
         })
         return {
             action,

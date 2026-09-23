@@ -283,48 +283,6 @@ describe('stops while the agent runs', () => {
             'init with a foreign MCP tool',
             { ...INIT, tools: [...INIT.tools, 'mcp__muninn__muninn_recall'] },
         ],
-        [
-            'a rejected rate limit',
-            {
-                type: 'rate_limit_event',
-                rate_limit_info: {
-                    status: 'rejected',
-                    rateLimitType: 'five_hour',
-                },
-            },
-        ],
-        [
-            'overage in use',
-            {
-                type: 'rate_limit_event',
-                rate_limit_info: { status: 'allowed', isUsingOverage: true },
-            },
-        ],
-        [
-            'overage flagged',
-            {
-                type: 'rate_limit_event',
-                rate_limit_info: { status: 'allowed', overageInUse: true },
-            },
-        ],
-        [
-            'an overage limit',
-            {
-                type: 'rate_limit_event',
-                rate_limit_info: {
-                    status: 'allowed',
-                    rateLimitType: 'overage',
-                },
-            },
-        ],
-        [
-            'a billing error',
-            {
-                type: 'assistant',
-                error: 'billing_error',
-                message: { content: [] },
-            },
-        ],
     ]
     test.each(cases)('stops on %s', async (_, message) => {
         const fake = fakeQuery({
@@ -333,6 +291,92 @@ describe('stops while the agent runs', () => {
         const turn = await launch({ query: fake.query })
         expect(turn).toMatchObject({ ok: false, failure: 'stop' })
         expect(fake.calls[0]?.closed).toBe(true)
+    })
+
+    const rateLimit = (info: Record<string, unknown>) => ({
+        type: 'rate_limit_event',
+        rate_limit_info: info,
+    })
+    const planCases: [string, unknown, Record<string, unknown>][] = [
+        [
+            'a rejected rate limit days away',
+            rateLimit({
+                status: 'rejected',
+                rateLimitType: 'seven_day',
+                resetsAt: 1790420400,
+            }),
+            {
+                rate_limit_events: [
+                    {
+                        status: 'rejected',
+                        rateLimitType: 'seven_day',
+                        resetsAt: 1790420400,
+                    },
+                ],
+            },
+        ],
+        [
+            'overage in use',
+            rateLimit({ status: 'allowed', isUsingOverage: true }),
+            {
+                rate_limit_events: [
+                    { status: 'allowed', isUsingOverage: true },
+                ],
+            },
+        ],
+        [
+            'overage flagged',
+            rateLimit({ status: 'allowed', overageInUse: true }),
+            {},
+        ],
+        [
+            'an overage limit',
+            rateLimit({ status: 'allowed', rateLimitType: 'overage' }),
+            {},
+        ],
+        [
+            'a billing error',
+            {
+                type: 'assistant',
+                error: 'billing_error',
+                message: { content: [] },
+            },
+            { billing_error: true },
+        ],
+    ]
+    test.each(planCases)(
+        'cuts the turn off as the plan on %s, with the reason in its session',
+        async (_, message, session) => {
+            const fake = fakeQuery({
+                messages: [
+                    INIT,
+                    message,
+                    result({ structured_output: APPROVE }),
+                ],
+            })
+            const turn = await launch({ query: fake.query })
+            expect(turn).toMatchObject({ ok: false, failure: 'plan' })
+            expect(turn.session).toMatchObject(session)
+            expect(fake.calls[0]?.closed).toBe(true)
+        }
+    )
+
+    test('allowed and allowed_warning readings run on', async () => {
+        const fake = fakeQuery({
+            messages: [
+                INIT,
+                rateLimit({ status: 'allowed', rateLimitType: 'five_hour' }),
+                rateLimit({
+                    status: 'allowed_warning',
+                    rateLimitType: 'seven_day',
+                    utilization: 0.9,
+                }),
+                result({ structured_output: APPROVE }),
+            ],
+        })
+        const turn = await launch({ query: fake.query })
+        expect(turn).toMatchObject({ ok: true, structured_output: APPROVE })
+        expect(turn.session?.rate_limit_events).toHaveLength(2)
     })
 
     test("an init with only the engine's own server and tools runs on", async () => {
@@ -715,7 +759,7 @@ describe('follow-ups', () => {
         })
     })
 
-    test('a stop in a follow-up stops, and closes the session', async () => {
+    test('a rejected limit in a follow-up cuts it off as the plan, and closes the session', async () => {
         const fake = fakeQuery({
             turns: [
                 [INIT, result({ structured_output: { n: 1 } })],
@@ -733,7 +777,10 @@ describe('follow-ups', () => {
         const launcher = launcherFor(fake.query)
         await launchImplementer(launcher)
         const turn = await followUp(launcher, 'session-1')
-        expect(turn).toMatchObject({ ok: false, failure: 'stop' })
+        expect(turn).toMatchObject({ ok: false, failure: 'plan' })
+        expect(turn.session?.rate_limit_events).toEqual([
+            { status: 'rejected', rateLimitType: 'five_hour' },
+        ])
         expect(fake.calls[0]?.closed).toBe(true)
         expect(await followUp(launcher, 'session-1')).toMatchObject({
             ok: false,

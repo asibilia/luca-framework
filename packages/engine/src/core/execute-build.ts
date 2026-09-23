@@ -25,6 +25,7 @@ import {
     type ReplayedWorktree,
     type RunState,
 } from '../journal/replay'
+import { sessionSignal } from '../limits/plan-signals'
 import type { Tracker } from '../tracker/tracker'
 
 /** What the engine needs, beyond the journal and tracker, to build tickets. */
@@ -278,7 +279,8 @@ const failTurn = ({
  * every launcher alike. Then the result is judged by its structured output.
  * Each failed turn is journaled once as `agent_failed` with how it failed;
  * the decision step picks what happens next. A launcher stop journals
- * `run_stopped` and ends the run.
+ * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
+ * overage, a billing error) journals only its session.
  */
 const runTurn = async ({
     context,
@@ -313,12 +315,22 @@ const runTurn = async ({
         config: context.config,
         before,
     })
-    if (!turn.ok && turn.failure === 'stop') {
+    // The plan cut the turn off. Its session, journaled above, holds why,
+    // and the decision step reads it from there: a limit wait or a billing
+    // stop. The turn uses up no try, and its step is taken again. With no
+    // sign in the session, the engine can't tell which, so it stops.
+    const unexplained =
+        !turn.ok &&
+        turn.failure === 'plan' &&
+        (turn.session === undefined ||
+            sessionSignal({ session: turn.session }).kind === 'ok')
+    if (!turn.ok && turn.failure === 'plan' && !unexplained) return
+    if (!turn.ok && (turn.failure === 'stop' || unexplained)) {
         context.journal.append({
             kind: 'run_stopped',
             ticket,
             role,
-            content: { reason: turn.error, role },
+            content: { reason: turn.error, role, billing: false },
         })
         throw new Error(`Run stopped: ${turn.error}`)
     }

@@ -74,6 +74,11 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 ok: false,
                 message: `Ticket #${action.ticket} is stuck (${action.reason}): ${action.detail}`,
             }
+        case 'stopped':
+            return {
+                ok: false,
+                message: `Run stopped for billing: ${action.reason}. It will not go on; start a new run once per-token billing is off.`,
+            }
     }
 }
 

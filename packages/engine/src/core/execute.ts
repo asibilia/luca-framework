@@ -1,4 +1,5 @@
 import { decide, type EngineAction } from './decide'
+import type { PlanAction } from './decide-plan'
 import { executeBuildAction, type BuildDeps } from './execute-build'
 
 import type { BoardSync } from '../board/board-sync'
@@ -10,6 +11,12 @@ import { askJevInShadow, type JevShadow } from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
+import {
+    limitWaitComment,
+    SYSTEM_CLOCK,
+    waitUntil,
+    type EngineClock,
+} from '../limits/limit-wait'
 import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
@@ -120,6 +127,70 @@ const refuseIntake = async ({
 }
 
 /**
+ * Carries out a limit wait or a billing stop. A limit wait's start tells the
+ * spec issue (unless it already heard of this reset) before it is journaled;
+ * the wait itself sleeps by `clock` until its end, so a restarted engine
+ * waits out only what is left.
+ */
+const executePlanAction = async ({
+    action,
+    journal,
+    tracker,
+    clock,
+}: {
+    action: Exclude<PlanAction, { type: 'done' }>
+    journal: Journal
+    tracker: Tracker
+    clock: EngineClock
+}): Promise<void> => {
+    switch (action.type) {
+        case 'start_limit_wait': {
+            const { rate_limit_type, resets_at, until, ticket, role } = action
+            if (action.announce) {
+                await tracker.comment({
+                    number: action.spec_number,
+                    body: limitWaitComment({
+                        rate_limit_type,
+                        resets_at,
+                        until,
+                    }),
+                })
+            }
+            journal.append({
+                kind: 'limit_wait_started',
+                ticket: null,
+                role: null,
+                content: {
+                    resets_at,
+                    until,
+                    rate_limit_type,
+                    hit_ticket: ticket,
+                    hit_role: role,
+                },
+            })
+            return
+        }
+        case 'wait_for_limit':
+            await waitUntil({ clock, until: action.until })
+            journal.append({
+                kind: 'limit_wait_ended',
+                ticket: null,
+                role: null,
+                content: { until: action.until },
+            })
+            return
+        case 'stop_for_billing':
+            journal.append({
+                kind: 'run_stopped',
+                ticket: null,
+                role: null,
+                content: { reason: action.reason, role: null, billing: true },
+            })
+            return
+    }
+}
+
+/**
  * Carries out one action: talks to the tracker, then records what happened in
  * the journal. The only impure half of the engine; `decide` picks the action.
  *
@@ -130,14 +201,26 @@ export const executeAction = async ({
     journal,
     tracker,
     build,
+    clock,
 }: {
     action: EngineAction
     journal: Journal
     tracker: Tracker
     /** Needed for every step after intake. */
     build?: BuildDeps
+    /** Limit waits sleep by it. Defaults to `SYSTEM_CLOCK`. */
+    clock?: EngineClock
 }): Promise<void> => {
     switch (action.type) {
+        case 'start_limit_wait':
+        case 'wait_for_limit':
+        case 'stop_for_billing':
+            return executePlanAction({
+                action,
+                journal,
+                tracker,
+                clock: clock ?? SYSTEM_CLOCK,
+            })
         case 'read_intake':
             return readIntake({
                 spec_number: action.spec_number,
@@ -205,12 +288,14 @@ const executeWithJev = async ({
     journal,
     tracker,
     build,
+    clock,
 }: {
     jev: JevShadow
     action: EngineAction
     journal: Journal
     tracker: Tracker
     build?: BuildDeps
+    clock?: EngineClock
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -221,7 +306,7 @@ const executeWithJev = async ({
         }),
     })
     const lastSeq = journal.read().at(-1)?.seq ?? 0
-    await executeAction({ action, journal, tracker, build })
+    await executeAction({ action, journal, tracker, build, clock })
     const records = journal.read()
     await askJevInShadow({
         ...shadow,
@@ -244,6 +329,10 @@ const executeWithJev = async ({
  * With `board`, the whole journal is sent to the board once before the
  * first step and again after each step.
  *
+ * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
+ * the window resets, then carries on. Overage or a billing error ends the
+ * run for good (`done`, outcome `stopped`).
+ *
  * @returns The action the loop stopped on.
  */
 export const runEngine = async ({
@@ -255,6 +344,7 @@ export const runEngine = async ({
     launcher,
     jev,
     board,
+    clock,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -266,6 +356,8 @@ export const runEngine = async ({
     jev?: JevShadow
     /** Sends the journal to the board after every step. Never throws. */
     board?: BoardSync
+    /** Limit waits sleep by it. Defaults to `SYSTEM_CLOCK`; tests fake it. */
+    clock?: EngineClock
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -279,9 +371,16 @@ export const runEngine = async ({
                 ? undefined
                 : { git, launcher }
         if (jev === undefined) {
-            await executeAction({ action, journal, tracker, build })
+            await executeAction({ action, journal, tracker, build, clock })
         } else {
-            await executeWithJev({ jev, action, journal, tracker, build })
+            await executeWithJev({
+                jev,
+                action,
+                journal,
+                tracker,
+                build,
+                clock,
+            })
         }
         await board?.sync({ records: journal.read() })
     }
