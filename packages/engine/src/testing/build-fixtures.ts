@@ -20,15 +20,18 @@ export const practiceTicket = ({
     number,
     title,
     criteria,
+    labels,
 }: {
     number: number
     title?: string
     criteria?: string[]
+    /** Defaults to `ready-for-agent` only; add `refactor` for a refactor ticket. */
+    labels?: string[]
 }): TicketSnapshot => ({
     number,
     title: title ?? 'Add sum',
     body: '## What to build\n\nA sum function.',
-    labels: ['ready-for-agent'],
+    labels: labels ?? ['ready-for-agent'],
     url: `https://github.com/acme/app/issues/${number}`,
     criteria: (criteria ?? ['sum adds two numbers']).map((text, index) => ({
         id: `AC${index + 1}`,
@@ -125,12 +128,52 @@ export const baselineTests = ({
     content: emptyTestRun(),
 })
 
-export const testsWritten = ({ ticket }: { ticket: number }): JournalEntry => ({
+/** The session id fixtures give each role's turns unless told otherwise. */
+export const SESSIONS = {
+    'test-writer': 'tw-1',
+    implementer: 'impl-1',
+    'ticket-reviewer': 'rev-1',
+} as const
+
+/** An agent turn started: a fresh launch, or a follow-up to `follow_up_of`. */
+export const agentStarted = ({
+    ticket,
+    role,
+    prompt,
+    follow_up_of,
+}: {
+    ticket: number
+    role: 'test-writer' | 'implementer' | 'ticket-reviewer'
+    prompt?: string
+    follow_up_of?: string
+}): JournalEntry => ({
+    kind: 'agent_started',
+    ticket,
+    role,
+    content: {
+        role,
+        prompt: prompt ?? 'p',
+        follow_up_of: follow_up_of ?? null,
+    },
+})
+
+export const testsWritten = ({
+    ticket,
+    session_id,
+    assumptions,
+}: {
+    ticket: number
+    /** Defaults to `SESSIONS['test-writer']`. */
+    session_id?: string
+    /** Defaults to one assumption. */
+    assumptions?: string[]
+}): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
     role: 'test-writer',
     content: {
         role: 'test-writer',
+        session_id: session_id ?? SESSIONS['test-writer'],
         result: {
             outcome: 'tests_written',
             criteria: [
@@ -145,9 +188,25 @@ export const testsWritten = ({ ticket }: { ticket: number }): JournalEntry => ({
                 },
             ],
             summary: 'One test for AC1.',
-            assumptions: ['Numbers are integers.'],
+            assumptions: assumptions ?? ['Numbers are integers.'],
             run_notes: [],
         },
+    },
+})
+
+/** A test-writer that found nothing new to test. */
+export const nothingNewToTest = ({
+    ticket,
+}: {
+    ticket: number
+}): JournalEntry => ({
+    kind: 'agent_finished',
+    ticket,
+    role: 'test-writer',
+    content: {
+        role: 'test-writer',
+        session_id: SESSIONS['test-writer'],
+        result: { outcome: 'nothing_new_to_test' },
     },
 })
 
@@ -165,7 +224,10 @@ export const redCheck = ({
         ok,
         problems: ok ? [] : ['"sum adds two numbers" passes already'],
         notes: [],
-        tests: emptyTestRun(),
+        tests: {
+            ...emptyTestRun(),
+            output: ok ? '1 fail' : '(pass) sum adds two numbers',
+        },
     },
 })
 
@@ -200,15 +262,24 @@ export const commitMade = ({
 export const implemented = ({
     ticket,
     outcome,
+    session_id,
+    reason,
+    assumptions,
 }: {
     ticket: number
     outcome?: 'done' | 'bad_test'
+    /** Defaults to `SESSIONS.implementer`. */
+    session_id?: string
+    /** The bad test's reason. Defaults to "Wrong sum." */
+    reason?: string
+    assumptions?: string[]
 }): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
     role: 'implementer',
     content: {
         role: 'implementer',
+        session_id: session_id ?? SESSIONS.implementer,
         result: {
             outcome: outcome ?? 'done',
             bad_test:
@@ -216,11 +287,11 @@ export const implemented = ({
                     ? {
                           file: 'src/sum.test.ts',
                           name: 'sum adds two numbers',
-                          reason: 'Wrong sum.',
+                          reason: reason ?? 'Wrong sum.',
                       }
                     : null,
             summary: 'Added sum.',
-            assumptions: [],
+            assumptions: assumptions ?? [],
             run_notes: [],
         },
     },
@@ -265,6 +336,7 @@ export const reviewed = ({
     role: 'ticket-reviewer',
     content: {
         role: 'ticket-reviewer',
+        session_id: SESSIONS['ticket-reviewer'],
         result: {
             verdict: verdict ?? 'approve',
             findings: [],
@@ -272,6 +344,18 @@ export const reviewed = ({
             assumptions: [],
         },
     },
+})
+
+/** The engine threw away a ticket worktree's uncommitted changes. */
+export const worktreeReset = ({
+    ticket,
+}: {
+    ticket: number
+}): JournalEntry => ({
+    kind: 'worktree_reset',
+    ticket,
+    role: null,
+    content: { sha: 'red-sha' },
 })
 
 export const joined = ({ ticket }: { ticket: number }): JournalEntry => ({

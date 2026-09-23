@@ -181,6 +181,47 @@ describe('journal', () => {
         expect(() => journal.read()).toThrow('line 2')
     })
 
+    test('agent records from before fix loops read with no session', async () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'run_started',
+            ticket: null,
+            role: null,
+            content: { spec_number: 10, config: CONFIG },
+        })
+        const time = '2026-01-01T00:00:00.000Z'
+        const old = [
+            {
+                seq: 2,
+                time,
+                kind: 'agent_started',
+                ticket: 11,
+                role: 'implementer',
+                content: { role: 'implementer', prompt: 'p' },
+            },
+            {
+                seq: 3,
+                time,
+                kind: 'agent_finished',
+                ticket: 11,
+                role: 'implementer',
+                content: { role: 'implementer', result: { outcome: 'done' } },
+            },
+        ]
+        await Bun.write(
+            file,
+            `${await readFile(file, 'utf8')}${old.map((record) => JSON.stringify(record)).join('\n')}\n`
+        )
+
+        const [, started, finished] = journal.read()
+        expect(started?.content).toMatchObject({ follow_up_of: null })
+        expect(finished?.content).toMatchObject({ session_id: null })
+        expect(
+            replayRun({ records: journal.read() }).tickets[11]?.sessions
+        ).toEqual({})
+    })
+
     test('runs live outside git, under the Luca state folder by default', () => {
         const saved = process.env.LUCA_RUNS_DIR
         delete process.env.LUCA_RUNS_DIR

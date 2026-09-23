@@ -1,8 +1,11 @@
+import omit from 'lodash/omit'
+
 import type { CommitStage, JournalRecord, StuckReason } from './journal-record'
 
 import type {
+    AgentRole,
+    BadTest,
     ImplementerResult,
-    RoleResult,
     TestWriterResult,
     TicketReviewResult,
 } from '../agents/role-results'
@@ -50,16 +53,36 @@ export type ReplayedWorktree = {
 /** One gate run, as journaled. */
 export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
 
+/** The red check's verdict, plus the test run's (clipped) output. */
+export type ReplayedRedCheck = RedCheckResult & { output: string }
+
 /**
  * How far one ticket got, from its journal records. Each field holds the
  * latest record of its kind; `null` means the step has not finished.
+ *
+ * The fix-loop counts are derived from record order, never written by hand,
+ * so a crashed run counts them the same way again: a test-writer result that
+ * comes after a red check answers a fix round (and the red check runs again),
+ * and an implementer result after the gates does the same for the gates.
  */
 export type TicketProgress = {
     worktree: ReplayedWorktree | null
     baseline: TestRun | null
     test_writer: TestWriterResult | null
-    red_check: RedCheckResult | null
+    red_check: ReplayedRedCheck | null
+    /** Follow-ups the test-writer answered after a failed red check. */
+    red_fix_rounds: number
     implementer: ImplementerResult | null
+    /** Follow-ups the implementer answered after failed gates. */
+    gate_fix_rounds: number
+    /** How many times an implementer sent a test back as bad. */
+    bad_test_bounces: number
+    /** The latest test sent back as bad, for the fresh test-writer's prompt. */
+    bad_test: BadTest | null
+    /** The session each role's latest turn ran in, for follow-ups. */
+    sessions: Partial<Record<AgentRole, string>>
+    /** Every assumption any agent on the ticket made, oldest first. */
+    assumptions: string[]
     review: TicketReviewResult | null
     /** The latest failed agent turn, if it came after that role's last result. */
     agent_failure: { role: string; error: string } | null
@@ -96,7 +119,13 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     baseline: null,
     test_writer: null,
     red_check: null,
+    red_fix_rounds: 0,
     implementer: null,
+    gate_fix_rounds: 0,
+    bad_test_bounces: 0,
+    bad_test: null,
+    sessions: {},
+    assumptions: [],
     review: null,
     agent_failure: null,
     leftovers: { red: null, green: null },
@@ -216,16 +245,71 @@ type TicketRecord = Exclude<
     }
 >
 
-/** Where a finished agent's result goes in its ticket's progress. */
-const resultChange = (finished: RoleResult): Partial<TicketProgress> => {
+type FinishedContent = Extract<
+    JournalRecord,
+    { kind: 'agent_finished' }
+>['content']
+
+/**
+ * Where a finished agent's result goes in its ticket's progress. A result
+ * that answers a fix-loop follow-up counts a round and clears the failed
+ * check, so it runs again.
+ */
+const resultChange = ({
+    progress,
+    finished,
+}: {
+    progress: TicketProgress
+    finished: FinishedContent
+}): Partial<TicketProgress> => {
     switch (finished.role) {
         case 'test-writer':
-            return { test_writer: finished.result }
-        case 'implementer':
-            return { implementer: finished.result }
+            return progress.red_check === null
+                ? { test_writer: finished.result }
+                : {
+                      test_writer: finished.result,
+                      red_check: null,
+                      red_fix_rounds: progress.red_fix_rounds + 1,
+                  }
+        case 'implementer': {
+            const { result } = finished
+            const bounce: Partial<TicketProgress> =
+                result.outcome === 'bad_test'
+                    ? {
+                          bad_test_bounces: progress.bad_test_bounces + 1,
+                          bad_test: result.bad_test ?? {
+                              file: '',
+                              name: '',
+                              reason: result.summary,
+                          },
+                      }
+                    : {}
+            const round: Partial<TicketProgress> =
+                progress.gates === null
+                    ? {}
+                    : {
+                          gates: null,
+                          gate_fix_rounds: progress.gate_fix_rounds + 1,
+                      }
+            return { implementer: result, ...round, ...bounce }
+        }
         case 'ticket-reviewer':
             return { review: finished.result }
     }
+}
+
+/** The sessions after a turn: the role's latest, or none if unknown. */
+const sessionsAfter = ({
+    sessions,
+    role,
+    session_id,
+}: {
+    sessions: Partial<Record<AgentRole, string>>
+    role: AgentRole
+    session_id: string | null
+}): Partial<Record<AgentRole, string>> => {
+    const rest = omit(sessions, role)
+    return session_id === null ? rest : { ...rest, [role]: session_id }
 }
 
 const progressChange = ({
@@ -242,14 +326,47 @@ const progressChange = ({
             return { baseline: record.content }
         case 'agent_started':
             return {}
-        case 'agent_finished':
-            return { agent_failure: null, ...resultChange(record.content) }
-        case 'agent_failed':
-            return { agent_failure: record.content }
-        case 'red_check': {
-            const { ok, problems, notes } = record.content
-            return { red_check: { ok, problems, notes } }
+        case 'agent_finished': {
+            const finished = record.content
+            return {
+                agent_failure: null,
+                sessions: sessionsAfter({
+                    sessions: progress.sessions,
+                    role: finished.role,
+                    session_id: finished.session_id,
+                }),
+                assumptions: [
+                    ...progress.assumptions,
+                    ...finished.result.assumptions,
+                ],
+                ...resultChange({ progress, finished }),
+            }
         }
+        case 'agent_failed': {
+            const { role, error } = record.content
+            return { agent_failure: { role, error } }
+        }
+        case 'red_check': {
+            const { ok, problems, notes, tests } = record.content
+            return { red_check: { ok, problems, notes, output: tests.output } }
+        }
+        case 'worktree_reset':
+            // A fresh test-writer and implementer start over on a clean
+            // worktree; the bad test and its count stay.
+            return {
+                test_writer: null,
+                red_check: null,
+                red_fix_rounds: 0,
+                implementer: null,
+                gates: null,
+                gate_fix_rounds: 0,
+                leftovers: { red: null, green: null },
+                commits: { ...progress.commits, red: null },
+                sessions: omit(progress.sessions, [
+                    'test-writer',
+                    'implementer',
+                ]),
+            }
         case 'leftover_scan':
             return {
                 leftovers: {
