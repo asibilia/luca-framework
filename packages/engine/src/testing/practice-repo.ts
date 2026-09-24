@@ -322,12 +322,15 @@ export const runPractice = async ({
 export const createPracticeRepo = async ({
     root,
     config,
+    files,
 }: {
     root: string
     /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
     config?: object
+    /** More files for the first commit, by repo-relative path. */
+    files?: Record<string, string>
 }) => {
-    const { repo, origin } = await makePracticeRepo({ root, config })
+    const { repo, origin } = await makePracticeRepo({ root, config, files })
     const journal = createJournal({
         file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
     })
