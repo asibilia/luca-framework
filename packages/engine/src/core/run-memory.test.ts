@@ -9,9 +9,12 @@ import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import type { EngineClock } from '../limits/limit-wait'
 import { createFakeMuninn, type FakeMuninn } from '../testing/fake-muninn'
-import { SPEC_OWNER, specIssue, ticketIssue } from '../testing/intake-fixtures'
-import { createPracticeRepo, happyTurns } from '../testing/practice-repo'
-import { createInMemoryTracker } from '../tracker/in-memory-tracker'
+import { SPEC_OWNER } from '../testing/intake-fixtures'
+import {
+    createPracticeRepo,
+    happyTurns,
+    practiceTracker,
+} from '../testing/practice-repo'
 
 /**
  * Seam 2 for memory (#370): whole runs on the practice repo with scripted
@@ -290,18 +293,7 @@ describe('memory, end to end', () => {
     test('a stopped run still learns, and its new memories go on the spec issue', async () => {
         const practice = await createPracticeRepo({ root })
         const muninn = seededMuninn()
-        const tracker = createInMemoryTracker({
-            issues: [
-                specIssue({ number: 10 }),
-                ticketIssue({
-                    number: 11,
-                    title: 'Add sum',
-                    criteria: ['sum adds two numbers'],
-                }),
-            ],
-            sub_tickets: { 10: [11] },
-            engine_login: SPEC_OWNER,
-        })
+        const tracker = practiceTracker()
         let replied = false
         const clock: EngineClock = {
             now: () => Date.now(),
