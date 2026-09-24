@@ -1,7 +1,12 @@
+import type {
+    Finding,
+    FindingResponse,
+    FindingRuling,
+} from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
 import type { TestRun } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
-import type { JournalEntry } from '../journal/journal-record'
+import type { CommitStage, JournalEntry } from '../journal/journal-record'
 
 /**
  * Journal entry builders for the build steps, so decision-step tests can
@@ -161,12 +166,15 @@ export const testsWritten = ({
     ticket,
     session_id,
     assumptions,
+    finding_responses,
 }: {
     ticket: number
     /** Defaults to `SESSIONS['test-writer']`. */
     session_id?: string
     /** Defaults to one assumption. */
     assumptions?: string[]
+    /** A review fixer's answer to each finding it got. */
+    finding_responses?: FindingResponse[]
 }): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
@@ -190,6 +198,7 @@ export const testsWritten = ({
             summary: 'One test for AC1.',
             assumptions: assumptions ?? ['Numbers are integers.'],
             run_notes: [],
+            finding_responses: finding_responses ?? [],
         },
     },
 })
@@ -237,7 +246,7 @@ export const leftoverScan = ({
     hits,
 }: {
     ticket: number
-    stage: 'red' | 'green'
+    stage: CommitStage
     hits?: { path: string; reason: string }[]
 }): JournalEntry => ({
     kind: 'leftover_scan',
@@ -249,14 +258,24 @@ export const leftoverScan = ({
 export const commitMade = ({
     ticket,
     stage,
+    sha,
+    files,
 }: {
     ticket: number
-    stage: 'red' | 'green'
+    stage: CommitStage
+    /** Defaults to `<stage>-sha`. */
+    sha?: string
+    files?: string[]
 }): JournalEntry => ({
     kind: 'commit_made',
     ticket,
     role: null,
-    content: { stage, sha: `${stage}-sha`, message: stage, files: [] },
+    content: {
+        stage,
+        sha: sha ?? `${stage}-sha`,
+        message: stage,
+        files: files ?? [],
+    },
 })
 
 export const implemented = ({
@@ -265,6 +284,7 @@ export const implemented = ({
     session_id,
     reason,
     assumptions,
+    finding_responses,
 }: {
     ticket: number
     outcome?: 'done' | 'bad_test'
@@ -273,6 +293,7 @@ export const implemented = ({
     /** The bad test's reason. Defaults to "Wrong sum." */
     reason?: string
     assumptions?: string[]
+    finding_responses?: FindingResponse[]
 }): JournalEntry => ({
     kind: 'agent_finished',
     ticket,
@@ -293,6 +314,7 @@ export const implemented = ({
             summary: 'Added sum.',
             assumptions: assumptions ?? [],
             run_notes: [],
+            finding_responses: finding_responses ?? [],
         },
     },
 })
@@ -324,27 +346,63 @@ export const gatesRun = ({
     },
 })
 
+/** One reviewer finding; a code should-fix in `src/sum.ts` unless told otherwise. */
+export const finding = ({
+    id,
+    severity,
+    kind,
+    title,
+    file,
+}: {
+    id: string
+    severity?: 'blocker' | 'should_fix' | 'nit'
+    kind?: 'code' | 'test'
+    title?: string
+    file?: string | null
+}): Finding => ({
+    id,
+    severity: severity ?? 'should_fix',
+    kind: kind ?? 'code',
+    file: file === undefined ? 'src/sum.ts' : file,
+    title: title ?? `Finding ${id}`,
+    detail: `Detail of ${id}.`,
+})
+
+/**
+ * A ticket reviewer's result. The verdict follows the findings: changes are
+ * requested when any is a blocker or should-fix.
+ */
 export const reviewed = ({
     ticket,
-    verdict,
+    findings,
+    rulings,
+    session_id,
 }: {
     ticket: number
-    verdict?: 'approve' | 'changes_requested'
-}): JournalEntry => ({
-    kind: 'agent_finished',
-    ticket,
-    role: 'ticket-reviewer',
-    content: {
+    findings?: Finding[]
+    rulings?: FindingRuling[]
+    /** Defaults to `SESSIONS['ticket-reviewer']`. */
+    session_id?: string
+}): JournalEntry => {
+    const list = findings ?? []
+    const blocking = list.some(({ severity }) => severity !== 'nit')
+    return {
+        kind: 'agent_finished',
+        ticket,
         role: 'ticket-reviewer',
-        session_id: SESSIONS['ticket-reviewer'],
-        result: {
-            verdict: verdict ?? 'approve',
-            findings: [],
-            summary: 'Looks right.',
-            assumptions: [],
+        content: {
+            role: 'ticket-reviewer',
+            session_id: session_id ?? SESSIONS['ticket-reviewer'],
+            result: {
+                verdict: blocking ? 'changes_requested' : 'approve',
+                findings: list,
+                rulings: rulings ?? [],
+                summary: 'Looks right.',
+                assumptions: [],
+            },
         },
-    },
-})
+    }
+}
 
 /** An agent turn failed, in the session its role's fixtures use unless told otherwise. */
 export const agentFailed = ({

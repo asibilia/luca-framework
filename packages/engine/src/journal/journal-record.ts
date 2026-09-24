@@ -191,8 +191,11 @@ const RedCheckEntrySchema = z.object({
     content: RedCheckResultSchema.extend({ tests: TestRunSchema }),
 })
 
-/** The two commits the engine makes on a ticket: tests first, then code. */
-export const CommitStageSchema = z.enum(['red', 'green'])
+/**
+ * The commits the engine makes on a ticket: tests first (`red`), then code
+ * (`green`), then one per review fix round (`fix`).
+ */
+export const CommitStageSchema = z.enum(['red', 'green', 'fix'])
 
 export type CommitStage = z.infer<typeof CommitStageSchema>
 

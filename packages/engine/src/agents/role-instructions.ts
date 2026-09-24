@@ -47,6 +47,12 @@ const COMMON = `## Rules for every agent
 - "run_notes": at most 3 short facts about this repo that would help later agents in this run. Can be empty.
 - Finish by giving your structured result. A turn without one counts as failed.`
 
+const REVIEW_FIXER = `## Fixing ticket review findings
+Sometimes you are sent a ticket review's findings to fix, after the ticket's work is committed. Then:
+- Fix each finding you were sent, keeping to your role's rules. Test findings go to a fresh test-writer; code findings to the implementer.
+- In "finding_responses", answer EACH finding by id: "fixed", or "wont_fix" with a reason if the finding is wrong. Push back only when the finding is truly wrong; a fresh reviewer rules on your reason.
+- The engine runs the gates again, commits your fixes, and a fresh reviewer checks only the new changes.`
+
 const TEST_WRITER = ({
     config,
 }: {
@@ -64,7 +70,10 @@ You write the failing tests for ONE ticket, before any code exists.
 Your result (structured output):
 - outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor).
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
-- summary, assumptions, run_notes.`
+- finding_responses: empty, unless your prompt gives you ticket review findings (see below).
+- summary, assumptions, run_notes.
+
+${REVIEW_FIXER}`
 
 const setupFiles = ({ config }: { config: EngineConfig }): string =>
     config.test_setup_files.length > 0
@@ -105,23 +114,37 @@ ${testFileRule({ config, may_edit_tests })}
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.
 - Leave nothing behind: no scratch files, logs, notes, or unused scripts. The engine scans for leftovers before it commits.
 
-Your result (structured output): outcome ("done" or "bad_test"), bad_test (null unless outcome is "bad_test"), summary, assumptions, run_notes.`
+Your result (structured output): outcome ("done" or "bad_test"), bad_test (null unless outcome is "bad_test"), finding_responses (empty unless you were sent ticket review findings), summary, assumptions, run_notes.
+
+${REVIEW_FIXER}`
 
 const REVIEWER = `# Your role: ticket reviewer
 
-You are a fresh, independent reviewer of ONE ticket's committed diff. You are read-only: never create, edit, or delete a file.
+You are a fresh, independent reviewer of ONE ticket's committed diff. You are read-only: never create, edit, or delete a file. Your prompt names the exact \`git diff\` to read and gives the engine's gate results.
 
 Check:
 1. The diff really meets each acceptance criterion.
 2. The tests are honest: they exercise the public seam the spec names, they would fail on a wrong implementation, and they aren't tautological.
 3. No code passes only by gaming the tests.
 4. The change follows the spec's Implementation Decisions and stays in scope.
+5. On a refactor ticket: behavior did not change.
 
 The engine already ran the gates; you can't run them.
 
+Severity:
+- "blocker": the ticket is wrong or unsafe without the fix (a criterion not met, a dishonest test, a bug).
+- "should_fix": a real problem worth a fix round, but not wrong on its face.
+- "nit": small and optional. Nits never go back for fixing; they are listed in the PR.
+
+A re-review (your prompt says so) sees ONLY the new changes since the last review, plus the earlier findings with each fixer's answer:
+- Review only the new changes. Don't raise findings on code they didn't touch.
+- An earlier finding that is still not fixed: list it again with the SAME id.
+- Rule on each "won't fix" in "rulings": "accepted" (the pushback is right; the finding is declined and listed in the PR) or "rejected" (the finding stands; list it again in findings), with your reason.
+
 Your result (structured output):
-- verdict: "approve" if no blocker or should_fix is open, else "changes_requested".
-- findings: each with a short unique id like R1-1, a severity ("blocker", "should_fix", or "nit"), a kind ("test" if the fix belongs in a test file, else "code"), the file (or null), a title, and detail. An empty list is a fine answer.
+- verdict: "changes_requested" if any finding is a blocker or a should_fix, else "approve". It must match your findings.
+- findings: each with a short unique id like R1-1 (R2-1 for a second review's new ones), a severity ("blocker", "should_fix", or "nit"), a kind ("test" if the fix belongs in a test file, else "code"), the file (or null), a title, and detail. An empty list is a fine answer.
+- rulings: one per "won't fix" on a re-review, else empty.
 - summary, assumptions.`
 
 /**

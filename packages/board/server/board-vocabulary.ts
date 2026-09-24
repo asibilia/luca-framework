@@ -18,8 +18,33 @@ const FindingCountsSchema = z.looseObject({
 })
 
 const FindingListSchema = z.array(
-    z.looseObject({ severity: z.enum(['blocker', 'should_fix', 'nit']) })
+    z.looseObject({
+        id: z.string().catch(''),
+        severity: z.enum(['blocker', 'should_fix', 'nit']),
+    })
 )
+
+/** A re-reviewer's ruling on a fixer's "won't fix" of a review finding. */
+const RulingListSchema = z
+    .array(
+        z.looseObject({
+            finding_id: z.string(),
+            ruling: z.enum(['accepted', 'rejected']),
+            reason: z.string().catch(''),
+        })
+    )
+    .catch([])
+
+/** A review fixer's answer to each finding: `fixed` or `wont_fix`. */
+const FindingResponseListSchema = z
+    .array(
+        z.looseObject({
+            finding_id: z.string(),
+            response: z.enum(['fixed', 'wont_fix']),
+            reason: z.string().catch(''),
+        })
+    )
+    .catch([])
 
 const TestRunSchema = z.looseObject({
     cases: z.array(z.looseObject({ status: z.string() })),
@@ -98,8 +123,12 @@ export const BOARD_VOCABULARY = {
                 outcome: z.string().optional(),
                 verdict: z.string().optional(),
                 findings: FindingListSchema.optional(),
+                /** The ticket-reviewer's rulings on declined findings. */
+                rulings: RulingListSchema,
+                /** A review fixer's answer to each finding it got. */
+                finding_responses: FindingResponseListSchema,
             })
-            .catch({}),
+            .catch({ rulings: [], finding_responses: [] }),
     }),
     agent_failed: z.looseObject({
         role: z.string(),
@@ -122,9 +151,11 @@ export const BOARD_VOCABULARY = {
         tests: TestRunSchema.optional(),
     }),
     leftover_scan: z.looseObject({
+        /** `red`, `green`, or `fix` (a review fix round). */
         stage: z.string(),
         hits: z.array(z.looseObject({ path: z.string() })),
     }),
+    /** `stage` is `red`, `green`, or `fix` (a review fix round). */
     commit_made: z.looseObject({ stage: z.string() }),
     gates_run: z.looseObject({
         target: z.string(),

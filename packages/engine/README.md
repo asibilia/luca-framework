@@ -8,7 +8,8 @@ This package covers the start of a run (#360): the engine config, the
 **journal**, and **intake**. It also builds each ticket end to end (#361), with
 scripted stand-in **agents**, up to the run's one pull request, with capped
 **fix loops** for a failed red check, failed gates, and a bad test (#363), and
-runs real Claude agents under the **guard** (#362). And it sends its journal to
+runs real Claude agents under the **guard** (#362). A fresh reviewer checks
+each ticket, with a capped review fix loop (#364). And it sends its journal to
 the Paseo board plugin, and has a command line, `luca-run` (#374).
 
 ## Modules
@@ -23,7 +24,8 @@ the Paseo board plugin, and has a command line, `luca-run` (#374).
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, next action out. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, then the PR. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, or a failed try's error. |
-| `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes and the agents' **assumptions**. |
+| `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings, and what each review fixer is sent. |
+| `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings. |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends) and the `runEngine` loop. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. |
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
@@ -86,7 +88,13 @@ for each ticket, one at a time, in snapshot order:
   run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
   commit_ticket green     leftover scan, then commit                     ──> leftover_scan, commit_made
-  launch_agent ticket-reviewer                                           ──> agent_started, agent_finished
+  launch_agent ticket-reviewer  a fresh reviewer: the diff, the gate results ──> agent_started, agent_finished
+    blockers or should-fixes: a review fix round, ≤ 3 rounds
+      launch_agent test-writer    (fresh) the test findings, if any
+      follow_up_agent implementer (same session) the code findings, if any
+      run_gates ticket            (and the gate fix loop)
+      commit_ticket fix           leftover scan, then commit             ──> leftover_scan, commit_made
+      launch_agent ticket-reviewer  (fresh) only the new changes and the earlier findings
   join_run_branch         git: cherry-pick the ticket's commits          ──> ticket_joined
   run_gates run_branch    the gates again, on the joined run branch      ──> gates_run
   push_run_branch         git: push to origin                            ──> run_branch_pushed
@@ -134,11 +142,39 @@ fresh agent of that role without using up a try; three in a row
 result: it can set the role's first result, or answer a fix round and rerun
 the red check or the gates.
 
-Anything else that fails (the leftover scan, the review, the join), a fix loop
-or failed tries at their cap, a second bad test, or a test-writer with nothing
-new to test becomes `mark_stuck` ──> `ticket_stuck` with its reason, and the
-run ends without a PR. Real reviews (#364) and many tickets at once (#365) build on
-this.
+**The ticket review.** After the green commit, a fresh, read-only
+reviewer gets the ticket's committed diff (`git diff <base>..<green>` and the
+files it changes), the engine's gate results, and the acceptance criteria.
+On a refactor ticket it also checks that behavior didn't change. Each
+**finding** is a `blocker`, a `should_fix`, or a `nit`, and a `code` or a
+`test` finding. The verdict must match the findings (`changes_requested`
+exactly when one is a blocker or should-fix); one that doesn't is a failed
+try (`result`), and a fresh reviewer tries again.
+
+Blockers and should-fixes open a **review fix round**. Test findings go
+first, to a fresh test-writer (who may edit only tests); then code findings
+go to the same implementer session, or a fresh implementer if it is gone.
+Each fixer answers every finding it got in `finding_responses`: `fixed`, or
+`wont_fix` with a reason. The fixes must pass the gates (with the usual gate
+fix loop, counted afresh each round), get their own commit
+(`fix: review round <n> for ...`; nothing changed means no commit, and the
+journal notes the current commit), and then a fresh reviewer sees **only the
+new changes** (`git diff <last reviewed>..<fix>`) plus the earlier findings
+with each fixer's answer. It rules on each "won't fix" in `rulings`:
+`accepted` declines the finding, `rejected` keeps it open (and it lists it
+again). A "won't fix" with no ruling that isn't listed again counts as
+declined. A review that still asks for changes after `MAX_FIX_ROUNDS` (3)
+fix rounds is stuck (`changes_requested`). An implementer that answers
+`bad_test` while fixing review findings is stuck (`bad_test`).
+
+Nits never go back. They stay in the reviewers' `agent_finished` records,
+and the PR description lists every nit (one per id) and every declined
+finding with the fixer's and the reviewer's reasons.
+
+Anything else that fails (the leftover scan, the join), a fix loop or failed
+tries at their cap, a second bad test, or a test-writer with nothing new to
+test becomes `mark_stuck` ──> `ticket_stuck` with its reason, and the run
+ends without a PR. Many tickets at once (#365) builds on this.
 
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
@@ -274,7 +310,11 @@ also holds its journal).
   `bun install --frozen-lockfile` on the run branch. A failed install fails the
   gates without running the rest, and goes through the gate fix loop like
   any failed gate: the implementer gets its output in a follow-up.
-- **The ticket reviewer** is a scripted stand-in that approves for now (#364).
+- **Review rounds:** "at most 3 review rounds" means 3 review fix rounds,
+  like the other loops: the first review, then up to 3 fixes, each checked
+  by a fresh re-review. The 4th review still asking for changes is stuck.
+- **Findings are the truth** for what goes back: the verdict must agree with
+  them, and only blockers and should-fixes are sent to fixers.
 - **SDK version:** `@anthropic-ai/claude-agent-sdk` 0.3.273, pinned. Newer
   releases were younger than `bunfig.toml`'s 7-day minimum release age.
 - **Reviewers can't run the tests.** They get read-only commands only; the
@@ -397,6 +437,13 @@ fills the in-memory tracker with a practice spec and ticket, and runs the
 engine with scripted agents. The gates, commits, join, push, journal, and PR
 step are real. No GitHub, no models, no setup. One ticket adds a local
 workspace package as a dependency, so the engine's install runs offline.
+`src/core/decide-review.test.ts` tests the ticket review through the decision
+step: the reviewer's prompt, findings to the right fixer in the right order,
+the gates and the fix commit, re-reviews of only the new changes, pushback,
+the round cap, and nits and declined findings in the PR.
+`src/core/ticket-review.test.ts` runs it end to end with scripted reviewers:
+findings fixed and pushed back on, a re-review of the new changes only, the
+round cap, and a verdict that disagrees with its findings.
 `src/core/agent-guards.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
 and retries that follow.

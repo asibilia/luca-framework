@@ -27,6 +27,24 @@ export const CriterionTestsSchema = z.object({
 
 export type CriterionTests = z.infer<typeof CriterionTestsSchema>
 
+/**
+ * A review fixer's answer to one finding it was sent: `fixed`, or
+ * `wont_fix` with its reason (pushback the next fresh reviewer rules on).
+ */
+export const FindingResponseSchema = z.object({
+    finding_id: z.string().min(1),
+    response: z.enum(['fixed', 'wont_fix']),
+    reason: z.string().default(''),
+})
+
+export type FindingResponse = z.infer<typeof FindingResponseSchema>
+
+/** What a review fixer adds to its result: an answer per finding it got. */
+const FIXER_FIELDS = {
+    /** Empty unless the agent was sent review findings to fix. */
+    finding_responses: z.array(FindingResponseSchema).default([]),
+}
+
 const SHARED_FIELDS = {
     summary: z.string().default(''),
     /** Calls the agent made by itself when something was unclear. */
@@ -45,6 +63,7 @@ export const TestWriterResultSchema = z.object({
     /** For each criterion id (AC1, AC2, ...), the tests that check it. */
     criteria: z.array(CriterionTestsSchema).default([]),
     ...SHARED_FIELDS,
+    ...FIXER_FIELDS,
 })
 
 export type TestWriterResult = z.infer<typeof TestWriterResultSchema>
@@ -63,14 +82,23 @@ export const ImplementerResultSchema = z.object({
     outcome: z.enum(['done', 'bad_test']),
     bad_test: BadTestSchema.nullable().default(null),
     ...SHARED_FIELDS,
+    ...FIXER_FIELDS,
 })
 
 export type ImplementerResult = z.infer<typeof ImplementerResultSchema>
 
+/**
+ * How much a finding matters: a blocker or a should-fix goes back for
+ * fixing; a nit only goes in the PR description.
+ */
+export const FindingSeveritySchema = z.enum(['blocker', 'should_fix', 'nit'])
+
+export type FindingSeverity = z.infer<typeof FindingSeveritySchema>
+
 /** One problem a reviewer reports. */
 export const FindingSchema = z.object({
     id: z.string().min(1),
-    severity: z.enum(['blocker', 'should_fix', 'nit']),
+    severity: FindingSeveritySchema,
     /** `test` if the fix belongs in a test file, else `code`. */
     kind: z.enum(['code', 'test']),
     file: z.string().nullable().default(null),
@@ -80,10 +108,32 @@ export const FindingSchema = z.object({
 
 export type Finding = z.infer<typeof FindingSchema>
 
-/** The ticket reviewer's result. */
+/**
+ * A re-reviewer's ruling on a fixer's "won't fix": `accepted` declines the
+ * finding (it goes in the PR description), `rejected` keeps it open.
+ */
+export const FindingRulingSchema = z.object({
+    finding_id: z.string().min(1),
+    ruling: z.enum(['accepted', 'rejected']),
+    reason: z.string().default(''),
+})
+
+export type FindingRuling = z.infer<typeof FindingRulingSchema>
+
+/** Whether a finding must be fixed before the ticket joins. */
+export const isBlocking = ({ severity }: Pick<Finding, 'severity'>): boolean =>
+    severity !== 'nit'
+
+/**
+ * The ticket reviewer's result. `verdict` is `changes_requested` exactly
+ * when a finding is a blocker or a should-fix; `parseRoleResult` refuses a
+ * verdict that disagrees with its findings.
+ */
 export const TicketReviewResultSchema = z.object({
     verdict: z.enum(['approve', 'changes_requested']),
     findings: z.array(FindingSchema).default([]),
+    /** On a re-review: a ruling on each finding a fixer declined. */
+    rulings: z.array(FindingRulingSchema).default([]),
     summary: z.string().default(''),
     assumptions: z.array(z.string()).default([]),
 })
@@ -128,6 +178,18 @@ export const parseRoleResult = ({
         return {
             ok: false,
             error: `The ${role}'s result does not fit its schema:\n${z.prettifyError(parsed.error)}`,
+        }
+    }
+    if (parsed.data.role === 'ticket-reviewer') {
+        const { verdict, findings } = parsed.data.result
+        const expected = findings.some(isBlocking)
+            ? 'changes_requested'
+            : 'approve'
+        if (verdict !== expected) {
+            return {
+                ok: false,
+                error: `The ticket-reviewer's verdict "${verdict}" does not match its findings: it must be "${expected}" (changes are requested exactly when a finding is a blocker or a should_fix).`,
+            }
         }
     }
     return { ok: true, value: parsed.data }

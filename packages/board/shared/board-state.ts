@@ -113,8 +113,12 @@ export const FindingCountsSchema = z.object({
 
 export type FindingCounts = z.infer<typeof FindingCountsSchema>
 
-/** A check whose failure went back to an agent: its fix loop is open. */
-export const OpenCheckSchema = z.enum(['red_check', 'gates'])
+/**
+ * A check whose failure went back to an agent: its fix loop is open. `review`
+ * is a ticket review that asked for changes: the next fixer starts a review
+ * fix round.
+ */
+export const OpenCheckSchema = z.enum(['red_check', 'gates', 'review'])
 
 export type OpenCheck = z.infer<typeof OpenCheckSchema>
 
@@ -139,6 +143,8 @@ export const TicketCardSchema = z.object({
     /** Fix rounds in the current fix loop; back to 0 once its check passes. */
     fix_round: z.number().int().min(0),
     review_round: z.number().int().min(0),
+    /** Review fix rounds so far (up to LOOP_CAP): fixes after a review. */
+    review_fix_round: z.number().int().min(0),
     /** The check whose failure the next follow-up answers, if any. */
     open_check: OpenCheckSchema.nullable(),
     /** The role whose latest turn failed, until an agent finishes again. */

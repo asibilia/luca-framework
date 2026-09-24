@@ -7,12 +7,15 @@ import type {
     StuckReason,
 } from './journal-record'
 
-import type {
-    AgentRole,
-    BadTest,
-    ImplementerResult,
-    TestWriterResult,
-    TicketReviewResult,
+import {
+    isBlocking,
+    type AgentRole,
+    type BadTest,
+    type Finding,
+    type FindingResponse,
+    type ImplementerResult,
+    type TestWriterResult,
+    type TicketReviewResult,
 } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
 import type {
@@ -62,6 +65,37 @@ export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
 export type ReplayedRedCheck = RedCheckResult & { output: string }
 
 /**
+ * The open review fix round: the blockers and should-fixes the latest ticket
+ * review sent back, and which fixers have answered. Test findings go to a
+ * fresh test-writer first, then code findings to the implementer.
+ */
+export type ReviewFix = {
+    /** 1 after the first review, 2 after the first re-review, ... */
+    round: number
+    findings: Finding[]
+    /** True once the test-writer answered, or when no finding is a test finding. */
+    tests_answered: boolean
+    /** True once the implementer answered, or when no finding is a code finding. */
+    code_answered: boolean
+    /** The fixers' answers, oldest first. */
+    responses: FindingResponse[]
+    /** A test the implementer sent back as bad while fixing, if any. */
+    bad_test: BadTest | null
+}
+
+/**
+ * A finding a fixer answered "won't fix" and the next reviewer let go: its
+ * ruling was `accepted`, or it gave none and did not list the finding again.
+ */
+export type DeclinedFinding = {
+    finding: Finding
+    /** The fixer's reason. */
+    reason: string
+    /** The reviewer's reason for accepting it, if it gave one. */
+    ruling: string
+}
+
+/**
  * How far one ticket got, from its journal records. Each field holds the
  * latest record of its kind; `null` means the step has not finished.
  *
@@ -88,7 +122,18 @@ export type TicketProgress = {
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
     assumptions: string[]
+    /** The latest ticket review's result. */
     review: TicketReviewResult | null
+    /** Ticket reviews finished on this ticket. */
+    review_rounds: number
+    /** The commit the latest review looked at. */
+    reviewed_sha: string | null
+    /** The open review fix round; `null` before a review or once approved. */
+    review_fix: ReviewFix | null
+    /** Every nit reviewers reported, oldest first, one per id. */
+    nits: Finding[]
+    /** Findings declined through "won't fix", oldest first. */
+    declined: DeclinedFinding[]
     /**
      * The latest failed agent turn, if no agent finished after it: its role,
      * error, how it failed, and the session it ran in (for a follow-up).
@@ -108,6 +153,8 @@ export type TicketProgress = {
     engine_failures: number
     leftovers: Record<CommitStage, LeftoverHit[] | null>
     commits: Record<CommitStage, string | null>
+    /** The files each stage's latest commit changed. */
+    commit_files: Record<CommitStage, string[]>
     gates: ReplayedGates | null
     joined: { ok: true; shas: string[] } | { ok: false; error: string } | null
     join_gates: ReplayedGates | null
@@ -147,11 +194,17 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     sessions: {},
     assumptions: [],
     review: null,
+    review_rounds: 0,
+    reviewed_sha: null,
+    review_fix: null,
+    nits: [],
+    declined: [],
     agent_failure: null,
     failed_tries: {},
     engine_failures: 0,
-    leftovers: { red: null, green: null },
-    commits: { red: null, green: null },
+    leftovers: { red: null, green: null, fix: null },
+    commits: { red: null, green: null, fix: null },
+    commit_files: { red: [], green: [], fix: [] },
     gates: null,
     joined: null,
     join_gates: null,
@@ -291,8 +344,21 @@ const resultChange = ({
     progress: TicketProgress
     finished: FinishedContent
 }): Partial<TicketProgress> => {
+    const fix = progress.review_fix
     switch (finished.role) {
         case 'test-writer':
+            if (fix !== null && !fix.tests_answered) {
+                return {
+                    review_fix: {
+                        ...fix,
+                        tests_answered: true,
+                        responses: [
+                            ...fix.responses,
+                            ...finished.result.finding_responses,
+                        ],
+                    },
+                }
+            }
             return progress.red_check === null
                 ? { test_writer: finished.result }
                 : {
@@ -302,6 +368,26 @@ const resultChange = ({
                   }
         case 'implementer': {
             const { result } = finished
+            if (fix !== null && fix.tests_answered && !fix.code_answered) {
+                return {
+                    review_fix: {
+                        ...fix,
+                        code_answered: true,
+                        responses: [
+                            ...fix.responses,
+                            ...result.finding_responses,
+                        ],
+                        bad_test:
+                            result.outcome === 'bad_test'
+                                ? (result.bad_test ?? {
+                                      file: '',
+                                      name: '',
+                                      reason: result.summary,
+                                  })
+                                : null,
+                    },
+                }
+            }
             const bounce: Partial<TicketProgress> =
                 result.outcome === 'bad_test'
                     ? {
@@ -323,7 +409,86 @@ const resultChange = ({
             return { implementer: result, ...round, ...bounce }
         }
         case 'ticket-reviewer':
-            return { review: finished.result }
+            return reviewChange({ progress, review: finished.result })
+    }
+}
+
+/**
+ * The fixers' "won't fix" answers the new review let go: its ruling was
+ * `accepted`, or it gave none and did not list the finding again.
+ */
+const declinedBy = ({
+    fix,
+    review,
+}: {
+    fix: ReviewFix | null
+    review: TicketReviewResult
+}): DeclinedFinding[] => {
+    if (fix === null) return []
+    const listed = new Set(review.findings.map(({ id }) => id))
+    return fix.responses.flatMap(({ finding_id, response, reason }) => {
+        if (response !== 'wont_fix') return []
+        const finding = fix.findings.find(({ id }) => id === finding_id)
+        if (finding === undefined) return []
+        const ruling = review.rulings.find(
+            (entry) => entry.finding_id === finding_id
+        )
+        const accepted =
+            ruling === undefined
+                ? !listed.has(finding_id)
+                : ruling.ruling === 'accepted'
+        return accepted
+            ? [{ finding, reason, ruling: ruling?.reason ?? '' }]
+            : []
+    })
+}
+
+/**
+ * A finished ticket review: counts the round, settles the last round's
+ * "won't fix" answers, keeps its nits, and opens a fix round when a finding
+ * is a blocker or a should-fix. A new fix round starts its gates, gate fix
+ * rounds, and fix commit afresh.
+ */
+const reviewChange = ({
+    progress,
+    review,
+}: {
+    progress: TicketProgress
+    review: TicketReviewResult
+}): Partial<TicketProgress> => {
+    const review_rounds = progress.review_rounds + 1
+    const blocking = review.findings.filter(isBlocking)
+    const newNits = review.findings.filter(
+        (finding) =>
+            !isBlocking(finding) &&
+            !progress.nits.some(({ id }) => id === finding.id)
+    )
+    const settled: Partial<TicketProgress> = {
+        review,
+        review_rounds,
+        reviewed_sha: progress.commits.fix ?? progress.commits.green,
+        nits: [...progress.nits, ...newNits],
+        declined: [
+            ...progress.declined,
+            ...declinedBy({ fix: progress.review_fix, review }),
+        ],
+    }
+    if (blocking.length === 0) return { ...settled, review_fix: null }
+    return {
+        ...settled,
+        review_fix: {
+            round: review_rounds,
+            findings: blocking,
+            tests_answered: !blocking.some(({ kind }) => kind === 'test'),
+            code_answered: !blocking.some(({ kind }) => kind === 'code'),
+            responses: [],
+            bad_test: null,
+        },
+        gates: null,
+        gate_fix_rounds: 0,
+        leftovers: { ...progress.leftovers, fix: null },
+        commits: { ...progress.commits, fix: null },
+        commit_files: { ...progress.commit_files, fix: [] },
     }
 }
 
@@ -406,7 +571,7 @@ const progressChange = ({
                 implementer: null,
                 gates: null,
                 gate_fix_rounds: 0,
-                leftovers: { red: null, green: null },
+                leftovers: { red: null, green: null, fix: null },
                 commits: { ...progress.commits, red: null },
                 sessions: omit(progress.sessions, [
                     'test-writer',
@@ -425,6 +590,10 @@ const progressChange = ({
                 commits: {
                     ...progress.commits,
                     [record.content.stage]: record.content.sha,
+                },
+                commit_files: {
+                    ...progress.commit_files,
+                    [record.content.stage]: record.content.files,
                 },
             }
         case 'gates_run': {

@@ -16,7 +16,6 @@ import {
     nothingNewToTest,
     practiceTicket,
     redCheck,
-    reviewed,
     RUN_BRANCH,
     runBranchCreated,
     SESSIONS,
@@ -728,15 +727,6 @@ describe('decision step: a ticket gets stuck', () => {
             reason: 'leftovers_found',
             detail: 'debug.log: a log file',
         })
-    })
-
-    test('a reviewer asking for changes makes the ticket stuck', () => {
-        expect(
-            decideAfter([
-                ...stepsUpTo(9),
-                reviewed({ ticket: 11, verdict: 'changes_requested' }),
-            ])
-        ).toMatchObject({ type: 'mark_stuck', reason: 'changes_requested' })
     })
 
     test('a join that clashes makes the ticket stuck', () => {

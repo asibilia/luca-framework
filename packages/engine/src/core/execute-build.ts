@@ -218,6 +218,22 @@ const commitTicket = async ({
         content: { stage: action.stage, hits },
     })
     if (hits.length > 0) return
+    if (changes.length === 0 && action.stage === 'fix') {
+        // The fixers changed nothing (every finding was a "won't fix"): no
+        // commit to make, so the re-review's new changes are empty.
+        context.journal.append({
+            kind: 'commit_made',
+            ticket: action.ticket,
+            role: null,
+            content: {
+                stage: action.stage,
+                sha: await context.git.head({ cwd }),
+                message: action.message,
+                files: [],
+            },
+        })
+        return
+    }
     const commit = await context.git.commitAll({ cwd, message: action.message })
     context.journal.append({
         kind: 'commit_made',

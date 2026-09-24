@@ -17,6 +17,12 @@ const badTestSection = ({ bad_test }: { bad_test: BadTest }): string =>
             'Answer with the full criterion mapping again: every criterion, the kept tests included.',
     ].join('\n\n')
 
+/** What a refactor ticket's reviewer also checks. */
+const REFACTOR_REVIEW_TASK =
+    'This is a refactor ticket: also check that behavior did NOT change. ' +
+    "No test's meaning changed, no test was weakened or dropped, and no new behavior was added. " +
+    'A behavior change is a blocker.'
+
 const ROLE_TASKS: Record<AgentRole, string> = {
     'test-writer':
         'Write failing tests for every acceptance criterion below. Edit test files only. ' +
@@ -42,6 +48,8 @@ const ROLE_TASKS: Record<AgentRole, string> = {
  *   the refactor task (no new behavior; it may follow renames into tests).
  * @param bad_test - For a fresh test-writer after a bad-test bounce: the
  *   test the implementer sent back, and why.
+ * @param sections - More sections for the end, such as a reviewer's diff
+ *   and gate results, or a review fixer's findings.
  *
  * @example
  * const prompt = rolePrompt({ role: 'test-writer', spec, ticket })
@@ -52,16 +60,21 @@ export const rolePrompt = ({
     ticket,
     refactor,
     bad_test,
+    sections,
 }: {
     role: AgentRole
     spec: SpecSnapshot
     ticket: TicketSnapshot
     refactor?: boolean
     bad_test?: BadTest | null
+    sections?: string[]
 }): string =>
     [
         `# Your role: ${role}`,
         role === 'implementer' && refactor ? REFACTOR_TASK : ROLE_TASKS[role],
+        ...(role === 'ticket-reviewer' && refactor
+            ? [REFACTOR_REVIEW_TASK]
+            : []),
         `## Spec #${spec.number}: ${spec.title}`,
         spec.body,
         `## Ticket #${ticket.number}: ${ticket.title}`,
@@ -71,4 +84,5 @@ export const rolePrompt = ({
         ...(role === 'test-writer' && bad_test
             ? [badTestSection({ bad_test })]
             : []),
+        ...(sections ?? []),
     ].join('\n\n')
