@@ -385,7 +385,7 @@ describe('engine failures and stops', () => {
         expect(
             launches.map(({ kind, role }) => `${kind}:${role}`).slice(0, 2)
         ).toEqual(['launch:test-writer', 'launch:test-writer'])
-        expect(kinds(records).slice(7, 12)).toEqual([
+        expect(kinds(records).slice(9, 14)).toEqual([
             'agent_started',
             'agent_session',
             'agent_failed',

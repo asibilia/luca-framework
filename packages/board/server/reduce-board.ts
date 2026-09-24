@@ -44,6 +44,7 @@ const STUCK_REASONS: Record<string, string> = {
     changes_requested: 'The ticket review asked for changes.',
     join_failed: "The ticket couldn't join the run branch.",
     join_gates_failed: 'The checks failed after the ticket joined.',
+    install_failed: 'Installing the dependencies failed.',
 }
 
 const clip = ({ text, max }: { text: string; max: number }): string =>
@@ -598,6 +599,22 @@ const applyKind = ({
                     activity: 'starting',
                 }),
             })
+        case 'dependencies_installed': {
+            const { check } = record.content
+            if (check === null || check.ok || ticket === null) return state
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    activity: 'install failed',
+                    tried: withTried({
+                        tried: card.tried,
+                        line: `The install failed: \`${check.command}\``,
+                    }),
+                }),
+            })
+        }
         case 'baseline_tests':
             return updateTicket({
                 state,

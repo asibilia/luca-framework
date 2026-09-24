@@ -9,9 +9,13 @@ import { mayEditTests, type BuildAction } from './decide-build'
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
 import { parseRoleResult, type AgentRole } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
-import { runGates } from '../gates/gate-runner'
+import { runGates, shellCheck } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
-import { installCommand } from '../gates/lockfile-install'
+import {
+    installCommand,
+    MANIFEST,
+    newWorktreeInstall,
+} from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import { runTests, testFilesAmong } from '../gates/test-runner'
 import type { GitAdapter } from '../git/git-adapter'
@@ -488,6 +492,32 @@ export const executeBuildAction = async ({
                 ticket: action.ticket,
                 role: null,
                 content: { branch, path, base_sha },
+            })
+            return
+        }
+        case 'install_dependencies': {
+            const { path: cwd } =
+                action.ticket === null
+                    ? need({ value: state.run_branch, what: 'run branch' })
+                    : ticketWorktree({ state, ticket: action.ticket })
+            const command = newWorktreeInstall({
+                has_manifest: existsSync(join(cwd, MANIFEST)),
+            })
+            journal.append({
+                kind: 'dependencies_installed',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    target: action.target,
+                    check:
+                        command === null
+                            ? null
+                            : await shellCheck({
+                                  name: 'install',
+                                  command,
+                                  cwd,
+                              }),
+                },
             })
             return
         }

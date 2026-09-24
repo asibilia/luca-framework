@@ -113,6 +113,29 @@ export const sum = ({ numbers }: { numbers: number[] }): number =>
     numbers.reduce(add, 0)
 `
 
+/**
+ * A repo that already depends on its workspace package and uses it, with a
+ * lockfile to match. A fresh worktree has no `node_modules`, so its tests
+ * and its build only pass after the engine's install.
+ */
+const DEPENDENT_FILES = {
+    ...WORKSPACE_FILES,
+    'package.json': MANIFEST_WITH_DEPENDENCY,
+    'src/add-one.ts': `import { add } from '@practice/math'
+
+export const addOne = (n: number): number => add(n, 1)
+`,
+    'src/add-one.test.ts': `import { expect, test } from 'bun:test'
+
+import { addOne } from './add-one'
+
+test('addOne adds one', () => {
+    expect(addOne(1)).toBe(2)
+})
+`,
+    'src/index.ts': "export { addOne } from './add-one'\n",
+}
+
 const TEST_WRITER_RESULT = {
     outcome: 'tests_written',
     criteria: [
@@ -163,8 +186,11 @@ const git = (cwd: string, ...args: string[]) =>
 /** A small repo with no tests yet, pushed to a local bare `origin`. */
 const makePracticeRepo = async ({
     files,
+    stale_manifest,
 }: {
     files: Record<string, string> | undefined
+    /** The first commit's manifest, written after its lockfile was made. */
+    stale_manifest?: string
 }) => {
     await $`git init -q --bare -b main ${origin}`.quiet()
     await $`git init -q -b main ${repo}`.quiet()
@@ -188,6 +214,9 @@ const makePracticeRepo = async ({
     if (files?.['package.json'] !== undefined) {
         // The starting lockfile. Workspace packages install offline.
         await $`bun install`.cwd(repo).quiet()
+    }
+    if (stale_manifest !== undefined) {
+        await Bun.write(join(repo, 'package.json'), stale_manifest)
     }
     await git(repo, 'add', '-A')
     await git(repo, 'commit', '-q', '-m', 'initial')
@@ -233,14 +262,16 @@ const runPractice = async ({
     turns,
     launcher,
     files,
+    stale_manifest,
 }: {
     turns: Turn[]
     /** Defaults to a scripted launcher playing `turns`. */
     launcher?: ScriptedLauncher
     /** More files for the practice repo's first commit. */
     files?: Record<string, string>
+    stale_manifest?: string
 }) => {
-    await makePracticeRepo({ files })
+    await makePracticeRepo({ files, stale_manifest })
     const loaded = await loadEngineConfig({ repo_root: repo })
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = practiceTracker()
@@ -287,7 +318,9 @@ describe('one ticket, end to end, with scripted agents', () => {
             'spec_snapshot',
             'ticket_snapshot',
             'run_branch_created',
+            'dependencies_installed',
             'ticket_worktree_created',
+            'dependencies_installed',
             'baseline_tests',
             'agent_started',
             'agent_finished',
@@ -864,6 +897,127 @@ describe('one ticket, end to end, with scripted agents', () => {
             ['install:true', 'test:true', 'types:true', 'lint:true'],
         ])
         expect(records.some((record) => record.kind === 'agent_failed')).toBe(
+            false
+        )
+    }, 60_000)
+    test('a repo that already has a dependency gets it installed in every new worktree, and its first gates pass', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const { action, records } = await runPractice({
+            files: DEPENDENT_FILES,
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    files: {
+                        'src/sum.ts': SUM_WITH_DEPENDENCY,
+                        'src/index.ts':
+                            "export { addOne } from './add-one'\nexport { sum } from './sum'\n",
+                    },
+                },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // The engine installed from the lockfile, without changing it, in
+        // the run branch's checkout and the ticket's worktree, before any
+        // test, agent, or gate.
+        const installs = records.flatMap((record) =>
+            record.kind === 'dependencies_installed'
+                ? [
+                      {
+                          target: record.content.target,
+                          command: record.content.check?.command,
+                          ok: record.content.check?.ok,
+                      },
+                  ]
+                : []
+        )
+        expect(installs).toEqual([
+            {
+                target: 'run_branch',
+                command: 'bun install --frozen-lockfile',
+                ok: true,
+            },
+            {
+                target: 'ticket',
+                command: 'bun install --frozen-lockfile',
+                ok: true,
+            },
+        ])
+        const kinds = records.map(({ kind }) => kind)
+        const ticketInstall = records.findIndex(
+            (record) =>
+                record.kind === 'dependencies_installed' &&
+                record.content.target === 'ticket'
+        )
+        expect(ticketInstall).toBeLessThan(kinds.indexOf('baseline_tests'))
+        expect(ticketInstall).toBeLessThan(kinds.indexOf('agent_started'))
+
+        // The old test that uses the dependency passed before any agent.
+        const baseline = records.find(
+            (record) => record.kind === 'baseline_tests'
+        )
+        expect(
+            baseline?.kind === 'baseline_tests' ? baseline.content.ok : false
+        ).toBe(true)
+
+        // The first gate run passed, with no install of its own: no
+        // manifest changed.
+        const gates = records.flatMap((record) =>
+            record.kind === 'gates_run' ? [record.content] : []
+        )
+        expect(gates[0]).toMatchObject({ target: 'ticket', ok: true })
+        expect(gates[0]?.checks.map(({ name }) => name)).toEqual([
+            'test',
+            'types',
+            'lint',
+        ])
+        expect(records.some((record) => record.kind === 'agent_failed')).toBe(
+            false
+        )
+    }, 60_000)
+
+    test('an install that fails in a new worktree is journaled and makes the ticket stuck, before any agent', async () => {
+        const { action, records } = await runPractice({
+            files: WORKSPACE_FILES,
+            // The committed manifest wants a workspace package that doesn't
+            // exist, so the install fails, offline.
+            stale_manifest: MANIFEST_WITH_DEPENDENCY.replace(
+                '@practice/math',
+                '@practice/missing'
+            ),
+            turns: HAPPY_TURNS,
+        })
+
+        expect(action).toMatchObject({
+            type: 'done',
+            outcome: 'stuck',
+            ticket: 11,
+            reason: 'install_failed',
+        })
+        const failed = records.find(
+            (record) => record.kind === 'dependencies_installed'
+        )
+        expect(
+            failed?.kind === 'dependencies_installed'
+                ? failed.content.check
+                : null
+        ).toMatchObject({
+            name: 'install',
+            command: 'bun install --frozen-lockfile',
+            ok: false,
+        })
+        const stuck = records.find((record) => record.kind === 'ticket_stuck')
+        expect(
+            stuck?.kind === 'ticket_stuck' ? stuck.content.detail : ''
+        ).toContain('bun install --frozen-lockfile')
+        expect(records.some((record) => record.kind === 'agent_started')).toBe(
+            false
+        )
+        expect(records.some((record) => record.kind === 'gates_run')).toBe(
             false
         )
     }, 60_000)

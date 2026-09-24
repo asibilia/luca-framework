@@ -107,6 +107,8 @@ export type DeclinedFinding = {
  */
 export type TicketProgress = {
     worktree: ReplayedWorktree | null
+    /** The install in the new worktree; its `check` is `null` with no manifest. */
+    install: ReplayedInstall | null
     baseline: TestRun | null
     test_writer: TestWriterResult | null
     red_check: ReplayedRedCheck | null
@@ -163,6 +165,9 @@ export type TicketProgress = {
     stuck: { reason: StuckReason; detail: string } | null
 }
 
+/** The engine's install in a new worktree: `null` check means nothing to install. */
+export type ReplayedInstall = { check: GateCheck | null }
+
 /** The run's pull request, once opened. */
 export type ReplayedPullRequest = { number: number; url: string }
 
@@ -207,6 +212,8 @@ export type RunState = {
     problems: IntakeProblem[] | null
     snapshot: ReplayedSnapshot | null
     run_branch: ReplayedWorktree | null
+    /** The install in the run branch's checkout, once it ran. */
+    run_branch_install: ReplayedInstall | null
     tickets: Record<number, TicketProgress>
     pull_request: ReplayedPullRequest | null
     plan: PlanState
@@ -218,6 +225,7 @@ export type RunState = {
 /** A ticket nothing has happened to yet. */
 export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     worktree: null,
+    install: null,
     baseline: null,
     test_writer: null,
     red_check: null,
@@ -256,6 +264,7 @@ const EMPTY_STATE: RunState = {
     problems: null,
     snapshot: null,
     run_branch: null,
+    run_branch_install: null,
     tickets: {},
     pull_request: null,
     plan: {
@@ -391,6 +400,14 @@ const applyRecord = ({
         }
         case 'run_branch_created':
             return { ...next, run_branch: record.content }
+        case 'dependencies_installed':
+            if (record.content.target === 'run_branch') {
+                return {
+                    ...next,
+                    run_branch_install: { check: record.content.check },
+                }
+            }
+            return applyTicketRecord({ state: next, record })
         case 'pull_request_opened':
             return {
                 ...next,
@@ -639,6 +656,8 @@ const progressChange = ({
     switch (record.kind) {
         case 'ticket_worktree_created':
             return { worktree: record.content }
+        case 'dependencies_installed':
+            return { install: { check: record.content.check } }
         case 'baseline_tests':
             return { baseline: record.content }
         case 'agent_started':

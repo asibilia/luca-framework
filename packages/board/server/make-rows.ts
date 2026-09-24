@@ -176,6 +176,18 @@ export const describeRecord = ({
             })
         case 'ticket_worktree_created':
             return event({ text: `${at}started.`, tone: 'info' })
+        case 'dependencies_installed': {
+            const { check } = record.content
+            if (check === null || check.ok) return null
+            const where =
+                record.ticket === null
+                    ? "The run branch's install"
+                    : `${at}the install`
+            return event({
+                text: `${where} failed: \`${check.command}\`.`,
+                tone: 'danger',
+            })
+        }
         case 'agent_started':
             return startedText({ before, after, record })
         case 'agent_finished':

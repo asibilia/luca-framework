@@ -21,6 +21,7 @@ import {
     SESSIONS,
     testsWritten,
     ticketBuilt,
+    withInstalls,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
@@ -31,7 +32,10 @@ const TICKET = practiceTicket({ number: 11 })
 const decideAfter = (entries: JournalEntry[], tickets = [TICKET]) =>
     decide({
         records: recordsFrom({
-            entries: [...intakePassed({ tickets }), ...entries],
+            entries: [
+                ...intakePassed({ tickets }),
+                ...withInstalls({ entries }),
+            ],
         }),
     })
 

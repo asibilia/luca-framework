@@ -6,6 +6,7 @@ import {
     agentFinished,
     agentSession,
     agentStarted,
+    dependenciesInstalled,
     finalReviewFixing,
     finalReviewPassed,
     finalReviewStarted,
@@ -182,6 +183,65 @@ describe('stuck work: "Needs you" and stuck rows', () => {
         expect(stuck[0]?.row).toMatchObject({
             id: `${run_id}-stuck-13`,
             data: { status: 'resolved', resolution: 'You replied `skip #13`.' },
+        })
+    })
+})
+
+describe("the engine's install in a new worktree", () => {
+    test('a passing install is quiet: no row, and the ticket just starts', async () => {
+        await runWith({
+            entries: [
+                dependenciesInstalled({ ok: true }),
+                ticketWorktreeCreated({ ticket: 13 }),
+                dependenciesInstalled({ ticket: 13, ok: true }),
+            ],
+        })
+
+        expect(eventRows().at(-1)).toEqual({
+            text: '#13: started.',
+            tone: 'info',
+        })
+        expect(await harness.ticket({ number: 13 })).toMatchObject({
+            stage: 'building',
+            tried: [],
+        })
+    })
+
+    test('a failed install makes the ticket stuck with its reason and what was tried', async () => {
+        await runWith({
+            entries: [
+                dependenciesInstalled({ ok: true }),
+                ticketWorktreeCreated({ ticket: 13 }),
+                dependenciesInstalled({ ticket: 13, ok: false }),
+                ticketStuck({
+                    ticket: 13,
+                    reason: 'install_failed',
+                    detail: '`bun install --frozen-lockfile` failed',
+                }),
+            ],
+        })
+
+        expect(eventRows().slice(-2)).toEqual([
+            {
+                text: '#13: the install failed: `bun install --frozen-lockfile`.',
+                tone: 'danger',
+            },
+            expect.objectContaining({ tone: 'danger' }),
+        ])
+        const state = await harness.state()
+        expect(state.needs_you[0]).toMatchObject({
+            ticket: 13,
+            reason: 'Installing the dependencies failed.',
+            tried: ['The install failed: `bun install --frozen-lockfile`'],
+        })
+    })
+
+    test("a failed install in the run branch's checkout gets its own row", async () => {
+        await runWith({ entries: [dependenciesInstalled({ ok: false })] })
+
+        expect(eventRows().at(-1)).toEqual({
+            text: "The run branch's install failed: `bun install --frozen-lockfile`.",
+            tone: 'danger',
         })
     })
 })
