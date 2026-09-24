@@ -367,6 +367,8 @@ its records, then its `step_ended`, are in the journal.
   gate's fix, a review fix, a failed try, a final fixer), a fresh agent of
   that role gets the same message as an extra section, and is told that a
   crash cut off an earlier try and the worktree may hold its partial edits.
+  With memory on, that fresh agent gets the run's start memories, its
+  ticket's, and the fix round's the follow-up would have carried.
   Fix rounds are counted from record order, so every cap still holds.
 - **Crashes in a row.** Replay counts, per key, how many `run_resumed` in a
   row cut off the same step; its `step_ended` clears the count. At
@@ -997,7 +999,9 @@ the hits by score, drops those below the minimum, keeps one per vault and id,
 and keeps at most `MAX_MEMORIES_PER_RECALL` (5). When a step needs a search
 whose key isn't journaled yet, the decision step returns `recall_memories`
 in its place, under the same scheduler key (so tickets search at the same
-time; the run's start is run-level, the final review's under `final`).
+time; the run's start is run-level, the final review's under `final`). A
+search is a step like any other: it gets step records under that key, and
+one a crash cut off is searched again.
 
 | Point | When | Key | Query | Where the memories go |
 | --- | --- | --- | --- | --- |
@@ -1026,8 +1030,10 @@ is its read-only folder):
 - **every ticket skipped**: before the worktrees go.
 
 Not on a refused run or one with nothing to do (no agent ran, nothing to
-learn), and not after a billing stop (starting any agent then could bill per
-token). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
+learn), not after a billing stop (starting any agent then could bill per
+token), and not after a stop for crashes (the run stopped for good). A
+learner's turn a crash cut off is taken again by a fresh learner (step
+`launch_learner:learner`, under the run's key). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
 shell, writes nothing, no messages) on Opus 5.5 like every role. Its prompt
 is a digest of the journal built by pure code (`learnerPrompt`): the
 failures (failed red checks and gates with their output's end, clashes), fix

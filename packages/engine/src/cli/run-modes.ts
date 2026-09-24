@@ -333,8 +333,10 @@ export const unfinishedRuns = ({
  * `repo`, else the one the run started in, else the current folder. The
  * journal is kept, so the engine picks up where the run stopped (a step a
  * crash cut off is taken again; see `run_resumed`). `tracker` makes the
- * tracker for the repo. Never throws: a missing or empty journal ends the
- * run with a clear message, and the board always gets the run's end.
+ * tracker for the repo. Memory stays on or off as the run's `run_started`
+ * says, with `memory` as its client. Never throws: a missing or empty
+ * journal ends the run with a clear message, the launcher's sessions and
+ * the memory client are closed, and the board always gets the run's end.
  *
  * @example
  * const end = await resumeRun({
@@ -350,6 +352,7 @@ export const resumeRun = async ({
     tracker,
     launcher,
     jev,
+    memory,
     board,
     log,
 }: {
@@ -361,12 +364,18 @@ export const resumeRun = async ({
     launcher: RunLauncher
     /** Jev in shadow mode. Leave it out to run without Jev. */
     jev?: JevShadow
+    /**
+     * MuninnDB (#370), used when the run's `run_started` turned memory on.
+     * Leave it out to go on without memory.
+     */
+    memory?: MemoryDeps
     board: BoardSync | null
     log: (line: string) => void
 }): Promise<RunEnd> => {
     const stop = async (message: string): Promise<RunEnd> => {
         log(`[luca-run] stopped: ${message}`)
         await launcher.closeAll?.()
+        await memory?.client.close().catch(() => undefined)
         const end = { ok: false, message }
         await board?.end(end)
         return end
@@ -390,6 +399,7 @@ export const resumeRun = async ({
         tracker: made,
         launcher,
         jev,
+        memory,
         board,
         log,
     })

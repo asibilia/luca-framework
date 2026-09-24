@@ -473,11 +473,15 @@ const AGENT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'follow_up_final_fixer',
 ])
 
-/** The agent role of an agent's turn, else `null`. */
-const agentRoleOf = (action: EngineAction): string | null =>
-    AGENT_ACTIONS.has(action.type) && 'role' in action && action.role !== null
+/** The agent role of an agent's turn (the learner's is `learner`), else `null`. */
+const agentRoleOf = (action: EngineAction): string | null => {
+    if (action.type === 'launch_learner') return 'learner'
+    return AGENT_ACTIONS.has(action.type) &&
+        'role' in action &&
+        action.role !== null
         ? action.role
         : null
+}
 
 /**
  * A step's name in the journal: its action type, plus `:<role>` for an

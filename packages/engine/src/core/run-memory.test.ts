@@ -431,5 +431,32 @@ describe('memory, end to end', () => {
             'default',
         ])
         expect(tracker.pullRequests()[0]?.body).not.toContain('New memories')
+        // The learner's turn and each search are steps (#369).
+        const steps = practice.journal.read().flatMap((record) =>
+            record.kind === 'step_started'
+                ? [
+                      {
+                          step: record.content.step,
+                          key: record.content.key,
+                          role: record.role,
+                      },
+                  ]
+                : []
+        )
+        expect(steps).toContainEqual({
+            step: 'launch_learner:learner',
+            key: 'run',
+            role: 'learner',
+        })
+        expect(steps).toContainEqual({
+            step: 'recall_memories',
+            key: 'run',
+            role: null,
+        })
+        expect(steps).toContainEqual({
+            step: 'recall_memories',
+            key: '11',
+            role: null,
+        })
     }, 60_000)
 })

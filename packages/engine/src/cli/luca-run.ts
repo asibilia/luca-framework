@@ -113,6 +113,7 @@ const run = async ({
                 createGitHubTracker({ repo: await githubRepoOf({ repo }) }),
             launcher: createClaudeLauncher({}),
             jev: { client: createTypeSafeJev() },
+            memory: await memoryOf(),
             board,
             log,
         })

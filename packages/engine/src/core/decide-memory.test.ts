@@ -3,9 +3,11 @@ import { describe, expect, test } from 'bun:test'
 import { decideSteps } from './decide'
 import type { EngineAction } from './decide'
 import { MAX_FIX_ROUNDS } from './decide-build'
+import { CRASH_SECTION } from './fix-loop-text'
 
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
+import { resumeEntry } from '../journal/step-records'
 import {
     agentFailed,
     agentStarted,
@@ -25,6 +27,7 @@ import {
     reviewed,
     runBranchCreated,
     SESSIONS,
+    stepStarted,
     stuckReported,
     testsWritten,
     ticketBuilt,
@@ -436,6 +439,46 @@ describe('recall points', () => {
             true
         )
         expect(promptOf(followUp)).toContain('pitfall:red-1')
+    })
+
+    test('a fresh test-writer taking a red check follow-up a crash cut off gets the fix round memories', () => {
+        const [search] = steps({ entries: redFailed() })
+        const key = search?.type === 'recall_memories' ? search.key : ''
+        const cutOff = [
+            ...redFailed(),
+            memoryRecalled({
+                point: 'fix_round',
+                key,
+                ticket: 11,
+                memories: [recalledMemory({ id: 'red-1' })],
+            }),
+            stepStarted({
+                ticket: 11,
+                step: 'follow_up_agent:test-writer',
+                role: 'test-writer',
+            }),
+        ]
+        const resumed = resumeEntry({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassedWithMemory({ tickets: [SUM] }),
+                    ...withInstalls({ entries: cutOff }),
+                ],
+            }),
+        })
+        expect(resumed).not.toBeNull()
+        const [fresh] = steps({
+            entries: [...cutOff, ...(resumed === null ? [] : [resumed])],
+        })
+        expect(fresh).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+        })
+        expect(promptOf(fresh)).toContain('The red check failed.')
+        expect(promptOf(fresh)).toContain(CRASH_SECTION)
+        expect(promptOf(fresh)).toContain('pitfall:red-1')
+        expect(promptOf(fresh)).toContain('pitfall:start-1')
     })
 
     test('failed gates search with their output; each fix round searches afresh', () => {

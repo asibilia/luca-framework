@@ -459,9 +459,62 @@ describe('luca-run --resume', () => {
         expect(unfinishedRuns({ runs_dir })).toEqual([])
     }, 120_000)
 
+    test('a run with memory on goes on with memory: the resume uses its client and closes it', async () => {
+        const { repo } = await makePracticeRepo({ root })
+        const runs_dir = join(root, 'runs')
+        const tracker = practiceTracker()
+        const [, implementer, ...rest] = HAPPY_TURNS
+        const first = createFakeMuninn()
+
+        await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: null,
+            runs_dir,
+            tracker,
+            launcher: crashingOnLaunch({
+                launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+                role: 'implementer',
+            }),
+            memory: { client: first },
+            board: null,
+            log,
+        })
+        expect(first.closed()).toBe(true)
+
+        const second = createFakeMuninn()
+        const end = await resumeRun({
+            run_id: 'run-1',
+            runs_dir,
+            repo: null,
+            tracker: () => tracker,
+            launcher: fakeClaudeLauncher({
+                turns: [
+                    ...[implementer, ...rest].flatMap((turn) =>
+                        turn === undefined ? [] : [turn]
+                    ),
+                    EMPTY_LEARNER_TURN(10),
+                ],
+            }).launcher,
+            memory: { client: second },
+            board: null,
+            log,
+        })
+
+        expect(end.ok).toBe(true)
+        const records = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
+        }).read()
+        expect(kindsIn(records)).toContain('run_resumed')
+        expect(kindsIn(records)).toContain('memories_saved')
+        expect(second.closed()).toBe(true)
+    }, 120_000)
+
     test('a run id with no journal is a clear error, and nothing runs', async () => {
         const recorder = recordingBoard()
         const claude = fakeClaudeLauncher({ turns: [] })
+        const muninn = createFakeMuninn()
         const runs_dir = join(root, 'runs')
 
         const end = await resumeRun({
@@ -470,6 +523,7 @@ describe('luca-run --resume', () => {
             repo: null,
             tracker: () => practiceTracker(),
             launcher: claude.launcher,
+            memory: { client: muninn },
             board: recorder.board,
             log,
         })
@@ -478,6 +532,8 @@ describe('luca-run --resume', () => {
             ok: false,
             message: expect.stringContaining('No run no-such-run'),
         })
+        expect(muninn.closed()).toBe(true)
+        expect(muninn.calls()).toEqual([])
         expect(recorder.endings()).toEqual([end])
         expect(claude.launches()).toEqual([])
         expect(claude.closed()).toBe(1)
