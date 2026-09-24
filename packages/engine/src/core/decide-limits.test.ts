@@ -20,6 +20,7 @@ import {
     reviewed,
     runBranchCreated,
     ticketBuilt,
+    withInstalls,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
@@ -29,7 +30,10 @@ const TICKET = practiceTicket({ number: 11 })
 const decideAfter = (entries: JournalEntry[]) =>
     decide({
         records: recordsFrom({
-            entries: [...intakePassed({ tickets: [TICKET] }), ...entries],
+            entries: [
+                ...intakePassed({ tickets: [TICKET] }),
+                ...withInstalls({ entries }),
+            ],
         }),
     })
 
@@ -403,20 +407,22 @@ describe('decision step: usage', () => {
         const second = practiceTicket({ number: 12, title: 'Add product' })
         const action = decide({
             records: recordsFrom({
-                entries: [
-                    ...intakePassed({ tickets: [TICKET, second] }),
-                    runBranchCreated(),
-                    ...built,
-                    usageRecorded(ticketUsage),
-                    ...builtWithSessions({
-                        ticket: 12,
-                        readings: [
-                            { five_hour: 0.15 },
-                            { five_hour: 0.16 },
-                            { five_hour: 0.18 },
-                        ],
-                    }),
-                ],
+                entries: withInstalls({
+                    entries: [
+                        ...intakePassed({ tickets: [TICKET, second] }),
+                        runBranchCreated(),
+                        ...built,
+                        usageRecorded(ticketUsage),
+                        ...builtWithSessions({
+                            ticket: 12,
+                            readings: [
+                                { five_hour: 0.15 },
+                                { five_hour: 0.16 },
+                                { five_hour: 0.18 },
+                            ],
+                        }),
+                    ],
+                }),
             }),
         })
         expect(action).toMatchObject({
