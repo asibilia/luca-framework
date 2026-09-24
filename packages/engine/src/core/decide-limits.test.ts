@@ -7,11 +7,17 @@ import {
     agentSession,
     agentStarted,
     billingStopped,
+    commitMade,
+    finding,
+    gatesRun,
+    implemented,
     intakePassed,
+    leftoverScan,
     limitWaitEnded,
     limitWaitStarted,
     practiceTicket,
     rateLimitReading,
+    reviewed,
     runBranchCreated,
     ticketBuilt,
 } from '../testing/build-fixtures'
@@ -458,4 +464,100 @@ describe('decision step: usage', () => {
             decideAfter([runBranchCreated(), ...ticketBuilt({ ticket: 11 })])
         ).toMatchObject({ type: 'open_pull_request' })
     })
+})
+
+describe('decision step: limit waits during a ticket review', () => {
+    const CODE = finding({ id: 'R1-1', title: 'Sum drops negatives' })
+    const TEST = finding({
+        id: 'R1-2',
+        kind: 'test',
+        severity: 'blocker',
+        file: 'src/sum.test.ts',
+    })
+
+    /** Ticket #11 built up to its green commit, before any review. */
+    const committed = (): JournalEntry[] => [
+        runBranchCreated(),
+        ...ticketBuilt({ ticket: 11 }).slice(0, 10),
+    ]
+
+    /** A review asking for a code fix, fixed, gated, and committed. */
+    const codeFixed = (): JournalEntry[] => [
+        ...committed(),
+        reviewed({ ticket: 11, findings: [CODE] }),
+        implemented({
+            ticket: 11,
+            finding_responses: [
+                { finding_id: 'R1-1', response: 'fixed', reason: '' },
+            ],
+        }),
+        gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+        leftoverScan({ ticket: 11, stage: 'fix' }),
+        commitMade({
+            ticket: 11,
+            stage: 'fix',
+            sha: 'fix-1-sha',
+            files: ['src/sum.ts'],
+        }),
+    ]
+
+    const cases: [string, JournalEntry[], string][] = [
+        ['the ticket review', committed(), 'ticket-reviewer'],
+        [
+            "a review fix round's test-writer",
+            [...committed(), reviewed({ ticket: 11, findings: [TEST] })],
+            'test-writer',
+        ],
+        [
+            "a review fix round's implementer",
+            [...committed(), reviewed({ ticket: 11, findings: [CODE] })],
+            'implementer',
+        ],
+        ['the re-review after a fix round', codeFixed(), 'ticket-reviewer'],
+    ]
+
+    test.each(cases)(
+        'a limit hit in %s resumes that same step after the reset',
+        (_, entries, role) => {
+            const step = decideAfter(entries)
+            expect(step).toMatchObject({ role })
+            if (step.type !== 'launch_agent' && step.type !== 'follow_up_agent')
+                throw new Error(step.type)
+            const hit = [
+                ...entries,
+                agentStarted({
+                    ticket: 11,
+                    role: step.role,
+                    ...(step.type === 'follow_up_agent'
+                        ? { follow_up_of: step.session_id }
+                        : {}),
+                }),
+                agentSession({
+                    ticket: 11,
+                    role: step.role,
+                    rate_limit_events: [
+                        rateLimitReading({
+                            status: 'rejected',
+                            resets_at: '2026-01-01T03:00:00.000Z',
+                        }),
+                    ],
+                }),
+            ]
+            expect(decideAfter(hit)).toMatchObject({
+                type: 'start_limit_wait',
+                ticket: 11,
+                role: step.role,
+            })
+            expect(
+                decideAfter([
+                    ...hit,
+                    limitWaitStarted({
+                        until: '2026-01-01T03:01:00.000Z',
+                        resets_at: '2026-01-01T03:00:00.000Z',
+                    }),
+                    limitWaitEnded({ until: '2026-01-01T03:01:00.000Z' }),
+                ])
+            ).toEqual(step)
+        }
+    )
 })
