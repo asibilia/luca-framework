@@ -9,7 +9,10 @@
  * A real run builds with real Claude agents (`createClaudeLauncher`: Claude
  * Opus 5.5, every guard on, paid by your Claude plan) and asks Jev in shadow
  * mode (`createTypeSafeJev`, which reads `TYPESAFE_API_KEY`; with no key each
- * ask is journaled as `missing_key` and the run goes on).
+ * ask is journaled as `missing_key` and the run goes on). Memory (#370) is
+ * MuninnDB over MCP, found through `LUCA_MUNINN_URL` and `LUCA_MUNINN_TOKEN`
+ * or Claude Code's `mcpServers.muninn` in `~/.claude.json`; with neither,
+ * the run goes on without memory.
  *
  * `--demo` runs a practice spec in a throwaway repo instead: no GitHub, no
  * models. See `RUN_USAGE` for every flag.
@@ -27,6 +30,12 @@ import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
 import { createTypeSafeJev } from '../jev/jev-client'
 import { defaultRunsDir } from '../journal/journal'
+import type { MemoryDeps } from '../memory/memory-client'
+import {
+    CLAUDE_JSON,
+    createMuninnMcpClient,
+    muninnSettings,
+} from '../memory/muninn-mcp-client'
 import { createGitHubTracker } from '../tracker/github-tracker'
 
 const log = (line: string) => {
@@ -47,6 +56,24 @@ const githubRepoOf = async ({ repo }: { repo: string }): Promise<string> => {
         )
     }
     return name
+}
+
+/**
+ * The run's memory client, or none (the run goes on without memory) when
+ * MuninnDB can't be found. Logs where it connects, never the token.
+ */
+const memoryOf = async (): Promise<MemoryDeps | undefined> => {
+    const file = Bun.file(CLAUDE_JSON)
+    const found = muninnSettings({
+        env: process.env,
+        claude_json: (await file.exists()) ? await file.text() : null,
+    })
+    if (!found.ok) {
+        log(`[luca-run] memory off: ${found.error}`)
+        return undefined
+    }
+    log(`[luca-run] memory: MuninnDB at ${found.settings.url}`)
+    return { client: createMuninnMcpClient({ settings: found.settings }) }
 }
 
 const run = async ({
@@ -81,6 +108,7 @@ const run = async ({
         tracker,
         launcher: createClaudeLauncher({}),
         jev: { client: createTypeSafeJev() },
+        memory: await memoryOf(),
         board,
         log,
     })

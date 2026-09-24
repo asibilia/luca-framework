@@ -79,6 +79,27 @@ export {
     type BuildAction,
 } from './core/decide-build'
 export {
+    decideMemory,
+    isMemoryAction,
+    RUN_START_KEY,
+    type MemoryAction,
+    type MemorySaveStep,
+} from './core/decide-memory'
+export { executeMemoryAction } from './core/execute-memory'
+export {
+    DIGEST_ITEM_MAX,
+    DIGEST_MAX,
+    learnerPrompt,
+    type RunEnding,
+} from './core/learner-digest'
+export {
+    memoriesComment,
+    memoryQuery,
+    memorySection,
+    newMemories,
+    newMemoriesSection,
+} from './core/memory-text'
+export {
     executeBuildAction,
     runBranchName,
     type BuildDeps,
@@ -197,6 +218,9 @@ export {
     EMPTY_FINAL_REVIEW,
     EMPTY_TICKET_PROGRESS,
     namespacedId,
+    EMPTY_MEMORY,
+    type LearnerState,
+    type MemoryState,
     type FinalFinding,
     type FinalReviewState,
     type ReplayedRedCheck,
@@ -222,6 +246,36 @@ export {
     sendAnswer,
 } from './messages/agent-messages'
 export { createAgentMessaging } from './messages/agent-messaging'
+export {
+    safeMemory,
+    type MemoryClient,
+    type MemoryDeps,
+    type MemoryResult,
+    type SafeMemory,
+} from './memory/memory-client'
+export { mergeRecalled, recallVaults } from './memory/memory-recall'
+export {
+    MEMORY_ROUTES,
+    memoryFeedback,
+    routeMemories,
+    storedConcept,
+    type MemoryType,
+    type RefusedMemory,
+    type RoutedMemory,
+} from './memory/memory-routing'
+export * from './memory/memory-schemas'
+export {
+    CLAUDE_JSON,
+    connectMuninn,
+    createMuninnMcpClient,
+    muninnSettings,
+    parseRecall,
+    parseSavedId,
+    toolText,
+    type McpConnection,
+    type McpToolCall,
+    type MuninnSettings,
+} from './memory/muninn-mcp-client'
 export { createGitHubTracker } from './tracker/github-tracker'
 export {
     createInMemoryTracker,
