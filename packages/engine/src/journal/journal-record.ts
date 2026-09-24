@@ -208,6 +208,23 @@ const AgentSessionEntrySchema = z.object({
 })
 
 /**
+ * Shared `.git` files changed during an agent's turn by something the
+ * engine can't attribute to the agent: config outside the ticket branch's
+ * own section, `info/exclude`, or hooks, such as another agent's
+ * `git push -u` in the same repo. The change is neither blamed on the agent
+ * nor undone; this record only notes it.
+ */
+const SharedGitChangedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('shared_git_changed'),
+    content: z.object({
+        role: AgentRoleSchema,
+        /** What changed, such as `the shared .git/config changed`. */
+        changes: z.array(z.string()),
+    }),
+})
+
+/**
  * The run stopped because going on was unsafe: the wrong credentials or
  * plan, the wrong model, or a foreign MCP server. A later `runEngine` on the
  * same journal picks the step up again.
@@ -987,6 +1004,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JevAnsweredEntrySchema,
     JevFailedEntrySchema,
     AgentSessionEntrySchema,
+    SharedGitChangedEntrySchema,
     RunStoppedEntrySchema,
     LimitWaitStartedEntrySchema,
     LimitWaitEndedEntrySchema,
@@ -1053,6 +1071,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
     JevFailedEntrySchema.extend(STAMP_FIELDS),
     AgentSessionEntrySchema.extend(STAMP_FIELDS),
+    SharedGitChangedEntrySchema.extend(STAMP_FIELDS),
     RunStoppedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
@@ -1118,6 +1137,7 @@ export const JournalKindSchema = z.enum([
     'jev_answered',
     'jev_failed',
     'agent_session',
+    'shared_git_changed',
     'run_stopped',
     'limit_wait_started',
     'limit_wait_ended',
