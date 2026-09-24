@@ -1,15 +1,13 @@
 import { basename } from 'node:path'
 
-/**
- * The install that must not change the lockfile: on the run branch, and to
- * put back a `node_modules` an agent changed.
- */
-export const FROZEN_INSTALL = 'bun install --frozen-lockfile'
-
 /** The package manifest a changed file must be for the engine to install. */
 export const MANIFEST = 'package.json'
 
-/** The install that must leave the committed lockfile as it is. */
+/**
+ * The install that must leave the committed lockfile as it is: in new
+ * worktrees, on the run branch, and to put back a `node_modules` an agent
+ * changed.
+ */
 export const FROZEN_INSTALL = 'bun install --frozen-lockfile'
 
 /**
