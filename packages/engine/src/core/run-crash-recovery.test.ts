@@ -489,4 +489,107 @@ describe('git steps redone after a crash', () => {
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         expect(ofKind(records, 'ticket_worktree_created')).toHaveLength(1)
     }, 60_000)
+
+    test('a ticket commit made just before a crash is adopted, not made again', async () => {
+        const practice = await createPracticeRepo({ root })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        let crashSha = ''
+        await expect(
+            practice.run({
+                turns: [testWriter],
+                git: crashGitOnce({
+                    method: 'commitAll',
+                    effect: async ({ real, args }) => {
+                        crashSha = (await real.commitAll(args)).sha
+                    },
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records, tracker } = await practice.run({
+            resume: true,
+            turns: [implementer, reviewer],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const red = ofKind(records, 'commit_made').filter(
+            ({ content }) => content.stage === 'red'
+        )
+        expect(red.map(({ content }) => content.sha)).toEqual([crashSha])
+        expect(red[0]?.content.files).toEqual(['src/sum.test.ts'])
+        const subjects = await prSubjects({ origin: practice.origin, tracker })
+        expect(
+            subjects.filter((subject) => subject.startsWith('test:'))
+        ).toHaveLength(1)
+    }, 60_000)
+
+    test("the final review's fix commit made just before a crash is adopted", async () => {
+        const practice = await createPracticeRepo({ root })
+        const finding = {
+            id: 'S1',
+            severity: 'should_fix',
+            kind: 'code',
+            file: 'src/sum.ts',
+            title: 'Name the accumulator for what it holds',
+            detail: 'total reads like the result.',
+        }
+        await expect(
+            practice.run({
+                turns: [
+                    ...Object.values(happyTurns()),
+                    {
+                        role: 'security-lens',
+                        ticket: 10,
+                        result: {
+                            verdict: 'changes_requested',
+                            findings: [finding],
+                            rulings: [],
+                            summary: 'The security lens looked.',
+                            assumptions: [],
+                        },
+                    },
+                    {
+                        role: 'implementer',
+                        ticket: 10,
+                        files: {
+                            'src/sum.ts':
+                                'export const sum = ({ numbers }: { numbers: number[] }): number =>\n    numbers.reduce((running, each) => running + each, 0)\n',
+                        },
+                        result: {
+                            ...IMPLEMENTER_RESULT,
+                            finding_responses: [
+                                {
+                                    finding_id: 'security-S1',
+                                    response: 'fixed',
+                                    reason: '',
+                                },
+                            ],
+                        },
+                    },
+                ],
+                git: crashGitOnce({
+                    method: 'commitAll',
+                    when: ({ message }) =>
+                        message.startsWith('fix: final review'),
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records, tracker } = await practice.run({
+            resume: true,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const fixes = ofKind(records, 'commit_made').filter(
+            ({ ticket }) => ticket === null
+        )
+        expect(fixes).toHaveLength(1)
+        expect(fixes[0]?.content.files).toEqual(['src/sum.ts'])
+        const subjects = await prSubjects({ origin: practice.origin, tracker })
+        expect(
+            subjects.filter((subject) =>
+                subject.startsWith('fix: final review')
+            )
+        ).toEqual(['fix: final review round 1 for spec #10'])
+    }, 60_000)
 })

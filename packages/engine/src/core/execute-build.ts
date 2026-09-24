@@ -210,10 +210,42 @@ const isUsed = async ({
 }
 
 /**
+ * The commit a crash left behind at `cwd`: HEAD carries `message` and no
+ * record names it yet, so the step's first try made it and died before
+ * journaling it. `null` when HEAD is no such commit.
+ */
+const leftCommit = async ({
+    context,
+    cwd,
+    message,
+}: {
+    context: BuildContext
+    cwd: string
+    message: string
+}): Promise<{ sha: string; message: string; files: string[] } | null> => {
+    const last = await context.git.lastCommit({ cwd })
+    if (last.message !== message.trim()) return null
+    const journaled = context.journal
+        .read()
+        .some(
+            (record) =>
+                (record.kind === 'commit_made' &&
+                    record.content.sha === last.sha) ||
+                (record.kind === 'ticket_joined' &&
+                    record.content.ok &&
+                    record.content.shas.includes(last.sha))
+        )
+    return journaled ? null : { sha: last.sha, message, files: last.files }
+}
+
+/**
  * The leftover scan, then an engine commit of everything in `cwd`, both
  * journaled. A hit blocks the commit. A `fix` commit with nothing to commit
  * (every finding was a "won't fix") journals the current commit with no
- * files instead.
+ * files instead. A redo after a crash that already committed (nothing left
+ * to commit, and HEAD is an unjournaled commit with this message) journals
+ * that commit instead of making another; its scan, of a clean worktree,
+ * finds nothing, as the first try's did before it committed.
  */
 export const commitIn = async ({
     context,
@@ -254,6 +286,19 @@ export const commitIn = async ({
         content: { stage, hits },
     })
     if (hits.length > 0) return
+    const adopted =
+        changes.length === 0 && context.step.redo
+            ? await leftCommit({ context, cwd, message })
+            : null
+    if (adopted !== null) {
+        context.journal.append({
+            kind: 'commit_made',
+            ticket,
+            role: null,
+            content: { stage, ...adopted },
+        })
+        return
+    }
     if (changes.length === 0 && stage === 'fix') {
         // The fixers changed nothing (every finding was a "won't fix"): no
         // commit to make, so the re-review's new changes are empty.

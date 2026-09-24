@@ -124,6 +124,13 @@ export type GitAdapter = {
     push: (args: { cwd: string; branch: string }) => Promise<void>
     /** The commit checked out at `cwd`. */
     head: (args: { cwd: string }) => Promise<string>
+    /**
+     * The commit checked out at `cwd` with its whole message (trimmed) and
+     * its files, such as to adopt a commit a crash left out of the journal.
+     */
+    lastCommit: (args: {
+        cwd: string
+    }) => Promise<EngineCommit & { message: string }>
 }
 
 const gitRun = ({ cwd, args }: { cwd: string; args: string[] }) =>
@@ -285,6 +292,14 @@ export const createGitAdapter = ({
         return { base_sha: await head({ cwd: path }) }
     }
 
+    const filesOf = async ({ cwd, sha }: { cwd: string; sha: string }) =>
+        lines(
+            await gitOk({
+                cwd,
+                args: ['show', '--name-only', '--format=', sha],
+            })
+        ).toSorted()
+
     const raw: GitAdapter = {
         createRunBranch: ({ branch, base_branch, path }) =>
             addWorktree({ branch, from: base_branch, path }),
@@ -344,13 +359,7 @@ export const createGitAdapter = ({
                 args: ['commit', '--quiet', '--no-verify', '-m', message],
             })
             const sha = await head({ cwd })
-            const files = lines(
-                await gitOk({
-                    cwd,
-                    args: ['show', '--name-only', '--format=', sha],
-                })
-            )
-            return { sha, files: files.toSorted() }
+            return { sha, files: await filesOf({ cwd, sha }) }
         },
         discardChanges: async ({ cwd }) => {
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', 'HEAD'] })
@@ -454,6 +463,18 @@ export const createGitAdapter = ({
             })
         },
         head,
+        lastCommit: async ({ cwd }) => {
+            const sha = await head({ cwd })
+            const message = await gitOk({
+                cwd,
+                args: ['log', '-1', '--format=%B', sha],
+            })
+            return {
+                sha,
+                message: message.trim(),
+                files: await filesOf({ cwd, sha }),
+            }
+        },
     }
 
     const inTurn = createQueue()
@@ -479,5 +500,6 @@ export const createGitAdapter = ({
         removeWorktree: serial(raw.removeWorktree),
         push: serial(raw.push),
         head: serial(raw.head),
+        lastCommit: serial(raw.lastCommit),
     }
 }
