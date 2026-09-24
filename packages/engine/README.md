@@ -768,11 +768,10 @@ also holds its journal).
   `idle_timeout_ms` (30 minutes by default). `closeAll()` closes the rest;
   call it when the run ends.
 - **A stop leaves the step open.** `run_stopped` changes no ticket's state
-  and the step gets no `step_ended`, so a later `runEngine` on the same
-  journal names it in `run_resumed` like a crash and takes it again, in a
-  fresh session; it counts toward `MAX_CRASHES`. A billing stop
-  (`billing: true`) and a stop for crashes (`crashed: true`) are the
-  exceptions: they stick.
+  and closes every open step without counting it as a crash, so a later
+  `runEngine` on the same journal takes the step again as it was; it does not
+  count toward `MAX_CRASHES`. A billing stop (`billing: true`) and a stop for
+  crashes (`crashed: true`) are the exceptions: they stick.
 - **Denial counts** come from the result's `permission_denials` only (the
   tracer counted them twice), plus the guard hook's own denials.
 
