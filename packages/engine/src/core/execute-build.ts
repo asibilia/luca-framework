@@ -300,7 +300,11 @@ const runTurn = async ({
     start: (cwd: string) => Promise<AgentTurn>
 }) => {
     const { path, branch } = ticketWorktree({ state: context.state, ticket })
-    const before = await snapshotWorktree({ cwd: path, branch })
+    const before = await snapshotWorktree({
+        cwd: path,
+        branch,
+        config: context.config,
+    })
     const turn = await start(path)
     if (turn.session !== undefined) {
         context.journal.append({

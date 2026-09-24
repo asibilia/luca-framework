@@ -27,6 +27,18 @@ const DENY_READ = [
     '/Users/me/.config/gh',
 ]
 
+/** What the package install writes: shut for every role that may write. */
+const INSTALL_PATHS = [
+    '/private/var/runs/run-1/tickets/11/node_modules',
+    '/private/var/runs/run-1/tickets/11/**/node_modules',
+    '/private/var/runs/run-1/tickets/11/bun.lock',
+    '/private/var/runs/run-1/tickets/11/bun.lockb',
+    '/private/var/runs/run-1/tickets/11/package-lock.json',
+    '/private/var/runs/run-1/tickets/11/npm-shrinkwrap.json',
+    '/private/var/runs/run-1/tickets/11/yarn.lock',
+    '/private/var/runs/run-1/tickets/11/pnpm-lock.yaml',
+]
+
 describe('sandboxSettings', () => {
     test('every role: on, fails if unavailable, no auto-allow, no network, no local ports', () => {
         for (const role of [
@@ -56,7 +68,7 @@ describe('sandboxSettings', () => {
         }
     })
 
-    test('the test-writer may not write git or test setup files', () => {
+    test('the test-writer may not write git, the install, or test setup files', () => {
         expect(
             sandboxSettings({
                 role: 'test-writer',
@@ -67,6 +79,7 @@ describe('sandboxSettings', () => {
         ).toEqual([
             '/Users/me/code/app/.git',
             '/private/var/runs/run-1/tickets/11/.git',
+            ...INSTALL_PATHS,
             '/private/var/runs/run-1/tickets/11/src/test-setup.ts',
         ])
     })
@@ -86,7 +99,7 @@ describe('sandboxSettings', () => {
         ])
     })
 
-    test('a refactor implementer may write test files, but not git or test setup files', () => {
+    test('a refactor implementer may write test files, but not git, the install, or test setup files', () => {
         expect(
             sandboxSettings({
                 role: 'implementer',
@@ -97,11 +110,12 @@ describe('sandboxSettings', () => {
         ).toEqual([
             '/Users/me/code/app/.git',
             '/private/var/runs/run-1/tickets/11/.git',
+            ...INSTALL_PATHS,
             '/private/var/runs/run-1/tickets/11/src/test-setup.ts',
         ])
     })
 
-    test('the implementer may not write git, test files, or test setup files', () => {
+    test('the implementer may not write git, the install, test files, or test setup files', () => {
         expect(
             sandboxSettings({
                 role: 'implementer',
@@ -112,6 +126,7 @@ describe('sandboxSettings', () => {
         ).toEqual([
             '/Users/me/code/app/.git',
             '/private/var/runs/run-1/tickets/11/.git',
+            ...INSTALL_PATHS,
             '/private/var/runs/run-1/tickets/11/src/**/*.test.ts',
             '/private/var/runs/run-1/tickets/11/test/**/*.ts',
             '/private/var/runs/run-1/tickets/11/src/test-setup.ts',

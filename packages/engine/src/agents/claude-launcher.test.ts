@@ -13,6 +13,7 @@ import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import type { AgentRole } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
+import { LOCKFILES } from '../guards/role-rules'
 
 /**
  * The launcher seam: `createClaudeLauncher` with a fake `query` that plays
@@ -558,6 +559,9 @@ describe('the options', () => {
                 denyWrite: [
                     join(worktree, '.git'),
                     join(worktree, '.git'),
+                    join(worktree, 'node_modules'),
+                    join(worktree, '**/node_modules'),
+                    ...LOCKFILES.map((name) => join(worktree, name)),
                     join(worktree, 'src/**/*.test.ts'),
                     join(worktree, 'src/test-setup.ts'),
                 ],
