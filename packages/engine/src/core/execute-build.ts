@@ -6,6 +6,7 @@ import uniq from 'lodash/uniq'
 
 import { mayEditTests, type BuildAction } from './decide-build'
 import type { FinalReviewAction } from './decide-final-review'
+import { retryTicket } from './execute-stuck'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
 import {
@@ -83,7 +84,7 @@ export const need = <T>({
     return value
 }
 
-const ticketWorktree = ({
+export const ticketWorktree = ({
     state,
     ticket,
 }: {
@@ -499,6 +500,45 @@ const followUpAgent = async ({
 }
 
 /**
+ * Undoes a ticket's join on the run branch, back to before `first_sha`, and
+ * returns the commits undone. The undone join's install is still in the run
+ * branch's `node_modules`, so when its commits changed dependency files the
+ * lockfile's install runs there again.
+ */
+const undoJoin = async ({
+    context,
+    ticket,
+    first_sha,
+}: {
+    context: BuildContext
+    ticket: number
+    first_sha: string
+}): Promise<string[]> => {
+    const { git, state, journal } = context
+    const runBranch = need({ value: state.run_branch, what: 'run branch' })
+    const joined = state.tickets[ticket]?.joined
+    const last = joined?.ok ? joined.shas.at(-1) : undefined
+    const undoneFiles =
+        last === undefined
+            ? []
+            : await git.filesBetween({
+                  cwd: runBranch.path,
+                  from: `${first_sha}^`,
+                  to: last,
+              })
+    const { undone } = await git.undoReplay({ cwd: runBranch.path, first_sha })
+    if (dependenciesChanged({ changed_files: undoneFiles })) {
+        await installIn({
+            journal,
+            cwd: runBranch.path,
+            target: 'run_branch',
+            ticket: null,
+        })
+    }
+    return undone
+}
+
+/**
  * Puts a joined ticket's change back on top of the run branch: undoes the
  * join first if asked (its gates failed), then resets the ticket's worktree
  * to the run branch's tip and applies the ticket's whole diff there,
@@ -521,35 +561,14 @@ const rebaseTicket = async ({
         value: progress?.commits.fix ?? progress?.commits.green,
         what: `green commit for #${action.ticket}`,
     })
-    let undone: string[] = []
-    if (action.undo_first_sha !== null) {
-        const joined = progress?.joined
-        const last = joined?.ok ? joined.shas.at(-1) : undefined
-        const undoneFiles =
-            last === undefined
-                ? []
-                : await git.filesBetween({
-                      cwd: runBranch.path,
-                      from: `${action.undo_first_sha}^`,
-                      to: last,
-                  })
-        undone = (
-            await git.undoReplay({
-                cwd: runBranch.path,
-                first_sha: action.undo_first_sha,
-            })
-        ).undone
-        // The undone join's install is still in the run branch's
-        // node_modules: put the lockfile's back.
-        if (dependenciesChanged({ changed_files: undoneFiles })) {
-            await installIn({
-                journal,
-                cwd: runBranch.path,
-                target: 'run_branch',
-                ticket: null,
-            })
-        }
-    }
+    const undone =
+        action.undo_first_sha === null
+            ? []
+            : await undoJoin({
+                  context,
+                  ticket: action.ticket,
+                  first_sha: action.undo_first_sha,
+              })
     const onto = await git.head({ cwd: runBranch.path })
     const moved_files = await git.filesBetween({
         cwd: worktree.path,
@@ -851,6 +870,32 @@ export const executeBuildAction = async ({
             })
             return
         }
+        case 'undo_join':
+            journal.append({
+                kind: 'join_undone',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    shas: await undoJoin({
+                        context,
+                        ticket: action.ticket,
+                        first_sha: action.first_sha,
+                    }),
+                },
+            })
+            return
+        case 'retry_ticket':
+            return retryTicket({ context, action })
+        case 'report_stuck':
+        case 'wait_for_reply':
+        case 'take_reply':
+        case 'ignore_reply':
+        case 'skip_ticket':
+        case 'report_final_review_stuck':
+        case 'ship_final_review':
+        case 'retry_final_review':
+            // Tracker-only steps; `executeAction` carries them out.
+            throw new Error(`${action.type} is not a git or agent step.`)
         case 'mark_stuck':
             journal.append({
                 kind: 'ticket_stuck',

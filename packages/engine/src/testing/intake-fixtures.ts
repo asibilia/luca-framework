@@ -12,9 +12,13 @@ import { TrackerIssueSchema, type TrackerIssue } from '../tracker/tracker'
  * later end-to-end tests can reuse them.
  */
 
+/** Who wrote the practice spec: the only person whose replies count. */
+export const SPEC_OWNER = 'spec-owner'
+
 const SpecOptionsSchema = z.object({
     number: z.number().int().positive(),
     title: z.string().default('Practice spec'),
+    author: z.string().default(SPEC_OWNER),
     state: z.enum(['open', 'closed']).default('open'),
     testing_decisions: z.string().default('- Test through the decision step.'),
 })
@@ -23,7 +27,7 @@ const SpecOptionsSchema = z.object({
 export const specIssue = (
     options: z.input<typeof SpecOptionsSchema>
 ): TrackerIssue => {
-    const { number, title, state, testing_decisions } =
+    const { number, title, author, state, testing_decisions } =
         SpecOptionsSchema.parse(options)
     const testing =
         testing_decisions === ''
@@ -36,6 +40,7 @@ export const specIssue = (
         body: `## Problem Statement\n\nSomething to build.\n${testing}\n## Out of Scope\n\nNothing.\n`,
         labels: ['ready-for-agent'],
         url: `https://github.com/acme/app/issues/${number}`,
+        author,
     })
 }
 

@@ -564,46 +564,26 @@ describe('decision step: cleaning up worktrees', () => {
         ])
     })
 
-    test('a stuck ticket keeps its worktree; only pushed tickets lose theirs, then the run ends stuck', () => {
-        const stuck = [
-            runBranchCreated(),
-            ...ticketBuilt({ ticket: 11 }),
-            ...ticketBuilt({ ticket: 12 }).slice(0, 12),
-            ticketStuck({ ticket: 12, reason: 'join_failed' }),
-        ]
-
-        expect(twoSteps(stuck)).toEqual([
-            { type: 'remove_worktrees', paths: [ticketPath(11)] },
-        ])
+    test('a stuck ticket is told to the spec issue while the pushed ticket keeps its worktree until the run ends', () => {
         expect(
-            twoSteps([...stuck, worktreesRemoved({ paths: [ticketPath(11)] })])
-        ).toEqual([
-            {
-                type: 'done',
-                outcome: 'stuck',
-                ticket: 12,
-                reason: 'join_failed',
-                detail: 'why',
-            },
-        ])
+            twoSteps([
+                runBranchCreated(),
+                ...ticketBuilt({ ticket: 11 }),
+                ...ticketBuilt({ ticket: 12 }).slice(0, 11),
+                joinClashed({ ticket: 12 }),
+                ticketStuck({ ticket: 12, reason: 'join_failed' }),
+            ])
+        ).toMatchObject([{ type: 'report_stuck', ticket: 12 }])
     })
 
-    test('while a ticket is stuck, no other ticket starts or moves on', () => {
+    test('while a ticket is stuck, the ticket that does not wait on it keeps building', () => {
         expect(
             twoSteps([
                 runBranchCreated(),
                 ...ticketBuilt({ ticket: 11 }).slice(0, 2),
                 ticketStuck({ ticket: 11, reason: 'red_check_failed' }),
-            ])
-        ).toEqual([
-            {
-                type: 'done',
-                outcome: 'stuck',
-                ticket: 11,
-                reason: 'red_check_failed',
-                detail: 'why',
-            },
-        ])
+            ]).map(({ type }) => type)
+        ).toEqual(['report_stuck', 'create_ticket_worktree'])
     })
 
     test('pushed and pushed again after a clash only counts the latest push', () => {

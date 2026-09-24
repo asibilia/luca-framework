@@ -12,6 +12,7 @@ import {
     createPracticeRepo,
     git,
     happyTurns,
+    latestStuck,
     SUM,
     SUM_TEST,
 } from '../testing/practice-repo'
@@ -317,9 +318,8 @@ describe('the after-turn check', () => {
             turns: [sneaky, sneaky, sneaky, implementer, reviewer],
         })
 
-        expect(action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(records)).toMatchObject({
             ticket: 11,
             reason: 'agent_failed',
             detail: expect.stringContaining('The test-writer failed 3 tries'),
@@ -673,8 +673,8 @@ describe('engine failures and stops', () => {
             turns: [crash, crash, crash, implementer, reviewer],
         })
 
-        expect(action).toMatchObject({
-            outcome: 'stuck',
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(records)).toMatchObject({
             reason: 'agent_failed',
             detail: 'The engine failed to run the test-writer 3 times in a row: The stream ended with no result.',
         })

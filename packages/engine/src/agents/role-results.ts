@@ -97,6 +97,25 @@ const FIXER_FIELDS = {
     finding_responses: z.array(FindingResponseSchema).default([]),
 }
 
+/**
+ * A change to a test setup file an agent needs but may never make. The
+ * engine makes the ticket stuck, so the user makes the change.
+ */
+export const SetupChangeSchema = z.object({
+    file: z.string(),
+    reason: z.string(),
+})
+
+export type SetupChange = z.infer<typeof SetupChangeSchema>
+
+/**
+ * What an agent that needs a test setup file changed adds to its result,
+ * with the outcome `needs_setup_change`.
+ */
+const SETUP_FIELDS = {
+    setup_change: SetupChangeSchema.nullable().default(null),
+}
+
 const SHARED_FIELDS = {
     summary: z.string().default(''),
     /** Calls the agent made by itself when something was unclear. */
@@ -108,12 +127,19 @@ const SHARED_FIELDS = {
 /**
  * The test-writer's result. `nothing_new_to_test` is an honest answer for a
  * ticket that changes no behavior; the engine then makes the ticket stuck,
- * with a hint to label it `refactor`.
+ * with a hint to label it `refactor`. `needs_setup_change` says the tests
+ * can't be written without a change to a test setup file (`setup_change`),
+ * which only the user may make.
  */
 export const TestWriterResultSchema = z.object({
-    outcome: z.enum(['tests_written', 'nothing_new_to_test']),
+    outcome: z.enum([
+        'tests_written',
+        'nothing_new_to_test',
+        'needs_setup_change',
+    ]),
     /** For each criterion id (AC1, AC2, ...), the tests that check it. */
     criteria: z.array(CriterionTestsSchema).default([]),
+    ...SETUP_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })
@@ -129,10 +155,15 @@ export const BadTestSchema = z.object({
 
 export type BadTest = z.infer<typeof BadTestSchema>
 
-/** The implementer's result. `bad_test` sends a wrong test back. */
+/**
+ * The implementer's result. `bad_test` sends a wrong test back;
+ * `needs_setup_change` says the gates can't pass without a change to a test
+ * setup file (`setup_change`), which only the user may make.
+ */
 export const ImplementerResultSchema = z.object({
-    outcome: z.enum(['done', 'bad_test']),
+    outcome: z.enum(['done', 'bad_test', 'needs_setup_change']),
     bad_test: BadTestSchema.nullable().default(null),
+    ...SETUP_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })

@@ -631,7 +631,7 @@ describe('decision step: a stuck final review', () => {
         }),
     ]
 
-    test('ends the run without a PR, keeping the run branch worktree', () => {
+    test("opens no PR: the tickets' worktrees go, the run branch worktree stays, and the spec issue hears of it", () => {
         expect(stepAfter(stuckReview())).toEqual({
             type: 'remove_worktrees',
             paths: [ticketPath(11)],
@@ -641,12 +641,7 @@ describe('decision step: a stuck final review', () => {
                 ...stuckReview(),
                 worktreesRemoved({ paths: [ticketPath(11)] }),
             ])
-        ).toEqual({
-            type: 'done',
-            outcome: 'final_review_stuck',
-            reason: 'changes_requested',
-            detail: 'still security-S1',
-        })
+        ).toMatchObject({ type: 'report_final_review_stuck', spec_number: 10 })
     })
 
     test('a ship reply opens the PR with the open findings at the top', () => {

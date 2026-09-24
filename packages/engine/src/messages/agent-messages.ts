@@ -57,9 +57,12 @@ export const parseAddress = (
 
 /**
  * Whether a ticket is over for messages: it pushed (its join and the gates
- * after it passed), it is stuck, the run's PR is open, or a billing stop
- * ended the run. A ticket that joined but hasn't pushed isn't over yet: a
- * clash or failed gates after joining sends it back to its agents.
+ * after it passed), it is stuck, it was skipped (by reply, or because it
+ * waits on a skipped ticket), the run's PR is open, the owner replied
+ * `stop`, or a billing stop ended the run. A ticket that joined but hasn't
+ * pushed isn't over yet: a clash or failed gates after joining sends it
+ * back to its agents. A `retry` makes a stuck ticket live again, for its
+ * fresh agents (see `pendingMessages`).
  *
  * @example
  * isOver({ state: replayRun({ records }), ticket: 11 })
@@ -73,9 +76,14 @@ export const isOver = ({
 }): boolean => {
     if (state.pull_request !== null) return true
     if (state.plan.billing_stopped !== null) return true
+    if (state.stop !== null) return true
     const progress = state.tickets[ticket]
     if (progress === undefined) return false
-    return progress.stuck !== null || progress.pushed !== null
+    return (
+        progress.stuck !== null ||
+        progress.pushed !== null ||
+        progress.skipped !== null
+    )
 }
 
 const inRun = ({
@@ -236,7 +244,8 @@ export const planMessage = ({
 
 /**
  * The queued messages an address hasn't been handed yet, oldest first.
- * None once its ticket is over.
+ * None once its ticket is over, and none sent before a `retry` of its
+ * ticket: those were for the agents before it.
  *
  * @example
  * const waiting = pendingMessages({ records: journal.read(), address: 'implementer#11' })
@@ -260,13 +269,45 @@ export const pendingMessages = ({
                 : []
         )
     )
-    return messagesIn(records).filter(
+    // A retry starts fresh agents: what waited for the old ones ends there.
+    const retriedAt = retriedSeq({ records, ticket: receiver.ticket })
+    return messagesSince({ records, seq: retriedAt }).filter(
         (message) =>
             message.status === 'queued' &&
             message.recipients.includes(address) &&
             !handed.has(message.id)
     )
 }
+
+/**
+ * The seq of a ticket's latest `retry` that went ahead (resumed or started
+ * over), or 0.
+ */
+const retriedSeq = ({
+    records,
+    ticket,
+}: {
+    records: JournalRecord[]
+    ticket: number
+}): number =>
+    records.reduce(
+        (latest, record) =>
+            record.kind === 'ticket_retried' &&
+            record.ticket === ticket &&
+            record.content.mode !== 'refused'
+                ? record.seq
+                : latest,
+        0
+    )
+
+/** The messages journaled after `seq`. */
+const messagesSince = ({
+    records,
+    seq,
+}: {
+    records: JournalRecord[]
+    seq: number
+}): AgentMessage[] => messagesIn(records.filter((record) => record.seq > seq))
 
 /**
  * The text an agent is handed with its messages, one line each.

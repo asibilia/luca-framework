@@ -178,6 +178,19 @@ const withCleanLenses = (turns: ScriptedTurn[]): ScriptedTurn[] => [
     ...CLEAN_LENS_TURNS(10),
 ]
 
+/**
+ * The latest `ticket_stuck` in a run's records, with its ticket, or `null`.
+ * A practice run with a stuck ticket ends at its first wait for a reply.
+ */
+export const latestStuck = (
+    records: JournalRecord[]
+): { ticket: number | null; reason: string; detail: string } | null => {
+    const stuck = records.findLast((record) => record.kind === 'ticket_stuck')
+    return stuck?.kind === 'ticket_stuck'
+        ? { ticket: stuck.ticket, ...stuck.content }
+        : null
+}
+
 /** Runs git in `cwd` and returns its output. */
 export const git = (cwd: string, ...args: string[]): Promise<string> =>
     $`git -C ${cwd} ${args}`.quiet().text()
@@ -298,6 +311,7 @@ export const runPractice = async ({
         git: createGitAdapter({ repo_root: repo }),
         launcher,
         jev,
+        stop_before: ['wait_for_reply'],
     })
     return {
         action,
@@ -342,6 +356,8 @@ export const createPracticeRepo = async ({
         tracker: given,
         clock,
         resume,
+        stop_before,
+        reply_poll_ms,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -358,6 +374,14 @@ export const createPracticeRepo = async ({
         clock?: EngineClock
         /** Carry on the journal as it is, as a restarted engine does. */
         resume?: boolean
+        /**
+         * Action types to stop at. Defaults to `wait_for_reply`, so a stuck
+         * ticket ends the run at its first wait for a reply; pass `[]` (and a
+         * clock that replies) to answer it.
+         */
+        stop_before?: EngineAction['type'][]
+        /** How long each wait for a reply sleeps by `clock`. */
+        reply_poll_ms?: number
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -379,6 +403,8 @@ export const createPracticeRepo = async ({
             git: createGitAdapter({ repo_root: repo }),
             launcher: launcher ?? scripted,
             clock,
+            stop_before: stop_before ?? ['wait_for_reply'],
+            reply_poll_ms,
         })
         return {
             action,

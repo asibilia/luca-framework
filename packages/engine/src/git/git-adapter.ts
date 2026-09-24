@@ -59,6 +59,15 @@ export type GitAdapter = {
      * commit it went back to.
      */
     discardChanges: (args: { cwd: string }) => Promise<{ sha: string }>
+    /**
+     * Resets the worktree at `cwd` hard to `to`, moving its branch there, and
+     * throws away untracked files (ignored ones are kept), as when a
+     * retried ticket starts over from the run branch's tip.
+     */
+    resetWorktree: (args: {
+        cwd: string
+        to: string
+    }) => Promise<{ sha: string }>
     /** Commits after `from` up to `to`, oldest first. */
     commitsBetween: (args: {
         cwd: string
@@ -273,6 +282,11 @@ export const createGitAdapter = ({
             await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
             return { sha: await head({ cwd }) }
         },
+        resetWorktree: async ({ cwd, to }) => {
+            await gitOk({ cwd, args: ['reset', '--quiet', '--hard', to] })
+            await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
+            return { sha: await head({ cwd }) }
+        },
         commitsBetween: async ({ cwd, from, to }) =>
             lines(
                 await gitOk({
@@ -382,6 +396,7 @@ export const createGitAdapter = ({
         filesMentioning: serial(raw.filesMentioning),
         commitAll: serial(raw.commitAll),
         discardChanges: serial(raw.discardChanges),
+        resetWorktree: serial(raw.resetWorktree),
         commitsBetween: serial(raw.commitsBetween),
         replay: serial(raw.replay),
         undoReplay: serial(raw.undoReplay),

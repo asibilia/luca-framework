@@ -13,6 +13,7 @@ import {
     git,
     happyTurns,
     IMPLEMENTER_RESULT,
+    latestStuck,
     SUM_TEST,
     TEST_WRITER_RESULT,
 } from '../testing/practice-repo'
@@ -266,9 +267,8 @@ describe('the ticket review, end to end', () => {
             ],
         })
 
-        expect(run.action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
+        expect(run.action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(run.records)).toMatchObject({
             reason: 'changes_requested',
         })
         expect(

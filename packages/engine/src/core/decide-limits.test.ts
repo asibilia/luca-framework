@@ -442,7 +442,7 @@ describe('decision step: usage', () => {
         })
     })
 
-    test('a stuck ticket records its usage, then the run its own, before the run ends', () => {
+    test('a stuck ticket records its usage, then is told to the spec issue; the run goes on', () => {
         const stuck: JournalEntry = {
             kind: 'ticket_stuck',
             ticket: 11,
@@ -468,8 +468,8 @@ describe('decision step: usage', () => {
             windows: {},
         })
         expect(decideAfter([...entries, ticketDone])).toMatchObject({
-            type: 'record_usage',
-            usage: { scope: 'run', ticket: null },
+            type: 'report_stuck',
+            ticket: 11,
         })
     })
 

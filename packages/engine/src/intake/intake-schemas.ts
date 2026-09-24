@@ -35,19 +35,26 @@ export const CriterionSchema = z.object({
 
 export type Criterion = z.infer<typeof CriterionSchema>
 
-/** The spec as it stood when intake passed. */
-export const SpecSnapshotSchema = z.object({
+const ISSUE_SNAPSHOT_FIELDS = {
     number: z.number().int().positive(),
     title: z.string(),
     body: z.string(),
     labels: z.array(z.string()),
     url: z.string(),
+}
+
+/** The spec as it stood when intake passed. */
+export const SpecSnapshotSchema = z.object({
+    ...ISSUE_SNAPSHOT_FIELDS,
+    /** The spec's owner: only their comments count as replies to stuck work. */
+    author: z.string().default(''),
 })
 
 export type SpecSnapshot = z.infer<typeof SpecSnapshotSchema>
 
-/** One open ticket as it stood when intake passed. */
-export const TicketSnapshotSchema = SpecSnapshotSchema.extend({
+/** One open ticket as it stood when intake passed (or when a retry re-read it). */
+export const TicketSnapshotSchema = z.object({
+    ...ISSUE_SNAPSHOT_FIELDS,
     criteria: z.array(CriterionSchema),
     /** Open tickets of the same spec this one waits on. */
     blockers: z.array(z.number().int().positive()),

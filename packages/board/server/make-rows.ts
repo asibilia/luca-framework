@@ -5,6 +5,7 @@ import {
     failureText,
     finalReasonText,
     reasonText,
+    RETRY_REFUSED_TEXT,
     rebasedText,
     reviewCountsText,
     roleWords,
@@ -135,7 +136,37 @@ const COMMITTED: Record<string, string> = {
 const on = ({ ticket }: { ticket: number | null }): string =>
     ticket === null ? '' : `#${ticket}: `
 
-const event = ({ text, tone }: { text: string; tone: Tone }) => ({ text, tone })
+const event = ({ text, tone }: { text: string; tone: Tone }) => ({
+    text,
+    tone,
+})
+
+const lowerFirst = ({ text }: { text: string }): string =>
+    text.replace(/^./, (first) => first.toLowerCase())
+
+/** Why the engine couldn't use a reply (`reply_ignored`'s `reason`), in words. */
+const ignoredText = ({
+    reason,
+    before,
+}: {
+    reason: string
+    before: BoardState
+}): string => {
+    switch (reason) {
+        case 'no_ticket_named': {
+            const stuck = before.needs_you.find((item) => item.ticket !== null)
+            return `name the ticket, like \`retry #${stuck?.ticket ?? 'n'}\``
+        }
+        case 'not_stuck':
+            return "the ticket it names isn't stuck"
+        case 'nothing_stuck':
+            return 'nothing is stuck right now'
+        case 'ship_needs_final_review':
+            return '`ship` is only for a stuck final review'
+        default:
+            return reason.replaceAll('_', ' ')
+    }
+}
 
 /**
  * What a record means in one line, or `null` for records that are noise in
@@ -287,7 +318,7 @@ export const describeRecord = ({
                   })
         case 'ticket_rebased':
             return event({
-                text: `${at}${rebasedText({ content: record.content }).replace(/^./, (first) => first.toLowerCase())}.`,
+                text: `${at}${lowerFirst({ text: rebasedText({ content: record.content }) })}.`,
                 tone: 'warning',
             })
         case 'ticket_stuck':
@@ -307,10 +338,36 @@ export const describeRecord = ({
                 tone: 'info',
             })
         }
-        case 'ticket_skipped':
+        case 'ticket_skipped': {
+            const { because } = record.content
             return event({
-                text: `${at}skipped. It stays open for a later run.`,
+                text:
+                    because === null
+                        ? `${at}skipped. It stays open for a later run.`
+                        : `${at}skipped, since it waits on #${because}, which was skipped. It stays open for a later run.`,
                 tone: 'info',
+            })
+        }
+        case 'ticket_retried':
+            switch (record.content.mode) {
+                case 'resume':
+                    return null
+                case 'restart':
+                    return event({
+                        text: `${at}starts over from the edited ticket.`,
+                        tone: 'info',
+                    })
+                case 'refused':
+                    return event({
+                        text: `${at}the retry was refused: ${lowerFirst({ text: RETRY_REFUSED_TEXT })} ${record.content.problems.join(' ')}`.trimEnd(),
+                        tone: 'warning',
+                    })
+            }
+            break
+        case 'reply_ignored':
+            return event({
+                text: `Your reply was sent back: ${ignoredText({ reason: record.content.reason, before })}. The answer is on the spec issue.`,
+                tone: 'warning',
             })
         case 'final_review_started':
             return event({
