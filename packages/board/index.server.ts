@@ -7,6 +7,9 @@ import type {
 } from '@getpaseo/plugin/server'
 
 import { createBoardServer } from './server/board-server'
+import { ENGINE_CHECK_MS } from './server/engine-watch'
+import { listProcesses } from './server/list-processes'
+import { runCommand } from './server/run-command'
 import { defaultRegistryPath } from './server/run-registry'
 import { spawnDetached } from './server/spawn-detached'
 import { ROW_VERSION } from './shared/board-rows'
@@ -25,8 +28,10 @@ const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
 /**
  * The board plugin's daemon side: the engine settings, `run.start` (launch a
  * run from `/luca-run`), `engine.event` (the engine's journal records in),
- * and `board.read` (the side panel's poll). The logic lives in
- * `createBoardServer`; this entry only wires it to Paseo.
+ * and `board.read` (the side panel's poll). On start, and every 15 s after,
+ * it checks for runs whose engine is gone and restarts the ones that can go
+ * on (#375). The logic lives in `createBoardServer`; this entry only wires it
+ * to Paseo.
  */
 export default function contribute(server: PluginServerContext) {
     const settings = server.registerSettings(engineSettings)
@@ -60,6 +65,8 @@ export default function contribute(server: PluginServerContext) {
             })
         },
         spawn_engine: spawnDetached,
+        list_processes: listProcesses,
+        run_command: runCommand,
         read_settings: readSettings,
         file_exists: ({ path }) => existsSync(path),
         home_dir: homedir(),
@@ -82,7 +89,15 @@ export default function contribute(server: PluginServerContext) {
         return board.readBoard(input)
     })
 
+    // Lifecycle hooks time out at 30 s, so the first check is not awaited.
+    void board.checkEngines()
+    const timer = setInterval(() => {
+        void board.checkEngines()
+    }, ENGINE_CHECK_MS)
+    timer.unref?.()
+
     return async () => {
+        clearInterval(timer)
         await board.idle()
     }
 }

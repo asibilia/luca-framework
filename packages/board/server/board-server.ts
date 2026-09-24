@@ -8,6 +8,18 @@ import {
     parseRunArgs,
     resolveEngine,
 } from './engine-launch'
+import {
+    engineStoppedText,
+    liveRunIds,
+    MAX_AUTO_RESTARTS,
+    parseUnfinished,
+    restartRow,
+    restartText,
+    resumeArgs,
+    UNFINISHED_TIMEOUT_MS,
+    type StopWhy,
+    type UnfinishedRun,
+} from './engine-watch'
 import { describeRecord, headerRow, rowsForRecord } from './make-rows'
 import { applyEnded, applyRecord, createBoardState } from './reduce-board'
 import { createRunRegistry, type RunEntry } from './run-registry'
@@ -37,6 +49,34 @@ export type SpawnRequest = {
 }
 
 export type SpawnEngine = (request: SpawnRequest) => { pid: number | null }
+
+/** A short command the server runs and waits for, such as `luca-run --unfinished`. */
+export type CommandRequest = {
+    command: string
+    args: string[]
+    cwd: string
+    env: Record<string, string>
+    timeout_ms: number
+}
+
+/** How a command ended: `exit_code` is `null` when it was killed or timed out. */
+export type CommandResult = {
+    exit_code: number | null
+    stdout: string
+    stderr: string
+}
+
+/** Runs a command to its end. Never throws: a failure is in the result. */
+export type RunCommand = (request: CommandRequest) => Promise<CommandResult>
+
+/** Every running process's full command line. */
+export type ListProcesses = () => Promise<string[]>
+
+/** What one engine check did, by run id. */
+export type EngineCheck = { restarted: string[]; stopped: string[] }
+
+/** The run phases after which no engine is needed. */
+const OVER_PHASES = new Set(['done', 'refused', 'nothing_to_do'])
 
 /** Appends (or replaces, by id) one row in a chat's timeline. */
 export type AppendRow = ({
@@ -83,7 +123,9 @@ type RunMemory = {
 /**
  * The board plugin's server logic, with every side effect injected so tests
  * drive it without Paseo: rows go through `append_row`, the engine starts
- * through `spawn_engine`, and runs persist to `registry_path`.
+ * through `spawn_engine`, and runs persist to `registry_path`. Engine
+ * checks (`checkEngines`) read processes through `list_processes` and ask
+ * the engine through `run_command`.
  *
  * Each run's `engine.event` work goes through its own queue, so rows never
  * interleave. A failed row append is logged and never loses board state.
@@ -93,6 +135,8 @@ type RunMemory = {
  *     registry_path: defaultRegistryPath({ env: process.env, home_dir: homedir() }),
  *     append_row: async ({ agent_id, row }) => { ... },
  *     spawn_engine: spawnDetached,
+ *     list_processes: listProcesses,
+ *     run_command: runCommand,
  *     read_settings: async () => ({ engine_path: '', bun_path: '' }),
  *     file_exists: ({ path }) => existsSync(path),
  *     home_dir: homedir(),
@@ -107,6 +151,8 @@ export const createBoardServer = ({
     registry_path,
     append_row,
     spawn_engine,
+    list_processes,
+    run_command,
     read_settings,
     file_exists,
     home_dir,
@@ -118,6 +164,8 @@ export const createBoardServer = ({
     registry_path: string
     append_row: AppendRow
     spawn_engine: SpawnEngine
+    list_processes: ListProcesses
+    run_command: RunCommand
     read_settings: () => Promise<EngineSettings>
     file_exists: ({ path }: { path: string }) => boolean
     home_dir: string
@@ -131,15 +179,19 @@ export const createBoardServer = ({
     const queues = new Map<string, Promise<unknown>>()
 
     const remember = ({ entry }: { entry: RunEntry }): RunMemory => {
+        const state = createBoardState({
+            run_id: entry.run_id,
+            spec_number: entry.spec,
+            demo: entry.demo,
+            started_at: entry.started_at,
+            log_path: entry.log_path,
+        })
         const memory: RunMemory = {
             entry,
-            state: createBoardState({
-                run_id: entry.run_id,
-                spec_number: entry.spec,
-                demo: entry.demo,
-                started_at: entry.started_at,
-                log_path: entry.log_path,
-            }),
+            // A run whose engine ended stays ended after a plugin restart.
+            state: entry.ended
+                ? applyEnded({ state, ended: entry.ended })
+                : state,
             next_seq: 1,
             append_failures: 0,
             rows_stopped: false,
@@ -233,6 +285,21 @@ export const createBoardServer = ({
         })
     }
 
+    /** Changes a run's registry entry, and its copy in memory. */
+    const updateEntry = ({
+        memory,
+        change,
+    }: {
+        memory: RunMemory
+        change: Partial<Pick<RunEntry, 'ended' | 'restarts'>>
+    }) => {
+        memory.entry = registry.update({
+            run_id: memory.entry.run_id,
+            change,
+        }) ?? { ...memory.entry, ...change }
+    }
+
+    /** Marks a run's engine as ended (kept in the registry) and updates its header. */
     const endRun = async ({
         memory,
         ended,
@@ -241,7 +308,33 @@ export const createBoardServer = ({
         ended: EngineEnded
     }) => {
         memory.state = applyEnded({ state: memory.state, ended })
+        updateEntry({ memory, change: { ended } })
         await appendRows({ memory, rows: [header({ memory })] })
+    }
+
+    /** The daemon's env for the engine, plus the run's token when given. */
+    const childEnv = ({
+        token,
+    }: {
+        token: string | null
+    }): Record<string, string> => {
+        const child_env: Record<string, string> = {}
+        for (const [key, value] of Object.entries(env)) {
+            if (value !== undefined) child_env[key] = value
+        }
+        if (token !== null) child_env.LUCA_BOARD_TOKEN = token
+        return child_env
+    }
+
+    /** Finds the engine from the current settings, as `run.start` does. */
+    const findEngine = async () => {
+        let settings: EngineSettings = { engine_path: '', bun_path: '' }
+        try {
+            settings = await read_settings()
+        } catch (error) {
+            log(`Couldn't read the engine settings: ${errorText({ error })}`)
+        }
+        return resolveEngine({ settings, env, home_dir, file_exists })
     }
 
     /**
@@ -253,13 +346,7 @@ export const createBoardServer = ({
         if (!parsed.ok)
             return { ok: false, message: parsed.message, run_id: null }
 
-        let settings: EngineSettings = { engine_path: '', bun_path: '' }
-        try {
-            settings = await read_settings()
-        } catch (error) {
-            log(`Couldn't read the engine settings: ${errorText({ error })}`)
-        }
-        const engine = resolveEngine({ settings, env, home_dir, file_exists })
+        const engine = await findEngine()
         if (!engine.ok)
             return { ok: false, message: engine.message, run_id: null }
 
@@ -280,15 +367,13 @@ export const createBoardServer = ({
             demo: target.kind === 'demo',
             started_at: now().toISOString(),
             log_path,
+            ended: null,
+            restarts: 0,
         }
         registry.add({ entry })
         const memory = remember({ entry })
 
-        const child_env: Record<string, string> = {}
-        for (const [key, value] of Object.entries(env)) {
-            if (value !== undefined) child_env[key] = value
-        }
-        child_env.LUCA_BOARD_TOKEN = token
+        const child_env = childEnv({ token })
 
         let pid: number | null = null
         try {
@@ -400,6 +485,7 @@ export const createBoardServer = ({
                         state: memory.state,
                         ended: input.ended,
                     })
+                    updateEntry({ memory, change: { ended: input.ended } })
                 }
                 if (applied > 0 || (gap === null && input.ended)) {
                     rows.push(header({ memory }))
@@ -447,12 +533,234 @@ export const createBoardServer = ({
         }
     }
 
-    /** Resolves when every queued piece of work has finished (for tests). */
+    /** Whether a run may still need an engine: not ended, not over. */
+    const needsEngine = ({ memory }: { memory: RunMemory }) =>
+        memory.state.run.engine_ended === null &&
+        !OVER_PHASES.has(memory.state.run.phase)
+
+    /**
+     * Asks the engine which unfinished runs may be restarted
+     * (`luca-run --unfinished`), with the engine to restart them with.
+     */
+    const listUnfinished = async (): Promise<
+        | {
+              ok: true
+              runs: Map<string, UnfinishedRun>
+              engine: { command: string; lead_args: string[] }
+          }
+        | { ok: false; error: string }
+    > => {
+        const engine = await findEngine()
+        if (!engine.ok) return { ok: false, error: engine.message }
+        const result = await run_command({
+            command: engine.command,
+            args: [...engine.lead_args, '--unfinished'],
+            cwd: home_dir,
+            env: childEnv({ token: null }),
+            timeout_ms: UNFINISHED_TIMEOUT_MS,
+        })
+        if (result.exit_code === null) {
+            return {
+                ok: false,
+                error: `luca-run --unfinished did not finish in ${UNFINISHED_TIMEOUT_MS / 1000} s (it timed out or was killed)`,
+            }
+        }
+        if (result.exit_code !== 0) {
+            return {
+                ok: false,
+                error: `luca-run --unfinished exited with ${result.exit_code}: ${result.stderr.trim().slice(0, 300)}`,
+            }
+        }
+        const parsed = parseUnfinished({ stdout: result.stdout })
+        if (!parsed.ok) {
+            return {
+                ok: false,
+                error: `luca-run --unfinished ${parsed.error}`,
+            }
+        }
+        return { ok: true, runs: parsed.runs, engine }
+    }
+
+    /**
+     * Restarts a run from its journal (`--resume`) with its token, appending
+     * to its log, and counts the restart. An error when the spawn threw.
+     */
+    const restartRun = async ({
+        memory,
+        engine,
+    }: {
+        memory: RunMemory
+        engine: { command: string; lead_args: string[] }
+    }): Promise<{ ok: true } | { ok: false; error: string }> => {
+        const { run_id, repo, token, log_path } = memory.entry
+        let pid: number | null = null
+        try {
+            pid = spawn_engine({
+                command: engine.command,
+                args: [...engine.lead_args, ...resumeArgs({ run_id, repo })],
+                env: childEnv({ token }),
+                cwd: repo,
+                log_path,
+                on_error: (error) => {
+                    log(
+                        `[${run_id}] the restarted engine failed: ${errorText({ error })}`
+                    )
+                    void enqueue({
+                        run_id,
+                        work: () =>
+                            endRun({
+                                memory,
+                                ended: {
+                                    ok: false,
+                                    message: engineStoppedText({
+                                        why: {
+                                            kind: 'spawn_failed',
+                                            error: errorText({ error }),
+                                        },
+                                        run_id,
+                                        log_path,
+                                    }),
+                                },
+                            }),
+                    })
+                },
+            }).pid
+        } catch (error) {
+            return { ok: false, error: errorText({ error }) }
+        }
+        const restart = memory.entry.restarts + 1
+        updateEntry({ memory, change: { restarts: restart } })
+        const row = restartRow({ run_id, restart, time: now().toISOString() })
+        memory.state = {
+            ...memory.state,
+            run: { ...memory.state.run, engine_ended: null },
+            latest: restartText({ restart }),
+        }
+        log(
+            `[${run_id}] restarted ${engine.command} with --resume (pid ${pid ?? '?'}, restart ${restart} of ${MAX_AUTO_RESTARTS}), log ${log_path}`
+        )
+        await appendRows({ memory, rows: [row, header({ memory })] })
+        return { ok: true }
+    }
+
+    /** One check: see `checkEngines`. */
+    const runCheck = async (): Promise<EngineCheck> => {
+        const summary: EngineCheck = { restarted: [], stopped: [] }
+        const candidates = [...runs.values()].filter((memory) =>
+            needsEngine({ memory })
+        )
+        if (candidates.length === 0) return summary
+        let command_lines: string[]
+        try {
+            command_lines = await list_processes()
+        } catch (error) {
+            // Never restart when unsure: two engines on one run is far worse
+            // than a late restart.
+            log(
+                `Couldn't list the processes, so no engine was checked: ${errorText({ error })}`
+            )
+            return summary
+        }
+        const live = liveRunIds({ command_lines })
+        const dead = candidates.filter(
+            (memory) => !live.has(memory.entry.run_id)
+        )
+        if (dead.length === 0) return summary
+        const unfinished = dead.some((memory) => !memory.entry.demo)
+            ? await listUnfinished()
+            : null
+        if (unfinished && !unfinished.ok) {
+            log(`Couldn't check which runs can go on: ${unfinished.error}`)
+        }
+
+        const settle = async ({ memory }: { memory: RunMemory }) => {
+            // The engine may have ended the run while this check ran.
+            if (!needsEngine({ memory })) return
+            const { run_id, log_path } = memory.entry
+            const stop = async ({ why }: { why: StopWhy }) => {
+                const message = engineStoppedText({ why, run_id, log_path })
+                log(`[${run_id}] the engine is gone: ${message}`)
+                await endRun({ memory, ended: { ok: false, message } })
+                summary.stopped.push(run_id)
+            }
+            if (memory.entry.demo) return stop({ why: { kind: 'demo' } })
+            if (!unfinished?.ok) {
+                return stop({
+                    why: {
+                        kind: 'check_failed',
+                        error: unfinished?.error ?? 'no answer',
+                    },
+                })
+            }
+            const listed = unfinished.runs.get(run_id)
+            if (!listed) return stop({ why: { kind: 'not_listed' } })
+            if (!listed.restart) {
+                const reason = listed.message ?? 'no reason given'
+                return stop({
+                    why:
+                        listed.reason === 'billing_stopped'
+                            ? { kind: 'billing_stopped', reason }
+                            : { kind: 'launcher_stopped', reason },
+                })
+            }
+            if (memory.entry.restarts >= MAX_AUTO_RESTARTS) {
+                return stop({ why: { kind: 'restarts_used_up' } })
+            }
+            const restarted = await restartRun({
+                memory,
+                engine: unfinished.engine,
+            })
+            if (!restarted.ok) {
+                return stop({
+                    why: { kind: 'spawn_failed', error: restarted.error },
+                })
+            }
+            summary.restarted.push(run_id)
+        }
+
+        await Promise.all(
+            dead.map((memory) =>
+                enqueue({
+                    run_id: memory.entry.run_id,
+                    work: () => settle({ memory }),
+                })
+            )
+        )
+        return summary
+    }
+
+    let checking: Promise<EngineCheck> | null = null
+
+    /**
+     * Finds runs whose engine process is gone although the run hasn't ended,
+     * and restarts the ones that can go on from their journal
+     * (`--resume`, at most `MAX_AUTO_RESTARTS` times per run). The rest show
+     * "engine stopped" with why. When the processes can't be listed, nothing
+     * is done. Only one check runs at a time: a call while one runs gets the
+     * same promise. Never rejects.
+     *
+     * @example
+     * const { restarted, stopped } = await board.checkEngines()
+     */
+    const checkEngines = (): Promise<EngineCheck> => {
+        checking ??= runCheck()
+            .catch((error: unknown) => {
+                log(`The engine check failed: ${errorText({ error })}`)
+                return { restarted: [], stopped: [] }
+            })
+            .finally(() => {
+                checking = null
+            })
+        return checking
+    }
+
+    /** Resolves when every queued piece of work (and any check) has finished. */
     const idle = async () => {
+        await checking
         await Promise.all([...queues.values()])
     }
 
-    return { startRun, handleEngineEvent, readBoard, idle }
+    return { startRun, handleEngineEvent, readBoard, checkEngines, idle }
 }
 
 export type BoardServer = ReturnType<typeof createBoardServer>
