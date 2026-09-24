@@ -876,7 +876,10 @@ the run is about to end (its next action is `done`), the engine journals
 `usage_recorded`: the agent turns, tokens summed, and each plan window's
 `{ from, to, used }` in percent. A ticket's window starts from the last
 reading before its first agent; a reading lower than the one before means
-the window reset, so it counts from 0 again. Readings come in hundredths, so
+the window reset, so it counts from 0 again. A retried ticket that finishes
+again (stuck again, or pushed) with agent sessions newer than its last
+record gets a new record over all of its sessions, so a ticket's latest
+`usage_recorded` is its whole usage. Readings come in hundredths, so
 per-ticket numbers are rough, and other sessions on the same plan count too.
 A ticket or run with no agent sessions (scripted agents) records nothing.
 

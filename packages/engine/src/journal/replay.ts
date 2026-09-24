@@ -443,8 +443,11 @@ export type RunState = {
     tickets: Record<number, TicketProgress>
     pull_request: ReplayedPullRequest | null
     plan: PlanState
-    /** The tickets whose usage is recorded, and whether the run's is. */
-    usage_recorded: { tickets: number[]; run: boolean }
+    /**
+     * The seq of each ticket's latest usage record (a retried ticket that
+     * finishes again gets another), and whether the run's is recorded.
+     */
+    usage_recorded: { tickets: Record<number, number>; run: boolean }
     /** The worktrees the engine removed at the end of the run. */
     removed_worktrees: string[]
     /**
@@ -540,7 +543,7 @@ const EMPTY_STATE: RunState = {
         billing: null,
         billing_stopped: null,
     },
-    usage_recorded: { tickets: [], run: false },
+    usage_recorded: { tickets: {}, run: false },
     removed_worktrees: [],
     run_notes: [],
     run_branch_gates: null,
@@ -940,7 +943,10 @@ const applyRecord = ({
                 usage_recorded:
                     scope === 'run' || ticket === null
                         ? { tickets, run: true }
-                        : { tickets: [...tickets, ticket], run },
+                        : {
+                              tickets: { ...tickets, [ticket]: record.seq },
+                              run,
+                          },
             }
         }
         // Agent messages change no ticket's progress; the message rules

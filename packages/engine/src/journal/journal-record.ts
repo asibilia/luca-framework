@@ -311,7 +311,8 @@ const LimitWaitEndedEntrySchema = z.object({
 /**
  * The plan usage of one ticket (when it was pushed, or got stuck) or of the
  * whole run (when it ended): tokens from its agent sessions, and how far
- * each plan window moved.
+ * each plan window moved. A retried ticket that finishes again gets another,
+ * over all of its sessions: the latest is its whole usage.
  */
 const UsageRecordedEntrySchema = z.object({
     ...ENTRY_FIELDS,

@@ -814,6 +814,25 @@ describe('plan used by a ticket and by the run', () => {
         expect(eventRows().at(-1)?.text).toBe('#11: started.')
     })
 
+    test("a retried ticket's latest usage record is its whole usage: it replaces the earlier one", async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 11 }),
+                usageRecorded({
+                    ticket: 11,
+                    windows: { five_hour: { from: 1, to: 2, used: 1 } },
+                }),
+                usageRecorded({
+                    ticket: 11,
+                    windows: { five_hour: { from: 1, to: 4, used: 3 } },
+                }),
+            ],
+        })
+        expect((await harness.ticket({ number: 11 })).plan_used).toEqual([
+            { window: 'five-hour', percent: 3 },
+        ])
+    })
+
     test("the run's usage record sets the run total; tickets keep theirs", async () => {
         await runWith({
             entries: [
