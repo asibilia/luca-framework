@@ -330,13 +330,25 @@ export const runManyTickets = async ({
     jev,
     scenario,
     clock,
+    stop_before,
+    reply_poll_ms,
+    on_tracker,
 }: {
     root: string
     jev?: JevShadow
     /** Defaults to `SUM_PRODUCT_AVERAGE`. */
     scenario?: ManyTicketsScenario
-    /** Limit waits sleep by it; tests fake it. */
+    /** Limit and reply waits sleep by it; tests fake it. */
     clock?: EngineClock
+    /**
+     * Action types to stop at. Defaults to `wait_for_reply`: a stuck ticket
+     * ends the run at its first wait for a reply. Pass `[]` to answer it.
+     */
+    stop_before?: EngineAction['type'][]
+    /** How long each wait for a reply sleeps by `clock`. */
+    reply_poll_ms?: number
+    /** Sees the run's tracker before the engine starts, to reply on it. */
+    on_tracker?: (tracker: InMemoryTracker) => void
 }): Promise<ManyTicketsRun> => {
     const chosen = scenario ?? SUM_PRODUCT_AVERAGE
     const { repo, origin } = await makePracticeRepo({
@@ -350,6 +362,7 @@ export const runManyTickets = async ({
     const loaded = await loadEngineConfig({ repo_root: repo })
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = chosen.tracker()
+    on_tracker?.(tracker)
     const launcher = createScriptedLauncher({
         // Every scenario ends in a clean final review of spec #10.
         turns: [
@@ -370,6 +383,8 @@ export const runManyTickets = async ({
         launcher,
         jev,
         clock,
+        stop_before: stop_before ?? ['wait_for_reply'],
+        reply_poll_ms,
     })
     return {
         action,

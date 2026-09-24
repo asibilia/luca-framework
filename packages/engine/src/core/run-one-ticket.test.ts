@@ -17,7 +17,7 @@ import { loadEngineConfig } from '../config/engine-config'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
-import { CLEAN_LENS_TURNS } from '../testing/practice-repo'
+import { CLEAN_LENS_TURNS, latestStuck } from '../testing/practice-repo'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 
 /**
@@ -292,6 +292,8 @@ const runPractice = async ({
             createScriptedLauncher({
                 turns: [...turns, ...CLEAN_LENS_TURNS(10)],
             }),
+        // A stuck ticket ends the test at its first wait for a reply.
+        stop_before: ['wait_for_reply'],
     })
     return { action, tracker, records: journal.read() }
 }
@@ -491,9 +493,8 @@ describe('one ticket, end to end, with scripted agents', () => {
             ],
         })
 
-        expect(action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(records)).toMatchObject({
             ticket: 11,
             reason: 'leftovers_found',
         })
@@ -518,7 +519,8 @@ describe('one ticket, end to end, with scripted agents', () => {
             record.kind === 'commit_made' ? [record.content.stage] : []
         )
         expect(stages).toEqual(['red'])
-        expect(records.at(-1)?.kind).toBe('ticket_stuck')
+        expect(records.at(-2)?.kind).toBe('ticket_stuck')
+        expect(records.at(-1)?.kind).toBe('stuck_reported')
         expect(tracker.pullRequests()).toEqual([])
         expect((await git(origin, 'branch', '--list', 'luca/*')).trim()).toBe(
             ''
@@ -702,14 +704,11 @@ describe('one ticket, end to end, with scripted agents', () => {
         })
         const { action, records } = await runPractice({ turns: [], launcher })
 
-        expect(action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(records)).toMatchObject({
             reason: 'red_check_failed',
         })
-        expect(
-            action.type === 'done' && 'detail' in action && action.detail
-        ).toContain('passes already')
+        expect(latestStuck(records)?.detail).toContain('passes already')
         expect(
             records.filter((record) => record.kind === 'red_check')
         ).toHaveLength(MAX_FIX_ROUNDS + 1)
@@ -726,7 +725,7 @@ describe('one ticket, end to end, with scripted agents', () => {
             })
             expect(call.prompt).toContain('passes already')
         }
-        expect(records.at(-1)).toMatchObject({
+        expect(records.at(-2)).toMatchObject({
             kind: 'ticket_stuck',
             content: { reason: 'red_check_failed' },
         })
@@ -1021,9 +1020,8 @@ describe('one ticket, end to end, with scripted agents', () => {
             turns: HAPPY_TURNS,
         })
 
-        expect(action).toMatchObject({
-            type: 'done',
-            outcome: 'stuck',
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        expect(latestStuck(records)).toMatchObject({
             ticket: 11,
             reason: 'install_failed',
         })

@@ -20,6 +20,9 @@ build at the same time, and hand **run notes** on to later agents (#371).
 Once every ticket pushed, a **final review** looks at the whole run branch
 through five **lenses** before the PR opens, with its own capped fix loop
 (#367).
+Stuck work reaches the spec's owner as a comment on the spec issue, the other
+tickets keep building, and the owner's one-word replies (`retry`, `skip`,
+`stop`) move it on (#366).
 
 ## Modules
 
@@ -35,6 +38,9 @@ through five **lenses** before the PR opens, with its own capped fix loop
 | `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
 | `src/core/loop-caps.ts` | The caps of every fix loop (`MAX_FIX_ROUNDS`, ...), shared by the ticket steps and the final review. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
+| `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
+| `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
+| `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
 | `src/limits/plan-usage.ts` | Pure: a ticket's or the run's tokens and plan-window movement. |
@@ -219,9 +225,8 @@ the frozen install on the run branch's checkout again
 
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
-prune`). When a ticket is stuck, the run ends as today, but first the
-worktrees of the tickets that pushed are removed; the stuck ticket keeps its
-worktree for a later retry (#366). Branches and the journal always stay.
+prune`). After a `stop` reply, only the worktrees of the tickets that pushed
+are removed; the rest stay for later. Branches and the journal always stay.
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
@@ -300,10 +305,10 @@ and the PR description lists every nit (one per id) and every declined
 finding with the fixer's and the reviewer's reasons.
 
 Anything else that fails (the leftover scan, a join after its last rebase),
-a fix loop or failed tries at their cap, a second bad test, or a test-writer
-with nothing new to test becomes `mark_stuck` ──> `ticket_stuck` with its
-reason. Once a ticket is stuck, no other ticket starts or moves on, and the
-run ends without a PR. Replies to a stuck ticket (#366) build on this.
+a fix loop or failed tries at their cap, a second bad test, a test-writer
+with nothing new to test, or an agent that needs a test setup file changed
+becomes `mark_stuck` ──> `ticket_stuck` with its reason. What happens next
+is in "Stuck work" below.
 
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
@@ -398,6 +403,68 @@ Choices made:
   that would read them.
 - Final review agents get no Jev asks (no skills ask for lenses), and their
   failures and findings are asked about only for records of their own lens.
+## Stuck work (#366)
+
+A stuck ticket never ends the run. The other tickets keep building; only the
+stuck ticket and the tickets that wait on it pause.
+
+```
+ticket_stuck
+  decide ──> undo_join        only if its join is still on the run branch  ──> join_undone
+  decide ──> report_stuck     comment on the spec issue                     ──> stuck_reported
+  decide ──> wait_for_reply   sleep, then read the spec's new comments      ──> comment_read × n
+  decide ──> take_reply       the owner's reply word                        ──> reply_received
+          or ignore_reply     answer on the spec why it can't be used       ──> reply_ignored
+  retry ──> retry_ticket      re-read the ticket                            ──> ticket_retried (resume | restart | refused)
+  skip  ──> skip_ticket × n   comment on each ticket left out               ──> ticket_skipped
+  stop  ──> remove_worktrees (pushed tickets'), then done (stopped_by_user)
+```
+
+- **The comment** names the ticket, says why in one line, what was tried
+  (fix rounds, failed tries, rebases, ...), the last error, a suggestion, the
+  ticket's worktree, and the replies.
+- **Replies.** Only comments by the spec's owner (the spec issue's author)
+  count, and only a comment that is just a word: `retry`, `skip`, or `stop`,
+  optionally with a ticket (`retry #12`, `skip 12`). With more than one
+  ticket stuck, `retry` and `skip` must name one; a bare word, a ticket that
+  isn't stuck, or `ship` (the final review's word, #367) gets an answer on
+  the spec saying why, and nothing moves. Anyone else's comments, the owner's
+  other comments, and the engine's own comments are never replies. Replies
+  sent while the engine was down are read when it starts again.
+- **`retry`** re-reads the ticket. If its title, body, or labels changed,
+  its new copy is checked like at intake, journaled as a new
+  `ticket_snapshot`, its worktree is reset to the run branch's tip, and it
+  starts over from scratch (`restart`); a copy that isn't ready is refused
+  on the spec, and the ticket stays stuck. Otherwise it resumes
+  (`resume`): a fresh agent (no old session), fresh counts (fix rounds,
+  failed tries, bad-test bounces, rebases), and whatever the owner changed in
+  its worktree is kept. The first fresh agent is told why it got stuck. A
+  review fix round starts over as round 1, so the owner's edits are gated,
+  committed, and re-reviewed. A ticket stuck at its join joins again.
+- **`skip`** leaves the ticket out, then every ticket that waits on it
+  (and on those). Each gets a comment and stays open. The PR closes only the
+  built tickets and lists the skipped ones with why. With every ticket
+  skipped there is no PR (`all_skipped`).
+- **`stop`** ends the run without a PR once the steps in flight finish.
+  Nothing new starts; the run branch and the unfinished worktrees stay.
+- **A stuck join is undone at once.** A ticket stuck after its join
+  (`join_gates_failed`) has unpushed commits on the run branch; they are
+  undone (`git.undoReplay`, and the install again if they changed
+  dependencies) before any other ticket starts or joins.
+- **A run branch whose install failed** stops every ticket but the stuck
+  one; a `retry` installs it again.
+- **Waiting.** `wait_for_reply` sleeps `reply_poll_ms` (default
+  `REPLY_POLL_MS`, 1 minute) by the engine's clock, then reads comments with
+  an id above the last one seen. It runs beside the tickets' steps, under its
+  own key, and doesn't count towards `max_steps`: once nothing else can
+  move, the run waits this way with no time limit.
+- **Test setup files.** A test-writer or implementer that can't go on
+  without a change to a test setup file answers `needs_setup_change` with the
+  file and why; the ticket is stuck (`setup_change_needed`) with that
+  message, since only the user may change one.
+- The tracker's `comment` returns the new comment's id, and `listComments`
+  reads an issue's comments after an id. The GitHub tracker posts and lists
+  through `gh api`, and reads each issue's author.
 
 ## The board
 
@@ -867,6 +934,16 @@ then both launch again with the same prompts and the run builds to its PR.
 new workspace dependency and checks the moved worktree's frozen install.
 `src/core/decide-many-tickets.test.ts` covers the same rules at the decision
 step, limits and billing stops with two tickets in flight included.
+`src/core/decide-stuck.test.ts` covers stuck work at the decision step: the
+comment, other tickets building, the join undone, each reply word, named
+tickets when several are stuck, replies from others ignored, retry with and
+without ticket edits, skip with dependents and the PR, stop, and a test
+setup change. `src/core/run-stuck.test.ts` runs it end to end, with a
+scripted person replying on the in-memory tracker through a fake clock:
+retry keeping the owner's fix, retry after a ticket edit, skip while another
+ticket builds and pushes, stop, and a test setup change. The other
+end-to-end tests stop at the first `wait_for_reply` (the practice harnesses'
+default `stop_before`).
 
 `src/agents/claude-launcher.test.ts` drives the real launcher with a fake
 `query` that plays back SDK messages, follow-ups included. It calls

@@ -69,10 +69,17 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 message:
                     'Intake refused the run; the spec and tickets have comments saying what is missing.',
             }
-        case 'stuck':
+        case 'stopped_by_user':
             return {
                 ok: false,
-                message: `Ticket #${action.ticket} is stuck (${action.reason}): ${action.detail}`,
+                message:
+                    "Stopped by your `stop` reply: no PR. The run branch and the unfinished tickets' worktrees are kept.",
+            }
+        case 'all_skipped':
+            return {
+                ok: true,
+                message:
+                    'Every ticket was skipped, so there is no PR. The skipped tickets stay open.',
             }
         case 'final_review_stuck':
             return {

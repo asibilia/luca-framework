@@ -7,6 +7,7 @@ import {
     type BuildDeps,
 } from './execute-build'
 import { executeFinalReviewAction } from './execute-final-review'
+import { executeStuckAction } from './execute-stuck'
 
 import type { BoardSync } from '../board/board-sync'
 import type { EngineConfig } from '../config/engine-config'
@@ -208,16 +209,31 @@ export const executeAction = async ({
     tracker,
     build,
     clock,
+    reply_poll_ms,
 }: {
     action: EngineAction
     journal: Journal
     tracker: Tracker
     /** Needed for every step after intake. */
     build?: BuildDeps
-    /** Limit waits sleep by it. Defaults to `SYSTEM_CLOCK`. */
+    /** Limit waits and reply waits sleep by it. Defaults to `SYSTEM_CLOCK`. */
     clock?: EngineClock
+    /** How long a reply wait sleeps before it reads the spec issue. */
+    reply_poll_ms?: number
 }): Promise<void> => {
     switch (action.type) {
+        case 'report_stuck':
+        case 'wait_for_reply':
+        case 'take_reply':
+        case 'ignore_reply':
+        case 'skip_ticket':
+            return executeStuckAction({
+                action,
+                journal,
+                tracker,
+                clock: clock ?? SYSTEM_CLOCK,
+                reply_poll_ms,
+            })
         case 'record_usage':
             journal.append({
                 kind: 'usage_recorded',
@@ -300,13 +316,17 @@ export const executeAction = async ({
 /**
  * The ticket an action works on, or `null` for a run-level action. The
  * plan's actions are the whole run's, whichever ticket hit the limit; a
- * ticket's usage record is that ticket's.
+ * ticket's usage record is that ticket's. Reading and taking replies is
+ * the run's too (see `keyOf`).
  */
 const ticketOf = (action: EngineAction): number | null => {
     switch (action.type) {
         case 'start_limit_wait':
         case 'wait_for_limit':
         case 'stop_for_billing':
+        case 'wait_for_reply':
+        case 'take_reply':
+        case 'ignore_reply':
             return null
         case 'record_usage':
             return action.usage.ticket
@@ -318,12 +338,23 @@ const ticketOf = (action: EngineAction): number | null => {
 }
 
 /**
+ * Replies are read and taken beside the other steps, one at a time, under
+ * their own key: waiting for a reply never holds a ticket up.
+ */
+const REPLY_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    'wait_for_reply',
+    'take_reply',
+    'ignore_reply',
+])
+
+/**
  * The scheduler's key for an action: at most one action per key runs at a
- * time. Each lens has its own (`lens:<lens>`), so the five lenses review at
- * once; the final review's other steps share `final`; a ticket's steps its
+ * time. Reading and taking replies has its own (`replies`). Each lens has
+ * its own (`lens:<lens>`), so the five lenses review at once; the final review's other steps share `final`; a ticket's steps its
  * number; and the run's own steps `run`, which only ever run alone.
  */
 const keyOf = (action: EngineAction): string => {
+    if (REPLY_ACTIONS.has(action.type)) return 'replies'
     if (action.type === 'launch_lens') return `lens:${action.lens}`
     if (isFinalReviewAction(action)) return 'final'
     const ticket = ticketOf(action)
@@ -348,6 +379,8 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'run_final_gates':
         case 'commit_final_fix':
         case 'push_final_fixes':
+        case 'undo_join':
+        case 'retry_ticket':
             return true
         case 'run_gates':
         case 'install_dependencies':
@@ -371,6 +404,7 @@ const executeWithJev = async ({
     tracker,
     build,
     clock,
+    reply_poll_ms,
 }: {
     jev: JevShadow
     action: EngineAction
@@ -378,6 +412,7 @@ const executeWithJev = async ({
     tracker: Tracker
     build?: BuildDeps
     clock?: EngineClock
+    reply_poll_ms?: number
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -388,7 +423,14 @@ const executeWithJev = async ({
         }),
     })
     const lastSeq = journal.read().at(-1)?.seq ?? 0
-    await executeAction({ action, journal, tracker, build, clock })
+    await executeAction({
+        action,
+        journal,
+        tracker,
+        build,
+        clock,
+        reply_poll_ms,
+    })
     const records = journal.read()
     await askJevInShadow({
         ...shadow,
@@ -435,12 +477,18 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * Runs the engine: a scheduler over the decision step. Each pass it decides
  * every action that can run now from the journal and starts those it can,
  * so tickets build at the same time; then it waits for any one to settle
- * and decides again, until the run is done: refused, nothing to do, stuck,
- * or its PR opened. Building tickets needs `git` and `launcher`. Safe to
+ * and decides again, until the run is done: refused, nothing to do, its PR
+ * opened, stopped by the owner's `stop`, or every ticket skipped. Building tickets needs `git` and `launcher`. Safe to
  * call on a journal left by a crashed engine; it picks up where the journal
  * ends.
  *
- * What may run together: one action per ticket; a run-level action (the run
+ * A stuck ticket is told to the spec issue while the other tickets keep
+ * building; the engine then reads the spec issue every `reply_poll_ms`
+ * for the owner's reply, with no time limit, and acts on it (see
+ * `decide-stuck.ts`). Reply waits don't count towards `max_steps`.
+ *
+ * What may run together: one action per ticket; one reply action at a
+ * time; a run-level action (the run
  * branch, the PR, removing worktrees, intake, a limit wait, a billing stop)
  * only alone, once everything in flight has settled; and one action on
  * the run branch at a time (a new worktree, a join, its gates, a push, a
@@ -471,6 +519,7 @@ export const runEngine = async ({
     jev,
     board,
     clock,
+    reply_poll_ms,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -482,8 +531,10 @@ export const runEngine = async ({
     jev?: JevShadow
     /** Sends the journal to the board after every step. Never throws. */
     board?: BoardSync
-    /** Limit waits sleep by it. Defaults to `SYSTEM_CLOCK`; tests fake it. */
+    /** Limit and reply waits sleep by it. Defaults to `SYSTEM_CLOCK`; tests fake it. */
     clock?: EngineClock
+    /** How long each wait for a reply sleeps. Defaults to `REPLY_POLL_MS`. */
+    reply_poll_ms?: number
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -496,8 +547,23 @@ export const runEngine = async ({
 
     const execute = (action: EngineAction): Promise<void> =>
         jev === undefined
-            ? executeAction({ action, journal, tracker, build, clock })
-            : executeWithJev({ jev, action, journal, tracker, build, clock })
+            ? executeAction({
+                  action,
+                  journal,
+                  tracker,
+                  build,
+                  clock,
+                  reply_poll_ms,
+              })
+            : executeWithJev({
+                  jev,
+                  action,
+                  journal,
+                  tracker,
+                  build,
+                  clock,
+                  reply_poll_ms,
+              })
     const settleAll = () =>
         Promise.allSettled([...inFlight.values()].map(({ done }) => done))
     const canStart = ({ action, key }: { action: EngineAction; key: string }) =>
@@ -521,13 +587,15 @@ export const runEngine = async ({
             for (const action of actions) {
                 const key = keyOf(action)
                 if (!canStart({ action, key })) continue
-                if (started >= limit) {
+                // Waiting for a reply has no time limit, so it never counts.
+                const counts = action.type !== 'wait_for_reply'
+                if (counts && started >= limit) {
                     await settleAll()
                     throw new Error(
                         `The engine took ${limit} steps without finishing.`
                     )
                 }
-                started += 1
+                if (counts) started += 1
                 const done = execute(action).finally(() => {
                     inFlight.delete(key)
                 })
