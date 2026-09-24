@@ -22,11 +22,16 @@ export const findingLine = (finding: Finding): string => {
     return `- ${finding.id} [${SEVERITY_TEXT[finding.severity]}, ${finding.kind}]${where}: ${finding.title}${detail}`
 }
 
-const findingList = (findings: Finding[]): string =>
+/** Findings as a list, one `findingLine` each. */
+export const findingList = (findings: Finding[]): string =>
     findings.map(findingLine).join('\n')
 
 /** Each gate's command and outcome, with a failed gate's (clipped) output. */
-const gateResults = ({ gates }: { gates: ReplayedGates | null }): string => {
+export const gateResults = ({
+    gates,
+}: {
+    gates: ReplayedGates | null
+}): string => {
     if (gates === null) return 'The engine has no gate results for this ticket.'
     return gates.checks
         .map(({ name, command, ok, output }) => {
@@ -38,12 +43,14 @@ const gateResults = ({ gates }: { gates: ReplayedGates | null }): string => {
         .join('\n')
 }
 
-const fileList = (files: string[]): string =>
+/** Files as a list, or a note that there are none. */
+export const fileList = (files: string[]): string =>
     files.length === 0
         ? '(no files changed)'
         : files.map((file) => `- ${file}`).join('\n')
 
-const responseText = ({
+/** What the fixers answered to one finding, for a re-review. */
+export const responseText = ({
     finding,
     responses,
 }: {
@@ -87,6 +94,12 @@ const rejoinReviewSections = ({
         `## The earlier reviews' findings\n\n${earlier}`,
     ]
 }
+
+/** What a re-reviewer does with the earlier findings and each "won't fix". */
+export const RULING_RULES =
+    'For each earlier finding: if it is still not fixed, list it again in "findings" with the SAME id. ' +
+    'For each "won\'t fix", add a ruling: "accepted" lets the finding go (it is listed in the PR as declined); ' +
+    '"rejected" keeps it open, and then you must list it again in "findings". New findings get new ids.'
 
 /**
  * The review part of a ticket reviewer's prompt: what to diff, the files it
@@ -141,15 +154,13 @@ export const reviewSections = ({
             `The earlier review(s) covered everything up to ${from}. Look only at the fixes since: \`git diff ${from}..${head}\`. ` +
             'Do not raise new findings on code these changes did not touch.\n\n' +
             `Files the fixes change:\n${fileList(progress.commit_files.fix)}`,
-        `## The earlier findings, with each fixer's answer\n\n${earlier}\n\n` +
-            'For each earlier finding: if it is still not fixed, list it again in "findings" with the SAME id. ' +
-            'For each "won\'t fix", add a ruling: "accepted" lets the finding go (it is listed in the PR as declined); ' +
-            '"rejected" keeps it open, and then you must list it again in "findings". New findings get new ids.',
+        `## The earlier findings, with each fixer's answer\n\n${earlier}\n\n${RULING_RULES}`,
         gates,
     ]
 }
 
-const FIX_RULES =
+/** How a review fixer answers each finding it got. */
+export const FIX_RULES =
     'For EACH finding, answer in "finding_responses": "fixed", or "wont_fix" with your reason if the finding is wrong. ' +
     'A fresh reviewer rules on every "won\'t fix", so give a reason that stands on its own. ' +
     'The engine runs the gates again and then a fresh reviewer checks your changes.'

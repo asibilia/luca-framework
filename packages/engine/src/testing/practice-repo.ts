@@ -6,6 +6,7 @@ import { $ } from 'bun'
 import { specIssue, ticketIssue } from './intake-fixtures'
 
 import type { AgentLauncher } from '../agents/agent-launcher'
+import { LENS_NAMES, lensRole } from '../agents/role-results'
 import {
     createScriptedLauncher,
     type ScriptedCall,
@@ -138,8 +139,44 @@ export const happyTurns = (): {
     reviewer: { role: 'ticket-reviewer', ticket: 11, result: APPROVE },
 })
 
-/** The happy path: tests, then code, then an approving review. */
-export const HAPPY_TURNS: ScriptedTurn[] = Object.values(happyTurns())
+/**
+ * Five approving lens turns: a clean final review of spec `spec_number`'s
+ * run branch. (The launcher is handed the spec's number as a final review
+ * agent's ticket.)
+ *
+ * @example
+ * const turns = [...Object.values(happyTurns()), ...CLEAN_LENS_TURNS(10)]
+ */
+export const CLEAN_LENS_TURNS = (spec_number: number): ScriptedTurn[] =>
+    LENS_NAMES.map((lens) => ({
+        role: lensRole({ lens }),
+        ticket: spec_number,
+        result: {
+            verdict: 'approve',
+            findings: [],
+            summary: `The ${lens} lens found nothing.`,
+            assumptions: [],
+        },
+    }))
+
+/**
+ * The happy path: tests, then code, then an approving review, then a clean
+ * final review.
+ */
+export const HAPPY_TURNS: ScriptedTurn[] = [
+    ...Object.values(happyTurns()),
+    ...CLEAN_LENS_TURNS(10),
+]
+
+/**
+ * The turns, then a clean final review of spec #10 to fall back on: the
+ * scripted launcher plays the first unused turn of a role, so lens turns in
+ * `turns` go first, and a lens the turns don't script approves.
+ */
+const withCleanLenses = (turns: ScriptedTurn[]): ScriptedTurn[] => [
+    ...turns,
+    ...CLEAN_LENS_TURNS(10),
+]
 
 /** Runs git in `cwd` and returns its output. */
 export const git = (cwd: string, ...args: string[]): Promise<string> =>
@@ -229,7 +266,8 @@ export type PracticeRun = {
 /**
  * Makes a practice repo in `root`, starts a run on spec #10 with journal
  * `<root>/runs/run-1`, and runs the engine to its end with these scripted
- * agent turns, and Jev in shadow mode if given.
+ * agent turns (and a clean final review for any lens they don't script),
+ * and Jev in shadow mode if given.
  */
 export const runPractice = async ({
     root,
@@ -247,7 +285,7 @@ export const runPractice = async ({
     const loaded = await loadEngineConfig({ repo_root: repo })
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = practiceTracker()
-    const launcher = createScriptedLauncher({ turns })
+    const launcher = createScriptedLauncher({ turns: withCleanLenses(turns) })
     startRun({
         journal,
         spec_number: 10,
@@ -302,7 +340,10 @@ export const createPracticeRepo = async ({
         clock,
         resume,
     }: {
-        /** Scripted agents' turns; ignored when `launcher` is given. */
+        /**
+         * Scripted agents' turns, then a clean final review for any lens they
+         * don't script; ignored when `launcher` is given.
+         */
         turns?: ScriptedTurn[]
         /** Any launcher, such as the real Claude one for a smoke run. */
         launcher?: AgentLauncher
@@ -318,7 +359,9 @@ export const createPracticeRepo = async ({
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
         const tracker = given ?? practiceTracker({ ticket })
-        const scripted = createScriptedLauncher({ turns: turns ?? [] })
+        const scripted = createScriptedLauncher({
+            turns: withCleanLenses(turns ?? []),
+        })
         if (resume !== true) {
             startRun({
                 journal,

@@ -5,9 +5,14 @@ import { basename, dirname, join } from 'node:path'
 import uniq from 'lodash/uniq'
 
 import { mayEditTests, type BuildAction } from './decide-build'
+import type { FinalReviewAction } from './decide-final-review'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
-import { parseRoleResult, type AgentRole } from '../agents/role-results'
+import {
+    parseRoleResult,
+    type AgentRole,
+    type RoleResult,
+} from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
 import { runGates, shellCheck } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
@@ -25,7 +30,11 @@ import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
 import type { Journal } from '../journal/journal'
-import type { AgentFailure, GateTarget } from '../journal/journal-record'
+import type {
+    AgentFailure,
+    CommitStage,
+    GateTarget,
+} from '../journal/journal-record'
 import {
     replayRun,
     type ReplayedWorktree,
@@ -41,7 +50,8 @@ export type BuildDeps = {
     launcher: AgentLauncher
 }
 
-type BuildContext = BuildDeps & {
+/** What a build step's executor works with. */
+export type BuildContext = BuildDeps & {
     journal: Journal
     tracker: Tracker
     state: RunState
@@ -59,7 +69,8 @@ export const runBranchName = ({
     run_id: string
 }): string => `luca/spec-${spec_number}-${run_id}`
 
-const need = <T>({
+/** A journaled value, or a clear error that the journal has none yet. */
+export const need = <T>({
     value,
     what,
 }: {
@@ -91,12 +102,16 @@ const reportFile = async ({
     label,
 }: {
     context: BuildContext
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     label: string
 }): Promise<string> => {
     const folder = join(context.run_dir, 'reports')
     await mkdir(folder, { recursive: true })
-    return join(folder, `${context.state.last_seq + 1}-${ticket}-${label}.xml`)
+    return join(
+        folder,
+        `${context.state.last_seq + 1}-${ticket ?? 'final'}-${label}.xml`
+    )
 }
 
 const testFilesIn = async ({
@@ -187,17 +202,29 @@ const isUsed = async ({
     )
 }
 
-const commitTicket = async ({
+/**
+ * The leftover scan, then an engine commit of everything in `cwd`, both
+ * journaled. A hit blocks the commit. A `fix` commit with nothing to commit
+ * (every finding was a "won't fix") journals the current commit with no
+ * files instead.
+ */
+export const commitIn = async ({
     context,
-    action,
+    cwd,
+    ticket,
+    stage,
+    message,
+    mention_text,
 }: {
     context: BuildContext
-    action: Extract<BuildAction, { type: 'commit_ticket' }>
+    cwd: string
+    /** `null` for the final review. */
+    ticket: number | null
+    stage: CommitStage
+    message: string
+    /** The spec and ticket text a new markdown file may be named in. */
+    mention_text: string
 }) => {
-    const { path: cwd } = ticketWorktree({
-        state: context.state,
-        ticket: action.ticket,
-    })
     const changes = await context.git.changes({ cwd })
     const test_files = testFilesAmong({
         files: changes.map(({ path }) => path),
@@ -212,47 +239,62 @@ const commitTicket = async ({
     for (const path of newCodeFiles({ changes, test_files })) {
         used_code[path] = await isUsed({ context, cwd, path, added_texts })
     }
-    const snapshot = need({
-        value: context.state.snapshot,
-        what: 'spec snapshot',
-    })
-    const ticket = snapshot.tickets[action.ticket]
-    const mention_text = [snapshot.spec.body, ticket?.body ?? ''].join('\n')
     const hits = scanLeftovers({ changes, test_files, mention_text, used_code })
     context.journal.append({
         kind: 'leftover_scan',
-        ticket: action.ticket,
+        ticket,
         role: null,
-        content: { stage: action.stage, hits },
+        content: { stage, hits },
     })
     if (hits.length > 0) return
-    if (changes.length === 0 && action.stage === 'fix') {
+    if (changes.length === 0 && stage === 'fix') {
         // The fixers changed nothing (every finding was a "won't fix"): no
         // commit to make, so the re-review's new changes are empty.
         context.journal.append({
             kind: 'commit_made',
-            ticket: action.ticket,
+            ticket,
             role: null,
             content: {
-                stage: action.stage,
+                stage,
                 sha: await context.git.head({ cwd }),
-                message: action.message,
+                message,
                 files: [],
             },
         })
         return
     }
-    const commit = await context.git.commitAll({ cwd, message: action.message })
+    const commit = await context.git.commitAll({ cwd, message })
     context.journal.append({
         kind: 'commit_made',
-        ticket: action.ticket,
+        ticket,
         role: null,
-        content: {
-            stage: action.stage,
-            sha: commit.sha,
-            message: action.message,
-            files: commit.files,
-        },
+        content: { stage, sha: commit.sha, message, files: commit.files },
+    })
+}
+
+const commitTicket = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'commit_ticket' }>
+}) => {
+    const { path: cwd } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const snapshot = need({
+        value: context.state.snapshot,
+        what: 'spec snapshot',
+    })
+    const ticket = snapshot.tickets[action.ticket]
+    await commitIn({
+        context,
+        cwd,
+        ticket: action.ticket,
+        stage: action.stage,
+        message: action.message,
+        mention_text: [snapshot.spec.body, ticket?.body ?? ''].join('\n'),
     })
 }
 
@@ -265,7 +307,7 @@ const failTurn = ({
     session_id,
 }: {
     context: BuildContext
-    ticket: number
+    ticket: number | null
     role: AgentRole
     error: string
     failure: AgentFailure
@@ -288,21 +330,28 @@ const failTurn = ({
  * the decision step picks what happens next. A launcher stop journals
  * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
  * overage, a billing error) journals only its session.
+ *
+ * @param worktree - Where the agent works: its ticket's worktree, or the run
+ *   branch's for the final review.
+ * @param ticket - The ticket its records name, `null` for the final review.
+ * @returns The role's result when the agent finished, else `null`.
  */
-const runTurn = async ({
+export const runTurn = async ({
     context,
+    worktree,
     ticket,
     role,
     may_edit_tests,
     start,
 }: {
     context: BuildContext
-    ticket: number
+    worktree: ReplayedWorktree
+    ticket: number | null
     role: AgentRole
     may_edit_tests: boolean
     start: (cwd: string) => Promise<AgentTurn>
-}) => {
-    const { path, branch } = ticketWorktree({ state: context.state, ticket })
+}): Promise<RoleResult | null> => {
+    const { path, branch } = worktree
     const before = await snapshotWorktree({
         cwd: path,
         branch,
@@ -335,7 +384,7 @@ const runTurn = async ({
         turn.failure === 'plan' &&
         (turn.session === undefined ||
             sessionSignal({ session: turn.session }).kind === 'ok')
-    if (!turn.ok && turn.failure === 'plan' && !unexplained) return
+    if (!turn.ok && turn.failure === 'plan' && !unexplained) return null
     if (!turn.ok && (turn.failure === 'stop' || unexplained)) {
         context.journal.append({
             kind: 'run_stopped',
@@ -346,8 +395,10 @@ const runTurn = async ({
         throw new Error(`Run stopped: ${turn.error}`)
     }
     const session_id = turn.session_id ?? null
-    const fail = (failure: AgentFailure, error: string) =>
+    const fail = (failure: AgentFailure, error: string) => {
         failTurn({ context, ticket, role, error, failure, session_id })
+        return null
+    }
     if (violations.length > 0) {
         return fail(
             'guard',
@@ -371,6 +422,7 @@ const runTurn = async ({
         role,
         content: { ...checked.value, session_id },
     })
+    return checked.value
 }
 
 const launchAgent = async ({
@@ -389,6 +441,7 @@ const launchAgent = async ({
     })
     await runTurn({
         context,
+        worktree: ticketWorktree({ state: context.state, ticket }),
         ticket,
         role,
         may_edit_tests,
@@ -429,6 +482,7 @@ const followUpAgent = async ({
     })
     await runTurn({
         context,
+        worktree: ticketWorktree({ state: context.state, ticket }),
         ticket,
         role,
         may_edit_tests: mayEditTests({ role, ticket: snapshot }),
@@ -533,6 +587,48 @@ const rebaseTicket = async ({
 }
 
 /**
+ * The config's gates in a worktree (with the install first when a manifest
+ * changed since its base), journaled as `gates_run`.
+ */
+export const gatesIn = async ({
+    context,
+    worktree,
+    target,
+    ticket,
+}: {
+    context: BuildContext
+    worktree: ReplayedWorktree
+    target: GateTarget
+    /** `null` for the final review. */
+    ticket: number | null
+}) => {
+    const { path: cwd, base_sha } = worktree
+    const result = await runGates({
+        cwd,
+        config: context.config,
+        install: installCommand({
+            changed_files: await context.git.changedSince({
+                cwd,
+                from: base_sha,
+            }),
+            target,
+        }),
+        test_files: await testFilesIn({ context, cwd }),
+        report_file: await reportFile({
+            context,
+            ticket,
+            label: `gates-${target}`,
+        }),
+    })
+    context.journal.append({
+        kind: 'gates_run',
+        ticket,
+        role: null,
+        content: { target, ...result },
+    })
+}
+
+/**
  * The frozen install in a new (or moved) worktree, journaled as
  * `dependencies_installed`. A worktree with no `package.json` has nothing
  * to install (`check` is `null`).
@@ -566,6 +662,30 @@ const installIn = async ({
 }
 
 /**
+ * What a build step's executor works with, from the journal as it is now.
+ *
+ * @example
+ * const context = buildContext({ journal, tracker, git, launcher })
+ */
+export const buildContext = ({
+    journal,
+    tracker,
+    git,
+    launcher,
+}: BuildDeps & { journal: Journal; tracker: Tracker }): BuildContext => {
+    const state = replayRun({ records: journal.read() })
+    return {
+        git,
+        launcher,
+        journal,
+        tracker,
+        state,
+        config: need({ value: state.config, what: 'engine config' }),
+        run_dir: dirname(journal.file),
+    }
+}
+
+/**
  * Carries out one build step: git, gates, agents, or the tracker, then
  * records what happened in the journal. `decide` picks the step.
  */
@@ -576,22 +696,13 @@ export const executeBuildAction = async ({
     git,
     launcher,
 }: BuildDeps & {
-    action: BuildAction
+    /** The final review's steps go to `executeFinalReviewAction`. */
+    action: Exclude<BuildAction, FinalReviewAction>
     journal: Journal
     tracker: Tracker
 }): Promise<void> => {
-    const state = replayRun({ records: journal.read() })
-    const config = need({ value: state.config, what: 'engine config' })
-    const run_dir = dirname(journal.file)
-    const context: BuildContext = {
-        git,
-        launcher,
-        journal,
-        tracker,
-        state,
-        config,
-        run_dir,
-    }
+    const context = buildContext({ journal, tracker, git, launcher })
+    const { state, run_dir } = context
     switch (action.type) {
         case 'create_run_branch': {
             const branch = runBranchName({
@@ -679,36 +790,16 @@ export const executeBuildAction = async ({
             return runRedCheck({ context, action })
         case 'commit_ticket':
             return commitTicket({ context, action })
-        case 'run_gates': {
-            const { path: cwd, base_sha } =
-                action.target === 'ticket'
-                    ? ticketWorktree({ state, ticket: action.ticket })
-                    : need({ value: state.run_branch, what: 'run branch' })
-            const result = await runGates({
-                cwd,
-                config,
-                install: installCommand({
-                    changed_files: await git.changedSince({
-                        cwd,
-                        from: base_sha,
-                    }),
-                    target: action.target,
-                }),
-                test_files: await testFilesIn({ context, cwd }),
-                report_file: await reportFile({
-                    context,
-                    ticket: action.ticket,
-                    label: `gates-${action.target}`,
-                }),
-            })
-            journal.append({
-                kind: 'gates_run',
+        case 'run_gates':
+            return gatesIn({
+                context,
+                worktree:
+                    action.target === 'ticket'
+                        ? ticketWorktree({ state, ticket: action.ticket })
+                        : need({ value: state.run_branch, what: 'run branch' }),
+                target: action.target,
                 ticket: action.ticket,
-                role: null,
-                content: { target: action.target, ...result },
             })
-            return
-        }
         case 'join_run_branch': {
             const worktree = ticketWorktree({ state, ticket: action.ticket })
             const runBranch = need({

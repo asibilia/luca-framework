@@ -5,6 +5,7 @@ import { rateLimitReading } from './build-fixtures'
 import { specIssue, ticketIssue } from './intake-fixtures'
 import {
     APPROVE,
+    CLEAN_LENS_TURNS,
     IMPLEMENTER_RESULT,
     makePracticeRepo,
     SUM,
@@ -319,7 +320,7 @@ export type ManyTicketsRun = {
 /**
  * Makes the practice repo in `root` and runs the engine on a many-ticket
  * scenario to its end (`SUM_PRODUCT_AVERAGE` unless told otherwise), with
- * Jev in shadow mode if given. The journal is `<root>/runs/run-1/journal.jsonl`.
+ * a clean final review and Jev in shadow mode if given. The journal is `<root>/runs/run-1/journal.jsonl`.
  *
  * @example
  * const { action, records } = await runManyTickets({ root, scenario: BROKEN_JOIN })
@@ -350,7 +351,11 @@ export const runManyTickets = async ({
     if (!loaded.ok) throw new Error(loaded.error)
     const tracker = chosen.tracker()
     const launcher = createScriptedLauncher({
-        turns: chosen.turns({ journal_file: journal.file }),
+        // Every scenario ends in a clean final review of spec #10.
+        turns: [
+            ...chosen.turns({ journal_file: journal.file }),
+            ...CLEAN_LENS_TURNS(10),
+        ],
     })
     startRun({
         journal,

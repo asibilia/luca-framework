@@ -238,10 +238,11 @@ const failureOf = (
                 .filter(({ ok }) => !ok)
                 .map(({ name, output }) => `${name} failed:\n${output}`)
                 .join('\n\n')
-            return {
-                kind: record.content.target === 'ticket' ? 'code' : 'clash',
-                text,
-            }
+            // Gates after a join: a clash. A ticket's, or the final
+            // review's fixes (no ticket): the code.
+            const joined =
+                record.content.target === 'run_branch' && record.ticket !== null
+            return { kind: joined ? 'clash' : 'code', text }
         }
         case 'red_check':
             return record.content.ok

@@ -69,6 +69,43 @@ const withoutTimings = (launches: PracticeRun['launches']) =>
             .replace(/\b[0-9a-f]{40}\b/g, '[sha]'),
     }))
 
+/**
+ * Record kinds in order, but the final review's lenses run at once, so
+ * the kinds between its start and its pass are sorted.
+ */
+const kindsInOrder = (records: JournalRecord[]): string[] => {
+    const kinds = records
+        .filter((record) => !isJev(record))
+        .map(({ kind }) => kind)
+    const from = kinds.indexOf('final_review_started')
+    const to = kinds.indexOf('final_review_passed')
+    if (from === -1 || to === -1) return kinds
+    return [
+        ...kinds.slice(0, from + 1),
+        ...kinds.slice(from + 1, to).toSorted(),
+        ...kinds.slice(to),
+    ]
+}
+
+/**
+ * Launches in order, but the final review's lenses (which start at once, in
+ * any order) sorted by role, with their session numbers masked.
+ */
+const launchesInOrder = (launches: PracticeRun['launches']) => {
+    const lens = (launch: PracticeRun['launches'][number]) =>
+        launch.role.endsWith('-lens')
+    return [
+        ...launches.filter((launch) => !lens(launch)),
+        ...launches
+            .filter(lens)
+            .map((launch) => ({
+                ...launch,
+                session_id: launch.session_id.replace(/-\d+$/, '-[n]'),
+            }))
+            .toSorted((left, right) => left.role.localeCompare(right.role)),
+    ]
+}
+
 /** The run as it would look without Jev: the same steps, prompts, and PR. */
 const expectSameRun = ({
     run,
@@ -78,11 +115,9 @@ const expectSameRun = ({
     without: PracticeRun
 }) => {
     expect(run.action).toEqual(without.action)
-    expect(
-        run.records.filter((record) => !isJev(record)).map(({ kind }) => kind)
-    ).toEqual(without.records.map(({ kind }) => kind))
-    expect(withoutTimings(run.launches)).toEqual(
-        withoutTimings(without.launches)
+    expect(kindsInOrder(run.records)).toEqual(kindsInOrder(without.records))
+    expect(withoutTimings(launchesInOrder(run.launches))).toEqual(
+        withoutTimings(launchesInOrder(without.launches))
     )
     expect(run.tracker.pullRequests()).toEqual(without.tracker.pullRequests())
 }

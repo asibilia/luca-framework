@@ -86,6 +86,10 @@ const CLEAN_COMMITS: { stage: 'red' | 'green'; files: string[] }[] = [
     { stage: 'green', files: ['src/index.ts', 'src/sum.ts'] },
 ]
 
+/** The ticket's launches, without the final review's lenses (spec #10's). */
+const ticketLaunches = <Call extends { ticket: number }>(calls: Call[]) =>
+    calls.filter(({ ticket }) => ticket === 11)
+
 describe('the after-turn check', () => {
     test('a test-writer that writes a non-test file fails a try, the file is removed, and its follow-up carries on', async () => {
         const { testWriter, implementer, reviewer } = happyTurns()
@@ -151,7 +155,9 @@ describe('the after-turn check', () => {
                 session_id: 'scripted-implementer-11-2',
             },
         ])
-        expect(launches.map(({ kind, role }) => `${kind}:${role}`)).toEqual([
+        expect(
+            ticketLaunches(launches).map(({ kind, role }) => `${kind}:${role}`)
+        ).toEqual([
             'launch:test-writer',
             'launch:implementer',
             'follow_up:implementer',
@@ -187,7 +193,9 @@ describe('the after-turn check', () => {
                 session_id: 'scripted-ticket-reviewer-11-3',
             },
         ])
-        expect(launches.map(({ kind, role }) => `${kind}:${role}`)).toEqual([
+        expect(
+            ticketLaunches(launches).map(({ kind, role }) => `${kind}:${role}`)
+        ).toEqual([
             'launch:test-writer',
             'launch:implementer',
             'launch:ticket-reviewer',

@@ -213,7 +213,8 @@ export const agentStarted = ({
     prompt,
     follow_up_of,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     role: AgentRole
     prompt?: string
     follow_up_of?: string
@@ -235,7 +236,8 @@ export const testsWritten = ({
     finding_responses,
     run_notes,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     /** Defaults to `SESSIONS['test-writer']`. */
     session_id?: string
     /** Defaults to one assumption. */
@@ -314,7 +316,8 @@ export const leftoverScan = ({
     stage,
     hits,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     stage: CommitStage
     hits?: { path: string; reason: string }[]
 }): JournalEntry => ({
@@ -330,7 +333,8 @@ export const commitMade = ({
     sha,
     files,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     stage: CommitStage
     /** Defaults to `<stage>-sha`. */
     sha?: string
@@ -356,7 +360,8 @@ export const implemented = ({
     finding_responses,
     run_notes,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     outcome?: 'done' | 'bad_test'
     /** Defaults to `SESSIONS.implementer`. */
     session_id?: string
@@ -396,7 +401,8 @@ export const gatesRun = ({
     target,
     ok,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     target: 'ticket' | 'run_branch'
     ok: boolean
 }): JournalEntry => ({
@@ -484,7 +490,8 @@ export const agentFailed = ({
     error,
     session_id,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     role: AgentRole
     failure: 'agent' | 'result' | 'guard' | 'engine'
     /** Defaults to "It broke." */
@@ -609,11 +616,19 @@ export const ticketStuck = ({
     content: { reason, detail: detail ?? 'why' },
 })
 
-export const pushed = ({ ticket }: { ticket: number }): JournalEntry => ({
+export const pushed = ({
+    ticket,
+    sha,
+}: {
+    /** `null` for the final review's push. */
+    ticket: number | null
+    /** Defaults to `g1`. */
+    sha?: string
+}): JournalEntry => ({
     kind: 'run_branch_pushed',
     ticket,
     role: null,
-    content: { branch: RUN_BRANCH, sha: 'g1' },
+    content: { branch: RUN_BRANCH, sha: sha ?? 'g1' },
 })
 
 /** Every step of one ticket, from its worktree to the push, all passing. */
@@ -680,7 +695,8 @@ export const agentSession = ({
     billing_error,
     output_tokens,
 }: {
-    ticket: number
+    /** `null` for the final review. */
+    ticket: number | null
     role: AgentRole
     rate_limit_events?: Record<string, unknown>[]
     billing_error?: boolean

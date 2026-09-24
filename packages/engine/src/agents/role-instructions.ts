@@ -181,7 +181,11 @@ Only real risks count; a theoretical risk with no path to it is a nit at most.`,
 - a rule file the engine could not read is noted in your prompt; don't guess its content`,
 }
 
-const LENS = ({ lens }: { lens: LensName }) => `# Your role: ${lens} lens of the final review
+const LENS = ({
+    lens,
+}: {
+    lens: LensName
+}) => `# Your role: ${lens} lens of the final review
 
 You are one of five fresh, independent reviewers of the WHOLE run branch: every ticket of one spec, after all of them joined. The other lenses (architecture, simplification, security, integration, rules) review the same branch at the same time; stay in your lane. You are read-only: never create, edit, or delete a file, and never write to git. Your prompt names the exact \`git diff\` to read and gives the engine's gate results.
 

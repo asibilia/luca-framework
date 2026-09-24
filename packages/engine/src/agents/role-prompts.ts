@@ -125,16 +125,11 @@ const ROLE_TASKS: Record<AgentRole, string> = {
     'ticket-reviewer':
         "Review this ticket's committed diff. Check that it meets every acceptance criterion with honest tests. " +
         'Write nothing.',
-    'architecture-lens':
-        `${LENS_TASK_TEXT} Judge the architecture: module boundaries and seams, where code lives, coupling, names, and the developer experience of the APIs and files the branch adds.`,
-    'simplification-lens':
-        `${LENS_TASK_TEXT} Judge simplicity: duplicated logic, dead or needless code, abstractions that don't pay for themselves, and code that could reuse what the repo already has.`,
-    'security-lens':
-        `${LENS_TASK_TEXT} Judge security: untrusted input, injection, paths and shell commands, secrets, permissions, and unsafe defaults.`,
-    'integration-lens':
-        `${LENS_TASK_TEXT} Judge integration: how the tickets fit together. Look for pieces that don't connect, contracts that disagree between tickets, duplicated work across tickets, and gaps the spec needs but no ticket covered.`,
-    'rules-lens':
-        `${LENS_TASK_TEXT} Judge the branch against the repo's rule files below. Only rules that need judgment count; mechanical rules belong to the lint gate, which already ran.`,
+    'architecture-lens': `${LENS_TASK_TEXT} Judge the architecture: module boundaries and seams, where code lives, coupling, names, and the developer experience of the APIs and files the branch adds.`,
+    'simplification-lens': `${LENS_TASK_TEXT} Judge simplicity: duplicated logic, dead or needless code, abstractions that don't pay for themselves, and code that could reuse what the repo already has.`,
+    'security-lens': `${LENS_TASK_TEXT} Judge security: untrusted input, injection, paths and shell commands, secrets, permissions, and unsafe defaults.`,
+    'integration-lens': `${LENS_TASK_TEXT} Judge integration: how the tickets fit together. Look for pieces that don't connect, contracts that disagree between tickets, duplicated work across tickets, and gaps the spec needs but no ticket covered.`,
+    'rules-lens': `${LENS_TASK_TEXT} Judge the branch against the repo's rule files below. Only rules that need judgment count; mechanical rules belong to the lint gate, which already ran.`,
 }
 
 /**

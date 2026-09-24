@@ -940,7 +940,8 @@ const finalReviewAfter = ({
         case 'agent_session':
             return review
         case 'final_review_fixing':
-            return review.fix !== null && record.content.round === review.fix.round
+            return review.fix !== null &&
+                record.content.round === review.fix.round
                 ? { ...review, fixing_started: true }
                 : review
         case 'final_review_stuck':

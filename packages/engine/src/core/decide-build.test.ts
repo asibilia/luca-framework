@@ -34,6 +34,7 @@ import {
     worktreeReset,
     worktreesRemoved,
 } from '../testing/build-fixtures'
+import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
@@ -286,8 +287,11 @@ describe('decision step: building a ticket', () => {
         })
     })
 
-    test('once every ticket is pushed, one PR is opened from the run branch', () => {
-        const action = decideAfter(stepsUpTo(13))
+    test('once every ticket is pushed, the final review runs, then one PR is opened from the run branch', () => {
+        expect(decideAfter(stepsUpTo(13))).toMatchObject({
+            type: 'start_final_review',
+        })
+        const action = decideAfter([...stepsUpTo(13), ...finalReviewClean()])
 
         expect(action).toMatchObject({
             type: 'open_pull_request',
@@ -507,6 +511,7 @@ describe('decision step: the red check fix loop', () => {
                 assumptions: ['Numbers are integers.', 'Sums may be negative.'],
             }),
             ...ticketBuilt({ ticket: 11 }).slice(3),
+            ...finalReviewClean(),
         ])
         if (action.type !== 'open_pull_request') throw new Error(action.type)
 
