@@ -249,11 +249,11 @@ describe('stuck work reaches the spec owner, end to end', () => {
             )
         ).toBe(true)
         // Started over as a refactor ticket: no second test-writer.
-        expect(launches.map(({ role }) => role)).toEqual([
-            'test-writer',
-            'implementer',
-            'ticket-reviewer',
-        ])
+        expect(
+            launches
+                .map(({ role }) => role)
+                .filter((role) => !role.endsWith('-lens'))
+        ).toEqual(['test-writer', 'implementer', 'ticket-reviewer'])
         expect(launches[1]?.may_edit_tests).toBe(true)
     }, 60_000)
 

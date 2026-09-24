@@ -28,6 +28,7 @@ import {
     ticketWorktreeCreated,
     withInstalls,
 } from '../testing/build-fixtures'
+import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
 /**
@@ -557,12 +558,14 @@ describe('skip', () => {
         ])
     })
 
-    test('the rest ships: the PR closes only the built tickets and lists the skipped ones', () => {
-        const [step] = threeSteps([
+    test('the rest ships: the final review runs, then the PR closes only the built tickets and lists the skipped ones', () => {
+        const skippedAll = [
             ...skippedEleven(),
             ticketSkipped({ ticket: 11 }),
             ticketSkipped({ ticket: 13, because: 11 }),
-        ])
+        ]
+        expect(threeSteps(skippedAll)[0]?.type).toBe('start_final_review')
+        const [step] = threeSteps([...skippedAll, ...finalReviewClean()])
         expect(step?.type).toBe('open_pull_request')
         const body = step?.type === 'open_pull_request' ? step.body : ''
         expect(body).toContain('Closes #12')
