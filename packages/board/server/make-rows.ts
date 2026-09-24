@@ -436,6 +436,7 @@ export const describeRecord = ({
         case 'jev_answered':
         case 'jev_failed':
         case 'agent_message_delivered':
+        case 'shared_git_changed':
         case 'limit_wait_started':
         case 'limit_wait_ended':
         case 'usage_recorded':

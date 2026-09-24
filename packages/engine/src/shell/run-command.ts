@@ -22,15 +22,19 @@ export const runCommand = async ({
     cmd,
     cwd,
     timeout_ms,
+    env,
 }: {
     cmd: string[]
     cwd: string
     /** Defaults to `DEFAULT_COMMAND_TIMEOUT_MS`. */
     timeout_ms?: number
+    /** Variables set on top of the engine's own environment. */
+    env?: Record<string, string>
 }): Promise<CommandResult> => {
     const proc = Bun.spawn({
         cmd,
         cwd,
+        env: env === undefined ? undefined : { ...process.env, ...env },
         stdin: 'ignore',
         stdout: 'pipe',
         stderr: 'pipe',

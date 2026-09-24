@@ -481,6 +481,12 @@ export const BoardStateSchema = z.object({
     }),
     /** Defaulted, so a board state from before memory still parses. */
     memory: MemoryCountsSchema.default(NO_MEMORY),
+    /**
+     * Times another process changed the shared `.git` during an agent's
+     * turn. Never the agent's doing, so only counted. Defaulted, so a board
+     * state from before it still parses.
+     */
+    shared_git_changed: z.number().int().min(0).default(0),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */
