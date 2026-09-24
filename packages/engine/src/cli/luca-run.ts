@@ -15,15 +15,23 @@
  * the run goes on without memory.
  *
  * `--demo` runs a practice spec in a throwaway repo instead: no GitHub, no
- * models. See `RUN_USAGE` for every flag.
+ * models. `--resume <run-id>` goes on with a run from its journal, in the
+ * repo it started in (or `--repo`). See `RUN_USAGE` for every flag.
  *
  * Exits 0 when the run finished (PR opened, or nothing to do), 1 when it
- * stopped (refused, stuck, stopped by the launcher, crashed), 2 on bad flags.
+ * stopped (refused, stuck, stopped by the launcher, crashed, or a resume with
+ * no journal to go on from), 2 on bad flags.
  */
 import { $ } from 'bun'
 
 import { parseRunArgs, type RunArgs } from './run-args'
-import { DEMO_TURN_DELAY_MS, runDemo, runSpec, type RunEnd } from './run-modes'
+import {
+    DEMO_TURN_DELAY_MS,
+    resumeRun,
+    runDemo,
+    runSpec,
+    type RunEnd,
+} from './run-modes'
 
 import { createClaudeLauncher } from '../agents/claude-launcher'
 import { createBoardSync, type BoardSync } from '../board/board-sync'
@@ -95,6 +103,19 @@ const run = async ({
             log(pull.body)
         }
         return end
+    }
+    if (args.mode === 'resume') {
+        return resumeRun({
+            run_id: args.run_id,
+            runs_dir: defaultRunsDir(),
+            repo: args.repo,
+            tracker: async ({ repo }) =>
+                createGitHubTracker({ repo: await githubRepoOf({ repo }) }),
+            launcher: createClaudeLauncher({}),
+            jev: { client: createTypeSafeJev() },
+            board,
+            log,
+        })
     }
     const tracker = createGitHubTracker({
         repo: await githubRepoOf({ repo: args.repo }),

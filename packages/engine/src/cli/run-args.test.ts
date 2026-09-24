@@ -66,9 +66,60 @@ describe('luca-run arguments', () => {
         })
     })
 
+    test('a resume names the run; the repo is left to the journal unless given', () => {
+        expect(
+            parseRunArgs({
+                argv: ['--resume', PLUGIN_RUN_ID],
+                cwd: '/code',
+                env: {},
+            })
+        ).toEqual({
+            ok: true,
+            args: {
+                mode: 'resume',
+                run_id: PLUGIN_RUN_ID,
+                repo: null,
+                board: null,
+            },
+        })
+        expect(
+            parseRunArgs({
+                argv: [
+                    '--resume',
+                    PLUGIN_RUN_ID,
+                    '--repo',
+                    'app',
+                    '--board-plugin',
+                    'luca-board',
+                ],
+                cwd: '/code',
+                env: { LUCA_BOARD_TOKEN: 'secret' },
+            })
+        ).toEqual({
+            ok: true,
+            args: {
+                mode: 'resume',
+                run_id: PLUGIN_RUN_ID,
+                repo: '/code/app',
+                board: { plugin_id: 'luca-board', token: 'secret' },
+            },
+        })
+    })
+
     test.each([
         { why: 'no mode', argv: [] },
         { why: 'both modes', argv: ['--demo', '--spec', '3'] },
+        { why: 'a resume and a spec', argv: ['--resume', 'r1', '--spec', '3'] },
+        { why: 'a resume and a demo', argv: ['--resume', 'r1', '--demo'] },
+        {
+            why: 'a resume with a run id',
+            argv: ['--resume', 'r1', '--run-id', 'r2'],
+        },
+        {
+            why: 'a resume with a base',
+            argv: ['--resume', 'r1', '--base', 'dev'],
+        },
+        { why: 'a resume of a bad run id', argv: ['--resume', '../x'] },
         { why: 'a spec that is not a number', argv: ['--spec', 'abc'] },
         { why: 'an unknown flag', argv: ['--demo', '--fast'] },
         { why: 'a run id with a slash', argv: ['--demo', '--run-id', '../x'] },

@@ -50,7 +50,7 @@ import {
 export const DEFAULT_MAX_STEPS = 1000
 
 /** Actions that end `runEngine`'s loop: the run is over. */
-const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+export const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'done',
     'invalid_journal',
 ])
@@ -65,6 +65,7 @@ export const startRun = ({
     config,
     base_branch,
     memory,
+    repo,
 }: {
     journal: Journal
     spec_number: number
@@ -76,12 +77,20 @@ export const startRun = ({
      * `default`). Leave it out for a run without memory.
      */
     memory?: { project_vault: string | null }
+    /** The repo the run is on, so a resume can find it. Defaults to `null`. */
+    repo?: string | null
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
-        content: { spec_number, config, base_branch, memory: memory ?? null },
+        content: {
+            spec_number,
+            config,
+            base_branch,
+            memory: memory ?? null,
+            repo,
+        },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */

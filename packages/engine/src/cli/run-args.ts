@@ -12,10 +12,14 @@ export const BOARD_TOKEN_ENV = 'LUCA_BOARD_TOKEN'
 export const RUN_USAGE = `Usage:
   luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
   luca-run --demo [--run-id <id>] [--board-plugin <id>]
+  luca-run --resume <run-id> [--repo <path>] [--board-plugin <id>]
 
   --spec <n>            Run spec #n of the repo's GitHub issues.
   --demo                A practice run in a throwaway repo: no GitHub, no models.
-  --repo <path>         The repo to run on. Defaults to the current folder.
+  --resume <run-id>     Go on with a run that crashed or was killed, from its
+                        journal: same spec, base branch, and run branch.
+  --repo <path>         The repo to run on. Defaults to the current folder
+                        (for --resume, to the repo the run started in).
   --run-id <id>         The run's id and folder name. Defaults to a new one.
   --base <branch>       The branch the run starts from. Defaults to main.
   --board-plugin <id>   Send the journal to this Paseo board plugin; the
@@ -28,6 +32,49 @@ const RunIdSchema = z
         /^[A-Za-z0-9][A-Za-z0-9_-]*$/,
         'A run id is letters, digits, "-" and "_".'
     )
+
+const boardOf = ({
+    board_plugin,
+    token,
+}: {
+    board_plugin: string | null
+    token: string | null
+}): RunArgsCommon['board'] =>
+    board_plugin === null || token === null
+        ? null
+        : { plugin_id: board_plugin, token }
+
+const BOARD_TOKEN_MESSAGE = `--board-plugin needs the run's token in $${BOARD_TOKEN_ENV}.`
+
+const resumeArgsSchema = ({ cwd }: { cwd: string }) =>
+    z
+        .object({
+            resume: RunIdSchema,
+            repo: z
+                .string()
+                .min(1)
+                .transform((path) => resolve(cwd, path))
+                .nullable()
+                .default(null),
+            board_plugin: z.string().min(1).nullable().default(null),
+            token: z.string().nullable().default(null),
+            // The journal already has these.
+            spec: z.undefined('--resume takes the spec from the journal.'),
+            demo: z.undefined('Give only one of --resume or --demo.'),
+            run_id: z.undefined('--resume <run-id> is the run id.'),
+            base: z.undefined('--resume takes the base from the journal.'),
+        })
+        .refine(({ board_plugin, token }) => board_plugin === null || token, {
+            message: BOARD_TOKEN_MESSAGE,
+        })
+        .transform(
+            ({ resume, repo, board_plugin, token }): RunArgs => ({
+                mode: 'resume',
+                run_id: resume,
+                repo,
+                board: boardOf({ board_plugin, token }),
+            })
+        )
 
 const runArgsSchema = ({ cwd }: { cwd: string }) =>
     z
@@ -48,7 +95,7 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
             message: 'Give exactly one of --spec <n> or --demo.',
         })
         .refine(({ board_plugin, token }) => board_plugin === null || token, {
-            message: `--board-plugin needs the run's token in $${BOARD_TOKEN_ENV}.`,
+            message: BOARD_TOKEN_MESSAGE,
         })
         .transform(
             ({ spec, repo, run_id, base, board_plugin, token }): RunArgs => {
@@ -56,10 +103,7 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
                     repo,
                     run_id,
                     base_branch: base,
-                    board:
-                        board_plugin === null || token === null
-                            ? null
-                            : { plugin_id: board_plugin, token },
+                    board: boardOf({ board_plugin, token }),
                 }
                 return spec === undefined
                     ? { mode: 'demo', ...common }
@@ -81,6 +125,13 @@ type RunArgsCommon = {
 export type RunArgs =
     | (RunArgsCommon & { mode: 'spec'; spec_number: number })
     | (RunArgsCommon & { mode: 'demo' })
+    | {
+          mode: 'resume'
+          run_id: string
+          /** `null` for the repo the run started in (or the current folder). */
+          repo: string | null
+          board: RunArgsCommon['board']
+      }
 
 /**
  * Reads `luca-run`'s command line. Never throws: bad flags come back as
@@ -112,6 +163,7 @@ export const parseRunArgs = ({
             options: {
                 spec: { type: 'string' },
                 demo: { type: 'boolean' },
+                resume: { type: 'string' },
                 repo: { type: 'string' },
                 'run-id': { type: 'string' },
                 base: { type: 'string' },
@@ -122,7 +174,12 @@ export const parseRunArgs = ({
         const message = error instanceof Error ? error.message : String(error)
         return { ok: false, error: `${message}\n\n${RUN_USAGE}` }
     }
-    const parsed = runArgsSchema({ cwd }).safeParse({
+    const schema =
+        values.resume === undefined
+            ? runArgsSchema({ cwd })
+            : resumeArgsSchema({ cwd })
+    const parsed = schema.safeParse({
+        resume: values.resume,
         spec: values.spec,
         demo: values.demo,
         repo: values.repo,

@@ -65,6 +65,11 @@ const RunStartedEntrySchema = z.object({
             .object({ project_vault: z.string().min(1).nullable() })
             .nullable()
             .default(null),
+        /**
+         * The repo the run is on, as an absolute path, so `luca-run --resume`
+         * can find it. `null` in older journals.
+         */
+        repo: z.string().min(1).nullable().default(null),
     }),
 })
 
