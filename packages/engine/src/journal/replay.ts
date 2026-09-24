@@ -958,6 +958,9 @@ const applyRecord = ({
         case 'agent_message':
         case 'agent_message_delivered':
             return next
+        // Others' changes to the shared .git: noted, never acted on.
+        case 'shared_git_changed':
+            return next
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
@@ -1427,6 +1430,7 @@ type TicketRecord = Exclude<
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
+            | 'shared_git_changed'
             | 'final_review_started'
             | 'lens_started'
             | 'lens_finished'

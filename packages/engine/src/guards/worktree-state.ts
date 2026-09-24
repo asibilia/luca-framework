@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
     existsSync,
     lstatSync,
@@ -5,18 +6,23 @@ import {
     readlinkSync,
     type Stats,
 } from 'node:fs'
-import { chmod, mkdir, rm, symlink } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import sortBy from 'lodash/sortBy'
 import uniq from 'lodash/uniq'
 
 import {
+    branchConfigChanges,
     DELETED,
     gitViolations,
+    outsideGitChanges,
     pathViolations,
     watchesIgnored,
+    type ConfigEntry,
     type GitState,
+    type OutsideGitState,
     type Violation,
     type WorktreeState,
 } from './after-turn-check'
@@ -24,24 +30,22 @@ import type { GuardRole } from './role-rules'
 
 import type { EngineConfig } from '../config/engine-config'
 import { FROZEN_INSTALL } from '../gates/lockfile-install'
-import { runCommand, runShell } from '../shell/run-command'
+import { runCommand, runShell, type CommandResult } from '../shell/run-command'
 
-/** A file in the shared `.git` as it was: its bytes and mode, or a link. */
-type SavedFile =
-    | { kind: 'file'; bytes: Uint8Array; mode: number }
-    | { kind: 'link'; target: string }
-    | { kind: 'missing' }
-
-/** What the undo of git state needs that the comparison does not. */
+/** What the check and the undo of git state need beyond the comparison. */
 type SavedGit = {
     /** The repo's shared `.git` folder. */
     common_dir: string
     /** Every branch and tag, and the commit or tag object it names. */
     refs: Record<string, string>
-    config: SavedFile
-    exclude: SavedFile
-    /** Each entry of `.git/hooks`, by name. */
-    hooks: Record<string, SavedFile>
+    /**
+     * The ignore rules from before the turn: the global excludes file, then
+     * the shared `.git/info/exclude`. The check lists files with these, not
+     * the live ones, so an excludes entry added mid-turn hides nothing.
+     */
+    exclude_rules: Uint8Array
+    /** The rest of the shared `.git`, to tell what others changed. */
+    outside: OutsideGitState
 }
 
 /**
@@ -58,6 +62,45 @@ export type TurnSnapshot = WorktreeState & {
     saved_git: SavedGit
 }
 
+/**
+ * Put before every git command the check runs, so an fsmonitor or hook
+ * someone planted in the shared `.git` never runs for the engine.
+ */
+const SAFE_GIT = [
+    '-c',
+    'core.fsmonitor=false',
+    '-c',
+    'core.hooksPath=/dev/null',
+]
+
+/** A git run, and why git could not start (such as `cwd` being gone). */
+type GitRun = CommandResult & { start_error: string | null }
+
+const runGit = async ({
+    cwd,
+    args,
+}: {
+    cwd: string
+    args: string[]
+}): Promise<GitRun> => {
+    try {
+        const result = await runCommand({
+            cmd: ['git', ...SAFE_GIT, ...args],
+            cwd,
+            timeout_ms: 60_000,
+        })
+        return { ...result, start_error: null }
+    } catch (error) {
+        return {
+            exit_code: null,
+            stdout: '',
+            stderr: '',
+            timed_out: false,
+            start_error: error instanceof Error ? error.message : String(error),
+        }
+    }
+}
+
 const git = async ({
     cwd,
     args,
@@ -65,13 +108,22 @@ const git = async ({
     cwd: string
     args: string[]
 }): Promise<{ ok: boolean; stdout: string }> => {
-    const result = await runCommand({
-        cmd: ['git', ...args],
-        cwd,
-        timeout_ms: 60_000,
-    })
+    const result = await runGit({ cwd, args })
     return { ok: result.exit_code === 0, stdout: result.stdout }
 }
+
+/** Why a git run failed, said even when git printed nothing. */
+const gitFailure = ({ cwd, run }: { cwd: string; run: GitRun }): string =>
+    [
+        run.start_error !== null
+            ? `could not start (${run.start_error})`
+            : run.timed_out
+              ? 'timed out'
+              : run.exit_code === null
+                ? 'killed'
+                : `exit code ${run.exit_code}`,
+        ...(existsSync(cwd) ? [] : ['the folder no longer exists']),
+    ].join(', ')
 
 const gitOk = async ({
     cwd,
@@ -80,14 +132,11 @@ const gitOk = async ({
     cwd: string
     args: string[]
 }): Promise<string> => {
-    const result = await runCommand({
-        cmd: ['git', ...args],
-        cwd,
-        timeout_ms: 60_000,
-    })
+    const result = await runGit({ cwd, args })
     if (result.exit_code !== 0) {
+        const output = (result.stderr || result.stdout).trim()
         throw new Error(
-            `git ${args.join(' ')} failed in ${cwd}:\n${result.stderr || result.stdout}`
+            `git ${args.join(' ')} failed in ${cwd}: ${gitFailure({ cwd, run: result })}${output === '' ? '' : `\n${output}`}`
         )
     }
     return result.stdout
@@ -96,14 +145,94 @@ const gitOk = async ({
 const nulSplit = (text: string): string[] =>
     text.split('\0').filter((part) => part.length > 0)
 
-/** Every path `git status` lists, renamed-from paths included. */
-const statusPaths = async ({ cwd }: { cwd: string }): Promise<string[]> => {
-    const parts = nulSplit(
-        await gitOk({
+/** The global excludes file git would use. */
+const globalExcludesFile = async ({
+    cwd,
+}: {
+    cwd: string
+}): Promise<string> => {
+    const set = await git({
+        cwd,
+        args: ['config', '--path', '--get', 'core.excludesFile'],
+    })
+    const xdg = process.env.XDG_CONFIG_HOME
+    return set.ok
+        ? set.stdout.trim()
+        : join(
+              xdg !== undefined && xdg !== ''
+                  ? xdg
+                  : join(homedir(), '.config'),
+              'git/ignore'
+          )
+}
+
+/**
+ * The ignore rules git would use but for `.gitignore` files: the global
+ * excludes file, then the shared `.git/info/exclude` (whose lines win).
+ */
+const excludeRules = async ({
+    global,
+    common_dir,
+}: {
+    global: string
+    common_dir: string
+}): Promise<Uint8Array> => {
+    const read = async (full: string) =>
+        existsSync(full) && lstatSync(full).isFile()
+            ? Bun.file(full).text()
+            : ''
+    const [globalRules, shared] = await Promise.all([
+        read(global),
+        read(join(common_dir, 'info/exclude')),
+    ])
+    return new TextEncoder().encode(`${globalRules}\n${shared}`)
+}
+
+/** Runs `use` with the rules written to a temp file, removed after. */
+const withExcludeFile = async <Result>({
+    rules,
+    use,
+}: {
+    rules: Uint8Array
+    use: (file: string) => Promise<Result>
+}): Promise<Result> => {
+    const file = join(tmpdir(), `luca-engine-exclude-${randomUUID()}`)
+    await Bun.write(file, rules)
+    try {
+        return await use(file)
+    } finally {
+        await rm(file, { force: true })
+    }
+}
+
+/** The `ls-files` options that ignore by the snapshot's rules. */
+const excludeArgs = (file: string): string[] => [
+    `--exclude-from=${file}`,
+    '--exclude-per-directory=.gitignore',
+]
+
+/**
+ * Every changed path: tracked and staged changes (renamed-from paths
+ * included), and untracked files the snapshot's rules don't ignore.
+ */
+const changedPaths = async ({
+    cwd,
+    exclude_file,
+}: {
+    cwd: string
+    exclude_file: string
+}): Promise<string[]> => {
+    const [status, others] = await Promise.all([
+        gitOk({
             cwd,
-            args: ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
-        })
-    )
+            args: ['status', '--porcelain=v1', '-z', '--untracked-files=no'],
+        }),
+        gitOk({
+            cwd,
+            args: ['ls-files', '--others', '-z', ...excludeArgs(exclude_file)],
+        }),
+    ])
+    const parts = nulSplit(status)
     const paths: string[] = []
     for (let index = 0; index < parts.length; index += 1) {
         const part = parts[index] ?? ''
@@ -113,16 +242,18 @@ const statusPaths = async ({ cwd }: { cwd: string }): Promise<string[]> => {
             paths.push(parts[index] ?? '')
         }
     }
-    return paths
+    return [...paths, ...nulSplit(others)]
 }
 
 /** The ignored paths the after-turn check watches (see `watchesIgnored`). */
 const watchedIgnoredPaths = async ({
     cwd,
     config,
+    exclude_file,
 }: {
     cwd: string
     config: EngineConfig
+    exclude_file: string
 }): Promise<string[]> =>
     nulSplit(
         await gitOk({
@@ -131,7 +262,7 @@ const watchedIgnoredPaths = async ({
                 'ls-files',
                 '--others',
                 '--ignored',
-                '--exclude-standard',
+                ...excludeArgs(exclude_file),
                 '-z',
             ],
         })
@@ -177,79 +308,88 @@ const hashPath = async ({
     return hashBytes(await Bun.file(full).bytes())
 }
 
-const saveFile = async (full: string): Promise<SavedFile> => {
-    const stat = lstatOrNull(full)
-    if (stat === null) return { kind: 'missing' }
-    if (stat.isSymbolicLink())
-        return { kind: 'link', target: readlinkSync(full) }
-    return {
-        kind: 'file',
-        bytes: await Bun.file(full).bytes(),
-        mode: stat.mode,
-    }
-}
-
-const writeSaved = async ({
-    full,
-    saved,
-}: {
-    full: string
-    saved: SavedFile
-}): Promise<void> => {
-    await rm(full, { force: true, recursive: true })
-    if (saved.kind === 'missing') return
-    await mkdir(dirname(full), { recursive: true })
-    if (saved.kind === 'link') {
-        await symlink(saved.target, full)
-        return
-    }
-    await Bun.write(full, saved.bytes)
-    await chmod(full, saved.mode & 0o7777)
-}
-
-const hashSaved = (saved: SavedFile): string => {
-    if (saved.kind === 'missing') return 'missing'
-    if (saved.kind === 'link') return `link:${saved.target}`
-    return hashBytes(saved.bytes)
-}
-
-const hooksDir = (common_dir: string): string => join(common_dir, 'hooks')
-
-/** The shared `.git` files an agent must not change, as they are now. */
-const saveSharedGit = async ({
+/** Name, mode, and content hash of each `.git/hooks` entry. */
+const hooksState = async ({
     common_dir,
 }: {
     common_dir: string
-}): Promise<Omit<SavedGit, 'refs'>> => {
-    const dir = hooksDir(common_dir)
-    const hooks: Record<string, SavedFile> = {}
-    if (existsSync(dir)) {
-        for (const name of sortBy(readdirSync(dir))) {
-            hooks[name] = await saveFile(join(dir, name))
-        }
+}): Promise<string[]> => {
+    const dir = join(common_dir, 'hooks')
+    if (!existsSync(dir)) return ['missing']
+    const hooks: string[] = []
+    for (const name of sortBy(readdirSync(dir))) {
+        const stat = lstatSync(join(dir, name))
+        hooks.push(
+            `${name} ${stat.mode.toString(8)} ${await hashPath({ cwd: dir, path: name })}`
+        )
     }
-    return {
-        common_dir,
-        config: await saveFile(join(common_dir, 'config')),
-        exclude: await saveFile(join(common_dir, 'info/exclude')),
-        hooks,
-    }
+    return hooks
 }
 
-const hooksState = ({
-    hooks,
-    exists,
+/** Every entry of the shared `.git/config`, in file order, includes not followed. */
+const configEntries = async ({
+    cwd,
+    common_dir,
 }: {
-    hooks: Record<string, SavedFile>
-    exists: boolean
-}): string[] =>
-    exists
-        ? Object.entries(hooks).map(([name, saved]) =>
-              saved.kind === 'file'
-                  ? `${name} ${saved.mode.toString(8)} ${hashSaved(saved)}`
-                  : `${name} ${hashSaved(saved)}`
-          )
-        : ['missing']
+    cwd: string
+    common_dir: string
+}): Promise<ConfigEntry[]> =>
+    nulSplit(
+        await gitOk({
+            cwd,
+            args: [
+                'config',
+                '--file',
+                join(common_dir, 'config'),
+                '--list',
+                '-z',
+            ],
+        })
+    ).map((entry) => {
+        const at = entry.indexOf('\n')
+        return at === -1
+            ? { key: entry, value: null }
+            : { key: entry.slice(0, at), value: entry.slice(at + 1) }
+    })
+
+/**
+ * Whether a config key is in the ticket branch's own section,
+ * `branch.<branch>.<name>`. The branch name is matched exactly, and the
+ * name after it has no dots, so `branch.a.b.remote` is branch `a.b`'s.
+ */
+const isOwnKey = ({ key, branch }: { key: string; branch: string }) => {
+    const prefix = `branch.${branch}.`
+    return key.startsWith(prefix) && !key.slice(prefix.length).includes('.')
+}
+
+/** The shared `.git` as the check sees it: the branch's section, and the rest. */
+const sharedGitState = async ({
+    cwd,
+    branch,
+    common_dir,
+}: {
+    cwd: string
+    branch: string
+    common_dir: string
+}): Promise<{ branch_config: ConfigEntry[]; outside: OutsideGitState }> => {
+    const [entries, exclude, hooks] = await Promise.all([
+        configEntries({ cwd, common_dir }),
+        existsSync(join(common_dir, 'info/exclude'))
+            ? hashPath({ cwd: common_dir, path: 'info/exclude' })
+            : DELETED,
+        hooksState({ common_dir }),
+    ])
+    return {
+        branch_config: entries.filter(({ key }) => isOwnKey({ key, branch })),
+        outside: {
+            config: entries
+                .filter(({ key }) => !isOwnKey({ key, branch }))
+                .map((entry) => JSON.stringify(entry)),
+            exclude,
+            hooks,
+        },
+    }
+}
 
 /**
  * Refs this ticket's worktree is not the one to judge: its own branch, and
@@ -297,33 +437,47 @@ const commonDirOf = async ({ cwd }: { cwd: string }): Promise<string> =>
         })
     ).trim()
 
-/** The git state an agent must not change, but for the shared files. */
+/**
+ * The git state an agent must not change, every ref, and the rest of the
+ * shared `.git`, which others may change. The reads don't depend on each
+ * other, so they run at once.
+ */
 const gitState = async ({
     cwd,
     branch,
-    shared,
+    common_dir,
 }: {
     cwd: string
     branch: string
-    shared: Omit<SavedGit, 'refs'>
-}): Promise<{ state: GitState; refs: Record<string, string> }> => {
-    const head = (await gitOk({ cwd, args: ['rev-parse', 'HEAD'] })).trim()
-    const headRef = await git({ cwd, args: ['symbolic-ref', '-q', 'HEAD'] })
-    const branchRef = await git({
-        cwd,
-        args: ['rev-parse', '--verify', '-q', `refs/heads/${branch}`],
-    })
-    const refs = await allRefs({ cwd })
-    const stash = await git({
-        cwd,
-        args: ['stash', 'list', '--format=%H %gs'],
-    })
+    common_dir: string
+}): Promise<{
+    state: GitState
+    refs: Record<string, string>
+    outside: OutsideGitState
+}> => {
+    const [headLines, refs, stash, shared, staged] = await Promise.all([
+        // The commit HEAD names, then the ref it points at (`HEAD` when
+        // detached).
+        gitOk({
+            cwd,
+            args: ['rev-parse', 'HEAD', '--symbolic-full-name', 'HEAD'],
+        }),
+        allRefs({ cwd }),
+        git({ cwd, args: ['stash', 'list', '--format=%H %gs'] }),
+        sharedGitState({ cwd, branch, common_dir }),
+        gitOk({ cwd, args: ['diff', '--cached', '--name-only', '-z'] }),
+    ])
+    const [head = '', headRef = ''] = headLines.trim().split('\n')
+    const byRef = Object.fromEntries(
+        refs.map(({ ref, object }) => [ref, object])
+    )
     return {
-        refs: Object.fromEntries(refs.map(({ ref, object }) => [ref, object])),
+        outside: shared.outside,
+        refs: byRef,
         state: {
             head,
-            head_ref: headRef.ok ? headRef.stdout.trim() : null,
-            branch_ref: branchRef.ok ? branchRef.stdout.trim() : null,
+            head_ref: headRef === '' || headRef === 'HEAD' ? null : headRef,
+            branch_ref: byRef[`refs/heads/${branch}`] ?? null,
             refs_at_head: sortBy(
                 refs
                     .filter(
@@ -335,44 +489,34 @@ const gitState = async ({
             stash: stash.stdout
                 .split('\n')
                 .filter((line) => line.includes(`${branch}:`)),
-            staged: sortBy(
-                nulSplit(
-                    await gitOk({
-                        cwd,
-                        args: ['diff', '--cached', '--name-only', '-z'],
-                    })
-                )
-            ),
-            config_hash: hashSaved(shared.config),
-            exclude_hash: hashSaved(shared.exclude),
-            hooks: hooksState({
-                hooks: shared.hooks,
-                exists: existsSync(hooksDir(shared.common_dir)),
-            }),
+            staged: sortBy(nulSplit(staged)),
+            branch_config: shared.branch_config,
         },
     }
 }
 
 /**
- * The fingerprint of each path `git status` lists, each watched ignored
- * path, and each path in `also` (the paths seen before the turn, so an
- * ignored file that is gone shows as deleted).
+ * The fingerprint of each changed path, each watched ignored path, and each
+ * path in `also` (the paths seen before the turn, so an ignored file that
+ * is gone shows as deleted). Ignore rules come from `exclude_file`.
  */
 const fileStates = async ({
     cwd,
     config,
+    exclude_file,
     also,
 }: {
     cwd: string
     config: EngineConfig
+    exclude_file: string
     also?: string[]
 }): Promise<Record<string, string>> => {
     const files: Record<string, string> = {}
-    const paths = uniq([
-        ...(await statusPaths({ cwd })),
-        ...(await watchedIgnoredPaths({ cwd, config })),
-        ...(also ?? []),
+    const [changed, ignored] = await Promise.all([
+        changedPaths({ cwd, exclude_file }),
+        watchedIgnoredPaths({ cwd, config, exclude_file }),
     ])
+    const paths = uniq([...changed, ...ignored, ...(also ?? [])])
     for (const path of paths) {
         files[path] = await hashPath({ cwd, path })
     }
@@ -398,7 +542,18 @@ export const snapshotWorktree = async ({
     branch: string
     config: EngineConfig
 }): Promise<TurnSnapshot> => {
-    const files = await fileStates({ cwd, config })
+    const [common_dir, global] = await Promise.all([
+        commonDirOf({ cwd }),
+        globalExcludesFile({ cwd }),
+    ])
+    const exclude_rules = await excludeRules({ global, common_dir })
+    const [files, { state, refs, outside }] = await Promise.all([
+        withExcludeFile({
+            rules: exclude_rules,
+            use: (exclude_file) => fileStates({ cwd, config, exclude_file }),
+        }),
+        gitState({ cwd, branch, common_dir }),
+    ])
     const saved: Record<string, Uint8Array | null> = {}
     for (const [path, hash] of Object.entries(files)) {
         const full = join(cwd, path)
@@ -406,52 +561,11 @@ export const snapshotWorktree = async ({
             hash !== DELETED && !inPackages(path) && lstatSync(full).isFile()
         saved[path] = plain ? await Bun.file(full).bytes() : null
     }
-    const shared = await saveSharedGit({
-        common_dir: await commonDirOf({ cwd }),
-    })
-    const { state, refs } = await gitState({ cwd, branch, shared })
-    return { files, saved, git: state, saved_git: { ...shared, refs } }
-}
-
-/**
- * Puts the shared `.git` config, excludes, and hooks back. It runs before
- * any other git command, so a changed config (such as `core.fsmonitor`)
- * never runs for the engine.
- */
-const restoreSharedGit = async ({
-    saved,
-}: {
-    saved: SavedGit
-}): Promise<void> => {
-    const { common_dir } = saved
-    const now = await saveSharedGit({ common_dir })
-    if (hashSaved(now.config) !== hashSaved(saved.config)) {
-        await writeSaved({
-            full: join(common_dir, 'config'),
-            saved: saved.config,
-        })
-    }
-    if (hashSaved(now.exclude) !== hashSaved(saved.exclude)) {
-        await writeSaved({
-            full: join(common_dir, 'info/exclude'),
-            saved: saved.exclude,
-        })
-    }
-    const dir = hooksDir(common_dir)
-    for (const name of Object.keys(now.hooks)) {
-        if (saved.hooks[name] === undefined) {
-            await rm(join(dir, name), { force: true, recursive: true })
-        }
-    }
-    for (const [name, hook] of Object.entries(saved.hooks)) {
-        const current = now.hooks[name]
-        const same =
-            current !== undefined &&
-            hashSaved(current) === hashSaved(hook) &&
-            (current.kind !== 'file' ||
-                hook.kind !== 'file' ||
-                current.mode === hook.mode)
-        if (!same) await writeSaved({ full: join(dir, name), saved: hook })
+    return {
+        files,
+        saved,
+        git: state,
+        saved_git: { common_dir, refs, exclude_rules, outside },
     }
 }
 
@@ -629,14 +743,69 @@ const reinstallPackages = async ({
 }
 
 /**
+ * Puts the ticket branch's own config section back, key by key: each of its
+ * keys now there is unset, then each saved entry is added back in order.
+ * Every other key in the shared `.git/config` stays as it is now, since
+ * other processes write there too. A key with no value comes back as
+ * `true`, which git reads the same.
+ *
+ * @returns Why the undo failed (such as another process holding the
+ *   config's lock), or `null`.
+ */
+const restoreBranchConfig = async ({
+    cwd,
+    before,
+    after,
+    common_dir,
+}: {
+    cwd: string
+    before: GitState
+    after: GitState
+    common_dir: string
+}): Promise<string | null> => {
+    const file = join(common_dir, 'config')
+    const steps = [
+        ...uniq(after.branch_config.map(({ key }) => key)).map((key) => [
+            'config',
+            '--file',
+            file,
+            '--unset-all',
+            key,
+        ]),
+        ...before.branch_config.map(({ key, value }) => [
+            'config',
+            '--file',
+            file,
+            '--add',
+            key,
+            value ?? 'true',
+        ]),
+    ]
+    for (const args of steps) {
+        const result = await git({ cwd, args })
+        if (!result.ok) {
+            return `git ${args.join(' ')} failed, so the ticket branch's settings in the shared .git/config may still hold what the agent changed`
+        }
+    }
+    return null
+}
+
+/**
  * The after-turn check: compares the worktree and its git state with the
  * snapshot from before the turn, against the role's rules. Undoes every
- * violation: the shared `.git` config, excludes, and hooks first (before
- * any git command runs), then HEAD, the branch, the index, new refs, and
- * new stash entries, then each path the role may not write (tracked paths
- * as they were, new paths removed, `node_modules` reinstalled).
+ * violation: HEAD, the branch, the index, new refs, new stash entries, and
+ * the ticket branch's own settings in the shared `.git/config` (key by
+ * key), then each path the role may not write (tracked paths as they were,
+ * new paths removed, `node_modules` reinstalled).
  *
- * @returns Every violation found, empty when the turn kept to the rules.
+ * The rest of the shared `.git` (other config keys, `info/exclude`, hooks)
+ * is other processes' to change: a change there is returned in `outside`,
+ * never blamed on the agent, and never undone. So it can't fool the check,
+ * every git command runs with no fsmonitor and no hooks, and files are
+ * listed with the ignore rules from before the turn.
+ *
+ * @returns Every violation found, empty when the turn kept to the rules,
+ *   and what changed in the shared `.git` that isn't the agent's.
  */
 export const enforceAfterTurn = async ({
     cwd,
@@ -653,28 +822,60 @@ export const enforceAfterTurn = async ({
     may_edit_tests: boolean
     config: EngineConfig
     before: TurnSnapshot
-}): Promise<{ violations: Violation[] }> => {
-    const shared = await saveSharedGit({
-        common_dir: before.saved_git.common_dir,
-    })
-    await restoreSharedGit({ saved: before.saved_git })
-    const { state: after } = await gitState({ cwd, branch, shared })
-    const gitProblems = gitViolations({ before: before.git, after })
-    if (gitProblems.length > 0) {
-        await restoreGit({
-            cwd,
-            branch,
-            before: before.git,
-            after,
-            saved: before.saved_git,
-        })
-    }
-    // After a git undo, what the agent committed or staged shows as files.
-    const files = await fileStates({
-        cwd,
-        config,
-        also: Object.keys(before.files),
-    })
+}): Promise<{ violations: Violation[]; outside: string[] }> => {
+    const { common_dir } = before.saved_git
+    const { gitProblems, outside, configFailed, files } = await withExcludeFile(
+        {
+            rules: before.saved_git.exclude_rules,
+            use: async (exclude_file) => {
+                const listFiles = () =>
+                    fileStates({
+                        cwd,
+                        config,
+                        exclude_file,
+                        also: Object.keys(before.files),
+                    })
+                // Both only read, so the files are listed while git is.
+                const [now, listed] = await Promise.all([
+                    gitState({ cwd, branch, common_dir }),
+                    listFiles(),
+                ])
+                const problems = gitViolations({
+                    before: before.git,
+                    after: now.state,
+                })
+                if (problems.length > 0) {
+                    await restoreGit({
+                        cwd,
+                        branch,
+                        before: before.git,
+                        after: now.state,
+                        saved: before.saved_git,
+                    })
+                }
+                const failed =
+                    branchConfigChanges({
+                        before: before.git,
+                        after: now.state,
+                    }).length === 0
+                        ? null
+                        : await restoreBranchConfig({
+                              cwd,
+                              before: before.git,
+                              after: now.state,
+                              common_dir,
+                          })
+                return {
+                    gitProblems: problems,
+                    outside: now.outside,
+                    configFailed: failed,
+                    // After a git undo, what the agent committed or staged
+                    // shows as files, so they are listed again.
+                    files: problems.length > 0 ? await listFiles() : listed,
+                }
+            },
+        }
+    )
     const pathProblems = pathViolations({
         role,
         may_edit_tests,
@@ -702,9 +903,15 @@ export const enforceAfterTurn = async ({
         violations: [
             ...gitProblems,
             ...pathProblems,
-            ...(failed === null
-                ? []
-                : [{ kind: 'undo_failed' as const, detail: failed }]),
+            ...[configFailed, failed].flatMap((detail) =>
+                detail === null
+                    ? []
+                    : [{ kind: 'undo_failed' as const, detail }]
+            ),
         ],
+        outside: outsideGitChanges({
+            before: before.saved_git.outside,
+            after: outside,
+        }),
     }
 }

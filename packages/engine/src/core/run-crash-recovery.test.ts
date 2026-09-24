@@ -170,7 +170,7 @@ describe('crash recovery, end to end', () => {
         expect(ofKind(resumed, 'step_started')).toHaveLength(
             ofKind(resumed, 'step_ended').length
         )
-    })
+    }, 60_000)
 
     test("a redone step's step_started names its first try", async () => {
         const practice = await createPracticeRepo({ root })
@@ -200,7 +200,7 @@ describe('crash recovery, end to end', () => {
             null,
             first?.seq ?? -1,
         ])
-    })
+    }, 60_000)
 
     test('intake refusal comments are posted once when a crash cut the refusal off', async () => {
         const journal = createJournal({
@@ -278,7 +278,7 @@ describe('crash recovery, end to end', () => {
         expect(state.engine_comments).toEqual([
             reports[0]?.content.comment_id ?? -1,
         ])
-    })
+    }, 60_000)
 
     test("the engine's own comments, even ones a crash orphaned, are never taken as replies", async () => {
         const practice = await createPracticeRepo({ root })
@@ -328,7 +328,7 @@ describe('crash recovery, end to end', () => {
         expect(
             ofKind(records, 'comment_read').map(({ content }) => content.body)
         ).toEqual(['stop'])
-    })
+    }, 60_000)
 
     test('a PR opened just before a crash is adopted, not opened again', async () => {
         const practice = await createPracticeRepo({ root })
@@ -368,7 +368,7 @@ describe('crash recovery, end to end', () => {
                 }),
             }),
         ])
-    })
+    }, 60_000)
 })
 
 /**

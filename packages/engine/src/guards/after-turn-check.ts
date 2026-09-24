@@ -28,10 +28,28 @@ export type GitState = {
     stash: string[]
     /** Paths staged in the index. */
     staged: string[]
-    /** Hash of the shared `.git/config`. */
-    config_hash: string
-    /** Hash of the shared `.git/info/exclude`, which hides files from git. */
-    exclude_hash: string
+    /**
+     * The ticket branch's own section of the shared `.git/config`
+     * (`branch.<branch>.*`), in file order. Only this worktree works on its
+     * branch, so a change here is the agent's.
+     */
+    branch_config: ConfigEntry[]
+}
+
+/** One `.git/config` entry; `value` is `null` for a bare `key` line. */
+export type ConfigEntry = { key: string; value: string | null }
+
+/**
+ * The rest of the shared `.git`: config entries outside the ticket branch's
+ * own section, `info/exclude`, and `hooks`. Other processes in the same repo
+ * change these (a `git push -u` writes its branch's config), and the agent
+ * can't, so a change here is never blamed on it or undone.
+ */
+export type OutsideGitState = {
+    /** Each config entry outside the branch's section, in file order. */
+    config: string[]
+    /** Hash of the shared `.git/info/exclude`. */
+    exclude: string
     /** Name, mode, and content hash of each shared `.git/hooks` entry. */
     hooks: string[]
 }
@@ -163,17 +181,73 @@ export const gitViolations = ({
     if (before.staged.join('\n') !== after.staged.join('\n')) {
         details.push(`staged files: ${after.staged.join(', ') || '(none)'}`)
     }
-    if (before.config_hash !== after.config_hash) {
-        details.push('the shared .git/config changed')
-    }
-    if (before.exclude_hash !== after.exclude_hash) {
-        details.push('the shared .git/info/exclude changed')
-    }
-    if (before.hooks.join('\n') !== after.hooks.join('\n')) {
-        details.push('the shared .git/hooks changed')
+    const keys = branchConfigChanges({ before, after })
+    if (keys.length > 0) {
+        details.push(
+            `the shared .git/config changed this ticket's branch settings: ${keys.join(', ')}`
+        )
     }
     return details.map((detail) => ({ kind: 'git', detail }))
 }
+
+/** The values a config section holds for each key, in file order. */
+const valuesByKey = (entries: ConfigEntry[]): Record<string, string> => {
+    const values: Record<string, string[]> = {}
+    for (const { key, value } of entries) {
+        values[key] = [...(values[key] ?? []), JSON.stringify(value)]
+    }
+    return Object.fromEntries(
+        Object.entries(values).map(([key, list]) => [key, list.join('\n')])
+    )
+}
+
+/**
+ * The ticket branch's config keys whose values changed between two
+ * snapshots, sorted.
+ *
+ * @example
+ * branchConfigChanges({ before, after }) // ['branch.x--ticket-11.sneaky']
+ */
+export const branchConfigChanges = ({
+    before,
+    after,
+}: {
+    before: GitState
+    after: GitState
+}): string[] => {
+    const was = valuesByKey(before.branch_config)
+    const now = valuesByKey(after.branch_config)
+    return sortBy(
+        uniq([...Object.keys(was), ...Object.keys(now)]).filter(
+            (key) => was[key] !== now[key]
+        )
+    )
+}
+
+/**
+ * What changed in the shared `.git` outside the agent's reach, in words.
+ * These are journaled, never blamed on the agent, and never undone.
+ *
+ * @example
+ * outsideGitChanges({ before, after }) // ['the shared .git/config changed']
+ */
+export const outsideGitChanges = ({
+    before,
+    after,
+}: {
+    before: OutsideGitState
+    after: OutsideGitState
+}): string[] => [
+    ...(before.config.join('\n') === after.config.join('\n')
+        ? []
+        : ['the shared .git/config changed']),
+    ...(before.exclude === after.exclude
+        ? []
+        : ['the shared .git/info/exclude changed']),
+    ...(before.hooks.join('\n') === after.hooks.join('\n')
+        ? []
+        : ['the shared .git/hooks changed']),
+]
 
 /** A clear error listing each violation, for the journal and the ticket. */
 export const describeViolations = ({

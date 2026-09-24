@@ -260,7 +260,8 @@ are removed; the rest stay for later. Branches and the journal always stay.
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
-how it failed), or `run_stopped` (see Guards). Any step may be preceded by a
+how it failed), `shared_git_changed` (something else changed the shared
+`.git` during the turn; see Guards), or `run_stopped` (see Guards). Any step may be preceded by a
 limit wait or a billing stop, and a finished ticket and the run's end by
 `usage_recorded` (see Plan limits and billing). The scheduler wraps every
 step but a wait in `step_started` and `step_ended`, and a restarted engine
@@ -778,9 +779,20 @@ also holds its journal).
 - **Undoing a violation** puts back each offending path's bytes from before
   the turn (tracked paths from HEAD, new paths removed), and moves HEAD and
   the branch back with a mixed reset, which keeps the files (#384):
-  - The shared `.git/config`, `.git/info/exclude`, and `.git/hooks` go back
-    to their saved bytes first, before the engine runs any git command, so a
-    planted `core.fsmonitor` or hook never runs for it.
+  - In the shared `.git`, only the ticket branch's own config section
+    (`branch.<branch>.*`) is the agent's: no one else works on that branch
+    during the turn, and the engine pushes without `-u`. A change there is
+    undone key by key (its keys unset, the saved entries added back in
+    order); every other key in `.git/config` stays as it is (#396).
+  - The rest of the shared `.git` (other config keys, `info/exclude`,
+    `hooks`) is changed by other processes in the same repo, such as
+    another agent's `git push -u`, and the sandbox and guard keep the agent
+    out of it. A change there is journaled as `shared_git_changed`, never
+    blamed on the agent, and never undone. It can't fool the check either:
+    every git command the check runs has `core.fsmonitor=false` and
+    `core.hooksPath=/dev/null`, and files are listed with the ignore rules
+    from before the turn (the global excludes file, then `info/exclude`),
+    not the live ones, so an excludes entry added mid-turn hides nothing.
   - A new branch or tag at HEAD is moved to `refs/luca-undone/...`, never
     deleted: refs are shared, and the engine can't tell who made one. The
     engine's own run and ticket branches are left out of this check.
@@ -908,8 +920,12 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
    hashes, never mtimes), ignored files that matter included. Any path the
    agent may not write, or any git change (HEAD, the branch, new refs at
    HEAD other than the run branch and its ticket branches, the branch's
-   stash, the index, `.git/config`, `.git/info/exclude`, `.git/hooks`), is
-   undone and fails the turn as `guard`.
+   stash, the index, the ticket branch's own section of the shared
+   `.git/config`), is undone and fails the turn as `guard`. Other changes
+   to the shared `.git` (other config keys, `info/exclude`, hooks) are
+   other processes', not the agent's: they are journaled as
+   `shared_git_changed`, never blamed or undone, and the check ignores the
+   live excludes, fsmonitor, and hooks.
    This holds for every launcher and every turn, follow-ups too.
 
 Before each launch, the launcher checks `accountInfo()` for a Claude plan

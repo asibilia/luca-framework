@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { chmod, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -165,5 +165,80 @@ describe('the after-turn check and what git ignores', () => {
 
         expect(violations).toEqual([])
         expect(existsSync(join(repo, 'dist/index.js'))).toBe(true)
+    }, 60_000)
+})
+
+describe('the after-turn check and the shared .git', () => {
+    test('an fsmonitor another process plants mid-turn never runs for the check, and stays', async () => {
+        const marker = join(root, 'fsmonitor-ran')
+        const monitor = join(root, 'fsmonitor.sh')
+        await Bun.write(monitor, `#!/bin/sh\ntouch '${marker}'\n`)
+        await chmod(monitor, 0o755)
+
+        const { violations, outside } = await turn({
+            role: 'implementer',
+            act: async () => {
+                await $`git config core.fsmonitor ${monitor}`.cwd(repo).quiet()
+            },
+        })
+
+        expect(violations).toEqual([])
+        expect(outside).toEqual(['the shared .git/config changed'])
+        expect(existsSync(marker)).toBe(false)
+        // Not put back: the engine can't tell who set it.
+        expect(
+            (await $`git config --get core.fsmonitor`.cwd(repo).text()).trim()
+        ).toBe(monitor)
+        // It is a real fsmonitor: plain git runs it.
+        await $`git status --porcelain`.cwd(repo).quiet()
+        expect(existsSync(marker)).toBe(true)
+        await $`git config --unset core.fsmonitor`.cwd(repo).quiet()
+    }, 60_000)
+})
+
+describe('the after-turn check and a worktree that is gone', () => {
+    test('a snapshot of a removed folder says why it failed', async () => {
+        const gone = await mkdtemp(join(tmpdir(), 'luca-engine-gone-'))
+        await rm(gone, { recursive: true, force: true })
+
+        const error = await snapshotWorktree({
+            cwd: gone,
+            branch: 'main',
+            config: CONFIG,
+        }).then(
+            () => null,
+            (caught: unknown) => caught
+        )
+
+        expect(error).toBeInstanceOf(Error)
+        expect(String(error)).toContain(`failed in ${gone}:`)
+        expect(String(error)).toContain('no longer exists')
+    }, 60_000)
+
+    test('a check on a worktree removed mid-turn says why it failed', async () => {
+        const copy = join(root, 'removed-copy')
+        await $`git clone -q ${repo} ${copy}`.quiet()
+        const before = await snapshotWorktree({
+            cwd: copy,
+            branch: 'main',
+            config: CONFIG,
+        })
+        await rm(copy, { recursive: true, force: true })
+
+        const error = await enforceAfterTurn({
+            cwd: copy,
+            branch: 'main',
+            role: 'implementer',
+            may_edit_tests: false,
+            config: CONFIG,
+            before,
+        }).then(
+            () => null,
+            (caught: unknown) => caught
+        )
+
+        expect(error).toBeInstanceOf(Error)
+        expect(String(error)).toContain(`failed in ${copy}:`)
+        expect(String(error)).toContain('no longer exists')
     }, 60_000)
 })

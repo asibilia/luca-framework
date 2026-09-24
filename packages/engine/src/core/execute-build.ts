@@ -378,9 +378,10 @@ const failTurn = ({
  * Runs one agent turn, a launch or a follow-up, and journals how it ended.
  * Before the turn the engine snapshots the worktree; after it, the
  * after-turn check undoes and reports anything the role may not change, for
- * every launcher alike. Then the result is judged by its structured output.
- * Each failed turn is journaled once as `agent_failed` with how it failed;
- * the decision step picks what happens next. A launcher stop journals
+ * every launcher alike; what others changed in the shared `.git` meanwhile
+ * is journaled as `shared_git_changed`. Then the result is judged by its
+ * structured output. Each failed turn is journaled once as `agent_failed`
+ * with how it failed; the decision step picks what happens next. A launcher stop journals
  * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
  * overage, a billing error) journals only its session.
  *
@@ -420,7 +421,7 @@ export const runTurn = async ({
         })
     }
     const guard_role = guardRoleOf({ role })
-    const { violations } = await enforceAfterTurn({
+    const { violations, outside } = await enforceAfterTurn({
         cwd: path,
         branch,
         role: guard_role,
@@ -428,6 +429,15 @@ export const runTurn = async ({
         config: context.config,
         before,
     })
+    // Others' changes to the shared .git: noted, never blamed or undone.
+    if (outside.length > 0) {
+        context.journal.append({
+            kind: 'shared_git_changed',
+            ticket,
+            role,
+            content: { role, changes: outside },
+        })
+    }
     // The plan cut the turn off. Its session, journaled above, holds why,
     // and the decision step reads it from there: a limit wait or a billing
     // stop. The turn uses up no try, and its step is taken again. With no
