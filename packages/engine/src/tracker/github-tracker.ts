@@ -28,6 +28,9 @@ const GitHubCommentPostedSchema = z.object({ id: z.number().int() })
 
 const GitHubIssueListSchema = z.array(GitHubIssueSchema)
 
+/** Pull requests as `gh pr list --json number,url` prints them. */
+const GitHubPullListSchema = z.array(OpenedPullRequestSchema)
+
 type GitHubIssue = z.infer<typeof GitHubIssueSchema>
 
 /** Calls `gh api`; `null` when the call fails (such as a 404). */
@@ -170,6 +173,16 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
                 value: { number, url },
                 what: `the pull request from ${head}`,
             })
+        },
+        findOpenPullRequest: async ({ head }) => {
+            const listed =
+                await $`gh pr list --repo ${repo} --head ${head} --state open --json number,url`.quiet()
+            const [pull] = parseOrThrow({
+                schema: GitHubPullListSchema,
+                value: JSON.parse(listed.stdout.toString()),
+                what: `the open pull requests from ${head}`,
+            })
+            return pull ?? null
         },
     }
 }

@@ -43,6 +43,7 @@ import {
 } from '../journal/replay'
 import { sessionSignal } from '../limits/plan-signals'
 import { createAgentMessaging } from '../messages/agent-messaging'
+import type { CommentStep } from '../tracker/post-comment-once'
 import type { Tracker } from '../tracker/tracker'
 
 /** What the engine needs, beyond the journal and tracker, to build tickets. */
@@ -59,6 +60,11 @@ export type BuildContext = BuildDeps & {
     config: EngineConfig
     /** The run's folder, next to its journal and outside git. */
     run_dir: string
+    /**
+     * Which try of its step this is: a redo after a crash adopts what its
+     * first try left behind.
+     */
+    step: CommentStep
 }
 
 /** The run branch's name: one per run, so runs never share a branch. */
@@ -691,8 +697,16 @@ export const buildContext = ({
     tracker,
     git,
     launcher,
-}: BuildDeps & { journal: Journal; tracker: Tracker }): BuildContext => {
-    const state = replayRun({ records: journal.read() })
+    step,
+}: BuildDeps & {
+    journal: Journal
+    tracker: Tracker
+    /** Left out, a first try, numbered after the journal's last record. */
+    step?: CommentStep
+}): BuildContext => {
+    const records = journal.read()
+    const state = replayRun({ records })
+    const run_dir = dirname(journal.file)
     return {
         git,
         launcher,
@@ -700,7 +714,12 @@ export const buildContext = ({
         tracker,
         state,
         config: need({ value: state.config, what: 'engine config' }),
-        run_dir: dirname(journal.file),
+        run_dir,
+        step: step ?? {
+            run_id: basename(run_dir),
+            first_seq: (records.at(-1)?.seq ?? 0) + 1,
+            redo: false,
+        },
     }
 }
 
@@ -714,13 +733,16 @@ export const executeBuildAction = async ({
     tracker,
     git,
     launcher,
+    step,
 }: BuildDeps & {
     /** The final review's steps go to `executeFinalReviewAction`. */
     action: Exclude<BuildAction, FinalReviewAction>
     journal: Journal
     tracker: Tracker
+    /** Which try of its step this is. Left out, a first try. */
+    step?: CommentStep
 }): Promise<void> => {
-    const context = buildContext({ journal, tracker, git, launcher })
+    const context = buildContext({ journal, tracker, git, launcher, step })
     const { state, run_dir } = context
     switch (action.type) {
         case 'create_run_branch': {
@@ -906,12 +928,13 @@ export const executeBuildAction = async ({
             return
         case 'open_pull_request': {
             const { head, base, title, body } = action
-            const opened = await tracker.openPullRequest({
-                head,
-                base,
-                title,
-                body,
-            })
+            // A redo adopts the PR its first try opened before the crash.
+            const adopted = context.step.redo
+                ? await tracker.findOpenPullRequest({ head })
+                : null
+            const opened =
+                adopted ??
+                (await tracker.openPullRequest({ head, base, title, body }))
             journal.append({
                 kind: 'pull_request_opened',
                 ticket: null,

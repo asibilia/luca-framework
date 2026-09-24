@@ -9,6 +9,11 @@ import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { Journal } from '../journal/journal'
 import { replayRun } from '../journal/replay'
 import type { EngineClock } from '../limits/limit-wait'
+import {
+    hasLucaMarker,
+    postCommentOnce,
+    type CommentStep,
+} from '../tracker/post-comment-once'
 import type { Tracker, TrackerIssue } from '../tracker/tracker'
 
 /**
@@ -34,7 +39,8 @@ export const ticketChanged = ({
  * telling the spec issue a ticket or the final review is stuck, waiting for
  * and reading its comments, taking or sending back a reply, skipping a
  * ticket (with a comment on it), and shipping (`shipFinalReview`) or
- * retrying the stuck final review.
+ * retrying the stuck final review. Its comments are posted once
+ * (`postCommentOnce`), even when a crash cut off the step after posting.
  */
 export const executeStuckAction = async ({
     action,
@@ -42,6 +48,7 @@ export const executeStuckAction = async ({
     tracker,
     clock,
     reply_poll_ms,
+    step,
 }: {
     action: Exclude<StuckAction, { type: 'undo_join' | 'retry_ticket' }>
     journal: Journal
@@ -49,10 +56,14 @@ export const executeStuckAction = async ({
     clock: EngineClock
     /** Defaults to `REPLY_POLL_MS`. */
     reply_poll_ms?: number
+    /** Which try of its step this is, for its comment's marker. */
+    step: CommentStep
 }): Promise<void> => {
+    const post = ({ number, body }: { number: number; body: string }) =>
+        postCommentOnce({ tracker, number, body, step, n: 0 })
     switch (action.type) {
         case 'report_stuck': {
-            const { id } = await tracker.comment({
+            const { id } = await post({
                 number: action.spec_number,
                 body: action.body,
             })
@@ -73,7 +84,10 @@ export const executeStuckAction = async ({
                 since_id: action.since_id,
             })
             for (const { id, author, body } of comments) {
-                if (engine_comments.includes(id)) continue
+                // The engine's own comments are no replies, even one a
+                // crash left out of the journal.
+                if (engine_comments.includes(id) || hasLucaMarker(body))
+                    continue
                 journal.append({
                     kind: 'comment_read',
                     ticket: null,
@@ -102,7 +116,7 @@ export const executeStuckAction = async ({
             return
         }
         case 'ignore_reply': {
-            const { id } = await tracker.comment({
+            const { id } = await post({
                 number: action.spec_number,
                 body: action.answer,
             })
@@ -119,7 +133,7 @@ export const executeStuckAction = async ({
             return
         }
         case 'report_final_review_stuck': {
-            const { id } = await tracker.comment({
+            const { id } = await post({
                 number: action.spec_number,
                 body: action.body,
             })
@@ -145,7 +159,7 @@ export const executeStuckAction = async ({
             })
             return
         case 'skip_ticket':
-            await tracker.comment({ number: action.ticket, body: action.body })
+            await post({ number: action.ticket, body: action.body })
             journal.append({
                 kind: 'ticket_skipped',
                 ticket: action.ticket,
@@ -171,15 +185,18 @@ export const retryTicket = async ({
     context: BuildContext
     action: Extract<StuckAction, { type: 'retry_ticket' }>
 }): Promise<void> => {
-    const { state, journal, tracker, git, config } = context
+    const { state, journal, tracker, git, config, step } = context
     const number = action.ticket
     const snapshot = need({
         value: state.snapshot?.tickets[number],
         what: `snapshot of #${number}`,
     })
     const refuse = async (problems: string[]) => {
-        const { id } = await tracker.comment({
+        const { id } = await postCommentOnce({
+            tracker,
             number: action.spec_number,
+            step,
+            n: 0,
             body:
                 `Couldn't retry #${number}: its new text or labels aren't ready to build.\n\n` +
                 `${problems.map((line) => `- ${line}`).join('\n')}\n\n` +

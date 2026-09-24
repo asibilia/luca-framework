@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { runEngine, startRun } from './execute'
 import { CRASH_SECTION } from './fix-loop-text'
 
 import type { AgentLauncher } from '../agents/agent-launcher'
@@ -11,12 +12,22 @@ import {
     createScriptedLauncher,
     type ScriptedTurn,
 } from '../agents/scripted-launcher'
+import type { EngineConfig } from '../config/engine-config'
+import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
+import { specIssue, ticketIssue } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     happyTurns,
     IMPLEMENTER_RESULT,
+    practiceTracker,
 } from '../testing/practice-repo'
+import {
+    createInMemoryTracker,
+    type InMemoryTracker,
+} from '../tracker/in-memory-tracker'
+import { hasLucaMarker } from '../tracker/post-comment-once'
 
 /**
  * Seam 2 for crash recovery (#369): the scheduler journals each step it
@@ -63,6 +74,31 @@ const crashingOn = ({
             ? Promise.reject(new Error('The engine crashed.'))
             : launcher.followUp(args),
 })
+
+/**
+ * A tracker whose `comment` on issue `number` posts for real, then throws
+ * once, as if the engine died before journaling the comment.
+ */
+const crashAfterComment = ({
+    tracker,
+    number,
+}: {
+    tracker: InMemoryTracker
+    number: number
+}): InMemoryTracker => {
+    let crashed = false
+    return {
+        ...tracker,
+        comment: async (args) => {
+            const posted = await tracker.comment(args)
+            if (!crashed && args.number === number) {
+                crashed = true
+                throw new Error('The engine crashed.')
+            }
+            return posted
+        },
+    }
+}
 
 const ofKind = <Kind extends JournalRecord['kind']>(
     records: JournalRecord[],
@@ -161,6 +197,174 @@ describe('crash recovery, end to end', () => {
         expect(starts.map(({ content }) => content.first_seq)).toEqual([
             null,
             first?.seq ?? -1,
+        ])
+    })
+
+    test('intake refusal comments are posted once when a crash cut the refusal off', async () => {
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir: root, run_id: 'run-1' }),
+        })
+        const config: EngineConfig = {
+            checks: { test: 'bun test' },
+            test_file_patterns: ['**/*.test.ts'],
+            test_setup_files: [],
+            rule_files: [],
+        }
+        const tracker = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+                ticketIssue({ number: 13, labels: ['enhancement'] }),
+            ],
+            sub_tickets: { 10: [12, 13] },
+        })
+        startRun({ journal, spec_number: 10, config })
+
+        await expect(
+            runEngine({
+                journal,
+                tracker: crashAfterComment({ tracker, number: 13 }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        for (const number of [12, 13]) {
+            const comments = tracker.commentsOn({ number })
+            expect(comments).toHaveLength(1)
+            expect(comments[0]).toStartWith('Luca intake refused the run')
+            expect(tracker.labelsOf({ number })).toContain('needs-info')
+        }
+        expect(ofKind(journal.read(), 'intake_refused')).toHaveLength(1)
+    })
+
+    test('a stuck report is posted once when a crash came between posting and journaling it', async () => {
+        const practice = await createPracticeRepo({ root })
+        const tracker = practiceTracker()
+        const crashingLauncher = crashingOn({
+            launcher: createScriptedLauncher({ turns: [] }),
+            kind: 'launch',
+        })
+        // The test-writer's launch is cut off three times: the ticket is stuck.
+        for (const resume of [false, true, true]) {
+            await expect(
+                practice.run({ tracker, resume, launcher: crashingLauncher })
+            ).rejects.toThrow('The engine crashed.')
+        }
+
+        await expect(
+            practice.run({
+                resume: true,
+                tracker: crashAfterComment({ tracker, number: 10 }),
+                launcher: crashingLauncher,
+            })
+        ).rejects.toThrow('The engine crashed.')
+        const { action, records } = await practice.run({
+            resume: true,
+            tracker,
+            launcher: crashingLauncher,
+        })
+
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        const comments = tracker.commentsOn({ number: 10 })
+        expect(comments).toHaveLength(1)
+        expect(comments[0]).toContain('Ticket #11 is stuck')
+        const reports = ofKind(records, 'stuck_reported')
+        expect(reports).toHaveLength(1)
+        const state = replayRun({ records })
+        expect(state.tickets[11]?.stuck?.reason).toBe('crashed')
+        expect(state.engine_comments).toEqual([
+            reports[0]?.content.comment_id ?? -1,
+        ])
+    })
+
+    test("the engine's own comments, even ones a crash orphaned, are never taken as replies", async () => {
+        const practice = await createPracticeRepo({ root })
+        const tracker = practiceTracker()
+        const crashingLauncher = crashingOn({
+            launcher: createScriptedLauncher({ turns: [] }),
+            kind: 'launch',
+        })
+        for (const resume of [false, true, true]) {
+            await practice
+                .run({ tracker, resume, launcher: crashingLauncher })
+                .catch(() => undefined)
+        }
+        let polls = 0
+        const { records } = await practice.run({
+            resume: true,
+            tracker,
+            launcher: crashingLauncher,
+            stop_before: [],
+            clock: {
+                now: () => Date.now(),
+                sleep: async () => {
+                    polls += 1
+                    // An engine comment a crash orphaned: it reads like a
+                    // reply from the owner.
+                    if (polls === 1) {
+                        tracker.addComment({
+                            number: 10,
+                            author: 'spec-owner',
+                            body: 'skip\n\n<!-- luca:old-run:5:0 -->',
+                        })
+                    }
+                    if (polls === 3) {
+                        tracker.addComment({
+                            number: 10,
+                            author: 'spec-owner',
+                            body: 'stop',
+                        })
+                    }
+                },
+            },
+        })
+
+        expect(
+            tracker.commentsOn({ number: 10 }).filter(hasLucaMarker)
+        ).toHaveLength(2)
+        expect(
+            ofKind(records, 'comment_read').map(({ content }) => content.body)
+        ).toEqual(['stop'])
+    })
+
+    test('a PR opened just before a crash is adopted, not opened again', async () => {
+        const practice = await createPracticeRepo({ root })
+        const tracker = practiceTracker()
+        let crashed = false
+        const crashing: InMemoryTracker = {
+            ...tracker,
+            openPullRequest: async (request) => {
+                const opened = await tracker.openPullRequest(request)
+                if (!crashed) {
+                    crashed = true
+                    throw new Error('The engine crashed.')
+                }
+                return opened
+            },
+        }
+        await expect(
+            practice.run({
+                tracker: crashing,
+                turns: Object.values(happyTurns()),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records } = await practice.run({
+            resume: true,
+            tracker,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [pull, ...others] = tracker.pullRequests()
+        expect(others).toEqual([])
+        expect(ofKind(records, 'pull_request_opened')).toEqual([
+            expect.objectContaining({
+                content: expect.objectContaining({
+                    number: pull?.number,
+                    url: pull?.url,
+                }),
+            }),
         ])
     })
 })

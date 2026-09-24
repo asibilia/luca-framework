@@ -1,3 +1,5 @@
+import { basename, dirname } from 'node:path'
+
 import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
@@ -33,6 +35,7 @@ import {
     type EngineClock,
 } from '../limits/limit-wait'
 import type { MemoryDeps } from '../memory/memory-client'
+import { postCommentOnce, type CommentStep } from '../tracker/post-comment-once'
 import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
@@ -125,17 +128,22 @@ const refuseIntake = async ({
     problems,
     journal,
     tracker,
+    step,
 }: {
     spec_number: number
     problems: IntakeProblem[]
     journal: Journal
     tracker: Tracker
+    step: CommentStep
 }) => {
-    for (const { ticket, missing } of problems) {
+    for (const [n, { ticket, missing }] of problems.entries()) {
         if (ticket === null) continue
-        await tracker.comment({
+        await postCommentOnce({
+            tracker,
             number: ticket,
             body: refusalComment({ spec_number, missing }),
+            step,
+            n,
         })
         await tracker.addLabel({ number: ticket, label: NEEDS_INFO_LABEL })
         await tracker.removeLabel({ number: ticket, label: READY_LABEL })
@@ -159,23 +167,28 @@ const executePlanAction = async ({
     journal,
     tracker,
     clock,
+    step,
 }: {
     action: Exclude<PlanAction, { type: 'done' }>
     journal: Journal
     tracker: Tracker
     clock: EngineClock
+    step: CommentStep
 }): Promise<void> => {
     switch (action.type) {
         case 'start_limit_wait': {
             const { rate_limit_type, resets_at, until, ticket, role } = action
             if (action.announce) {
-                await tracker.comment({
+                await postCommentOnce({
+                    tracker,
                     number: action.spec_number,
                     body: limitWaitComment({
                         rate_limit_type,
                         resets_at,
                         until,
                     }),
+                    step,
+                    n: 0,
                 })
             }
             journal.append({
@@ -213,6 +226,14 @@ const executePlanAction = async ({
 }
 
 /**
+ * Which try of its step an action is: the seq of the step's first try (its
+ * first `step_started`), and whether this try redoes one a crash cut off.
+ * A redo adopts the side effects its first try left behind: its comments,
+ * its PR, its worktrees and commits.
+ */
+export type StepTry = { first_seq: number; redo: boolean }
+
+/**
  * Carries out one action: talks to the tracker, then records what happened in
  * the journal. The only impure half of the engine; `decide` picks the action.
  *
@@ -226,6 +247,7 @@ export const executeAction = async ({
     clock,
     reply_poll_ms,
     memory,
+    step,
 }: {
     action: EngineAction
     journal: Journal
@@ -238,9 +260,21 @@ export const executeAction = async ({
     reply_poll_ms?: number
     /** The memory client, for a run with memory on (#370). */
     memory?: MemoryDeps
+    /**
+     * Which try of its step this is, from the scheduler. Left out, it is a
+     * first try, numbered after the journal's last record.
+     */
+    step?: StepTry
 }): Promise<void> => {
     if (isMemoryAction(action)) {
         return executeMemoryAction({ action, journal, tracker, memory, build })
+    }
+    const tried: CommentStep = {
+        run_id: basename(dirname(journal.file)),
+        ...(step ?? {
+            first_seq: (journal.read().at(-1)?.seq ?? 0) + 1,
+            redo: false,
+        }),
     }
     switch (action.type) {
         case 'report_stuck':
@@ -257,6 +291,7 @@ export const executeAction = async ({
                 tracker,
                 clock: clock ?? SYSTEM_CLOCK,
                 reply_poll_ms,
+                step: tried,
             })
         case 'stop_for_crashes':
             journal.append({
@@ -287,6 +322,7 @@ export const executeAction = async ({
                 journal,
                 tracker,
                 clock: clock ?? SYSTEM_CLOCK,
+                step: tried,
             })
         case 'read_intake':
             return readIntake({
@@ -300,6 +336,7 @@ export const executeAction = async ({
                 problems: action.problems,
                 journal,
                 tracker,
+                step: tried,
             })
         case 'finish_nothing_to_do':
             journal.append({
@@ -343,10 +380,21 @@ export const executeAction = async ({
             if (isFinalReviewAction(action)) {
                 return executeFinalReviewAction({
                     action,
-                    context: buildContext({ journal, tracker, ...build }),
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
                 })
             }
-            return executeBuildAction({ action, journal, tracker, ...build })
+            return executeBuildAction({
+                action,
+                journal,
+                tracker,
+                step: tried,
+                ...build,
+            })
     }
 }
 
@@ -485,6 +533,7 @@ const executeWithJev = async ({
     clock,
     reply_poll_ms,
     memory,
+    step,
 }: {
     jev: JevShadow
     action: EngineAction
@@ -494,6 +543,7 @@ const executeWithJev = async ({
     clock?: EngineClock
     reply_poll_ms?: number
     memory?: MemoryDeps
+    step?: StepTry
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -512,6 +562,7 @@ const executeWithJev = async ({
         clock,
         reply_poll_ms,
         memory,
+        step,
     })
     const records = journal.read()
     await askJevInShadow({
@@ -653,7 +704,7 @@ export const runEngine = async ({
     const inFlight = new Map<string, InFlight>()
     let started = 0
 
-    const execute = (action: EngineAction): Promise<void> =>
+    const execute = (action: EngineAction, step?: StepTry): Promise<void> =>
         jev === undefined
             ? executeAction({
                   action,
@@ -663,6 +714,7 @@ export const runEngine = async ({
                   clock,
                   reply_poll_ms,
                   memory,
+                  step,
               })
             : executeWithJev({
                   jev,
@@ -673,6 +725,7 @@ export const runEngine = async ({
                   clock,
                   reply_poll_ms,
                   memory,
+                  step,
               })
     const settleAll = () =>
         Promise.allSettled([...inFlight.values()].map(({ done }) => done))
@@ -703,16 +756,16 @@ export const runEngine = async ({
         if (WAIT_ACTIONS.has(action.type)) return execute(action)
         const step = stepOf(action)
         const who = { ticket: ticketOf(action), role: agentRoleOf(action) }
-        journal.append({
+        const first_seq = stepFirstSeq({ crashes, key, step })
+        const started = journal.append({
             kind: 'step_started',
             ...who,
-            content: {
-                key,
-                step,
-                first_seq: stepFirstSeq({ crashes, key, step }),
-            },
+            content: { key, step, first_seq },
         })
-        await execute(action)
+        await execute(action, {
+            first_seq: first_seq ?? started.seq,
+            redo: first_seq !== null,
+        })
         journal.append({ kind: 'step_ended', ...who, content: { key, step } })
     }
 

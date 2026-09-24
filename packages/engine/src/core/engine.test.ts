@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import escapeRegExp from 'lodash/escapeRegExp'
 
 import type { EngineAction } from './decide'
 import { runEngine, startRun } from './execute'
@@ -91,10 +92,17 @@ describe('engine: intake refuses the run', () => {
         expect(tracker.commentsOn({ number: 11 })).toEqual([])
         expect(tracker.labelsOf({ number: 11 })).toEqual(['ready-for-agent'])
 
+        // Each engine comment ends with its invisible marker.
         expect(tracker.commentsOn({ number: 12 })).toEqual([
-            'Luca intake refused the run for spec #10. This issue is not ready yet:\n\n' +
-                '- The ticket has no checkbox under "Acceptance criteria".\n\n' +
-                'Fix these, move the issue back to `ready-for-agent`, and start the run again.',
+            expect.stringMatching(
+                new RegExp(
+                    `^${escapeRegExp(
+                        'Luca intake refused the run for spec #10. This issue is not ready yet:\n\n' +
+                            '- The ticket has no checkbox under "Acceptance criteria".\n\n' +
+                            'Fix these, move the issue back to `ready-for-agent`, and start the run again.'
+                    )}\n\n<!-- luca:run:\\d+:\\d+ -->$`
+                )
+            ),
         ])
         expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
 
