@@ -3,9 +3,11 @@ import {
     clip,
     countFindings,
     failureText,
+    finalReasonText,
     reasonText,
     rebasedText,
     reviewCountsText,
+    roleWords,
     startKind,
 } from './reduce-board'
 
@@ -191,13 +193,21 @@ export const describeRecord = ({
             })
         }
         case 'agent_started':
-            return startedText({ before, after, record })
+            return record.ticket === null
+                ? finalStartedText({ record })
+                : startedText({ before, after, record })
         case 'agent_finished':
-            return finishedText({ before, record })
+            return record.ticket === null
+                ? finalFinishedText({ record })
+                : finishedText({ before, record })
         case 'agent_failed': {
             const { role, error, failure } = record.content
+            const who =
+                record.ticket === null
+                    ? `Final review: the ${roleWords({ role })}`
+                    : `${at}the ${role}`
             return event({
-                text: `${at}the ${role} ${failureText({ failure })}: ${error.split('\n')[0] ?? ''}`,
+                text: `${who} ${failureText({ failure })}: ${error.split('\n')[0] ?? ''}`,
                 tone: failure === 'engine' ? 'warning' : 'danger',
             })
         }
@@ -231,27 +241,37 @@ export const describeRecord = ({
             return record.content.hits.length === 0
                 ? null
                 : event({
-                      text: `${at}the leftover scan found ${record.content.hits.map((hit) => hit.path).join(', ')}.`,
+                      text: `${record.ticket === null ? 'Final review: ' : at}the leftover scan found ${record.content.hits.map((hit) => hit.path).join(', ')}.`,
                       tone: 'warning',
                   })
         case 'commit_made':
-            return event({
-                text: `${at}${COMMITTED[record.content.stage] ?? 'tests'} committed.`,
-                tone: 'info',
-            })
+            return record.ticket === null
+                ? event({
+                      text: 'Final review: the fixes committed on the run branch.',
+                      tone: 'info',
+                  })
+                : event({
+                      text: `${at}${COMMITTED[record.content.stage] ?? 'tests'} committed.`,
+                      tone: 'info',
+                  })
         case 'gates_run': {
             const where =
-                record.content.target === 'run_branch' ? ' after joining' : ''
+                record.ticket === null
+                    ? ' on the fixes'
+                    : record.content.target === 'run_branch'
+                      ? ' after joining'
+                      : ''
+            const who = record.ticket === null ? 'Final review: ' : at
             const failed = record.content.checks
                 .filter((check) => !check.ok)
                 .map((check) => check.name)
             return record.content.ok
                 ? event({
-                      text: `${at}checks passed${where}.`,
+                      text: `${who}checks passed${where}.`,
                       tone: 'success',
                   })
                 : event({
-                      text: `${at}checks failed${where}: ${failed.join(', ') || 'no detail'}.`,
+                      text: `${who}checks failed${where}: ${failed.join(', ') || 'no detail'}.`,
                       tone: 'danger',
                   })
         }
@@ -314,13 +334,15 @@ export const describeRecord = ({
             })
         case 'final_review_stuck':
             return event({
-                text: `The final review is stuck. ${reasonText({ reason: record.content.reason })}`,
+                text: `The final review is stuck. ${finalReasonText({ reason: record.content.reason })}`,
                 tone: 'danger',
             })
         case 'final_review_passed':
             return event({ text: 'The final review passed.', tone: 'success' })
         case 'agent_message':
             return messageText({ record })
+        case 'final_review_shipped':
+            return event({ text: SHIPPED_TEXT, tone: 'info' })
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':
@@ -365,6 +387,56 @@ const messageText = ({
               text: `${from} → ${to}: ${shown} (not delivered: ${why})`,
               tone: 'warning',
           })
+}
+
+/** A `ship` reply to the stuck final review, in words. */
+const SHIPPED_TEXT =
+    'You replied `ship`: the PR opens with the open findings listed at the top.'
+
+/**
+ * A final review agent's start (no ticket). A lens's start adds no row (its
+ * `lens_finished` says what it found); a fixer's says what it is fixing.
+ */
+const finalStartedText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'agent_started' }>
+}): { text: string; tone: Tone } | null => {
+    const { role, follow_up_of } = record.content
+    if (role.endsWith('-lens')) return null
+    return follow_up_of === null
+        ? event({
+              text: `Final review: a fresh ${role} fixes the lenses' findings on the whole run branch.`,
+              tone: 'warning',
+          })
+        : event({
+              text: `Final review: the ${role} got the failure back.`,
+              tone: 'warning',
+          })
+}
+
+/** A final review agent's finish (no ticket): a fixer's answers, or none for a lens. */
+const finalFinishedText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'agent_finished' }>
+}): { text: string; tone: Tone } | null => {
+    const { role, result } = record.content
+    if (role.endsWith('-lens')) return null
+    const responses = result.finding_responses
+    if (responses.length === 0) {
+        return event({
+            text: `Final review: the ${role} finished.`,
+            tone: 'info',
+        })
+    }
+    const wontFix = responses.filter(
+        ({ response }) => response === 'wont_fix'
+    ).length
+    return event({
+        text: `Final review: the ${role} answered the findings: ${responses.length - wontFix} fixed, ${wontFix} won't fix.`,
+        tone: 'info',
+    })
 }
 
 const startedText = ({
@@ -478,6 +550,8 @@ const resolutionText = ({ record }: { record: BoardRecord }): string => {
             return 'Skipped. It stays open for a later run.'
         case 'final_review_passed':
             return 'The final review passed.'
+        case 'final_review_shipped':
+            return SHIPPED_TEXT
         default:
             return 'Resolved.'
     }

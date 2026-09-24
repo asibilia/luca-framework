@@ -82,6 +82,18 @@ const QUIET_KINDS = new Set([
 export const reasonText = ({ reason }: { reason: string }): string =>
     STUCK_REASONS[reason] ?? `${reason.replaceAll('_', ' ')}.`
 
+/** The final review's stuck reasons that read differently from a ticket's. */
+const FINAL_STUCK_REASONS: Record<string, string> = {
+    changes_requested: `The lenses still ask for changes after ${LOOP_CAP} fix rounds.`,
+    gates_failed: "The checks still fail on the final review's fixes.",
+    bad_test:
+        "The implementer sent back a bad test while fixing the final review's findings.",
+}
+
+/** A final review's stuck reason code in words. */
+export const finalReasonText = ({ reason }: { reason: string }): string =>
+    FINAL_STUCK_REASONS[reason] ?? reasonText({ reason })
+
 const noFindings = (): FindingCounts => ({ blocker: 0, should_fix: 0, nit: 0 })
 
 const freshLenses = (): LensCard[] =>
@@ -272,6 +284,32 @@ export const ticketKey = ({ ticket }: { ticket: number }): string =>
 
 /** The key of the final review's "Needs you" item. */
 export const FINAL_KEY = 'final'
+
+/**
+ * A role in words: a final review lens's role (`security-lens`) reads
+ * "security lens"; any other role as it is.
+ *
+ * @example
+ * roleWords({ role: 'security-lens' }) // 'security lens'
+ */
+export const roleWords = ({ role }: { role: string }): string =>
+    role.endsWith('-lens') ? `${role.slice(0, -'-lens'.length)} lens` : role
+
+/** The final review with one more "tried" line. */
+const finalTried = ({
+    state,
+    line,
+}: {
+    state: BoardState
+    line: string
+}): BoardState =>
+    updateFinal({
+        state,
+        update: (review) => ({
+            ...review,
+            tried: withTried({ tried: review.tried, line }),
+        }),
+    })
 
 const testCounts = ({
     cases,
@@ -636,6 +674,13 @@ const applyKind = ({
             return agentFinished({ state, record })
         case 'agent_failed': {
             const { role, error, failure } = record.content
+            // A final review agent (a lens or a fixer) has no ticket.
+            if (ticket === null) {
+                return finalTried({
+                    state,
+                    line: `The ${roleWords({ role })} ${failureText({ failure })}: ${error}`,
+                })
+            }
             return updateTicket({
                 state,
                 number: ticket,
@@ -745,6 +790,12 @@ const applyKind = ({
             })
         case 'leftover_scan':
             if (record.content.hits.length === 0) return state
+            if (ticket === null) {
+                return finalTried({
+                    state,
+                    line: `The leftover scan found ${record.content.hits.map((hit) => hit.path).join(', ')} in the final review's fixes`,
+                })
+            }
             return updateTicket({
                 state,
                 number: ticket,
@@ -989,7 +1040,7 @@ const applyKind = ({
                     key: FINAL_KEY,
                     ticket: null,
                     subject: 'The final review is stuck',
-                    reason: reasonText({ reason: record.content.reason }),
+                    reason: finalReasonText({ reason: record.content.reason }),
                     detail: clip({
                         text: record.content.detail,
                         max: DETAIL_MAX,
@@ -998,6 +1049,16 @@ const applyKind = ({
                     replies: ['retry', 'stop', 'ship'],
                     since: record.time,
                 },
+            })
+        // A `ship` reply to the stuck final review, as the engine journals
+        // it: the same as the reply itself.
+        case 'final_review_shipped':
+            return resolveNeedsYou({
+                state: updateFinal({
+                    state,
+                    update: (review) => ({ ...review, state: 'passed' }),
+                }),
+                key: FINAL_KEY,
             })
         case 'final_review_passed':
             return resolveNeedsYou({
@@ -1229,6 +1290,15 @@ const gatesRun = ({
         .map((check) => check.name)
         .join(', ')
     const afterJoin = target === 'run_branch'
+    // The final review's fixes are checked on the run branch, with no ticket.
+    if (record.ticket === null) {
+        return ok
+            ? state
+            : finalTried({
+                  state,
+                  line: `The checks failed on the final review's fixes: ${failed || 'no detail'}`,
+              })
+    }
     return updateTicket({
         state,
         number: record.ticket,
