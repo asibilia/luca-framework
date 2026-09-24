@@ -3,16 +3,12 @@ import { describe, expect, test } from 'bun:test'
 import { memoryFeedback, routeMemories, storedConcept } from './memory-routing'
 
 /** A proposed memory; `scope` defaults to useful anywhere. */
-const proposal = (
-    type: string,
-    concept: string,
-    scope: string | undefined = 'anywhere'
-) => ({
+const proposal = (type: string, concept: string, scope = 'anywhere') => ({
     type,
     concept,
     content: `The lesson of ${concept}.`,
     summary: `${concept} in short.`,
-    ...(scope === undefined ? {} : { scope }),
+    scope,
 })
 
 describe('routeMemories', () => {
@@ -163,7 +159,12 @@ describe('routeMemories', () => {
     test('refuses a memory with no scope, with the reason, and saves the rest', () => {
         const routed = routeMemories({
             proposals: [
-                proposal('pitfall', 'no-scope', undefined),
+                {
+                    type: 'pitfall',
+                    concept: 'no-scope',
+                    content: 'The lesson of no-scope.',
+                    summary: 'no-scope in short.',
+                },
                 proposal('pattern', 'fine'),
             ],
             project_vault: 'proj',
