@@ -202,6 +202,6 @@ export const rolePrompt = ({
             ? [badTestSection({ bad_test })]
             : []),
         ...(sections ?? []),
-        // Memories recalled for this agent (#370) will sit next to these.
+        // Recalled memories (#370) are added after these by the decision step.
         ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')
