@@ -149,10 +149,16 @@ export const git = (cwd: string, ...args: string[]): Promise<string> =>
 export const makePracticeRepo = async ({
     root,
     config,
+    files,
 }: {
     root: string
     /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
     config?: object
+    /**
+     * More files for the first commit, by repo-relative path. With a
+     * `package.json`, the first commit also gets its lockfile.
+     */
+    files?: Record<string, string>
 }): Promise<{ repo: string; origin: string }> => {
     const repo = join(root, 'repo')
     const origin = join(root, 'origin.git')
@@ -172,6 +178,13 @@ export const makePracticeRepo = async ({
         join(repo, '.luca', 'config.json'),
         JSON.stringify(config ?? PRACTICE_ENGINE_CONFIG, null, 4)
     )
+    for (const [path, content] of Object.entries(files ?? {})) {
+        await Bun.write(join(repo, path), content)
+    }
+    if (files?.['package.json'] !== undefined) {
+        // The starting lockfile. Workspace packages install offline.
+        await $`bun install`.cwd(repo).quiet()
+    }
     await git(repo, 'add', '-A')
     await git(repo, 'commit', '-q', '-m', 'initial')
     await git(repo, 'remote', 'add', 'origin', origin)
