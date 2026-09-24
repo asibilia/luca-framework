@@ -439,6 +439,7 @@ export const describeRecord = ({
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':
+        case 'baseline_reused':
         case 'run_branch_pushed':
         case 'worktrees_removed':
         case 'agent_session':

@@ -289,6 +289,18 @@ export const TicketCardSchema = z.object({
             total: z.number().int().min(0),
         })
         .nullable(),
+    /**
+     * Its own baseline's test counts, kept so a ticket that reuses this one's
+     * baseline (`baseline_reused`) gets them after `tests` has moved on.
+     * Defaulted, so a board state from before it still parses.
+     */
+    baseline_tests: z
+        .object({
+            failing: z.number().int().min(0),
+            total: z.number().int().min(0),
+        })
+        .nullable()
+        .default(null),
     findings: FindingCountsSchema.nullable(),
     /** Every token the ticket's agents read or wrote, cache reads included. */
     tokens: z.number().min(0),

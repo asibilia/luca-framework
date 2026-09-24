@@ -119,6 +119,8 @@ export const BOARD_VOCABULARY = {
     run_branch_created: WorktreeSchema,
     ticket_worktree_created: WorktreeSchema,
     baseline_tests: TestRunSchema,
+    /** Another ticket's baseline, taken from the same run-branch commit (#404). */
+    baseline_reused: z.looseObject({ from_ticket: z.number().int() }),
     agent_started: z.looseObject({
         role: z.string(),
         /** The session a fix-loop or failed-try follow-up went to. */
@@ -350,6 +352,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_branch_created' }),
     entry({ kind: 'ticket_worktree_created' }),
     entry({ kind: 'baseline_tests' }),
+    entry({ kind: 'baseline_reused' }),
     entry({ kind: 'agent_started' }),
     entry({ kind: 'agent_finished' }),
     entry({ kind: 'agent_failed' }),

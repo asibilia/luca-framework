@@ -217,6 +217,7 @@ const newTicket = ({
     open_check: null,
     failed_turn: null,
     tests: null,
+    baseline_tests: null,
     findings: null,
     tokens: 0,
     agent_tokens: {},
@@ -806,7 +807,8 @@ const applyKind = ({
                 }),
             })
         }
-        case 'baseline_tests':
+        case 'baseline_tests': {
+            const tests = testCounts({ cases: record.content.cases })
             return updateTicket({
                 state,
                 number: ticket,
@@ -814,9 +816,29 @@ const applyKind = ({
                     ...card,
                     started: true,
                     activity: 'baseline tests',
-                    tests: testCounts({ cases: record.content.cases }),
+                    tests,
+                    baseline_tests: tests,
                 }),
             })
+        }
+        case 'baseline_reused': {
+            // Another ticket's baseline from the same run-branch commit (#404).
+            const { from_ticket } = record.content
+            const tests =
+                state.tickets.find((card) => card.number === from_ticket)
+                    ?.baseline_tests ?? null
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    started: true,
+                    activity: `baseline tests (reused from #${from_ticket})`,
+                    tests,
+                    baseline_tests: tests,
+                }),
+            })
+        }
         case 'agent_started':
             // The learner (#370) has no ticket and is no final review agent.
             if (record.content.role === LEARNER) {
