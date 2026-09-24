@@ -17,6 +17,9 @@ a **limit wait**, any sign of per-token billing stops the run for good, and
 usage is journaled per ticket and per run (#368).
 Agents send each other one-way **agent messages**, even across tickets that
 build at the same time, and hand **run notes** on to later agents (#371).
+Once every ticket pushed, a **final review** looks at the whole run branch
+through five **lenses** before the PR opens, with its own capped fix loop
+(#367).
 
 ## Modules
 
@@ -29,6 +32,8 @@ build at the same time, and hand **run notes** on to later agents (#371).
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. |
+| `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
+| `src/core/loop-caps.ts` | The caps of every fix loop (`MAX_FIX_ROUNDS`, ...), shared by the ticket steps and the final review. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
@@ -36,9 +41,11 @@ build at the same time, and hand **run notes** on to later agents (#371).
 | `src/limits/limit-wait.ts` | The engine's clock, waiting until a time, and the spec's limit-wait comment. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
-| `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings. |
+| `src/core/final-review-text.ts` | The **final review**'s texts: each lens's prompt (the whole run branch, the rule files for the rules lens, or a re-review of only the new changes), what each fixer is sent, and the open findings of a shipped final review. |
+| `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends), and `runEngine`: the scheduler that runs tickets' steps at the same time. |
-| `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. |
+| `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
+| `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
 | `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
@@ -66,7 +73,8 @@ build at the same time, and hand **run notes** on to later agents (#371).
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
-| `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). |
+| `src/testing/final-review-fixtures.ts` | Journal entry builders for the final review: rounds, lens turns, fix rounds, passed, stuck, shipped. |
+| `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). `CLEAN_LENS_TURNS` are five approving lenses; its runs fall back on them for any lens the turns don't script. |
 | `src/testing/many-tickets.ts` | The many-ticket practice runs: three tickets, two at once with a clash and one waiting on both (`SUM_PRODUCT_AVERAGE`); two tickets that break each other's gates after joining (`BROKEN_JOIN`); a plan limit with two tickets in flight (`LIMIT_HIT`); and a rebase across a new dependency (`REINSTALL`). |
 | `src/jev/jev-schemas.ts` | Jev's questions, requests, and answers, and the engine's fixed choices, as Zod schemas. |
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
@@ -125,6 +133,20 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
       then run_gates ticket (and its fix loop), one commit_ticket green,
       a fresh launch_agent ticket-reviewer (re-review only the new changes),
       and the join again
+once every ticket pushed, the final review, on the run branch's worktree:
+  start_final_review        HEAD, the files since, the rule files         ──> final_review_started
+  launch_lens × 5           at once, each a fresh read-only lens          ──> lens_started, agent_started, agent_finished, lens_finished
+  pass_final_review         every lens due this round approved            ──> final_review_passed
+    blockers or should-fixes: a final review fix round, ≤ 3 rounds
+      start_final_fix                                                     ──> final_review_fixing
+      launch_final_fixer test-writer   (fresh) the test findings, if any
+      launch_final_fixer implementer   (fresh) the code findings, if any
+      run_final_gates                  (and the gate fix loop, in the implementer's session) ──> gates_run
+      commit_final_fix                 leftover scan, then commit         ──> leftover_scan, commit_made
+      push_final_fixes                                                    ──> run_branch_pushed
+      start_final_review               only the lenses with findings, only the new changes
+    still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
+      done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
 open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
@@ -134,8 +156,11 @@ done (pr_opened)
 now, at most one per ticket, and `runEngine` schedules them: it starts what
 it can, waits for any one to settle, and decides again from the journal.
 What may run together: one action per ticket; a run-level action (intake,
-the run branch, the PR, removing worktrees) only alone; and one action on the
-run branch at a time (a new worktree, a join, its gates, a push, a rebase). A
+the run branch, the PR, removing worktrees) only alone; one action on the
+run branch at a time (a new worktree, a join, its gates, a push, a rebase,
+and the final review's round start, fixers, gates, commit, and push); and
+one action per lens (`lens:<lens>`), so the five lenses review at once,
+while the final review's other steps share one key (`final`). A
 ticket starts from the run branch's tip once every ticket it waits on has
 pushed, and only while no ticket waits to join, so it never builds on joined
 commits whose gates haven't passed yet. Its join-queue place is the seq of
@@ -283,6 +308,87 @@ run ends without a PR. Replies to a stuck ticket (#366) build on this.
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
 keeps the latest snapshot of each ticket.
+
+## The final review
+
+Once every ticket pushed (where the run used to open its PR), the whole run
+branch is reviewed before the PR opens (`decide-final-review.ts`). It always
+runs, even for a one-ticket spec.
+
+- **Five lenses, at once.** `architecture` (developer experience folded in),
+  `simplification`, `security`, `integration` (how the tickets fit together),
+  and `rules`. Each is its own role (`<lens>-lens`), so every agent record
+  names its lens and failed tries count per lens. Each is a fresh, read-only
+  reviewer (the guard's `reviewer` role) in the run branch's worktree, with
+  its own instructions (`role-instructions.ts`). All five start in one pass
+  of the scheduler.
+- **What a lens gets.** Its task, the spec, every ticket (title, body,
+  criteria), the whole branch's diff (`git diff <base>..<head>`, from where
+  the run branch started) and its files, and the latest gate results on the
+  run branch.
+- **The rules lens** also gets the rule files of the engine config
+  (`rule_files`), word for word. The executor reads them when a round starts
+  and journals them in `final_review_started` (`rules: { path, text }[]`), so
+  the decision step stays pure and the journal holds the lens's input. A path
+  is read in the run branch's worktree; `~/` means the home folder, and an
+  absolute path stays. A file that can't be read has `text: null`, and the
+  prompt says so. The engine inlines them because a reviewer's sandbox can't
+  read `~/.claude*`. With no rule files, the lens is told to use the repo's
+  own AGENTS.md or CLAUDE.md. Mechanical rules belong in the lint gate.
+- **Findings** are like a ticket review's (a `blocker`, `should_fix`, or
+  `nit`; `code` or `test`; the verdict must match). Lenses pick their own ids,
+  so the engine namespaces each as `<lens>-<id>` (an id that already starts
+  with `<lens>-` stays), and fixers and re-reviewers see and answer those.
+- **The fix loop.** Once every due lens finished, their blockers and
+  should-fixes open a fix round (`final_review_fixing`): a fresh test-writer
+  for the test findings first, then a **fresh** implementer for the code
+  findings (always fresh at the start of a round: "a fresh implementer on the
+  whole branch"), both on the run branch's worktree. The fixes pass the
+  gates on the run branch (failed gates go back to that round's implementer
+  session, up to 3 times; with only test findings, a fresh implementer gets
+  the failure), then the leftover scan (the spec and every ticket may name a
+  new markdown file) and one commit, `fix: final review round <n> for spec
+  #<n>` (nothing changed: the current commit, no files), then a push.
+- **Re-reviews.** Only the lenses that had blocking findings look again, and
+  only at the new changes (`git diff <last round's head>..<head>`), with
+  their earlier findings and each fixer's answer; they rule on each "won't
+  fix" like a ticket re-reviewer. Clean lenses stay clean (the board shows
+  them so). A final review still asking for changes after `MAX_FIX_ROUNDS`
+  (3) fix rounds (the 4th round) is stuck (`changes_requested`, listing the
+  open findings).
+- **Failed tries.** A lens's failed try launches a fresh lens, a fixer's gets
+  a follow-up in its session (fresh with none); `MAX_FIX_ROUNDS` failed tries
+  per role over the whole final review, or `MAX_ENGINE_FAILURES` engine
+  failures of one role in a row, are stuck (`agent_failed`). So are a bad test
+  while fixing (`bad_test`), leftovers (`leftovers_found`), and the gate fix
+  loop at its cap (`gates_failed`).
+- **Stuck.** `final_review_stuck`, then the tickets' worktrees are removed and
+  the run ends with `done` (`final_review_stuck`); the run branch's worktree
+  stays for a retry (#366). No PR opens.
+- **Ship.** A `ship` reply to a stuck final review belongs to #366. Its reply
+  reader calls `shipFinalReview({ journal })`, which journals
+  `final_review_shipped` (and refuses a final review that isn't stuck); the
+  next `runEngine` on the journal opens the PR with an "Open findings"
+  section at the very top (each with its lens, severity, and file), then
+  removes the worktrees.
+- **In the PR.** The final review's nits (one per id), declined findings,
+  and assumptions are listed with the tickets', labelled "final review" and
+  the lens.
+- **Records.** Its own kinds (`final_review_started`, `lens_started`,
+  `lens_finished`, `final_review_fixing`, `final_review_stuck`,
+  `final_review_passed`, `final_review_shipped`) and the usual agent, gate,
+  scan, commit, and push kinds with `ticket: null`, which replay gives to the
+  final review once it started. The launcher is handed the spec's number as a
+  final review agent's `ticket`. Their sessions count in the run's usage.
+
+Choices made:
+
+- A lens that breaks the guard would also show up in the other lenses'
+  after-turn checks, since all five share the run branch's worktree at once;
+  each would lose a try. The sandbox keeps reviewers from writing there, so
+  this should not happen.
+- Final review agents get no Jev asks (no skills ask for lenses), and their
+  failures and findings are asked about only for records of their own lens.
 
 ## The board
 
@@ -560,7 +666,7 @@ to its rules; each one alone should hold.
 | --- | --- | --- |
 | test-writer | test files only (`test_file_patterns`), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
 | implementer | anything but `test_setup_files`, and test files only with `may_edit_tests` (a refactor ticket) | the same |
-| reviewer | nothing | read-only commands only |
+| reviewer (the ticket reviewer and every lens) | nothing | read-only commands only |
 | learner (#370) | nothing | no shell |
 
 No agent writes a test setup file, git, or GitHub, installs packages, reaches
@@ -716,6 +822,19 @@ the round cap, and nits and declined findings in the PR.
 `src/core/ticket-review.test.ts` runs it end to end with scripted reviewers:
 findings fixed and pushed back on, a re-review of the new changes only, the
 round cap, and a verdict that disagrees with its findings.
+`src/core/decide-final-review.test.ts` tests the final review through the
+decision step: it runs before the PR even for one ticket, the five lens
+prompts (the whole branch's diff, the rule files), clean → passed → PR, test
+findings to a fresh test-writer then code findings to a fresh implementer,
+the gates and their fix loop, the fix commit and push, re-reviews of only the
+new changes by only the lenses with findings, pushback, the round cap, failed
+lens and fixer tries, and a stuck final review ending the run, then `ship`
+opening the PR with the open findings at the top. `src/core/final-review.test.ts`
+runs it end to end with scripted lenses: a clean one, a code and a test
+finding fixed on the whole run branch (the fix commit on origin, the fixers'
+and re-reviewers' prompts), one stuck at the cap and then shipped with
+`shipFinalReview`, and the rules lens reading a rule file from the practice
+repo's config.
 `src/core/agent-guards.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
 and retries that follow.

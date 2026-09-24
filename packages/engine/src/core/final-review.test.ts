@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { shipFinalReview } from './execute-final-review'
+import { rulePath, shipFinalReview } from './execute-final-review'
 import { MAX_FIX_ROUNDS } from './loop-caps'
 
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
@@ -378,4 +378,18 @@ describe('the final review, end to end', () => {
         )
         expect(security?.prompt).not.toContain('Never abbreviate a name.')
     }, 60_000)
+})
+
+describe('where a rule file is read', () => {
+    test('in the run branch worktree, under home for ~/, and as is when absolute', () => {
+        const where = (path: string) =>
+            rulePath({ path, worktree: '/run/branch', home: '/home/me' })
+
+        expect(where('AGENTS.md')).toBe('/run/branch/AGENTS.md')
+        expect(where('docs/rules.md')).toBe('/run/branch/docs/rules.md')
+        expect(where('~/.claude/rules/no-classes.md')).toBe(
+            '/home/me/.claude/rules/no-classes.md'
+        )
+        expect(where('/etc/luca/rules.md')).toBe('/etc/luca/rules.md')
+    })
 })
