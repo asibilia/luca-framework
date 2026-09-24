@@ -826,17 +826,72 @@ export const usageRecorded = ({
         },
     })
 
+/**
+ * The owner's one-word reply on the spec issue. `ship` is the final review's
+ * reply (#367); the engine reads `retry`, `skip`, and `stop` today (#366).
+ */
 export const replyReceived = ({
     word,
     ticket,
+    comment_id = 501,
+    author = 'owner',
 }: {
     word: 'retry' | 'skip' | 'stop' | 'ship'
     ticket: number | null
+    comment_id?: number
+    author?: string
 }): Entry =>
-    entry({ kind: 'reply_received', ticket, content: { word, ticket } })
+    entry({
+        kind: 'reply_received',
+        ticket,
+        content: { word, ticket, comment_id, author },
+    })
 
-export const ticketSkipped = ({ ticket }: { ticket: number }): Entry =>
-    entry({ kind: 'ticket_skipped', ticket, content: {} })
+/**
+ * A skipped ticket: `because` is `null` when the owner skipped it, or the
+ * skipped ticket it waits on.
+ */
+export const ticketSkipped = ({
+    ticket,
+    because = null,
+}: {
+    ticket: number
+    because?: number | null
+}): Entry => entry({ kind: 'ticket_skipped', ticket, content: { because } })
+
+/** How the engine took a `retry` reply for a stuck ticket. */
+export const ticketRetried = ({
+    ticket,
+    mode,
+    problems = [],
+}: {
+    ticket: number
+    mode: 'resume' | 'restart' | 'refused'
+    problems?: string[]
+}): Entry =>
+    entry({
+        kind: 'ticket_retried',
+        ticket,
+        content: {
+            mode,
+            base_sha: mode === 'refused' ? null : 'abc1234',
+            problems,
+            answer_id: mode === 'refused' ? 601 : null,
+        },
+    })
+
+/** A reply the engine couldn't use; it answered why on the spec issue. */
+export const replyIgnored = ({
+    reason,
+    comment_id = 502,
+}: {
+    reason: string
+    comment_id?: number
+}): Entry =>
+    entry({
+        kind: 'reply_ignored',
+        content: { comment_id, reason, answer_id: 602 },
+    })
 
 export const finalReviewStarted = (): Entry =>
     entry({ kind: 'final_review_started', content: {} })

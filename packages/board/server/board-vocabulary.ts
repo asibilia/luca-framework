@@ -5,10 +5,6 @@ import { z } from 'zod'
  * fields it reads from each. Schemas are loose on purpose, so the engine can
  * add fields without breaking the board, and the plugin never needs the
  * engine's code. A record whose content doesn't fit is skipped and logged.
- *
- * Kinds marked "not journaled yet" have no engine record yet; the ticket
- * that adds them (#366 replies and skips) should journal these shapes. See
- * the README.
  */
 
 const FindingCountsSchema = z.looseObject({
@@ -241,6 +237,29 @@ export const BOARD_VOCABULARY = {
             .catch({}),
     }),
 
+    /** The owner's reply on the spec issue, read by the engine (#366). */
+    reply_received: z.looseObject({
+        /** `ship` is only for a stuck final review. */
+        word: z.enum(['retry', 'skip', 'stop', 'ship']),
+        ticket: z.number().int().nullable().optional(),
+    }),
+    /** A reply the engine couldn't use; it answered why on the spec issue. */
+    reply_ignored: z.looseObject({
+        /** `no_ticket_named`, `not_stuck`, `nothing_stuck`, `ship_needs_final_review`, ... */
+        reason: z.string(),
+    }),
+    /** How the engine took a `retry` for a stuck ticket. */
+    ticket_retried: z.looseObject({
+        /** `resume`, `restart` (the ticket was edited), or `refused`. */
+        mode: z.enum(['resume', 'restart', 'refused']),
+        /** Why the edited ticket isn't ready to build, for `refused`. */
+        problems: z.array(z.string()).catch([]),
+    }),
+    /** `because`: `null` when the owner skipped it, else the skipped ticket it waits on. */
+    ticket_skipped: z.looseObject({
+        because: z.number().int().nullable().catch(null),
+    }),
+
     // The final review (#367). Its agent, gate, scan, commit, and push
     // records are the usual kinds with `ticket: null`.
     final_review_started: z.looseObject({}),
@@ -257,18 +276,11 @@ export const BOARD_VOCABULARY = {
     final_review_passed: z.looseObject({}),
     /** A `ship` reply to the stuck final review: the PR opens anyway. */
     final_review_shipped: z.looseObject({}),
-
-    // Not journaled yet.
-    reply_received: z.looseObject({
-        word: z.enum(['retry', 'skip', 'stop', 'ship']),
-        ticket: z.number().int().nullable().optional(),
-    }),
-    ticket_skipped: z.looseObject({}),
 } as const
 
 export type BoardKind = keyof typeof BOARD_VOCABULARY
 
-/** The kinds the board understands, journaled ones and later ones. */
+/** The kinds the board understands. */
 export const BOARD_KINDS = Object.keys(BOARD_VOCABULARY)
 
 const entry = <Kind extends BoardKind>({ kind }: { kind: Kind }) =>
@@ -310,6 +322,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'limit_wait_ended' }),
     entry({ kind: 'usage_recorded' }),
     entry({ kind: 'reply_received' }),
+    entry({ kind: 'reply_ignored' }),
+    entry({ kind: 'ticket_retried' }),
     entry({ kind: 'ticket_skipped' }),
     entry({ kind: 'final_review_started' }),
     entry({ kind: 'lens_started' }),

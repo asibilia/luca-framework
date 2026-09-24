@@ -101,6 +101,10 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `run_branch_pushed` | card's activity | none |
 | `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies | a stuck row |
 | `pull_request_opened` | run status `done`, the PR link | the PR |
+| `reply_received` | the owner's reply on the spec issue (#366). `ticket` is the ticket or `null`; content `{ word: 'retry' \| 'skip' \| 'stop', ticket: number \| null, comment_id, author }`. `retry #n` resolves the stuck item and puts the card back to building ("retrying"); `skip #n` skips it; `stop` clears Needs you. (`ship` is the final review's reply, #367.) | "You replied `retry #13`."; the stuck row turns resolved in place |
+| `ticket_retried` | how the engine took a `retry` (`{ mode: 'resume' \| 'restart' \| 'refused', base_sha, problems, answer_id }`). `resume`: a fresh agent picks up where it stopped; nothing more changes. `restart`: the ticket's text or labels changed (its new `ticket_snapshot` came just before, so the title and labels are already new); the card starts over from scratch, "starting over from the edited ticket", with a "tried" line. `refused`: the edited ticket isn't ready to build; the card goes back to Stuck and **Needs you** ("Retry of #n was refused", "Its new text or labels aren't ready to build.", the `problems`, and the replies `retry #n`, `skip #n`, `stop`) | `resume`: none. `restart`: "starts over from the edited ticket." `refused`: the reason and problems (warning), and the stuck row waits again |
+| `ticket_skipped` | card to Skipped (`{ because: number \| null }`: `null` when the owner skipped it; else the skipped ticket it waits on, shown as "skipped: waits on skipped #n") | "skipped. It stays open for a later run.", naming the skipped ticket it waits on if any |
+| `reply_ignored` | nothing: the owner's reply couldn't be used, and the engine answered why on the spec issue (`{ comment_id, reason: 'no_ticket_named' \| 'not_stuck' \| 'nothing_stuck' \| 'ship_needs_final_review', answer_id }`) | "Your reply was sent back: ..." with the reason in words (warning) |
 | `worktrees_removed` | nothing: the engine removed the run's worktrees at its end (`{ paths }`) | none |
 | `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. With `billing: true` (default false) it's a **billing stop**: the session would bill per token, so the run won't go on, and the banner says to start a new run once per-token billing is off. | the reason, and how to pick the run up again, or for a billing stop, that the run won't go on (danger) |
 | `limit_wait_started` | run status `limit_wait` and a banner: "Plan limit hit (five-hour window). The run waits until 17:00 and then carries on by itself." The time is `resets_at`, or `until` when the reset time isn't known. | a limit row with the same words |
@@ -119,16 +123,11 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 **The final review's other records** are the usual kinds with `ticket: null`: each lens's agent (`agent_started`, `agent_finished`, `agent_failed`, `agent_session`, role `<lens>-lens`, such as `security-lens`), its fixers (role `test-writer` or `implementer`), and the fixes' `gates_run` (`target: run_branch`), `leftover_scan`, `commit_made` (stage `fix`), and `run_branch_pushed`. They never touch a ticket card. A lens's own start and finish add no row (its `lens_finished` does); a fixer's read "Final review: a fresh implementer fixes the lenses' findings on the whole run branch.", "Final review: the implementer got the failure back." (a follow-up), and "Final review: the implementer answered the findings: n fixed, n won't fix."; the fixes' checks, scan, and commit read "Final review: checks passed on the fixes.", "Final review: the leftover scan found ...", and "Final review: the fixes committed on the run branch.". A failed lens or fixer turn, failed checks on the fixes, and leftovers add a "tried" line to the final review ("The architecture lens gave no usable result: ...") and a row starting "Final review:". Sessions still count toward plan usage.
 
-### Kinds not journaled yet
+### Replies and stuck work (#366)
 
-The board already understands these, so the ticket that adds them should journal these shapes. Until then nothing sends them.
+The engine reads the replies a stuck ticket offers (`retry #n`, `skip #n`, `stop`) and a stuck final review offers (`retry`, `stop`, `ship`) on the spec issue, and the other tickets keep building while one is stuck. A run can also end with `stopped_by_user` (reply `stop`) or `all_skipped`; those come through the usual `ended` message.
 
-| kind | ticket that adds it | `ticket` | `content` | Board effect |
-| --- | --- | --- | --- | --- |
-| `reply_received` | #366 | ticket/null | `{ word: 'retry' \| 'skip' \| 'stop' \| 'ship', ticket: number \| null }` | resolves the stuck item and row |
-| `ticket_skipped` | #366 | ticket | `{}` | card to Skipped |
-
-The replies a stuck item offers (`retry #n`, `skip #n`, `stop`; `retry`, `stop`, `ship` for the final review) are what #366 will read. Until it lands, the engine ends the run when a ticket or the final review is stuck.
+The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), and `join_undone` (a stuck ticket's join was undone on the run branch, never pushed).
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 

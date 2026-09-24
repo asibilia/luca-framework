@@ -45,7 +45,13 @@ const STUCK_REASONS: Record<string, string> = {
     join_failed: "The ticket couldn't join the run branch.",
     join_gates_failed: 'The checks failed after the ticket joined.',
     install_failed: 'Installing the dependencies failed.',
+    setup_change_needed:
+        'An agent needs a test setup file changed; only you may change one.',
 }
+
+/** Why a retry of an edited ticket was refused, in words. */
+export const RETRY_REFUSED_TEXT =
+    "Its new text or labels aren't ready to build."
 
 /** Cuts `text` to `max` characters, ending in "…" when it was longer. */
 export const clip = ({ text, max }: { text: string; max: number }): string =>
@@ -973,7 +979,16 @@ const applyKind = ({
         case 'reply_received':
             return replyReceived({ state, record })
         case 'ticket_skipped':
-            return skipTicket({ state, ticket })
+            return skipTicket({
+                state,
+                ticket,
+                because: record.content.because,
+            })
+        case 'ticket_retried':
+            return ticketRetried({ state, record })
+        // An ignored reply is only a chat row; the engine answered it.
+        case 'reply_ignored':
+            return state
         case 'final_review_started':
             return {
                 ...updateFinal({
@@ -1383,9 +1398,11 @@ const ticketRebased = ({
 const skipTicket = ({
     state,
     ticket,
+    because,
 }: {
     state: BoardState
     ticket: number | null
+    because: number | null
 }): BoardState => {
     if (ticket === null) return state
     return resolveNeedsYou({
@@ -1396,11 +1413,83 @@ const skipTicket = ({
                 ...card,
                 stage: 'skipped',
                 role: null,
-                activity: 'skipped',
+                activity:
+                    because === null
+                        ? 'skipped'
+                        : `skipped: waits on skipped #${because}`,
             }),
         }),
         key: ticketKey({ ticket }),
     })
+}
+
+/**
+ * How the engine took a `retry`: `resume` changes nothing more than the
+ * reply did; `restart` builds the edited ticket from scratch (its new
+ * snapshot came just before); `refused` leaves it stuck, back in Needs you.
+ */
+const ticketRetried = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'ticket_retried' }>
+}): BoardState => {
+    const { ticket } = record
+    if (ticket === null) return state
+    switch (record.content.mode) {
+        case 'resume':
+            return state
+        case 'restart':
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    stage: 'building',
+                    step: 0,
+                    role: null,
+                    fix_round: 0,
+                    review_fix_round: 0,
+                    findings: null,
+                    open_check: null,
+                    failed_turn: null,
+                    activity: 'starting over from the edited ticket',
+                    tried: withTried({
+                        tried: card.tried,
+                        line: 'Started over from the edited ticket',
+                    }),
+                }),
+            })
+        case 'refused': {
+            const card = state.tickets.find((entry) => entry.number === ticket)
+            return addNeedsYou({
+                state: updateTicket({
+                    state,
+                    number: ticket,
+                    update: (entry) => ({
+                        ...entry,
+                        stage: 'stuck',
+                        role: null,
+                        activity: 'stuck',
+                    }),
+                }),
+                item: {
+                    key: ticketKey({ ticket }),
+                    ticket,
+                    subject: `Retry of #${ticket} was refused${card ? `: ${card.title}` : ''}`,
+                    reason: RETRY_REFUSED_TEXT,
+                    detail: clip({
+                        text: record.content.problems.join(' '),
+                        max: DETAIL_MAX,
+                    }),
+                    tried: card?.tried ?? [],
+                    replies: [`retry #${ticket}`, `skip #${ticket}`, 'stop'],
+                    since: record.time,
+                },
+            })
+        }
+    }
 }
 
 const replyReceived = ({
@@ -1436,7 +1525,7 @@ const replyReceived = ({
                 key: FINAL_KEY,
             })
         case 'skip':
-            return skipTicket({ state, ticket })
+            return skipTicket({ state, ticket, because: null })
         case 'ship':
             return resolveNeedsYou({
                 state: updateFinal({
