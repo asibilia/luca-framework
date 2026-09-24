@@ -132,7 +132,7 @@ const ROLE_TASKS: Record<AgentRole, string> = {
     'rules-lens': `${LENS_TASK_TEXT} Judge the branch against the repo's rule files below. Only rules that need judgment count; mechanical rules belong to the lint gate, which already ran.`,
     learner:
         "Read this run's journal digest below and propose only durable lessons that will help future runs. " +
-        'Pick each one\'s type, and list the ids of the shown memories that actually helped. Write nothing.',
+        "Pick each one's type, and list the ids of the shown memories that actually helped. Write nothing.",
 }
 
 /**

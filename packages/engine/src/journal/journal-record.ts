@@ -27,6 +27,13 @@ import {
     JevRequestSchema,
 } from '../jev/jev-schemas'
 import { UsageRecordSchema } from '../limits/plan-usage'
+import {
+    MemoryFeedbackSchema,
+    MemorySaveSchema,
+    RecalledMemorySchema,
+    RecallPointSchema,
+    VaultSearchSchema,
+} from '../memory/memory-schemas'
 
 const ENTRY_FIELDS = {
     /** The ticket (or spec) a record is about, `null` for the whole run. */
@@ -49,6 +56,15 @@ const RunStartedEntrySchema = z.object({
         config: EngineConfigSchema,
         /** The branch the run branch starts from and its PR merges into. */
         base_branch: z.string().min(1).default('main'),
+        /**
+         * Memory for this run (#370): on, with the project's vault (`null`
+         * searches only `default`), or `null` for off. Off leaves the run
+         * exactly as it was before memory.
+         */
+        memory: z
+            .object({ project_vault: z.string().min(1).nullable() })
+            .nullable()
+            .default(null),
     }),
 })
 
@@ -647,6 +663,61 @@ const FinalReviewShippedEntrySchema = z.object({
     content: z.object({}),
 })
 
+/**
+ * The engine searched memory at a **recall point**: the vaults it searched
+ * (each with how it went and how many it found), and the memories it will
+ * show, merged by score, at most `MAX_MEMORIES_PER_RECALL`, each with its
+ * vault and score. `key` names the moment (such as `ticket:11`), so each is
+ * searched once. `ticket` is the ticket's, or `null` for the run's start
+ * and the final review.
+ */
+const MemoryRecalledEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memory_recalled'),
+    content: z.object({
+        point: RecallPointSchema,
+        key: z.string().min(1),
+        query: z.string(),
+        vaults: z.array(VaultSearchSchema),
+        memories: z.array(RecalledMemorySchema),
+    }),
+})
+
+/**
+ * The learner's proposed memories were saved (or refused, or failed), each
+ * with its vault, what became of it, and the similar memory the engine
+ * found first; then the helped / didn't-help feedback on each memory shown
+ * in the run. Written once per run, with `ticket: null`.
+ */
+const MemoriesSavedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memories_saved'),
+    content: z.object({
+        saves: z.array(MemorySaveSchema),
+        feedback: z.array(MemoryFeedbackSchema),
+    }),
+})
+
+/** The learner never gave a usable answer; the run ends without it. */
+const LearningSkippedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('learning_skipped'),
+    content: z.object({ reason: z.string() }),
+})
+
+/**
+ * With no PR to list them in, the new memories went on the spec issue in
+ * the engine's comment `comment_id`.
+ */
+const MemoriesReportedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memories_reported'),
+    content: z.object({
+        comment_id: z.number().int(),
+        count: z.number().int().min(0),
+    }),
+})
+
 /** The engine asked Jev, in shadow mode, with its own fixed choice beside. */
 const JevAskedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -807,6 +878,10 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketSkippedEntrySchema,
     JoinUndoneEntrySchema,
     FinalReviewRetriedEntrySchema,
+    MemoryRecalledEntrySchema,
+    MemoriesSavedEntrySchema,
+    LearningSkippedEntrySchema,
+    MemoriesReportedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -863,6 +938,10 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketSkippedEntrySchema.extend(STAMP_FIELDS),
     JoinUndoneEntrySchema.extend(STAMP_FIELDS),
     FinalReviewRetriedEntrySchema.extend(STAMP_FIELDS),
+    MemoryRecalledEntrySchema.extend(STAMP_FIELDS),
+    MemoriesSavedEntrySchema.extend(STAMP_FIELDS),
+    LearningSkippedEntrySchema.extend(STAMP_FIELDS),
+    MemoriesReportedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -918,6 +997,10 @@ export const JournalKindSchema = z.enum([
     'ticket_skipped',
     'join_undone',
     'final_review_retried',
+    'memory_recalled',
+    'memories_saved',
+    'learning_skipped',
+    'memories_reported',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

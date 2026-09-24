@@ -87,11 +87,11 @@ describe('mergeRecalled', () => {
                 { vault: 'proj', hits: [hit('a', 0.7)] },
             ],
         })
-        expect(merged.map(({ id, vault, score }) => [vault, id, score])).toEqual(
-            [
-                ['default', 'a', 0.9],
-                ['proj', 'a', 0.7],
-            ]
-        )
+        expect(
+            merged.map(({ id, vault, score }) => [vault, id, score])
+        ).toEqual([
+            ['default', 'a', 0.9],
+            ['proj', 'a', 0.7],
+        ])
     })
 })

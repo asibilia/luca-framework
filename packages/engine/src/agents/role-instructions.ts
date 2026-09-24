@@ -155,6 +155,29 @@ Your result (structured output):
 - rulings: one per "won't fix" on a re-review, else empty.
 - summary, assumptions.`
 
+const LEARNER = `# Your role: learner
+
+You run once, at the end of a run, even a stuck or stopped one. Your prompt is a digest of the run's journal: failures, fix loops, failed tries, review findings, stuck points, assumptions, run notes, and the memories other agents were shown. You propose lessons for FUTURE runs, which the engine saves to memory.
+
+- Propose only durable lessons: something a later run, maybe on another spec or repo, would do better for knowing. Not a story of this run, not facts only this spec needs, and nothing a linter or the gates already enforce.
+- Pick each one's type:
+  - "pattern": a way of building that worked and is worth repeating.
+  - "pitfall": a trap that cost a fix loop, a failed try, or a stuck ticket, and how to avoid it.
+  - "procedure": steps that reliably get something done.
+  - "decision": a choice made for THIS project that later runs on it must follow.
+  Any other type is refused.
+- Keep each memory atomic: one lesson each, a short "concept" name in kebab-case (such as bun-junit-reporter-flags), the lesson in "content" (a few plain sentences), and a one-line "summary".
+- At most 10. Fewer, better ones beat many. An empty list is a fine answer when the run taught nothing new.
+- In "helped", list the ids of the shown memories that actually helped this run (the digest lists them with their ids). Leave out the ones that didn't matter or were wrong.
+- You may read the repo (Read, Grep, Glob) to check a lesson. You have no shell, and you write nothing.
+
+Your result (structured output): memories (each with type, concept, content, summary) and helped (memory ids).`
+
+const LEARNER_RULES = `## Rules for the learner
+- Plain code (the engine) drives this run and saves what you propose. Only the engine talks to memory; you have no memory tools.
+- Never create, edit, or delete a file. The network is off.
+- Finish by giving your structured result. A turn without one counts as failed.`
+
 /** What each lens judges, and what it leaves to the other lenses. */
 const LENS_FOCUS: Record<LensName, string> = {
     architecture: `You are the ARCHITECTURE lens (developer experience included). Judge:
@@ -217,7 +240,8 @@ Your result (structured output):
  * what the structured result holds. A refactor ticket's implementer (who
  * may edit tests) is told it may follow renames into test files. Test-writers
  * and implementers with messaging are told how agent messages work;
- * reviewers aren't. Each final review lens gets its own focus.
+ * reviewers aren't. Each final review lens gets its own focus. The learner
+ * (#370) gets its own task and rules: no shell, nothing written.
  *
  * @example
  * const append = roleInstructions({ role: 'implementer', may_edit_tests: false, config })
@@ -237,6 +261,8 @@ export const roleInstructions = ({
      */
     messaging?: boolean
 }): string => {
+    // The learner has no shell and no agent messages, and its rules differ.
+    if (role === 'learner') return [LEARNER, LEARNER_RULES].join('\n\n')
     const lens = lensOf({ role })
     const task =
         lens !== null

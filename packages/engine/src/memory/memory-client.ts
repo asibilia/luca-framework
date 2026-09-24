@@ -43,7 +43,9 @@ export type MemoryClient = {
 }
 
 /** A memory call's value, or why it failed. Never a throw. */
-export type MemoryResult<T> = { ok: true; value: T } | { ok: false; error: string }
+export type MemoryResult<T> =
+    | { ok: true; value: T }
+    | { ok: false; error: string }
 
 /** A memory client and how long each call may take, as `runEngine` takes them. */
 export type MemoryDeps = {
@@ -120,7 +122,10 @@ export const safeMemory = ({
     deps: MemoryDeps | undefined
 }): SafeMemory => {
     const timeout_ms = deps?.timeout_ms ?? DEFAULT_MEMORY_TIMEOUT_MS
-    const run = <T>(name: string, call: (client: MemoryClient) => Promise<T>) => {
+    const run = <T>(
+        name: string,
+        call: (client: MemoryClient) => Promise<T>
+    ) => {
         const client = deps?.client
         if (client === undefined) {
             return Promise.resolve<MemoryResult<T>>({

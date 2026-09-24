@@ -17,8 +17,7 @@ export const MEMORY_ROUTES = {
 
 export type MemoryType = keyof typeof MEMORY_ROUTES
 
-const isMemoryType = (type: string): type is MemoryType =>
-    type in MEMORY_ROUTES
+const isMemoryType = (type: string): type is MemoryType => type in MEMORY_ROUTES
 
 /** A proposed memory routed to its vault, ready to save. */
 export type RoutedMemory = {
@@ -78,7 +77,11 @@ export const routeMemories = ({
             refused.push({
                 type: raw,
                 concept,
-                reason: `Unknown memory type "${raw}": only ${Object.keys(MEMORY_ROUTES).join(', ').replace(/, (?=[^,]*$)/, ', and ')} are saved.`,
+                reason: `Unknown memory type "${raw}": only ${Object.keys(
+                    MEMORY_ROUTES
+                )
+                    .join(', ')
+                    .replace(/, (?=[^,]*$)/, ', and ')} are saved.`,
             })
             continue
         }

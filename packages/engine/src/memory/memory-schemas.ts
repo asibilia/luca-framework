@@ -80,7 +80,12 @@ export const VaultSearchSchema = z.object({
 export type VaultSearch = z.infer<typeof VaultSearchSchema>
 
 /** What became of one memory the learner proposed. */
-export const SaveOutcomeSchema = z.enum(['added', 'updated', 'refused', 'failed'])
+export const SaveOutcomeSchema = z.enum([
+    'added',
+    'updated',
+    'refused',
+    'failed',
+])
 
 export type SaveOutcome = z.infer<typeof SaveOutcomeSchema>
 

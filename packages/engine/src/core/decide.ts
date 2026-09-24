@@ -1,4 +1,5 @@
 import { decideBuild, type BuildAction } from './decide-build'
+import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
 import { decideUsage, type UsageAction } from './decide-usage'
 
@@ -25,6 +26,8 @@ export type EngineAction =
     | UsageAction
     /** Intake passed and every ticket is snapshotted: build the tickets. */
     | BuildAction
+    /** Memory's recall points, the learner, and its saves (#370). */
+    | MemoryAction
     /** The run ended at intake. */
     | { type: 'done'; outcome: 'refused' | 'nothing_to_do' }
 
@@ -64,7 +67,12 @@ export const decideSteps = ({
                 : null
         return [usage ?? plan]
     }
-    const build = decideBuild({ state, spec_number })
+    const build = decideMemory({
+        state,
+        records,
+        spec_number,
+        build: decideBuild({ state, spec_number }),
+    })
     const ending = build.length === 1 && build[0]?.type === 'done'
     const usage = decideUsage({ records, state, ending })
     if (usage === null) return build

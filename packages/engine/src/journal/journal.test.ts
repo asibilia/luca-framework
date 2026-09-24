@@ -234,7 +234,9 @@ describe('journal', () => {
                 ? { verdict: 'approve', findings: [] }
                 : role === 'test-writer'
                   ? { outcome: 'tests_written' }
-                  : { outcome: 'done' }
+                  : role === 'learner'
+                    ? { memories: [], helped: [] }
+                    : { outcome: 'done' }
             const parsed = JournalEntrySchema.safeParse({
                 kind: 'agent_finished',
                 ticket: null,

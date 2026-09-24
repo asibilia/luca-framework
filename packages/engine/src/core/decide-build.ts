@@ -1158,6 +1158,7 @@ export const decideBuild = ({
                     snapshot,
                     tickets: state.tickets,
                     final_review: state.final_review,
+                    memory_saves: state.memory.saved?.saves ?? [],
                 }),
             },
         ]

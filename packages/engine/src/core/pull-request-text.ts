@@ -3,6 +3,7 @@ import flatMap from 'lodash/flatMap'
 import uniq from 'lodash/uniq'
 
 import { shippedFindingsSection } from './final-review-text'
+import { newMemoriesSection } from './memory-text'
 import { reasonLine } from './stuck-text'
 
 import {
@@ -11,6 +12,7 @@ import {
     type ReplayedSnapshot,
     type TicketProgress,
 } from '../journal/replay'
+import type { MemorySave } from '../memory/memory-schemas'
 
 const SEVERITY_TEXT = {
     blocker: 'blocker',
@@ -26,7 +28,8 @@ const fileText = (file: string | null): string =>
  * progress, and the final review: which tickets it closes, the tickets left
  * out (skipped, and why), the assumptions agents made (from every round of
  * every agent on each ticket, and in the final review), the reviews' nits,
- * and the findings declined through "won't fix". A final review shipped
+ * the findings declined through "won't fix", and the memories the learner
+ * added or updated (#370). A final review shipped
  * while stuck puts its open findings at the very top.
  *
  * @example
@@ -36,11 +39,14 @@ export const pullRequestText = ({
     snapshot,
     tickets,
     final_review,
+    memory_saves,
 }: {
     snapshot: ReplayedSnapshot
     tickets: Record<number, TicketProgress>
     /** Defaults to a final review that never ran. */
     final_review?: FinalReviewState
+    /** The learner's saves (#370); the added and updated are listed. */
+    memory_saves?: MemorySave[]
 }): { title: string; body: string } => {
     const review = final_review ?? EMPTY_FINAL_REVIEW
     const { spec } = snapshot
@@ -139,6 +145,7 @@ export const pullRequestText = ({
         declined.length === 0
             ? ''
             : `## Declined findings\n\nFindings a fixer answered "won't fix", and a fresh reviewer let go.\n\n${declined.join('\n')}`,
+        newMemoriesSection({ saves: memory_saves ?? [] }),
     ]
     return {
         title: `${spec.title} (#${spec.number})`,
