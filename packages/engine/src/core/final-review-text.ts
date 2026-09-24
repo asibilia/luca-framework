@@ -9,7 +9,11 @@ import {
     RULING_RULES,
 } from './review-text'
 
-import { roleTask } from '../agents/role-prompts'
+import {
+    roleTask,
+    runNotesSection,
+    type PromptRunNote,
+} from '../agents/role-prompts'
 import { lensRole, type Finding, type LensName } from '../agents/role-results'
 import type {
     FinalFinding,
@@ -128,12 +132,15 @@ export const lensPrompt = ({
     snapshot,
     review,
     gates,
+    run_notes,
 }: {
     lens: LensName
     snapshot: ReplayedSnapshot
     review: FinalReviewState
     /** The latest gates on the run branch. */
     gates: ReplayedGates | null
+    /** Notes earlier agents in the run left, oldest first. */
+    run_notes?: PromptRunNote[]
 }): string => {
     const role = lensRole({ lens })
     const diff =
@@ -150,6 +157,7 @@ export const lensPrompt = ({
         ...diff,
         ...(lens === 'rules' ? [rulesSection({ rules: review.rules })] : []),
         gatesSection({ gates }),
+        ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')
 }
 
@@ -195,12 +203,15 @@ export const finalFixerPrompt = ({
     snapshot,
     fix,
     gates,
+    run_notes,
 }: {
     role: FinalFixerRole
     snapshot: ReplayedSnapshot
     fix: FinalReviewFix
     /** Failed gates to fix, for an implementer with no findings left. */
     gates: ReplayedGates | null
+    /** Notes earlier agents in the run left, oldest first. */
+    run_notes?: PromptRunNote[]
 }): string => {
     const kind = role === 'test-writer' ? 'test' : 'code'
     const task =
@@ -216,6 +227,7 @@ export const finalFixerPrompt = ({
         FIXER_TASKS[role],
         ...workSections({ snapshot }),
         task,
+        ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')
 }
 

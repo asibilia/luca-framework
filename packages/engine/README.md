@@ -387,6 +387,15 @@ Choices made:
   after-turn checks, since all five share the run branch's worktree at once;
   each would lose a try. The sandbox keeps reviewers from writing there, so
   this should not happen.
+- **Agent messages and run notes (#371).** Final review agents get no
+  messaging: lenses are reviewers, and the fixers (test-writers and
+  implementers with no ticket) have nobody left to talk to, since every
+  ticket is over once it pushed. They are launched with `messaging: null`,
+  their prompts name no address, and their instructions leave out agent
+  messages (`roleInstructions({ messaging })`). Every fresh final review
+  agent does get the run's newest notes, like a ticket's agents; notes a
+  final review agent leaves are not kept, since no agent comes after them
+  that would read them.
 - Final review agents get no Jev asks (no skills ask for lenses), and their
   failures and findings are asked about only for records of their own lens.
 

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { rulePath, shipFinalReview } from './execute-final-review'
 import { MAX_FIX_ROUNDS } from './loop-caps'
 
+import { roleInstructions } from '../agents/role-instructions'
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
 import type { ScriptedCall, ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -162,6 +163,7 @@ describe('the final review, end to end', () => {
 
     test('a code finding and a test finding are fixed on the whole run branch, then re-reviewed', async () => {
         const practice = await createPracticeRepo({ root })
+        const fixerSends: { ok: boolean; detail: string }[] = []
         const run = await practice.run({
             turns: [
                 ...Object.values(happyTurns()),
@@ -189,6 +191,15 @@ describe('the final review, end to end', () => {
                     role: 'implementer',
                     ticket: 10,
                     files: { 'src/sum.ts': RENAMED_SUM },
+                    // Every ticket is over: final fixers get no messaging.
+                    act: async (_cwd, tools) => {
+                        fixerSends.push(
+                            tools.send_message({
+                                to: 'implementer#11',
+                                text: 'Renamed the accumulator.',
+                            })
+                        )
+                    },
                     result: {
                         ...IMPLEMENTER_RESULT,
                         finding_responses: [
@@ -221,7 +232,13 @@ describe('the final review, end to end', () => {
             { kind: 'launch', role: 'test-writer', may_edit_tests: true },
             { kind: 'launch', role: 'implementer', may_edit_tests: false },
         ])
+        expect(fixerSends).toEqual([
+            { ok: false, detail: 'This agent has no send_message tool.' },
+        ])
         const [testFixer, codeFixer] = fixers
+        expect(codeFixer?.prompt).not.toContain(
+            'Your address for agent messages'
+        )
         expect(testFixer?.prompt).toContain('architecture-A1')
         expect(testFixer?.prompt).not.toContain('security-S1')
         expect(codeFixer?.prompt).toContain('security-S1')
@@ -391,5 +408,28 @@ describe('where a rule file is read', () => {
             '/home/me/.claude/rules/no-classes.md'
         )
         expect(where('/etc/luca/rules.md')).toBe('/etc/luca/rules.md')
+    })
+})
+
+describe("final review agents' instructions", () => {
+    test('a fixer with no messaging is not told about agent messages', () => {
+        const config = { ...PRACTICE_ENGINE_CONFIG, muninn: undefined }
+        const told = (messaging?: boolean) =>
+            roleInstructions({
+                role: 'implementer',
+                may_edit_tests: false,
+                config,
+                messaging,
+            }).includes('## Agent messages')
+
+        expect(told()).toBe(true)
+        expect(told(false)).toBe(false)
+        expect(
+            roleInstructions({
+                role: 'security-lens',
+                may_edit_tests: false,
+                config,
+            }).includes('## Agent messages')
+        ).toBe(false)
     })
 })

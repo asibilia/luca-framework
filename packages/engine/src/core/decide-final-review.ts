@@ -7,6 +7,7 @@ import {
 import { failedChecks, failedTryMessage, gateFixMessage } from './fix-loop-text'
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
 
+import type { PromptRunNote } from '../agents/role-prompts'
 import {
     LENS_NAMES,
     lensRole,
@@ -108,6 +109,8 @@ type DecideArgs = {
     run_branch: ReplayedWorktree
     /** The latest gates on the run branch. */
     run_branch_gates: ReplayedGates | null
+    /** The run notes a fresh agent gets (`newestRunNotes`). */
+    run_notes: PromptRunNote[]
 }
 
 const stuck = ({
@@ -124,6 +127,7 @@ const lensStep = ({
     review,
     snapshot,
     run_branch_gates,
+    run_notes,
 }: DecideArgs & { lens: LensName }): FinalReviewAction => {
     const role = lensRole({ lens })
     const failed = review.agent_failures[role]
@@ -136,6 +140,7 @@ const lensStep = ({
             snapshot,
             review,
             gates: run_branch_gates,
+            run_notes,
         }),
     }
     if (failed === undefined) return launch
@@ -177,6 +182,7 @@ const launchFixer = ({
     role,
     review,
     snapshot,
+    run_notes,
 }: DecideArgs & { role: FinalFixerRole }): FinalReviewAction => {
     const { fix } = review
     if (fix === null) throw new Error('No final review fix round is open.')
@@ -186,7 +192,7 @@ const launchFixer = ({
     return {
         type: 'launch_final_fixer',
         role,
-        prompt: finalFixerPrompt({ role, snapshot, fix, gates }),
+        prompt: finalFixerPrompt({ role, snapshot, fix, gates, run_notes }),
         may_edit_tests: role === 'test-writer',
     }
 }

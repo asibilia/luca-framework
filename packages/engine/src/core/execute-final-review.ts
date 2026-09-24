@@ -144,6 +144,8 @@ export const executeFinalReviewAction = async ({
                         cwd,
                         may_edit_tests: false,
                         config,
+                        // Lenses are reviewers: no agent messages.
+                        messaging: null,
                     }),
             })
             if (result === null || !('verdict' in result.result)) return
@@ -197,6 +199,8 @@ export const executeFinalReviewAction = async ({
                         cwd,
                         may_edit_tests,
                         config,
+                        // Every ticket is over, so nobody is left to talk to.
+                        messaging: null,
                     }),
             })
             return

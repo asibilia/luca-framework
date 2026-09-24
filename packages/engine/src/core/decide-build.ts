@@ -1051,6 +1051,7 @@ export const decideBuild = ({
             snapshot,
             run_branch,
             run_branch_gates: state.run_branch_gates,
+            run_notes,
         })
         if (final.status === 'working') return final.actions
         if (final.status === 'stuck') {

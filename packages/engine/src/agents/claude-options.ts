@@ -183,7 +183,14 @@ export const agentOptions = ({
         systemPrompt: {
             type: 'preset',
             preset: 'claude_code',
-            append: roleInstructions({ role, may_edit_tests, config }),
+            // Only an agent with messaging is told about it (the final
+            // review's fixers are test-writers and implementers with none).
+            append: roleInstructions({
+                role,
+                may_edit_tests,
+                config,
+                messaging: luca_server !== null,
+            }),
         },
         outputFormat: {
             type: 'json_schema',
