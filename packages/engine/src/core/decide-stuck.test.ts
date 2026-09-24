@@ -370,6 +370,29 @@ describe('retry', () => {
         expect(prompt).toContain('test: 1 fail')
     })
 
+    test('run notes from earlier agents still reach the fresh agent after a retry', () => {
+        const [step] = twoSteps([
+            runBranchCreated(),
+            ticketWorktreeCreated({ ticket: 12 }),
+            baselineTests({ ticket: 12 }),
+            testsWritten({
+                ticket: 12,
+                run_notes: ['Run lint with --fix before the gates.'],
+            }),
+            ...gatesFailedForGood(),
+            stuckReported({ ticket: 11, comment_id: 111 }),
+            replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
+        ])
+        expect(step).toMatchObject({ type: 'launch_agent', ticket: 11 })
+        const prompt = step?.type === 'launch_agent' ? step.prompt : ''
+        expect(prompt).toContain('## Run notes from earlier agents in this run')
+        expect(prompt).toContain(
+            'Run lint with --fix before the gates. (test-writer, #12)'
+        )
+        expect(prompt).toContain('This ticket was retried')
+    })
+
     test('a resumed ticket gets fresh counts: failing gates go back to the fresh agent, not straight to stuck', () => {
         expect(
             oneSteps([

@@ -18,8 +18,11 @@ import {
     practiceTicket,
     pullRequestOpened,
     pushed,
+    replyReceived,
     runBranchCreated,
     ticketRebased,
+    ticketRetried,
+    ticketSkipped,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
@@ -562,5 +565,129 @@ describe('deliveryText', () => {
         expect(lines[0]).toContain('no reply')
         expect(lines[0]).toEndWith(']: sum takes an object.')
         expect(lines[1]).toEndWith(']: Tests use bun:test.')
+    })
+})
+
+describe('stuck work replies (#366)', () => {
+    const bothLive = [
+        agentStarted({ ticket: 11, role: 'test-writer' }),
+        agentStarted({ ticket: 12, role: 'test-writer' }),
+        agentStarted({ ticket: 11, role: 'implementer' }),
+        agentStarted({ ticket: 12, role: 'implementer' }),
+    ]
+
+    test("a skipped ticket ends its agents' messages, and new ones to it are not delivered", () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#11',
+            to: 'all',
+        })
+        const skipped = [...entries, stuck(12), ticketSkipped({ ticket: 12 })]
+        const records = recordsAfter(skipped)
+        expect(pendingMessages({ records, address: 'implementer#12' })).toEqual(
+            []
+        )
+        expect(
+            pendingMessages({ records, address: 'test-writer#11' }).map(
+                ({ id }) => id
+            )
+        ).toEqual(['msg-1'])
+        expect(
+            plan({
+                entries: skipped,
+                from: 'implementer#11',
+                to: 'test-writer#12',
+            }).status
+        ).toBe('not_delivered')
+        expect(
+            plan({ entries: skipped, from: 'implementer#11', to: 'all' })
+                .recipients
+        ).toEqual(['test-writer#11'])
+    })
+
+    test('a ticket skipped because it waits on a skipped ticket is over too', () => {
+        const entries = send({
+            entries: [],
+            from: 'test-writer#11',
+            to: 'implementer#12',
+        })
+        expect(
+            pendingMessages({
+                records: recordsAfter([
+                    ...entries,
+                    ticketSkipped({ ticket: 12, because: 11 }),
+                ]),
+                address: 'implementer#12',
+            })
+        ).toEqual([])
+    })
+
+    test('a stop reply ends every ticket', () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#11',
+            to: 'all',
+        })
+        const stopped = [
+            ...entries,
+            stuck(12),
+            replyReceived({ word: 'stop', ticket: null, comment_id: 120 }),
+        ]
+        const records = recordsAfter(stopped)
+        for (const address of ['test-writer#11', 'implementer#12']) {
+            expect(pendingMessages({ records, address })).toEqual([])
+        }
+        expect(
+            plan({ entries: stopped, from: 'test-writer#11', to: 'all' }).status
+        ).toBe('not_delivered')
+    })
+
+    test.each(['resume', 'restart'] as const)(
+        'after a retry (%s), messages sent to the old agent never reach the fresh one; new ones do',
+        (mode) => {
+            let entries = send({
+                entries: bothLive,
+                from: 'implementer#12',
+                to: 'implementer#11',
+                text: 'for the old agent',
+            })
+            entries = [
+                ...entries,
+                stuck(11),
+                replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+                ticketRetried({ ticket: 11, mode }),
+                agentStarted({ ticket: 11, role: 'implementer' }),
+            ]
+            entries = send({
+                entries,
+                from: 'implementer#12',
+                to: 'implementer#11',
+                text: 'for the fresh agent',
+            })
+            expect(
+                pendingMessages({
+                    records: recordsAfter(entries),
+                    address: 'implementer#11',
+                }).map(({ text }) => text)
+            ).toEqual(['for the fresh agent'])
+        }
+    )
+
+    test('a refused retry leaves the ticket stuck: nothing is handed over', () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#12',
+            to: 'implementer#11',
+        })
+        expect(
+            pendingMessages({
+                records: recordsAfter([
+                    ...entries,
+                    stuck(11),
+                    ticketRetried({ ticket: 11, mode: 'refused' }),
+                ]),
+                address: 'implementer#11',
+            })
+        ).toEqual([])
     })
 })

@@ -701,8 +701,12 @@ either.
   may be on another ticket, working right now. A named address whose ticket
   is in the run and not over gets the message queued, even if that agent
   hasn't started yet: it gets it at its first tool call. A ticket is over
-  (`isOver`) once it pushed, is stuck, a billing stop ended the run, or the
-  run's PR is open. A ticket that joined but hasn't pushed isn't over: a
+  (`isOver`) once it pushed, is stuck, was skipped (by a `skip` reply, or
+  because it waits on a skipped ticket), the owner replied `stop` (every
+  ticket), a billing stop ended the run, or the run's PR is open. A `retry`
+  makes a stuck ticket live again for its fresh agents; messages queued
+  before the retry were for the old agents, and are never handed over. Run
+  notes are the run's, so the fresh agents get them as usual. A ticket that joined but hasn't pushed isn't over: a
   clash or failed gates after joining sends it back to its agents, and the
   implementer's follow-up (same session) or a fresh test-writer gets what
   waits. `all` goes to every other test-writer and implementer that has
