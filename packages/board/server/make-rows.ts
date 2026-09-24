@@ -4,6 +4,7 @@ import {
     countFindings,
     failureText,
     finalReasonText,
+    LEARNER,
     reasonText,
     RETRY_REFUSED_TEXT,
     rebasedText,
@@ -224,19 +225,30 @@ export const describeRecord = ({
             })
         }
         case 'agent_started':
+            if (record.content.role === LEARNER) {
+                return event({
+                    text: "The learner reads the run's journal for lessons to keep.",
+                    tone: 'info',
+                })
+            }
             return record.ticket === null
                 ? finalStartedText({ record })
                 : startedText({ before, after, record })
         case 'agent_finished':
+            if (record.content.role === LEARNER) {
+                return learnerFinishedText({ record })
+            }
             return record.ticket === null
                 ? finalFinishedText({ record })
                 : finishedText({ before, record })
         case 'agent_failed': {
             const { role, error, failure } = record.content
             const who =
-                record.ticket === null
-                    ? `Final review: the ${roleWords({ role })}`
-                    : `${at}the ${role}`
+                role === LEARNER
+                    ? 'The learner'
+                    : record.ticket === null
+                      ? `Final review: the ${roleWords({ role })}`
+                      : `${at}the ${role}`
             return event({
                 text: `${who} ${failureText({ failure })}: ${error.split('\n')[0] ?? ''}`,
                 tone: failure === 'engine' ? 'warning' : 'danger',
@@ -400,6 +412,20 @@ export const describeRecord = ({
             return messageText({ record })
         case 'final_review_shipped':
             return event({ text: SHIPPED_TEXT, tone: 'info' })
+        case 'memory_recalled':
+            return recalledText({ record })
+        case 'memories_saved':
+            return savedText({ record })
+        case 'learning_skipped':
+            return event({
+                text: `The learner was skipped: ${record.content.reason.split('\n')[0] ?? ''} The run ends without new memories.`,
+                tone: 'warning',
+            })
+        case 'memories_reported':
+            return event({
+                text: `The ${record.content.count} new ${record.content.count === 1 ? 'memory went' : 'memories went'} on the spec issue, since there is no PR.`,
+                tone: 'info',
+            })
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':
@@ -444,6 +470,61 @@ const messageText = ({
               text: `${from} → ${to}: ${shown} (not delivered: ${why})`,
               tone: 'warning',
           })
+}
+
+const RECALL_POINTS: Record<string, string> = {
+    run_start: "the run's start",
+    ticket: 'a ticket',
+    review: 'a review',
+    fix_round: 'a fix round',
+}
+
+/**
+ * A memory search (#370) adds a row only when a vault failed, since the
+ * run goes on without it; the panel counts the rest.
+ */
+const recalledText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'memory_recalled' }>
+}): { text: string; tone: Tone } | null => {
+    const failed = record.content.vaults.filter(({ ok }) => !ok)
+    if (failed.length === 0) return null
+    const where = RECALL_POINTS[record.content.point] ?? record.content.point
+    const at = on({ ticket: record.ticket })
+    return event({
+        text: `${at}memory search for ${where} failed in ${failed.map(({ vault }) => vault).join(', ')}: ${failed[0]?.error?.split('\n')[0] ?? 'no reason given'} The run goes on.`,
+        tone: 'warning',
+    })
+}
+
+/** The learner's answer (#370): how many memories it proposed, and helped. */
+const learnerFinishedText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'agent_finished' }>
+}): { text: string; tone: Tone } => {
+    const proposed = record.content.result.memories?.length ?? 0
+    const helped = record.content.result.helped?.length ?? 0
+    return event({
+        text: `The learner proposed ${proposed} ${proposed === 1 ? 'memory' : 'memories'}; ${helped} shown ${helped === 1 ? 'memory' : 'memories'} helped.`,
+        tone: 'info',
+    })
+}
+
+/** What became of the learner's memories (#370), counted. */
+const savedText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'memories_saved' }>
+}): { text: string; tone: Tone } => {
+    const count = (outcome: string) =>
+        record.content.saves.filter((save) => save.outcome === outcome).length
+    const failed = count('failed')
+    return event({
+        text: `Memories saved: ${count('added')} added, ${count('updated')} updated, ${count('refused')} refused, ${failed} failed.`,
+        tone: failed > 0 ? 'warning' : 'success',
+    })
 }
 
 /** A `ship` reply to the stuck final review, in words. */

@@ -4,6 +4,7 @@ import {
     ALL_STEPS_DONE,
     LENS_NAMES,
     LOOP_CAP,
+    NO_MEMORY,
     usageLevel,
     windowRank,
     windowWords,
@@ -83,6 +84,17 @@ const QUIET_KINDS = new Set([
     'agent_message',
     'agent_message_delivered',
 ])
+
+/** The learner's role (#370): its records have no ticket. */
+export const LEARNER = 'learner'
+
+const withLearner = ({
+    state,
+    learner,
+}: {
+    state: BoardState
+    learner: BoardState['memory']['learner']
+}): BoardState => ({ ...state, memory: { ...state.memory, learner } })
 
 /** A stuck reason code in words. */
 export const reasonText = ({ reason }: { reason: string }): string =>
@@ -166,6 +178,7 @@ export const createBoardState = ({
     },
     jev: { asked: 0, answered: 0, failed: 0 },
     messages: { sent: 0, refused: 0, delivered: 0 },
+    memory: NO_MEMORY,
     event_count: 0,
     latest: null,
 })
@@ -675,11 +688,20 @@ const applyKind = ({
                 }),
             })
         case 'agent_started':
+            // The learner (#370) has no ticket and is no final review agent.
+            if (record.content.role === LEARNER) {
+                return withLearner({ state, learner: 'learning' })
+            }
             return agentStarted({ state, record })
         case 'agent_finished':
+            if (record.content.role === LEARNER) {
+                return withLearner({ state, learner: 'learned' })
+            }
             return agentFinished({ state, record })
         case 'agent_failed': {
             const { role, error, failure } = record.content
+            // A failed learner gets a fresh one; its row says so.
+            if (role === LEARNER) return state
             // A final review agent (a lens or a fixer) has no ticket.
             if (ticket === null) {
                 return finalTried({
@@ -988,6 +1010,42 @@ const applyKind = ({
             return ticketRetried({ state, record })
         // An ignored reply is only a chat row; the engine answered it.
         case 'reply_ignored':
+            return state
+        case 'memory_recalled': {
+            const { vaults, memories } = record.content
+            const { memory } = state
+            return {
+                ...state,
+                memory: {
+                    ...memory,
+                    searches: memory.searches + 1,
+                    search_errors:
+                        memory.search_errors +
+                        vaults.filter(({ ok }) => !ok).length,
+                    shown: memory.shown + memories.length,
+                },
+            }
+        }
+        case 'memories_saved': {
+            const count = (outcome: string) =>
+                record.content.saves.filter((save) => save.outcome === outcome)
+                    .length
+            const { memory } = state
+            return {
+                ...state,
+                memory: {
+                    ...memory,
+                    added: memory.added + count('added'),
+                    updated: memory.updated + count('updated'),
+                    refused: memory.refused + count('refused'),
+                    failed: memory.failed + count('failed'),
+                },
+            }
+        }
+        case 'learning_skipped':
+            return withLearner({ state, learner: 'skipped' })
+        // The listing on the spec issue is only a chat row.
+        case 'memories_reported':
             return state
         case 'final_review_started':
             return {

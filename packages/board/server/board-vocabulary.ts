@@ -135,6 +135,10 @@ export const BOARD_VOCABULARY = {
                 rulings: RulingListSchema,
                 /** A review fixer's answer to each finding it got. */
                 finding_responses: FindingResponseListSchema,
+                /** The learner's proposed memories (#370). */
+                memories: z.array(z.unknown()).catch([]).optional(),
+                /** The shown memories the learner said helped. */
+                helped: z.array(z.string()).catch([]).optional(),
             })
             .catch({ rulings: [], finding_responses: [] }),
     }),
@@ -276,6 +280,39 @@ export const BOARD_VOCABULARY = {
     final_review_passed: z.looseObject({}),
     /** A `ship` reply to the stuck final review: the PR opens anyway. */
     final_review_shipped: z.looseObject({}),
+
+    // Memory (#370): counted, and its learner shown. The learner's agent
+    // records are the usual kinds with `ticket: null` and role `learner`.
+    /** A search at a recall point: each vault's outcome, and what it showed. */
+    memory_recalled: z.looseObject({
+        /** `run_start`, `ticket`, `review`, or `fix_round`. */
+        point: z.string(),
+        vaults: z
+            .array(
+                z.looseObject({
+                    vault: z.string(),
+                    ok: z.boolean(),
+                    error: z.string().nullable().catch(null),
+                })
+            )
+            .catch([]),
+        memories: z.array(z.unknown()).catch([]),
+    }),
+    /** The learner's memories saved, refused, or failed. */
+    memories_saved: z.looseObject({
+        saves: z
+            .array(
+                z.looseObject({
+                    /** `added`, `updated`, `refused`, or `failed`. */
+                    outcome: z.string(),
+                })
+            )
+            .catch([]),
+    }),
+    /** The engine gave up on the learner; the run ends without it. */
+    learning_skipped: z.looseObject({ reason: z.string().catch('') }),
+    /** With no PR, the new memories went on the spec issue. */
+    memories_reported: z.looseObject({ count: z.number().int().catch(0) }),
 } as const
 
 export type BoardKind = keyof typeof BOARD_VOCABULARY
@@ -332,6 +369,10 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'final_review_stuck' }),
     entry({ kind: 'final_review_passed' }),
     entry({ kind: 'final_review_shipped' }),
+    entry({ kind: 'memory_recalled' }),
+    entry({ kind: 'memories_saved' }),
+    entry({ kind: 'learning_skipped' }),
+    entry({ kind: 'memories_reported' }),
 ])
 
 /** A record the board understands, with its content parsed. */
