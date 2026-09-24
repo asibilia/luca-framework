@@ -1,5 +1,8 @@
 import { basename, dirname } from 'node:path'
 
+import has from 'lodash/has'
+import partition from 'lodash/partition'
+
 import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
@@ -512,6 +515,9 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'run_gates':
         case 'install_dependencies':
             return action.target === 'run_branch'
+        // It puts back a run branch a join crashes cut off too often left.
+        case 'mark_stuck':
+            return action.reason === 'crashed'
         default:
             return false
     }
@@ -609,6 +615,25 @@ const crashesIn = (records: JournalRecord[]): CrashCounts =>
         (crashes, record) => crashesAfter({ crashes, record }),
         {}
     )
+
+/**
+ * The actions on keys a crash cut a step off first, in their order, then
+ * the rest: a step a crash cut off (or the stop for it) starts before any
+ * other, so a half-done change to the run branch, such as a join, is put
+ * right before another step reads the run branch.
+ */
+const redosFirst = ({
+    actions,
+    crashes,
+}: {
+    actions: EngineAction[]
+    crashes: CrashCounts
+}): EngineAction[] => {
+    const [redos, rest] = partition(actions, (action) =>
+        has(crashes, keyOf(action))
+    )
+    return [...redos, ...rest]
+}
 
 /** One action the engine started and has not seen settle yet. */
 type InFlight = { action: EngineAction; done: Promise<void> }
@@ -776,8 +801,11 @@ export const runEngine = async ({
     await board?.sync({ records: journal.read() })
     for (;;) {
         const records = journal.read()
-        const actions = decideSteps({ records })
         const crashes = crashesIn(records)
+        const actions = redosFirst({
+            actions: decideSteps({ records }),
+            crashes,
+        })
         const stop = actions.find((action) => stops.has(action.type))
         if (stop !== undefined && inFlight.size === 0) return stop
         if (stop === undefined) {

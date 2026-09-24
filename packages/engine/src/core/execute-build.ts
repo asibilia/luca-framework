@@ -35,6 +35,7 @@ import type {
     AgentFailure,
     CommitStage,
     GateTarget,
+    JournalRecord,
 } from '../journal/journal-record'
 import {
     replayRun,
@@ -551,6 +552,53 @@ const followUpAgent = async ({
 }
 
 /**
+ * Where the run branch stood before a join of `ticket` a crash cut off: the
+ * latest `join_started` for it with no `ticket_joined` or `ticket_stuck`
+ * for it after, else `null`.
+ *
+ * @example
+ * openJoin({ records: journal.read(), ticket: 11 }) // 'a1b2c3...' after a crash mid-join
+ */
+export const openJoin = ({
+    records,
+    ticket,
+}: {
+    records: JournalRecord[]
+    ticket: number
+}): string | null => {
+    const last = records.findLast(
+        (record) =>
+            record.ticket === ticket &&
+            (record.kind === 'join_started' ||
+                record.kind === 'ticket_joined' ||
+                record.kind === 'ticket_stuck')
+    )
+    return last?.kind === 'join_started' ? last.content.run_branch_sha : null
+}
+
+/**
+ * Puts the run branch back where it stood before a join of `ticket` a crash
+ * cut off, dropping whatever half of its commits the crash left there. A
+ * cut-off step is taken again before other steps start, so nothing else
+ * moved the run branch since. Does nothing when no join was cut off.
+ */
+const undoCutOffJoin = async ({
+    context,
+    ticket,
+}: {
+    context: BuildContext
+    ticket: number
+}) => {
+    const sha = openJoin({ records: context.journal.read(), ticket })
+    if (sha === null) return
+    const runBranch = need({
+        value: context.state.run_branch,
+        what: 'run branch',
+    })
+    await context.git.resetWorktree({ cwd: runBranch.path, to: sha })
+}
+
+/**
  * Undoes a ticket's join on the run branch, back to before `first_sha`, and
  * returns the commits undone. The undone join's install is still in the run
  * branch's `node_modules`, so when its commits changed dependency files the
@@ -578,6 +626,12 @@ const undoJoin = async ({
                   to: last,
               })
     const { undone } = await git.undoReplay({ cwd: runBranch.path, first_sha })
+    // A redo whose first try undid the join before a crash finds nothing
+    // left to undo: the commits it undid are the journaled join's.
+    const named =
+        undone.length === 0 && context.step.redo && joined?.ok === true
+            ? joined.shas
+            : undone
     if (dependenciesChanged({ changed_files: undoneFiles })) {
         await installIn({
             journal,
@@ -586,7 +640,7 @@ const undoJoin = async ({
             ticket: null,
         })
     }
-    return undone
+    return named
 }
 
 /**
@@ -892,6 +946,15 @@ export const executeBuildAction = async ({
                 value: state.run_branch,
                 what: 'run branch',
             })
+            await undoCutOffJoin({ context, ticket: action.ticket })
+            journal.append({
+                kind: 'join_started',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    run_branch_sha: await git.head({ cwd: runBranch.path }),
+                },
+            })
             const commits = await git.commitsBetween({
                 cwd: worktree.path,
                 from: worktree.base_sha,
@@ -964,6 +1027,8 @@ export const executeBuildAction = async ({
             // Tracker-only steps; `executeAction` carries them out.
             throw new Error(`${action.type} is not a git or agent step.`)
         case 'mark_stuck':
+            // A join crashes cut off too often leaves no half of it behind.
+            await undoCutOffJoin({ context, ticket: action.ticket })
             journal.append({
                 kind: 'ticket_stuck',
                 ticket: action.ticket,

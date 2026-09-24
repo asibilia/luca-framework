@@ -141,7 +141,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
       commit_ticket fix           leftover scan, then commit             ──> leftover_scan, commit_made
       launch_agent ticket-reviewer  (fresh) only the new changes and the earlier findings
   then it waits in the join queue; one ticket joins at a time, in the order their reviews finally approved:
-  join_run_branch         git: cherry-pick the ticket's commits          ──> ticket_joined
+  join_run_branch         git: cherry-pick the ticket's commits          ──> join_started, ticket_joined
   run_gates run_branch    the gates again, on the joined run branch      ──> gates_run
   push_run_branch         git: push to origin                            ──> run_branch_pushed
     a clash, or failed gates after joining (≤ 3 times, then stuck):

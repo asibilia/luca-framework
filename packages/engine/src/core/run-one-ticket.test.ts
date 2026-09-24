@@ -151,6 +151,7 @@ describe('one ticket, end to end, with scripted agents', () => {
             'commit_made',
             'agent_started',
             'agent_finished',
+            'join_started',
             'ticket_joined',
             'gates_run',
             'run_branch_pushed',

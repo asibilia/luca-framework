@@ -409,6 +409,17 @@ const TicketJoinedEntrySchema = z.object({
 })
 
 /**
+ * A ticket's join is about to replay its commits onto the run branch, which
+ * stands at `run_branch_sha`. A join a crash cut off (no `ticket_joined`
+ * after this) is redone from there: the run branch is reset to it first.
+ */
+const JoinStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('join_started'),
+    content: z.object({ run_branch_sha: z.string().min(1) }),
+})
+
+/**
  * Why a joined ticket went back to be fixed on top of the run branch: its
  * commits clashed with it, or the gates failed after it joined.
  */
@@ -946,6 +957,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     StepStartedEntrySchema,
     StepEndedEntrySchema,
     RunResumedEntrySchema,
+    JoinStartedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -1009,6 +1021,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     StepStartedEntrySchema.extend(STAMP_FIELDS),
     StepEndedEntrySchema.extend(STAMP_FIELDS),
     RunResumedEntrySchema.extend(STAMP_FIELDS),
+    JoinStartedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -1071,6 +1084,7 @@ export const JournalKindSchema = z.enum([
     'step_started',
     'step_ended',
     'run_resumed',
+    'join_started',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

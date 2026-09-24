@@ -71,7 +71,8 @@ export type GitAdapter = {
     /**
      * Resets the worktree at `cwd` hard to `to`, moving its branch there, and
      * throws away untracked files (ignored ones are kept), as when a
-     * retried ticket starts over from the run branch's tip.
+     * retried ticket starts over from the run branch's tip. A cherry-pick
+     * left half-done (by a crash) is dropped too.
      */
     resetWorktree: (args: {
         cwd: string
@@ -367,6 +368,8 @@ export const createGitAdapter = ({
             return { sha: await head({ cwd }) }
         },
         resetWorktree: async ({ cwd, to }) => {
+            // A cherry-pick a crash cut off leaves its sequence behind.
+            await gitRun({ cwd, args: ['cherry-pick', '--quit'] })
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', to] })
             await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
             return { sha: await head({ cwd }) }

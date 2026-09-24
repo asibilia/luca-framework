@@ -844,6 +844,9 @@ const applyRecord = ({
         case 'step_started':
         case 'step_ended':
             return next
+        // Only a join's redo reads it (see `openJoin`).
+        case 'join_started':
+            return next
         case 'run_resumed':
             return resumedAfter({ state: next, record })
         case 'comment_read':
@@ -1431,6 +1434,7 @@ type TicketRecord = Exclude<
             | 'step_started'
             | 'step_ended'
             | 'run_resumed'
+            | 'join_started'
     }
 >
 

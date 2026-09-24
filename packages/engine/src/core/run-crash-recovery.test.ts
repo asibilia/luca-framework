@@ -592,4 +592,83 @@ describe('git steps redone after a crash', () => {
             )
         ).toEqual(['fix: final review round 1 for spec #10'])
     }, 60_000)
+
+    test('a join replayed in full just before a crash is redone from where the run branch stood', async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({
+                turns: Object.values(happyTurns()),
+                git: crashGitOnce({ method: 'replay' }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records, tracker } = await practice.run({
+            resume: true,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(ofKind(records, 'ticket_joined')).toHaveLength(1)
+        expect(await prSubjects({ origin: practice.origin, tracker })).toEqual([
+            'feat: build #11 Add sum',
+            'test: add failing tests for #11 Add sum',
+            'initial',
+        ])
+    }, 60_000)
+
+    test('a join a crash cut off half-way is redone from where the run branch stood', async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({
+                turns: Object.values(happyTurns()),
+                git: crashGitOnce({
+                    method: 'replay',
+                    effect: ({ real, args }) =>
+                        real.replay({
+                            ...args,
+                            commits: args.commits.slice(0, 1),
+                        }),
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, tracker } = await practice.run({ resume: true })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(await prSubjects({ origin: practice.origin, tracker })).toEqual([
+            'feat: build #11 Add sum',
+            'test: add failing tests for #11 Add sum',
+            'initial',
+        ])
+    }, 60_000)
+
+    test('a join cut off by crashes too often leaves the run branch where it stood, and the ticket stuck', async () => {
+        const practice = await createPracticeRepo({ root })
+        const halfJoin = () =>
+            crashGitOnce({
+                method: 'replay',
+                effect: ({ real, args }) =>
+                    real.replay({ ...args, commits: args.commits.slice(0, 1) }),
+            })
+        await expect(
+            practice.run({
+                turns: Object.values(happyTurns()),
+                git: halfJoin(),
+            })
+        ).rejects.toThrow('The engine crashed.')
+        for (const _ of [1, 2]) {
+            await expect(
+                practice.run({ resume: true, git: halfJoin() })
+            ).rejects.toThrow('The engine crashed.')
+        }
+
+        const { action, records } = await practice.run({ resume: true })
+
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        const state = replayRun({ records })
+        expect(state.tickets[11]?.stuck?.reason).toBe('crashed')
+        const runBranch = ofKind(records, 'run_branch_created')[0]?.content
+        expect(
+            (await git(runBranch?.path ?? root, 'rev-parse', 'HEAD')).trim()
+        ).toBe(runBranch?.base_sha ?? '')
+    }, 60_000)
 })
