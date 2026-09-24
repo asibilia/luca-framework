@@ -195,3 +195,50 @@ describe('the after-turn check and the shared .git', () => {
         await $`git config --unset core.fsmonitor`.cwd(repo).quiet()
     }, 60_000)
 })
+
+describe('the after-turn check and a worktree that is gone', () => {
+    test('a snapshot of a removed folder says why it failed', async () => {
+        const gone = await mkdtemp(join(tmpdir(), 'luca-engine-gone-'))
+        await rm(gone, { recursive: true, force: true })
+
+        const error = await snapshotWorktree({
+            cwd: gone,
+            branch: 'main',
+            config: CONFIG,
+        }).then(
+            () => null,
+            (caught: unknown) => caught
+        )
+
+        expect(error).toBeInstanceOf(Error)
+        expect(String(error)).toContain(`failed in ${gone}:`)
+        expect(String(error)).toContain('no longer exists')
+    }, 60_000)
+
+    test('a check on a worktree removed mid-turn says why it failed', async () => {
+        const copy = join(root, 'removed-copy')
+        await $`git clone -q ${repo} ${copy}`.quiet()
+        const before = await snapshotWorktree({
+            cwd: copy,
+            branch: 'main',
+            config: CONFIG,
+        })
+        await rm(copy, { recursive: true, force: true })
+
+        const error = await enforceAfterTurn({
+            cwd: copy,
+            branch: 'main',
+            role: 'implementer',
+            may_edit_tests: false,
+            config: CONFIG,
+            before,
+        }).then(
+            () => null,
+            (caught: unknown) => caught
+        )
+
+        expect(error).toBeInstanceOf(Error)
+        expect(String(error)).toContain(`failed in ${copy}:`)
+        expect(String(error)).toContain('no longer exists')
+    }, 60_000)
+})
