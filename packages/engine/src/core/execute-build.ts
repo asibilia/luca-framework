@@ -891,6 +891,9 @@ export const executeBuildAction = async ({
         case 'take_reply':
         case 'ignore_reply':
         case 'skip_ticket':
+        case 'report_final_review_stuck':
+        case 'ship_final_review':
+        case 'retry_final_review':
             // Tracker-only steps; `executeAction` carries them out.
             throw new Error(`${action.type} is not a git or agent step.`)
         case 'mark_stuck':

@@ -5,6 +5,7 @@ import {
     type FinalReviewAction,
 } from './decide-final-review'
 import {
+    finalStuckSteps,
     replySteps,
     skipDependent,
     stuckTicketSteps,
@@ -190,17 +191,6 @@ export type BuildAction =
           type: 'done'
           outcome: 'pr_opened'
           pull_request: { number: number; url: string }
-      }
-    /**
-     * The final review is stuck. The run ends without a PR, and the run
-     * branch's worktree stays; a `ship` reply (#366, `shipFinalReview`)
-     * opens the PR with the open findings at the top.
-     */
-    | {
-          type: 'done'
-          outcome: 'final_review_stuck'
-          reason: StuckReason
-          detail: string
       }
     /** The final review of the whole run branch (`decide-final-review.ts`). */
     | FinalReviewAction
@@ -1153,13 +1143,10 @@ export const decideBuild = ({
                 }),
             })
             if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
+            // The owner hears of it, and the run waits for their reply.
             return [
-                {
-                    type: 'done',
-                    outcome: 'final_review_stuck',
-                    reason: final.reason,
-                    detail: final.detail,
-                },
+                ...finalStuckSteps({ state, spec_number, run_branch }),
+                ...replies,
             ]
         }
         return [

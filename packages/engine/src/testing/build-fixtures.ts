@@ -816,7 +816,7 @@ export const replyReceived = ({
     ticket,
     comment_id,
 }: {
-    word: 'retry' | 'skip' | 'stop'
+    word: 'retry' | 'skip' | 'stop' | 'ship'
     ticket: number | null
     comment_id: number
 }): JournalEntry => ({

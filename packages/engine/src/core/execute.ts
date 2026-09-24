@@ -227,6 +227,9 @@ export const executeAction = async ({
         case 'take_reply':
         case 'ignore_reply':
         case 'skip_ticket':
+        case 'report_final_review_stuck':
+        case 'ship_final_review':
+        case 'retry_final_review':
             return executeStuckAction({
                 action,
                 journal,

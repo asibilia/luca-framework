@@ -2,6 +2,7 @@ import sortBy from 'lodash/sortBy'
 
 import type { StuckAction } from './decide-stuck'
 import { need, ticketWorktree, type BuildContext } from './execute-build'
+import { shipFinalReview } from './execute-final-review'
 
 import { checkIntake } from '../intake/intake-checks'
 import type { TicketSnapshot } from '../intake/intake-schemas'
@@ -30,9 +31,10 @@ export const ticketChanged = ({
 
 /**
  * Carries out the tracker steps of stuck work, then journals what happened:
- * telling the spec issue a ticket is stuck, waiting for and reading its
- * comments, taking or sending back a reply, and skipping a ticket (with a
- * comment on it).
+ * telling the spec issue a ticket or the final review is stuck, waiting for
+ * and reading its comments, taking or sending back a reply, skipping a
+ * ticket (with a comment on it), and shipping (`shipFinalReview`) or
+ * retrying the stuck final review.
  */
 export const executeStuckAction = async ({
     action,
@@ -116,6 +118,32 @@ export const executeStuckAction = async ({
             })
             return
         }
+        case 'report_final_review_stuck': {
+            const { id } = await tracker.comment({
+                number: action.spec_number,
+                body: action.body,
+            })
+            journal.append({
+                kind: 'stuck_reported',
+                ticket: null,
+                role: null,
+                content: { comment_id: id, body: action.body },
+            })
+            return
+        }
+        case 'ship_final_review': {
+            const shipped = shipFinalReview({ journal })
+            if (!shipped.ok) throw new Error(shipped.reason)
+            return
+        }
+        case 'retry_final_review':
+            journal.append({
+                kind: 'final_review_retried',
+                ticket: null,
+                role: null,
+                content: {},
+            })
+            return
         case 'skip_ticket':
             await tracker.comment({ number: action.ticket, body: action.body })
             journal.append({

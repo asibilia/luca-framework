@@ -28,7 +28,13 @@ import {
     ticketWorktreeCreated,
     withInstalls,
 } from '../testing/build-fixtures'
-import { finalReviewClean } from '../testing/final-review-fixtures'
+import {
+    finalReviewClean,
+    finalReviewShipped,
+    finalReviewStuck,
+    lensFinding,
+    lensRound,
+} from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
 /**
@@ -668,5 +674,139 @@ describe('a test setup file change', () => {
                 ),
             },
         ])
+    })
+})
+
+describe('the final review (#367)', () => {
+    /** #11 pushed; the final review asked for changes, then got stuck. */
+    const finalStuck = (): JournalEntry[] => [
+        runBranchCreated(),
+        ...ticketBuilt({ ticket: 11 }),
+        ...lensRound({
+            round: 1,
+            findings: {
+                security: [
+                    lensFinding({ id: 'S1', title: 'Sum trusts its input' }),
+                ],
+            },
+        }),
+        finalReviewStuck({
+            reason: 'changes_requested',
+            detail: 'The final review still asks for changes after 3 fix rounds:\nsecurity-S1',
+        }),
+        worktreesRemoved({ paths: [ticketPath(11)] }),
+    ]
+    const told = (): JournalEntry[] => [
+        ...finalStuck(),
+        {
+            kind: 'stuck_reported',
+            ticket: null,
+            role: null,
+            content: { comment_id: 150, body: 'stuck' },
+        },
+    ]
+    const reply = (body: string, author?: string): JournalEntry =>
+        commentRead({ comment_id: 160, body, author })
+
+    test('a stuck final review is told to the spec issue, with the replies retry, stop, and ship', () => {
+        const [step] = oneSteps(finalStuck())
+        expect(step).toMatchObject({
+            type: 'report_final_review_stuck',
+            spec_number: 10,
+        })
+        const body = step?.type === 'report_final_review_stuck' ? step.body : ''
+        expect(body).toContain('The final review is stuck')
+        expect(body).toContain('Why: The final review still asks for changes.')
+        expect(body).toContain('security-S1')
+        expect(body).toContain(RUN_BRANCH_PATH)
+        expect(body).toContain('`retry`')
+        expect(body).toContain('`stop`')
+        expect(body).toContain('`ship`')
+        expect(body).not.toContain('`skip')
+    })
+
+    test('once told, the run waits for a reply', () => {
+        expect(oneSteps(told())).toEqual([
+            { type: 'wait_for_reply', spec_number: 10, since_id: 150 },
+        ])
+    })
+
+    test('`ship` from the owner ships the final review, and the PR starts with the open findings', () => {
+        expect(oneSteps([...told(), reply('ship')])).toEqual([
+            { type: 'take_reply', comment_id: 160, word: 'ship', ticket: null },
+        ])
+        const shipping = [
+            ...told(),
+            reply('ship'),
+            replyReceived({ word: 'ship', ticket: null, comment_id: 160 }),
+        ]
+        expect(oneSteps(shipping)).toEqual([{ type: 'ship_final_review' }])
+        const [step] = oneSteps([...shipping, finalReviewShipped()])
+        expect(step?.type).toBe('open_pull_request')
+        const body = step?.type === 'open_pull_request' ? step.body : ''
+        expect(body.startsWith('## Open findings')).toBe(true)
+        expect(body).toContain('security-S1 Sum trusts its input')
+    })
+
+    test('`ship` from anyone else is ignored', () => {
+        expect(oneSteps([...told(), reply('ship', 'passer-by')])).toEqual([
+            { type: 'wait_for_reply', spec_number: 10, since_id: 160 },
+        ])
+    })
+
+    test('`retry` restarts the final review fix round with fresh fixers and fresh counts', () => {
+        expect(oneSteps([...told(), reply('retry')])).toEqual([
+            {
+                type: 'take_reply',
+                comment_id: 160,
+                word: 'retry',
+                ticket: null,
+            },
+        ])
+        const retrying = [
+            ...told(),
+            reply('retry'),
+            replyReceived({ word: 'retry', ticket: null, comment_id: 160 }),
+        ]
+        expect(oneSteps(retrying)).toEqual([{ type: 'retry_final_review' }])
+        expect(
+            oneSteps([
+                ...retrying,
+                {
+                    kind: 'final_review_retried',
+                    ticket: null,
+                    role: null,
+                    content: {},
+                },
+            ])
+        ).toEqual([{ type: 'start_final_fix', round: 1 }])
+    })
+
+    test('`skip` does not apply to the final review', () => {
+        expect(oneSteps([...told(), reply('skip')])).toEqual([
+            {
+                type: 'ignore_reply',
+                comment_id: 160,
+                spec_number: 10,
+                reason: 'skip_not_for_final_review',
+                answer: expect.stringContaining('`ship`'),
+            },
+        ])
+    })
+
+    test('a reply naming a ticket is sent back: only the final review is stuck', () => {
+        expect(oneSteps([...told(), reply('retry #11')])).toMatchObject([
+            { type: 'ignore_reply', reason: 'not_stuck' },
+        ])
+    })
+
+    test('`stop` ends the run without a PR', () => {
+        expect(
+            oneSteps([
+                ...told(),
+                reply('stop'),
+                replyReceived({ word: 'stop', ticket: null, comment_id: 160 }),
+            ])
+        ).toEqual([{ type: 'done', outcome: 'stopped_by_user' }])
     })
 })

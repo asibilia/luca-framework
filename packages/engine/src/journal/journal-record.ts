@@ -410,8 +410,9 @@ const TicketStuckEntrySchema = z.object({
 })
 
 /**
- * The engine told the spec issue that a ticket is stuck, in its comment
- * `comment_id`, and now waits for the spec owner's reply.
+ * The engine told the spec issue that a ticket (or, with `ticket: null`,
+ * the final review) is stuck, in its comment `comment_id`, and now waits
+ * for the spec owner's reply.
  */
 const StuckReportedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -436,14 +437,19 @@ const CommentReadEntrySchema = z.object({
     }),
 })
 
-/** The one-word replies the spec owner can give to stuck work. */
-export const ReplyWordSchema = z.enum(['retry', 'skip', 'stop'])
+/**
+ * The one-word replies the spec owner can give to stuck work: `retry`,
+ * `skip`, and `stop` for a ticket; `retry`, `stop`, and `ship` for the
+ * final review.
+ */
+export const ReplyWordSchema = z.enum(['retry', 'skip', 'stop', 'ship'])
 
 export type ReplyWord = z.infer<typeof ReplyWordSchema>
 
 /**
  * The engine took the spec owner's reply: `retry` or `skip` for `ticket`,
- * or `stop` for the whole run (`ticket` is `null`).
+ * `stop` for the whole run, or `retry` or `ship` for the stuck final review
+ * (`ticket` is `null` for these).
  */
 const ReplyReceivedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -459,13 +465,15 @@ const ReplyReceivedEntrySchema = z.object({
 /**
  * Why the spec owner's reply could not be used: it named no ticket while
  * more than one is stuck, named a ticket that isn't stuck, or was `ship`
- * (the final review's word).
+ * (the final review's word) while no final review is stuck, or was `skip`
+ * for the final review, which can't be skipped.
  */
 export const ReplyProblemSchema = z.enum([
     'no_ticket_named',
     'not_stuck',
     'nothing_stuck',
     'ship_needs_final_review',
+    'skip_not_for_final_review',
 ])
 
 export type ReplyProblem = z.infer<typeof ReplyProblemSchema>
@@ -517,6 +525,17 @@ const TicketSkippedEntrySchema = z.object({
     content: z.object({
         because: z.number().int().positive().nullable(),
     }),
+})
+
+/**
+ * The owner replied `retry` to the stuck final review: its open fix round
+ * starts over as round 1 with fresh fixers and fresh counts, keeping any
+ * edits the owner made in the run branch's worktree.
+ */
+const FinalReviewRetriedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_retried'),
+    content: z.object({}),
 })
 
 /**
@@ -786,6 +805,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketRetriedEntrySchema,
     TicketSkippedEntrySchema,
     JoinUndoneEntrySchema,
+    FinalReviewRetriedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -841,6 +861,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketRetriedEntrySchema.extend(STAMP_FIELDS),
     TicketSkippedEntrySchema.extend(STAMP_FIELDS),
     JoinUndoneEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewRetriedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -895,6 +916,7 @@ export const JournalKindSchema = z.enum([
     'ticket_retried',
     'ticket_skipped',
     'join_undone',
+    'final_review_retried',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

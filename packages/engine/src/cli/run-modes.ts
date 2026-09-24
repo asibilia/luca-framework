@@ -81,11 +81,6 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 message:
                     'Every ticket was skipped, so there is no PR. The skipped tickets stay open.',
             }
-        case 'final_review_stuck':
-            return {
-                ok: false,
-                message: `The final review is stuck (${action.reason}): ${action.detail}\nReply \`ship\` on the spec to open the PR with the open findings listed at the top.`,
-            }
         case 'stopped':
             return {
                 ok: false,

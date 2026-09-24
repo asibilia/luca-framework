@@ -367,15 +367,19 @@ runs, even for a one-ticket spec.
   failures of one role in a row, are stuck (`agent_failed`). So are a bad test
   while fixing (`bad_test`), leftovers (`leftovers_found`), and the gate fix
   loop at its cap (`gates_failed`).
-- **Stuck.** `final_review_stuck`, then the tickets' worktrees are removed and
-  the run ends with `done` (`final_review_stuck`); the run branch's worktree
-  stays for a retry (#366). No PR opens.
-- **Ship.** A `ship` reply to a stuck final review belongs to #366. Its reply
-  reader calls `shipFinalReview({ journal })`, which journals
+- **Stuck.** `final_review_stuck`, then the tickets' worktrees are removed
+  (the run branch's worktree stays), and the spec issue hears why, like a
+  stuck ticket (see "Stuck work"). No PR opens while it waits for a reply.
+- **Replies.** Only the spec owner's count: `ship` journals the reply, then
+  calls `shipFinalReview({ journal })`, which journals
   `final_review_shipped` (and refuses a final review that isn't stuck); the
-  next `runEngine` on the journal opens the PR with an "Open findings"
-  section at the very top (each with its lens, severity, and file), then
-  removes the worktrees.
+  PR then opens with an "Open findings" section at the very top (each with
+  its lens, severity, and file), and the worktrees are removed. `retry`
+  journals `final_review_retried`: fresh fixers (no session kept) and fresh
+  counts, keeping the owner's edits in the run branch's worktree. The open
+  fix round starts over as round 1 (a failed lens, failed gates, or a
+  leftover just run again). `stop` ends the run without a PR. `skip` doesn't
+  apply to the final review; the spec hears so.
 - **In the PR.** The final review's nits (one per id), declined findings,
   and assumptions are listed with the tickets', labelled "final review" and
   the lens.
@@ -418,17 +422,24 @@ ticket_stuck
   retry ──> retry_ticket      re-read the ticket                            ──> ticket_retried (resume | restart | refused)
   skip  ──> skip_ticket × n   comment on each ticket left out               ──> ticket_skipped
   stop  ──> remove_worktrees (pushed tickets'), then done (stopped_by_user)
+
+final_review_stuck
+  decide ──> report_final_review_stuck  comment on the spec issue           ──> stuck_reported (ticket null)
+  ship  ──> ship_final_review           shipFinalReview                     ──> final_review_shipped, then the PR
+  retry ──> retry_final_review                                              ──> final_review_retried
 ```
 
 - **The comment** names the ticket, says why in one line, what was tried
   (fix rounds, failed tries, rebases, ...), the last error, a suggestion, the
   ticket's worktree, and the replies.
 - **Replies.** Only comments by the spec's owner (the spec issue's author)
-  count, and only a comment that is just a word: `retry`, `skip`, or `stop`,
-  optionally with a ticket (`retry #12`, `skip 12`). With more than one
-  ticket stuck, `retry` and `skip` must name one; a bare word, a ticket that
-  isn't stuck, or `ship` (the final review's word, #367) gets an answer on
-  the spec saying why, and nothing moves. Anyone else's comments, the owner's
+  count, and only a comment that is just a word: `retry`, `skip`, `stop`, or
+  `ship`, optionally with a ticket (`retry #12`, `skip 12`). With more than
+  one ticket stuck, `retry` and `skip` must name one. With the final review
+  stuck, a bare `retry` or `ship` is its reply. A bare word with several
+  tickets stuck, a ticket that isn't stuck, `ship` with no final review
+  stuck, or `skip` for the final review gets an answer on the spec saying
+  why, and nothing moves. Anyone else's comments, the owner's
   other comments, and the engine's own comments are never replies. Replies
   sent while the engine was down are read when it starts again.
 - **`retry`** re-reads the ticket. If its title, body, or labels changed,
@@ -941,8 +952,12 @@ step, limits and billing stops with two tickets in flight included.
 `src/core/decide-stuck.test.ts` covers stuck work at the decision step: the
 comment, other tickets building, the join undone, each reply word, named
 tickets when several are stuck, replies from others ignored, retry with and
-without ticket edits, skip with dependents and the PR, stop, and a test
-setup change. `src/core/run-stuck.test.ts` runs it end to end, with a
+without ticket edits, skip with dependents and the PR, stop, a test setup
+change, and a stuck final review's replies (`ship`, `retry`, `stop`, and
+`skip` sent back). `src/core/final-review.test.ts` runs a final review
+stuck after its fix rounds, told on the spec, then shipped by the owner's
+`ship` reply on the tracker, ending in a PR that starts with the open
+findings. `src/core/run-stuck.test.ts` runs it end to end, with a
 scripted person replying on the in-memory tracker through a fake clock:
 retry keeping the owner's fix, retry after a ticket edit, skip while another
 ticket builds and pushes, stop, and a test setup change. The other

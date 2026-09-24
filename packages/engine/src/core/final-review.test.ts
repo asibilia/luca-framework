@@ -12,6 +12,7 @@ import { roleInstructions } from '../agents/role-instructions'
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
 import type { ScriptedCall, ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
+import { SPEC_OWNER } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     git,
@@ -296,7 +297,7 @@ describe('the final review, end to end', () => {
         expect(securityAgain?.prompt).not.toContain('architecture-A1')
     }, 60_000)
 
-    test(`stuck after ${MAX_FIX_ROUNDS} fix rounds; a ship reply then opens the PR with the open findings at the top`, async () => {
+    test(`stuck after ${MAX_FIX_ROUNDS} fix rounds, told on the spec; the owner's ship reply then opens the PR with the open findings at the top`, async () => {
         const practice = await createPracticeRepo({ root })
         const stubborn = lensTurn({
             lens: 'security',
@@ -329,12 +330,15 @@ describe('the final review, end to end', () => {
             ],
         })
 
-        expect(stuck.action).toMatchObject({
-            type: 'done',
-            outcome: 'final_review_stuck',
-            reason: 'changes_requested',
-        })
+        // The run waits for a reply; the spec issue heard why.
+        expect(stuck.action).toMatchObject({ type: 'wait_for_reply' })
         expect(stuck.tracker.pullRequests()).toEqual([])
+        const [report] = stuck.tracker.commentsOn({ number: 10 })
+        expect(report).toContain('The final review is stuck')
+        expect(report).toContain(
+            'Why: The final review still asks for changes.'
+        )
+        expect(report).toContain('`ship`')
         expect(
             stuck.launches.filter(({ role }) => role === 'security-lens')
         ).toHaveLength(MAX_FIX_ROUNDS + 1)
@@ -348,18 +352,39 @@ describe('the final review, end to end', () => {
                 : ''
         expect(existsSync(runBranchPath)).toBe(true)
 
-        expect(shipFinalReview({ journal: practice.journal })).toEqual({
-            ok: true,
+        // Someone else's `ship` doesn't count; the spec owner's does.
+        stuck.tracker.addComment({
+            number: 10,
+            author: 'passer-by',
+            body: 'ship',
+        })
+        stuck.tracker.addComment({
+            number: 10,
+            author: SPEC_OWNER,
+            body: 'ship',
         })
         const shipped = await practice.run({
             tracker: stuck.tracker,
             resume: true,
+            stop_before: [],
+            clock: { now: () => Date.now(), sleep: async () => undefined },
         })
 
         expect(shipped.action).toMatchObject({
             type: 'done',
             outcome: 'pr_opened',
         })
+        expect(
+            shipped.records
+                .filter((record) => record.kind === 'reply_received')
+                .map((record) => record.content)
+        ).toEqual([
+            expect.objectContaining({
+                word: 'ship',
+                ticket: null,
+                author: SPEC_OWNER,
+            }),
+        ])
         const [pr] = shipped.tracker.pullRequests()
         expect(pr?.body.startsWith('## Open findings')).toBe(true)
         expect(pr?.body).toContain(

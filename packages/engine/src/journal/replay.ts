@@ -391,6 +391,10 @@ export type RunState = {
     engine_comments: number[]
     /** The owner replied `stop`: nothing new starts, and the run ends without a PR. */
     stop: { comment_id: number } | null
+    /** The spec issue's comment that told the owner the final review is stuck. */
+    final_stuck_report: { comment_id: number } | null
+    /** The owner's reply to the stuck final review, until the engine acts on it. */
+    final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
     last_seq: number
 }
 
@@ -463,6 +467,8 @@ const EMPTY_STATE: RunState = {
     handled_comments: [],
     engine_comments: [],
     stop: null,
+    final_stuck_report: null,
+    final_reply: null,
     last_seq: 0,
 }
 
@@ -582,6 +588,7 @@ const applyRecord = ({
             : base
     const finalRecord = finalRecordOf({ state, record })
     if (finalRecord !== null) {
+        const replies = finalRepliesAfter({ state, record })
         const final_review = finalReviewAfter({
             review: state.final_review,
             record: finalRecord,
@@ -590,10 +597,11 @@ const applyRecord = ({
         return record.kind === 'agent_session'
             ? {
                   ...next,
+                  ...replies,
                   final_review,
                   plan: planAfter({ plan: state.plan, record }),
               }
-            : { ...next, final_review }
+            : { ...next, ...replies, final_review }
     }
     switch (record.kind) {
         case 'run_started':
@@ -685,6 +693,15 @@ const applyRecord = ({
                 }),
             }
         }
+        case 'final_review_retried':
+            return {
+                ...next,
+                final_stuck_report: null,
+                final_reply: null,
+                final_review: resumedFinalReview({
+                    review: state.final_review,
+                }),
+            }
         case 'reply_received': {
             const handled = {
                 ...next,
@@ -693,25 +710,31 @@ const applyRecord = ({
                     record.content.comment_id,
                 ],
             }
-            if (record.content.word === 'stop') {
-                return {
-                    ...handled,
-                    stop: { comment_id: record.content.comment_id },
-                }
+            const { word, comment_id, ticket } = record.content
+            if (word === 'stop') return { ...handled, stop: { comment_id } }
+            if (ticket === null && (word === 'retry' || word === 'ship')) {
+                return { ...handled, final_reply: { word, comment_id } }
             }
             return applyTicketRecord({ state: handled, record })
         }
-        case 'stuck_reported':
-            return applyTicketRecord({
-                state: {
-                    ...next,
-                    engine_comments: engineCommentsAfter({
-                        state,
-                        comment_id: record.content.comment_id,
-                    }),
-                },
-                record,
-            })
+        case 'stuck_reported': {
+            const reported = {
+                ...next,
+                engine_comments: engineCommentsAfter({
+                    state,
+                    comment_id: record.content.comment_id,
+                }),
+            }
+            // A report with no ticket is the final review's.
+            return record.ticket === null
+                ? {
+                      ...reported,
+                      final_stuck_report: {
+                          comment_id: record.content.comment_id,
+                      },
+                  }
+                : applyTicketRecord({ state: reported, record })
+        }
         case 'ticket_retried': {
             const { answer_id, mode } = record.content
             const install = state.run_branch_install?.check
@@ -1151,6 +1174,7 @@ type TicketRecord = Exclude<
             | 'final_review_shipped'
             | 'comment_read'
             | 'reply_ignored'
+            | 'final_review_retried'
     }
 >
 
@@ -1468,7 +1492,10 @@ const progressChange = ({
             return { stuck_report: { comment_id: record.content.comment_id } }
         case 'reply_received': {
             const { word, comment_id } = record.content
-            return word === 'stop' ? {} : { reply: { word, comment_id } }
+            // `stop` is the run's, and `ship` the final review's.
+            return word === 'retry' || word === 'skip'
+                ? { reply: { word, comment_id } }
+                : {}
         }
         case 'ticket_retried':
             return retriedChange({ progress, retried: record.content })
@@ -1479,6 +1506,84 @@ const progressChange = ({
             }
         case 'join_undone':
             return { joined: null, join_gates: null }
+    }
+}
+
+/**
+ * The final review's report and reply after one of its records: a new
+ * stuck is told afresh, and a ship settles the reply.
+ */
+const finalRepliesAfter = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: JournalRecord
+}): Pick<RunState, 'final_stuck_report' | 'final_reply'> => {
+    switch (record.kind) {
+        case 'final_review_stuck':
+            return { final_stuck_report: null, final_reply: null }
+        case 'final_review_shipped':
+            return {
+                final_stuck_report: state.final_stuck_report,
+                final_reply: null,
+            }
+        default:
+            return {
+                final_stuck_report: state.final_stuck_report,
+                final_reply: state.final_reply,
+            }
+    }
+}
+
+/**
+ * The stuck final review resumed by `retry`, like a resumed ticket: fresh
+ * fixers (no session kept) and fresh counts, and the owner's edits in the
+ * run branch's worktree kept. A leftover scan or failed gates just run
+ * again; a failed lens gets a fresh one; otherwise the open fix round
+ * starts over as round 1, so the fixes (and the owner's edits) are gated,
+ * committed, pushed, and re-reviewed.
+ */
+const resumedFinalReview = ({
+    review,
+}: {
+    review: FinalReviewState
+}): FinalReviewState => {
+    const base: FinalReviewState = {
+        ...review,
+        stuck: null,
+        shipped: false,
+        sessions: {},
+        agent_failures: {},
+        failed_tries: {},
+        engine_failures: {},
+        gate_fix_rounds: 0,
+        gates: review.commit === null ? null : review.gates,
+        leftovers: review.commit === null ? null : review.leftovers,
+    }
+    const { fix, stuck } = review
+    if (
+        fix === null ||
+        stuck?.reason === 'leftovers_found' ||
+        stuck?.reason === 'gates_failed' ||
+        stuck?.reason === 'agent_failed'
+    ) {
+        return base
+    }
+    return {
+        ...base,
+        round: 1,
+        fix: {
+            ...fix,
+            round: 1,
+            tests_answered: !fix.findings.some(({ kind }) => kind === 'test'),
+            code_answered: !fix.findings.some(({ kind }) => kind === 'code'),
+            responses: [],
+            bad_test: null,
+        },
+        fixing_started: false,
+        commit: null,
+        pushed: null,
     }
 }
 

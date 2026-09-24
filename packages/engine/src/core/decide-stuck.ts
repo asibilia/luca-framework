@@ -1,10 +1,19 @@
 import max from 'lodash/max'
 
-import { replyAnswer, skipComment, stuckComment } from './stuck-text'
+import {
+    finalStuckComment,
+    replyAnswer,
+    skipComment,
+    stuckComment,
+} from './stuck-text'
 
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { ReplyProblem, ReplyWord } from '../journal/journal-record'
-import type { RunState, TicketProgress } from '../journal/replay'
+import type {
+    ReplayedWorktree,
+    RunState,
+    TicketProgress,
+} from '../journal/replay'
 
 /** The steps of stuck work: telling the owner, reading replies, acting on them. */
 export type StuckAction =
@@ -43,6 +52,12 @@ export type StuckAction =
      * changed, or resume it with a fresh agent and fresh counts.
      */
     | { type: 'retry_ticket'; ticket: number; spec_number: number }
+    /** Tell the spec issue that the final review is stuck. */
+    | { type: 'report_final_review_stuck'; spec_number: number; body: string }
+    /** `ship`: open the PR anyway, with the open findings at the top. */
+    | { type: 'ship_final_review' }
+    /** `retry`: start the stuck final review's fix round over, fresh. */
+    | { type: 'retry_final_review' }
     /**
      * Leave a ticket out of the run, with `body` as a comment on it: the
      * stuck ticket the owner skipped (`because` is `null`), or one that waits
@@ -138,6 +153,49 @@ export const stuckTicketSteps = ({
     }
 }
 
+/** Whether the final review is stuck, told, and waiting for a reply. */
+const finalAwaitingReply = (state: RunState): boolean =>
+    state.final_review.stuck !== null &&
+    !state.final_review.shipped &&
+    state.final_stuck_report !== null &&
+    state.final_reply === null
+
+/**
+ * The next steps of a stuck final review: tell the spec issue, then act on
+ * the owner's `retry` or `ship` (`stop` is the whole run's). Nothing while
+ * it waits for one.
+ */
+export const finalStuckSteps = ({
+    state,
+    spec_number,
+    run_branch,
+}: {
+    state: RunState
+    spec_number: number
+    run_branch: ReplayedWorktree
+}): StuckAction[] => {
+    if (state.final_stuck_report === null) {
+        return [
+            {
+                type: 'report_final_review_stuck',
+                spec_number,
+                body: finalStuckComment({
+                    review: state.final_review,
+                    run_branch,
+                }),
+            },
+        ]
+    }
+    switch (state.final_reply?.word) {
+        case 'ship':
+            return [{ type: 'ship_final_review' }]
+        case 'retry':
+            return [{ type: 'retry_final_review' }]
+        default:
+            return []
+    }
+}
+
 /** Skip a ticket that waits on a skipped ticket. */
 export const skipDependent = ({
     ticket,
@@ -158,7 +216,9 @@ export const skipDependent = ({
  * The replies half of the decision step. Pure. The first comment from the
  * spec's owner that reads as a reply and hasn't been handled is taken, or
  * sent back with a reason (it names no ticket while several are stuck,
- * names one that isn't stuck, or is `ship`). Comments from anyone else,
+ * names one that isn't stuck, is `ship` while the final review isn't
+ * stuck, or is `skip` for the final review). With the final review stuck,
+ * a bare `retry` or `ship` is its reply. Comments from anyone else,
  * and the owner's other comments, are never replies. With nothing to
  * handle and a ticket waiting for a reply, the run waits for one.
  *
@@ -203,7 +263,19 @@ export const replySteps = ({
                 }),
             },
         ]
-        if (next.word === 'ship') return ignore('ship_needs_final_review')
+        const final = finalAwaitingReply(state)
+        if (next.word === 'ship') {
+            return final
+                ? [
+                      {
+                          type: 'take_reply',
+                          comment_id: next.comment_id,
+                          word: 'ship',
+                          ticket: null,
+                      },
+                  ]
+                : ignore('ship_needs_final_review')
+        }
         if (next.word === 'stop') {
             return [
                 {
@@ -218,7 +290,16 @@ export const replySteps = ({
             return ignore('not_stuck')
         }
         if (next.ticket === null && waiting.length === 0) {
-            return ignore('nothing_stuck')
+            if (!final) return ignore('nothing_stuck')
+            if (next.word === 'skip') return ignore('skip_not_for_final_review')
+            return [
+                {
+                    type: 'take_reply',
+                    comment_id: next.comment_id,
+                    word: 'retry',
+                    ticket: null,
+                },
+            ]
         }
         if (next.ticket === null && waiting.length > 1) {
             return ignore('no_ticket_named')
@@ -232,7 +313,7 @@ export const replySteps = ({
             },
         ]
     }
-    if (waiting.length === 0) return []
+    if (waiting.length === 0 && !finalAwaitingReply(state)) return []
     const since_id =
         max([
             ...state.comments.map(({ comment_id }) => comment_id),
