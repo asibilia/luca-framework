@@ -177,7 +177,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
       done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
-  save_memories             update a similar memory or add one, then feedback ──> memories_saved
+  save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
 open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
@@ -383,7 +383,18 @@ its records, then its `step_ended`, are in the journal.
   Making the run branch or a worktree adopts one already there. A commit
   adopts a HEAD commit with the same message that the journal doesn't know
   yet. A join journals `join_started` (where the run branch stood) before it
-  cherry-picks, so a cut-off join is redone from there.
+  cherry-picks, so a cut-off join is redone from there. The memories'
+  comment on the spec (`report_memories`) carries a marker too.
+- **Memory writes.** `save_memories` journals each MuninnDB write before it
+  (`memory_write_started`) and its outcome after (`memory_write_done`),
+  under a key within the step (`save:<op_id>`, `feedback:<vault>:<id>`);
+  only records after the step's first try count. A redo reuses a write
+  done, repeats a save started but not done as it started (an update of the
+  same memory with the same content, or an add with the same `op_id`, which
+  MuninnDB adds once), and never sends a feedback in doubt again (it could
+  count twice): that one is journaled as not ok, "unknown: a crash cut it
+  off...". Then `memories_saved` is journaled once, complete, in order.
+  Searches (`recall_memories`) only read, so a cut-off one is made again.
 - **Limit waits and replies.** A restarted engine waits until the reset
   time a limit wait named, never less, and doesn't announce it again. It
   reads the spec issue again, so replies sent while it was down count.
@@ -1063,7 +1074,12 @@ most similar one (limit 1, threshold 0); a `vector_score` of at least
 added (`muninn_remember`, tags `luca` and `spec-<n>`, and an `op_id` from the
 learner's record so a save repeated after a crash adds it once). Then every
 distinct memory shown in the run gets feedback: useful if its id is in
-`helped` (ids never shown are ignored). All of it is journaled once as
+`helped` (ids never shown are ignored). Each write (a save's update or add,
+a feedback) is journaled just before it as `memory_write_started` (its key,
+vault, and the save's concept, `op_id`, the id it updates, and the similar
+memory; or the feedback's memory id) and after it as `memory_write_done`
+(the save's or the feedback's outcome), so a crash never saves twice or
+sends a feedback twice (see "Crash recovery"). All of it is journaled once as
 `memories_saved`: each save's vault, outcome (`added`, `updated`, `refused`,
 `failed`), id, the similar memory found (id, score, vector score), and error,
 and each feedback's outcome.
@@ -1100,6 +1116,9 @@ Choices made:
   tags, so the executor stays a plain loop.
 - A save whose similarity search fails is `failed`, not added, so a
   MuninnDB that half works doesn't fill a vault with duplicates.
+- A save a crash left in doubt is repeated with no new search, as its
+  `memory_write_started` says: a new search could find the memory its first
+  try just added and update it instead, journaling `updated` for an add.
 - The learner's answer is saved once (`memories_saved` is its checkpoint),
   even with nothing to save, so the run's end is clear in the journal.
 - The run's start memories go on every fresh agent but the learner, whose

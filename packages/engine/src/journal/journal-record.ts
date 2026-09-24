@@ -776,6 +776,59 @@ const MemoriesSavedEntrySchema = z.object({
     }),
 })
 
+/**
+ * The engine is about to make one MuninnDB write of `save_memories` (#369):
+ * a save (`update_id` names the similar memory it updates, `muninn_evolve`;
+ * `null` adds a new one, `muninn_remember` with `op_id`) or a feedback on a
+ * shown memory. `write_key` names it within its step: `save:<op_id>` or
+ * `feedback:<vault>:<id>`. A redo of the step repeats a save started but
+ * not done the same way, and never sends such a feedback again.
+ */
+const MemoryWriteStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memory_write_started'),
+    content: z.discriminatedUnion('what', [
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('save'),
+            vault: z.string().min(1),
+            concept: z.string(),
+            op_id: z.string().min(1),
+            update_id: z.string().nullable(),
+            similar: MemorySaveSchema.shape.similar,
+        }),
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('feedback'),
+            vault: z.string().min(1),
+            id: z.string().min(1),
+            useful: z.boolean(),
+        }),
+    ]),
+})
+
+/**
+ * One MuninnDB write of `save_memories` settled (or a save failed before
+ * its write): its outcome, which a redo of the step reuses as it is. Its
+ * step's `memories_saved` lists them all.
+ */
+const MemoryWriteDoneEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memory_write_done'),
+    content: z.discriminatedUnion('what', [
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('save'),
+            save: MemorySaveSchema,
+        }),
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('feedback'),
+            feedback: MemoryFeedbackSchema,
+        }),
+    ]),
+})
+
 /** The learner never gave a usable answer; the run ends without it. */
 const LearningSkippedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -957,6 +1010,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JoinUndoneEntrySchema,
     FinalReviewRetriedEntrySchema,
     MemoryRecalledEntrySchema,
+    MemoryWriteStartedEntrySchema,
+    MemoryWriteDoneEntrySchema,
     MemoriesSavedEntrySchema,
     LearningSkippedEntrySchema,
     MemoriesReportedEntrySchema,
@@ -1021,6 +1076,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JoinUndoneEntrySchema.extend(STAMP_FIELDS),
     FinalReviewRetriedEntrySchema.extend(STAMP_FIELDS),
     MemoryRecalledEntrySchema.extend(STAMP_FIELDS),
+    MemoryWriteStartedEntrySchema.extend(STAMP_FIELDS),
+    MemoryWriteDoneEntrySchema.extend(STAMP_FIELDS),
     MemoriesSavedEntrySchema.extend(STAMP_FIELDS),
     LearningSkippedEntrySchema.extend(STAMP_FIELDS),
     MemoriesReportedEntrySchema.extend(STAMP_FIELDS),
@@ -1084,6 +1141,8 @@ export const JournalKindSchema = z.enum([
     'join_undone',
     'final_review_retried',
     'memory_recalled',
+    'memory_write_started',
+    'memory_write_done',
     'memories_saved',
     'learning_skipped',
     'memories_reported',

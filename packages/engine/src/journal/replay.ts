@@ -850,6 +850,10 @@ const applyRecord = ({
         // Only a join's redo reads it (see `openJoin`).
         case 'join_started':
             return next
+        // Only a redo of `save_memories` reads them (see `execute-memory.ts`).
+        case 'memory_write_started':
+        case 'memory_write_done':
+            return next
         case 'run_resumed':
             return resumedAfter({ state: next, record })
         case 'comment_read':
@@ -1441,6 +1445,8 @@ type TicketRecord = Exclude<
             | 'step_ended'
             | 'run_resumed'
             | 'join_started'
+            | 'memory_write_started'
+            | 'memory_write_done'
     }
 >
 

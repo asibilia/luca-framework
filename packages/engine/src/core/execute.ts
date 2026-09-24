@@ -278,15 +278,22 @@ export const executeAction = async ({
      */
     step?: StepTry
 }): Promise<void> => {
-    if (isMemoryAction(action)) {
-        return executeMemoryAction({ action, journal, tracker, memory, build })
-    }
     const tried: CommentStep = {
         run_id: basename(dirname(journal.file)),
         ...(step ?? {
             first_seq: (journal.read().at(-1)?.seq ?? 0) + 1,
             redo: false,
         }),
+    }
+    if (isMemoryAction(action)) {
+        return executeMemoryAction({
+            action,
+            journal,
+            tracker,
+            memory,
+            build,
+            step: tried,
+        })
     }
     switch (action.type) {
         case 'report_stuck':
