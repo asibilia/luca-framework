@@ -398,6 +398,7 @@ export const StuckReasonSchema = z.enum([
     'join_failed',
     'join_gates_failed',
     'install_failed',
+    'setup_change_needed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -406,6 +407,126 @@ const TicketStuckEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('ticket_stuck'),
     content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
+})
+
+/**
+ * The engine told the spec issue that a ticket is stuck, in its comment
+ * `comment_id`, and now waits for the spec owner's reply.
+ */
+const StuckReportedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('stuck_reported'),
+    content: z.object({
+        comment_id: z.number().int(),
+        body: z.string(),
+    }),
+})
+
+/**
+ * A comment the engine read on the spec issue while it waited for a reply,
+ * word for word, whoever wrote it. Only the spec owner's count as replies.
+ */
+const CommentReadEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('comment_read'),
+    content: z.object({
+        comment_id: z.number().int(),
+        author: z.string(),
+        body: z.string(),
+    }),
+})
+
+/** The one-word replies the spec owner can give to stuck work. */
+export const ReplyWordSchema = z.enum(['retry', 'skip', 'stop'])
+
+export type ReplyWord = z.infer<typeof ReplyWordSchema>
+
+/**
+ * The engine took the spec owner's reply: `retry` or `skip` for `ticket`,
+ * or `stop` for the whole run (`ticket` is `null`).
+ */
+const ReplyReceivedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('reply_received'),
+    content: z.object({
+        word: ReplyWordSchema,
+        ticket: z.number().int().positive().nullable(),
+        comment_id: z.number().int(),
+        author: z.string(),
+    }),
+})
+
+/**
+ * Why the spec owner's reply could not be used: it named no ticket while
+ * more than one is stuck, named a ticket that isn't stuck, or was `ship`
+ * (the final review's word).
+ */
+export const ReplyProblemSchema = z.enum([
+    'no_ticket_named',
+    'not_stuck',
+    'nothing_stuck',
+    'ship_needs_final_review',
+])
+
+export type ReplyProblem = z.infer<typeof ReplyProblemSchema>
+
+/**
+ * The spec owner's reply could not be used; the engine said why on the spec
+ * issue, in its comment `answer_id`.
+ */
+const ReplyIgnoredEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('reply_ignored'),
+    content: z.object({
+        comment_id: z.number().int(),
+        reason: ReplyProblemSchema,
+        answer_id: z.number().int().nullable(),
+    }),
+})
+
+/**
+ * How a `retry` went:
+ * - `resume`: the ticket's text and labels are unchanged, so it picks up
+ *   where it stopped, with a fresh agent and fresh counts, keeping any
+ *   code the user changed in its worktree.
+ * - `restart`: the ticket's text or labels changed, so its new copy (a
+ *   `ticket_snapshot` just before) is built from scratch, in its worktree
+ *   reset to the run branch's tip `base_sha`.
+ * - `refused`: the changed ticket is not ready to build (`problems`); the
+ *   engine said so on the spec issue (`answer_id`), and it stays stuck.
+ */
+const TicketRetriedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_retried'),
+    content: z.object({
+        mode: z.enum(['resume', 'restart', 'refused']),
+        base_sha: z.string().nullable(),
+        problems: z.array(z.string()),
+        answer_id: z.number().int().nullable(),
+    }),
+})
+
+/**
+ * A ticket left out of the run: the stuck ticket the owner skipped
+ * (`because` is `null`), or one that waits on a skipped ticket. It stays
+ * open, with a comment saying why.
+ */
+const TicketSkippedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_skipped'),
+    content: z.object({
+        because: z.number().int().positive().nullable(),
+    }),
+})
+
+/**
+ * A stuck ticket's join was undone on the run branch (its commits were
+ * never pushed), so no other ticket builds on them.
+ */
+const JoinUndoneEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('join_undone'),
+    content: z.object({ shas: z.array(z.string()) }),
 })
 
 const PullRequestOpenedEntrySchema = z.object({
@@ -614,7 +735,7 @@ const AgentMessageDeliveredEntrySchema = z.object({
  * What a caller hands the journal to append: a kind, its content, and who it
  * is about. The journal adds `seq` and `time`.
  *
- * Later tickets add kinds here (findings, replies, ...).
+ * Later tickets add kinds here.
  */
 export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunStartedEntrySchema,
@@ -658,6 +779,13 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     FinalReviewStuckEntrySchema,
     FinalReviewPassedEntrySchema,
     FinalReviewShippedEntrySchema,
+    StuckReportedEntrySchema,
+    CommentReadEntrySchema,
+    ReplyReceivedEntrySchema,
+    ReplyIgnoredEntrySchema,
+    TicketRetriedEntrySchema,
+    TicketSkippedEntrySchema,
+    JoinUndoneEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -706,6 +834,13 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     FinalReviewStuckEntrySchema.extend(STAMP_FIELDS),
     FinalReviewPassedEntrySchema.extend(STAMP_FIELDS),
     FinalReviewShippedEntrySchema.extend(STAMP_FIELDS),
+    StuckReportedEntrySchema.extend(STAMP_FIELDS),
+    CommentReadEntrySchema.extend(STAMP_FIELDS),
+    ReplyReceivedEntrySchema.extend(STAMP_FIELDS),
+    ReplyIgnoredEntrySchema.extend(STAMP_FIELDS),
+    TicketRetriedEntrySchema.extend(STAMP_FIELDS),
+    TicketSkippedEntrySchema.extend(STAMP_FIELDS),
+    JoinUndoneEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -753,6 +888,13 @@ export const JournalKindSchema = z.enum([
     'final_review_stuck',
     'final_review_passed',
     'final_review_shipped',
+    'stuck_reported',
+    'comment_read',
+    'reply_received',
+    'reply_ignored',
+    'ticket_retried',
+    'ticket_skipped',
+    'join_undone',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

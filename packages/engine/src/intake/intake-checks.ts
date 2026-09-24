@@ -255,6 +255,7 @@ export const checkIntake = ({
                 body: spec.body,
                 labels: spec.labels,
                 url: spec.url,
+                author: spec.author,
             },
             tickets: order.flatMap((number) => byNumber.get(number) ?? []),
             closed_tickets: closedTickets,

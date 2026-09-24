@@ -60,6 +60,11 @@ Sometimes you are sent a ticket review's findings to fix, after the ticket's wor
 - In "finding_responses", answer EACH finding by id: "fixed", or "wont_fix" with a reason if the finding is wrong. Push back only when the finding is truly wrong; a fresh reviewer rules on your reason.
 - The engine runs the gates again, commits your fixes, and a fresh reviewer checks only the new changes.`
 
+const setupFiles = ({ config }: { config: EngineConfig }): string =>
+    config.test_setup_files.length > 0
+        ? ` (${config.test_setup_files.join(', ')})`
+        : ''
+
 const TEST_WRITER = ({
     config,
 }: {
@@ -75,17 +80,12 @@ You write the failing tests for ONE ticket, before any code exists.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 
 Your result (structured output):
-- outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor).
+- outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor), or "needs_setup_change" if the tests can't work without a change to a test setup file${setupFiles({ config })} (you may never change one): say which file and why in "setup_change", and the user makes the change.
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
 - summary, assumptions, run_notes.
 
 ${REVIEW_FIXER}`
-
-const setupFiles = ({ config }: { config: EngineConfig }): string =>
-    config.test_setup_files.length > 0
-        ? ` (${config.test_setup_files.join(', ')})`
-        : ''
 
 const testFileRule = ({
     config,
@@ -118,10 +118,11 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
     .join(', ')}.
 ${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
+- If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.
 - Leave nothing behind: no scratch files, logs, notes, or unused scripts. The engine scans for leftovers before it commits.
 
-Your result (structured output): outcome ("done" or "bad_test"), bad_test (null unless outcome is "bad_test"), finding_responses (empty unless you were sent ticket review findings), summary, assumptions, run_notes.
+Your result (structured output): outcome ("done", "bad_test", or "needs_setup_change"), bad_test (null unless outcome is "bad_test"), setup_change (null unless outcome is "needs_setup_change"), finding_responses (empty unless you were sent ticket review findings), summary, assumptions, run_notes.
 
 ${REVIEW_FIXER}`
 

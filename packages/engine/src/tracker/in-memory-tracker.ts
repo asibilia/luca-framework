@@ -6,6 +6,7 @@ import {
     type OpenedPullRequest,
     type PullRequestRequest,
     type Tracker,
+    type TrackerComment,
     type TrackerIssue,
 } from './tracker'
 
@@ -14,8 +15,14 @@ export type InMemoryPullRequest = PullRequestRequest & OpenedPullRequest
 
 /** An in-memory tracker, plus what tests need to look inside it. */
 export type InMemoryTracker = Tracker & {
-    /** Every comment posted on an issue, oldest first. */
+    /** Every comment's body on an issue, oldest first. */
     commentsOn: (args: { number: number }) => string[]
+    /** A person comments on an issue, as on the tracker; returns the comment's id. */
+    addComment: (args: {
+        number: number
+        author: string
+        body: string
+    }) => number
     /** An issue's labels right now. */
     labelsOf: (args: { number: number }) => string[]
     /** Every pull request opened, oldest first. */
@@ -40,21 +47,41 @@ export type InMemoryTracker = Tracker & {
 export const createInMemoryTracker = ({
     issues,
     sub_tickets,
+    engine_login,
 }: {
     issues: TrackerIssue[]
     /** Sub-ticket numbers per spec number. */
     sub_tickets: Record<number, number[]>
+    /** Who the engine's own comments are from. Defaults to `luca-engine`. */
+    engine_login?: string
 }): InMemoryTracker => {
     const store = new Map(
         issues.map((issue) => [issue.number, cloneDeep(issue)])
     )
-    const comments = new Map<number, string[]>()
+    const comments = new Map<number, TrackerComment[]>()
+    let lastCommentId = 0
     const pulls: InMemoryPullRequest[] = []
 
     const find = (number: number): TrackerIssue => {
         const issue = store.get(number)
         if (issue === undefined) throw new Error(`No issue #${number}`)
         return issue
+    }
+
+    const post = ({
+        number,
+        author,
+        body,
+    }: {
+        number: number
+        author: string
+        body: string
+    }): number => {
+        find(number)
+        lastCommentId += 1
+        const comment = { id: lastCommentId, author, body }
+        comments.set(number, [...(comments.get(number) ?? []), comment])
+        return comment.id
     }
 
     const setLabels = (number: number, labels: string[]) => {
@@ -68,10 +95,14 @@ export const createInMemoryTracker = ({
                 cloneDeep(find(number))
             ),
         readIssue: async ({ number }) => cloneDeep(store.get(number) ?? null),
-        comment: async ({ number, body }) => {
-            find(number)
-            comments.set(number, [...(comments.get(number) ?? []), body])
-        },
+        comment: async ({ number, body }) => ({
+            id: post({ number, author: engine_login ?? 'luca-engine', body }),
+        }),
+        listComments: async ({ number, since_id }) =>
+            cloneDeep(
+                (comments.get(number) ?? []).filter(({ id }) => id > since_id)
+            ),
+        addComment: (args) => post(args),
         addLabel: async ({ number, label }) =>
             setLabels(number, uniq([...find(number).labels, label])),
         removeLabel: async ({ number, label }) =>
@@ -96,7 +127,8 @@ export const createInMemoryTracker = ({
             return { number, url: pull.url }
         },
         pullRequests: () => cloneDeep(pulls),
-        commentsOn: ({ number }) => [...(comments.get(number) ?? [])],
+        commentsOn: ({ number }) =>
+            (comments.get(number) ?? []).map(({ body }) => body),
         labelsOf: ({ number }) => [...find(number).labels],
         updateIssue: ({ number, changes }) => {
             store.set(

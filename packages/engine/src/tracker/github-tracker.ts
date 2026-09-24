@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import {
     OpenedPullRequestSchema,
+    TrackerCommentSchema,
     TrackerIssueSchema,
     type Tracker,
     type TrackerIssue,
@@ -19,7 +20,11 @@ const GitHubIssueSchema = z.object({
         .array(z.union([z.string(), z.object({ name: z.string() })]))
         .default([]),
     html_url: z.string().default(''),
+    user: z.object({ login: z.string() }).nullable().default(null),
 })
+
+/** A comment as `gh api` returns it on posting (only its id is used). */
+const GitHubCommentPostedSchema = z.object({ id: z.number().int() })
 
 const GitHubIssueListSchema = z.array(GitHubIssueSchema)
 
@@ -83,6 +88,7 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             ),
             blocked_by: await blockedBy(issue.number),
             url: issue.html_url,
+            author: issue.user?.login ?? '',
         })
 
     const readIssue: Tracker['readIssue'] = async ({ number }) => {
@@ -119,7 +125,30 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             return Promise.all(issues.map(toTrackerIssue))
         },
         comment: async ({ number, body }) => {
-            await $`gh issue comment ${number} --repo ${repo} --body ${body}`.quiet()
+            const posted =
+                await $`gh api repos/${repo}/issues/${number}/comments -f body=${body}`.quiet()
+            return parseOrThrow({
+                schema: GitHubCommentPostedSchema,
+                value: JSON.parse(posted.stdout.toString()),
+                what: `the comment posted on #${number}`,
+            })
+        },
+        listComments: async ({ number, since_id }) => {
+            // One JSON object per line, across every page.
+            const listed =
+                await $`gh api --paginate repos/${repo}/issues/${number}/comments?per_page=100 --jq ${'.[] | {id, author: (.user.login // ""), body: (.body // "")}'}`.quiet()
+            return listed.stdout
+                .toString()
+                .split('\n')
+                .filter((line) => line.trim() !== '')
+                .map((line) =>
+                    parseOrThrow({
+                        schema: TrackerCommentSchema,
+                        value: JSON.parse(line),
+                        what: `a comment on #${number}`,
+                    })
+                )
+                .filter(({ id }) => id > since_id)
         },
         addLabel: async ({ number, label }) => {
             await $`gh issue edit ${number} --repo ${repo} --add-label ${label}`.quiet()
