@@ -34,6 +34,7 @@ import {
     POLL_MS,
     REFACTOR_SKIPS_STEPS,
     STEP_NAMES,
+    currentStepText,
     planUsedText,
     stoppedText,
     type BoardState,
@@ -679,6 +680,14 @@ const TicketCardView = ({
                     {ticket.role ?? ''}
                 </Text>
             </View>
+            {ticket.current_step ? (
+                <Text style={styles.muted} numberOfLines={1}>
+                    {currentStepText({
+                        step: ticket.current_step,
+                        now: Date.now(),
+                    })}
+                </Text>
+            ) : null}
             <View style={styles.row}>
                 <Counter
                     label="fix"
@@ -1080,6 +1089,15 @@ export const BoardPanel = ({
                 </ExternalLink>
             ) : null}
             <UsageLine state={state} {...look} />
+            {state.current_step ? (
+                <Text style={styles.muted}>
+                    Now:{' '}
+                    {currentStepText({
+                        step: state.current_step,
+                        now: Date.now(),
+                    })}
+                </Text>
+            ) : null}
             {state.run_plan_used.length > 0 ? (
                 <Text style={styles.mono}>
                     This run used:{' '}

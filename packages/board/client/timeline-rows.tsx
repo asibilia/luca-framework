@@ -21,6 +21,7 @@ import {
 } from './board-look'
 
 import type { EventRow, LimitRow, RunRow, StuckRow } from '../shared/board-rows'
+import { currentStepText } from '../shared/board-state'
 
 /**
  * The chat rows: a header row per run (updated in place), one row per
@@ -195,6 +196,15 @@ export const RunRowCard = ({
                     {row.needs_you} waiting on your reply on the spec issue
                 </Text>
             ) : null}
+            {row.current_steps.map(({ ticket, text, since }, index) => (
+                <Text key={`${ticket ?? 'run'}-${index}`} style={styles.muted}>
+                    {ticket === null ? 'Run' : `#${ticket}`}:{' '}
+                    {currentStepText({
+                        step: { text, since },
+                        now: Date.now(),
+                    })}
+                </Text>
+            ))}
             <Text style={styles.muted}>Final review: {row.final_review}</Text>
             {row.usage ? (
                 <UsageText usage={row.usage} theme={theme} styles={styles} />

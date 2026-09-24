@@ -512,6 +512,20 @@ const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
 ])
 
 /**
+ * Steps that can run for minutes: installs, test runs, and agents' turns.
+ * The board hears of them as they start, so a run never looks frozen.
+ */
+const SLOW_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    ...AGENT_ACTIONS,
+    'launch_learner',
+    'install_dependencies',
+    'run_baseline_tests',
+    'run_red_check',
+    'run_gates',
+    'run_final_gates',
+])
+
+/**
  * Actions that read or move the run branch. At most one runs at a time, so
  * joins, their gates, pushes, and new worktrees see one run branch. The
  * final review's fixers, gates, commit, and push work in the run branch's
@@ -828,6 +842,7 @@ export const runEngine = async ({
         })
         const stop = actions.find((action) => stops.has(action.type))
         if (stop !== undefined && inFlight.size === 0) return stop
+        let slowStarted = false
         if (stop === undefined) {
             for (const action of actions) {
                 const key = keyOf(action)
@@ -848,8 +863,11 @@ export const runEngine = async ({
                 // between races from counting as unhandled.
                 done.catch(() => undefined)
                 inFlight.set(key, { action, done })
+                if (SLOW_ACTIONS.has(action.type)) slowStarted = true
             }
         }
+        // A slow step shows on the board while it runs, not only once it ends.
+        if (slowStarted) await board?.sync({ records: journal.read() })
         if (inFlight.size === 0) {
             throw new Error(
                 `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`

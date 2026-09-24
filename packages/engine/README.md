@@ -621,7 +621,8 @@ board, Jev's included (only counted, since shadow mode decides nothing); see
 
 `runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
 once before its first step, so a resumed run catches the board up, and after
-every step. `createBoardSync` holds a cursor: the next seq the board wants,
+every step. It also syncs as soon as a slow step starts (an install, a test
+run, or an agent's turn), so the board shows it while it runs. `createBoardSync` holds a cursor: the next seq the board wants,
 from 1. Each sync sends every record from the cursor on, at most 100 per send,
 and moves the cursor to the board's `next_seq`. A board that answers with a
 lower `next_seq` (it restarted, or saw a gap) gets the journal again from
