@@ -1232,6 +1232,13 @@ export const BoardPanel = ({
                     {state.messages.refused} refused.
                 </Text>
             ) : null}
+            {state.shared_git_changed > 0 ? (
+                <Text style={styles.small}>
+                    Outside changes to the shared .git:{' '}
+                    {state.shared_git_changed}. Other processes made them, not
+                    the agents.
+                </Text>
+            ) : null}
         </ScrollView>
     )
 }

@@ -84,6 +84,7 @@ const QUIET_KINDS = new Set([
     'jev_failed',
     'agent_message',
     'agent_message_delivered',
+    'shared_git_changed',
 ])
 
 /** The learner's role (#370): its records have no ticket. */
@@ -180,6 +181,7 @@ export const createBoardState = ({
     jev: { asked: 0, answered: 0, failed: 0 },
     messages: { sent: 0, refused: 0, delivered: 0 },
     memory: NO_MEMORY,
+    shared_git_changed: 0,
     event_count: 0,
     latest: null,
 })
@@ -972,6 +974,12 @@ const applyKind = ({
                     delivered:
                         state.messages.delivered + record.content.ids.length,
                 },
+            }
+        // Another process's change to the shared `.git`: only counted.
+        case 'shared_git_changed':
+            return {
+                ...state,
+                shared_git_changed: state.shared_git_changed + 1,
             }
         case 'limit_wait_started': {
             const { resets_at, until, rate_limit_type } = record.content

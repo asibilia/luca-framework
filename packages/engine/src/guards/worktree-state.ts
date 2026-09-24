@@ -64,7 +64,8 @@ export type TurnSnapshot = WorktreeState & {
 
 /**
  * Put before every git command the check runs, so an fsmonitor or hook
- * someone planted in the shared `.git` never runs for the engine.
+ * someone planted in the shared `.git` never runs for the engine. Content
+ * filters are switched off too, by `noFilters`.
  */
 const SAFE_GIT = [
     '-c',
@@ -72,6 +73,48 @@ const SAFE_GIT = [
     '-c',
     'core.hooksPath=/dev/null',
 ]
+
+const nulSplit = (text: string): string[] =>
+    text.split('\0').filter((part) => part.length > 0)
+
+/** The environment variables `noFilters` points git's settings at. */
+const NO_FILTER_ENV = { LUCA_GIT_EMPTY: '', LUCA_GIT_FALSE: 'false' }
+
+/**
+ * Every content filter (`filter.<name>.*`) git's config names, read fresh
+ * for each command, since another process may add one at any time.
+ */
+const filterNames = async ({ cwd }: { cwd: string }): Promise<string[]> => {
+    const listed = await runCommand({
+        cmd: ['git', ...SAFE_GIT, 'config', '-z', '--get-regexp', '^filter\\.'],
+        cwd,
+        timeout_ms: 60_000,
+    })
+    return uniq(
+        nulSplit(listed.stdout).flatMap((entry) => {
+            const key = entry.split('\n')[0] ?? ''
+            const last = key.lastIndexOf('.')
+            // `>=` keeps the empty name (`filter..clean`): git runs a filter named "".
+            return last >= 'filter.'.length
+                ? [key.slice('filter.'.length, last)]
+                : []
+        })
+    )
+}
+
+/**
+ * Options that switch each named filter off: no clean, smudge, or process
+ * command, and not required (git gives up on a required filter with no
+ * command). Set through `--config-env`, which takes any filter name, even
+ * one with `=` in it.
+ */
+const noFilters = (names: string[]): string[] =>
+    names.flatMap((name) => [
+        `--config-env=filter.${name}.clean=LUCA_GIT_EMPTY`,
+        `--config-env=filter.${name}.smudge=LUCA_GIT_EMPTY`,
+        `--config-env=filter.${name}.process=LUCA_GIT_EMPTY`,
+        `--config-env=filter.${name}.required=LUCA_GIT_FALSE`,
+    ])
 
 /** A git run, and why git could not start (such as `cwd` being gone). */
 type GitRun = CommandResult & { start_error: string | null }
@@ -84,10 +127,12 @@ const runGit = async ({
     args: string[]
 }): Promise<GitRun> => {
     try {
+        const names = await filterNames({ cwd })
         const result = await runCommand({
-            cmd: ['git', ...SAFE_GIT, ...args],
+            cmd: ['git', ...SAFE_GIT, ...noFilters(names), ...args],
             cwd,
             timeout_ms: 60_000,
+            env: NO_FILTER_ENV,
         })
         return { ...result, start_error: null }
     } catch (error) {
@@ -141,9 +186,6 @@ const gitOk = async ({
     }
     return result.stdout
 }
-
-const nulSplit = (text: string): string[] =>
-    text.split('\0').filter((part) => part.length > 0)
 
 /** The global excludes file git would use. */
 const globalExcludesFile = async ({
@@ -801,8 +843,8 @@ const restoreBranchConfig = async ({
  * The rest of the shared `.git` (other config keys, `info/exclude`, hooks)
  * is other processes' to change: a change there is returned in `outside`,
  * never blamed on the agent, and never undone. So it can't fool the check,
- * every git command runs with no fsmonitor and no hooks, and files are
- * listed with the ignore rules from before the turn.
+ * every git command runs with no fsmonitor, hooks, or content filters, and
+ * files are listed with the ignore rules from before the turn.
  *
  * @returns Every violation found, empty when the turn kept to the rules,
  *   and what changed in the shared `.git` that isn't the agent's.

@@ -224,6 +224,11 @@ export const BOARD_VOCABULARY = {
     agent_message_delivered: z.looseObject({
         ids: z.array(z.string()).catch([]),
     }),
+    /** Another process changed the shared `.git` during an agent's turn. */
+    shared_git_changed: z.looseObject({
+        role: z.string().catch(''),
+        changes: z.array(z.string()).catch([]),
+    }),
     limit_wait_started: z.looseObject({
         /** When the limit resets; `null` when not known. */
         resets_at: z.string().nullable().catch(null),
@@ -357,6 +362,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'jev_failed' }),
     entry({ kind: 'agent_message' }),
     entry({ kind: 'agent_message_delivered' }),
+    entry({ kind: 'shared_git_changed' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
     entry({ kind: 'usage_recorded' }),
