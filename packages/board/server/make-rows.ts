@@ -1,5 +1,6 @@
 import type { BoardRecord } from './board-vocabulary'
 import {
+    clip,
     countFindings,
     failureText,
     reasonText,
@@ -318,6 +319,8 @@ export const describeRecord = ({
             })
         case 'final_review_passed':
             return event({ text: 'The final review passed.', tone: 'success' })
+        case 'agent_message':
+            return messageText({ record })
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':
@@ -327,12 +330,41 @@ export const describeRecord = ({
         case 'jev_asked':
         case 'jev_answered':
         case 'jev_failed':
+        case 'agent_message_delivered':
         case 'limit_wait_started':
         case 'limit_wait_ended':
         case 'usage_recorded':
         case 'lens_started':
             return null
     }
+}
+
+/** Longest message line shown in a row; the whole message is in the journal. */
+const MESSAGE_LINE_MAX = 120
+
+const messageText = ({
+    record,
+}: {
+    record: Extract<BoardRecord, { kind: 'agent_message' }>
+}): { text: string; tone: Tone } => {
+    const { from, to, text, status, reason } = record.content
+    const why = reason ?? 'no reason given'
+    if (status === 'refused') {
+        return event({
+            text: `${from}'s message to ${to} was refused: ${why}`,
+            tone: 'warning',
+        })
+    }
+    const shown = clip({
+        text: text.split('\n')[0] ?? '',
+        max: MESSAGE_LINE_MAX,
+    })
+    return status === 'queued'
+        ? event({ text: `${from} → ${to}: ${shown}`, tone: 'info' })
+        : event({
+              text: `${from} → ${to}: ${shown} (not delivered: ${why})`,
+              tone: 'warning',
+          })
 }
 
 const startedText = ({

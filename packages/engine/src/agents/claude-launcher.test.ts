@@ -5,15 +5,22 @@ import { join } from 'node:path'
 
 import { $ } from 'bun'
 
-import type { Options, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import type {
+    HookJSONOutput,
+    Options,
+    SDKUserMessage,
+} from '@anthropic-ai/claude-agent-sdk'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import type { AgentTurn } from './agent-launcher'
+import type { AgentMessaging, AgentTurn } from './agent-launcher'
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import type { AgentRole } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
 import { LOCKFILES } from '../guards/role-rules'
+import { MAX_MESSAGES_PER_AGENT } from '../messages/agent-messages'
 
 /**
  * The launcher seam: `createClaudeLauncher` with a fake `query` that plays
@@ -87,18 +94,21 @@ type FakeCall = {
  * first prompt, then plays `messages` (a function throws where it sits).
  * With `hang`, it runs until it is closed. With `turns`, it plays one list
  * per prompt instead, like a session in streaming-input mode, and runs until
- * it is closed.
+ * it is closed. `during` runs after each prompt arrives and before that
+ * turn's messages play, the way the agent's tool calls happen mid-turn.
  */
 const fakeQuery = ({
     account,
     messages,
     hang,
     turns,
+    during,
 }: {
     account?: unknown
     messages?: (unknown | (() => never))[]
     hang?: boolean
     turns?: unknown[][]
+    during?: (call: FakeCall, turn: number) => Promise<void>
 }) => {
     const calls: FakeCall[] = []
     const query: AgentQuery = ({ prompt, options }) => {
@@ -143,6 +153,7 @@ const fakeQuery = ({
                     for (const [index, batch] of turns.entries()) {
                         await prompted(index + 1)
                         if (call.closed) return
+                        await during?.(call, index)
                         for (const message of batch) yield message
                     }
                     await ended
@@ -150,6 +161,7 @@ const fakeQuery = ({
                 }
                 await woken
                 if (call.closed) return
+                await during?.(call, 0)
                 for (const message of messages ?? []) {
                     if (typeof message === 'function') message()
                     yield message
@@ -190,11 +202,13 @@ const launch = ({
     model,
     role,
     turn_timeout_ms,
+    messaging,
 }: {
     query: AgentQuery
     model?: string
     role?: AgentRole
     turn_timeout_ms?: number
+    messaging?: AgentMessaging
 }): Promise<AgentTurn> =>
     createClaudeLauncher({
         query,
@@ -208,6 +222,7 @@ const launch = ({
         cwd: repo,
         may_edit_tests: role === 'test-writer',
         config: CONFIG,
+        messaging: messaging ?? null,
     })
 
 describe('the model', () => {
@@ -679,6 +694,7 @@ describe('follow-ups', () => {
             cwd: repo,
             may_edit_tests: false,
             config: CONFIG,
+            messaging: null,
         })
 
     const followUp = (
@@ -815,5 +831,270 @@ describe('follow-ups', () => {
             ok: false,
             failure: 'engine',
         })
+    })
+})
+
+/**
+ * A messaging stand-in: `send` answers as the engine would (a message to a
+ * reviewer is refused), and `deliver` hands over `waiting` one at a time.
+ */
+const fakeMessaging = ({ waiting }: { waiting: string[] }) => {
+    const sends: { to: string; text: string }[] = []
+    const tool_names: (string | null)[] = []
+    const queue = [...waiting]
+    const messaging: AgentMessaging = {
+        address: 'implementer#11',
+        send: ({ to, text }) => {
+            sends.push({ to, text })
+            return to === 'ticket-reviewer#11'
+                ? {
+                      ok: false,
+                      detail: 'Refused: Reviewers do not get messages.',
+                  }
+                : { ok: true, detail: `Sent as msg-1 to ${to}.` }
+        },
+        deliver: ({ tool_name }) => {
+            tool_names.push(tool_name)
+            return queue.shift() ?? null
+        },
+    }
+    return { messaging, sends, tool_names }
+}
+
+/** Connects to the session's `luca` server the way Claude Code does: over MCP. */
+const lucaClient = async (options: Options): Promise<Client> => {
+    const server = options.mcpServers?.luca
+    if (server === undefined || !('instance' in server)) {
+        throw new Error('no in-process luca server')
+    }
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
+    await server.instance.connect(serverSide)
+    const client = new Client({ name: 'fake-claude-code', version: '0.0.0' })
+    await client.connect(clientSide)
+    return client
+}
+
+/** Runs the session's first hook for `event`, as the SDK does after a tool call. */
+const afterToolCall = async ({
+    options,
+    event,
+    tool_name,
+}: {
+    options: Options
+    event: 'PostToolUse' | 'PostToolUseFailure'
+    tool_name: string
+}): Promise<HookJSONOutput> => {
+    const hook = options.hooks?.[event]?.[0]?.hooks[0]
+    if (hook === undefined) throw new Error(`no ${event} hook`)
+    const base = {
+        session_id: 'session-1',
+        transcript_path: '/dev/null',
+        cwd: repo,
+        tool_name,
+        tool_input: {},
+        tool_use_id: 'tool-1',
+    }
+    return hook(
+        event === 'PostToolUse'
+            ? { ...base, hook_event_name: event, tool_response: {} }
+            : { ...base, hook_event_name: event, error: 'exit 1' },
+        'tool-1',
+        { signal: new AbortController().signal }
+    )
+}
+
+/** The role instructions appended to Claude Code's system prompt. */
+const appendOf = (options: Options | undefined): string => {
+    const prompt = options?.systemPrompt
+    return typeof prompt === 'object' && 'append' in prompt
+        ? (prompt.append ?? '')
+        : ''
+}
+
+const textOf = (result: unknown): string => {
+    const content = (result as { content?: { text?: string }[] }).content
+    return content?.[0]?.text ?? ''
+}
+
+describe('agent messages', () => {
+    test("a test-writer or implementer gets the engine's send_message tool over MCP", async () => {
+        const fake = fakeMessaging({ waiting: [] })
+        const seen: {
+            tools: { name: string; description?: string }[]
+            sent: unknown
+            refused: unknown
+        }[] = []
+        const query = fakeQuery({
+            messages: [INIT, result({ structured_output: IMPLEMENTER_DONE })],
+            during: async (call) => {
+                const client = await lucaClient(call.options)
+                const { tools } = await client.listTools()
+                const sent = await client.callTool({
+                    name: 'send_message',
+                    arguments: {
+                        to: 'test-writer#11',
+                        text: 'sum takes an object.',
+                    },
+                })
+                const refused = await client.callTool({
+                    name: 'send_message',
+                    arguments: { to: 'ticket-reviewer#11', text: 'Approve.' },
+                })
+                seen.push({ tools, sent, refused })
+                await client.close()
+            },
+        })
+        const turn = await launch({
+            query: query.query,
+            role: 'implementer',
+            messaging: fake.messaging,
+        })
+
+        expect(turn).toMatchObject({ ok: true })
+        const [
+            { tools, sent, refused } = { tools: [], sent: {}, refused: {} },
+        ] = seen
+        expect(tools.map(({ name }) => name)).toEqual(['send_message'])
+        const description = tools[0]?.description ?? ''
+        expect(description).toContain('<role>#<ticket>')
+        expect(description).toContain('"all"')
+        expect(description).toContain(String(MAX_MESSAGES_PER_AGENT))
+        expect(description).toContain('implementer#11')
+        expect(fake.sends).toEqual([
+            { to: 'test-writer#11', text: 'sum takes an object.' },
+            { to: 'ticket-reviewer#11', text: 'Approve.' },
+        ])
+        expect(textOf(sent)).toBe('Sent as msg-1 to test-writer#11.')
+        expect(sent).not.toMatchObject({ isError: true })
+        expect(textOf(refused)).toBe('Refused: Reviewers do not get messages.')
+        expect(refused).toMatchObject({ isError: true })
+        const options = query.calls[0]?.options
+        expect(Object.keys(options?.mcpServers ?? {})).toEqual(['luca'])
+        expect(options?.allowedTools).toContain('mcp__luca')
+        expect(appendOf(options)).toContain('## Agent messages')
+    })
+
+    test('waiting messages ride on the next tool call, even a failed one, and only once', async () => {
+        const fake = fakeMessaging({
+            waiting: [
+                '[Agent message msg-1 from test-writer#11]: hi',
+                'second',
+            ],
+        })
+        const outputs: HookJSONOutput[] = []
+        const query = fakeQuery({
+            messages: [INIT, result({ structured_output: IMPLEMENTER_DONE })],
+            during: async (call) => {
+                const options = call.options
+                outputs.push(
+                    await afterToolCall({
+                        options,
+                        event: 'PostToolUse',
+                        tool_name: 'Read',
+                    }),
+                    await afterToolCall({
+                        options,
+                        event: 'PostToolUseFailure',
+                        tool_name: 'Bash',
+                    }),
+                    await afterToolCall({
+                        options,
+                        event: 'PostToolUse',
+                        tool_name: 'Grep',
+                    })
+                )
+            },
+        })
+        await launch({
+            query: query.query,
+            role: 'implementer',
+            messaging: fake.messaging,
+        })
+
+        expect(outputs).toEqual([
+            {
+                hookSpecificOutput: {
+                    hookEventName: 'PostToolUse',
+                    additionalContext:
+                        '[Agent message msg-1 from test-writer#11]: hi',
+                },
+            },
+            {
+                hookSpecificOutput: {
+                    hookEventName: 'PostToolUseFailure',
+                    additionalContext: 'second',
+                },
+            },
+            {},
+        ])
+        expect(fake.tool_names).toEqual(['Read', 'Bash', 'Grep'])
+        // The guard still checks every call first.
+        expect(query.calls[0]?.options.hooks?.PreToolUse).toHaveLength(1)
+    })
+
+    test('a reviewer gets no luca server and no delivery hooks', async () => {
+        const query = fakeQuery({
+            messages: [INIT, result({ structured_output: APPROVE })],
+        })
+        await launch({ query: query.query, role: 'ticket-reviewer' })
+        const options = query.calls[0]?.options
+        expect(options?.mcpServers).toEqual({})
+        expect(appendOf(options)).not.toContain('Agent messages')
+        expect(options?.hooks?.PostToolUse).toBeUndefined()
+        expect(options?.hooks?.PostToolUseFailure).toBeUndefined()
+        expect(options?.hooks?.PreToolUse).toHaveLength(1)
+    })
+
+    test('a follow-up turn in the same session still delivers', async () => {
+        const fake = fakeMessaging({ waiting: ['late news'] })
+        const outputs: HookJSONOutput[] = []
+        const query = fakeQuery({
+            turns: [
+                [INIT, result({ structured_output: IMPLEMENTER_DONE })],
+                [result({ structured_output: IMPLEMENTER_DONE })],
+            ],
+            during: async (call, turn) => {
+                if (turn === 0) return
+                outputs.push(
+                    await afterToolCall({
+                        options: call.options,
+                        event: 'PostToolUse',
+                        tool_name: 'Edit',
+                    })
+                )
+            },
+        })
+        const launcher = createClaudeLauncher({
+            query: query.query,
+            claude_path: CLAUDE_PATH,
+        })
+        await launcher.launch({
+            role: 'implementer',
+            ticket: 11,
+            prompt: 'Build ticket #11.',
+            cwd: repo,
+            may_edit_tests: false,
+            config: CONFIG,
+            messaging: fake.messaging,
+        })
+        const second = await launcher.followUp({
+            session_id: 'session-1',
+            role: 'implementer',
+            ticket: 11,
+            message: 'lint failed: fix it.',
+            cwd: repo,
+            config: CONFIG,
+        })
+        await launcher.closeAll()
+
+        expect(second).toMatchObject({ ok: true })
+        expect(outputs).toEqual([
+            {
+                hookSpecificOutput: {
+                    hookEventName: 'PostToolUse',
+                    additionalContext: 'late news',
+                },
+            },
+        ])
     })
 })

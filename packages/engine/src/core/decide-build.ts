@@ -27,6 +27,7 @@ import type {
 import {
     EMPTY_TICKET_PROGRESS,
     type ReplayedInstall,
+    type ReplayedRunNote,
     type ReplayedSnapshot,
     type ReplayedWorktree,
     type RunState,
@@ -59,6 +60,35 @@ export const MAX_ENGINE_FAILURES = 3
  * the ticket stuck.
  */
 export const MAX_REJOINS = MAX_FIX_ROUNDS
+
+/**
+ * How many run notes a fresh agent is handed: the newest ones in the run,
+ * whatever ticket or role wrote them.
+ */
+export const MAX_RUN_NOTES = 10
+
+/**
+ * The run notes a fresh agent gets: the `MAX_RUN_NOTES` newest, oldest
+ * first. The same text written twice counts once, where it was last written.
+ *
+ * @example
+ * newestRunNotes({ run_notes: state.run_notes }) // at most 10, oldest first
+ */
+export const newestRunNotes = ({
+    run_notes,
+}: {
+    run_notes: ReplayedRunNote[]
+}): ReplayedRunNote[] => {
+    const seen = new Set<string>()
+    const newest: ReplayedRunNote[] = []
+    for (const entry of [...run_notes].reverse()) {
+        if (newest.length === MAX_RUN_NOTES) break
+        if (seen.has(entry.note)) continue
+        seen.add(entry.note)
+        newest.push(entry)
+    }
+    return newest.reverse()
+}
 
 /** The next build step for a run whose intake passed. */
 export type BuildAction =
@@ -281,18 +311,22 @@ const reviewPromptSections = ({
     return []
 }
 
-/** A fresh agent session. */
+type StepArgs = {
+    snapshot: ReplayedSnapshot
+    ticket: TicketSnapshot
+    progress: TicketProgress
+    /** The run notes a fresh agent gets (`newestRunNotes`). */
+    run_notes: ReplayedRunNote[]
+}
+
+/** A fresh agent session, handed the run's newest notes. */
 const launch = ({
     role,
     snapshot,
     ticket,
     progress,
-}: {
-    role: AgentRole
-    snapshot: ReplayedSnapshot
-    ticket: TicketSnapshot
-    progress: TicketProgress
-}): BuildAction => ({
+    run_notes,
+}: StepArgs & { role: AgentRole }): BuildAction => ({
     type: 'launch_agent',
     ticket: ticket.number,
     role,
@@ -303,6 +337,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
         sections: promptSections({ role, progress }),
+        run_notes,
     }),
     may_edit_tests: mayEditTests({ role, ticket }),
 })
@@ -365,12 +400,6 @@ const badTestText = ({ progress }: { progress: TicketProgress }): string => {
     return where === '' ? bad_test.reason : `${where}: ${bad_test.reason}`
 }
 
-type StepArgs = {
-    snapshot: ReplayedSnapshot
-    ticket: TicketSnapshot
-    progress: TicketProgress
-}
-
 /**
  * The test-writer's half of a ticket: fresh tests, the red check and its fix
  * loop, then the red commit. `null` once the red commit is made.
@@ -379,11 +408,18 @@ const testStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { test_writer, red_check } = progress
     if (test_writer === null) {
-        return launch({ role: 'test-writer', snapshot, ticket, progress })
+        return launch({
+            role: 'test-writer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
     }
     if (test_writer.outcome === 'nothing_new_to_test') {
         return stuck({
@@ -438,11 +474,18 @@ const codeStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { implementer } = progress
     if (implementer === null) {
-        return launch({ role: 'implementer', snapshot, ticket, progress })
+        return launch({
+            role: 'implementer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
     }
     if (implementer.outcome === 'bad_test') {
         if (isRefactorTicket({ ticket })) {
@@ -524,10 +567,17 @@ const reviewStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const reviewer = () =>
-        launch({ role: 'ticket-reviewer', snapshot, ticket, progress })
+        launch({
+            role: 'ticket-reviewer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
     if (progress.review === null) return reviewer()
     const fix = progress.review_fix
     if (fix === null) return null
@@ -539,12 +589,24 @@ const reviewStep = ({
         })
     }
     if (!fix.tests_answered) {
-        return launch({ role: 'test-writer', snapshot, ticket, progress })
+        return launch({
+            role: 'test-writer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
     }
     if (!fix.code_answered) {
         const session_id = progress.sessions.implementer
         if (session_id === undefined) {
-            return launch({ role: 'implementer', snapshot, ticket, progress })
+            return launch({
+                role: 'implementer',
+                snapshot,
+                ticket,
+                progress,
+                run_notes,
+            })
         }
         return {
             type: 'follow_up_agent',
@@ -580,6 +642,7 @@ const failedTurnStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
     failed,
 }: StepArgs & {
     failed: NonNullable<TicketProgress['agent_failure']>
@@ -593,7 +656,7 @@ const failedTurnStep = ({
                 detail: `The engine failed to run the ${role} ${progress.engine_failures} times in a row: ${error}`,
             })
         }
-        return launch({ role, snapshot, ticket, progress })
+        return launch({ role, snapshot, ticket, progress, run_notes })
     }
     const tries = progress.failed_tries[role] ?? 0
     if (tries >= MAX_FIX_ROUNDS) {
@@ -604,7 +667,7 @@ const failedTurnStep = ({
         })
     }
     if (role === 'ticket-reviewer' || session_id === null) {
-        return launch({ role, snapshot, ticket, progress })
+        return launch({ role, snapshot, ticket, progress, run_notes })
     }
     return {
         type: 'follow_up_agent',
@@ -626,6 +689,7 @@ const rejoinStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
 }: StepArgs): BuildAction | null => {
     const { rejoin } = progress
     if (rejoin === null) return null
@@ -637,12 +701,24 @@ const rejoinStep = ({
         })
     }
     if (rejoin.tests_pending) {
-        return launch({ role: 'test-writer', snapshot, ticket, progress })
+        return launch({
+            role: 'test-writer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
     }
     if (rejoin.code_pending) {
         const session_id = progress.sessions.implementer
         if (session_id === undefined) {
-            return launch({ role: 'implementer', snapshot, ticket, progress })
+            return launch({
+                role: 'implementer',
+                snapshot,
+                ticket,
+                progress,
+                run_notes,
+            })
         }
         return {
             type: 'follow_up_agent',
@@ -727,6 +803,7 @@ const nextTicketStep = ({
     snapshot,
     ticket,
     progress,
+    run_notes,
     run_branch,
     joiner,
 }: StepArgs & {
@@ -740,6 +817,7 @@ const nextTicketStep = ({
             snapshot,
             ticket,
             progress,
+            run_notes,
             failed: progress.agent_failure,
         })
     }
@@ -765,16 +843,26 @@ const nextTicketStep = ({
         return { type: 'run_baseline_tests', ticket: number }
     }
     if (progress.commits.green === null) {
-        const rejoin = rejoinStep({ snapshot, ticket, progress })
+        const rejoin = rejoinStep({
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
         if (rejoin !== null) return rejoin
         const tests = isRefactorTicket({ ticket })
             ? null
-            : testStep({ snapshot, ticket, progress })
+            : testStep({ snapshot, ticket, progress, run_notes })
         if (tests !== null) return tests
-        const code = codeStep({ snapshot, ticket, progress })
+        const code = codeStep({ snapshot, ticket, progress, run_notes })
         if (code !== null) return code
     }
-    const review = reviewStep({ snapshot, ticket, progress })
+    const review = reviewStep({
+        snapshot,
+        ticket,
+        progress,
+        run_notes,
+    })
     if (review !== null) return review
     return joiner ? joinStep({ ticket, progress, run_branch }) : null
 }
@@ -840,6 +928,7 @@ export const decideBuild = ({
 }): BuildAction[] => {
     const { snapshot, run_branch, run_branch_install, pull_request } = state
     const base_branch = state.base_branch ?? 'main'
+    const run_notes = newestRunNotes({ run_notes: state.run_notes })
     if (run_branch === null || snapshot === null) {
         return [{ type: 'create_run_branch', spec_number, base_branch }]
     }
@@ -942,6 +1031,7 @@ export const decideBuild = ({
             snapshot,
             ticket,
             progress: ticketProgress,
+            run_notes,
             run_branch,
             joiner: number === joiner,
         })

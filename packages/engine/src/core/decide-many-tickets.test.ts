@@ -23,6 +23,7 @@ import {
     pullRequestOpened,
     pushed,
     rateLimitReading,
+    redCheck,
     reviewed,
     RUN_BRANCH,
     RUN_BRANCH_PATH,
@@ -703,5 +704,78 @@ describe('decision step: a plan limit with many tickets in flight', () => {
         expect(stopped).toMatchObject([
             { type: 'record_usage', usage: { scope: 'run' } },
         ])
+    })
+})
+
+describe('decision step: run notes across tickets building at once', () => {
+    /** One ticket's steps up to its red commit, its test-writer leaving these notes. */
+    const redCommitted = ({
+        ticket,
+        run_notes,
+    }: {
+        ticket: number
+        run_notes: string[]
+    }): JournalEntry[] => [
+        ...ticketBuilt({ ticket }).slice(0, 2),
+        testsWritten({ ticket, run_notes }),
+        redCheck({ ticket, ok: true }),
+        leftoverScan({ ticket, stage: 'red' }),
+        commitMade({ ticket, stage: 'red' }),
+    ]
+
+    const promptsOf = (steps: ReturnType<typeof twoSteps>) =>
+        steps.flatMap((step) =>
+            step.type === 'launch_agent' ? [step.prompt] : []
+        )
+
+    test("a note from #11's test-writer reaches both implementers launched in the next step", () => {
+        const steps = twoSteps([
+            runBranchCreated(),
+            ...redCommitted({
+                ticket: 11,
+                run_notes: ['Tests import from src/index.ts.'],
+            }),
+            ...redCommitted({ ticket: 12, run_notes: [] }),
+        ])
+
+        expect(steps).toMatchObject([
+            { type: 'launch_agent', ticket: 11, role: 'implementer' },
+            { type: 'launch_agent', ticket: 12, role: 'implementer' },
+        ])
+        for (const prompt of promptsOf(steps)) {
+            expect(prompt).toContain(
+                '- Tests import from src/index.ts. (test-writer, #11)'
+            )
+        }
+    })
+
+    test("a fresh test-writer fixing #11 on the run branch gets #12's notes", () => {
+        const steps = twoSteps([
+            runBranchCreated(),
+            ...ticketBuilt({ ticket: 12 }).map((entry) =>
+                entry.kind === 'agent_finished' &&
+                entry.content.role === 'implementer'
+                    ? implemented({
+                          ticket: 12,
+                          run_notes: ['src/index.ts exports every module.'],
+                      })
+                    : entry
+            ),
+            ...clashed().slice(1),
+            ticketRebased({
+                ticket: 11,
+                cause: 'clash',
+                tests: ['src/sum.test.ts'],
+            }),
+        ])
+
+        expect(steps).toMatchObject([
+            { type: 'launch_agent', ticket: 11, role: 'test-writer' },
+        ])
+        const [prompt] = promptsOf(steps)
+        expect(prompt).toContain('clashed with the run branch')
+        expect(prompt).toContain(
+            '- src/index.ts exports every module. (implementer, #12)'
+        )
     })
 })

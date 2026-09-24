@@ -1210,6 +1210,13 @@ export const BoardPanel = ({
                     answer. The engine doesn't act on them.
                 </Text>
             ) : null}
+            {state.messages.sent + state.messages.refused > 0 ? (
+                <Text style={styles.small}>
+                    Agent messages: {state.messages.sent} sent,{' '}
+                    {state.messages.delivered} handed over,{' '}
+                    {state.messages.refused} refused.
+                </Text>
+            ) : null}
         </ScrollView>
     )
 }

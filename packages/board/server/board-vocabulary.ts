@@ -211,6 +211,17 @@ export const BOARD_VOCABULARY = {
     jev_asked: JevJobSchema,
     jev_answered: JevJobSchema,
     jev_failed: JevJobSchema,
+    // Agent messages: sent inside an agent's turn, so they move nothing.
+    agent_message: z.looseObject({
+        from: z.string(),
+        to: z.string(),
+        text: z.string(),
+        status: z.enum(['queued', 'not_delivered', 'refused']),
+        reason: z.string().nullable().catch(null),
+    }),
+    agent_message_delivered: z.looseObject({
+        ids: z.array(z.string()).catch([]),
+    }),
     limit_wait_started: z.looseObject({
         /** When the limit resets; `null` when not known. */
         resets_at: z.string().nullable().catch(null),
@@ -288,6 +299,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'jev_asked' }),
     entry({ kind: 'jev_answered' }),
     entry({ kind: 'jev_failed' }),
+    entry({ kind: 'agent_message' }),
+    entry({ kind: 'agent_message_delivered' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
     entry({ kind: 'usage_recorded' }),

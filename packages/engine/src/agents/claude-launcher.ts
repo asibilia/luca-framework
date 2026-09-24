@@ -23,6 +23,7 @@ import {
     CLAUDE_MODEL,
     checkModel,
 } from './claude-options'
+import { createDeliveryHook, createLucaServer } from './message-tool'
 import type { AgentRole } from './role-results'
 
 import { createGuardHook } from '../guards/guard-hook'
@@ -384,6 +385,9 @@ const pumpMessages = async ({
  * 1. refuses a Fable or non-Claude model before starting anything;
  * 2. builds the role's locked-down options (`agentOptions`) with the guard
  *    hook (honoring `may_edit_tests`), the sandbox, and a clean environment;
+ *    with `messaging` (test-writers and implementers), the `luca` server's
+ *    `send_message` tool and the hook that hands over messages after each
+ *    tool call;
  * 3. checks `accountInfo()` for a Claude plan and no API key BEFORE the
  *    prompt is sent;
  * 4. watches the messages: an unsafe init (API key, wrong model, foreign
@@ -528,6 +532,7 @@ export const createClaudeLauncher = ({
         cwd,
         may_edit_tests,
         config,
+        messaging,
     }) => {
         const refused = checkModel({ model: useModel })
         if (refused !== null) return stop(refused)
@@ -570,6 +575,11 @@ export const createClaudeLauncher = ({
                 // The summary is swapped each turn, so this reads it late.
                 on_deny: (denial) => open.summary.guard_denials.push(denial),
             }),
+            // Kept in the session's options, so its follow-ups have them too.
+            luca_server:
+                messaging === null ? null : createLucaServer({ messaging }),
+            delivery_hook:
+                messaging === null ? null : createDeliveryHook({ messaging }),
             stderr: (data) => {
                 stderr.push(data)
                 if (stderr.length > 50) stderr.shift()

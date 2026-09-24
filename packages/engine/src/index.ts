@@ -2,6 +2,7 @@ export {
     AgentSessionSchema,
     LauncherFailureSchema,
     type AgentLauncher,
+    type AgentMessaging,
     type AgentSession,
     type AgentTurn,
     type LauncherFailure,
@@ -23,13 +24,24 @@ export {
     MAX_TURNS,
     resultJsonSchema,
 } from './agents/claude-options'
+export {
+    createDeliveryHook,
+    createLucaServer,
+    LUCA_SERVER,
+    sendMessageDescription,
+} from './agents/message-tool'
 export { roleInstructions } from './agents/role-instructions'
-export { rolePrompt, type RejoinContext } from './agents/role-prompts'
+export {
+    rolePrompt,
+    type PromptRunNote,
+    type RejoinContext,
+} from './agents/role-prompts'
 export * from './agents/role-results'
 export {
     createScriptedLauncher,
     type ScriptedCall,
     type ScriptedLauncher,
+    type ScriptedTools,
     type ScriptedTurn,
 } from './agents/scripted-launcher'
 export {
@@ -61,7 +73,9 @@ export {
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
     MAX_REJOINS,
+    MAX_RUN_NOTES,
     mayEditTests,
+    newestRunNotes,
     type BuildAction,
 } from './core/decide-build'
 export {
@@ -171,12 +185,27 @@ export {
     EMPTY_TICKET_PROGRESS,
     type ReplayedRedCheck,
     type ReplayedRejoin,
+    type ReplayedRunNote,
     type ReplayedSnapshot,
     type ReplayedWorktree,
     type RunPhase,
     type RunState,
     type TicketProgress,
 } from './journal/replay'
+export {
+    agentAddress,
+    ALL_AGENTS,
+    canMessage,
+    deliveryText,
+    isOver,
+    MAX_MESSAGE_CHARS,
+    MAX_MESSAGES_PER_AGENT,
+    parseAddress,
+    pendingMessages,
+    planMessage,
+    sendAnswer,
+} from './messages/agent-messages'
+export { createAgentMessaging } from './messages/agent-messaging'
 export { createGitHubTracker } from './tracker/github-tracker'
 export {
     createInMemoryTracker,

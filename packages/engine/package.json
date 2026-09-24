@@ -19,6 +19,7 @@
         "zod": "catalog:"
     },
     "devDependencies": {
+        "@modelcontextprotocol/sdk": "1.30.0",
         "@types/bun": "latest",
         "@types/lodash": "^4.17.20",
         "typescript": "catalog:"

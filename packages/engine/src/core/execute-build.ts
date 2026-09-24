@@ -32,6 +32,7 @@ import {
     type RunState,
 } from '../journal/replay'
 import { sessionSignal } from '../limits/plan-signals'
+import { createAgentMessaging } from '../messages/agent-messaging'
 import type { Tracker } from '../tracker/tracker'
 
 /** What the engine needs, beyond the journal and tracker, to build tickets. */
@@ -399,6 +400,11 @@ const launchAgent = async ({
                 cwd,
                 may_edit_tests,
                 config: context.config,
+                messaging: createAgentMessaging({
+                    journal: context.journal,
+                    ticket,
+                    role,
+                }),
             }),
     })
 }

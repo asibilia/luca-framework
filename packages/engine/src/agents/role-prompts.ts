@@ -2,6 +2,7 @@ import type { AgentRole, BadTest, Finding } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 import type { RejoinCause } from '../journal/journal-record'
+import { agentAddress, canMessage } from '../messages/agent-messages'
 
 /**
  * Why and how a ticket was sent back onto the run branch, for the prompts of
@@ -87,6 +88,27 @@ const REFACTOR_REVIEW_TASK =
     "No test's meaning changed, no test was weakened or dropped, and no new behavior was added. " +
     'A behavior change is a blocker.'
 
+/** A run note as a later agent's prompt lists it. */
+export type PromptRunNote = { ticket: number; role: AgentRole; note: string }
+
+/** The notes earlier agents left, oldest first; nothing when there are none. */
+const runNotesSection = ({
+    run_notes,
+}: {
+    run_notes: PromptRunNote[]
+}): string[] =>
+    run_notes.length === 0
+        ? []
+        : [
+              '## Run notes from earlier agents in this run',
+              run_notes
+                  .map(
+                      ({ ticket, role, note }) =>
+                          `- ${note} (${role}, #${ticket})`
+                  )
+                  .join('\n'),
+          ]
+
 const ROLE_TASKS: Record<AgentRole, string> = {
     'test-writer':
         'Write failing tests for every acceptance criterion below. Edit test files only. ' +
@@ -102,8 +124,9 @@ const ROLE_TASKS: Record<AgentRole, string> = {
 }
 
 /**
- * The prompt an agent starts with: its task, the spec, and its ticket with
- * each criterion's id. The engine journals it word for word.
+ * The prompt an agent starts with: its task, its address for agent messages
+ * (test-writers and implementers only), the spec, and its ticket with each
+ * criterion's id. The engine journals it word for word.
  *
  * The real per-role instructions come with the Claude launcher (#362); this
  * is the part every launcher gets.
@@ -114,6 +137,8 @@ const ROLE_TASKS: Record<AgentRole, string> = {
  *   test the implementer sent back, and why.
  * @param sections - More sections for the end, such as a reviewer's diff
  *   and gate results, or a review fixer's findings.
+ * @param run_notes - Notes earlier agents in the run left, oldest first,
+ *   listed at the end with who wrote them. None: no section.
  *
  * @example
  * const prompt = rolePrompt({ role: 'test-writer', spec, ticket })
@@ -125,6 +150,7 @@ export const rolePrompt = ({
     refactor,
     bad_test,
     sections,
+    run_notes,
 }: {
     role: AgentRole
     spec: SpecSnapshot
@@ -132,12 +158,18 @@ export const rolePrompt = ({
     refactor?: boolean
     bad_test?: BadTest | null
     sections?: string[]
+    run_notes?: PromptRunNote[]
 }): string =>
     [
         `# Your role: ${role}`,
         role === 'implementer' && refactor ? REFACTOR_TASK : ROLE_TASKS[role],
         ...(role === 'ticket-reviewer' && refactor
             ? [REFACTOR_REVIEW_TASK]
+            : []),
+        ...(canMessage({ role })
+            ? [
+                  `Your address for agent messages: ${agentAddress({ role, ticket: ticket.number })}`,
+              ]
             : []),
         `## Spec #${spec.number}: ${spec.title}`,
         spec.body,
@@ -149,4 +181,6 @@ export const rolePrompt = ({
             ? [badTestSection({ bad_test })]
             : []),
         ...(sections ?? []),
+        // Memories recalled for this agent (#370) will sit next to these.
+        ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')

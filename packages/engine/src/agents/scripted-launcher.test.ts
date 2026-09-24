@@ -33,6 +33,7 @@ describe('scripted launcher: follow-ups', () => {
             cwd,
             may_edit_tests: true,
             config: BUILD_CONFIG,
+            messaging: null,
         })
         const second = await launcher.launch({
             role: 'test-writer',
@@ -41,6 +42,7 @@ describe('scripted launcher: follow-ups', () => {
             cwd,
             may_edit_tests: true,
             config: BUILD_CONFIG,
+            messaging: null,
         })
 
         expect(first.ok && second.ok).toBe(true)
@@ -67,6 +69,7 @@ describe('scripted launcher: follow-ups', () => {
             cwd,
             may_edit_tests: false,
             config: BUILD_CONFIG,
+            messaging: null,
         })
         if (!first.ok) throw new Error(first.error)
         const next = await launcher.followUp({
@@ -92,6 +95,7 @@ describe('scripted launcher: follow-ups', () => {
                 prompt: 'p',
                 session_id: first.session_id,
                 may_edit_tests: false,
+                delivered: [],
             },
             {
                 kind: 'follow_up',
@@ -99,6 +103,7 @@ describe('scripted launcher: follow-ups', () => {
                 ticket: 11,
                 prompt: 'lint failed',
                 session_id: first.session_id,
+                delivered: [],
             },
         ])
     })
@@ -131,6 +136,7 @@ describe('scripted launcher: follow-ups', () => {
             cwd,
             may_edit_tests: false,
             config: BUILD_CONFIG,
+            messaging: null,
         })
         if (!first.ok) throw new Error(first.error)
 

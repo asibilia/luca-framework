@@ -3,11 +3,30 @@ import { dirname, join } from 'node:path'
 
 import type {
     AgentLauncher,
+    AgentMessaging,
     AgentSession,
     AgentTurn,
     LauncherFailure,
 } from './agent-launcher'
 import type { AgentRole } from './role-results'
+
+/**
+ * The engine's tools, as a scripted agent calls them. They reach the
+ * messaging the session was launched with; a reviewer has none, so its
+ * `send_message` is not ok and its `tool_call` hands over nothing.
+ */
+export type ScriptedTools = {
+    /** The `send_message` tool. */
+    send_message: (args: { to: string; text: string }) => {
+        ok: boolean
+        detail: string
+    }
+    /**
+     * Stands for any tool call the agent makes: the delivery hook runs after
+     * it, and this returns what it handed over, or `null`.
+     */
+    tool_call: (tool_name: string) => string | null
+}
 
 /**
  * One scripted agent turn: the files it writes, anything else it does, and
@@ -22,8 +41,11 @@ export type ScriptedTurn = {
     ticket: number
     /** Worktree-relative path to file content. */
     files?: Record<string, string>
-    /** Any other side effect, such as running git, in the worktree. */
-    act?: (cwd: string) => Promise<void>
+    /**
+     * Any other side effect, such as running git in the worktree, or sending
+     * and receiving agent messages through `tools`.
+     */
+    act?: (cwd: string, tools: ScriptedTools) => Promise<void>
     /** The role's result, as the agent's structured output. */
     result?: unknown
     failure?: LauncherFailure
@@ -42,6 +64,8 @@ export type ScriptedCall = {
     session_id: string
     /** Only on launches. */
     may_edit_tests?: boolean
+    /** What each of the turn's tool calls handed over, in order. */
+    delivered: string[]
 }
 
 /** A scripted launcher, plus what tests need to look inside it. */
@@ -57,7 +81,8 @@ export type ScriptedLauncher = AgentLauncher & {
  * that turn's files into the worktree, run its `act`, and return its result
  * or failure. A call with no turn left fails the agent's try; a follow-up to
  * an unknown session is an engine failure. The engine config it is handed is
- * ignored.
+ * ignored. A turn's `act` gets the engine's tools, wired to the messaging
+ * its session was launched with.
  *
  * @example
  * const launcher = createScriptedLauncher({
@@ -71,18 +96,39 @@ export const createScriptedLauncher = ({
 }): ScriptedLauncher => {
     const remaining = [...turns]
     const calls: ScriptedCall[] = []
-    const sessions = new Set<string>()
+    /** Each open session's messaging, kept for its follow-ups. */
+    const sessions = new Map<string, AgentMessaging | null>()
+
+    const toolsFor = ({
+        messaging,
+        call,
+    }: {
+        messaging: AgentMessaging | null
+        call: ScriptedCall
+    }): ScriptedTools => ({
+        send_message: (args) =>
+            messaging === null
+                ? { ok: false, detail: 'This agent has no send_message tool.' }
+                : messaging.send(args),
+        tool_call: (tool_name) => {
+            const text = messaging?.deliver({ tool_name }) ?? null
+            if (text !== null) call.delivered.push(text)
+            return text
+        },
+    })
 
     const play = async ({
         role,
         ticket,
         cwd,
         session_id,
+        tools,
     }: {
         role: AgentRole
         ticket: number
         cwd: string
         session_id: string
+        tools: ScriptedTools
     }): Promise<AgentTurn> => {
         const index = remaining.findIndex(
             (turn) => turn.role === role && turn.ticket === ticket
@@ -102,7 +148,7 @@ export const createScriptedLauncher = ({
             await mkdir(dirname(full), { recursive: true })
             await Bun.write(full, content)
         }
-        if (turn.act !== undefined) await turn.act(cwd)
+        if (turn.act !== undefined) await turn.act(cwd, tools)
         const session =
             turn.session === undefined ? {} : { session: turn.session }
         if (turn.failure !== undefined) {
@@ -123,28 +169,41 @@ export const createScriptedLauncher = ({
     }
 
     return {
-        launch: async ({ role, ticket, prompt, cwd, may_edit_tests }) => {
+        launch: async ({
+            role,
+            ticket,
+            prompt,
+            cwd,
+            may_edit_tests,
+            messaging,
+        }) => {
             const session_id = `scripted-${role}-${ticket}-${calls.length + 1}`
-            sessions.add(session_id)
-            calls.push({
+            sessions.set(session_id, messaging)
+            const call: ScriptedCall = {
                 kind: 'launch',
                 role,
                 ticket,
                 prompt,
                 session_id,
                 may_edit_tests,
-            })
-            return play({ role, ticket, cwd, session_id })
+                delivered: [],
+            }
+            calls.push(call)
+            const tools = toolsFor({ messaging, call })
+            return play({ role, ticket, cwd, session_id, tools })
         },
         followUp: async ({ session_id, role, ticket, message, cwd }) => {
-            calls.push({
+            const call: ScriptedCall = {
                 kind: 'follow_up',
                 role,
                 ticket,
                 prompt: message,
                 session_id,
-            })
-            if (!sessions.has(session_id)) {
+                delivered: [],
+            }
+            calls.push(call)
+            const messaging = sessions.get(session_id)
+            if (messaging === undefined) {
                 return {
                     ok: false,
                     failure: 'engine',
@@ -152,7 +211,8 @@ export const createScriptedLauncher = ({
                     error: `No scripted session ${session_id}.`,
                 }
             }
-            return play({ role, ticket, cwd, session_id })
+            const tools = toolsFor({ messaging, call })
+            return play({ role, ticket, cwd, session_id, tools })
         },
         launches: () => [...calls],
     }

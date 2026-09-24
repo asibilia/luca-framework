@@ -476,6 +476,63 @@ export const jevFailed = ({
         },
     })
 
+/** An address, as the engine writes it: `<role>#<ticket>`. */
+const address = ({ role, ticket }: { role: string; ticket: number }) =>
+    `${role}#${ticket}`
+
+export const agentMessage = ({
+    ticket,
+    role,
+    id,
+    to,
+    text,
+    status = 'queued',
+    reason = null,
+}: {
+    ticket: number
+    role: string
+    id: string
+    to: string
+    text: string
+    status?: 'queued' | 'not_delivered' | 'refused'
+    reason?: string | null
+}): Entry =>
+    entry({
+        kind: 'agent_message',
+        ticket,
+        role,
+        content: {
+            id,
+            from: address({ role, ticket }),
+            to,
+            text,
+            status,
+            recipients: status === 'queued' ? [to] : [],
+            reason,
+        },
+    })
+
+export const agentMessageDelivered = ({
+    ticket,
+    role,
+    ids,
+}: {
+    ticket: number
+    role: string
+    ids: string[]
+}): Entry =>
+    entry({
+        kind: 'agent_message_delivered',
+        ticket,
+        role,
+        content: {
+            to: address({ role, ticket }),
+            ids,
+            tool_name: 'Edit',
+            text: 'A message from another agent: ...',
+        },
+    })
+
 export const redCheck = ({
     ticket,
     ok,

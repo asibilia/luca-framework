@@ -387,7 +387,10 @@ describe('checkToolCall: Bash', () => {
 describe('checkToolCall: other tools', () => {
     const cases: [GuardRole, string, boolean][] = [
         ['implementer', 'mcp__luca__send_message', true],
-        ['reviewer', 'mcp__luca__send_message', true],
+        ['test-writer', 'mcp__luca__send_message', true],
+        // Reviewers and the learner never message, even if handed the tool.
+        ['reviewer', 'mcp__luca__send_message', false],
+        ['learner', 'mcp__luca__send_message', false],
         ['implementer', 'mcp__muninn__muninn_remember', false],
         ['implementer', 'mcp__paseo__create_agent', false],
         ['implementer', 'WebFetch', false],

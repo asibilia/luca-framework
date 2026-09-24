@@ -1029,3 +1029,214 @@ describe('one ticket, end to end, with scripted agents', () => {
         )
     }, 60_000)
 })
+
+describe('run notes, end to end', () => {
+    test("a test-writer's run note reaches the implementer's prompt, word for word", async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const note = 'Tests import from ./sum; export it from src/index.ts.'
+        const launcher = createScriptedLauncher({
+            turns: [
+                {
+                    ...testWriter,
+                    result: { ...TEST_WRITER_RESULT, run_notes: [note] },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+        const { action, records } = await runPractice({
+            turns: [],
+            launcher,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const prompts = launcher
+            .launches()
+            .map(({ role, prompt }) => ({ role, prompt }))
+        expect(prompts[0]?.prompt).not.toContain('Run notes')
+        expect(prompts[1]?.role).toBe('implementer')
+        expect(prompts[1]?.prompt).toContain(`- ${note} (test-writer, #11)`)
+        expect(prompts[2]?.prompt).toContain(`- ${note} (test-writer, #11)`)
+        const started = records.flatMap((record) =>
+            record.kind === 'agent_started' ? [record.content.prompt] : []
+        )
+        expect(started[1]).toBe(prompts[1]?.prompt ?? '')
+        const finished = records.find(
+            (record) =>
+                record.kind === 'agent_finished' &&
+                record.role === 'test-writer'
+        )
+        expect(
+            finished?.kind === 'agent_finished' &&
+                finished.content.role === 'test-writer'
+                ? finished.content.result.run_notes
+                : []
+        ).toEqual([note])
+    }, 60_000)
+})
+
+describe('agent messages, end to end', () => {
+    test('a test-writer messages the implementer, who gets it at its first tool call; the cap and reviewers are refused', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const first = 'sum takes { numbers }, not two arguments.'
+        const answers: { ok: boolean; detail: string }[] = []
+        const implementerGot: (string | null)[] = []
+        const reviewerGot: (string | null)[] = []
+        const launcher = createScriptedLauncher({
+            turns: [
+                {
+                    ...testWriter,
+                    act: async (_cwd, tools) => {
+                        answers.push(
+                            tools.send_message({
+                                to: 'ticket-reviewer#11',
+                                text: 'Please approve.',
+                            })
+                        )
+                        answers.push(
+                            tools.send_message({
+                                to: 'implementer#11',
+                                text: first,
+                            })
+                        )
+                        for (let count = 2; count <= 6; count += 1) {
+                            answers.push(
+                                tools.send_message({
+                                    to: 'implementer#11',
+                                    text: `Heads-up ${count}.`,
+                                })
+                            )
+                        }
+                    },
+                },
+                {
+                    ...implementer,
+                    act: async (_cwd, tools) => {
+                        implementerGot.push(tools.tool_call('Read'))
+                        implementerGot.push(tools.tool_call('Bash'))
+                    },
+                },
+                {
+                    ...reviewer,
+                    act: async (_cwd, tools) => {
+                        answers.push(
+                            tools.send_message({
+                                to: 'implementer#11',
+                                text: 'From the reviewer.',
+                            })
+                        )
+                        reviewerGot.push(tools.tool_call('Read'))
+                    },
+                },
+            ],
+        })
+        const { action, records } = await runPractice({
+            turns: [],
+            launcher,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // What each send answered the agent.
+        expect(answers.map(({ ok }) => ok)).toEqual([
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+            false,
+            false,
+        ])
+        expect(answers[6]?.detail).toContain('5 messages')
+
+        // Every message is journaled word for word, refused ones too.
+        const messages = records.flatMap((record) =>
+            record.kind === 'agent_message'
+                ? [
+                      {
+                          ticket: record.ticket,
+                          role: record.role,
+                          ...record.content,
+                      },
+                  ]
+                : []
+        )
+        expect(
+            messages.map(({ id, status, to }) => ({ id, status, to }))
+        ).toEqual([
+            { id: 'msg-1', status: 'refused', to: 'ticket-reviewer#11' },
+            { id: 'msg-2', status: 'queued', to: 'implementer#11' },
+            { id: 'msg-3', status: 'queued', to: 'implementer#11' },
+            { id: 'msg-4', status: 'queued', to: 'implementer#11' },
+            { id: 'msg-5', status: 'queued', to: 'implementer#11' },
+            { id: 'msg-6', status: 'queued', to: 'implementer#11' },
+            { id: 'msg-7', status: 'refused', to: 'implementer#11' },
+        ])
+        expect(messages[1]).toEqual({
+            ticket: 11,
+            role: 'test-writer',
+            id: 'msg-2',
+            from: 'test-writer#11',
+            to: 'implementer#11',
+            text: first,
+            status: 'queued',
+            recipients: ['implementer#11'],
+            reason: null,
+        })
+
+        // The implementer got all five at its first tool call, and only then.
+        const deliveries = records.flatMap((record) =>
+            record.kind === 'agent_message_delivered'
+                ? [
+                      {
+                          ticket: record.ticket,
+                          role: record.role,
+                          ...record.content,
+                      },
+                  ]
+                : []
+        )
+        expect(deliveries).toEqual([
+            {
+                ticket: 11,
+                role: 'implementer',
+                to: 'implementer#11',
+                ids: ['msg-2', 'msg-3', 'msg-4', 'msg-5', 'msg-6'],
+                tool_name: 'Read',
+                text: implementerGot[0] ?? '',
+            },
+        ])
+        expect(implementerGot[0]).toContain(`from test-writer#11`)
+        expect(implementerGot[0]).toContain(first)
+        expect(implementerGot[1]).toBeNull()
+        // It saw them during its turn: after it started, before it finished.
+        const seqOf = (kind: string, role: string | null) =>
+            records.find(
+                (record) => record.kind === kind && record.role === role
+            )?.seq ?? 0
+        const seen = seqOf('agent_message_delivered', 'implementer')
+        expect(seen).toBeGreaterThan(seqOf('agent_started', 'implementer'))
+        expect(seen).toBeLessThan(seqOf('agent_finished', 'implementer'))
+
+        // The reviewer has no messaging: it can't send, and gets nothing.
+        expect(reviewerGot).toEqual([null])
+        expect(launcher.launches().map(({ delivered }) => delivered)).toEqual([
+            [],
+            [implementerGot[0] ?? ''],
+            [],
+        ])
+
+        // The implementer's prompt names its address; the reviewer's names none.
+        const prompts = launcher.launches().map(({ prompt }) => prompt)
+        expect(prompts[0]).toContain(
+            'Your address for agent messages: test-writer#11'
+        )
+        expect(prompts[1]).toContain(
+            'Your address for agent messages: implementer#11'
+        )
+        expect(prompts[2]).not.toContain('Your address for agent messages')
+    }, 60_000)
+})

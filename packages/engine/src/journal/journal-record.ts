@@ -446,6 +446,73 @@ const JevFailedEntrySchema = z.object({
 })
 
 /**
+ * What an agent message did when it was sent:
+ * - `queued`: it waits for its recipients' next tool calls.
+ * - `not_delivered`: nobody can get it (the receiver's ticket is over, or
+ *   `all` found no one); it stays in the journal.
+ * - `refused`: it broke a rule (a reviewer, a bad address, the cap).
+ */
+export const AgentMessageStatusSchema = z.enum([
+    'queued',
+    'not_delivered',
+    'refused',
+])
+
+export type AgentMessageStatus = z.infer<typeof AgentMessageStatusSchema>
+
+/**
+ * One agent message, word for word, as it was sent. Addresses look like
+ * `implementer#11`: a role and a ticket.
+ */
+export const AgentMessageSchema = z.object({
+    /** `msg-<n>`: n is 1 + the earlier `agent_message` records in the journal. */
+    id: z.string().min(1),
+    /** The sender's address. */
+    from: z.string(),
+    /** What the sender asked for: an address, or `all`. */
+    to: z.string(),
+    text: z.string(),
+    status: AgentMessageStatusSchema,
+    /** The addresses it waits for; empty unless queued. */
+    recipients: z.array(z.string()),
+    /** Why it was refused or not delivered; `null` when queued. */
+    reason: z.string().nullable(),
+})
+
+export type AgentMessage = z.infer<typeof AgentMessageSchema>
+
+/** An agent sent a message. `ticket` and `role` are the sender's. */
+const AgentMessageEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('agent_message'),
+    content: AgentMessageSchema,
+})
+
+/** Messages handed to their receiver at one tool call, word for word. */
+export const AgentMessageDeliveredSchema = z.object({
+    /** The receiver's address. */
+    to: z.string(),
+    /** The ids of the messages handed over together. */
+    ids: z.array(z.string()),
+    /** The tool call they rode on. */
+    tool_name: z.string().nullable(),
+    /** The additional context the agent got, word for word. */
+    text: z.string(),
+})
+
+export type AgentMessageDelivered = z.infer<typeof AgentMessageDeliveredSchema>
+
+/**
+ * Agent messages reached their receiver. `ticket` and `role` are the
+ * receiver's; the record's time is when it saw them.
+ */
+const AgentMessageDeliveredEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('agent_message_delivered'),
+    content: AgentMessageDeliveredSchema,
+})
+
+/**
  * What a caller hands the journal to append: a kind, its content, and who it
  * is about. The journal adds `seq` and `time`.
  *
@@ -484,6 +551,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     LimitWaitEndedEntrySchema,
     UsageRecordedEntrySchema,
     WorktreesRemovedEntrySchema,
+    AgentMessageEntrySchema,
+    AgentMessageDeliveredEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -523,6 +592,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
     UsageRecordedEntrySchema.extend(STAMP_FIELDS),
     WorktreesRemovedEntrySchema.extend(STAMP_FIELDS),
+    AgentMessageEntrySchema.extend(STAMP_FIELDS),
+    AgentMessageDeliveredEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -561,6 +632,8 @@ export const JournalKindSchema = z.enum([
     'limit_wait_ended',
     'usage_recorded',
     'worktrees_removed',
+    'agent_message',
+    'agent_message_delivered',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

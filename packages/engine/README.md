@@ -15,6 +15,8 @@ clash on top of the run branch (#365). And it sends its journal to the Paseo
 board plugin, and has a command line, `luca-run` (#374). A hit plan limit is
 a **limit wait**, any sign of per-token billing stops the run for good, and
 usage is journaled per ticket and per run (#368).
+Agents send each other one-way **agent messages**, even across tickets that
+build at the same time, and hand **run notes** on to later agents (#371).
 
 ## Modules
 
@@ -41,9 +43,12 @@ usage is journaled per ticket and per run (#368).
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
 | `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
 | `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt. |
-| `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act, return a result or a failure, and record each launch and follow-up with its session. |
+| `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act (sending and receiving agent messages too), return a result or a failure, and record each launch and follow-up with its session and what it was handed. |
+| `src/agents/message-tool.ts` | The engine's in-process MCP server `luca` with its `send_message` tool, and the hook that hands messages over after each tool call. |
+| `src/messages/agent-messages.ts` | **Agent messages'** rules. Pure: journal records in, a message's fate (queued, not delivered, refused) or what waits for an agent out. |
+| `src/messages/agent-messaging.ts` | One agent's messaging, backed by the journal: journals each message and each delivery word for word. |
 | `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
-| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids), and its section after a clash: the clashed tests, the clashed code, or "re-review only the new changes". |
+| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids, its address for messages, and the run's newest **run notes**), and its section after a clash: the clashed tests, the clashed code, or "re-review only the new changes". |
 | `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`). |
 | `src/guards/guard-hook.ts` | The guard as the SDK's `PreToolUse` hook. |
 | `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths. |
@@ -198,6 +203,11 @@ Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 how it failed), or `run_stopped` (see Guards). Any step may be preceded by a
 limit wait or a billing stop, and a finished ticket and the run's end by
 `usage_recorded` (see Plan limits and billing).
+
+While a test-writer or implementer works, it may send **agent messages**
+(`agent_message`), and each tool call it makes may hand it messages waiting
+for it (`agent_message_delivered`). Neither changes a ticket's progress; see
+"Agent messages" below.
 
 A refactor ticket (labelled `refactor`) skips the test-writer, the red check,
 and the red commit: its implementer may follow renames into test files, but
@@ -394,6 +404,15 @@ also holds its journal).
   again from the ticket for its after-turn check.
 - **The PR's assumptions** come from every agent turn on a ticket, fix rounds
   and bounced test-writers included, each listed once.
+- **Run notes:** every fresh agent (`launch_agent`, reviewers included) gets
+  the run's `MAX_RUN_NOTES` (10) newest notes at the end of its prompt, under
+  "Run notes from earlier agents in this run", oldest first, each with who
+  wrote it (`- <note> (test-writer, #11)`). The same text twice is listed
+  once, where it was last written. With no notes there is no section.
+  Follow-ups don't repeat them. Replay keeps every note in `run_notes`, from
+  the `agent_finished` records, in journal order; the prompt itself is
+  journaled word for word in `agent_started`. Recalled memories (#370) will
+  sit next to them.
 - **Lockfile updates (#373):** agents never run the install; the prompts say
   so, and every guard layer blocks it (#384). The hook denies package
   managers, `bun` install subcommands, `bunx <package>`, and Bun's
@@ -476,6 +495,61 @@ also holds its journal).
 - **Denial counts** come from the result's `permission_denials` only (the
   tracer counted them twice), plus the guard hook's own denials.
 
+## Agent messages
+
+Test-writers and implementers can send each other a one-way heads-up
+(decision #338). Reviewers can't send or receive, and the learner can't
+either.
+
+- **Addresses.** An agent's address is `<role>#<ticket>`, such as
+  `implementer#11`; its prompt names it. A fresh test-writer after a bad test
+  keeps the address, and its count. `to` is an address or `all`.
+- **The tool.** A Claude agent calls `send_message({ to, text })` on the
+  engine's in-process MCP server `luca` (`mcp__luca__send_message`). The
+  answer says what happened; a refused message is an error result. Reviewers
+  get no `luca` server and no delivery hooks, and the guard denies the tool
+  to the reviewer and learner roles anyway.
+- **Delivery.** At the receiver's next tool call, failed ones too: the
+  `PostToolUse` and `PostToolUseFailure` hooks add the waiting messages as
+  `additionalContext`, one line each, and journal `agent_message_delivered`
+  (the receiver, the ids, the tool it rode on, and the text word for word; the
+  record's time is when it was seen). Each message is handed over once. A
+  session keeps its messaging for its follow-ups.
+- **Who counts as live.** Tickets build at the same time, so the receiver
+  may be on another ticket, working right now. A named address whose ticket
+  is in the run and not over gets the message queued, even if that agent
+  hasn't started yet: it gets it at its first tool call. A ticket is over
+  (`isOver`) once it pushed, is stuck, a billing stop ended the run, or the
+  run's PR is open. A ticket that joined but hasn't pushed isn't over: a
+  clash or failed gates after joining sends it back to its agents, and the
+  implementer's follow-up (same session) or a fresh test-writer gets what
+  waits. `all` goes to every other test-writer and implementer that has
+  started on a ticket that isn't over, on any ticket; if there is none, it
+  is not delivered.
+- **Not delivered.** A message to an agent whose ticket is over is journaled
+  as `not_delivered`, with why, and stays in the journal. It counts toward the
+  cap.
+- **Refused.** A reviewer sender, a reviewer or malformed address, the
+  sender itself, a ticket not in the run, empty text, text over 2,000
+  characters, or a sixth message from one address
+  (`MAX_MESSAGES_PER_AGENT`, 5, per address: `implementer#11` and
+  `implementer#12` each have their own 5; a fresh agent on a rejoin keeps its
+  address's count). Refused messages are
+  journaled too, with the reason, and don't count toward the cap.
+
+Every message is journaled word for word as `agent_message` (`ticket` and
+`role` are the sender's):
+
+```ts
+{ id: 'msg-<n>', from: 'test-writer#11', to: 'implementer#11' | 'all', text,
+  status: 'queued' | 'not_delivered' | 'refused', recipients: string[], reason: string | null }
+```
+
+The rules are pure (`planMessage`, `pendingMessages`, `deliveryText`,
+`isOver` in `src/messages/agent-messages.ts`) and read the journal on every
+call: liveness, the cap, and what waits come from the journal alone, never
+from memory, so a resumed run hands over exactly what is still waiting.
+
 ## Guards
 
 Every agent runs Claude Opus 5.5 (`claude-opus-5-5`) at `high` effort. The
@@ -491,7 +565,7 @@ to its rules; each one alone should hold.
 
 No agent writes a test setup file, git, or GitHub, installs packages, reaches
 the network or local ports, or gets Paseo or any MCP tool but the engine's own
-(`mcp__luca__*`).
+(`mcp__luca__*`). Reviewers and the learner don't get `send_message`.
 
 1. **Before a call.** `checkToolCall` runs as a `PreToolUse` hook and fails
    closed: unknown tools, paths outside the worktree, and shell commands off
@@ -667,7 +741,16 @@ new workspace dependency and checks the moved worktree's frozen install.
 step, limits and billing stops with two tickets in flight included.
 
 `src/agents/claude-launcher.test.ts` drives the real launcher with a fake
-`query` that plays back SDK messages, follow-ups included.
+`query` that plays back SDK messages, follow-ups included. It calls
+`send_message` through a real MCP client connected to the session's `luca`
+server in memory, and runs the delivery hooks as the SDK would.
+`src/messages/agent-messages.test.ts` tests the message rules on journals;
+`src/messages/agent-messaging.test.ts` runs it on a real journal file, a
+resumed engine included. The one-ticket end-to-end test sends a message from
+the test-writer to the implementer, and a run note between them;
+`src/core/run-many-tickets-messages.test.ts` runs the many-ticket practice
+run with messages across #11 and #12 while both build, `all`, a message
+that waits for #11's clash follow-up, and a run note reaching #12 and #13.
 `src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
 `src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one

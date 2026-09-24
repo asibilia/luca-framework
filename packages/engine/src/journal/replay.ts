@@ -225,6 +225,8 @@ export type PlanState = {
     /** Set once a billing stop is journaled. It sticks. */
     billing_stopped: { reason: string } | null
 }
+/** One run note, with the agent that wrote it. */
+export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
@@ -245,6 +247,11 @@ export type RunState = {
     usage_recorded: { tickets: number[]; run: boolean }
     /** The worktrees the engine removed at the end of the run. */
     removed_worktrees: string[]
+    /**
+     * Every run note from every finished agent in the run, oldest first
+     * (journal order), word for word.
+     */
+    run_notes: ReplayedRunNote[]
     last_seq: number
 }
 
@@ -305,6 +312,7 @@ const EMPTY_STATE: RunState = {
     },
     usage_recorded: { tickets: [], run: false },
     removed_worktrees: [],
+    run_notes: [],
     last_seq: 0,
 }
 
@@ -379,6 +387,28 @@ const planAfter = ({
         case 'limit_wait_ended':
             return { ...plan, wait: null }
     }
+}
+
+/** The run's notes after an agent finished: its own go at the end. */
+const notesAfter = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: Extract<JournalRecord, { kind: 'agent_finished' }>
+}): ReplayedRunNote[] => {
+    const { ticket, content } = record
+    if (ticket === null || content.role === 'ticket-reviewer') {
+        return state.run_notes
+    }
+    return [
+        ...state.run_notes,
+        ...content.result.run_notes.map((note) => ({
+            ticket,
+            role: content.role,
+            note,
+        })),
+    ]
 }
 
 const applyRecord = ({
@@ -477,11 +507,20 @@ const applyRecord = ({
                         : { tickets: [...tickets, ticket], run },
             }
         }
+        // Agent messages change no ticket's progress; the message rules
+        // read them from the records themselves.
+        case 'agent_message':
+        case 'agent_message_delivered':
+            return next
+        case 'agent_finished':
+            return applyTicketRecord({
+                state: { ...next, run_notes: notesAfter({ state, record }) },
+                record,
+            })
         default:
             return applyTicketRecord({ state: next, record })
     }
 }
-
 type TicketRecord = Exclude<
     JournalRecord,
     {
@@ -503,6 +542,8 @@ type TicketRecord = Exclude<
             | 'limit_wait_started'
             | 'limit_wait_ended'
             | 'usage_recorded'
+            | 'agent_message'
+            | 'agent_message_delivered'
     }
 >
 
