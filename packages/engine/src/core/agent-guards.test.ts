@@ -483,10 +483,71 @@ describe('the after-turn check: what git ignores and git state', () => {
         expect(commits(records)).toEqual(CLEAN_COMMITS)
     }, 60_000)
 
-    test('an agent that changes the shared git config, hooks, or excludes fails a try, and each is put back', async () => {
-        const common = join(practice.repo, '.git')
-        const sample = join(common, 'hooks/pre-commit.sample')
-        const sampleBefore = await Bun.file(sample).text()
+    test("another process's change to the shared .git during a turn is not the agent's, and stays", async () => {
+        const hook = join(practice.repo, '.git/hooks/pre-push')
+        const exclude = join(practice.repo, '.git/info/exclude')
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    // Other agents in the same repo: a `git push -u` writes
+                    // its branch's config, and tools add hooks and excludes.
+                    act: async (cwd) => {
+                        await git(
+                            cwd,
+                            'config',
+                            'branch.someone-else.remote',
+                            'origin'
+                        )
+                        await Bun.write(hook, '#!/bin/sh\nexit 0\n')
+                        await Bun.write(
+                            exclude,
+                            `${await Bun.file(exclude).text()}*.outside\n`
+                        )
+                    },
+                },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(failures(records)).toEqual([])
+        expect(commits(records)).toEqual(CLEAN_COMMITS)
+        // Nothing was rolled back.
+        expect(
+            (
+                await git(
+                    practice.repo,
+                    'config',
+                    '--get',
+                    'branch.someone-else.remote'
+                )
+            ).trim()
+        ).toBe('origin')
+        expect(await Bun.file(hook).text()).toBe('#!/bin/sh\nexit 0\n')
+        expect(await Bun.file(exclude).text()).toContain('*.outside\n')
+        const changed = records.flatMap((record) =>
+            record.kind === 'shared_git_changed' ? [record] : []
+        )
+        expect(changed).toMatchObject([
+            {
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    role: 'implementer',
+                    changes: [
+                        'the shared .git/config changed',
+                        'the shared .git/info/exclude changed',
+                        'the shared .git/hooks changed',
+                    ],
+                },
+            },
+        ])
+    }, 60_000)
+
+    test("an agent that changes its own branch's settings in the shared config fails a try, and only that is undone", async () => {
         const { testWriter, implementer, reviewer } = happyTurns()
         const { action, records } = await practice.run({
             turns: [
@@ -494,15 +555,21 @@ describe('the after-turn check: what git ignores and git state', () => {
                 {
                     ...implementer,
                     act: async (cwd) => {
-                        await git(cwd, 'config', 'luca.sneaky', 'yes')
-                        await Bun.write(
-                            join(common, 'hooks/pre-push'),
-                            '#!/bin/sh\nexit 0\n'
+                        const branch = (
+                            await git(cwd, 'rev-parse', '--abbrev-ref', 'HEAD')
+                        ).trim()
+                        await git(
+                            cwd,
+                            'config',
+                            `branch.${branch}.sneaky`,
+                            'yes'
                         )
-                        await Bun.write(sample, '#!/bin/sh\nexit 0\n')
-                        await Bun.write(
-                            join(common, 'info/exclude'),
-                            'src/sum.test.ts\n'
+                        // And, at the same time, another process's push -u.
+                        await git(
+                            cwd,
+                            'config',
+                            'branch.someone-else.remote',
+                            'origin'
                         )
                     },
                 },
@@ -512,54 +579,96 @@ describe('the after-turn check: what git ignores and git state', () => {
         })
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const [failed] = failures(records)
-        expect(failed).toMatchObject({ role: 'implementer', failure: 'guard' })
-        expect(failed?.error).toContain('the shared .git/config changed')
-        expect(failed?.error).toContain('the shared .git/hooks changed')
-        expect(failed?.error).toContain('the shared .git/info/exclude changed')
-        const config = await Bun.$`git config --get luca.sneaky`
+        const branch = ticketBranch(records)
+        expect(failures(records)).toEqual([
+            {
+                role: 'implementer',
+                failure: 'guard',
+                error: expect.stringContaining(
+                    `the shared .git/config changed this ticket's branch settings: branch.${branch}.sneaky`
+                ),
+                session_id: 'scripted-implementer-11-2',
+            },
+        ])
+        const sneaky = await Bun.$`git config --get branch.${branch}.sneaky`
             .cwd(practice.repo)
             .nothrow()
             .quiet()
-        expect(config.exitCode).not.toBe(0)
-        expect(existsSync(join(common, 'hooks/pre-push'))).toBe(false)
-        expect(await Bun.file(sample).text()).toBe(sampleBefore)
+        expect(sneaky.exitCode).not.toBe(0)
         expect(
-            await Bun.file(join(common, 'info/exclude')).text()
-        ).not.toContain('src/sum.test.ts')
+            (
+                await git(
+                    practice.repo,
+                    'config',
+                    '--get',
+                    'branch.someone-else.remote'
+                )
+            ).trim()
+        ).toBe('origin')
+        expect(commits(records)).toEqual(CLEAN_COMMITS)
     }, 60_000)
 
     test('an excludes entry cannot hide a file its role may not write', async () => {
+        const commonDir = async (cwd: string) =>
+            (
+                await git(
+                    cwd,
+                    'rev-parse',
+                    '--path-format=absolute',
+                    '--git-common-dir'
+                )
+            ).trim()
+        let leftInPlace = ''
         const { testWriter, implementer, reviewer } = happyTurns()
         const { action, records } = await practice.run({
             turns: [
                 {
                     ...testWriter,
                     files: { ...testWriter.files, 'src/sum.ts': SUM },
+                    // Another process hides the file mid-turn.
                     act: async (cwd) => {
-                        const common = (
-                            await git(
-                                cwd,
-                                'rev-parse',
-                                '--path-format=absolute',
-                                '--git-common-dir'
-                            )
-                        ).trim()
+                        const exclude = join(
+                            await commonDir(cwd),
+                            'info/exclude'
+                        )
                         await Bun.write(
-                            join(common, 'info/exclude'),
-                            'src/sum.ts\n'
+                            exclude,
+                            `${await Bun.file(exclude).text()}src/sum.ts\n`
                         )
                     },
                 },
-                testWriter,
+                {
+                    ...testWriter,
+                    // The engine left the outside entry; the other process
+                    // takes it out again, or the implementer's src/sum.ts
+                    // would be hidden from its commit.
+                    act: async (cwd) => {
+                        const exclude = join(
+                            await commonDir(cwd),
+                            'info/exclude'
+                        )
+                        leftInPlace = await Bun.file(exclude).text()
+                        await Bun.write(
+                            exclude,
+                            leftInPlace.replace('src/sum.ts\n', '')
+                        )
+                    },
+                },
                 implementer,
                 reviewer,
             ],
         })
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const [failed] = failures(records)
-        expect(failed?.error).toContain('wrote src/sum.ts')
+        expect(leftInPlace).toContain('src/sum.ts\n')
+        expect(failures(records)).toEqual([
+            {
+                role: 'test-writer',
+                failure: 'guard',
+                error: expect.stringContaining('wrote src/sum.ts'),
+                session_id: 'scripted-test-writer-11-1',
+            },
+        ])
         expect(commits(records)).toEqual(CLEAN_COMMITS)
     }, 60_000)
 })

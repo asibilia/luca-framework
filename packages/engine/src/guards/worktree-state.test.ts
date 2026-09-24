@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { chmod, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -165,5 +165,33 @@ describe('the after-turn check and what git ignores', () => {
 
         expect(violations).toEqual([])
         expect(existsSync(join(repo, 'dist/index.js'))).toBe(true)
+    }, 60_000)
+})
+
+describe('the after-turn check and the shared .git', () => {
+    test('an fsmonitor another process plants mid-turn never runs for the check, and stays', async () => {
+        const marker = join(root, 'fsmonitor-ran')
+        const monitor = join(root, 'fsmonitor.sh')
+        await Bun.write(monitor, `#!/bin/sh\ntouch '${marker}'\n`)
+        await chmod(monitor, 0o755)
+
+        const { violations, outside } = await turn({
+            role: 'implementer',
+            act: async () => {
+                await $`git config core.fsmonitor ${monitor}`.cwd(repo).quiet()
+            },
+        })
+
+        expect(violations).toEqual([])
+        expect(outside).toEqual(['the shared .git/config changed'])
+        expect(existsSync(marker)).toBe(false)
+        // Not put back: the engine can't tell who set it.
+        expect(
+            (await $`git config --get core.fsmonitor`.cwd(repo).text()).trim()
+        ).toBe(monitor)
+        // It is a real fsmonitor: plain git runs it.
+        await $`git status --porcelain`.cwd(repo).quiet()
+        expect(existsSync(marker)).toBe(true)
+        await $`git config --unset core.fsmonitor`.cwd(repo).quiet()
     }, 60_000)
 })
