@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -22,13 +22,22 @@ export type EngineCommit = { sha: string; files: string[] }
  * commit, branch, or push.
  */
 export type GitAdapter = {
-    /** Makes `branch` from `base_branch`, checked out in a worktree at `path`. */
+    /**
+     * Makes `branch` from `base_branch`, checked out in a worktree at `path`.
+     * Safe to repeat, as `createWorktree`.
+     */
     createRunBranch: (args: {
         branch: string
         base_branch: string
         path: string
     }) => Promise<{ base_sha: string }>
-    /** Makes `branch` from the tip of `from`, checked out at `path`. */
+    /**
+     * Makes `branch` from the tip of `from`, checked out at `path`. Safe to
+     * repeat after a crash: a worktree git has at `path` on `branch` is
+     * adopted as it is (reset to its commit, in case its checkout was cut
+     * off); a folder at `path` git doesn't know is removed first; and a
+     * `branch` that exists without a worktree is checked out there as it is.
+     */
     createWorktree: (args: {
         branch: string
         from: string
@@ -185,6 +194,46 @@ export const createGitAdapter = ({
     const head = async ({ cwd }: { cwd: string }) =>
         (await gitOk({ cwd, args: ['rev-parse', 'HEAD'] })).trim()
 
+    /** The branch git has checked out in a worktree at `path`, if any. */
+    const worktreeBranchAt = async ({
+        path,
+    }: {
+        path: string
+    }): Promise<{ branch: string | null } | null> => {
+        if (!existsSync(path)) return null
+        const wanted = realpathSync(path)
+        const listed = await gitOk({
+            cwd: repo_root,
+            args: ['worktree', 'list', '--porcelain'],
+        })
+        for (const block of listed.split('\n\n')) {
+            const fields = lines(block)
+            const at = fields
+                .find((line) => line.startsWith('worktree '))
+                ?.slice('worktree '.length)
+            if (at === undefined || !existsSync(at)) continue
+            if (realpathSync(at) !== wanted) continue
+            const ref = fields
+                .find((line) => line.startsWith('branch '))
+                ?.slice('branch '.length)
+            return { branch: ref?.replace(/^refs\/heads\//, '') ?? null }
+        }
+        return null
+    }
+
+    const branchExists = async ({ branch }: { branch: string }) =>
+        (
+            await gitRun({
+                cwd: repo_root,
+                args: [
+                    'rev-parse',
+                    '--verify',
+                    '--quiet',
+                    `refs/heads/${branch}`,
+                ],
+            })
+        ).exit_code === 0
+
     const addWorktree = async ({
         branch,
         from,
@@ -194,18 +243,44 @@ export const createGitAdapter = ({
         from: string
         path: string
     }) => {
+        const known = await worktreeBranchAt({ path })
+        if (known !== null && known.branch !== branch) {
+            throw new Error(
+                `${path} is already a worktree on ${known.branch ?? 'no branch'}, not ${branch}.`
+            )
+        }
+        if (known !== null) {
+            // Made before a crash: nothing has worked in it since, so finish
+            // a checkout the crash may have cut off, and adopt it.
+            const reset = await gitRun({
+                cwd: path,
+                args: ['reset', '--quiet', '--hard', 'HEAD'],
+            })
+            if (reset.exit_code === 0) {
+                return { base_sha: await head({ cwd: path }) }
+            }
+            await gitRun({
+                cwd: repo_root,
+                args: ['worktree', 'remove', '--force', '--force', path],
+            })
+        }
+        // A half-made folder git doesn't know (or no longer does) goes.
+        await rm(path, { recursive: true, force: true })
+        await gitOk({ cwd: repo_root, args: ['worktree', 'prune'] })
         await gitOk({
             cwd: repo_root,
-            args: [
-                'worktree',
-                'add',
-                '--quiet',
-                '--no-track',
-                '-b',
-                branch,
-                path,
-                from,
-            ],
+            args: (await branchExists({ branch }))
+                ? ['worktree', 'add', '--quiet', path, branch]
+                : [
+                      'worktree',
+                      'add',
+                      '--quiet',
+                      '--no-track',
+                      '-b',
+                      branch,
+                      path,
+                      from,
+                  ],
         })
         return { base_sha: await head({ cwd: path }) }
     }

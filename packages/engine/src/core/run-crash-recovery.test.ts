@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -13,12 +13,14 @@ import {
     type ScriptedTurn,
 } from '../agents/scripted-launcher'
 import type { EngineConfig } from '../config/engine-config'
+import type { GitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
+    git,
     happyTurns,
     IMPLEMENTER_RESULT,
     practiceTracker,
@@ -367,4 +369,124 @@ describe('crash recovery, end to end', () => {
             }),
         ])
     })
+})
+
+/**
+ * Wraps the real git adapter so its `method` crashes once: it does `effect`
+ * (by default the real call), then throws, as if the engine died before
+ * journaling what git did. Calls `when` turns down go through untouched.
+ */
+const crashGitOnce =
+    <Method extends keyof GitAdapter>({
+        method,
+        effect,
+        when,
+    }: {
+        method: Method
+        effect?: (args: {
+            real: GitAdapter
+            args: Parameters<GitAdapter[Method]>[0]
+        }) => Promise<unknown>
+        when?: (args: Parameters<GitAdapter[Method]>[0]) => boolean
+    }) =>
+    (real: GitAdapter): GitAdapter => {
+        let crashed = false
+        const call = real[method] as (args: unknown) => Promise<unknown>
+        const crashing = async (args: Parameters<GitAdapter[Method]>[0]) => {
+            if (crashed || !(when?.(args) ?? true)) return call(args)
+            crashed = true
+            await (effect === undefined ? call(args) : effect({ real, args }))
+            throw new Error('The engine crashed.')
+        }
+        return { ...real, [method]: crashing }
+    }
+
+/** The subjects of the commits on a PR's head branch in origin, newest first. */
+const prSubjects = async ({
+    origin,
+    tracker,
+}: {
+    origin: string
+    tracker: InMemoryTracker
+}): Promise<string[]> => {
+    const [pr] = tracker.pullRequests()
+    const log = await git(origin, 'log', '--format=%s', pr?.head ?? 'none')
+    return log.split('\n').filter((line) => line !== '')
+}
+
+describe('git steps redone after a crash', () => {
+    test('a run branch made just before a crash is adopted', async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({ git: crashGitOnce({ method: 'createRunBranch' }) })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records } = await practice.run({
+            resume: true,
+            turns: Object.values(happyTurns()),
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(ofKind(records, 'run_branch_created')).toHaveLength(1)
+    }, 60_000)
+
+    test('a ticket worktree made just before a crash is adopted', async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({ git: crashGitOnce({ method: 'createWorktree' }) })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records } = await practice.run({
+            resume: true,
+            turns: Object.values(happyTurns()),
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(ofKind(records, 'ticket_worktree_created')).toHaveLength(1)
+    }, 60_000)
+
+    test("a half-made worktree folder git doesn't know is cleaned up first", async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({
+                git: crashGitOnce({
+                    method: 'createWorktree',
+                    effect: async ({ args }) => {
+                        await mkdir(args.path, { recursive: true })
+                        await Bun.write(join(args.path, 'half.txt'), 'half\n')
+                    },
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action } = await practice.run({
+            resume: true,
+            turns: Object.values(happyTurns()),
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+    }, 60_000)
+
+    test('a ticket branch left without its worktree is checked out again', async () => {
+        const practice = await createPracticeRepo({ root })
+        await expect(
+            practice.run({
+                git: crashGitOnce({
+                    method: 'createWorktree',
+                    effect: async ({ real, args }) => {
+                        await real.createWorktree(args)
+                        await real.removeWorktree({ path: args.path })
+                    },
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records } = await practice.run({
+            resume: true,
+            turns: Object.values(happyTurns()),
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(ofKind(records, 'ticket_worktree_created')).toHaveLength(1)
+    }, 60_000)
 })
