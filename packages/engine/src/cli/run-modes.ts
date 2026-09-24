@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import isEmpty from 'lodash/isEmpty'
+import { z } from 'zod'
 
 import type { AgentLauncher } from '../agents/agent-launcher'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
@@ -326,6 +327,84 @@ export const unfinishedRuns = ({
         })
         .toSorted()
 }
+
+/**
+ * One unfinished run, as `luca-run --unfinished` prints it for the board
+ * plugin (#375): whether Paseo may restart it with `--resume`, and why.
+ *
+ * - `resumable`: the engine was cut off (a crash, a kill); `restart` is true.
+ * - `launcher_stopped`: its last record is a launcher stop (the wrong login,
+ *   plan, or model). A restart would stop the same way, so `restart` is
+ *   false; `message` is the stop's reason.
+ * - `billing_stopped`: it stopped for billing, which sticks; `restart` is
+ *   false and `message` is the stop's reason.
+ */
+export const RestartableRunSchema = z.object({
+    run_id: z.string(),
+    restart: z.boolean(),
+    reason: z.enum(['resumable', 'launcher_stopped', 'billing_stopped']),
+    message: z.string().nullable(),
+})
+
+export type RestartableRun = z.infer<typeof RestartableRunSchema>
+
+/** What `luca-run --unfinished` prints: one JSON object, snake_case keys. */
+export const UnfinishedOutputSchema = z.object({
+    runs: z.array(RestartableRunSchema),
+})
+
+/** Whether Paseo may restart one unfinished run, from its records. */
+const restartOf = ({
+    run_id,
+    records,
+}: {
+    run_id: string
+    records: JournalRecord[]
+}): RestartableRun => {
+    // A billing stop sticks, wherever it is in the journal.
+    const billing = records.find(
+        (record) => record.kind === 'run_stopped' && record.content.billing
+    )
+    if (billing?.kind === 'run_stopped') {
+        return {
+            run_id,
+            restart: false,
+            reason: 'billing_stopped',
+            message: billing.content.reason,
+        }
+    }
+    const last = records.at(-1)
+    if (last?.kind === 'run_stopped' && !last.content.crashed) {
+        return {
+            run_id,
+            restart: false,
+            reason: 'launcher_stopped',
+            message: last.content.reason,
+        }
+    }
+    return { run_id, restart: true, reason: 'resumable', message: null }
+}
+
+/**
+ * The unfinished runs in `runs_dir` (`unfinishedRuns`), each with whether
+ * Paseo may restart it with `--resume` (#375). A run whose last record is a
+ * launcher stop is not restarted, since it would stop the same way; a run
+ * with a billing stop anywhere in its journal never is. Everything else was
+ * cut off and can go on from its journal.
+ *
+ * @example
+ * const runs = restartableRuns({ runs_dir: defaultRunsDir() })
+ * // [{ run_id: 'luca-20260923-141500-ab12', restart: true, reason: 'resumable', message: null }]
+ */
+export const restartableRuns = ({
+    runs_dir,
+}: {
+    runs_dir: string
+}): RestartableRun[] =>
+    unfinishedRuns({ runs_dir }).flatMap((run_id) => {
+        const read = readRun({ runs_dir, run_id })
+        return read.ok ? [restartOf({ run_id, records: read.records })] : []
+    })
 
 /**
  * Goes on with run `run_id` from its journal, as `luca-run --resume` does:

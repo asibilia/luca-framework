@@ -16,17 +16,20 @@
  *
  * `--demo` runs a practice spec in a throwaway repo instead: no GitHub, no
  * models. `--resume <run-id>` goes on with a run from its journal, in the
- * repo it started in (or `--repo`). See `RUN_USAGE` for every flag.
+ * repo it started in (or `--repo`). `--unfinished` prints the runs that are
+ * not over as one JSON object on stdout, and nothing else; the board plugin
+ * restarts the ones it may (#375). See `RUN_USAGE` for every flag.
  *
- * Exits 0 when the run finished (PR opened, or nothing to do), 1 when it
- * stopped (refused, stuck, stopped by the launcher, crashed, or a resume with
- * no journal to go on from), 2 on bad flags.
+ * Exits 0 when the run finished (PR opened, or nothing to do) or the list was
+ * printed, 1 when it stopped (refused, stuck, stopped by the launcher,
+ * crashed, or a resume with no journal to go on from), 2 on bad flags.
  */
 import { $ } from 'bun'
 
 import { parseRunArgs, type RunArgs } from './run-args'
 import {
     DEMO_TURN_DELAY_MS,
+    restartableRuns,
     resumeRun,
     runDemo,
     runSpec,
@@ -88,7 +91,7 @@ const run = async ({
     args,
     board,
 }: {
-    args: RunArgs
+    args: Exclude<RunArgs, { mode: 'unfinished' }>
     board: BoardSync | null
 }): Promise<RunEnd> => {
     if (args.mode === 'demo') {
@@ -147,6 +150,12 @@ const main = async (): Promise<number> => {
         return 2
     }
     const { args } = parsed
+    if (args.mode === 'unfinished') {
+        // Only the JSON goes to stdout: the board plugin parses it.
+        const runs = restartableRuns({ runs_dir: defaultRunsDir() })
+        console.log(JSON.stringify({ runs }))
+        return 0
+    }
     const board =
         args.board === null
             ? null

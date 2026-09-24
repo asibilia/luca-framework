@@ -3,10 +3,13 @@ import { dirname, join } from 'node:path'
 
 import { z } from 'zod'
 
+import { EngineEndedSchema } from '../shared/board-state'
+
 /**
  * The runs this plugin started, kept in a JSON file so a plugin restart still
- * knows each run's token and chat. Board state itself stays in memory; the
- * engine's next send replays the journal to rebuild it.
+ * knows each run's token and chat, how its engine ended, and how often the
+ * plugin restarted it. Board state itself stays in memory; the engine's next
+ * send replays the journal to rebuild it.
  */
 
 export const RunEntrySchema = z.object({
@@ -23,6 +26,10 @@ export const RunEntrySchema = z.object({
     demo: z.boolean(),
     started_at: z.string(),
     log_path: z.string(),
+    /** How the run's engine ended, once it did; `null` while it may run. */
+    ended: EngineEndedSchema.nullable().default(null),
+    /** How many times the plugin restarted the run by itself (#375). */
+    restarts: z.number().int().min(0).default(0),
 })
 
 export type RunEntry = z.infer<typeof RunEntrySchema>
@@ -79,7 +86,7 @@ const readEntries = ({
 }
 
 /**
- * Opens the run registry at `path`: reads it now, and writes it on each add.
+ * Opens the run registry at `path`: reads it now, and writes it on each change.
  * A missing or broken file starts empty (and is logged); a failed write is
  * logged and the run still works until the plugin restarts.
  *
@@ -119,6 +126,26 @@ export const createRunRegistry = ({
                 entry,
             ].slice(-RUNS_KEPT)
             write()
+        },
+        /**
+         * Changes a known run's `ended` or `restarts` and writes the file.
+         * Returns the changed entry, or `null` for an unknown run.
+         */
+        update: ({
+            run_id,
+            change,
+        }: {
+            run_id: string
+            change: Partial<Pick<RunEntry, 'ended' | 'restarts'>>
+        }): RunEntry | null => {
+            const known = entries.find((entry) => entry.run_id === run_id)
+            if (!known) return null
+            const updated = { ...known, ...change }
+            entries = entries.map((entry) =>
+                entry.run_id === run_id ? updated : entry
+            )
+            write()
+            return updated
         },
         remove: ({ run_id }: { run_id: string }) => {
             entries = entries.filter((known) => known.run_id !== run_id)

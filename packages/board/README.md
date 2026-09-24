@@ -65,7 +65,39 @@ The engine calls the plugin RPC `engine.event`, through Paseo's `invokePluginRpc
 - **`ended`** marks the run's engine as finished, ok or failed, with its message. The header row and the panel show it. It isn't applied while there's a gap.
 - **Rejected sends.** An unknown `run_id` or a wrong `token` gets `ok: false, next_seq: 0`, and nothing is applied.
 - **Bad records.** A record whose content doesn't fit the board's vocabulary is skipped and logged. A record of an unknown kind is skipped quietly. Either way it still counts as applied, and the plugin never throws on a record.
-- **Plugin restart.** The run registry (run id, token, agent, workspace, repo, spec) lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. It is read at startup and written on every change. Board state lives only in memory. After a restart the plugin still knows the run, but its `next_seq` is 1 again, so the engine's next send gets `next_seq: 1` back. The engine then resends the whole journal, and replaying it rebuilds the same board.
+- **Plugin restart.** The run registry lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. For each run it keeps the run id, token, agent, workspace, repo, and spec, plus `ended` (how its engine ended, once it did) and `restarts` (how often the plugin restarted it). It is read at startup and written on every change. Board state lives only in memory. After a restart the plugin still knows the run, and a run whose engine ended still shows how it ended. Its `next_seq` is 1 again, so the engine's next send gets `next_seq: 1` back. The engine then resends the whole journal, and replaying it rebuilds the same board.
+
+## Restarts
+
+If an engine process dies (a crash, a kill, a reboot) before its run ends, the plugin notices and starts it again from its journal (#375).
+
+**When.** When the plugin starts, and every 15 s after that. The first check isn't awaited, because plugin start must return within 30 s. Only one check runs at a time.
+
+**What it checks.** Every run in the registry that hasn't ended (no `ended`) and isn't over (not done, refused, or nothing to do). For those, it lists every process's command line with `ps -axww -o command=`. A run whose command line has `--run-id <id>` or `--resume <id>` (as whole words) still has its engine, and is left alone. If `ps` fails, the plugin does nothing that time: two engines on one run would be far worse than a late restart.
+
+**Which runs can go on.** For the runs whose engine is gone, the plugin asks the engine once, with a 20 s timeout:
+
+```
+<bun> <engine_path> --unfinished
+```
+
+It prints `{ "runs": [{ run_id, restart, reason, message }] }` (see the engine's README, "Crash recovery"). Then for each run:
+
+- **`restart: true`**: the plugin starts the engine again, detached, with the run's token in `LUCA_BOARD_TOKEN` and its output appended to the same log:
+
+  ```
+  <bun> <engine_path> --resume <run id> --repo <repo> --board-plugin luca-board
+  ```
+
+  The chat gets a row: "The engine was gone, so Paseo restarted the run from its journal (restart 1 of 3)." The engine resends its journal, and the board skips the records it already has.
+- **A launcher stop** (`launcher_stopped`, such as the wrong login or model): not restarted, because it would stop the same way. Fix it, then run `luca-run --resume <run id>`.
+- **A billing stop** (`billing_stopped`): never restarted. Start a new run once per-token billing is off.
+- **Not listed**: its journal has nothing to pick up again. The engine died before it wrote one, or the run already ended.
+- **A demo run**: never restarted, because its journal was in a temp folder that is gone. Start a new one with `/luca-run demo`.
+- **The cap**: a run is restarted at most 3 times by the plugin. If it dies a 4th time, it isn't restarted again, so a run that dies at every start can't loop forever.
+- **The check failed** (no engine found, `--unfinished` failed, timed out, or printed something else): the plugin can't tell whether the run can go on, so it doesn't restart it, and says how to go on by hand with `luca-run --resume <run id>`.
+
+**How "engine stopped" looks.** A run that isn't restarted gets `ended` with `ok: false` and the reason in words. The header row and the panel then show "The engine stopped: ...", with the log path where it helps, instead of staying on "starting". `ended` and `restarts` are kept in the registry, so a run marked this way is never checked again, even after a plugin restart.
 
 ## The board's vocabulary
 
@@ -217,5 +249,5 @@ The repo's root `bunx --bun tsc --noEmit` leaves this package out: React Native'
 Layout:
 
 - `shared/`: Zod contracts and plain values only.
-- `server/`: the Node side. It holds the reducer, the row-maker, the registry, and the launcher, with tests next to them.
+- `server/`: the Node side. It holds the reducer, the row-maker, the registry, the launcher, and the engine watch (restarts), with tests next to them.
 - `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme.

@@ -50,7 +50,9 @@ describe('luca-run arguments', () => {
             ok: true,
             args: { mode: 'demo', repo: '/code/app', board: null },
         })
-        expect(result.ok && result.args.run_id).toMatch(/^\d{8}t\d{6}z-/)
+        expect(
+            result.ok && 'run_id' in result.args && result.args.run_id
+        ).toMatch(/^\d{8}t\d{6}z-/)
     })
 
     test('a relative repo is taken from the current folder', () => {
@@ -106,8 +108,46 @@ describe('luca-run arguments', () => {
         })
     })
 
+    test('--unfinished takes no other flags', () => {
+        expect(
+            parseRunArgs({
+                argv: ['--unfinished'],
+                cwd: '/code',
+                env: { LUCA_BOARD_TOKEN: 'secret' },
+            })
+        ).toEqual({ ok: true, args: { mode: 'unfinished' } })
+    })
+
     test.each([
         { why: 'no mode', argv: [] },
+        {
+            why: 'a list of unfinished runs and a spec',
+            argv: ['--unfinished', '--spec', '3'],
+        },
+        {
+            why: 'a list of unfinished runs and a demo',
+            argv: ['--unfinished', '--demo'],
+        },
+        {
+            why: 'a list of unfinished runs and a resume',
+            argv: ['--unfinished', '--resume', 'r1'],
+        },
+        {
+            why: 'a list of unfinished runs in a repo',
+            argv: ['--unfinished', '--repo', 'app'],
+        },
+        {
+            why: 'a list of unfinished runs for a board',
+            argv: ['--unfinished', '--board-plugin', 'luca-board'],
+        },
+        {
+            why: 'a list of unfinished runs with a run id',
+            argv: ['--unfinished', '--run-id', 'r1'],
+        },
+        {
+            why: 'a list of unfinished runs with a base',
+            argv: ['--unfinished', '--base', 'dev'],
+        },
         { why: 'both modes', argv: ['--demo', '--spec', '3'] },
         { why: 'a resume and a spec', argv: ['--resume', 'r1', '--spec', '3'] },
         { why: 'a resume and a demo', argv: ['--resume', 'r1', '--demo'] },

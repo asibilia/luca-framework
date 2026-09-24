@@ -11,6 +11,8 @@ import type { EngineSettings } from '../../shared/engine-settings'
 import {
     createBoardServer,
     type BoardServer,
+    type CommandRequest,
+    type CommandResult,
     type SpawnRequest,
 } from '../board-server'
 
@@ -20,12 +22,34 @@ export const ENGINE_PATH = '/opt/luca/packages/engine/src/cli/luca-run.ts'
 /** Bun where the fake file system has it. */
 export const BUN_PATH = '/home/me/.bun/bin/bun'
 
+/** One run as `luca-run --unfinished` lists it. */
+export type UnfinishedRun = {
+    run_id: string
+    restart: boolean
+    reason: 'resumable' | 'launcher_stopped' | 'billing_stopped'
+    message: string | null
+}
+
+/** What `luca-run --unfinished` answers with these runs. */
+export const unfinishedResult = ({
+    runs,
+}: {
+    runs: UnfinishedRun[]
+}): CommandResult => ({
+    exit_code: 0,
+    stdout: `${JSON.stringify({ runs })}\n`,
+    stderr: '',
+})
+
 /** One appended row and the chat it went to. */
 export type AppendedRow = { agent_id: string; row: BoardRow }
 
 /**
  * A board server wired to fakes: rows go to a list, spawns are recorded, the
- * registry lives in a temp dir, and only the listed files "exist".
+ * registry lives in a temp dir, and only the listed files "exist". The
+ * process list is `processes` (or `ps` fails with `ps_error`), and every
+ * command run is recorded in `commands` and answered with `setCommandResult`
+ * (by default, `luca-run --unfinished` with no runs).
  */
 export const createHarness = async ({
     settings = { engine_path: ENGINE_PATH, bun_path: '' },
@@ -33,6 +57,7 @@ export const createHarness = async ({
     registry_dir,
     fail_appends = false,
     spawn_throws = null,
+    ps_error = null,
 }: {
     settings?: EngineSettings
     files?: string[]
@@ -40,11 +65,17 @@ export const createHarness = async ({
     fail_appends?: boolean
     /** When set, spawning throws this message. */
     spawn_throws?: string | null
+    /** When set, listing the processes fails with this message. */
+    ps_error?: string | null
 } = {}) => {
     const dir = registry_dir ?? (await mkdtemp(join(tmpdir(), 'luca-board-')))
     const rows: AppendedRow[] = []
     const spawns: SpawnRequest[] = []
     const logs: string[] = []
+    /** Every process's command line, as `ps` would list them. */
+    const processes: string[] = []
+    const commands: CommandRequest[] = []
+    let command_result: CommandResult = unfinishedResult({ runs: [] })
     let clock = Date.parse('2026-09-23T12:30:42.000Z')
     const existing = new Set(files)
 
@@ -58,6 +89,14 @@ export const createHarness = async ({
             if (spawn_throws) throw new Error(spawn_throws)
             spawns.push(request)
             return { pid: 4242 }
+        },
+        list_processes: async () => {
+            if (ps_error) throw new Error(ps_error)
+            return [...processes]
+        },
+        run_command: async (request) => {
+            commands.push(request)
+            return command_result
         },
         read_settings: async () => settings,
         file_exists: ({ path }) => existing.has(path),
@@ -147,6 +186,18 @@ export const createHarness = async ({
         return [...byId.values()]
     }
 
+    /** What the next commands answer. */
+    const setCommandResult = ({ result }: { result: CommandResult }) => {
+        command_result = result
+    }
+
+    /** The command line of a live engine for `run_id`, as `ps` shows it. */
+    const engineRunning = ({ run_id }: { run_id: string }) => {
+        processes.push(
+            `${BUN_PATH} ${ENGINE_PATH} --spec 10 --repo /repo --run-id ${run_id} --board-plugin luca-board`
+        )
+    }
+
     const cleanup = async () => {
         if (!registry_dir) await rm(dir, { recursive: true, force: true })
     }
@@ -157,6 +208,10 @@ export const createHarness = async ({
         rows,
         spawns,
         logs,
+        processes,
+        commands,
+        setCommandResult,
+        engineRunning,
         start,
         send,
         read,
