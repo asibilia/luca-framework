@@ -94,7 +94,8 @@ const filterNames = async ({ cwd }: { cwd: string }): Promise<string[]> => {
         nulSplit(listed.stdout).flatMap((entry) => {
             const key = entry.split('\n')[0] ?? ''
             const last = key.lastIndexOf('.')
-            return last > 'filter.'.length
+            // `>=` keeps the empty name (`filter..clean`): git runs a filter named "".
+            return last >= 'filter.'.length
                 ? [key.slice('filter.'.length, last)]
                 : []
         })
