@@ -318,6 +318,52 @@ const TicketJoinedEntrySchema = z.object({
     ]),
 })
 
+/**
+ * Why a joined ticket went back to be fixed on top of the run branch: its
+ * commits clashed with it, or the gates failed after it joined.
+ */
+export const RejoinCauseSchema = z.enum(['clash', 'join_gates'])
+
+export type RejoinCause = z.infer<typeof RejoinCauseSchema>
+
+/**
+ * The engine put a ticket's whole change back on top of the run branch, as
+ * uncommitted changes in its worktree, after a clash or failed gates after
+ * joining. `base_sha` is the run branch commit it now starts from. `tests`
+ * and `code` are the files that clashed (conflict markers left in them),
+ * split by the config's test file patterns. `undone` are the run branch
+ * commits the engine undid first (a join whose gates failed), and
+ * `reinstall` says whether the worktree needs its install again.
+ */
+const TicketRebasedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_rebased'),
+    content: z.object({
+        cause: RejoinCauseSchema,
+        base_sha: z.string().min(1),
+        tests: z.array(z.string()),
+        code: z.array(z.string()),
+        undone: z.array(z.string()),
+        /**
+         * The dependency files (manifests, lockfiles) differ between the
+         * worktree's old base and the new one, and the ticket's own change
+         * touches no manifest: the worktree gets its frozen install again.
+         * (A ticket that changes a manifest gets the install in its gates.)
+         */
+        reinstall: z.boolean().default(false),
+    }),
+})
+
+/**
+ * The engine removed these git worktrees at the end of a run. Their branches
+ * and the journal are kept.
+ */
+const WorktreesRemovedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('worktrees_removed'),
+    content: z.object({ paths: z.array(z.string().min(1)) }),
+})
+
 const RunBranchPushedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('run_branch_pushed'),
@@ -425,6 +471,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     DependenciesInstalledEntrySchema,
     GatesRunEntrySchema,
     TicketJoinedEntrySchema,
+    TicketRebasedEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     PullRequestOpenedEntrySchema,
@@ -436,6 +483,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     LimitWaitStartedEntrySchema,
     LimitWaitEndedEntrySchema,
     UsageRecordedEntrySchema,
+    WorktreesRemovedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -462,6 +510,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     DependenciesInstalledEntrySchema.extend(STAMP_FIELDS),
     GatesRunEntrySchema.extend(STAMP_FIELDS),
     TicketJoinedEntrySchema.extend(STAMP_FIELDS),
+    TicketRebasedEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
     PullRequestOpenedEntrySchema.extend(STAMP_FIELDS),
@@ -473,6 +522,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
     UsageRecordedEntrySchema.extend(STAMP_FIELDS),
+    WorktreesRemovedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -498,6 +548,7 @@ export const JournalKindSchema = z.enum([
     'dependencies_installed',
     'gates_run',
     'ticket_joined',
+    'ticket_rebased',
     'run_branch_pushed',
     'ticket_stuck',
     'pull_request_opened',
@@ -509,6 +560,7 @@ export const JournalKindSchema = z.enum([
     'limit_wait_started',
     'limit_wait_ended',
     'usage_recorded',
+    'worktrees_removed',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

@@ -1,4 +1,7 @@
+import sortBy from 'lodash/sortBy'
+
 import {
+    clashFixMessage,
     failedChecks,
     failedTryMessage,
     gateFixMessage,
@@ -12,12 +15,13 @@ import {
     reviewSections,
 } from './review-text'
 
-import { rolePrompt } from '../agents/role-prompts'
+import { rejoinSection, rolePrompt } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     CommitStage,
     GateTarget,
+    RejoinCause,
     StuckReason,
 } from '../journal/journal-record'
 import {
@@ -48,6 +52,13 @@ export const MAX_BAD_TEST_BOUNCES = 1
  * agent without using up a try.
  */
 export const MAX_ENGINE_FAILURES = 3
+
+/**
+ * Times a joined ticket may be sent back onto the run branch, after a clash
+ * or failed gates after joining. The clash or failed join after these makes
+ * the ticket stuck.
+ */
+export const MAX_REJOINS = MAX_FIX_ROUNDS
 
 /** The next build step for a run whose intake passed. */
 export type BuildAction =
@@ -113,6 +124,22 @@ export type BuildAction =
     | { type: 'run_gates'; ticket: number; target: GateTarget }
     /** Replay the approved ticket's commits onto the run branch. */
     | { type: 'join_run_branch'; ticket: number }
+    /**
+     * Put a joined ticket's whole change back on top of the run branch, as
+     * uncommitted changes in its worktree, after a clash or failed gates
+     * after joining. With `undo_first_sha`, first undo the join on the run
+     * branch, back to before that commit.
+     */
+    | {
+          type: 'rebase_ticket'
+          ticket: number
+          cause: RejoinCause
+          undo_first_sha: string | null
+      }
+    /** Remove these git worktrees at the end of the run; branches stay. */
+    | { type: 'remove_worktrees'; paths: string[] }
+    /** No ticket can move, and not every ticket has joined. */
+    | { type: 'invalid_journal'; reason: string }
     /** Push the run branch to `origin`. */
     | { type: 'push_run_branch'; ticket: number; branch: string }
     /** The engine can't safely pick this ticket's next step by itself. */
@@ -172,6 +199,9 @@ const commitMessage = ({
         return `fix: review round ${progress.review_fix?.round ?? progress.review_rounds} for #${ticket.number} ${ticket.title}`
     }
     if (stage === 'green') {
+        if (progress.rejoins > 0) {
+            return `fix: rejoin #${ticket.number} ${ticket.title} onto the run branch`
+        }
         return isRefactorTicket({ ticket })
             ? `refactor: #${ticket.number} ${ticket.title}`
             : `feat: build #${ticket.number} ${ticket.title}`
@@ -199,6 +229,28 @@ export const mayEditTests = ({
 }): boolean =>
     role === 'test-writer' ||
     (role === 'implementer' && isRefactorTicket({ ticket }))
+
+/**
+ * The sections a launch adds: the review's (see `reviewPromptSections`),
+ * and, for a test-writer or implementer fixing a ticket on top of the run
+ * branch, the files that clashed. The reviewer's re-review after a rebase
+ * is the review's own.
+ */
+const promptSections = ({
+    role,
+    progress,
+}: {
+    role: AgentRole
+    progress: TicketProgress
+}): string[] => {
+    const review = reviewPromptSections({ role, progress })
+    const { rejoin } = progress
+    if (rejoin === null || role === 'ticket-reviewer') return review
+    // A review fix round after the rejoin has its own findings.
+    if (progress.commits.green !== null) return review
+    const section = rejoinSection({ role, rejoin })
+    return section === null ? review : [...review, section]
+}
 
 /**
  * The sections a launch adds for the ticket review: the reviewer's diff and
@@ -250,7 +302,7 @@ const launch = ({
         ticket,
         refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
-        sections: reviewPromptSections({ role, progress }),
+        sections: promptSections({ role, progress }),
     }),
     may_edit_tests: mayEditTests({ role, ticket }),
 })
@@ -563,26 +615,126 @@ const failedTurnStep = ({
     }
 }
 
-/** The next step for one ticket, or `null` once it has joined and pushed. */
+/**
+ * The fix on top of the run branch after a rebase: first a fresh test-writer
+ * for clashed tests, then the implementer for clashed code. `null` once both
+ * have answered; the gates, the green commit, and a fresh review of the new
+ * changes follow as usual. A bad test here is stuck: resetting the worktree
+ * would throw away the ticket's uncommitted change.
+ */
+const rejoinStep = ({
+    snapshot,
+    ticket,
+    progress,
+}: StepArgs): BuildAction | null => {
+    const { rejoin } = progress
+    if (rejoin === null) return null
+    if (progress.implementer?.outcome === 'bad_test') {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'bad_test',
+            detail: `The implementer sent a test back as bad while fixing the ticket on top of the run branch; resetting the worktree would throw the ticket's change away: ${badTestText({ progress })}`,
+        })
+    }
+    if (rejoin.tests_pending) {
+        return launch({ role: 'test-writer', snapshot, ticket, progress })
+    }
+    if (rejoin.code_pending) {
+        const session_id = progress.sessions.implementer
+        if (session_id === undefined) {
+            return launch({ role: 'implementer', snapshot, ticket, progress })
+        }
+        return {
+            type: 'follow_up_agent',
+            ticket: ticket.number,
+            role: 'implementer',
+            session_id,
+            message: clashFixMessage({ rejoin }),
+        }
+    }
+    return null
+}
+
+/**
+ * The join section of an approved ticket, for the first ticket in the join
+ * queue only: join, the gates on the run branch, the push. A clash or failed
+ * gates sends the ticket back onto the run branch, up to `MAX_REJOINS`
+ * times; after that it is stuck. `null` once pushed.
+ */
+const joinStep = ({
+    ticket,
+    progress,
+    run_branch,
+}: {
+    ticket: TicketSnapshot
+    progress: TicketProgress
+    run_branch: ReplayedWorktree
+}): BuildAction | null => {
+    const number = ticket.number
+    const { joined, join_gates } = progress
+    if (joined === null) {
+        return { type: 'join_run_branch', ticket: number }
+    }
+    if (!joined.ok) {
+        if (progress.rejoins >= MAX_REJOINS) {
+            return stuck({
+                ticket: number,
+                reason: 'join_failed',
+                detail: `The ticket still clashes with the run branch after ${MAX_REJOINS} rebases:\n${joined.error}`,
+            })
+        }
+        return {
+            type: 'rebase_ticket',
+            ticket: number,
+            cause: 'clash',
+            undo_first_sha: null,
+        }
+    }
+    if (join_gates === null) {
+        return { type: 'run_gates', ticket: number, target: 'run_branch' }
+    }
+    if (!join_gates.ok) {
+        if (progress.rejoins >= MAX_REJOINS) {
+            return stuck({
+                ticket: number,
+                reason: 'join_gates_failed',
+                detail: `The gates still fail after joining, after ${MAX_REJOINS} rebases:\n${failedChecks({ gates: join_gates })}`,
+            })
+        }
+        return {
+            type: 'rebase_ticket',
+            ticket: number,
+            cause: 'join_gates',
+            undo_first_sha: joined.shas[0] ?? null,
+        }
+    }
+    if (progress.pushed === null) {
+        return {
+            type: 'push_run_branch',
+            ticket: number,
+            branch: run_branch.branch,
+        }
+    }
+    return null
+}
+
+/**
+ * The next step for one ticket that has its worktree, or `null` when it has
+ * nothing to do now: it pushed, or its review approved and it waits its turn
+ * to join.
+ */
 const nextTicketStep = ({
     snapshot,
     ticket,
     progress,
     run_branch,
-    run_branch_install,
+    joiner,
 }: StepArgs & {
     run_branch: ReplayedWorktree
-    run_branch_install: ReplayedInstall
+    /** Whether the ticket is first in the join queue. */
+    joiner: boolean
 }): BuildAction | null => {
     const number = ticket.number
-    if (progress.stuck !== null) {
-        return {
-            type: 'done',
-            outcome: 'stuck',
-            ticket: number,
-            ...progress.stuck,
-        }
-    }
     if (progress.agent_failure !== null) {
         return failedTurnStep({
             snapshot,
@@ -590,24 +742,6 @@ const nextTicketStep = ({
             progress,
             failed: progress.agent_failure,
         })
-    }
-    const runBranchFailure = installFailure({
-        install: run_branch_install,
-        where: "the run branch's checkout",
-    })
-    if (runBranchFailure !== null) {
-        return stuck({
-            ticket: number,
-            reason: 'install_failed',
-            detail: runBranchFailure,
-        })
-    }
-    if (progress.worktree === null) {
-        return {
-            type: 'create_ticket_worktree',
-            ticket: number,
-            run_branch: run_branch.branch,
-        }
     }
     if (progress.install === null) {
         return {
@@ -631,6 +765,8 @@ const nextTicketStep = ({
         return { type: 'run_baseline_tests', ticket: number }
     }
     if (progress.commits.green === null) {
+        const rejoin = rejoinStep({ snapshot, ticket, progress })
+        if (rejoin !== null) return rejoin
         const tests = isRefactorTicket({ ticket })
             ? null
             : testStep({ snapshot, ticket, progress })
@@ -640,39 +776,41 @@ const nextTicketStep = ({
     }
     const review = reviewStep({ snapshot, ticket, progress })
     if (review !== null) return review
-    if (progress.joined === null) {
-        return { type: 'join_run_branch', ticket: number }
-    }
-    if (!progress.joined.ok) {
-        return stuck({
-            ticket: number,
-            reason: 'join_failed',
-            detail: progress.joined.error,
-        })
-    }
-    if (progress.join_gates === null) {
-        return { type: 'run_gates', ticket: number, target: 'run_branch' }
-    }
-    if (!progress.join_gates.ok) {
-        return stuck({
-            ticket: number,
-            reason: 'join_gates_failed',
-            detail: failedChecks({ gates: progress.join_gates }),
-        })
-    }
-    if (progress.pushed === null) {
-        return {
-            type: 'push_run_branch',
-            ticket: number,
-            branch: run_branch.branch,
-        }
-    }
-    return null
+    return joiner ? joinStep({ ticket, progress, run_branch }) : null
 }
 
 /**
- * The build half of the decision step: picks the next step of building the
- * run's tickets, one ticket at a time in snapshot order, then the PR. Pure.
+ * Whether a ticket's review finally approved it (no fix round open) and it
+ * has not pushed yet: it waits in the join queue, or is joining.
+ */
+const inJoinQueue = (progress: TicketProgress): boolean =>
+    progress.approved_seq !== null &&
+    progress.review_fix === null &&
+    progress.pushed === null
+
+/** The worktrees not removed yet, of these paths. */
+const notRemoved = ({
+    paths,
+    state,
+}: {
+    paths: string[]
+    state: RunState
+}): string[] => paths.filter((path) => !state.removed_worktrees.includes(path))
+
+/**
+ * The build half of the decision step: every step of building the run's
+ * tickets that can run now, at most one per ticket, then the PR. Pure.
+ *
+ * Tickets build at the same time. A ticket starts (gets its worktree from
+ * the run branch's tip, then its install) once every ticket it waits on has
+ * pushed, and while no ticket waits to join, so it never builds on joined
+ * commits whose gates have not passed yet. Approved tickets join one at a
+ * time, in the order their reviews finally approved them. A clash or failed
+ * gates after joining puts the ticket's change back on top of the run
+ * branch to be fixed there (up to `MAX_REJOINS` times), then re-reviewed. A
+ * stuck ticket ends the run: no ticket starts or moves on, and the worktrees
+ * of pushed tickets are removed. Once the PR is open, every worktree is
+ * removed. Branches and the journal stay.
  *
  * Fix loops: a failed red check goes back to the same test-writer session,
  * and failed gates to the same implementer session, with their output, for
@@ -680,13 +818,18 @@ const nextTicketStep = ({
  * throws away the implementer's work and goes to a fresh test-writer, whose
  * tests get their own red check and red commit; the next bad test is stuck.
  * "Nothing new to test" is stuck at once. A refactor ticket skips the
- * test-writer and the red check.
+ * test-writer and the red check. The ticket review's findings go back for
+ * fixing in capped rounds, each re-reviewed.
  *
  * Failed tries: a failed agent turn goes back to the same session with what
  * failed (a reviewer gets a fresh launch), up to `MAX_FIX_ROUNDS` failed
  * tries per role on a ticket; an engine failure starts a fresh agent without
- * using up a try, up to `MAX_ENGINE_FAILURES` in a row. A review asking for
- * changes, a leftover, and a failed join are still stuck.
+ * using up a try, up to `MAX_ENGINE_FAILURES` in a row. A leftover is still
+ * stuck.
+ *
+ * @example
+ * decideBuild({ state, spec_number })
+ * // [{ type: 'create_ticket_worktree', ticket: 11, ... }, { type: 'create_ticket_worktree', ticket: 12, ... }]
  */
 export const decideBuild = ({
     state,
@@ -694,39 +837,135 @@ export const decideBuild = ({
 }: {
     state: RunState
     spec_number: number
-}): BuildAction => {
-    const { snapshot, run_branch, run_branch_install, pull_request, tickets } =
-        state
+}): BuildAction[] => {
+    const { snapshot, run_branch, run_branch_install, pull_request } = state
     const base_branch = state.base_branch ?? 'main'
     if (run_branch === null || snapshot === null) {
-        return { type: 'create_run_branch', spec_number, base_branch }
+        return [{ type: 'create_run_branch', spec_number, base_branch }]
     }
+    const numbers = snapshot.ticket_order.filter(
+        (number) => snapshot.tickets[number] !== undefined
+    )
+    const progress = (number: number): TicketProgress =>
+        state.tickets[number] ?? EMPTY_TICKET_PROGRESS
+
+    const stuckTicket = numbers.find((number) => progress(number).stuck)
+    const stuckWhy =
+        stuckTicket === undefined ? null : progress(stuckTicket).stuck
+    if (stuckTicket !== undefined && stuckWhy !== null) {
+        const paths = notRemoved({
+            state,
+            paths: numbers.flatMap((number) => {
+                const { pushed, worktree } = progress(number)
+                return pushed !== null && worktree !== null
+                    ? [worktree.path]
+                    : []
+            }),
+        })
+        if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
+        return [
+            {
+                type: 'done',
+                outcome: 'stuck',
+                ticket: stuckTicket,
+                ...stuckWhy,
+            },
+        ]
+    }
+
+    if (pull_request !== null) {
+        const paths = notRemoved({
+            state,
+            paths: [
+                ...numbers.flatMap((number) => {
+                    const { worktree } = progress(number)
+                    return worktree === null ? [] : [worktree.path]
+                }),
+                run_branch.path,
+            ],
+        })
+        if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
+        return [{ type: 'done', outcome: 'pr_opened', pull_request }]
+    }
+
     if (run_branch_install === null) {
-        return {
-            type: 'install_dependencies',
-            target: 'run_branch',
-            ticket: null,
+        return [
+            {
+                type: 'install_dependencies',
+                target: 'run_branch',
+                ticket: null,
+            },
+        ]
+    }
+    const runBranchFailure = installFailure({
+        install: run_branch_install,
+        where: "the run branch's checkout",
+    })
+    const pushed = (number: number) =>
+        !numbers.includes(number) || progress(number).pushed !== null
+    if (runBranchFailure !== null) {
+        const first = numbers.find((number) => !pushed(number))
+        if (first !== undefined) {
+            return [
+                stuck({
+                    ticket: first,
+                    reason: 'install_failed',
+                    detail: runBranchFailure,
+                }),
+            ]
         }
     }
-    for (const number of snapshot.ticket_order) {
+
+    const queue = sortBy(
+        numbers.filter((number) => inJoinQueue(progress(number))),
+        (number) => progress(number).approved_seq
+    )
+    const joiner = queue[0] ?? null
+
+    const steps = numbers.flatMap((number): BuildAction[] => {
         const ticket = snapshot.tickets[number]
-        if (ticket === undefined) continue
+        const ticketProgress = progress(number)
+        if (ticket === undefined || ticketProgress.pushed !== null) return []
+        if (ticketProgress.worktree === null) {
+            const ready = queue.length === 0 && ticket.blockers.every(pushed)
+            return ready
+                ? [
+                      {
+                          type: 'create_ticket_worktree',
+                          ticket: number,
+                          run_branch: run_branch.branch,
+                      },
+                  ]
+                : []
+        }
         const step = nextTicketStep({
             snapshot,
             ticket,
-            progress: tickets[number] ?? EMPTY_TICKET_PROGRESS,
+            progress: ticketProgress,
             run_branch,
-            run_branch_install,
+            joiner: number === joiner,
         })
-        if (step !== null) return step
+        return step === null ? [] : [step]
+    })
+    if (steps.length > 0) return steps
+
+    if (numbers.every(pushed)) {
+        return [
+            {
+                type: 'open_pull_request',
+                head: run_branch.branch,
+                base: base_branch,
+                ...pullRequestText({ snapshot, tickets: state.tickets }),
+            },
+        ]
     }
-    if (pull_request !== null) {
-        return { type: 'done', outcome: 'pr_opened', pull_request }
-    }
-    return {
-        type: 'open_pull_request',
-        head: run_branch.branch,
-        base: base_branch,
-        ...pullRequestText({ snapshot, tickets }),
-    }
+    return [
+        {
+            type: 'invalid_journal',
+            reason: `No ticket can move: ${numbers
+                .filter((number) => !pushed(number))
+                .map((number) => `#${number}`)
+                .join(', ')} wait on tickets that never join.`,
+        },
+    ]
 }

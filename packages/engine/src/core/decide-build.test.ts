@@ -16,15 +16,19 @@ import {
     leftoverScan,
     nothingNewToTest,
     practiceTicket,
+    pullRequestOpened,
     redCheck,
     RUN_BRANCH,
+    RUN_BRANCH_PATH,
     runBranchCreated,
     SESSIONS,
     testsWritten,
     ticketBuilt,
+    ticketPath,
     ticketWorktreeCreated,
     withInstalls,
     worktreeReset,
+    worktreesRemoved,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
@@ -280,35 +284,29 @@ describe('decision step: building a ticket', () => {
         expect(action.body).toContain('Numbers are integers.')
     })
 
-    test('a run with its PR opened is done', () => {
+    test('a run with its PR opened removes its worktrees, then is done', () => {
+        const opened = [...stepsUpTo(13), pullRequestOpened()]
+
+        expect(decideAfter(opened)).toEqual({
+            type: 'remove_worktrees',
+            paths: [ticketPath(11), RUN_BRANCH_PATH],
+        })
         expect(
             decideAfter([
-                ...stepsUpTo(13),
-                {
-                    kind: 'pull_request_opened',
-                    ticket: null,
-                    role: null,
-                    content: {
-                        number: 12,
-                        url: 'https://github.com/acme/app/pull/12',
-                        head: RUN_BRANCH,
-                        base: 'main',
-                        title: 'Practice spec (#10)',
-                        body: '',
-                    },
-                },
+                ...opened,
+                worktreesRemoved({ paths: [ticketPath(11), RUN_BRANCH_PATH] }),
             ])
         ).toEqual({
             type: 'done',
             outcome: 'pr_opened',
             pull_request: {
-                number: 12,
-                url: 'https://github.com/acme/app/pull/12',
+                number: 99,
+                url: 'https://github.com/acme/app/pull/99',
             },
         })
     })
 
-    test('tickets are built one at a time, in snapshot order', () => {
+    test('a second ticket also starts from the run branch', () => {
         const second = practiceTicket({ number: 12, title: 'Add product' })
         const records = recordsFrom({
             entries: [
@@ -824,7 +822,7 @@ describe('decision step: a ticket gets stuck', () => {
         })
     })
 
-    test('a join that clashes makes the ticket stuck', () => {
+    test('a join that clashes is not stuck: the ticket is fixed on top of the run branch', () => {
         expect(
             decideAfter([
                 ...stepsUpTo(10),
@@ -836,20 +834,20 @@ describe('decision step: a ticket gets stuck', () => {
                 },
             ])
         ).toEqual({
-            type: 'mark_stuck',
+            type: 'rebase_ticket',
             ticket: 11,
-            reason: 'join_failed',
-            detail: 'conflict in src/sum.ts',
+            cause: 'clash',
+            undo_first_sha: null,
         })
     })
 
-    test('failing gates after the join make the ticket stuck, with no push', () => {
+    test('failing gates after the join undo it, with no push', () => {
         expect(
             decideAfter([
                 ...stepsUpTo(11),
                 gatesRun({ ticket: 11, target: 'run_branch', ok: false }),
             ])
-        ).toMatchObject({ type: 'mark_stuck', reason: 'join_gates_failed' })
+        ).toMatchObject({ type: 'rebase_ticket', cause: 'join_gates' })
     })
 
     test('a stuck ticket ends the run without a PR', () => {

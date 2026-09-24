@@ -26,12 +26,15 @@ export const practiceTicket = ({
     title,
     criteria,
     labels,
+    blockers,
 }: {
     number: number
     title?: string
     criteria?: string[]
     /** Defaults to `ready-for-agent` only; add `refactor` for a refactor ticket. */
     labels?: string[]
+    /** The tickets it waits on. Defaults to none. */
+    blockers?: number[]
 }): TicketSnapshot => ({
     number,
     title: title ?? 'Add sum',
@@ -42,7 +45,7 @@ export const practiceTicket = ({
         id: `AC${index + 1}`,
         text,
     })),
-    blockers: [],
+    blockers: blockers ?? [],
 })
 
 /** A run whose intake passed with these tickets, in this order. */
@@ -85,13 +88,19 @@ export const intakePassed = ({
 
 export const RUN_BRANCH = 'luca/spec-10-run'
 
+/** Where fixtures put each ticket's worktree, and the run branch's. */
+export const ticketPath = (ticket: number): string =>
+    `/runs/run/tickets/${ticket}`
+
+export const RUN_BRANCH_PATH = '/runs/run/run-branch'
+
 export const runBranchCreated = (): JournalEntry => ({
     kind: 'run_branch_created',
     ticket: null,
     role: null,
     content: {
         branch: RUN_BRANCH,
-        path: '/runs/run/run-branch',
+        path: RUN_BRANCH_PATH,
         base_sha: 'b0',
     },
 })
@@ -106,7 +115,7 @@ export const ticketWorktreeCreated = ({
     role: null,
     content: {
         branch: `${RUN_BRANCH}--ticket-${ticket}`,
-        path: `/runs/run/tickets/${ticket}`,
+        path: ticketPath(ticket),
         base_sha: 'b0',
     },
 })
@@ -501,6 +510,93 @@ export const joined = ({ ticket }: { ticket: number }): JournalEntry => ({
     content: { ok: true, shas: ['r1', 'g1'] },
 })
 
+/** A join whose cherry-pick clashed with the run branch (git aborted it). */
+export const joinClashed = ({
+    ticket,
+    error,
+}: {
+    ticket: number
+    /** Defaults to a conflict in `src/index.ts`. */
+    error?: string
+}): JournalEntry => ({
+    kind: 'ticket_joined',
+    ticket,
+    role: null,
+    content: { ok: false, error: error ?? 'CONFLICT (content): src/index.ts' },
+})
+
+/** The engine put a ticket's change back on top of the run branch. */
+export const ticketRebased = ({
+    ticket,
+    cause,
+    tests,
+    code,
+    undone,
+}: {
+    ticket: number
+    cause: 'clash' | 'join_gates'
+    /** The test files that clashed. Defaults to none. */
+    tests?: string[]
+    /** The code files that clashed. Defaults to none. */
+    code?: string[]
+    /** The run branch commits undone first. Defaults to none. */
+    undone?: string[]
+}): JournalEntry => ({
+    kind: 'ticket_rebased',
+    ticket,
+    role: null,
+    content: {
+        cause,
+        base_sha: 'onto-sha',
+        tests: tests ?? [],
+        code: code ?? [],
+        undone: undone ?? [],
+    },
+})
+
+/** The engine removed these worktrees at the end of the run. */
+export const worktreesRemoved = ({
+    paths,
+}: {
+    paths: string[]
+}): JournalEntry => ({
+    kind: 'worktrees_removed',
+    ticket: null,
+    role: null,
+    content: { paths },
+})
+
+/** The run's one PR, #99, opened from the run branch. */
+export const pullRequestOpened = (): JournalEntry => ({
+    kind: 'pull_request_opened',
+    ticket: null,
+    role: null,
+    content: {
+        number: 99,
+        url: 'https://github.com/acme/app/pull/99',
+        head: RUN_BRANCH,
+        base: 'main',
+        title: 'Practice spec (#10)',
+        body: '',
+    },
+})
+
+export const ticketStuck = ({
+    ticket,
+    reason,
+    detail,
+}: {
+    ticket: number
+    reason: 'red_check_failed' | 'join_failed' | 'gates_failed'
+    /** Defaults to "why". */
+    detail?: string
+}): JournalEntry => ({
+    kind: 'ticket_stuck',
+    ticket,
+    role: null,
+    content: { reason, detail: detail ?? 'why' },
+})
+
 export const pushed = ({ ticket }: { ticket: number }): JournalEntry => ({
     kind: 'run_branch_pushed',
     ticket,
@@ -639,3 +735,10 @@ export const billingStopped = ({
     role: null,
     content: { reason, role: null, billing: true },
 })
+
+/** One ticket's steps up to and including its approving review. */
+export const ticketApproved = ({
+    ticket,
+}: {
+    ticket: number
+}): JournalEntry[] => ticketBuilt({ ticket }).slice(0, 11)

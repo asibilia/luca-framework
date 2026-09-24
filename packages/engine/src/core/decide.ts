@@ -5,7 +5,7 @@ import { decideUsage, type UsageAction } from './decide-usage'
 import { checkIntake } from '../intake/intake-checks'
 import type { IntakeProblem, IntakeSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
-import { replayRun } from '../journal/replay'
+import { replayRun, type RunState } from '../journal/replay'
 
 /** The next thing the engine should do, as picked by `decide`. */
 export type EngineAction =
@@ -29,8 +29,51 @@ export type EngineAction =
     | { type: 'done'; outcome: 'refused' | 'nothing_to_do' }
 
 /**
- * The engine core's decision step. Pure: given a run's journal, it returns the
- * next action. It never reads the tracker, the disk, or the clock.
+ * The engine core's decision step. Pure: given a run's journal, it returns
+ * every action that can run now, in ticket order: one at a time through
+ * intake, then at most one per ticket while tickets build at the same time.
+ * It never reads the tracker, the disk, or the clock.
+ *
+ * The plan comes first: a limit wait or a billing stop is the only action,
+ * for the whole run, however many tickets are in flight (the scheduler lets
+ * them settle first, then every cut-off step is taken again after the
+ * wait). A finished ticket's usage is recorded beside the build steps, and
+ * the run's alone, just before it ends. A stop action (`done`,
+ * `invalid_journal`) always comes alone.
+ *
+ * @example
+ * const actions = decideSteps({ records: journal.read() })
+ * // [{ type: 'launch_agent', ticket: 11, ... }, { type: 'run_red_check', ticket: 12, ... }]
+ */
+export const decideSteps = ({
+    records,
+}: {
+    records: JournalRecord[]
+}): EngineAction[] => {
+    const state = replayRun({ records })
+    const { phase, spec_number } = state
+    if (phase !== 'intake_passed' || spec_number === null) {
+        return [decideIntake({ state })]
+    }
+    const plan = decidePlan({ state, spec_number })
+    if (plan !== null) {
+        // A billing stop is the end: the run's usage is recorded first.
+        const usage =
+            plan.type === 'done'
+                ? decideUsage({ records, state, ending: true })
+                : null
+        return [usage ?? plan]
+    }
+    const build = decideBuild({ state, spec_number })
+    const ending = build.length === 1 && build[0]?.type === 'done'
+    const usage = decideUsage({ records, state, ending })
+    if (usage === null) return build
+    return ending ? [usage] : [usage, ...build]
+}
+
+/**
+ * The first action `decideSteps` returns: the next action, for a caller that
+ * does one at a time.
  *
  * @example
  * const action = decide({ records: journal.read() })
@@ -41,7 +84,17 @@ export const decide = ({
 }: {
     records: JournalRecord[]
 }): EngineAction => {
-    const state = replayRun({ records })
+    const [first] = decideSteps({ records })
+    return (
+        first ?? {
+            type: 'invalid_journal',
+            reason: 'The decision step found nothing to do.',
+        }
+    )
+}
+
+/** The decision step up to and through intake: one action at a time. */
+const decideIntake = ({ state }: { state: RunState }): EngineAction => {
     const { phase, spec_number, config, intake } = state
 
     if (phase === 'new' || spec_number === null || config === null) {
@@ -57,21 +110,12 @@ export const decide = ({
             return { type: 'done', outcome: 'refused' }
         case 'nothing_to_do':
             return { type: 'done', outcome: 'nothing_to_do' }
-        case 'intake_passed': {
-            const next =
-                decidePlan({ state, spec_number }) ??
-                decideBuild({ state, spec_number })
-            const usage = decideUsage({
-                records,
-                state,
-                ending: next.type === 'done',
-            })
-            const planWaits =
-                next.type === 'start_limit_wait' ||
-                next.type === 'wait_for_limit' ||
-                next.type === 'stop_for_billing'
-            return planWaits || usage === null ? next : usage
-        }
+        case 'intake_passed':
+            // decideSteps builds; this is only reached without a spec number.
+            return {
+                type: 'invalid_journal',
+                reason: 'The journal has no run_started record.',
+            }
         case 'intake_read':
         case 'snapshotting': {
             if (intake === null) {

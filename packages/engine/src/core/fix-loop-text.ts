@@ -1,3 +1,4 @@
+import { rejoinOpening, type RejoinContext } from '../agents/role-prompts'
 import type { AgentFailure } from '../journal/journal-record'
 import type { ReplayedGates, ReplayedRedCheck } from '../journal/replay'
 import { clipOutput } from '../shell/run-command'
@@ -70,4 +71,25 @@ export const failedTryMessage = ({
         FAILED_TRY_OPENINGS[failure],
         `## Error\n\n${clipOutput({ text: error })}`,
         "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result.",
+    ].join('\n\n')
+
+/**
+ * The follow-up the implementer gets when its ticket's code clashed with the
+ * run branch: what happened, the files with conflict markers, and to resolve
+ * them. The engine journals it word for word.
+ *
+ * @example
+ * const message = clashFixMessage({ rejoin })
+ * // "... These files have conflict markers:\n\n- src/index.ts ..."
+ */
+export const clashFixMessage = ({
+    rejoin,
+}: {
+    rejoin: RejoinContext
+}): string =>
+    [
+        rejoinOpening({ rejoin }),
+        `These files have conflict markers:\n\n${rejoin.code.map((file) => `- ${file}`).join('\n')}`,
+        'Resolve them so the code keeps both what the run branch has and what this ticket adds. ' +
+            'Never edit a test file. Make every gate pass, then answer again.',
     ].join('\n\n')
