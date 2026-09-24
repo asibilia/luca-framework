@@ -8,7 +8,7 @@ import { testFilesAmong } from '../gates/test-runner'
 
 /**
  * The roles the **guard** knows. `reviewer` covers every reviewer (the ticket
- * reviewer today, the final review's lenses later). The learner has no agent
+ * reviewer and the final review's lenses). The learner has no agent
  * role yet (#370) but its rules are here already.
  */
 export const GuardRoleSchema = z.enum([
@@ -24,6 +24,11 @@ const GUARD_ROLE_OF: Record<AgentRole, GuardRole> = {
     'test-writer': 'test-writer',
     implementer: 'implementer',
     'ticket-reviewer': 'reviewer',
+    'architecture-lens': 'reviewer',
+    'simplification-lens': 'reviewer',
+    'security-lens': 'reviewer',
+    'integration-lens': 'reviewer',
+    'rules-lens': 'reviewer',
 }
 
 /** The guard role an agent role plays by. */

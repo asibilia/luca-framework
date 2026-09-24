@@ -170,9 +170,12 @@ describe('the ticket review, end to end', () => {
         })
 
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const calls = run.launches.map(
-            ({ kind, role, session_id }) => `${kind} ${role} ${session_id}`
-        )
+        // The final review's lenses (spec #10's) come after.
+        const calls = run.launches
+            .filter(({ ticket }) => ticket === 11)
+            .map(
+                ({ kind, role, session_id }) => `${kind} ${role} ${session_id}`
+            )
         expect(calls).toEqual([
             'launch test-writer scripted-test-writer-11-1',
             'launch implementer scripted-implementer-11-2',
@@ -313,7 +316,10 @@ describe('the ticket review, end to end', () => {
             content: { role: 'ticket-reviewer', failure: 'result' },
         })
         expect(
-            run.launches.map(({ kind, role }) => `${kind} ${role}`).slice(2)
+            run.launches
+                .filter(({ ticket }) => ticket === 11)
+                .map(({ kind, role }) => `${kind} ${role}`)
+                .slice(2)
         ).toEqual(['launch ticket-reviewer', 'launch ticket-reviewer'])
     }, 60_000)
 })

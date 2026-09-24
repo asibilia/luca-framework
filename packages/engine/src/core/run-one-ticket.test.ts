@@ -17,6 +17,7 @@ import { loadEngineConfig } from '../config/engine-config'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
+import { CLEAN_LENS_TURNS } from '../testing/practice-repo'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 
 /**
@@ -285,7 +286,12 @@ const runPractice = async ({
         journal,
         tracker,
         git: createGitAdapter({ repo_root: repo }),
-        launcher: launcher ?? createScriptedLauncher({ turns }),
+        // Every run ends in a clean final review unless its turns say so.
+        launcher:
+            launcher ??
+            createScriptedLauncher({
+                turns: [...turns, ...CLEAN_LENS_TURNS(10)],
+            }),
     })
     return { action, tracker, records: journal.read() }
 }
@@ -311,8 +317,20 @@ describe('one ticket, end to end, with scripted agents', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
 
-        // The journal holds every step, in order.
-        expect(records.map((record) => record.kind)).toEqual([
+        // The journal holds every step, in order, with the final review
+        // (its five lenses at once, in any order) right before the PR.
+        const kinds: string[] = records.map((record) => record.kind)
+        const finalFrom = kinds.indexOf('final_review_started')
+        const finalTo = kinds.indexOf('final_review_passed')
+        expect(kinds.slice(finalFrom + 1, finalTo).toSorted()).toEqual(
+            ['lens_started', 'agent_started', 'agent_finished', 'lens_finished']
+                .flatMap((kind) => Array.from({ length: 5 }, () => kind))
+                .toSorted()
+        )
+        expect([
+            ...kinds.slice(0, finalFrom),
+            ...kinds.slice(finalTo + 1),
+        ]).toEqual([
             'run_started',
             'intake_read',
             'spec_snapshot',
@@ -391,7 +409,9 @@ describe('one ticket, end to end, with scripted agents', () => {
 
         // Each prompt is journaled word for word.
         expect(
-            find('agent_started').map((start) => start.content.role)
+            find('agent_started')
+                .filter((start) => start.ticket === 11)
+                .map((start) => start.content.role)
         ).toEqual(['test-writer', 'implementer', 'ticket-reviewer'])
         expect(find('agent_started')[0]?.content.prompt).toContain(
             'AC2: sum of no numbers is zero'
@@ -564,6 +584,7 @@ describe('one ticket, end to end, with scripted agents', () => {
                 // 6. Its follow-up removes it.
                 { ...implementer, files: { 'src/sum.ts': SUM } },
                 reviewer,
+                ...CLEAN_LENS_TURNS(10),
             ],
         })
         const { action, tracker, records } = await runPractice({
@@ -574,7 +595,8 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
 
         // Follow-ups went to the same session; fresh agents got new ones.
-        const calls = launcher.launches()
+        // (The final review's five lenses come after, as spec #10's.)
+        const calls = launcher.launches().filter(({ ticket }) => ticket === 11)
         expect(calls.map(({ kind, role }) => `${kind} ${role}`)).toEqual([
             'launch test-writer',
             'follow_up test-writer',
@@ -1043,6 +1065,7 @@ describe('run notes, end to end', () => {
                 },
                 implementer,
                 reviewer,
+                ...CLEAN_LENS_TURNS(10),
             ],
         })
         const { action, records } = await runPractice({
@@ -1058,6 +1081,12 @@ describe('run notes, end to end', () => {
         expect(prompts[1]?.role).toBe('implementer')
         expect(prompts[1]?.prompt).toContain(`- ${note} (test-writer, #11)`)
         expect(prompts[2]?.prompt).toContain(`- ${note} (test-writer, #11)`)
+        // The final review's lenses get the run's notes too.
+        const lensPrompts = prompts.filter(({ role }) => role.endsWith('-lens'))
+        expect(lensPrompts).toHaveLength(5)
+        for (const { prompt } of lensPrompts) {
+            expect(prompt).toContain(`- ${note} (test-writer, #11)`)
+        }
         const started = records.flatMap((record) =>
             record.kind === 'agent_started' ? [record.content.prompt] : []
         )
@@ -1084,6 +1113,7 @@ describe('agent messages, end to end', () => {
         const answers: { ok: boolean; detail: string }[] = []
         const implementerGot: (string | null)[] = []
         const reviewerGot: (string | null)[] = []
+        const lensAnswers: { ok: boolean; detail: string }[] = []
         const launcher = createScriptedLauncher({
             turns: [
                 {
@@ -1130,6 +1160,26 @@ describe('agent messages, end to end', () => {
                         reviewerGot.push(tools.tool_call('Read'))
                     },
                 },
+                // A lens is a reviewer: it has no send_message tool.
+                {
+                    role: 'security-lens',
+                    ticket: 10,
+                    act: async (_cwd, tools) => {
+                        lensAnswers.push(
+                            tools.send_message({
+                                to: 'implementer#11',
+                                text: 'From the security lens.',
+                            })
+                        )
+                    },
+                    result: {
+                        verdict: 'approve',
+                        findings: [],
+                        summary: '',
+                        assumptions: [],
+                    },
+                },
+                ...CLEAN_LENS_TURNS(10),
             ],
         })
         const { action, records } = await runPractice({
@@ -1151,6 +1201,9 @@ describe('agent messages, end to end', () => {
             false,
         ])
         expect(answers[6]?.detail).toContain('5 messages')
+        expect(lensAnswers).toEqual([
+            { ok: false, detail: 'This agent has no send_message tool.' },
+        ])
 
         // Every message is journaled word for word, refused ones too.
         const messages = records.flatMap((record) =>
@@ -1223,10 +1276,12 @@ describe('agent messages, end to end', () => {
 
         // The reviewer has no messaging: it can't send, and gets nothing.
         expect(reviewerGot).toEqual([null])
+        // (The final review's five lenses, spec #10's, get nothing either.)
         expect(launcher.launches().map(({ delivered }) => delivered)).toEqual([
             [],
             [implementerGot[0] ?? ''],
             [],
+            ...Array.from({ length: 5 }, () => []),
         ])
 
         // The implementer's prompt names its address; the reviewer's names none.

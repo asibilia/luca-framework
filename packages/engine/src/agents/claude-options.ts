@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { roleInstructions } from './role-instructions'
 import {
     ImplementerResultSchema,
+    LensReviewResultSchema,
     TestWriterResultSchema,
     TicketReviewResultSchema,
     type AgentRole,
@@ -29,6 +30,11 @@ export const MAX_TURNS: Record<AgentRole, number> = {
     'test-writer': 80,
     implementer: 120,
     'ticket-reviewer': 60,
+    'architecture-lens': 60,
+    'simplification-lens': 60,
+    'security-lens': 60,
+    'integration-lens': 60,
+    'rules-lens': 60,
 }
 
 /**
@@ -99,6 +105,11 @@ const RESULT_SCHEMAS: Record<AgentRole, z.ZodType> = {
     'test-writer': TestWriterResultSchema,
     implementer: ImplementerResultSchema,
     'ticket-reviewer': TicketReviewResultSchema,
+    'architecture-lens': LensReviewResultSchema,
+    'simplification-lens': LensReviewResultSchema,
+    'security-lens': LensReviewResultSchema,
+    'integration-lens': LensReviewResultSchema,
+    'rules-lens': LensReviewResultSchema,
 }
 
 /** A role's result schema as JSON Schema, for the SDK's structured output. */
@@ -172,7 +183,14 @@ export const agentOptions = ({
         systemPrompt: {
             type: 'preset',
             preset: 'claude_code',
-            append: roleInstructions({ role, may_edit_tests, config }),
+            // Only an agent with messaging is told about it (the final
+            // review's fixers are test-writers and implementers with none).
+            append: roleInstructions({
+                role,
+                may_edit_tests,
+                config,
+                messaging: luca_server !== null,
+            }),
         },
         outputFormat: {
             type: 'json_schema',

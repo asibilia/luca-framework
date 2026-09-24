@@ -1,12 +1,22 @@
 import sortBy from 'lodash/sortBy'
 
 import {
+    decideFinalReview,
+    type FinalReviewAction,
+} from './decide-final-review'
+import {
     clashFixMessage,
     failedChecks,
     failedTryMessage,
     gateFixMessage,
     redFixMessage,
 } from './fix-loop-text'
+import {
+    MAX_BAD_TEST_BOUNCES,
+    MAX_ENGINE_FAILURES,
+    MAX_FIX_ROUNDS,
+    MAX_REJOINS,
+} from './loop-caps'
 import { pullRequestText } from './pull-request-text'
 import {
     openFindingsText,
@@ -35,31 +45,12 @@ import {
 } from '../journal/replay'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
-/**
- * Follow-ups an agent gets to fix a failed red check or failed gates, after
- * its first try. A failure after the last follow-up makes the ticket stuck.
- */
-export const MAX_FIX_ROUNDS = 3
-
-/**
- * Times an implementer may send a test back as bad, each to a fresh
- * test-writer. The bounce after these makes the ticket stuck.
- */
-export const MAX_BAD_TEST_BOUNCES = 1
-
-/**
- * Engine failures in a row (the SDK crashed, or a follow-up's session was
- * gone) after which a ticket is stuck. Each one before it starts a fresh
- * agent without using up a try.
- */
-export const MAX_ENGINE_FAILURES = 3
-
-/**
- * Times a joined ticket may be sent back onto the run branch, after a clash
- * or failed gates after joining. The clash or failed join after these makes
- * the ticket stuck.
- */
-export const MAX_REJOINS = MAX_FIX_ROUNDS
+export {
+    MAX_BAD_TEST_BOUNCES,
+    MAX_ENGINE_FAILURES,
+    MAX_FIX_ROUNDS,
+    MAX_REJOINS,
+} from './loop-caps'
 
 /**
  * How many run notes a fresh agent is handed: the newest ones in the run,
@@ -204,6 +195,19 @@ export type BuildAction =
           reason: StuckReason
           detail: string
       }
+    /**
+     * The final review is stuck. The run ends without a PR, and the run
+     * branch's worktree stays; a `ship` reply (#366, `shipFinalReview`)
+     * opens the PR with the open findings at the top.
+     */
+    | {
+          type: 'done'
+          outcome: 'final_review_stuck'
+          reason: StuckReason
+          detail: string
+      }
+    /** The final review of the whole run branch (`decide-final-review.ts`). */
+    | FinalReviewAction
 
 /** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
 export const isRefactorTicket = ({
@@ -897,8 +901,10 @@ const notRemoved = ({
  * gates after joining puts the ticket's change back on top of the run
  * branch to be fixed there (up to `MAX_REJOINS` times), then re-reviewed. A
  * stuck ticket ends the run: no ticket starts or moves on, and the worktrees
- * of pushed tickets are removed. Once the PR is open, every worktree is
- * removed. Branches and the journal stay.
+ * of pushed tickets are removed. Once every ticket pushed, the final review
+ * looks at the whole run branch (`decideFinalReview`) before the PR opens; a
+ * stuck final review ends the run with the run branch's worktree kept. Once
+ * the PR is open, every worktree is removed. Branches and the journal stay.
  *
  * Fix loops: a failed red check goes back to the same test-writer session,
  * and failed gates to the same implementer session, with their output, for
@@ -1040,12 +1046,43 @@ export const decideBuild = ({
     if (steps.length > 0) return steps
 
     if (numbers.every(pushed)) {
+        const final = decideFinalReview({
+            review: state.final_review,
+            snapshot,
+            run_branch,
+            run_branch_gates: state.run_branch_gates,
+            run_notes,
+        })
+        if (final.status === 'working') return final.actions
+        if (final.status === 'stuck') {
+            // The run branch's worktree stays for a retry (#366).
+            const paths = notRemoved({
+                state,
+                paths: numbers.flatMap((number) => {
+                    const { worktree } = progress(number)
+                    return worktree === null ? [] : [worktree.path]
+                }),
+            })
+            if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
+            return [
+                {
+                    type: 'done',
+                    outcome: 'final_review_stuck',
+                    reason: final.reason,
+                    detail: final.detail,
+                },
+            ]
+        }
         return [
             {
                 type: 'open_pull_request',
                 head: run_branch.branch,
                 base: base_branch,
-                ...pullRequestText({ snapshot, tickets: state.tickets }),
+                ...pullRequestText({
+                    snapshot,
+                    tickets: state.tickets,
+                    final_review: state.final_review,
+                }),
             },
         ]
     }

@@ -90,6 +90,18 @@ export {
     clashFixMessage,
     redFixMessage,
 } from './core/fix-loop-text'
+export {
+    decideFinalReview,
+    isFinalReviewAction,
+    type FinalReviewAction,
+    type FinalReviewDecision,
+} from './core/decide-final-review'
+export {
+    executeFinalReviewAction,
+    rulePath,
+    shipFinalReview,
+} from './core/execute-final-review'
+export { finalFixerPrompt, lensPrompt } from './core/final-review-text'
 export { pullRequestText } from './core/pull-request-text'
 export {
     DEFAULT_MAX_STEPS,
@@ -182,7 +194,11 @@ export {
 export * from './journal/journal-record'
 export {
     replayRun,
+    EMPTY_FINAL_REVIEW,
     EMPTY_TICKET_PROGRESS,
+    namespacedId,
+    type FinalFinding,
+    type FinalReviewState,
     type ReplayedRedCheck,
     type ReplayedRejoin,
     type ReplayedRunNote,

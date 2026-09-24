@@ -38,6 +38,7 @@ import {
     withInstalls,
     worktreesRemoved,
 } from '../testing/build-fixtures'
+import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
 /**
@@ -242,14 +243,18 @@ describe('decision step: many tickets at once', () => {
         ])
     })
 
-    test('once every ticket has pushed, one PR opens', () => {
-        expect(
-            twoSteps([
-                runBranchCreated(),
-                ...ticketBuilt({ ticket: 11 }),
-                ...ticketBuilt({ ticket: 12 }),
-            ])
-        ).toMatchObject([{ type: 'open_pull_request', head: RUN_BRANCH }])
+    test('once every ticket has pushed, the final review runs, then one PR opens', () => {
+        const allPushed = [
+            runBranchCreated(),
+            ...ticketBuilt({ ticket: 11 }),
+            ...ticketBuilt({ ticket: 12 }),
+        ]
+        expect(twoSteps(allPushed)).toMatchObject([
+            { type: 'start_final_review', round: 1 },
+        ])
+        expect(twoSteps([...allPushed, ...finalReviewClean()])).toMatchObject([
+            { type: 'open_pull_request', head: RUN_BRANCH },
+        ])
     })
 })
 
@@ -610,6 +615,7 @@ describe('decision step: cleaning up worktrees', () => {
                 joined({ ticket: 11 }),
                 gatesRun({ ticket: 11, target: 'run_branch', ok: true }),
                 pushed({ ticket: 11 }),
+                ...finalReviewClean(),
             ])
         ).toMatchObject([{ type: 'open_pull_request' }])
     })

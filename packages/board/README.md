@@ -109,23 +109,26 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `jev_asked`, `jev_answered`, `jev_failed` | **Jev in shadow mode**: only counted (asked, answered, without an answer), in a dim footer line. The engine never acts on Jev's answers, so they change no ticket, status, or "latest" line. | none |
 | `agent_message` | **Agent messages**: only counted (sent = queued or not delivered; refused), in a dim footer line. A message is sent inside an agent's turn, so it changes no ticket or run status, and doesn't clear a stopped run. | `sender → receiver: <the message's first line, clipped>` (info); with "(not delivered: reason)" when it wasn't delivered (warning); "sender's message to receiver was refused: reason" (warning) |
 | `agent_message_delivered` | counts the messages handed over (`ids`), in the same footer line. Changes nothing else. | none |
+| `final_review_started` | run status `final_review`, the next round. Lenses that were Clean stay Clean; the rest (the ones due this round) go back to Waiting. The engine also writes `round`, `from_sha`, `head_sha`, `lenses` (due this round), `files`, and `rules` (`{ path, text }`), which the board doesn't read. | "The final review started (round n)." |
+| `lens_started` | lens to Reviewing (`{ lens, round }`) | none |
+| `lens_finished` | lens to Fixing (a blocker or should-fix) or Clean, with its counts (`{ lens, round, findings: { blocker, should_fix, nit } }`) | "Final review, security lens: 1 should-fix." (warning), or clean (success) |
+| `final_review_fixing` | the final review to Fixing, its fix counter, and a "tried" line (`{ round }`) | "Final review: fix round n/3." (warning) |
+| `final_review_stuck` | the final review to Stuck, and **Needs you** with the reason in words (for `changes_requested`: "The lenses still ask for changes after 3 fix rounds."), the detail, what was tried, and the replies `retry`, `stop`, `ship` (`{ reason, detail }`) | a stuck row |
+| `final_review_passed` | every lens Clean, the final review Passed, "Needs you" for it resolved | "The final review passed." |
+| `final_review_shipped` | the same as a `ship` reply: the final review Passed, "Needs you" for it resolved (`{}`). The engine journals it when a `ship` reply reaches a stuck final review (#366, through `shipFinalReview`); the PR then opens with the open findings at the top. | "You replied `ship`: the PR opens with the open findings listed at the top.", and the stuck row resolves with it |
+
+**The final review's other records** are the usual kinds with `ticket: null`: each lens's agent (`agent_started`, `agent_finished`, `agent_failed`, `agent_session`, role `<lens>-lens`, such as `security-lens`), its fixers (role `test-writer` or `implementer`), and the fixes' `gates_run` (`target: run_branch`), `leftover_scan`, `commit_made` (stage `fix`), and `run_branch_pushed`. They never touch a ticket card. A lens's own start and finish add no row (its `lens_finished` does); a fixer's read "Final review: a fresh implementer fixes the lenses' findings on the whole run branch.", "Final review: the implementer got the failure back." (a follow-up), and "Final review: the implementer answered the findings: n fixed, n won't fix."; the fixes' checks, scan, and commit read "Final review: checks passed on the fixes.", "Final review: the leftover scan found ...", and "Final review: the fixes committed on the run branch.". A failed lens or fixer turn, failed checks on the fixes, and leftovers add a "tried" line to the final review ("The architecture lens gave no usable result: ...") and a row starting "Final review:". Sessions still count toward plan usage.
 
 ### Kinds not journaled yet
 
-The board already understands these, so the tickets that add them should journal these shapes. Until then nothing sends them.
+The board already understands these, so the ticket that adds them should journal these shapes. Until then nothing sends them.
 
 | kind | ticket that adds it | `ticket` | `content` | Board effect |
 | --- | --- | --- | --- | --- |
 | `reply_received` | #366 | ticket/null | `{ word: 'retry' \| 'skip' \| 'stop' \| 'ship', ticket: number \| null }` | resolves the stuck item and row |
 | `ticket_skipped` | #366 | ticket | `{}` | card to Skipped |
-| `final_review_started` | #367 | `null` | `{}` | run status `final_review`, next round |
-| `lens_started` | #367 | `null` | `{ lens }` | lens to Reviewing |
-| `lens_finished` | #367 | `null` | `{ lens, findings: { blocker, should_fix, nit } }` | lens to Fixing (blocker or should-fix) or Clean |
-| `final_review_fixing` | #367 | `null` | `{ round }` | final review's fix counter |
-| `final_review_stuck` | #367 | `null` | `{ reason, detail }` | Needs you with `retry`, `stop`, `ship` |
-| `final_review_passed` | #367 | `null` | `{}` | every lens Clean |
 
-The replies a stuck item offers (`retry #n`, `skip #n`, `stop`; `retry`, `stop`, `ship` for the final review) are what #366 will read. Until it lands, the engine ends the run when a ticket is stuck.
+The replies a stuck item offers (`retry #n`, `skip #n`, `stop`; `retry`, `stop`, `ship` for the final review) are what #366 will read. Until it lands, the engine ends the run when a ticket or the final review is stuck.
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 

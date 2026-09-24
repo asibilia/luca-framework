@@ -25,6 +25,7 @@ import {
     withInstalls,
     worktreesRemoved,
 } from '../testing/build-fixtures'
+import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
 const TICKET = practiceTicket({ number: 11 })
@@ -474,7 +475,11 @@ describe('decision step: usage', () => {
 
     test('a run with no agent sessions records no usage', () => {
         expect(
-            decideAfter([runBranchCreated(), ...ticketBuilt({ ticket: 11 })])
+            decideAfter([
+                runBranchCreated(),
+                ...ticketBuilt({ ticket: 11 }),
+                ...finalReviewClean(),
+            ])
         ).toMatchObject({ type: 'open_pull_request' })
     })
 })

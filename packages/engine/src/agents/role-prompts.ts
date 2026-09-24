@@ -92,7 +92,7 @@ const REFACTOR_REVIEW_TASK =
 export type PromptRunNote = { ticket: number; role: AgentRole; note: string }
 
 /** The notes earlier agents left, oldest first; nothing when there are none. */
-const runNotesSection = ({
+export const runNotesSection = ({
     run_notes,
 }: {
     run_notes: PromptRunNote[]
@@ -109,6 +109,10 @@ const runNotesSection = ({
                   .join('\n'),
           ]
 
+/** What each lens judges the whole run branch on, in one paragraph. */
+const LENS_TASK_TEXT =
+    'You are one lens of the final review: a fresh, read-only reviewer of the WHOLE run branch, every ticket of the spec together. Write nothing.'
+
 const ROLE_TASKS: Record<AgentRole, string> = {
     'test-writer':
         'Write failing tests for every acceptance criterion below. Edit test files only. ' +
@@ -121,7 +125,21 @@ const ROLE_TASKS: Record<AgentRole, string> = {
     'ticket-reviewer':
         "Review this ticket's committed diff. Check that it meets every acceptance criterion with honest tests. " +
         'Write nothing.',
+    'architecture-lens': `${LENS_TASK_TEXT} Judge the architecture: module boundaries and seams, where code lives, coupling, names, and the developer experience of the APIs and files the branch adds.`,
+    'simplification-lens': `${LENS_TASK_TEXT} Judge simplicity: duplicated logic, dead or needless code, abstractions that don't pay for themselves, and code that could reuse what the repo already has.`,
+    'security-lens': `${LENS_TASK_TEXT} Judge security: untrusted input, injection, paths and shell commands, secrets, permissions, and unsafe defaults.`,
+    'integration-lens': `${LENS_TASK_TEXT} Judge integration: how the tickets fit together. Look for pieces that don't connect, contracts that disagree between tickets, duplicated work across tickets, and gaps the spec needs but no ticket covered.`,
+    'rules-lens': `${LENS_TASK_TEXT} Judge the branch against the repo's rule files below. Only rules that need judgment count; mechanical rules belong to the lint gate, which already ran.`,
 }
+
+/**
+ * The one-paragraph task a role's prompt starts with.
+ *
+ * @example
+ * roleTask({ role: 'security-lens' }) // 'You are one lens of the final review: ...'
+ */
+export const roleTask = ({ role }: { role: AgentRole }): string =>
+    ROLE_TASKS[role]
 
 /**
  * The prompt an agent starts with: its task, its address for agent messages

@@ -10,7 +10,10 @@ import {
     makeRunId,
     runJournalPath,
 } from './journal'
+import { JournalEntrySchema } from './journal-record'
 import { replayRun } from './replay'
+
+import { AgentRoleSchema } from '../agents/role-results'
 
 const CONFIG = {
     checks: { test: 'bun test' },
@@ -221,6 +224,26 @@ describe('journal', () => {
             replayRun({ records: journal.read() }).tickets[11]?.sessions
         ).toEqual({})
     })
+
+    test.each(AgentRoleSchema.options)(
+        'an agent_finished of the %s reads with its result',
+        (role) => {
+            const reviewer =
+                role === 'ticket-reviewer' || role.endsWith('-lens')
+            const result = reviewer
+                ? { verdict: 'approve', findings: [] }
+                : role === 'test-writer'
+                  ? { outcome: 'tests_written' }
+                  : { outcome: 'done' }
+            const parsed = JournalEntrySchema.safeParse({
+                kind: 'agent_finished',
+                ticket: null,
+                role,
+                content: { role, result, session_id: 's-1' },
+            })
+            expect(parsed.success).toBe(true)
+        }
+    )
 
     test('runs live outside git, under the Luca state folder by default', () => {
         const saved = process.env.LUCA_RUNS_DIR

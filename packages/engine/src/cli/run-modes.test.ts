@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { runDemo, runSpec, type RunLauncher } from './run-modes'
 
+import { LENS_ROLES } from '../agents/role-results'
 import {
     createScriptedLauncher,
     type ScriptedTurn,
@@ -133,11 +134,16 @@ describe('luca-run --spec', () => {
             ok: true,
             message: expect.stringContaining('PR opened'),
         })
-        expect(claude.launches().map(({ role }) => role)).toEqual([
+        const roles = claude.launches().map(({ role }) => role)
+        expect(roles.filter((role) => !role.endsWith('-lens'))).toEqual([
             'test-writer',
             'implementer',
             'ticket-reviewer',
         ])
+        // The final review's five lenses run at once, in any order.
+        expect(
+            roles.filter((role) => role.endsWith('-lens')).toSorted()
+        ).toEqual(LENS_ROLES.toSorted())
         expect(claude.closed()).toBe(1)
         expect(recorder.kinds()).toContain('agent_finished')
         expect(recorder.kinds().slice(-2)).toEqual([

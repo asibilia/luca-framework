@@ -23,6 +23,7 @@ import {
     ticketBuilt,
     withInstalls,
 } from '../testing/build-fixtures'
+import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
@@ -399,6 +400,7 @@ describe('decision step: nits and declined findings in the PR', () => {
             joined({ ticket: 11 }),
             gatesRun({ ticket: 11, target: 'run_branch', ok: true }),
             pushed({ ticket: 11 }),
+            ...finalReviewClean(),
         ])
 
         expect(action).toMatchObject({ type: 'open_pull_request' })

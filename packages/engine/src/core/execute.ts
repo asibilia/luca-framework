@@ -1,6 +1,12 @@
 import { decideSteps, type EngineAction } from './decide'
+import { isFinalReviewAction } from './decide-final-review'
 import type { PlanAction } from './decide-plan'
-import { executeBuildAction, type BuildDeps } from './execute-build'
+import {
+    buildContext,
+    executeBuildAction,
+    type BuildDeps,
+} from './execute-build'
+import { executeFinalReviewAction } from './execute-final-review'
 
 import type { BoardSync } from '../board/board-sync'
 import type { EngineConfig } from '../config/engine-config'
@@ -281,6 +287,12 @@ export const executeAction = async ({
                     `The engine needs a git adapter and an agent launcher to ${action.type}.`
                 )
             }
+            if (isFinalReviewAction(action)) {
+                return executeFinalReviewAction({
+                    action,
+                    context: buildContext({ journal, tracker, ...build }),
+                })
+            }
             return executeBuildAction({ action, journal, tracker, ...build })
     }
 }
@@ -306,8 +318,23 @@ const ticketOf = (action: EngineAction): number | null => {
 }
 
 /**
+ * The scheduler's key for an action: at most one action per key runs at a
+ * time. Each lens has its own (`lens:<lens>`), so the five lenses review at
+ * once; the final review's other steps share `final`; a ticket's steps its
+ * number; and the run's own steps `run`, which only ever run alone.
+ */
+const keyOf = (action: EngineAction): string => {
+    if (action.type === 'launch_lens') return `lens:${action.lens}`
+    if (isFinalReviewAction(action)) return 'final'
+    const ticket = ticketOf(action)
+    return ticket === null ? 'run' : String(ticket)
+}
+
+/**
  * Actions that read or move the run branch. At most one runs at a time, so
- * joins, their gates, pushes, and new worktrees see one run branch.
+ * joins, their gates, pushes, and new worktrees see one run branch. The
+ * final review's fixers, gates, commit, and push work in the run branch's
+ * worktree; its lenses only read it.
  */
 const usesRunBranch = (action: EngineAction): boolean => {
     switch (action.type) {
@@ -315,6 +342,12 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'join_run_branch':
         case 'push_run_branch':
         case 'rebase_ticket':
+        case 'start_final_review':
+        case 'launch_final_fixer':
+        case 'follow_up_final_fixer':
+        case 'run_final_gates':
+        case 'commit_final_fix':
+        case 'push_final_fixes':
             return true
         case 'run_gates':
         case 'install_dependencies':
@@ -357,18 +390,42 @@ const executeWithJev = async ({
     const lastSeq = journal.read().at(-1)?.seq ?? 0
     await executeAction({ action, journal, tracker, build, clock })
     const records = journal.read()
-    const ticket = ticketOf(action)
     await askJevInShadow({
         ...shadow,
         asks: jevAsksAfter({
             records: records.filter(
                 (record) =>
-                    record.seq > lastSeq &&
-                    (ticket === null || record.ticket === ticket)
+                    record.seq > lastSeq && ownsRecord({ action, record })
             ),
             state: replayRun({ records }),
         }),
     })
+}
+
+/**
+ * Whether a record appended while `action` ran is that action's own, since
+ * other tickets (or other lenses) append at the same time: a ticket's
+ * records for a ticket's step, a lens's for its lens, and the final
+ * review's other ticket-less records for its other steps.
+ */
+const ownsRecord = ({
+    action,
+    record,
+}: {
+    action: EngineAction
+    record: JournalRecord
+}): boolean => {
+    if (action.type === 'launch_lens') {
+        return (
+            record.ticket === null &&
+            (record.role === null || record.role === action.role)
+        )
+    }
+    if (isFinalReviewAction(action)) {
+        return record.ticket === null && !record.role?.endsWith('-lens')
+    }
+    const ticket = ticketOf(action)
+    return ticket === null || record.ticket === ticket
 }
 
 /** One action the engine started and has not seen settle yet. */
@@ -462,8 +519,7 @@ export const runEngine = async ({
         if (stop !== undefined && inFlight.size === 0) return stop
         if (stop === undefined) {
             for (const action of actions) {
-                const ticket = ticketOf(action)
-                const key = ticket === null ? 'run' : String(ticket)
+                const key = keyOf(action)
                 if (!canStart({ action, key })) continue
                 if (started >= limit) {
                     await settleAll()

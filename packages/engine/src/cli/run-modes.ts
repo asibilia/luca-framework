@@ -74,6 +74,11 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 ok: false,
                 message: `Ticket #${action.ticket} is stuck (${action.reason}): ${action.detail}`,
             }
+        case 'final_review_stuck':
+            return {
+                ok: false,
+                message: `The final review is stuck (${action.reason}): ${action.detail}\nReply \`ship\` on the spec to open the PR with the open findings listed at the top.`,
+            }
         case 'stopped':
             return {
                 ok: false,

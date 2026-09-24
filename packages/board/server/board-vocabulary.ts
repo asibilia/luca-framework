@@ -6,9 +6,9 @@ import { z } from 'zod'
  * add fields without breaking the board, and the plugin never needs the
  * engine's code. A record whose content doesn't fit is skipped and logged.
  *
- * Kinds marked "not journaled yet" have no engine record yet; the tickets
- * that add them (#366 replies and skips, #367 the final review) should
- * journal these shapes. See the README.
+ * Kinds marked "not journaled yet" have no engine record yet; the ticket
+ * that adds them (#366 replies and skips) should journal these shapes. See
+ * the README.
  */
 
 const FindingCountsSchema = z.looseObject({
@@ -241,12 +241,8 @@ export const BOARD_VOCABULARY = {
             .catch({}),
     }),
 
-    // Not journaled yet.
-    reply_received: z.looseObject({
-        word: z.enum(['retry', 'skip', 'stop', 'ship']),
-        ticket: z.number().int().nullable().optional(),
-    }),
-    ticket_skipped: z.looseObject({}),
+    // The final review (#367). Its agent, gate, scan, commit, and push
+    // records are the usual kinds with `ticket: null`.
     final_review_started: z.looseObject({}),
     lens_started: z.looseObject({ lens: z.string() }),
     lens_finished: z.looseObject({
@@ -259,6 +255,15 @@ export const BOARD_VOCABULARY = {
         detail: z.string().catch(''),
     }),
     final_review_passed: z.looseObject({}),
+    /** A `ship` reply to the stuck final review: the PR opens anyway. */
+    final_review_shipped: z.looseObject({}),
+
+    // Not journaled yet.
+    reply_received: z.looseObject({
+        word: z.enum(['retry', 'skip', 'stop', 'ship']),
+        ticket: z.number().int().nullable().optional(),
+    }),
+    ticket_skipped: z.looseObject({}),
 } as const
 
 export type BoardKind = keyof typeof BOARD_VOCABULARY
@@ -312,6 +317,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'final_review_fixing' }),
     entry({ kind: 'final_review_stuck' }),
     entry({ kind: 'final_review_passed' }),
+    entry({ kind: 'final_review_shipped' }),
 ])
 
 /** A record the board understands, with its content parsed. */
