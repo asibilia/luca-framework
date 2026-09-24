@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
 import { AgentSessionSchema } from '../agents/agent-launcher'
-import { AgentRoleSchema, RoleResultSchema } from '../agents/role-results'
+import {
+    AgentRoleSchema,
+    LensNameSchema,
+    RoleResultSchema,
+} from '../agents/role-results'
 import { EngineConfigSchema } from '../config/engine-config'
 import {
     GateCheckSchema,
@@ -127,7 +131,11 @@ const AgentStartedEntrySchema = z.object({
 /** The session an agent turn ran in; `null` in journals from before #363. */
 const SESSION_FIELDS = { session_id: z.string().nullable().default(null) }
 
-/** An agent finished with a result that fits its role's schema. */
+/**
+ * An agent finished with a result that fits its role's schema. One option
+ * per role: keep it in step with `RoleResultSchema` (a test checks every
+ * role parses).
+ */
 const AgentFinishedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_finished'),
@@ -135,6 +143,11 @@ const AgentFinishedEntrySchema = z.object({
         RoleResultSchema.options[0].extend(SESSION_FIELDS),
         RoleResultSchema.options[1].extend(SESSION_FIELDS),
         RoleResultSchema.options[2].extend(SESSION_FIELDS),
+        RoleResultSchema.options[3].extend(SESSION_FIELDS),
+        RoleResultSchema.options[4].extend(SESSION_FIELDS),
+        RoleResultSchema.options[5].extend(SESSION_FIELDS),
+        RoleResultSchema.options[6].extend(SESSION_FIELDS),
+        RoleResultSchema.options[7].extend(SESSION_FIELDS),
     ]),
 })
 
@@ -371,7 +384,7 @@ const RunBranchPushedEntrySchema = z.object({
 })
 
 /**
- * Why a ticket is stuck. A failed red check or gate is only stuck once its
+ * Why a ticket (or the final review) is stuck. A failed red check or gate is only stuck once its
  * fix loop reaches its cap, and a bad test only on its second bounce.
  */
 export const StuckReasonSchema = z.enum([
@@ -406,6 +419,91 @@ const PullRequestOpenedEntrySchema = z.object({
         title: z.string(),
         body: z.string(),
     }),
+})
+
+/**
+ * A final review round started: the run branch is reviewed from `from_sha`
+ * (round 1: where the run branch started; later rounds: the previous
+ * round's `head_sha`) to `head_sha`, its HEAD now. `lenses` are the lenses
+ * due this round (every lens in round 1, then only those that had blocking
+ * findings), `files` the files that diff changes, and `rules` the rule files
+ * of the engine config, read by the engine word for word (`text` is `null`
+ * for a file it could not read), for the rules lens. Written with
+ * `ticket: null`.
+ */
+const FinalReviewStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_started'),
+    content: z.object({
+        round: z.number().int().min(1),
+        from_sha: z.string().min(1),
+        head_sha: z.string().min(1),
+        lenses: z.array(LensNameSchema),
+        files: z.array(z.string()).default([]),
+        rules: z.array(
+            z.object({ path: z.string(), text: z.string().nullable() })
+        ),
+    }),
+})
+
+/** A lens's reviewer is about to start, right before its `agent_started`. */
+const LensStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('lens_started'),
+    content: z.object({
+        lens: LensNameSchema,
+        round: z.number().int().min(1),
+    }),
+})
+
+/**
+ * A lens's reviewer finished, right after its `agent_finished`: its findings
+ * counted by severity. Not written for a failed turn.
+ */
+const LensFinishedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('lens_finished'),
+    content: z.object({
+        lens: LensNameSchema,
+        round: z.number().int().min(1),
+        findings: z.object({
+            blocker: z.number().int().min(0),
+            should_fix: z.number().int().min(0),
+            nit: z.number().int().min(0),
+        }),
+    }),
+})
+
+/** A final review fix round starts, before its first fixer. */
+const FinalReviewFixingEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_fixing'),
+    content: z.object({ round: z.number().int().min(1) }),
+})
+
+/** The final review is stuck: the PR waits for a person's reply (#366). */
+const FinalReviewStuckEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_stuck'),
+    content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
+})
+
+/** Every lens due in the latest round approved; the PR opens next. */
+const FinalReviewPassedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_passed'),
+    content: z.object({}),
+})
+
+/**
+ * The person replied `ship` to the stuck final review: the PR opens with the
+ * findings still open listed at the top. Appended by the reply reader (#366)
+ * through `shipFinalReview`.
+ */
+const FinalReviewShippedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('final_review_shipped'),
+    content: z.object({}),
 })
 
 /** The engine asked Jev, in shadow mode, with its own fixed choice beside. */
@@ -553,6 +651,13 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     WorktreesRemovedEntrySchema,
     AgentMessageEntrySchema,
     AgentMessageDeliveredEntrySchema,
+    FinalReviewStartedEntrySchema,
+    LensStartedEntrySchema,
+    LensFinishedEntrySchema,
+    FinalReviewFixingEntrySchema,
+    FinalReviewStuckEntrySchema,
+    FinalReviewPassedEntrySchema,
+    FinalReviewShippedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -594,6 +699,13 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     WorktreesRemovedEntrySchema.extend(STAMP_FIELDS),
     AgentMessageEntrySchema.extend(STAMP_FIELDS),
     AgentMessageDeliveredEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewStartedEntrySchema.extend(STAMP_FIELDS),
+    LensStartedEntrySchema.extend(STAMP_FIELDS),
+    LensFinishedEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewFixingEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewStuckEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewPassedEntrySchema.extend(STAMP_FIELDS),
+    FinalReviewShippedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -634,6 +746,13 @@ export const JournalKindSchema = z.enum([
     'worktrees_removed',
     'agent_message',
     'agent_message_delivered',
+    'final_review_started',
+    'lens_started',
+    'lens_finished',
+    'final_review_fixing',
+    'final_review_stuck',
+    'final_review_passed',
+    'final_review_shipped',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

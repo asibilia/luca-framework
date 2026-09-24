@@ -1,4 +1,5 @@
 import type {
+    AgentRole,
     Finding,
     FindingResponse,
     FindingRuling,
@@ -198,7 +199,12 @@ export const SESSIONS = {
     'test-writer': 'tw-1',
     implementer: 'impl-1',
     'ticket-reviewer': 'rev-1',
-} as const
+    'architecture-lens': 'architecture-1',
+    'simplification-lens': 'simplification-1',
+    'security-lens': 'security-1',
+    'integration-lens': 'integration-1',
+    'rules-lens': 'rules-1',
+} as const satisfies Record<AgentRole, string>
 
 /** An agent turn started: a fresh launch, or a follow-up to `follow_up_of`. */
 export const agentStarted = ({
@@ -208,7 +214,7 @@ export const agentStarted = ({
     follow_up_of,
 }: {
     ticket: number
-    role: 'test-writer' | 'implementer' | 'ticket-reviewer'
+    role: AgentRole
     prompt?: string
     follow_up_of?: string
 }): JournalEntry => ({
@@ -479,7 +485,7 @@ export const agentFailed = ({
     session_id,
 }: {
     ticket: number
-    role: 'test-writer' | 'implementer' | 'ticket-reviewer'
+    role: AgentRole
     failure: 'agent' | 'result' | 'guard' | 'engine'
     /** Defaults to "It broke." */
     error?: string
@@ -675,7 +681,7 @@ export const agentSession = ({
     output_tokens,
 }: {
     ticket: number
-    role: 'test-writer' | 'implementer' | 'ticket-reviewer'
+    role: AgentRole
     rate_limit_events?: Record<string, unknown>[]
     billing_error?: boolean
     /** Defaults to 100; input tokens are always 10. */

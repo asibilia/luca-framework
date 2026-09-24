@@ -11,11 +11,14 @@ import type {
 import type { RejoinContext } from '../agents/role-prompts'
 import {
     isBlocking,
+    lensOf,
     type AgentRole,
     type BadTest,
     type Finding,
     type FindingResponse,
     type ImplementerResult,
+    type LensName,
+    type LensReviewResult,
     type TestWriterResult,
     type TicketReviewResult,
 } from '../agents/role-results'
@@ -189,6 +192,108 @@ export type TicketProgress = {
     stuck: { reason: StuckReason; detail: string } | null
 }
 
+/** A final review finding: its id namespaced as `<lens>-<id>`, and its lens. */
+export type FinalFinding = Finding & { lens: LensName }
+
+/** A finding declined in the final review, with the lens that let it go. */
+export type FinalDeclined = DeclinedFinding & { lens: LensName }
+
+/** A rule file for the rules lens, as the engine read it (`null`: unreadable). */
+export type RuleFile = { path: string; text: string | null }
+
+/** A failed agent turn no agent of that role finished after. */
+export type ReplayedAgentFailure = {
+    role: AgentRole
+    error: string
+    failure: AgentFailure
+    session_id: string | null
+}
+
+/**
+ * The open final review fix round: the blocking findings of every lens due
+ * in the round, and which fixers answered. Like a ticket's `ReviewFix`.
+ */
+export type FinalReviewFix = Omit<ReviewFix, 'findings'> & {
+    findings: FinalFinding[]
+}
+
+/**
+ * Where the final review stands, from its records: its round, the lenses
+ * due, each lens's result this round, the open fix round and its fixers,
+ * gates, commit, and push, and what goes in the PR. Ticket-less agent,
+ * gate, scan, commit, and push records belong here once
+ * `final_review_started` is journaled.
+ */
+export type FinalReviewState = {
+    /** 0 before the final review starts, then 1, 2, ... */
+    round: number
+    from_sha: string | null
+    head_sha: string | null
+    /** The files `git diff <from_sha>..<head_sha>` changes. */
+    files: string[]
+    /** The lenses due this round. */
+    lenses_due: LensName[]
+    rules: RuleFile[]
+    /** Each due lens's result this round, finding ids namespaced. */
+    results: Partial<Record<LensName, LensReviewResult>>
+    /** The open fix round; `null` before the first review settles or once clean. */
+    fix: FinalReviewFix | null
+    /** `final_review_fixing` is journaled for the open fix round. */
+    fixing_started: boolean
+    /** The session of each role's latest turn, for follow-ups. */
+    sessions: Partial<Record<AgentRole, string>>
+    /** Each role's failed turn, if no agent of that role finished after it. */
+    agent_failures: Partial<Record<AgentRole, ReplayedAgentFailure>>
+    /** Failed tries (agent, result, guard) per role, over the whole final review. */
+    failed_tries: Partial<Record<AgentRole, number>>
+    /** Engine failures in a row, per role. */
+    engine_failures: Partial<Record<AgentRole, number>>
+    /** The open fix round's gates, and its gate fix follow-ups. */
+    gates: ReplayedGates | null
+    gate_fix_rounds: number
+    /** The open fix round's leftover scan and commit. */
+    leftovers: LeftoverHit[] | null
+    commit: { sha: string; files: string[] } | null
+    /** The open fix round's push. */
+    pushed: string | null
+    /** Every nit the lenses reported, one per id. */
+    nits: FinalFinding[]
+    declined: FinalDeclined[]
+    /** Every assumption a final review agent made, oldest first. */
+    assumptions: string[]
+    passed: boolean
+    stuck: { reason: StuckReason; detail: string } | null
+    shipped: boolean
+}
+
+/** The final review before it starts. */
+export const EMPTY_FINAL_REVIEW: FinalReviewState = {
+    round: 0,
+    from_sha: null,
+    head_sha: null,
+    files: [],
+    lenses_due: [],
+    rules: [],
+    results: {},
+    fix: null,
+    fixing_started: false,
+    sessions: {},
+    agent_failures: {},
+    failed_tries: {},
+    engine_failures: {},
+    gates: null,
+    gate_fix_rounds: 0,
+    leftovers: null,
+    commit: null,
+    pushed: null,
+    nits: [],
+    declined: [],
+    assumptions: [],
+    passed: false,
+    stuck: null,
+    shipped: false,
+}
+
 /** The engine's install in a new worktree: `null` check means nothing to install. */
 export type ReplayedInstall = { check: GateCheck | null }
 
@@ -252,6 +357,9 @@ export type RunState = {
      * (journal order), word for word.
      */
     run_notes: ReplayedRunNote[]
+    /** The latest gates on the run branch: after a join, or a final review fix. */
+    run_branch_gates: ReplayedGates | null
+    final_review: FinalReviewState
     last_seq: number
 }
 
@@ -313,6 +421,8 @@ const EMPTY_STATE: RunState = {
     usage_recorded: { tickets: [], run: false },
     removed_worktrees: [],
     run_notes: [],
+    run_branch_gates: null,
+    final_review: EMPTY_FINAL_REVIEW,
     last_seq: 0,
 }
 
@@ -398,7 +508,8 @@ const notesAfter = ({
     record: Extract<JournalRecord, { kind: 'agent_finished' }>
 }): ReplayedRunNote[] => {
     const { ticket, content } = record
-    if (ticket === null || content.role === 'ticket-reviewer') {
+    // Reviewers (the ticket reviewer and the lenses) leave no run notes.
+    if (ticket === null || !('run_notes' in content.result)) {
         return state.run_notes
     }
     return [
@@ -418,7 +529,32 @@ const applyRecord = ({
     state: RunState
     record: JournalRecord
 }): RunState => {
-    const next = { ...state, last_seq: record.seq }
+    const base = { ...state, last_seq: record.seq }
+    const next =
+        record.kind === 'gates_run' && record.content.target === 'run_branch'
+            ? {
+                  ...base,
+                  run_branch_gates: {
+                      ok: record.content.ok,
+                      checks: record.content.checks,
+                  },
+              }
+            : base
+    const finalRecord = finalRecordOf({ state, record })
+    if (finalRecord !== null) {
+        const final_review = finalReviewAfter({
+            review: state.final_review,
+            record: finalRecord,
+        })
+        // A session's readings still count for the plan.
+        return record.kind === 'agent_session'
+            ? {
+                  ...next,
+                  final_review,
+                  plan: planAfter({ plan: state.plan, record }),
+              }
+            : { ...next, final_review }
+    }
     switch (record.kind) {
         case 'run_started':
             return {
@@ -517,10 +653,369 @@ const applyRecord = ({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
                 record,
             })
+        // Always the final review's (see finalRecordOf above).
+        case 'final_review_started':
+        case 'lens_started':
+        case 'lens_finished':
+        case 'final_review_fixing':
+        case 'final_review_stuck':
+        case 'final_review_passed':
+        case 'final_review_shipped':
+            return next
         default:
             return applyTicketRecord({ state: next, record })
     }
 }
+
+/** The final review's own kinds, and the kinds it shares with tickets. */
+type FinalRecord = Extract<
+    JournalRecord,
+    {
+        kind:
+            | 'final_review_started'
+            | 'lens_started'
+            | 'lens_finished'
+            | 'final_review_fixing'
+            | 'final_review_stuck'
+            | 'final_review_passed'
+            | 'final_review_shipped'
+            | 'agent_started'
+            | 'agent_finished'
+            | 'agent_failed'
+            | 'agent_session'
+            | 'gates_run'
+            | 'leftover_scan'
+            | 'commit_made'
+            | 'run_branch_pushed'
+    }
+>
+
+const FINAL_KINDS = new Set<JournalRecord['kind']>([
+    'final_review_started',
+    'lens_started',
+    'lens_finished',
+    'final_review_fixing',
+    'final_review_stuck',
+    'final_review_passed',
+    'final_review_shipped',
+])
+
+/** Kinds tickets journal too; ticket-less ones are the final review's once it started. */
+const SHARED_KINDS = new Set<JournalRecord['kind']>([
+    'agent_started',
+    'agent_finished',
+    'agent_failed',
+    'agent_session',
+    'gates_run',
+    'leftover_scan',
+    'commit_made',
+    'run_branch_pushed',
+])
+
+/**
+ * The record if it is the final review's, else `null`: one of its own
+ * kinds, or a ticket-less agent, gate, scan, commit, or push record once
+ * the final review started. Before that, ticket-less records keep their old
+ * meaning (such as the run branch's gates after a join).
+ */
+const finalRecordOf = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: JournalRecord
+}): FinalRecord | null => {
+    const mine =
+        FINAL_KINDS.has(record.kind) ||
+        (record.ticket === null &&
+            state.final_review.round > 0 &&
+            SHARED_KINDS.has(record.kind))
+    return mine ? (record as FinalRecord) : null
+}
+
+/**
+ * A lens's finding id, namespaced by its lens (`<lens>-<id>`), since lenses
+ * choose their ids on their own. An id that already starts with the lens's
+ * prefix is kept, so a re-review listing a finding again keeps its id.
+ */
+export const namespacedId = ({
+    lens,
+    id,
+}: {
+    lens: LensName
+    id: string
+}): string => (id.startsWith(`${lens}-`) ? id : `${lens}-${id}`)
+
+/** A lens's result with every finding and ruling id namespaced. */
+const namespaced = ({
+    lens,
+    result,
+}: {
+    lens: LensName
+    result: LensReviewResult
+}): LensReviewResult => ({
+    ...result,
+    findings: result.findings.map((entry) => ({
+        ...entry,
+        id: namespacedId({ lens, id: entry.id }),
+    })),
+    rulings: result.rulings.map((entry) => ({
+        ...entry,
+        finding_id: namespacedId({ lens, id: entry.finding_id }),
+    })),
+})
+
+/**
+ * The final review once every due lens finished its round: settles the
+ * last fix round's "won't fix" answers per lens (see `declinedBy`), keeps
+ * the nits, and opens a fix round on the blocking findings of every due
+ * lens, with its fixers, gates, commit, and push afresh (and fresh fixer
+ * sessions). No blocking finding leaves `fix` null: the review is clean.
+ */
+const settleRound = ({
+    review,
+}: {
+    review: FinalReviewState
+}): FinalReviewState => {
+    const due = review.lenses_due.flatMap((lens) => {
+        const result = review.results[lens]
+        return result === undefined ? [] : [{ lens, result }]
+    })
+    const tagged = (lens: LensName, findings: Finding[]): FinalFinding[] =>
+        findings.map((entry) => ({ ...entry, lens }))
+    const declined = due.flatMap(({ lens, result }) =>
+        declinedBy({
+            fix:
+                review.fix === null
+                    ? null
+                    : {
+                          ...review.fix,
+                          findings: review.fix.findings.filter(
+                              (entry) => entry.lens === lens
+                          ),
+                      },
+            review: result,
+        }).map((entry) => ({ ...entry, lens }))
+    )
+    const nits = due.flatMap(({ lens, result }) =>
+        tagged(
+            lens,
+            result.findings.filter((entry) => !isBlocking(entry))
+        )
+    )
+    const blocking = due.flatMap(({ lens, result }) =>
+        tagged(lens, result.findings.filter(isBlocking))
+    )
+    const settled: FinalReviewState = {
+        ...review,
+        declined: [...review.declined, ...declined],
+        nits: [
+            ...review.nits,
+            ...nits.filter(
+                (entry, index) =>
+                    !review.nits.some(({ id }) => id === entry.id) &&
+                    nits.findIndex(({ id }) => id === entry.id) === index
+            ),
+        ],
+    }
+    if (blocking.length === 0) return { ...settled, fix: null }
+    return {
+        ...settled,
+        fix: {
+            round: review.round,
+            findings: blocking,
+            tests_answered: !blocking.some(({ kind }) => kind === 'test'),
+            code_answered: !blocking.some(({ kind }) => kind === 'code'),
+            responses: [],
+            bad_test: null,
+        },
+        fixing_started: false,
+        sessions: omit(review.sessions, ['test-writer', 'implementer']),
+        gates: null,
+        gate_fix_rounds: 0,
+        leftovers: null,
+        commit: null,
+        pushed: null,
+    }
+}
+
+/** A fixer's bad test, or the implementer's summary as its reason. */
+const badTestOf = (result: ImplementerResult): BadTest | null =>
+    result.outcome === 'bad_test'
+        ? (result.bad_test ?? { file: '', name: '', reason: result.summary })
+        : null
+
+/**
+ * Where a finished agent's result goes in the final review: a lens's
+ * result this round (settling the round once every due lens finished), or
+ * a fixer's answer to the open fix round. An implementer result after
+ * failed gates answers a gate fix round, like a ticket's.
+ */
+const finalResultChange = ({
+    review,
+    finished,
+}: {
+    review: FinalReviewState
+    finished: FinishedContent
+}): FinalReviewState => {
+    const lens = lensOf({ role: finished.role })
+    const { fix } = review
+    if (lens !== null && 'verdict' in finished.result) {
+        if (!review.lenses_due.includes(lens)) return review
+        const next = {
+            ...review,
+            results: {
+                ...review.results,
+                [lens]: namespaced({ lens, result: finished.result }),
+            },
+        }
+        const pending = next.lenses_due.some(
+            (due) => next.results[due] === undefined
+        )
+        return pending ? next : settleRound({ review: next })
+    }
+    if (finished.role === 'test-writer') {
+        if (fix === null || fix.tests_answered) return review
+        return {
+            ...review,
+            fix: {
+                ...fix,
+                tests_answered: true,
+                responses: [
+                    ...fix.responses,
+                    ...finished.result.finding_responses,
+                ],
+            },
+        }
+    }
+    if (finished.role === 'implementer') {
+        const { result } = finished
+        if (fix !== null && fix.tests_answered && !fix.code_answered) {
+            return {
+                ...review,
+                fix: {
+                    ...fix,
+                    code_answered: true,
+                    responses: [...fix.responses, ...result.finding_responses],
+                    bad_test: badTestOf(result),
+                },
+            }
+        }
+        if (review.gates === null) return review
+        return {
+            ...review,
+            gates: null,
+            gate_fix_rounds: review.gate_fix_rounds + 1,
+        }
+    }
+    return review
+}
+
+/** The final review after one of its records. */
+const finalReviewAfter = ({
+    review,
+    record,
+}: {
+    review: FinalReviewState
+    record: FinalRecord
+}): FinalReviewState => {
+    switch (record.kind) {
+        case 'final_review_started': {
+            const { round, from_sha, head_sha, lenses, files, rules } =
+                record.content
+            return {
+                ...review,
+                round,
+                from_sha,
+                head_sha,
+                files,
+                lenses_due: lenses,
+                rules,
+                results: {},
+            }
+        }
+        case 'lens_started':
+        case 'lens_finished':
+        case 'agent_started':
+        case 'agent_session':
+            return review
+        case 'final_review_fixing':
+            return review.fix !== null && record.content.round === review.fix.round
+                ? { ...review, fixing_started: true }
+                : review
+        case 'final_review_stuck':
+            return { ...review, stuck: record.content }
+        case 'final_review_passed':
+            return { ...review, passed: true }
+        case 'final_review_shipped':
+            return review.stuck === null ? review : { ...review, shipped: true }
+        case 'agent_finished': {
+            const finished = record.content
+            const { role } = finished
+            return finalResultChange({
+                review: {
+                    ...review,
+                    agent_failures: omit(review.agent_failures, role),
+                    engine_failures: omit(review.engine_failures, role),
+                    sessions: sessionsAfter({
+                        sessions: review.sessions,
+                        role,
+                        session_id: finished.session_id,
+                    }),
+                    assumptions: [
+                        ...review.assumptions,
+                        ...finished.result.assumptions,
+                    ],
+                },
+                finished,
+            })
+        }
+        case 'agent_failed': {
+            const { role, error, failure, session_id } = record.content
+            const agent_failures = {
+                ...review.agent_failures,
+                [role]: { role, error, failure, session_id },
+            }
+            if (failure === 'engine') {
+                return {
+                    ...review,
+                    agent_failures,
+                    engine_failures: {
+                        ...review.engine_failures,
+                        [role]: (review.engine_failures[role] ?? 0) + 1,
+                    },
+                }
+            }
+            return {
+                ...review,
+                agent_failures,
+                engine_failures: omit(review.engine_failures, role),
+                failed_tries: {
+                    ...review.failed_tries,
+                    [role]: (review.failed_tries[role] ?? 0) + 1,
+                },
+            }
+        }
+        case 'gates_run':
+            return {
+                ...review,
+                gates: { ok: record.content.ok, checks: record.content.checks },
+            }
+        case 'leftover_scan':
+            return { ...review, leftovers: record.content.hits }
+        case 'commit_made':
+            return {
+                ...review,
+                commit: {
+                    sha: record.content.sha,
+                    files: record.content.files,
+                },
+            }
+        case 'run_branch_pushed':
+            return { ...review, pushed: record.content.sha }
+    }
+}
+
 type TicketRecord = Exclude<
     JournalRecord,
     {
@@ -544,6 +1039,13 @@ type TicketRecord = Exclude<
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
+            | 'final_review_started'
+            | 'lens_started'
+            | 'lens_finished'
+            | 'final_review_fixing'
+            | 'final_review_stuck'
+            | 'final_review_passed'
+            | 'final_review_shipped'
     }
 >
 
@@ -645,6 +1147,9 @@ const resultChange = ({
         }
         case 'ticket-reviewer':
             return reviewChange({ progress, review: finished.result, seq })
+        // Lenses review the run branch, never a ticket.
+        default:
+            return {}
     }
 }
 
@@ -656,7 +1161,7 @@ const declinedBy = ({
     fix,
     review,
 }: {
-    fix: ReviewFix | null
+    fix: Pick<ReviewFix, 'findings' | 'responses'> | null
     review: TicketReviewResult
 }): DeclinedFinding[] => {
     if (fix === null) return []

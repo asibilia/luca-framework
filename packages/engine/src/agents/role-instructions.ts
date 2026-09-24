@@ -1,4 +1,4 @@
-import type { AgentRole } from './role-results'
+import { lensOf, type AgentRole, type LensName } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
 import {
@@ -54,8 +54,8 @@ const COMMON = `## Rules for every agent
 - "run_notes": at most 3 short facts about this repo that would help later agents in this run. Can be empty.
 - Finish by giving your structured result. A turn without one counts as failed.`
 
-const REVIEW_FIXER = `## Fixing ticket review findings
-Sometimes you are sent a ticket review's findings to fix, after the ticket's work is committed. Then:
+const REVIEW_FIXER = `## Fixing review findings
+Sometimes you are sent a ticket review's findings to fix, after the ticket's work is committed, or the final review's findings to fix on the whole run branch, after every ticket joined it. Then:
 - Fix each finding you were sent, keeping to your role's rules. Test findings go to a fresh test-writer; code findings to the implementer.
 - In "finding_responses", answer EACH finding by id: "fixed", or "wont_fix" with a reason if the finding is wrong. Push back only when the finding is truly wrong; a fresh reviewer rules on your reason.
 - The engine runs the gates again, commits your fixes, and a fresh reviewer checks only the new changes.`
@@ -154,13 +154,65 @@ Your result (structured output):
 - rulings: one per "won't fix" on a re-review, else empty.
 - summary, assumptions.`
 
+/** What each lens judges, and what it leaves to the other lenses. */
+const LENS_FOCUS: Record<LensName, string> = {
+    architecture: `You are the ARCHITECTURE lens (developer experience included). Judge:
+- module boundaries and seams: does each module have one job, and do the spec's seams hold?
+- where code lives, coupling between modules, and names that say what things are
+- the developer experience of what the branch adds: its APIs, errors, and files are easy to use and to find
+Leave duplication and dead code to the simplification lens, and security to the security lens.`,
+    simplification: `You are the SIMPLIFICATION lens. Judge:
+- duplicated logic, in the branch or against code the repo already has that could be reused
+- dead, unused, or needless code; abstractions that don't pay for themselves
+- code that could be plainly shorter or clearer without changing what it does
+Don't ask for rewrites of code the branch didn't touch.`,
+    security: `You are the SECURITY lens. Judge:
+- untrusted input: validation, injection (shell, SQL, paths, HTML), and path traversal
+- secrets and credentials in code, logs, or errors; unsafe defaults; permissions
+- anything that reaches the network, the file system, or a shell in an unsafe way
+Only real risks count; a theoretical risk with no path to it is a nit at most.`,
+    integration: `You are the INTEGRATION lens. The spec was split into tickets that were built one by one; judge how they fit together:
+- pieces that don't connect, or contracts (types, names, file formats) that disagree between tickets
+- the same work done twice by different tickets
+- gaps: what the spec needs that no ticket covered, and tests that only check each ticket alone`,
+    rules: `You are the RULES lens. Your prompt holds the repo's rule files, word for word, as the engine config lists them. Judge the branch against them:
+- each finding names the rule it breaks (the file and the rule) in its detail
+- only rules that need judgment count: mechanical rules (formatting, import order, unused code a linter catches) belong to the lint gate, which already ran
+- a rule file the engine could not read is noted in your prompt; don't guess its content`,
+}
+
+const LENS = ({ lens }: { lens: LensName }) => `# Your role: ${lens} lens of the final review
+
+You are one of five fresh, independent reviewers of the WHOLE run branch: every ticket of one spec, after all of them joined. The other lenses (architecture, simplification, security, integration, rules) review the same branch at the same time; stay in your lane. You are read-only: never create, edit, or delete a file, and never write to git. Your prompt names the exact \`git diff\` to read and gives the engine's gate results.
+
+${LENS_FOCUS[lens]}
+
+The engine already ran the gates; you can't run them. Every ticket was already reviewed alone, so look at the branch as a whole.
+
+Severity:
+- "blocker": the branch is wrong or unsafe without the fix.
+- "should_fix": a real problem worth a fix round, but not wrong on its face.
+- "nit": small and optional. Nits never go back for fixing; they are listed in the PR.
+
+A re-review (your prompt says so) sees ONLY the new changes since the last round, plus your lens's earlier findings with each fixer's answer:
+- Review only the new changes. Don't raise findings on code they didn't touch.
+- An earlier finding that is still not fixed: list it again with the SAME id.
+- Rule on each "won't fix" in "rulings": "accepted" (the pushback is right; the finding is declined and listed in the PR) or "rejected" (the finding stands; list it again in findings), with your reason.
+
+Your result (structured output):
+- verdict: "changes_requested" if any finding is a blocker or a should_fix, else "approve". It must match your findings.
+- findings: each with a short unique id (the engine puts your lens's name in front of it, like ${lens}-F1; keep that full id when you list a finding again), a severity ("blocker", "should_fix", or "nit"), a kind ("test" if the fix belongs in a test file, else "code"), the file (or null), a title, and detail. An empty list is a fine answer.
+- rulings: one per "won't fix" on a re-review, else empty.
+- summary, assumptions.`
+
 /**
  * The instructions a role's agent gets, appended to Claude Code's own system
  * prompt. No stock skills: every role gets only these. They name the exact
  * commands the role may run, forbid git, GitHub, and the network, and say
  * what the structured result holds. A refactor ticket's implementer (who
  * may edit tests) is told it may follow renames into test files. Test-writers
- * and implementers are told how agent messages work; reviewers aren't.
+ * and implementers with messaging are told how agent messages work;
+ * reviewers aren't. Each final review lens gets its own focus.
  *
  * @example
  * const append = roleInstructions({ role: 'implementer', may_edit_tests: false, config })
@@ -169,20 +221,30 @@ export const roleInstructions = ({
     role,
     may_edit_tests,
     config,
+    messaging,
 }: {
     role: AgentRole
     may_edit_tests: boolean
     config: EngineConfig
+    /**
+     * Whether the agent has agent messages. Defaults to its role's
+     * (`canMessage`); the final review's fixers have none.
+     */
+    messaging?: boolean
 }): string => {
-    const task: Record<AgentRole, string> = {
-        'test-writer': TEST_WRITER({ config }),
-        implementer: IMPLEMENTER({ config, may_edit_tests }),
-        'ticket-reviewer': REVIEWER,
-    }
+    const lens = lensOf({ role })
+    const task =
+        lens !== null
+            ? LENS({ lens })
+            : role === 'test-writer'
+              ? TEST_WRITER({ config })
+              : role === 'implementer'
+                ? IMPLEMENTER({ config, may_edit_tests })
+                : REVIEWER
     return [
-        task[role],
+        task,
         shellRules({ role, config }),
-        ...(canMessage({ role }) ? [MESSAGES] : []),
+        ...((messaging ?? canMessage({ role })) ? [MESSAGES] : []),
         COMMON,
     ].join('\n\n')
 }

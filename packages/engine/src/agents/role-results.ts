@@ -1,13 +1,65 @@
 import { z } from 'zod'
 
-/** The roles an agent can play while a ticket is built. */
+/**
+ * The final review's **lenses**, in the order the board shows them. Each is
+ * its own role (`<lens>-lens`), so every agent record names its lens and
+ * failed tries count per lens.
+ */
+export const LENS_NAMES = [
+    'architecture',
+    'simplification',
+    'security',
+    'integration',
+    'rules',
+] as const
+
+export const LensNameSchema = z.enum(LENS_NAMES)
+
+export type LensName = z.infer<typeof LensNameSchema>
+
+/** The five lens roles of the final review, one per lens. */
+export const LENS_ROLES = [
+    'architecture-lens',
+    'simplification-lens',
+    'security-lens',
+    'integration-lens',
+    'rules-lens',
+] as const
+
+export type LensRole = (typeof LENS_ROLES)[number]
+
+/**
+ * The roles an agent can play: the ticket roles while a ticket is built, and
+ * one reviewer role per lens in the final review. The final review's fixers
+ * are the test-writer and the implementer.
+ */
 export const AgentRoleSchema = z.enum([
     'test-writer',
     'implementer',
     'ticket-reviewer',
+    ...LENS_ROLES,
 ])
 
 export type AgentRole = z.infer<typeof AgentRoleSchema>
+
+/**
+ * A lens's role.
+ *
+ * @example
+ * lensRole({ lens: 'security' }) // 'security-lens'
+ */
+export const lensRole = ({ lens }: { lens: LensName }): LensRole =>
+    `${lens}-lens`
+
+/**
+ * The lens a role reviews through, or `null` for a role that is no lens.
+ *
+ * @example
+ * lensOf({ role: 'rules-lens' }) // 'rules'
+ * lensOf({ role: 'implementer' }) // null
+ */
+export const lensOf = ({ role }: { role: AgentRole }): LensName | null =>
+    LENS_NAMES.find((lens) => lensRole({ lens }) === role) ?? null
 
 /** One test, named as the test runner prints it. */
 export const TestRefSchema = z.object({
@@ -140,6 +192,17 @@ export const TicketReviewResultSchema = z.object({
 
 export type TicketReviewResult = z.infer<typeof TicketReviewResultSchema>
 
+/**
+ * A final review lens's result: the same fields as a ticket review's. The
+ * verdict must match the findings here too.
+ */
+export const LensReviewResultSchema = TicketReviewResultSchema
+
+export type LensReviewResult = z.infer<typeof LensReviewResultSchema>
+
+const lensResult = <Role extends LensRole>(role: Role) =>
+    z.object({ role: z.literal(role), result: LensReviewResultSchema })
+
 /** A finished agent's result, tagged with its role. */
 export const RoleResultSchema = z.discriminatedUnion('role', [
     z.object({
@@ -154,6 +217,11 @@ export const RoleResultSchema = z.discriminatedUnion('role', [
         role: z.literal('ticket-reviewer'),
         result: TicketReviewResultSchema,
     }),
+    lensResult('architecture-lens'),
+    lensResult('simplification-lens'),
+    lensResult('security-lens'),
+    lensResult('integration-lens'),
+    lensResult('rules-lens'),
 ])
 
 export type RoleResult = z.infer<typeof RoleResultSchema>
@@ -180,15 +248,17 @@ export const parseRoleResult = ({
             error: `The ${role}'s result does not fit its schema:\n${z.prettifyError(parsed.error)}`,
         }
     }
-    if (parsed.data.role === 'ticket-reviewer') {
-        const { verdict, findings } = parsed.data.result
+    // Every reviewer (the ticket reviewer and each lens) gives a verdict.
+    const { result } = parsed.data
+    if ('verdict' in result) {
+        const { verdict, findings } = result
         const expected = findings.some(isBlocking)
             ? 'changes_requested'
             : 'approve'
         if (verdict !== expected) {
             return {
                 ok: false,
-                error: `The ticket-reviewer's verdict "${verdict}" does not match its findings: it must be "${expected}" (changes are requested exactly when a finding is a blocker or a should_fix).`,
+                error: `The ${role}'s verdict "${verdict}" does not match its findings: it must be "${expected}" (changes are requested exactly when a finding is a blocker or a should_fix).`,
             }
         }
     }

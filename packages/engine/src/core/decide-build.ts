@@ -7,6 +7,12 @@ import {
     gateFixMessage,
     redFixMessage,
 } from './fix-loop-text'
+import {
+    MAX_BAD_TEST_BOUNCES,
+    MAX_ENGINE_FAILURES,
+    MAX_FIX_ROUNDS,
+    MAX_REJOINS,
+} from './loop-caps'
 import { pullRequestText } from './pull-request-text'
 import {
     openFindingsText,
@@ -35,31 +41,12 @@ import {
 } from '../journal/replay'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
-/**
- * Follow-ups an agent gets to fix a failed red check or failed gates, after
- * its first try. A failure after the last follow-up makes the ticket stuck.
- */
-export const MAX_FIX_ROUNDS = 3
-
-/**
- * Times an implementer may send a test back as bad, each to a fresh
- * test-writer. The bounce after these makes the ticket stuck.
- */
-export const MAX_BAD_TEST_BOUNCES = 1
-
-/**
- * Engine failures in a row (the SDK crashed, or a follow-up's session was
- * gone) after which a ticket is stuck. Each one before it starts a fresh
- * agent without using up a try.
- */
-export const MAX_ENGINE_FAILURES = 3
-
-/**
- * Times a joined ticket may be sent back onto the run branch, after a clash
- * or failed gates after joining. The clash or failed join after these makes
- * the ticket stuck.
- */
-export const MAX_REJOINS = MAX_FIX_ROUNDS
+export {
+    MAX_BAD_TEST_BOUNCES,
+    MAX_ENGINE_FAILURES,
+    MAX_FIX_ROUNDS,
+    MAX_REJOINS,
+} from './loop-caps'
 
 /**
  * How many run notes a fresh agent is handed: the newest ones in the run,
