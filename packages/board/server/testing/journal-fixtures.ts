@@ -654,6 +654,33 @@ export const ticketJoined = ({ ticket }: { ticket: number }): Entry =>
         content: { ok: true, shas: ['r1', 'g1'] },
     })
 
+export const joinClashed = ({ ticket }: { ticket: number }): Entry =>
+    entry({
+        kind: 'ticket_joined',
+        ticket,
+        content: { ok: false, error: 'CONFLICT (content): src/index.ts' },
+    })
+
+export const ticketRebased = ({
+    ticket,
+    cause,
+    tests = [],
+    code = [],
+}: {
+    ticket: number
+    cause: 'clash' | 'join_gates'
+    tests?: string[]
+    code?: string[]
+}): Entry =>
+    entry({
+        kind: 'ticket_rebased',
+        ticket,
+        content: { cause, base_sha: 'onto', tests, code, undone: [] },
+    })
+
+export const worktreesRemoved = ({ paths }: { paths: string[] }): Entry =>
+    entry({ kind: 'worktrees_removed', content: { paths } })
+
 export const runBranchPushed = ({ ticket }: { ticket: number }): Entry =>
     entry({
         kind: 'run_branch_pushed',

@@ -20,7 +20,7 @@ export { makePracticeRepo }
 /** The practice spec's issue number. Its tickets are #11 and #12. */
 export const PRACTICE_SPEC_NUMBER = 10
 
-const AVERAGE_TEST = `import { describe, expect, test } from 'bun:test'
+export const AVERAGE_TEST = `import { describe, expect, test } from 'bun:test'
 
 import { average } from './average'
 
@@ -35,7 +35,7 @@ describe('average', () => {
 })
 `
 
-const AVERAGE = `import { sum } from './sum'
+export const AVERAGE = `import { sum } from './sum'
 
 export const average = ({ numbers }: { numbers: number[] }): number =>
     numbers.length === 0 ? 0 : sum({ numbers }) / numbers.length

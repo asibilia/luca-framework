@@ -9,10 +9,12 @@ This package covers the start of a run (#360): the engine config, the
 scripted stand-in **agents**, up to the run's one pull request, with capped
 **fix loops** for a failed red check, failed gates, and a bad test (#363), and
 runs real Claude agents under the **guard** (#362). A fresh reviewer checks
-each ticket, with a capped review fix loop (#364). And it sends its journal to
-the Paseo board plugin, and has a command line, `luca-run` (#374). A hit plan
-limit is a **limit wait**, any sign of per-token billing stops the run for
-good, and usage is journaled per ticket and per run (#368).
+each ticket, with a capped review fix loop (#364). It builds a spec's tickets
+at the same time, joins them to the **run branch** one at a time, and fixes a
+clash on top of the run branch (#365). And it sends its journal to the Paseo
+board plugin, and has a command line, `luca-run` (#374). A hit plan limit is
+a **limit wait**, any sign of per-token billing stops the run for good, and
+usage is journaled per ticket and per run (#368).
 
 ## Modules
 
@@ -23,17 +25,17 @@ good, and usage is journaled per ticket and per run (#368).
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
-| `src/core/decide.ts` | **The decision step.** Pure: journal in, next action out. |
-| `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, then the PR. |
+| `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
+| `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
 | `src/limits/plan-usage.ts` | Pure: a ticket's or the run's tokens and plan-window movement. |
 | `src/limits/limit-wait.ts` | The engine's clock, waiting until a time, and the spec's limit-wait comment. |
-| `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, or a failed try's error. |
-| `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings, and what each review fixer is sent. |
+| `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
+| `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
 | `src/core/pull-request-text.ts` | The PR title and body: the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings. |
-| `src/core/execute.ts` | Carries out an action (tracker calls, journal appends) and the `runEngine` loop. |
+| `src/core/execute.ts` | Carries out an action (tracker calls, journal appends), and `runEngine`: the scheduler that runs tickets' steps at the same time. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. |
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
@@ -41,13 +43,13 @@ good, and usage is journaled per ticket and per run (#368).
 | `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt. |
 | `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act, return a result or a failure, and record each launch and follow-up with its session. |
 | `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
-| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids). |
+| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids), and its section after a clash: the clashed tests, the clashed code, or "re-review only the new changes". |
 | `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`). |
 | `src/guards/guard-hook.ts` | The guard as the SDK's `PreToolUse` hook. |
 | `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths. |
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
-| `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. |
-| `src/git/git-adapter.ts` | Every git side effect: worktrees, commits, throwing away uncommitted work, replaying onto the run branch, pushes. |
+| `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
+| `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
 | `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. First, the install when a manifest changed. |
@@ -60,6 +62,7 @@ good, and usage is journaled per ticket and per run (#368).
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
 | `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). |
+| `src/testing/many-tickets.ts` | The many-ticket practice runs: three tickets, two at once with a clash and one waiting on both (`SUM_PRODUCT_AVERAGE`); two tickets that break each other's gates after joining (`BROKEN_JOIN`); a plan limit with two tickets in flight (`LIMIT_HIT`); and a rebase across a new dependency (`REINSTALL`). |
 | `src/jev/jev-schemas.ts` | Jev's questions, requests, and answers, and the engine's fixed choices, as Zod schemas. |
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
 | `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
@@ -83,7 +86,7 @@ startRun ──> run_started
 
 create_run_branch       git: worktree for the run branch, from the base ──> run_branch_created
 install_dependencies    bun install --frozen-lockfile, if there's a package.json ──> dependencies_installed
-for each ticket, one at a time, in snapshot order:
+for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
@@ -104,12 +107,91 @@ for each ticket, one at a time, in snapshot order:
       run_gates ticket            (and the gate fix loop)
       commit_ticket fix           leftover scan, then commit             ──> leftover_scan, commit_made
       launch_agent ticket-reviewer  (fresh) only the new changes and the earlier findings
+  then it waits in the join queue; one ticket joins at a time, in the order their reviews finally approved:
   join_run_branch         git: cherry-pick the ticket's commits          ──> ticket_joined
   run_gates run_branch    the gates again, on the joined run branch      ──> gates_run
   push_run_branch         git: push to origin                            ──> run_branch_pushed
+    a clash, or failed gates after joining (≤ 3 times, then stuck):
+      rebase_ticket       git: undo the join if its gates failed, then put the
+                          ticket's whole change on the run branch's tip,
+                          uncommitted, conflict markers kept              ──> ticket_rebased
+      clashed tests: launch_agent test-writer (fresh, told the files)
+      clashed code:  follow_up_agent implementer (same session, told the files)
+      then run_gates ticket (and its fix loop), one commit_ticket green,
+      a fresh launch_agent ticket-reviewer (re-review only the new changes),
+      and the join again
 open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
+remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 ```
+
+**Many tickets at once.** `decideSteps` returns every action that can run
+now, at most one per ticket, and `runEngine` schedules them: it starts what
+it can, waits for any one to settle, and decides again from the journal.
+What may run together: one action per ticket; a run-level action (intake,
+the run branch, the PR, removing worktrees) only alone; and one action on the
+run branch at a time (a new worktree, a join, its gates, a push, a rebase). A
+ticket starts from the run branch's tip once every ticket it waits on has
+pushed, and only while no ticket waits to join, so it never builds on joined
+commits whose gates haven't passed yet. Its join-queue place is the seq of
+the review that **finally** approved it, after any review fix rounds.
+`max_steps` counts started actions; if one action throws (such as a launcher
+stop), the others are let finish, then the error is thrown.
+
+**Plan limits with many tickets.** A limit wait and a billing stop are the
+whole run's: while one is due, `decideSteps` returns only it, so no ticket
+starts a step. The scheduler lets everything in flight settle first (other
+tickets' turns may be cut off by the plan too, journaling only their
+sessions), then waits once. After it, every ticket takes the step the plan
+cut off again, with the same prompt, using no round or try. A billing stop
+also waits for what is in flight, then records the run's usage and ends the
+run for good (its worktrees stay). Usage is recorded for each ticket as it
+pushes or gets stuck, beside the other tickets' steps, and for the run just
+before it ends, after its worktrees are removed.
+
+**A clash on the run branch.** A join that clashes (git aborts the
+cherry-pick), or gates that fail after joining, don't make the ticket stuck
+at once. `rebase_ticket` undoes a join whose gates failed (the run branch is
+reset to before its first commit), resets the ticket's worktree to the run
+branch's tip, and applies the ticket's whole diff there with a three-way
+merge (`git apply --3way`), all uncommitted, with conflict markers in the
+files that clash. `ticket_rebased` names them, split into `tests` and `code`
+by the config's test file patterns. Clashed tests go to a fresh test-writer
+and clashed code to the implementer's session, each told the files; neither
+answer counts as a fix round. Then the gates run in the worktree (after a
+failed join, they fail again, and go through the gate fix loop), the ticket's
+change becomes **one** commit (`fix: rejoin #n <title> onto the run branch`;
+its old red and green commits are left behind), a fresh reviewer re-reviews
+only the new changes, and the ticket joins again. A ticket is rebased at most
+`MAX_REJOINS` (3) times; the next clash is stuck (`join_failed`), and so are
+failed gates after joining (`join_gates_failed`). A bad test while fixing on
+the run branch is stuck too: resetting the worktree would throw the ticket's
+change away.
+
+After a rebase the ticket review starts over: the first reviewer on top of
+the run branch gets the review's own re-review section (only the changes
+that fixed the clash or the failed gates, with what clashed and the earlier
+findings), and its findings open review fix rounds as usual, counted from
+zero, with their own `fix` commits. Nits and declined findings stay for the
+PR. The ticket's diff that moves is everything up to its latest commit (a
+review fix round's, or its green one).
+
+**Installs after a rebase (#388).** When the dependency files (a
+`package.json`, `bun.lock`) differ between the ticket's old base and the run
+branch's tip, and the ticket's own change touches no manifest,
+`ticket_rebased` says `reinstall: true` and the worktree gets its
+`bun install --frozen-lockfile` again (`install_dependencies`) before anything
+else runs there. A ticket that changes a manifest gets the install in its
+gates, as always. Undoing a join whose commits changed dependency files runs
+the frozen install on the run branch's checkout again
+(`dependencies_installed`, target `run_branch`); a failed one is stuck
+(`install_failed`).
+
+**Cleaning up.** Once the PR is open, every ticket's worktree and the run
+branch's are removed (`git worktree remove --force`, then `git worktree
+prune`). When a ticket is stuck, the run ends as today, but first the
+worktrees of the tickets that pushed are removed; the stuck ticket keeps its
+worktree for a later retry (#366). Branches and the journal always stay.
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
@@ -182,10 +264,11 @@ Nits never go back. They stay in the reviewers' `agent_finished` records,
 and the PR description lists every nit (one per id) and every declined
 finding with the fixer's and the reviewer's reasons.
 
-Anything else that fails (the leftover scan, the join), a fix loop or failed
-tries at their cap, a second bad test, or a test-writer with nothing new to
-test becomes `mark_stuck` ──> `ticket_stuck` with its reason, and the run
-ends without a PR. Many tickets at once (#365) builds on this.
+Anything else that fails (the leftover scan, a join after its last rebase),
+a fix loop or failed tries at their cap, a second bad test, or a test-writer
+with nothing new to test becomes `mark_stuck` ──> `ticket_stuck` with its
+reason. Once a ticket is stuck, no other ticket starts or moves on, and the
+run ends without a PR. Replies to a stuck ticket (#366) build on this.
 
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
@@ -424,9 +507,10 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
 3. **After the turn.** The engine, not the launcher, compares the worktree
    and its git state with a snapshot from right before the turn (content
    hashes, never mtimes), ignored files that matter included. Any path the
-   agent may not write, or any git change (HEAD, the branch, other refs at
-   HEAD, the branch's stash, the index, `.git/config`, `.git/info/exclude`,
-   `.git/hooks`), is undone and fails the turn as `guard`.
+   agent may not write, or any git change (HEAD, the branch, new refs at
+   HEAD other than the run branch and its ticket branches, the branch's
+   stash, the index, `.git/config`, `.git/info/exclude`, `.git/hooks`), is
+   undone and fails the turn as `guard`.
    This holds for every launcher and every turn, follow-ups too.
 
 Before each launch, the launcher checks `accountInfo()` for a Claude plan
@@ -510,7 +594,7 @@ records, so the run goes exactly as it would without Jev.
 
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
-| `ticket_order` | Before a ticket's worktree: which ticket next? | The ticket it is starting. |
+| `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
 | `ticket_model` | Before a ticket's worktree: which model? | `claude-opus-5-5`. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
@@ -531,6 +615,8 @@ await runEngine({ journal, tracker, git, launcher, jev: { client: createTypeSafe
 ```
 
 Leave `jev` out to run without Jev; the journal is then exactly as before.
+With many tickets at once, the asks after a step look only at the new
+records of that step's own ticket.
 
 ## Tests
 
@@ -559,6 +645,26 @@ round cap, and a verdict that disagrees with its findings.
 `src/core/agent-guards.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
 and retries that follow.
+`src/core/run-many-tickets.test.ts` runs three tickets through
+`src/testing/many-tickets.ts`: #11 and #12 build at the same time (each
+test-writer waits until the other has started), #12 finishes and joins first,
+#11 clashes on `src/index.ts`, is fixed on top of the run branch, re-reviewed,
+and joins, and #13 starts only after both pushed. It checks the order of the
+joins, the follow-up and re-review prompts, origin's run branch, and that the
+worktrees are gone. A second run with a Jev that always picks another ticket
+shows its pick journaled and ignored. `src/core/run-broken-join.test.ts` runs
+`BROKEN_JOIN`: #21 adds `double` on top of `helper` in `src/util.ts`, and
+#22 renames `helper`, so both pass alone and git sees no clash, but the
+types gate fails on the run branch after #22 joins. The join is undone (the
+run branch goes back to #21's push, and origin never gets the broken
+commits), #22 is fixed on top through the gate fix loop, re-reviewed, and
+joins. `src/core/run-limit-many-tickets.test.ts` hits a plan limit while
+#11's and #12's test-writers are both in flight: one wait (by a fake clock),
+then both launch again with the same prompts and the run builds to its PR.
+`src/core/run-rebase-reinstall.test.ts` rebases a ticket across another's
+new workspace dependency and checks the moved worktree's frozen install.
+`src/core/decide-many-tickets.test.ts` covers the same rules at the decision
+step, limits and billing stops with two tickets in flight included.
 
 `src/agents/claude-launcher.test.ts` drives the real launcher with a fake
 `query` that plays back SDK messages, follow-ups included.

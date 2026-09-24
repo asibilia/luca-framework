@@ -24,7 +24,7 @@ export {
     resultJsonSchema,
 } from './agents/claude-options'
 export { roleInstructions } from './agents/role-instructions'
-export { rolePrompt } from './agents/role-prompts'
+export { rolePrompt, type RejoinContext } from './agents/role-prompts'
 export * from './agents/role-results'
 export {
     createScriptedLauncher,
@@ -53,13 +53,14 @@ export {
     type EngineConfig,
     type LoadEngineConfigResult,
 } from './config/engine-config'
-export { decide, type EngineAction } from './core/decide'
+export { decide, decideSteps, type EngineAction } from './core/decide'
 export {
     decideBuild,
     isRefactorTicket,
     MAX_BAD_TEST_BOUNCES,
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
+    MAX_REJOINS,
     mayEditTests,
     type BuildAction,
 } from './core/decide-build'
@@ -72,6 +73,7 @@ export {
     failedChecks,
     failedTryMessage,
     gateFixMessage,
+    clashFixMessage,
     redFixMessage,
 } from './core/fix-loop-text'
 export { pullRequestText } from './core/pull-request-text'
@@ -168,6 +170,7 @@ export {
     replayRun,
     EMPTY_TICKET_PROGRESS,
     type ReplayedRedCheck,
+    type ReplayedRejoin,
     type ReplayedSnapshot,
     type ReplayedWorktree,
     type RunPhase,

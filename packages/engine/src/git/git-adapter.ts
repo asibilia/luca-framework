@@ -1,3 +1,8 @@
+import { existsSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import sortBy from 'lodash/sortBy'
 import uniq from 'lodash/uniq'
 
@@ -36,6 +41,12 @@ export type GitAdapter = {
      * included.
      */
     changedSince: (args: { cwd: string; from: string }) => Promise<string[]>
+    /** Paths that differ between two commits. */
+    filesBetween: (args: {
+        cwd: string
+        from: string
+        to: string
+    }) => Promise<string[]>
     /** Tracked and untracked files, minus ignored ones. */
     listFiles: (args: { cwd: string }) => Promise<string[]>
     /** Tracked files whose text contains `text`. */
@@ -62,6 +73,35 @@ export type GitAdapter = {
         cwd: string
         commits: string[]
     }) => Promise<{ ok: true; shas: string[] } | { ok: false; error: string }>
+    /**
+     * Undoes a replay on the branch checked out at `cwd`: resets it hard to
+     * the commit before `first_sha`. Safe to run twice.
+     *
+     * @returns The commits it undid, oldest first.
+     */
+    undoReplay: (args: {
+        cwd: string
+        first_sha: string
+    }) => Promise<{ undone: string[] }>
+    /**
+     * Moves a worktree's change onto another commit: resets the worktree at
+     * `cwd` hard to `onto`, then applies the whole diff from `from` to `to`
+     * with a three-way merge, and leaves it all uncommitted and unstaged.
+     * Clashing files keep git's conflict markers.
+     *
+     * @returns The files that clashed.
+     */
+    rebaseWorktree: (args: {
+        cwd: string
+        from: string
+        to: string
+        onto: string
+    }) => Promise<{ conflicts: string[] }>
+    /**
+     * Removes the worktree at `path`, even with changes in it. A path that
+     * is already gone, or is no worktree, is fine. Its branch stays.
+     */
+    removeWorktree: (args: { path: string }) => Promise<void>
     /** Pushes `branch` to `origin`. */
     push: (args: { cwd: string; branch: string }) => Promise<void>
     /** The commit checked out at `cwd`. */
@@ -108,7 +148,21 @@ const parseStatus = ({ text }: { text: string }): FileChange[] => {
 }
 
 /**
- * The git adapter for the repo at `repo_root`, through the `git` CLI.
+ * Runs async work one piece at a time, in call order, so git never races
+ * itself on the repo's lock files when tickets build at the same time.
+ */
+const createQueue = () => {
+    let tail: Promise<unknown> = Promise.resolve()
+    return <T>(work: () => Promise<T>): Promise<T> => {
+        const run = tail.then(work, work)
+        tail = run.catch(() => undefined)
+        return run
+    }
+}
+
+/**
+ * The git adapter for the repo at `repo_root`, through the `git` CLI. Its
+ * calls run one at a time, even when tickets build at the same time.
  *
  * @example
  * const git = createGitAdapter({ repo_root: '/code/app' })
@@ -147,7 +201,7 @@ export const createGitAdapter = ({
         return { base_sha: await head({ cwd: path }) }
     }
 
-    return {
+    const raw: GitAdapter = {
         createRunBranch: ({ branch, base_branch, path }) =>
             addWorktree({ branch, from: base_branch, path }),
         createWorktree: addWorktree,
@@ -175,6 +229,10 @@ export const createGitAdapter = ({
             )
             return uniq([...tracked, ...untracked]).toSorted()
         },
+        filesBetween: async ({ cwd, from, to }) =>
+            lines(
+                await gitOk({ cwd, args: ['diff', '--name-only', from, to] })
+            ).toSorted(),
         listFiles: async ({ cwd }) =>
             lines(
                 await gitOk({
@@ -242,6 +300,59 @@ export const createGitAdapter = ({
                 ),
             }
         },
+        undoReplay: async ({ cwd, first_sha }) => {
+            const before = `${first_sha}^`
+            const undone = lines(
+                await gitOk({
+                    cwd,
+                    args: ['rev-list', '--reverse', `${before}..HEAD`],
+                })
+            )
+            await gitOk({ cwd, args: ['reset', '--quiet', '--hard', before] })
+            return { undone }
+        },
+        rebaseWorktree: async ({ cwd, from, to, onto }) => {
+            const folder = await mkdtemp(join(tmpdir(), 'luca-rebase-'))
+            try {
+                const patch = join(folder, 'change.patch')
+                await gitOk({
+                    cwd,
+                    args: ['diff', '--binary', `--output=${patch}`, from, to],
+                })
+                await gitOk({ cwd, args: ['reset', '--quiet', '--hard', onto] })
+                if ((await Bun.file(patch).size) === 0) return { conflicts: [] }
+                const applied = await gitRun({
+                    cwd,
+                    args: ['apply', '--3way', patch],
+                })
+                const conflicts = lines(
+                    await gitOk({
+                        cwd,
+                        args: ['diff', '--name-only', '--diff-filter=U'],
+                    })
+                ).toSorted()
+                if (applied.exit_code !== 0 && conflicts.length === 0) {
+                    throw new Error(
+                        `git apply --3way failed in ${cwd}:\n${applied.stderr || applied.stdout}`
+                    )
+                }
+                // Everything becomes plain uncommitted changes, markers kept.
+                await gitOk({ cwd, args: ['reset', '--quiet'] })
+                return { conflicts }
+            } finally {
+                await rm(folder, { recursive: true, force: true })
+            }
+        },
+        removeWorktree: async ({ path }) => {
+            if (existsSync(path)) {
+                // A folder that is no worktree (or not any more) is fine.
+                await gitRun({
+                    cwd: repo_root,
+                    args: ['worktree', 'remove', '--force', path],
+                })
+            }
+            await gitOk({ cwd: repo_root, args: ['worktree', 'prune'] })
+        },
         push: async ({ cwd, branch }) => {
             await gitOk({
                 cwd,
@@ -254,5 +365,29 @@ export const createGitAdapter = ({
             })
         },
         head,
+    }
+
+    const inTurn = createQueue()
+    const serial =
+        <A, R>(work: (args: A) => Promise<R>) =>
+        (args: A): Promise<R> =>
+            inTurn(() => work(args))
+    return {
+        createRunBranch: serial(raw.createRunBranch),
+        createWorktree: serial(raw.createWorktree),
+        changes: serial(raw.changes),
+        changedSince: serial(raw.changedSince),
+        filesBetween: serial(raw.filesBetween),
+        listFiles: serial(raw.listFiles),
+        filesMentioning: serial(raw.filesMentioning),
+        commitAll: serial(raw.commitAll),
+        discardChanges: serial(raw.discardChanges),
+        commitsBetween: serial(raw.commitsBetween),
+        replay: serial(raw.replay),
+        undoReplay: serial(raw.undoReplay),
+        rebaseWorktree: serial(raw.rebaseWorktree),
+        removeWorktree: serial(raw.removeWorktree),
+        push: serial(raw.push),
+        head: serial(raw.head),
     }
 }

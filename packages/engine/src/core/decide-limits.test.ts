@@ -20,7 +20,10 @@ import {
     reviewed,
     runBranchCreated,
     ticketBuilt,
+    RUN_BRANCH_PATH,
+    ticketPath,
     withInstalls,
+    worktreesRemoved,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
@@ -364,18 +367,22 @@ describe('decision step: usage', () => {
         })
     })
 
-    test("the run's usage is recorded once its PR is open, then it is done", () => {
+    test("the run's usage is recorded once its PR is open and its worktrees are removed, then it is done", () => {
         const runUsage = {
             ...ticketUsage,
             scope: 'run' as const,
             ticket: null,
         }
-        const entries = [
+        const opened = [
             runBranchCreated(),
             ...built,
             usageRecorded(ticketUsage),
             PR_OPENED,
         ]
+        const paths = [ticketPath(11), RUN_BRANCH_PATH]
+        // The run is not ending yet: its worktrees come first.
+        expect(decideAfter(opened)).toEqual({ type: 'remove_worktrees', paths })
+        const entries = [...opened, worktreesRemoved({ paths })]
         expect(decideAfter(entries)).toEqual({
             type: 'record_usage',
             usage: runUsage,

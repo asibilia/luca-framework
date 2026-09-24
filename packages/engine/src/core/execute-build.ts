@@ -12,9 +12,11 @@ import type { EngineConfig } from '../config/engine-config'
 import { runGates, shellCheck } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
 import {
+    dependenciesChanged,
     installCommand,
     MANIFEST,
     newWorktreeInstall,
+    rebaseNeedsInstall,
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import { runTests, testFilesAmong } from '../gates/test-runner'
@@ -23,7 +25,7 @@ import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
 import type { Journal } from '../journal/journal'
-import type { AgentFailure } from '../journal/journal-record'
+import type { AgentFailure, GateTarget } from '../journal/journal-record'
 import {
     replayRun,
     type ReplayedWorktree,
@@ -437,6 +439,127 @@ const followUpAgent = async ({
 }
 
 /**
+ * Puts a joined ticket's change back on top of the run branch: undoes the
+ * join first if asked (its gates failed), then resets the ticket's worktree
+ * to the run branch's tip and applies the ticket's whole diff there,
+ * uncommitted, with conflict markers in the files that clash. Journals the
+ * clashed files split into tests and code.
+ */
+const rebaseTicket = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'rebase_ticket' }>
+}) => {
+    const { git, state, journal, config } = context
+    const worktree = ticketWorktree({ state, ticket: action.ticket })
+    const runBranch = need({ value: state.run_branch, what: 'run branch' })
+    const progress = state.tickets[action.ticket]
+    // The ticket's latest commit: a review fix round's, or the green one.
+    const head = need({
+        value: progress?.commits.fix ?? progress?.commits.green,
+        what: `green commit for #${action.ticket}`,
+    })
+    let undone: string[] = []
+    if (action.undo_first_sha !== null) {
+        const joined = progress?.joined
+        const last = joined?.ok ? joined.shas.at(-1) : undefined
+        const undoneFiles =
+            last === undefined
+                ? []
+                : await git.filesBetween({
+                      cwd: runBranch.path,
+                      from: `${action.undo_first_sha}^`,
+                      to: last,
+                  })
+        undone = (
+            await git.undoReplay({
+                cwd: runBranch.path,
+                first_sha: action.undo_first_sha,
+            })
+        ).undone
+        // The undone join's install is still in the run branch's
+        // node_modules: put the lockfile's back.
+        if (dependenciesChanged({ changed_files: undoneFiles })) {
+            await installIn({
+                journal,
+                cwd: runBranch.path,
+                target: 'run_branch',
+                ticket: null,
+            })
+        }
+    }
+    const onto = await git.head({ cwd: runBranch.path })
+    const moved_files = await git.filesBetween({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: onto,
+    })
+    const ticket_files = await git.filesBetween({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: head,
+    })
+    const { conflicts } = await git.rebaseWorktree({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: head,
+        onto,
+    })
+    const tests = testFilesAmong({
+        files: conflicts,
+        test_file_patterns: config.test_file_patterns,
+    })
+    journal.append({
+        kind: 'ticket_rebased',
+        ticket: action.ticket,
+        role: null,
+        content: {
+            cause: action.cause,
+            base_sha: onto,
+            tests,
+            code: conflicts.filter((file) => !tests.includes(file)),
+            undone,
+            reinstall: rebaseNeedsInstall({ moved_files, ticket_files }),
+        },
+    })
+}
+
+/**
+ * The frozen install in a new (or moved) worktree, journaled as
+ * `dependencies_installed`. A worktree with no `package.json` has nothing
+ * to install (`check` is `null`).
+ */
+const installIn = async ({
+    journal,
+    cwd,
+    target,
+    ticket,
+}: {
+    journal: Journal
+    cwd: string
+    target: GateTarget
+    ticket: number | null
+}) => {
+    const command = newWorktreeInstall({
+        has_manifest: existsSync(join(cwd, MANIFEST)),
+    })
+    journal.append({
+        kind: 'dependencies_installed',
+        ticket,
+        role: null,
+        content: {
+            target,
+            check:
+                command === null
+                    ? null
+                    : await shellCheck({ name: 'install', command, cwd }),
+        },
+    })
+}
+
+/**
  * Carries out one build step: git, gates, agents, or the tracker, then
  * records what happened in the journal. `decide` picks the step.
  */
@@ -504,26 +627,12 @@ export const executeBuildAction = async ({
                 action.ticket === null
                     ? need({ value: state.run_branch, what: 'run branch' })
                     : ticketWorktree({ state, ticket: action.ticket })
-            const command = newWorktreeInstall({
-                has_manifest: existsSync(join(cwd, MANIFEST)),
-            })
-            journal.append({
-                kind: 'dependencies_installed',
+            return installIn({
+                journal,
+                cwd,
+                target: action.target,
                 ticket: action.ticket,
-                role: null,
-                content: {
-                    target: action.target,
-                    check:
-                        command === null
-                            ? null
-                            : await shellCheck({
-                                  name: 'install',
-                                  command,
-                                  cwd,
-                              }),
-                },
             })
-            return
         }
         case 'run_baseline_tests': {
             const { path } = ticketWorktree({ state, ticket: action.ticket })
@@ -614,6 +723,20 @@ export const executeBuildAction = async ({
             })
             return
         }
+        case 'rebase_ticket':
+            return rebaseTicket({ context, action })
+        case 'remove_worktrees': {
+            for (const path of action.paths) {
+                await git.removeWorktree({ path })
+            }
+            journal.append({
+                kind: 'worktrees_removed',
+                ticket: null,
+                role: null,
+                content: { paths: action.paths },
+            })
+            return
+        }
         case 'push_run_branch': {
             const { path } = need({
                 value: state.run_branch,
@@ -656,6 +779,7 @@ export const executeBuildAction = async ({
             return
         }
         case 'done':
+        case 'invalid_journal':
             return
     }
 }

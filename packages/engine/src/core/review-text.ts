@@ -1,5 +1,6 @@
 import uniq from 'lodash/uniq'
 
+import { rejoinOpening, type RejoinContext } from '../agents/role-prompts'
 import type { Finding, FindingResponse } from '../agents/role-results'
 import type {
     ReplayedGates,
@@ -57,10 +58,43 @@ const responseText = ({
 }
 
 /**
+ * A re-review after the ticket was sent back onto the run branch (a clash,
+ * or failed gates after joining): only the changes made to fix that, with
+ * what clashed and the findings its reviews left.
+ */
+const rejoinReviewSections = ({
+    rejoin,
+    head,
+}: {
+    rejoin: RejoinContext
+    head: string
+}): string[] => {
+    const clashed = [...rejoin.tests, ...rejoin.code]
+    const what =
+        rejoin.cause === 'clash'
+            ? `It clashed with the run branch in:\n\n${fileList(clashed)}`
+            : 'The gates failed on the run branch after it joined.'
+    const earlier =
+        rejoin.earlier_findings.length === 0
+            ? 'None.'
+            : findingList(rejoin.earlier_findings)
+    return [
+        '## Re-review only the new changes: the ticket was sent back onto the run branch\n\n' +
+            `This ticket was reviewed and approved before. ${what}\n\n` +
+            `${rejoinOpening({ rejoin })} It was fixed there, and its whole change is now one commit: \`git diff ${rejoin.base_sha}..${head}\`. ` +
+            'Review only the changes made to fix that: the clashed files, and anything changed to make the gates pass. ' +
+            'Do not raise new findings on code these changes did not touch.',
+        `## The earlier reviews' findings\n\n${earlier}`,
+    ]
+}
+
+/**
  * The review part of a ticket reviewer's prompt: what to diff, the files it
  * touches, and the engine's gate results. A re-review sees only the new
  * changes since the last review, plus the earlier findings with each
- * fixer's answer, and rules on every "won't fix".
+ * fixer's answer, and rules on every "won't fix". After the ticket was sent
+ * back onto the run branch, the first review there sees only the changes
+ * that fixed the clash or the failed gates.
  *
  * @example
  * const sections = reviewSections({ progress, base_sha: worktree.base_sha })
@@ -74,6 +108,15 @@ export const reviewSections = ({
 }): string[] => {
     const gates = `## Gate results\n\nThe engine ran the gates on this commit:\n\n${gateResults({ gates: progress.gates })}`
     const fix = progress.review_fix
+    if (fix === null && progress.rejoin !== null) {
+        return [
+            ...rejoinReviewSections({
+                rejoin: progress.rejoin,
+                head: progress.commits.green ?? 'HEAD',
+            }),
+            gates,
+        ]
+    }
     if (fix === null) {
         const head = progress.commits.green ?? 'HEAD'
         const files = uniq([

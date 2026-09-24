@@ -1,6 +1,70 @@
-import type { AgentRole, BadTest } from './role-results'
+import type { AgentRole, BadTest, Finding } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
+import type { RejoinCause } from '../journal/journal-record'
+
+/**
+ * Why and how a ticket was sent back onto the run branch, for the prompts of
+ * the agents that fix it there: the cause, the run branch commit it now
+ * starts from, the files that clashed (tests and code), and the findings of
+ * the review that approved it.
+ */
+export type RejoinContext = {
+    cause: RejoinCause
+    base_sha: string
+    tests: string[]
+    code: string[]
+    earlier_findings: Finding[]
+}
+
+const fileList = (files: string[]): string =>
+    files.map((file) => `- ${file}`).join('\n')
+
+/** One line on what happened to the ticket, for every rejoin section. */
+export const rejoinOpening = ({ rejoin }: { rejoin: RejoinContext }): string =>
+    rejoin.cause === 'clash'
+        ? `Other tickets joined the run branch after this ticket started, and this ticket's change clashed with them. ` +
+          `The engine put this ticket's whole change back on top of the run branch (commit ${rejoin.base_sha}), as uncommitted changes in the worktree.`
+        : `The gates failed on the run branch after this ticket joined it. ` +
+          `The engine undid the join and put this ticket's whole change back on top of the run branch (commit ${rejoin.base_sha}), as uncommitted changes in the worktree.`
+
+/**
+ * The section a fresh test-writer or implementer gets while it fixes a
+ * ticket on top of the run branch: the clashed test files, or the clashed
+ * code (or the failed gates). `null` for a role with nothing to fix there.
+ * The reviewer's re-review is the review's own (`reviewSections`).
+ *
+ * @example
+ * const section = rejoinSection({ role: 'test-writer', rejoin })
+ */
+export const rejoinSection = ({
+    role,
+    rejoin,
+}: {
+    role: AgentRole
+    rejoin: RejoinContext
+}): string | null => {
+    if (role === 'test-writer') {
+        if (rejoin.tests.length === 0) return null
+        return [
+            '## This ticket clashed with the run branch',
+            rejoinOpening({ rejoin }),
+            `These test files have conflict markers:\n\n${fileList(rejoin.tests)}`,
+            "Resolve the markers so the tests check both what the run branch already has and this ticket's criteria. " +
+                'Change nothing else. Answer with the full criterion mapping again.',
+        ].join('\n\n')
+    }
+    if (role === 'implementer') {
+        return [
+            '## This ticket is being fixed on top of the run branch',
+            rejoinOpening({ rejoin }),
+            rejoin.code.length > 0
+                ? `These files have conflict markers:\n\n${fileList(rejoin.code)}\n\nResolve them so the code keeps both what the run branch has and what this ticket adds, and make every gate pass.`
+                : 'Make every gate pass on top of the run branch.',
+        ].join('\n\n')
+    }
+    return null
+}
 
 /** A refactor ticket's implementer's task, in place of the usual one. */
 const REFACTOR_TASK =

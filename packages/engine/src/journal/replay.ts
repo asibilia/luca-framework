@@ -1,4 +1,5 @@
 import omit from 'lodash/omit'
+import uniq from 'lodash/uniq'
 
 import type {
     AgentFailure,
@@ -7,6 +8,7 @@ import type {
     StuckReason,
 } from './journal-record'
 
+import type { RejoinContext } from '../agents/role-prompts'
 import {
     isBlocking,
     type AgentRole,
@@ -57,6 +59,18 @@ export type ReplayedWorktree = {
     branch: string
     path: string
     base_sha: string
+}
+
+/**
+ * A ticket sent back to be fixed on top of the run branch (`ticket_rebased`):
+ * why, where it starts now, the files that clashed, and the findings known
+ * from its reviews. `tests_pending` and `code_pending` stay true until a
+ * fresh test-writer (the clashed tests) or the implementer (the clashed
+ * code) has answered.
+ */
+export type ReplayedRejoin = RejoinContext & {
+    tests_pending: boolean
+    code_pending: boolean
 }
 
 /** One gate run, as journaled. */
@@ -137,6 +151,16 @@ export type TicketProgress = {
     nits: Finding[]
     /** Findings declined through "won't fix", oldest first. */
     declined: DeclinedFinding[]
+    /**
+     * The seq of the review that finally approved the ticket (no blocker or
+     * should-fix left), `null` until one does. Approved tickets join the run
+     * branch in this order, one at a time.
+     */
+    approved_seq: number | null
+    /** How many times the ticket was sent back onto the run branch. */
+    rejoins: number
+    /** The latest time it was sent back, `null` if it never was. */
+    rejoin: ReplayedRejoin | null
     /**
      * The latest failed agent turn, if no agent finished after it: its role,
      * error, how it failed, and the session it ran in (for a follow-up).
@@ -219,6 +243,8 @@ export type RunState = {
     plan: PlanState
     /** The tickets whose usage is recorded, and whether the run's is. */
     usage_recorded: { tickets: number[]; run: boolean }
+    /** The worktrees the engine removed at the end of the run. */
+    removed_worktrees: string[]
     last_seq: number
 }
 
@@ -242,6 +268,9 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     review_fix: null,
     nits: [],
     declined: [],
+    approved_seq: null,
+    rejoins: 0,
+    rejoin: null,
     agent_failure: null,
     failed_tries: {},
     engine_failures: 0,
@@ -275,6 +304,7 @@ const EMPTY_STATE: RunState = {
         billing_stopped: null,
     },
     usage_recorded: { tickets: [], run: false },
+    removed_worktrees: [],
     last_seq: 0,
 }
 
@@ -408,6 +438,14 @@ const applyRecord = ({
                 }
             }
             return applyTicketRecord({ state: next, record })
+        case 'worktrees_removed':
+            return {
+                ...next,
+                removed_worktrees: uniq([
+                    ...state.removed_worktrees,
+                    ...record.content.paths,
+                ]),
+            }
         case 'pull_request_opened':
             return {
                 ...next,
@@ -455,6 +493,7 @@ type TicketRecord = Exclude<
             | 'spec_snapshot'
             | 'ticket_snapshot'
             | 'run_branch_created'
+            | 'worktrees_removed'
             | 'pull_request_opened'
             | 'jev_asked'
             | 'jev_answered'
@@ -480,13 +519,21 @@ type FinishedContent = Extract<
 const resultChange = ({
     progress,
     finished,
+    seq,
 }: {
     progress: TicketProgress
     finished: FinishedContent
+    seq: number
 }): Partial<TicketProgress> => {
     const fix = progress.review_fix
+    const { rejoin } = progress
     switch (finished.role) {
         case 'test-writer':
+            // The fresh test-writer after a rebase fixed the clashed tests:
+            // no fix round, and the red check stands.
+            if (rejoin?.tests_pending) {
+                return { rejoin: { ...rejoin, tests_pending: false } }
+            }
             if (fix !== null && !fix.tests_answered) {
                 return {
                     review_fix: {
@@ -508,6 +555,13 @@ const resultChange = ({
                   }
         case 'implementer': {
             const { result } = finished
+            // The implementer's answer to the clash message is no fix round.
+            if (rejoin?.code_pending) {
+                return {
+                    implementer: result,
+                    rejoin: { ...rejoin, code_pending: false },
+                }
+            }
             if (fix !== null && fix.tests_answered && !fix.code_answered) {
                 return {
                     review_fix: {
@@ -549,7 +603,7 @@ const resultChange = ({
             return { implementer: result, ...round, ...bounce }
         }
         case 'ticket-reviewer':
-            return reviewChange({ progress, review: finished.result })
+            return reviewChange({ progress, review: finished.result, seq })
     }
 }
 
@@ -592,9 +646,12 @@ const declinedBy = ({
 const reviewChange = ({
     progress,
     review,
+    seq,
 }: {
     progress: TicketProgress
     review: TicketReviewResult
+    /** The review's record, for the join queue's order once it approves. */
+    seq: number
 }): Partial<TicketProgress> => {
     const review_rounds = progress.review_rounds + 1
     const blocking = review.findings.filter(isBlocking)
@@ -613,9 +670,12 @@ const reviewChange = ({
             ...declinedBy({ fix: progress.review_fix, review }),
         ],
     }
-    if (blocking.length === 0) return { ...settled, review_fix: null }
+    if (blocking.length === 0) {
+        return { ...settled, review_fix: null, approved_seq: seq }
+    }
     return {
         ...settled,
+        approved_seq: null,
         review_fix: {
             round: review_rounds,
             findings: blocking,
@@ -676,7 +736,7 @@ const progressChange = ({
                     ...progress.assumptions,
                     ...finished.result.assumptions,
                 ],
-                ...resultChange({ progress, finished }),
+                ...resultChange({ progress, finished, seq: record.seq }),
             }
         }
         case 'agent_failed': {
@@ -746,10 +806,72 @@ const progressChange = ({
         }
         case 'ticket_joined':
             return { joined: record.content }
+        case 'ticket_rebased':
+            return rebasedChange({ progress, rebased: record.content })
         case 'run_branch_pushed':
             return { pushed: record.content.sha }
         case 'ticket_stuck':
             return { stuck: record.content }
+    }
+}
+
+type RebasedContent = Extract<
+    JournalRecord,
+    { kind: 'ticket_rebased' }
+>['content']
+
+/**
+ * A ticket sent back onto the run branch: its change now sits uncommitted on
+ * the run branch's tip. Its tests and code are fixed there, then the gates,
+ * one green commit, a fresh review of the new changes (with its own fix
+ * rounds), and a new join. The review loop starts over, but its nits and
+ * declined findings stay for the PR. The implementer keeps its session; the
+ * test-writer and reviewer start fresh. A worktree whose dependencies moved
+ * under it is installed again.
+ */
+const rebasedChange = ({
+    progress,
+    rebased,
+}: {
+    progress: TicketProgress
+    rebased: RebasedContent
+}): Partial<TicketProgress> => {
+    const { cause, base_sha, tests, code, reinstall } = rebased
+    return {
+        worktree:
+            progress.worktree === null
+                ? null
+                : { ...progress.worktree, base_sha },
+        install: reinstall ? null : progress.install,
+        rejoins: progress.rejoins + 1,
+        rejoin: {
+            cause,
+            base_sha,
+            tests,
+            code,
+            tests_pending: tests.length > 0,
+            code_pending: code.length > 0,
+            earlier_findings: [
+                ...(progress.review?.findings ?? []),
+                ...progress.declined.map(({ finding }) => finding),
+            ],
+        },
+        gates: null,
+        gate_fix_rounds: 0,
+        leftovers: { ...progress.leftovers, green: null, fix: null },
+        commits: { ...progress.commits, green: null, fix: null },
+        commit_files: { ...progress.commit_files, green: [], fix: [] },
+        review: null,
+        review_rounds: 0,
+        reviewed_sha: null,
+        review_fix: null,
+        approved_seq: null,
+        joined: null,
+        join_gates: null,
+        pushed: null,
+        agent_failure: null,
+        engine_failures: 0,
+        sessions: omit(progress.sessions, ['test-writer', 'ticket-reviewer']),
     }
 }
 

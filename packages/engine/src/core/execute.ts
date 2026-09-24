@@ -1,4 +1,4 @@
-import { decide, type EngineAction } from './decide'
+import { decideSteps, type EngineAction } from './decide'
 import type { PlanAction } from './decide-plan'
 import { executeBuildAction, type BuildDeps } from './execute-build'
 
@@ -286,9 +286,50 @@ export const executeAction = async ({
 }
 
 /**
+ * The ticket an action works on, or `null` for a run-level action. The
+ * plan's actions are the whole run's, whichever ticket hit the limit; a
+ * ticket's usage record is that ticket's.
+ */
+const ticketOf = (action: EngineAction): number | null => {
+    switch (action.type) {
+        case 'start_limit_wait':
+        case 'wait_for_limit':
+        case 'stop_for_billing':
+            return null
+        case 'record_usage':
+            return action.usage.ticket
+        default:
+            return 'ticket' in action && typeof action.ticket === 'number'
+                ? action.ticket
+                : null
+    }
+}
+
+/**
+ * Actions that read or move the run branch. At most one runs at a time, so
+ * joins, their gates, pushes, and new worktrees see one run branch.
+ */
+const usesRunBranch = (action: EngineAction): boolean => {
+    switch (action.type) {
+        case 'create_ticket_worktree':
+        case 'join_run_branch':
+        case 'push_run_branch':
+        case 'rebase_ticket':
+            return true
+        case 'run_gates':
+        case 'install_dependencies':
+            return action.target === 'run_branch'
+        default:
+            return false
+    }
+}
+
+/**
  * Carries out one action with Jev in shadow mode: asks Jev before it (ticket
  * order, model, skills), then after it about the records it appended
- * (failure kinds, finding severities). Jev's answers change nothing.
+ * (failure kinds, finding severities). Only the action's own ticket's new
+ * records count, since other tickets append at the same time. Jev's answers
+ * change nothing.
  */
 const executeWithJev = async ({
     jev,
@@ -316,26 +357,46 @@ const executeWithJev = async ({
     const lastSeq = journal.read().at(-1)?.seq ?? 0
     await executeAction({ action, journal, tracker, build, clock })
     const records = journal.read()
+    const ticket = ticketOf(action)
     await askJevInShadow({
         ...shadow,
         asks: jevAsksAfter({
-            records: records.filter(({ seq }) => seq > lastSeq),
+            records: records.filter(
+                (record) =>
+                    record.seq > lastSeq &&
+                    (ticket === null || record.ticket === ticket)
+            ),
             state: replayRun({ records }),
         }),
     })
 }
 
+/** One action the engine started and has not seen settle yet. */
+type InFlight = { action: EngineAction; done: Promise<void> }
+
 /**
- * Runs the engine: decide the next action from the journal, carry it out,
- * repeat, until the run is done: refused, nothing to do, stuck, or its PR
- * opened. Building tickets needs `git` and `launcher`. Safe to call on a
- * journal left by a crashed engine; it picks up where the journal ends.
+ * Runs the engine: a scheduler over the decision step. Each pass it decides
+ * every action that can run now from the journal and starts those it can,
+ * so tickets build at the same time; then it waits for any one to settle
+ * and decides again, until the run is done: refused, nothing to do, stuck,
+ * or its PR opened. Building tickets needs `git` and `launcher`. Safe to
+ * call on a journal left by a crashed engine; it picks up where the journal
+ * ends.
+ *
+ * What may run together: one action per ticket; a run-level action (the run
+ * branch, the PR, removing worktrees, intake, a limit wait, a billing stop)
+ * only alone, once everything in flight has settled; and one action on
+ * the run branch at a time (a new worktree, a join, its gates, a push, a
+ * rebase). A stop action waits for everything in flight, then the journal is
+ * read again. If an action throws (such as a launcher stop), the rest are
+ * let finish, then the first error is thrown. `max_steps` counts the actions
+ * started.
  *
  * With `jev`, Jev is asked around each step in **shadow mode** and its
  * answers are journaled but never acted on. Without it, nothing changes.
  *
  * With `board`, the whole journal is sent to the board once before the
- * first step and again after each step.
+ * first step and again after each step settles.
  *
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
@@ -369,28 +430,71 @@ export const runEngine = async ({
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
+    const build =
+        git === undefined || launcher === undefined
+            ? undefined
+            : { git, launcher }
+    const inFlight = new Map<string, InFlight>()
+    let started = 0
+
+    const execute = (action: EngineAction): Promise<void> =>
+        jev === undefined
+            ? executeAction({ action, journal, tracker, build, clock })
+            : executeWithJev({ jev, action, journal, tracker, build, clock })
+    const settleAll = () =>
+        Promise.allSettled([...inFlight.values()].map(({ done }) => done))
+    const canStart = ({ action, key }: { action: EngineAction; key: string }) =>
+        !inFlight.has(key) &&
+        !inFlight.has('run') &&
+        (key !== 'run' || inFlight.size === 0) &&
+        !(
+            usesRunBranch(action) &&
+            [...inFlight.values()].some((running) =>
+                usesRunBranch(running.action)
+            )
+        )
+
     // A resumed run catches the board up before its first step.
     await board?.sync({ records: journal.read() })
-    for (let step = 0; step < limit; step += 1) {
-        const action = decide({ records: journal.read() })
-        if (stops.has(action.type)) return action
-        const build =
-            git === undefined || launcher === undefined
-                ? undefined
-                : { git, launcher }
-        if (jev === undefined) {
-            await executeAction({ action, journal, tracker, build, clock })
-        } else {
-            await executeWithJev({
-                jev,
-                action,
-                journal,
-                tracker,
-                build,
-                clock,
-            })
+    for (;;) {
+        const actions = decideSteps({ records: journal.read() })
+        const stop = actions.find((action) => stops.has(action.type))
+        if (stop !== undefined && inFlight.size === 0) return stop
+        if (stop === undefined) {
+            for (const action of actions) {
+                const ticket = ticketOf(action)
+                const key = ticket === null ? 'run' : String(ticket)
+                if (!canStart({ action, key })) continue
+                if (started >= limit) {
+                    await settleAll()
+                    throw new Error(
+                        `The engine took ${limit} steps without finishing.`
+                    )
+                }
+                started += 1
+                const done = execute(action).finally(() => {
+                    inFlight.delete(key)
+                })
+                // Seen by the race below; this keeps a rejection that lands
+                // between races from counting as unhandled.
+                done.catch(() => undefined)
+                inFlight.set(key, { action, done })
+            }
+        }
+        if (inFlight.size === 0) {
+            throw new Error(
+                `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`
+            )
+        }
+        try {
+            // A stop waits for everything in flight; otherwise any one.
+            await (stop === undefined
+                ? Promise.race([...inFlight.values()].map(({ done }) => done))
+                : Promise.all([...inFlight.values()].map(({ done }) => done)))
+        } catch (error) {
+            await settleAll()
+            throw error
         }
         await board?.sync({ records: journal.read() })
     }
-    throw new Error(`The engine took ${limit} steps without finishing.`)
 }

@@ -97,9 +97,11 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `worktree_reset` | card back to the tests step, fix counter reset, "Started over from the tests after a bad test" | one line (warning) |
 | `gates_run` | card's step. A failure (any check: `install`, `test`, `types`, `lint`) opens the checks' fix loop and adds a "tried" line; a pass closes it and resets the fix counter. On the run branch (`target: run_branch`) it's "after joining". | passed or failed, naming the failed checks |
 | `ticket_joined` | card to Done, or a "tried" line | joined, or why not |
+| `ticket_rebased` | a joined ticket sent back onto the run branch (#365): card back to Building (the tests step if test files clashed, else coding), fix counter and review fix rounds reset (the review starts over on the run branch), and a "tried" line: "Clashed with the run branch in `<files>`", or "The checks failed after joining; fixing on top of the run branch" | the same (warning) |
 | `run_branch_pushed` | card's activity | none |
 | `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies | a stuck row |
 | `pull_request_opened` | run status `done`, the PR link | the PR |
+| `worktrees_removed` | nothing: the engine removed the run's worktrees at its end (`{ paths }`) | none |
 | `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. With `billing: true` (default false) it's a **billing stop**: the session would bill per token, so the run won't go on, and the banner says to start a new run once per-token billing is off. | the reason, and how to pick the run up again, or for a billing stop, that the run won't go on (danger) |
 | `limit_wait_started` | run status `limit_wait` and a banner: "Plan limit hit (five-hour window). The run waits until 17:00 and then carries on by itself." The time is `resets_at`, or `until` when the reset time isn't known. | a limit row with the same words |
 | `limit_wait_ended` | the banner is gone | the limit row turns to "over" |
