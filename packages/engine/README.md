@@ -405,7 +405,32 @@ from `--repo`, else the one `run_started` names (`repo`), else the current
 folder; it keeps the journal and runs the engine on it. A run id with no
 journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 })` lists the runs whose next action is not a stop (`done`,
-`invalid_journal`): the seam for restarting them when Paseo starts (#375).
+`invalid_journal`).
+
+**Restarting runs from Paseo (#375).** `luca-run --unfinished` prints one
+JSON object to stdout, and nothing else, then exits 0:
+
+```json
+{ "runs": [{ "run_id": "luca-20260923-141500-ab12", "restart": true, "reason": "resumable", "message": null }] }
+```
+
+It lists every unfinished run in the runs folder (`restartableRuns`, built
+on `unfinishedRuns`), with whether it may be restarted:
+
+- `resumable` (`restart: true`): the engine was cut off, by a crash or a
+  kill, so the run can go on from its journal.
+- `launcher_stopped` (`restart: false`): its last record is a launcher stop
+  (`run_stopped` without `billing` or `crashed`, such as the wrong login or
+  model). A restart would stop the same way, so it waits for you to fix it
+  and run `--resume` yourself. `message` is the stop's reason.
+- `billing_stopped` (`restart: false`): a billing stop anywhere in the
+  journal. It never goes on. `message` is the stop's reason.
+
+A finished run, or a folder with no journal, is not listed. The board
+plugin calls it when Paseo starts and every 15 s after that, for its runs
+whose engine process is gone. It restarts the ones with `restart: true`
+with `--resume <run-id> --repo <repo> --board-plugin luca-board`, and shows
+the rest as "engine stopped" (see the board's README, "Restarts").
 
 ## The final review
 
@@ -610,6 +635,7 @@ that connection for the run, and reconnects once when a send fails.
 bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --demo [--run-id <id>] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --resume <run-id> [--repo <path>] [--board-plugin <id>]
+bun packages/engine/src/cli/luca-run.ts --unfinished
 ```
 
 | Flag | What it does |
@@ -617,6 +643,7 @@ bun packages/engine/src/cli/luca-run.ts --resume <run-id> [--repo <path>] [--boa
 | `--spec <n>` | A real run of spec #n, on the repo's GitHub issues (through `gh`). |
 | `--demo` | A practice run instead (below). Give exactly one of `--spec` and `--demo`. |
 | `--resume <run-id>` | Go on with a run that crashed or was killed, from its journal: its spec and base branch come from `run_started`. Not with `--spec`, `--demo`, `--run-id`, or `--base`. |
+| `--unfinished` | Print the runs that are not over, and whether each may be restarted, as one JSON object (see Crash recovery). Takes no other flags. |
 | `--repo <path>` | The repo to run on. Defaults to the current folder; for `--resume`, to the repo the run started in. |
 | `--run-id <id>` | The run's id: letters, digits, `-`, `_`. Defaults to a new one. The journal goes in `<runs folder>/<id>/`; a run id that already has a journal resumes it. |
 | `--base <branch>` | The branch the run starts from. Defaults to `main`. |
@@ -630,7 +657,8 @@ with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
 It logs to stdout, always tells the board how it ended, and exits 0 when the
 run finished (PR opened, or nothing to do), 1 when it stopped (refused,
 stuck, stopped by the launcher, crashed, or `--resume` of a run with no
-journal to go on from), and 2 on bad flags.
+journal to go on from), and 2 on bad flags. `--unfinished` exits 0 once it
+printed the list.
 
 **A real run** (`--spec`) builds with real Claude agents: `runSpec` gets
 `createClaudeLauncher({})` (Claude Opus 5.5 at `high` effort, every guard on,

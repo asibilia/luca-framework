@@ -13,11 +13,15 @@ export const RUN_USAGE = `Usage:
   luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
   luca-run --demo [--run-id <id>] [--board-plugin <id>]
   luca-run --resume <run-id> [--repo <path>] [--board-plugin <id>]
+  luca-run --unfinished
 
   --spec <n>            Run spec #n of the repo's GitHub issues.
   --demo                A practice run in a throwaway repo: no GitHub, no models.
   --resume <run-id>     Go on with a run that crashed or was killed, from its
                         journal: same spec, base branch, and run branch.
+  --unfinished          Print the runs that are not over, as one JSON object:
+                        { "runs": [{ run_id, restart, reason, message }] }.
+                        The board plugin restarts the ones with restart true.
   --repo <path>         The repo to run on. Defaults to the current folder
                         (for --resume, to the repo the run started in).
   --run-id <id>         The run's id and folder name. Defaults to a new one.
@@ -76,6 +80,21 @@ const resumeArgsSchema = ({ cwd }: { cwd: string }) =>
             })
         )
 
+const UNFINISHED_ALONE = '--unfinished takes no other flags.'
+
+const unfinishedArgsSchema = z
+    .object({
+        unfinished: z.literal(true),
+        spec: z.undefined(UNFINISHED_ALONE),
+        demo: z.undefined(UNFINISHED_ALONE),
+        resume: z.undefined(UNFINISHED_ALONE),
+        repo: z.undefined(UNFINISHED_ALONE),
+        run_id: z.undefined(UNFINISHED_ALONE),
+        base: z.undefined(UNFINISHED_ALONE),
+        board_plugin: z.undefined(UNFINISHED_ALONE),
+    })
+    .transform((): RunArgs => ({ mode: 'unfinished' }))
+
 const runArgsSchema = ({ cwd }: { cwd: string }) =>
     z
         .object({
@@ -132,6 +151,8 @@ export type RunArgs =
           repo: string | null
           board: RunArgsCommon['board']
       }
+    /** Print the unfinished runs and whether each may be restarted (#375). */
+    | { mode: 'unfinished' }
 
 /**
  * Reads `luca-run`'s command line. Never throws: bad flags come back as
@@ -164,6 +185,7 @@ export const parseRunArgs = ({
                 spec: { type: 'string' },
                 demo: { type: 'boolean' },
                 resume: { type: 'string' },
+                unfinished: { type: 'boolean' },
                 repo: { type: 'string' },
                 'run-id': { type: 'string' },
                 base: { type: 'string' },
@@ -175,10 +197,13 @@ export const parseRunArgs = ({
         return { ok: false, error: `${message}\n\n${RUN_USAGE}` }
     }
     const schema =
-        values.resume === undefined
-            ? runArgsSchema({ cwd })
-            : resumeArgsSchema({ cwd })
+        values.unfinished === true
+            ? unfinishedArgsSchema
+            : values.resume === undefined
+              ? runArgsSchema({ cwd })
+              : resumeArgsSchema({ cwd })
     const parsed = schema.safeParse({
+        unfinished: values.unfinished,
         resume: values.resume,
         spec: values.spec,
         demo: values.demo,

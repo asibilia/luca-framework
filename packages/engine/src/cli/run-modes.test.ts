@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+    restartableRuns,
     resumeRun,
     runDemo,
     runSpec,
@@ -23,6 +24,7 @@ import {
     type BoardEnded,
     type BoardLink,
 } from '../board/board-sync'
+import { startRun } from '../core/execute'
 import { createTypeSafeJev } from '../jev/jev-client'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
@@ -565,5 +567,118 @@ describe('luca-run --resume', () => {
 
     test('unfinished runs: none in a runs folder that does not exist', () => {
         expect(unfinishedRuns({ runs_dir: join(root, 'nowhere') })).toEqual([])
+    })
+})
+
+describe('luca-run --unfinished', () => {
+    /** A journal in `runs_dir` that started a run, then got `entries`. */
+    const writeRun = ({
+        runs_dir,
+        run_id,
+        entries,
+    }: {
+        runs_dir: string
+        run_id: string
+        entries: Parameters<ReturnType<typeof createJournal>['append']>[0][]
+    }) => {
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir, run_id }),
+        })
+        startRun({
+            journal,
+            spec_number: 10,
+            config: PRACTICE_ENGINE_CONFIG,
+            repo: '/code/app',
+        })
+        for (const entry of entries) journal.append(entry)
+    }
+
+    const stopped = ({
+        reason,
+        billing,
+        crashed = false,
+    }: {
+        reason: string
+        billing: boolean
+        crashed?: boolean
+    }) => ({
+        kind: 'run_stopped' as const,
+        ticket: null,
+        role: null,
+        content: { reason, role: null, billing, crashed },
+    })
+
+    test('lists each unfinished run with whether Paseo may restart it', async () => {
+        const runs_dir = join(root, 'runs')
+        writeRun({ runs_dir, run_id: 'a-crashed', entries: [] })
+        writeRun({
+            runs_dir,
+            run_id: 'b-launcher',
+            entries: [stopped({ reason: 'wrong login', billing: false })],
+        })
+        writeRun({
+            runs_dir,
+            run_id: 'c-billing',
+            entries: [stopped({ reason: 'overage in use', billing: true })],
+        })
+        writeRun({
+            runs_dir,
+            run_id: 'd-finished',
+            entries: [
+                {
+                    kind: 'nothing_to_do',
+                    ticket: null,
+                    role: null,
+                    content: { closed_tickets: [] },
+                },
+            ],
+        })
+        await Bun.write(join(runs_dir, 'e-no-journal', 'notes.txt'), 'hi')
+
+        expect(restartableRuns({ runs_dir })).toEqual([
+            {
+                run_id: 'a-crashed',
+                restart: true,
+                reason: 'resumable',
+                message: null,
+            },
+            {
+                run_id: 'b-launcher',
+                restart: false,
+                reason: 'launcher_stopped',
+                message: 'wrong login',
+            },
+            {
+                run_id: 'c-billing',
+                restart: false,
+                reason: 'billing_stopped',
+                message: 'overage in use',
+            },
+        ])
+    })
+
+    test('a billing stop anywhere in the journal is never restarted', () => {
+        const runs_dir = join(root, 'runs')
+        writeRun({
+            runs_dir,
+            run_id: 'r1',
+            entries: [
+                stopped({ reason: 'overage in use', billing: true }),
+                stopped({ reason: 'wrong model', billing: false }),
+            ],
+        })
+
+        expect(restartableRuns({ runs_dir })).toEqual([
+            {
+                run_id: 'r1',
+                restart: false,
+                reason: 'billing_stopped',
+                message: 'overage in use',
+            },
+        ])
+    })
+
+    test('none in a runs folder that does not exist', () => {
+        expect(restartableRuns({ runs_dir: join(root, 'nowhere') })).toEqual([])
     })
 })
