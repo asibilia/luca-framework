@@ -2,27 +2,24 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { rateLimitReading } from './build-fixtures'
-import { specIssue, ticketIssue } from './intake-fixtures'
+import { ticketIssue } from './intake-fixtures'
 import {
     APPROVE,
-    CLEAN_LENS_TURNS,
+    createPracticeRepo,
     IMPLEMENTER_RESULT,
-    makePracticeRepo,
+    PRACTICE_SPEC_NUMBER,
+    practiceSpec,
     SUM,
     SUM_TEST,
+    sumTicket,
     TEST_WRITER_RESULT,
 } from './practice-repo'
 import { AVERAGE, AVERAGE_TEST } from './practice-run'
 
 import { AgentSessionSchema } from '../agents/agent-launcher'
 import type { ScriptedCall, ScriptedTurn } from '../agents/scripted-launcher'
-import { createScriptedLauncher } from '../agents/scripted-launcher'
-import { loadEngineConfig } from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
-import { runEngine, startRun } from '../core/execute'
-import { createGitAdapter } from '../git/git-adapter'
 import type { JevShadow } from '../jev/jev-shadow'
-import { createJournal, runJournalPath } from '../journal/journal'
 import {
     JournalRecordSchema,
     type JournalRecord,
@@ -259,12 +256,8 @@ export const manyTicketTurns = ({
 export const manyTicketsTracker = (): InMemoryTracker =>
     createInMemoryTracker({
         issues: [
-            specIssue({ number: 10, title: 'Practice spec' }),
-            ticketIssue({
-                number: 11,
-                title: 'Add sum',
-                criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
-            }),
+            practiceSpec(),
+            sumTicket(),
             ticketIssue({
                 number: 12,
                 title: 'Add product',
@@ -284,7 +277,7 @@ export const manyTicketsTracker = (): InMemoryTracker =>
                 blocked_by: [11, 12],
             }),
         ],
-        sub_tickets: { 10: [11, 12, 13] },
+        sub_tickets: { [PRACTICE_SPEC_NUMBER]: [11, 12, 13] },
     })
 
 /**
@@ -351,50 +344,25 @@ export const runManyTickets = async ({
     on_tracker?: (tracker: InMemoryTracker) => void
 }): Promise<ManyTicketsRun> => {
     const chosen = scenario ?? SUM_PRODUCT_AVERAGE
-    const { repo, origin } = await makePracticeRepo({
-        root,
-        files: chosen.files,
-    })
-    const run_dir = join(root, 'runs', 'run-1')
-    const journal = createJournal({
-        file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
-    })
-    const loaded = await loadEngineConfig({ repo_root: repo })
-    if (!loaded.ok) throw new Error(loaded.error)
+    const practice = await createPracticeRepo({ root, files: chosen.files })
+    const journal_file = practice.journal.file
     const tracker = chosen.tracker()
     on_tracker?.(tracker)
-    const launcher = createScriptedLauncher({
-        // Every scenario ends in a clean final review of spec #10.
-        turns: [
-            ...chosen.turns({ journal_file: journal.file }),
-            ...CLEAN_LENS_TURNS(10),
-        ],
-    })
-    startRun({
-        journal,
-        spec_number: 10,
-        config: loaded.config,
-        base_branch: 'main',
-    })
-    const action = await runEngine({
-        journal,
+    // Every scenario ends in a clean final review of spec #10.
+    const ran = await practice.run({
+        turns: chosen.turns({ journal_file }),
         tracker,
-        git: createGitAdapter({ repo_root: repo }),
-        launcher,
         jev,
         clock,
-        stop_before: stop_before ?? ['wait_for_reply'],
+        stop_before,
         reply_poll_ms,
     })
     return {
-        action,
-        tracker,
-        records: journal.read(),
-        launches: launcher.launches(),
-        repo,
-        origin,
-        run_dir,
-        journal_file: journal.file,
+        ...ran,
+        repo: practice.repo,
+        origin: practice.origin,
+        run_dir: join(root, 'runs', 'run-1'),
+        journal_file,
     }
 }
 
@@ -460,7 +428,7 @@ export const BROKEN_JOIN: ManyTicketsScenario = {
     tracker: () =>
         createInMemoryTracker({
             issues: [
-                specIssue({ number: 10, title: 'Practice spec' }),
+                practiceSpec(),
                 ticketIssue({
                     number: 21,
                     title: 'Add double',
@@ -478,7 +446,7 @@ export const BROKEN_JOIN: ManyTicketsScenario = {
                     ],
                 }),
             ],
-            sub_tickets: { 10: [21, 22] },
+            sub_tickets: { [PRACTICE_SPEC_NUMBER]: [21, 22] },
         }),
     turns: ({ journal_file }): ScriptedTurn[] => [
         {
@@ -675,7 +643,7 @@ export const REINSTALL: ManyTicketsScenario = {
     tracker: () =>
         createInMemoryTracker({
             issues: [
-                specIssue({ number: 10, title: 'Practice spec' }),
+                practiceSpec(),
                 ticketIssue({
                     number: 21,
                     title: 'Add sum',
@@ -693,7 +661,7 @@ export const REINSTALL: ManyTicketsScenario = {
                     ],
                 }),
             ],
-            sub_tickets: { 10: [21, 22] },
+            sub_tickets: { [PRACTICE_SPEC_NUMBER]: [21, 22] },
         }),
     turns: ({ journal_file }): ScriptedTurn[] => [
         {

@@ -200,6 +200,7 @@ export const makePracticeRepo = async ({
     root,
     config,
     files,
+    stale_manifest,
 }: {
     root: string
     /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
@@ -209,6 +210,8 @@ export const makePracticeRepo = async ({
      * `package.json`, the first commit also gets its lockfile.
      */
     files?: Record<string, string>
+    /** The first commit's manifest, written after its lockfile was made. */
+    stale_manifest?: string
 }): Promise<{ repo: string; origin: string }> => {
     const repo = join(root, 'repo')
     const origin = join(root, 'origin.git')
@@ -235,12 +238,30 @@ export const makePracticeRepo = async ({
         // The starting lockfile. Workspace packages install offline.
         await $`bun install`.cwd(repo).quiet()
     }
+    if (stale_manifest !== undefined) {
+        await Bun.write(join(repo, 'package.json'), stale_manifest)
+    }
     await git(repo, 'add', '-A')
     await git(repo, 'commit', '-q', '-m', 'initial')
     await git(repo, 'remote', 'add', 'origin', origin)
     await git(repo, 'push', '-q', 'origin', 'main')
     return { repo, origin }
 }
+
+/** The practice spec's issue number. */
+export const PRACTICE_SPEC_NUMBER = 10
+
+/** The practice spec, #10. */
+export const practiceSpec = (): TrackerIssue =>
+    specIssue({ number: PRACTICE_SPEC_NUMBER, title: 'Practice spec' })
+
+/** The practice spec's first ticket, #11: "Add sum" with two criteria. */
+export const sumTicket = (): TrackerIssue =>
+    ticketIssue({
+        number: 11,
+        title: 'Add sum',
+        criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
+    })
 
 /**
  * Spec #10 with one open ticket, #11: "Add sum" with two criteria, or the
@@ -252,75 +273,9 @@ export const practiceTracker = ({
     ticket?: TrackerIssue
 } = {}): InMemoryTracker =>
     createInMemoryTracker({
-        issues: [
-            specIssue({ number: 10, title: 'Practice spec' }),
-            ticket ??
-                ticketIssue({
-                    number: 11,
-                    title: 'Add sum',
-                    criteria: [
-                        'sum adds two numbers',
-                        'sum of no numbers is zero',
-                    ],
-                }),
-        ],
-        sub_tickets: { 10: [11] },
+        issues: [practiceSpec(), ticket ?? sumTicket()],
+        sub_tickets: { [PRACTICE_SPEC_NUMBER]: [11] },
     })
-
-/** What a practice run left behind. */
-export type PracticeRun = {
-    action: EngineAction
-    tracker: InMemoryTracker
-    records: JournalRecord[]
-    launches: ScriptedCall[]
-    origin: string
-}
-
-/**
- * Makes a practice repo in `root`, starts a run on spec #10 with journal
- * `<root>/runs/run-1`, and runs the engine to its end with these scripted
- * agent turns (and a clean final review for any lens they don't script),
- * and Jev in shadow mode if given.
- */
-export const runPractice = async ({
-    root,
-    turns,
-    jev,
-}: {
-    root: string
-    turns: ScriptedTurn[]
-    jev?: JevShadow
-}): Promise<PracticeRun> => {
-    const { repo, origin } = await makePracticeRepo({ root })
-    const journal = createJournal({
-        file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
-    })
-    const loaded = await loadEngineConfig({ repo_root: repo })
-    if (!loaded.ok) throw new Error(loaded.error)
-    const tracker = practiceTracker()
-    const launcher = createScriptedLauncher({ turns: withCleanLenses(turns) })
-    startRun({
-        journal,
-        spec_number: 10,
-        config: loaded.config,
-        base_branch: 'main',
-    })
-    const action = await runEngine({
-        journal,
-        tracker,
-        git: createGitAdapter({ repo_root: repo }),
-        launcher,
-        jev,
-        stop_before: ['wait_for_reply'],
-    })
-    return {
-        action,
-        tracker,
-        records: journal.read(),
-        launches: launcher.launches(),
-        origin,
-    }
-}
 
 /**
  * Makes the practice repo under `root`, with this engine config committed,
@@ -337,14 +292,22 @@ export const createPracticeRepo = async ({
     root,
     config,
     files,
+    stale_manifest,
 }: {
     root: string
     /** The engine config to commit. Defaults to `PRACTICE_ENGINE_CONFIG`. */
     config?: object
     /** More files for the first commit, by repo-relative path. */
     files?: Record<string, string>
+    /** The first commit's manifest, written after its lockfile was made. */
+    stale_manifest?: string
 }) => {
-    const { repo, origin } = await makePracticeRepo({ root, config, files })
+    const { repo, origin } = await makePracticeRepo({
+        root,
+        config,
+        files,
+        stale_manifest,
+    })
     const journal = createJournal({
         file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
     })
@@ -354,6 +317,7 @@ export const createPracticeRepo = async ({
         launcher,
         ticket,
         tracker: given,
+        jev,
         clock,
         resume,
         stop_before,
@@ -370,6 +334,8 @@ export const createPracticeRepo = async ({
         ticket?: TrackerIssue
         /** A tracker to keep across runs. Defaults to a fresh one. */
         tracker?: InMemoryTracker
+        /** Jev in shadow mode. Leave it out to run without Jev. */
+        jev?: JevShadow
         /** The clock limit waits sleep by. Defaults to the system's. */
         clock?: EngineClock
         /** Carry on the journal as it is, as a restarted engine does. */
@@ -402,6 +368,7 @@ export const createPracticeRepo = async ({
             tracker,
             git: createGitAdapter({ repo_root: repo }),
             launcher: launcher ?? scripted,
+            jev,
             clock,
             stop_before: stop_before ?? ['wait_for_reply'],
             reply_poll_ms,
@@ -415,4 +382,46 @@ export const createPracticeRepo = async ({
     }
 
     return { repo, origin, journal, run }
+}
+
+/** What a practice run left behind. */
+export type PracticeRun = {
+    action: EngineAction
+    tracker: InMemoryTracker
+    records: JournalRecord[]
+    /** The scripted launcher's calls; empty when `launcher` was given. */
+    launches: ScriptedCall[]
+    origin: string
+}
+
+/**
+ * Makes a practice repo in `root`, starts a run on spec #10 with journal
+ * `<root>/runs/run-1`, and runs the engine to its end with these scripted
+ * agent turns (and a clean final review for any lens they don't script), or
+ * with `launcher`, and Jev in shadow mode if given.
+ *
+ * @example
+ * const { action, records, origin } = await runPractice({ root, turns: HAPPY_TURNS })
+ */
+export const runPractice = async ({
+    root,
+    turns,
+    launcher,
+    files,
+    stale_manifest,
+    jev,
+}: {
+    root: string
+    turns: ScriptedTurn[]
+    /** Plays instead of `turns`, with no lens turns added. */
+    launcher?: AgentLauncher
+    /** More files for the practice repo's first commit. */
+    files?: Record<string, string>
+    /** The first commit's manifest, written after its lockfile was made. */
+    stale_manifest?: string
+    jev?: JevShadow
+}): Promise<PracticeRun> => {
+    const practice = await createPracticeRepo({ root, files, stale_manifest })
+    const ran = await practice.run({ turns, launcher, jev })
+    return { ...ran, origin: practice.origin }
 }

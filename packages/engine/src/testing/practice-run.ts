@@ -1,5 +1,12 @@
-import { specIssue, ticketIssue } from './intake-fixtures'
-import { APPROVE, HAPPY_TURNS, makePracticeRepo } from './practice-repo'
+import { ticketIssue } from './intake-fixtures'
+import {
+    APPROVE,
+    HAPPY_TURNS,
+    makePracticeRepo,
+    PRACTICE_SPEC_NUMBER,
+    practiceSpec,
+    sumTicket,
+} from './practice-repo'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import {
@@ -15,10 +22,7 @@ import {
  * Seam 2 (`core/run-one-ticket.test.ts`) runs on `practice-repo.ts` itself.
  */
 
-export { makePracticeRepo }
-
-/** The practice spec's issue number. Its tickets are #11 and #12. */
-export const PRACTICE_SPEC_NUMBER = 10
+export { makePracticeRepo, PRACTICE_SPEC_NUMBER }
 
 export const AVERAGE_TEST = `import { describe, expect, test } from 'bun:test'
 
@@ -103,29 +107,21 @@ export const DEMO_TURNS: ScriptedTurn[] = [
  * The practice spec (#10) in an in-memory tracker, with ticket #11 (sum)
  * and ticket #12 (average), which is blocked by #11.
  */
-export const demoTracker = (): InMemoryTracker => {
-    const tickets = [
-        ticketIssue({
-            number: 11,
-            title: 'Add sum',
-            criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
-        }),
-        ticketIssue({
-            number: 12,
-            title: 'Add average',
-            criteria: [
-                'average of two numbers is the one between them',
-                'average of no numbers is zero',
-            ],
-            blocked_by_section: '- #11',
-            blocked_by: [11],
-        }),
-    ]
-    return createInMemoryTracker({
+export const demoTracker = (): InMemoryTracker =>
+    createInMemoryTracker({
         issues: [
-            specIssue({ number: PRACTICE_SPEC_NUMBER, title: 'Practice spec' }),
-            ...tickets,
+            practiceSpec(),
+            sumTicket(),
+            ticketIssue({
+                number: 12,
+                title: 'Add average',
+                criteria: [
+                    'average of two numbers is the one between them',
+                    'average of no numbers is zero',
+                ],
+                blocked_by_section: '- #11',
+                blocked_by: [11],
+            }),
         ],
         sub_tickets: { [PRACTICE_SPEC_NUMBER]: [11, 12] },
     })
-}
