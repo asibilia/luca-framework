@@ -49,14 +49,37 @@ const commits = (records: JournalRecord[]) =>
             : []
     )
 
-/** The ticket's worktree, where the scripted agents worked. */
-const worktree = (records: JournalRecord[]): string => {
-    const created = records.find(
+const created = (records: JournalRecord[]) => {
+    const found = records.find(
         (record) => record.kind === 'ticket_worktree_created'
     )
-    if (created?.kind !== 'ticket_worktree_created') throw new Error('none')
-    return created.content.path
+    if (found?.kind !== 'ticket_worktree_created') throw new Error('none')
+    return found.content
 }
+
+/** The ticket's worktree, where the scripted agents worked. */
+const worktree = (records: JournalRecord[]): string => created(records).path
+
+/**
+ * The ticket's branch. A run that opens its PR removes the worktree, so its
+ * files are read from the branch, which stays.
+ */
+const ticketBranch = (records: JournalRecord[]): string =>
+    created(records).branch
+
+/** The paths on the ticket's branch. */
+const branchFiles = async (records: JournalRecord[]): Promise<string[]> =>
+    (
+        await git(
+            practice.repo,
+            'ls-tree',
+            '-r',
+            '--name-only',
+            ticketBranch(records)
+        )
+    )
+        .split('\n')
+        .filter(Boolean)
 
 const CLEAN_COMMITS: { stage: 'red' | 'green'; files: string[] }[] = [
     { stage: 'red', files: ['src/sum.test.ts'] },
@@ -134,10 +157,13 @@ describe('the after-turn check', () => {
             'follow_up:implementer',
             'launch:ticket-reviewer',
         ])
-        const cwd = worktree(records)
-        expect(await Bun.file(join(cwd, 'src/sum.test.ts')).text()).toBe(
-            SUM_TEST
-        )
+        expect(
+            await git(
+                practice.repo,
+                'show',
+                `${ticketBranch(records)}:src/sum.test.ts`
+            )
+        ).toBe(SUM_TEST)
         expect(commits(records)).toEqual(CLEAN_COMMITS)
     }, 60_000)
 
@@ -167,7 +193,7 @@ describe('the after-turn check', () => {
             'launch:ticket-reviewer',
             'launch:ticket-reviewer',
         ])
-        expect(existsSync(join(worktree(records), 'NOTES.md'))).toBe(false)
+        expect(await branchFiles(records)).not.toContain('NOTES.md')
     }, 60_000)
 
     test('an agent that commits fails a try and its commit is undone', async () => {
@@ -192,9 +218,63 @@ describe('the after-turn check', () => {
         expect(failed).toMatchObject({ role: 'test-writer', failure: 'guard' })
         expect(failed?.error).toContain('HEAD moved')
         expect(
-            (await git(worktree(records), 'log', '--format=%s')).trim()
+            (
+                await git(
+                    practice.repo,
+                    'log',
+                    '--format=%s',
+                    ticketBranch(records)
+                )
+            ).trim()
         ).not.toContain('sneaky')
         expect(commits(records)).toEqual(CLEAN_COMMITS)
+    }, 60_000)
+
+    test('an agent that makes a branch at HEAD fails a try', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                {
+                    ...testWriter,
+                    act: async (cwd) => {
+                        await git(cwd, 'branch', 'sneaky')
+                    },
+                },
+                testWriter,
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [failed] = failures(records)
+        expect(failed).toMatchObject({ role: 'test-writer', failure: 'guard' })
+        expect(failed?.error).toContain('new refs at HEAD: refs/heads/sneaky')
+    }, 60_000)
+
+    test("another ticket's branch landing on HEAD during a turn is the engine's, not the agent's", async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practice.run({
+            turns: [
+                {
+                    ...testWriter,
+                    // What the engine does when #12 starts from the run
+                    // branch while #11's test-writer works on the same commit.
+                    act: async (cwd) => {
+                        const branch = (
+                            await git(cwd, 'rev-parse', '--abbrev-ref', 'HEAD')
+                        ).trim()
+                        const runBranch = branch.replace(/--ticket-11$/, '')
+                        await git(cwd, 'branch', `${runBranch}--ticket-12`)
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(failures(records)).toEqual([])
     }, 60_000)
 
     test('an agent that stages a file fails a try and the index is emptied', async () => {

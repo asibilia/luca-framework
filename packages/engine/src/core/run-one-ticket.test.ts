@@ -338,6 +338,7 @@ describe('one ticket, end to end, with scripted agents', () => {
             'gates_run',
             'run_branch_pushed',
             'pull_request_opened',
+            'worktrees_removed',
         ])
         const find = <K extends (typeof records)[number]['kind']>(kind: K) =>
             records.filter(
@@ -440,6 +441,12 @@ describe('one ticket, end to end, with scripted agents', () => {
             number: pulls[0]?.number,
             url: pulls[0]?.url,
         })
+
+        // Then the ticket's and the run branch's worktrees are removed.
+        expect(find('worktrees_removed')[0]?.content.paths).toEqual([
+            worktree?.content.path ?? '',
+            runBranch?.content.path ?? '',
+        ])
     }, 60_000)
 
     test('the leftover scan blocks the green commit and the run stops as stuck', async () => {

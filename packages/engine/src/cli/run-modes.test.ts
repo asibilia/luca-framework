@@ -96,7 +96,10 @@ describe('luca-run --demo', () => {
         expect(result.pull_requests[0]?.body).toContain('Closes #11')
         expect(result.pull_requests[0]?.body).toContain('Closes #12')
         expect(recorder.kinds()[0]).toBe('run_started')
-        expect(recorder.kinds().at(-1)).toBe('pull_request_opened')
+        expect(recorder.kinds().slice(-2)).toEqual([
+            'pull_request_opened',
+            'worktrees_removed',
+        ])
         // Jev is asked in shadow mode with no key: journaled, never sent.
         expect(recorder.kinds()).toContain('jev_asked')
         expect(recorder.kinds()).not.toContain('jev_answered')
@@ -137,7 +140,10 @@ describe('luca-run --spec', () => {
         ])
         expect(claude.closed()).toBe(1)
         expect(recorder.kinds()).toContain('agent_finished')
-        expect(recorder.kinds().at(-1)).toBe('pull_request_opened')
+        expect(recorder.kinds().slice(-2)).toEqual([
+            'pull_request_opened',
+            'worktrees_removed',
+        ])
         expect(recorder.endings()).toEqual([result])
     }, 60_000)
 
