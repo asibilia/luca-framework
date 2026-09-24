@@ -109,6 +109,7 @@ const DEMO_LEARNER_TURN: ScriptedTurn = {
         memories: [
             {
                 type: 'pattern',
+                scope: 'anywhere',
                 concept: 'build-on-exported-helpers',
                 content:
                     'When a ticket builds on an earlier one, import its exported helper (average uses sum) instead of copying it.',

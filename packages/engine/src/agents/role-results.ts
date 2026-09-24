@@ -240,10 +240,14 @@ export const MAX_PROPOSED_MEMORIES = 10
  * One memory the learner proposes. `type` is a plain string on purpose: the
  * engine routes each memory to a vault by its type, and refuses (and logs)
  * one with a type it doesn't know, instead of failing the whole result.
+ * `scope` is loose for the same reason: a missing or unknown one is refused
+ * (and logged) for that memory alone.
  */
 export const ProposedMemorySchema = z.object({
     /** `pattern`, `pitfall`, `procedure`, or `decision`. */
     type: z.string(),
+    /** `repo` (this repo only) or `anywhere` (useful in any repo). */
+    scope: z.string().optional(),
     /** A short name for the lesson, such as `bun-test-junit-reporter`. */
     concept: z.string().min(1),
     content: z.string().min(1),
