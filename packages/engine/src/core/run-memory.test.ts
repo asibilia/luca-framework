@@ -102,18 +102,21 @@ const LEARNER: ScriptedTurn = {
         memories: [
             {
                 type: 'pitfall',
+                scope: 'anywhere',
                 concept: 'bun-junit',
                 content: 'Bun needs --reporter=junit and --reporter-outfile.',
                 summary: 'JUnit flags',
             },
             {
                 type: 'decision',
+                scope: 'repo',
                 concept: 'engine-owns-memory',
                 content: 'Only the engine talks to MuninnDB.',
                 summary: 'Engine-only memory',
             },
             {
                 type: 'session',
+                scope: 'anywhere',
                 concept: 'today',
                 content: 'What happened today.',
                 summary: '',
@@ -291,6 +294,99 @@ describe('memory, end to end', () => {
         expect(pull?.body).not.toContain('session')
     }, 60_000)
 
+    test('the learner’s repo-only memories are saved to the project vault, useful-anywhere ones to default, a missing scope is refused and journaled, and the PR shows each vault', async () => {
+        const practice = await createPracticeRepo({ root })
+        const muninn = seededMuninn()
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const learner: ScriptedTurn = {
+            role: 'learner',
+            ticket: 10,
+            result: {
+                memories: [
+                    {
+                        type: 'pitfall',
+                        scope: 'repo',
+                        concept: 'engine-readme-guard-docs',
+                        content:
+                            'The engine README’s guard docs drift from the guard code.',
+                        summary: 'Guard docs drift',
+                    },
+                    {
+                        type: 'pattern',
+                        scope: 'anywhere',
+                        concept: 'one-command-per-call',
+                        content: 'Run one shell command per call.',
+                        summary: 'One command per call',
+                    },
+                    {
+                        type: 'pitfall',
+                        concept: 'no-scope',
+                        content: 'A lesson with no scope.',
+                        summary: '',
+                    },
+                ],
+                helped: [],
+            },
+        }
+
+        const { action, records, tracker } = await practice.run({
+            turns: [testWriter, implementer, reviewer, learner],
+            memory: { client: muninn, project_vault: PROJECT },
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [saved] = savedOf(records)
+        const byConcept = (concept: string) =>
+            saved?.saves.find((save) => save.concept.includes(concept))
+        expect(byConcept('engine-readme-guard-docs')).toMatchObject({
+            type: 'pitfall',
+            concept: 'pitfall:engine-readme-guard-docs',
+            vault: PROJECT,
+            outcome: 'added',
+        })
+        expect(byConcept('one-command-per-call')).toMatchObject({
+            type: 'pattern',
+            concept: 'pattern:one-command-per-call',
+            vault: 'default',
+            outcome: 'added',
+        })
+        expect(byConcept('no-scope')).toMatchObject({
+            type: 'pitfall',
+            vault: null,
+            outcome: 'refused',
+            id: null,
+            error: expect.stringContaining('scope'),
+        })
+        expect(
+            muninn
+                .stored(PROJECT)
+                .map(({ concept }) => concept)
+                .includes('pitfall:engine-readme-guard-docs')
+        ).toBe(true)
+        expect(
+            muninn
+                .stored('default')
+                .map(({ concept }) => concept)
+                .includes('pattern:one-command-per-call')
+        ).toBe(true)
+        for (const vault of [PROJECT, 'default']) {
+            expect(
+                muninn
+                    .stored(vault)
+                    .some(({ concept }) => concept.includes('no-scope'))
+            ).toBe(false)
+        }
+
+        const [pull] = tracker.pullRequests()
+        expect(pull?.body).toContain(
+            `- pitfall in \`${PROJECT}\`: pitfall:engine-readme-guard-docs (`
+        )
+        expect(pull?.body).toContain(
+            '- pattern in `default`: pattern:one-command-per-call ('
+        )
+        expect(pull?.body).not.toContain('no-scope')
+    }, 60_000)
+
     test('a stopped run still learns, and its new memories go on the spec issue', async () => {
         const practice = await createPracticeRepo({ root })
         const muninn = seededMuninn()
@@ -334,6 +430,7 @@ describe('memory, end to end', () => {
                         memories: [
                             {
                                 type: 'pitfall',
+                                scope: 'anywhere',
                                 concept: 'label-refactors',
                                 content:
                                     'A ticket that changes no behavior needs the refactor label.',
@@ -625,6 +722,7 @@ describe('memory across a crash (#369)', () => {
                 memories: [
                     {
                         type: 'pitfall',
+                        scope: 'anywhere',
                         concept: 'label-refactors',
                         content: 'A refactor needs the refactor label.',
                         summary: 'Label refactors',

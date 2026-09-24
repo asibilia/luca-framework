@@ -75,6 +75,17 @@ const START_MEMORY = recalledMemory({ id: 'start-1', vault: PROJECT_VAULT })
 const startRecalled = (): JournalEntry =>
     memoryRecalled({ point: 'run_start', memories: [START_MEMORY] })
 
+/** A proposed memory the learner marked with this scope. */
+const scoped = ({
+    type,
+    concept,
+    scope,
+}: {
+    type: string
+    concept: string
+    scope: string
+}) => ({ ...proposedMemory({ type, concept }), scope })
+
 const steps = ({
     tickets,
     entries,
@@ -595,6 +606,13 @@ describe('the learner', () => {
         )
     })
 
+    test("the learner's prompt asks for each memory's scope: this repo only, or useful anywhere", () => {
+        const prompt = promptOf(steps({ entries: passed() })[0])
+        expect(prompt).toContain('scope')
+        expect(prompt).toContain('repo')
+        expect(prompt).toContain('anywhere')
+    })
+
     test("the learner's memories are routed by type, unknown types refused, and feedback set for every shown memory", () => {
         const [save] = steps({
             entries: [
@@ -602,15 +620,21 @@ describe('the learner', () => {
                 learnerStarted(),
                 learnerFinished({
                     memories: [
-                        proposedMemory({
+                        scoped({
                             type: 'pitfall',
                             concept: 'bun-junit',
+                            scope: 'anywhere',
                         }),
-                        proposedMemory({
+                        scoped({
                             type: 'decision',
                             concept: 'engine-only-memory',
+                            scope: 'repo',
                         }),
-                        proposedMemory({ type: 'session', concept: 'today' }),
+                        scoped({
+                            type: 'session',
+                            concept: 'today',
+                            scope: 'anywhere',
+                        }),
                     ],
                     helped: ['start-1', 'never-shown'],
                 }),
@@ -645,6 +669,199 @@ describe('the learner', () => {
                 ? save.saves.map(({ op_id }) => op_id)
                 : []
         expect(new Set(opIds).size).toBe(2)
+    })
+
+    test("the learner's memories are routed by scope: repo-only to the project vault, useful anywhere to default, and a decision to the project vault whatever its scope", () => {
+        const [save] = steps({
+            entries: [
+                ...passed(),
+                learnerStarted(),
+                learnerFinished({
+                    memories: [
+                        scoped({
+                            type: 'pitfall',
+                            concept: 'engine-readme-guard-docs',
+                            scope: 'repo',
+                        }),
+                        scoped({
+                            type: 'pattern',
+                            concept: 'object-args',
+                            scope: 'anywhere',
+                        }),
+                        scoped({
+                            type: 'procedure',
+                            concept: 'luca-run',
+                            scope: 'repo',
+                        }),
+                        scoped({
+                            type: 'decision',
+                            concept: 'markers',
+                            scope: 'anywhere',
+                        }),
+                    ],
+                }),
+            ],
+        })
+        expect(save).toMatchObject({ type: 'save_memories', refused: [] })
+        expect(
+            save?.type === 'save_memories'
+                ? save.saves.map(({ concept, vault }) => ({ concept, vault }))
+                : []
+        ).toEqual([
+            {
+                concept: 'pitfall:engine-readme-guard-docs',
+                vault: PROJECT_VAULT,
+            },
+            { concept: 'pattern:object-args', vault: 'default' },
+            { concept: 'procedure:luca-run', vault: PROJECT_VAULT },
+            { concept: 'decision:markers', vault: PROJECT_VAULT },
+        ])
+    })
+
+    test('a memory with a missing or unknown scope is refused with the reason, never saved to a guessed vault', () => {
+        const [save] = steps({
+            entries: [
+                ...passed(),
+                learnerStarted(),
+                learnerFinished({
+                    memories: [
+                        proposedMemory({
+                            type: 'pitfall',
+                            concept: 'no-scope',
+                        }),
+                        scoped({
+                            type: 'pattern',
+                            concept: 'odd-scope',
+                            scope: 'everywhere',
+                        }),
+                        scoped({
+                            type: 'pitfall',
+                            concept: 'fine',
+                            scope: 'anywhere',
+                        }),
+                    ],
+                }),
+            ],
+        })
+        expect(save).toMatchObject({
+            type: 'save_memories',
+            saves: [{ concept: 'pitfall:fine', vault: 'default' }],
+            refused: [
+                {
+                    type: 'pitfall',
+                    concept: 'no-scope',
+                    reason: expect.stringContaining('scope'),
+                },
+                {
+                    type: 'pattern',
+                    concept: 'odd-scope',
+                    reason: expect.stringContaining('"everywhere"'),
+                },
+            ],
+        })
+        expect(save?.type === 'save_memories' ? save.saves : []).toHaveLength(1)
+    })
+
+    test('a repo-only memory is refused when the run has no project vault', () => {
+        const [save] = decideSteps({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassedWithMemory({
+                        tickets: [SUM],
+                        project_vault: null,
+                    }),
+                    ...withInstalls({
+                        entries: [
+                            ...passed(),
+                            learnerStarted(),
+                            learnerFinished({
+                                memories: [
+                                    scoped({
+                                        type: 'pitfall',
+                                        concept: 'only-here',
+                                        scope: 'repo',
+                                    }),
+                                    scoped({
+                                        type: 'pitfall',
+                                        concept: 'everywhere',
+                                        scope: 'anywhere',
+                                    }),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            }),
+        })
+        expect(save).toMatchObject({
+            type: 'save_memories',
+            saves: [{ concept: 'pitfall:everywhere', vault: 'default' }],
+            refused: [
+                {
+                    type: 'pitfall',
+                    concept: 'only-here',
+                    reason: expect.stringContaining('muninn.vault'),
+                },
+            ],
+        })
+    })
+
+    test("the PR shows each saved memory's vault: the project vault for repo-only ones, default for the rest", () => {
+        const learned = [
+            ...passed(),
+            learnerStarted(),
+            learnerFinished({
+                memories: [
+                    scoped({
+                        type: 'pitfall',
+                        concept: 'engine-readme-guard-docs',
+                        scope: 'repo',
+                    }),
+                    scoped({
+                        type: 'pitfall',
+                        concept: 'bun-junit',
+                        scope: 'anywhere',
+                    }),
+                ],
+            }),
+        ]
+        const [save] = steps({ entries: learned })
+        expect(
+            save?.type === 'save_memories'
+                ? save.saves.map(({ concept, vault }) => ({ concept, vault }))
+                : []
+        ).toEqual([
+            {
+                concept: 'pitfall:engine-readme-guard-docs',
+                vault: PROJECT_VAULT,
+            },
+            { concept: 'pitfall:bun-junit', vault: 'default' },
+        ])
+        const [pr] = steps({
+            entries: [
+                ...learned,
+                memoriesSaved({
+                    saves: [
+                        memorySave({
+                            concept: 'pitfall:engine-readme-guard-docs',
+                            vault: PROJECT_VAULT,
+                            id: 'new-1',
+                        }),
+                        memorySave({
+                            concept: 'pitfall:bun-junit',
+                            id: 'new-2',
+                        }),
+                    ],
+                }),
+            ],
+        })
+        const body = pr?.type === 'open_pull_request' ? pr.body : ''
+        expect(body).toContain(
+            `- pitfall in \`${PROJECT_VAULT}\`: pitfall:engine-readme-guard-docs (new-1), added`
+        )
+        expect(body).toContain(
+            '- pitfall in `default`: pitfall:bun-junit (new-2), added'
+        )
     })
 
     test('once saved, the PR opens and lists the new memories', () => {

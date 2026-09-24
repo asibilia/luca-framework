@@ -2,11 +2,17 @@ import { describe, expect, test } from 'bun:test'
 
 import { memoryFeedback, routeMemories, storedConcept } from './memory-routing'
 
-const proposal = (type: string, concept: string) => ({
+/** A proposed memory; `scope` defaults to useful anywhere. */
+const proposal = (
+    type: string,
+    concept: string,
+    scope: string | undefined = 'anywhere'
+) => ({
     type,
     concept,
     content: `The lesson of ${concept}.`,
     summary: `${concept} in short.`,
+    ...(scope === undefined ? {} : { scope }),
 })
 
 describe('routeMemories', () => {
@@ -16,7 +22,7 @@ describe('routeMemories', () => {
                 proposal('pattern', 'object-args'),
                 proposal('pitfall', 'bun-junit'),
                 proposal('procedure', 'release'),
-                proposal('decision', 'memory-engine-only'),
+                proposal('decision', 'memory-engine-only', 'repo'),
             ],
             project_vault: 'luca-monorepo',
         })
@@ -92,6 +98,122 @@ describe('routeMemories', () => {
         })
         expect(routed.saves[0]?.type).toBe('pitfall')
         expect(routed.saves[0]?.concept).toBe('pitfall:bun-junit')
+    })
+
+    test('routes repo-only patterns, pitfalls, and procedures to the project vault', () => {
+        const routed = routeMemories({
+            proposals: [
+                proposal('pattern', 'board-rows', 'repo'),
+                proposal('pitfall', 'engine-readme-guard-docs', 'repo'),
+                proposal('procedure', 'luca-run', 'repo'),
+            ],
+            project_vault: 'luca-monorepo',
+        })
+        expect(routed.refused).toEqual([])
+        expect(
+            routed.saves.map(({ concept, vault }) => ({ concept, vault }))
+        ).toEqual([
+            { concept: 'pattern:board-rows', vault: 'luca-monorepo' },
+            {
+                concept: 'pitfall:engine-readme-guard-docs',
+                vault: 'luca-monorepo',
+            },
+            { concept: 'procedure:luca-run', vault: 'luca-monorepo' },
+        ])
+    })
+
+    test('routes the same type by its scope: repo-only to the project vault, useful anywhere to default', () => {
+        const routed = routeMemories({
+            proposals: [
+                proposal('pitfall', 'only-here', 'repo'),
+                proposal('pitfall', 'everywhere', 'anywhere'),
+            ],
+            project_vault: 'proj',
+        })
+        expect(routed.refused).toEqual([])
+        expect(
+            routed.saves.map(({ concept, vault }) => ({ concept, vault }))
+        ).toEqual([
+            { concept: 'pitfall:only-here', vault: 'proj' },
+            { concept: 'pitfall:everywhere', vault: 'default' },
+        ])
+    })
+
+    test('a decision always goes to the project vault whatever its scope, while scope decides the other types', () => {
+        const routed = routeMemories({
+            proposals: [
+                proposal('decision', 'markers', 'anywhere'),
+                proposal('decision', 'engine-only-memory', 'repo'),
+                proposal('pattern', 'board-rows', 'repo'),
+                proposal('pattern', 'object-args', 'anywhere'),
+            ],
+            project_vault: 'proj',
+        })
+        expect(routed.refused).toEqual([])
+        expect(
+            routed.saves.map(({ concept, vault }) => ({ concept, vault }))
+        ).toEqual([
+            { concept: 'decision:markers', vault: 'proj' },
+            { concept: 'decision:engine-only-memory', vault: 'proj' },
+            { concept: 'pattern:board-rows', vault: 'proj' },
+            { concept: 'pattern:object-args', vault: 'default' },
+        ])
+    })
+
+    test('refuses a memory with no scope, with the reason, and saves the rest', () => {
+        const routed = routeMemories({
+            proposals: [
+                proposal('pitfall', 'no-scope', undefined),
+                proposal('pattern', 'fine'),
+            ],
+            project_vault: 'proj',
+        })
+        expect(routed.saves.map(({ concept }) => concept)).toEqual([
+            'pattern:fine',
+        ])
+        expect(routed.refused).toEqual([
+            {
+                type: 'pitfall',
+                concept: 'no-scope',
+                reason: expect.stringContaining('scope'),
+            },
+        ])
+    })
+
+    test('refuses a memory with an unknown scope, naming it, instead of guessing a vault', () => {
+        const routed = routeMemories({
+            proposals: [proposal('procedure', 'release', 'everywhere')],
+            project_vault: 'proj',
+        })
+        expect(routed.saves).toEqual([])
+        expect(routed.refused).toEqual([
+            {
+                type: 'procedure',
+                concept: 'release',
+                reason: expect.stringContaining('"everywhere"'),
+            },
+        ])
+        expect(routed.refused[0]?.reason).toContain('scope')
+    })
+
+    test('refuses a repo-only memory when the config names no project vault', () => {
+        const routed = routeMemories({
+            proposals: [
+                proposal('pitfall', 'only-here', 'repo'),
+                proposal('pitfall', 'everywhere'),
+            ],
+            project_vault: null,
+        })
+        expect(
+            routed.saves.map(({ concept, vault }) => ({ concept, vault }))
+        ).toEqual([{ concept: 'pitfall:everywhere', vault: 'default' }])
+        expect(routed.refused).toEqual([
+            {
+                type: 'pitfall',
+                concept: 'only-here',
+                reason: expect.stringContaining('muninn.vault'),
+            },
+        ])
     })
 })
 
