@@ -42,6 +42,8 @@ import {
     worktreeReset,
     worktreesRemoved,
     type Entry,
+    finalReviewShipped,
+    unshownStuckRecord,
 } from './testing/journal-fixtures'
 
 import { planUsedText, stoppedText } from '../shared/board-state'
@@ -1558,6 +1560,69 @@ describe('the final review', () => {
             reviewing.final_review.lenses.find((lens) => lens.name === 'rules')
                 ?.findings
         ).toEqual({ blocker: 0, should_fix: 0, nit: 2 })
+    })
+
+    test("the engine's ship reply to a stuck final review resolves it and passes the final review", async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [
+                ...wholeTicket({ ticket: 11 }),
+                finalReviewStarted(),
+                finalReviewFixing({ round: 3 }),
+                finalReviewStuck({
+                    reason: 'changes_requested',
+                    detail: 'security-S1 is still open.',
+                }),
+                unshownStuckRecord({ kind: 'stuck_reported' }),
+            ],
+        })
+        expect((await harness.state()).needs_you).toEqual([
+            expect.objectContaining({
+                key: 'final',
+                replies: ['retry', 'stop', 'ship'],
+            }),
+        ])
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [
+                replyReceived({ word: 'ship', ticket: null }),
+                finalReviewShipped(),
+            ],
+        })
+
+        const shipped = await harness.state()
+        expect(shipped.needs_you).toEqual([])
+        expect(shipped.final_review.state).toBe('passed')
+        expect(rowsOfKind({ kind: 'luca-board-stuck' })[0]?.row).toMatchObject({
+            data: { status: 'resolved' },
+        })
+    })
+
+    test("the engine's retry of a stuck final review sends it back to reviewing", async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [
+                ...wholeTicket({ ticket: 11 }),
+                finalReviewStarted(),
+                finalReviewFixing({ round: 3 }),
+                finalReviewStuck({ reason: 'gates_failed', detail: 'red' }),
+            ],
+        })
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [
+                replyReceived({ word: 'retry', ticket: null }),
+                unshownStuckRecord({ kind: 'final_review_retried' }),
+            ],
+        })
+
+        const retried = await harness.state()
+        expect(retried.needs_you).toEqual([])
+        expect(retried.final_review.state).toBe('reviewing')
     })
 
     test('a stuck final review asks for retry, stop, or ship; passing clears it', async () => {

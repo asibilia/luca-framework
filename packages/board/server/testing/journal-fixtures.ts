@@ -827,8 +827,9 @@ export const usageRecorded = ({
     })
 
 /**
- * The owner's one-word reply on the spec issue. `ship` is the final review's
- * reply (#367); the engine reads `retry`, `skip`, and `stop` today (#366).
+ * The owner's one-word reply on the spec issue, as the engine journals it
+ * (#366): `retry #n`, `skip #n`, `stop`, or `retry` and `ship` for a stuck
+ * final review (`ticket: null`).
  */
 export const replyReceived = ({
     word,
@@ -1111,3 +1112,16 @@ export const engineFinalFixesLanded = ({
 
 export const finalReviewShipped = (): Entry =>
     entry({ kind: 'final_review_shipped', content: {} })
+
+/**
+ * A record the board doesn't read: the engine told the spec issue (`ticket`
+ * `null` for the final review), or retried the stuck final review.
+ */
+export const unshownStuckRecord = ({
+    kind,
+}: {
+    kind: 'stuck_reported' | 'final_review_retried'
+}): Entry =>
+    kind === 'stuck_reported'
+        ? entry({ kind, content: { comment_id: 400, body: 'stuck' } })
+        : entry({ kind, content: {} })
