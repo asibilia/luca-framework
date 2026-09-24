@@ -131,7 +131,7 @@ The record of everything that happened in a run, step by step. It only ever grow
 _Avoid_: ledger, telemetry, log
 
 **Checkpoint**:
-A step whose finish is written in the journal. A restarted run picks up each ticket from its last checkpoint and redoes any step that was only half done.
+A step whose finish is written in the journal: its records, then its end. A restarted run picks up each ticket from its last checkpoint and redoes any step that was only half done, without repeating what that step already did outside the engine (a comment, a commit, the PR). A step cut off by three crashes in a row is not redone: its ticket is stuck.
 _Avoid_: savepoint, snapshot
 
 **Board**:
