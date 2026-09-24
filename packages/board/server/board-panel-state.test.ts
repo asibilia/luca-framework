@@ -1269,6 +1269,7 @@ describe('a stopped run', () => {
             role: 'test-writer',
             ticket: 11,
             billing: false,
+            crashed: false,
             since: expect.any(String),
         })
         expect(await harness.ticket({ number: 11 })).toMatchObject({
@@ -1321,6 +1322,31 @@ describe('a stopped run', () => {
         })
     })
 
+    test('a stop after crashes says the run will not go on', async () => {
+        const reason =
+            'A crash cut off the step `create_run_branch` 3 times in a row.'
+        await runWith({
+            entries: [
+                {
+                    kind: 'run_stopped',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        reason,
+                        role: null,
+                        billing: false,
+                        crashed: true,
+                    },
+                },
+            ],
+        })
+
+        const state = await harness.state()
+        expect(state.run.status).toBe('stopped')
+        expect(state.run.stopped).toMatchObject({ reason, crashed: true })
+        expect(eventRows().at(-1)?.text).toContain('This run will not go on')
+    })
+
     test('a stop with no billing flag is not a billing stop', async () => {
         await runWith({
             entries: [
@@ -1334,6 +1360,7 @@ describe('a stopped run', () => {
         })
         expect((await harness.state()).run.stopped).toMatchObject({
             billing: false,
+            crashed: false,
         })
         expect(stoppedText({ reason: 'x', billing: false })).toBe(
             'The run stopped: x. Start it again with the same run id to pick up where it stopped.'
