@@ -1,73 +1,33 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-
-import { $ } from 'bun'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { MAX_FIX_ROUNDS } from './decide-build'
-import { runEngine, startRun } from './execute'
 
 import {
     createScriptedLauncher,
-    type ScriptedLauncher,
+    type ScriptedTurn,
 } from '../agents/scripted-launcher'
-import { loadEngineConfig } from '../config/engine-config'
-import { createGitAdapter } from '../git/git-adapter'
-import { createJournal, runJournalPath, type Journal } from '../journal/journal'
-import { specIssue, ticketIssue } from '../testing/intake-fixtures'
-import { CLEAN_LENS_TURNS, latestStuck } from '../testing/practice-repo'
-import { createInMemoryTracker } from '../tracker/in-memory-tracker'
+import {
+    CLEAN_LENS_TURNS,
+    git,
+    HAPPY_TURNS,
+    IMPLEMENTER_RESULT,
+    latestStuck,
+    runPractice,
+    SUM,
+    SUM_TEST,
+    TEST_WRITER_RESULT,
+} from '../testing/practice-repo'
 
 /**
- * Seam 2: one ticket, end to end. A throwaway git repo with a local bare repo
+ * Seam 2: one ticket, end to end, on the practice repo
+ * (`testing/practice-repo.ts`): a throwaway git repo with a local bare repo
  * as its `origin`, an in-memory tracker, and scripted agents. The gates,
  * commits, join, push, journal, and PR step are all real. No GitHub, no models.
  */
-
-const ENGINE_CONFIG = {
-    checks: {
-        test: 'bun test',
-        // A cheap stand-in for a type check: the entry point must bundle.
-        types: 'bun build src/index.ts --target=bun > /dev/null',
-        lint: 'bun scripts/lint.ts',
-    },
-    test_file_patterns: ['src/**/*.test.ts'],
-    test_setup_files: [],
-    rule_files: [],
-}
-
-/** Fails when a source file uses console.log, so lint is a real gate. */
-const LINT_SCRIPT = `const glob = new Bun.Glob('src/**/*.ts')
-let bad = 0
-for await (const file of glob.scan('.')) {
-    if ((await Bun.file(file).text()).includes('console.log')) {
-        console.error(file + ': no console.log')
-        bad += 1
-    }
-}
-process.exit(bad === 0 ? 0 : 1)
-`
-
-const SUM_TEST = `import { describe, expect, test } from 'bun:test'
-
-import { sum } from './sum'
-
-describe('sum', () => {
-    test('adds two numbers', () => {
-        expect(sum({ numbers: [1, 2] })).toBe(3)
-    })
-
-    test('of no numbers is zero', () => {
-        expect(sum({ numbers: [] })).toBe(0)
-    })
-})
-`
-
-const SUM = `export const sum = ({ numbers }: { numbers: number[] }): number =>
-    numbers.reduce((total, each) => total + each, 0)
-`
 
 /** A sum test that defines sum itself, so it passes before any code exists. */
 const PASSING_SUM_TEST = SUM_TEST.replace(
@@ -137,174 +97,10 @@ test('addOne adds one', () => {
     'src/index.ts': "export { addOne } from './add-one'\n",
 }
 
-const TEST_WRITER_RESULT = {
-    outcome: 'tests_written',
-    criteria: [
-        {
-            criterion_id: 'AC1',
-            tests: [
-                { file: 'src/sum.test.ts', name: 'sum > adds two numbers' },
-            ],
-        },
-        {
-            criterion_id: 'AC2',
-            tests: [
-                {
-                    file: 'src/sum.test.ts',
-                    name: 'sum > of no numbers is zero',
-                },
-            ],
-        },
-    ],
-    summary: 'One test per criterion.',
-    assumptions: ['sum takes a list of numbers.'],
-    run_notes: [],
-}
-
-const IMPLEMENTER_RESULT = {
-    outcome: 'done',
-    bad_test: null,
-    summary: 'Added sum and exported it.',
-    assumptions: [],
-    run_notes: [],
-}
-
-const APPROVE = {
-    verdict: 'approve',
-    findings: [],
-    summary: 'Both criteria are met with honest tests.',
-    assumptions: [],
-}
-
 let root = ''
-let repo = ''
-let origin = ''
-let journal: Journal
-
-const git = (cwd: string, ...args: string[]) =>
-    $`git -C ${cwd} ${args}`.quiet().text()
-
-/** A small repo with no tests yet, pushed to a local bare `origin`. */
-const makePracticeRepo = async ({
-    files,
-    stale_manifest,
-}: {
-    files: Record<string, string> | undefined
-    /** The first commit's manifest, written after its lockfile was made. */
-    stale_manifest?: string
-}) => {
-    await $`git init -q --bare -b main ${origin}`.quiet()
-    await $`git init -q -b main ${repo}`.quiet()
-    const hooks = join(root, 'no-hooks')
-    await mkdir(hooks)
-    await git(repo, 'config', 'user.name', 'Practice')
-    await git(repo, 'config', 'user.email', 'practice@example.com')
-    await git(repo, 'config', 'commit.gpgsign', 'false')
-    await git(repo, 'config', 'core.hooksPath', hooks)
-    await Bun.write(join(repo, 'README.md'), '# Practice\n')
-    await Bun.write(join(repo, '.gitignore'), 'node_modules\n')
-    await Bun.write(join(repo, 'src', 'index.ts'), 'export {}\n')
-    await Bun.write(join(repo, 'scripts', 'lint.ts'), LINT_SCRIPT)
-    await Bun.write(
-        join(repo, '.luca', 'config.json'),
-        JSON.stringify(ENGINE_CONFIG, null, 4)
-    )
-    for (const [path, content] of Object.entries(files ?? {})) {
-        await Bun.write(join(repo, path), content)
-    }
-    if (files?.['package.json'] !== undefined) {
-        // The starting lockfile. Workspace packages install offline.
-        await $`bun install`.cwd(repo).quiet()
-    }
-    if (stale_manifest !== undefined) {
-        await Bun.write(join(repo, 'package.json'), stale_manifest)
-    }
-    await git(repo, 'add', '-A')
-    await git(repo, 'commit', '-q', '-m', 'initial')
-    await git(repo, 'remote', 'add', 'origin', origin)
-    await git(repo, 'push', '-q', 'origin', 'main')
-}
-
-const practiceTracker = () =>
-    createInMemoryTracker({
-        issues: [
-            specIssue({ number: 10, title: 'Practice spec' }),
-            ticketIssue({
-                number: 11,
-                title: 'Add sum',
-                criteria: ['sum adds two numbers', 'sum of no numbers is zero'],
-            }),
-        ],
-        sub_tickets: { 10: [11] },
-    })
-
-type Turn = Parameters<typeof createScriptedLauncher>[0]['turns'][number]
-
-const HAPPY_TURNS: Turn[] = [
-    {
-        role: 'test-writer',
-        ticket: 11,
-        files: { 'src/sum.test.ts': SUM_TEST },
-        result: TEST_WRITER_RESULT,
-    },
-    {
-        role: 'implementer',
-        ticket: 11,
-        files: {
-            'src/sum.ts': SUM,
-            'src/index.ts': "export { sum } from './sum'\n",
-        },
-        result: IMPLEMENTER_RESULT,
-    },
-    { role: 'ticket-reviewer', ticket: 11, result: APPROVE },
-]
-
-const runPractice = async ({
-    turns,
-    launcher,
-    files,
-    stale_manifest,
-}: {
-    turns: Turn[]
-    /** Defaults to a scripted launcher playing `turns`. */
-    launcher?: ScriptedLauncher
-    /** More files for the practice repo's first commit. */
-    files?: Record<string, string>
-    stale_manifest?: string
-}) => {
-    await makePracticeRepo({ files, stale_manifest })
-    const loaded = await loadEngineConfig({ repo_root: repo })
-    if (!loaded.ok) throw new Error(loaded.error)
-    const tracker = practiceTracker()
-    startRun({
-        journal,
-        spec_number: 10,
-        config: loaded.config,
-        base_branch: 'main',
-    })
-    const action = await runEngine({
-        journal,
-        tracker,
-        git: createGitAdapter({ repo_root: repo }),
-        // Every run ends in a clean final review unless its turns say so.
-        launcher:
-            launcher ??
-            createScriptedLauncher({
-                turns: [...turns, ...CLEAN_LENS_TURNS(10)],
-            }),
-        // A stuck ticket ends the test at its first wait for a reply.
-        stop_before: ['wait_for_reply'],
-    })
-    return { action, tracker, records: journal.read() }
-}
 
 beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'luca-engine-e2e-'))
-    repo = join(root, 'repo')
-    origin = join(root, 'origin.git')
-    journal = createJournal({
-        file: runJournalPath({ runs_dir: join(root, 'runs'), run_id: 'run-1' }),
-    })
 })
 
 afterEach(async () => {
@@ -313,7 +109,8 @@ afterEach(async () => {
 
 describe('one ticket, end to end, with scripted agents', () => {
     test('builds the ticket, joins the run branch, pushes it, and opens one PR', async () => {
-        const { action, tracker, records } = await runPractice({
+        const { action, tracker, records, origin } = await runPractice({
+            root,
             turns: HAPPY_TURNS,
         })
 
@@ -474,7 +271,8 @@ describe('one ticket, end to end, with scripted agents', () => {
     test('the leftover scan blocks the green commit and the run stops as stuck', async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const { action, tracker, records } = await runPractice({
+        const { action, tracker, records, origin } = await runPractice({
+            root,
             turns: [
                 testWriter,
                 {
@@ -589,7 +387,8 @@ describe('one ticket, end to end, with scripted agents', () => {
                 ...CLEAN_LENS_TURNS(10),
             ],
         })
-        const { action, tracker, records } = await runPractice({
+        const { action, tracker, records, origin } = await runPractice({
+            root,
             turns: [],
             launcher,
         })
@@ -687,7 +486,7 @@ describe('one ticket, end to end, with scripted agents', () => {
     test(`a test that still passes after ${MAX_FIX_ROUNDS} fix rounds leaves the ticket stuck`, async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const passingAlready: Turn = {
+        const passingAlready: ScriptedTurn = {
             ...testWriter,
             files: { 'src/sum.test.ts': PASSING_SUM_TEST },
         }
@@ -702,7 +501,11 @@ describe('one ticket, end to end, with scripted agents', () => {
                 reviewer,
             ],
         })
-        const { action, records } = await runPractice({ turns: [], launcher })
+        const { action, records } = await runPractice({
+            root,
+            turns: [],
+            launcher,
+        })
 
         expect(action).toMatchObject({ type: 'wait_for_reply' })
         expect(latestStuck(records)).toMatchObject({
@@ -737,7 +540,8 @@ describe('one ticket, end to end, with scripted agents', () => {
     test('a ticket that adds a package gets the install from the engine, and the lockfile in its green commit', async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const { action, records } = await runPractice({
+        const { action, records, origin } = await runPractice({
+            root,
             files: WORKSPACE_FILES,
             turns: [
                 testWriter,
@@ -821,6 +625,7 @@ describe('one ticket, end to end, with scripted agents', () => {
             'src/index.ts': "export { sum } from './sum'\n",
         }
         const { action, records } = await runPractice({
+            root,
             files: WORKSPACE_FILES,
             turns: [
                 testWriter,
@@ -894,6 +699,7 @@ describe('one ticket, end to end, with scripted agents', () => {
             'src/index.ts': "export { sum } from './sum'\n",
         }
         const { action, records } = await runPractice({
+            root,
             files: WORKSPACE_FILES,
             turns: [
                 testWriter,
@@ -932,6 +738,7 @@ describe('one ticket, end to end, with scripted agents', () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
         if (!testWriter || !implementer || !reviewer) throw new Error('turns')
         const { action, records } = await runPractice({
+            root,
             files: DEPENDENT_FILES,
             turns: [
                 testWriter,
@@ -1010,6 +817,7 @@ describe('one ticket, end to end, with scripted agents', () => {
 
     test('an install that fails in a new worktree is journaled and makes the ticket stuck, before any agent', async () => {
         const { action, records } = await runPractice({
+            root,
             files: WORKSPACE_FILES,
             // The committed manifest wants a workspace package that doesn't
             // exist, so the install fails, offline.
@@ -1067,6 +875,7 @@ describe('run notes, end to end', () => {
             ],
         })
         const { action, records } = await runPractice({
+            root,
             turns: [],
             launcher,
         })
@@ -1181,6 +990,7 @@ describe('agent messages, end to end', () => {
             ],
         })
         const { action, records } = await runPractice({
+            root,
             turns: [],
             launcher,
         })
