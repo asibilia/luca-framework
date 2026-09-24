@@ -130,6 +130,9 @@ const ROLE_TASKS: Record<AgentRole, string> = {
     'security-lens': `${LENS_TASK_TEXT} Judge security: untrusted input, injection, paths and shell commands, secrets, permissions, and unsafe defaults.`,
     'integration-lens': `${LENS_TASK_TEXT} Judge integration: how the tickets fit together. Look for pieces that don't connect, contracts that disagree between tickets, duplicated work across tickets, and gaps the spec needs but no ticket covered.`,
     'rules-lens': `${LENS_TASK_TEXT} Judge the branch against the repo's rule files below. Only rules that need judgment count; mechanical rules belong to the lint gate, which already ran.`,
+    learner:
+        "Read this run's journal digest below and propose only durable lessons that will help future runs. " +
+        'Pick each one\'s type, and list the ids of the shown memories that actually helped. Write nothing.',
 }
 
 /**

@@ -148,6 +148,7 @@ const AgentFinishedEntrySchema = z.object({
         RoleResultSchema.options[5].extend(SESSION_FIELDS),
         RoleResultSchema.options[6].extend(SESSION_FIELDS),
         RoleResultSchema.options[7].extend(SESSION_FIELDS),
+        RoleResultSchema.options[8].extend(SESSION_FIELDS),
     ]),
 })
 

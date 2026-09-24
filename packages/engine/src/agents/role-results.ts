@@ -29,15 +29,17 @@ export const LENS_ROLES = [
 export type LensRole = (typeof LENS_ROLES)[number]
 
 /**
- * The roles an agent can play: the ticket roles while a ticket is built, and
- * one reviewer role per lens in the final review. The final review's fixers
- * are the test-writer and the implementer.
+ * The roles an agent can play: the ticket roles while a ticket is built, one
+ * reviewer role per lens in the final review, and the learner at the end of
+ * a run (#370). The final review's fixers are the test-writer and the
+ * implementer.
  */
 export const AgentRoleSchema = z.enum([
     'test-writer',
     'implementer',
     'ticket-reviewer',
     ...LENS_ROLES,
+    'learner',
 ])
 
 export type AgentRole = z.infer<typeof AgentRoleSchema>
@@ -231,6 +233,37 @@ export const LensReviewResultSchema = TicketReviewResultSchema
 
 export type LensReviewResult = z.infer<typeof LensReviewResultSchema>
 
+/** The most memories one learner may propose. */
+export const MAX_PROPOSED_MEMORIES = 10
+
+/**
+ * One memory the learner proposes. `type` is a plain string on purpose: the
+ * engine routes each memory to a vault by its type, and refuses (and logs)
+ * one with a type it doesn't know, instead of failing the whole result.
+ */
+export const ProposedMemorySchema = z.object({
+    /** `pattern`, `pitfall`, `procedure`, or `decision`. */
+    type: z.string(),
+    /** A short name for the lesson, such as `bun-test-junit-reporter`. */
+    concept: z.string().min(1),
+    content: z.string().min(1),
+    summary: z.string().default(''),
+})
+
+export type ProposedMemory = z.infer<typeof ProposedMemorySchema>
+
+/**
+ * The learner's result (#370): up to `MAX_PROPOSED_MEMORIES` lessons that
+ * will help future runs, and the ids of the memories it was shown that
+ * actually helped this run.
+ */
+export const LearnerResultSchema = z.object({
+    memories: z.array(ProposedMemorySchema).max(MAX_PROPOSED_MEMORIES),
+    helped: z.array(z.string()).default([]),
+})
+
+export type LearnerResult = z.infer<typeof LearnerResultSchema>
+
 const lensResult = <Role extends LensRole>(role: Role) =>
     z.object({ role: z.literal(role), result: LensReviewResultSchema })
 
@@ -253,6 +286,7 @@ export const RoleResultSchema = z.discriminatedUnion('role', [
     lensResult('security-lens'),
     lensResult('integration-lens'),
     lensResult('rules-lens'),
+    z.object({ role: z.literal('learner'), result: LearnerResultSchema }),
 ])
 
 export type RoleResult = z.infer<typeof RoleResultSchema>

@@ -1090,7 +1090,7 @@ const finalReviewAfter = ({
                     }),
                     assumptions: [
                         ...review.assumptions,
-                        ...finished.result.assumptions,
+                        ...assumptionsOf(finished),
                     ],
                 },
                 finished,
@@ -1182,6 +1182,10 @@ type FinishedContent = Extract<
     JournalRecord,
     { kind: 'agent_finished' }
 >['content']
+
+/** A finished agent's assumptions; the learner makes none. */
+const assumptionsOf = (finished: FinishedContent): string[] =>
+    'assumptions' in finished.result ? finished.result.assumptions : []
 
 /**
  * Where a finished agent's result goes in its ticket's progress. A result
@@ -1410,7 +1414,7 @@ const progressChange = ({
                 }),
                 assumptions: [
                     ...progress.assumptions,
-                    ...finished.result.assumptions,
+                    ...assumptionsOf(finished),
                 ],
                 ...resultChange({ progress, finished, seq: record.seq }),
             }
