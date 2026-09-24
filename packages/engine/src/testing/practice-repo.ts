@@ -17,7 +17,7 @@ import type { EngineAction } from '../core/decide'
 import { runEngine, startRun } from '../core/execute'
 import { createGitAdapter, type GitAdapter } from '../git/git-adapter'
 import type { JevShadow } from '../jev/jev-shadow'
-import { createJournal, runJournalPath } from '../journal/journal'
+import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import type { EngineClock } from '../limits/limit-wait'
 import type { MemoryClient } from '../memory/memory-client'
@@ -346,6 +346,7 @@ export const createPracticeRepo = async ({
         reply_poll_ms,
         memory,
         git: wrapGit,
+        journal: wrapJournal,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -379,6 +380,11 @@ export const createPracticeRepo = async ({
          * effect. Defaults to the real adapter as is.
          */
         git?: (real: GitAdapter) => GitAdapter
+        /**
+         * Wraps the run's journal, such as to crash between two records.
+         * Defaults to the journal as is.
+         */
+        journal?: (real: Journal) => Journal
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -399,7 +405,7 @@ export const createPracticeRepo = async ({
             })
         }
         const action = await runEngine({
-            journal,
+            journal: (wrapJournal ?? ((real) => real))(journal),
             tracker,
             git: (wrapGit ?? ((real) => real))(
                 createGitAdapter({ repo_root: repo })

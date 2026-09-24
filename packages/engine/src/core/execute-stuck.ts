@@ -176,7 +176,8 @@ export const executeStuckAction = async ({
  * labels, its new copy is checked like at intake; a ready one is journaled
  * as a new `ticket_snapshot`, its worktree is reset to the run branch's
  * tip, and it starts over (`restart`). A copy that isn't ready is refused:
- * the spec issue hears why, and the ticket stays stuck.
+ * the spec issue hears why, and the ticket stays stuck. A redo after a crash
+ * that came between the new copy and `ticket_retried` finishes the restart.
  */
 export const retryTicket = async ({
     context,
@@ -214,6 +215,46 @@ export const retryTicket = async ({
             },
         })
     }
+    /** Resets the worktree to the run branch's tip; none yet, nothing to reset. */
+    const resetToRunBranch = async (): Promise<string | null> => {
+        // A ticket stuck before its worktree was made has nothing to reset.
+        if ((state.tickets[number]?.worktree ?? null) === null) return null
+        const runBranch = need({ value: state.run_branch, what: 'run branch' })
+        const { sha } = await git.resetWorktree({
+            cwd: ticketWorktree({ state, ticket: number }).path,
+            to: await git.head({ cwd: runBranch.path }),
+        })
+        return sha
+    }
+    const restarted = (sha: string | null) => {
+        journal.append({
+            kind: 'ticket_retried',
+            ticket: number,
+            role: null,
+            content: {
+                mode: 'restart',
+                base_sha: sha,
+                problems: [],
+                answer_id: null,
+            },
+        })
+    }
+    // A redo whose first try journaled the ticket's new copy before a crash:
+    // that copy is the snapshot now, so finish starting it over.
+    const copied =
+        step.redo &&
+        journal
+            .read()
+            .some(
+                (record) =>
+                    record.kind === 'ticket_snapshot' &&
+                    record.ticket === number &&
+                    record.seq > step.first_seq
+            )
+    if (copied) {
+        restarted(await resetToRunBranch())
+        return
+    }
     const issue = await tracker.readIssue({ number })
     if (issue === null) return refuse(['The ticket could not be read.'])
     if (!ticketChanged({ snapshot, issue })) {
@@ -250,32 +291,12 @@ export const retryTicket = async ({
               )
             : undefined
     if (fresh === undefined) return refuse(['The ticket is no longer open.'])
-    const runBranch = need({ value: state.run_branch, what: 'run branch' })
-    // A ticket stuck before its worktree was made has nothing to reset.
-    const sha =
-        (state.tickets[number]?.worktree ?? null) === null
-            ? null
-            : (
-                  await git.resetWorktree({
-                      cwd: ticketWorktree({ state, ticket: number }).path,
-                      to: await git.head({ cwd: runBranch.path }),
-                  })
-              ).sha
+    const sha = await resetToRunBranch()
     journal.append({
         kind: 'ticket_snapshot',
         ticket: number,
         role: null,
         content: fresh,
     })
-    journal.append({
-        kind: 'ticket_retried',
-        ticket: number,
-        role: null,
-        content: {
-            mode: 'restart',
-            base_sha: sha,
-            problems: [],
-            answer_id: null,
-        },
-    })
+    restarted(sha)
 }

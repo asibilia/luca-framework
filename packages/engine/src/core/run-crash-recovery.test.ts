@@ -17,7 +17,7 @@ import type { GitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
-import { specIssue, ticketIssue } from '../testing/intake-fixtures'
+import { SPEC_OWNER, specIssue, ticketIssue } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     git,
@@ -670,5 +670,87 @@ describe('git steps redone after a crash', () => {
         expect(
             (await git(runBranch?.path ?? root, 'rev-parse', 'HEAD')).trim()
         ).toBe(runBranch?.base_sha ?? '')
+    }, 60_000)
+
+    test('a retry cut off after journaling the new copy of the ticket still starts it over', async () => {
+        const practice = await createPracticeRepo({ root })
+        const tracker = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({
+                    number: 11,
+                    title: 'Add sum',
+                    criteria: [
+                        'sum adds two numbers',
+                        'sum of no numbers is zero',
+                    ],
+                }),
+            ],
+            sub_tickets: { 10: [11] },
+            engine_login: SPEC_OWNER,
+        })
+        let acted = false
+        const clock = {
+            now: () => Date.now(),
+            sleep: async () => {
+                await Bun.sleep(5)
+                const state = replayRun({ records: practice.journal.read() })
+                if (acted || (state.tickets[11]?.stuck_report ?? null) === null)
+                    return
+                acted = true
+                tracker.updateIssue({
+                    number: 11,
+                    changes: { labels: ['ready-for-agent', 'refactor'] },
+                })
+                tracker.addComment({
+                    number: 10,
+                    author: SPEC_OWNER,
+                    body: 'retry #11',
+                })
+            },
+        }
+        const { implementer, reviewer } = happyTurns()
+        let crashed = false
+        await expect(
+            practice.run({
+                tracker,
+                clock,
+                stop_before: [],
+                turns: [
+                    {
+                        role: 'test-writer',
+                        ticket: 11,
+                        result: {
+                            outcome: 'nothing_new_to_test',
+                            summary: 'It only moves code.',
+                        },
+                    },
+                ],
+                // Dies right after the new copy of #11 is journaled.
+                journal: (real) => ({
+                    ...real,
+                    append: (entry) => {
+                        if (!crashed && entry.kind === 'ticket_retried') {
+                            crashed = true
+                            throw new Error('The engine crashed.')
+                        }
+                        return real.append(entry)
+                    },
+                }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+
+        const { action, records } = await practice.run({
+            resume: true,
+            tracker,
+            clock,
+            stop_before: [],
+            turns: [implementer, reviewer],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(
+            ofKind(records, 'ticket_retried').map(({ content }) => content.mode)
+        ).toEqual(['restart'])
     }, 60_000)
 })
