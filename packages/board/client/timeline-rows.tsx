@@ -18,6 +18,7 @@ import {
     toneColor,
     percentText,
     usageColor,
+    useNow,
 } from './board-look'
 
 import type { EventRow, LimitRow, RunRow, StuckRow } from '../shared/board-rows'
@@ -152,6 +153,23 @@ const UsageText = ({
     </Text>
 )
 
+/** The steps running now, their times counting up by themselves. */
+const CurrentSteps = ({
+    steps,
+    styles,
+}: {
+    steps: RunRow['current_steps']
+    styles: Styles
+}) => {
+    const now = useNow()
+    return steps.map(({ ticket, text, since }, index) => (
+        <Text key={`${ticket ?? 'run'}-${index}`} style={styles.muted}>
+            {ticket === null ? 'Run' : `#${ticket}`}:{' '}
+            {currentStepText({ step: { text, since }, now })}
+        </Text>
+    ))
+}
+
 /** The run's header row. */
 export const RunRowCard = ({
     item,
@@ -196,15 +214,9 @@ export const RunRowCard = ({
                     {row.needs_you} waiting on your reply on the spec issue
                 </Text>
             ) : null}
-            {row.current_steps.map(({ ticket, text, since }, index) => (
-                <Text key={`${ticket ?? 'run'}-${index}`} style={styles.muted}>
-                    {ticket === null ? 'Run' : `#${ticket}`}:{' '}
-                    {currentStepText({
-                        step: { text, since },
-                        now: Date.now(),
-                    })}
-                </Text>
-            ))}
+            {row.current_steps.length > 0 ? (
+                <CurrentSteps steps={row.current_steps} styles={styles} />
+            ) : null}
             <Text style={styles.muted}>Final review: {row.final_review}</Text>
             {row.usage ? (
                 <UsageText usage={row.usage} theme={theme} styles={styles} />
