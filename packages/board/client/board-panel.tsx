@@ -16,7 +16,7 @@ import {
     DIMMED,
     MONO,
     lensColor,
-    resetsText,
+    limitWaitText,
     runTitle,
     stageColor,
     statusColor,
@@ -34,6 +34,8 @@ import {
     POLL_MS,
     REFACTOR_SKIPS_STEPS,
     STEP_NAMES,
+    planUsedText,
+    stoppedText,
     type BoardState,
     type LensCard,
     type LensState,
@@ -693,6 +695,12 @@ const TicketCardView = ({
                 <Text style={styles.mono}>
                     {tokensText({ tokens: ticket.tokens })} tokens
                 </Text>
+                {ticket.plan_used.length > 0 ? (
+                    <Text style={styles.mono}>
+                        plan:{' '}
+                        {planUsedText({ used: ticket.plan_used, sign: '+' })}
+                    </Text>
+                ) : null}
                 {failing ? (
                     <Text
                         style={[
@@ -1072,18 +1080,23 @@ export const BoardPanel = ({
                 </ExternalLink>
             ) : null}
             <UsageLine state={state} {...look} />
+            {state.run_plan_used.length > 0 ? (
+                <Text style={styles.mono}>
+                    This run used:{' '}
+                    {planUsedText({ used: state.run_plan_used, sign: '' })}
+                </Text>
+            ) : null}
             {state.limit_wait ? (
                 <Banner
                     icon="Hourglass"
                     color={theme.colors.statusWarning}
                     styles={styles}
                 >
-                    Limit wait: resets{' '}
-                    {resetsText({
+                    {limitWaitText({
+                        window: state.limit_wait.window,
                         resets_at: state.limit_wait.resets_at,
                         now: Date.now(),
                     })}
-                    . The run carries on by itself, so it isn't stuck.
                 </Banner>
             ) : null}
             {run.stopped ? (
@@ -1092,8 +1105,7 @@ export const BoardPanel = ({
                     color={theme.colors.statusDanger}
                     styles={styles}
                 >
-                    The run stopped: {run.stopped.reason}. Start it again with
-                    the same run id to pick up where it stopped.
+                    {stoppedText(run.stopped)}
                 </Banner>
             ) : null}
             {run.engine_ended && !run.engine_ended.ok ? (

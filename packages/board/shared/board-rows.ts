@@ -82,6 +82,8 @@ export type StuckRow = z.infer<typeof StuckRowSchema>
 export const LimitRowSchema = z.object({
     status: z.enum(['waiting', 'over']),
     resets_at: z.string().nullable(),
+    /** The window that was hit, in words; `null` when not known. */
+    window: z.string().nullable(),
     usage: UsageLineSchema.nullable(),
 })
 

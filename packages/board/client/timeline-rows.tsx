@@ -9,7 +9,8 @@ import { StyleSheet, Text, View } from 'react-native'
 import {
     MONO,
     clockText,
-    resetsText,
+    limitHitText,
+    limitUntilText,
     runTitle,
     stageColor,
     statusColor,
@@ -341,7 +342,7 @@ export const LimitRowCard = ({
                 <Icon name="Hourglass" size={14} color={color} />
                 <Text style={[styles.title, { color }]}>
                     {waiting
-                        ? 'Limit wait: the plan limit is used up'
+                        ? limitHitText({ window: row.window })
                         : 'Limit wait over'}
                 </Text>
                 <View style={styles.spacer} />
@@ -354,7 +355,10 @@ export const LimitRowCard = ({
             ) : null}
             <Text style={styles.muted}>
                 {waiting
-                    ? `Resets ${resetsText({ resets_at: row.resets_at, now: Date.now() })}. The run carries on by itself, so it isn't stuck.`
+                    ? limitUntilText({
+                          resets_at: row.resets_at,
+                          now: Date.now(),
+                      })
                     : 'The limit reset and the run carried on by itself.'}
             </Text>
         </View>

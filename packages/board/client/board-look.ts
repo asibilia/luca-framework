@@ -191,6 +191,38 @@ export const resetsText = ({
     return `${clockText({ iso: resets_at })} (in ${left})`
 }
 
+/**
+ * A limit wait's headline, e.g. "Plan limit hit (five-hour window)". `window`
+ * is already in words; without one it's just "Plan limit hit".
+ */
+export const limitHitText = ({ window }: { window: string | null }): string =>
+    window === null ? 'Plan limit hit' : `Plan limit hit (${window} window)`
+
+/** "The run waits until 17:00 (in 1h 20m) and then carries on by itself." */
+export const limitUntilText = ({
+    resets_at,
+    now,
+}: {
+    resets_at: string | null
+    now: number
+}): string =>
+    `The run waits until ${resetsText({ resets_at, now })} and then carries on by itself.`
+
+/**
+ * What a limit wait means, e.g. "Plan limit hit (weekly window). The run
+ * waits until 17:00 (in 1h 20m) and then carries on by itself."
+ */
+export const limitWaitText = ({
+    window,
+    resets_at,
+    now,
+}: {
+    window: string | null
+    resets_at: string | null
+    now: number
+}): string =>
+    `${limitHitText({ window })}. ${limitUntilText({ resets_at, now })}`
+
 /** "Spec #10 · Add CSV export", or "Demo run" before the engine names one. */
 export const runTitle = ({
     spec_number,

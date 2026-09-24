@@ -18,6 +18,7 @@ import {
 import {
     LOOP_CAP,
     TicketStageSchema,
+    stoppedText,
     type BoardState,
     type FindingCounts,
     type NeedsYou,
@@ -186,11 +187,13 @@ export const describeRecord = ({
                 tone: failure === 'engine' ? 'warning' : 'danger',
             })
         }
-        case 'run_stopped':
+        case 'run_stopped': {
+            const text = stoppedText(record.content)
             return event({
-                text: `${at}the run stopped: ${record.content.reason}. Start it again with the same run id to pick up where it stopped.`,
+                text: `${at}${text.charAt(0).toLowerCase()}${text.slice(1)}`,
                 tone: 'danger',
             })
+        }
         case 'worktree_reset':
             return event({
                 text: `${at}starting over from the tests after a bad test.`,
@@ -307,6 +310,7 @@ export const describeRecord = ({
         case 'jev_failed':
         case 'limit_wait_started':
         case 'limit_wait_ended':
+        case 'usage_recorded':
         case 'lens_started':
             return null
     }
@@ -506,6 +510,7 @@ export const rowsForRecord = ({
         const data: LimitRow = {
             status: 'waiting',
             resets_at: after.limit_wait.resets_at,
+            window: after.limit_wait.window,
             usage: usageLine({ usage: after.usage }),
         }
         rows.push({ id: limitRowId({ run_id }), kind: ROW_KIND.limit, data })
@@ -514,6 +519,7 @@ export const rowsForRecord = ({
         const data: LimitRow = {
             status: 'over',
             resets_at: before.limit_wait.resets_at,
+            window: before.limit_wait.window,
             usage: usageLine({ usage: after.usage }),
         }
         rows.push({ id: limitRowId({ run_id }), kind: ROW_KIND.limit, data })

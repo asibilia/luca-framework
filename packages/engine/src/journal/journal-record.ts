@@ -22,6 +22,7 @@ import {
     JevJobSchema,
     JevRequestSchema,
 } from '../jev/jev-schemas'
+import { UsageRecordSchema } from '../limits/plan-usage'
 
 const ENTRY_FIELDS = {
     /** The ticket (or spec) a record is about, `null` for the whole run. */
@@ -173,8 +174,11 @@ const AgentSessionEntrySchema = z.object({
 
 /**
  * The run stopped because going on was unsafe: the wrong credentials or
- * plan, the wrong model, a foreign MCP server, a rejected rate limit, or
- * overage. A later `runEngine` on the same journal picks the step up again.
+ * plan, the wrong model, or a foreign MCP server. A later `runEngine` on the
+ * same journal picks the step up again.
+ *
+ * A `billing` stop (overage, or a billing error) sticks: the run never goes
+ * on, however often the engine is started again on its journal.
  */
 const RunStoppedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -182,7 +186,47 @@ const RunStoppedEntrySchema = z.object({
     content: z.object({
         reason: z.string(),
         role: AgentRoleSchema.nullable().default(null),
+        billing: z.boolean().default(false),
     }),
+})
+
+/**
+ * A plan window was used up (a rejected rate limit), so the whole run waits
+ * until `until`: the window's reset plus a margin, or a default wait when the
+ * reading named no reset. Written with `ticket: null`; the agent whose turn
+ * hit the limit is `hit_ticket` and `hit_role`.
+ */
+const LimitWaitStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('limit_wait_started'),
+    content: z.object({
+        /** When the window resets, if the reading said. */
+        resets_at: z.iso.datetime().nullable(),
+        /** When the engine wakes and carries on. */
+        until: z.iso.datetime(),
+        /** The window, such as `five_hour`, `seven_day`, or `seven_day_opus`. */
+        rate_limit_type: z.string().nullable(),
+        hit_ticket: z.number().int().positive().nullable(),
+        hit_role: AgentRoleSchema.nullable(),
+    }),
+})
+
+/** The limit wait is over; the run carries on where it was cut off. */
+const LimitWaitEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('limit_wait_ended'),
+    content: z.object({ until: z.iso.datetime() }),
+})
+
+/**
+ * The plan usage of one ticket (when it was pushed, or got stuck) or of the
+ * whole run (when it ended): tokens from its agent sessions, and how far
+ * each plan window moved.
+ */
+const UsageRecordedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('usage_recorded'),
+    content: UsageRecordSchema,
 })
 
 const RedCheckEntrySchema = z.object({
@@ -372,6 +416,9 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JevFailedEntrySchema,
     AgentSessionEntrySchema,
     RunStoppedEntrySchema,
+    LimitWaitStartedEntrySchema,
+    LimitWaitEndedEntrySchema,
+    UsageRecordedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -405,6 +452,9 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JevFailedEntrySchema.extend(STAMP_FIELDS),
     AgentSessionEntrySchema.extend(STAMP_FIELDS),
     RunStoppedEntrySchema.extend(STAMP_FIELDS),
+    LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
+    LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    UsageRecordedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -437,6 +487,9 @@ export const JournalKindSchema = z.enum([
     'jev_failed',
     'agent_session',
     'run_stopped',
+    'limit_wait_started',
+    'limit_wait_ended',
+    'usage_recorded',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

@@ -30,6 +30,7 @@ import type {
     SpecSnapshot,
     TicketSnapshot,
 } from '../intake/intake-schemas'
+import { sessionSignal } from '../limits/plan-signals'
 
 /** Where a run stands, as far as intake goes. */
 export type RunPhase =
@@ -165,6 +166,37 @@ export type TicketProgress = {
 /** The run's pull request, once opened. */
 export type ReplayedPullRequest = { number: number; url: string }
 
+/**
+ * Where the run stands with the plan, from agents' rate-limit readings and
+ * the limit-wait and stop records.
+ */
+export type PlanState = {
+    /**
+     * The latest rejected rate limit no limit wait has started for yet: the
+     * window, its reset (seconds since the epoch), the agent that hit it, and
+     * when the session was journaled.
+     */
+    hit: {
+        rate_limit_type: string | null
+        resets_at: number | null
+        ticket: number | null
+        role: AgentRole | null
+        time: string
+    } | null
+    /** The limit wait under way: when it ends, and what it is for. */
+    wait: {
+        until: string
+        resets_at: string | null
+        rate_limit_type: string | null
+    } | null
+    /** Every limit wait's reset so far, oldest first; the spec hears of each new one once. */
+    resets_announced: (string | null)[]
+    /** The first sign of per-token billing in any session, if any. */
+    billing: { reason: string } | null
+    /** Set once a billing stop is journaled. It sticks. */
+    billing_stopped: { reason: string } | null
+}
+
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
     phase: RunPhase
@@ -177,6 +209,9 @@ export type RunState = {
     run_branch: ReplayedWorktree | null
     tickets: Record<number, TicketProgress>
     pull_request: ReplayedPullRequest | null
+    plan: PlanState
+    /** The tickets whose usage is recorded, and whether the run's is. */
+    usage_recorded: { tickets: number[]; run: boolean }
     last_seq: number
 }
 
@@ -223,6 +258,14 @@ const EMPTY_STATE: RunState = {
     run_branch: null,
     tickets: {},
     pull_request: null,
+    plan: {
+        hit: null,
+        wait: null,
+        resets_announced: [],
+        billing: null,
+        billing_stopped: null,
+    },
+    usage_recorded: { tickets: [], run: false },
     last_seq: 0,
 }
 
@@ -234,6 +277,70 @@ const snapshotPhase = ({
     snapshot.ticket_order.every((number) => number in snapshot.tickets)
         ? 'intake_passed'
         : 'snapshotting'
+
+type PlanRecord = Extract<
+    JournalRecord,
+    {
+        kind:
+            | 'agent_session'
+            | 'run_stopped'
+            | 'limit_wait_started'
+            | 'limit_wait_ended'
+    }
+>
+
+/** The plan state after one record. */
+const planAfter = ({
+    plan,
+    record,
+}: {
+    plan: PlanState
+    record: PlanRecord
+}): PlanState => {
+    switch (record.kind) {
+        case 'agent_session': {
+            const signal = sessionSignal({ session: record.content.session })
+            if (signal.kind === 'billing') {
+                return {
+                    ...plan,
+                    billing: plan.billing ?? { reason: signal.reason },
+                }
+            }
+            if (signal.kind === 'ok') return plan
+            return {
+                ...plan,
+                hit: {
+                    rate_limit_type: signal.rate_limit_type,
+                    resets_at: signal.resets_at,
+                    ticket: record.ticket,
+                    role: record.content.role,
+                    time: record.time,
+                },
+            }
+        }
+        case 'run_stopped':
+            return record.content.billing
+                ? {
+                      ...plan,
+                      billing: plan.billing ?? {
+                          reason: record.content.reason,
+                      },
+                      billing_stopped: { reason: record.content.reason },
+                  }
+                : plan
+        case 'limit_wait_started': {
+            const { until, resets_at, rate_limit_type } = record.content
+            return {
+                ...plan,
+                hit: null,
+                wait: { until, resets_at, rate_limit_type },
+                resets_announced: [...plan.resets_announced, resets_at],
+            }
+        }
+        case 'limit_wait_ended':
+            return { ...plan, wait: null }
+    }
+}
 
 const applyRecord = ({
     state,
@@ -297,11 +404,24 @@ const applyRecord = ({
         case 'jev_answered':
         case 'jev_failed':
             return next
-        // A session summary and a stop change nothing: the stopped step is
-        // simply picked up again by the next run of the engine.
+        // A session's readings and the stops and limit waits change no
+        // ticket: the step they cut off is picked up again afterwards.
         case 'agent_session':
         case 'run_stopped':
-            return next
+        case 'limit_wait_started':
+        case 'limit_wait_ended':
+            return { ...next, plan: planAfter({ plan: state.plan, record }) }
+        case 'usage_recorded': {
+            const { scope, ticket } = record.content
+            const { tickets, run } = state.usage_recorded
+            return {
+                ...next,
+                usage_recorded:
+                    scope === 'run' || ticket === null
+                        ? { tickets, run: true }
+                        : { tickets: [...tickets, ticket], run },
+            }
+        }
         default:
             return applyTicketRecord({ state: next, record })
     }
@@ -324,6 +444,9 @@ type TicketRecord = Exclude<
             | 'jev_failed'
             | 'agent_session'
             | 'run_stopped'
+            | 'limit_wait_started'
+            | 'limit_wait_ended'
+            | 'usage_recorded'
     }
 >
 

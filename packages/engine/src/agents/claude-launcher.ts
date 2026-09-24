@@ -27,6 +27,7 @@ import type { AgentRole } from './role-results'
 
 import { createGuardHook } from '../guards/guard-hook'
 import { guardRoleOf } from '../guards/role-rules'
+import { planSignal } from '../limits/plan-signals'
 import { runCommand } from '../shell/run-command'
 
 /**
@@ -77,12 +78,7 @@ const InitSchema = z.object({
 
 const RateLimitSchema = z.object({
     type: z.literal('rate_limit_event'),
-    rate_limit_info: z.looseObject({
-        status: z.string().optional(),
-        rateLimitType: z.string().optional(),
-        isUsingOverage: z.boolean().optional(),
-        overageInUse: z.boolean().optional(),
-    }),
+    rate_limit_info: z.record(z.string(), z.unknown()),
 })
 
 const AssistantSchema = z.object({
@@ -119,7 +115,11 @@ const ResultSchema = z.object({
     session_id: z.string().optional(),
 })
 
-type Failed = { ok: false; failure: 'agent' | 'engine' | 'stop'; error: string }
+type Failed = {
+    ok: false
+    failure: 'agent' | 'engine' | 'stop' | 'plan'
+    error: string
+}
 
 type Outcome = { ok: true; structured_output: unknown } | Failed
 
@@ -166,24 +166,12 @@ const initProblem = (init: z.infer<typeof InitSchema>): string | null => {
     return null
 }
 
-/** Why a rate-limit event must stop the run, or `null`. Waits are #368's. */
-const rateLimitProblem = (
-    info: z.infer<typeof RateLimitSchema>['rate_limit_info']
-): string | null => {
-    const kind = info.rateLimitType ?? 'unknown'
-    if (info.status === 'rejected') {
-        return `rate_limit_event status=rejected (${kind})`
-    }
-    if (info.isUsingOverage === true) {
-        return `rate_limit_event isUsingOverage=true (${kind})`
-    }
-    if (info.overageInUse === true) {
-        return `rate_limit_event overageInUse=true (${kind})`
-    }
-    if (info.rateLimitType === 'overage')
-        return 'rate_limit_event rateLimitType=overage'
-    return null
-}
+/** A turn the plan cut off: the reason, in words. */
+const planCut = (error: string): Failed => ({
+    ok: false,
+    failure: 'plan',
+    error,
+})
 
 /** A queue the SDK reads the agent's prompt from (streaming-input mode). */
 const createInputChannel = () => {
@@ -308,14 +296,23 @@ const watch = ({
     if (rateLimit.success) {
         const info = rateLimit.data.rate_limit_info
         summary.rate_limit_events.push(info)
-        const problem = rateLimitProblem(info)
-        return problem === null ? null : stop(problem)
+        const signal = planSignal({ info })
+        switch (signal.kind) {
+            case 'ok':
+                return null
+            case 'billing':
+                return planCut(signal.reason)
+            case 'limit':
+                return planCut(
+                    `rate_limit_event status=rejected (${signal.rate_limit_type ?? 'unknown'})`
+                )
+        }
     }
     const assistant = AssistantSchema.safeParse(raw)
     if (assistant.success) {
-        return assistant.data.error === 'billing_error'
-            ? stop('assistant error billing_error')
-            : null
+        if (assistant.data.error !== 'billing_error') return null
+        summary.billing_error = true
+        return planCut('assistant error billing_error')
     }
     const result = ResultSchema.safeParse(raw)
     if (!result.success) return null
@@ -390,13 +387,15 @@ const pumpMessages = async ({
  * 3. checks `accountInfo()` for a Claude plan and no API key BEFORE the
  *    prompt is sent;
  * 4. watches the messages: an unsafe init (API key, wrong model, foreign
- *    MCP), a rejected rate limit, overage, or a billing error stops the run;
+ *    MCP) stops the run; a rejected rate limit, overage, or a billing error
+ *    cuts the turn off as `plan`, with the reason in its session, for the
+ *    decision step to turn into a limit wait or a billing stop;
  * 5. returns the result's structured output and the session's id (from its
  *    init message).
  *
  * The session stays open after its turn, in streaming-input mode, so
  * `followUp` can send it another message; the same watch applies to every
- * turn. A stop, an engine failure, or a timeout closes the session, and so
+ * turn. A stop, a plan cut-off, an engine failure, or a timeout closes the session, and so
  * does sitting idle past `idle_timeout_ms`. `closeAll` closes every session
  * still open; call it when the run ends.
  *

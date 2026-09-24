@@ -1,4 +1,6 @@
 import { decideBuild, type BuildAction } from './decide-build'
+import { decidePlan, type PlanAction } from './decide-plan'
+import { decideUsage, type UsageAction } from './decide-usage'
 
 import { checkIntake } from '../intake/intake-checks'
 import type { IntakeProblem, IntakeSnapshot } from '../intake/intake-schemas'
@@ -17,6 +19,10 @@ export type EngineAction =
     | { type: 'finish_nothing_to_do'; closed_tickets: number[] }
     /** Write the spec and every ticket into the journal. */
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
+    /** A limit wait, or a billing stop, before any build step. */
+    | PlanAction
+    /** A finished ticket's usage, or the run's before it ends. */
+    | UsageAction
     /** Intake passed and every ticket is snapshotted: build the tickets. */
     | BuildAction
     /** The run ended at intake. */
@@ -51,8 +57,21 @@ export const decide = ({
             return { type: 'done', outcome: 'refused' }
         case 'nothing_to_do':
             return { type: 'done', outcome: 'nothing_to_do' }
-        case 'intake_passed':
-            return decideBuild({ state, spec_number })
+        case 'intake_passed': {
+            const next =
+                decidePlan({ state, spec_number }) ??
+                decideBuild({ state, spec_number })
+            const usage = decideUsage({
+                records,
+                state,
+                ending: next.type === 'done',
+            })
+            const planWaits =
+                next.type === 'start_limit_wait' ||
+                next.type === 'wait_for_limit' ||
+                next.type === 'stop_for_billing'
+            return planWaits || usage === null ? next : usage
+        }
         case 'intake_read':
         case 'snapshotting': {
             if (intake === null) {
