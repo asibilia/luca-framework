@@ -14,8 +14,10 @@ import { createGitAdapter } from '../git/git-adapter'
 import { createTypeSafeJev } from '../jev/jev-client'
 import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
+import type { MemoryDeps } from '../memory/memory-client'
 import {
     DEMO_TURNS,
+    demoMuninn,
     demoTracker,
     makePracticeRepo,
     PRACTICE_SPEC_NUMBER,
@@ -98,12 +100,15 @@ const driveRun = async ({
     journal,
     run,
     launcher,
+    memory,
     board,
     log,
 }: {
     journal: Journal
     run: () => Promise<EngineAction>
     launcher: RunLauncher
+    /** Closed at the end too. */
+    memory?: MemoryDeps
     board: BoardSync | null
     log: (line: string) => void
 }): Promise<RunEnd> => {
@@ -118,6 +123,7 @@ const driveRun = async ({
             : { ok: false, message: `The engine crashed: ${message}` }
     } finally {
         await launcher.closeAll?.()
+        await memory?.client.close().catch(() => undefined)
     }
     log(`[luca-run] ${end.ok ? 'finished' : 'stopped'}: ${end.message}`)
     await board?.end({ records: journal.read(), ...end })
@@ -128,8 +134,11 @@ const driveRun = async ({
  * A real run of `spec_number` on `repo`: loads the repo's engine config,
  * opens (or resumes) the run's journal at `<runs_dir>/<run_id>`, and runs the
  * engine with the board kept in step, the agents from `launcher`, and Jev
- * in shadow mode if given. Never throws; the launcher's sessions are closed
- * and the board always gets the run's end.
+ * in shadow mode if given. With `memory`, a new run turns memory on (#370),
+ * with the engine config's `muninn.vault` as the project vault (none:
+ * `default` only); a resumed run keeps what its journal says. Never throws;
+ * the launcher's sessions and the memory client are closed and the board
+ * always gets the run's end.
  *
  * @example
  * const end = await runSpec({
@@ -148,6 +157,7 @@ export const runSpec = async ({
     tracker,
     launcher,
     jev,
+    memory,
     board,
     log,
 }: {
@@ -161,6 +171,8 @@ export const runSpec = async ({
     launcher: RunLauncher
     /** Jev in shadow mode. Leave it out to run without Jev. */
     jev?: JevShadow
+    /** MuninnDB (#370). Leave it out to run without memory. */
+    memory?: MemoryDeps
     board: BoardSync | null
     log: (line: string) => void
 }): Promise<RunEnd> => {
@@ -173,6 +185,7 @@ export const runSpec = async ({
     if (!loaded.ok) {
         log(`[luca-run] stopped: ${loaded.error}`)
         await launcher.closeAll?.()
+        await memory?.client.close().catch(() => undefined)
         const end = { ok: false, message: loaded.error }
         await board?.end({ records: journal.read(), ...end })
         return end
@@ -183,6 +196,10 @@ export const runSpec = async ({
             spec_number,
             config: loaded.config,
             base_branch: base_branch ?? undefined,
+            memory:
+                memory === undefined
+                    ? undefined
+                    : { project_vault: loaded.config.muninn?.vault ?? null },
         })
     } else {
         log('[luca-run] resuming the run from its journal')
@@ -190,6 +207,7 @@ export const runSpec = async ({
     return driveRun({
         journal,
         launcher,
+        memory,
         board,
         log,
         run: () =>
@@ -199,6 +217,7 @@ export const runSpec = async ({
                 git: createGitAdapter({ repo_root: repo }),
                 launcher,
                 jev,
+                memory,
                 board: board ?? undefined,
             }),
     })
@@ -238,7 +257,9 @@ const OFFLINE_JEV: JevShadow = { client: createTypeSafeJev({ api_key: '' }) }
  * bare origin in a temp folder, the practice spec with two tickets (#12
  * blocked by #11) in an in-memory tracker, and scripted agents that take
  * `turn_delay_ms` per turn. No GitHub, no models, no network: Jev is asked in
- * shadow mode with no key. The temp folder (which also holds the run's
+ * shadow mode with no key, and memory (#370) is a fake MuninnDB seeded with
+ * a few memories, so the board shows searches, the learner, and a save
+ * with nothing leaving the machine. The temp folder (which also holds the run's
  * journal) is removed at the end.
  *
  * @returns The run's end, the PRs the in-memory tracker opened, and the
@@ -278,7 +299,9 @@ export const runDemo = async ({
             spec_number: PRACTICE_SPEC_NUMBER,
             config: loaded.config,
             base_branch: 'main',
+            memory: { project_vault: null },
         })
+        const memory = { client: demoMuninn() }
         const launcher = slowLauncher({
             launcher: createScriptedLauncher({
                 turns: DEMO_TURNS,
@@ -289,6 +312,7 @@ export const runDemo = async ({
         const end = await driveRun({
             journal,
             launcher,
+            memory,
             board,
             log,
             run: () =>
@@ -298,6 +322,7 @@ export const runDemo = async ({
                     git: createGitAdapter({ repo_root: repo }),
                     launcher,
                     jev: OFFLINE_JEV,
+                    memory,
                     board: board ?? undefined,
                 }),
         })

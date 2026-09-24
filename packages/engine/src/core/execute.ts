@@ -1,5 +1,6 @@
 import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
+import { isMemoryAction } from './decide-memory'
 import type { PlanAction } from './decide-plan'
 import {
     buildContext,
@@ -7,6 +8,7 @@ import {
     type BuildDeps,
 } from './execute-build'
 import { executeFinalReviewAction } from './execute-final-review'
+import { executeMemoryAction } from './execute-memory'
 import { executeStuckAction } from './execute-stuck'
 
 import type { BoardSync } from '../board/board-sync'
@@ -24,6 +26,7 @@ import {
     waitUntil,
     type EngineClock,
 } from '../limits/limit-wait'
+import type { MemoryDeps } from '../memory/memory-client'
 import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
@@ -49,18 +52,24 @@ export const startRun = ({
     spec_number,
     config,
     base_branch,
+    memory,
 }: {
     journal: Journal
     spec_number: number
     config: EngineConfig
     /** The branch the run branch starts from. Defaults to `main`. */
     base_branch?: string
+    /**
+     * Turns memory on (#370), with the project's vault (`null` searches only
+     * `default`). Leave it out for a run without memory.
+     */
+    memory?: { project_vault: string | null }
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
-        content: { spec_number, config, base_branch },
+        content: { spec_number, config, base_branch, memory: memory ?? null },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
@@ -210,6 +219,7 @@ export const executeAction = async ({
     build,
     clock,
     reply_poll_ms,
+    memory,
 }: {
     action: EngineAction
     journal: Journal
@@ -220,7 +230,12 @@ export const executeAction = async ({
     clock?: EngineClock
     /** How long a reply wait sleeps before it reads the spec issue. */
     reply_poll_ms?: number
+    /** The memory client, for a run with memory on (#370). */
+    memory?: MemoryDeps
 }): Promise<void> => {
+    if (isMemoryAction(action)) {
+        return executeMemoryAction({ action, journal, tracker, memory, build })
+    }
     switch (action.type) {
         case 'report_stuck':
         case 'wait_for_reply':
@@ -358,6 +373,12 @@ const REPLY_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
  */
 const keyOf = (action: EngineAction): string => {
     if (REPLY_ACTIONS.has(action.type)) return 'replies'
+    // A search waits under the key of the step it comes before: its
+    // ticket's, the final review's, or (the run's start) the run's.
+    if (action.type === 'recall_memories') {
+        if (action.ticket !== null) return String(action.ticket)
+        return action.point === 'run_start' ? 'run' : 'final'
+    }
     if (action.type === 'launch_lens') return `lens:${action.lens}`
     if (isFinalReviewAction(action)) return 'final'
     const ticket = ticketOf(action)
@@ -408,6 +429,7 @@ const executeWithJev = async ({
     build,
     clock,
     reply_poll_ms,
+    memory,
 }: {
     jev: JevShadow
     action: EngineAction
@@ -416,6 +438,7 @@ const executeWithJev = async ({
     build?: BuildDeps
     clock?: EngineClock
     reply_poll_ms?: number
+    memory?: MemoryDeps
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -433,6 +456,7 @@ const executeWithJev = async ({
         build,
         clock,
         reply_poll_ms,
+        memory,
     })
     const records = journal.read()
     await askJevInShadow({
@@ -503,6 +527,11 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * With `jev`, Jev is asked around each step in **shadow mode** and its
  * answers are journaled but never acted on. Without it, nothing changes.
  *
+ * With `memory`, a run whose `run_started` turned memory on searches
+ * MuninnDB at each recall point and saves the learner's memories at its
+ * end (#370). A MuninnDB that errors or hangs is journaled and the run goes
+ * on.
+ *
  * With `board`, the whole journal is sent to the board once before the
  * first step and again after each step settles.
  *
@@ -523,6 +552,7 @@ export const runEngine = async ({
     board,
     clock,
     reply_poll_ms,
+    memory,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -538,6 +568,11 @@ export const runEngine = async ({
     clock?: EngineClock
     /** How long each wait for a reply sleeps. Defaults to `REPLY_POLL_MS`. */
     reply_poll_ms?: number
+    /**
+     * The memory client (MuninnDB) for a run whose `run_started` turned
+     * memory on (#370). Its errors and timeouts are journaled, never thrown.
+     */
+    memory?: MemoryDeps
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -557,6 +592,7 @@ export const runEngine = async ({
                   build,
                   clock,
                   reply_poll_ms,
+                  memory,
               })
             : executeWithJev({
                   jev,
@@ -566,6 +602,7 @@ export const runEngine = async ({
                   build,
                   clock,
                   reply_poll_ms,
+                  memory,
               })
     const settleAll = () =>
         Promise.allSettled([...inFlight.values()].map(({ done }) => done))

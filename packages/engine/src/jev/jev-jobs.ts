@@ -249,6 +249,8 @@ const failureOf = (
                 ? null
                 : { kind: 'test', text: record.content.problems.join('\n') }
         case 'agent_failed':
+            // The learner fixes nothing, so its failures have no kind to ask about.
+            if (record.content.role === 'learner') return null
             return {
                 kind: 'agent',
                 text: `The ${record.content.role} failed: ${record.content.error}`,

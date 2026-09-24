@@ -19,9 +19,12 @@ import {
 } from '../board/board-sync'
 import { createTypeSafeJev } from '../jev/jev-client'
 import { createJournal, runJournalPath } from '../journal/journal'
+import { createFakeMuninn } from '../testing/fake-muninn'
 import {
+    EMPTY_LEARNER_TURN,
     HAPPY_TURNS,
     makePracticeRepo,
+    PRACTICE_ENGINE_CONFIG,
     practiceTracker,
 } from '../testing/practice-repo'
 
@@ -103,6 +106,10 @@ describe('luca-run --demo', () => {
         ])
         // Jev is asked in shadow mode with no key: journaled, never sent.
         expect(recorder.kinds()).toContain('jev_asked')
+        // Memory is a fake MuninnDB: searched, learned, and saved offline.
+        expect(recorder.kinds()).toContain('memory_recalled')
+        expect(recorder.kinds()).toContain('memories_saved')
+        expect(result.pull_requests[0]?.body).toContain('## New memories')
         expect(recorder.kinds()).not.toContain('jev_answered')
         expect(recorder.endings()).toEqual([
             { ok: true, message: expect.stringContaining('PR opened') },
@@ -173,6 +180,53 @@ describe('luca-run --spec', () => {
         expect(result.ok).toBe(true)
         expect(recorder.kinds()).toContain('jev_asked')
         expect(recorder.kinds()).toContain('jev_failed')
+    }, 60_000)
+
+    test('with a memory client, memory is on with the config’s vault, and the client is closed', async () => {
+        const { repo } = await makePracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                muninn: { vault: 'practice-vault' },
+            },
+        })
+        const muninn = createFakeMuninn()
+
+        const result = await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: null,
+            runs_dir: join(root, 'runs'),
+            tracker: practiceTracker(),
+            launcher: fakeClaudeLauncher({
+                turns: [...HAPPY_TURNS, EMPTY_LEARNER_TURN(10)],
+            }).launcher,
+            memory: { client: muninn },
+            board: null,
+            log,
+        })
+
+        expect(result.ok).toBe(true)
+        const records = createJournal({
+            file: runJournalPath({
+                runs_dir: join(root, 'runs'),
+                run_id: 'run-1',
+            }),
+        }).read()
+        const [started] = records
+        expect(
+            started?.kind === 'run_started' ? started.content.memory : null
+        ).toEqual({ project_vault: 'practice-vault' })
+        expect(
+            muninn
+                .calls()
+                .filter(({ op }) => op === 'recall')
+                .map(({ vault }) => vault)
+                .slice(0, 2)
+        ).toEqual(['practice-vault', 'default'])
+        expect(records.map(({ kind }) => kind)).toContain('memories_saved')
+        expect(muninn.closed()).toBe(true)
     }, 60_000)
 
     test('a launcher stop ends the run with its reason, and the sessions are closed', async () => {

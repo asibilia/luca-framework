@@ -1,3 +1,4 @@
+import { createFakeMuninn, type FakeMuninn } from './fake-muninn'
 import { ticketIssue } from './intake-fixtures'
 import {
     APPROVE,
@@ -97,11 +98,64 @@ const SECOND_TICKET_TURNS: ScriptedTurn[] = [
     { role: 'ticket-reviewer', ticket: 12, result: APPROVE },
 ]
 
-/** The demo's scripted turns: ticket #11 (sum), then ticket #12 (average). */
+/**
+ * The demo's learner (#370): one lesson for `default`, and the run start's
+ * memory as the one that helped.
+ */
+const DEMO_LEARNER_TURN: ScriptedTurn = {
+    role: 'learner',
+    ticket: PRACTICE_SPEC_NUMBER,
+    result: {
+        memories: [
+            {
+                type: 'pattern',
+                concept: 'build-on-exported-helpers',
+                content:
+                    'When a ticket builds on an earlier one, import its exported helper (average uses sum) instead of copying it.',
+                summary: 'Reuse exported helpers across tickets',
+            },
+        ],
+        helped: ['demo-object-args'],
+    },
+}
+
+/**
+ * The demo's scripted turns: ticket #11 (sum), then ticket #12 (average),
+ * then the learner.
+ */
 export const DEMO_TURNS: ScriptedTurn[] = [
     ...HAPPY_TURNS,
     ...SECOND_TICKET_TURNS,
+    DEMO_LEARNER_TURN,
 ]
+
+/**
+ * The demo's MuninnDB (#370): a fake, seeded with two memories in
+ * `default`, one found by every search and one by searches about average,
+ * so the board shows memory at work with nothing leaving the machine.
+ */
+export const demoMuninn = (): FakeMuninn =>
+    createFakeMuninn({
+        vaults: {
+            default: [
+                {
+                    id: 'demo-object-args',
+                    concept: 'pattern:object-args',
+                    content:
+                        'Functions take one object argument, destructured.',
+                    score: 0.8,
+                },
+                {
+                    id: 'demo-empty-average',
+                    concept: 'pitfall:average-of-nothing',
+                    content:
+                        'The average of an empty list divides by zero; return 0 first.',
+                    score: 0.7,
+                    match: 'average',
+                },
+            ],
+        },
+    })
 
 /**
  * The practice spec (#10) in an in-memory tracker, with ticket #11 (sum)

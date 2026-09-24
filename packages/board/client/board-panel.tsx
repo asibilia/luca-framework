@@ -1210,6 +1210,21 @@ export const BoardPanel = ({
                     answer. The engine doesn't act on them.
                 </Text>
             ) : null}
+            {state.memory.searches > 0 || state.memory.learner !== 'waiting' ? (
+                <Text style={styles.small}>
+                    Memory: {state.memory.searches} searches (
+                    {state.memory.search_errors} vault errors),{' '}
+                    {state.memory.shown} shown. Learner: {state.memory.learner}
+                    {state.memory.added +
+                        state.memory.updated +
+                        state.memory.refused +
+                        state.memory.failed >
+                    0
+                        ? `; ${state.memory.added} added, ${state.memory.updated} updated, ${state.memory.refused} refused, ${state.memory.failed} failed`
+                        : ''}
+                    .
+                </Text>
+            ) : null}
             {state.messages.sent + state.messages.refused > 0 ? (
                 <Text style={styles.small}>
                     Agent messages: {state.messages.sent} sent,{' '}

@@ -20,6 +20,7 @@ import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import type { EngineClock } from '../limits/limit-wait'
+import type { MemoryClient } from '../memory/memory-client'
 import {
     createInMemoryTracker,
     type InMemoryTracker,
@@ -160,6 +161,25 @@ export const CLEAN_LENS_TURNS = (spec_number: number): ScriptedTurn[] =>
     }))
 
 /**
+ * A learner that proposes nothing and says nothing helped, for spec
+ * `spec_number`. Practice runs fall back on it for a learner the turns
+ * don't script (only runs with memory on start one).
+ */
+export const EMPTY_LEARNER_TURN = (spec_number: number): ScriptedTurn => ({
+    role: 'learner',
+    ticket: spec_number,
+    result: { memories: [], helped: [] },
+})
+
+/** Memory for a practice run (#370): a (fake) client and the project vault. */
+export type PracticeMemory = {
+    client: MemoryClient
+    project_vault: string | null
+    /** How long each call may take. Defaults to the engine's. */
+    timeout_ms?: number
+}
+
+/**
  * The happy path: tests, then code, then an approving review, then a clean
  * final review.
  */
@@ -169,13 +189,15 @@ export const HAPPY_TURNS: ScriptedTurn[] = [
 ]
 
 /**
- * The turns, then a clean final review of spec #10 to fall back on: the
- * scripted launcher plays the first unused turn of a role, so lens turns in
- * `turns` go first, and a lens the turns don't script approves.
+ * The turns, then a clean final review of spec #10 and an empty learner to
+ * fall back on: the scripted launcher plays the first unused turn of a
+ * role, so lens and learner turns in `turns` go first, a lens the turns
+ * don't script approves, and a learner they don't script learns nothing.
  */
 const withCleanLenses = (turns: ScriptedTurn[]): ScriptedTurn[] => [
     ...turns,
     ...CLEAN_LENS_TURNS(10),
+    EMPTY_LEARNER_TURN(10),
 ]
 
 /**
@@ -322,6 +344,7 @@ export const createPracticeRepo = async ({
         resume,
         stop_before,
         reply_poll_ms,
+        memory,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -348,6 +371,8 @@ export const createPracticeRepo = async ({
         stop_before?: EngineAction['type'][]
         /** How long each wait for a reply sleeps by `clock`. */
         reply_poll_ms?: number
+        /** Turns memory on for the run, with this (fake) MuninnDB. */
+        memory?: PracticeMemory
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -361,6 +386,10 @@ export const createPracticeRepo = async ({
                 spec_number: 10,
                 config: loaded.config,
                 base_branch: 'main',
+                memory:
+                    memory === undefined
+                        ? undefined
+                        : { project_vault: memory.project_vault },
             })
         }
         const action = await runEngine({
@@ -372,6 +401,10 @@ export const createPracticeRepo = async ({
             clock,
             stop_before: stop_before ?? ['wait_for_reply'],
             reply_poll_ms,
+            memory:
+                memory === undefined
+                    ? undefined
+                    : { client: memory.client, timeout_ms: memory.timeout_ms },
         })
         return {
             action,

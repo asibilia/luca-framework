@@ -398,6 +398,51 @@ export const MessageCountsSchema = z.object({
 
 export type MessageCounts = z.infer<typeof MessageCountsSchema>
 
+/**
+ * Where the learner stands at the end of a run (#370): `waiting` until it
+ * starts (a run without memory never starts it), `learning`, `learned`
+ * once it answered, or `skipped` when the engine gave up on it.
+ */
+export const LearnerStateSchema = z.enum([
+    'waiting',
+    'learning',
+    'learned',
+    'skipped',
+])
+
+export type LearnerState = z.infer<typeof LearnerStateSchema>
+
+/**
+ * Memory (#370), counted: the searches at recall points (and the vault
+ * searches among them that failed), the memories they showed agents, the
+ * learner, and what became of its memories. Memory changes no ticket, so
+ * the board only counts it.
+ */
+export const MemoryCountsSchema = z.object({
+    searches: z.number().int().min(0),
+    search_errors: z.number().int().min(0),
+    shown: z.number().int().min(0),
+    learner: LearnerStateSchema,
+    added: z.number().int().min(0),
+    updated: z.number().int().min(0),
+    refused: z.number().int().min(0),
+    failed: z.number().int().min(0),
+})
+
+export type MemoryCounts = z.infer<typeof MemoryCountsSchema>
+
+/** Memory before any of its records. */
+export const NO_MEMORY: MemoryCounts = {
+    searches: 0,
+    search_errors: 0,
+    shown: 0,
+    learner: 'waiting',
+    added: 0,
+    updated: 0,
+    refused: 0,
+    failed: 0,
+}
+
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
     usage: UsageSchema.nullable(),
@@ -423,6 +468,8 @@ export const BoardStateSchema = z.object({
         refused: 0,
         delivered: 0,
     }),
+    /** Defaulted, so a board state from before memory still parses. */
+    memory: MemoryCountsSchema.default(NO_MEMORY),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

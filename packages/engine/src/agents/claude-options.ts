@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { roleInstructions } from './role-instructions'
 import {
     ImplementerResultSchema,
+    LearnerResultSchema,
     LensReviewResultSchema,
     TestWriterResultSchema,
     TicketReviewResultSchema,
@@ -35,6 +36,7 @@ export const MAX_TURNS: Record<AgentRole, number> = {
     'security-lens': 60,
     'integration-lens': 60,
     'rules-lens': 60,
+    learner: 40,
 }
 
 /**
@@ -110,6 +112,7 @@ const RESULT_SCHEMAS: Record<AgentRole, z.ZodType> = {
     'security-lens': LensReviewResultSchema,
     'integration-lens': LensReviewResultSchema,
     'rules-lens': LensReviewResultSchema,
+    learner: LearnerResultSchema,
 }
 
 /** A role's result schema as JSON Schema, for the SDK's structured output. */

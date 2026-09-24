@@ -29,6 +29,7 @@ const GUARD_ROLE_OF: Record<AgentRole, GuardRole> = {
     'security-lens': 'reviewer',
     'integration-lens': 'reviewer',
     'rules-lens': 'reviewer',
+    learner: 'learner',
 }
 
 /** The guard role an agent role plays by. */

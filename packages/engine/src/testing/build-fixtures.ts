@@ -211,6 +211,7 @@ export const SESSIONS = {
     'security-lens': 'security-1',
     'integration-lens': 'integration-1',
     'rules-lens': 'rules-1',
+    learner: 'learner-1',
 } as const satisfies Record<AgentRole, string>
 
 /** An agent turn started: a fresh launch, or a follow-up to `follow_up_of`. */

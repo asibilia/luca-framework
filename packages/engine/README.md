@@ -23,6 +23,9 @@ through five **lenses** before the PR opens, with its own capped fix loop
 Stuck work reaches the spec's owner as a comment on the spec issue, the other
 tickets keep building, and the owner's one-word replies (`retry`, `skip`,
 `stop`) move it on (#366).
+With **memory** on, the engine searches MuninnDB at four **recall points** and
+hands the memories to agents, and at the end of every run a learner proposes
+new memories that plain code routes to a vault by type and saves (#370).
 
 ## Modules
 
@@ -86,6 +89,17 @@ tickets keep building, and the owner's one-word replies (`retry`, `skip`,
 | `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
 | `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
 | `src/jev/jev-shadow.ts` | Asks Jev in **shadow mode** and journals each call and answer. |
+| `src/memory/memory-schemas.ts` | **Memory**'s shapes as Zod schemas (a hit, a shown memory, a vault's search, a save, a feedback) and its numbers: `MIN_MEMORY_SCORE`, `MAX_MEMORIES_PER_RECALL`, `SIMILAR_MEMORY_SCORE`, `DEFAULT_MEMORY_TIMEOUT_MS`. |
+| `src/memory/memory-client.ts` | The memory client interface (an object of async functions), and `safeMemory`: every call with a timeout, every error a value. Never throws. |
+| `src/memory/memory-recall.ts` | Pure: the vaults a search covers, and the merge by score (minimum score, one per vault and id, at most 5). |
+| `src/memory/memory-routing.ts` | Pure: each proposed memory's vault by its type (`MEMORY_ROUTES`), refusals, the stored concept, and the helped / didn't-help feedback. |
+| `src/memory/muninn-mcp-client.ts` | The real client: MuninnDB's MCP tools over Streamable HTTP (SSE as a fallback), with pure settings resolution and result parsing. |
+| `src/core/decide-memory.ts` | Memory's half of the decision step: the recall points (a search before the step that needs it, then its memories in the prompt), and the learner, its saves, and the spec comment at the end of a run. |
+| `src/core/execute-memory.ts` | Carries out memory's steps: searches, the learner's turn, saves (update a similar memory or add one), feedback, and the spec comment. |
+| `src/core/learner-digest.ts` | Pure: the learner's prompt, a capped digest of the journal. |
+| `src/core/memory-text.ts` | Memory's texts: prompt sections, queries, the PR's "New memories", and the spec comment. |
+| `src/testing/fake-muninn.ts` | A fake MuninnDB for tests and the demo: vaults in memory with scripted scores, every call recorded, told to fail or hang per vault and operation. |
+| `src/testing/memory-fixtures.ts` | Journal entry builders for memory: a run with memory on, searches, the learner's turns, saves. |
 | `src/testing/practice-run.ts` | The `--demo` run: `practice-repo.ts`'s repo and turns, plus a second ticket (#12, blocked by #11) and its turns. |
 | `src/board/board-sync.ts` | Keeps the board in step with the journal: a cursor, batches, replays. Never throws. |
 | `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
@@ -153,10 +167,18 @@ once every ticket pushed, the final review, on the run branch's worktree:
       start_final_review               only the lenses with findings, only the new changes
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
+with memory on (#370), before the PR:
+  launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
+  save_memories             update a similar memory or add one, then feedback ──> memories_saved
 open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 ```
+
+With memory on, a `recall_memories` search (──> `memory_recalled`) also comes
+before the run branch (the run's start), before a ticket's first test-writer
+or implementer, before each ticket review and final review round, and before
+each fix round; see "Memory" below.
 
 **Many tickets at once.** `decideSteps` returns every action that can run
 now, at most one per ticket, and `runEngine` schedules them: it starts what
@@ -551,8 +573,9 @@ hand in scripted agents and never call a model.
 repo (`src/testing/practice-repo.ts`, with a local bare `origin`) in a temp
 folder, fills an in-memory tracker with the practice spec and two tickets
 (#12 blocked by #11), and runs the engine with scripted agents that take
-1.5 s per turn. Jev is asked in shadow mode with no key, so its records show
-up but nothing leaves the machine. No GitHub, no models. It prints the temp
+1.5 s per turn. Jev is asked in shadow mode with no key, and memory is a fake
+MuninnDB with two seeded memories and a scripted learner, so their records
+show up but nothing leaves the machine. No GitHub, no models. It prints the temp
 paths and the PR it opened in memory, then removes the temp folder (which
 also holds its journal).
 
@@ -604,8 +627,9 @@ also holds its journal).
   once, where it was last written. With no notes there is no section.
   Follow-ups don't repeat them. Replay keeps every note in `run_notes`, from
   the `agent_finished` records, in journal order; the prompt itself is
-  journaled word for word in `agent_started`. Recalled memories (#370) will
-  sit next to them.
+  journaled word for word in `agent_started`. Recalled memories (#370) sit
+  next to them, after them at the prompt's end; the run's start memories
+  sit at its top (see "Memory").
 - **Lockfile updates (#373):** agents never run the install; the prompts say
   so, and every guard layer blocks it (#384). The hook denies package
   managers, `bun` install subcommands, `bunx <package>`, and Bun's
@@ -691,8 +715,8 @@ also holds its journal).
 ## Agent messages
 
 Test-writers and implementers can send each other a one-way heads-up
-(decision #338). Reviewers can't send or receive, and the learner can't
-either.
+(decision #338). Reviewers can't send or receive, and the learner (#370)
+can't either.
 
 - **Addresses.** An agent's address is `<role>#<ticket>`, such as
   `implementer#11`; its prompt names it. A fresh test-writer after a bad test
@@ -889,6 +913,126 @@ Leave `jev` out to run without Jev; the journal is then exactly as before.
 With many tickets at once, the asks after a step look only at the new
 records of that step's own ticket.
 
+## Memory (#370)
+
+Only the engine talks to MuninnDB, over MCP; agents get no memory tools, and
+the guard keeps the MuninnDB connection they would inherit away from them.
+Memory is **off** unless `run_started` turns it on (`memory: { project_vault }`,
+from `startRun({ memory })`), so a run without it goes exactly as before.
+`runEngine({ ..., memory: { client, timeout_ms } })` takes the client; each
+call waits at most `timeout_ms` (default 10 s), and an error or a timeout is
+journaled as a value, never thrown: memory never breaks a run.
+
+**Recall points.** Each search covers the project vault (the engine config's
+`muninn.vault`) and `default` (just `default` with no project vault, or once
+if they're the same), passes `threshold: MIN_MEMORY_SCORE` (0.5, MuninnDB's
+own default; its scores can go above 1) and `limit: 5` to each, then merges
+the hits by score, drops those below the minimum, keeps one per vault and id,
+and keeps at most `MAX_MEMORIES_PER_RECALL` (5). When a step needs a search
+whose key isn't journaled yet, the decision step returns `recall_memories`
+in its place, under the same scheduler key (so tickets search at the same
+time; the run's start is run-level, the final review's under `final`).
+
+| Point | When | Key | Query | Where the memories go |
+| --- | --- | --- | --- | --- |
+| `run_start` | once intake passed, before the run branch | `run_start` | the spec's title and body | the TOP of every fresh agent's prompt in the run, so every prompt starts the same and is cached |
+| `ticket` | before a ticket's first test-writer or implementer | `ticket:<n>` | the ticket's title and body | the end of that ticket's fresh test-writers' and implementers' prompts, next to the run notes |
+| `review` | before each ticket review, and each final review round's lenses (one search for all five) | `review:<n>:<commit>`, `review:final:<head>` | the ticket's (or spec's) title and the files changed | the reviewer's or lenses' prompts |
+| `fix_round` | before a follow-up after a failed red check or failed gates, a review fix round, and a final review fix round | `fix_round:<n or final>:<red, gates, or review>:<seq>` | the failure text's last 1,500 characters (the output, or the findings) | that follow-up message, or the round's fresh fixers' prompts |
+
+Failed-try follow-ups (agent errors, guard violations) and clash fixes are
+no fix rounds. A follow-up is in its session already, so it gets no run-start
+memories. A memory shown at the run's start (or earlier in the same prompt)
+isn't repeated. Each section reads `## Memories from past runs...`, then
+`- [<vault>] <concept>: <content>` (content cut at 600 characters). Every
+search is journaled as `memory_recalled` with its query, each vault's outcome
+and count, and the memories with their scores; one that failed in a vault
+still journals, with the error, and the run moves on.
+
+**The learner.** Once the run is about to end, it runs before anything else
+(always before the last worktrees are removed, so the run branch's worktree
+is its read-only folder):
+
+- **with its PR**: once the final review passed or was shipped, before
+  `open_pull_request`, so the PR can list the new memories;
+- **stopped by the owner**: after a `stop` reply (a stuck final review then
+  `stop` too), once the steps in flight settled;
+- **every ticket skipped**: before the worktrees go.
+
+Not on a refused run or one with nothing to do (no agent ran, nothing to
+learn), and not after a billing stop (starting any agent then could bill per
+token). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
+shell, writes nothing, no messages) on Opus 5.5 like every role. Its prompt
+is a digest of the journal built by pure code (`learnerPrompt`): the
+failures (failed red checks and gates with their output's end, clashes), fix
+loops, failed tries, review and final review findings, stuck points,
+assumptions, run notes, and every memory shown (id, vault, concept,
+content), each item capped at 700 characters and the whole at 40,000. It
+answers `{ memories: { type, concept, content, summary }[] (at most 10),
+helped: string[] }`; `type` is a plain string, so an unknown type is refused
+alone rather than failing the answer. A failed try gets a fresh learner, up
+to `MAX_FIX_ROUNDS` (3) tries or `MAX_ENGINE_FAILURES` (3) engine failures in
+a row; then `learning_skipped { reason }` and the run ends as it would have.
+A plan cut-off is a limit wait like any agent's, then the learner again. Its
+records have `ticket: null` and never count as the final review's.
+
+**Saving** (`save_memories`, routed by pure code):
+
+| Type | Vault |
+| --- | --- |
+| `pattern`, `pitfall`, `procedure` | `default` |
+| `decision` | the project vault (refused if the config names none) |
+| anything else | refused, with the reason |
+
+A type is read without case or spaces. The stored concept is
+`<type>:<concept>`. For each memory the executor searches its vault for the
+most similar one (limit 1, threshold 0); a `vector_score` of at least
+`SIMILAR_MEMORY_SCORE` (0.85) updates it (`muninn_evolve`), else a new one is
+added (`muninn_remember`, tags `luca` and `spec-<n>`, and an `op_id` from the
+learner's record so a save repeated after a crash adds it once). Then every
+distinct memory shown in the run gets feedback: useful if its id is in
+`helped` (ids never shown are ignored). All of it is journaled once as
+`memories_saved`: each save's vault, outcome (`added`, `updated`, `refused`,
+`failed`), id, the similar memory found (id, score, vector score), and error,
+and each feedback's outcome.
+
+**Listing them.** The PR description ends with "New memories" (each added or
+updated memory's type, vault, concept, id, and whether it was added or
+updated). With no PR (stopped, or every ticket skipped), `report_memories`
+comments the same list on the spec issue (──> `memories_reported`), unless
+nothing was saved.
+
+**Connecting.** `createMuninnMcpClient` calls `muninn_recall` (`vault`,
+`context: [query]`, `limit`, `threshold`), `muninn_remember` (`vault`,
+`concept`, `content`, `summary`, `type`, `tags`, `op_id`), `muninn_evolve`
+(`vault`, `id`, `new_content`, `reason`), and `muninn_feedback` (`vault`,
+`engram_id`, `useful`) on one connection, Streamable HTTP first, then SSE.
+Answers are checked with Zod; a bad shape or an error result is an error
+value. Where MuninnDB is (`muninnSettings`, pure):
+
+| Setting | From |
+| --- | --- |
+| URL | `LUCA_MUNINN_URL`, else `mcpServers.muninn.url` in `~/.claude.json` |
+| Token | `LUCA_MUNINN_TOKEN` (sent as `Authorization: Bearer <token>`), else that entry's `headers.Authorization` |
+
+The token is never logged or journaled, and is hidden from error text.
+`luca-run --spec` turns memory on when it finds MuninnDB (and logs "memory
+off" when it doesn't); `runSpec` takes the client as an argument, so its
+tests hand in the fake. The demo uses the fake MuninnDB seeded with two
+memories and a scripted learner, so the board shows memory with nothing
+leaving the machine.
+
+Choices made:
+
+- The design's `save_memories` step also carries each save's `op_id` and
+  tags, so the executor stays a plain loop.
+- A save whose similarity search fails is `failed`, not added, so a
+  MuninnDB that half works doesn't fill a vault with duplicates.
+- The learner's answer is saved once (`memories_saved` is its checkpoint),
+  even with nothing to save, so the run's end is clear in the journal.
+- The run's start memories go on every fresh agent but the learner, whose
+  digest already lists every memory shown.
+
 ## Tests
 
 The tests go through the seams spec #359 sets: the decision step (`decide`
@@ -988,6 +1132,24 @@ weekly cap, overage, isUsingOverage, a billing error) and usage readings.
 `src/core/limit-wait.test.ts` runs the practice ticket with an agent the
 plan cuts off, a fake clock, and the in-memory tracker: the wait, its one
 comment, a restart mid-wait, and a billing stop that sticks.
+
+`src/core/decide-memory.test.ts` covers memory at the decision step: memory
+off changes nothing, each recall point's search and query, tickets searching
+at the same time, where the memories go in prompts and follow-ups, no repeats
+of run-start memories, a failed try is no fix round, one search for all five
+lenses, the learner before the PR, after a `stop`, and with every ticket
+skipped, its routing by type (unknown types refused), feedback, the PR's "New
+memories", the spec comment, a failed learner's tries and `learning_skipped`,
+and no learner on a billing stop or a refused run.
+`src/core/run-memory.test.ts` runs it end to end with a fake MuninnDB:
+memories reach the agents at every point, the learner's memories are updated
+or added and fed back, the PR lists them, a stopped run comments them on the
+spec, and a MuninnDB that errors or hangs still lets the run open its PR,
+with the errors journaled. `src/core/execute-memory.test.ts` checks the
+search's merge, cap, and minimum score on a real journal file.
+`src/memory/*.test.ts` unit-test the merge, the routing, `safeMemory`, the
+settings resolution, and the MCP client's parsing and calls through a fake
+connection; no test reaches a real MuninnDB.
 
 `src/board/board-sync.test.ts` runs the engine with a board in memory: records
 arrive in seq order, a board that restarted gets a replay, and a failing board

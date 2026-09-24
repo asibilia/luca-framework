@@ -17,6 +17,7 @@ import {
     type Finding,
     type FindingResponse,
     type ImplementerResult,
+    type LearnerResult,
     type LensName,
     type LensReviewResult,
     type TestWriterResult,
@@ -36,6 +37,12 @@ import type {
     TicketSnapshot,
 } from '../intake/intake-schemas'
 import { sessionSignal } from '../limits/plan-signals'
+import type {
+    MemoryFeedback,
+    MemorySave,
+    RecallPoint,
+    RecalledMemory,
+} from '../memory/memory-schemas'
 
 /** Where a run stands, as far as intake goes. */
 export type RunPhase =
@@ -353,6 +360,61 @@ export type PlanState = {
     /** Set once a billing stop is journaled. It sticks. */
     billing_stopped: { reason: string } | null
 }
+/**
+ * The learner at the end of a run (#370): its answer, or its failed tries,
+ * or that the engine gave up on it. Learner records have `ticket: null` and
+ * role `learner`; they never count as the final review's.
+ */
+export type LearnerState = {
+    /** Its result, once it finished. */
+    result: LearnerResult | null
+    /** The seq of its `agent_finished`, for the saves' op ids. */
+    result_seq: number | null
+    /** Its latest failed turn, if none finished after it. */
+    agent_failure: ReplayedAgentFailure | null
+    /** Failed tries (agent, result, guard), in all. */
+    failed_tries: number
+    /** Engine failures in a row. */
+    engine_failures: number
+    /** Why the engine gave up on it (`learning_skipped`), if it did. */
+    skipped: string | null
+}
+
+/** Where memory stands in a run (#370), from its records. */
+export type MemoryState = {
+    /** Memory is on for this run (`run_started.memory`). */
+    on: boolean
+    /** The project's vault; `null` searches only `default`. */
+    project_vault: string | null
+    /** Each recall point's memories, by its key, once searched. */
+    recalls: Record<string, { point: RecallPoint; memories: RecalledMemory[] }>
+    /** Every memory shown in the run, oldest first; may repeat. */
+    shown: RecalledMemory[]
+    learner: LearnerState
+    /** The learner's memories as saved, and the feedback sent. */
+    saved: { saves: MemorySave[]; feedback: MemoryFeedback[] } | null
+    /** The new memories went on the spec issue (a run with no PR). */
+    reported: boolean
+}
+
+/** A run with memory off, before any memory record. */
+export const EMPTY_MEMORY: MemoryState = {
+    on: false,
+    project_vault: null,
+    recalls: {},
+    shown: [],
+    learner: {
+        result: null,
+        result_seq: null,
+        agent_failure: null,
+        failed_tries: 0,
+        engine_failures: 0,
+        skipped: null,
+    },
+    saved: null,
+    reported: false,
+}
+
 /** One run note, with the agent that wrote it. */
 export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
@@ -395,6 +457,8 @@ export type RunState = {
     final_stuck_report: { comment_id: number } | null
     /** The owner's reply to the stuck final review, until the engine acts on it. */
     final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
+    /** Memory's recalls, the learner, and the saves (#370). */
+    memory: MemoryState
     last_seq: number
 }
 
@@ -469,6 +533,7 @@ const EMPTY_STATE: RunState = {
     stop: null,
     final_stuck_report: null,
     final_reply: null,
+    memory: EMPTY_MEMORY,
     last_seq: 0,
 }
 
@@ -586,6 +651,24 @@ const applyRecord = ({
                   },
               }
             : base
+    const learnerRecord = learnerRecordOf({ record })
+    if (learnerRecord !== null) {
+        const memory = {
+            ...state.memory,
+            learner: learnerAfter({
+                learner: state.memory.learner,
+                record: learnerRecord,
+            }),
+        }
+        // A session's readings still count for the plan.
+        return learnerRecord.kind === 'agent_session'
+            ? {
+                  ...next,
+                  memory,
+                  plan: planAfter({ plan: state.plan, record: learnerRecord }),
+              }
+            : { ...next, memory }
+    }
     const finalRecord = finalRecordOf({ state, record })
     if (finalRecord !== null) {
         const replies = finalRepliesAfter({ state, record })
@@ -604,13 +687,59 @@ const applyRecord = ({
             : { ...next, ...replies, final_review }
     }
     switch (record.kind) {
-        case 'run_started':
+        case 'run_started': {
+            const { memory } = record.content
             return {
                 ...next,
                 phase: 'started',
                 spec_number: record.content.spec_number,
                 config: record.content.config,
                 base_branch: record.content.base_branch,
+                memory: {
+                    ...EMPTY_MEMORY,
+                    on: memory !== null,
+                    project_vault: memory?.project_vault ?? null,
+                },
+            }
+        }
+        case 'memory_recalled': {
+            const { point, key, memories } = record.content
+            return {
+                ...next,
+                memory: {
+                    ...state.memory,
+                    recalls: {
+                        ...state.memory.recalls,
+                        [key]: { point, memories },
+                    },
+                    shown: [...state.memory.shown, ...memories],
+                },
+            }
+        }
+        case 'memories_saved':
+            return {
+                ...next,
+                memory: { ...state.memory, saved: record.content },
+            }
+        case 'learning_skipped':
+            return {
+                ...next,
+                memory: {
+                    ...state.memory,
+                    learner: {
+                        ...state.memory.learner,
+                        skipped: record.content.reason,
+                    },
+                },
+            }
+        case 'memories_reported':
+            return {
+                ...next,
+                memory: { ...state.memory, reported: true },
+                engine_comments: engineCommentsAfter({
+                    state,
+                    comment_id: record.content.comment_id,
+                }),
             }
         case 'intake_read':
             return { ...next, phase: 'intake_read', intake: record.content }
@@ -789,6 +918,80 @@ const applyRecord = ({
             return next
         default:
             return applyTicketRecord({ state: next, record })
+    }
+}
+
+/** The agent kinds a learner's turn journals. */
+type LearnerRecord = Extract<
+    JournalRecord,
+    {
+        kind:
+            | 'agent_started'
+            | 'agent_finished'
+            | 'agent_failed'
+            | 'agent_session'
+    }
+>
+
+/** The record if it is one of the learner's agent records, else `null`. */
+const learnerRecordOf = ({
+    record,
+}: {
+    record: JournalRecord
+}): LearnerRecord | null => {
+    switch (record.kind) {
+        case 'agent_started':
+        case 'agent_finished':
+        case 'agent_failed':
+        case 'agent_session':
+            return record.content.role === 'learner' ? record : null
+        default:
+            return null
+    }
+}
+
+/**
+ * The learner after one of its records: its answer ends any failure; a
+ * failed turn counts a try (or an engine failure in a row), like any
+ * agent's.
+ */
+const learnerAfter = ({
+    learner,
+    record,
+}: {
+    learner: LearnerState
+    record: LearnerRecord
+}): LearnerState => {
+    switch (record.kind) {
+        case 'agent_started':
+        case 'agent_session':
+            return learner
+        case 'agent_finished':
+            return record.content.role === 'learner'
+                ? {
+                      ...learner,
+                      result: record.content.result,
+                      result_seq: record.seq,
+                      agent_failure: null,
+                      engine_failures: 0,
+                  }
+                : learner
+        case 'agent_failed': {
+            const { role, error, failure, session_id } = record.content
+            const agent_failure = { role, error, failure, session_id }
+            return failure === 'engine'
+                ? {
+                      ...learner,
+                      agent_failure,
+                      engine_failures: learner.engine_failures + 1,
+                  }
+                : {
+                      ...learner,
+                      agent_failure,
+                      engine_failures: 0,
+                      failed_tries: learner.failed_tries + 1,
+                  }
+        }
     }
 }
 
@@ -1090,7 +1293,7 @@ const finalReviewAfter = ({
                     }),
                     assumptions: [
                         ...review.assumptions,
-                        ...finished.result.assumptions,
+                        ...assumptionsOf(finished),
                     ],
                 },
                 finished,
@@ -1175,6 +1378,10 @@ type TicketRecord = Exclude<
             | 'comment_read'
             | 'reply_ignored'
             | 'final_review_retried'
+            | 'memory_recalled'
+            | 'memories_saved'
+            | 'learning_skipped'
+            | 'memories_reported'
     }
 >
 
@@ -1182,6 +1389,10 @@ type FinishedContent = Extract<
     JournalRecord,
     { kind: 'agent_finished' }
 >['content']
+
+/** A finished agent's assumptions; the learner makes none. */
+const assumptionsOf = (finished: FinishedContent): string[] =>
+    'assumptions' in finished.result ? finished.result.assumptions : []
 
 /**
  * Where a finished agent's result goes in its ticket's progress. A result
@@ -1410,7 +1621,7 @@ const progressChange = ({
                 }),
                 assumptions: [
                     ...progress.assumptions,
-                    ...finished.result.assumptions,
+                    ...assumptionsOf(finished),
                 ],
                 ...resultChange({ progress, finished, seq: record.seq }),
             }
