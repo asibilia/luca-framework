@@ -29,3 +29,11 @@ export const MAX_ENGINE_FAILURES = 3
  * the ticket stuck.
  */
 export const MAX_REJOINS = MAX_FIX_ROUNDS
+
+/**
+ * Crashes in a row that cut off the same step (`run_resumed`) after which
+ * it is not taken again: a ticket's step makes the ticket stuck, a final
+ * review step makes the final review stuck, and a run-level step (or
+ * taking a reply) stops the run for good.
+ */
+export const MAX_CRASHES = 3

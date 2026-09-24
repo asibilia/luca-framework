@@ -199,6 +199,72 @@ const reviewFixNeed = ({
 })
 
 /**
+ * The recall points of a ticket agent's follow-up that is a fix round: a
+ * failed red check's, a review fix round's, or failed gates'. None for a
+ * follow-up that is no fix round (a clash's, or a failed try's).
+ */
+const followUpNeeds = ({
+    progress,
+    role,
+    records,
+    ticket,
+}: {
+    progress: TicketProgress
+    role: string
+    records: JournalRecord[]
+    ticket: number
+}): RecallNeed[] => {
+    // A failed try's follow-up is no fix round.
+    if (progress.agent_failure !== null) return []
+    const { red_check, gates, rejoin } = progress
+    if (role === 'test-writer' && red_check !== null && !red_check.ok) {
+        return [
+            {
+                point: 'fix_round',
+                ticket,
+                key: `fix_round:${ticket}:red:${latestSeq({
+                    records,
+                    match: (record) =>
+                        record.kind === 'red_check' && record.ticket === ticket,
+                })}`,
+                query: () =>
+                    memoryQuery({
+                        text: `The red check failed:\n${red_check.problems.join('\n')}\n\n${red_check.output}`,
+                        tail: true,
+                    }),
+            },
+        ]
+    }
+    if (role !== 'implementer' || rejoin?.code_pending === true) {
+        return []
+    }
+    if (reviewFixWaitsOn({ progress, role })) {
+        return [reviewFixNeed({ records, progress, ticket })]
+    }
+    if (gates !== null && !gates.ok) {
+        return [
+            {
+                point: 'fix_round',
+                ticket,
+                key: `fix_round:${ticket}:gates:${latestSeq({
+                    records,
+                    match: (record) =>
+                        record.kind === 'gates_run' &&
+                        record.ticket === ticket &&
+                        record.content.target === 'ticket',
+                })}`,
+                query: () =>
+                    memoryQuery({
+                        text: failedChecks({ gates }),
+                        tail: true,
+                    }),
+            },
+        ]
+    }
+    return []
+}
+
+/**
  * The recall points a step needs, and whether it is a fresh agent (which
  * also gets the run's start memories at the top of its prompt). `null` for
  * a step that gets no memories: every step but agents, and follow-ups that
@@ -240,79 +306,25 @@ const needsOf = ({
                     ],
                 }
             }
-            return {
-                fresh: true,
-                needs: [
-                    ticketNeed({ state, ticket }),
-                    ...(reviewFixWaitsOn({ progress, role })
-                        ? [reviewFixNeed({ records, progress, ticket })]
-                        : []),
-                ],
-            }
+            // A fresh agent taking a follow-up's turn a crash cut off gets
+            // that fix round's memories too.
+            const needs = [
+                ticketNeed({ state, ticket }),
+                ...(reviewFixWaitsOn({ progress, role })
+                    ? [reviewFixNeed({ records, progress, ticket })]
+                    : []),
+                ...(progress.crashed_turn === role
+                    ? followUpNeeds({ progress, role, records, ticket })
+                    : []),
+            ]
+            return { fresh: true, needs: uniqBy(needs, 'key') }
         }
         case 'follow_up_agent': {
             const { ticket, role } = action
             const progress = state.tickets[ticket]
-            // A failed try's follow-up is no fix round.
-            if (progress === undefined || progress.agent_failure !== null) {
-                return null
-            }
-            const { red_check, gates, rejoin } = progress
-            if (role === 'test-writer' && red_check !== null && !red_check.ok) {
-                return {
-                    fresh: false,
-                    needs: [
-                        {
-                            point: 'fix_round',
-                            ticket,
-                            key: `fix_round:${ticket}:red:${latestSeq({
-                                records,
-                                match: (record) =>
-                                    record.kind === 'red_check' &&
-                                    record.ticket === ticket,
-                            })}`,
-                            query: () =>
-                                memoryQuery({
-                                    text: `The red check failed:\n${red_check.problems.join('\n')}\n\n${red_check.output}`,
-                                    tail: true,
-                                }),
-                        },
-                    ],
-                }
-            }
-            if (role !== 'implementer' || rejoin?.code_pending === true) {
-                return null
-            }
-            if (reviewFixWaitsOn({ progress, role })) {
-                return {
-                    fresh: false,
-                    needs: [reviewFixNeed({ records, progress, ticket })],
-                }
-            }
-            if (gates !== null && !gates.ok) {
-                return {
-                    fresh: false,
-                    needs: [
-                        {
-                            point: 'fix_round',
-                            ticket,
-                            key: `fix_round:${ticket}:gates:${latestSeq({
-                                records,
-                                match: (record) =>
-                                    record.kind === 'gates_run' &&
-                                    record.ticket === ticket &&
-                                    record.content.target === 'ticket',
-                            })}`,
-                            query: () =>
-                                memoryQuery({
-                                    text: failedChecks({ gates }),
-                                    tail: true,
-                                }),
-                        },
-                    ],
-                }
-            }
-            return null
+            if (progress === undefined) return null
+            const needs = followUpNeeds({ progress, role, records, ticket })
+            return needs.length === 0 ? null : { fresh: false, needs }
         }
         case 'launch_lens':
             return {
@@ -491,8 +503,9 @@ const allSkipped = (state: RunState): boolean => {
 /**
  * How the run is about to end, if it is: its PR opens next, the owner said
  * `stop`, or every ticket was skipped. `null` while it keeps going (or once
- * its PR is open). Refused runs, nothing to do, and billing stops never get
- * here: no agent ran, or starting one could bill per token.
+ * its PR is open). Refused runs, nothing to do, billing stops, and stops
+ * for crashes never get here: no agent ran, starting one could bill per
+ * token, or the run stopped for good before it (`decide-crashes.ts`).
  */
 const endingOf = ({
     state,
@@ -601,7 +614,9 @@ const learnerStep = ({
  *    lenses the final review round's (`review:final:<head>`); follow-ups
  *    after a failed red check or failed gates, and review and final review
  *    fix rounds, the round's (`fix_round:...`), searched with the failure
- *    text. Failed-try follow-ups and clash fixes are no fix rounds.
+ *    text. Failed-try follow-ups and clash fixes are no fix rounds. A
+ *    fresh agent taking a fix round's follow-up a crash cut off (#369)
+ *    needs its ticket's and that round's.
  * 3. When the run is about to end with its PR, a `stop`, or every ticket
  *    skipped: the learner, its saves, and with no PR the spec comment,
  *    before anything else (always before the last worktrees are removed).

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { $ } from 'bun'
 
-import { specIssue, ticketIssue } from './intake-fixtures'
+import { specIssue, ticketIssue, withoutStepRecords } from './intake-fixtures'
 
 import type { AgentLauncher } from '../agents/agent-launcher'
 import { LENS_NAMES, lensRole } from '../agents/role-results'
@@ -15,9 +15,9 @@ import {
 import { loadEngineConfig } from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
 import { runEngine, startRun } from '../core/execute'
-import { createGitAdapter } from '../git/git-adapter'
+import { createGitAdapter, type GitAdapter } from '../git/git-adapter'
 import type { JevShadow } from '../jev/jev-shadow'
-import { createJournal, runJournalPath } from '../journal/journal'
+import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import type { EngineClock } from '../limits/limit-wait'
 import type { MemoryClient } from '../memory/memory-client'
@@ -345,6 +345,8 @@ export const createPracticeRepo = async ({
         stop_before,
         reply_poll_ms,
         memory,
+        git: wrapGit,
+        journal: wrapJournal,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -373,6 +375,16 @@ export const createPracticeRepo = async ({
         reply_poll_ms?: number
         /** Turns memory on for the run, with this (fake) MuninnDB. */
         memory?: PracticeMemory
+        /**
+         * Wraps the real git adapter, such as to crash right after a side
+         * effect. Defaults to the real adapter as is.
+         */
+        git?: (real: GitAdapter) => GitAdapter
+        /**
+         * Wraps the run's journal, such as to crash between two records.
+         * Defaults to the journal as is.
+         */
+        journal?: (real: Journal) => Journal
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -393,9 +405,11 @@ export const createPracticeRepo = async ({
             })
         }
         const action = await runEngine({
-            journal,
+            journal: (wrapJournal ?? ((real) => real))(journal),
             tracker,
-            git: createGitAdapter({ repo_root: repo }),
+            git: (wrapGit ?? ((real) => real))(
+                createGitAdapter({ repo_root: repo })
+            ),
             launcher: launcher ?? scripted,
             jev,
             clock,
@@ -409,7 +423,7 @@ export const createPracticeRepo = async ({
         return {
             action,
             tracker,
-            records: journal.read(),
+            records: withoutStepRecords(journal.read()),
             launches: scripted.launches(),
         }
     }
@@ -421,6 +435,7 @@ export const createPracticeRepo = async ({
 export type PracticeRun = {
     action: EngineAction
     tracker: InMemoryTracker
+    /** The journal's records, without the scheduler's step records. */
     records: JournalRecord[]
     /** The scripted launcher's calls; empty when `launcher` was given. */
     launches: ScriptedCall[]

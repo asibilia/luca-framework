@@ -119,8 +119,9 @@ export const planUsedText = ({
     used.map(({ window, percent }) => `${window} ${sign}${percent}%`).join(', ')
 
 /**
- * Why the run stopped and what to do, in words. A billing stop won't go on;
- * any other stop picks up again when the run is started with its run id.
+ * Why the run stopped and what to do, in words. A billing stop, or a stop
+ * after the same step crashed again and again, won't go on; any other stop
+ * picks up again when the run is started with its run id.
  *
  * @example
  * stoppedText({ reason: 'overage in use', billing: true })
@@ -129,13 +130,21 @@ export const planUsedText = ({
 export const stoppedText = ({
     reason,
     billing,
+    crashed,
 }: {
     reason: string
     billing: boolean
-}): string =>
-    billing
-        ? `Stopped for billing: ${reason}. This run will not go on; start a new run once per-token billing is off.`
-        : `The run stopped: ${reason}. Start it again with the same run id to pick up where it stopped.`
+    /** The same run-level step crashed again and again. */
+    crashed?: boolean
+}): string => {
+    if (billing) {
+        return `Stopped for billing: ${reason}. This run will not go on; start a new run once per-token billing is off.`
+    }
+    if (crashed === true) {
+        return `Stopped after crashes: ${reason} This run will not go on; read the engine's log for why it crashed, then start a new run.`
+    }
+    return `The run stopped: ${reason}. Start it again with the same run id to pick up where it stopped.`
+}
 
 /** Where a run stands, as one word for the header row and the panel. */
 export const RunStatusSchema = z.enum([
@@ -344,6 +353,8 @@ export const RunStoppedSchema = z.object({
     ticket: z.number().int().nullable(),
     /** The session would bill per token; this run won't go on. */
     billing: z.boolean(),
+    /** The same step crashed again and again; this run won't go on. */
+    crashed: z.boolean().default(false),
     since: z.string(),
 })
 

@@ -126,6 +126,12 @@ export const createInMemoryTracker = ({
             pulls.push(pull)
             return { number, url: pull.url }
         },
+        findOpenPullRequest: async ({ head }) => {
+            const pull = pulls.find((each) => each.head === head)
+            return pull === undefined
+                ? null
+                : { number: pull.number, url: pull.url }
+        },
         pullRequests: () => cloneDeep(pulls),
         commentsOn: ({ number }) =>
             (comments.get(number) ?? []).map(({ body }) => body),

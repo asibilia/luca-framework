@@ -65,6 +65,11 @@ const RunStartedEntrySchema = z.object({
             .object({ project_vault: z.string().min(1).nullable() })
             .nullable()
             .default(null),
+        /**
+         * The repo the run is on, as an absolute path, so `luca-run --resume`
+         * can find it. `null` in older journals.
+         */
+        repo: z.string().min(1).nullable().default(null),
     }),
 })
 
@@ -217,7 +222,67 @@ const RunStoppedEntrySchema = z.object({
         reason: z.string(),
         role: AgentRoleSchema.nullable().default(null),
         billing: z.boolean().default(false),
+        /**
+         * The same step was cut off by a crash `MAX_CRASHES` times in a row
+         * on a run-level key: like a billing stop, it sticks.
+         */
+        crashed: z.boolean().default(false),
     }),
+})
+
+/**
+ * The scheduler is about to carry out one step: an action it started, other
+ * than a wait. `key` is the scheduler's key for it (a ticket's number,
+ * `final`, `lens:<lens>`, `replies`, or `run`), and `step` its action type,
+ * plus `:<role>` for an agent's turn. `first_seq` is the `step_started` seq
+ * of this step's first try when a crash cut off an earlier try of it, else
+ * `null`. `ticket` is the action's ticket, and `role` the agent's role.
+ */
+const StepStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('step_started'),
+    content: z.object({
+        key: z.string().min(1),
+        step: z.string().min(1),
+        first_seq: z.number().int().min(1).nullable().default(null),
+    }),
+})
+
+/**
+ * The step under `key` settled: its own records are in the journal, so it
+ * is a checkpoint. Not written when the step threw.
+ */
+const StepEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('step_ended'),
+    content: z.object({
+        key: z.string().min(1),
+        step: z.string().min(1),
+    }),
+})
+
+/** One step a crash cut off: its `step_started` had no `step_ended`. */
+export const InterruptedStepSchema = z.object({
+    key: z.string().min(1),
+    step: z.string().min(1),
+    ticket: z.number().int().positive().nullable(),
+    role: z.string().nullable(),
+    /** The seq of the cut-off step's `step_started`. */
+    started_seq: z.number().int().min(1),
+    /** That record's `first_seq`: the step's first try, if it was a redo. */
+    first_seq: z.number().int().min(1).nullable(),
+})
+
+export type InterruptedStep = z.infer<typeof InterruptedStepSchema>
+
+/**
+ * A restarted engine found steps a crash cut off, journaled once before its
+ * first step. Each is taken again, an agent's turn in a fresh session.
+ */
+const RunResumedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_resumed'),
+    content: z.object({ interrupted: z.array(InterruptedStepSchema) }),
 })
 
 /**
@@ -251,7 +316,8 @@ const LimitWaitEndedEntrySchema = z.object({
 /**
  * The plan usage of one ticket (when it was pushed, or got stuck) or of the
  * whole run (when it ended): tokens from its agent sessions, and how far
- * each plan window moved.
+ * each plan window moved. A retried ticket that finishes again gets another,
+ * over all of its sessions: the latest is its whole usage.
  */
 const UsageRecordedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -349,6 +415,17 @@ const TicketJoinedEntrySchema = z.object({
 })
 
 /**
+ * A ticket's join is about to replay its commits onto the run branch, which
+ * stands at `run_branch_sha`. A join a crash cut off (no `ticket_joined`
+ * after this) is redone from there: the run branch is reset to it first.
+ */
+const JoinStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('join_started'),
+    content: z.object({ run_branch_sha: z.string().min(1) }),
+})
+
+/**
  * Why a joined ticket went back to be fixed on top of the run branch: its
  * commits clashed with it, or the gates failed after it joined.
  */
@@ -416,6 +493,7 @@ export const StuckReasonSchema = z.enum([
     'join_gates_failed',
     'install_failed',
     'setup_change_needed',
+    'crashed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -698,6 +776,59 @@ const MemoriesSavedEntrySchema = z.object({
     }),
 })
 
+/**
+ * The engine is about to make one MuninnDB write of `save_memories` (#369):
+ * a save (`update_id` names the similar memory it updates, `muninn_evolve`;
+ * `null` adds a new one, `muninn_remember` with `op_id`) or a feedback on a
+ * shown memory. `write_key` names it within its step: `save:<op_id>` or
+ * `feedback:<vault>:<id>`. A redo of the step repeats a save started but
+ * not done the same way, and never sends such a feedback again.
+ */
+const MemoryWriteStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memory_write_started'),
+    content: z.discriminatedUnion('what', [
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('save'),
+            vault: z.string().min(1),
+            concept: z.string(),
+            op_id: z.string().min(1),
+            update_id: z.string().nullable(),
+            similar: MemorySaveSchema.shape.similar,
+        }),
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('feedback'),
+            vault: z.string().min(1),
+            id: z.string().min(1),
+            useful: z.boolean(),
+        }),
+    ]),
+})
+
+/**
+ * One MuninnDB write of `save_memories` settled (or a save failed before
+ * its write): its outcome, which a redo of the step reuses as it is. Its
+ * step's `memories_saved` lists them all.
+ */
+const MemoryWriteDoneEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('memory_write_done'),
+    content: z.discriminatedUnion('what', [
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('save'),
+            save: MemorySaveSchema,
+        }),
+        z.object({
+            write_key: z.string().min(1),
+            what: z.literal('feedback'),
+            feedback: MemoryFeedbackSchema,
+        }),
+    ]),
+})
+
 /** The learner never gave a usable answer; the run ends without it. */
 const LearningSkippedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -879,9 +1010,15 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JoinUndoneEntrySchema,
     FinalReviewRetriedEntrySchema,
     MemoryRecalledEntrySchema,
+    MemoryWriteStartedEntrySchema,
+    MemoryWriteDoneEntrySchema,
     MemoriesSavedEntrySchema,
     LearningSkippedEntrySchema,
     MemoriesReportedEntrySchema,
+    StepStartedEntrySchema,
+    StepEndedEntrySchema,
+    RunResumedEntrySchema,
+    JoinStartedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -939,9 +1076,15 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JoinUndoneEntrySchema.extend(STAMP_FIELDS),
     FinalReviewRetriedEntrySchema.extend(STAMP_FIELDS),
     MemoryRecalledEntrySchema.extend(STAMP_FIELDS),
+    MemoryWriteStartedEntrySchema.extend(STAMP_FIELDS),
+    MemoryWriteDoneEntrySchema.extend(STAMP_FIELDS),
     MemoriesSavedEntrySchema.extend(STAMP_FIELDS),
     LearningSkippedEntrySchema.extend(STAMP_FIELDS),
     MemoriesReportedEntrySchema.extend(STAMP_FIELDS),
+    StepStartedEntrySchema.extend(STAMP_FIELDS),
+    StepEndedEntrySchema.extend(STAMP_FIELDS),
+    RunResumedEntrySchema.extend(STAMP_FIELDS),
+    JoinStartedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -998,9 +1141,15 @@ export const JournalKindSchema = z.enum([
     'join_undone',
     'final_review_retried',
     'memory_recalled',
+    'memory_write_started',
+    'memory_write_done',
     'memories_saved',
     'learning_skipped',
     'memories_reported',
+    'step_started',
+    'step_ended',
+    'run_resumed',
+    'join_started',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

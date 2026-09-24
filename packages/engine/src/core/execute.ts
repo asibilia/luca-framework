@@ -1,3 +1,8 @@
+import { basename, dirname } from 'node:path'
+
+import has from 'lodash/has'
+import partition from 'lodash/partition'
+
 import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
@@ -21,12 +26,19 @@ import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import {
+    crashesAfter,
+    resumeEntry,
+    stepFirstSeq,
+    type CrashCounts,
+} from '../journal/step-records'
+import {
     limitWaitComment,
     SYSTEM_CLOCK,
     waitUntil,
     type EngineClock,
 } from '../limits/limit-wait'
 import type { MemoryDeps } from '../memory/memory-client'
+import { postCommentOnce, type CommentStep } from '../tracker/post-comment-once'
 import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
@@ -38,7 +50,7 @@ import {
 export const DEFAULT_MAX_STEPS = 1000
 
 /** Actions that end `runEngine`'s loop: the run is over. */
-const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+export const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'done',
     'invalid_journal',
 ])
@@ -53,6 +65,7 @@ export const startRun = ({
     config,
     base_branch,
     memory,
+    repo,
 }: {
     journal: Journal
     spec_number: number
@@ -64,12 +77,20 @@ export const startRun = ({
      * `default`). Leave it out for a run without memory.
      */
     memory?: { project_vault: string | null }
+    /** The repo the run is on, so a resume can find it. Defaults to `null`. */
+    repo?: string | null
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
-        content: { spec_number, config, base_branch, memory: memory ?? null },
+        content: {
+            spec_number,
+            config,
+            base_branch,
+            memory: memory ?? null,
+            repo,
+        },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
@@ -119,17 +140,22 @@ const refuseIntake = async ({
     problems,
     journal,
     tracker,
+    step,
 }: {
     spec_number: number
     problems: IntakeProblem[]
     journal: Journal
     tracker: Tracker
+    step: CommentStep
 }) => {
-    for (const { ticket, missing } of problems) {
+    for (const [n, { ticket, missing }] of problems.entries()) {
         if (ticket === null) continue
-        await tracker.comment({
+        await postCommentOnce({
+            tracker,
             number: ticket,
             body: refusalComment({ spec_number, missing }),
+            step,
+            n,
         })
         await tracker.addLabel({ number: ticket, label: NEEDS_INFO_LABEL })
         await tracker.removeLabel({ number: ticket, label: READY_LABEL })
@@ -153,23 +179,28 @@ const executePlanAction = async ({
     journal,
     tracker,
     clock,
+    step,
 }: {
     action: Exclude<PlanAction, { type: 'done' }>
     journal: Journal
     tracker: Tracker
     clock: EngineClock
+    step: CommentStep
 }): Promise<void> => {
     switch (action.type) {
         case 'start_limit_wait': {
             const { rate_limit_type, resets_at, until, ticket, role } = action
             if (action.announce) {
-                await tracker.comment({
+                await postCommentOnce({
+                    tracker,
                     number: action.spec_number,
                     body: limitWaitComment({
                         rate_limit_type,
                         resets_at,
                         until,
                     }),
+                    step,
+                    n: 0,
                 })
             }
             journal.append({
@@ -207,6 +238,14 @@ const executePlanAction = async ({
 }
 
 /**
+ * Which try of its step an action is: the seq of the step's first try (its
+ * first `step_started`), and whether this try redoes one a crash cut off.
+ * A redo adopts the side effects its first try left behind: its comments,
+ * its PR, its worktrees and commits.
+ */
+export type StepTry = { first_seq: number; redo: boolean }
+
+/**
  * Carries out one action: talks to the tracker, then records what happened in
  * the journal. The only impure half of the engine; `decide` picks the action.
  *
@@ -220,6 +259,7 @@ export const executeAction = async ({
     clock,
     reply_poll_ms,
     memory,
+    step,
 }: {
     action: EngineAction
     journal: Journal
@@ -232,9 +272,28 @@ export const executeAction = async ({
     reply_poll_ms?: number
     /** The memory client, for a run with memory on (#370). */
     memory?: MemoryDeps
+    /**
+     * Which try of its step this is, from the scheduler. Left out, it is a
+     * first try, numbered after the journal's last record.
+     */
+    step?: StepTry
 }): Promise<void> => {
+    const tried: CommentStep = {
+        run_id: basename(dirname(journal.file)),
+        ...(step ?? {
+            first_seq: (journal.read().at(-1)?.seq ?? 0) + 1,
+            redo: false,
+        }),
+    }
     if (isMemoryAction(action)) {
-        return executeMemoryAction({ action, journal, tracker, memory, build })
+        return executeMemoryAction({
+            action,
+            journal,
+            tracker,
+            memory,
+            build,
+            step: tried,
+        })
     }
     switch (action.type) {
         case 'report_stuck':
@@ -251,7 +310,21 @@ export const executeAction = async ({
                 tracker,
                 clock: clock ?? SYSTEM_CLOCK,
                 reply_poll_ms,
+                step: tried,
             })
+        case 'stop_for_crashes':
+            journal.append({
+                kind: 'run_stopped',
+                ticket: null,
+                role: null,
+                content: {
+                    reason: action.reason,
+                    role: null,
+                    billing: false,
+                    crashed: true,
+                },
+            })
+            return
         case 'record_usage':
             journal.append({
                 kind: 'usage_recorded',
@@ -268,6 +341,7 @@ export const executeAction = async ({
                 journal,
                 tracker,
                 clock: clock ?? SYSTEM_CLOCK,
+                step: tried,
             })
         case 'read_intake':
             return readIntake({
@@ -281,6 +355,7 @@ export const executeAction = async ({
                 problems: action.problems,
                 journal,
                 tracker,
+                step: tried,
             })
         case 'finish_nothing_to_do':
             journal.append({
@@ -324,10 +399,21 @@ export const executeAction = async ({
             if (isFinalReviewAction(action)) {
                 return executeFinalReviewAction({
                     action,
-                    context: buildContext({ journal, tracker, ...build }),
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
                 })
             }
-            return executeBuildAction({ action, journal, tracker, ...build })
+            return executeBuildAction({
+                action,
+                journal,
+                tracker,
+                step: tried,
+                ...build,
+            })
     }
 }
 
@@ -371,7 +457,7 @@ const REPLY_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
  * its own (`lens:<lens>`), so the five lenses review at once; the final review's other steps share `final`; a ticket's steps its
  * number; and the run's own steps `run`, which only ever run alone.
  */
-const keyOf = (action: EngineAction): string => {
+export const keyOf = (action: EngineAction): string => {
     if (REPLY_ACTIONS.has(action.type)) return 'replies'
     // A search waits under the key of the step it comes before: its
     // ticket's, the final review's, or (the run's start) the run's.
@@ -384,6 +470,46 @@ const keyOf = (action: EngineAction): string => {
     const ticket = ticketOf(action)
     return ticket === null ? 'run' : String(ticket)
 }
+
+/** Actions that are an agent's turn: their step names the role. */
+const AGENT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    'launch_agent',
+    'follow_up_agent',
+    'launch_lens',
+    'launch_final_fixer',
+    'follow_up_final_fixer',
+])
+
+/** The agent role of an agent's turn (the learner's is `learner`), else `null`. */
+const agentRoleOf = (action: EngineAction): string | null => {
+    if (action.type === 'launch_learner') return 'learner'
+    return AGENT_ACTIONS.has(action.type) &&
+        'role' in action &&
+        action.role !== null
+        ? action.role
+        : null
+}
+
+/**
+ * A step's name in the journal: its action type, plus `:<role>` for an
+ * agent's turn, such as `follow_up_agent:implementer`.
+ *
+ * @example
+ * stepOf({ type: 'run_gates', ticket: 11, target: 'ticket' }) // 'run_gates'
+ */
+export const stepOf = (action: EngineAction): string => {
+    const role = agentRoleOf(action)
+    return role === null ? action.type : `${action.type}:${role}`
+}
+
+/**
+ * Waits get no step records: a crash during one is no step's fault, and a
+ * restarted engine just waits again (a limit wait until the same time).
+ */
+const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    'wait_for_reply',
+    'wait_for_limit',
+])
 
 /**
  * Actions that read or move the run branch. At most one runs at a time, so
@@ -409,6 +535,9 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'run_gates':
         case 'install_dependencies':
             return action.target === 'run_branch'
+        // It puts back a run branch a join crashes cut off too often left.
+        case 'mark_stuck':
+            return action.reason === 'crashed'
         default:
             return false
     }
@@ -430,6 +559,7 @@ const executeWithJev = async ({
     clock,
     reply_poll_ms,
     memory,
+    step,
 }: {
     jev: JevShadow
     action: EngineAction
@@ -439,6 +569,7 @@ const executeWithJev = async ({
     clock?: EngineClock
     reply_poll_ms?: number
     memory?: MemoryDeps
+    step?: StepTry
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -457,6 +588,7 @@ const executeWithJev = async ({
         clock,
         reply_poll_ms,
         memory,
+        step,
     })
     const records = journal.read()
     await askJevInShadow({
@@ -495,6 +627,32 @@ const ownsRecord = ({
     }
     const ticket = ticketOf(action)
     return ticket === null || record.ticket === ticket
+}
+
+/** The crash counts per key, from the journal's records. */
+const crashesIn = (records: JournalRecord[]): CrashCounts =>
+    records.reduce<CrashCounts>(
+        (crashes, record) => crashesAfter({ crashes, record }),
+        {}
+    )
+
+/**
+ * The actions on keys a crash cut a step off first, in their order, then
+ * the rest: a step a crash cut off (or the stop for it) starts before any
+ * other, so a half-done change to the run branch, such as a join, is put
+ * right before another step reads the run branch.
+ */
+const redosFirst = ({
+    actions,
+    crashes,
+}: {
+    actions: EngineAction[]
+    crashes: CrashCounts
+}): EngineAction[] => {
+    const [redos, rest] = partition(actions, (action) =>
+        has(crashes, keyOf(action))
+    )
+    return [...redos, ...rest]
 }
 
 /** One action the engine started and has not seen settle yet. */
@@ -538,6 +696,14 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
  * run for good (`done`, outcome `stopped`).
+ *
+ * Crash recovery: every step it starts (not a wait) is journaled between a
+ * `step_started` and a `step_ended` (none when the step throws). On start,
+ * a step with no `step_ended` was cut off by a crash: one `run_resumed`
+ * names them (`resumeEntry`), and each is taken again, an agent's turn in a
+ * fresh session. A redo's `step_started` carries its first try's seq in
+ * `first_seq`. The same step cut off `MAX_CRASHES` times in a row is not
+ * taken again (see `decide-crashes.ts`).
  *
  * @returns The action the loop stopped on.
  */
@@ -583,7 +749,7 @@ export const runEngine = async ({
     const inFlight = new Map<string, InFlight>()
     let started = 0
 
-    const execute = (action: EngineAction): Promise<void> =>
+    const execute = (action: EngineAction, step?: StepTry): Promise<void> =>
         jev === undefined
             ? executeAction({
                   action,
@@ -593,6 +759,7 @@ export const runEngine = async ({
                   clock,
                   reply_poll_ms,
                   memory,
+                  step,
               })
             : executeWithJev({
                   jev,
@@ -603,6 +770,7 @@ export const runEngine = async ({
                   clock,
                   reply_poll_ms,
                   memory,
+                  step,
               })
     const settleAll = () =>
         Promise.allSettled([...inFlight.values()].map(({ done }) => done))
@@ -617,10 +785,47 @@ export const runEngine = async ({
             )
         )
 
+    /**
+     * Carries out an action between its step records: `step_started` when
+     * it starts, `step_ended` once it settles. Waits get none.
+     */
+    const runStep = async ({
+        action,
+        key,
+        crashes,
+    }: {
+        action: EngineAction
+        key: string
+        crashes: CrashCounts
+    }): Promise<void> => {
+        if (WAIT_ACTIONS.has(action.type)) return execute(action)
+        const step = stepOf(action)
+        const who = { ticket: ticketOf(action), role: agentRoleOf(action) }
+        const first_seq = stepFirstSeq({ crashes, key, step })
+        const started = journal.append({
+            kind: 'step_started',
+            ...who,
+            content: { key, step, first_seq },
+        })
+        await execute(action, {
+            first_seq: first_seq ?? started.seq,
+            redo: first_seq !== null,
+        })
+        journal.append({ kind: 'step_ended', ...who, content: { key, step } })
+    }
+
+    // Steps a crash cut off are named once, before the first step.
+    const resumed = resumeEntry({ records: journal.read() })
+    if (resumed !== null) journal.append(resumed)
     // A resumed run catches the board up before its first step.
     await board?.sync({ records: journal.read() })
     for (;;) {
-        const actions = decideSteps({ records: journal.read() })
+        const records = journal.read()
+        const crashes = crashesIn(records)
+        const actions = redosFirst({
+            actions: decideSteps({ records }),
+            crashes,
+        })
         const stop = actions.find((action) => stops.has(action.type))
         if (stop !== undefined && inFlight.size === 0) return stop
         if (stop === undefined) {
@@ -636,7 +841,7 @@ export const runEngine = async ({
                     )
                 }
                 if (counts) started += 1
-                const done = execute(action).finally(() => {
+                const done = runStep({ action, key, crashes }).finally(() => {
                     inFlight.delete(key)
                 })
                 // Seen by the race below; this keeps a rejection that lands

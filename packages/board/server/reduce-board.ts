@@ -48,6 +48,7 @@ const STUCK_REASONS: Record<string, string> = {
     install_failed: 'Installing the dependencies failed.',
     setup_change_needed:
         'An agent needs a test setup file changed; only you may change one.',
+    crashed: 'The engine crashed in the same step again and again.',
 }
 
 /** Why a retry of an edited ticket was refused, in words. */
@@ -749,7 +750,7 @@ const applyKind = ({
             }
         }
         case 'run_stopped': {
-            const { reason, role, billing } = record.content
+            const { reason, role, billing, crashed } = record.content
             const stopped = updateTicket({
                 state,
                 number: ticket,
@@ -759,7 +760,7 @@ const applyKind = ({
                     activity: 'run stopped',
                     tried: withTried({
                         tried: card.tried,
-                        line: `${billing ? 'Stopped for billing' : 'The run stopped'}: ${reason}`,
+                        line: `${billing ? 'Stopped for billing' : crashed ? 'Stopped after crashes' : 'The run stopped'}: ${reason}`,
                     }),
                 }),
             })
@@ -772,6 +773,7 @@ const applyKind = ({
                         role,
                         ticket,
                         billing,
+                        crashed,
                         since: record.time,
                     },
                 },

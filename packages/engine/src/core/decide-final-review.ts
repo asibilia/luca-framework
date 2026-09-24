@@ -1,10 +1,17 @@
+import { crashDetail, crashedOut } from './decide-crashes'
 import {
     finalFixerPrompt,
     lensPrompt,
     openFinalFindingsText,
     type FinalFixerRole,
 } from './final-review-text'
-import { failedChecks, failedTryMessage, gateFixMessage } from './fix-loop-text'
+import {
+    CRASH_SECTION,
+    failedChecks,
+    failedTryMessage,
+    followUpSection,
+    gateFixMessage,
+} from './fix-loop-text'
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
 
 import type { PromptRunNote } from '../agents/role-prompts'
@@ -16,13 +23,15 @@ import {
     type LensRole,
 } from '../agents/role-results'
 import type { StuckReason } from '../journal/journal-record'
-import type {
-    FinalReviewState,
-    ReplayedAgentFailure,
-    ReplayedGates,
-    ReplayedSnapshot,
-    ReplayedWorktree,
+import {
+    isFinalKey,
+    type FinalReviewState,
+    type ReplayedAgentFailure,
+    type ReplayedGates,
+    type ReplayedSnapshot,
+    type ReplayedWorktree,
 } from '../journal/replay'
+import type { CrashCounts } from '../journal/step-records'
 
 /** The final review's steps, once every ticket pushed and before the PR. */
 export type FinalReviewAction =
@@ -105,6 +114,8 @@ export type FinalReviewDecision =
 
 type DecideArgs = {
     review: FinalReviewState
+    /** Crashes in a row per scheduler key; the final review's are its own. */
+    crashes: CrashCounts
     snapshot: ReplayedSnapshot
     run_branch: ReplayedWorktree
     /** The latest gates on the run branch. */
@@ -177,22 +188,44 @@ const failureCap = ({
         : null
 }
 
-/** A fresh fixer of this role, told its findings (or the failed gates). */
+/**
+ * A fresh fixer of this role, told its findings (or the failed gates). With
+ * `follow_up`, it stands in for a follow-up whose session is gone, and its
+ * prompt carries the message. A fixer taking a turn a crash cut off is told
+ * of the crash.
+ */
 const launchFixer = ({
     role,
     review,
     snapshot,
     run_notes,
-}: DecideArgs & { role: FinalFixerRole }): FinalReviewAction => {
+    follow_up,
+}: DecideArgs & {
+    role: FinalFixerRole
+    follow_up?: string
+}): FinalReviewAction => {
     const { fix } = review
     if (fix === null) throw new Error('No final review fix round is open.')
     // An implementer with no code findings left is here for failed gates.
     const gates =
         role === 'implementer' && fix.code_answered ? review.gates : null
+    const sections = [
+        ...(follow_up === undefined
+            ? []
+            : [followUpSection({ message: follow_up })]),
+        ...(review.crashed_turn === role ? [CRASH_SECTION] : []),
+    ]
     return {
         type: 'launch_final_fixer',
         role,
-        prompt: finalFixerPrompt({ role, snapshot, fix, gates, run_notes }),
+        prompt: finalFixerPrompt({
+            role,
+            snapshot,
+            fix,
+            gates,
+            run_notes,
+            sections,
+        }),
         may_edit_tests: role === 'test-writer',
     }
 }
@@ -202,8 +235,8 @@ const isFixer = (role: AgentRole): role is FinalFixerRole =>
 
 /**
  * The next step after a fixer's failed turn: an engine failure starts a
- * fresh fixer, any other a follow-up in its session (fresh with none), until
- * its tries run out.
+ * fresh fixer, any other a follow-up in its session (a fresh fixer with the
+ * same message with none), until its tries run out.
  */
 const failedFixerStep = ({
     failed,
@@ -213,14 +246,16 @@ const failedFixerStep = ({
     if (cap !== null) return cap
     const { role, error, failure, session_id } = failed
     if (!isFixer(role)) throw new Error(`${role} is no final review fixer.`)
-    if (failure === 'engine' || session_id === null) {
-        return launchFixer({ ...args, role })
+    if (failure === 'engine') return launchFixer({ ...args, role })
+    const message = failedTryMessage({ failure, error })
+    if (session_id === null) {
+        return launchFixer({ ...args, role, follow_up: message })
     }
     return {
         type: 'follow_up_final_fixer',
         role,
         session_id,
-        message: failedTryMessage({ failure, error }),
+        message,
     }
 }
 
@@ -318,7 +353,8 @@ const fixStep = (args: DecideArgs): FinalReviewAction | null => {
  * "won't fix". A review still asking for changes after `MAX_FIX_ROUNDS` fix
  * rounds is stuck, and so is a failed fix loop, a bad test, or a leftover.
  * Failed tries are capped per role like a ticket's. A stuck final review
- * waits for a reply; `ship` opens the PR anyway.
+ * waits for a reply; `ship` opens the PR anyway. A final review step cut
+ * off by a crash `MAX_CRASHES` times in a row is stuck too.
  *
  * @example
  * decideFinalReview({ review: state.final_review, snapshot, run_branch, run_branch_gates })
@@ -336,6 +372,13 @@ export const decideFinalReview = (args: DecideArgs): FinalReviewDecision => {
         status: 'working',
         actions,
     })
+    // The same step cut off by crashes too often is not taken again.
+    const crash = crashedOut({ crashes: args.crashes, keys: isFinalKey })
+    if (crash !== null) {
+        return working([
+            stuck({ reason: 'crashed', detail: crashDetail({ crash }) }),
+        ])
+    }
     if (review.round === 0) {
         return working([
             {

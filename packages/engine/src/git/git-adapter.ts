@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -22,13 +22,22 @@ export type EngineCommit = { sha: string; files: string[] }
  * commit, branch, or push.
  */
 export type GitAdapter = {
-    /** Makes `branch` from `base_branch`, checked out in a worktree at `path`. */
+    /**
+     * Makes `branch` from `base_branch`, checked out in a worktree at `path`.
+     * Safe to repeat, as `createWorktree`.
+     */
     createRunBranch: (args: {
         branch: string
         base_branch: string
         path: string
     }) => Promise<{ base_sha: string }>
-    /** Makes `branch` from the tip of `from`, checked out at `path`. */
+    /**
+     * Makes `branch` from the tip of `from`, checked out at `path`. Safe to
+     * repeat after a crash: a worktree git has at `path` on `branch` is
+     * adopted as it is (reset to its commit, in case its checkout was cut
+     * off); a folder at `path` git doesn't know is removed first; and a
+     * `branch` that exists without a worktree is checked out there as it is.
+     */
     createWorktree: (args: {
         branch: string
         from: string
@@ -62,7 +71,8 @@ export type GitAdapter = {
     /**
      * Resets the worktree at `cwd` hard to `to`, moving its branch there, and
      * throws away untracked files (ignored ones are kept), as when a
-     * retried ticket starts over from the run branch's tip.
+     * retried ticket starts over from the run branch's tip. A cherry-pick
+     * left half-done (by a crash) is dropped too.
      */
     resetWorktree: (args: {
         cwd: string
@@ -115,6 +125,13 @@ export type GitAdapter = {
     push: (args: { cwd: string; branch: string }) => Promise<void>
     /** The commit checked out at `cwd`. */
     head: (args: { cwd: string }) => Promise<string>
+    /**
+     * The commit checked out at `cwd` with its whole message (trimmed) and
+     * its files, such as to adopt a commit a crash left out of the journal.
+     */
+    lastCommit: (args: {
+        cwd: string
+    }) => Promise<EngineCommit & { message: string }>
 }
 
 const gitRun = ({ cwd, args }: { cwd: string; args: string[] }) =>
@@ -185,6 +202,46 @@ export const createGitAdapter = ({
     const head = async ({ cwd }: { cwd: string }) =>
         (await gitOk({ cwd, args: ['rev-parse', 'HEAD'] })).trim()
 
+    /** The branch git has checked out in a worktree at `path`, if any. */
+    const worktreeBranchAt = async ({
+        path,
+    }: {
+        path: string
+    }): Promise<{ branch: string | null } | null> => {
+        if (!existsSync(path)) return null
+        const wanted = realpathSync(path)
+        const listed = await gitOk({
+            cwd: repo_root,
+            args: ['worktree', 'list', '--porcelain'],
+        })
+        for (const block of listed.split('\n\n')) {
+            const fields = lines(block)
+            const at = fields
+                .find((line) => line.startsWith('worktree '))
+                ?.slice('worktree '.length)
+            if (at === undefined || !existsSync(at)) continue
+            if (realpathSync(at) !== wanted) continue
+            const ref = fields
+                .find((line) => line.startsWith('branch '))
+                ?.slice('branch '.length)
+            return { branch: ref?.replace(/^refs\/heads\//, '') ?? null }
+        }
+        return null
+    }
+
+    const branchExists = async ({ branch }: { branch: string }) =>
+        (
+            await gitRun({
+                cwd: repo_root,
+                args: [
+                    'rev-parse',
+                    '--verify',
+                    '--quiet',
+                    `refs/heads/${branch}`,
+                ],
+            })
+        ).exit_code === 0
+
     const addWorktree = async ({
         branch,
         from,
@@ -194,21 +251,55 @@ export const createGitAdapter = ({
         from: string
         path: string
     }) => {
+        const known = await worktreeBranchAt({ path })
+        if (known !== null && known.branch !== branch) {
+            throw new Error(
+                `${path} is already a worktree on ${known.branch ?? 'no branch'}, not ${branch}.`
+            )
+        }
+        if (known !== null) {
+            // Made before a crash: nothing has worked in it since, so finish
+            // a checkout the crash may have cut off, and adopt it.
+            const reset = await gitRun({
+                cwd: path,
+                args: ['reset', '--quiet', '--hard', 'HEAD'],
+            })
+            if (reset.exit_code === 0) {
+                return { base_sha: await head({ cwd: path }) }
+            }
+            await gitRun({
+                cwd: repo_root,
+                args: ['worktree', 'remove', '--force', '--force', path],
+            })
+        }
+        // A half-made folder git doesn't know (or no longer does) goes.
+        await rm(path, { recursive: true, force: true })
+        await gitOk({ cwd: repo_root, args: ['worktree', 'prune'] })
         await gitOk({
             cwd: repo_root,
-            args: [
-                'worktree',
-                'add',
-                '--quiet',
-                '--no-track',
-                '-b',
-                branch,
-                path,
-                from,
-            ],
+            args: (await branchExists({ branch }))
+                ? ['worktree', 'add', '--quiet', path, branch]
+                : [
+                      'worktree',
+                      'add',
+                      '--quiet',
+                      '--no-track',
+                      '-b',
+                      branch,
+                      path,
+                      from,
+                  ],
         })
         return { base_sha: await head({ cwd: path }) }
     }
+
+    const filesOf = async ({ cwd, sha }: { cwd: string; sha: string }) =>
+        lines(
+            await gitOk({
+                cwd,
+                args: ['show', '--name-only', '--format=', sha],
+            })
+        ).toSorted()
 
     const raw: GitAdapter = {
         createRunBranch: ({ branch, base_branch, path }) =>
@@ -269,13 +360,7 @@ export const createGitAdapter = ({
                 args: ['commit', '--quiet', '--no-verify', '-m', message],
             })
             const sha = await head({ cwd })
-            const files = lines(
-                await gitOk({
-                    cwd,
-                    args: ['show', '--name-only', '--format=', sha],
-                })
-            )
-            return { sha, files: files.toSorted() }
+            return { sha, files: await filesOf({ cwd, sha }) }
         },
         discardChanges: async ({ cwd }) => {
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', 'HEAD'] })
@@ -283,6 +368,8 @@ export const createGitAdapter = ({
             return { sha: await head({ cwd }) }
         },
         resetWorktree: async ({ cwd, to }) => {
+            // A cherry-pick a crash cut off leaves its sequence behind.
+            await gitRun({ cwd, args: ['cherry-pick', '--quit'] })
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', to] })
             await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
             return { sha: await head({ cwd }) }
@@ -379,6 +466,18 @@ export const createGitAdapter = ({
             })
         },
         head,
+        lastCommit: async ({ cwd }) => {
+            const sha = await head({ cwd })
+            const message = await gitOk({
+                cwd,
+                args: ['log', '-1', '--format=%B', sha],
+            })
+            return {
+                sha,
+                message: message.trim(),
+                files: await filesOf({ cwd, sha }),
+            }
+        },
     }
 
     const inTurn = createQueue()
@@ -404,5 +503,6 @@ export const createGitAdapter = ({
         removeWorktree: serial(raw.removeWorktree),
         push: serial(raw.push),
         head: serial(raw.head),
+        lastCommit: serial(raw.lastCommit),
     }
 }

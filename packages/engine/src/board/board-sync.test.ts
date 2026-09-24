@@ -15,7 +15,12 @@ import type { EngineConfig } from '../config/engine-config'
 import { runEngine, startRun } from '../core/execute'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalEntry, JournalRecord } from '../journal/journal-record'
-import { recordsFrom, specIssue, ticketIssue } from '../testing/intake-fixtures'
+import {
+    recordsFrom,
+    specIssue,
+    ticketIssue,
+    withoutStepRecords,
+} from '../testing/intake-fixtures'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 
 const CONFIG: EngineConfig = {
@@ -116,9 +121,10 @@ describe('board sync: the engine sends its journal to the board', () => {
         const action = await runIntake({ board })
 
         expect(action.type).toBe('create_run_branch')
-        expect(plugin.keptSeqs()).toEqual([1, 2, 3, 4, 5])
+        const seqs = journal.read().map(({ seq }) => seq)
+        expect(plugin.keptSeqs()).toEqual(seqs)
         const sent = plugin.sends().flatMap((send) => send.seqs)
-        expect(sent).toEqual([1, 2, 3, 4, 5])
+        expect(sent).toEqual(seqs)
         expect(plugin.sends().length).toBeGreaterThan(1)
     })
 
@@ -140,7 +146,7 @@ describe('board sync: the engine sends its journal to the board', () => {
 
         await runIntake({ board })
 
-        expect(plugin.keptSeqs()).toEqual([1, 2, 3, 4, 5])
+        expect(plugin.keptSeqs()).toEqual(journal.read().map(({ seq }) => seq))
         const firsts = plugin.sends().map((send) => send.seqs[0])
         expect(firsts).toContain(1)
         expect(firsts.lastIndexOf(1)).toBeGreaterThan(0)
@@ -160,7 +166,7 @@ describe('board sync: the engine sends its journal to the board', () => {
         const action = await runIntake({ board })
 
         expect(action.type).toBe('create_run_branch')
-        expect(journal.read()).toHaveLength(5)
+        expect(withoutStepRecords(journal.read())).toHaveLength(5)
         expect(logs).toHaveLength(1)
         expect(logs[0]).toContain('the daemon is down')
     })

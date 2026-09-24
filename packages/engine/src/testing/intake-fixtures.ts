@@ -102,3 +102,17 @@ export const recordsFrom = ({
             time: FIXED_TIME,
         })
     )
+
+/** The scheduler's own records around each step it takes. */
+const STEP_KINDS = new Set<JournalRecord['kind']>([
+    'step_started',
+    'step_ended',
+    'run_resumed',
+])
+
+/**
+ * The records without the scheduler's step records, for tests about what
+ * the steps themselves journaled.
+ */
+export const withoutStepRecords = (records: JournalRecord[]): JournalRecord[] =>
+    records.filter(({ kind }) => !STEP_KINDS.has(kind))

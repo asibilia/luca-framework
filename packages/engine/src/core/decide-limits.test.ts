@@ -7,6 +7,7 @@ import {
     agentSession,
     agentStarted,
     billingStopped,
+    commentRead,
     commitMade,
     finding,
     gatesRun,
@@ -17,9 +18,13 @@ import {
     limitWaitStarted,
     practiceTicket,
     rateLimitReading,
+    replyReceived,
     reviewed,
     runBranchCreated,
+    stuckReported,
     ticketBuilt,
+    ticketRetried,
+    ticketStuck,
     RUN_BRANCH_PATH,
     ticketPath,
     withInstalls,
@@ -470,6 +475,71 @@ describe('decision step: usage', () => {
         expect(decideAfter([...entries, ticketDone])).toMatchObject({
             type: 'report_stuck',
             ticket: 11,
+        })
+    })
+
+    describe('a retried ticket', () => {
+        const firstStuck = (): JournalEntry[] => [
+            ...testWriterRunning(),
+            readingSession({
+                ticket: 11,
+                role: 'test-writer',
+                windows: { five_hour: 0.1 },
+            }),
+            ticketStuck({ ticket: 11, reason: 'agent_failed' }),
+            usageRecorded({
+                ...ticketUsage,
+                agent_turns: 1,
+                windows: { five_hour: { from: 10, to: 10, used: 0 } },
+            }),
+            stuckReported({ ticket: 11 }),
+            commentRead({ comment_id: 120, body: 'retry' }),
+            replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            readingSession({
+                ticket: 11,
+                role: 'test-writer',
+                windows: { five_hour: 0.12 },
+            }),
+        ]
+
+        test('records nothing new while it is still building', () => {
+            expect(decideAfter(firstStuck())).not.toMatchObject({
+                type: 'record_usage',
+            })
+        })
+
+        test('that gets stuck again records its whole usage again, then is told', () => {
+            const again = [
+                ...firstStuck(),
+                ticketStuck({ ticket: 11, reason: 'agent_failed' }),
+            ]
+            const whole = {
+                scope: 'ticket' as const,
+                ticket: 11,
+                agent_turns: 2,
+                windows: { five_hour: { from: 10, to: 12, used: 2 } },
+            }
+            expect(decideAfter(again)).toMatchObject({
+                type: 'record_usage',
+                usage: whole,
+            })
+            expect(
+                decideAfter([
+                    ...again,
+                    usageRecorded({ ...ticketUsage, ...whole }),
+                ])
+            ).toMatchObject({ type: 'report_stuck', ticket: 11 })
+        })
+
+        test('that is pushed records its whole usage again', () => {
+            const steps = ticketBuilt({ ticket: 11 })
+            const pushedAfter = [...firstStuck(), ...steps.slice(2)]
+            expect(decideAfter(pushedAfter)).toMatchObject({
+                type: 'record_usage',
+                usage: { ticket: 11, agent_turns: 2 },
+            })
         })
     })
 

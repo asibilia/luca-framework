@@ -157,6 +157,8 @@ export const BOARD_VOCABULARY = {
         role: z.string().nullable().catch(null),
         /** A billing stop: the session would bill per token. */
         billing: z.boolean().catch(false),
+        /** A stop after the same step crashed again and again. */
+        crashed: z.boolean().catch(false),
     }),
     worktree_reset: z.looseObject({}),
     /** The engine's install in a new worktree; `check` is null with no manifest. */

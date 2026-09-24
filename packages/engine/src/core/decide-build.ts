@@ -1,5 +1,6 @@
 import sortBy from 'lodash/sortBy'
 
+import { crashDetail, crashedOut } from './decide-crashes'
 import {
     decideFinalReview,
     type FinalReviewAction,
@@ -13,8 +14,10 @@ import {
 } from './decide-stuck'
 import {
     clashFixMessage,
+    CRASH_SECTION,
     failedChecks,
     failedTryMessage,
+    followUpSection,
     gateFixMessage,
     redFixMessage,
 } from './fix-loop-text'
@@ -261,7 +264,8 @@ export const mayEditTests = ({
  * and, for a test-writer or implementer fixing a ticket on top of the run
  * branch, the files that clashed. The reviewer's re-review after a rebase
  * is the review's own. The first agent after a `retry` resumed a stuck
- * ticket is also told why it got stuck.
+ * ticket is also told why it got stuck, and the agent taking a turn a
+ * crash cut off is told of the crash.
  */
 const promptSections = ({
     role,
@@ -271,10 +275,12 @@ const promptSections = ({
     progress: TicketProgress
 }): string[] => {
     const sections = buildPromptSections({ role, progress })
-    const { retried } = progress
-    return retried === null
-        ? sections
-        : [...sections, retrySection({ retried })]
+    const { retried, crashed_turn } = progress
+    return [
+        ...sections,
+        ...(retried === null ? [] : [retrySection({ retried })]),
+        ...(crashed_turn === role ? [CRASH_SECTION] : []),
+    ]
 }
 
 const buildPromptSections = ({
@@ -330,14 +336,19 @@ type StepArgs = {
     run_notes: ReplayedRunNote[]
 }
 
-/** A fresh agent session, handed the run's newest notes. */
+/**
+ * A fresh agent session, handed the run's newest notes. With `follow_up`,
+ * it stands in for a follow-up whose session is gone (a crash cut it off),
+ * and its prompt carries the follow-up message.
+ */
 const launch = ({
     role,
     snapshot,
     ticket,
     progress,
     run_notes,
-}: StepArgs & { role: AgentRole }): BuildAction => ({
+    follow_up,
+}: StepArgs & { role: AgentRole; follow_up?: string }): BuildAction => ({
     type: 'launch_agent',
     ticket: ticket.number,
     role,
@@ -347,7 +358,12 @@ const launch = ({
         ticket,
         refactor: isRefactorTicket({ ticket }),
         bad_test: progress.bad_test,
-        sections: promptSections({ role, progress }),
+        sections: [
+            ...promptSections({ role, progress }),
+            ...(follow_up === undefined
+                ? []
+                : [followUpSection({ message: follow_up })]),
+        ],
         run_notes,
     }),
     may_edit_tests: mayEditTests({ role, ticket }),
@@ -459,11 +475,15 @@ const testStep = ({
             })
         }
         const session_id = progress.sessions['test-writer']
+        const message = redFixMessage({ red_check })
         if (session_id === undefined) {
-            return stuck({
-                ticket: number,
-                reason: 'red_check_failed',
-                detail: `The red check failed and there is no test-writer session to send it back to:\n${problems}`,
+            return launch({
+                role: 'test-writer',
+                snapshot,
+                ticket,
+                progress,
+                run_notes,
+                follow_up: message,
             })
         }
         return {
@@ -471,7 +491,7 @@ const testStep = ({
             ticket: number,
             role: 'test-writer',
             session_id,
-            message: redFixMessage({ red_check }),
+            message,
         }
     }
     return commitStep({ stage: 'red', ticket, progress })
@@ -518,23 +538,22 @@ const codeStep = ({
         return { type: 'reset_ticket_worktree', ticket: number }
     }
     return (
-        gateStep({ ticket, progress }) ??
+        gateStep({ snapshot, ticket, progress, run_notes }) ??
         commitStep({ stage: 'green', ticket, progress })
     )
 }
 
 /**
  * The ticket's gates and their fix loop: failed gates go back to the same
- * implementer session, up to `MAX_FIX_ROUNDS` follow-ups. `null` once the
- * gates pass.
+ * implementer session (a fresh one with the same message if it is gone),
+ * up to `MAX_FIX_ROUNDS` follow-ups. `null` once the gates pass.
  */
 const gateStep = ({
+    snapshot,
     ticket,
     progress,
-}: {
-    ticket: TicketSnapshot
-    progress: TicketProgress
-}): BuildAction | null => {
+    run_notes,
+}: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { gates } = progress
     if (gates === null) {
@@ -549,11 +568,15 @@ const gateStep = ({
         })
     }
     const session_id = progress.sessions.implementer
+    const message = gateFixMessage({ gates })
     if (session_id === undefined) {
-        return stuck({
-            ticket: number,
-            reason: 'gates_failed',
-            detail: `The gates failed and there is no implementer session to send them back to:\n${failedChecks({ gates })}`,
+        return launch({
+            role: 'implementer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+            follow_up: message,
         })
     }
     return {
@@ -561,7 +584,7 @@ const gateStep = ({
         ticket: number,
         role: 'implementer',
         session_id,
-        message: gateFixMessage({ gates }),
+        message,
     }
 }
 
@@ -635,7 +658,7 @@ const reviewStep = ({
         })
     }
     return (
-        gateStep({ ticket, progress }) ??
+        gateStep({ snapshot, ticket, progress, run_notes }) ??
         commitStep({ stage: 'fix', ticket, progress }) ??
         reviewer()
     )
@@ -646,8 +669,9 @@ const reviewStep = ({
  * agent of the same role without using up a try, until
  * `MAX_ENGINE_FAILURES` in a row. Any other failure uses up one of the
  * role's tries on the ticket; with tries left, a test-writer or implementer
- * gets a follow-up in the session that failed, and a reviewer (or an agent
- * with no session) a fresh launch. The last try's failure is stuck.
+ * gets a follow-up in the session that failed (a fresh launch with the same
+ * message if it has none, such as after a crash), and a reviewer a fresh
+ * launch. The last try's failure is stuck.
  */
 const failedTurnStep = ({
     snapshot,
@@ -677,15 +701,26 @@ const failedTurnStep = ({
             detail: `The ${role} failed ${tries} tries; the last one: ${error}`,
         })
     }
-    if (role === 'ticket-reviewer' || session_id === null) {
+    if (role === 'ticket-reviewer') {
         return launch({ role, snapshot, ticket, progress, run_notes })
+    }
+    const message = failedTryMessage({ failure, error })
+    if (session_id === null) {
+        return launch({
+            role,
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+            follow_up: message,
+        })
     }
     return {
         type: 'follow_up_agent',
         ticket: ticket.number,
         role,
         session_id,
-        message: failedTryMessage({ failure, error }),
+        message,
     }
 }
 
@@ -1067,6 +1102,20 @@ export const decideBuild = ({
         const ticketProgress = progress(number)
         if (ticket === undefined || ticketProgress.pushed !== null) return []
         if (skipped(number)) return []
+        // The same step cut off by crashes too often is not taken again.
+        const crash = crashedOut({
+            crashes: state.crashes,
+            keys: (key) => key === String(number),
+        })
+        if (crash !== null) {
+            return [
+                stuck({
+                    ticket: number,
+                    reason: 'crashed',
+                    detail: crashDetail({ crash }),
+                }),
+            ]
+        }
         if (isStuck(number)) return stuckSteps(number)
         const skippedBlocker = ticket.blockers.find(skipped)
         if (skippedBlocker !== undefined) {
@@ -1127,6 +1176,7 @@ export const decideBuild = ({
     if (numbers.every((number) => pushed(number) || skipped(number))) {
         const final = decideFinalReview({
             review: state.final_review,
+            crashes: state.crashes,
             snapshot,
             run_branch,
             run_branch_gates: state.run_branch_gates,

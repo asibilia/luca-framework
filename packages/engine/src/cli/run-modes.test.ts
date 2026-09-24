@@ -5,7 +5,13 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { runDemo, runSpec, type RunLauncher } from './run-modes'
+import {
+    resumeRun,
+    runDemo,
+    runSpec,
+    unfinishedRuns,
+    type RunLauncher,
+} from './run-modes'
 
 import { LENS_ROLES } from '../agents/role-results'
 import {
@@ -19,9 +25,11 @@ import {
 } from '../board/board-sync'
 import { createTypeSafeJev } from '../jev/jev-client'
 import { createJournal, runJournalPath } from '../journal/journal'
+import type { JournalRecord } from '../journal/journal-record'
 import { createFakeMuninn } from '../testing/fake-muninn'
 import {
     EMPTY_LEARNER_TURN,
+    git,
     HAPPY_TURNS,
     makePracticeRepo,
     PRACTICE_ENGINE_CONFIG,
@@ -64,7 +72,14 @@ const recordingBoard = () => {
     }
     return {
         board: createBoardSync({ link }),
-        kinds: () => kinds,
+        /** The kinds it got, without the scheduler's step records. */
+        kinds: () =>
+            kinds.filter(
+                (kind) =>
+                    kind !== 'step_started' &&
+                    kind !== 'step_ended' &&
+                    kind !== 'run_resumed'
+            ),
         endings: () => endings,
     }
 }
@@ -293,6 +308,31 @@ describe('luca-run --spec', () => {
         expect(logs).toContain('[luca-run] resuming the run from its journal')
     }, 60_000)
 
+    test('the run_started record keeps the repo, so a resume can find it', async () => {
+        const { repo } = await makePracticeRepo({ root })
+        const runs_dir = join(root, 'runs')
+
+        await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: 'main',
+            runs_dir,
+            tracker: practiceTracker(),
+            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+            board: null,
+            log,
+        })
+
+        const [started] = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
+        }).read()
+        expect(started).toMatchObject({
+            kind: 'run_started',
+            content: { spec_number: 10, base_branch: 'main', repo },
+        })
+    }, 60_000)
+
     test('a repo with no engine config ends with the config error', async () => {
         const recorder = recordingBoard()
         const claude = fakeClaudeLauncher({ turns: [] })
@@ -314,5 +354,216 @@ describe('luca-run --spec', () => {
         expect(recorder.endings()).toEqual([result])
         expect(claude.launches()).toEqual([])
         expect(claude.closed()).toBe(1)
+    })
+})
+
+/** The kinds of a run's records, oldest first. */
+const kindsIn = (records: JournalRecord[]) => records.map(({ kind }) => kind)
+
+/**
+ * A launcher whose first launch of `role` throws, as if the engine died in
+ * the middle of that agent's turn.
+ */
+const crashingOnLaunch = ({
+    launcher,
+    role,
+}: {
+    launcher: RunLauncher
+    role: string
+}): RunLauncher => ({
+    ...launcher,
+    launch: (args) =>
+        args.role === role
+            ? Promise.reject(new Error('The engine was killed.'))
+            : launcher.launch(args),
+})
+
+describe('luca-run --resume', () => {
+    test('a run that crashed after a commit is resumed by its id and finishes: one PR, one of each commit, no comment twice', async () => {
+        const { repo, origin } = await makePracticeRepo({ root })
+        const runs_dir = join(root, 'runs')
+        const tracker = practiceTracker()
+        const [testWriter, implementer, ...rest] = HAPPY_TURNS
+        expect(testWriter?.role).toBe('test-writer')
+        expect(implementer?.role).toBe('implementer')
+
+        // The first engine commits the red tests, then dies launching the
+        // implementer.
+        const crashed = await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: null,
+            runs_dir,
+            tracker,
+            launcher: crashingOnLaunch({
+                launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+                role: 'implementer',
+            }),
+            board: null,
+            log,
+        })
+        expect(crashed).toEqual({
+            ok: false,
+            message: 'The engine crashed: The engine was killed.',
+        })
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
+        })
+        expect(kindsIn(journal.read())).toContain('commit_made')
+        expect(unfinishedRuns({ runs_dir })).toEqual(['run-1'])
+
+        const recorder = recordingBoard()
+        const resumed = fakeClaudeLauncher({
+            turns: [implementer, ...rest].flatMap((turn) =>
+                turn === undefined ? [] : [turn]
+            ),
+        })
+        const end = await resumeRun({
+            run_id: 'run-1',
+            runs_dir,
+            repo: null,
+            tracker: ({ repo: at }) => {
+                expect(at).toBe(repo)
+                return tracker
+            },
+            launcher: resumed.launcher,
+            board: recorder.board,
+            log,
+        })
+
+        expect(end).toEqual({
+            ok: true,
+            message: expect.stringContaining('PR opened'),
+        })
+        expect(recorder.endings()).toEqual([end])
+        const records = journal.read()
+        expect(
+            kindsIn(records).filter((kind) => kind === 'run_started')
+        ).toHaveLength(1)
+        expect(kindsIn(records)).toContain('run_resumed')
+        // The resumed run never wrote the tests again.
+        expect(resumed.launches().map(({ role }) => role)).not.toContain(
+            'test-writer'
+        )
+        expect(tracker.pullRequests()).toHaveLength(1)
+        const head = tracker.pullRequests()[0]?.head ?? 'none'
+        const subjects = (await git(origin, 'log', '--format=%s', head))
+            .trim()
+            .split('\n')
+        expect(subjects).toEqual([...new Set(subjects)])
+        for (const number of [10, 11]) {
+            const bodies = tracker.commentsOn({ number })
+            expect(bodies).toEqual([...new Set(bodies)])
+        }
+        expect(unfinishedRuns({ runs_dir })).toEqual([])
+    }, 120_000)
+
+    test('a run with memory on goes on with memory: the resume uses its client and closes it', async () => {
+        const { repo } = await makePracticeRepo({ root })
+        const runs_dir = join(root, 'runs')
+        const tracker = practiceTracker()
+        const [, implementer, ...rest] = HAPPY_TURNS
+        const first = createFakeMuninn()
+
+        await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: null,
+            runs_dir,
+            tracker,
+            launcher: crashingOnLaunch({
+                launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+                role: 'implementer',
+            }),
+            memory: { client: first },
+            board: null,
+            log,
+        })
+        expect(first.closed()).toBe(true)
+
+        const second = createFakeMuninn()
+        const end = await resumeRun({
+            run_id: 'run-1',
+            runs_dir,
+            repo: null,
+            tracker: () => tracker,
+            launcher: fakeClaudeLauncher({
+                turns: [
+                    ...[implementer, ...rest].flatMap((turn) =>
+                        turn === undefined ? [] : [turn]
+                    ),
+                    EMPTY_LEARNER_TURN(10),
+                ],
+            }).launcher,
+            memory: { client: second },
+            board: null,
+            log,
+        })
+
+        expect(end.ok).toBe(true)
+        const records = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
+        }).read()
+        expect(kindsIn(records)).toContain('run_resumed')
+        expect(kindsIn(records)).toContain('memories_saved')
+        expect(second.closed()).toBe(true)
+    }, 120_000)
+
+    test('a run id with no journal is a clear error, and nothing runs', async () => {
+        const recorder = recordingBoard()
+        const claude = fakeClaudeLauncher({ turns: [] })
+        const muninn = createFakeMuninn()
+        const runs_dir = join(root, 'runs')
+
+        const end = await resumeRun({
+            run_id: 'no-such-run',
+            runs_dir,
+            repo: null,
+            tracker: () => practiceTracker(),
+            launcher: claude.launcher,
+            memory: { client: muninn },
+            board: recorder.board,
+            log,
+        })
+
+        expect(end).toEqual({
+            ok: false,
+            message: expect.stringContaining('No run no-such-run'),
+        })
+        expect(muninn.closed()).toBe(true)
+        expect(muninn.calls()).toEqual([])
+        expect(recorder.endings()).toEqual([end])
+        expect(claude.launches()).toEqual([])
+        expect(claude.closed()).toBe(1)
+        expect(existsSync(join(runs_dir, 'no-such-run'))).toBe(false)
+    })
+
+    test('an empty journal is a clear error too', async () => {
+        const runs_dir = join(root, 'runs')
+        const file = runJournalPath({ runs_dir, run_id: 'empty' })
+        createJournal({ file })
+        await Bun.write(file, '')
+
+        const end = await resumeRun({
+            run_id: 'empty',
+            runs_dir,
+            repo: null,
+            tracker: () => practiceTracker(),
+            launcher: fakeClaudeLauncher({ turns: [] }).launcher,
+            board: null,
+            log,
+        })
+
+        expect(end).toEqual({
+            ok: false,
+            message: expect.stringContaining('empty'),
+        })
+        expect(unfinishedRuns({ runs_dir })).toEqual([])
+    })
+
+    test('unfinished runs: none in a runs folder that does not exist', () => {
+        expect(unfinishedRuns({ runs_dir: join(root, 'nowhere') })).toEqual([])
     })
 })

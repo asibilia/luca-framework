@@ -93,3 +93,32 @@ export const clashFixMessage = ({
         'Resolve them so the code keeps both what the run branch has and what this ticket adds. ' +
             'Never edit a test file. Make every gate pass, then answer again.',
     ].join('\n\n')
+
+/**
+ * The section a fresh agent gets when a crash cut off an earlier agent's
+ * turn at its step: it starts fresh, and the worktree may hold that turn's
+ * partial edits.
+ *
+ * @example
+ * const sections = [CRASH_SECTION]
+ */
+export const CRASH_SECTION = [
+    '## A crash cut off an earlier try',
+    "The engine crashed while an earlier agent in your role was working on this step, and that agent's session is gone, so you start fresh. " +
+        'The worktree may still hold its partial, uncommitted edits: look at them, keep what is right, and finish the job.',
+].join('\n\n')
+
+/**
+ * The section a fresh agent gets in place of a follow-up whose session is
+ * gone (a crash cut it off): the follow-up message, word for word.
+ *
+ * @example
+ * followUpSection({ message: gateFixMessage({ gates }) })
+ * // '## A message for your role\n\n...\n\nThe gates failed. ...'
+ */
+export const followUpSection = ({ message }: { message: string }): string =>
+    [
+        '## A message for your role',
+        'The engine sent this to an earlier agent in your role, whose session is gone. It is yours now: act on it.',
+        message,
+    ].join('\n\n')

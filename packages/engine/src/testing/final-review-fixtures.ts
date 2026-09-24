@@ -213,3 +213,11 @@ export const finalReviewClean = (): JournalEntry[] => [
     ...lensRound({ round: 1 }),
     finalReviewPassed(),
 ]
+
+/** The owner's `retry` started the stuck final review's fix round over. */
+export const finalReviewRetried = (): JournalEntry => ({
+    kind: 'final_review_retried',
+    ticket: null,
+    role: null,
+    content: {},
+})

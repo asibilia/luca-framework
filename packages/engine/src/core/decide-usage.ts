@@ -9,22 +9,30 @@ import {
 /** Journal one ticket's, or the run's, usage. */
 export type UsageAction = { type: 'record_usage'; usage: UsageRecord }
 
-const sessionsIn = ({
-    records,
-}: {
-    records: JournalRecord[]
-}): SessionReading[] =>
+/** An agent session as `usageFor` reads it, and its seq. */
+type SeqSession = SessionReading & { seq: number }
+
+const sessionsIn = ({ records }: { records: JournalRecord[] }): SeqSession[] =>
     records.flatMap((record) =>
         record.kind === 'agent_session'
-            ? [{ ticket: record.ticket, session: record.content.session }]
+            ? [
+                  {
+                      ticket: record.ticket,
+                      session: record.content.session,
+                      seq: record.seq,
+                  },
+              ]
             : []
     )
 
 /**
  * The usage half of the decision step. Pure. Each ticket that is done
- * (pushed) or stuck gets its usage recorded once, and the run gets its own
- * once it is `ending` (its next action is `done`). A ticket or run with no
- * agent sessions records nothing. `null` when there is nothing to record.
+ * (pushed) or stuck gets its usage recorded once per finish: a retried
+ * ticket that finishes again with agent sessions newer than its last record
+ * gets a new one, over all of its sessions, so its latest record is its whole
+ * usage. The run gets its own once it is `ending` (its next action is
+ * `done`). A ticket or run with no agent sessions records nothing. `null`
+ * when there is nothing to record.
  */
 export const decideUsage = ({
     records,
@@ -44,8 +52,12 @@ export const decideUsage = ({
         const finished =
             progress !== undefined &&
             (progress.pushed !== null || progress.stuck !== null)
-        if (!finished || recorded.tickets.includes(number)) continue
-        if (!sessions.some(({ ticket }) => ticket === number)) continue
+        if (!finished) continue
+        const since = recorded.tickets[number] ?? 0
+        const fresh = sessions.some(
+            ({ ticket, seq }) => ticket === number && seq > since
+        )
+        if (!fresh) continue
         return {
             type: 'record_usage',
             usage: usageFor({ sessions, ticket: number }),

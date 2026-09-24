@@ -26,6 +26,11 @@ tickets keep building, and the owner's one-word replies (`retry`, `skip`,
 With **memory** on, the engine searches MuninnDB at four **recall points** and
 hands the memories to agents, and at the end of every run a learner proposes
 new memories that plain code routes to a vault by type and saves (#370).
+A run survives crashes: the journal marks where each step starts and ends,
+a restarted engine takes a cut-off step again (an agent's turn in a fresh
+session) without posting a comment, opening a PR, or committing twice, a
+step that keeps crashing gets stuck, and `luca-run --resume <run-id>` goes
+on with a run from its journal (#369).
 
 ## Modules
 
@@ -35,12 +40,14 @@ new memories that plain code routes to a vault by type and saves (#370).
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
+| `src/journal/step-records.ts` | Pure: the steps a crash cut off (`resumeEntry`, the `run_resumed` a restarted engine appends), each step's crashes in a row, and a redo's first try. |
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. |
 | `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
 | `src/core/loop-caps.ts` | The caps of every fix loop (`MAX_FIX_ROUNDS`, ...), shared by the ticket steps and the final review. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
+| `src/core/decide-crashes.ts` | The crash half of the decision step: a run-level step cut off by `MAX_CRASHES` crashes in a row stops the run for good. |
 | `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
@@ -80,6 +87,7 @@ new memories that plain code routes to a vault by type and saves (#370).
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
 | `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
+| `src/tracker/post-comment-once.ts` | Engine comments carry an invisible marker, so a step redone after a crash adopts its comment instead of posting it again, and the engine never takes its own comments as replies. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
 | `src/testing/final-review-fixtures.ts` | Journal entry builders for the final review: rounds, lens turns, fix rounds, passed, stuck, shipped. |
@@ -105,7 +113,7 @@ new memories that plain code routes to a vault by type and saves (#370).
 | `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
-| `src/cli/run-modes.ts` | A real run of a spec, and the practice `--demo`. |
+| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
 
 ## How a run moves
 
@@ -141,7 +149,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
       commit_ticket fix           leftover scan, then commit             ──> leftover_scan, commit_made
       launch_agent ticket-reviewer  (fresh) only the new changes and the earlier findings
   then it waits in the join queue; one ticket joins at a time, in the order their reviews finally approved:
-  join_run_branch         git: cherry-pick the ticket's commits          ──> ticket_joined
+  join_run_branch         git: cherry-pick the ticket's commits          ──> join_started, ticket_joined
   run_gates run_branch    the gates again, on the joined run branch      ──> gates_run
   push_run_branch         git: push to origin                            ──> run_branch_pushed
     a clash, or failed gates after joining (≤ 3 times, then stuck):
@@ -169,7 +177,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
       done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
-  save_memories             update a similar memory or add one, then feedback ──> memories_saved
+  save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
 open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
@@ -254,7 +262,9 @@ Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
 how it failed), or `run_stopped` (see Guards). Any step may be preceded by a
 limit wait or a billing stop, and a finished ticket and the run's end by
-`usage_recorded` (see Plan limits and billing).
+`usage_recorded` (see Plan limits and billing). The scheduler wraps every
+step but a wait in `step_started` and `step_ended`, and a restarted engine
+may append `run_resumed` (see Crash recovery).
 
 While a test-writer or implementer works, it may send **agent messages**
 (`agent_message`), and each tool call it makes may hand it messages waiting
@@ -334,7 +344,68 @@ is in "Stuck work" below.
 
 `runEngine` reads the journal before every step, so it can resume a journal
 left by a crashed engine. A snapshot cut short by a crash is taken again; replay
-keeps the latest snapshot of each ticket.
+keeps the latest snapshot of each ticket. The rest is in "Crash recovery".
+
+## Crash recovery (#369)
+
+A **step** is one action the scheduler starts, named by its key (the
+ticket, `run`, `replies`, `final`, or `lens:<lens>`) and `step` (the action's
+type, plus `:<role>` for an agent's turn). A step is a **checkpoint** once
+its records, then its `step_ended`, are in the journal.
+
+- **Step records.** `runEngine` journals `step_started { key, step,
+  first_seq }` right before it carries out an action and `step_ended { key,
+  step }` right after it settles. Waits (`wait_for_reply`, `wait_for_limit`)
+  and stops get none: a crash during a wait is not the step's fault.
+- **A cut-off step.** On start, any `step_started` with no later
+  `step_ended` for its key was cut off. The engine appends one `run_resumed
+  { interrupted: [{ key, step, ticket, role, started_seq, first_seq }] }`
+  (`resumeEntry`) before its first step, then decides again: the step is
+  taken again. A redo's `step_started` names its first try in `first_seq`.
+- **Fresh sessions.** A cut-off agent turn's session is forgotten, so a redo
+  never follows up in it. Where a follow-up would have gone (a red check's or
+  gate's fix, a review fix, a failed try, a final fixer), a fresh agent of
+  that role gets the same message as an extra section, and is told that a
+  crash cut off an earlier try and the worktree may hold its partial edits.
+  With memory on, that fresh agent gets the run's start memories, its
+  ticket's, and the fix round's the follow-up would have carried.
+  Fix rounds are counted from record order, so every cap still holds.
+- **Crashes in a row.** Replay counts, per key, how many `run_resumed` in a
+  row cut off the same step; its `step_ended` clears the count. At
+  `MAX_CRASHES` (3), a ticket's step is stuck (`crashed`), the final
+  review's is stuck (`crashed`), and a run-level step stops the run for
+  good (`run_stopped` with `crashed: true`, then `done` with outcome
+  `crashed`). A `retry` gives fresh counts.
+- **Side effects made once.** Every engine comment carries an invisible
+  marker `<!-- luca:<run_id>:<first_seq>:<n> -->`; a redo adopts a comment
+  with its marker instead of posting it again, and a comment with a marker
+  is never a reply. Opening the PR adopts an open PR for the run branch.
+  Making the run branch or a worktree adopts one already there. A commit
+  adopts a HEAD commit with the same message that the journal doesn't know
+  yet. A join journals `join_started` (where the run branch stood) before it
+  cherry-picks, so a cut-off join is redone from there. The memories'
+  comment on the spec (`report_memories`) carries a marker too.
+- **Memory writes.** `save_memories` journals each MuninnDB write before it
+  (`memory_write_started`) and its outcome after (`memory_write_done`),
+  under a key within the step (`save:<op_id>`, `feedback:<vault>:<id>`);
+  only records after the step's first try count. A redo reuses a write
+  done, repeats a save started but not done as it started (an update of the
+  same memory with the same content, or an add with the same `op_id`, which
+  MuninnDB adds once), and never sends a feedback in doubt again (it could
+  count twice): that one is journaled as not ok, "unknown: a crash cut it
+  off...". Then `memories_saved` is journaled once, complete, in order.
+  Searches (`recall_memories`) only read, so a cut-off one is made again.
+- **Limit waits and replies.** A restarted engine waits until the reset
+  time a limit wait named, never less, and doesn't announce it again. It
+  reads the spec issue again, so replies sent while it was down count.
+
+**Going on with a run.** `luca-run --resume <run-id>` (`resumeRun`) reads
+the spec and base branch from the journal's `run_started`, and the repo
+from `--repo`, else the one `run_started` names (`repo`), else the current
+folder; it keeps the journal and runs the engine on it. A run id with no
+journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
+})` lists the runs whose next action is not a stop (`done`,
+`invalid_journal`): the seam for restarting them when Paseo starts (#375).
 
 ## The final review
 
@@ -538,13 +609,15 @@ that connection for the run, and reconnects once when a send fails.
 ```bash
 bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --demo [--run-id <id>] [--board-plugin <id>]
+bun packages/engine/src/cli/luca-run.ts --resume <run-id> [--repo <path>] [--board-plugin <id>]
 ```
 
 | Flag | What it does |
 | --- | --- |
 | `--spec <n>` | A real run of spec #n, on the repo's GitHub issues (through `gh`). |
 | `--demo` | A practice run instead (below). Give exactly one of `--spec` and `--demo`. |
-| `--repo <path>` | The repo to run on. Defaults to the current folder. |
+| `--resume <run-id>` | Go on with a run that crashed or was killed, from its journal: its spec and base branch come from `run_started`. Not with `--spec`, `--demo`, `--run-id`, or `--base`. |
+| `--repo <path>` | The repo to run on. Defaults to the current folder; for `--resume`, to the repo the run started in. |
 | `--run-id <id>` | The run's id: letters, digits, `-`, `_`. Defaults to a new one. The journal goes in `<runs folder>/<id>/`; a run id that already has a journal resumes it. |
 | `--base <branch>` | The branch the run starts from. Defaults to `main`. |
 | `--board-plugin <id>` | Send the journal to this Paseo plugin (such as `luca-board`). The per-run token comes from `LUCA_BOARD_TOKEN`. Without the flag, no board. |
@@ -556,7 +629,8 @@ with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
 
 It logs to stdout, always tells the board how it ended, and exits 0 when the
 run finished (PR opened, or nothing to do), 1 when it stopped (refused,
-stuck, stopped by the launcher, crashed), and 2 on bad flags.
+stuck, stopped by the launcher, crashed, or `--resume` of a run with no
+journal to go on from), and 2 on bad flags.
 
 **A real run** (`--spec`) builds with real Claude agents: `runSpec` gets
 `createClaudeLauncher({})` (Claude Opus 5.5 at `high` effort, every guard on,
@@ -565,8 +639,8 @@ paid by your Claude plan; see Guards) and closes its open sessions with
 `jev: { client: createTypeSafeJev() }`, which reads `TYPESAFE_API_KEY`; with
 no key each ask is journaled as `jev_failed` (`missing_key`), nothing is
 sent, and the run goes on. A launcher stop (`run_stopped`) ends the process
-with "Run stopped: <reason>"; run it again with the same `--run-id` to pick
-the step up again. `runSpec` takes the launcher as an argument, so its tests
+with "Run stopped: <reason>"; run it again with `--resume <run-id>` (or the
+same `--spec` and `--run-id`) to pick the step up again. `runSpec` takes the launcher as an argument, so its tests
 hand in scripted agents and never call a model.
 
 **The demo** (`--demo`) is safe to try the board with: it makes the practice
@@ -706,9 +780,11 @@ also holds its journal).
   engine failure, or a timeout closes the session; so does sitting idle past
   `idle_timeout_ms` (30 minutes by default). `closeAll()` closes the rest;
   call it when the run ends.
-- **A stop leaves the step open.** `run_stopped` changes no ticket's state, so
-  a later `runEngine` on the same journal starts that step again. A billing
-  stop (`billing: true`) is the exception: it sticks.
+- **A stop leaves the step open.** `run_stopped` changes no ticket's state
+  and closes every open step without counting it as a crash, so a later
+  `runEngine` on the same journal takes the step again as it was; it does not
+  count toward `MAX_CRASHES`. A billing stop (`billing: true`) and a stop for
+  crashes (`crashed: true`) are the exceptions: they stick.
 - **Denial counts** come from the result's `permission_denials` only (the
   tracer counted them twice), plus the guard hook's own denials.
 
@@ -876,7 +952,10 @@ the run is about to end (its next action is `done`), the engine journals
 `usage_recorded`: the agent turns, tokens summed, and each plan window's
 `{ from, to, used }` in percent. A ticket's window starts from the last
 reading before its first agent; a reading lower than the one before means
-the window reset, so it counts from 0 again. Readings come in hundredths, so
+the window reset, so it counts from 0 again. A retried ticket that finishes
+again (stuck again, or pushed) with agent sessions newer than its last
+record gets a new record over all of its sessions, so a ticket's latest
+`usage_recorded` is its whole usage. Readings come in hundredths, so
 per-ticket numbers are rough, and other sessions on the same plan count too.
 A ticket or run with no agent sessions (scripted agents) records nothing.
 
@@ -931,7 +1010,9 @@ the hits by score, drops those below the minimum, keeps one per vault and id,
 and keeps at most `MAX_MEMORIES_PER_RECALL` (5). When a step needs a search
 whose key isn't journaled yet, the decision step returns `recall_memories`
 in its place, under the same scheduler key (so tickets search at the same
-time; the run's start is run-level, the final review's under `final`).
+time; the run's start is run-level, the final review's under `final`). A
+search is a step like any other: it gets step records under that key, and
+one a crash cut off is searched again.
 
 | Point | When | Key | Query | Where the memories go |
 | --- | --- | --- | --- | --- |
@@ -960,8 +1041,10 @@ is its read-only folder):
 - **every ticket skipped**: before the worktrees go.
 
 Not on a refused run or one with nothing to do (no agent ran, nothing to
-learn), and not after a billing stop (starting any agent then could bill per
-token). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
+learn), not after a billing stop (starting any agent then could bill per
+token), and not after a stop for crashes (the run stopped for good). A
+learner's turn a crash cut off is taken again by a fresh learner (step
+`launch_learner:learner`, under the run's key). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
 shell, writes nothing, no messages) on Opus 5.5 like every role. Its prompt
 is a digest of the journal built by pure code (`learnerPrompt`): the
 failures (failed red checks and gates with their output's end, clashes), fix
@@ -991,7 +1074,12 @@ most similar one (limit 1, threshold 0); a `vector_score` of at least
 added (`muninn_remember`, tags `luca` and `spec-<n>`, and an `op_id` from the
 learner's record so a save repeated after a crash adds it once). Then every
 distinct memory shown in the run gets feedback: useful if its id is in
-`helped` (ids never shown are ignored). All of it is journaled once as
+`helped` (ids never shown are ignored). Each write (a save's update or add,
+a feedback) is journaled just before it as `memory_write_started` (its key,
+vault, and the save's concept, `op_id`, the id it updates, and the similar
+memory; or the feedback's memory id) and after it as `memory_write_done`
+(the save's or the feedback's outcome), so a crash never saves twice or
+sends a feedback twice (see "Crash recovery"). All of it is journaled once as
 `memories_saved`: each save's vault, outcome (`added`, `updated`, `refused`,
 `failed`), id, the similar memory found (id, score, vector score), and error,
 and each feedback's outcome.
@@ -1028,6 +1116,9 @@ Choices made:
   tags, so the executor stays a plain loop.
 - A save whose similarity search fails is `failed`, not added, so a
   MuninnDB that half works doesn't fill a vault with duplicates.
+- A save a crash left in doubt is repeated with no new search, as its
+  `memory_write_started` says: a new search could find the memory its first
+  try just added and update it instead, journaling `updated` for an add.
 - The learner's answer is saved once (`memories_saved` is its checkpoint),
   even with nothing to save, so the run's end is clear in the journal.
 - The run's start memories go on every fresh agent but the learner, whose
@@ -1157,7 +1248,12 @@ never breaks the run. `src/cli/run-modes.test.ts` runs the demo, and the
 real-run path with the in-memory tracker and a scripted stand-in for the
 Claude launcher: it builds to a PR and closes the sessions, passes Jev
 through, ends on a launcher stop, resumes a journal, and reports a missing
-config.
+config. Its `--resume` test crashes a real run after its red commit, lists it
+in `unfinishedRuns`, then `resumeRun` finishes it: one PR, each commit once,
+no comment twice, and `run_resumed` in the journal. `src/core/decide-crash-recovery.test.ts`
+cuts journals anywhere and checks what the decision step does next, and
+`src/core/run-crash-recovery.test.ts` crashes practice runs inside a step
+(after a comment, a PR, a worktree, a commit, a join) and runs them again.
 
 ```bash
 bun test              # in packages/engine

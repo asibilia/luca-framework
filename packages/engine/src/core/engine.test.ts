@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import escapeRegExp from 'lodash/escapeRegExp'
 
 import type { EngineAction } from './decide'
 import { runEngine, startRun } from './execute'
@@ -10,7 +11,11 @@ import { runEngine, startRun } from './execute'
 import type { EngineConfig } from '../config/engine-config'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import { replayRun } from '../journal/replay'
-import { specIssue, ticketIssue } from '../testing/intake-fixtures'
+import {
+    specIssue,
+    ticketIssue,
+    withoutStepRecords,
+} from '../testing/intake-fixtures'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 import type { TrackerIssue } from '../tracker/tracker'
 
@@ -61,7 +66,11 @@ const runSpec = async ({
         tracker,
         stop_before: ['create_run_branch'],
     })
-    return { tracker, action, kinds: journal.read().map((r) => r.kind) }
+    return {
+        tracker,
+        action,
+        kinds: withoutStepRecords(journal.read()).map((r) => r.kind),
+    }
 }
 
 describe('engine: intake refuses the run', () => {
@@ -83,10 +92,17 @@ describe('engine: intake refuses the run', () => {
         expect(tracker.commentsOn({ number: 11 })).toEqual([])
         expect(tracker.labelsOf({ number: 11 })).toEqual(['ready-for-agent'])
 
+        // Each engine comment ends with its invisible marker.
         expect(tracker.commentsOn({ number: 12 })).toEqual([
-            'Luca intake refused the run for spec #10. This issue is not ready yet:\n\n' +
-                '- The ticket has no checkbox under "Acceptance criteria".\n\n' +
-                'Fix these, move the issue back to `ready-for-agent`, and start the run again.',
+            expect.stringMatching(
+                new RegExp(
+                    `^${escapeRegExp(
+                        'Luca intake refused the run for spec #10. This issue is not ready yet:\n\n' +
+                            '- The ticket has no checkbox under "Acceptance criteria".\n\n' +
+                            'Fix these, move the issue back to `ready-for-agent`, and start the run again.'
+                    )}\n\n<!-- luca:run:\\d+:\\d+ -->$`
+                )
+            ),
         ])
         expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
 
@@ -189,15 +205,16 @@ describe('engine: intake passes', () => {
             'ticket_snapshot',
             'ticket_snapshot',
         ])
-        const records = journal.read()
-        expect(
-            records.map(({ seq, ticket, role }) => ({ seq, ticket, role }))
-        ).toEqual([
-            { seq: 1, ticket: null, role: null },
-            { seq: 2, ticket: null, role: null },
-            { seq: 3, ticket: 10, role: null },
-            { seq: 4, ticket: 12, role: null },
-            { seq: 5, ticket: 11, role: null },
+        expect(journal.read().map(({ seq }) => seq)).toEqual(
+            journal.read().map((_, index) => index + 1)
+        )
+        const records = withoutStepRecords(journal.read())
+        expect(records.map(({ ticket, role }) => ({ ticket, role }))).toEqual([
+            { ticket: null, role: null },
+            { ticket: null, role: null },
+            { ticket: 10, role: null },
+            { ticket: 12, role: null },
+            { ticket: 11, role: null },
         ])
         expect(records[4]).toMatchObject({
             kind: 'ticket_snapshot',
@@ -231,7 +248,7 @@ describe('engine: intake passes', () => {
         expect(again).toEqual(BUILD_STARTS)
         const state = replayRun({ records: journal.read() })
         expect(state.snapshot?.tickets[11]?.title).toBe('Pay')
-        expect(journal.read()).toHaveLength(5)
+        expect(withoutStepRecords(journal.read())).toHaveLength(5)
     })
 
     test('a run picks up where its journal left off', async () => {
@@ -249,6 +266,8 @@ describe('engine: intake passes', () => {
         })
 
         expect(action).toEqual(BUILD_STARTS)
-        expect(reopened.read().map((r) => r.seq)).toEqual([1, 2, 3, 4, 5])
+        const seqs = reopened.read().map((r) => r.seq)
+        expect(seqs).toEqual(seqs.map((_, index) => index + 1))
+        expect(withoutStepRecords(reopened.read())).toHaveLength(5)
     })
 })

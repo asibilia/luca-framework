@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,12 +9,13 @@ import type { AgentLauncher } from '../agents/agent-launcher'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
 import type { BoardSync } from '../board/board-sync'
 import { loadEngineConfig } from '../config/engine-config'
-import type { EngineAction } from '../core/decide'
-import { runEngine, startRun } from '../core/execute'
+import { decide, type EngineAction } from '../core/decide'
+import { runEngine, startRun, STOP_ACTIONS } from '../core/execute'
 import { createGitAdapter } from '../git/git-adapter'
 import { createTypeSafeJev } from '../jev/jev-client'
 import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
+import type { JournalRecord } from '../journal/journal-record'
 import type { MemoryDeps } from '../memory/memory-client'
 import {
     DEMO_TURNS,
@@ -87,6 +89,11 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
             return {
                 ok: false,
                 message: `Run stopped for billing: ${action.reason}. It will not go on; start a new run once per-token billing is off.`,
+            }
+        case 'crashed':
+            return {
+                ok: false,
+                message: `Run stopped for good after crashes: ${action.reason} It will not go on; read the engine's log for why it crashed, then start a new run.`,
             }
     }
 }
@@ -200,6 +207,7 @@ export const runSpec = async ({
                 memory === undefined
                     ? undefined
                     : { project_vault: loaded.config.muninn?.vault ?? null },
+            repo,
         })
     } else {
         log('[luca-run] resuming the run from its journal')
@@ -220,6 +228,180 @@ export const runSpec = async ({
                 memory,
                 board: board ?? undefined,
             }),
+    })
+}
+
+/** What a run's `run_started` says: its spec, base branch, and repo. */
+export type RunStart = {
+    spec_number: number
+    base_branch: string
+    /** `null` in journals from before the repo was kept. */
+    repo: string | null
+}
+
+/**
+ * The records of run `run_id`, or why there are none to go on from: no
+ * journal, an empty one, or one that cannot be read. Never makes the run's
+ * folder.
+ */
+const readRun = ({
+    runs_dir,
+    run_id,
+}: {
+    runs_dir: string
+    run_id: string
+}): { ok: true; records: JournalRecord[] } | { ok: false; error: string } => {
+    const file = runJournalPath({ runs_dir, run_id })
+    if (!existsSync(file)) {
+        return { ok: false, error: `No run ${run_id}: there is no ${file}.` }
+    }
+    try {
+        const records = createJournal({ file }).read()
+        return records.length === 0
+            ? {
+                  ok: false,
+                  error: `Run ${run_id} has an empty journal (${file}), so there is nothing to go on from; start a new run with --spec.`,
+              }
+            : { ok: true, records }
+    } catch (error) {
+        return { ok: false, error: errorText(error) }
+    }
+}
+
+/**
+ * Reads run `run_id`'s `run_started`: the spec, base branch, and repo a
+ * resume goes on with. An error when the run has no journal, an empty one,
+ * or one that does not start with `run_started`.
+ *
+ * @example
+ * const start = readRunStart({ runs_dir: defaultRunsDir(), run_id })
+ * if (start.ok) console.log(start.start.spec_number)
+ */
+export const readRunStart = ({
+    runs_dir,
+    run_id,
+}: {
+    runs_dir: string
+    run_id: string
+}): { ok: true; start: RunStart } | { ok: false; error: string } => {
+    const read = readRun({ runs_dir, run_id })
+    if (!read.ok) return read
+    const [first] = read.records
+    if (first?.kind !== 'run_started') {
+        return {
+            ok: false,
+            error: `Run ${run_id}'s journal does not start with run_started, so it is not a run.`,
+        }
+    }
+    const { spec_number, base_branch, repo } = first.content
+    return { ok: true, start: { spec_number, base_branch, repo } }
+}
+
+/**
+ * The ids of the runs in `runs_dir` that are not over: runs whose journal's
+ * next action (by the decision step) is not a stop (`done` or
+ * `invalid_journal`), such as a run that crashed, was killed, or waits for a
+ * reply. Folders with no journal, an empty one, or one that cannot be read
+ * are left out. Sorted, so oldest first for made-up run ids. Paseo can
+ * `resumeRun` each one when it starts (#375).
+ *
+ * @example
+ * for (const run_id of unfinishedRuns({ runs_dir: defaultRunsDir() })) console.log(run_id)
+ */
+export const unfinishedRuns = ({
+    runs_dir,
+}: {
+    runs_dir: string
+}): string[] => {
+    if (!existsSync(runs_dir)) return []
+    return readdirSync(runs_dir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map(({ name }) => name)
+        .filter((run_id) => {
+            const read = readRun({ runs_dir, run_id })
+            return (
+                read.ok &&
+                !STOP_ACTIONS.has(decide({ records: read.records }).type)
+            )
+        })
+        .toSorted()
+}
+
+/**
+ * Goes on with run `run_id` from its journal, as `luca-run --resume` does:
+ * the spec and base branch come from its `run_started`, and the repo from
+ * `repo`, else the one the run started in, else the current folder. The
+ * journal is kept, so the engine picks up where the run stopped (a step a
+ * crash cut off is taken again; see `run_resumed`). `tracker` makes the
+ * tracker for the repo. Memory stays on or off as the run's `run_started`
+ * says, with `memory` as its client. Never throws: a missing or empty
+ * journal ends the run with a clear message, the launcher's sessions and
+ * the memory client are closed, and the board always gets the run's end.
+ *
+ * @example
+ * const end = await resumeRun({
+ *     run_id, runs_dir: defaultRunsDir(), repo: null,
+ *     tracker: async ({ repo }) => createGitHubTracker({ repo: await githubRepoOf({ repo }) }),
+ *     launcher: createClaudeLauncher({}), board, log: console.log,
+ * })
+ */
+export const resumeRun = async ({
+    run_id,
+    runs_dir,
+    repo,
+    tracker,
+    launcher,
+    jev,
+    memory,
+    board,
+    log,
+}: {
+    run_id: string
+    runs_dir: string
+    /** `null` for the repo the run started in (or the current folder). */
+    repo: string | null
+    tracker: ({ repo }: { repo: string }) => Tracker | Promise<Tracker>
+    launcher: RunLauncher
+    /** Jev in shadow mode. Leave it out to run without Jev. */
+    jev?: JevShadow
+    /**
+     * MuninnDB (#370), used when the run's `run_started` turned memory on.
+     * Leave it out to go on without memory.
+     */
+    memory?: MemoryDeps
+    board: BoardSync | null
+    log: (line: string) => void
+}): Promise<RunEnd> => {
+    const stop = async (message: string): Promise<RunEnd> => {
+        log(`[luca-run] stopped: ${message}`)
+        await launcher.closeAll?.()
+        await memory?.client.close().catch(() => undefined)
+        const end = { ok: false, message }
+        await board?.end(end)
+        return end
+    }
+    const read = readRunStart({ runs_dir, run_id })
+    if (!read.ok) return stop(read.error)
+    const { spec_number, base_branch } = read.start
+    const at = repo ?? read.start.repo ?? process.cwd()
+    let made: Tracker
+    try {
+        made = await tracker({ repo: at })
+    } catch (error) {
+        return stop(errorText(error))
+    }
+    return runSpec({
+        spec_number,
+        repo: at,
+        run_id,
+        base_branch,
+        runs_dir,
+        tracker: made,
+        launcher,
+        jev,
+        memory,
+        board,
+        log,
     })
 }
 
@@ -300,6 +482,7 @@ export const runDemo = async ({
             config: loaded.config,
             base_branch: 'main',
             memory: { project_vault: null },
+            repo,
         })
         const memory = { client: demoMuninn() }
         const launcher = slowLauncher({

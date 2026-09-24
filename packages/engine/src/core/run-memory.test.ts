@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import type { ScriptedCall, ScriptedTurn } from '../agents/scripted-launcher'
+import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import type { EngineClock } from '../limits/limit-wait'
@@ -431,5 +432,244 @@ describe('memory, end to end', () => {
             'default',
         ])
         expect(tracker.pullRequests()[0]?.body).not.toContain('New memories')
+        // The learner's turn and each search are steps (#369).
+        const steps = practice.journal.read().flatMap((record) =>
+            record.kind === 'step_started'
+                ? [
+                      {
+                          step: record.content.step,
+                          key: record.content.key,
+                          role: record.role,
+                      },
+                  ]
+                : []
+        )
+        expect(steps).toContainEqual({
+            step: 'launch_learner:learner',
+            key: 'run',
+            role: 'learner',
+        })
+        expect(steps).toContainEqual({
+            step: 'recall_memories',
+            key: 'run',
+            role: null,
+        })
+        expect(steps).toContainEqual({
+            step: 'recall_memories',
+            key: '11',
+            role: null,
+        })
+    }, 60_000)
+})
+
+/**
+ * The journal, but the `nth` append of `kind` throws instead, as if the
+ * engine died just before journaling it.
+ */
+const crashOnAppend =
+    ({ kind, nth }: { kind: JournalRecord['kind']; nth: number }) =>
+    (real: Journal): Journal => {
+        let seen = 0
+        return {
+            ...real,
+            append: (entry) => {
+                if (entry.kind === kind) {
+                    seen += 1
+                    if (seen === nth) throw new Error('The engine crashed.')
+                }
+                return real.append(entry)
+            },
+        }
+    }
+
+describe('memory across a crash (#369)', () => {
+    const feedbackIds = (muninn: FakeMuninn) =>
+        muninn
+            .calls()
+            .filter(({ op }) => op === 'feedback')
+            .map(({ args }) => args.id)
+
+    const expectSavedOnce = ({
+        muninn,
+        records,
+    }: {
+        muninn: FakeMuninn
+        records: JournalRecord[]
+    }) => {
+        const saved = savedOf(records)
+        expect(saved).toHaveLength(1)
+        expect(
+            saved[0]?.saves.map(({ concept, outcome, id }) => [
+                concept,
+                outcome,
+                id,
+            ])
+        ).toEqual([
+            ['today', 'refused', null],
+            ['pitfall:bun-junit', 'updated', 'd-junit'],
+            ['decision:engine-owns-memory', 'added', 'fake-1'],
+        ])
+        expect(
+            muninn
+                .stored(PROJECT)
+                .filter(
+                    ({ concept }) => concept === 'decision:engine-owns-memory'
+                )
+        ).toHaveLength(1)
+        // Each shown memory's feedback went at most once.
+        const sent = feedbackIds(muninn)
+        expect(new Set(sent).size).toBe(sent.length)
+        expect(saved[0]?.feedback.map(({ id }) => id)).toEqual([
+            'p-spec',
+            'd-sum',
+            'd-review',
+        ])
+    }
+
+    const turns = (): ScriptedTurn[] => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        return [testWriter, implementer, reviewer, LEARNER]
+    }
+
+    test('a crash in the middle of saving: the redo saves each memory once and sends each feedback at most once', async () => {
+        const practice = await createPracticeRepo({ root })
+        const muninn = seededMuninn()
+        const memory = { client: muninn, project_vault: PROJECT }
+
+        // Cut off after the add, the 2nd write, before it was journaled.
+        await expect(
+            practice.run({
+                turns: turns(),
+                memory,
+                journal: crashOnAppend({ kind: 'memory_write_done', nth: 2 }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+        expect(muninn.stored(PROJECT)).toHaveLength(3)
+
+        const { action, records, tracker } = await practice.run({
+            resume: true,
+            turns: [],
+            memory,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expectSavedOnce({ muninn, records })
+        // The add in doubt was repeated with its op id; MuninnDB kept one.
+        const adds = muninn.calls().filter(({ op }) => op === 'remember')
+        expect(adds).toHaveLength(2)
+        expect(new Set(adds.map(({ args }) => args.op_id)).size).toBe(1)
+        expect(feedbackIds(muninn)).toEqual(['p-spec', 'd-sum', 'd-review'])
+        expect(savedOf(records)[0]?.feedback.every(({ ok }) => ok)).toBe(true)
+        expect(tracker.pullRequests()).toHaveLength(1)
+        expect(tracker.pullRequests()[0]?.body).toContain(
+            'decision:engine-owns-memory (fake-1), added'
+        )
+    }, 60_000)
+
+    test('a crash after every write but before memories_saved: the redo writes nothing again', async () => {
+        const practice = await createPracticeRepo({ root })
+        const muninn = seededMuninn()
+        const memory = { client: muninn, project_vault: PROJECT }
+
+        await expect(
+            practice.run({
+                turns: turns(),
+                memory,
+                journal: crashOnAppend({ kind: 'memories_saved', nth: 1 }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+        const writes = muninn.calls().filter(({ op }) => op !== 'recall').length
+
+        const { action, records } = await practice.run({
+            resume: true,
+            turns: [],
+            memory,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(muninn.calls().filter(({ op }) => op !== 'recall').length).toBe(
+            writes
+        )
+        expectSavedOnce({ muninn, records })
+    }, 60_000)
+
+    test("the memories' comment on the spec is posted once when a crash came between posting and journaling it", async () => {
+        const practice = await createPracticeRepo({ root })
+        const muninn = seededMuninn()
+        const memory = { client: muninn, project_vault: PROJECT }
+        const tracker = practiceTracker()
+        let replied = false
+        const clock: EngineClock = {
+            now: () => Date.now(),
+            sleep: async () => {
+                await Bun.sleep(5)
+                const state = replayRun({ records: practice.journal.read() })
+                if (
+                    replied ||
+                    (state.tickets[11]?.stuck_report ?? null) === null
+                ) {
+                    return
+                }
+                replied = true
+                tracker.addComment({
+                    number: 10,
+                    author: SPEC_OWNER,
+                    body: 'stop',
+                })
+            },
+        }
+        const learner: ScriptedTurn = {
+            role: 'learner',
+            ticket: 10,
+            result: {
+                memories: [
+                    {
+                        type: 'pitfall',
+                        concept: 'label-refactors',
+                        content: 'A refactor needs the refactor label.',
+                        summary: 'Label refactors',
+                    },
+                ],
+                helped: [],
+            },
+        }
+
+        await expect(
+            practice.run({
+                tracker,
+                clock,
+                stop_before: [],
+                memory,
+                turns: [
+                    {
+                        role: 'test-writer',
+                        ticket: 11,
+                        result: { outcome: 'nothing_new_to_test' },
+                    },
+                    learner,
+                ],
+                journal: crashOnAppend({ kind: 'memories_reported', nth: 1 }),
+            })
+        ).rejects.toThrow('The engine crashed.')
+        const listings = () =>
+            tracker
+                .commentsOn({ number: 10 })
+                .filter((body) => body.includes('pitfall:label-refactors'))
+        expect(listings()).toHaveLength(1)
+
+        const { action, records } = await practice.run({
+            resume: true,
+            tracker,
+            clock,
+            stop_before: [],
+            memory,
+            turns: [],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'stopped_by_user' })
+        expect(listings()).toHaveLength(1)
+        expect(
+            records.filter(({ kind }) => kind === 'memories_reported')
+        ).toHaveLength(1)
     }, 60_000)
 })

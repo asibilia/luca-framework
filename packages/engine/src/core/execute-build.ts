@@ -35,6 +35,7 @@ import type {
     AgentFailure,
     CommitStage,
     GateTarget,
+    JournalRecord,
 } from '../journal/journal-record'
 import {
     replayRun,
@@ -43,6 +44,7 @@ import {
 } from '../journal/replay'
 import { sessionSignal } from '../limits/plan-signals'
 import { createAgentMessaging } from '../messages/agent-messaging'
+import type { CommentStep } from '../tracker/post-comment-once'
 import type { Tracker } from '../tracker/tracker'
 
 /** What the engine needs, beyond the journal and tracker, to build tickets. */
@@ -59,6 +61,11 @@ export type BuildContext = BuildDeps & {
     config: EngineConfig
     /** The run's folder, next to its journal and outside git. */
     run_dir: string
+    /**
+     * Which try of its step this is: a redo after a crash adopts what its
+     * first try left behind.
+     */
+    step: CommentStep
 }
 
 /** The run branch's name: one per run, so runs never share a branch. */
@@ -204,10 +211,42 @@ const isUsed = async ({
 }
 
 /**
+ * The commit a crash left behind at `cwd`: HEAD carries `message` and no
+ * record names it yet, so the step's first try made it and died before
+ * journaling it. `null` when HEAD is no such commit.
+ */
+const leftCommit = async ({
+    context,
+    cwd,
+    message,
+}: {
+    context: BuildContext
+    cwd: string
+    message: string
+}): Promise<{ sha: string; message: string; files: string[] } | null> => {
+    const last = await context.git.lastCommit({ cwd })
+    if (last.message !== message.trim()) return null
+    const journaled = context.journal
+        .read()
+        .some(
+            (record) =>
+                (record.kind === 'commit_made' &&
+                    record.content.sha === last.sha) ||
+                (record.kind === 'ticket_joined' &&
+                    record.content.ok &&
+                    record.content.shas.includes(last.sha))
+        )
+    return journaled ? null : { sha: last.sha, message, files: last.files }
+}
+
+/**
  * The leftover scan, then an engine commit of everything in `cwd`, both
  * journaled. A hit blocks the commit. A `fix` commit with nothing to commit
  * (every finding was a "won't fix") journals the current commit with no
- * files instead.
+ * files instead. A redo after a crash that already committed (nothing left
+ * to commit, and HEAD is an unjournaled commit with this message) journals
+ * that commit instead of making another; its scan, of a clean worktree,
+ * finds nothing, as the first try's did before it committed.
  */
 export const commitIn = async ({
     context,
@@ -248,6 +287,19 @@ export const commitIn = async ({
         content: { stage, hits },
     })
     if (hits.length > 0) return
+    const adopted =
+        changes.length === 0 && context.step.redo
+            ? await leftCommit({ context, cwd, message })
+            : null
+    if (adopted !== null) {
+        context.journal.append({
+            kind: 'commit_made',
+            ticket,
+            role: null,
+            content: { stage, ...adopted },
+        })
+        return
+    }
     if (changes.length === 0 && stage === 'fix') {
         // The fixers changed nothing (every finding was a "won't fix"): no
         // commit to make, so the re-review's new changes are empty.
@@ -500,6 +552,53 @@ const followUpAgent = async ({
 }
 
 /**
+ * Where the run branch stood before a join of `ticket` a crash cut off: the
+ * latest `join_started` for it with no `ticket_joined` or `ticket_stuck`
+ * for it after, else `null`.
+ *
+ * @example
+ * openJoin({ records: journal.read(), ticket: 11 }) // 'a1b2c3...' after a crash mid-join
+ */
+export const openJoin = ({
+    records,
+    ticket,
+}: {
+    records: JournalRecord[]
+    ticket: number
+}): string | null => {
+    const last = records.findLast(
+        (record) =>
+            record.ticket === ticket &&
+            (record.kind === 'join_started' ||
+                record.kind === 'ticket_joined' ||
+                record.kind === 'ticket_stuck')
+    )
+    return last?.kind === 'join_started' ? last.content.run_branch_sha : null
+}
+
+/**
+ * Puts the run branch back where it stood before a join of `ticket` a crash
+ * cut off, dropping whatever half of its commits the crash left there. A
+ * cut-off step is taken again before other steps start, so nothing else
+ * moved the run branch since. Does nothing when no join was cut off.
+ */
+const undoCutOffJoin = async ({
+    context,
+    ticket,
+}: {
+    context: BuildContext
+    ticket: number
+}) => {
+    const sha = openJoin({ records: context.journal.read(), ticket })
+    if (sha === null) return
+    const runBranch = need({
+        value: context.state.run_branch,
+        what: 'run branch',
+    })
+    await context.git.resetWorktree({ cwd: runBranch.path, to: sha })
+}
+
+/**
  * Undoes a ticket's join on the run branch, back to before `first_sha`, and
  * returns the commits undone. The undone join's install is still in the run
  * branch's `node_modules`, so when its commits changed dependency files the
@@ -527,6 +626,12 @@ const undoJoin = async ({
                   to: last,
               })
     const { undone } = await git.undoReplay({ cwd: runBranch.path, first_sha })
+    // A redo whose first try undid the join before a crash finds nothing
+    // left to undo: the commits it undid are the journaled join's.
+    const named =
+        undone.length === 0 && context.step.redo && joined?.ok === true
+            ? joined.shas
+            : undone
     if (dependenciesChanged({ changed_files: undoneFiles })) {
         await installIn({
             journal,
@@ -535,7 +640,7 @@ const undoJoin = async ({
             ticket: null,
         })
     }
-    return undone
+    return named
 }
 
 /**
@@ -691,8 +796,16 @@ export const buildContext = ({
     tracker,
     git,
     launcher,
-}: BuildDeps & { journal: Journal; tracker: Tracker }): BuildContext => {
-    const state = replayRun({ records: journal.read() })
+    step,
+}: BuildDeps & {
+    journal: Journal
+    tracker: Tracker
+    /** Left out, a first try, numbered after the journal's last record. */
+    step?: CommentStep
+}): BuildContext => {
+    const records = journal.read()
+    const state = replayRun({ records })
+    const run_dir = dirname(journal.file)
     return {
         git,
         launcher,
@@ -700,7 +813,12 @@ export const buildContext = ({
         tracker,
         state,
         config: need({ value: state.config, what: 'engine config' }),
-        run_dir: dirname(journal.file),
+        run_dir,
+        step: step ?? {
+            run_id: basename(run_dir),
+            first_seq: (records.at(-1)?.seq ?? 0) + 1,
+            redo: false,
+        },
     }
 }
 
@@ -714,13 +832,16 @@ export const executeBuildAction = async ({
     tracker,
     git,
     launcher,
+    step,
 }: BuildDeps & {
     /** The final review's steps go to `executeFinalReviewAction`. */
     action: Exclude<BuildAction, FinalReviewAction>
     journal: Journal
     tracker: Tracker
+    /** Which try of its step this is. Left out, a first try. */
+    step?: CommentStep
 }): Promise<void> => {
-    const context = buildContext({ journal, tracker, git, launcher })
+    const context = buildContext({ journal, tracker, git, launcher, step })
     const { state, run_dir } = context
     switch (action.type) {
         case 'create_run_branch': {
@@ -825,6 +946,15 @@ export const executeBuildAction = async ({
                 value: state.run_branch,
                 what: 'run branch',
             })
+            await undoCutOffJoin({ context, ticket: action.ticket })
+            journal.append({
+                kind: 'join_started',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    run_branch_sha: await git.head({ cwd: runBranch.path }),
+                },
+            })
             const commits = await git.commitsBetween({
                 cwd: worktree.path,
                 from: worktree.base_sha,
@@ -897,6 +1027,8 @@ export const executeBuildAction = async ({
             // Tracker-only steps; `executeAction` carries them out.
             throw new Error(`${action.type} is not a git or agent step.`)
         case 'mark_stuck':
+            // A join crashes cut off too often leaves no half of it behind.
+            await undoCutOffJoin({ context, ticket: action.ticket })
             journal.append({
                 kind: 'ticket_stuck',
                 ticket: action.ticket,
@@ -906,12 +1038,13 @@ export const executeBuildAction = async ({
             return
         case 'open_pull_request': {
             const { head, base, title, body } = action
-            const opened = await tracker.openPullRequest({
-                head,
-                base,
-                title,
-                body,
-            })
+            // A redo adopts the PR its first try opened before the crash.
+            const adopted = context.step.redo
+                ? await tracker.findOpenPullRequest({ head })
+                : null
+            const opened =
+                adopted ??
+                (await tracker.openPullRequest({ head, base, title, body }))
             journal.append({
                 kind: 'pull_request_opened',
                 ticket: null,

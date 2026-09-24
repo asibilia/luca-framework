@@ -70,6 +70,13 @@ export type Tracker = {
     removeLabel: (args: { number: number; label: string }) => Promise<void>
     /** Opens a pull request from `head` into `base`. */
     openPullRequest: (args: PullRequestRequest) => Promise<OpenedPullRequest>
+    /**
+     * The open pull request from branch `head`, or `null`: a redo after a
+     * crash adopts the PR its first try opened.
+     */
+    findOpenPullRequest: (args: {
+        head: string
+    }) => Promise<OpenedPullRequest | null>
 }
 
 /** The label a ticket needs before intake lets a run build it. */
