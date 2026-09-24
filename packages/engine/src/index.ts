@@ -197,6 +197,7 @@ export {
     ALL_AGENTS,
     canMessage,
     deliveryText,
+    isOver,
     MAX_MESSAGE_CHARS,
     MAX_MESSAGES_PER_AGENT,
     parseAddress,

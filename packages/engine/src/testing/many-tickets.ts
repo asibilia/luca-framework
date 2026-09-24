@@ -99,7 +99,7 @@ const mapping = ({
 })
 
 /** Polls until `check` holds, or throws after `MANY_TICKETS_WAIT_MS`. */
-const waitUntil = async ({
+export const waitUntil = async ({
     check,
     what,
 }: {
@@ -118,7 +118,7 @@ const waitUntil = async ({
 }
 
 /** The journal's records so far, read straight from its file. */
-const journalRecords = (file: string): JournalRecord[] =>
+export const journalRecords = (file: string): JournalRecord[] =>
     existsSync(file)
         ? readFileSync(file, 'utf8')
               .split('\n')

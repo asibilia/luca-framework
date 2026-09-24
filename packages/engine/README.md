@@ -515,19 +515,26 @@ either.
   (the receiver, the ids, the tool it rode on, and the text word for word; the
   record's time is when it was seen). Each message is handed over once. A
   session keeps its messaging for its follow-ups.
-- **Who counts as live.** A named address whose ticket is in the run and not
-  over gets the message queued, even if that agent hasn't started yet: it
-  gets it at its first tool call. A ticket is over once it joined the run
-  branch, is stuck, or the run's PR is open. `all` goes to every other
-  test-writer and implementer that has started on a ticket that isn't over;
-  if there is none, it is not delivered.
+- **Who counts as live.** Tickets build at the same time, so the receiver
+  may be on another ticket, working right now. A named address whose ticket
+  is in the run and not over gets the message queued, even if that agent
+  hasn't started yet: it gets it at its first tool call. A ticket is over
+  (`isOver`) once it pushed, is stuck, a billing stop ended the run, or the
+  run's PR is open. A ticket that joined but hasn't pushed isn't over: a
+  clash or failed gates after joining sends it back to its agents, and the
+  implementer's follow-up (same session) or a fresh test-writer gets what
+  waits. `all` goes to every other test-writer and implementer that has
+  started on a ticket that isn't over, on any ticket; if there is none, it
+  is not delivered.
 - **Not delivered.** A message to an agent whose ticket is over is journaled
   as `not_delivered`, with why, and stays in the journal. It counts toward the
   cap.
 - **Refused.** A reviewer sender, a reviewer or malformed address, the
   sender itself, a ticket not in the run, empty text, text over 2,000
   characters, or a sixth message from one address
-  (`MAX_MESSAGES_PER_AGENT`, 5, per role per ticket). Refused messages are
+  (`MAX_MESSAGES_PER_AGENT`, 5, per address: `implementer#11` and
+  `implementer#12` each have their own 5; a fresh agent on a rejoin keeps its
+  address's count). Refused messages are
   journaled too, with the reason, and don't count toward the cap.
 
 Every message is journaled word for word as `agent_message` (`ticket` and
@@ -538,9 +545,10 @@ Every message is journaled word for word as `agent_message` (`ticket` and
   status: 'queued' | 'not_delivered' | 'refused', recipients: string[], reason: string | null }
 ```
 
-The rules are pure (`planMessage`, `pendingMessages`, `deliveryText` in
-`src/messages/agent-messages.ts`) and read the journal on every call, so a
-resumed run hands over exactly what is still waiting.
+The rules are pure (`planMessage`, `pendingMessages`, `deliveryText`,
+`isOver` in `src/messages/agent-messages.ts`) and read the journal on every
+call: liveness, the cap, and what waits come from the journal alone, never
+from memory, so a resumed run hands over exactly what is still waiting.
 
 ## Guards
 
@@ -737,8 +745,12 @@ step, limits and billing stops with two tickets in flight included.
 `send_message` through a real MCP client connected to the session's `luca`
 server in memory, and runs the delivery hooks as the SDK would.
 `src/messages/agent-messages.test.ts` tests the message rules on journals;
-the end-to-end test also sends a message from the test-writer to the
-implementer, and a run note between them.
+`src/messages/agent-messaging.test.ts` runs it on a real journal file, a
+resumed engine included. The one-ticket end-to-end test sends a message from
+the test-writer to the implementer, and a run note between them;
+`src/core/run-many-tickets-messages.test.ts` runs the many-ticket practice
+run with messages across #11 and #12 while both build, `all`, a message
+that waits for #11's clash follow-up, and a run note reaching #12 and #13.
 `src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
 `src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one

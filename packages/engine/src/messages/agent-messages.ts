@@ -56,10 +56,15 @@ export const parseAddress = (
 }
 
 /**
- * Whether a ticket is over for messages: it joined the run branch, it is
- * stuck, or the run's PR is open.
+ * Whether a ticket is over for messages: it pushed (its join and the gates
+ * after it passed), it is stuck, the run's PR is open, or a billing stop
+ * ended the run. A ticket that joined but hasn't pushed isn't over yet: a
+ * clash or failed gates after joining sends it back to its agents.
+ *
+ * @example
+ * isOver({ state: replayRun({ records }), ticket: 11 })
  */
-const isOver = ({
+export const isOver = ({
     state,
     ticket,
 }: {
@@ -67,9 +72,10 @@ const isOver = ({
     ticket: number
 }): boolean => {
     if (state.pull_request !== null) return true
+    if (state.plan.billing_stopped !== null) return true
     const progress = state.tickets[ticket]
     if (progress === undefined) return false
-    return progress.stuck !== null || progress.joined?.ok === true
+    return progress.stuck !== null || progress.pushed !== null
 }
 
 const inRun = ({
@@ -193,8 +199,10 @@ const verdictFor = ({
  *
  * - Only test-writers and implementers send, and only they receive.
  * - `to` is an address such as `implementer#11`, or `all`. A named address
- *   whose ticket is in the run and not over is queued even if that agent
- *   hasn't started yet: it gets it at its first tool call.
+ *   whose ticket is in the run and not over (`isOver`) is queued even if
+ *   that agent hasn't started yet: it gets it at its first tool call.
+ *   Tickets build at the same time, so the receiver may be on another
+ *   ticket, working right now.
  * - `all` goes to every other test-writer and implementer that has started
  *   on a ticket that isn't over.
  * - At most `MAX_MESSAGES_PER_AGENT` per address; refused ones don't count.

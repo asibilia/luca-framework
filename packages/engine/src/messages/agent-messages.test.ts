@@ -11,10 +11,15 @@ import {
 import type { AgentMessage, JournalEntry } from '../journal/journal-record'
 import {
     agentStarted,
+    billingStopped,
     intakePassed,
+    joinClashed,
     joined,
     practiceTicket,
+    pullRequestOpened,
+    pushed,
     runBranchCreated,
+    ticketRebased,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
@@ -247,25 +252,14 @@ describe('planMessage', () => {
 
     test('a message to an agent whose ticket is over is not delivered, and says why', () => {
         for (const over of [
-            stuck(11),
-            joined({ ticket: 11 }),
-            {
-                kind: 'pull_request_opened',
-                ticket: null,
-                role: null,
-                content: {
-                    number: 1,
-                    url: 'u',
-                    head: 'h',
-                    base: 'main',
-                    title: 't',
-                    body: 'b',
-                },
-            } satisfies JournalEntry,
+            [stuck(11)],
+            [joined({ ticket: 11 }), pushed({ ticket: 11 })],
+            [billingStopped({ reason: 'An API key is set.' })],
+            [pullRequestOpened()],
         ]) {
             expect(
                 plan({
-                    entries: [over],
+                    entries: over,
                     from: 'test-writer#12',
                     to: 'implementer#11',
                 })
@@ -283,6 +277,7 @@ describe('planMessage', () => {
             agentStarted({ ticket: 11, role: 'implementer' }),
             agentStarted({ ticket: 11, role: 'ticket-reviewer' }),
             joined({ ticket: 11 }),
+            pushed({ ticket: 11 }),
             agentStarted({ ticket: 12, role: 'test-writer' }),
             agentStarted({ ticket: 12, role: 'test-writer' }),
             agentStarted({ ticket: 12, role: 'implementer' }),
@@ -304,6 +299,140 @@ describe('planMessage', () => {
                 to: 'all',
             })
         ).toMatchObject({ status: 'not_delivered', reason: expect.any(String) })
+    })
+})
+
+describe('with tickets building at the same time', () => {
+    const bothLive = [
+        agentStarted({ ticket: 11, role: 'test-writer' }),
+        agentStarted({ ticket: 12, role: 'test-writer' }),
+        agentStarted({ ticket: 11, role: 'implementer' }),
+        agentStarted({ ticket: 12, role: 'implementer' }),
+    ]
+
+    test("a message from one ticket's agent waits for a live agent on the other ticket", () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#11',
+            to: 'implementer#12',
+            text: 'sum is exported from src/index.ts now.',
+        })
+        expect(
+            pendingMessages({
+                records: recordsAfter(entries),
+                address: 'implementer#12',
+            }).map(({ from, text }) => ({ from, text }))
+        ).toEqual([
+            {
+                from: 'implementer#11',
+                text: 'sum is exported from src/index.ts now.',
+            },
+        ])
+    })
+
+    test('"all" reaches the agents on both tickets, oldest start first', () => {
+        expect(
+            plan({ entries: bothLive, from: 'implementer#11', to: 'all' })
+                .recipients
+        ).toEqual(['test-writer#11', 'test-writer#12', 'implementer#12'])
+    })
+
+    test(`each address has its own ${MAX_MESSAGES_PER_AGENT}: implementer#11's messages don't use up implementer#12's`, () => {
+        let entries: JournalEntry[] = bothLive
+        for (let count = 0; count < MAX_MESSAGES_PER_AGENT; count += 1) {
+            for (const [from, to] of [
+                ['implementer#11', 'implementer#12'],
+                ['implementer#12', 'implementer#11'],
+            ] as const) {
+                entries = send({ entries, from, to })
+            }
+        }
+        const statuses = entries.flatMap((entry) =>
+            entry.kind === 'agent_message' ? [entry.content.status] : []
+        )
+        expect(statuses).toEqual(
+            Array(MAX_MESSAGES_PER_AGENT * 2).fill('queued')
+        )
+        for (const from of ['implementer#11', 'implementer#12']) {
+            expect(plan({ entries, from, to: 'all' }).status).toBe('refused')
+        }
+        expect(
+            plan({ entries, from: 'test-writer#12', to: 'all' }).status
+        ).toBe('queued')
+    })
+
+    test('a ticket waiting to join still gets messages: a clash sends it back to be fixed', () => {
+        const waiting = [...bothLive, joined({ ticket: 11 })]
+        const entries = send({
+            entries: waiting,
+            from: 'implementer#12',
+            to: 'implementer#11',
+            text: 'product is exported from src/index.ts too.',
+        })
+        expect(entries.at(-1)).toMatchObject({
+            content: { status: 'queued', recipients: ['implementer#11'] },
+        })
+        // The join clashes and the ticket is rebased: its implementer, back
+        // in its session, gets the message at its next tool call.
+        expect(
+            pendingMessages({
+                records: recordsAfter([
+                    ...entries,
+                    joinClashed({ ticket: 11 }),
+                    ticketRebased({ ticket: 11, cause: 'clash' }),
+                ]),
+                address: 'implementer#11',
+            }).map(({ text }) => text)
+        ).toEqual(['product is exported from src/index.ts too.'])
+    })
+
+    test('a pushed ticket is over; the other one is not', () => {
+        const entries = [
+            ...bothLive,
+            joined({ ticket: 11 }),
+            pushed({ ticket: 11 }),
+        ]
+        expect(
+            plan({ entries, from: 'implementer#12', to: 'implementer#11' })
+                .status
+        ).toBe('not_delivered')
+        expect(
+            plan({ entries, from: 'implementer#12', to: 'all' }).recipients
+        ).toEqual(['test-writer#12'])
+    })
+
+    test("a stuck ticket ends only its own agents' messages", () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#11',
+            to: 'all',
+        })
+        const after = recordsAfter([...entries, stuck(12)])
+        expect(
+            pendingMessages({ records: after, address: 'implementer#12' })
+        ).toEqual([])
+        expect(
+            pendingMessages({ records: after, address: 'test-writer#11' }).map(
+                ({ id }) => id
+            )
+        ).toEqual(['msg-1'])
+    })
+
+    test('a billing stop ends every ticket', () => {
+        const entries = send({
+            entries: bothLive,
+            from: 'implementer#11',
+            to: 'implementer#12',
+        })
+        expect(
+            pendingMessages({
+                records: recordsAfter([
+                    ...entries,
+                    billingStopped({ reason: 'An API key is set.' }),
+                ]),
+                address: 'implementer#12',
+            })
+        ).toEqual([])
     })
 })
 
