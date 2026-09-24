@@ -7,9 +7,11 @@ import type {
     JournalRecord,
     StuckReason,
 } from './journal-record'
+import { crashesAfter, type CrashCounts } from './step-records'
 
 import type { RejoinContext } from '../agents/role-prompts'
 import {
+    AgentRoleSchema,
     isBlocking,
     lensOf,
     type AgentRole,
@@ -210,6 +212,11 @@ export type TicketProgress = {
     retried: ReplayedStuck | null
     /** A test setup file change an agent asked for; the ticket is stuck on it. */
     setup_change: { role: AgentRole; file: string; reason: string } | null
+    /**
+     * The role whose turn a crash cut off (`run_resumed`), so the fresh
+     * agent that takes it again is told. Cleared once an agent starts.
+     */
+    crashed_turn: AgentRole | null
 }
 
 /** Why a ticket is stuck, as journaled. */
@@ -294,6 +301,8 @@ export type FinalReviewState = {
     passed: boolean
     stuck: { reason: StuckReason; detail: string } | null
     shipped: boolean
+    /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
+    crashed_turn: AgentRole | null
 }
 
 /** The final review before it starts. */
@@ -322,6 +331,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     passed: false,
     stuck: null,
     shipped: false,
+    crashed_turn: null,
 }
 
 /** The engine's install in a new worktree: `null` check means nothing to install. */
@@ -459,6 +469,13 @@ export type RunState = {
     final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
     /** Memory's recalls, the learner, and the saves (#370). */
     memory: MemoryState
+    /**
+     * Crashes in a row per scheduler key (`run_resumed`), until a step under
+     * the key ends. A ticket's `retry`, or the final review's, clears its own.
+     */
+    crashes: CrashCounts
+    /** Set once a stop for crashes is journaled. It sticks. */
+    crash_stopped: { reason: string } | null
     last_seq: number
 }
 
@@ -501,6 +518,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     skipped: null,
     retried: null,
     setup_change: null,
+    crashed_turn: null,
 }
 
 const EMPTY_STATE: RunState = {
@@ -534,6 +552,8 @@ const EMPTY_STATE: RunState = {
     final_stuck_report: null,
     final_reply: null,
     memory: EMPTY_MEMORY,
+    crashes: {},
+    crash_stopped: null,
     last_seq: 0,
 }
 
@@ -640,7 +660,11 @@ const applyRecord = ({
     state: RunState
     record: JournalRecord
 }): RunState => {
-    const base = { ...state, last_seq: record.seq }
+    const base = {
+        ...state,
+        last_seq: record.seq,
+        crashes: crashesAfter({ crashes: state.crashes, record }),
+    }
     const next =
         record.kind === 'gates_run' && record.content.target === 'run_branch'
             ? {
@@ -805,10 +829,23 @@ const applyRecord = ({
         // A session's readings and the stops and limit waits change no
         // ticket: the step they cut off is picked up again afterwards.
         case 'agent_session':
-        case 'run_stopped':
         case 'limit_wait_started':
         case 'limit_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
+        case 'run_stopped':
+            return {
+                ...next,
+                plan: planAfter({ plan: state.plan, record }),
+                crash_stopped: record.content.crashed
+                    ? { reason: record.content.reason }
+                    : state.crash_stopped,
+            }
+        // The crash counts (see `crashesAfter`) are all a step record changes.
+        case 'step_started':
+        case 'step_ended':
+            return next
+        case 'run_resumed':
+            return resumedAfter({ state: next, record })
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
         case 'reply_ignored': {
@@ -825,6 +862,7 @@ const applyRecord = ({
         case 'final_review_retried':
             return {
                 ...next,
+                crashes: omitFinalKeys({ crashes: next.crashes }),
                 final_stuck_report: null,
                 final_reply: null,
                 final_review: resumedFinalReview({
@@ -877,6 +915,11 @@ const applyRecord = ({
             return applyTicketRecord({
                 state: {
                     ...next,
+                    // A retry gives the ticket fresh crash counts too.
+                    crashes:
+                        record.ticket === null
+                            ? next.crashes
+                            : omit(next.crashes, String(record.ticket)),
                     run_branch_install,
                     engine_comments: engineCommentsAfter({
                         state,
@@ -1262,9 +1305,12 @@ const finalReviewAfter = ({
                 results: {},
             }
         }
+        case 'agent_started':
+            return isFixerRole(record.content.role)
+                ? { ...review, crashed_turn: null }
+                : review
         case 'lens_started':
         case 'lens_finished':
-        case 'agent_started':
         case 'agent_session':
             return review
         case 'final_review_fixing':
@@ -1382,6 +1428,9 @@ type TicketRecord = Exclude<
             | 'memories_saved'
             | 'learning_skipped'
             | 'memories_reported'
+            | 'step_started'
+            | 'step_ended'
+            | 'run_resumed'
     }
 >
 
@@ -1607,7 +1656,7 @@ const progressChange = ({
         case 'baseline_tests':
             return { baseline: record.content }
         case 'agent_started':
-            return { retried: null }
+            return { retried: null, crashed_turn: null }
         case 'agent_finished': {
             const finished = record.content
             return {
@@ -1750,8 +1799,8 @@ const finalRepliesAfter = ({
 /**
  * The stuck final review resumed by `retry`, like a resumed ticket: fresh
  * fixers (no session kept) and fresh counts, and the owner's edits in the
- * run branch's worktree kept. A leftover scan or failed gates just run
- * again; a failed lens gets a fresh one; otherwise the open fix round
+ * run branch's worktree kept. A leftover scan, failed gates, or a step
+ * crashes cut off just run again; a failed lens gets a fresh one; otherwise the open fix round
  * starts over as round 1, so the fixes (and the owner's edits) are gated,
  * committed, pushed, and re-reviewed.
  */
@@ -1777,7 +1826,8 @@ const resumedFinalReview = ({
         fix === null ||
         stuck?.reason === 'leftovers_found' ||
         stuck?.reason === 'gates_failed' ||
-        stuck?.reason === 'agent_failed'
+        stuck?.reason === 'agent_failed' ||
+        stuck?.reason === 'crashed'
     ) {
         return base
     }
@@ -1872,8 +1922,8 @@ const retriedChange = ({
  *   branch after a rebase), then the gates;
  * - in a review fix round, the round starts over as round 1 with fresh
  *   fixers, so the user's changes are gated, committed, and re-reviewed;
- * - a leftover scan, a failed install, a reviewer's failed tries, or a
- *   failed join just run again.
+ * - a leftover scan, a failed install, a reviewer's failed tries, a
+ *   failed join, or a step crashes cut off just run again.
  */
 const resumedProgress = ({
     progress,
@@ -1910,6 +1960,7 @@ const resumedProgress = ({
         reason === 'install_failed' ||
         reason === 'join_failed' ||
         reason === 'join_gates_failed' ||
+        reason === 'crashed' ||
         reviewerFailed
     ) {
         return base
@@ -2006,6 +2057,93 @@ const rebasedChange = ({
         sessions: omit(progress.sessions, ['test-writer', 'ticket-reviewer']),
     }
 }
+
+/** The final review's scheduler keys: `final`, and `lens:<lens>`. */
+export const isFinalKey = (key: string): boolean =>
+    key === 'final' || key.startsWith('lens:')
+
+/** The crash counts without the final review's keys, for its `retry`. */
+const omitFinalKeys = ({ crashes }: { crashes: CrashCounts }): CrashCounts =>
+    Object.fromEntries(
+        Object.entries(crashes).filter(([key]) => !isFinalKey(key))
+    )
+
+const isFixerRole = (role: AgentRole): boolean =>
+    role === 'test-writer' || role === 'implementer'
+
+/** A failed turn's session forgotten, when it is this role's. */
+const failureWithoutSession = <
+    Failure extends { role: AgentRole; session_id: string | null },
+>({
+    failure,
+    role,
+}: {
+    failure: Failure | null | undefined
+    role: AgentRole
+}): Failure | null =>
+    failure === null || failure === undefined
+        ? null
+        : failure.role === role
+          ? { ...failure, session_id: null }
+          : failure
+
+/**
+ * A restarted engine's `run_resumed`: each agent turn a crash cut off is
+ * taken again in a fresh session, so its role's session (and a failed
+ * turn's session, for a follow-up) is forgotten, on its ticket or in the
+ * final review, and the fresh agent is told of the crash. The counts it
+ * adds live in `crashes`.
+ */
+const resumedAfter = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: Extract<JournalRecord, { kind: 'run_resumed' }>
+}): RunState =>
+    record.content.interrupted.reduce((current, { key, ticket, role }) => {
+        const parsed = AgentRoleSchema.safeParse(role)
+        if (!parsed.success) return current
+        const agent = parsed.data
+        if (key === 'final') {
+            const review = current.final_review
+            const failed = failureWithoutSession({
+                failure: review.agent_failures[agent],
+                role: agent,
+            })
+            return {
+                ...current,
+                final_review: {
+                    ...review,
+                    sessions: omit(review.sessions, agent),
+                    agent_failures:
+                        failed === null
+                            ? review.agent_failures
+                            : { ...review.agent_failures, [agent]: failed },
+                    crashed_turn: isFixerRole(agent)
+                        ? agent
+                        : review.crashed_turn,
+                },
+            }
+        }
+        if (ticket === null || key !== String(ticket)) return current
+        const progress = current.tickets[ticket] ?? EMPTY_TICKET_PROGRESS
+        return {
+            ...current,
+            tickets: {
+                ...current.tickets,
+                [ticket]: {
+                    ...progress,
+                    sessions: omit(progress.sessions, agent),
+                    agent_failure: failureWithoutSession({
+                        failure: progress.agent_failure,
+                        role: agent,
+                    }),
+                    crashed_turn: agent,
+                },
+            },
+        }
+    }, state)
 
 const applyTicketRecord = ({
     state,

@@ -32,6 +32,7 @@ const REASON_LINES: Record<StuckReason, string> = {
     install_failed: 'Installing the dependencies failed.',
     setup_change_needed:
         'An agent needs a test setup file changed, and only you may change one.',
+    crashed: 'The engine crashed in the same step, again and again.',
 }
 
 /** What the user could do, per reason; `n` is the ticket. */
@@ -66,6 +67,8 @@ const suggestion = ({
             return `Fix the manifest or lockfile on the base branch, then reply ${retry}.`
         case 'setup_change_needed':
             return `Make that change yourself in the worktree, then reply ${retry}.`
+        case 'crashed':
+            return `Read the engine's log for why it crashed, fix what trips it, then reply ${retry} to take the step again with a fresh agent.`
     }
 }
 
@@ -173,6 +176,8 @@ const FINAL_REASON_LINES: Partial<Record<StuckReason, string>> = {
     bad_test:
         "While fixing the final review's findings, the implementer sent a test back as bad.",
     agent_failed: 'A final review agent failed on every try it had.',
+    crashed:
+        'The engine crashed in the same final review step, again and again.',
 }
 
 /** What the owner could do about the stuck final review, per reason. */

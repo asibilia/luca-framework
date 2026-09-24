@@ -217,7 +217,67 @@ const RunStoppedEntrySchema = z.object({
         reason: z.string(),
         role: AgentRoleSchema.nullable().default(null),
         billing: z.boolean().default(false),
+        /**
+         * The same step was cut off by a crash `MAX_CRASHES` times in a row
+         * on a run-level key: like a billing stop, it sticks.
+         */
+        crashed: z.boolean().default(false),
     }),
+})
+
+/**
+ * The scheduler is about to carry out one step: an action it started, other
+ * than a wait. `key` is the scheduler's key for it (a ticket's number,
+ * `final`, `lens:<lens>`, `replies`, or `run`), and `step` its action type,
+ * plus `:<role>` for an agent's turn. `first_seq` is the `step_started` seq
+ * of this step's first try when a crash cut off an earlier try of it, else
+ * `null`. `ticket` is the action's ticket, and `role` the agent's role.
+ */
+const StepStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('step_started'),
+    content: z.object({
+        key: z.string().min(1),
+        step: z.string().min(1),
+        first_seq: z.number().int().min(1).nullable().default(null),
+    }),
+})
+
+/**
+ * The step under `key` settled: its own records are in the journal, so it
+ * is a checkpoint. Not written when the step threw.
+ */
+const StepEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('step_ended'),
+    content: z.object({
+        key: z.string().min(1),
+        step: z.string().min(1),
+    }),
+})
+
+/** One step a crash cut off: its `step_started` had no `step_ended`. */
+export const InterruptedStepSchema = z.object({
+    key: z.string().min(1),
+    step: z.string().min(1),
+    ticket: z.number().int().positive().nullable(),
+    role: z.string().nullable(),
+    /** The seq of the cut-off step's `step_started`. */
+    started_seq: z.number().int().min(1),
+    /** That record's `first_seq`: the step's first try, if it was a redo. */
+    first_seq: z.number().int().min(1).nullable(),
+})
+
+export type InterruptedStep = z.infer<typeof InterruptedStepSchema>
+
+/**
+ * A restarted engine found steps a crash cut off, journaled once before its
+ * first step. Each is taken again, an agent's turn in a fresh session.
+ */
+const RunResumedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_resumed'),
+    content: z.object({ interrupted: z.array(InterruptedStepSchema) }),
 })
 
 /**
@@ -416,6 +476,7 @@ export const StuckReasonSchema = z.enum([
     'join_gates_failed',
     'install_failed',
     'setup_change_needed',
+    'crashed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -882,6 +943,9 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     MemoriesSavedEntrySchema,
     LearningSkippedEntrySchema,
     MemoriesReportedEntrySchema,
+    StepStartedEntrySchema,
+    StepEndedEntrySchema,
+    RunResumedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -942,6 +1006,9 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     MemoriesSavedEntrySchema.extend(STAMP_FIELDS),
     LearningSkippedEntrySchema.extend(STAMP_FIELDS),
     MemoriesReportedEntrySchema.extend(STAMP_FIELDS),
+    StepStartedEntrySchema.extend(STAMP_FIELDS),
+    StepEndedEntrySchema.extend(STAMP_FIELDS),
+    RunResumedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -1001,6 +1068,9 @@ export const JournalKindSchema = z.enum([
     'memories_saved',
     'learning_skipped',
     'memories_reported',
+    'step_started',
+    'step_ended',
+    'run_resumed',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>
