@@ -187,6 +187,13 @@ export const BOARD_VOCABULARY = {
         ok: z.boolean(),
         error: z.string().optional(),
     }),
+    /** A joined ticket sent back to be fixed on top of the run branch. */
+    ticket_rebased: z.looseObject({
+        /** `clash` or `join_gates`. */
+        cause: z.string(),
+        tests: z.array(z.string()).catch([]),
+        code: z.array(z.string()).catch([]),
+    }),
     run_branch_pushed: z.looseObject({ branch: z.string() }),
     ticket_stuck: z.looseObject({
         reason: z.string(),
@@ -195,6 +202,10 @@ export const BOARD_VOCABULARY = {
     pull_request_opened: z.looseObject({
         number: z.number().int(),
         url: z.string(),
+    }),
+    /** The run's worktrees, removed at its end. Nothing visible changes. */
+    worktrees_removed: z.looseObject({
+        paths: z.array(z.string()).catch([]),
     }),
     // Jev in shadow mode: counted, never acted on.
     jev_asked: JevJobSchema,
@@ -269,9 +280,11 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'commit_made' }),
     entry({ kind: 'gates_run' }),
     entry({ kind: 'ticket_joined' }),
+    entry({ kind: 'ticket_rebased' }),
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
     entry({ kind: 'pull_request_opened' }),
+    entry({ kind: 'worktrees_removed' }),
     entry({ kind: 'jev_asked' }),
     entry({ kind: 'jev_answered' }),
     entry({ kind: 'jev_failed' }),

@@ -799,6 +799,8 @@ const applyKind = ({
                               }),
                           },
             })
+        case 'ticket_rebased':
+            return ticketRebased({ state, record })
         case 'run_branch_pushed':
             return updateTicket({
                 state,
@@ -848,6 +850,9 @@ const applyKind = ({
                     pr_number: record.content.number,
                 },
             }
+        // Removing the worktrees at the end changes nothing on the board.
+        case 'worktrees_removed':
+            return state
         case 'jev_asked':
             return {
                 ...state,
@@ -1230,6 +1235,56 @@ const gatesRun = ({
         },
     })
 }
+
+/** What happened when a ticket was sent back onto the run branch, in words. */
+export const rebasedText = ({
+    content,
+}: {
+    content: Extract<BoardRecord, { kind: 'ticket_rebased' }>['content']
+}): string => {
+    if (content.cause === 'join_gates') {
+        return 'The checks failed after joining; fixing on top of the run branch'
+    }
+    const files = [...content.tests, ...content.code]
+    return files.length === 0
+        ? 'Clashed with the run branch; fixing on top of it'
+        : `Clashed with the run branch in ${files.join(', ')}`
+}
+
+/**
+ * A ticket sent back onto the run branch builds again: its tests first if
+ * test files clashed, else its code; then the checks and a fresh review,
+ * whose fix rounds count from zero again.
+ */
+const ticketRebased = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'ticket_rebased' }>
+}): BoardState =>
+    updateTicket({
+        state,
+        number: record.ticket,
+        update: (card) => ({
+            ...card,
+            stage: 'building',
+            step: record.content.tests.length > 0 ? 0 : 2,
+            role: null,
+            fix_round: 0,
+            // The engine starts the ticket's review loop over on top of the
+            // run branch: a fresh reviewer, fresh review fix rounds.
+            review_fix_round: 0,
+            findings: null,
+            open_check: null,
+            failed_turn: null,
+            activity: 'fixing on the run branch',
+            tried: withTried({
+                tried: card.tried,
+                line: rebasedText({ content: record.content }),
+            }),
+        }),
+    })
 
 const skipTicket = ({
     state,

@@ -3,6 +3,7 @@ import {
     countFindings,
     failureText,
     reasonText,
+    rebasedText,
     reviewCountsText,
     startKind,
 } from './reduce-board'
@@ -263,6 +264,11 @@ export const describeRecord = ({
                       text: `${at}couldn't join the run branch: ${record.content.error ?? 'no detail'}`,
                       tone: 'danger',
                   })
+        case 'ticket_rebased':
+            return event({
+                text: `${at}${rebasedText({ content: record.content }).replace(/^./, (first) => first.toLowerCase())}.`,
+                tone: 'warning',
+            })
         case 'ticket_stuck':
             return event({
                 text: `${at}stuck. ${reasonText({ reason: record.content.reason })}`,
@@ -316,6 +322,7 @@ export const describeRecord = ({
         case 'ticket_snapshot':
         case 'baseline_tests':
         case 'run_branch_pushed':
+        case 'worktrees_removed':
         case 'agent_session':
         case 'jev_asked':
         case 'jev_answered':
