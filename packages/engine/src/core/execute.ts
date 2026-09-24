@@ -252,6 +252,19 @@ export const executeAction = async ({
                 clock: clock ?? SYSTEM_CLOCK,
                 reply_poll_ms,
             })
+        case 'stop_for_crashes':
+            journal.append({
+                kind: 'run_stopped',
+                ticket: null,
+                role: null,
+                content: {
+                    reason: action.reason,
+                    role: null,
+                    billing: false,
+                    crashed: true,
+                },
+            })
+            return
         case 'record_usage':
             journal.append({
                 kind: 'usage_recorded',

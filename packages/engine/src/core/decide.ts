@@ -1,4 +1,5 @@
 import { decideBuild, type BuildAction } from './decide-build'
+import { decideCrashes, type CrashAction } from './decide-crashes'
 import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
 import { decideUsage, type UsageAction } from './decide-usage'
@@ -24,6 +25,8 @@ export type EngineAction =
     | PlanAction
     /** A finished ticket's usage, or the run's before it ends. */
     | UsageAction
+    /** Stopping the run for good after crashes on a run-level step. */
+    | CrashAction
     /** Intake passed and every ticket is snapshotted: build the tickets. */
     | BuildAction
     /** Memory's recall points, the learner, and its saves (#370). */
@@ -37,7 +40,9 @@ export type EngineAction =
  * intake, then at most one per ticket while tickets build at the same time.
  * It never reads the tracker, the disk, or the clock.
  *
- * The plan comes first: a limit wait or a billing stop is the only action,
+ * Crashes come first: a run-level step cut off by a crash `MAX_CRASHES`
+ * times in a row stops the run for good (`decide-crashes.ts`). Then the
+ * plan: a limit wait or a billing stop is the only action,
  * for the whole run, however many tickets are in flight (the scheduler lets
  * them settle first, then every cut-off step is taken again after the
  * wait). A finished ticket's usage is recorded beside the build steps, and
@@ -55,6 +60,15 @@ export const decideSteps = ({
 }): EngineAction[] => {
     const state = replayRun({ records })
     const { phase, spec_number } = state
+    const crash = phase === 'new' ? null : decideCrashes({ state })
+    if (crash !== null) {
+        // A stop for crashes is the end: the run's usage is recorded first.
+        const usage =
+            crash.type === 'done' && phase === 'intake_passed'
+                ? decideUsage({ records, state, ending: true })
+                : null
+        return [usage ?? crash]
+    }
     if (phase !== 'intake_passed' || spec_number === null) {
         return [decideIntake({ state })]
     }

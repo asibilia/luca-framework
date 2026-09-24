@@ -204,6 +204,7 @@ export const finalFixerPrompt = ({
     fix,
     gates,
     run_notes,
+    sections,
 }: {
     role: FinalFixerRole
     snapshot: ReplayedSnapshot
@@ -212,6 +213,8 @@ export const finalFixerPrompt = ({
     gates: ReplayedGates | null
     /** Notes earlier agents in the run left, oldest first. */
     run_notes?: PromptRunNote[]
+    /** More sections after the task, such as a follow-up's message. */
+    sections?: string[]
 }): string => {
     const kind = role === 'test-writer' ? 'test' : 'code'
     const task =
@@ -227,6 +230,7 @@ export const finalFixerPrompt = ({
         FIXER_TASKS[role],
         ...workSections({ snapshot }),
         task,
+        ...(sections ?? []),
         ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')
 }

@@ -88,6 +88,11 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 ok: false,
                 message: `Run stopped for billing: ${action.reason}. It will not go on; start a new run once per-token billing is off.`,
             }
+        case 'crashed':
+            return {
+                ok: false,
+                message: `Run stopped for good after crashes: ${action.reason} It will not go on; read the engine's log for why it crashed, then start a new run.`,
+            }
     }
 }
 

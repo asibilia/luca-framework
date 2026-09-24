@@ -469,7 +469,7 @@ describe('decision step: the red check fix loop', () => {
         expect(again).toEqual(once)
     })
 
-    test('a failed red check with no test-writer session to go back to makes the ticket stuck', () => {
+    test('a failed red check with no test-writer session to go back to goes to a fresh test-writer with the same message', () => {
         expect(
             decideAfter([
                 runBranchCreated(),
@@ -494,7 +494,11 @@ describe('decision step: the red check fix loop', () => {
                 },
                 redCheck({ ticket: 11, ok: false }),
             ])
-        ).toMatchObject({ type: 'mark_stuck', reason: 'red_check_failed' })
+        ).toMatchObject({
+            type: 'launch_agent',
+            role: 'test-writer',
+            prompt: expect.stringContaining('The red check failed.'),
+        })
     })
 
     test('the PR lists the assumptions from every round, once each', () => {
