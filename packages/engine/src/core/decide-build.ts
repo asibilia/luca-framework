@@ -5,6 +5,12 @@ import {
     type FinalReviewAction,
 } from './decide-final-review'
 import {
+    replySteps,
+    skipDependent,
+    stuckTicketSteps,
+    type StuckAction,
+} from './decide-stuck'
+import {
     clashFixMessage,
     failedChecks,
     failedTryMessage,
@@ -24,6 +30,7 @@ import {
     reviewFixSection,
     reviewSections,
 } from './review-text'
+import { retrySection, setupChangeDetail } from './stuck-text'
 
 import { rejoinSection, rolePrompt } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
@@ -178,22 +185,11 @@ export type BuildAction =
           title: string
           body: string
       }
-    /** Every ticket joined and the PR is open. */
+    /** Every ticket joined (or was skipped) and the PR is open. */
     | {
           type: 'done'
           outcome: 'pr_opened'
           pull_request: { number: number; url: string }
-      }
-    /**
-     * A ticket is stuck. For now the run ends here; escalation and replies
-     * (later tickets) let the rest of the run carry on.
-     */
-    | {
-          type: 'done'
-          outcome: 'stuck'
-          ticket: number
-          reason: StuckReason
-          detail: string
       }
     /**
      * The final review is stuck. The run ends without a PR, and the run
@@ -208,6 +204,12 @@ export type BuildAction =
       }
     /** The final review of the whole run branch (`decide-final-review.ts`). */
     | FinalReviewAction
+    /** The owner replied `stop`: the run ends without a PR; its branch stays. */
+    | { type: 'done'; outcome: 'stopped_by_user' }
+    /** Every ticket was skipped, so there is nothing to open a PR for. */
+    | { type: 'done'; outcome: 'all_skipped' }
+    /** Telling the owner about stuck work, and acting on their replies. */
+    | StuckAction
 
 /** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
 export const isRefactorTicket = ({
@@ -268,9 +270,24 @@ export const mayEditTests = ({
  * The sections a launch adds: the review's (see `reviewPromptSections`),
  * and, for a test-writer or implementer fixing a ticket on top of the run
  * branch, the files that clashed. The reviewer's re-review after a rebase
- * is the review's own.
+ * is the review's own. The first agent after a `retry` resumed a stuck
+ * ticket is also told why it got stuck.
  */
 const promptSections = ({
+    role,
+    progress,
+}: {
+    role: AgentRole
+    progress: TicketProgress
+}): string[] => {
+    const sections = buildPromptSections({ role, progress })
+    const { retried } = progress
+    return retried === null
+        ? sections
+        : [...sections, retrySection({ retried })]
+}
+
+const buildPromptSections = ({
     role,
     progress,
 }: {
@@ -810,10 +827,13 @@ const nextTicketStep = ({
     run_notes,
     run_branch,
     joiner,
+    setup_files,
 }: StepArgs & {
     run_branch: ReplayedWorktree
     /** Whether the ticket is first in the join queue. */
     joiner: boolean
+    /** The config's test setup files. */
+    setup_files: string[]
 }): BuildAction | null => {
     const number = ticket.number
     if (progress.agent_failure !== null) {
@@ -823,6 +843,16 @@ const nextTicketStep = ({
             progress,
             run_notes,
             failed: progress.agent_failure,
+        })
+    }
+    if (progress.setup_change !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'setup_change_needed',
+            detail: setupChangeDetail({
+                ...progress.setup_change,
+                setup_files,
+            }),
         })
     }
     if (progress.install === null) {
@@ -944,28 +974,23 @@ export const decideBuild = ({
     const progress = (number: number): TicketProgress =>
         state.tickets[number] ?? EMPTY_TICKET_PROGRESS
 
-    const stuckTicket = numbers.find((number) => progress(number).stuck)
-    const stuckWhy =
-        stuckTicket === undefined ? null : progress(stuckTicket).stuck
-    if (stuckTicket !== undefined && stuckWhy !== null) {
+    const skipped = (number: number) => progress(number).skipped !== null
+    const pushed = (number: number) =>
+        !numbers.includes(number) || progress(number).pushed !== null
+
+    if (state.stop !== null) {
+        // Nothing new starts; pushed tickets' worktrees go, the rest stay.
         const paths = notRemoved({
             state,
             paths: numbers.flatMap((number) => {
-                const { pushed, worktree } = progress(number)
-                return pushed !== null && worktree !== null
+                const { worktree } = progress(number)
+                return pushed(number) && worktree !== null
                     ? [worktree.path]
                     : []
             }),
         })
         if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
-        return [
-            {
-                type: 'done',
-                outcome: 'stuck',
-                ticket: stuckTicket,
-                ...stuckWhy,
-            },
-        ]
+        return [{ type: 'done', outcome: 'stopped_by_user' }]
     }
 
     if (pull_request !== null) {
@@ -996,10 +1021,28 @@ export const decideBuild = ({
         install: run_branch_install,
         where: "the run branch's checkout",
     })
-    const pushed = (number: number) =>
-        !numbers.includes(number) || progress(number).pushed !== null
+    const replies = replySteps({ state, spec_number, numbers })
+    const stuckSteps = (number: number): BuildAction[] => {
+        const ticket = snapshot.tickets[number]
+        return ticket === undefined
+            ? []
+            : stuckTicketSteps({
+                  spec_number,
+                  ticket,
+                  progress: progress(number),
+              })
+    }
+    const isStuck = (number: number) =>
+        progress(number).stuck !== null && !skipped(number)
     if (runBranchFailure !== null) {
-        const first = numbers.find((number) => !pushed(number))
+        // Nothing builds on a run branch whose install failed: the first
+        // ticket is stuck on it until a retry installs it again.
+        if (numbers.some(isStuck)) {
+            return [...numbers.filter(isStuck).flatMap(stuckSteps), ...replies]
+        }
+        const first = numbers.find(
+            (number) => !pushed(number) && !skipped(number)
+        )
         if (first !== undefined) {
             return [
                 stuck({
@@ -1012,17 +1055,44 @@ export const decideBuild = ({
     }
 
     const queue = sortBy(
-        numbers.filter((number) => inJoinQueue(progress(number))),
+        numbers.filter(
+            (number) =>
+                inJoinQueue(progress(number)) &&
+                !isStuck(number) &&
+                !skipped(number)
+        ),
         (number) => progress(number).approved_seq
     )
     const joiner = queue[0] ?? null
+    // A stuck ticket's join is undone before any new ticket starts on it.
+    const stuckJoinOnRunBranch = numbers.some(
+        (number) =>
+            isStuck(number) &&
+            progress(number).joined?.ok === true &&
+            progress(number).pushed === null
+    )
 
     const steps = numbers.flatMap((number): BuildAction[] => {
         const ticket = snapshot.tickets[number]
         const ticketProgress = progress(number)
         if (ticket === undefined || ticketProgress.pushed !== null) return []
+        if (skipped(number)) return []
+        if (isStuck(number)) return stuckSteps(number)
+        const skippedBlocker = ticket.blockers.find(skipped)
+        if (skippedBlocker !== undefined) {
+            return [
+                skipDependent({
+                    ticket: number,
+                    because: skippedBlocker,
+                    spec_number,
+                }),
+            ]
+        }
         if (ticketProgress.worktree === null) {
-            const ready = queue.length === 0 && ticket.blockers.every(pushed)
+            const ready =
+                queue.length === 0 &&
+                !stuckJoinOnRunBranch &&
+                ticket.blockers.every(pushed)
             return ready
                 ? [
                       {
@@ -1040,12 +1110,31 @@ export const decideBuild = ({
             run_notes,
             run_branch,
             joiner: number === joiner,
+            setup_files: state.config?.test_setup_files ?? [],
         })
         return step === null ? [] : [step]
     })
-    if (steps.length > 0) return steps
+    if (steps.length > 0 || replies.length > 0) return [...steps, ...replies]
 
-    if (numbers.every(pushed)) {
+    if (
+        numbers.every((number) => pushed(number) || skipped(number)) &&
+        !numbers.some(pushed)
+    ) {
+        // Every ticket was skipped: no PR, and nothing left to build.
+        const paths = notRemoved({
+            state,
+            paths: [
+                ...numbers.flatMap((number) => {
+                    const { worktree } = progress(number)
+                    return worktree === null ? [] : [worktree.path]
+                }),
+                run_branch.path,
+            ],
+        })
+        if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
+        return [{ type: 'done', outcome: 'all_skipped' }]
+    }
+    if (numbers.every((number) => pushed(number) || skipped(number))) {
         const final = decideFinalReview({
             review: state.final_review,
             snapshot,
@@ -1055,7 +1144,7 @@ export const decideBuild = ({
         })
         if (final.status === 'working') return final.actions
         if (final.status === 'stuck') {
-            // The run branch's worktree stays for a retry (#366).
+            // The run branch's worktree stays for a retry.
             const paths = notRemoved({
                 state,
                 paths: numbers.flatMap((number) => {

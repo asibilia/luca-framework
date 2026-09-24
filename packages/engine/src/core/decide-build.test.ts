@@ -357,25 +357,21 @@ describe('decision step: building a ticket', () => {
         expect(action.detail).toContain(`\`${REFACTOR_LABEL}\` label`)
     })
 
-    test('a ticket stuck with nothing new to test ends the run with that reason', () => {
-        expect(
-            decideAfter([
-                ...stepsUpTo(1),
-                nothingNewToTest({ ticket: 11 }),
-                {
-                    kind: 'ticket_stuck',
-                    ticket: 11,
-                    role: null,
-                    content: { reason: 'nothing_new_to_test', detail: 'why' },
-                },
-            ])
-        ).toEqual({
-            type: 'done',
-            outcome: 'stuck',
-            ticket: 11,
-            reason: 'nothing_new_to_test',
-            detail: 'why',
-        })
+    test('a ticket stuck with nothing new to test is told to the spec issue with a refactor hint', () => {
+        const action = decideAfter([
+            ...stepsUpTo(1),
+            nothingNewToTest({ ticket: 11 }),
+            {
+                kind: 'ticket_stuck',
+                ticket: 11,
+                role: null,
+                content: { reason: 'nothing_new_to_test', detail: 'why' },
+            },
+        ])
+        expect(action).toMatchObject({ type: 'report_stuck', ticket: 11 })
+        expect(action.type === 'report_stuck' ? action.body : '').toContain(
+            'add the `refactor` label'
+        )
     })
 })
 
@@ -871,7 +867,7 @@ describe('decision step: a ticket gets stuck', () => {
         ).toMatchObject({ type: 'rebase_ticket', cause: 'join_gates' })
     })
 
-    test('a stuck ticket ends the run without a PR', () => {
+    test('a stuck ticket is told to the spec issue, not built on, and gets no PR', () => {
         expect(
             decideAfter([
                 ...stepsUpTo(2),
@@ -883,13 +879,7 @@ describe('decision step: a ticket gets stuck', () => {
                     content: { reason: 'red_check_failed', detail: 'why' },
                 },
             ])
-        ).toEqual({
-            type: 'done',
-            outcome: 'stuck',
-            ticket: 11,
-            reason: 'red_check_failed',
-            detail: 'why',
-        })
+        ).toMatchObject({ type: 'report_stuck', ticket: 11, spec_number: 10 })
     })
 })
 

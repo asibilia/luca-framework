@@ -3,6 +3,7 @@ import flatMap from 'lodash/flatMap'
 import uniq from 'lodash/uniq'
 
 import { shippedFindingsSection } from './final-review-text'
+import { reasonLine } from './stuck-text'
 
 import {
     EMPTY_FINAL_REVIEW,
@@ -22,11 +23,11 @@ const fileText = (file: string | null): string =>
 
 /**
  * The run's pull request title and body, from the snapshot, each ticket's
- * progress, and the final review: which tickets it closes, the assumptions
- * agents made (from every round of every agent on each ticket, and in the
- * final review), the reviews' nits, and the findings declined through
- * "won't fix". A final review shipped while stuck puts its open findings at
- * the very top.
+ * progress, and the final review: which tickets it closes, the tickets left
+ * out (skipped, and why), the assumptions agents made (from every round of
+ * every agent on each ticket, and in the final review), the reviews' nits,
+ * and the findings declined through "won't fix". A final review shipped
+ * while stuck puts its open findings at the very top.
  *
  * @example
  * const { title, body } = pullRequestText({ snapshot, tickets, final_review })
@@ -42,11 +43,26 @@ export const pullRequestText = ({
     final_review?: FinalReviewState
 }): { title: string; body: string } => {
     const review = final_review ?? EMPTY_FINAL_REVIEW
-    const { spec, ticket_order } = snapshot
-    const closes = ticket_order.map(
-        (number) =>
-            `- Closes #${number}: ${snapshot.tickets[number]?.title ?? ''}`
+    const { spec } = snapshot
+    const title = (number: number) => snapshot.tickets[number]?.title ?? ''
+    const isSkipped = (number: number) =>
+        (tickets[number]?.skipped ?? null) !== null
+    const ticket_order = snapshot.ticket_order.filter(
+        (number) => !isSkipped(number)
     )
+    const closes = ticket_order.map(
+        (number) => `- Closes #${number}: ${title(number)}`
+    )
+    const skipped = snapshot.ticket_order.flatMap((number) => {
+        const progress = tickets[number]
+        if (progress === undefined || progress.skipped === null) return []
+        const { because } = progress.skipped
+        const why =
+            because !== null
+                ? `waits on #${because}`
+                : `stuck (${progress.stuck === null ? 'no reason recorded' : reasonLine({ reason: progress.stuck.reason })}), skipped by reply`
+        return [`- #${number} ${title(number)}: ${why}`]
+    })
     const assumptions = flatMap(ticket_order, (number) =>
         uniq(tickets[number]?.assumptions ?? []).map(
             (text) => `- #${number}: ${text}`
@@ -111,6 +127,9 @@ export const pullRequestText = ({
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,
         `## Tickets\n\n${closes.join('\n')}`,
+        skipped.length === 0
+            ? ''
+            : `## Skipped tickets\n\nLeft out of this run. They stay open for a later run.\n\n${skipped.join('\n')}`,
         assumptions.length + finalAssumptions.length === 0
             ? ''
             : `## Assumptions\n\nCalls agents made by themselves. Please check them.\n\n${[...assumptions, ...finalAssumptions].join('\n')}`,

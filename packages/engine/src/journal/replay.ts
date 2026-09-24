@@ -189,7 +189,30 @@ export type TicketProgress = {
     joined: { ok: true; shas: string[] } | { ok: false; error: string } | null
     join_gates: ReplayedGates | null
     pushed: string | null
-    stuck: { reason: StuckReason; detail: string } | null
+    stuck: ReplayedStuck | null
+    /** The spec issue's comment that told the owner, once posted. */
+    stuck_report: { comment_id: number } | null
+    /** The owner's reply to this stuck ticket, until the engine acts on it. */
+    reply: { word: 'retry' | 'skip'; comment_id: number } | null
+    /** Left out of the run: skipped by reply, or waits on a skipped ticket. */
+    skipped: { because: number | null } | null
+    /**
+     * Why the ticket got stuck before its latest `retry` resumed it; the next
+     * fresh agent is told. Cleared once an agent starts.
+     */
+    retried: ReplayedStuck | null
+    /** A test setup file change an agent asked for; the ticket is stuck on it. */
+    setup_change: { role: AgentRole; file: string; reason: string } | null
+}
+
+/** Why a ticket is stuck, as journaled. */
+export type ReplayedStuck = { reason: StuckReason; detail: string }
+
+/** A comment the engine read on the spec issue. */
+export type ReplayedComment = {
+    comment_id: number
+    author: string
+    body: string
 }
 
 /** A final review finding: its id namespaced as `<lens>-<id>`, and its lens. */
@@ -360,6 +383,14 @@ export type RunState = {
     /** The latest gates on the run branch: after a join, or a final review fix. */
     run_branch_gates: ReplayedGates | null
     final_review: FinalReviewState
+    /** Comments read on the spec issue while waiting for replies, oldest first. */
+    comments: ReplayedComment[]
+    /** Comments already taken as a reply, or sent back. */
+    handled_comments: number[]
+    /** Comments the engine itself posted on the spec issue. */
+    engine_comments: number[]
+    /** The owner replied `stop`: nothing new starts, and the run ends without a PR. */
+    stop: { comment_id: number } | null
     last_seq: number
 }
 
@@ -397,6 +428,11 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     join_gates: null,
     pushed: null,
     stuck: null,
+    stuck_report: null,
+    reply: null,
+    skipped: null,
+    retried: null,
+    setup_change: null,
 }
 
 const EMPTY_STATE: RunState = {
@@ -423,6 +459,10 @@ const EMPTY_STATE: RunState = {
     run_notes: [],
     run_branch_gates: null,
     final_review: EMPTY_FINAL_REVIEW,
+    comments: [],
+    handled_comments: [],
+    engine_comments: [],
+    stop: null,
     last_seq: 0,
 }
 
@@ -632,6 +672,68 @@ const applyRecord = ({
         case 'limit_wait_started':
         case 'limit_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
+        case 'comment_read':
+            return { ...next, comments: [...state.comments, record.content] }
+        case 'reply_ignored': {
+            const { comment_id, answer_id } = record.content
+            return {
+                ...next,
+                handled_comments: [...state.handled_comments, comment_id],
+                engine_comments: engineCommentsAfter({
+                    state,
+                    comment_id: answer_id,
+                }),
+            }
+        }
+        case 'reply_received': {
+            const handled = {
+                ...next,
+                handled_comments: [
+                    ...state.handled_comments,
+                    record.content.comment_id,
+                ],
+            }
+            if (record.content.word === 'stop') {
+                return {
+                    ...handled,
+                    stop: { comment_id: record.content.comment_id },
+                }
+            }
+            return applyTicketRecord({ state: handled, record })
+        }
+        case 'stuck_reported':
+            return applyTicketRecord({
+                state: {
+                    ...next,
+                    engine_comments: engineCommentsAfter({
+                        state,
+                        comment_id: record.content.comment_id,
+                    }),
+                },
+                record,
+            })
+        case 'ticket_retried': {
+            const { answer_id, mode } = record.content
+            const install = state.run_branch_install?.check
+            // A run branch whose install failed is installed again on a retry.
+            const run_branch_install =
+                mode === 'refused' ||
+                install === undefined ||
+                install?.ok !== false
+                    ? state.run_branch_install
+                    : null
+            return applyTicketRecord({
+                state: {
+                    ...next,
+                    run_branch_install,
+                    engine_comments: engineCommentsAfter({
+                        state,
+                        comment_id: answer_id,
+                    }),
+                },
+                record,
+            })
+        }
         case 'usage_recorded': {
             const { scope, ticket } = record.content
             const { tickets, run } = state.usage_recorded
@@ -1047,6 +1149,8 @@ type TicketRecord = Exclude<
             | 'final_review_stuck'
             | 'final_review_passed'
             | 'final_review_shipped'
+            | 'comment_read'
+            | 'reply_ignored'
     }
 >
 
@@ -1268,10 +1372,11 @@ const progressChange = ({
         case 'baseline_tests':
             return { baseline: record.content }
         case 'agent_started':
-            return {}
+            return { retried: null }
         case 'agent_finished': {
             const finished = record.content
             return {
+                setup_change: setupChangeOf({ finished }),
                 agent_failure: null,
                 engine_failures: 0,
                 sessions: sessionsAfter({
@@ -1358,7 +1463,171 @@ const progressChange = ({
         case 'run_branch_pushed':
             return { pushed: record.content.sha }
         case 'ticket_stuck':
-            return { stuck: record.content }
+            return { stuck: record.content, stuck_report: null, reply: null }
+        case 'stuck_reported':
+            return { stuck_report: { comment_id: record.content.comment_id } }
+        case 'reply_received': {
+            const { word, comment_id } = record.content
+            return word === 'stop' ? {} : { reply: { word, comment_id } }
+        }
+        case 'ticket_retried':
+            return retriedChange({ progress, retried: record.content })
+        case 'ticket_skipped':
+            return {
+                skipped: { because: record.content.because },
+                reply: null,
+            }
+        case 'join_undone':
+            return { joined: null, join_gates: null }
+    }
+}
+
+/** The spec comments the engine posted, plus this one if it posted one. */
+const engineCommentsAfter = ({
+    state,
+    comment_id,
+}: {
+    state: RunState
+    comment_id: number | null
+}): number[] =>
+    comment_id === null
+        ? state.engine_comments
+        : [...state.engine_comments, comment_id]
+
+/** The test setup change an agent asked for in its result, if any. */
+const setupChangeOf = ({
+    finished,
+}: {
+    finished: FinishedContent
+}): TicketProgress['setup_change'] => {
+    if (finished.role !== 'test-writer' && finished.role !== 'implementer') {
+        return null
+    }
+    const { outcome, setup_change } = finished.result
+    if (outcome !== 'needs_setup_change') return null
+    return {
+        role: finished.role,
+        file: setup_change?.file ?? '',
+        reason: setup_change?.reason ?? finished.result.summary,
+    }
+}
+
+type RetriedContent = Extract<
+    JournalRecord,
+    { kind: 'ticket_retried' }
+>['content']
+
+/**
+ * A `retry` of a stuck ticket. `refused` leaves it stuck, waiting for the
+ * next reply. `restart` starts it over from scratch (its new snapshot was
+ * journaled just before), in its worktree reset to the run branch's tip.
+ * `resume` picks up where it stopped (see `resumedProgress`).
+ */
+const retriedChange = ({
+    progress,
+    retried,
+}: {
+    progress: TicketProgress
+    retried: RetriedContent
+}): Partial<TicketProgress> => {
+    switch (retried.mode) {
+        case 'refused':
+            return { reply: null }
+        case 'restart':
+            return {
+                ...EMPTY_TICKET_PROGRESS,
+                worktree:
+                    progress.worktree === null || retried.base_sha === null
+                        ? progress.worktree
+                        : { ...progress.worktree, base_sha: retried.base_sha },
+            }
+        case 'resume':
+            return resumedProgress({ progress })
+    }
+}
+
+/**
+ * A stuck ticket resumed by `retry`: it picks up where it stopped, with a
+ * fresh agent (no session is kept) and fresh counts (fix rounds, failed
+ * tries, bad-test bounces, rebases), and keeps whatever the user changed in
+ * its worktree. The step that got stuck runs again:
+ * - before the red commit, a fresh test-writer writes the tests;
+ * - before the green commit, a fresh implementer builds (on top of the run
+ *   branch after a rebase), then the gates;
+ * - in a review fix round, the round starts over as round 1 with fresh
+ *   fixers, so the user's changes are gated, committed, and re-reviewed;
+ * - a leftover scan, a failed install, a reviewer's failed tries, or a
+ *   failed join just run again.
+ */
+const resumedProgress = ({
+    progress,
+}: {
+    progress: TicketProgress
+}): Partial<TicketProgress> => {
+    const { stuck, commits, review_fix, rejoin } = progress
+    const base: Partial<TicketProgress> = {
+        stuck: null,
+        stuck_report: null,
+        reply: null,
+        retried: stuck,
+        setup_change: null,
+        agent_failure: null,
+        failed_tries: {},
+        engine_failures: 0,
+        sessions: {},
+        red_fix_rounds: 0,
+        gate_fix_rounds: 0,
+        bad_test_bounces: 0,
+        rejoins: 0,
+        install:
+            progress.install?.check?.ok === false ? null : progress.install,
+        leftovers: {
+            red: commits.red === null ? null : progress.leftovers.red,
+            green: commits.green === null ? null : progress.leftovers.green,
+            fix: commits.fix === null ? null : progress.leftovers.fix,
+        },
+    }
+    const reason = stuck?.reason
+    const reviewerFailed = progress.agent_failure?.role === 'ticket-reviewer'
+    if (
+        reason === 'leftovers_found' ||
+        reason === 'install_failed' ||
+        reason === 'join_failed' ||
+        reason === 'join_gates_failed' ||
+        reviewerFailed
+    ) {
+        return base
+    }
+    if (commits.green === null) {
+        if (
+            rejoin === null &&
+            commits.red === null &&
+            progress.test_writer !== null
+        ) {
+            return { ...base, test_writer: null, red_check: null }
+        }
+        return { ...base, implementer: null, gates: null }
+    }
+    if (review_fix === null) return base
+    return {
+        ...base,
+        review_rounds: 1,
+        review_fix: {
+            ...review_fix,
+            round: 1,
+            tests_answered: !review_fix.findings.some(
+                ({ kind }) => kind === 'test'
+            ),
+            code_answered: !review_fix.findings.some(
+                ({ kind }) => kind === 'code'
+            ),
+            responses: [],
+            bad_test: null,
+        },
+        gates: null,
+        leftovers: { ...base.leftovers!, fix: null },
+        commits: { ...commits, fix: null },
+        commit_files: { ...progress.commit_files, fix: [] },
     }
 }
 
