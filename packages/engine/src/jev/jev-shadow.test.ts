@@ -57,15 +57,16 @@ const baseline = ({
 const isJev = (record: JournalRecord): boolean => record.kind.startsWith('jev_')
 
 /**
- * Launches with test-run timings ("[7.00ms]") blanked out: a fix-loop
- * follow-up quotes test output, and its timings differ between two runs.
+ * Launches with test-run timings (" [7.00ms]") removed and commit shas
+ * (which carry the time) masked: a fix-loop follow-up quotes test output,
+ * whose timings differ between two runs, and bun leaves the timing off a
+ * test that runs very fast, so a timing is dropped whether or not it's there.
  */
-/** Launches with test timings and commit shas (which carry the time) masked. */
 const withoutTimings = (launches: PracticeRun['launches']) =>
     launches.map((launch) => ({
         ...launch,
         prompt: launch.prompt
-            .replace(/\[\d+(\.\d+)?m?s\]/g, '[time]')
+            .replace(/ ?\[\d+(\.\d+)?m?s\]/g, '')
             .replace(/\b[0-9a-f]{40}\b/g, '[sha]'),
     }))
 
