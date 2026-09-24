@@ -301,6 +301,7 @@ export const SUM_PRODUCT_AVERAGE: ManyTicketsScenario = {
 export type ManyTicketsRun = {
     action: EngineAction
     tracker: InMemoryTracker
+    /** The journal's records, without the scheduler's step records. */
     records: JournalRecord[]
     launches: ScriptedCall[]
     repo: string

@@ -382,6 +382,28 @@ describe('a crash between steps', () => {
         )
     })
 
+    test('a step the launcher stopped is no crash: it is picked up again as it was', () => {
+        const full = journal([
+            ...gatesFailed(),
+            ...startStep([], FOLLOW_UP_IMPL),
+            agentStarted({
+                ticket: 11,
+                role: 'implementer',
+                follow_up_of: SESSIONS.implementer,
+            }),
+            {
+                kind: 'run_stopped',
+                ticket: 11,
+                role: 'implementer',
+                content: { reason: 'the wrong model', role: 'implementer' },
+            },
+        ])
+
+        expect(restart(full)).toEqual(full)
+        expect(stateOf(full).crashes).toEqual({})
+        expect(stepOf(full).type).toBe('follow_up_agent')
+    })
+
     test('a restart that crashes again before the redo starts counts the crash once', () => {
         const once = launchCut(journal(started()))
         const twice = restart(once)

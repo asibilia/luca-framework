@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { $ } from 'bun'
 
-import { specIssue, ticketIssue } from './intake-fixtures'
+import { specIssue, ticketIssue, withoutStepRecords } from './intake-fixtures'
 
 import type { AgentLauncher } from '../agents/agent-launcher'
 import { LENS_NAMES, lensRole } from '../agents/role-results'
@@ -409,7 +409,7 @@ export const createPracticeRepo = async ({
         return {
             action,
             tracker,
-            records: journal.read(),
+            records: withoutStepRecords(journal.read()),
             launches: scripted.launches(),
         }
     }
@@ -421,6 +421,7 @@ export const createPracticeRepo = async ({
 export type PracticeRun = {
     action: EngineAction
     tracker: InMemoryTracker
+    /** The journal's records, without the scheduler's step records. */
     records: JournalRecord[]
     /** The scripted launcher's calls; empty when `launcher` was given. */
     launches: ScriptedCall[]

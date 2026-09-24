@@ -21,6 +21,12 @@ import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import {
+    crashesAfter,
+    resumeEntry,
+    stepFirstSeq,
+    type CrashCounts,
+} from '../journal/step-records'
+import {
     limitWaitComment,
     SYSTEM_CLOCK,
     waitUntil,
@@ -384,7 +390,7 @@ const REPLY_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
  * its own (`lens:<lens>`), so the five lenses review at once; the final review's other steps share `final`; a ticket's steps its
  * number; and the run's own steps `run`, which only ever run alone.
  */
-const keyOf = (action: EngineAction): string => {
+export const keyOf = (action: EngineAction): string => {
     if (REPLY_ACTIONS.has(action.type)) return 'replies'
     // A search waits under the key of the step it comes before: its
     // ticket's, the final review's, or (the run's start) the run's.
@@ -397,6 +403,42 @@ const keyOf = (action: EngineAction): string => {
     const ticket = ticketOf(action)
     return ticket === null ? 'run' : String(ticket)
 }
+
+/** Actions that are an agent's turn: their step names the role. */
+const AGENT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    'launch_agent',
+    'follow_up_agent',
+    'launch_lens',
+    'launch_final_fixer',
+    'follow_up_final_fixer',
+])
+
+/** The agent role of an agent's turn, else `null`. */
+const agentRoleOf = (action: EngineAction): string | null =>
+    AGENT_ACTIONS.has(action.type) && 'role' in action && action.role !== null
+        ? action.role
+        : null
+
+/**
+ * A step's name in the journal: its action type, plus `:<role>` for an
+ * agent's turn, such as `follow_up_agent:implementer`.
+ *
+ * @example
+ * stepOf({ type: 'run_gates', ticket: 11, target: 'ticket' }) // 'run_gates'
+ */
+export const stepOf = (action: EngineAction): string => {
+    const role = agentRoleOf(action)
+    return role === null ? action.type : `${action.type}:${role}`
+}
+
+/**
+ * Waits get no step records: a crash during one is no step's fault, and a
+ * restarted engine just waits again (a limit wait until the same time).
+ */
+const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
+    'wait_for_reply',
+    'wait_for_limit',
+])
 
 /**
  * Actions that read or move the run branch. At most one runs at a time, so
@@ -510,6 +552,13 @@ const ownsRecord = ({
     return ticket === null || record.ticket === ticket
 }
 
+/** The crash counts per key, from the journal's records. */
+const crashesIn = (records: JournalRecord[]): CrashCounts =>
+    records.reduce<CrashCounts>(
+        (crashes, record) => crashesAfter({ crashes, record }),
+        {}
+    )
+
 /** One action the engine started and has not seen settle yet. */
 type InFlight = { action: EngineAction; done: Promise<void> }
 
@@ -551,6 +600,14 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
  * run for good (`done`, outcome `stopped`).
+ *
+ * Crash recovery: every step it starts (not a wait) is journaled between a
+ * `step_started` and a `step_ended` (none when the step throws). On start,
+ * a step with no `step_ended` was cut off by a crash: one `run_resumed`
+ * names them (`resumeEntry`), and each is taken again, an agent's turn in a
+ * fresh session. A redo's `step_started` carries its first try's seq in
+ * `first_seq`. The same step cut off `MAX_CRASHES` times in a row is not
+ * taken again (see `decide-crashes.ts`).
  *
  * @returns The action the loop stopped on.
  */
@@ -630,10 +687,44 @@ export const runEngine = async ({
             )
         )
 
+    /**
+     * Carries out an action between its step records: `step_started` when
+     * it starts, `step_ended` once it settles. Waits get none.
+     */
+    const runStep = async ({
+        action,
+        key,
+        crashes,
+    }: {
+        action: EngineAction
+        key: string
+        crashes: CrashCounts
+    }): Promise<void> => {
+        if (WAIT_ACTIONS.has(action.type)) return execute(action)
+        const step = stepOf(action)
+        const who = { ticket: ticketOf(action), role: agentRoleOf(action) }
+        journal.append({
+            kind: 'step_started',
+            ...who,
+            content: {
+                key,
+                step,
+                first_seq: stepFirstSeq({ crashes, key, step }),
+            },
+        })
+        await execute(action)
+        journal.append({ kind: 'step_ended', ...who, content: { key, step } })
+    }
+
+    // Steps a crash cut off are named once, before the first step.
+    const resumed = resumeEntry({ records: journal.read() })
+    if (resumed !== null) journal.append(resumed)
     // A resumed run catches the board up before its first step.
     await board?.sync({ records: journal.read() })
     for (;;) {
-        const actions = decideSteps({ records: journal.read() })
+        const records = journal.read()
+        const actions = decideSteps({ records })
+        const crashes = crashesIn(records)
         const stop = actions.find((action) => stops.has(action.type))
         if (stop !== undefined && inFlight.size === 0) return stop
         if (stop === undefined) {
@@ -649,7 +740,7 @@ export const runEngine = async ({
                     )
                 }
                 if (counts) started += 1
-                const done = execute(action).finally(() => {
+                const done = runStep({ action, key, crashes }).finally(() => {
                     inFlight.delete(key)
                 })
                 // Seen by the race below; this keeps a rejection that lands

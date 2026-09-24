@@ -64,7 +64,14 @@ const recordingBoard = () => {
     }
     return {
         board: createBoardSync({ link }),
-        kinds: () => kinds,
+        /** The kinds it got, without the scheduler's step records. */
+        kinds: () =>
+            kinds.filter(
+                (kind) =>
+                    kind !== 'step_started' &&
+                    kind !== 'step_ended' &&
+                    kind !== 'run_resumed'
+            ),
         endings: () => endings,
     }
 }

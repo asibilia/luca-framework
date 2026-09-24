@@ -76,7 +76,10 @@ export const stepFirstSeq = ({
 /**
  * The steps a crash cut off: each `step_started` with no later
  * `step_ended` for its key. A `run_resumed` already names the steps it
- * lists, so a crash before their redo starts is not counted twice.
+ * lists, so a crash before their redo starts is not counted twice. A
+ * `run_stopped` (the launcher stopped the run, or a stop for billing or
+ * crashes) closes every open step: a stop is no crash, and the step is
+ * picked up again as it was.
  */
 const interruptedSteps = ({
     records,
@@ -98,6 +101,9 @@ const interruptedSteps = ({
                 break
             case 'step_ended':
                 open.delete(record.content.key)
+                break
+            case 'run_stopped':
+                open.clear()
                 break
             case 'run_resumed':
                 for (const { key, started_seq } of record.content.interrupted) {
