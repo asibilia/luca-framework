@@ -921,6 +921,17 @@ export const executeBuildAction = async ({
             })
             return
         }
+        case 'reuse_baseline_tests':
+            journal.append({
+                kind: 'baseline_reused',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    from_ticket: action.from_ticket,
+                    base_sha: action.base_sha,
+                },
+            })
+            return
         case 'launch_agent':
             return launchAgent({ context, action })
         case 'follow_up_agent':

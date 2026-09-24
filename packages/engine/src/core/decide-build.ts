@@ -111,6 +111,16 @@ export type BuildAction =
     /** Run the tests before any agent works, to know the old tests. */
     | { type: 'run_baseline_tests'; ticket: number }
     /**
+     * Take `from_ticket`'s baseline instead of running the tests again: both
+     * worktrees start from the same run-branch commit, `base_sha`.
+     */
+    | {
+          type: 'reuse_baseline_tests'
+          ticket: number
+          from_ticket: number
+          base_sha: string
+      }
+    /**
      * Start a fresh agent session in the ticket's worktree with this prompt.
      * `may_edit_tests` is true for the test-writer and for a refactor
      * ticket's implementer; the launcher's guards enforce it.
@@ -841,6 +851,52 @@ const joinStep = ({
 }
 
 /**
+ * How a ticket with no baseline gets one. Tickets whose worktrees start from
+ * the same run-branch commit share one baseline test run: a ticket reuses a
+ * baseline taken at its commit, or else the first such ticket still able to
+ * move runs the tests and the rest wait for it. `null`: it waits.
+ */
+const sharedBaselineStep = ({
+    number,
+    numbers,
+    progress,
+    can_move,
+}: {
+    number: number
+    /** The run's tickets, in order. */
+    numbers: number[]
+    progress: (number: number) => TicketProgress
+    /** Whether a ticket is neither pushed, skipped, nor stuck. */
+    can_move: (number: number) => boolean
+}): BuildAction | null => {
+    const base_sha = progress(number).worktree?.base_sha
+    if (base_sha === undefined) return null
+    const lender = numbers.find(
+        (other) =>
+            other !== number &&
+            progress(other).baseline !== null &&
+            progress(other).baseline_sha === base_sha
+    )
+    if (lender !== undefined) {
+        return {
+            type: 'reuse_baseline_tests',
+            ticket: number,
+            from_ticket: lender,
+            base_sha,
+        }
+    }
+    const runner = numbers.find(
+        (other) =>
+            can_move(other) &&
+            progress(other).baseline === null &&
+            progress(other).worktree?.base_sha === base_sha
+    )
+    return runner === number
+        ? { type: 'run_baseline_tests', ticket: number }
+        : null
+}
+
+/**
  * The next step for one ticket that has its worktree, or `null` when it has
  * nothing to do now: it pushed, or its review approved and it waits its turn
  * to join.
@@ -853,12 +909,15 @@ const nextTicketStep = ({
     run_branch,
     joiner,
     setup_files,
+    baseline_step,
 }: StepArgs & {
     run_branch: ReplayedWorktree
     /** Whether the ticket is first in the join queue. */
     joiner: boolean
     /** The config's test setup files. */
     setup_files: string[]
+    /** How it gets its baseline, if it has none (`sharedBaselineStep`). */
+    baseline_step: BuildAction | null
 }): BuildAction | null => {
     const number = ticket.number
     if (progress.agent_failure !== null) {
@@ -898,9 +957,7 @@ const nextTicketStep = ({
             detail: ticketFailure,
         })
     }
-    if (progress.baseline === null) {
-        return { type: 'run_baseline_tests', ticket: number }
-    }
+    if (progress.baseline === null) return baseline_step
     if (progress.commits.green === null) {
         const rejoin = rejoinStep({
             snapshot,
@@ -1150,6 +1207,18 @@ export const decideBuild = ({
             run_branch,
             joiner: number === joiner,
             setup_files: state.config?.test_setup_files ?? [],
+            baseline_step:
+                ticketProgress.baseline === null
+                    ? sharedBaselineStep({
+                          number,
+                          numbers,
+                          progress,
+                          can_move: (other) =>
+                              !pushed(other) &&
+                              !skipped(other) &&
+                              !isStuck(other),
+                      })
+                    : null,
         })
         return step === null ? [] : [step]
     })

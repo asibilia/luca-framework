@@ -131,6 +131,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
+    or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
@@ -203,6 +204,19 @@ commits whose gates haven't passed yet. Its join-queue place is the seq of
 the review that **finally** approved it, after any review fix rounds.
 `max_steps` counts started actions; if one action throws (such as a launcher
 stop), the others are let finish, then the error is thrown.
+
+**A shared baseline (#404).** Tickets whose worktrees start from the same
+run-branch commit (`base_sha`) have the same tests, so they share one
+baseline test run. The first such ticket in order runs it
+(`run_baseline_tests`) while the others wait; each other one then takes it
+(`reuse_baseline_tests` ──> `baseline_reused { from_ticket, base_sha }`), and
+replay gives it that ticket's `baseline_tests` as it stood then. A baseline
+belongs to the commit it was taken at: a rebase moves the worktree but not
+its baseline, so a ticket starting from a newer commit (after a join) runs a
+fresh one. Nothing else is shared or skipped: each red check runs the tests
+in its own worktree, the gates run in full before every green and fix
+commit, and again on the run branch after every join, since each of those
+sees code no earlier run saw.
 
 **Plan limits with many tickets.** A limit wait and a billing stop are the
 whole run's: while one is due, `decideSteps` returns only it, so no ticket
