@@ -9,7 +9,7 @@ The board is the live view of a Luca run inside Paseo. You start a run by typing
   - a limit-wait banner that names the window that was hit
   - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and the exact reply to post on the spec issue (tap a reply to copy it)
   - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. A card shows how much of the plan its ticket used, once the engine records it. Tap a card for its details.
-  - the final review's 5 lenses, as a second stack (Waiting → Reviewing → Fixing → Clean). It stays dimmed until every ticket is done or skipped.
+  - the final review's 5 lenses, as a second stack (Waiting → Reviewing → Fixing → Clean). It stays dimmed until every ticket is done or skipped. A run that ended with nothing to do, or that intake refused, has nothing to review, so the panel leaves this section out and the header row says "none, nothing to review".
 - **Live rows in the chat where you started the run**: a header row that updates in place, one row per meaningful event, stuck rows with the exact reply, and a limit-wait row. The rows never reach the model.
 
 The code reuses the designs of the board prototype (`prototype/paseo-board`: variant B v2 for the panel and variant C for the rows), but none of its code.
@@ -32,6 +32,13 @@ The code reuses the designs of the board prototype (`prototype/paseo-board`: var
    - It returns `{ ok, message, run_id }`. The message names the log file. If the engine can't be found, it returns `ok: false` and says what to set.
 3. The engine sends its journal records through `engine.event`, described in the next section. The plugin keeps each run's board state and appends the chat rows.
 4. The panel polls `board.read` every 2 s.
+
+## Journals on disk
+
+The plugin also reads the engine's runs folder: `$LUCA_RUNS_DIR`, or `~/.local/state/luca/runs` by default (the engine's own default). Each run's journal is `<runs folder>/<run id>/journal.jsonl`. The plugin only reads it, never writes it, and replays it with the same reducer the `engine.event` records go through, so the journal stays the one source of truth. A line that isn't a record (such as a half-written last line) is skipped and logged.
+
+- **On start and after a reload**, every run in the registry is rebuilt from its journal before the plugin answers any RPC. A finished run shows done, stopped, or stuck again, not "starting".
+- **Runs the plugin didn't start** (for example, started with `luca-run` from the command line) are read on each `board.read`, so they show up too, in every workspace. They are read-only: their state shows in the side panel, but they get no chat rows, `engine.event` refuses them (the plugin doesn't know their token), and they are never restarted. Only the 50 whose journals changed last are shown. A journal is read again only when its size or change time moves, and then only its new records are applied.
 
 ## The `engine.event` contract
 
@@ -65,7 +72,7 @@ The engine calls the plugin RPC `engine.event`, through Paseo's `invokePluginRpc
 - **`ended`** marks the run's engine as finished, ok or failed, with its message. The header row and the panel show it. It isn't applied while there's a gap.
 - **Rejected sends.** An unknown `run_id` or a wrong `token` gets `ok: false, next_seq: 0`, and nothing is applied.
 - **Bad records.** A record whose content doesn't fit the board's vocabulary is skipped and logged. A record of an unknown kind is skipped quietly. Either way it still counts as applied, and the plugin never throws on a record.
-- **Plugin restart.** The run registry lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. For each run it keeps the run id, token, agent, workspace, repo, and spec, plus `ended` (how its engine ended, once it did) and `restarts` (how often the plugin restarted it). It is read at startup and written on every change. Board state lives only in memory. After a restart the plugin still knows the run, and a run whose engine ended still shows how it ended. Its `next_seq` is 1 again, so the engine's next send gets `next_seq: 1` back. The engine then resends the whole journal, and replaying it rebuilds the same board.
+- **Plugin restart.** The run registry lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. For each run it keeps the run id, token, agent, workspace, repo, and spec, plus `ended` (how its engine ended, once it did) and `restarts` (how often the plugin restarted it). It is read at startup and written on every change. Board state lives only in memory. After a restart the plugin still knows the run, and a run whose engine ended still shows how it ended. The plugin rebuilds its board from its journal on disk (see [Journals on disk](#journals-on-disk)), so its `next_seq` is past the journal's last record. The engine's next send (from its own cursor, which may be behind, since its sends failed while the plugin was down) is then mostly duplicates, and the reply's `next_seq` moves the engine past them. Duplicates still add their chat rows once: for a run whose engine hasn't ended, the plugin keeps the rows of the records it rebuilt from disk, and adds a record's rows (and an updated header row) the first time the engine sends that record again. The engine never resends the records below its cursor, so the chat already has those, and their kept rows are dropped. Rows are keyed by run id and seq, so adding one again updates it in place. Without a runs folder the plugin rebuilds nothing: `next_seq` is 1 again, and the engine resends the whole journal.
 
 ## Restarts
 
@@ -237,7 +244,7 @@ Once this plugin is installed, remove the prototype: `paseo plugin remove luca-b
 - Chat rows live in the Paseo daemon's memory. A daemon restart or a conversation rewind drops them. The panel rebuilds from the journal, but old rows don't come back.
 - Each row append counts as agent activity in that chat.
 - If appends to a chat keep failing (for example, the chat was deleted), the run stops adding rows after 3 failures in a row. The panel keeps updating.
-- The panel shows the runs started in its workspace, newest first. Pick another run from the chips at the top.
+- The panel shows the runs started in its workspace and the runs the plugin didn't start, newest first. Pick another run from the chips at the top. Only the 6 newest runs get a chip; the older ones are folded behind an "n older" chip that opens them. A picked older run keeps its chip.
 
 ## Develop
 
@@ -253,5 +260,5 @@ The repo's root `bunx --bun tsc --noEmit` leaves this package out: React Native'
 Layout:
 
 - `shared/`: Zod contracts and plain values only.
-- `server/`: the Node side. It holds the reducer, the row-maker, the registry, the launcher, and the engine watch (restarts), with tests next to them.
+- `server/`: the Node side. It holds the reducer, the row-maker, the registry, the launcher, the engine watch (restarts), and the journal reader (`run-journals.ts`, the runs folder on disk), with tests next to them.
 - `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme.

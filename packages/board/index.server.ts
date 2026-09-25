@@ -10,6 +10,7 @@ import { createBoardServer } from './server/board-server'
 import { ENGINE_CHECK_MS } from './server/engine-watch'
 import { listProcesses } from './server/list-processes'
 import { runCommand } from './server/run-command'
+import { defaultRunsDir } from './server/run-journals'
 import { defaultRegistryPath } from './server/run-registry'
 import { spawnDetached } from './server/spawn-detached'
 import { ROW_VERSION } from './shared/board-rows'
@@ -54,6 +55,7 @@ export default function contribute(server: PluginServerContext) {
             env: process.env,
             home_dir: homedir(),
         }),
+        runs_dir: defaultRunsDir({ env: process.env, home_dir: homedir() }),
         append_row: async ({ agent_id, row }) => {
             if (!paseo) throw new Error('no Paseo connection yet')
             await paseo.agents.ref(agent_id).timeline.append({

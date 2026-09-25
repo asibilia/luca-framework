@@ -569,6 +569,16 @@ export const BoardStateSchema = z.object({
 
 export type BoardState = z.infer<typeof BoardStateSchema>
 
+/**
+ * Whether the run has a final review to show: not when it ended with
+ * nothing to do or intake refused it, as there is nothing to review.
+ *
+ * @example
+ * showsFinalReview({ state }) // false for a nothing-to-do run
+ */
+export const showsFinalReview = ({ state }: { state: BoardState }): boolean =>
+    state.run.phase !== 'nothing_to_do' && state.run.phase !== 'refused'
+
 /** One run in the panel's run list. */
 export const RunSummarySchema = z.object({
     run_id: z.string(),
@@ -581,3 +591,31 @@ export const RunSummarySchema = z.object({
 })
 
 export type RunSummary = z.infer<typeof RunSummarySchema>
+
+/** How many of the newest runs get a tab; the older ones are folded. */
+export const RECENT_RUN_TABS = 6
+
+/**
+ * Splits runs (newest first) into the ones with a tab and the folded older
+ * ones. A picked older run keeps a tab too, after the newest ones.
+ *
+ * @example
+ * const { shown, folded } = foldRuns({ runs, selected: picked })
+ */
+export const foldRuns = ({
+    runs,
+    selected,
+}: {
+    runs: RunSummary[]
+    selected: string | null
+}): { shown: RunSummary[]; folded: RunSummary[] } => {
+    const shown = runs.slice(0, RECENT_RUN_TABS)
+    const older = runs.slice(RECENT_RUN_TABS)
+    const picked = older.find((run) => run.run_id === selected)
+    return picked
+        ? {
+              shown: [...shown, picked],
+              folded: older.filter((run) => run !== picked),
+          }
+        : { shown, folded: older }
+}
