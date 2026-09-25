@@ -175,12 +175,30 @@ const fakeClock = (start: string): EngineClock => {
     }
 }
 
-/** A launcher whose follow-ups throw, as if the engine died mid-turn. */
-const crashingOnFollowUp = (launcher: AgentLauncher): AgentLauncher => ({
-    launch: (args) => launcher.launch(args),
-    followUp: () => Promise.reject(new Error('The engine crashed.')),
-    closeSession: (args) => launcher.closeSession(args),
-})
+/**
+ * A launcher and a journal wrapper for an engine killed mid follow-up: the
+ * follow-up throws, and from then on the dead engine closes nothing and
+ * journals nothing, so the journal stays as a killed process leaves it.
+ */
+const killedOnFollowUp = (launcher: AgentLauncher) => {
+    let dead = false
+    const die = () => {
+        dead = true
+        throw new Error('The engine crashed.')
+    }
+    return {
+        launcher: {
+            launch: (args) => launcher.launch(args),
+            followUp: async () => die(),
+            closeSession: async (args) =>
+                dead ? die() : launcher.closeSession(args),
+        } satisfies AgentLauncher,
+        journal: (real: Journal): Journal => ({
+            ...real,
+            append: (entry) => (dead ? die() : real.append(entry)),
+        }),
+    }
+}
 
 /** Spec #10, owned by `SPEC_OWNER`, with these tickets. */
 const trackerWith = (tickets: ReturnType<typeof ticketIssue>[]) =>
@@ -821,14 +839,28 @@ describe('sessions close on every other way a step ends, end to end', () => {
         const crashed = createScriptedLauncher({
             turns: [testWriter, wrongImplementer(11)],
         })
+        const killed = killedOnFollowUp(crashed)
 
         await expect(
-            practice.run({ launcher: crashingOnFollowUp(crashed) })
+            practice.run({ launcher: killed.launcher, journal: killed.journal })
         ).rejects.toThrow('The engine crashed.')
         const cutOffCoder = crashed
             .launches()
             .find(({ role }) => role === 'implementer')
         if (cutOffCoder === undefined) throw new Error('no implementer')
+        // As a killed engine leaves it: the cut-off turn's session is open.
+        const before = practice.journal.read()
+        const cutStep = before.findLast(({ kind }) => kind === 'step_started')
+        expect(cutStep).toMatchObject({
+            content: { step: 'follow_up_agent:implementer' },
+        })
+        expect(
+            before.some(
+                ({ kind, seq }) =>
+                    kind === 'step_ended' && seq > (cutStep?.seq ?? 0)
+            )
+        ).toBe(false)
+        expect(closeOf(before, cutOffCoder.session_id)).toBeUndefined()
 
         const resumed = scriptedWith([implementer, reviewer])
         const { action } = await practice.run({
@@ -838,10 +870,18 @@ describe('sessions close on every other way a step ends, end to end', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const records = practice.journal.read()
-        expect(closeOf(records, cutOffCoder.session_id)).toMatchObject({
-            ticket: 11,
-            role: 'implementer',
-        })
+        const resumedAt = records.find(({ kind }) => kind === 'run_resumed')
+        const redo = records.find(
+            (record) =>
+                record.seq > (resumedAt?.seq ?? 0) &&
+                record.kind === 'agent_started' &&
+                record.role === 'implementer'
+        )
+        const close = closeOf(records, cutOffCoder.session_id)
+        expect(close).toMatchObject({ ticket: 11, role: 'implementer' })
+        // The redo closes it, before the fresh implementer starts.
+        expect(close?.seq ?? 0).toBeGreaterThan(resumedAt?.seq ?? Infinity)
+        expect(close?.seq ?? Infinity).toBeLessThan(redo?.seq ?? 0)
         expect(resumed.openSessions()).toEqual([])
         expect(closedIn(records)).toEqual(
             [...launchedBy(crashed), ...launchedBy(resumed)].toSorted(byId)
