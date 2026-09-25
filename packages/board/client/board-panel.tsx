@@ -36,7 +36,9 @@ import {
     REFACTOR_SKIPS_STEPS,
     STEP_NAMES,
     currentStepText,
+    foldRuns,
     planUsedText,
+    showsFinalReview,
     stoppedText,
     type BoardState,
     type CurrentStep,
@@ -943,6 +945,7 @@ const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
     )
 }
 
+/** A tab per recent run; the older ones stay folded behind one chip. */
 const RunPicker = ({
     runs,
     selected,
@@ -953,41 +956,70 @@ const RunPicker = ({
     runs: RunSummary[]
     selected: string
     onPick: (run_id: string) => void
-} & Look) => (
-    <View style={styles.row}>
-        {runs.map((run) => {
-            const on = run.run_id === selected
-            return (
-                <Pressable
+} & Look) => {
+    const [showOlder, setShowOlder] = useState(false)
+    const { shown, folded } = foldRuns({ runs, selected })
+    return (
+        <View style={styles.row}>
+            {(showOlder ? [...shown, ...folded] : shown).map((run) => (
+                <RunChip
                     key={run.run_id}
+                    run={run}
+                    on={run.run_id === selected}
+                    onPick={onPick}
+                    theme={theme}
+                    styles={styles}
+                />
+            ))}
+            {folded.length > 0 ? (
+                <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Show run ${run.run_id}`}
-                    onPress={() => onPick(run.run_id)}
-                    style={[styles.chip, on ? styles.chipOn : null]}
+                    accessibilityLabel={
+                        showOlder
+                            ? 'Fold the older runs'
+                            : `Show ${folded.length} older runs`
+                    }
+                    onPress={() => setShowOlder((open) => !open)}
+                    style={styles.chip}
                 >
                     <Text style={styles.small}>
-                        {run.spec_number === null
-                            ? 'demo'
-                            : `#${run.spec_number}`}{' '}
-                        ·{' '}
-                        <Text
-                            style={{
-                                color: statusColor({
-                                    status: run.status,
-                                    theme,
-                                }),
-                            }}
-                        >
-                            {statusText({ status: run.status })}
-                        </Text>
-                        {run.needs_you > 0
-                            ? ` · ${run.needs_you} need you`
-                            : ''}
+                        {showOlder ? 'fold older' : `${folded.length} older`}
                     </Text>
                 </Pressable>
-            )
-        })}
-    </View>
+            ) : null}
+        </View>
+    )
+}
+
+const RunChip = ({
+    run,
+    on,
+    onPick,
+    theme,
+    styles,
+}: {
+    run: RunSummary
+    on: boolean
+    onPick: (run_id: string) => void
+} & Look) => (
+    <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Show run ${run.run_id}`}
+        onPress={() => onPick(run.run_id)}
+        style={[styles.chip, on ? styles.chipOn : null]}
+    >
+        <Text style={styles.small}>
+            {run.spec_number === null ? 'demo' : `#${run.spec_number}`} ·{' '}
+            <Text
+                style={{
+                    color: statusColor({ status: run.status, theme }),
+                }}
+            >
+                {statusText({ status: run.status })}
+            </Text>
+            {run.needs_you > 0 ? ` · ${run.needs_you} need you` : ''}
+        </Text>
+    </Pressable>
 )
 
 const Section = ({
@@ -1222,8 +1254,12 @@ export const BoardPanel = ({
                 )
             })}
 
-            <View style={styles.rule} />
-            <FinalReviewStack state={state} {...look} />
+            {showsFinalReview({ state }) ? (
+                <>
+                    <View style={styles.rule} />
+                    <FinalReviewStack state={state} {...look} />
+                </>
+            ) : null}
 
             <View style={styles.rule} />
             <Text style={styles.small}>

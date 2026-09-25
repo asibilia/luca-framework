@@ -22,6 +22,7 @@ import {
 } from './engine-watch'
 import { describeRecord, headerRow, rowsForRecord } from './make-rows'
 import { applyEnded, applyRecord, createBoardState } from './reduce-board'
+import { listJournals, readJournal } from './run-journals'
 import { createRunRegistry, type RunEntry } from './run-registry'
 
 import type { BoardRow } from '../shared/board-rows'
@@ -110,15 +111,29 @@ const sameToken = ({ left, right }: { left: string; right: string }) => {
     return a.length === b.length && timingSafeEqual(a, b)
 }
 
-/** One run the plugin knows: its registry entry and its board in memory. */
-type RunMemory = {
-    entry: RunEntry
+/** A run's board, built from its journal records so far. */
+type Replay = {
     state: BoardState
     /** The next journal seq the board wants (starts at 1). */
     next_seq: number
+}
+
+/** One run the plugin started: its registry entry and its board in memory. */
+type RunMemory = Replay & {
+    entry: RunEntry
     append_failures: number
     rows_stopped: boolean
 }
+
+/**
+ * A run the plugin didn't start (such as one from the command line), read
+ * from its journal on disk. Read-only: no chat rows, no engine events, no
+ * restarts. `size` and `changed_ms` are its journal's when last read.
+ */
+type OutsideRun = Replay & { size: number; changed_ms: number }
+
+/** How many runs the plugin didn't start it shows, the latest changed first. */
+const OUTSIDE_RUNS_SHOWN = 50
 
 /**
  * The board plugin's server logic, with every side effect injected so tests
@@ -127,12 +142,18 @@ type RunMemory = {
  * checks (`checkEngines`) read processes through `list_processes` and ask
  * the engine through `run_command`.
  *
+ * With a `runs_dir`, every run is rebuilt from its journal there: on start
+ * the runs this plugin started, and on each `board.read` the runs it didn't
+ * start (shown read-only in every workspace). Without one, a restarted
+ * plugin knows its runs only from the registry and the engine's next send.
+ *
  * Each run's `engine.event` work goes through its own queue, so rows never
  * interleave. A failed row append is logged and never loses board state.
  *
  * @example
  * const board = createBoardServer({
  *     registry_path: defaultRegistryPath({ env: process.env, home_dir: homedir() }),
+ *     runs_dir: defaultRunsDir({ env: process.env, home_dir: homedir() }),
  *     append_row: async ({ agent_id, row }) => { ... },
  *     spawn_engine: spawnDetached,
  *     list_processes: listProcesses,
@@ -149,6 +170,7 @@ type RunMemory = {
  */
 export const createBoardServer = ({
     registry_path,
+    runs_dir = null,
     append_row,
     spawn_engine,
     list_processes,
@@ -162,6 +184,8 @@ export const createBoardServer = ({
     log,
 }: {
     registry_path: string
+    /** The engine's runs folder (`<runs_dir>/<run_id>/journal.jsonl`). */
+    runs_dir?: string | null
     append_row: AppendRow
     spawn_engine: SpawnEngine
     list_processes: ListProcesses
@@ -176,31 +200,8 @@ export const createBoardServer = ({
 }) => {
     const registry = createRunRegistry({ path: registry_path, log })
     const runs = new Map<string, RunMemory>()
+    const outside = new Map<string, OutsideRun>()
     const queues = new Map<string, Promise<unknown>>()
-
-    const remember = ({ entry }: { entry: RunEntry }): RunMemory => {
-        const state = createBoardState({
-            run_id: entry.run_id,
-            spec_number: entry.spec,
-            demo: entry.demo,
-            started_at: entry.started_at,
-            log_path: entry.log_path,
-        })
-        const memory: RunMemory = {
-            entry,
-            // A run whose engine ended stays ended after a plugin restart.
-            state: entry.ended
-                ? applyEnded({ state, ended: entry.ended })
-                : state,
-            next_seq: 1,
-            append_failures: 0,
-            rows_stopped: false,
-        }
-        runs.set(entry.run_id, memory)
-        return memory
-    }
-
-    for (const entry of registry.list()) remember({ entry })
 
     /** Runs `work` after everything already queued for the same run. */
     const enqueue = <Result>({
@@ -253,14 +254,15 @@ export const createBoardServer = ({
         memory,
         record,
     }: {
-        memory: RunMemory
+        memory: Replay
         record: EngineRecord
     }): BoardRow[] => {
+        const { run_id } = memory.state.run
         const read = readRecord({ record })
         if (read.status !== 'known') {
             if (read.status === 'bad_content') {
                 log(
-                    `[${memory.entry.run_id}] skipped record ${record.seq} (${record.kind}): its content doesn't fit.\n${read.error}`
+                    `[${run_id}] skipped record ${record.seq} (${record.kind}): its content doesn't fit.\n${read.error}`
                 )
             }
             memory.state = {
@@ -277,12 +279,130 @@ export const createBoardServer = ({
             record: read.record,
         })
         memory.state = described ? { ...after, latest: described.text } : after
-        return rowsForRecord({
-            run_id: memory.entry.run_id,
-            before,
-            after,
-            record: read.record,
-        })
+        return rowsForRecord({ run_id, before, after, record: read.record })
+    }
+
+    /**
+     * Applies records in seq order from the run's `next_seq`. Lower seqs are
+     * duplicates and skipped; a gap stops there (`gap` is the seq found).
+     */
+    const applyInOrder = ({
+        memory,
+        records,
+    }: {
+        memory: Replay
+        records: EngineRecord[]
+    }): { rows: BoardRow[]; applied: number; gap: number | null } => {
+        const rows: BoardRow[] = []
+        let applied = 0
+        for (const record of records.toSorted(
+            (left, right) => left.seq - right.seq
+        )) {
+            if (record.seq < memory.next_seq) continue
+            if (record.seq > memory.next_seq) {
+                return { rows, applied, gap: record.seq }
+            }
+            rows.push(...applyOne({ memory, record }))
+            memory.next_seq += 1
+            applied += 1
+        }
+        return { rows, applied, gap: null }
+    }
+
+    /**
+     * Knows a run this plugin started, rebuilt from its journal `records`
+     * (no rows: the chat already has them).
+     */
+    const remember = ({
+        entry,
+        records,
+    }: {
+        entry: RunEntry
+        records: EngineRecord[]
+    }): RunMemory => {
+        const memory: RunMemory = {
+            entry,
+            state: createBoardState({
+                run_id: entry.run_id,
+                spec_number: entry.spec,
+                demo: entry.demo,
+                started_at: entry.started_at,
+                log_path: entry.log_path,
+            }),
+            next_seq: 1,
+            append_failures: 0,
+            rows_stopped: false,
+        }
+        applyInOrder({ memory, records })
+        // A run whose engine ended stays ended after a plugin restart.
+        if (entry.ended) {
+            memory.state = applyEnded({
+                state: memory.state,
+                ended: entry.ended,
+            })
+        }
+        runs.set(entry.run_id, memory)
+        return memory
+    }
+
+    /** A run's journal records on disk; none without a runs folder. */
+    const journalOf = ({ run_id }: { run_id: string }) =>
+        runs_dir === null
+            ? Promise.resolve([])
+            : readJournal({ runs_dir, run_id, log })
+
+    /** Rebuilds every run in the registry from its journal. */
+    const load = async () => {
+        const entries = registry.list()
+        const journals = await Promise.all(
+            entries.map(({ run_id }) => journalOf({ run_id }))
+        )
+        entries.forEach((entry, index) =>
+            remember({ entry, records: journals[index] ?? [] })
+        )
+    }
+
+    /**
+     * Reads the journals of runs this plugin didn't start, the latest
+     * changed first: a new or changed journal is read again and its new
+     * records applied.
+     */
+    const readOutside = async () => {
+        if (runs_dir === null) return
+        const journals = (await listJournals({ runs_dir }))
+            .filter((journal) => !runs.has(journal.run_id))
+            .slice(0, OUTSIDE_RUNS_SHOWN)
+        const shown = new Set(journals.map((journal) => journal.run_id))
+        for (const run_id of outside.keys()) {
+            if (!shown.has(run_id)) outside.delete(run_id)
+        }
+        await Promise.all(
+            journals.map(async ({ run_id, size, changed_ms }) => {
+                const known = outside.get(run_id)
+                if (known?.size === size && known.changed_ms === changed_ms) {
+                    return
+                }
+                const records = await journalOf({ run_id })
+                const first = records[0]
+                if (!first) return
+                const run: OutsideRun = known ?? {
+                    state: createBoardState({
+                        run_id,
+                        spec_number: null,
+                        demo: false,
+                        started_at: first.time,
+                        log_path: null,
+                    }),
+                    next_seq: 1,
+                    size,
+                    changed_ms,
+                }
+                applyInOrder({ memory: run, records })
+                run.size = size
+                run.changed_ms = changed_ms
+                outside.set(run_id, run)
+            })
+        )
     }
 
     /** Changes a run's registry entry, and its copy in memory. */
@@ -342,6 +462,7 @@ export const createBoardServer = ({
      * the engine detached, and adds the chat's header row. Returns at once.
      */
     const startRun = async (input: RunStartInput): Promise<RunStartOutput> => {
+        await ready
         const parsed = parseRunArgs({ args: input.args })
         if (!parsed.ok)
             return { ok: false, message: parsed.message, run_id: null }
@@ -371,7 +492,7 @@ export const createBoardServer = ({
             restarts: 0,
         }
         registry.add({ entry })
-        const memory = remember({ entry })
+        const memory = remember({ entry, records: [] })
 
         const child_env = childEnv({ token })
 
@@ -446,6 +567,8 @@ export const createBoardServer = ({
     const handleEngineEvent = async (
         input: EngineEventInput
     ): Promise<EngineEventOutput> => {
+        await ready
+        // A run this plugin didn't start is read-only: it isn't in `runs`.
         const memory = runs.get(input.run_id)
         if (!memory) {
             return {
@@ -464,22 +587,10 @@ export const createBoardServer = ({
         return enqueue({
             run_id: input.run_id,
             work: async () => {
-                const records = input.records.toSorted(
-                    (left, right) => left.seq - right.seq
-                )
-                const rows: BoardRow[] = []
-                let applied = 0
-                let gap: number | null = null
-                for (const record of records) {
-                    if (record.seq < memory.next_seq) continue
-                    if (record.seq > memory.next_seq) {
-                        gap = record.seq
-                        break
-                    }
-                    rows.push(...applyOne({ memory, record }))
-                    memory.next_seq += 1
-                    applied += 1
-                }
+                const { rows, applied, gap } = applyInOrder({
+                    memory,
+                    records: input.records,
+                })
                 if (gap === null && input.ended) {
                     memory.state = applyEnded({
                         state: memory.state,
@@ -500,27 +611,33 @@ export const createBoardServer = ({
         })
     }
 
-    /** `board.read`: the workspace's runs, newest first, and one in full. */
+    /**
+     * `board.read`: the workspace's runs and the runs this plugin didn't
+     * start, newest first, and one in full.
+     */
     const readBoard = async (
         input: BoardReadInput
     ): Promise<BoardReadOutput> => {
-        const list = [...runs.values()]
-            .filter(
+        await ready
+        await readOutside()
+        const list = [
+            ...[...runs.values()].filter(
                 (memory) => memory.entry.workspace_id === input.workspace_id
-            )
+            ),
+            ...outside.values(),
+        ]
+            .map(({ state }) => state)
             .toSorted((left, right) =>
-                right.entry.started_at === left.entry.started_at
-                    ? right.entry.run_id.localeCompare(left.entry.run_id)
-                    : right.entry.started_at.localeCompare(
-                          left.entry.started_at
-                      )
+                right.run.started_at === left.run.started_at
+                    ? right.run.run_id.localeCompare(left.run.run_id)
+                    : right.run.started_at.localeCompare(left.run.started_at)
             )
         const selected =
             (input.run_id
-                ? list.find((memory) => memory.entry.run_id === input.run_id)
+                ? list.find((state) => state.run.run_id === input.run_id)
                 : undefined) ?? list[0]
         return {
-            runs: list.map(({ state }) => ({
+            runs: list.map((state) => ({
                 run_id: state.run.run_id,
                 spec_number: state.run.spec_number,
                 spec_title: state.run.spec_title,
@@ -529,7 +646,7 @@ export const createBoardServer = ({
                 started_at: state.run.started_at,
                 needs_you: state.needs_you.length,
             })),
-            selected: selected?.state ?? null,
+            selected: selected ?? null,
         }
     }
 
@@ -645,6 +762,7 @@ export const createBoardServer = ({
 
     /** One check: see `checkEngines`. */
     const runCheck = async (): Promise<EngineCheck> => {
+        await ready
         const summary: EngineCheck = { restarted: [], stopped: [] }
         const candidates = [...runs.values()].filter((memory) =>
             needsEngine({ memory })
@@ -756,9 +874,17 @@ export const createBoardServer = ({
 
     /** Resolves when every queued piece of work (and any check) has finished. */
     const idle = async () => {
+        await ready
         await checking
         await Promise.all([...queues.values()])
     }
+
+    // Every method waits for the registry's runs to be rebuilt first.
+    const ready = load().catch((error: unknown) => {
+        log(
+            `Couldn't rebuild the runs from their journals: ${errorText({ error })}`
+        )
+    })
 
     return { startRun, handleEngineEvent, readBoard, checkEngines, idle }
 }

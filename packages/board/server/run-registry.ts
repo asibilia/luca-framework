@@ -8,8 +8,8 @@ import { EngineEndedSchema } from '../shared/board-state'
 /**
  * The runs this plugin started, kept in a JSON file so a plugin restart still
  * knows each run's token and chat, how its engine ended, and how often the
- * plugin restarted it. Board state itself stays in memory; the engine's next
- * send replays the journal to rebuild it.
+ * plugin restarted it. Board state itself stays in memory; a restarted
+ * plugin rebuilds it from each run's journal on disk.
  */
 
 export const RunEntrySchema = z.object({

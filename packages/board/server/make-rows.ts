@@ -24,6 +24,7 @@ import {
 import {
     LOOP_CAP,
     TicketStageSchema,
+    showsFinalReview,
     stoppedText,
     type BoardState,
     type FindingCounts,
@@ -70,6 +71,7 @@ const findingsText = ({ findings }: { findings: FindingCounts }): string => {
 
 /** The final review's state in words, for the header row. */
 export const finalReviewText = ({ state }: { state: BoardState }): string => {
+    if (!showsFinalReview({ state })) return 'none, nothing to review'
     const review = state.final_review
     const clean = review.lenses.filter((lens) => lens.state === 'clean').length
     switch (review.state) {
