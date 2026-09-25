@@ -123,6 +123,12 @@ type RunMemory = Replay & {
     entry: RunEntry
     append_failures: number
     rows_stopped: boolean
+    /**
+     * The rows of records rebuilt from disk, by seq, that the chat may not
+     * have: the engine may have written them while the plugin was down.
+     * Added when the engine sends those records again.
+     */
+    unsent_rows: Map<number, BoardRow[]>
 }
 
 /**
@@ -292,8 +298,12 @@ export const createBoardServer = ({
     }: {
         memory: Replay
         records: EngineRecord[]
-    }): { rows: BoardRow[]; applied: number; gap: number | null } => {
-        const rows: BoardRow[] = []
+    }): {
+        rows: Map<number, BoardRow[]>
+        applied: number
+        gap: number | null
+    } => {
+        const rows = new Map<number, BoardRow[]>()
         let applied = 0
         for (const record of records.toSorted(
             (left, right) => left.seq - right.seq
@@ -302,7 +312,7 @@ export const createBoardServer = ({
             if (record.seq > memory.next_seq) {
                 return { rows, applied, gap: record.seq }
             }
-            rows.push(...applyOne({ memory, record }))
+            rows.set(record.seq, applyOne({ memory, record }))
             memory.next_seq += 1
             applied += 1
         }
@@ -310,8 +320,9 @@ export const createBoardServer = ({
     }
 
     /**
-     * Knows a run this plugin started, rebuilt from its journal `records`
-     * (no rows: the chat already has them).
+     * Knows a run this plugin started, rebuilt from its journal `records`.
+     * Their rows aren't added now; while the engine may still send, they are
+     * kept until it sends those records again (see `handleEngineEvent`).
      */
     const remember = ({
         entry,
@@ -332,14 +343,17 @@ export const createBoardServer = ({
             next_seq: 1,
             append_failures: 0,
             rows_stopped: false,
+            unsent_rows: new Map(),
         }
-        applyInOrder({ memory, records })
+        const { rows } = applyInOrder({ memory, records })
         // A run whose engine ended stays ended after a plugin restart.
         if (entry.ended) {
             memory.state = applyEnded({
                 state: memory.state,
                 ended: entry.ended,
             })
+        } else {
+            memory.unsent_rows = rows
         }
         runs.set(entry.run_id, memory)
         return memory
@@ -428,6 +442,7 @@ export const createBoardServer = ({
         ended: EngineEnded
     }) => {
         memory.state = applyEnded({ state: memory.state, ended })
+        memory.unsent_rows.clear()
         updateEntry({ memory, change: { ended } })
         await appendRows({ memory, rows: [header({ memory })] })
     }
@@ -560,9 +575,41 @@ export const createBoardServer = ({
     }
 
     /**
+     * The kept rows of records rebuilt from disk that the engine sent again.
+     * The engine sends from the first record it hasn't had an answer for, so
+     * the chat already has the rows of every lower seq: those are dropped.
+     */
+    const takeUnsentRows = ({
+        memory,
+        records,
+    }: {
+        memory: RunMemory
+        records: EngineRecord[]
+    }): { rows: BoardRow[]; taken: number } => {
+        const rows: BoardRow[] = []
+        let taken = 0
+        if (memory.unsent_rows.size === 0 || records.length === 0) {
+            return { rows, taken }
+        }
+        const lowest = Math.min(...records.map((record) => record.seq))
+        const sent = new Set(records.map((record) => record.seq))
+        for (const [seq, seq_rows] of memory.unsent_rows) {
+            if (seq < lowest) {
+                memory.unsent_rows.delete(seq)
+            } else if (sent.has(seq)) {
+                rows.push(...seq_rows)
+                memory.unsent_rows.delete(seq)
+                taken += 1
+            }
+        }
+        return { rows, taken }
+    }
+
+    /**
      * `engine.event`: applies a run's journal records in seq order from its
-     * `next_seq`. Lower seqs are duplicates and skipped; a gap stops there and
-     * the reply's `next_seq` asks the engine to resend from it.
+     * `next_seq`. Lower seqs are duplicates and skipped (but a record rebuilt
+     * from disk adds its rows the first time the engine sends it); a gap
+     * stops there and the reply's `next_seq` asks the engine to resend from it.
      */
     const handleEngineEvent = async (
         input: EngineEventInput
@@ -587,18 +634,32 @@ export const createBoardServer = ({
         return enqueue({
             run_id: input.run_id,
             work: async () => {
-                const { rows, applied, gap } = applyInOrder({
+                const unsent = takeUnsentRows({
                     memory,
                     records: input.records,
                 })
+                const {
+                    rows: new_rows,
+                    applied,
+                    gap,
+                } = applyInOrder({
+                    memory,
+                    records: input.records,
+                })
+                const rows = [...unsent.rows, ...[...new_rows.values()].flat()]
                 if (gap === null && input.ended) {
                     memory.state = applyEnded({
                         state: memory.state,
                         ended: input.ended,
                     })
+                    memory.unsent_rows.clear()
                     updateEntry({ memory, change: { ended: input.ended } })
                 }
-                if (applied > 0 || (gap === null && input.ended)) {
+                if (
+                    unsent.taken > 0 ||
+                    applied > 0 ||
+                    (gap === null && input.ended)
+                ) {
                     rows.push(header({ memory }))
                 }
                 await appendRows({ memory, rows })

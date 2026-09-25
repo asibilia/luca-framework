@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import { createBoardServer, type SpawnRequest } from './board-server'
+import { BUN_PATH, ENGINE_PATH } from './testing/board-harness'
 import {
     intakeOfThree,
     intakeRefused,
@@ -28,11 +29,6 @@ import type { BoardState } from '../shared/board-state'
  * to a runs folder (`<runs_dir>/<run_id>/journal.jsonl`, as the engine
  * does) and reads the board a plugin built from them.
  */
-
-const ENGINE_PATH = '/opt/luca/packages/engine/src/cli/luca-run.ts'
-
-/** Bun where the fake file system has it. */
-const BUN_PATH = '/home/me/.bun/bin/bun'
 
 const dirs: string[] = []
 
@@ -74,7 +70,9 @@ const writeJournal = async ({
 
 /**
  * A board plugin on `registry_dir` and `runs_dir`, with fake chats, spawns,
- * and processes. Making a second one on the same folders is a reload.
+ * and processes. Making a second one on the same folders is a reload. It is
+ * built here rather than with `createHarness` because the shared harness
+ * takes no `runs_dir`, and without one the board reads no journals.
  */
 const plugin = ({
     registry_dir,
