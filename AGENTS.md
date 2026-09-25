@@ -46,7 +46,7 @@ Before responding to a request, consider what the user **actually needs**, not j
 Key patterns:
 
 - Single object argument with destructuring for functions
-- `snake_case` for database/API object keys (matches Convex schema)
+- `snake_case` for database/API object keys
 - `camelCase` for React component props (convert at data boundary)
 - Zod schemas with `z.infer<>` for types (never separate interface + schema)
 - No `any` type, no `as` type casting, no `!` assertions

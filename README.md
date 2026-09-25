@@ -1,207 +1,55 @@
 # Luca Framework
 
-A monorepo for structured AI coding workflows — autonomous pipeline orchestration, long-term memory, and developer tooling.
+Luca turns planned work into a reviewed pull request by running a team of AI agents under strict, code-driven control.
 
-## What is Luca?
-
-Luca turns AI coding assistants into structured, multi-phase development pipelines. Instead of freeform chat, Luca orchestrates work through a defined sequence of modes — from triage through execution to finalization — with built-in quality gates, convergence tracking, and long-term memory via [MuninnDB](https://github.com/asibilia/muninn). It installs as skills, agents, and slash commands into your coding harness — currently [Claude Code](https://claude.com/claude-code) and [Antigravity](https://antigravity.google) — and drives the pipeline through the `luca` CLI write surface.
+You write a **spec** (one feature: the problem, the solution, and how it will be tested) and split it into **tickets**. A **run** takes the spec's tickets through the **engine**: plain code that picks every next step. Agents write the tests, then the code, and a fresh reviewer checks each ticket. The engine runs its own **gates** (tests, type checks, lint) before the run moves on. Finished tickets join one **run branch**, a **final review** looks at the whole branch, and the run ends in one pull request. Everything that happens is written to the run's **journal**, and the **board** shows the run live in Paseo. The domain words are defined in [CONTEXT.md](CONTEXT.md).
 
 ## Packages
 
-Luca ships as a single public umbrella package, `@alecsibilia/luca`, which bundles the three private workspaces listed below:
+| Package | What it is |
+| ------- | ---------- |
+| [`packages/engine`](packages/engine/README.md) | The engine (`@luca/engine`). It drives a run of one spec with Claude agents, keeps the journal, and has the `luca-run` command line. |
+| [`packages/board`](packages/board/README.md) | The board, the Paseo plugin `luca-board`. Type `/luca-run <spec>` in a Paseo chat to start a run and watch it in the side panel and the chat. |
 
-| Package | Description |
-| ------- | ----------- |
-| [`packages/luca`](packages/luca) | Public umbrella (`@alecsibilia/luca`) — the `luca` CLI bin; bundles `luca-cli`, `luca-core`, `luca-tools` |
-| [`packages/luca-cli`](packages/luca-cli) | CLI command surface — init, harness wiring, vault setup, write surface, diagnostics |
-| [`packages/luca-core`](packages/luca-core) | Pipeline state machine, complexity routing, orchestration, `.luca/` directory contract |
-| [`packages/luca-tools`](packages/luca-tools) | Mode/subagent/skill instruction bodies materialized into each harness |
+## Start a run
 
-## Architecture
+From Paseo, install the board plugin and type `/luca-run <spec number>` (or `/luca-run demo` for a practice run with no GitHub and no models). See [Install and try it](packages/board/README.md#install-and-try-it).
 
-### Pipeline Modes
-
-Luca operates in 10 modes — 6 pipeline modes that execute autonomously in sequence, and 4 user-facing modes:
-
-**Pipeline modes** (autonomous):
-| Mode | Purpose |
-|------|---------|
-| Triage | Classify intent, complexity, and oversight level |
-| Research | Deep codebase analysis across 5 dimensions |
-| Architect | Create roadmap and execution plan with goal-backward analysis |
-| Execute | Implement changes atomically with convergence-tracked checks |
-| Review | Multi-perspective code review (architecture, DX, security, simplification) |
-| Finalize | Gap audit, shadow scan, PR creation, milestone boundary |
-
-**User-facing modes**:
-| Mode | Purpose |
-|------|---------|
-| Build | General-purpose implementation with full tool access |
-| Fast | Quick responses under 100 words |
-| Plan | Read-only exploration and design |
-| Discuss | Conversational mode for decisions and clarification |
-
-### Subagents
-
-9 specialized subagents handle focused tasks within pipeline modes:
-
-| Subagent | Role |
-|----------|------|
-| Researcher | Deep codebase research across scope, architecture, implementation, ecosystem, and risk |
-| Planner | Goal-backward execution plans with atomic tasks organized into waves |
-| Plan Reviewer | Cold-isolation plan validation with convergence detection |
-| Executor | Atomic code changes with per-task commits and deviation handling |
-| Verifier | Acceptance criteria verification with automated testing |
-| Reviewer | Multi-perspective code review (architecture, DX, security, simplification) |
-| Discussion | Captures user decisions and constraints before planning |
-| Learner | Extracts patterns, pitfalls, and insights from completed work |
-| Shadow Scanner | Scans for AI-session debris (orphaned scripts, stale artifacts, dead exports) |
-
-All subagents receive a shared behavioral prefix (~300-400 tokens) with core operating rules, self-verification mandates, and anti-sycophancy directives.
-
-### Tools
-
-11 custom tools power the pipeline:
-
-| Tool | Purpose |
-|------|---------|
-| `workflowState` | Pipeline state machine — phase transitions, mode switches, triage/plan/review artifact storage |
-| `runChecks` | Convergence-tracked typecheck, lint, and test runner with error fingerprinting |
-| `manageTodos` | Backlog management — add, list, move (single or batch), remove, batch-assign across pending/backlog/done |
-| `manageRoadmap` | WSJF-scored phase roadmaps with dependency ordering |
-| `verificationResult` | Per-wave and aggregate verification tracking |
-| `sessionLedger` | Structured audit trail for mode transitions and phase boundaries |
-| `pipelineLock` | Mutex to prevent concurrent pipeline runs |
-| `classifyComplexity` | TRIVIAL → CRITICAL complexity classification with file/concern estimation |
-| `confidenceJournal` | Tracks execution-time decision confidence and flags blocks needing human re-review |
-| `repoCleanup` | Shadow debt scanning and automated cleanup |
-| `writePlanningFile` | Writes artifacts to `.planning/` directory |
-
-### Slash Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/lu` | Launch the full autonomous pipeline |
-| `/lu-review` | Run review mode on current changes |
-| `/milestone-new` | Create a new milestone from backlog items |
-| `/pr-address` | Fetch, categorize, fix, and reply to PR review comments |
-| `/repo-cleanup` | Scan and clean AI-session debris |
-| `/todo-add` | Add item to backlog |
-| `/todo-check` | List backlog items by status |
-
-### Long-Term Memory
-
-Luca integrates with [MuninnDB](https://github.com/asibilia/muninn) for persistent knowledge across sessions:
-
-- **Research findings** — codebase architecture, dependency maps, risk assessments
-- **Learnings** — patterns, pitfalls, and insights from completed milestones
-- **Decisions** — architectural decisions with rationale and alternatives considered
-- **Release conventions** — versioning, PR format, publish procedures
-- **Project preferences** — branching, commits, PR titles, release tooling, tracker (seeded by the `/luca-init` skill)
-- **Entity graph** — named entities and relationships across the codebase
-
-#### Wiring MuninnDB into Claude Code
-
-MuninnDB tools (`mcp__muninn__*`) reach Claude Code via MCP — and `luca init` does **not** auto-configure this. After it installs and starts MuninnDB, register the MCP server yourself.
-
-The fastest way is the Claude Code CLI (registers a user-scoped server every project picks up):
+From the command line:
 
 ```bash
-claude mcp add --transport sse muninn http://localhost:8750/mcp \
-  --header "Authorization: Bearer <your-muninn-api-key>"
+bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>]
+bun packages/engine/src/cli/luca-run.ts --demo
+bun packages/engine/src/cli/luca-run.ts --resume <run-id>
 ```
 
-Or add a project-scoped server by creating `<project>/.mcp.json`:
+See [The command line: `luca-run`](packages/engine/README.md#the-command-line-luca-run) for every flag.
 
-```json
-{
-  "mcpServers": {
-    "muninn": {
-      "type": "sse",
-      "url": "http://localhost:8750/mcp",
-      "headers": {
-        "Authorization": "Bearer <your-muninn-api-key>"
-      }
-    }
-  }
-}
-```
+## Develop
 
-**Ports:** MuninnDB serves its **MCP endpoint on `8750`** (authenticated, SSE) and its **service + web dashboard on `8476`** (the port `luca init` reports and where you generate the API key). Use `8750` for the MCP wiring above; use `8476` for the dashboard. The MCP port is a MuninnDB-internal default and is not affected by `MUNINNDB_PORT`. Use the same API key that `luca vault:init` prompted for (or read it from your project's `.env`'s `MUNINN_DB_API_KEY`). Restart Claude Code, then run `/mcp` to confirm the `muninn` server is connected. The `mcp__muninn__*` tools become available to the pipeline modes and to subagents that opt in (researcher, planner, executor, verifier, reviewer, learner, discussion).
-
-### Prompt Engineering
-
-Luca's instruction system exploits LLM attention curves:
-
-- **Primacy zone** (first 5 lines) — quantified constraints (e.g., "≤75 words", "≤10 tool calls")
-- **Middle zone** — behavioral guidelines and procedures (compression-safe)
-- **Recency zone** (last lines) — hard constraints and reminders
-
-All directives use specific numbers instead of qualitative language ("≤75 words" not "be concise").
-
-## Quickstart
-
-### Prerequisites
-
-- [Bun](https://bun.sh) runtime
-- [MuninnDB](https://github.com/asibilia/muninn) (optional, for long-term memory)
-
-### 1. Install dependencies
+Bun is required.
 
 ```bash
-bun install
+bun install                                  # Install dependencies
+bunx --bun tsc --noEmit                      # Type check (leaves out packages/board)
+bunx --bun tsc --noEmit -p packages/board    # Type check the board
+bun test packages                            # Run the tests
+bun run lint                                 # Lint
 ```
 
-### 2. Initialize Luca
-
-```bash
-luca init          # Set up MuninnDB
-luca vault:init    # Configure vault for your project
-luca doctor        # Run environment diagnostics and health checks
-```
-
-### 3. Run the pipeline in your harness
-
-`luca init` installs Luca's skills, agents, and slash commands into every detected harness home (`~/.claude` for Claude Code, the Antigravity CLI home) and wires the stage-gate hook and MuninnDB MCP server. From there, drive the pipeline with the `/lu` slash command inside Claude Code or Antigravity:
-
-```text
-/lu <your development request>
-```
-
-### CLI Reference
-
-| Command | Purpose |
-|---------|---------|
-| `luca init` | Bootstrap MuninnDB and install Luca artifacts into each harness |
-| `luca vault:init` | Configure the project vault |
-| `luca doctor` | Run environment diagnostics and health checks |
-| `luca repair` | Repair drifted or stale harness artifacts |
-| `luca version` | Print the installed CLI version |
-
-## Development
-
-```bash
-bun install              # Install dependencies
-bun run build            # Build the @alecsibilia/luca CLI
-bun run release:local    # Build + bun link the luca CLI globally
-bunx --bun tsc --noEmit  # Type check (the pipeline verification gate)
-```
-
-### Release Process
-
-Releases are driven by [Changesets](https://github.com/changesets/changesets):
-
-1. Add a changeset with your PR: `bun changeset`
-2. Merge the PR to main
-3. The `release.yml` workflow opens a "Version Packages" PR that bumps versions and updates `CHANGELOG.md`
-4. Merge the Version PR → workflow creates a GitHub Release (`vX.Y.Z`) and publishes `@alecsibilia/luca` to NPM
+These are the engine's own gates for this repo, set in [`.luca/config.json`](.luca/config.json) along with the test file patterns, the rule files, and the memory vault.
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Coding Standards](docs/guides/coding-standards.md)
+- [CONTEXT.md](CONTEXT.md): the domain words
+- [docs/README.md](docs/README.md): the docs index
+- [AGENTS.md](AGENTS.md): instructions for AI coding agents working on this repo
+- [docs/guides/coding-standards.md](docs/guides/coding-standards.md): coding standards
+
+## Old Luca
+
+Old Luca (the `luca` CLI, the `luca-*` packages, the `/lu` pipeline, and their docs) has been deleted. Its last code and docs are at the tag `old-luca-final`. To read a file from it, run `git show old-luca-final:<path>`.
 
 ## License
 
-MIT
+Apache License 2.0. See [LICENSE](LICENSE).
