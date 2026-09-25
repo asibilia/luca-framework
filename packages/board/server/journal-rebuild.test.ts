@@ -4,8 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { createBoardServer, type SpawnRequest } from './board-server'
-import { BUN_PATH, ENGINE_PATH } from './testing/board-harness'
+import { createHarness } from './testing/board-harness'
 import {
     intakeOfThree,
     intakeRefused,
@@ -69,82 +68,39 @@ const writeJournal = async ({
 }
 
 /**
- * A board plugin on `registry_dir` and `runs_dir`, with fake chats, spawns,
- * and processes. Making a second one on the same folders is a reload. It is
- * built here rather than with `createHarness` because the shared harness
- * takes no `runs_dir`, and without one the board reads no journals.
+ * A board plugin on `registry_dir` and `runs_dir`, built with the shared
+ * harness. Making a second one on the same folders is a reload.
  */
-const plugin = ({
+const plugin = async ({
     registry_dir,
     runs_dir,
 }: {
     registry_dir: string
     runs_dir: string
 }) => {
-    const rows: { agent_id: string; row: BoardRow }[] = []
-    const spawns: SpawnRequest[] = []
-    let clock = Date.parse('2026-09-25T12:30:42.000Z')
-    const board = createBoardServer({
-        registry_path: join(registry_dir, 'runs.json'),
-        runs_dir,
-        append_row: async ({ agent_id, row }) => {
-            rows.push({ agent_id, row })
-        },
-        spawn_engine: (request) => {
-            spawns.push(request)
-            return { pid: 4242 }
-        },
-        list_processes: async () => [],
-        run_command: async () => ({
-            exit_code: 0,
-            stdout: `${JSON.stringify({ runs: [] })}\n`,
-            stderr: '',
-        }),
-        read_settings: async () => ({ engine_path: ENGINE_PATH, bun_path: '' }),
-        file_exists: ({ path }) => path === ENGINE_PATH || path === BUN_PATH,
-        home_dir: '/home/me',
-        env: { PATH: '/usr/bin' },
-        log_dir: '/tmp',
-        now: () => {
-            clock += 1000
-            return new Date(clock)
-        },
-        log: () => undefined,
-    })
+    const harness = await createHarness({ registry_dir, runs_dir })
 
     /** Starts a run from a chat, as `/luca-run 10` does. */
-    const start = async ({
-        workspace_id = 'ws-1',
-    }: { workspace_id?: string } = {}) => {
-        const output = await board.startRun({
-            agent_id: 'agent-1',
-            workspace_id,
-            cwd: '/repo',
-            args: '10',
-        })
+    const start = async () => {
+        const { output, run_id, token } = await harness.start()
         if (!output.ok) throw new Error(output.message)
-        return {
-            run_id: output.run_id ?? '',
-            token: spawns.at(-1)?.env.LUCA_BOARD_TOKEN ?? '',
-        }
+        return { run_id, token }
     }
 
     /** One run's full state, as the side panel reads it. */
     const stateOf = async ({
         run_id,
-        workspace_id = 'ws-1',
     }: {
         run_id: string
-        workspace_id?: string
     }): Promise<BoardState> => {
-        const { selected } = await board.readBoard({ workspace_id, run_id })
+        const { selected } = await harness.read({ run_id })
         if (selected?.run.run_id !== run_id) {
             throw new Error(`the board doesn't show run ${run_id}`)
         }
         return selected
     }
 
-    return { board, rows, spawns, start, stateOf }
+    return { ...harness, start, stateOf }
 }
 
 /** A whole run of spec 10: three tickets built, the review passed, a PR. */
@@ -184,7 +140,7 @@ const launchedRun = async ({
     runs_dir: string
     entries: Entry[]
 }) => {
-    const first = plugin({ registry_dir, runs_dir })
+    const first = await plugin({ registry_dir, runs_dir })
     const { run_id, token } = await first.start()
     await first.board.handleEngineEvent({
         run_id,
@@ -205,7 +161,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             entries: finishedRun(),
         })
 
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         const state = await reloaded.stateOf({ run_id })
 
         expect(state.run.status).toBe('done')
@@ -226,7 +182,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             entries: stoppedRun(),
         })
 
-        const state = await plugin(folders).stateOf({ run_id })
+        const state = await (await plugin(folders)).stateOf({ run_id })
 
         expect(state.run.status).toBe('stopped')
         expect(state.run.stopped?.reason).toBe('the login is wrong')
@@ -239,7 +195,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             entries: stuckRun(),
         })
 
-        const state = await plugin(folders).stateOf({ run_id })
+        const state = await (await plugin(folders)).stateOf({ run_id })
 
         expect(state.run.status).toBe('stuck')
         expect(state.needs_you.map((item) => item.ticket)).toEqual([13])
@@ -252,7 +208,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             entries: nothingToDoRun(),
         })
 
-        const state = await plugin(folders).stateOf({ run_id })
+        const state = await (await plugin(folders)).stateOf({ run_id })
 
         expect(state.run.status).toBe('nothing_to_do')
     })
@@ -263,10 +219,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
         const stopped = await launchedRun({ ...folders, entries: stoppedRun() })
         const stuck = await launchedRun({ ...folders, entries: stuckRun() })
 
-        const { runs } = await plugin(folders).board.readBoard({
-            workspace_id: 'ws-1',
-            run_id: null,
-        })
+        const { runs } = await (await plugin(folders)).read()
         const statusOf = (run_id: string) =>
             runs.find((run) => run.run_id === run_id)?.status
 
@@ -277,7 +230,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
 
     test('a reload rebuilds the same state the engine events built', async () => {
         const folders = await disk()
-        const first = plugin(folders)
+        const first = await plugin(folders)
         const { run_id, token } = await first.start()
         const records = stamp({ entries: finishedRun() })
         await writeJournal({ ...folders, run_id, entries: finishedRun() })
@@ -290,7 +243,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
         await first.board.idle()
         const live = await first.stateOf({ run_id })
 
-        const rebuilt = await plugin(folders).stateOf({ run_id })
+        const rebuilt = await (await plugin(folders)).stateOf({ run_id })
 
         expect({ ...rebuilt, latest: null }).toEqual({ ...live, latest: null })
     })
@@ -302,7 +255,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             entries: finishedRun(),
         })
 
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         const check = await reloaded.board.checkEngines()
 
         expect(check).toEqual({ restarted: [], stopped: [] })
@@ -316,7 +269,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
             ...folders,
             entries: stuckRun(),
         })
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         const before = await reloaded.stateOf({ run_id })
 
         const reply = await reloaded.board.handleEngineEvent({
@@ -370,7 +323,7 @@ const liveRowsFrom = async ({
     entries: Entry[]
     from: number
 }) => {
-    const live = plugin(await disk())
+    const live = await plugin(await disk())
     const { run_id, token } = await live.start()
     const records = stamp({ entries })
     await live.board.handleEngineEvent({
@@ -403,7 +356,7 @@ describe('after a reload the engine resends records the board rebuilt from disk'
         const folders = await disk()
         const entries = resentRun()
         const { run_id, token } = await launchedRun({ ...folders, entries })
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         await reloaded.stateOf({ run_id })
         await reloaded.board.idle()
         const seen = reloaded.rows.length
@@ -449,7 +402,7 @@ describe('after a reload the engine resends records the board rebuilt from disk'
         const folders = await disk()
         const entries = resentRun()
         const { run_id, token } = await launchedRun({ ...folders, entries })
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         const resent = stamp({ entries }).slice(RESENT_FROM - 1)
         await reloaded.board.handleEngineEvent({
             run_id,
@@ -477,7 +430,7 @@ describe('after a reload the engine resends records the board rebuilt from disk'
     test('a run whose engine ended adds no rebuilt rows when records are resent', async () => {
         const folders = await disk()
         const entries = resentRun()
-        const first = plugin(folders)
+        const first = await plugin(folders)
         const { run_id, token } = await first.start()
         await first.board.handleEngineEvent({
             run_id,
@@ -487,7 +440,7 @@ describe('after a reload the engine resends records the board rebuilt from disk'
         })
         await first.board.idle()
         await writeJournal({ ...folders, run_id, entries })
-        const reloaded = plugin(folders)
+        const reloaded = await plugin(folders)
         await reloaded.stateOf({ run_id })
         await reloaded.board.idle()
         const seen = reloaded.rows.length
@@ -517,7 +470,7 @@ describe('a run the board did not start', () => {
             entries: finishedRun(),
         })
 
-        const board = plugin(folders)
+        const board = await plugin(folders)
         const { runs } = await board.board.readBoard({
             workspace_id: 'ws-1',
             run_id: null,
@@ -537,7 +490,7 @@ describe('a run the board did not start', () => {
 
     test('a run started from the command line while the board runs shows up on the next read', async () => {
         const folders = await disk()
-        const board = plugin(folders)
+        const board = await plugin(folders)
         await board.board.readBoard({ workspace_id: 'ws-1', run_id: null })
 
         await writeJournal({
@@ -559,7 +512,7 @@ describe('a run the board did not start', () => {
             entries: finishedRun(),
         })
 
-        const board = plugin(folders)
+        const board = await plugin(folders)
         await board.stateOf({ run_id: OUTSIDE })
         await board.board.checkEngines()
         await board.board.idle()
@@ -575,7 +528,7 @@ describe('a run the board did not start', () => {
             entries: stuckRun(),
         })
 
-        const board = plugin(folders)
+        const board = await plugin(folders)
         const reply = await board.board.handleEngineEvent({
             run_id: OUTSIDE,
             token: 'any-token',
@@ -603,7 +556,7 @@ describe('a run the board did not start', () => {
             ],
         })
 
-        const board = plugin(folders)
+        const board = await plugin(folders)
         await board.stateOf({ run_id: OUTSIDE })
         const check = await board.board.checkEngines()
 
@@ -619,7 +572,8 @@ describe('a run the board did not start', () => {
             entries: nothingToDoRun(),
         })
 
-        const state = await plugin(folders).stateOf({ run_id: OUTSIDE })
+        const board = await plugin(folders)
+        const state = await board.stateOf({ run_id: OUTSIDE })
 
         expect(state.run.status).toBe('nothing_to_do')
     })
@@ -639,7 +593,8 @@ describe('a run the board did not start', () => {
             ],
         })
 
-        const state = await plugin(folders).stateOf({ run_id: OUTSIDE })
+        const board = await plugin(folders)
+        const state = await board.stateOf({ run_id: OUTSIDE })
 
         expect(state.run.status).toBe('refused')
         expect(state.run.refusal.length).toBeGreaterThan(0)
