@@ -40,6 +40,10 @@ _Avoid_: preflight, validation
 The plain code that drives a run and picks every next step.
 _Avoid_: orchestrator
 
+**Release**:
+A tagged version of Luca, pinned in its own copy, that every run uses, including runs on Luca itself.
+_Avoid_: deploy, install
+
 **Agent**:
 One model session doing one role on one ticket.
 _Avoid_: subagent, worker
@@ -101,8 +105,16 @@ A ticket you chose to leave out of a run after it got stuck. It stays open for a
 _Avoid_: dropped, abandoned
 
 **Limit wait**:
-A pause while the plan's usage limit resets. The run carries on by itself afterwards, so it isn't stuck.
+A pause until a plan window resets, either because the plan's own limit was hit or because Luca's use reached the usage line. The run carries on by itself afterwards, so it isn't stuck.
 _Avoid_: stuck, throttled
+
+**Usage line**:
+The share of a plan window, such as the weekly or the 5-hour window, that Luca may use across all its runs before they pause in a limit wait.
+_Avoid_: quota, threshold, cap
+
+**Run budget**:
+The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.
+_Avoid_: quota, token limit
 
 **Agent message**:
 A one-way heads-up one agent sends another during a run, handed over by the engine at the receiver's next tool call.
