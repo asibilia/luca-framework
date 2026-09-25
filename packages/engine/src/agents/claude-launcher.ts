@@ -400,7 +400,8 @@ const pumpMessages = async ({
  * The session stays open after its turn, in streaming-input mode, so
  * `followUp` can send it another message; the same watch applies to every
  * turn. A stop, a plan cut-off, an engine failure, or a timeout closes the session, and so
- * does sitting idle past `idle_timeout_ms`. `closeAll` closes every session
+ * does sitting idle past `idle_timeout_ms`. `closeSession` closes one
+ * session once the engine is done with it; `closeAll` closes every session
  * still open; call it when the run ends.
  *
  * `query` and `claude_path` are for tests; they default to the SDK's
@@ -694,9 +695,16 @@ export const createClaudeLauncher = ({
         })
     }
 
+    const closeSession: AgentLauncher['closeSession'] = async ({
+        session_id,
+    }) => {
+        const open = sessions.get(session_id)
+        if (open !== undefined) await close(open)
+    }
+
     const closeAll = async (): Promise<void> => {
         await Promise.all([...new Set(sessions.values())].map(close))
     }
 
-    return { launch, followUp, closeAll }
+    return { launch, followUp, closeSession, closeAll }
 }

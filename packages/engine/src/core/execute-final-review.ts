@@ -9,6 +9,7 @@ import {
     runTurn,
     type BuildContext,
 } from './execute-build'
+import { closeSessions, openSessionsIn } from './session-close'
 
 import type { Journal } from '../journal/journal'
 import { replayRun, type RuleFile } from '../journal/replay'
@@ -272,6 +273,14 @@ export const executeFinalReviewAction = async ({
             })
             return
         case 'mark_final_review_stuck':
+            // A stuck final review's agents take no more follow-ups.
+            await closeSessions({
+                journal,
+                launcher,
+                sessions: openSessionsIn({ records: journal.read() }).filter(
+                    ({ ticket, role }) => ticket === null && role !== 'learner'
+                ),
+            })
             journal.append({
                 kind: 'final_review_stuck',
                 ticket: null,

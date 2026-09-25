@@ -7,6 +7,7 @@ import uniq from 'lodash/uniq'
 import { mayEditTests, type BuildAction } from './decide-build'
 import type { FinalReviewAction } from './decide-final-review'
 import { retryTicket } from './execute-stuck'
+import { closeSessions, openSessionsIn } from './session-close'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
 import {
@@ -383,7 +384,8 @@ const failTurn = ({
  * structured output. Each failed turn is journaled once as `agent_failed`
  * with how it failed; the decision step picks what happens next. A launcher stop journals
  * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
- * overage, a billing error) journals only its session.
+ * overage, a billing error) journals only its session. Both close the
+ * turn's session first, since no follow-up can reach it.
  *
  * @param worktree - Where the agent works: its ticket's worktree, or the run
  *   branch's for the final review.
@@ -447,6 +449,15 @@ export const runTurn = async ({
         turn.failure === 'plan' &&
         (turn.session === undefined ||
             sessionSignal({ session: turn.session }).kind === 'ok')
+    // Either way no follow-up reaches the session: close it now.
+    const cut = !turn.ok && (turn.failure === 'plan' || turn.failure === 'stop')
+    if (cut && turn.session_id !== undefined) {
+        await closeSessions({
+            journal: context.journal,
+            launcher: context.launcher,
+            sessions: [{ session_id: turn.session_id, ticket, role }],
+        })
+    }
     if (!turn.ok && turn.failure === 'plan' && !unexplained) return null
     if (!turn.ok && (turn.failure === 'stop' || unexplained)) {
         context.journal.append({
@@ -1050,6 +1061,14 @@ export const executeBuildAction = async ({
         case 'mark_stuck':
             // A join crashes cut off too often leaves no half of it behind.
             await undoCutOffJoin({ context, ticket: action.ticket })
+            // A stuck ticket's agents take no more follow-ups.
+            await closeSessions({
+                journal,
+                launcher,
+                sessions: openSessionsIn({ records: journal.read() }).filter(
+                    ({ ticket }) => ticket === action.ticket
+                ),
+            })
             journal.append({
                 kind: 'ticket_stuck',
                 ticket: action.ticket,

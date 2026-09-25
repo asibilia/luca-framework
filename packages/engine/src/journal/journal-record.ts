@@ -221,6 +221,18 @@ const AgentSessionEntrySchema = z.object({
 })
 
 /**
+ * The engine closed an agent's session: nothing can send it a follow-up
+ * anymore (its step's result was accepted, or its step ended another way).
+ * The decision step never follows up a closed session; a fix round that
+ * would have gone to it goes to a fresh agent.
+ */
+const AgentSessionClosedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('agent_session_closed'),
+    content: z.object({ role: AgentRoleSchema, session_id: z.string() }),
+})
+
+/**
  * Shared `.git` files changed during an agent's turn by something the
  * engine can't attribute to the agent: config outside the ticket branch's
  * own section, `info/exclude`, or hooks, such as another agent's
@@ -1018,6 +1030,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JevAnsweredEntrySchema,
     JevFailedEntrySchema,
     AgentSessionEntrySchema,
+    AgentSessionClosedEntrySchema,
     SharedGitChangedEntrySchema,
     RunStoppedEntrySchema,
     LimitWaitStartedEntrySchema,
@@ -1086,6 +1099,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
     JevFailedEntrySchema.extend(STAMP_FIELDS),
     AgentSessionEntrySchema.extend(STAMP_FIELDS),
+    AgentSessionClosedEntrySchema.extend(STAMP_FIELDS),
     SharedGitChangedEntrySchema.extend(STAMP_FIELDS),
     RunStoppedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
@@ -1153,6 +1167,7 @@ export const JournalKindSchema = z.enum([
     'jev_answered',
     'jev_failed',
     'agent_session',
+    'agent_session_closed',
     'shared_git_changed',
     'run_stopped',
     'limit_wait_started',
