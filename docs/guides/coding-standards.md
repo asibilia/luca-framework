@@ -1,7 +1,7 @@
 # Luca Framework Coding Standards
 
-> **Version:** 2.0.0
-> **Last Updated:** 2026-03-31
+> **Version:** 3.0.0
+> **Last Updated:** 2026-09-25
 > **Status:** Active
 
 This document defines the coding standards and patterns for the Luca Framework codebase. All contributors and AI-generated code must follow these conventions.
@@ -23,7 +23,7 @@ This document defines the coding standards and patterns for the Luca Framework c
 
 ## Overview
 
-Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The codebase defines agents, skills, and rules as TypeScript definitions that compile to Cursor and Claude formats. It follows strict patterns for consistency, type safety, and maintainability.
+Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. It holds two packages: `packages/engine` (the engine that drives a run) and `packages/board` (the Paseo plugin `luca-board`). It follows strict patterns for consistency, type safety, and maintainability.
 
 ### Tech Stack
 
@@ -31,17 +31,19 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. The co
 | ----------- | ---------------------------------------------- |
 | Runtime     | Bun                                            |
 | Language    | TypeScript (strict mode)                       |
-| Database    | File-based (.planning/ artifacts, JSON config) |
 | Validation  | Zod                                            |
 | Collections | Lodash                                         |
-| Build       | unbuild                                        |
+| Tests       | `bun test`                                     |
+| Lint        | ESLint + Prettier                              |
 
 ### Key Commands
 
 ```bash
-bun install              # Install dependencies
-bun run build            # Build the @alecsibilia/luca CLI
-bunx --bun tsc --noEmit  # Type check
+bun install                                  # Install dependencies
+bunx --bun tsc --noEmit                      # Type check (leaves out packages/board)
+bunx --bun tsc --noEmit -p packages/board    # Type check the board
+bun test packages                            # Run the tests
+bun run lint                                 # Lint
 ```
 
 ---
@@ -55,35 +57,15 @@ All files use `kebab-case` naming.
 **DO:**
 
 ```
-packages/luca-core/src/state/cli-parse.ts
-packages/luca-cli/src/utils/vault-setup.ts
+packages/engine/src/journal/journal-record.ts
+packages/engine/src/config/engine-config.ts
 ```
 
 **DON'T:**
 
 ```
-packages/luca-core/src/state/CliParse.ts
-packages/luca-cli/src/utils/vaultSetup.ts
-```
-
-### Planning Artifacts: `UPPERCASE.md`
-
-Planning artifacts use uppercase naming:
-
-```
-MuninnDB brain tree (brain:project-identity)
-MuninnDB engrams (pattern:*, decision:*, pitfall:*, preference:*)
-MuninnDB session context (session:*)
-```
-
-### Agent/Skill/Rule Naming
-
-Framework-specific definitions use the `lu-` prefix:
-
-```
-lu-executor.agent.ts
-lu-plan-phase.skill.ts
-lu-workflow.rule.ts
+packages/engine/src/journal/JournalRecord.ts
+packages/engine/src/config/engineConfig.ts
 ```
 
 ### Object Keys: `snake_case`
@@ -94,7 +76,7 @@ All object keys in types, interfaces, and data structures use `snake_case`.
 
 ```typescript
 const agentConfig = {
-  agent_name: "lu-debugger",
+  agent_name: "reviewer",
   description: "Debugging agent",
   tool_list: ["Read", "Write", "Grep"],
 };
@@ -104,7 +86,7 @@ const agentConfig = {
 
 ```typescript
 const agentConfig = {
-  agentName: "lu-debugger", // camelCase - wrong
+  agentName: "reviewer", // camelCase - wrong
   toolList: ["Read", "Write"], // camelCase - wrong
 };
 ```
@@ -130,32 +112,19 @@ const DEFAULT_AGENT_COLOR = "blue";
 ### Directory Structure
 
 ```
-src/
-  adapters/         # Multi-IDE output adapters
-  agents/           # Agent definitions and registry
-  compilers/        # Compilation pipeline
-  complexity/       # Complexity gating and model routing
-  context/          # Context tier management
-  eval/             # Evaluation framework
-  harness/          # Verification harness
-  hooks/            # Hook scripts and generation
-  interop/          # Cross-tool agent scanner
-  iteration/        # Error classification and convergence
-  observability/    # Agent effectiveness scoring
-  planner/          # Sprint planning
-  rules/            # Rule definitions and registry
-  shared/           # Cross-domain utilities
-  skills/           # Skill definitions and registry
-  workflow/         # DAG engine and step contracts
-scripts/            # Build and generation scripts
-packages/           # Workspaces
-  luca/             # Public umbrella package (@alecsibilia/luca)
-  luca-cli/         # CLI command surface
-  luca-core/        # Pipeline state machine and core logic
-  luca-tools/       # Harness instruction bodies (modes, subagents, skills)
+packages/
+  engine/           # The engine (@luca/engine): runs, journal, gates, agents, the luca-run CLI
+    src/            # Modules by area (config, journal, core, gates, agents, guards, ...)
+  board/            # The Paseo plugin luca-board (@luca/board)
+    shared/         # Zod contracts and plain values only
+    server/         # Plugin server side (reducer, rows, registry, launcher)
+    client/         # React Native panel
 docs/               # Documentation
-.planning/          # Runtime artifacts (memory stored in MuninnDB)
+.luca/config.json   # Engine config: checks, test patterns, rule files, memory vault
+CONTEXT.md          # Domain words
 ```
+
+Tests live next to the code they test, as `*.test.ts`.
 
 ---
 
@@ -227,8 +196,6 @@ class Agent {
   }
 }
 ```
-
-> **Note:** The existing base classes (`BaseAgentImpl`, `BaseSkillImpl`, `BaseRuleImpl`) are a legacy exception. New code should prefer functional patterns.
 
 ---
 
@@ -304,7 +271,7 @@ const agentNames = agents.filter((a) => a.is_active).map((a) => a.name);
 
 ## Verification
 
-Verification uses `bunx --bun tsc --noEmit` (type checking). Tests are not currently used. They were removed wholesale to prevent memory exhaustion from orphaned processes.
+The engine's gates are the checks in `.luca/config.json`: the tests (`bun test packages`), both type checks (`bunx --bun tsc --noEmit` and `bunx --bun tsc --noEmit -p packages/board`), and the linter (`bun run lint`). All of them must pass. New behavior comes with tests.
 
 ---
 
@@ -328,14 +295,11 @@ type(scope): description
 
 ### Scopes
 
-| Scope       | Use For                 |
-| ----------- | ----------------------- |
-| `cli`       | CLI package changes     |
-| `agents`    | Agent definitions       |
-| `skills`    | Skill definitions       |
-| `rules`     | Rule definitions        |
-| `workflows` | Workflow system changes |
-| `config`    | Configuration changes   |
+| Scope    | Use For                               |
+| -------- | ------------------------------------- |
+| `engine` | `packages/engine` changes             |
+| `board`  | `packages/board` changes              |
+| `repo`   | Repo-wide changes (docs, config, CI)  |
 
 ---
 
@@ -351,9 +315,8 @@ When writing new code, verify:
 - [ ] No `as` type casting or `!` assertions
 - [ ] Lodash used for array/object operations
 - [ ] Functional patterns preferred over classes
-- [ ] Type checking passes (`bunx --bun tsc --noEmit`)
+- [ ] Tests, both type checks, and lint pass (see [Verification](#verification))
 - [ ] Commits follow conventional commit format
-- [ ] Agent/skill/rule files follow naming convention (`*.agent.ts`, `*.skill.ts`, `*.rule.ts`)
 
 ---
 

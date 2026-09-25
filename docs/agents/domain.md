@@ -8,7 +8,7 @@ This repo is **single-context**: one `CONTEXT.md` and one `docs/adr/` at the rep
 
 - **`CONTEXT.md`** at the repo root.
 - **`docs/adr/`**: read ADRs that touch the area you're about to work in.
-- **`docs/decisions/`**: older decision records from before this setup. Read the ones that touch your area too. New ADRs go in `docs/adr/`.
+- Old Luca's decision records (`docs/decisions/`) were removed with old Luca. They are at the tag `old-luca-final`. New ADRs go in `docs/adr/`.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 

@@ -1,32 +1,22 @@
-# Luca Framework Documentation
+# Luca documentation
 
-Start here, then go deeper into the areas relevant to your work.
+Start with `CONTEXT.md` for the domain words, then read the README of the package you're working in.
 
-## Onboarding
+| Doc | What it covers |
+| --- | --- |
+| [../CONTEXT.md](../CONTEXT.md) | The domain words: spec, ticket, run, engine, gate, journal, board, and the rest |
+| [../packages/engine/README.md](../packages/engine/README.md) | The engine: how a run moves, crash recovery, reviews, stuck work, the `luca-run` command line, memory, tests |
+| [../packages/board/README.md](../packages/board/README.md) | The board, the Paseo plugin `luca-board`: `/luca-run`, the `engine.event` contract, settings, install, develop |
+| [agents/](agents/) | How agents use this repo: the [issue tracker](agents/issue-tracker.md), [triage labels](agents/triage-labels.md), and [domain docs](agents/domain.md) |
+| [guides/coding-standards.md](guides/coding-standards.md) | Coding standards. One of the engine's rule files in `.luca/config.json` |
 
-| Doc                                      | Purpose                                    |
-| ---------------------------------------- | ------------------------------------------ |
-| [getting-started.md](getting-started.md) | Prerequisites, installation, core concepts |
-| [troubleshooting.md](troubleshooting.md) | Common issues and fixes                    |
+## Old Luca
 
-## Guides
+Old Luca's docs (getting started, troubleshooting, design records, research, and the archive) were removed with old Luca. They are at the tag `old-luca-final`. To read one, run:
 
-| Doc                                                      | Purpose                                                   |
-| -------------------------------------------------------- | --------------------------------------------------------- |
-| [guides/coding-standards.md](guides/coding-standards.md) | TypeScript conventions, build commands, project structure |
-
-## Research
-
-Foundational knowledge that informed Luca's design:
-
-| Doc                                                                                          | Purpose                                                       |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| [research/claude-code-prompt-architecture.md](research/claude-code-prompt-architecture.md)   | Analysis of Claude Code's prompt architecture                 |
-| [research/prompt-architecture/](research/prompt-architecture/README.md)                      | Multi-part deep dive on prompt architecture and agent design  |
-
-## Archive
-
-Historical docs (completed designs, superseded specs, phase research) are in [archive/](archive/README.md). These are preserved for reference but no longer actively maintained.
+```bash
+git show old-luca-final:docs/<path>
+```
 
 ---
 
