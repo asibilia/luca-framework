@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import {
+    CurrentStepSchema,
     EngineEndedSchema,
     RunStatusSchema,
     TicketStageSchema,
@@ -45,6 +46,13 @@ export const RunRowSchema = z.object({
     final_review: z.string(),
     usage: UsageLineSchema.nullable(),
     limit_wait: z.boolean(),
+    /**
+     * The steps running now: each ticket's (`ticket` set) and the run's
+     * (`ticket` null). Defaulted, so a row from before it still parses.
+     */
+    current_steps: z
+        .array(CurrentStepSchema.extend({ ticket: z.number().nullable() }))
+        .default([]),
     needs_you: z.number(),
     pr_url: z.string().nullable(),
     engine_ended: EngineEndedSchema.nullable(),

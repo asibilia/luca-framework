@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import type { PluginTheme } from '@getpaseo/plugin'
 import { Platform } from 'react-native'
 
@@ -15,6 +17,26 @@ import type {
  */
 
 export const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' })
+
+/** How often a running step's time counts up. */
+const TICK_MS = 1000
+
+/**
+ * The clock, ticking every second, so a running step's time counts up
+ * even when no new record redraws the view.
+ *
+ * @example
+ * const now = useNow()
+ * currentStepText({ step, now })
+ */
+export const useNow = (): number => {
+    const [now, setNow] = useState(() => Date.now())
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), TICK_MS)
+        return () => clearInterval(timer)
+    }, [])
+    return now
+}
 
 /** Opacity for dimmed parts: empty stages, the final review before it starts. */
 export const DIMMED = 0.45

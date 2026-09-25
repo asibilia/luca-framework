@@ -119,6 +119,8 @@ export const BOARD_VOCABULARY = {
     run_branch_created: WorktreeSchema,
     ticket_worktree_created: WorktreeSchema,
     baseline_tests: TestRunSchema,
+    /** Another ticket's baseline, taken from the same run-branch commit (#404). */
+    baseline_reused: z.looseObject({ from_ticket: z.number().int() }),
     agent_started: z.looseObject({
         role: z.string(),
         /** The session a fix-loop or failed-try follow-up went to. */
@@ -320,6 +322,16 @@ export const BOARD_VOCABULARY = {
     learning_skipped: z.looseObject({ reason: z.string().catch('') }),
     /** With no PR, the new memories went on the spec issue. */
     memories_reported: z.looseObject({ count: z.number().int().catch(0) }),
+
+    // The scheduler's steps (#403): what the engine is doing right now.
+    /**
+     * A step began. `key` is the scheduler's key (a ticket's number, `run`,
+     * `final`, `lens:<lens>`, ...); `step` its action type, plus `:<role>`
+     * for an agent's turn.
+     */
+    step_started: z.looseObject({ key: z.string(), step: z.string() }),
+    /** The step on `key` settled. */
+    step_ended: z.looseObject({ key: z.string(), step: z.string() }),
 } as const
 
 export type BoardKind = keyof typeof BOARD_VOCABULARY
@@ -340,6 +352,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_branch_created' }),
     entry({ kind: 'ticket_worktree_created' }),
     entry({ kind: 'baseline_tests' }),
+    entry({ kind: 'baseline_reused' }),
     entry({ kind: 'agent_started' }),
     entry({ kind: 'agent_finished' }),
     entry({ kind: 'agent_failed' }),
@@ -381,6 +394,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'memories_saved' }),
     entry({ kind: 'learning_skipped' }),
     entry({ kind: 'memories_reported' }),
+    entry({ kind: 'step_started' }),
+    entry({ kind: 'step_ended' }),
 ])
 
 /** A record the board understands, with its content parsed. */

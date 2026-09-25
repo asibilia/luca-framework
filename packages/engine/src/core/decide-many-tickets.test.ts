@@ -124,7 +124,17 @@ describe('decision step: many tickets at once', () => {
         const steps = twoSteps([
             runBranchCreated(),
             ...ticketBuilt({ ticket: 11 }).slice(0, 2),
-            ...ticketBuilt({ ticket: 12 }).slice(0, 1),
+            // From a newer commit than #11's, so #12 runs its own baseline.
+            {
+                kind: 'ticket_worktree_created',
+                ticket: 12,
+                role: null,
+                content: {
+                    branch: `${RUN_BRANCH}--ticket-12`,
+                    path: ticketPath(12),
+                    base_sha: 'b1',
+                },
+            },
         ])
 
         expect(steps).toMatchObject([

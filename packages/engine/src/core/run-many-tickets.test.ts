@@ -182,6 +182,151 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
         }
     })
 
+    test('#11 and #12 start from the same run-branch commit and share one baseline test run; the reuse is journaled', () => {
+        const worktrees = ofKind(run.records, 'ticket_worktree_created')
+        const baseOf = (ticket: number) =>
+            worktrees.find((record) => record.ticket === ticket)?.content
+                .base_sha
+        expect(baseOf(11)).toBe(baseOf(12) ?? '')
+
+        const baselines = ofKind(run.records, 'baseline_tests').filter(
+            ({ ticket }) => ticket === 11 || ticket === 12
+        )
+        expect(baselines).toHaveLength(1)
+        const ran = baselines[0]?.ticket ?? 0
+        const other = ran === 11 ? 12 : 11
+
+        const reused = ofKind(run.records, 'baseline_reused')
+        expect(reused.map(({ ticket }) => ticket)).toEqual([other])
+        expect(reused[0]?.content).toMatchObject({
+            from_ticket: ran,
+            base_sha: baseOf(ran),
+        })
+        expect(reused[0]?.seq ?? 0).toBeGreaterThan(baselines[0]?.seq ?? 0)
+    })
+
+    test('#13 starts from a changed run-branch commit and runs a fresh baseline', () => {
+        const worktrees = ofKind(run.records, 'ticket_worktree_created')
+        const baseOf = (ticket: number) =>
+            worktrees.find((record) => record.ticket === ticket)?.content
+                .base_sha
+        expect(baseOf(13)).not.toBe(baseOf(11) ?? '')
+
+        expect(
+            ofKind(run.records, 'baseline_tests').filter(
+                ({ ticket }) => ticket === 13
+            )
+        ).toHaveLength(1)
+        // The run reused a baseline, but not for #13.
+        const reused = ofKind(run.records, 'baseline_reused')
+        expect(reused.length).toBeGreaterThan(0)
+        expect(reused.map(({ ticket }) => ticket)).not.toContain(13)
+        // #13's baseline saw the sum and product tests #11 and #12 joined.
+        const [thirteen] = ofKind(run.records, 'baseline_tests').filter(
+            ({ ticket }) => ticket === 13
+        )
+        expect(
+            thirteen?.content.cases.map(({ full_name }) => full_name)
+        ).toEqual(expect.arrayContaining(['product > multiplies two numbers']))
+    })
+
+    test('every ticket still passed a full red check before its red commit, the full gates before each later commit, and the full gates after each join', () => {
+        const { records } = run
+        const configured = ['test', 'types', 'lint']
+        const before = <K extends Kind>(
+            kind: K,
+            ticket: number | null,
+            seq: number
+        ) =>
+            ofKind(records, kind)
+                .filter((record) => record.ticket === ticket)
+                .filter((record) => record.seq < seq)
+                .at(-1)
+
+        /** Whether a red check's own test run saw `file`'s new tests fail. */
+        const failedNew = (
+            red: Extract<JournalRecord, { kind: 'red_check' }> | undefined,
+            file: string
+        ) =>
+            red !== undefined &&
+            (red.content.tests.files_without_results.includes(file) ||
+                red.content.tests.cases.some(
+                    (each) =>
+                        each.file.endsWith(file) && each.status === 'failed'
+                ))
+        const redOf = (ticket: number) =>
+            ofKind(records, 'red_check').filter(
+                (record) => record.ticket === ticket
+            )
+
+        // The ticket that reused a baseline still got a red check that ran
+        // the tests itself and saw its new tests fail.
+        const [reused] = ofKind(records, 'baseline_reused')
+        const reuser = reused?.ticket ?? 0
+        const newFile =
+            reuser === 12 ? 'src/product.test.ts' : 'src/sum.test.ts'
+        expect([11, 12]).toContain(reuser)
+        expect(redOf(reuser).map(({ content }) => content.ok)).toEqual([true])
+        expect(failedNew(redOf(reuser)[0], newFile)).toBe(true)
+        // #13's red check ran the old tests, which passed, and its new ones failed.
+        const [thirteenRed] = redOf(13)
+        expect(thirteenRed?.content.ok).toBe(true)
+        expect(thirteenRed?.content.tests.cases).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    full_name: 'product > multiplies two numbers',
+                    status: 'passed',
+                }),
+                expect.objectContaining({
+                    full_name: 'sum > adds two numbers',
+                    status: 'passed',
+                }),
+            ])
+        )
+        expect(failedNew(thirteenRed, 'src/average.test.ts')).toBe(true)
+
+        const commits = ofKind(records, 'commit_made').filter(
+            ({ ticket }) => ticket !== null
+        )
+        expect(commits.length).toBeGreaterThan(0)
+        for (const commit of commits) {
+            if (commit.content.stage === 'red') {
+                expect(
+                    before('red_check', commit.ticket, commit.seq)?.content.ok
+                ).toBe(true)
+                continue
+            }
+            const gates = before('gates_run', commit.ticket, commit.seq)
+            expect(gates?.content).toMatchObject({ target: 'ticket', ok: true })
+            expect(gates?.content.checks.map(({ name }) => name)).toEqual(
+                expect.arrayContaining(configured)
+            )
+        }
+
+        const joins = ofKind(records, 'ticket_joined').filter(
+            ({ content }) => content.ok
+        )
+        expect(joins).toHaveLength(3)
+        for (const join of joins) {
+            const gates = ofKind(records, 'gates_run').find(
+                (record) =>
+                    record.ticket === join.ticket && record.seq > join.seq
+            )
+            const push = ofKind(records, 'run_branch_pushed').find(
+                (record) =>
+                    record.ticket === join.ticket && record.seq > join.seq
+            )
+            expect(gates?.content).toMatchObject({
+                target: 'run_branch',
+                ok: true,
+            })
+            expect(gates?.content.checks.map(({ name }) => name)).toEqual(
+                expect.arrayContaining(configured)
+            )
+            expect(gates?.seq ?? Infinity).toBeLessThan(push?.seq ?? 0)
+        }
+    })
+
     test('the worktrees are removed after the run; the branches and the journal stay', async () => {
         const worktrees = [
             ...ofKind(run.records, 'ticket_worktree_created'),

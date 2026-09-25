@@ -256,9 +256,11 @@ export {
 export { mergeRecalled, recallVaults } from './memory/memory-recall'
 export {
     MEMORY_ROUTES,
+    MEMORY_SCOPES,
     memoryFeedback,
     routeMemories,
     storedConcept,
+    type MemoryScope,
     type MemoryType,
     type RefusedMemory,
     type RoutedMemory,

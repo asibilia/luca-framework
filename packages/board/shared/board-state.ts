@@ -204,6 +204,53 @@ export const OpenCheckSchema = z.enum(['red_check', 'gates', 'review'])
 
 export type OpenCheck = z.infer<typeof OpenCheckSchema>
 
+/**
+ * What the engine is doing right now for a ticket or the run, from its
+ * `step_started`, such as "running the baseline tests"; `since` is that
+ * record's time. Cleared by the step's `step_ended`.
+ */
+export const CurrentStepSchema = z.object({
+    text: z.string(),
+    since: z.string(),
+})
+
+export type CurrentStep = z.infer<typeof CurrentStepSchema>
+
+/**
+ * A time span in words: seconds under a minute, then minutes and seconds,
+ * then hours and minutes.
+ *
+ * @example
+ * elapsedText({ ms: 125_000 }) // '2m 5s'
+ * elapsedText({ ms: 3_790_000 }) // '1h 3m'
+ */
+export const elapsedText = ({ ms }: { ms: number }): string => {
+    const seconds = Math.max(0, Math.floor(ms / 1000))
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    if (hours > 0) return `${hours}h ${minutes}m`
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`
+    return `${seconds}s`
+}
+
+/**
+ * The current step in words, with how long it has been running.
+ *
+ * @example
+ * currentStepText({
+ *     step: { text: 'running the checks', since: '2026-09-23T12:00:00.000Z' },
+ *     now: Date.parse('2026-09-23T12:02:05.000Z'),
+ * }) // 'running the checks (2m 5s)'
+ */
+export const currentStepText = ({
+    step,
+    now,
+}: {
+    step: CurrentStep
+    now: number
+}): string =>
+    `${step.text} (${elapsedText({ ms: now - Date.parse(step.since) })})`
+
 export const TicketCardSchema = z.object({
     number: z.number().int(),
     title: z.string(),
@@ -222,6 +269,11 @@ export const TicketCardSchema = z.object({
     activity: z.string(),
     /** The role working on it now, `null` when no agent is. */
     role: z.string().nullable(),
+    /**
+     * The engine's step on it now, `null` between steps. Defaulted, so a
+     * board state from before it still parses.
+     */
+    current_step: CurrentStepSchema.nullable().default(null),
     /** Fix rounds in the current fix loop; back to 0 once its check passes. */
     fix_round: z.number().int().min(0),
     review_round: z.number().int().min(0),
@@ -237,6 +289,18 @@ export const TicketCardSchema = z.object({
             total: z.number().int().min(0),
         })
         .nullable(),
+    /**
+     * Its own baseline's test counts, kept so a ticket that reuses this one's
+     * baseline (`baseline_reused`) gets them after `tests` has moved on.
+     * Defaulted, so a board state from before it still parses.
+     */
+    baseline_tests: z
+        .object({
+            failing: z.number().int().min(0),
+            total: z.number().int().min(0),
+        })
+        .nullable()
+        .default(null),
     findings: FindingCountsSchema.nullable(),
     /** Every token the ticket's agents read or wrote, cache reads included. */
     tokens: z.number().min(0),
@@ -487,6 +551,16 @@ export const BoardStateSchema = z.object({
      * state from before it still parses.
      */
     shared_git_changed: z.number().int().min(0).default(0),
+    /**
+     * The steps running now that belong to no ticket (the run's own, the
+     * final review's, the learner's), by the engine's key, oldest first.
+     * Defaulted, so a board state from before it still parses.
+     */
+    run_steps: z
+        .array(CurrentStepSchema.extend({ key: z.string() }))
+        .default([]),
+    /** The newest of `run_steps`, `null` when none runs. */
+    current_step: CurrentStepSchema.nullable().default(null),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

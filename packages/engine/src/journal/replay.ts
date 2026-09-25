@@ -135,7 +135,13 @@ export type TicketProgress = {
     worktree: ReplayedWorktree | null
     /** The install in the new worktree; its `check` is `null` with no manifest. */
     install: ReplayedInstall | null
+    /** Its own baseline test run, or the one it reused (`baseline_reused`). */
     baseline: TestRun | null
+    /**
+     * The run-branch commit the baseline was taken at. It stays when a rebase
+     * moves the worktree, so the baseline is only lent to tickets from there.
+     */
+    baseline_sha: string | null
     test_writer: TestWriterResult | null
     red_check: ReplayedRedCheck | null
     /** Follow-ups the test-writer answered after a failed red check. */
@@ -487,6 +493,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     worktree: null,
     install: null,
     baseline: null,
+    baseline_sha: null,
     test_writer: null,
     red_check: null,
     red_fix_rounds: 0,
@@ -800,6 +807,8 @@ const applyRecord = ({
         }
         case 'run_branch_created':
             return { ...next, run_branch: record.content }
+        case 'baseline_reused':
+            return reusedBaselineAfter({ state: next, record })
         case 'dependencies_installed':
             if (record.content.target === 'run_branch') {
                 return {
@@ -1451,6 +1460,7 @@ type TicketRecord = Exclude<
             | 'join_started'
             | 'memory_write_started'
             | 'memory_write_done'
+            | 'baseline_reused'
     }
 >
 
@@ -1674,7 +1684,10 @@ const progressChange = ({
         case 'dependencies_installed':
             return { install: { check: record.content.check } }
         case 'baseline_tests':
-            return { baseline: record.content }
+            return {
+                baseline: record.content,
+                baseline_sha: progress.worktree?.base_sha ?? null,
+            }
         case 'agent_started':
             return { retried: null, crashed_turn: null }
         case 'agent_finished': {
@@ -2182,6 +2195,31 @@ const applyTicketRecord = ({
                 ...progress,
                 ...progressChange({ progress, record }),
             },
+        },
+    }
+}
+
+/**
+ * A ticket took another ticket's baseline, as it stood when the reuse was
+ * journaled, so a replay gives it the same one.
+ */
+const reusedBaselineAfter = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: Extract<JournalRecord, { kind: 'baseline_reused' }>
+}): RunState => {
+    if (record.ticket === null) return state
+    const { from_ticket, base_sha } = record.content
+    const baseline = state.tickets[from_ticket]?.baseline ?? null
+    if (baseline === null) return state
+    const progress = state.tickets[record.ticket] ?? EMPTY_TICKET_PROGRESS
+    return {
+        ...state,
+        tickets: {
+            ...state.tickets,
+            [record.ticket]: { ...progress, baseline, baseline_sha: base_sha },
         },
     }
 }

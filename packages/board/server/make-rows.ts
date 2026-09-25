@@ -118,6 +118,16 @@ export const headerRow = ({
         final_review: finalReviewText({ state }),
         usage: usageLine({ usage: state.usage }),
         limit_wait: state.limit_wait !== null,
+        current_steps: [
+            ...state.tickets.flatMap(({ number, current_step }) =>
+                current_step ? [{ ticket: number, ...current_step }] : []
+            ),
+            ...state.run_steps.map(({ text, since }) => ({
+                ticket: null,
+                text,
+                since,
+            })),
+        ],
         needs_you: state.needs_you.length,
         pr_url: run.pr_url,
         engine_ended: run.engine_ended,
@@ -429,6 +439,7 @@ export const describeRecord = ({
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':
+        case 'baseline_reused':
         case 'run_branch_pushed':
         case 'worktrees_removed':
         case 'agent_session':
@@ -441,6 +452,8 @@ export const describeRecord = ({
         case 'limit_wait_ended':
         case 'usage_recorded':
         case 'lens_started':
+        case 'step_started':
+        case 'step_ended':
             return null
     }
 }

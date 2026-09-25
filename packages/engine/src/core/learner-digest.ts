@@ -6,7 +6,7 @@ import { reasonLine } from './stuck-text'
 import { roleTask } from '../agents/role-prompts'
 import type { JournalRecord } from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
-import { MEMORY_ROUTES } from '../memory/memory-routing'
+import { MEMORY_ROUTES, MEMORY_SCOPES } from '../memory/memory-routing'
 
 /**
  * The learner's prompt (#370): a digest of the run's journal, built by pure
@@ -181,10 +181,12 @@ export const learnerPrompt = ({
             `- id ${id} [${vault}] ${concept}: ${clip(content)}`
     )
     const types = Object.keys(MEMORY_ROUTES).join(', ')
+    const scopes = Object.keys(MEMORY_SCOPES).join(', ')
     const parts = [
         '# Your role: learner',
         roleTask({ role: 'learner' }),
         `Memory types: ${types}. Anything else is refused.`,
+        `Memory scopes: ${scopes}. A missing or other scope is refused.`,
         `## Spec #${spec?.number ?? state.spec_number ?? '?'}: ${spec?.title ?? ''}`,
         `## How the run ends\n\n${ENDINGS[ending]}\n\n${tickets.join('\n')}`,
         section('Failures', failureLines(records)),

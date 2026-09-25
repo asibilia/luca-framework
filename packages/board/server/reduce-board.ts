@@ -85,6 +85,8 @@ const QUIET_KINDS = new Set([
     'agent_message',
     'agent_message_delivered',
     'shared_git_changed',
+    // A step that ends after a stop (the stop's own, or one in flight).
+    'step_ended',
 ])
 
 /** The learner's role (#370): its records have no ticket. */
@@ -182,6 +184,8 @@ export const createBoardState = ({
     messages: { sent: 0, refused: 0, delivered: 0 },
     memory: NO_MEMORY,
     shared_git_changed: 0,
+    run_steps: [],
+    current_step: null,
     event_count: 0,
     latest: null,
 })
@@ -206,12 +210,14 @@ const newTicket = ({
     step: -1,
     activity: 'queued',
     role: null,
+    current_step: null,
     fix_round: 0,
     review_round: 0,
     review_fix_round: 0,
     open_check: null,
     failed_turn: null,
     tests: null,
+    baseline_tests: null,
     findings: null,
     tokens: 0,
     agent_tokens: {},
@@ -316,6 +322,124 @@ export const FINAL_KEY = 'final'
  */
 export const roleWords = ({ role }: { role: string }): string =>
     role.endsWith('-lens') ? `${role.slice(0, -'-lens'.length)} lens` : role
+
+/** A step's action type in words, when it reads better than its name. */
+const STEP_WORDS: Record<string, string> = {
+    install_dependencies: 'installing packages',
+    run_baseline_tests: 'running the baseline tests',
+    run_red_check: 'running the red check',
+    run_gates: 'running the checks',
+    run_final_gates: 'running the checks',
+    join_run_branch: 'joining the run branch',
+    push_run_branch: 'pushing the run branch',
+    push_final_fixes: 'pushing the run branch',
+    open_pull_request: 'opening the pull request',
+}
+
+/**
+ * A `step_started`'s step in words: an agent's turn (`<type>:<role>`)
+ * waits for its role; any other step as `STEP_WORDS` has it, else its
+ * action type.
+ *
+ * @example
+ * stepText({ step: 'run_gates' }) // 'running the checks'
+ * stepText({ step: 'follow_up_agent:implementer' }) // 'waiting for the implementer'
+ */
+export const stepText = ({ step }: { step: string }): string => {
+    const colon = step.indexOf(':')
+    if (colon >= 0) {
+        return `waiting for the ${roleWords({ role: step.slice(colon + 1) })}`
+    }
+    return STEP_WORDS[step] ?? step.replaceAll('_', ' ')
+}
+
+/** The run's running steps, and the newest of them as its current step. */
+const withRunSteps = ({
+    state,
+    run_steps,
+}: {
+    state: BoardState
+    run_steps: BoardState['run_steps']
+}): BoardState => {
+    const newest = run_steps.at(-1)
+    return {
+        ...state,
+        run_steps,
+        current_step: newest
+            ? { text: newest.text, since: newest.since }
+            : null,
+    }
+}
+
+/** No step running anywhere: the engine ended, or the run stopped. */
+const withoutSteps = ({ state }: { state: BoardState }): BoardState =>
+    withRunSteps({
+        state: {
+            ...state,
+            tickets: state.tickets.map((card) =>
+                card.current_step === null
+                    ? card
+                    : { ...card, current_step: null }
+            ),
+        },
+        run_steps: [],
+    })
+
+/**
+ * A step began: it is its ticket's current step, or one of the run's.
+ * A new step on the same key (a crash's redo) replaces the one before it.
+ */
+const stepStarted = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'step_started' }>
+}): BoardState => {
+    // A replayed journal of an engine that ended has no step running.
+    if (state.run.engine_ended !== null) return state
+    const current_step = {
+        text: stepText({ step: record.content.step }),
+        since: record.time,
+    }
+    if (record.ticket !== null) {
+        return updateTicket({
+            state,
+            number: record.ticket,
+            update: (card) => ({ ...card, current_step }),
+        })
+    }
+    const { key } = record.content
+    return withRunSteps({
+        state,
+        run_steps: [
+            ...state.run_steps.filter((step) => step.key !== key),
+            { key, ...current_step },
+        ],
+    })
+}
+
+const stepEnded = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'step_ended' }>
+}): BoardState => {
+    if (record.ticket !== null) {
+        return updateTicket({
+            state,
+            number: record.ticket,
+            update: (card) => ({ ...card, current_step: null }),
+        })
+    }
+    return withRunSteps({
+        state,
+        run_steps: state.run_steps.filter(
+            (step) => step.key !== record.content.key
+        ),
+    })
+}
 
 /** The final review with one more "tried" line. */
 const finalTried = ({
@@ -566,7 +690,7 @@ export const applyRecord = ({
     })
 }
 
-/** Marks the engine as finished, ok or failed. */
+/** Marks the engine as finished, ok or failed: no step runs anymore. */
 export const applyEnded = ({
     state,
     ended,
@@ -574,7 +698,11 @@ export const applyEnded = ({
     state: BoardState
     ended: EngineEnded
 }): BoardState =>
-    settle({ state: { ...state, run: { ...state.run, engine_ended: ended } } })
+    settle({
+        state: withoutSteps({
+            state: { ...state, run: { ...state.run, engine_ended: ended } },
+        }),
+    })
 
 const applyKind = ({
     state,
@@ -679,7 +807,8 @@ const applyKind = ({
                 }),
             })
         }
-        case 'baseline_tests':
+        case 'baseline_tests': {
+            const tests = testCounts({ cases: record.content.cases })
             return updateTicket({
                 state,
                 number: ticket,
@@ -687,9 +816,29 @@ const applyKind = ({
                     ...card,
                     started: true,
                     activity: 'baseline tests',
-                    tests: testCounts({ cases: record.content.cases }),
+                    tests,
+                    baseline_tests: tests,
                 }),
             })
+        }
+        case 'baseline_reused': {
+            // Another ticket's baseline from the same run-branch commit (#404).
+            const { from_ticket } = record.content
+            const tests =
+                state.tickets.find((card) => card.number === from_ticket)
+                    ?.baseline_tests ?? null
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    started: true,
+                    activity: `baseline tests (reused from #${from_ticket})`,
+                    tests,
+                    baseline_tests: tests,
+                }),
+            })
+        }
         case 'agent_started':
             // The learner (#370) has no ticket and is no final review agent.
             if (record.content.role === LEARNER) {
@@ -1057,6 +1206,10 @@ const applyKind = ({
         // The listing on the spec issue is only a chat row.
         case 'memories_reported':
             return state
+        case 'step_started':
+            return stepStarted({ state, record })
+        case 'step_ended':
+            return stepEnded({ state, record })
         case 'final_review_started':
             return {
                 ...updateFinal({

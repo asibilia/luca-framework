@@ -135,6 +135,19 @@ const BaselineTestsEntrySchema = z.object({
 })
 
 /**
+ * A ticket took another ticket's baseline instead of running the tests
+ * again: both worktrees started from the same run-branch commit, `base_sha`.
+ */
+const BaselineReusedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('baseline_reused'),
+    content: z.object({
+        from_ticket: z.number().int().positive(),
+        base_sha: z.string().min(1),
+    }),
+})
+
+/**
  * An agent turn was started, with its prompt word for word. A follow-up in a
  * fix loop names the session it went to in `follow_up_of`, and `prompt` holds
  * the follow-up message.
@@ -986,6 +999,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema,
     TicketWorktreeCreatedEntrySchema,
     BaselineTestsEntrySchema,
+    BaselineReusedEntrySchema,
     AgentStartedEntrySchema,
     AgentFinishedEntrySchema,
     AgentFailedEntrySchema,
@@ -1053,6 +1067,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema.extend(STAMP_FIELDS),
     TicketWorktreeCreatedEntrySchema.extend(STAMP_FIELDS),
     BaselineTestsEntrySchema.extend(STAMP_FIELDS),
+    BaselineReusedEntrySchema.extend(STAMP_FIELDS),
     AgentStartedEntrySchema.extend(STAMP_FIELDS),
     AgentFinishedEntrySchema.extend(STAMP_FIELDS),
     AgentFailedEntrySchema.extend(STAMP_FIELDS),
@@ -1119,6 +1134,7 @@ export const JournalKindSchema = z.enum([
     'run_branch_created',
     'ticket_worktree_created',
     'baseline_tests',
+    'baseline_reused',
     'agent_started',
     'agent_finished',
     'agent_failed',

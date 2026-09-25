@@ -25,7 +25,8 @@ tickets keep building, and the owner's one-word replies (`retry`, `skip`,
 `stop`) move it on (#366).
 With **memory** on, the engine searches MuninnDB at four **recall points** and
 hands the memories to agents, and at the end of every run a learner proposes
-new memories that plain code routes to a vault by type and saves (#370).
+new memories that plain code routes to a vault by type and scope and saves
+(#370, #406).
 A run survives crashes: the journal marks where each step starts and ends,
 a restarted engine takes a cut-off step again (an agent's turn in a fresh
 session) without posting a comment, opening a PR, or committing twice, a
@@ -100,7 +101,7 @@ on with a run from its journal (#369).
 | `src/memory/memory-schemas.ts` | **Memory**'s shapes as Zod schemas (a hit, a shown memory, a vault's search, a save, a feedback) and its numbers: `MIN_MEMORY_SCORE`, `MAX_MEMORIES_PER_RECALL`, `SIMILAR_MEMORY_SCORE`, `DEFAULT_MEMORY_TIMEOUT_MS`. |
 | `src/memory/memory-client.ts` | The memory client interface (an object of async functions), and `safeMemory`: every call with a timeout, every error a value. Never throws. |
 | `src/memory/memory-recall.ts` | Pure: the vaults a search covers, and the merge by score (minimum score, one per vault and id, at most 5). |
-| `src/memory/memory-routing.ts` | Pure: each proposed memory's vault by its type (`MEMORY_ROUTES`), refusals, the stored concept, and the helped / didn't-help feedback. |
+| `src/memory/memory-routing.ts` | Pure: each proposed memory's vault by its type and scope (`MEMORY_ROUTES`, `MEMORY_SCOPES`), refusals, the stored concept, and the helped / didn't-help feedback. |
 | `src/memory/muninn-mcp-client.ts` | The real client: MuninnDB's MCP tools over Streamable HTTP (SSE as a fallback), with pure settings resolution and result parsing. |
 | `src/core/decide-memory.ts` | Memory's half of the decision step: the recall points (a search before the step that needs it, then its memories in the prompt), and the learner, its saves, and the spec comment at the end of a run. |
 | `src/core/execute-memory.ts` | Carries out memory's steps: searches, the learner's turn, saves (update a similar memory or add one), feedback, and the spec comment. |
@@ -131,6 +132,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
+    or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
@@ -203,6 +205,19 @@ commits whose gates haven't passed yet. Its join-queue place is the seq of
 the review that **finally** approved it, after any review fix rounds.
 `max_steps` counts started actions; if one action throws (such as a launcher
 stop), the others are let finish, then the error is thrown.
+
+**A shared baseline (#404).** Tickets whose worktrees start from the same
+run-branch commit (`base_sha`) have the same tests, so they share one
+baseline test run. The first such ticket in order runs it
+(`run_baseline_tests`) while the others wait; each other one then takes it
+(`reuse_baseline_tests` ──> `baseline_reused { from_ticket, base_sha }`), and
+replay gives it that ticket's `baseline_tests` as it stood then. A baseline
+belongs to the commit it was taken at: a rebase moves the worktree but not
+its baseline, so a ticket starting from a newer commit (after a join) runs a
+fresh one. Nothing else is shared or skipped: each red check runs the tests
+in its own worktree, the gates run in full before every green and fix
+commit, and again on the run branch after every join, since each of those
+sees code no earlier run saw.
 
 **Plan limits with many tickets.** A limit wait and a billing stop are the
 whole run's: while one is due, `decideSteps` returns only it, so no ticket
@@ -607,7 +622,8 @@ board, Jev's included (only counted, since shadow mode decides nothing); see
 
 `runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
 once before its first step, so a resumed run catches the board up, and after
-every step. `createBoardSync` holds a cursor: the next seq the board wants,
+every step. It also syncs as soon as a slow step starts (an install, a test
+run, or an agent's turn), so the board shows it while it runs. `createBoardSync` holds a cursor: the next seq the board wants,
 from 1. Each sync sends every record from the cursor on, at most 100 per send,
 and moves the cursor to the board's `next_seq`. A board that answers with a
 lower `next_seq` (it restarted, or saw a gap) gets the journal again from
@@ -1095,9 +1111,11 @@ failures (failed red checks and gates with their output's end, clashes), fix
 loops, failed tries, review and final review findings, stuck points,
 assumptions, run notes, and every memory shown (id, vault, concept,
 content), each item capped at 700 characters and the whole at 40,000. It
-answers `{ memories: { type, concept, content, summary }[] (at most 10),
-helped: string[] }`; `type` is a plain string, so an unknown type is refused
-alone rather than failing the answer. A failed try gets a fresh learner, up
+answers `{ memories: { type, scope, concept, content, summary }[] (at most
+10), helped: string[] }`; `scope` is `repo` or `anywhere`, by the user's test
+"would this memory be useful in a completely different repo?" (#406).
+`type` and `scope` are plain strings, so an unknown type or a missing or
+unknown scope is refused alone rather than failing the answer. A failed try gets a fresh learner, up
 to `MAX_FIX_ROUNDS` (3) tries or `MAX_ENGINE_FAILURES` (3) engine failures in
 a row; then `learning_skipped { reason }` and the run ends as it would have.
 A plan cut-off is a limit wait like any agent's, then the learner again. Its
@@ -1105,13 +1123,15 @@ records have `ticket: null` and never count as the final review's.
 
 **Saving** (`save_memories`, routed by pure code):
 
-| Type | Vault |
-| --- | --- |
-| `pattern`, `pitfall`, `procedure` | `default` |
-| `decision` | the project vault (refused if the config names none) |
-| anything else | refused, with the reason |
+| Type | Scope | Vault |
+| --- | --- | --- |
+| `pattern`, `pitfall`, `procedure` | `repo` | the project vault (refused if the config names none) |
+| `pattern`, `pitfall`, `procedure` | `anywhere` | `default` |
+| `decision` | `repo` or `anywhere` | the project vault (refused if the config names none) |
+| anything else | | refused, with the reason |
+| | missing or anything else | refused, with the reason |
 
-A type is read without case or spaces. The stored concept is
+A type and a scope are read without case or spaces. The stored concept is
 `<type>:<concept>`. For each memory the executor searches its vault for the
 most similar one (limit 1, threshold 0); a `vector_score` of at least
 `SIMILAR_MEMORY_SCORE` (0.85) updates it (`muninn_evolve`), else a new one is
@@ -1273,7 +1293,8 @@ off changes nothing, each recall point's search and query, tickets searching
 at the same time, where the memories go in prompts and follow-ups, no repeats
 of run-start memories, a failed try is no fix round, one search for all five
 lenses, the learner before the PR, after a `stop`, and with every ticket
-skipped, its routing by type (unknown types refused), feedback, the PR's "New
+skipped, its routing by type and scope (unknown types and missing or
+unknown scopes refused), feedback, the PR's "New
 memories", the spec comment, a failed learner's tries and `learning_skipped`,
 and no learner on a billing stop or a refused run.
 `src/core/run-memory.test.ts` runs it end to end with a fake MuninnDB:

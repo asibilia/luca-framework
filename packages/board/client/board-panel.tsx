@@ -24,6 +24,7 @@ import {
     tokensText,
     percentText,
     usageColor,
+    useNow,
 } from './board-look'
 
 import { boardReadRpc } from '../shared/board-rpc'
@@ -34,9 +35,11 @@ import {
     POLL_MS,
     REFACTOR_SKIPS_STEPS,
     STEP_NAMES,
+    currentStepText,
     planUsedText,
     stoppedText,
     type BoardState,
+    type CurrentStep,
     type LensCard,
     type LensState,
     type NeedsYou,
@@ -407,6 +410,25 @@ const Counter = ({
     )
 }
 
+/** A running step with its time, counting up by itself. */
+const StepLine = ({
+    step,
+    prefix,
+    styles,
+}: {
+    step: CurrentStep
+    prefix: string
+    styles: Styles
+}) => {
+    const now = useNow()
+    return (
+        <Text style={styles.muted} numberOfLines={1}>
+            {prefix}
+            {currentStepText({ step, now })}
+        </Text>
+    )
+}
+
 /** The exact replies; tap one to copy it. */
 const Replies = ({
     replies,
@@ -679,6 +701,13 @@ const TicketCardView = ({
                     {ticket.role ?? ''}
                 </Text>
             </View>
+            {ticket.current_step ? (
+                <StepLine
+                    step={ticket.current_step}
+                    prefix=""
+                    styles={styles}
+                />
+            ) : null}
             <View style={styles.row}>
                 <Counter
                     label="fix"
@@ -1080,6 +1109,13 @@ export const BoardPanel = ({
                 </ExternalLink>
             ) : null}
             <UsageLine state={state} {...look} />
+            {state.current_step ? (
+                <StepLine
+                    step={state.current_step}
+                    prefix="Now: "
+                    styles={styles}
+                />
+            ) : null}
             {state.run_plan_used.length > 0 ? (
                 <Text style={styles.mono}>
                     This run used:{' '}
