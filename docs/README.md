@@ -9,6 +9,7 @@ Start with `CONTEXT.md` for the domain words, then read the README of the packag
 | [../packages/board/README.md](../packages/board/README.md) | The board, the Paseo plugin `luca-board`: `/luca-run`, the `engine.event` contract, settings, install, develop |
 | [agents/](agents/) | How agents use this repo: the [issue tracker](agents/issue-tracker.md), [triage labels](agents/triage-labels.md), and [domain docs](agents/domain.md) |
 | [guides/coding-standards.md](guides/coding-standards.md) | Coding standards. One of the engine's rule files in `.luca/config.json` |
+| [research/sdk-usage-per-run.md](research/sdk-usage-per-run.md) | What plan-usage numbers the Claude Agent SDK gives, and what one run's share can be (#421) |
 
 ## Old Luca
 
