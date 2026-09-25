@@ -821,6 +821,41 @@ describe('follow-ups', () => {
         })
     })
 
+    test('closeSession closes that one session, so it takes no more follow-ups', async () => {
+        const fake = fakeQuery({ turns: [[INIT, result({})]] })
+        const launcher = launcherFor(fake.query)
+        await launchImplementer(launcher)
+        expect(fake.calls[0]?.closed).toBe(false)
+
+        await launcher.closeSession({ session_id: 'session-1' })
+
+        expect(fake.calls[0]?.closed).toBe(true)
+        expect(await followUp(launcher, 'session-1')).toMatchObject({
+            ok: false,
+            failure: 'engine',
+        })
+    })
+
+    test('closing a session the launcher does not know does nothing', async () => {
+        const fake = fakeQuery({
+            turns: [
+                [INIT, result({ structured_output: { n: 1 } })],
+                [result({ structured_output: IMPLEMENTER_DONE })],
+            ],
+        })
+        const launcher = launcherFor(fake.query)
+        await launchImplementer(launcher)
+
+        await launcher.closeSession({ session_id: 'from-an-engine-that-died' })
+
+        expect(fake.calls[0]?.closed).toBe(false)
+        expect(await followUp(launcher, 'session-1')).toMatchObject({
+            ok: true,
+            session_id: 'session-1',
+        })
+        await launcher.closeAll()
+    })
+
     test('a session idle past its timeout closes', async () => {
         const fake = fakeQuery({ turns: [[INIT, result({})]] })
         const launcher = launcherFor(fake.query, 20)
