@@ -46,7 +46,8 @@ export type AppendedRow = { agent_id: string; row: BoardRow }
 
 /**
  * A board server wired to fakes: rows go to a list, spawns are recorded, the
- * registry lives in a temp dir, and only the listed files "exist". The
+ * registry lives in a temp dir, runs are rebuilt from the journals in
+ * `runs_dir` when one is given, and only the listed files "exist". The
  * process list is `processes` (or `ps` fails with `ps_error`), and every
  * command run is recorded in `commands` and answered with `setCommandResult`
  * (by default, `luca-run --unfinished` with no runs).
@@ -55,6 +56,7 @@ export const createHarness = async ({
     settings = { engine_path: ENGINE_PATH, bun_path: '' },
     files = [ENGINE_PATH, BUN_PATH],
     registry_dir,
+    runs_dir = null,
     fail_appends = false,
     spawn_throws = null,
     ps_error = null,
@@ -62,6 +64,8 @@ export const createHarness = async ({
     settings?: EngineSettings
     files?: string[]
     registry_dir?: string
+    /** The engine's runs folder; without one the board reads no journals. */
+    runs_dir?: string | null
     fail_appends?: boolean
     /** When set, spawning throws this message. */
     spawn_throws?: string | null
@@ -81,6 +85,7 @@ export const createHarness = async ({
 
     const board: BoardServer = createBoardServer({
         registry_path: join(dir, 'runs.json'),
+        runs_dir,
         append_row: async ({ agent_id, row }) => {
             if (fail_appends) throw new Error(`no agent ${agent_id}`)
             rows.push({ agent_id, row })
