@@ -48,6 +48,7 @@ const fakeClaudeLauncher = ({ turns }: { turns: ScriptedTurn[] }) => {
     const launcher: RunLauncher = {
         launch: scripted.launch,
         followUp: scripted.followUp,
+        closeSession: scripted.closeSession,
         closeAll: async () => {
             closed += 1
         },

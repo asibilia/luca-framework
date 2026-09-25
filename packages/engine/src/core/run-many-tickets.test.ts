@@ -119,20 +119,20 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
         })
     })
 
-    test("#11's clash went to its implementer session, and a fresh reviewer re-reviewed the new changes", () => {
+    test("#11's clash went to a fresh implementer, since the first one's session closed with the green commit, and a fresh reviewer re-reviewed the new changes", () => {
         const eleven = run.launches.filter(({ ticket }) => ticket === 11)
 
         expect(eleven.map(({ kind, role }) => `${kind}:${role}`)).toEqual([
             'launch:test-writer',
             'launch:implementer',
             'launch:ticket-reviewer',
-            'follow_up:implementer',
+            'launch:implementer',
             'launch:ticket-reviewer',
         ])
-        const [, implementer, , followUp, reReview] = eleven
-        expect(followUp?.session_id).toBe(implementer?.session_id ?? '')
-        expect(followUp?.prompt).toContain('conflict markers')
-        expect(followUp?.prompt).toContain('- src/index.ts')
+        const [, implementer, , clashFixer, reReview] = eleven
+        expect(clashFixer?.session_id).not.toBe(implementer?.session_id ?? '')
+        expect(clashFixer?.prompt).toContain('conflict markers')
+        expect(clashFixer?.prompt).toContain('- src/index.ts')
         expect(reReview?.prompt).toContain('Re-review only the new changes')
         expect(reReview?.prompt).toContain('- src/index.ts')
         // Its fixed change joined as one commit.

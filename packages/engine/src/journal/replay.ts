@@ -1,4 +1,6 @@
+import mapValues from 'lodash/mapValues'
 import omit from 'lodash/omit'
+import omitBy from 'lodash/omitBy'
 import uniq from 'lodash/uniq'
 
 import type {
@@ -970,6 +972,11 @@ const applyRecord = ({
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
             return next
+        case 'agent_session_closed':
+            return closedSessionAfter({
+                state: next,
+                session_id: record.content.session_id,
+            })
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
@@ -1433,6 +1440,7 @@ type TicketRecord = Exclude<
             | 'jev_answered'
             | 'jev_failed'
             | 'agent_session'
+            | 'agent_session_closed'
             | 'run_stopped'
             | 'limit_wait_started'
             | 'limit_wait_ended'
@@ -2177,6 +2185,59 @@ const resumedAfter = ({
             },
         }
     }, state)
+
+/**
+ * A closed session can take no follow-up: it is forgotten wherever the
+ * decision step would follow it up (a role's latest session, or a failed
+ * turn's), on its ticket, in the final review, or the learner's, so a fix
+ * round that would have gone to it goes to a fresh agent.
+ */
+const closedSessionAfter = ({
+    state,
+    session_id,
+}: {
+    state: RunState
+    session_id: string
+}): RunState => {
+    const forget = <Failure extends { session_id: string | null }>(
+        failure: Failure
+    ): Failure =>
+        failure.session_id === session_id
+            ? { ...failure, session_id: null }
+            : failure
+    const withoutIt = (sessions: Partial<Record<AgentRole, string>>) =>
+        omitBy(sessions, (id) => id === session_id)
+    const review = state.final_review
+    const { learner } = state.memory
+    return {
+        ...state,
+        tickets: mapValues(state.tickets, (progress) => ({
+            ...progress,
+            sessions: withoutIt(progress.sessions),
+            agent_failure:
+                progress.agent_failure === null
+                    ? null
+                    : forget(progress.agent_failure),
+        })),
+        final_review: {
+            ...review,
+            sessions: withoutIt(review.sessions),
+            agent_failures: mapValues(review.agent_failures, (failure) =>
+                failure === undefined ? failure : forget(failure)
+            ),
+        },
+        memory: {
+            ...state.memory,
+            learner: {
+                ...learner,
+                agent_failure:
+                    learner.agent_failure === null
+                        ? null
+                        : forget(learner.agent_failure),
+            },
+        },
+    }
+}
 
 const applyTicketRecord = ({
     state,

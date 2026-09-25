@@ -118,12 +118,13 @@ describe('gates that fail after joining, end to end', () => {
         expect(between.map(({ kind }) => kind)).toEqual([])
     })
 
-    test('then its gates fail in its worktree, the implementer fixes them, and it is re-reviewed and joins', () => {
+    test('then its gates fail in its worktree, a fresh implementer fixes them, and it is re-reviewed and joins', () => {
         const [rebased] = ofKind(run.records, 'ticket_rebased')
 
+        // The first implementer's session closed with its green commit.
         expect(stepsOf22({ after_seq: rebased?.seq ?? 0 })).toEqual([
             'gates ticket failed',
-            'follow_up implementer',
+            'launch implementer',
             'gates ticket ok',
             'commit green',
             'launch ticket-reviewer',
@@ -132,10 +133,11 @@ describe('gates that fail after joining, end to end', () => {
             'pushed',
         ])
         const calls = run.launches.filter(({ ticket }) => ticket === 22)
-        const followUp = calls.find(({ kind }) => kind === 'follow_up')
-        expect(followUp?.role).toBe('implementer')
-        expect(followUp?.prompt).toContain('The gates failed')
-        expect(followUp?.prompt).toContain('No matching export')
+        expect(calls.some(({ kind }) => kind === 'follow_up')).toBe(false)
+        const fixer = calls.filter(({ role }) => role === 'implementer').at(-1)
+        expect(fixer?.kind).toBe('launch')
+        expect(fixer?.prompt).toContain('The gates failed')
+        expect(fixer?.prompt).toContain('No matching export')
         expect(calls.at(-1)?.prompt).toContain('Re-review only the new changes')
         expect(calls.at(-1)?.prompt).toContain(
             'The gates failed on the run branch after it joined.'

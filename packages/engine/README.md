@@ -146,7 +146,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   launch_agent ticket-reviewer  a fresh reviewer: the diff, the gate results ──> agent_started, agent_finished
     blockers or should-fixes: a review fix round, ≤ 3 rounds
       launch_agent test-writer    (fresh) the test findings, if any
-      follow_up_agent implementer (same session) the code findings, if any
+      launch_agent implementer    (fresh) the code findings, if any
       run_gates ticket            (and the gate fix loop)
       commit_ticket fix           leftover scan, then commit             ──> leftover_scan, commit_made
       launch_agent ticket-reviewer  (fresh) only the new changes and the earlier findings
@@ -159,7 +159,7 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
                           ticket's whole change on the run branch's tip,
                           uncommitted, conflict markers kept              ──> ticket_rebased
       clashed tests: launch_agent test-writer (fresh, told the files)
-      clashed code:  follow_up_agent implementer (same session, told the files)
+      clashed code:  launch_agent implementer (fresh, told the files)
       then run_gates ticket (and its fix loop), one commit_ticket green,
       a fresh launch_agent ticket-reviewer (re-review only the new changes),
       and the join again
@@ -276,7 +276,9 @@ are removed; the rest stay for later. Branches and the journal always stay.
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
 how it failed), `shared_git_changed` (something else changed the shared
-`.git` during the turn; see Guards), or `run_stopped` (see Guards). Any step may be preceded by a
+`.git` during the turn; see Guards), or `run_stopped` (see Guards). Once
+nothing can send an agent a follow-up, its session's close is journaled as
+`agent_session_closed`. Any step may be preceded by a
 limit wait or a billing stop, and a finished ticket and the run's end by
 `usage_recorded` (see Plan limits and billing). The scheduler wraps every
 step but a wait in `step_started` and `step_ended`, and a restarted engine
@@ -334,7 +336,8 @@ try (`result`), and a fresh reviewer tries again.
 
 Blockers and should-fixes open a **review fix round**. Test findings go
 first, to a fresh test-writer (who may edit only tests); then code findings
-go to the same implementer session, or a fresh implementer if it is gone.
+go to a fresh implementer (the first one's session closed with the green
+commit; the implementer's session is followed up only if it is still open).
 Each fixer answers every finding it got in `finding_responses`: `fixed`, or
 `wont_fix` with a reason. The fixes must pass the gates (with the usual gate
 fix loop, counted afresh each round), get their own commit
@@ -836,6 +839,19 @@ also holds its journal).
   engine failure, or a timeout closes the session; so does sitting idle past
   `idle_timeout_ms` (30 minutes by default). `closeAll()` closes the rest;
   call it when the run ends.
+- **Finished agents' sessions close during the run** (#409). Before each
+  decision, `runEngine` closes every session nothing can send a follow-up
+  anymore (`finishedSessions`) with `closeSession`, and journals each as
+  `agent_session_closed`: the test-writer's after the red commit, the
+  implementer's after the green (or a review fix round's) commit, the final
+  review's fixers after the round's fix commit, and reviewers, lenses, and
+  the learner once their turn ends. A stuck ticket or final review closes its
+  sessions before `ticket_stuck` or `final_review_stuck`; a plan cut-off or a
+  stop closes the turn's session at once; a stopped, finished, or crashed run
+  closes the rest. A same-session fix round keeps its session until its loop
+  is over. The decision step never follows up a closed session: a review
+  fix round or a clash fix after the green commit goes to a fresh
+  implementer.
 - **A stop leaves the step open.** `run_stopped` changes no ticket's state
   and closes every open step without counting it as a crash, so a later
   `runEngine` on the same journal takes the step again as it was; it does not

@@ -15,6 +15,11 @@ import {
 import { executeFinalReviewAction } from './execute-final-review'
 import { executeMemoryAction } from './execute-memory'
 import { executeStuckAction } from './execute-stuck'
+import {
+    closeSessions,
+    finishedSessions,
+    openSessionsIn,
+} from './session-close'
 
 import type { BoardSync } from '../board/board-sync'
 import type { EngineConfig } from '../config/engine-config'
@@ -672,6 +677,12 @@ const redosFirst = ({
 /** One action the engine started and has not seen settle yet. */
 type InFlight = { action: EngineAction; done: Promise<void> }
 
+/** The session a follow-up goes to, if the action is one. */
+const followUpSessionOf = (action: EngineAction): string[] =>
+    action.type === 'follow_up_agent' || action.type === 'follow_up_final_fixer'
+        ? [action.session_id]
+        : []
+
 /**
  * Runs the engine: a scheduler over the decision step. Each pass it decides
  * every action that can run now from the journal and starts those it can,
@@ -718,6 +729,11 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * fresh session. A redo's `step_started` carries its first try's seq in
  * `first_seq`. The same step cut off `MAX_CRASHES` times in a row is not
  * taken again (see `decide-crashes.ts`).
+ *
+ * Agents' sessions close as soon as nothing can send them a follow-up
+ * (`finishedSessions`): before each decision, the engine closes them with
+ * the launcher and journals each as `agent_session_closed`. A run that ends
+ * (`done`, or a thrown error) closes every session still open.
  *
  * @returns The action the loop stopped on.
  */
@@ -828,60 +844,104 @@ export const runEngine = async ({
         journal.append({ kind: 'step_ended', ...who, content: { key, step } })
     }
 
+    /**
+     * Closes the sessions no follow-up can reach anymore (`all`: every one
+     * still open), journaling each close. A follow-up under way keeps its
+     * session open.
+     */
+    const closeFinished = async ({ all }: { all: boolean }): Promise<void> => {
+        if (launcher === undefined) return
+        const records = journal.read()
+        const busy = [...inFlight.values()].flatMap(({ action }) =>
+            followUpSessionOf(action)
+        )
+        await closeSessions({
+            journal,
+            launcher,
+            sessions: all
+                ? openSessionsIn({ records })
+                : finishedSessions({ records, busy }),
+        })
+    }
+
+    const loop = async (): Promise<EngineAction> => {
+        for (;;) {
+            // Before each decision, so no finished agent's session lingers
+            // and no fix round goes to a closed one.
+            await closeFinished({ all: false })
+            const records = journal.read()
+            const crashes = crashesIn(records)
+            const actions = redosFirst({
+                actions: decideSteps({ records }),
+                crashes,
+            })
+            const stop = actions.find((action) => stops.has(action.type))
+            if (stop !== undefined && inFlight.size === 0) {
+                if (STOP_ACTIONS.has(stop.type)) {
+                    await closeFinished({ all: true })
+                }
+                return stop
+            }
+            let slowStarted = false
+            if (stop === undefined) {
+                for (const action of actions) {
+                    const key = keyOf(action)
+                    if (!canStart({ action, key })) continue
+                    // Waiting for a reply has no time limit, so it never counts.
+                    const counts = action.type !== 'wait_for_reply'
+                    if (counts && started >= limit) {
+                        await settleAll()
+                        throw new Error(
+                            `The engine took ${limit} steps without finishing.`
+                        )
+                    }
+                    if (counts) started += 1
+                    const done = runStep({ action, key, crashes }).finally(
+                        () => {
+                            inFlight.delete(key)
+                        }
+                    )
+                    // Seen by the race below; this keeps a rejection that lands
+                    // between races from counting as unhandled.
+                    done.catch(() => undefined)
+                    inFlight.set(key, { action, done })
+                    if (SLOW_ACTIONS.has(action.type)) slowStarted = true
+                }
+            }
+            // A slow step shows on the board while it runs, not only once it ends.
+            if (slowStarted) await board?.sync({ records: journal.read() })
+            if (inFlight.size === 0) {
+                throw new Error(
+                    `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`
+                )
+            }
+            try {
+                // A stop waits for everything in flight; otherwise any one.
+                await (stop === undefined
+                    ? Promise.race(
+                          [...inFlight.values()].map(({ done }) => done)
+                      )
+                    : Promise.all(
+                          [...inFlight.values()].map(({ done }) => done)
+                      ))
+            } catch (error) {
+                await settleAll()
+                throw error
+            }
+            await board?.sync({ records: journal.read() })
+        }
+    }
+
     // Steps a crash cut off are named once, before the first step.
     const resumed = resumeEntry({ records: journal.read() })
     if (resumed !== null) journal.append(resumed)
     // A resumed run catches the board up before its first step.
     await board?.sync({ records: journal.read() })
-    for (;;) {
-        const records = journal.read()
-        const crashes = crashesIn(records)
-        const actions = redosFirst({
-            actions: decideSteps({ records }),
-            crashes,
-        })
-        const stop = actions.find((action) => stops.has(action.type))
-        if (stop !== undefined && inFlight.size === 0) return stop
-        let slowStarted = false
-        if (stop === undefined) {
-            for (const action of actions) {
-                const key = keyOf(action)
-                if (!canStart({ action, key })) continue
-                // Waiting for a reply has no time limit, so it never counts.
-                const counts = action.type !== 'wait_for_reply'
-                if (counts && started >= limit) {
-                    await settleAll()
-                    throw new Error(
-                        `The engine took ${limit} steps without finishing.`
-                    )
-                }
-                if (counts) started += 1
-                const done = runStep({ action, key, crashes }).finally(() => {
-                    inFlight.delete(key)
-                })
-                // Seen by the race below; this keeps a rejection that lands
-                // between races from counting as unhandled.
-                done.catch(() => undefined)
-                inFlight.set(key, { action, done })
-                if (SLOW_ACTIONS.has(action.type)) slowStarted = true
-            }
-        }
-        // A slow step shows on the board while it runs, not only once it ends.
-        if (slowStarted) await board?.sync({ records: journal.read() })
-        if (inFlight.size === 0) {
-            throw new Error(
-                `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`
-            )
-        }
-        try {
-            // A stop waits for everything in flight; otherwise any one.
-            await (stop === undefined
-                ? Promise.race([...inFlight.values()].map(({ done }) => done))
-                : Promise.all([...inFlight.values()].map(({ done }) => done)))
-        } catch (error) {
-            await settleAll()
-            throw error
-        }
-        await board?.sync({ records: journal.read() })
+    try {
+        return await loop()
+    } catch (error) {
+        // The run ends here, so no session stays open.
+        await closeFinished({ all: true })
+        throw error
     }
 }

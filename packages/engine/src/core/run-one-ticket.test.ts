@@ -116,9 +116,15 @@ describe('one ticket, end to end, with scripted agents', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
 
+        // Each launched agent's session is closed once, somewhere in the run.
+        const allKinds: string[] = records.map((record) => record.kind)
+        const count = (kind: string) =>
+            allKinds.filter((other) => other === kind).length
+        expect(count('agent_session_closed')).toBe(count('agent_started'))
+
         // The journal holds every step, in order, with the final review
         // (its five lenses at once, in any order) right before the PR.
-        const kinds: string[] = records.map((record) => record.kind)
+        const kinds = allKinds.filter((kind) => kind !== 'agent_session_closed')
         const finalFrom = kinds.indexOf('final_review_started')
         const finalTo = kinds.indexOf('final_review_passed')
         expect(kinds.slice(finalFrom + 1, finalTo).toSorted()).toEqual(

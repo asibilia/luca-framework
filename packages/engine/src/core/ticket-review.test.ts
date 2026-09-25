@@ -182,7 +182,8 @@ describe('the ticket review, end to end', () => {
             'launch implementer scripted-implementer-11-2',
             'launch ticket-reviewer scripted-ticket-reviewer-11-3',
             'launch test-writer scripted-test-writer-11-4',
-            'follow_up implementer scripted-implementer-11-2',
+            // The implementer's session closed with the green commit.
+            'launch implementer scripted-implementer-11-5',
             'launch ticket-reviewer scripted-ticket-reviewer-11-6',
         ])
 

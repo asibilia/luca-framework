@@ -72,6 +72,8 @@ export type ScriptedCall = {
 export type ScriptedLauncher = AgentLauncher & {
     /** Every launch and follow-up so far, oldest first. */
     launches: () => ScriptedCall[]
+    /** The ids of the sessions launched and not yet closed, oldest first. */
+    openSessions: () => string[]
 }
 
 /**
@@ -80,7 +82,9 @@ export type ScriptedLauncher = AgentLauncher & {
  * session; both take the next unused turn for their role and ticket, write
  * that turn's files into the worktree, run its `act`, and return its result
  * or failure. A call with no turn left fails the agent's try; a follow-up to
- * an unknown session is an engine failure. The engine config it is handed is
+ * an unknown or closed session is an engine failure. A session stays open,
+ * however its turns ended, until `closeSession` closes it; `openSessions`
+ * counts the ones still open. The engine config it is handed is
  * ignored. A turn's `act` gets the engine's tools, wired to the messaging
  * its session was launched with.
  *
@@ -214,6 +218,10 @@ export const createScriptedLauncher = ({
             const tools = toolsFor({ messaging, call })
             return play({ role, ticket, cwd, session_id, tools })
         },
+        closeSession: async ({ session_id }) => {
+            sessions.delete(session_id)
+        },
         launches: () => [...calls],
+        openSessions: () => [...sessions.keys()],
     }
 }

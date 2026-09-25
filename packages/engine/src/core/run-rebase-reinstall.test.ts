@@ -61,14 +61,15 @@ describe('a rebase across a dependency change, end to end', () => {
             command: 'bun install --frozen-lockfile',
             ok: true,
         })
-        // The install came before the clash fix.
-        const followUp = ofKind(records, 'agent_started').find(
+        // The install came before the clash fix (a fresh implementer: the
+        // first one's session closed with its green commit).
+        const clashFix = ofKind(records, 'agent_started').find(
             ({ ticket, seq, content }) =>
                 ticket === 22 &&
                 seq > (rebased?.seq ?? 0) &&
-                content.follow_up_of !== null
+                content.role === 'implementer'
         )
-        expect(followUp?.seq ?? 0).toBeGreaterThan(again?.seq ?? 0)
+        expect(clashFix?.seq ?? 0).toBeGreaterThan(again?.seq ?? 0)
         // Origin's run branch depends on the math package, with its lockfile.
         const [created] = ofKind(records, 'run_branch_created')
         const branch = created?.content.branch ?? ''

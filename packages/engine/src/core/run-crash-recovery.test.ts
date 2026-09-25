@@ -75,6 +75,7 @@ const crashingOn = ({
         kind === 'follow_up'
             ? Promise.reject(new Error('The engine crashed.'))
             : launcher.followUp(args),
+    closeSession: (args) => launcher.closeSession(args),
 })
 
 /**

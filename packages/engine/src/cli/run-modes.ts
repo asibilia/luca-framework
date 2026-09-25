@@ -504,6 +504,7 @@ const slowLauncher = ({
         await Bun.sleep(delay_ms)
         return launcher.followUp(args)
     },
+    closeSession: (args) => launcher.closeSession(args),
 })
 
 /**

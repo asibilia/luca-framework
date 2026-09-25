@@ -211,15 +211,15 @@ describe('agent messages and run notes across tickets building at once', () => {
         expect(call?.delivered).toEqual([expect.stringContaining(EARLY)])
     })
 
-    test("#11's implementer got #12's message in its clash follow-up, the same session", () => {
+    test("#11's implementer got #12's message in its clash fix, a fresh session after the green commit closed the first", () => {
         const eleven = run.launches.filter(
             ({ role, ticket }) => role === 'implementer' && ticket === 11
         )
         expect(eleven.map(({ kind, delivered }) => [kind, delivered])).toEqual([
             ['launch', []],
-            ['follow_up', [expect.stringContaining(TO_ELEVEN)]],
+            ['launch', [expect.stringContaining(TO_ELEVEN)]],
         ])
-        expect(eleven[1]?.session_id).toBe(eleven[0]?.session_id)
+        expect(eleven[1]?.session_id).not.toBe(eleven[0]?.session_id)
     })
 
     test('each delivery is journaled once, on the receiver', () => {

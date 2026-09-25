@@ -164,6 +164,31 @@ describe('decision step: review findings go back for fixing', () => {
         expect(action.message).not.toContain('R1-3')
     })
 
+    test("once the implementer's session is closed, code findings go to a fresh implementer", () => {
+        const action = decideAfter([
+            ...committed(),
+            {
+                kind: 'agent_session_closed',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    role: 'implementer',
+                    session_id: SESSIONS.implementer,
+                },
+            },
+            reviewed({ ticket: 11, findings: [CODE] }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'implementer',
+        })
+        const prompt = promptOf(action)
+        expect(prompt).toContain('R1-1')
+        expect(prompt).toContain('Sum drops negatives')
+    })
+
     test('test findings go to a fresh test-writer first, with only the test findings', () => {
         const action = decideAfter([
             ...committed(),

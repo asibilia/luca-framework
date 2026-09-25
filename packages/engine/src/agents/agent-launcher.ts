@@ -157,4 +157,13 @@ export type AgentLauncher = {
         cwd: string
         config: EngineConfig
     }) => Promise<AgentTurn>
+    /**
+     * Closes one agent session once nothing can send it a follow-up anymore,
+     * so its process doesn't stay open for the rest of the run. A session the
+     * launcher doesn't know, or one already closed, is left as it is.
+     *
+     * @example
+     * await launcher.closeSession({ session_id })
+     */
+    closeSession: (args: { session_id: string }) => Promise<void>
 }
