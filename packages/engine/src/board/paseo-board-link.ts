@@ -17,7 +17,7 @@ const PidFileSchema = z.object({ listen: z.string().min(1) })
  * Where the Paseo daemon listens: `PASEO_HOST`, or the `listen` field of
  * `$PASEO_HOME/paseo.pid` (`~/.paseo/paseo.pid` by default).
  */
-const daemonAddress = async (): Promise<string> => {
+export const daemonAddress = async (): Promise<string> => {
     const host = process.env.PASEO_HOST
     if (host !== undefined && host !== '') return host
     const home = process.env.PASEO_HOME ?? join(homedir(), '.paseo')
