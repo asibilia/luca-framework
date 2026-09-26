@@ -184,6 +184,10 @@ once every ticket pushed, the final review, on the run branch's worktree:
       start_final_review               only the lenses with findings, only the new changes
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
+with a changesets config (.changeset/config.json when the run branch was made, #461):
+  write_changeset           git: commit one changeset (the changed workspace packages
+                            minus the config's ignore, the bump from the spec's release:*
+                            label, patch with none, empty for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved

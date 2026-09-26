@@ -477,6 +477,13 @@ export type RunState = {
     /** The install in the run branch's checkout, once it ran. */
     run_branch_install: ReplayedInstall | null
     tickets: Record<number, TicketProgress>
+    /**
+     * The repo had a changesets config when the run branch was made, so a
+     * changeset is written before the PR (#461).
+     */
+    changesets: boolean
+    /** The run's changeset, once written and pushed. */
+    changeset: { path: string | null; sha: string } | null
     pull_request: ReplayedPullRequest | null
     plan: PlanState
     /**
@@ -574,6 +581,8 @@ const EMPTY_STATE: RunState = {
     run_branch: null,
     run_branch_install: null,
     tickets: {},
+    changesets: false,
+    changeset: null,
     pull_request: null,
     plan: {
         hit: null,
@@ -863,8 +872,22 @@ const applyRecord = ({
             }
             return { ...next, snapshot, phase: snapshotPhase({ snapshot }) }
         }
-        case 'run_branch_created':
-            return { ...next, run_branch: record.content }
+        case 'run_branch_created': {
+            const { branch, path, base_sha, changesets } = record.content
+            return {
+                ...next,
+                run_branch: { branch, path, base_sha },
+                changesets,
+            }
+        }
+        case 'changeset_written':
+            return {
+                ...next,
+                changeset: {
+                    path: record.content.path,
+                    sha: record.content.sha,
+                },
+            }
         case 'baseline_reused':
             return reusedBaselineAfter({ state: next, record })
         case 'dependencies_installed':
@@ -1533,6 +1556,7 @@ type TicketRecord = Exclude<
             | 'ticket_snapshot'
             | 'run_branch_created'
             | 'worktrees_removed'
+            | 'changeset_written'
             | 'pull_request_opened'
             | 'jev_asked'
             | 'jev_answered'

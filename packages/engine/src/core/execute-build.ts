@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path'
 
 import uniq from 'lodash/uniq'
 
+import { CHANGESET_CONFIG } from './changeset'
 import { mayEditTests, type BuildAction } from './decide-build'
 import type { FinalReviewAction } from './decide-final-review'
 import { retryTicket } from './execute-stuck'
@@ -849,8 +850,14 @@ export const executeBuildAction = async ({
     launcher,
     step,
 }: BuildDeps & {
-    /** The final review's steps go to `executeFinalReviewAction`. */
-    action: Exclude<BuildAction, FinalReviewAction>
+    /**
+     * The final review's steps go to `executeFinalReviewAction`, and the
+     * changeset to `writeChangeset`.
+     */
+    action: Exclude<
+        BuildAction,
+        FinalReviewAction | { type: 'write_changeset' }
+    >
     journal: Journal
     tracker: Tracker
     /** Which try of its step this is. Left out, a first try. */
@@ -889,7 +896,12 @@ export const executeBuildAction = async ({
                 kind: 'run_branch_created',
                 ticket: null,
                 role: null,
-                content: { branch, path, base_sha },
+                content: {
+                    branch,
+                    path,
+                    base_sha,
+                    changesets: existsSync(join(path, CHANGESET_CONFIG)),
+                },
             })
             return
         }

@@ -115,10 +115,17 @@ const WorktreeSchema = z.object({
     base_sha: z.string().min(1),
 })
 
+/**
+ * The run branch's worktree. `changesets` is true when the repo had
+ * `.changeset/config.json` there, so the engine writes a changeset before
+ * the PR (#461).
+ */
 const RunBranchCreatedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('run_branch_created'),
-    content: WorktreeSchema,
+    content: WorktreeSchema.extend({
+        changesets: z.boolean().default(false),
+    }),
 })
 
 const TicketWorktreeCreatedEntrySchema = z.object({
@@ -740,6 +747,28 @@ const JoinUndoneEntrySchema = z.object({
     content: z.object({ shas: z.array(z.string()) }),
 })
 
+/** A changeset's bump: from the spec's `release:*` label, patch with none. */
+export const ChangesetBumpSchema = z.enum(['patch', 'minor', 'major', 'none'])
+
+export type ChangesetBump = z.infer<typeof ChangesetBumpSchema>
+
+/**
+ * The engine committed the run's one changeset (#461) at `path` on the run
+ * branch and pushed it (`sha` is the run branch's HEAD after). `packages`
+ * are the ones it names (none for `release:none`). `path` is `null` when
+ * the repo no longer had a changesets config, so nothing was written.
+ */
+const ChangesetWrittenEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('changeset_written'),
+    content: z.object({
+        path: z.string().nullable(),
+        bump: ChangesetBumpSchema,
+        packages: z.array(z.string()),
+        sha: z.string(),
+    }),
+})
+
 const PullRequestOpenedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('pull_request_opened'),
@@ -1081,6 +1110,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     RunStuckEntrySchema,
+    ChangesetWrittenEntrySchema,
     PullRequestOpenedEntrySchema,
     JevAskedEntrySchema,
     JevAnsweredEntrySchema,
@@ -1153,6 +1183,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
     RunStuckEntrySchema.extend(STAMP_FIELDS),
+    ChangesetWrittenEntrySchema.extend(STAMP_FIELDS),
     PullRequestOpenedEntrySchema.extend(STAMP_FIELDS),
     JevAskedEntrySchema.extend(STAMP_FIELDS),
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
@@ -1224,6 +1255,7 @@ export const JournalKindSchema = z.enum([
     'run_branch_pushed',
     'ticket_stuck',
     'run_stuck',
+    'changeset_written',
     'pull_request_opened',
     'jev_asked',
     'jev_answered',

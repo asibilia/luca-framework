@@ -1,5 +1,6 @@
 import sortBy from 'lodash/sortBy'
 
+import { changesetStep } from './changeset'
 import { crashDetail, crashedOut } from './decide-crashes'
 import {
     decideFinalReview,
@@ -40,6 +41,7 @@ import { rejoinSection, rolePrompt } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
+    ChangesetBump,
     CommitStage,
     GateTarget,
     RejoinCause,
@@ -190,6 +192,17 @@ export type BuildAction =
           ticket: number
           reason: StuckReason
           detail: string
+      }
+    /**
+     * In a repo with changesets, commit the run's one changeset to the run
+     * branch and push it, before the PR (#461).
+     */
+    | {
+          type: 'write_changeset'
+          branch: string
+          bump: ChangesetBump
+          summary: string
+          message: string
       }
     /** Open the run's one pull request from the run branch. */
     | {
@@ -1015,7 +1028,9 @@ const notRemoved = ({
  * stuck ticket ends the run: no ticket starts or moves on, and the worktrees
  * of pushed tickets are removed. Once every ticket pushed, the final review
  * looks at the whole run branch (`decideFinalReview`) before the PR opens; a
- * stuck final review ends the run with the run branch's worktree kept. Once
+ * stuck final review ends the run with the run branch's worktree kept. In a
+ * repo with changesets, the run's changeset is written just before the PR
+ * (`write_changeset`), once. Once
  * the PR is open, every worktree is removed. Branches and the journal stay.
  *
  * Fix loops: a failed red check goes back to the same test-writer session,
@@ -1266,6 +1281,15 @@ export const decideBuild = ({
             return [
                 ...finalStuckSteps({ state, spec_number, run_branch }),
                 ...replies,
+            ]
+        }
+        if (state.changesets && state.changeset === null) {
+            return [
+                {
+                    type: 'write_changeset',
+                    branch: run_branch.branch,
+                    ...changesetStep({ spec: snapshot.spec }),
+                },
             ]
         }
         return [

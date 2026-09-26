@@ -353,6 +353,7 @@ const STEP_WORDS: Record<string, string> = {
     join_run_branch: 'joining the run branch',
     push_run_branch: 'pushing the run branch',
     push_final_fixes: 'pushing the run branch',
+    write_changeset: 'writing the changeset',
     open_pull_request: 'opening the pull request',
 }
 

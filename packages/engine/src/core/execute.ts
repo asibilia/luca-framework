@@ -13,6 +13,7 @@ import {
     executeBuildAction,
     type BuildDeps,
 } from './execute-build'
+import { writeChangeset } from './execute-changeset'
 import { executeFinalReviewAction } from './execute-final-review'
 import { executeMemoryAction } from './execute-memory'
 import { executeStuckAction } from './execute-stuck'
@@ -513,6 +514,17 @@ export const executeAction = async ({
                     }),
                 })
             }
+            if (action.type === 'write_changeset') {
+                return writeChangeset({
+                    action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
+            }
             return executeBuildAction({
                 action,
                 journal,
@@ -650,6 +662,7 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'run_final_gates':
         case 'commit_final_fix':
         case 'push_final_fixes':
+        case 'write_changeset':
         case 'undo_join':
         case 'retry_ticket':
             return true
