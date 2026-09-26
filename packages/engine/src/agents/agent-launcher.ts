@@ -4,6 +4,16 @@ import type { AgentRole } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
 
+/** One model's tokens in one agent turn. */
+export const ModelTokensSchema = z.object({
+    input_tokens: z.number().default(0),
+    output_tokens: z.number().default(0),
+    cache_read_input_tokens: z.number().default(0),
+    cache_creation_input_tokens: z.number().default(0),
+})
+
+export type ModelTokens = z.infer<typeof ModelTokensSchema>
+
 /**
  * A summary of one agent's model session, as the launcher saw it: raw
  * numbers and readings. The decision step reads its rate-limit readings for
@@ -33,6 +43,12 @@ export const AgentSessionSchema = z.object({
             cache_read_input_tokens: 0,
             cache_creation_input_tokens: 0,
         }),
+    /**
+     * This turn's tokens per model, subagents included, from the SDK
+     * result's `modelUsage`. `usage` above is the main loop's only. Older
+     * journals have none.
+     */
+    model_usage: z.record(z.string(), ModelTokensSchema).default({}),
     /** The SDK's own estimate at list price; the plan paid, not this. */
     total_cost_usd: z.number().default(0),
     /** Calls the SDK's permission rules denied (its result's own list). */

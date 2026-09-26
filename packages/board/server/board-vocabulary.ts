@@ -72,21 +72,26 @@ const RateLimitReadingSchema = z.looseObject({
         .catch(undefined),
 })
 
+const TokensSchema = z
+    .looseObject({
+        input_tokens: tokenCount,
+        output_tokens: tokenCount,
+        cache_read_input_tokens: tokenCount,
+        cache_creation_input_tokens: tokenCount,
+    })
+    .catch({
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+    })
+
 /** The launcher's summary of an agent's session: tokens and readings. */
 const AgentSessionSchema = z.looseObject({
-    usage: z
-        .looseObject({
-            input_tokens: tokenCount,
-            output_tokens: tokenCount,
-            cache_read_input_tokens: tokenCount,
-            cache_creation_input_tokens: tokenCount,
-        })
-        .catch({
-            input_tokens: 0,
-            output_tokens: 0,
-            cache_read_input_tokens: 0,
-            cache_creation_input_tokens: 0,
-        }),
+    /** The main loop's tokens. */
+    usage: TokensSchema,
+    /** The turn's tokens per model, subagents included; older journals have none. */
+    model_usage: z.record(z.string(), TokensSchema).catch({}).default({}),
     rate_limit_events: z.array(RateLimitReadingSchema).catch([]),
 })
 

@@ -5,6 +5,7 @@ import {
     LENS_NAMES,
     LOOP_CAP,
     NO_MEMORY,
+    USAGE_LABEL,
     usageLevel,
     windowRank,
     windowWords,
@@ -168,6 +169,8 @@ export const createBoardState = ({
         log_path,
     },
     usage: null,
+    usage_label: USAGE_LABEL,
+    run_tokens: 0,
     limit_wait: null,
     run_plan_used: [],
     needs_you: [],
@@ -487,6 +490,23 @@ const sessionTokens = ({ session }: SessionContent): number =>
     session.usage.output_tokens +
     session.usage.cache_read_input_tokens +
     session.usage.cache_creation_input_tokens
+
+/**
+ * A session's exact tokens: input, output, and cache-creation tokens over
+ * its tokens per model, subagents included. An older journal's session,
+ * with none, counts its main loop's `usage`. Cache reads are left out.
+ */
+const countedTokens = ({ session }: SessionContent): number => {
+    const models = Object.values(session.model_usage)
+    return (models.length === 0 ? [session.usage] : models).reduce(
+        (total, each) =>
+            total +
+            each.input_tokens +
+            each.output_tokens +
+            each.cache_creation_input_tokens,
+        0
+    )
+}
 
 /** A 0-to-1 utilization as a whole percent from 0 to 100. */
 const percentOf = ({ utilization }: { utilization: number }): number =>
@@ -893,6 +913,7 @@ const applyKind = ({
             })
             return {
                 ...withTokens,
+                run_tokens: state.run_tokens + countedTokens(record.content),
                 usage: usageAfter({
                     usage: state.usage,
                     session: record.content.session,

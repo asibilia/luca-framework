@@ -913,13 +913,13 @@ const Banner = ({
 )
 
 const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
-    const { usage } = state
+    const { usage, usage_label } = state
     return (
         <View style={styles.row}>
             <Icon name="Gauge" size={13} color={theme.colors.foregroundMuted} />
             {usage ? (
                 <Text style={styles.mono}>
-                    plan 5h{' '}
+                    {usage_label}: 5h{' '}
                     <Text
                         style={{
                             color: usageColor({
@@ -943,7 +943,7 @@ const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
                     </Text>
                 </Text>
             ) : (
-                <Text style={styles.mono}>plan usage: no reading yet</Text>
+                <Text style={styles.mono}>{usage_label}: no reading yet</Text>
             )}
         </View>
     )
@@ -1157,6 +1157,12 @@ export const BoardPanel = ({
                     prefix="Now: "
                     styles={styles}
                 />
+            ) : null}
+            {state.run_tokens > 0 ? (
+                <Text style={styles.mono}>
+                    This run&apos;s tokens:{' '}
+                    {tokensText({ tokens: state.run_tokens })}
+                </Text>
             ) : null}
             {state.run_plan_used.length > 0 ? (
                 <Text style={styles.mono}>

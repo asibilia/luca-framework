@@ -119,6 +119,7 @@ export const headerRow = ({
             .filter((entry) => entry.count > 0),
         final_review: finalReviewText({ state }),
         usage: usageLine({ usage: state.usage }),
+        usage_label: state.usage_label,
         limit_wait: state.limit_wait !== null,
         current_steps: [
             ...state.tickets.flatMap(({ number, current_step }) =>

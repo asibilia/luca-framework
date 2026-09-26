@@ -41,10 +41,14 @@ export const UsageRecordSchema = z.object({
 
 export type UsageRecord = z.infer<typeof UsageRecordSchema>
 
-/** An agent session as `usageFor` reads it: whose it was, and its summary. */
+/**
+ * An agent session as `usageFor` reads it: whose it was, and its summary.
+ * An older journal's session has no `model_usage`.
+ */
 export type SessionReading = {
     ticket: number | null
-    session: Pick<AgentSession, 'usage' | 'rate_limit_events'>
+    session: Pick<AgentSession, 'usage' | 'rate_limit_events'> &
+        Partial<Pick<AgentSession, 'model_usage'>>
 }
 
 const EMPTY_TOKENS: TokenTotals = {
@@ -53,6 +57,43 @@ const EMPTY_TOKENS: TokenTotals = {
     cache_read_input_tokens: 0,
     cache_creation_input_tokens: 0,
 }
+
+const addTokens = (a: TokenTotals, b: TokenTotals): TokenTotals => ({
+    input_tokens: a.input_tokens + b.input_tokens,
+    output_tokens: a.output_tokens + b.output_tokens,
+    cache_read_input_tokens:
+        a.cache_read_input_tokens + b.cache_read_input_tokens,
+    cache_creation_input_tokens:
+        a.cache_creation_input_tokens + b.cache_creation_input_tokens,
+})
+
+/**
+ * One agent turn's tokens: summed over its tokens per model, subagents
+ * included. A turn with none (an older journal's) counts its main loop's
+ * `usage` instead.
+ */
+export const sessionTokens = ({
+    session,
+}: {
+    session: SessionReading['session']
+}): TokenTotals => {
+    const models = Object.values(session.model_usage ?? {})
+    return models.length === 0
+        ? session.usage
+        : models.reduce(addTokens, EMPTY_TOKENS)
+}
+
+/**
+ * The tokens that count toward a run's use: input, output, and
+ * cache-creation tokens. Cache reads are left out.
+ *
+ * @example
+ * countedTokens({ tokens: { input_tokens: 1, output_tokens: 2, cache_read_input_tokens: 900, cache_creation_input_tokens: 3 } }) // 6
+ */
+export const countedTokens = ({ tokens }: { tokens: TokenTotals }): number =>
+    tokens.input_tokens +
+    tokens.output_tokens +
+    tokens.cache_creation_input_tokens
 
 /** A fraction as a percent, to two places, so 0.03 reads as 3. */
 const percentOf = (fraction: number): number =>
@@ -173,7 +214,8 @@ const advance = ({
 
 /**
  * The usage of one ticket (or, with `ticket: null`, the whole run) from the
- * run's agent sessions, oldest first: tokens summed over its sessions, and
+ * run's agent sessions, oldest first: tokens summed over its sessions (see
+ * `sessionTokens`), and
  * each plan window's movement. Readings replay in arrival order. A ticket's
  * window starts from the last reading before its first one (any ticket's),
  * so the ticket's own first agent counts. A changed reset time means the
@@ -195,17 +237,10 @@ export const usageFor = ({
     for (const reading of sessions) {
         if (ticket === null || reading.ticket === ticket) {
             agent_turns += 1
-            const { usage } = reading.session
-            tokens = {
-                input_tokens: tokens.input_tokens + usage.input_tokens,
-                output_tokens: tokens.output_tokens + usage.output_tokens,
-                cache_read_input_tokens:
-                    tokens.cache_read_input_tokens +
-                    usage.cache_read_input_tokens,
-                cache_creation_input_tokens:
-                    tokens.cache_creation_input_tokens +
-                    usage.cache_creation_input_tokens,
-            }
+            tokens = addTokens(
+                tokens,
+                sessionTokens({ session: reading.session })
+            )
         }
     }
     const windows: Record<string, WindowUsage> = {}

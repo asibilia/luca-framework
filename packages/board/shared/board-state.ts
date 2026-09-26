@@ -399,6 +399,12 @@ export const UsageSchema = z.object({
 
 export type Usage = z.infer<typeof UsageSchema>
 
+/**
+ * The words on the plan usage: its windows are the whole account's, every
+ * run's and chat's, never one run's.
+ */
+export const USAGE_LABEL = 'plan usage (account-wide)'
+
 export const EngineEndedSchema = z.object({
     ok: z.boolean(),
     message: z.string(),
@@ -521,6 +527,15 @@ export const NO_MEMORY: MemoryCounts = {
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
     usage: UsageSchema.nullable(),
+    /** What `usage` is, in words. Defaulted, so an older board state still parses. */
+    usage_label: z.string().default(USAGE_LABEL),
+    /**
+     * The run's exact tokens: input, output, and cache-creation tokens over
+     * every agent turn's models, subagents included (an older journal's
+     * turn counts its main loop's). Cache reads are left out. Defaulted, so
+     * an older board state still parses.
+     */
+    run_tokens: z.number().min(0).default(0),
     /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
         .object({
