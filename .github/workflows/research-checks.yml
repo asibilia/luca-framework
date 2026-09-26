@@ -1,0 +1,52 @@
+# Throwaway workflow for research ticket #443 ("Which of Luca's checks can
+# run in GitHub Actions?"). It runs the three checks from .luca/config.json
+# on Ubuntu and macOS. It only runs on pushes to this research branch and
+# never goes to main.
+
+name: research-checks
+
+on:
+  push:
+    branches: [research/checks-in-actions]
+
+jobs:
+  checks:
+    name: checks (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      # Same Bun as Alec's Mac (1.3.11). The repo pins no Bun version.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Tool versions
+        run: |
+          uname -a
+          bun --version
+          git --version
+          gh --version | head -1
+          git config --global --get user.name || echo "no global git user.name"
+          nproc 2>/dev/null || sysctl -n hw.ncpu
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # .luca/config.json checks.types
+      - name: Types
+        run: bunx --bun tsc --noEmit && bunx --bun tsc --noEmit -p packages/board
+
+      # .luca/config.json checks.lint
+      - name: Lint
+        run: bun run lint
+
+      # .luca/config.json checks.test
+      - name: Test
+        timeout-minutes: 15
+        run: bun test packages
