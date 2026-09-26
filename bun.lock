@@ -55,6 +55,26 @@
         "typescript": "catalog:",
       },
     },
+    "packages/luca": {
+      "name": "@alecsibilia/luca",
+      "version": "13.0.1",
+      "bin": {
+        "luca": "engine/cli/luca.ts",
+        "luca-run": "engine/cli/luca-run.ts",
+      },
+      "dependencies": {
+        "@anthropic-ai/claude-agent-sdk": "0.3.273",
+        "@getpaseo/client": "0.9.1",
+        "@getpaseo/plugin": "0.9.1",
+        "@modelcontextprotocol/sdk": "1.30.0",
+        "lodash": "^4.17.21",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "catalog:",
+      },
+    },
   },
   "catalog": {
     "typescript": "^5.0.0",
@@ -64,6 +84,8 @@
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.4.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-/eufudw+aFY1LKLolT6yFE6UMmYRl7fMJ/DEONSIyR6wI3slHWITBsANRGqXEY8FRzqUxwh7QEaGiZHcJPVThg=="],
 
     "@alecsibilia/commit": ["@alecsibilia/commit@1.0.8", "", { "dependencies": { "@clack/prompts": "0.11.0", "chalk": "^5.3.0", "commander": "^14.0.0", "zod": "^3.24.1" }, "bin": { "commit": "dist/index.js" } }, "sha512-/h9gveB7HUw+2j0bORsyiM2sfVZbCj8GIIueBTxiXlIV9mYa3wAMC6XUse2r/OuukvE9ndIgfmJW3Ifn2hzu6A=="],
+
+    "@alecsibilia/luca": ["@alecsibilia/luca@workspace:packages/luca"],
 
     "@anthropic-ai/claude-agent-sdk": ["@anthropic-ai/claude-agent-sdk@0.3.273", "", { "optionalDependencies": { "@anthropic-ai/claude-agent-sdk-darwin-arm64": "0.3.273", "@anthropic-ai/claude-agent-sdk-darwin-x64": "0.3.273", "@anthropic-ai/claude-agent-sdk-linux-arm64": "0.3.273", "@anthropic-ai/claude-agent-sdk-linux-arm64-musl": "0.3.273", "@anthropic-ai/claude-agent-sdk-linux-x64": "0.3.273", "@anthropic-ai/claude-agent-sdk-linux-x64-musl": "0.3.273", "@anthropic-ai/claude-agent-sdk-win32-arm64": "0.3.273", "@anthropic-ai/claude-agent-sdk-win32-x64": "0.3.273" }, "peerDependencies": { "@anthropic-ai/sdk": ">=0.93.0", "@modelcontextprotocol/sdk": "^1.29.0", "zod": "^4.0.0" } }, "sha512-BY+OjzHan8LKdKN6yW4f/qnqWlBFO1LHebbaAxEB9IGDglN1pvU3QxjPGANu20CaUt6lHj67OC79Z7tMLeKs0Q=="],
 
@@ -1221,6 +1243,10 @@
 
     "@alecsibilia/commit/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
+    "@alecsibilia/luca/@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
+
+    "@alecsibilia/luca/zod": ["zod@4.6.5", "", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
+
     "@babel/core/json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
 
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
@@ -1332,6 +1358,8 @@
     "terser/commander": ["commander@2.20.3", "", {}, "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ=="],
 
     "type-is/content-type": ["content-type@2.1.0", "", {}, "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag=="],
+
+    "@alecsibilia/luca/@types/bun/bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 
     "@istanbuljs/load-nyc-config/find-up/locate-path": ["locate-path@5.0.0", "", { "dependencies": { "p-locate": "^4.1.0" } }, "sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g=="],
 
