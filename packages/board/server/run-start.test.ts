@@ -93,7 +93,7 @@ describe('run.start: finding the engine', () => {
         expect(harness.spawns[0]?.args).toContain(ENGINE_PATH)
     })
 
-    test('with no setting, an installed luca-run runs directly', async () => {
+    test('with no setting, an older installed luca-run with no bunfig beside it runs directly', async () => {
         harness = await createHarness({
             settings: { engine_path: '', bun_path: '' },
             files: ['/opt/homebrew/bin/luca-run'],
