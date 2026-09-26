@@ -296,7 +296,10 @@ const watch = ({
     const rateLimit = RateLimitSchema.safeParse(raw)
     if (rateLimit.success) {
         const info = rateLimit.data.rate_limit_info
-        summary.rate_limit_events.push(info)
+        summary.rate_limit_events.push({
+            ...info,
+            arrived_at: new Date().toISOString(),
+        })
         const signal = planSignal({ info })
         switch (signal.kind) {
             case 'ok':

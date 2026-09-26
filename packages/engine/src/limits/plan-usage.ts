@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { RateLimitReadingSchema } from './plan-signals'
+import { RateLimitReadingSchema, type RateLimitReading } from './plan-signals'
 
 import type { AgentSession } from '../agents/agent-launcher'
 
@@ -58,32 +58,126 @@ const EMPTY_TOKENS: TokenTotals = {
 const percentOf = (fraction: number): number =>
     Math.round(fraction * 10_000) / 100
 
+/** One window in one reading: its fill level in percent, and its reset time. */
+type WindowSample = {
+    name: string
+    percent: number
+    /** Seconds since the epoch, or `null` when the reading gives none. */
+    resets_at: number | null
+}
+
 /**
- * Each window's utilization in one reading, as percents, in the order the
+ * Each window's fill level in one reading, as percents, in the order the
  * reading gives them: its `unifiedWindows`, then its top-level window.
  */
-const windowSamples = (info: unknown): [string, number][] => {
-    const parsed = RateLimitReadingSchema.safeParse(info)
-    if (!parsed.success) return []
-    const { unifiedWindows, rateLimitType, utilization } = parsed.data
+const windowSamples = (reading: RateLimitReading): WindowSample[] => {
+    const { unifiedWindows, rateLimitType, utilization, resetsAt } = reading
     const unified = Object.entries(unifiedWindows ?? {}).flatMap(
-        ([name, { utilization: value }]): [string, number][] =>
-            value === undefined ? [] : [[name, percentOf(value)]]
+        ([name, window]): WindowSample[] =>
+            window.utilization === undefined
+                ? []
+                : [
+                      {
+                          name,
+                          percent: percentOf(window.utilization),
+                          resets_at: window.resetsAt ?? null,
+                      },
+                  ]
     )
-    const top: [string, number][] =
+    const top: WindowSample[] =
         rateLimitType === undefined || utilization === undefined
             ? []
-            : [[rateLimitType, percentOf(utilization)]]
+            : [
+                  {
+                      name: rateLimitType,
+                      percent: percentOf(utilization),
+                      resets_at: resetsAt ?? null,
+                  },
+              ]
     return [...unified, ...top]
+}
+
+/** One reading to replay: whether it's in scope, and its windows. */
+type ReplayReading = { in_scope: boolean; samples: WindowSample[] }
+
+/**
+ * Every session's readings in arrival order. A reading with no arrival time
+ * (an older journal's) keeps its place after the reading before it, so an
+ * older journal replays in journal order.
+ */
+const inArrivalOrder = ({
+    sessions,
+    ticket,
+}: {
+    sessions: SessionReading[]
+    ticket: number | null
+}): ReplayReading[] => {
+    let arrival = -Infinity
+    const timed = sessions.flatMap((session) =>
+        session.session.rate_limit_events.flatMap((info) => {
+            const parsed = RateLimitReadingSchema.safeParse(info)
+            if (!parsed.success) return []
+            const at = Date.parse(parsed.data.arrived_at ?? '')
+            if (Number.isFinite(at)) arrival = at
+            return [
+                {
+                    arrival,
+                    in_scope: ticket === null || session.ticket === ticket,
+                    samples: windowSamples(parsed.data),
+                },
+            ]
+        })
+    )
+    return timed.sort((a, b) => a.arrival - b.arrival)
+}
+
+/**
+ * One window's last reading: its fill level and reset time, and the highest
+ * fill level since the window last reset.
+ */
+type WindowSeen = { percent: number; resets_at: number | null; peak: number }
+
+/**
+ * How much of a window one reading used, from the window's last reading.
+ * A changed reset time is a reset: the reading counts from 0. With the same
+ * reset time, only a rise above the highest level since the reset counts,
+ * so a level that wobbles (62, 63, 62, 63) uses 1 point. Without both reset
+ * times, a drop is taken for a reset, as older readings may lack them.
+ */
+const advance = ({
+    seen,
+    sample,
+}: {
+    seen: WindowSeen | undefined
+    sample: WindowSample
+}): { used: number; seen: WindowSeen } => {
+    const { percent, resets_at } = sample
+    if (seen === undefined) {
+        return { used: 0, seen: { percent, resets_at, peak: percent } }
+    }
+    const known = seen.resets_at !== null && resets_at !== null
+    if (known && seen.resets_at !== resets_at) {
+        return { used: percent, seen: { percent, resets_at, peak: percent } }
+    }
+    if (known) {
+        return {
+            used: Math.max(0, percent - seen.peak),
+            seen: { percent, resets_at, peak: Math.max(seen.peak, percent) },
+        }
+    }
+    return {
+        used: percent >= seen.percent ? percent - seen.percent : percent,
+        seen: { percent, resets_at, peak: percent },
+    }
 }
 
 /**
  * The usage of one ticket (or, with `ticket: null`, the whole run) from the
  * run's agent sessions, oldest first: tokens summed over its sessions, and
- * each plan window's movement. A ticket's window starts from the last reading
- * before its first session (any ticket's), so the ticket's own first agent
- * counts. A reading lower than the one before means the window reset: it
- * counts from 0 again. Pure.
+ * each plan window's movement. Readings replay in arrival order. A ticket's
+ * window starts from the last reading before its first one (any ticket's),
+ * so the ticket's own first agent counts. A changed reset time means the
+ * window reset: it counts from 0 again (see `advance`). Pure.
  *
  * @example
  * usageFor({ sessions, ticket: 11 })
@@ -98,11 +192,8 @@ export const usageFor = ({
 }): UsageRecord => {
     let tokens = EMPTY_TOKENS
     let agent_turns = 0
-    const windows: Record<string, WindowUsage> = {}
-    const lastSeen = new Map<string, number>()
     for (const reading of sessions) {
-        const inScope = ticket === null || reading.ticket === ticket
-        if (inScope) {
+        if (ticket === null || reading.ticket === ticket) {
             agent_turns += 1
             const { usage } = reading.session
             tokens = {
@@ -116,25 +207,27 @@ export const usageFor = ({
                     usage.cache_creation_input_tokens,
             }
         }
-        for (const info of reading.session.rate_limit_events) {
-            for (const [name, percent] of windowSamples(info)) {
-                if (inScope) {
-                    const base = lastSeen.get(name) ?? percent
-                    const window = windows[name] ?? {
-                        from: base,
-                        to: base,
-                        used: 0,
-                    }
-                    const step =
-                        percent >= window.to ? percent - window.to : percent
-                    windows[name] = {
-                        from: window.from,
-                        to: percent,
-                        used: Math.round((window.used + step) * 100) / 100,
-                    }
+    }
+    const windows: Record<string, WindowUsage> = {}
+    const lastSeen = new Map<string, WindowSeen>()
+    for (const reading of inArrivalOrder({ sessions, ticket })) {
+        for (const sample of reading.samples) {
+            const seen = lastSeen.get(sample.name)
+            const next = advance({ seen, sample })
+            if (reading.in_scope) {
+                const base = seen?.percent ?? sample.percent
+                const window = windows[sample.name] ?? {
+                    from: base,
+                    to: base,
+                    used: 0,
                 }
-                lastSeen.set(name, percent)
+                windows[sample.name] = {
+                    from: window.from,
+                    to: sample.percent,
+                    used: Math.round((window.used + next.used) * 100) / 100,
+                }
             }
+            lastSeen.set(sample.name, next.seen)
         }
     }
     return {

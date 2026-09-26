@@ -43,7 +43,10 @@ export const AgentSessionSchema = z.object({
     guard_denials: z
         .array(z.object({ tool_name: z.string(), reason: z.string() }))
         .default([]),
-    /** Every `rate_limit_event`'s info, as sent. */
+    /**
+     * Every `rate_limit_event`'s info, as sent, plus `arrived_at`: when it
+     * arrived (ISO). Older journals' readings have no `arrived_at`.
+     */
     rate_limit_events: z.array(z.record(z.string(), z.unknown())).default([]),
     /** An assistant message came back with `error: "billing_error"`. */
     billing_error: z.boolean().default(false),

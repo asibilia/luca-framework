@@ -1033,9 +1033,14 @@ agent_session with a billing sign
 each `agent_session`'s `usage`. Once a ticket is pushed or stuck, and once
 the run is about to end (its next action is `done`), the engine journals
 `usage_recorded`: the agent turns, tokens summed, and each plan window's
-`{ from, to, used }` in percent. A ticket's window starts from the last
-reading before its first agent; a reading lower than the one before means
-the window reset, so it counts from 0 again. A retried ticket that finishes
+`{ from, to, used }` in percent. The launcher stamps each reading with
+`arrived_at` (ISO), and readings replay in arrival order; an older journal's
+readings, with no `arrived_at`, keep journal order. A ticket's window starts
+from the last reading before its first agent. A changed `resetsAt` means the
+window reset, so it counts from 0 again; with the same `resetsAt`, only a
+rise above the window's highest level since its reset counts, so a level
+that wobbles between 62% and 63% uses 1 point (#425). A reading with no
+`resetsAt` falls back to a drop meaning a reset. A retried ticket that finishes
 again (stuck again, or pushed) with agent sessions newer than its last
 record gets a new record over all of its sessions, so a ticket's latest
 `usage_recorded` is its whole usage. Readings come in hundredths, so
