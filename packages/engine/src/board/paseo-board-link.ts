@@ -17,7 +17,7 @@ const PidFileSchema = z.object({ listen: z.string().min(1) })
  * Where the Paseo daemon listens: `PASEO_HOST`, or the `listen` field of
  * `$PASEO_HOME/paseo.pid` (`~/.paseo/paseo.pid` by default).
  */
-const daemonAddress = async (): Promise<string> => {
+export const daemonAddress = async (): Promise<string> => {
     const host = process.env.PASEO_HOST
     if (host !== undefined && host !== '') return host
     const home = process.env.PASEO_HOME ?? join(homedir(), '.paseo')
@@ -31,11 +31,26 @@ const daemonAddress = async (): Promise<string> => {
     return parsed.data.listen
 }
 
-const connect = async (): Promise<DaemonClient> => {
+/**
+ * The engine's Paseo client id, one per run, so two runs at once never
+ * share one Paseo session.
+ *
+ * @example
+ * engineClientId({ run_id: 'luca-20260925-101500-aaaa' })
+ * // 'luca-engine-luca-20260925-101500-aaaa'
+ */
+export const engineClientId = ({ run_id }: { run_id: string }): string =>
+    `luca-engine-${run_id}`
+
+const connect = async ({
+    run_id,
+}: {
+    run_id: string
+}): Promise<DaemonClient> => {
     const password = process.env.PASEO_PASSWORD
     const client = new DaemonClient({
         url: `ws://${await daemonAddress()}/ws`,
-        clientId: 'luca-engine',
+        clientId: engineClientId({ run_id }),
         clientType: 'cli',
         reconnect: { enabled: false },
         connectTimeoutMs: CONNECT_TIMEOUT_MS,
@@ -81,7 +96,7 @@ export const createPaseoBoardLink = ({
     }
 
     const invoke: BoardLink['send'] = async ({ records, ended }) => {
-        client = client ?? (await connect())
+        client = client ?? (await connect({ run_id }))
         const reply = await client.invokePluginRpc(
             plugin_id,
             ENGINE_EVENT_METHOD,

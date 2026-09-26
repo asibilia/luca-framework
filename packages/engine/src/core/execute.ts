@@ -7,6 +7,7 @@ import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
 import type { PlanAction } from './decide-plan'
+import type { UsageLineAction } from './decide-usage-line'
 import {
     buildContext,
     executeBuildAction,
@@ -37,11 +38,21 @@ import {
     type CrashCounts,
 } from '../journal/step-records'
 import {
+    LIMIT_WAIT_NAP_MS,
     limitWaitComment,
     SYSTEM_CLOCK,
     waitUntil,
     type EngineClock,
 } from '../limits/limit-wait'
+import {
+    DEFAULT_USAGE_LINES,
+    LINE_OF,
+    runReadings,
+    usageLineEndedComment,
+    usageLineWaitComment,
+    type UsageLineDeps,
+    type UsageLines,
+} from '../limits/usage-line'
 import type { MemoryDeps } from '../memory/memory-client'
 import { postCommentOnce, type CommentStep } from '../tracker/post-comment-once'
 import {
@@ -243,6 +254,73 @@ const executePlanAction = async ({
 }
 
 /**
+ * Carries out a usage-line wait. Its start tells the spec issue, then is
+ * journaled. The wait sleeps by `clock` in naps until its end, re-reading
+ * the lines before each nap: a line raised above the reading ends it at
+ * once. Its end tells the spec issue why the run carries on, then is
+ * journaled.
+ */
+const executeUsageLineAction = async ({
+    action,
+    journal,
+    tracker,
+    clock,
+    read_usage_lines,
+    step,
+}: {
+    action: UsageLineAction
+    journal: Journal
+    tracker: Tracker
+    clock: EngineClock
+    read_usage_lines: () => Promise<UsageLines>
+    step: CommentStep
+}): Promise<void> => {
+    const { spec_number, window, line, percent, until } = action
+    if (action.type === 'start_usage_line_wait') {
+        const { resets_at } = action
+        await postCommentOnce({
+            tracker,
+            number: spec_number,
+            body: usageLineWaitComment({ window, line, percent, resets_at }),
+            step,
+            n: 0,
+        })
+        journal.append({
+            kind: 'usage_line_wait_started',
+            ticket: null,
+            role: null,
+            content: { window, line, percent, resets_at, until },
+        })
+        return
+    }
+    const end = Date.parse(until)
+    let reason: 'reset' | 'line_raised' = 'reset'
+    for (;;) {
+        const lines = await read_usage_lines()
+        if (lines[LINE_OF[window]] > percent) {
+            reason = 'line_raised'
+            break
+        }
+        const left = end - clock.now()
+        if (left <= 0) break
+        await clock.sleep(Math.min(left, LIMIT_WAIT_NAP_MS))
+    }
+    await postCommentOnce({
+        tracker,
+        number: spec_number,
+        body: usageLineEndedComment({ window, percent, reason }),
+        step,
+        n: 0,
+    })
+    journal.append({
+        kind: 'usage_line_wait_ended',
+        ticket: null,
+        role: null,
+        content: { until, reason },
+    })
+}
+
+/**
  * Which try of its step an action is: the seq of the step's first try (its
  * first `step_started`), and whether this try redoes one a crash cut off.
  * A redo adopts the side effects its first try left behind: its comments,
@@ -265,6 +343,7 @@ export const executeAction = async ({
     reply_poll_ms,
     memory,
     step,
+    read_usage_lines,
 }: {
     action: EngineAction
     journal: Journal
@@ -282,6 +361,11 @@ export const executeAction = async ({
      * first try, numbered after the journal's last record.
      */
     step?: StepTry
+    /**
+     * Reads the `luca-board` usage lines, again before each nap of a
+     * usage-line wait. Left out, the lines never change during a wait.
+     */
+    read_usage_lines?: () => Promise<UsageLines>
 }): Promise<void> => {
     const tried: CommentStep = {
         run_id: basename(dirname(journal.file)),
@@ -309,6 +393,8 @@ export const executeAction = async ({
         case 'report_final_review_stuck':
         case 'ship_final_review':
         case 'retry_final_review':
+        case 'mark_run_stuck':
+        case 'report_run_stuck':
             return executeStuckAction({
                 action,
                 journal,
@@ -346,6 +432,21 @@ export const executeAction = async ({
                 journal,
                 tracker,
                 clock: clock ?? SYSTEM_CLOCK,
+                step: tried,
+            })
+        case 'start_usage_line_wait':
+        case 'wait_for_usage_line':
+            return executeUsageLineAction({
+                action,
+                journal,
+                tracker,
+                clock: clock ?? SYSTEM_CLOCK,
+                read_usage_lines:
+                    read_usage_lines ??
+                    (async () => ({
+                        ...DEFAULT_USAGE_LINES,
+                        [LINE_OF[action.window]]: action.line,
+                    })),
                 step: tried,
             })
         case 'read_intake':
@@ -514,6 +615,7 @@ export const stepOf = (action: EngineAction): string => {
 const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'wait_for_reply',
     'wait_for_limit',
+    'wait_for_usage_line',
 ])
 
 /**
@@ -579,6 +681,7 @@ const executeWithJev = async ({
     reply_poll_ms,
     memory,
     step,
+    read_usage_lines,
 }: {
     jev: JevShadow
     action: EngineAction
@@ -589,6 +692,7 @@ const executeWithJev = async ({
     reply_poll_ms?: number
     memory?: MemoryDeps
     step?: StepTry
+    read_usage_lines?: () => Promise<UsageLines>
 }): Promise<void> => {
     const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
     await askJevInShadow({
@@ -608,6 +712,7 @@ const executeWithJev = async ({
         reply_poll_ms,
         memory,
         step,
+        read_usage_lines,
     })
     const records = journal.read()
     await askJevInShadow({
@@ -722,6 +827,10 @@ const followUpSessionOf = (action: EngineAction): string[] =>
  * the window resets, then carries on. Overage or a billing error ends the
  * run for good (`done`, outcome `stopped`).
  *
+ * With `usage`, the run keeps below the **usage line**: before each
+ * decision it shares its readings with every run, reads the newest shared
+ * ones and the lines, and pauses at a line (see `decide-usage-line.ts`).
+ *
  * Crash recovery: every step it starts (not a wait) is journaled between a
  * `step_started` and a `step_ended` (none when the step throws). On start,
  * a step with no `step_ended` was cut off by a crash: one `run_resumed`
@@ -749,6 +858,7 @@ export const runEngine = async ({
     clock,
     reply_poll_ms,
     memory,
+    usage,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -769,6 +879,8 @@ export const runEngine = async ({
      * memory on (#370). Its errors and timeouts are journaled, never thrown.
      */
     memory?: MemoryDeps
+    /** The usage lines and the shared readings. Left out, there is no usage line. */
+    usage?: UsageLineDeps
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -790,6 +902,7 @@ export const runEngine = async ({
                   reply_poll_ms,
                   memory,
                   step,
+                  read_usage_lines: usage?.read_lines,
               })
             : executeWithJev({
                   jev,
@@ -801,7 +914,21 @@ export const runEngine = async ({
                   reply_poll_ms,
                   memory,
                   step,
+                  read_usage_lines: usage?.read_lines,
               })
+
+    /** The decision step, with the usage line when the run has one. */
+    const decideNow = async (
+        records: JournalRecord[]
+    ): Promise<EngineAction[]> => {
+        if (usage === undefined) return decideSteps({ records })
+        await usage.share(runReadings({ records }))
+        return decideSteps({
+            records,
+            usage_lines: await usage.read_lines(),
+            shared_readings: await usage.read_shared(),
+        })
+    }
     const settleAll = () =>
         Promise.allSettled([...inFlight.values()].map(({ done }) => done))
     const canStart = ({ action, key }: { action: EngineAction; key: string }) =>
@@ -872,7 +999,7 @@ export const runEngine = async ({
             const records = journal.read()
             const crashes = crashesIn(records)
             const actions = redosFirst({
-                actions: decideSteps({ records }),
+                actions: await decideNow(records),
                 crashes,
             })
             const stop = actions.find((action) => stops.has(action.type))

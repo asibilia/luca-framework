@@ -355,6 +355,45 @@ const LimitWaitEndedEntrySchema = z.object({
     content: z.object({ until: z.iso.datetime() }),
 })
 
+/** The plan windows a usage line guards: all-models weekly, and 5-hour. */
+export const UsageLineWindowSchema = z.enum(['seven_day', 'five_hour'])
+
+export type UsageLineWindow = z.infer<typeof UsageLineWindowSchema>
+
+/**
+ * The newest plan-window reading was at or over its **usage line**, so the
+ * whole run pauses until `until`: the window's reset plus a margin. The wait
+ * ends sooner once the line is raised above `percent`.
+ */
+const UsageLineWaitStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('usage_line_wait_started'),
+    content: z.object({
+        window: UsageLineWindowSchema,
+        /** The line, in percent of the window. */
+        line: z.number(),
+        /** The reading's fill level, in percent. */
+        percent: z.number(),
+        /** When the window resets. */
+        resets_at: z.iso.datetime(),
+        /** When the engine wakes and carries on, at the latest. */
+        until: z.iso.datetime(),
+    }),
+})
+
+/**
+ * The usage-line wait is over: the window reset (`reset`), or the line was
+ * raised above the reading (`line_raised`).
+ */
+const UsageLineWaitEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('usage_line_wait_ended'),
+    content: z.object({
+        until: z.iso.datetime(),
+        reason: z.enum(['reset', 'line_raised']),
+    }),
+})
+
 /**
  * The plan usage of one ticket (when it was pushed, or got stuck) or of the
  * whole run (when it ended): tokens from its agent sessions, and how far
@@ -546,10 +585,25 @@ const TicketStuckEntrySchema = z.object({
     content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
 })
 
+/** Why the whole run is stuck: it used up its run budget of tokens. */
+export const RunStuckReasonSchema = z.enum(['run_budget'])
+
+export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
+
+/**
+ * The whole run is stuck (`ticket: null`): nothing new starts until the
+ * spec owner replies `retry` (one more full run budget) or `stop`.
+ */
+const RunStuckEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_stuck'),
+    content: z.object({ reason: RunStuckReasonSchema, detail: z.string() }),
+})
+
 /**
  * The engine told the spec issue that a ticket (or, with `ticket: null`,
- * the final review) is stuck, in its comment `comment_id`, and now waits
- * for the spec owner's reply.
+ * the stuck run, else the final review) is stuck, in its comment
+ * `comment_id`, and now waits for the spec owner's reply.
  */
 const StuckReportedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -585,8 +639,9 @@ export type ReplyWord = z.infer<typeof ReplyWordSchema>
 
 /**
  * The engine took the spec owner's reply: `retry` or `skip` for `ticket`,
- * `stop` for the whole run, or `retry` or `ship` for the stuck final review
- * (`ticket` is `null` for these).
+ * `stop` for the whole run, `retry` for the run stuck on its budget, or
+ * `retry` or `ship` for the stuck final review (`ticket` is `null` for
+ * these).
  */
 const ReplyReceivedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -1025,6 +1080,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketRebasedEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
+    RunStuckEntrySchema,
     PullRequestOpenedEntrySchema,
     JevAskedEntrySchema,
     JevAnsweredEntrySchema,
@@ -1035,6 +1091,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunStoppedEntrySchema,
     LimitWaitStartedEntrySchema,
     LimitWaitEndedEntrySchema,
+    UsageLineWaitStartedEntrySchema,
+    UsageLineWaitEndedEntrySchema,
     UsageRecordedEntrySchema,
     WorktreesRemovedEntrySchema,
     AgentMessageEntrySchema,
@@ -1094,6 +1152,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketRebasedEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
+    RunStuckEntrySchema.extend(STAMP_FIELDS),
     PullRequestOpenedEntrySchema.extend(STAMP_FIELDS),
     JevAskedEntrySchema.extend(STAMP_FIELDS),
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
@@ -1104,6 +1163,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunStoppedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    UsageLineWaitStartedEntrySchema.extend(STAMP_FIELDS),
+    UsageLineWaitEndedEntrySchema.extend(STAMP_FIELDS),
     UsageRecordedEntrySchema.extend(STAMP_FIELDS),
     WorktreesRemovedEntrySchema.extend(STAMP_FIELDS),
     AgentMessageEntrySchema.extend(STAMP_FIELDS),
@@ -1162,6 +1223,7 @@ export const JournalKindSchema = z.enum([
     'ticket_rebased',
     'run_branch_pushed',
     'ticket_stuck',
+    'run_stuck',
     'pull_request_opened',
     'jev_asked',
     'jev_answered',
@@ -1172,6 +1234,8 @@ export const JournalKindSchema = z.enum([
     'run_stopped',
     'limit_wait_started',
     'limit_wait_ended',
+    'usage_line_wait_started',
+    'usage_line_wait_ended',
     'usage_recorded',
     'worktrees_removed',
     'agent_message',

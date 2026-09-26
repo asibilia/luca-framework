@@ -127,3 +127,86 @@ export const runTests = async ({
         output: clipOutput({ text: output }),
     }
 }
+
+/**
+ * The report file for the `index`th of several commands: the first keeps
+ * `report_file`, the others get a numbered one beside it.
+ *
+ * @example
+ * reportFileFor({ report_file: '/r/3-11-red.xml', index: 1 }) // '/r/3-11-red-2.xml'
+ */
+export const reportFileFor = ({
+    report_file,
+    index,
+}: {
+    report_file: string
+    index: number
+}): string =>
+    index === 0
+        ? report_file
+        : report_file.replace(/(\.xml)?$/, `-${index + 1}$1`)
+
+/**
+ * Runs each of the engine config's bun test commands (see `runTests`) and
+ * joins them into one run, for the baseline and the red check: every case,
+ * `ok` only when all pass, and a test file without results only when no
+ * command gave it any. One command gives exactly its own run. No command
+ * (a run of refactor tickets only, which the red check skips) gives an
+ * empty passing run.
+ *
+ * @example
+ * const run = await runBunTests({ cwd, commands: ['bun test'], test_files, report_file })
+ */
+export const runBunTests = async ({
+    cwd,
+    commands,
+    test_files,
+    report_file,
+}: {
+    cwd: string
+    commands: string[]
+    test_files: string[]
+    report_file: string
+}): Promise<TestRun> => {
+    const runs: TestRun[] = []
+    for (const [index, command] of commands.entries()) {
+        runs.push(
+            await runTests({
+                cwd,
+                command,
+                test_files,
+                report_file: reportFileFor({ report_file, index }),
+            })
+        )
+    }
+    const [first] = runs
+    if (first === undefined) {
+        return {
+            command: '',
+            ok: true,
+            exit_code: 0,
+            no_test_files: false,
+            cases: [],
+            files_without_results: [],
+            output: 'No test command with bun results to run.',
+        }
+    }
+    if (runs.length === 1) return first
+    const cases = runs.flatMap((run) => run.cases)
+    const withResults = new Set(cases.map(({ file }) => file))
+    return {
+        command: commands.join(' && '),
+        ok: runs.every(({ ok }) => ok),
+        exit_code: runs.find(({ ok }) => !ok)?.exit_code ?? first.exit_code,
+        no_test_files: runs.every(({ no_test_files }) => no_test_files),
+        cases,
+        files_without_results: test_files.filter(
+            (file) => !withResults.has(file)
+        ),
+        output: clipOutput({
+            text: runs
+                .map(({ command, output }) => `$ ${command}\n${output}`)
+                .join('\n\n'),
+        }),
+    }
+}

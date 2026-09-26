@@ -1,5 +1,7 @@
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+
+import { z } from 'zod'
 
 import { readRecord } from './board-vocabulary'
 import {
@@ -36,7 +38,10 @@ import type {
     RunStartOutput,
 } from '../shared/board-rpc'
 import type { BoardState, EngineEnded } from '../shared/board-state'
-import type { EngineSettings } from '../shared/engine-settings'
+import {
+    EngineSettingsSchema,
+    type EngineSettings,
+} from '../shared/engine-settings'
 
 /** What the server asks the host to spawn: detached, output to a log file. */
 export type SpawnRequest = {
@@ -135,8 +140,22 @@ type RunMemory = Replay & {
  * A run the plugin didn't start (such as one from the command line), read
  * from its journal on disk. Read-only: no chat rows, no engine events, no
  * restarts. `size` and `changed_ms` are its journal's when last read.
+ * `repo` is the repo its `run_started` names, `null` when it names none.
  */
-type OutsideRun = Replay & { size: number; changed_ms: number }
+type OutsideRun = Replay & {
+    size: number
+    changed_ms: number
+    repo: string | null
+}
+
+const RunRepoSchema = z.object({ repo: z.string().min(1) })
+
+/** The repo a run's `run_started` record names, if any. */
+const repoOf = ({ records }: { records: EngineRecord[] }): string | null => {
+    const started = records.find((record) => record.kind === 'run_started')
+    const parsed = RunRepoSchema.safeParse(started?.content)
+    return parsed.success ? resolve(parsed.data.repo) : null
+}
 
 /** How many runs the plugin didn't start it shows, the latest changed first. */
 const OUTSIDE_RUNS_SHOWN = 50
@@ -150,7 +169,7 @@ const OUTSIDE_RUNS_SHOWN = 50
  *
  * With a `runs_dir`, every run is rebuilt from its journal there: on start
  * the runs this plugin started, and on each `board.read` the runs it didn't
- * start (shown read-only in every workspace). Without one, a restarted
+ * start (shown read-only in the workspace whose folder is their repo). Without one, a restarted
  * plugin knows its runs only from the registry and the engine's next send.
  *
  * Each run's `engine.event` work goes through its own queue, so rows never
@@ -164,7 +183,7 @@ const OUTSIDE_RUNS_SHOWN = 50
  *     spawn_engine: spawnDetached,
  *     list_processes: listProcesses,
  *     run_command: runCommand,
- *     read_settings: async () => ({ engine_path: '', bun_path: '' }),
+ *     read_settings: async () => EngineSettingsSchema.parse({}),
  *     file_exists: ({ path }) => existsSync(path),
  *     home_dir: homedir(),
  *     env: process.env,
@@ -410,10 +429,12 @@ export const createBoardServer = ({
                     next_seq: 1,
                     size,
                     changed_ms,
+                    repo: null,
                 }
                 applyInOrder({ memory: run, records })
                 run.size = size
                 run.changed_ms = changed_ms
+                run.repo ??= repoOf({ records })
                 outside.set(run_id, run)
             })
         )
@@ -463,7 +484,7 @@ export const createBoardServer = ({
 
     /** Finds the engine from the current settings, as `run.start` does. */
     const findEngine = async () => {
-        let settings: EngineSettings = { engine_path: '', bun_path: '' }
+        let settings: EngineSettings = EngineSettingsSchema.parse({})
         try {
             settings = await read_settings()
         } catch (error) {
@@ -673,19 +694,23 @@ export const createBoardServer = ({
     }
 
     /**
-     * `board.read`: the workspace's runs and the runs this plugin didn't
-     * start, newest first, and one in full.
+     * `board.read`: the runs started from the workspace's chats and the runs
+     * this plugin didn't start whose repo is the workspace's folder, newest
+     * first, and one of them in full.
      */
     const readBoard = async (
         input: BoardReadInput
     ): Promise<BoardReadOutput> => {
         await ready
         await readOutside()
+        const directory = input.directory ? resolve(input.directory) : null
         const list = [
             ...[...runs.values()].filter(
                 (memory) => memory.entry.workspace_id === input.workspace_id
             ),
-            ...outside.values(),
+            ...[...outside.values()].filter(
+                (run) => directory !== null && run.repo === directory
+            ),
         ]
             .map(({ state }) => state)
             .toSorted((left, right) =>

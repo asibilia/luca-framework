@@ -1,7 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
 import type { PluginTheme } from '@getpaseo/plugin'
-import { useRpc, type PluginWorkspacePanelProps } from '@getpaseo/plugin/client'
+import {
+    useRpc,
+    useWorkspace,
+    type PluginWorkspacePanelProps,
+} from '@getpaseo/plugin/client'
 import {
     Icon,
     ScrollView,
@@ -24,6 +28,7 @@ import {
     tokensText,
     percentText,
     usageColor,
+    usageLineWaitText,
     useNow,
 } from './board-look'
 
@@ -909,13 +914,13 @@ const Banner = ({
 )
 
 const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
-    const { usage } = state
+    const { usage, usage_label } = state
     return (
         <View style={styles.row}>
             <Icon name="Gauge" size={13} color={theme.colors.foregroundMuted} />
             {usage ? (
                 <Text style={styles.mono}>
-                    plan 5h{' '}
+                    {usage_label}: 5h{' '}
                     <Text
                         style={{
                             color: usageColor({
@@ -939,7 +944,7 @@ const UsageLine = ({ state, theme, styles }: { state: BoardState } & Look) => {
                     </Text>
                 </Text>
             ) : (
-                <Text style={styles.mono}>plan usage: no reading yet</Text>
+                <Text style={styles.mono}>{usage_label}: no reading yet</Text>
             )}
         </View>
     )
@@ -1037,10 +1042,16 @@ export const BoardPanel = ({
     workspaceId,
 }: PluginWorkspacePanelProps) => {
     const readBoard = useRpc(boardReadRpc)
+    const directory = useWorkspace(workspaceId, (found) => found.directory)
     const [picked, setPicked] = useState<Key | null>(null)
     const board = useQuery({
-        queryKey: ['luca-board', workspaceId, picked],
-        queryFn: () => readBoard({ workspace_id: workspaceId, run_id: picked }),
+        queryKey: ['luca-board', workspaceId, directory, picked],
+        queryFn: () =>
+            readBoard({
+                workspace_id: workspaceId,
+                directory,
+                run_id: picked,
+            }),
         refetchInterval: POLL_MS,
     })
     const styles = useMemo(
@@ -1148,6 +1159,13 @@ export const BoardPanel = ({
                     styles={styles}
                 />
             ) : null}
+            {state.run_tokens > 0 ? (
+                <Text style={styles.mono}>
+                    This run&apos;s tokens:{' '}
+                    {tokensText({ tokens: state.run_tokens })} of its run budget{' '}
+                    {tokensText({ tokens: state.run_budget_tokens })}
+                </Text>
+            ) : null}
             {state.run_plan_used.length > 0 ? (
                 <Text style={styles.mono}>
                     This run used:{' '}
@@ -1163,6 +1181,18 @@ export const BoardPanel = ({
                     {limitWaitText({
                         window: state.limit_wait.window,
                         resets_at: state.limit_wait.resets_at,
+                        now: Date.now(),
+                    })}
+                </Banner>
+            ) : null}
+            {state.usage_line_wait ? (
+                <Banner
+                    icon="Hourglass"
+                    color={theme.colors.statusWarning}
+                    styles={styles}
+                >
+                    {usageLineWaitText({
+                        ...state.usage_line_wait,
                         now: Date.now(),
                     })}
                 </Banner>

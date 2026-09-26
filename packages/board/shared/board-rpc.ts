@@ -88,9 +88,14 @@ export const engineEventRpc = defineRpc({
 export type EngineEventInput = z.infer<typeof EngineEventInputSchema>
 export type EngineEventOutput = z.infer<typeof EngineEventOutputSchema>
 
-/** API Request: the runs started in one workspace. */
+/** API Request: the runs of one workspace. */
 export const BoardReadInputSchema = z.object({
     workspace_id: z.string().min(1),
+    /**
+     * The workspace's folder: runs the plugin didn't start show only in the
+     * workspace whose folder is their repo, and nowhere when `null`.
+     */
+    directory: z.string().nullable().default(null),
     /** The run to show in full; the newest one when `null`. */
     run_id: z.string().nullable().default(null),
 })

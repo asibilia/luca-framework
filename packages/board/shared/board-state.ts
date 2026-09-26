@@ -153,6 +153,7 @@ export const RunStatusSchema = z.enum([
     'building',
     'final_review',
     'limit_wait',
+    'usage_line_wait',
     'done',
     'refused',
     'nothing_to_do',
@@ -316,7 +317,7 @@ export type TicketCard = z.infer<typeof TicketCardSchema>
 
 /** Stuck work waiting for a one-word reply on the spec issue. */
 export const NeedsYouSchema = z.object({
-    /** `ticket-<n>` or `final`. */
+    /** `ticket-<n>`, `final`, or `run` (the run stuck on its budget). */
     key: z.string(),
     ticket: z.number().int().nullable(),
     subject: z.string(),
@@ -398,6 +399,20 @@ export const UsageSchema = z.object({
 })
 
 export type Usage = z.infer<typeof UsageSchema>
+
+/**
+ * The words on the plan usage: its windows are the whole account's, every
+ * run's and chat's, never one run's.
+ */
+export const USAGE_LABEL = 'plan usage (account-wide)'
+
+/**
+ * The engine's default run budget in tokens (its
+ * `DEFAULT_RUN_BUDGET_TOKENS`, in `engine/src/limits/run-budget.ts`), for a
+ * run whose engine config sets no `run_budget_tokens`. The plugin never
+ * loads the engine's code, so the number is kept here too.
+ */
+export const DEFAULT_RUN_BUDGET_TOKENS = 9_000_000
 
 export const EngineEndedSchema = z.object({
     ok: z.boolean(),
@@ -521,6 +536,23 @@ export const NO_MEMORY: MemoryCounts = {
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
     usage: UsageSchema.nullable(),
+    /** What `usage` is, in words. Defaulted, so an older board state still parses. */
+    usage_label: z.string().default(USAGE_LABEL),
+    /**
+     * The run's exact tokens: input, output, and cache-creation tokens over
+     * every agent turn's models, subagents included (an older journal's
+     * turn counts its main loop's). Cache reads are left out. Defaulted, so
+     * an older board state still parses.
+     */
+    run_tokens: z.number().min(0).default(0),
+    /**
+     * The tokens the run may use before it is stuck (#435): one full run
+     * budget, plus one more for each `retry` the owner gave it. Defaulted,
+     * so an older board state still parses.
+     */
+    run_budget_tokens: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
+    /** One full run budget: the engine config's, else the default. */
+    run_budget_each: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
     /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
         .object({
@@ -531,6 +563,25 @@ export const BoardStateSchema = z.object({
             since: z.string(),
         })
         .nullable(),
+    /**
+     * The run paused at a usage line: the account's window was at or over
+     * the line. It carries on when the window resets, or once the line is
+     * raised. Defaulted, so a board state from before it still parses.
+     */
+    usage_line_wait: z
+        .object({
+            /** The window, in words: `weekly` or `five-hour`. */
+            window: z.string(),
+            /** The line, in percent. */
+            line: z.number(),
+            /** How full the window was, in percent. */
+            percent: z.number(),
+            /** When the window resets. */
+            resets_at: z.string(),
+            since: z.string(),
+        })
+        .nullable()
+        .default(null),
     /** How much of the plan the whole run used, per window. */
     run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),

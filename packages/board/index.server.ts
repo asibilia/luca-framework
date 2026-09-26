@@ -13,6 +13,10 @@ import { runCommand } from './server/run-command'
 import { defaultRunsDir } from './server/run-journals'
 import { defaultRegistryPath } from './server/run-registry'
 import { spawnDetached } from './server/spawn-detached'
+import {
+    defaultUsageLinesPath,
+    writeUsageLines,
+} from './server/usage-lines-file'
 import { ROW_VERSION } from './shared/board-rows'
 import { boardReadRpc, engineEventRpc, runStartRpc } from './shared/board-rpc'
 import { PLUGIN_ID } from './shared/board-state'
@@ -27,7 +31,8 @@ type Paseo = PluginHandlerContext['paseo']
 const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
 
 /**
- * The board plugin's daemon side: the engine settings, `run.start` (launch a
+ * The board plugin's daemon side: the engine settings (their usage lines
+ * kept in a file for the engine), `run.start` (launch a
  * run from `/luca-run`), `engine.event` (the engine's journal records in),
  * and `board.read` (the side panel's poll). On start, and every 15 s after,
  * it checks for runs whose engine is gone and restarts the ones that can go
@@ -49,6 +54,28 @@ export default function contribute(server: PluginServerContext) {
         log(`The engine settings are invalid, using defaults: ${current.error}`)
         return EngineSettingsSchema.parse({})
     }
+
+    // The engine reads the usage lines from a file, so every run obeys them,
+    // those started from the command line too. Kept in step with the settings.
+    const usageLinesPath = defaultUsageLinesPath({
+        env: process.env,
+        home_dir: homedir(),
+    })
+    const shareUsageLines = async (values: EngineSettings) => {
+        try {
+            await writeUsageLines({ path: usageLinesPath, settings: values })
+        } catch (error) {
+            log(`Couldn't write the usage lines: ${String(error)}`)
+        }
+    }
+    const stopSharingLines = settings.subscribe((state) =>
+        shareUsageLines(
+            state.status === 'ready'
+                ? state.values
+                : EngineSettingsSchema.parse({})
+        )
+    )
+    void readSettings().then(shareUsageLines)
 
     const board = createBoardServer({
         registry_path: defaultRegistryPath({
@@ -100,6 +127,7 @@ export default function contribute(server: PluginServerContext) {
 
     return async () => {
         clearInterval(timer)
+        await stopSharingLines()
         await board.idle()
     }
 }

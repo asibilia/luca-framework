@@ -2,9 +2,11 @@ import type { BoardRecord } from './board-vocabulary'
 
 import {
     ALL_STEPS_DONE,
+    DEFAULT_RUN_BUDGET_TOKENS,
     LENS_NAMES,
     LOOP_CAP,
     NO_MEMORY,
+    USAGE_LABEL,
     usageLevel,
     windowRank,
     windowWords,
@@ -168,7 +170,12 @@ export const createBoardState = ({
         log_path,
     },
     usage: null,
+    usage_label: USAGE_LABEL,
+    run_tokens: 0,
+    run_budget_tokens: DEFAULT_RUN_BUDGET_TOKENS,
+    run_budget_each: DEFAULT_RUN_BUDGET_TOKENS,
     limit_wait: null,
+    usage_line_wait: null,
     run_plan_used: [],
     needs_you: [],
     tickets: [],
@@ -312,6 +319,19 @@ export const ticketKey = ({ ticket }: { ticket: number }): string =>
 
 /** The key of the final review's "Needs you" item. */
 export const FINAL_KEY = 'final'
+
+/** The key of the "Needs you" item for the whole run, stuck on its budget. */
+export const RUN_KEY = 'run'
+
+/** Why the whole run is stuck (`run_stuck`'s reason), in words. */
+const RUN_STUCK_REASONS: Record<string, string> = {
+    run_budget:
+        'The run used up its run budget of tokens. `retry` adds one more full budget.',
+}
+
+/** A run stuck reason code in words. */
+export const runReasonText = ({ reason }: { reason: string }): string =>
+    RUN_STUCK_REASONS[reason] ?? `${reason.replaceAll('_', ' ')}.`
 
 /**
  * A role in words: a final review lens's role (`security-lens`) reads
@@ -487,6 +507,23 @@ const sessionTokens = ({ session }: SessionContent): number =>
     session.usage.output_tokens +
     session.usage.cache_read_input_tokens +
     session.usage.cache_creation_input_tokens
+
+/**
+ * A session's exact tokens: input, output, and cache-creation tokens over
+ * its tokens per model, subagents included. An older journal's session,
+ * with none, counts its main loop's `usage`. Cache reads are left out.
+ */
+const countedTokens = ({ session }: SessionContent): number => {
+    const models = Object.values(session.model_usage)
+    return (models.length === 0 ? [session.usage] : models).reduce(
+        (total, each) =>
+            total +
+            each.input_tokens +
+            each.output_tokens +
+            each.cache_creation_input_tokens,
+        0
+    )
+}
 
 /** A 0-to-1 utilization as a whole percent from 0 to 100. */
 const percentOf = ({ utilization }: { utilization: number }): number =>
@@ -713,15 +750,21 @@ const applyKind = ({
 }): BoardState => {
     const { ticket } = record
     switch (record.kind) {
-        case 'run_started':
+        case 'run_started': {
+            const budget =
+                record.content.config?.run_budget_tokens ??
+                DEFAULT_RUN_BUDGET_TOKENS
             return {
                 ...state,
+                run_budget_tokens: budget,
+                run_budget_each: budget,
                 run: {
                     ...state.run,
                     spec_number: record.content.spec_number,
                     phase: 'intake',
                 },
             }
+        }
         case 'intake_read':
             return {
                 ...state,
@@ -893,6 +936,7 @@ const applyKind = ({
             })
             return {
                 ...withTokens,
+                run_tokens: state.run_tokens + countedTokens(record.content),
                 usage: usageAfter({
                     usage: state.usage,
                     session: record.content.session,
@@ -1076,6 +1120,23 @@ const applyKind = ({
                 },
             })
         }
+        case 'run_stuck':
+            return addNeedsYou({
+                state,
+                item: {
+                    key: RUN_KEY,
+                    ticket: null,
+                    subject: 'The run is stuck',
+                    reason: runReasonText({ reason: record.content.reason }),
+                    detail: clip({
+                        text: record.content.detail,
+                        max: DETAIL_MAX,
+                    }),
+                    tried: [],
+                    replies: ['retry', 'stop'],
+                    since: record.time,
+                },
+            })
         case 'pull_request_opened':
             return {
                 ...state,
@@ -1146,6 +1207,21 @@ const applyKind = ({
         }
         case 'limit_wait_ended':
             return { ...state, limit_wait: null }
+        case 'usage_line_wait_started': {
+            const { window, line, percent, resets_at } = record.content
+            return {
+                ...state,
+                usage_line_wait: {
+                    window: windowWords({ window }),
+                    line,
+                    percent,
+                    resets_at,
+                    since: record.time,
+                },
+            }
+        }
+        case 'usage_line_wait_ended':
+            return { ...state, usage_line_wait: null }
         case 'usage_recorded': {
             const plan_used = planUsedOf({ windows: record.content.windows })
             if (record.content.scope === 'run') {
@@ -1738,6 +1814,18 @@ const replyReceived = ({
                     key: ticketKey({ ticket }),
                 })
             }
+            // A bare `retry` while the run is stuck on its budget adds one
+            // more full budget; the final review is left as it is.
+            if (state.needs_you.some((item) => item.key === RUN_KEY)) {
+                return resolveNeedsYou({
+                    state: {
+                        ...state,
+                        run_budget_tokens:
+                            state.run_budget_tokens + state.run_budget_each,
+                    },
+                    key: RUN_KEY,
+                })
+            }
             return resolveNeedsYou({
                 state: updateFinal({
                     state,
@@ -1789,6 +1877,9 @@ const runStatus = ({ state }: { state: BoardState }): RunStatus => {
     if (stopped) return 'stopped'
     if (engine_ended && !engine_ended.ok) return 'ended_with_error'
     if (state.limit_wait) return 'limit_wait'
+    if (state.usage_line_wait) return 'usage_line_wait'
+    // Nothing new starts while the run is stuck on its budget.
+    if (state.needs_you.some((item) => item.key === RUN_KEY)) return 'stuck'
     if (state.needs_you.length > 0 && !isActive({ state })) return 'stuck'
     return phase
 }

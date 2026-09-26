@@ -15,6 +15,7 @@ import {
     type AgentLauncher,
     type AgentSession,
     type AgentTurn,
+    type ModelTokens,
 } from './agent-launcher'
 import {
     AGENT_EFFORT,
@@ -107,6 +108,18 @@ const ResultSchema = z.object({
             cache_read_input_tokens: 0,
             cache_creation_input_tokens: 0,
         }),
+    /** Tokens per model, subagents included: the session's running totals. */
+    modelUsage: z
+        .record(
+            z.string(),
+            z.object({
+                inputTokens: z.number().default(0),
+                outputTokens: z.number().default(0),
+                cacheReadInputTokens: z.number().default(0),
+                cacheCreationInputTokens: z.number().default(0),
+            })
+        )
+        .default({}),
     permission_denials: z
         .array(z.object({ tool_name: z.string(), tool_use_id: z.string() }))
         .default([]),
@@ -241,6 +254,8 @@ type OpenSession = {
     input: ReturnType<typeof createInputChannel>
     /** What the launcher has seen of the session; per-turn fields reset each turn. */
     summary: AgentSession
+    /** The SDK's running tokens per model, as of the session's last result. */
+    model_totals: Record<string, ModelTokens>
     /** Resolves the turn waiting for the session's next outcome. */
     waiter: ((outcome: Outcome) => void) | null
     /** A stop or an engine failure: the session is over, with this outcome. */
@@ -275,6 +290,52 @@ const deliver = ({
 const stderrTail = (open: OpenSession): string =>
     open.stderr.length === 0 ? '' : `\n${open.stderr.join('').slice(-2000)}`
 
+/** A result's `modelUsage`, in the journal's words. */
+const modelTotalsOf = (
+    modelUsage: z.infer<typeof ResultSchema>['modelUsage']
+): Record<string, ModelTokens> =>
+    Object.fromEntries(
+        Object.entries(modelUsage).map(([name, each]) => [
+            name,
+            {
+                input_tokens: each.inputTokens,
+                output_tokens: each.outputTokens,
+                cache_read_input_tokens: each.cacheReadInputTokens,
+                cache_creation_input_tokens: each.cacheCreationInputTokens,
+            },
+        ])
+    )
+
+/**
+ * One turn's tokens per model: the session's running totals less those at
+ * its last result, as the SDK sums `modelUsage` over a session's turns.
+ */
+const turnTokens = ({
+    totals,
+    before,
+}: {
+    totals: Record<string, ModelTokens>
+    before: Record<string, ModelTokens>
+}): Record<string, ModelTokens> =>
+    Object.fromEntries(
+        Object.entries(totals).map(([name, now]) => {
+            const was = before[name]
+            const less = (key: keyof ModelTokens) =>
+                Math.max(0, now[key] - (was?.[key] ?? 0))
+            return [
+                name,
+                {
+                    input_tokens: less('input_tokens'),
+                    output_tokens: less('output_tokens'),
+                    cache_read_input_tokens: less('cache_read_input_tokens'),
+                    cache_creation_input_tokens: less(
+                        'cache_creation_input_tokens'
+                    ),
+                },
+            ]
+        })
+    )
+
 /** Reads one message into the session's summary; an outcome ends the turn. */
 const watch = ({
     open,
@@ -296,7 +357,10 @@ const watch = ({
     const rateLimit = RateLimitSchema.safeParse(raw)
     if (rateLimit.success) {
         const info = rateLimit.data.rate_limit_info
-        summary.rate_limit_events.push(info)
+        summary.rate_limit_events.push({
+            ...info,
+            arrived_at: new Date().toISOString(),
+        })
         const signal = planSignal({ info })
         switch (signal.kind) {
             case 'ok':
@@ -320,6 +384,12 @@ const watch = ({
     const done = result.data
     summary.num_turns = done.num_turns
     summary.usage = done.usage
+    const totals = modelTotalsOf(done.modelUsage)
+    summary.model_usage = turnTokens({
+        totals,
+        before: open.model_totals,
+    })
+    open.model_totals = { ...open.model_totals, ...totals }
     summary.total_cost_usd = done.total_cost_usd
     summary.permission_denials = done.permission_denials.map(
         ({ tool_name, tool_use_id }) => ({ tool_name, tool_use_id })
@@ -607,6 +677,7 @@ export const createClaudeLauncher = ({
             running,
             input,
             summary,
+            model_totals: {},
             waiter: null,
             ended: null,
             pump: Promise.resolve(),

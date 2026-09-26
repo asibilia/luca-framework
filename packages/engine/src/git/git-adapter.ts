@@ -23,8 +23,17 @@ export type EngineCommit = { sha: string; files: string[] }
  */
 export type GitAdapter = {
     /**
-     * Makes `branch` from `base_branch`, checked out in a worktree at `path`.
-     * Safe to repeat, as `createWorktree`.
+     * Fetches `base_branch` from `origin` into `origin/<base_branch>`, so a
+     * new run branch starts from the latest code, never a stale local
+     * branch. A failed fetch is returned as an error.
+     */
+    fetchBase: (args: {
+        base_branch: string
+    }) => Promise<{ ok: true } | { ok: false; error: string }>
+    /**
+     * Makes `branch` from `origin/<base_branch>` (fetched by `fetchBase`),
+     * checked out in a worktree at `path`. Safe to repeat, as
+     * `createWorktree`.
      */
     createRunBranch: (args: {
         branch: string
@@ -302,8 +311,25 @@ export const createGitAdapter = ({
         ).toSorted()
 
     const raw: GitAdapter = {
+        fetchBase: async ({ base_branch }) => {
+            const fetched = await gitRun({
+                cwd: repo_root,
+                args: [
+                    'fetch',
+                    '--quiet',
+                    'origin',
+                    `+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}`,
+                ],
+            })
+            return fetched.exit_code === 0
+                ? { ok: true }
+                : {
+                      ok: false,
+                      error: (fetched.stderr || fetched.stdout).trim(),
+                  }
+        },
         createRunBranch: ({ branch, base_branch, path }) =>
-            addWorktree({ branch, from: base_branch, path }),
+            addWorktree({ branch, from: `origin/${base_branch}`, path }),
         createWorktree: addWorktree,
         changes: async ({ cwd }) =>
             parseStatus({
@@ -486,6 +512,7 @@ export const createGitAdapter = ({
         (args: A): Promise<R> =>
             inTurn(() => work(args))
     return {
+        fetchBase: serial(raw.fetchBase),
         createRunBranch: serial(raw.createRunBranch),
         createWorktree: serial(raw.createWorktree),
         changes: serial(raw.changes),

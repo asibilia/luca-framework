@@ -38,7 +38,7 @@ The code reuses the designs of the board prototype (`prototype/paseo-board`: var
 The plugin also reads the engine's runs folder: `$LUCA_RUNS_DIR`, or `~/.local/state/luca/runs` by default (the engine's own default). Each run's journal is `<runs folder>/<run id>/journal.jsonl`. The plugin only reads it, never writes it, and replays it with the same reducer the `engine.event` records go through, so the journal stays the one source of truth. A line that isn't a record (such as a half-written last line) is skipped and logged.
 
 - **On start and after a reload**, every run in the registry is rebuilt from its journal before the plugin answers any RPC. A finished run shows done, stopped, or stuck again, not "starting".
-- **Runs the plugin didn't start** (for example, started with `luca-run` from the command line) are read on each `board.read`, so they show up too, in every workspace. They are read-only: their state shows in the side panel, but they get no chat rows, `engine.event` refuses them (the plugin doesn't know their token), and they are never restarted. Only the 50 whose journals changed last are shown. A journal is read again only when its size or change time moves, and then only its new records are applied.
+- **Runs the plugin didn't start** (for example, started with `luca-run` from the command line) are read on each `board.read`, so they show up too, but only in the workspace whose folder is the repo their `run_started` record names. `board.read` gets the workspace's folder as `directory`; a run with no repo, or a read with no folder, shows nowhere, and asking for another repo's run by id opens the workspace's own newest run instead. They are read-only: their state shows in the side panel, but they get no chat rows, `engine.event` refuses them (the plugin doesn't know their token), and they are never restarted. Only the 50 whose journals changed last are shown. A journal is read again only when its size or change time moves, and then only its new records are applied.
 
 ## The `engine.event` contract
 
@@ -72,7 +72,7 @@ The engine calls the plugin RPC `engine.event`, through Paseo's `invokePluginRpc
 - **`ended`** marks the run's engine as finished, ok or failed, with its message. The header row and the panel show it. It isn't applied while there's a gap.
 - **Rejected sends.** An unknown `run_id` or a wrong `token` gets `ok: false, next_seq: 0`, and nothing is applied.
 - **Bad records.** A record whose content doesn't fit the board's vocabulary is skipped and logged. A record of an unknown kind is skipped quietly. Either way it still counts as applied, and the plugin never throws on a record.
-- **Plugin restart.** The run registry lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. For each run it keeps the run id, token, agent, workspace, repo, and spec, plus `ended` (how its engine ended, once it did) and `restarts` (how often the plugin restarted it). It is read at startup and written on every change. Board state lives only in memory. After a restart the plugin still knows the run, and a run whose engine ended still shows how it ended. The plugin rebuilds its board from its journal on disk (see [Journals on disk](#journals-on-disk)), so its `next_seq` is past the journal's last record. The engine's next send (from its own cursor, which may be behind, since its sends failed while the plugin was down) is then mostly duplicates, and the reply's `next_seq` moves the engine past them. Duplicates still add their chat rows once: for a run whose engine hasn't ended, the plugin keeps the rows of the records it rebuilt from disk, and adds a record's rows (and an updated header row) the first time the engine sends that record again. The engine never resends the records below its cursor, so the chat already has those, and their kept rows are dropped. Rows are keyed by run id and seq, so adding one again updates it in place. Without a runs folder the plugin rebuilds nothing: `next_seq` is 1 again, and the engine resends the whole journal.
+- **Plugin restart.** The run registry lives in `$LUCA_BOARD_STATE_DIR/runs.json`, or `~/.local/state/luca/board/runs.json` by default. For each run it keeps the run id, token, agent, workspace, repo, and spec, plus `ended` (how its engine ended, once it did) and `restarts` (how often the plugin restarted it). It is read at startup, and read again and written on every change, so a change keeps the runs another plugin copy (such as a second copy during a reload) wrote since. Board state lives only in memory. After a restart the plugin still knows the run, and a run whose engine ended still shows how it ended. The plugin rebuilds its board from its journal on disk (see [Journals on disk](#journals-on-disk)), so its `next_seq` is past the journal's last record. The engine's next send (from its own cursor, which may be behind, since its sends failed while the plugin was down) is then mostly duplicates, and the reply's `next_seq` moves the engine past them. Duplicates still add their chat rows once: for a run whose engine hasn't ended, the plugin keeps the rows of the records it rebuilt from disk, and adds a record's rows (and an updated header row) the first time the engine sends that record again. The engine never resends the records below its cursor, so the chat already has those, and their kept rows are dropped. Rows are keyed by run id and seq, so adding one again updates it in place. Without a runs folder the plugin rebuilds nothing: `next_seq` is 1 again, and the engine resends the whole journal.
 
 ## Restarts
 
@@ -116,7 +116,7 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 | kind | Panel | Chat row |
 | --- | --- | --- |
-| `run_started` | run status `intake`, the spec number | "The run started on spec #n." |
+| `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". | "The run started on spec #n." |
 | `intake_read` | the spec's title | none |
 | `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
 | `nothing_to_do` | run status `nothing to do` | one line |
@@ -140,8 +140,9 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `ticket_rebased` | a joined ticket sent back onto the run branch (#365): card back to Building (the tests step if test files clashed, else coding), fix counter and review fix rounds reset (the review starts over on the run branch), and a "tried" line: "Clashed with the run branch in `<files>`", or "The checks failed after joining; fixing on top of the run branch" | the same (warning) |
 | `run_branch_pushed` | card's activity | none |
 | `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies | a stuck row |
+| `run_stuck` | the whole run is stuck (#435; `ticket: null`, `{ reason: 'run_budget', detail }`): it used up its **run budget** of tokens. Run status `stuck`, and **Needs you** ("The run is stuck", the reason in words, the detail, and the replies `retry`, `stop`) | "The run is stuck. The run used up its run budget of tokens. ..." (danger), and a stuck row |
 | `pull_request_opened` | run status `done`, the PR link | the PR |
-| `reply_received` | the owner's reply on the spec issue (#366). `ticket` is the ticket or `null`; content `{ word: 'retry' \| 'skip' \| 'stop', ticket: number \| null, comment_id, author }`. `retry #n` resolves the stuck item and puts the card back to building ("retrying"); `skip #n` skips it; `stop` clears Needs you. With `ticket: null`, `retry` sends a stuck final review back to reviewing and `ship` passes it (the engine then journals `final_review_shipped`). | "You replied `retry #13`."; the stuck row turns resolved in place |
+| `reply_received` | the owner's reply on the spec issue (#366). `ticket` is the ticket or `null`; content `{ word: 'retry' \| 'skip' \| 'stop', ticket: number \| null, comment_id, author }`. `retry #n` resolves the stuck item and puts the card back to building ("retrying"); `skip #n` skips it; `stop` clears Needs you. With `ticket: null`, `retry` adds one more full run budget to a run stuck on its budget (the final review stays as it is), else sends a stuck final review back to reviewing, and `ship` passes it (the engine then journals `final_review_shipped`). | "You replied `retry #13`."; the stuck row turns resolved in place |
 | `ticket_retried` | how the engine took a `retry` (`{ mode: 'resume' \| 'restart' \| 'refused', base_sha, problems, answer_id }`). `resume`: a fresh agent picks up where it stopped; nothing more changes. `restart`: the ticket's text or labels changed (its new `ticket_snapshot` came just before, so the title and labels are already new); the card starts over from scratch, "starting over from the edited ticket", with a "tried" line. `refused`: the edited ticket isn't ready to build; the card goes back to Stuck and **Needs you** ("Retry of #n was refused", "Its new text or labels aren't ready to build.", the `problems`, and the replies `retry #n`, `skip #n`, `stop`) | `resume`: none. `restart`: "starts over from the edited ticket." `refused`: the reason and problems (warning), and the stuck row waits again |
 | `ticket_skipped` | card to Skipped (`{ because: number \| null }`: `null` when the owner skipped it; else the skipped ticket it waits on, shown as "skipped: waits on skipped #n") | "skipped. It stays open for a later run.", naming the skipped ticket it waits on if any |
 | `reply_ignored` | nothing: the owner's reply couldn't be used, and the engine answered why on the spec issue (`{ comment_id, reason: 'no_ticket_named' \| 'not_stuck' \| 'nothing_stuck' \| 'ship_needs_final_review', answer_id }`) | "Your reply was sent back: ..." with the reason in words (warning) |
@@ -149,6 +150,8 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. With `billing: true` (default false) it's a **billing stop**: the session would bill per token, so the run won't go on, and the banner says to start a new run once per-token billing is off. | the reason, and how to pick the run up again, or for a billing stop, that the run won't go on (danger) |
 | `limit_wait_started` | run status `limit_wait` and a banner: "Plan limit hit (five-hour window). The run waits until 17:00 and then carries on by itself." The time is `resets_at`, or `until` when the reset time isn't known. | a limit row with the same words |
 | `limit_wait_ended` | the banner is gone | the limit row turns to "over" |
+| `usage_line_wait_started` | run status `usage_line_wait` ("paused at the usage line") and a banner: "Paused at the weekly usage line: the account's weekly window is at 82% (line 80%). The run waits until 11:00, or until the line is raised, and then carries on by itself." It names the line reached (`weekly` or `five-hour`). It is not a plan limit wait: `limit_wait` stays empty. | "Paused at the weekly usage line: ..." (warning) |
+| `usage_line_wait_ended` | the banner is gone, and the run goes back to its phase | "The run carries on from the usage line." |
 | `usage_recorded` | with scope `ticket`, the card's plan used ("plan: five-hour +1%, weekly +1%"); a retried ticket may have several, and the latest (its whole usage) wins; with scope `run`, a line under plan usage ("This run used: five-hour 3%, weekly 1%"). Each window's `used`, rounded to a whole percent, in the order five-hour, weekly, the other weekly windows, then the rest. | none |
 | `jev_asked`, `jev_answered`, `jev_failed` | **Jev in shadow mode**: only counted (asked, answered, without an answer), in a dim footer line. The engine never acts on Jev's answers, so they change no ticket, status, or "latest" line. | none |
 | `agent_message` | **Agent messages**: only counted (sent = queued or not delivered; refused), in a dim footer line. A message is sent inside an agent's turn, so it changes no ticket or run status, and doesn't clear a stopped run. | `sender → receiver: <the message's first line, clipped>` (info); with "(not delivered: reason)" when it wasn't delivered (warning); "sender's message to receiver was refused: reason" (warning) |
@@ -177,7 +180,7 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 The engine reads the replies a stuck ticket offers (`retry #n`, `skip #n`, `stop`) and a stuck final review offers (`retry`, `stop`, `ship`) on the spec issue, and the other tickets keep building while one is stuck. A run can also end with `stopped_by_user` (reply `stop`) or `all_skipped`; those come through the usual `ended` message.
 
-The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), and `join_undone` (a stuck ticket's join was undone on the run branch, never pushed).
+The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket, the run, or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), and `join_undone` (a stuck ticket's join was undone on the run branch, never pushed).
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 
@@ -198,6 +201,18 @@ The engine journals these with `ticket` and `role` set to `null`, except `usage_
 // limit_wait_ended
 { until: string }
 
+// usage_line_wait_started
+{
+    window: 'seven_day' | 'five_hour'
+    line: number // the usage line, in percent
+    percent: number // how full the window was, 0 to 100
+    resets_at: string // when the window resets
+    until: string // when the engine wakes at the latest
+}
+
+// usage_line_wait_ended
+{ until: string; reason: 'reset' | 'line_raised' }
+
 // usage_recorded
 {
     scope: 'ticket' | 'run'
@@ -212,12 +227,19 @@ Windows in words: `five_hour` is "five-hour", `seven_day` is "weekly", `seven_da
 
 ## Settings
 
-Go to **Settings → Plugins → luca-board → Engine**. These settings are a host settings document (`engine`), so they survive restarts.
+Go to **Settings → Plugins → luca-board → Engine**. These settings are a host settings document (`engine`), so they survive restarts. It holds where the engine lives and the two usage lines.
 
 - **Engine path:** the absolute path to the engine's entry, for example `/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts`. The plugin runs it with Bun.
 - **Bun path:** the absolute path to Bun. If it's empty, the plugin tries `LUCA_BUN`, then `~/.bun/bin/bun`, `/opt/homebrew/bin/bun`, and `/usr/local/bin/bun`. It needs an absolute path, because Paseo swaps a bare `bun` for its own Node.
 
 If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, run directly (it has a Bun shebang). The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
+
+The **usage lines** keep Luca below a share of your Claude plan, so you always have room for your own work. They count the whole account, not one run:
+
+- **Weekly line** (`weekly_line`, default 80): every run pauses once the account's weekly window (`seven_day`, all models) is 80% full.
+- **5-hour line** (`five_hour_line`, default 85): every run pauses once the account's 5-hour window is 85% full.
+
+A paused run carries on by itself when the window resets, or at its next check (every 5 minutes) once you raise the line above the reading. The plugin keeps the two lines in `usage-lines.json` in its state folder (`$LUCA_BOARD_STATE_DIR`, else `~/.local/state/luca/board`), and every engine reads them there, so runs started from the command line obey them too. Settings saved before the usage lines read with the defaults. See "The usage line" in the engine's README.
 
 ## Install and try it
 
@@ -244,7 +266,7 @@ Once this plugin is installed, remove the prototype: `paseo plugin remove luca-b
 - Chat rows live in the Paseo daemon's memory. A daemon restart or a conversation rewind drops them. The panel rebuilds from the journal, but old rows don't come back.
 - Each row append counts as agent activity in that chat.
 - If appends to a chat keep failing (for example, the chat was deleted), the run stops adding rows after 3 failures in a row. The panel keeps updating.
-- The panel shows the runs started in its workspace and the runs the plugin didn't start, newest first. Pick another run from the chips at the top. Only the 6 newest runs get a chip; the older ones are folded behind an "n older" chip that opens them. A picked older run keeps its chip.
+- The panel shows the runs started in its workspace and the runs the plugin didn't start on its workspace's repo, newest first. Pick another run from the chips at the top. Only the 6 newest runs get a chip; the older ones are folded behind an "n older" chip that opens them. A picked older run keeps its chip.
 
 ## Develop
 

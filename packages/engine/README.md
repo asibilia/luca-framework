@@ -53,6 +53,8 @@ on with a run from its journal (#369).
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
+| `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
+| `src/limits/run-budget.ts` | Pure: the default run budget, a run's budget from its config, and its tokens so far. |
 | `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
 | `src/limits/plan-usage.ts` | Pure: a ticket's or the run's tokens and plan-window movement. |
 | `src/limits/limit-wait.ts` | The engine's clock, waiting until a time, and the spec's limit-wait comment. |
@@ -79,9 +81,9 @@ on with a run from its journal (#369).
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
-| `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
+| `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
-| `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. First, the install when a manifest changed. |
+| `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
@@ -115,6 +117,8 @@ on with a run from its journal (#369).
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
+| `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
+| `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the runs that are going (`goingRuns`), the next date tag (`nextReleaseTag`), the pinned clone. |
 
 ## How a run moves
 
@@ -126,12 +130,12 @@ startRun ──> run_started
           or snapshot_intake      execute: ──> spec_snapshot, ticket_snapshot × n
   decide ──> done (refused, nothing to do) or build:
 
-create_run_branch       git: worktree for the run branch, from the base ──> run_branch_created
+create_run_branch       git: fetch the base, worktree for the run branch from origin/<base> ──> run_branch_created
 install_dependencies    bun install --frozen-lockfile, if there's a package.json ──> dependencies_installed
 for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
-  run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
+  run_baseline_tests      the config's bun test commands, before any agent ──> baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -701,6 +705,93 @@ show up but nothing leaves the machine. No GitHub, no models. It prints the temp
 paths and the PR it opened in memory, then removes the temp folder (which
 also holds its journal).
 
+## Releasing Luca
+
+Runs never use the development working copy. They use a **release**: a
+pinned clone of this repo in `~/.local/share/luca/`, checked out at a date
+tag. The `luca-board` plugin and its engine path both point at that clone,
+so runs on `luca-framework` itself can't change the engine they run on.
+
+`luca-release` makes a release and switches to it. Run it from the working
+copy:
+
+```bash
+bun packages/engine/src/cli/luca-release.ts
+```
+
+Each step runs only if the one before it worked. A refusal changes nothing.
+
+1. **Clean `main`.** The working copy must be on `main`, with no uncommitted
+   or untracked changes, at the same commit as `origin/main`.
+2. **No run going.** A run is going when its journal in the runs folder has
+   no run-ended record (limit waits and stuck runs waiting for a reply count),
+   or the board's run registry has it with no `ended`. It lists them by spec
+   and repo, then refuses.
+3. **Gates.** It runs the gates from `.luca/config.json` in the working copy.
+   A failed gate refuses, naming the gate.
+4. **Tag.** It picks `luca-YYYY.MM.DD` (local date), or `.2`, `.3`, and so on
+   for another release that day, then creates the tag at `main` and pushes it.
+   The date names never clash with old Luca's `v2.x` to `v13.x` tags.
+5. **Pinned clone.** It clones `origin` into `~/.local/share/luca/` on first
+   use (a clone, not a worktree), fetches the tag, checks it out, and runs
+   `bun install --frozen-lockfile` there.
+6. **Plugin.** It runs `paseo plugin install <pinned>/packages/board --id luca-board`.
+7. **Engine path.** It sets the plugin's `engine_path` setting to
+   `<pinned>/packages/engine/src/cli/luca-run.ts`, through the plugin's
+   settings RPC on the local Paseo daemon.
+8. It prints the live release. Then run `/reload-skills` in a Paseo chat, so
+   Paseo picks up the new plugin.
+
+It exits 0 when the release is live and 1 otherwise. A step that fails after
+the tag was pushed says so; fix the cause and run it again for a `.2` tag.
+
+The very first release has to be run from the working copy by hand. Installing
+and upgrading are the same command. `runRelease` is handed its folders (the
+working copy, the pinned clone, the runs folder, the board registry) and its
+Paseo adapter (`ReleasePaseo`), so the tests (`src/cli/release.test.ts`) run it
+end to end with real git in throwaway repos with a local bare `origin`, a fake
+Paseo, and fake run state.
+
+## Setting up a repo
+
+`luca-setup` gets a repo ready for Luca in one step. Run it inside the
+target repo:
+
+```bash
+bun ~/.local/share/luca/packages/engine/src/cli/luca-setup.ts [--base <branch>]
+```
+
+It never commits, and running it again gives the same result, so it doubles
+as a health check.
+
+- **Labels.** It creates `ready-for-agent`, `refactor`, and `needs-info` if
+  they're missing. Labels that are already there are left as they are.
+- **No `.luca/config.json` yet:** it writes a starting one from the
+  `package.json` scripts. `test` and `test:*` become test commands: a script
+  that is a `bun test` command runs as written and is bun-readable, and the
+  rest run as `bun run <script>` and are pass-or-fail. A `type-check` or
+  `typecheck` script becomes the types check (`bun run <script>`), and
+  `lint` becomes `bun run lint`.
+- **An old-Luca config** (any key a new-style config doesn't have, such as
+  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` and writes
+  the rest fresh from `package.json`, as above.
+- **A new-style config:** it leaves the file alone and only reports on it.
+- **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
+  sub-issues and issue dependencies, the base branch (default `main`) is on
+  `origin`, and MuninnDB can search the config's vault (found as `luca-run`
+  finds it).
+
+It ends with a plain list of what's done and what's left, each to-do with its
+fix, and a reminder that tickets needing tests the red check can't read (for
+`tmnb`, new vitest tests) should be `ready-for-human`. A written config waits
+in the working tree: check it, then merge it through a normal PR. It exits 0
+when nothing is left to do and 1 otherwise.
+
+`runSetup` is handed its GitHub adapter (`SetupGitHub`) and memory client, so
+the tests (`src/cli/setup.test.ts`) run it end to end with real git in
+throwaway repos with a local bare `origin`, a fake GitHub, and a fake
+MuninnDB.
+
 ## Choices made
 
 - **Config file:** `.luca/config.json` in the repo a run works on. Its
@@ -725,9 +816,33 @@ also holds its journal).
   `<run folder>/run-branch`. Each ticket's branch is `<run branch>--ticket-<n>`,
   in `<run folder>/tickets/<n>`. Test reports go in `<run folder>/reports`, so
   they are never leftovers.
-- **Test command:** it must be a `bun test` command. The engine adds bun's
-  JUnit reporter flags to its end to learn each test's outcome. A repo with no
-  test files passes the baseline.
+- **Runs start from `origin/<base>`.** A new run fetches its base branch
+  (`main`, or `--base`) from `origin` and makes the run branch from
+  `origin/<base>`, never from the local branch, so it never builds on stale
+  code. A resumed run keeps the run branch it made and doesn't fetch. A
+  failed fetch stops the run before anything is built (`run_stopped`, and a
+  message that names the fetch); the spec and tickets aren't blamed, and
+  `--resume` tries the fetch again.
+- **Test commands (#428):** `checks.test` is one command string, as before,
+  or a list of test commands, for a repo with more than one test runner. Each
+  list entry is a command string or `{ "run": "...", "results": "..." }`.
+  `results` says how the engine reads the command's results: `bun` (bun's
+  per-test results) or `pass_fail` (just its exit code). Left out, it is
+  `bun` for a command starting with `bun test` and `pass_fail` otherwise.
+  For example, tmnb's:
+
+  ```json
+  "test": ["bun test", { "run": "bun run test:workers", "results": "pass_fail" }]
+  ```
+
+  Every test command runs as a gate, in order, after each ticket and in the
+  final review; a failing one goes into the gate fix loop with its output.
+  The engine adds bun's JUnit reporter flags to the end of each `bun`
+  command to learn each test's outcome, and runs a `pass_fail` one as
+  written. The baseline and the red check run only the `bun` commands.
+  Intake refuses a run with no `bun` command unless every open ticket is a
+  refactor ticket. Agents may run each test command exactly; `bun` ones may
+  also take extra arguments. A repo with no test files passes the baseline.
 - **A new test file that doesn't load yet** (it imports code not written yet)
   reports no results. Its tests count as failing if their names are in it.
 - **Engine commits skip git hooks** (`--no-verify`): the engine already ran
@@ -786,8 +901,8 @@ also holds its journal).
 - **A check command with shell syntax** (such as `... > /dev/null` or
   `a && b`) runs only exactly as configured, and gets one exact permission
   rule. Checked against the live CLI (Claude Code 2.1.280, SDK 0.3.273) for
-  #384: under `dontAsk` both a redirect and `&&` run. The test command may
-  take extra arguments only when it is one plain command. A check that
+  #384: under `dontAsk` both a redirect and `&&` run. A `bun` test command
+  may take extra arguments only when it is one plain command. A check that
   redirects into the worktree writes a file there, which a test-writer may
   not: prefer `> /dev/null`.
 - **`rm` takes files one by one** (`-f` at most): no folders, wildcards, or
@@ -1026,14 +1141,108 @@ agent_session with a billing sign
 each `agent_session`'s `usage`. Once a ticket is pushed or stuck, and once
 the run is about to end (its next action is `done`), the engine journals
 `usage_recorded`: the agent turns, tokens summed, and each plan window's
-`{ from, to, used }` in percent. A ticket's window starts from the last
-reading before its first agent; a reading lower than the one before means
-the window reset, so it counts from 0 again. A retried ticket that finishes
+`{ from, to, used }` in percent. The launcher stamps each reading with
+`arrived_at` (ISO), and readings replay in arrival order; an older journal's
+readings, with no `arrived_at`, keep journal order. A ticket's window starts
+from the last reading before its first agent. A changed `resetsAt` means the
+window reset, so it counts from 0 again; with the same `resetsAt`, only a
+rise above the window's highest level since its reset counts, so a level
+that wobbles between 62% and 63% uses 1 point (#425). A reading with no
+`resetsAt` falls back to a drop meaning a reset. A retried ticket that finishes
 again (stuck again, or pushed) with agent sessions newer than its last
 record gets a new record over all of its sessions, so a ticket's latest
 `usage_recorded` is its whole usage. Readings come in hundredths, so
 per-ticket numbers are rough, and other sessions on the same plan count too.
 A ticket or run with no agent sessions (scripted agents) records nothing.
+
+**The run budget** (#435, `decideRunBudget`, `src/limits/run-budget.ts`).
+Each run may use a budget of tokens, so a runaway run can't quietly use up
+the week. A run's tokens are every agent turn's input, output, and
+cache-creation tokens per model, subagents included, over every ticket, the
+final review, and the learner; cache reads don't count. The default budget,
+`DEFAULT_RUN_BUDGET_TOKENS` (9,000,000), is 3 times the largest run total in
+the v1 dogfood journals; its comment says how it was worked out. A repo
+changes it with `run_budget_tokens` (a positive whole number) in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "run_budget_tokens": 12000000 }
+```
+
+Once the run's tokens reach the budget, the run is **stuck** with the reason
+"run budget": nothing new starts, and steps in flight finish first.
+
+```
+decide ──> mark_run_stuck (reason run_budget) ──> run_stuck (ticket null)
+decide ──> report_run_stuck    stuck comment on the spec ──> stuck_reported (ticket null)
+decide ──> wait_for_reply ... ──> comment_read
+decide ──> take_reply (retry or stop, ticket null) ──> reply_received
+```
+
+The spec owner replies on the spec issue with one word:
+
+- `retry` adds one more full budget (the run may now use 2 budgets, then 3,
+  ...), and the run carries on where it stopped.
+- `stop` ends the run without a PR, as for any stop.
+
+Only the spec owner counts. While the run is stuck on its budget, only a
+bare `retry` or a `stop` is taken; the owner's other replies (such as
+`retry #12` for a stuck ticket) wait until the run carries on. The board
+shows the run's tokens against its budget, and the run stuck on it under
+**Needs you**.
+
+## The usage line
+
+Every Luca run shares one Claude plan with you, so Luca keeps below a
+**usage line** on the account's windows (`src/limits/usage-line.ts`,
+`src/core/decide-usage-line.ts`). There are two lines, both host-scoped
+`luca-board` settings:
+
+| Setting | Default | Window |
+| --- | --- | --- |
+| `weekly_line` | 80 | the all-models weekly window (`seven_day`) |
+| `five_hour_line` | 85 | the 5-hour window (`five_hour`) |
+
+The plugin keeps them in `usage-lines.json` in its state folder
+(`$LUCA_BOARD_STATE_DIR`, else `~/.local/state/luca/board`), and the engine
+reads that file directly, so runs started from the command line obey them
+too. A missing or broken file reads as the defaults. There is no Opus-only
+line.
+
+- **Shared readings.** Before each decision, a run shares its readings in
+  `plan-readings.json` in Luca's state folder (next to `runs/`): the newest
+  reading per window, by `arrived_at`, written atomically (a temp file, then
+  a rename). It then reads the file back. The decision step uses whichever
+  reading of a window arrived last, the run's own or another run's, so every
+  run pauses together.
+- **Pausing.** When the next steps include an agent's turn and the newest
+  reading of a window is at or over its line, the decision step picks
+  `start_usage_line_wait` as the run's only action. Steps that aren't an
+  agent's (a red check, gates, a join) go on first, and an agent mid-turn
+  finishes, since the wait is a run-level action that runs alone.
+- **Carrying on.** The wait lasts until the window's reset plus
+  `LIMIT_WAIT_MARGIN_MS` (1 minute). It naps at most 5 minutes at a time, and
+  re-reads the lines before each nap: a line raised above the reading ends
+  the wait early (`reason: 'line_raised'`). A line raised only to the
+  reading isn't above it. After a wait that ended at the reset, readings of
+  windows that reset by then are out of date and pause nothing.
+- **Telling you.** The spec issue gets a comment when the run pauses (the
+  window, the reading, the line, and the reset) and when it carries on. The
+  board shows the paused state and names the line.
+- **Unchanged.** A rejected reading's plan limit wait, and the stop on any
+  overage, come before the usage line, as before.
+
+```
+newest reading at or over a line, and an agent's turn next
+  decide ──> start_usage_line_wait   comment on the spec ──> usage_line_wait_started
+  decide ──> wait_for_usage_line     nap by the clock, re-reading the lines
+                                     comment on the spec ──> usage_line_wait_ended (reset | line_raised)
+  decide ──> the agent's turn
+```
+
+`runEngine({ ..., usage })` takes the lines and the shared file
+(`fileUsageLine`); left out, as in tests and the demo, there is no usage
+line.
 
 ## Jev in shadow mode
 

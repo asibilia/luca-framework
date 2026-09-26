@@ -77,6 +77,19 @@ export type Tracker = {
     findOpenPullRequest: (args: {
         head: string
     }) => Promise<OpenedPullRequest | null>
+    /** The names of the repo's labels. */
+    listLabels: () => Promise<string[]>
+    /** Creates a label the repo doesn't have yet. */
+    createLabel: (args: {
+        name: string
+        color: string
+        description: string
+    }) => Promise<void>
+    /**
+     * Whether the repo's issues have sub-issues and issue dependencies, which
+     * a run reads a spec's tickets and blockers from.
+     */
+    issueLinks: () => Promise<{ sub_issues: boolean; dependencies: boolean }>
 }
 
 /** The label a ticket needs before intake lets a run build it. */

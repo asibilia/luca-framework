@@ -1,7 +1,7 @@
 import type { GateCheck, GateName } from './gate-schemas'
-import { runTests } from './test-runner'
+import { reportFileFor, runTests } from './test-runner'
 
-import type { EngineConfig } from '../config/engine-config'
+import { testCommands, type EngineConfig } from '../config/engine-config'
 import { clipOutput, runShell } from '../shell/run-command'
 
 /**
@@ -34,9 +34,10 @@ export const shellCheck = async ({
 }
 
 /**
- * Runs every gate the engine config names, in order: tests, types, lint.
- * All must pass. Unset gates are left out; intake refuses a config with no
- * test command.
+ * Runs every gate the engine config names, in order: each test command,
+ * types, lint. All must pass. Unset gates are left out; intake refuses a
+ * config with no test command. A `bun` test command runs with bun's JUnit
+ * reporter; a `pass_fail` one runs as written and is judged by its exit code.
  *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
@@ -68,17 +69,23 @@ export const runGates = async ({
         checks.push(installed)
         if (!installed.ok) return { ok: false, checks }
     }
-    const { test, types, lint } = config.checks
-    if (test !== undefined) {
+    const { types, lint } = config.checks
+    for (const [index, { run: command, results }] of testCommands({
+        config,
+    }).entries()) {
+        if (results === 'pass_fail') {
+            checks.push(await shellCheck({ name: 'test', command, cwd }))
+            continue
+        }
         const run = await runTests({
             cwd,
-            command: test,
+            command,
             test_files,
-            report_file,
+            report_file: reportFileFor({ report_file, index }),
         })
         checks.push({
             name: 'test',
-            command: test,
+            command,
             ok: run.ok,
             exit_code: run.exit_code,
             output: run.ok ? '' : run.output,

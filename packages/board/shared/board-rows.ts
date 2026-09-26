@@ -6,6 +6,7 @@ import {
     RunStatusSchema,
     TicketStageSchema,
     UsageLevelSchema,
+    USAGE_LABEL,
 } from './board-state'
 
 /**
@@ -45,6 +46,8 @@ export const RunRowSchema = z.object({
     counts: z.array(z.object({ stage: TicketStageSchema, count: z.number() })),
     final_review: z.string(),
     usage: UsageLineSchema.nullable(),
+    /** What `usage` is, in words. Defaulted, so a row from before it still parses. */
+    usage_label: z.string().default(USAGE_LABEL),
     limit_wait: z.boolean(),
     /**
      * The steps running now: each ticket's (`ticket` set) and the run's

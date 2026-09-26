@@ -72,28 +72,47 @@ const RateLimitReadingSchema = z.looseObject({
         .catch(undefined),
 })
 
+const TokensSchema = z
+    .looseObject({
+        input_tokens: tokenCount,
+        output_tokens: tokenCount,
+        cache_read_input_tokens: tokenCount,
+        cache_creation_input_tokens: tokenCount,
+    })
+    .catch({
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+    })
+
 /** The launcher's summary of an agent's session: tokens and readings. */
 const AgentSessionSchema = z.looseObject({
-    usage: z
-        .looseObject({
-            input_tokens: tokenCount,
-            output_tokens: tokenCount,
-            cache_read_input_tokens: tokenCount,
-            cache_creation_input_tokens: tokenCount,
-        })
-        .catch({
-            input_tokens: 0,
-            output_tokens: 0,
-            cache_read_input_tokens: 0,
-            cache_creation_input_tokens: 0,
-        }),
+    /** The main loop's tokens. */
+    usage: TokensSchema,
+    /** The turn's tokens per model, subagents included; older journals have none. */
+    model_usage: z.record(z.string(), TokensSchema).catch({}).default({}),
     rate_limit_events: z.array(RateLimitReadingSchema).catch([]),
 })
 
 const JevJobSchema = z.looseObject({ job: z.string() })
 
 export const BOARD_VOCABULARY = {
-    run_started: z.looseObject({ spec_number: z.number().int() }),
+    run_started: z.looseObject({
+        spec_number: z.number().int(),
+        /** The engine config; the board reads only its run budget. */
+        config: z
+            .looseObject({
+                run_budget_tokens: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .catch(undefined),
+            })
+            .optional()
+            .catch(undefined),
+    }),
     intake_read: z.looseObject({
         spec: z.looseObject({ number: z.number(), title: z.string() }),
     }),
@@ -203,6 +222,11 @@ export const BOARD_VOCABULARY = {
         reason: z.string(),
         detail: z.string().catch(''),
     }),
+    /** The whole run is stuck (#435): `run_budget`, it used up its budget. */
+    run_stuck: z.looseObject({
+        reason: z.string(),
+        detail: z.string().catch(''),
+    }),
     pull_request_opened: z.looseObject({
         number: z.number().int(),
         url: z.string(),
@@ -240,6 +264,19 @@ export const BOARD_VOCABULARY = {
         rate_limit_type: z.string().nullable().catch(null),
     }),
     limit_wait_ended: z.looseObject({}),
+    /** The run paused at a usage line. */
+    usage_line_wait_started: z.looseObject({
+        /** `seven_day` or `five_hour`. */
+        window: z.string(),
+        /** The line, in percent. */
+        line: z.number(),
+        /** How full the window was, in percent. */
+        percent: z.number(),
+        /** When the window resets. */
+        resets_at: z.string(),
+    }),
+    /** The run carries on: `reason` is `reset` or `line_raised`. */
+    usage_line_wait_ended: z.looseObject({}),
     /** How much of the plan a ticket (scope `ticket`) or the run used. */
     usage_recorded: z.looseObject({
         scope: z.enum(['ticket', 'run']),
@@ -368,6 +405,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'ticket_rebased' }),
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
+    entry({ kind: 'run_stuck' }),
     entry({ kind: 'pull_request_opened' }),
     entry({ kind: 'worktrees_removed' }),
     entry({ kind: 'jev_asked' }),
@@ -378,6 +416,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'shared_git_changed' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
+    entry({ kind: 'usage_line_wait_started' }),
+    entry({ kind: 'usage_line_wait_ended' }),
     entry({ kind: 'usage_recorded' }),
     entry({ kind: 'reply_received' }),
     entry({ kind: 'reply_ignored' }),

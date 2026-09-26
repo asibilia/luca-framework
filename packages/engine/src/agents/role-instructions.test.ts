@@ -2,7 +2,49 @@ import { describe, expect, test } from 'bun:test'
 
 import { roleInstructions } from './role-instructions'
 
+import { EngineConfigSchema } from '../config/engine-config'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
+
+describe('instructions with several test commands', () => {
+    const config = EngineConfigSchema.parse({
+        ...PRACTICE_ENGINE_CONFIG,
+        checks: {
+            ...PRACTICE_ENGINE_CONFIG.checks,
+            test: [
+                'bun test src',
+                { run: 'bun run test:workers', results: 'pass_fail' },
+            ],
+        },
+    })
+
+    test('let writers run each test command, with options only after a bun one', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            const text = roleInstructions({
+                role,
+                may_edit_tests: role === 'test-writer',
+                config,
+            })
+            expect(text).toContain(
+                '- `bun test src` (you may add test files or options after it)'
+            )
+            expect(text).toContain('- `bun run test:workers`\n')
+            expect(text).not.toContain(
+                '`bun run test:workers` (you may add test files or options after it)'
+            )
+        }
+    })
+
+    test("name every test command among the implementer's gates", () => {
+        const text = roleInstructions({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(text).toMatch(
+            /Make every gate pass: [^\n]*`bun test src`[^\n]*`bun run test:workers`/
+        )
+    })
+})
 
 describe("the learner's instructions", () => {
     const learner = () =>

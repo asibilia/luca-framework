@@ -7,7 +7,9 @@ import type {
     AgentFailure,
     CommitStage,
     JournalRecord,
+    RunStuckReason,
     StuckReason,
+    UsageLineWindow,
 } from './journal-record'
 import { crashesAfter, type CrashCounts } from './step-records'
 
@@ -377,6 +379,19 @@ export type PlanState = {
     billing: { reason: string } | null
     /** Set once a billing stop is journaled. It sticks. */
     billing_stopped: { reason: string } | null
+    /** The usage-line wait under way: its window, line, reading, and end. */
+    usage_wait: {
+        window: UsageLineWindow
+        line: number
+        percent: number
+        until: string
+    } | null
+    /**
+     * The latest time the run is known to have waited until: the `until` of
+     * a limit wait that ended, or of a usage-line wait that ended at its
+     * reset. A reading whose window resets by then is out of date.
+     */
+    waited_until: string | null
 }
 /**
  * The learner at the end of a run (#370): its answer, or its failed tries,
@@ -436,6 +451,19 @@ export const EMPTY_MEMORY: MemoryState = {
 /** One run note, with the agent that wrote it. */
 export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
+/**
+ * The run budget (#435): whether the run is stuck on it and told, and how
+ * many more full budgets the owner's `retry` replies added.
+ */
+export type RunBudgetState = {
+    /** The run is stuck, until the owner's `retry`. */
+    stuck: { reason: RunStuckReason; detail: string } | null
+    /** The spec issue's comment that told the owner the run is stuck. */
+    report: { comment_id: number } | null
+    /** Full budgets added by `retry`: the run may use `1 + retries` budgets. */
+    retries: number
+}
+
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
     phase: RunPhase
@@ -478,6 +506,8 @@ export type RunState = {
     final_stuck_report: { comment_id: number } | null
     /** The owner's reply to the stuck final review, until the engine acts on it. */
     final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
+    /** The run's budget of tokens: stuck on it, and the budgets added (#435). */
+    run_budget: RunBudgetState
     /** Memory's recalls, the learner, and the saves (#370). */
     memory: MemoryState
     /**
@@ -551,6 +581,8 @@ const EMPTY_STATE: RunState = {
         resets_announced: [],
         billing: null,
         billing_stopped: null,
+        usage_wait: null,
+        waited_until: null,
     },
     usage_recorded: { tickets: {}, run: false },
     removed_worktrees: [],
@@ -563,6 +595,7 @@ const EMPTY_STATE: RunState = {
     stop: null,
     final_stuck_report: null,
     final_reply: null,
+    run_budget: { stuck: null, report: null, retries: 0 },
     memory: EMPTY_MEMORY,
     crashes: {},
     crash_stopped: null,
@@ -586,8 +619,14 @@ type PlanRecord = Extract<
             | 'run_stopped'
             | 'limit_wait_started'
             | 'limit_wait_ended'
+            | 'usage_line_wait_started'
+            | 'usage_line_wait_ended'
     }
 >
+
+/** The later of two ISO times; the first may be missing. */
+const laterOf = (a: string | null, b: string): string =>
+    a !== null && Date.parse(a) >= Date.parse(b) ? a : b
 
 /** The plan state after one record. */
 const planAfter = ({
@@ -638,7 +677,24 @@ const planAfter = ({
             }
         }
         case 'limit_wait_ended':
-            return { ...plan, wait: null }
+            return {
+                ...plan,
+                wait: null,
+                waited_until: laterOf(plan.waited_until, record.content.until),
+            }
+        case 'usage_line_wait_started': {
+            const { window, line, percent, until } = record.content
+            return { ...plan, usage_wait: { window, line, percent, until } }
+        }
+        case 'usage_line_wait_ended':
+            return {
+                ...plan,
+                usage_wait: null,
+                waited_until:
+                    record.content.reason === 'reset'
+                        ? laterOf(plan.waited_until, record.content.until)
+                        : plan.waited_until,
+            }
     }
 }
 
@@ -845,6 +901,8 @@ const applyRecord = ({
         case 'agent_session':
         case 'limit_wait_started':
         case 'limit_wait_ended':
+        case 'usage_line_wait_started':
+        case 'usage_line_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
         case 'run_stopped':
             return {
@@ -869,6 +927,15 @@ const applyRecord = ({
             return resumedAfter({ state: next, record })
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
+        case 'run_stuck':
+            return {
+                ...next,
+                run_budget: {
+                    ...state.run_budget,
+                    stuck: record.content,
+                    report: null,
+                },
+            }
         case 'reply_ignored': {
             const { comment_id, answer_id } = record.content
             return {
@@ -900,6 +967,22 @@ const applyRecord = ({
             }
             const { word, comment_id, ticket } = record.content
             if (word === 'stop') return { ...handled, stop: { comment_id } }
+            // A bare `retry` while the run is stuck on its budget adds one
+            // more full budget, and the run carries on.
+            if (
+                ticket === null &&
+                word === 'retry' &&
+                state.run_budget.stuck !== null
+            ) {
+                return {
+                    ...handled,
+                    run_budget: {
+                        stuck: null,
+                        report: null,
+                        retries: state.run_budget.retries + 1,
+                    },
+                }
+            }
             if (ticket === null && (word === 'retry' || word === 'ship')) {
                 return { ...handled, final_reply: { word, comment_id } }
             }
@@ -913,7 +996,22 @@ const applyRecord = ({
                     comment_id: record.content.comment_id,
                 }),
             }
-            // A report with no ticket is the final review's.
+            // A report with no ticket is the stuck run's, while it is not
+            // told yet, else the final review's.
+            const { run_budget } = state
+            if (
+                record.ticket === null &&
+                run_budget.stuck !== null &&
+                run_budget.report === null
+            ) {
+                return {
+                    ...reported,
+                    run_budget: {
+                        ...run_budget,
+                        report: { comment_id: record.content.comment_id },
+                    },
+                }
+            }
             return record.ticket === null
                 ? {
                       ...reported,
@@ -1444,6 +1542,8 @@ type TicketRecord = Exclude<
             | 'run_stopped'
             | 'limit_wait_started'
             | 'limit_wait_ended'
+            | 'usage_line_wait_started'
+            | 'usage_line_wait_ended'
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
@@ -1456,6 +1556,7 @@ type TicketRecord = Exclude<
             | 'final_review_passed'
             | 'final_review_shipped'
             | 'comment_read'
+            | 'run_stuck'
             | 'reply_ignored'
             | 'final_review_retried'
             | 'memory_recalled'

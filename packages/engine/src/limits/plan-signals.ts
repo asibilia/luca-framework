@@ -7,9 +7,11 @@ import type { AgentSession } from '../agents/agent-launcher'
  * only the fields the engine reads are checked, and a field of the wrong
  * type reads as missing. `resetsAt` is in seconds since the epoch;
  * `utilization` is 0 to 1. Real readings put each window's utilization in
- * `unifiedWindows`, not at the top.
+ * `unifiedWindows`, not at the top. `arrived_at` is the launcher's own: when
+ * the reading arrived (ISO), missing in older journals.
  */
 export const RateLimitReadingSchema = z.looseObject({
+    arrived_at: z.string().optional().catch(undefined),
     status: z.string().optional().catch(undefined),
     rateLimitType: z.string().optional().catch(undefined),
     resetsAt: z.number().optional().catch(undefined),

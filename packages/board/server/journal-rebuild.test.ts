@@ -49,7 +49,27 @@ const disk = async () => ({
     runs_dir: await tempDir(),
 })
 
-/** Writes a run's journal the way the engine does: one JSON line per record. */
+/** The repo of the harness's chats, and so the folder of workspace `ws-1`. */
+const REPO = '/repo'
+
+/**
+ * The entries with their `run_started` naming the repo the run is on, as
+ * the engine journals it.
+ */
+const inRepo = ({ entries }: { entries: Entry[] }): Entry[] =>
+    entries.map((entry) =>
+        entry.kind === 'run_started'
+            ? {
+                  ...entry,
+                  content: { ...(entry.content as object), repo: REPO },
+              }
+            : entry
+    )
+
+/**
+ * Writes a run on `REPO`'s journal the way the engine does: one JSON line
+ * per record.
+ */
 const writeJournal = async ({
     runs_dir,
     run_id,
@@ -60,7 +80,9 @@ const writeJournal = async ({
     entries: Entry[]
 }) => {
     await mkdir(join(runs_dir, run_id), { recursive: true })
-    const lines = stamp({ entries }).map((record) => JSON.stringify(record))
+    const lines = stamp({ entries: inRepo({ entries }) }).map((record) =>
+        JSON.stringify(record)
+    )
     await writeFile(
         join(runs_dir, run_id, 'journal.jsonl'),
         `${lines.join('\n')}\n`
@@ -87,13 +109,17 @@ const plugin = async ({
         return { run_id, token }
     }
 
-    /** One run's full state, as the side panel reads it. */
+    /** One run's full state, as the side panel of `ws-1` (in `REPO`) reads it. */
     const stateOf = async ({
         run_id,
     }: {
         run_id: string
     }): Promise<BoardState> => {
-        const { selected } = await harness.read({ run_id })
+        const { selected } = await harness.board.readBoard({
+            workspace_id: 'ws-1',
+            directory: REPO,
+            run_id,
+        })
         if (selected?.run.run_id !== run_id) {
             throw new Error(`the board doesn't show run ${run_id}`)
         }
@@ -232,7 +258,7 @@ describe('a reload rebuilds each run from its journal on disk', () => {
         const folders = await disk()
         const first = await plugin(folders)
         const { run_id, token } = await first.start()
-        const records = stamp({ entries: finishedRun() })
+        const records = stamp({ entries: inRepo({ entries: finishedRun() }) })
         await writeJournal({ ...folders, run_id, entries: finishedRun() })
         await first.board.handleEngineEvent({
             run_id,
@@ -473,6 +499,7 @@ describe('a run the board did not start', () => {
         const board = await plugin(folders)
         const { runs } = await board.board.readBoard({
             workspace_id: 'ws-1',
+            directory: REPO,
             run_id: null,
         })
         const state = await board.stateOf({ run_id: OUTSIDE })
@@ -491,7 +518,11 @@ describe('a run the board did not start', () => {
     test('a run started from the command line while the board runs shows up on the next read', async () => {
         const folders = await disk()
         const board = await plugin(folders)
-        await board.board.readBoard({ workspace_id: 'ws-1', run_id: null })
+        await board.board.readBoard({
+            workspace_id: 'ws-1',
+            directory: REPO,
+            run_id: null,
+        })
 
         await writeJournal({
             ...folders,

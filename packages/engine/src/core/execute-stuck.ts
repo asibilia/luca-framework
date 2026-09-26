@@ -1,5 +1,6 @@
 import sortBy from 'lodash/sortBy'
 
+import type { RunBudgetAction } from './decide-run-budget'
 import type { StuckAction } from './decide-stuck'
 import { need, ticketWorktree, type BuildContext } from './execute-build'
 import { shipFinalReview } from './execute-final-review'
@@ -36,7 +37,8 @@ export const ticketChanged = ({
 
 /**
  * Carries out the tracker steps of stuck work, then journals what happened:
- * telling the spec issue a ticket or the final review is stuck, waiting for
+ * marking the run stuck on its budget, telling the spec issue a ticket, the
+ * run, or the final review is stuck, waiting for
  * and reading its comments, taking or sending back a reply, skipping a
  * ticket (with a comment on it), and shipping (`shipFinalReview`) or
  * retrying the stuck final review. Its comments are posted once
@@ -50,7 +52,9 @@ export const executeStuckAction = async ({
     reply_poll_ms,
     step,
 }: {
-    action: Exclude<StuckAction, { type: 'undo_join' | 'retry_ticket' }>
+    action:
+        | Exclude<StuckAction, { type: 'undo_join' | 'retry_ticket' }>
+        | RunBudgetAction
     journal: Journal
     tracker: Tracker
     clock: EngineClock
@@ -132,6 +136,15 @@ export const executeStuckAction = async ({
             })
             return
         }
+        case 'mark_run_stuck':
+            journal.append({
+                kind: 'run_stuck',
+                ticket: null,
+                role: null,
+                content: { reason: action.reason, detail: action.detail },
+            })
+            return
+        case 'report_run_stuck':
         case 'report_final_review_stuck': {
             const { id } = await post({
                 number: action.spec_number,

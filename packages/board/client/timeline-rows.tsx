@@ -22,7 +22,7 @@ import {
 } from './board-look'
 
 import type { EventRow, LimitRow, RunRow, StuckRow } from '../shared/board-rows'
-import { currentStepText } from '../shared/board-state'
+import { currentStepText, USAGE_LABEL } from '../shared/board-state'
 
 /**
  * The chat rows: a header row per run (updated in place), one row per
@@ -128,15 +128,17 @@ const useStyles = ({
 
 const UsageText = ({
     usage,
+    label,
     theme,
     styles,
 }: {
     usage: NonNullable<RunRow['usage']>
+    label: string
     theme: PluginTheme
     styles: Styles
 }) => (
     <Text style={styles.mono}>
-        plan 5h{' '}
+        {label}: 5h{' '}
         <Text
             style={{
                 color: usageColor({ level: usage.five_hour_level, theme }),
@@ -219,9 +221,16 @@ export const RunRowCard = ({
             ) : null}
             <Text style={styles.muted}>Final review: {row.final_review}</Text>
             {row.usage ? (
-                <UsageText usage={row.usage} theme={theme} styles={styles} />
+                <UsageText
+                    usage={row.usage}
+                    label={row.usage_label}
+                    theme={theme}
+                    styles={styles}
+                />
             ) : (
-                <Text style={styles.mono}>plan usage: no reading yet</Text>
+                <Text style={styles.mono}>
+                    {row.usage_label}: no reading yet
+                </Text>
             )}
             {row.limit_wait ? (
                 <Text
@@ -373,7 +382,12 @@ export const LimitRowCard = ({
                 </Text>
             </View>
             {row.usage ? (
-                <UsageText usage={row.usage} theme={theme} styles={styles} />
+                <UsageText
+                    usage={row.usage}
+                    label={USAGE_LABEL}
+                    theme={theme}
+                    styles={styles}
+                />
             ) : null}
             <Text style={styles.muted}>
                 {waiting
