@@ -11,20 +11,22 @@ on:
 
 jobs:
   checks:
-    name: checks (${{ matrix.os }})
+    name: checks (${{ matrix.os }}, bun ${{ matrix.bun }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        # 1.3.11 is Alec's Mac. The repo pins no Bun, so an unpinned
+        # setup-bun would get `latest`.
+        bun: ['1.3.11', 'latest']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
 
-      # Same Bun as Alec's Mac (1.3.11). The repo pins no Bun version.
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.11
+          bun-version: ${{ matrix.bun }}
 
       - name: Tool versions
         run: |
@@ -34,6 +36,29 @@ jobs:
           gh --version | head -1
           git config --global --get user.name || echo "no global git user.name"
           nproc 2>/dev/null || sysctl -n hw.ncpu
+
+      # Does "remove the package, then bun install --frozen-lockfile" put back
+      # a file that was changed in place? That is how the engine's after-turn
+      # check undoes an agent's node_modules edit. Uses Bun's default install
+      # backend for the OS and a private cache.
+      - name: Put-back check with the default install backend
+        shell: bash
+        run: |
+          root=$(mktemp -d)
+          export BUN_INSTALL_CACHE_DIR="$root/cache"
+          mkdir -p "$root/left-pad" "$root/repo"
+          printf '{"name":"left-pad","version":"1.0.0","main":"index.js"}' > "$root/left-pad/package.json"
+          printf 'module.exports = (text) => ` ${text}`\n' > "$root/left-pad/index.js"
+          (cd "$root/left-pad" && bun pm pack --quiet --destination "$root" > /dev/null)
+          printf '{"name":"practice","dependencies":{"left-pad":"file:%s/left-pad-1.0.0.tgz"}}' "$root" > "$root/repo/package.json"
+          cd "$root/repo"
+          bun install > /dev/null 2>&1
+          links=$(stat -c %h node_modules/left-pad/index.js 2>/dev/null || stat -f %l node_modules/left-pad/index.js)
+          bun -e 'await Bun.write("node_modules/left-pad/index.js", "module.exports = () => \"cheat\"\n")'
+          rm -rf node_modules/left-pad
+          bun install --frozen-lockfile > /dev/null 2>&1
+          echo "link count after install: $links"
+          echo "after put-back: $(cat node_modules/left-pad/index.js)"
 
       - name: Install
         run: bun install --frozen-lockfile
