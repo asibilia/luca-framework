@@ -2,6 +2,7 @@
 /**
  * `luca`: the command people run, with subcommands:
  *
+ *   luca init [--skip-muninndb]    sets up this computer, once
  *   luca setup [--base <branch>]   gets the repo in this folder ready
  *   luca hook <anything>           does nothing, quietly
  *
@@ -16,6 +17,7 @@
 const USAGE = `Usage: luca <command>
 
 Commands:
+  init [--skip-muninndb]    Set up this computer for Luca (once)
   setup [--base <branch>]   Get the repo in this folder ready for Luca`
 
 const main = async (): Promise<number> => {
@@ -23,6 +25,10 @@ const main = async (): Promise<number> => {
     switch (command) {
         case 'hook':
             return 0
+        case 'init': {
+            const { initCommand } = await import('./init-command')
+            return initCommand({ argv: rest })
+        }
         case 'setup': {
             const { setupCommand } = await import('./setup-command')
             return setupCommand({ argv: rest })
