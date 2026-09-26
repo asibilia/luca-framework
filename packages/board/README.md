@@ -233,7 +233,7 @@ Go to **Settings → Plugins → luca-board → Engine**. These settings are a h
 - **Engine path:** the absolute path to the engine's entry, for example `/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts`. The plugin runs it with Bun, with `--no-env-file` and the `bunfig.toml` in the same folder (`<engine_dir>`, see [The route](#the-route)).
 - **Bun path:** the absolute path to Bun. If it's empty, the plugin tries `LUCA_BUN`, then `~/.bun/bin/bun`, `/opt/homebrew/bin/bun`, and `/usr/local/bin/bun`. It needs an absolute path, because Paseo swaps a bare `bun` for its own Node.
 
-If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, run directly (it has a Bun shebang). The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
+If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`. It follows the command's symlink to the engine's `luca-run.ts` and runs that with Bun and the same flags, `--no-env-file` and the `bunfig.toml` beside it. Only an older install with no `bunfig.toml` there runs directly through its Bun shebang, and so without that protection. The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
 
 The **usage lines** keep Luca below a share of your Claude plan, so you always have room for your own work. They count the whole account, not one run:
 

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 
 import type {
@@ -98,6 +98,13 @@ export default function contribute(server: PluginServerContext) {
         run_command: runCommand,
         read_settings: readSettings,
         file_exists: ({ path }) => existsSync(path),
+        real_path: ({ path }) => {
+            try {
+                return realpathSync(path)
+            } catch {
+                return path
+            }
+        },
         home_dir: homedir(),
         env: process.env,
         log_dir: '/tmp',
