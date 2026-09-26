@@ -583,6 +583,170 @@ describe('the result', () => {
     })
 })
 
+/** One model's running totals, as the SDK's result `modelUsage` gives them. */
+const modelTotals = ({
+    input,
+    output,
+    cache_read,
+    cache_creation,
+}: {
+    input: number
+    output: number
+    cache_read: number
+    cache_creation: number
+}) => ({
+    inputTokens: input,
+    outputTokens: output,
+    cacheReadInputTokens: cache_read,
+    cacheCreationInputTokens: cache_creation,
+    webSearchRequests: 0,
+    costUSD: 0.5,
+    contextWindow: 200_000,
+    maxOutputTokens: 32_000,
+})
+
+const OPUS = 'claude-opus-5-5'
+const HAIKU = 'claude-haiku-4-5-20251001'
+
+describe('tokens per model', () => {
+    test("a turn's session keeps the result's tokens per model, a subagent's model included", async () => {
+        const fake = fakeQuery({
+            messages: [
+                INIT,
+                result({
+                    structured_output: APPROVE,
+                    modelUsage: {
+                        [OPUS]: modelTotals({
+                            input: 100,
+                            output: 200,
+                            cache_read: 3000,
+                            cache_creation: 400,
+                        }),
+                        [HAIKU]: modelTotals({
+                            input: 50,
+                            output: 60,
+                            cache_read: 70,
+                            cache_creation: 80,
+                        }),
+                    },
+                }),
+            ],
+        })
+        const turn = await launch({ query: fake.query })
+
+        expect(turn.ok).toBe(true)
+        expect(turn.session).toMatchObject({
+            model_usage: {
+                [OPUS]: {
+                    input_tokens: 100,
+                    output_tokens: 200,
+                    cache_read_input_tokens: 3000,
+                    cache_creation_input_tokens: 400,
+                },
+                [HAIKU]: {
+                    input_tokens: 50,
+                    output_tokens: 60,
+                    cache_read_input_tokens: 70,
+                    cache_creation_input_tokens: 80,
+                },
+            },
+        })
+    })
+
+    test("a follow-up's tokens per model are its own turn's: the SDK's running totals, less the turns before it", async () => {
+        const fake = fakeQuery({
+            turns: [
+                [
+                    INIT,
+                    result({
+                        structured_output: { n: 1 },
+                        modelUsage: {
+                            [OPUS]: modelTotals({
+                                input: 100,
+                                output: 200,
+                                cache_read: 3000,
+                                cache_creation: 400,
+                            }),
+                        },
+                    }),
+                ],
+                [
+                    result({
+                        structured_output: IMPLEMENTER_DONE,
+                        modelUsage: {
+                            [OPUS]: modelTotals({
+                                input: 150,
+                                output: 260,
+                                cache_read: 5000,
+                                cache_creation: 450,
+                            }),
+                            [HAIKU]: modelTotals({
+                                input: 50,
+                                output: 60,
+                                cache_read: 70,
+                                cache_creation: 80,
+                            }),
+                        },
+                    }),
+                ],
+            ],
+        })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        const first = await launcher.launch({
+            role: 'implementer',
+            ticket: 11,
+            prompt: 'Build ticket #11.',
+            cwd: repo,
+            may_edit_tests: false,
+            config: CONFIG,
+            messaging: null,
+        })
+        const second = await launcher.followUp({
+            session_id: 'session-1',
+            role: 'implementer',
+            ticket: 11,
+            message: 'lint failed: fix it.',
+            cwd: repo,
+            config: CONFIG,
+        })
+        await launcher.closeAll()
+
+        expect(first.session?.model_usage).toEqual({
+            [OPUS]: {
+                input_tokens: 100,
+                output_tokens: 200,
+                cache_read_input_tokens: 3000,
+                cache_creation_input_tokens: 400,
+            },
+        })
+        expect(second.session?.model_usage).toEqual({
+            [OPUS]: {
+                input_tokens: 50,
+                output_tokens: 60,
+                cache_read_input_tokens: 2000,
+                cache_creation_input_tokens: 50,
+            },
+            [HAIKU]: {
+                input_tokens: 50,
+                output_tokens: 60,
+                cache_read_input_tokens: 70,
+                cache_creation_input_tokens: 80,
+            },
+        })
+    })
+
+    test('a result with no tokens per model keeps none', async () => {
+        const fake = fakeQuery({
+            messages: [INIT, result({ structured_output: APPROVE })],
+        })
+        const turn = await launch({ query: fake.query })
+        expect(turn.session?.model_usage).toEqual({})
+    })
+})
+
 describe('the options', () => {
     test('lock the agent down', async () => {
         const saved = {
