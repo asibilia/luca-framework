@@ -15,7 +15,7 @@ import {
     type AgentRole,
     type RoleResult,
 } from '../agents/role-results'
-import type { EngineConfig } from '../config/engine-config'
+import { bunTestCommands, type EngineConfig } from '../config/engine-config'
 import { runGates, shellCheck } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
 import {
@@ -26,7 +26,7 @@ import {
     rebaseNeedsInstall,
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
-import { runTests, testFilesAmong } from '../gates/test-runner'
+import { runBunTests, testFilesAmong } from '../gates/test-runner'
 import type { GitAdapter } from '../git/git-adapter'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
@@ -135,12 +135,6 @@ const testFilesIn = async ({
         test_file_patterns: context.config.test_file_patterns,
     })
 
-const testCommand = ({ config }: { config: EngineConfig }): string =>
-    need({
-        value: config.checks.test,
-        what: 'test command in the engine config',
-    })
-
 const readOrNull = async (path: string): Promise<string | null> =>
     existsSync(path) ? Bun.file(path).text() : null
 
@@ -160,9 +154,9 @@ const runRedCheck = async ({
         what: `baseline test run for #${action.ticket}`,
     })
     const test_files = await testFilesIn({ context, cwd: path })
-    const current = await runTests({
+    const current = await runBunTests({
         cwd: path,
-        command: testCommand(context),
+        commands: bunTestCommands(context),
         test_files,
         report_file: await reportFile({
             context,
@@ -929,9 +923,9 @@ export const executeBuildAction = async ({
         }
         case 'run_baseline_tests': {
             const { path } = ticketWorktree({ state, ticket: action.ticket })
-            const run = await runTests({
+            const run = await runBunTests({
                 cwd: path,
-                command: testCommand(context),
+                commands: bunTestCommands(context),
                 test_files: await testFilesIn({ context, cwd: path }),
                 report_file: await reportFile({
                     context,

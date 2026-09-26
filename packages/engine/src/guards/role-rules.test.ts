@@ -497,6 +497,66 @@ describe('check commands with shell syntax', () => {
     })
 })
 
+describe('several test commands', () => {
+    // tmnb's shape (#428): bun's tests, read per test, and a vitest file
+    // run as a pass-or-fail gate.
+    const config = {
+        ...CONFIG,
+        checks: {
+            ...CONFIG.checks,
+            test: [
+                'bun test src',
+                { run: 'bun run test:workers', results: 'pass_fail' },
+                'bun test e2e',
+            ],
+        },
+    } as unknown as EngineConfig
+    const run = (role: GuardRole, command: string) =>
+        checkToolCall({
+            role,
+            may_edit_tests: usual(role),
+            tool_name: 'Bash',
+            tool_input: { command },
+            worktree: WORKTREE,
+            config,
+        }).allow
+
+    test('a writer may run each configured test command exactly', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(run(role, 'bun test src')).toBe(true)
+            expect(run(role, 'bun run test:workers')).toBe(true)
+            expect(run(role, 'bun test e2e')).toBe(true)
+        }
+        expect(run('reviewer', 'bun run test:workers')).toBe(false)
+        expect(run('reviewer', 'bun test src')).toBe(false)
+    })
+
+    test('bun test commands may take extra arguments; pass_fail ones may not', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(run(role, 'bun test src src/sum.test.ts')).toBe(true)
+            expect(run(role, 'bun test e2e --timeout 20000')).toBe(true)
+            expect(run(role, 'bun run test:workers --watch')).toBe(false)
+            expect(run(role, 'bun run test:workers src/x.test.ts')).toBe(false)
+            // An install through a test command is still the engine's.
+            expect(run(role, 'bun test src --install=force')).toBe(false)
+        }
+    })
+
+    test('each test command gets its permission rule, with a wildcard only after a bun one', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun test src)')
+        expect(allowed).toContain('Bash(bun test src *)')
+        expect(allowed).toContain('Bash(bun test e2e)')
+        expect(allowed).toContain('Bash(bun test e2e *)')
+        expect(allowed).toContain('Bash(bun run test:workers)')
+        expect(allowed).not.toContain('Bash(bun run test:workers *)')
+    })
+})
+
 describe('permissionRules', () => {
     test('a refactor implementer may edit tests but not setup files', () => {
         const refactor = permissionRules({

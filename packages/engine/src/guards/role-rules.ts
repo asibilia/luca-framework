@@ -3,7 +3,11 @@ import { basename, isAbsolute, normalize, relative, resolve } from 'node:path'
 import { z } from 'zod'
 
 import type { AgentRole } from '../agents/role-results'
-import type { EngineConfig } from '../config/engine-config'
+import {
+    testCommands,
+    type EngineConfig,
+    type TestCommand,
+} from '../config/engine-config'
 import { testFilesAmong } from '../gates/test-runner'
 
 /**
@@ -215,23 +219,39 @@ const startsWith = ({
     prefix: string[]
 }): boolean => prefix.every((word, index) => words[index] === word)
 
-/** The check commands from the config a role may run: tests, types, lint. */
+/**
+ * The check commands from the config a role may run: each test command,
+ * types, lint. A `bun` test command may take extra arguments; the rest run
+ * only as written.
+ */
 export const checkCommands = ({
     role,
     config,
 }: {
     role: GuardRole
     config: EngineConfig
-}): { test: string | null; others: string[] } => {
-    if (!isWriter(role)) return { test: null, others: [] }
-    const { test, types, lint } = config.checks
+}): { tests: TestCommand[]; others: string[] } => {
+    if (!isWriter(role)) return { tests: [], others: [] }
+    const { types, lint } = config.checks
     return {
-        test: test ?? null,
+        tests: testCommands({ config }),
         others: [types, lint].filter(
             (command): command is string => command !== undefined
         ),
     }
 }
+
+/** The configured commands that run only as written, tests included. */
+const exactCommands = ({
+    tests,
+    others,
+}: {
+    tests: TestCommand[]
+    others: string[]
+}): string[] => [
+    ...tests.filter(({ results }) => results !== 'bun').map(({ run }) => run),
+    ...others,
+]
 
 const GIT_READ_SUBCOMMANDS = [
     'status',
@@ -392,9 +412,11 @@ const shellHelp = ({
     role: GuardRole
     config: EngineConfig
 }): string => {
-    const { test, others } = checkCommands({ role, config })
+    const { tests, others } = checkCommands({ role, config })
     const checks = [
-        ...(test === null ? [] : [`${test} [args]`]),
+        ...tests.map(({ run, results }) =>
+            results === 'bun' ? `${run} [args]` : run
+        ),
         ...others,
         ...(isWriter(role) ? ['rm [-f] <files you may write>'] : []),
     ]
@@ -417,21 +439,26 @@ const checkBash = ({
 }): ToolDecision => {
     if (role === 'learner') return deny('The learner has no shell.')
     const trimmed = command.trim()
-    const { test, others } = checkCommands({ role, config })
+    const { tests, others } = checkCommands({ role, config })
     // The config's own commands may use shell syntax; only exact copies run.
-    if (trimmed === test || others.includes(trimmed)) return ALLOW
+    if (tests.some(({ run }) => run === trimmed) || others.includes(trimmed)) {
+        return ALLOW
+    }
     const split = splitCommand(trimmed)
     if (!split.ok) return deny(`${split.error} ${shellHelp({ role, config })}`)
     const words = split.words.map(({ text }) => text)
     const [name] = words
     if (name === undefined) return deny('An empty command.')
-    if (others.some((other) => wordsOf(other)?.join(' ') === words.join(' '))) {
+    const exact = exactCommands({ tests, others })
+    if (exact.some((other) => wordsOf(other)?.join(' ') === words.join(' '))) {
         return ALLOW
     }
     if (isInstallCommand(words)) return deny(INSTALL_DENIED)
-    const testWords = test === null ? null : wordsOf(test)
-    if (testWords !== null && startsWith({ words, prefix: testWords })) {
-        return ALLOW
+    for (const { run, results } of tests) {
+        const testWords = results === 'bun' ? wordsOf(run) : null
+        if (testWords !== null && startsWith({ words, prefix: testWords })) {
+            return ALLOW
+        }
     }
     if (name === 'rm') {
         return checkRm({
@@ -630,19 +657,18 @@ export const permissionRules = ({
 }: GuardArgs & {
     config: EngineConfig
 }): { tools: string[]; allowed: string[]; disallowed: string[] } => {
-    const { test, others } = checkCommands({ role, config })
+    const commands = checkCommands({ role, config })
     const shell = role === 'learner' ? [] : readOnlyRules()
-    // A test command takes extra args (a file, `-t`) only when it is one
+    // A bun test command takes extra args (a file, `-t`) only when it is one
     // plain command; one with shell syntax runs as its exact copy.
-    const testRules =
-        test === null
-            ? []
-            : wordsOf(test) === null
-              ? [`Bash(${test})`]
-              : [`Bash(${test})`, `Bash(${test} *)`]
+    const testRules = commands.tests.flatMap(({ run, results }) =>
+        results !== 'bun' || wordsOf(run) === null
+            ? [`Bash(${run})`]
+            : [`Bash(${run})`, `Bash(${run} *)`]
+    )
     const checks = [
         ...testRules,
-        ...others.map((command) => `Bash(${command})`),
+        ...commands.others.map((command) => `Bash(${command})`),
     ]
     const setup = config.test_setup_files.map((path) => `Edit(${path})`)
     const tests = config.test_file_patterns.map((glob) => `Edit(${glob})`)

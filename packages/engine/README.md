@@ -79,9 +79,9 @@ on with a run from its journal (#369).
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
-| `src/gates/test-runner.ts` | Runs the config's test command with bun's JUnit reporter. |
+| `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
-| `src/gates/gate-runner.ts` | Runs the config's **gates**: tests, types, lint. First, the install when a manifest changed. |
+| `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
@@ -131,7 +131,7 @@ install_dependencies    bun install --frozen-lockfile, if there's a package.json
 for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
-  run_baseline_tests      the config's test command, before any agent    ──> baseline_tests
+  run_baseline_tests      the config's bun test commands, before any agent ──> baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -732,9 +732,26 @@ also holds its journal).
   failed fetch stops the run before anything is built (`run_stopped`, and a
   message that names the fetch); the spec and tickets aren't blamed, and
   `--resume` tries the fetch again.
-- **Test command:** it must be a `bun test` command. The engine adds bun's
-  JUnit reporter flags to its end to learn each test's outcome. A repo with no
-  test files passes the baseline.
+- **Test commands (#428):** `checks.test` is one command string, as before,
+  or a list of test commands, for a repo with more than one test runner. Each
+  list entry is a command string or `{ "run": "...", "results": "..." }`.
+  `results` says how the engine reads the command's results: `bun` (bun's
+  per-test results) or `pass_fail` (just its exit code). Left out, it is
+  `bun` for a command starting with `bun test` and `pass_fail` otherwise.
+  For example, tmnb's:
+
+  ```json
+  "test": ["bun test", { "run": "bun run test:workers", "results": "pass_fail" }]
+  ```
+
+  Every test command runs as a gate, in order, after each ticket and in the
+  final review; a failing one goes into the gate fix loop with its output.
+  The engine adds bun's JUnit reporter flags to the end of each `bun`
+  command to learn each test's outcome, and runs a `pass_fail` one as
+  written. The baseline and the red check run only the `bun` commands.
+  Intake refuses a run with no `bun` command unless every open ticket is a
+  refactor ticket. Agents may run each test command exactly; `bun` ones may
+  also take extra arguments. A repo with no test files passes the baseline.
 - **A new test file that doesn't load yet** (it imports code not written yet)
   reports no results. Its tests count as failing if their names are in it.
 - **Engine commits skip git hooks** (`--no-verify`): the engine already ran
@@ -793,8 +810,8 @@ also holds its journal).
 - **A check command with shell syntax** (such as `... > /dev/null` or
   `a && b`) runs only exactly as configured, and gets one exact permission
   rule. Checked against the live CLI (Claude Code 2.1.280, SDK 0.3.273) for
-  #384: under `dontAsk` both a redirect and `&&` run. The test command may
-  take extra arguments only when it is one plain command. A check that
+  #384: under `dontAsk` both a redirect and `&&` run. A `bun` test command
+  may take extra arguments only when it is one plain command. A check that
   redirects into the worktree writes a file there, which a test-writer may
   not: prefer `> /dev/null`.
 - **`rm` takes files one by one** (`-f` at most): no folders, wildcards, or

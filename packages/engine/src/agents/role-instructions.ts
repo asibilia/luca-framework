@@ -1,6 +1,6 @@
 import { lensOf, type AgentRole, type LensName } from './role-results'
 
-import type { EngineConfig } from '../config/engine-config'
+import { testCommands, type EngineConfig } from '../config/engine-config'
 import {
     checkCommands,
     guardRoleOf,
@@ -17,11 +17,13 @@ const shellRules = ({
     config: EngineConfig
 }): string => {
     const guard = guardRoleOf({ role })
-    const { test, others } = checkCommands({ role: guard, config })
+    const { tests, others } = checkCommands({ role: guard, config })
     const commands = [
-        ...(test === null
-            ? []
-            : [`\`${test}\` (you may add test files or options after it)`]),
+        ...tests.map(({ run, results }) =>
+            results === 'bun'
+                ? `\`${run}\` (you may add test files or options after it)`
+                : `\`${run}\``
+        ),
         ...others.map((command) => `\`${command}\``),
         ...(isWriter(guard)
             ? ['`rm <file>` or `rm -f <file>`, for files you may write']
@@ -109,7 +111,7 @@ const IMPLEMENTER = ({
 You write the code that makes ONE ticket's failing tests pass. Another agent wrote the tests; the engine already committed them.
 
 - Make every gate pass: ${[
-    config.checks.test,
+    ...testCommands({ config }).map(({ run }) => run),
     config.checks.types,
     config.checks.lint,
 ]

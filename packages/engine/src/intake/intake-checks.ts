@@ -9,8 +9,16 @@ import type {
     TicketSnapshot,
 } from './intake-schemas'
 
-import { ENGINE_CONFIG_FILE, type EngineConfig } from '../config/engine-config'
-import { READY_LABEL, type TrackerIssue } from '../tracker/tracker'
+import {
+    ENGINE_CONFIG_FILE,
+    testCommands,
+    type EngineConfig,
+} from '../config/engine-config'
+import {
+    READY_LABEL,
+    REFACTOR_LABEL,
+    type TrackerIssue,
+} from '../tracker/tracker'
 
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/
 
@@ -154,10 +162,24 @@ export const checkIntake = ({
     const onSpec = (message: string) =>
         findings.push({ ticket: spec.number, message })
 
-    if (config.checks.test === undefined) {
+    const tests = testCommands({ config })
+    if (tests.length === 0) {
         findings.push({
             ticket: null,
             message: `The engine config (${ENGINE_CONFIG_FILE}) has no test command at checks.test.`,
+        })
+    } else if (
+        !tests.some(({ results }) => results === 'bun') &&
+        sub_tickets.some(
+            (ticket) =>
+                ticket.state === 'open' &&
+                !ticket.labels.includes(REFACTOR_LABEL)
+        )
+    ) {
+        // The red check reads per-test results, which only bun's give today.
+        findings.push({
+            ticket: null,
+            message: `The engine config (${ENGINE_CONFIG_FILE}) has no test command with bun results at checks.test, so the red check can't prove new tests fail first. Add a \`bun test\` command, or label every open ticket \`${REFACTOR_LABEL}\`.`,
         })
     }
     if (spec.state !== 'open') onSpec('The spec is closed.')
