@@ -1,0 +1,4 @@
+# Luca's own Bun config. The board starts the engine with
+# `bun --no-env-file --config=<this file>`, so the target repo's `.env` and
+# `bunfig.toml` (and any `preload` in it) never load into the engine, which
+# runs in the repo's folder. Keep this free of `preload`.

@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { PLUGIN_ID, RUN_USAGE } from '../shared/board-state'
 import type { EngineSettings } from '../shared/engine-settings'
@@ -84,6 +84,20 @@ const bunPaths = ({ home_dir }: { home_dir: string }): string[] => [
 export const SETTINGS_HINT = `Set the engine path in Settings → Plugins → ${PLUGIN_ID}`
 
 /**
+ * The Bun flags that keep the target repo's `.env` and `bunfig.toml` (and any
+ * `preload` in it) out of the engine, which runs in the repo's folder: no env
+ * file, and Luca's own bunfig, which ships next to the engine's entry.
+ *
+ * @example
+ * isolationArgs({ engine_path: '/opt/luca/src/cli/luca-run.ts' })
+ * // ['--no-env-file', '--config=/opt/luca/src/cli/bunfig.toml']
+ */
+const isolationArgs = ({ engine_path }: { engine_path: string }): string[] => [
+    '--no-env-file',
+    `--config=${join(dirname(engine_path), 'bunfig.toml')}`,
+]
+
+/**
  * Finds how to start the engine. The `engine_path` setting (run with Bun)
  * wins; else an installed `luca-run` command, run directly (it has a Bun
  * shebang). Paths are absolute because Paseo swaps a bare `bun` for its Node.
@@ -129,7 +143,11 @@ export const resolveEngine = ({
                 message: `Couldn't find Bun. Set the Bun path in Settings → Plugins → ${PLUGIN_ID}, or set LUCA_BUN.`,
             }
         }
-        return { ok: true, command: bun, lead_args: [engine_path] }
+        return {
+            ok: true,
+            command: bun,
+            lead_args: [...isolationArgs({ engine_path }), engine_path],
+        }
     }
     const installed = installedCommandPaths({ home_dir }).find((path) =>
         file_exists({ path })
