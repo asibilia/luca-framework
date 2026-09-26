@@ -750,6 +750,46 @@ Paseo adapter (`ReleasePaseo`), so the tests (`src/cli/release.test.ts`) run it
 end to end with real git in throwaway repos with a local bare `origin`, a fake
 Paseo, and fake run state.
 
+## Setting up a repo
+
+`luca-setup` gets a repo ready for Luca in one step. Run it inside the
+target repo:
+
+```bash
+bun ~/.local/share/luca/packages/engine/src/cli/luca-setup.ts [--base <branch>]
+```
+
+It never commits, and running it again gives the same result, so it doubles
+as a health check.
+
+- **Labels.** It creates `ready-for-agent`, `refactor`, and `needs-info` if
+  they're missing. Labels that are already there are left as they are.
+- **No `.luca/config.json` yet:** it writes a starting one from the
+  `package.json` scripts. `test` and `test:*` become test commands: a script
+  that is a `bun test` command runs as written and is bun-readable, and the
+  rest run as `bun run <script>` and are pass-or-fail. A `type-check` or
+  `typecheck` script becomes the types check (`bun run <script>`), and
+  `lint` becomes `bun run lint`.
+- **An old-Luca config** (any key a new-style config doesn't have, such as
+  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` and writes
+  the rest fresh from `package.json`, as above.
+- **A new-style config:** it leaves the file alone and only reports on it.
+- **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
+  sub-issues and issue dependencies, the base branch (default `main`) is on
+  `origin`, and MuninnDB can search the config's vault (found as `luca-run`
+  finds it).
+
+It ends with a plain list of what's done and what's left, each to-do with its
+fix, and a reminder that tickets needing tests the red check can't read (for
+`tmnb`, new vitest tests) should be `ready-for-human`. A written config waits
+in the working tree: check it, then merge it through a normal PR. It exits 0
+when nothing is left to do and 1 otherwise.
+
+`runSetup` is handed its GitHub adapter (`SetupGitHub`) and memory client, so
+the tests (`src/cli/setup.test.ts`) run it end to end with real git in
+throwaway repos with a local bare `origin`, a fake GitHub, and a fake
+MuninnDB.
+
 ## Choices made
 
 - **Config file:** `.luca/config.json` in the repo a run works on. Its
