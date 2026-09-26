@@ -126,7 +126,7 @@ startRun ──> run_started
           or snapshot_intake      execute: ──> spec_snapshot, ticket_snapshot × n
   decide ──> done (refused, nothing to do) or build:
 
-create_run_branch       git: worktree for the run branch, from the base ──> run_branch_created
+create_run_branch       git: fetch the base, worktree for the run branch from origin/<base> ──> run_branch_created
 install_dependencies    bun install --frozen-lockfile, if there's a package.json ──> dependencies_installed
 for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
@@ -725,6 +725,13 @@ also holds its journal).
   `<run folder>/run-branch`. Each ticket's branch is `<run branch>--ticket-<n>`,
   in `<run folder>/tickets/<n>`. Test reports go in `<run folder>/reports`, so
   they are never leftovers.
+- **Runs start from `origin/<base>`.** A new run fetches its base branch
+  (`main`, or `--base`) from `origin` and makes the run branch from
+  `origin/<base>`, never from the local branch, so it never builds on stale
+  code. A resumed run keeps the run branch it made and doesn't fetch. A
+  failed fetch stops the run before anything is built (`run_stopped`, and a
+  message that names the fetch); the spec and tickets aren't blamed, and
+  `--resume` tries the fetch again.
 - **Test command:** it must be a `bun test` command. The engine adds bun's
   JUnit reporter flags to its end to learn each test's outcome. A repo with no
   test files passes the baseline.

@@ -871,6 +871,21 @@ export const executeBuildAction = async ({
                 run_id: basename(run_dir),
             })
             const path = join(run_dir, 'run-branch')
+            // A new run starts from origin's latest; no fetch, no run. Like
+            // a launcher stop, it ends the run with a plain message.
+            const fetched = await git.fetchBase({
+                base_branch: action.base_branch,
+            })
+            if (!fetched.ok) {
+                const reason = `Could not fetch ${action.base_branch} from origin, so the run has no base to start from. Check the network and the repo's origin, then resume the run.\n${fetched.error}`
+                journal.append({
+                    kind: 'run_stopped',
+                    ticket: null,
+                    role: null,
+                    content: { reason, role: null, billing: false },
+                })
+                throw new Error(`Run stopped: ${reason}`)
+            }
             const { base_sha } = await git.createRunBranch({
                 branch,
                 base_branch: action.base_branch,
