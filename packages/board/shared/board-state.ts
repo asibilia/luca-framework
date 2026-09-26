@@ -153,6 +153,7 @@ export const RunStatusSchema = z.enum([
     'building',
     'final_review',
     'limit_wait',
+    'usage_line_wait',
     'done',
     'refused',
     'nothing_to_do',
@@ -546,6 +547,25 @@ export const BoardStateSchema = z.object({
             since: z.string(),
         })
         .nullable(),
+    /**
+     * The run paused at a usage line: the account's window was at or over
+     * the line. It carries on when the window resets, or once the line is
+     * raised. Defaulted, so a board state from before it still parses.
+     */
+    usage_line_wait: z
+        .object({
+            /** The window, in words: `weekly` or `five-hour`. */
+            window: z.string(),
+            /** The line, in percent. */
+            line: z.number(),
+            /** How full the window was, in percent. */
+            percent: z.number(),
+            /** When the window resets. */
+            resets_at: z.string(),
+            since: z.string(),
+        })
+        .nullable()
+        .default(null),
     /** How much of the plan the whole run used, per window. */
     run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),

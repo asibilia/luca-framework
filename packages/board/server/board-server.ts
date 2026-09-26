@@ -36,7 +36,10 @@ import type {
     RunStartOutput,
 } from '../shared/board-rpc'
 import type { BoardState, EngineEnded } from '../shared/board-state'
-import type { EngineSettings } from '../shared/engine-settings'
+import {
+    EngineSettingsSchema,
+    type EngineSettings,
+} from '../shared/engine-settings'
 
 /** What the server asks the host to spawn: detached, output to a log file. */
 export type SpawnRequest = {
@@ -178,7 +181,7 @@ const OUTSIDE_RUNS_SHOWN = 50
  *     spawn_engine: spawnDetached,
  *     list_processes: listProcesses,
  *     run_command: runCommand,
- *     read_settings: async () => ({ engine_path: '', bun_path: '' }),
+ *     read_settings: async () => EngineSettingsSchema.parse({}),
  *     file_exists: ({ path }) => existsSync(path),
  *     home_dir: homedir(),
  *     env: process.env,
@@ -479,7 +482,7 @@ export const createBoardServer = ({
 
     /** Finds the engine from the current settings, as `run.start` does. */
     const findEngine = async () => {
-        let settings: EngineSettings = { engine_path: '', bun_path: '' }
+        let settings: EngineSettings = EngineSettingsSchema.parse({})
         try {
             settings = await read_settings()
         } catch (error) {

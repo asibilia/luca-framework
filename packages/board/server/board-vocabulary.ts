@@ -245,6 +245,19 @@ export const BOARD_VOCABULARY = {
         rate_limit_type: z.string().nullable().catch(null),
     }),
     limit_wait_ended: z.looseObject({}),
+    /** The run paused at a usage line. */
+    usage_line_wait_started: z.looseObject({
+        /** `seven_day` or `five_hour`. */
+        window: z.string(),
+        /** The line, in percent. */
+        line: z.number(),
+        /** How full the window was, in percent. */
+        percent: z.number(),
+        /** When the window resets. */
+        resets_at: z.string(),
+    }),
+    /** The run carries on: `reason` is `reset` or `line_raised`. */
+    usage_line_wait_ended: z.looseObject({}),
     /** How much of the plan a ticket (scope `ticket`) or the run used. */
     usage_recorded: z.looseObject({
         scope: z.enum(['ticket', 'run']),
@@ -383,6 +396,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'shared_git_changed' }),
     entry({ kind: 'limit_wait_started' }),
     entry({ kind: 'limit_wait_ended' }),
+    entry({ kind: 'usage_line_wait_started' }),
+    entry({ kind: 'usage_line_wait_ended' }),
     entry({ kind: 'usage_recorded' }),
     entry({ kind: 'reply_received' }),
     entry({ kind: 'reply_ignored' }),

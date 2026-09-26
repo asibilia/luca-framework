@@ -100,7 +100,7 @@ const percentOf = (fraction: number): number =>
     Math.round(fraction * 10_000) / 100
 
 /** One window in one reading: its fill level in percent, and its reset time. */
-type WindowSample = {
+export type WindowSample = {
     name: string
     percent: number
     /** Seconds since the epoch, or `null` when the reading gives none. */
@@ -111,7 +111,7 @@ type WindowSample = {
  * Each window's fill level in one reading, as percents, in the order the
  * reading gives them: its `unifiedWindows`, then its top-level window.
  */
-const windowSamples = (reading: RateLimitReading): WindowSample[] => {
+export const windowSamples = (reading: RateLimitReading): WindowSample[] => {
     const { unifiedWindows, rateLimitType, utilization, resetsAt } = reading
     const unified = Object.entries(unifiedWindows ?? {}).flatMap(
         ([name, window]): WindowSample[] =>

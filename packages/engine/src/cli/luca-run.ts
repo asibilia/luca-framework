@@ -41,6 +41,11 @@ import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
 import { createTypeSafeJev } from '../jev/jev-client'
 import { defaultRunsDir } from '../journal/journal'
+import {
+    defaultSharedReadingsPath,
+    defaultUsageLinesPath,
+    fileUsageLine,
+} from '../limits/usage-line'
 import type { MemoryDeps } from '../memory/memory-client'
 import {
     CLAUDE_JSON,
@@ -87,6 +92,18 @@ const memoryOf = async (): Promise<MemoryDeps | undefined> => {
     return { client: createMuninnMcpClient({ settings: found.settings }) }
 }
 
+/**
+ * The usage line (#434): the `luca-board` plugin's lines, and the readings
+ * every run shares, both in Luca's state folder.
+ */
+const usageLine = () =>
+    fileUsageLine({
+        lines_file: defaultUsageLinesPath(),
+        shared_file: defaultSharedReadingsPath(),
+        now: Date.now,
+        log,
+    })
+
 const run = async ({
     args,
     board,
@@ -117,6 +134,7 @@ const run = async ({
             launcher: createClaudeLauncher({}),
             jev: { client: createTypeSafeJev() },
             memory: await memoryOf(),
+            usage: usageLine(),
             board,
             log,
         })
@@ -134,6 +152,7 @@ const run = async ({
         launcher: createClaudeLauncher({}),
         jev: { client: createTypeSafeJev() },
         memory: await memoryOf(),
+        usage: usageLine(),
         board,
         log,
     })

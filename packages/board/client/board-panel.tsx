@@ -28,6 +28,7 @@ import {
     tokensText,
     percentText,
     usageColor,
+    usageLineWaitText,
     useNow,
 } from './board-look'
 
@@ -1179,6 +1180,18 @@ export const BoardPanel = ({
                     {limitWaitText({
                         window: state.limit_wait.window,
                         resets_at: state.limit_wait.resets_at,
+                        now: Date.now(),
+                    })}
+                </Banner>
+            ) : null}
+            {state.usage_line_wait ? (
+                <Banner
+                    icon="Hourglass"
+                    color={theme.colors.statusWarning}
+                    styles={styles}
+                >
+                    {usageLineWaitText({
+                        ...state.usage_line_wait,
                         now: Date.now(),
                     })}
                 </Banner>

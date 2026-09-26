@@ -17,6 +17,7 @@ import { createTypeSafeJev } from '../jev/jev-client'
 import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
+import type { UsageLineDeps } from '../limits/usage-line'
 import type { MemoryDeps } from '../memory/memory-client'
 import {
     DEMO_TURNS,
@@ -166,6 +167,7 @@ export const runSpec = async ({
     launcher,
     jev,
     memory,
+    usage,
     board,
     log,
 }: {
@@ -181,6 +183,8 @@ export const runSpec = async ({
     jev?: JevShadow
     /** MuninnDB (#370). Leave it out to run without memory. */
     memory?: MemoryDeps
+    /** The usage line (#434). Leave it out to run without one. */
+    usage?: UsageLineDeps
     board: BoardSync | null
     log: (line: string) => void
 }): Promise<RunEnd> => {
@@ -227,6 +231,7 @@ export const runSpec = async ({
                 launcher,
                 jev,
                 memory,
+                usage,
                 board: board ?? undefined,
             }),
     })
@@ -432,6 +437,7 @@ export const resumeRun = async ({
     launcher,
     jev,
     memory,
+    usage,
     board,
     log,
 }: {
@@ -448,6 +454,8 @@ export const resumeRun = async ({
      * Leave it out to go on without memory.
      */
     memory?: MemoryDeps
+    /** The usage line (#434). Leave it out to go on without one. */
+    usage?: UsageLineDeps
     board: BoardSync | null
     log: (line: string) => void
 }): Promise<RunEnd> => {
@@ -479,6 +487,7 @@ export const resumeRun = async ({
         launcher,
         jev,
         memory,
+        usage,
         board,
         log,
     })

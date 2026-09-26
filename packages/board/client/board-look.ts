@@ -138,6 +138,7 @@ export const statusColor = ({
         case 'ended_with_error':
             return theme.colors.statusDanger
         case 'limit_wait':
+        case 'usage_line_wait':
             return theme.colors.statusWarning
         case 'starting':
         case 'intake':
@@ -162,6 +163,8 @@ export const statusText = ({ status }: { status: RunStatus }): string => {
             return 'final review'
         case 'limit_wait':
             return 'limit wait'
+        case 'usage_line_wait':
+            return 'paused at the usage line'
         case 'done':
             return 'done'
         case 'refused':
@@ -244,6 +247,28 @@ export const limitWaitText = ({
     now: number
 }): string =>
     `${limitHitText({ window })}. ${limitUntilText({ resets_at, now })}`
+
+/**
+ * What a pause at the usage line means, e.g. "Paused at the weekly usage
+ * line: the account's weekly window is at 82% (line 80%). The run waits
+ * until 11:00 (in 3h 5m), or until the line is raised, and then carries on
+ * by itself."
+ */
+export const usageLineWaitText = ({
+    window,
+    line,
+    percent,
+    resets_at,
+    now,
+}: {
+    window: string
+    line: number
+    percent: number
+    resets_at: string
+    now: number
+}): string =>
+    `Paused at the ${window} usage line: the account's ${window} window is at ${percent}% (line ${line}%). ` +
+    `The run waits until ${resetsText({ resets_at, now })}, or until the line is raised, and then carries on by itself.`
 
 /** "Spec #10 · Add CSV export", or "Demo run" before the engine names one. */
 export const runTitle = ({

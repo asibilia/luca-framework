@@ -7,7 +7,10 @@ import { stamp, type Entry } from './journal-fixtures'
 import type { BoardRow } from '../../shared/board-rows'
 import type { BoardReadOutput, EngineRecord } from '../../shared/board-rpc'
 import type { BoardState } from '../../shared/board-state'
-import type { EngineSettings } from '../../shared/engine-settings'
+import {
+    EngineSettingsSchema,
+    type EngineSettingsInput,
+} from '../../shared/engine-settings'
 import {
     createBoardServer,
     type BoardServer,
@@ -61,7 +64,8 @@ export const createHarness = async ({
     spawn_throws = null,
     ps_error = null,
 }: {
-    settings?: EngineSettings
+    /** Settings left out (such as the usage lines) take their defaults. */
+    settings?: EngineSettingsInput
     files?: string[]
     registry_dir?: string
     /** The engine's runs folder; without one the board reads no journals. */
@@ -103,7 +107,7 @@ export const createHarness = async ({
             commands.push(request)
             return command_result
         },
-        read_settings: async () => settings,
+        read_settings: async () => EngineSettingsSchema.parse(settings),
         file_exists: ({ path }) => existing.has(path),
         home_dir: '/home/me',
         env: { PATH: '/usr/bin', LUCA_BUN: undefined },

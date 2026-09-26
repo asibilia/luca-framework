@@ -172,6 +172,7 @@ export const createBoardState = ({
     usage_label: USAGE_LABEL,
     run_tokens: 0,
     limit_wait: null,
+    usage_line_wait: null,
     run_plan_used: [],
     needs_you: [],
     tickets: [],
@@ -1167,6 +1168,21 @@ const applyKind = ({
         }
         case 'limit_wait_ended':
             return { ...state, limit_wait: null }
+        case 'usage_line_wait_started': {
+            const { window, line, percent, resets_at } = record.content
+            return {
+                ...state,
+                usage_line_wait: {
+                    window: windowWords({ window }),
+                    line,
+                    percent,
+                    resets_at,
+                    since: record.time,
+                },
+            }
+        }
+        case 'usage_line_wait_ended':
+            return { ...state, usage_line_wait: null }
         case 'usage_recorded': {
             const plan_used = planUsedOf({ windows: record.content.windows })
             if (record.content.scope === 'run') {
@@ -1810,6 +1826,7 @@ const runStatus = ({ state }: { state: BoardState }): RunStatus => {
     if (stopped) return 'stopped'
     if (engine_ended && !engine_ended.ok) return 'ended_with_error'
     if (state.limit_wait) return 'limit_wait'
+    if (state.usage_line_wait) return 'usage_line_wait'
     if (state.needs_you.length > 0 && !isActive({ state })) return 'stuck'
     return phase
 }

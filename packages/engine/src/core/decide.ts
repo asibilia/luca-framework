@@ -3,11 +3,13 @@ import { decideCrashes, type CrashAction } from './decide-crashes'
 import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
 import { decideUsage, type UsageAction } from './decide-usage'
+import { decideUsageLine, type UsageLineAction } from './decide-usage-line'
 
 import { checkIntake } from '../intake/intake-checks'
 import type { IntakeProblem, IntakeSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun, type RunState } from '../journal/replay'
+import type { UsageLines } from '../limits/usage-line'
 
 /** The next thing the engine should do, as picked by `decide`. */
 export type EngineAction =
@@ -23,6 +25,8 @@ export type EngineAction =
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
     /** A limit wait, or a billing stop, before any build step. */
     | PlanAction
+    /** A pause at the usage line, before the next agent's turn. */
+    | UsageLineAction
     /** A finished ticket's usage, or the run's before it ends. */
     | UsageAction
     /** Stopping the run for good after crashes on a run-level step. */
@@ -45,7 +49,9 @@ export type EngineAction =
  * plan: a limit wait or a billing stop is the only action,
  * for the whole run, however many tickets are in flight (the scheduler lets
  * them settle first, then every cut-off step is taken again after the
- * wait). A finished ticket's usage is recorded beside the build steps, and
+ * wait). Then the usage line (`decide-usage-line.ts`): at or over a line,
+ * a usage-line wait comes alone before the next agent's turn. A finished
+ * ticket's usage is recorded beside the build steps, and
  * the run's alone, just before it ends. A stop action (`done`,
  * `invalid_journal`) always comes alone.
  *
@@ -55,8 +61,14 @@ export type EngineAction =
  */
 export const decideSteps = ({
     records,
+    usage_lines,
+    shared_readings,
 }: {
     records: JournalRecord[]
+    /** The `luca-board` usage lines. Left out, there is no usage line. */
+    usage_lines?: UsageLines
+    /** The newest raw readings every run shared, each with its `arrived_at`. */
+    shared_readings?: unknown[]
 }): EngineAction[] => {
     const state = replayRun({ records })
     const { phase, spec_number } = state
@@ -87,6 +99,15 @@ export const decideSteps = ({
         spec_number,
         build: decideBuild({ state, spec_number }),
     })
+    const pause = decideUsageLine({
+        state,
+        records,
+        spec_number,
+        next: build,
+        usage_lines,
+        shared_readings: shared_readings ?? [],
+    })
+    if (pause !== null) return [pause]
     const ending = build.length === 1 && build[0]?.type === 'done'
     const usage = decideUsage({ records, state, ending })
     if (usage === null) return build
@@ -103,10 +124,14 @@ export const decideSteps = ({
  */
 export const decide = ({
     records,
+    usage_lines,
+    shared_readings,
 }: {
     records: JournalRecord[]
+    usage_lines?: UsageLines
+    shared_readings?: unknown[]
 }): EngineAction => {
-    const [first] = decideSteps({ records })
+    const [first] = decideSteps({ records, usage_lines, shared_readings })
     return (
         first ?? {
             type: 'invalid_journal',

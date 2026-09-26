@@ -355,6 +355,45 @@ const LimitWaitEndedEntrySchema = z.object({
     content: z.object({ until: z.iso.datetime() }),
 })
 
+/** The plan windows a usage line guards: all-models weekly, and 5-hour. */
+export const UsageLineWindowSchema = z.enum(['seven_day', 'five_hour'])
+
+export type UsageLineWindow = z.infer<typeof UsageLineWindowSchema>
+
+/**
+ * The newest plan-window reading was at or over its **usage line**, so the
+ * whole run pauses until `until`: the window's reset plus a margin. The wait
+ * ends sooner once the line is raised above `percent`.
+ */
+const UsageLineWaitStartedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('usage_line_wait_started'),
+    content: z.object({
+        window: UsageLineWindowSchema,
+        /** The line, in percent of the window. */
+        line: z.number(),
+        /** The reading's fill level, in percent. */
+        percent: z.number(),
+        /** When the window resets. */
+        resets_at: z.iso.datetime(),
+        /** When the engine wakes and carries on, at the latest. */
+        until: z.iso.datetime(),
+    }),
+})
+
+/**
+ * The usage-line wait is over: the window reset (`reset`), or the line was
+ * raised above the reading (`line_raised`).
+ */
+const UsageLineWaitEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('usage_line_wait_ended'),
+    content: z.object({
+        until: z.iso.datetime(),
+        reason: z.enum(['reset', 'line_raised']),
+    }),
+})
+
 /**
  * The plan usage of one ticket (when it was pushed, or got stuck) or of the
  * whole run (when it ended): tokens from its agent sessions, and how far
@@ -1035,6 +1074,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunStoppedEntrySchema,
     LimitWaitStartedEntrySchema,
     LimitWaitEndedEntrySchema,
+    UsageLineWaitStartedEntrySchema,
+    UsageLineWaitEndedEntrySchema,
     UsageRecordedEntrySchema,
     WorktreesRemovedEntrySchema,
     AgentMessageEntrySchema,
@@ -1104,6 +1145,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunStoppedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitStartedEntrySchema.extend(STAMP_FIELDS),
     LimitWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    UsageLineWaitStartedEntrySchema.extend(STAMP_FIELDS),
+    UsageLineWaitEndedEntrySchema.extend(STAMP_FIELDS),
     UsageRecordedEntrySchema.extend(STAMP_FIELDS),
     WorktreesRemovedEntrySchema.extend(STAMP_FIELDS),
     AgentMessageEntrySchema.extend(STAMP_FIELDS),
@@ -1172,6 +1215,8 @@ export const JournalKindSchema = z.enum([
     'run_stopped',
     'limit_wait_started',
     'limit_wait_ended',
+    'usage_line_wait_started',
+    'usage_line_wait_ended',
     'usage_recorded',
     'worktrees_removed',
     'agent_message',

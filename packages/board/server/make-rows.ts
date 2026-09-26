@@ -26,6 +26,7 @@ import {
     TicketStageSchema,
     showsFinalReview,
     stoppedText,
+    windowWords,
     type BoardState,
     type FindingCounts,
     type NeedsYou,
@@ -225,6 +226,19 @@ export const describeRecord = ({
             })
         case 'ticket_worktree_created':
             return event({ text: `${at}started.`, tone: 'info' })
+        case 'usage_line_wait_started': {
+            const { line, percent, resets_at } = record.content
+            const window = windowWords({ window: record.content.window })
+            return event({
+                text: `Paused at the ${window} usage line: the account's ${window} window is at ${percent}% (line ${line}%). The run carries on when it resets at ${resets_at}, or once the line is raised.`,
+                tone: 'warning',
+            })
+        }
+        case 'usage_line_wait_ended':
+            return event({
+                text: 'The run carries on from the usage line.',
+                tone: 'info',
+            })
         case 'dependencies_installed': {
             const { check } = record.content
             if (check === null || check.ok) return null

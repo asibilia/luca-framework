@@ -1153,6 +1153,59 @@ record gets a new record over all of its sessions, so a ticket's latest
 per-ticket numbers are rough, and other sessions on the same plan count too.
 A ticket or run with no agent sessions (scripted agents) records nothing.
 
+## The usage line
+
+Every Luca run shares one Claude plan with you, so Luca keeps below a
+**usage line** on the account's windows (`src/limits/usage-line.ts`,
+`src/core/decide-usage-line.ts`). There are two lines, both host-scoped
+`luca-board` settings:
+
+| Setting | Default | Window |
+| --- | --- | --- |
+| `weekly_line` | 80 | the all-models weekly window (`seven_day`) |
+| `five_hour_line` | 85 | the 5-hour window (`five_hour`) |
+
+The plugin keeps them in `usage-lines.json` in its state folder
+(`$LUCA_BOARD_STATE_DIR`, else `~/.local/state/luca/board`), and the engine
+reads that file directly, so runs started from the command line obey them
+too. A missing or broken file reads as the defaults. There is no Opus-only
+line.
+
+- **Shared readings.** Before each decision, a run shares its readings in
+  `plan-readings.json` in Luca's state folder (next to `runs/`): the newest
+  reading per window, by `arrived_at`, written atomically (a temp file, then
+  a rename). It then reads the file back. The decision step uses whichever
+  reading of a window arrived last, the run's own or another run's, so every
+  run pauses together.
+- **Pausing.** When the next steps include an agent's turn and the newest
+  reading of a window is at or over its line, the decision step picks
+  `start_usage_line_wait` as the run's only action. Steps that aren't an
+  agent's (a red check, gates, a join) go on first, and an agent mid-turn
+  finishes, since the wait is a run-level action that runs alone.
+- **Carrying on.** The wait lasts until the window's reset plus
+  `LIMIT_WAIT_MARGIN_MS` (1 minute). It naps at most 5 minutes at a time, and
+  re-reads the lines before each nap: a line raised above the reading ends
+  the wait early (`reason: 'line_raised'`). A line raised only to the
+  reading isn't above it. After a wait that ended at the reset, readings of
+  windows that reset by then are out of date and pause nothing.
+- **Telling you.** The spec issue gets a comment when the run pauses (the
+  window, the reading, the line, and the reset) and when it carries on. The
+  board shows the paused state and names the line.
+- **Unchanged.** A rejected reading's plan limit wait, and the stop on any
+  overage, come before the usage line, as before.
+
+```
+newest reading at or over a line, and an agent's turn next
+  decide ──> start_usage_line_wait   comment on the spec ──> usage_line_wait_started
+  decide ──> wait_for_usage_line     nap by the clock, re-reading the lines
+                                     comment on the spec ──> usage_line_wait_ended (reset | line_raised)
+  decide ──> the agent's turn
+```
+
+`runEngine({ ..., usage })` takes the lines and the shared file
+(`fileUsageLine`); left out, as in tests and the demo, there is no usage
+line.
+
 ## Jev in shadow mode
 
 Jev is TypeSafe's labeling model. `runEngine({ ..., jev })` asks it around

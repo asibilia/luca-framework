@@ -149,6 +149,8 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `run_stopped` | run status `stopped` and a banner with the reason (wrong credentials or plan, a rejected rate limit, overage, ...), the card's role cleared. Any later real step (the run was started again with the same run id) clears it. With `billing: true` (default false) it's a **billing stop**: the session would bill per token, so the run won't go on, and the banner says to start a new run once per-token billing is off. | the reason, and how to pick the run up again, or for a billing stop, that the run won't go on (danger) |
 | `limit_wait_started` | run status `limit_wait` and a banner: "Plan limit hit (five-hour window). The run waits until 17:00 and then carries on by itself." The time is `resets_at`, or `until` when the reset time isn't known. | a limit row with the same words |
 | `limit_wait_ended` | the banner is gone | the limit row turns to "over" |
+| `usage_line_wait_started` | run status `usage_line_wait` ("paused at the usage line") and a banner: "Paused at the weekly usage line: the account's weekly window is at 82% (line 80%). The run waits until 11:00, or until the line is raised, and then carries on by itself." It names the line reached (`weekly` or `five-hour`). It is not a plan limit wait: `limit_wait` stays empty. | "Paused at the weekly usage line: ..." (warning) |
+| `usage_line_wait_ended` | the banner is gone, and the run goes back to its phase | "The run carries on from the usage line." |
 | `usage_recorded` | with scope `ticket`, the card's plan used ("plan: five-hour +1%, weekly +1%"); a retried ticket may have several, and the latest (its whole usage) wins; with scope `run`, a line under plan usage ("This run used: five-hour 3%, weekly 1%"). Each window's `used`, rounded to a whole percent, in the order five-hour, weekly, the other weekly windows, then the rest. | none |
 | `jev_asked`, `jev_answered`, `jev_failed` | **Jev in shadow mode**: only counted (asked, answered, without an answer), in a dim footer line. The engine never acts on Jev's answers, so they change no ticket, status, or "latest" line. | none |
 | `agent_message` | **Agent messages**: only counted (sent = queued or not delivered; refused), in a dim footer line. A message is sent inside an agent's turn, so it changes no ticket or run status, and doesn't clear a stopped run. | `sender → receiver: <the message's first line, clipped>` (info); with "(not delivered: reason)" when it wasn't delivered (warning); "sender's message to receiver was refused: reason" (warning) |
@@ -198,6 +200,18 @@ The engine journals these with `ticket` and `role` set to `null`, except `usage_
 // limit_wait_ended
 { until: string }
 
+// usage_line_wait_started
+{
+    window: 'seven_day' | 'five_hour'
+    line: number // the usage line, in percent
+    percent: number // how full the window was, 0 to 100
+    resets_at: string // when the window resets
+    until: string // when the engine wakes at the latest
+}
+
+// usage_line_wait_ended
+{ until: string; reason: 'reset' | 'line_raised' }
+
 // usage_recorded
 {
     scope: 'ticket' | 'run'
@@ -212,12 +226,19 @@ Windows in words: `five_hour` is "five-hour", `seven_day` is "weekly", `seven_da
 
 ## Settings
 
-Go to **Settings → Plugins → luca-board → Engine**. These settings are a host settings document (`engine`), so they survive restarts.
+Go to **Settings → Plugins → luca-board → Engine**. These settings are a host settings document (`engine`), so they survive restarts. It holds where the engine lives and the two usage lines.
 
 - **Engine path:** the absolute path to the engine's entry, for example `/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts`. The plugin runs it with Bun.
 - **Bun path:** the absolute path to Bun. If it's empty, the plugin tries `LUCA_BUN`, then `~/.bun/bin/bun`, `/opt/homebrew/bin/bun`, and `/usr/local/bin/bun`. It needs an absolute path, because Paseo swaps a bare `bun` for its own Node.
 
 If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, run directly (it has a Bun shebang). The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
+
+The **usage lines** keep Luca below a share of your Claude plan, so you always have room for your own work. They count the whole account, not one run:
+
+- **Weekly line** (`weekly_line`, default 80): every run pauses once the account's weekly window (`seven_day`, all models) is 80% full.
+- **5-hour line** (`five_hour_line`, default 85): every run pauses once the account's 5-hour window is 85% full.
+
+A paused run carries on by itself when the window resets, or at its next check (every 5 minutes) once you raise the line above the reading. The plugin keeps the two lines in `usage-lines.json` in its state folder (`$LUCA_BOARD_STATE_DIR`, else `~/.local/state/luca/board`), and every engine reads them there, so runs started from the command line obey them too. Settings saved before the usage lines read with the defaults. See "The usage line" in the engine's README.
 
 ## Install and try it
 

@@ -8,6 +8,7 @@ import type {
     CommitStage,
     JournalRecord,
     StuckReason,
+    UsageLineWindow,
 } from './journal-record'
 import { crashesAfter, type CrashCounts } from './step-records'
 
@@ -377,6 +378,19 @@ export type PlanState = {
     billing: { reason: string } | null
     /** Set once a billing stop is journaled. It sticks. */
     billing_stopped: { reason: string } | null
+    /** The usage-line wait under way: its window, line, reading, and end. */
+    usage_wait: {
+        window: UsageLineWindow
+        line: number
+        percent: number
+        until: string
+    } | null
+    /**
+     * The latest time the run is known to have waited until: the `until` of
+     * a limit wait that ended, or of a usage-line wait that ended at its
+     * reset. A reading whose window resets by then is out of date.
+     */
+    waited_until: string | null
 }
 /**
  * The learner at the end of a run (#370): its answer, or its failed tries,
@@ -551,6 +565,8 @@ const EMPTY_STATE: RunState = {
         resets_announced: [],
         billing: null,
         billing_stopped: null,
+        usage_wait: null,
+        waited_until: null,
     },
     usage_recorded: { tickets: {}, run: false },
     removed_worktrees: [],
@@ -586,8 +602,14 @@ type PlanRecord = Extract<
             | 'run_stopped'
             | 'limit_wait_started'
             | 'limit_wait_ended'
+            | 'usage_line_wait_started'
+            | 'usage_line_wait_ended'
     }
 >
+
+/** The later of two ISO times; the first may be missing. */
+const laterOf = (a: string | null, b: string): string =>
+    a !== null && Date.parse(a) >= Date.parse(b) ? a : b
 
 /** The plan state after one record. */
 const planAfter = ({
@@ -638,7 +660,24 @@ const planAfter = ({
             }
         }
         case 'limit_wait_ended':
-            return { ...plan, wait: null }
+            return {
+                ...plan,
+                wait: null,
+                waited_until: laterOf(plan.waited_until, record.content.until),
+            }
+        case 'usage_line_wait_started': {
+            const { window, line, percent, until } = record.content
+            return { ...plan, usage_wait: { window, line, percent, until } }
+        }
+        case 'usage_line_wait_ended':
+            return {
+                ...plan,
+                usage_wait: null,
+                waited_until:
+                    record.content.reason === 'reset'
+                        ? laterOf(plan.waited_until, record.content.until)
+                        : plan.waited_until,
+            }
     }
 }
 
@@ -845,6 +884,8 @@ const applyRecord = ({
         case 'agent_session':
         case 'limit_wait_started':
         case 'limit_wait_ended':
+        case 'usage_line_wait_started':
+        case 'usage_line_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
         case 'run_stopped':
             return {
@@ -1444,6 +1485,8 @@ type TicketRecord = Exclude<
             | 'run_stopped'
             | 'limit_wait_started'
             | 'limit_wait_ended'
+            | 'usage_line_wait_started'
+            | 'usage_line_wait_ended'
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
