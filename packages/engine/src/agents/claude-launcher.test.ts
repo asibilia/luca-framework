@@ -502,6 +502,12 @@ describe('the result', () => {
         const after = Date.now()
 
         const events = turn.session?.rate_limit_events ?? []
+        // Read the arrival times first: toMatchObject swaps matched values
+        // for its matchers.
+        const arrivals = events.map(({ arrived_at }) => {
+            expect(typeof arrived_at).toBe('string')
+            return Date.parse(String(arrived_at))
+        })
         expect(events).toMatchObject([
             {
                 ...reading,
@@ -515,9 +521,6 @@ describe('the result', () => {
                 arrived_at: expect.any(String),
             },
         ])
-        const arrivals = events.map(({ arrived_at }) =>
-            Date.parse(String(arrived_at))
-        )
         for (const arrival of arrivals) {
             expect(arrival).toBeGreaterThanOrEqual(before)
             expect(arrival).toBeLessThanOrEqual(after)
