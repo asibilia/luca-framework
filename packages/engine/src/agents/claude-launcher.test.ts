@@ -467,6 +467,64 @@ describe('the result', () => {
         })
     })
 
+    test('each plan-window reading is kept with its arrival time, fill level, and reset time', async () => {
+        const reading = {
+            status: 'allowed',
+            rateLimitType: 'seven_day',
+            resetsAt: 1790420400,
+            unifiedWindows: {
+                five_hour: { utilization: 0.4, resetsAt: 1790179800 },
+                seven_day: { utilization: 0.62, resetsAt: 1790420400 },
+            },
+        }
+        const fake = fakeQuery({
+            messages: [
+                INIT,
+                { type: 'rate_limit_event', rate_limit_info: reading },
+                {
+                    type: 'rate_limit_event',
+                    rate_limit_info: {
+                        ...reading,
+                        unifiedWindows: {
+                            ...reading.unifiedWindows,
+                            seven_day: {
+                                utilization: 0.63,
+                                resetsAt: 1790420400,
+                            },
+                        },
+                    },
+                },
+                result({ structured_output: APPROVE }),
+            ],
+        })
+        const before = Date.now()
+        const turn = await launch({ query: fake.query })
+        const after = Date.now()
+
+        const events = turn.session?.rate_limit_events ?? []
+        expect(events).toMatchObject([
+            {
+                ...reading,
+                arrived_at: expect.any(String),
+            },
+            {
+                unifiedWindows: {
+                    five_hour: { utilization: 0.4, resetsAt: 1790179800 },
+                    seven_day: { utilization: 0.63, resetsAt: 1790420400 },
+                },
+                arrived_at: expect.any(String),
+            },
+        ])
+        const arrivals = events.map(({ arrived_at }) =>
+            Date.parse(String(arrived_at))
+        )
+        for (const arrival of arrivals) {
+            expect(arrival).toBeGreaterThanOrEqual(before)
+            expect(arrival).toBeLessThanOrEqual(after)
+        }
+        expect(arrivals[1]).toBeGreaterThanOrEqual(arrivals[0] ?? Infinity)
+    })
+
     test('a success with no structured output carries none, so the engine fails the try', async () => {
         const fake = fakeQuery({ messages: [INIT, result({})] })
         const turn = await launch({ query: fake.query })
@@ -798,7 +856,7 @@ describe('follow-ups', () => {
         await launchImplementer(launcher)
         const turn = await followUp(launcher, 'session-1')
         expect(turn).toMatchObject({ ok: false, failure: 'plan' })
-        expect(turn.session?.rate_limit_events).toEqual([
+        expect(turn.session?.rate_limit_events).toMatchObject([
             { status: 'rejected', rateLimitType: 'five_hour' },
         ])
         expect(fake.calls[0]?.closed).toBe(true)
