@@ -117,6 +117,9 @@ on with a run from its journal (#369).
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
+| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca setup`, and a quiet `luca hook`. |
+| `src/cli/setup-command.ts` | `luca setup`'s flags and its real GitHub and MuninnDB adapters. |
+| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels, the config, and the checks a run needs. |
 | `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
 | `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the runs that are going (`goingRuns`), the next date tag (`nextReleaseTag`), the pinned clone. |
 
@@ -754,12 +757,18 @@ Paseo, and fake run state.
 
 ## Setting up a repo
 
-`luca-setup` gets a repo ready for Luca in one step. Run it inside the
+`luca setup` gets a repo ready for Luca in one step. Run it inside the
 target repo:
 
 ```bash
-bun ~/.local/share/luca/packages/engine/src/cli/luca-setup.ts [--base <branch>]
+luca setup [--base <branch>]
 ```
+
+`luca` is the engine package's command for people (`src/cli/luca.ts`), next
+to `luca-run`. `luca --help` lists its subcommands, and an unknown one prints
+the usage and exits 2. `luca hook <anything>` exits 0 and prints nothing:
+old Luca (v13) left a global Claude Code hook that runs `luca hook
+stage-gate` before every edit, write, and shell call, and it must never block.
 
 It never commits, and running it again gives the same result, so it doubles
 as a health check.
@@ -773,8 +782,9 @@ as a health check.
   `typecheck` script becomes the types check (`bun run <script>`), and
   `lint` becomes `bun run lint`.
 - **An old-Luca config** (any key a new-style config doesn't have, such as
-  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` and writes
-  the rest fresh from `package.json`, as above.
+  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` (or an
+  older top-level `vault`) and writes the rest fresh from `package.json`, as
+  above.
 - **A new-style config:** it leaves the file alone and only reports on it.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
@@ -783,7 +793,9 @@ as a health check.
 
 It ends with a plain list of what's done and what's left, each to-do with its
 fix, and a reminder that tickets needing tests the red check can't read (for
-`tmnb`, new vitest tests) should be `ready-for-human`. A written config waits
+`tmnb`, new vitest tests) should be `ready-for-human`. Its last line says to
+run `/setup-matt-pocock-skills` in Claude Code in the repo, so the planning
+skills know it. A written config waits
 in the working tree: check it, then merge it through a normal PR. It exits 0
 when nothing is left to do and 1 otherwise.
 

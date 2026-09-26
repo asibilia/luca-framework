@@ -1,0 +1,41 @@
+#!/usr/bin/env bun
+/**
+ * `luca`: the command people run, with subcommands:
+ *
+ *   luca setup [--base <branch>]   gets the repo in this folder ready
+ *   luca hook <anything>           does nothing, quietly
+ *
+ * `luca hook` is for old Luca (v13), whose global Claude Code hook runs
+ * `luca hook stage-gate` before every edit, write, and shell call: it exits
+ * 0 and prints nothing, so that hook never blocks. It loads nothing else.
+ *
+ * `luca --help` prints the usage and exits 0; an unknown subcommand prints
+ * it and exits 2.
+ */
+
+const USAGE = `Usage: luca <command>
+
+Commands:
+  setup [--base <branch>]   Get the repo in this folder ready for Luca`
+
+const main = async (): Promise<number> => {
+    const [command, ...rest] = Bun.argv.slice(2)
+    switch (command) {
+        case 'hook':
+            return 0
+        case 'setup': {
+            const { setupCommand } = await import('./setup-command')
+            return setupCommand({ argv: rest })
+        }
+        case '--help':
+        case '-h':
+        case 'help':
+            console.log(USAGE)
+            return 0
+        default:
+            console.error(USAGE)
+            return 2
+    }
+}
+
+process.exit(await main())

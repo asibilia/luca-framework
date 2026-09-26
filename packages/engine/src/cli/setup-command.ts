@@ -1,9 +1,8 @@
-#!/usr/bin/env bun
 /**
- * `luca-setup`: gets the repo in the current folder ready for Luca. Run it
+ * `luca setup`: gets the repo in the current folder ready for Luca. Run it
  * inside the target repo, as often as you like:
  *
- *   bun <luca>/packages/engine/src/cli/luca-setup.ts [--base <branch>]
+ *   luca setup [--base <branch>]
  *
  * It creates the labels a run needs, writes or converts `.luca/config.json`
  * (a new-style one is left alone), checks the `gh` login, the GitHub remote,
@@ -26,6 +25,9 @@ import {
     ghLogin,
     githubRepoOf,
 } from '../tracker/github-tracker'
+
+/** `luca setup`'s usage line. */
+export const SETUP_USAGE = 'Usage: luca setup [--base <branch>]'
 
 /**
  * The real GitHub side: the GitHub tracker of the repo at `cwd` for its
@@ -87,10 +89,15 @@ const parseBase = (argv: string[]): string | null => {
         : null
 }
 
-const main = async (): Promise<number> => {
-    const base_branch = parseBase(Bun.argv.slice(2))
+/** Runs `luca setup` with the flags after `setup`; returns the exit code. */
+export const setupCommand = async ({
+    argv,
+}: {
+    argv: string[]
+}): Promise<number> => {
+    const base_branch = parseBase(argv)
     if (base_branch === null) {
-        console.error('Usage: luca-setup [--base <branch>]')
+        console.error(SETUP_USAGE)
         return 2
     }
     const cwd = process.cwd()
@@ -110,5 +117,3 @@ const main = async (): Promise<number> => {
         await memory.close().catch(() => undefined)
     }
 }
-
-process.exit(await main())

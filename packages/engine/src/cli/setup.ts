@@ -23,10 +23,11 @@ import {
 } from '../tracker/tracker'
 
 /**
- * `luca-setup`: gets a repo ready for Luca. It creates the labels a run
+ * `luca setup`: gets a repo ready for Luca. It creates the labels a run
  * needs, writes a starting `.luca/config.json` (or converts old Luca's, or
  * leaves a new-style one alone), checks everything a run needs, and ends
- * with a plain list of what's done and what's left. It never commits, and
+ * with a plain list of what's done and what's left, then a pointer to
+ * `/setup-matt-pocock-skills`. It never commits, and
  * running it again gives the same result, so it doubles as a health check.
  */
 
@@ -80,6 +81,10 @@ const LABELS = [
         description: 'Luca needs more detail before it can build this',
     },
 ]
+
+/** The last line of setup's report: the planning skills' own setup. */
+const SKILLS_POINTER =
+    'Next: run `/setup-matt-pocock-skills` in Claude Code in this repo, so the planning skills (`/to-spec`, `/to-tickets`) know it.'
 
 /**
  * The top-level and `muninn` keys of a new-style engine config, from its
@@ -190,11 +195,16 @@ const startingConfig = ({
     ...(vault === null ? {} : { muninn: { vault } }),
 })
 
-/** The vault an old-Luca config names in `muninn.vault`, if any. */
-const oldVault = ({ raw }: { raw: Record<string, unknown> }): string | null => {
-    const vault = isRecord(raw.muninn) ? raw.muninn.vault : undefined
-    return typeof vault === 'string' && vault.trim() !== '' ? vault : null
-}
+const vaultName = (vault: unknown): string | null =>
+    typeof vault === 'string' && vault.trim() !== '' ? vault : null
+
+/**
+ * The vault an old-Luca config names in `muninn.vault`, or else in an older
+ * top-level `vault`, if any.
+ */
+const oldVault = ({ raw }: { raw: Record<string, unknown> }): string | null =>
+    vaultName(isRecord(raw.muninn) ? raw.muninn.vault : undefined) ??
+    vaultName(raw.vault)
 
 const writeConfig = async ({
     repo,
@@ -258,7 +268,7 @@ const ensureLabels = async ({
         return {
             done: [],
             todo: [
-                `Couldn't list the repo's labels (${errorText(error)}). Fix gh and the GitHub remote, then run luca-setup again.`,
+                `Couldn't list the repo's labels (${errorText(error)}). Fix gh and the GitHub remote, then run luca setup again.`,
             ],
         }
     }
@@ -295,7 +305,7 @@ const check = async ({
         return {
             name,
             status: 'todo',
-            detail: `The ${name} check failed: ${errorText(error)}. Fix it, then run luca-setup again.`,
+            detail: `The ${name} check failed: ${errorText(error)}. Fix it, then run luca setup again.`,
         }
     }
 }
@@ -312,7 +322,7 @@ const checkIssueLinks = async ({
 }) => {
     if (github_repo === null) {
         return todo(
-            "Sub-issues and issue dependencies can't be checked without a GitHub remote. Add one, then run luca-setup again."
+            "Sub-issues and issue dependencies can't be checked without a GitHub remote. Add one, then run luca setup again."
         )
     }
     const { sub_issues, dependencies } = await github.issueLinks()
@@ -324,7 +334,7 @@ const checkIssueLinks = async ({
         return done(`${github_repo} has sub-issues and issue dependencies`)
     }
     return todo(
-        `${github_repo} has no ${missing.join(' or ')}. Luca reads a spec's tickets and blockers from them: turn them on for the repo's issues, then run luca-setup again.`
+        `${github_repo} has no ${missing.join(' or ')}. Luca reads a spec's tickets and blockers from them: turn them on for the repo's issues, then run luca setup again.`
     )
 }
 
@@ -366,13 +376,13 @@ const checkVault = async ({
     }
     const found = await safeMemory({ deps: { client: memory } }).recall({
         vault,
-        query: 'luca-setup',
+        query: 'luca setup',
         limit: 1,
         threshold: 0,
     })
     if (!found.ok) {
         return todo(
-            `MuninnDB couldn't search the \`${vault}\` vault (${found.error}). Start MuninnDB, or set LUCA_MUNINN_URL and LUCA_MUNINN_TOKEN, then run luca-setup again.`
+            `MuninnDB couldn't search the \`${vault}\` vault (${found.error}). Start MuninnDB, or set LUCA_MUNINN_URL and LUCA_MUNINN_TOKEN, then run luca setup again.`
         )
     }
     return done(`MuninnDB has the \`${vault}\` vault`)
@@ -388,11 +398,12 @@ const list = (lines: string[]): string =>
  * `refactor`, and `needs-info` labels; writes a starting
  * `.luca/config.json` from `package.json` when there is none (see
  * `guessChecks`), rewrites an old-Luca config into the new shape keeping
- * its `muninn.vault`, and leaves a new-style config alone; then checks the
- * `gh` login, the GitHub remote, sub-issues and issue dependencies,
- * `base_branch` (default `main`) on `origin`, and the vault through
- * `memory`. It never commits and never throws: it ends with the done and
- * to-do list, logged and returned.
+ * its `muninn.vault` (or an older top-level `vault`), and leaves a
+ * new-style config alone; then checks the `gh` login, the GitHub remote,
+ * sub-issues and issue dependencies, `base_branch` (default `main`) on
+ * `origin`, and the vault through `memory`. It never commits and never
+ * throws: it ends with the done and to-do list and a pointer to
+ * `/setup-matt-pocock-skills`, logged and returned.
  *
  * @example
  * const end = await runSetup({ repo: process.cwd(), github, memory, log: console.log })
@@ -439,7 +450,7 @@ export const runSetup = async ({
         todo_lines.push(...labels.todo)
     } else {
         todo_lines.push(
-            'The labels were not checked. Fix the gh login and the GitHub remote, then run luca-setup again.'
+            'The labels were not checked. Fix the gh login and the GitHub remote, then run luca setup again.'
         )
     }
 
@@ -499,7 +510,7 @@ export const runSetup = async ({
         }),
     ]
     for (const { name, status, detail } of checks) {
-        log(`[luca-setup] ${name}: ${status === 'done' ? 'done' : 'to do'}`)
+        log(`[luca setup] ${name}: ${status === 'done' ? 'done' : 'to do'}`)
         if (status === 'done') done_lines.push(detail)
         else todo_lines.push(detail)
     }
@@ -511,10 +522,11 @@ export const runSetup = async ({
         : []
     const note = `Tickets that need new tests the red check can't read${pass_fail.length === 0 ? '' : ` (such as tests for ${pass_fail.map(({ run }) => `\`${run}\``).join(', ')})`} aren't Luca tickets: label them ready-for-human.`
     const message = [
-        `luca-setup in ${repo}. Nothing was committed.`,
+        `luca setup in ${repo}. Nothing was committed.`,
         `Done:\n${list(done_lines)}`,
         `To do:\n${list(todo_lines)}`,
         note,
+        SKILLS_POINTER,
     ].join('\n\n')
     log(message)
     return { ok: todo_lines.length === 0, message, checks }

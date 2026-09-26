@@ -5,9 +5,9 @@
     "type": "module",
     "main": "src/index.ts",
     "bin": {
+        "luca": "src/cli/luca.ts",
         "luca-run": "src/cli/luca-run.ts",
-        "luca-release": "src/cli/luca-release.ts",
-        "luca-setup": "src/cli/luca-setup.ts"
+        "luca-release": "src/cli/luca-release.ts"
     },
     "scripts": {
         "test": "bun test",
