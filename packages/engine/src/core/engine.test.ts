@@ -165,6 +165,69 @@ describe('engine: intake refuses the run', () => {
     })
 })
 
+describe('engine: intake and the spec release labels', () => {
+    const specWithLabels = (labels: string[]): TrackerIssue => ({
+        ...specIssue({ number: 10 }),
+        labels,
+    })
+
+    test('a spec with two release labels is refused, and its comment names both', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels([
+                    'ready-for-agent',
+                    'release:minor',
+                    'release:major',
+                ]),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(kinds).toEqual(['run_started', 'intake_read', 'intake_refused'])
+        const comments = tracker.commentsOn({ number: 10 })
+        expect(comments).toHaveLength(1)
+        expect(comments[0]).toContain('release:minor')
+        expect(comments[0]).toContain('release:major')
+        expect(tracker.labelsOf({ number: 10 })).toContain('needs-info')
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+    })
+
+    test('a spec with one release label starts building, where two would refuse it', async () => {
+        const one = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels(['ready-for-agent', 'release:minor']),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(one.action).toEqual(BUILD_STARTS)
+        expect(one.tracker.commentsOn({ number: 10 })).toEqual([])
+
+        journal = createJournal({
+            file: runJournalPath({ runs_dir: runsDir, run_id: 'second' }),
+        })
+        const two = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels([
+                    'ready-for-agent',
+                    'release:minor',
+                    'release:none',
+                ]),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(two.action).toEqual({ type: 'done', outcome: 'refused' })
+    })
+})
+
 describe('engine: nothing to do', () => {
     test('a spec whose tickets are all closed ends with nothing to do', async () => {
         const { tracker, action, kinds } = await runSpec({

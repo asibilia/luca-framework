@@ -242,6 +242,114 @@ describe('luca-setup creates the labels a run needs', () => {
     }, 60_000)
 })
 
+describe('luca setup creates the release labels in a repo with changesets', () => {
+    const CHANGESET_CONFIG = join('.changeset', 'config.json')
+    const RELEASE_LABELS = [
+        'release:major',
+        'release:minor',
+        'release:none',
+        'release:patch',
+    ]
+    const releaseLabels = (names: string[]): string[] =>
+        names.filter((name) => name.startsWith('release:')).toSorted()
+
+    test('a repo with .changeset/config.json gets the four release labels and the run labels', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: JSON.stringify(
+                    { baseBranch: 'main', ignore: [] },
+                    null,
+                    4
+                ),
+            },
+        })
+        const github = fakeGitHub()
+
+        const end = await setup({
+            github: github.github,
+            memory: createFakeMuninn(),
+        })
+
+        expect(github.created().toSorted()).toEqual(
+            [
+                'needs-info',
+                'ready-for-agent',
+                'refactor',
+                ...RELEASE_LABELS,
+            ].toSorted()
+        )
+        for (const label of RELEASE_LABELS) {
+            expect(printed(end)).toContain(label)
+        }
+    }, 60_000)
+
+    test('release labels a changesets repo already has are left as they are', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: '{}\n',
+            },
+        })
+        const mine = {
+            name: 'release:minor',
+            color: 'abcdef',
+            description: 'Mine',
+        }
+        const github = fakeGitHub({ labels: [mine] })
+
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.created())).toEqual([
+            'release:major',
+            'release:none',
+            'release:patch',
+        ])
+        expect(
+            github.labels().find(({ name }) => name === 'release:minor')
+        ).toEqual(mine)
+    }, 60_000)
+
+    test('a repo without .changeset/config.json gets no release labels until it has one', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+        const github = fakeGitHub()
+
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.labels().map(({ name }) => name))).toEqual(
+            []
+        )
+        expect(github.created().toSorted()).toEqual([
+            'needs-info',
+            'ready-for-agent',
+            'refactor',
+        ])
+
+        await Bun.write(join(repo, CHANGESET_CONFIG), '{}\n')
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.created())).toEqual(RELEASE_LABELS)
+    }, 60_000)
+
+    test('a second run in a changesets repo creates nothing more', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: '{}\n',
+            },
+        })
+        const github = fakeGitHub()
+        const memory = createFakeMuninn()
+
+        await setup({ github: github.github, memory })
+        const created_after_first = github.created()
+        await setup({ github: github.github, memory })
+
+        expect(releaseLabels(created_after_first)).toEqual(RELEASE_LABELS)
+        expect(github.created()).toEqual(created_after_first)
+    }, 60_000)
+})
+
 describe('luca-setup writes a starting config when there is none', () => {
     test('a repo shaped like tmnb gets its test, type, and lint checks from package.json', async () => {
         await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
