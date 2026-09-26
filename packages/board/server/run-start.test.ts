@@ -7,6 +7,10 @@ import {
     type Harness,
 } from './testing/board-harness'
 
+/** The args from the engine path on, past any flags Bun gets first. */
+const fromEngine = ({ args = [] }: { args?: string[] }) =>
+    args.slice(args.indexOf(ENGINE_PATH))
+
 let harness: Harness
 
 afterEach(async () => {
@@ -44,9 +48,12 @@ describe('run.start: the args', () => {
         const { output } = await harness.start({ args })
 
         expect(output.ok).toBe(true)
-        expect(harness.spawns[0]?.args.slice(1, 1 + target.length)).toEqual(
-            target
-        )
+        expect(
+            fromEngine({ args: harness.spawns[0]?.args }).slice(
+                1,
+                1 + target.length
+            )
+        ).toEqual(target)
     })
 })
 
@@ -83,7 +90,7 @@ describe('run.start: finding the engine', () => {
         await harness.start()
 
         expect(harness.spawns[0]?.command).toBe(BUN_PATH)
-        expect(harness.spawns[0]?.args[0]).toBe(ENGINE_PATH)
+        expect(harness.spawns[0]?.args).toContain(ENGINE_PATH)
     })
 
     test('with no setting, an installed luca-run runs directly', async () => {
@@ -136,19 +143,19 @@ describe('run.start: launching', () => {
         expect(output.message).toContain(`/tmp/${run_id}.log`)
         expect(harness.spawns).toHaveLength(1)
         const spawn = harness.spawns[0]
+        expect(fromEngine({ args: spawn?.args })).toEqual([
+            ENGINE_PATH,
+            '--spec',
+            '42',
+            '--repo',
+            '/Users/me/repo',
+            '--run-id',
+            run_id,
+            '--board-plugin',
+            'luca-board',
+        ])
         expect(spawn).toMatchObject({
             command: BUN_PATH,
-            args: [
-                ENGINE_PATH,
-                '--spec',
-                '42',
-                '--repo',
-                '/Users/me/repo',
-                '--run-id',
-                run_id,
-                '--board-plugin',
-                'luca-board',
-            ],
             cwd: '/Users/me/repo',
             log_path: `/tmp/${run_id}.log`,
         })

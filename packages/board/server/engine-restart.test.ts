@@ -16,6 +16,10 @@ import { runStarted } from './testing/journal-fixtures'
 
 import { ROW_KIND } from '../shared/board-rows'
 
+/** The args from the engine path on, past any flags Bun gets first. */
+const fromEngine = ({ args = [] }: { args?: string[] }) =>
+    args.slice(args.indexOf(ENGINE_PATH))
+
 const harnesses: Harness[] = []
 const dirs: string[] = []
 
@@ -127,22 +131,25 @@ describe('restarts: a run whose engine is gone', () => {
         expect(restarted.commands).toEqual([
             expect.objectContaining({
                 command: BUN_PATH,
-                args: [ENGINE_PATH, '--unfinished'],
                 timeout_ms: 20_000,
             }),
         ])
+        expect(fromEngine({ args: restarted.commands[0]?.args })).toEqual([
+            ENGINE_PATH,
+            '--unfinished',
+        ])
         expect(restarted.spawns).toHaveLength(1)
+        expect(fromEngine({ args: restarted.spawns[0]?.args })).toEqual([
+            ENGINE_PATH,
+            '--resume',
+            run_id,
+            '--repo',
+            '/Users/me/repo',
+            '--board-plugin',
+            'luca-board',
+        ])
         expect(restarted.spawns[0]).toMatchObject({
             command: BUN_PATH,
-            args: [
-                ENGINE_PATH,
-                '--resume',
-                run_id,
-                '--repo',
-                '/Users/me/repo',
-                '--board-plugin',
-                'luca-board',
-            ],
             cwd: '/Users/me/repo',
             log_path: `/tmp/${run_id}.log`,
             env: { PATH: '/usr/bin', LUCA_BOARD_TOKEN: run?.token },
@@ -193,9 +200,9 @@ describe('restarts: a run whose engine is gone', () => {
             restarted: [dead?.run_id ?? ''],
             stopped: [],
         })
-        expect(restarted.spawns.map(({ args }) => args[2])).toEqual([
-            dead?.run_id,
-        ])
+        expect(
+            restarted.spawns.map(({ args }) => fromEngine({ args })[2])
+        ).toEqual([dead?.run_id])
     })
 
     test('a resumed engine seen in ps is live too', async () => {
