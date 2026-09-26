@@ -474,12 +474,14 @@ describe('luca-release makes a release and switches to it', () => {
             ).trim()
         ).toBe(TODAY_TAG)
         expect(existsSync(join(pinned_dir, 'bun.lock'))).toBe(true)
+        // Installed from the lockfile: bun's store is there, and the
+        // lockfile is exactly the tagged one.
+        expect(existsSync(join(pinned_dir, 'node_modules', '.bun'))).toBe(true)
         expect(
-            existsSync(join(pinned_dir, 'node_modules', '@practice', 'board'))
-        ).toBe(true)
-        expect(
-            existsSync(join(pinned_dir, 'node_modules', '@practice', 'engine'))
-        ).toBe(true)
+            (
+                await git(pinned_dir, 'status', '--porcelain', '--', 'bun.lock')
+            ).trim()
+        ).toBe('')
     }, 60_000)
 
     test('the plugin is installed from the pinned clone as luca-board, and engine_path is the pinned luca-run', async () => {
