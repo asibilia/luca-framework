@@ -17,6 +17,7 @@ import {
 import {
     READY_LABEL,
     REFACTOR_LABEL,
+    RELEASE_LABEL_PREFIX,
     type TrackerIssue,
 } from '../tracker/tracker'
 
@@ -185,6 +186,14 @@ export const checkIntake = ({
     if (spec.state !== 'open') onSpec('The spec is closed.')
     if (section({ body: spec.body, heading: 'Testing Decisions' }) === '') {
         onSpec('The spec has no "Testing Decisions" section, or it is empty.')
+    }
+    const releaseLabels = spec.labels.filter((label) =>
+        label.startsWith(RELEASE_LABEL_PREFIX)
+    )
+    if (releaseLabels.length > 1) {
+        onSpec(
+            `The spec has more than one release label (${releaseLabels.map((label) => `\`${label}\``).join(', ')}), so its version bump is ambiguous. Keep one, or none for a patch.`
+        )
     }
 
     const open = sortBy(

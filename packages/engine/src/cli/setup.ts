@@ -19,12 +19,13 @@ import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
     REFACTOR_LABEL,
+    RELEASE_LABELS,
     type Tracker,
 } from '../tracker/tracker'
 
 /**
  * `luca setup`: gets a repo ready for Luca. It creates the labels a run
- * needs, writes a starting `.luca/config.json` (or converts old Luca's, or
+ * needs (and the `release:*` ones in a repo with changesets), writes a starting `.luca/config.json` (or converts old Luca's, or
  * leaves a new-style one alone), checks everything a run needs, and ends
  * with a plain list of what's done and what's left, then a pointer to
  * `/setup-matt-pocock-skills`. It never commits, and
@@ -80,6 +81,40 @@ const LABELS = [
         color: 'd93f0b',
         description: 'Luca needs more detail before it can build this',
     },
+]
+
+/** The version-bump labels a repo with changesets gets, one per bump. */
+const RELEASE_LABEL_INFO: Record<
+    (typeof RELEASE_LABELS)[number],
+    { color: string; description: string }
+> = {
+    'release:patch': {
+        color: 'c2e0c6',
+        description: "A patch bump for this spec's changeset (the default)",
+    },
+    'release:minor': {
+        color: 'fbca04',
+        description: "A minor bump for this spec's changeset",
+    },
+    'release:major': {
+        color: 'b60205',
+        description: "A major bump for this spec's changeset",
+    },
+    'release:none': {
+        color: 'ededed',
+        description: 'No version bump: an empty changeset',
+    },
+}
+
+/** Where a repo that uses changesets keeps their config. */
+const CHANGESET_CONFIG_FILE = join('.changeset', 'config.json')
+
+/** The labels `repo` needs: the run's, plus the release ones with changesets. */
+const labelsFor = async ({ repo }: { repo: string }) => [
+    ...LABELS,
+    ...((await Bun.file(join(repo, CHANGESET_CONFIG_FILE)).exists())
+        ? RELEASE_LABELS.map((name) => ({ name, ...RELEASE_LABEL_INFO[name] }))
+        : []),
 ]
 
 /** The last line of setup's report: the planning skills' own setup. */
@@ -258,8 +293,10 @@ const reportConfig = ({
 /** Creates the labels the repo is missing; leaves the others as they are. */
 const ensureLabels = async ({
     github,
+    labels,
 }: {
     github: SetupGitHub
+    labels: { name: string; color: string; description: string }[]
 }): Promise<{ done: string[]; todo: string[] }> => {
     let have: Set<string>
     try {
@@ -274,7 +311,7 @@ const ensureLabels = async ({
     }
     const done: string[] = []
     const todo: string[] = []
-    for (const label of LABELS) {
+    for (const label of labels) {
         if (have.has(label.name)) {
             done.push(`The \`${label.name}\` label is there`)
             continue
@@ -395,7 +432,8 @@ const list = (lines: string[]): string =>
 
 /**
  * Gets `repo` ready for Luca. It creates the missing `ready-for-agent`,
- * `refactor`, and `needs-info` labels; writes a starting
+ * `refactor`, and `needs-info` labels, and in a repo with
+ * `.changeset/config.json` the `release:*` ones too; writes a starting
  * `.luca/config.json` from `package.json` when there is none (see
  * `guessChecks`), rewrites an old-Luca config into the new shape keeping
  * its `muninn.vault` (or an older top-level `vault`), and leaves a
@@ -445,7 +483,10 @@ export const runSetup = async ({
     }
 
     if (login.status === 'done' && remote.status === 'done') {
-        const labels = await ensureLabels({ github })
+        const labels = await ensureLabels({
+            github,
+            labels: await labelsFor({ repo }),
+        })
         done_lines.push(...labels.done)
         todo_lines.push(...labels.todo)
     } else {

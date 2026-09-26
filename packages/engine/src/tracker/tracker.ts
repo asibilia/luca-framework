@@ -103,3 +103,17 @@ export const REFACTOR_LABEL = 'refactor'
 
 /** The label intake moves a bad ticket to. */
 export const NEEDS_INFO_LABEL = 'needs-info'
+
+/** What every label naming a spec's version bump starts with. */
+export const RELEASE_LABEL_PREFIX = 'release:'
+
+/**
+ * The labels that name a spec's version bump, in a repo with changesets. A
+ * spec has one or none (none means patch).
+ */
+export const RELEASE_LABELS = [
+    'release:patch',
+    'release:minor',
+    'release:major',
+    'release:none',
+] as const
