@@ -86,9 +86,11 @@ const readEntries = ({
 }
 
 /**
- * Opens the run registry at `path`: reads it now, and writes it on each change.
- * A missing or broken file starts empty (and is logged); a failed write is
- * logged and the run still works until the plugin restarts.
+ * Opens the run registry at `path`: reads it now, and on each change reads
+ * it again and writes it, so a change keeps the runs another plugin copy
+ * (such as one during a reload) wrote since. A missing or broken file starts
+ * empty (and is logged); a failed write is logged and the run still works
+ * until the plugin restarts.
  *
  * @example
  * const registry = createRunRegistry({ path, log: console.error })
@@ -119,8 +121,14 @@ export const createRunRegistry = ({
         }
     }
 
+    /** The file's runs now, as another plugin copy may have changed them. */
+    const reread = () => {
+        entries = readEntries({ path, log })
+    }
+
     return {
         add: ({ entry }: { entry: RunEntry }) => {
+            reread()
             entries = [
                 ...entries.filter((known) => known.run_id !== entry.run_id),
                 entry,
@@ -138,6 +146,7 @@ export const createRunRegistry = ({
             run_id: string
             change: Partial<Pick<RunEntry, 'ended' | 'restarts'>>
         }): RunEntry | null => {
+            reread()
             const known = entries.find((entry) => entry.run_id === run_id)
             if (!known) return null
             const updated = { ...known, ...change }
@@ -148,6 +157,7 @@ export const createRunRegistry = ({
             return updated
         },
         remove: ({ run_id }: { run_id: string }) => {
+            reread()
             entries = entries.filter((known) => known.run_id !== run_id)
             write()
         },

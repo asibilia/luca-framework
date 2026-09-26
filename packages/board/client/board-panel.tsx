@@ -1,7 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
 import type { PluginTheme } from '@getpaseo/plugin'
-import { useRpc, type PluginWorkspacePanelProps } from '@getpaseo/plugin/client'
+import {
+    useRpc,
+    useWorkspace,
+    type PluginWorkspacePanelProps,
+} from '@getpaseo/plugin/client'
 import {
     Icon,
     ScrollView,
@@ -1037,10 +1041,16 @@ export const BoardPanel = ({
     workspaceId,
 }: PluginWorkspacePanelProps) => {
     const readBoard = useRpc(boardReadRpc)
+    const directory = useWorkspace(workspaceId, (found) => found.directory)
     const [picked, setPicked] = useState<Key | null>(null)
     const board = useQuery({
-        queryKey: ['luca-board', workspaceId, picked],
-        queryFn: () => readBoard({ workspace_id: workspaceId, run_id: picked }),
+        queryKey: ['luca-board', workspaceId, directory, picked],
+        queryFn: () =>
+            readBoard({
+                workspace_id: workspaceId,
+                directory,
+                run_id: picked,
+            }),
         refetchInterval: POLL_MS,
     })
     const styles = useMemo(
