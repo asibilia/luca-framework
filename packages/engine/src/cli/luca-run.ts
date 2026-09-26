@@ -24,7 +24,7 @@
  * printed, 1 when it stopped (refused, stuck, stopped by the launcher,
  * crashed, or a resume with no journal to go on from), 2 on bad flags.
  */
-import { $ } from 'bun'
+import { homedir } from 'node:os'
 
 import { parseRunArgs, type RunArgs } from './run-args'
 import {
@@ -52,26 +52,10 @@ import {
     createMuninnMcpClient,
     muninnSettings,
 } from '../memory/muninn-mcp-client'
-import { createGitHubTracker } from '../tracker/github-tracker'
+import { createGitHubTracker, githubRepoOf } from '../tracker/github-tracker'
 
 const log = (line: string) => {
     console.log(line)
-}
-
-/** The repo's GitHub `owner/name`, from `gh` run inside it. */
-const githubRepoOf = async ({ repo }: { repo: string }): Promise<string> => {
-    const result =
-        await $`gh repo view --json nameWithOwner --jq .nameWithOwner`
-            .cwd(repo)
-            .quiet()
-            .nothrow()
-    const name = result.stdout.toString().trim()
-    if (result.exitCode !== 0 || name === '') {
-        throw new Error(
-            `Could not find the GitHub repo of ${repo} with gh: ${result.stderr.toString().trim()}`
-        )
-    }
-    return name
 }
 
 /**
@@ -98,7 +82,10 @@ const memoryOf = async (): Promise<MemoryDeps | undefined> => {
  */
 const usageLine = () =>
     fileUsageLine({
-        lines_file: defaultUsageLinesPath(),
+        lines_file: defaultUsageLinesPath({
+            env: process.env,
+            home_dir: homedir(),
+        }),
         shared_file: defaultSharedReadingsPath(),
         now: Date.now,
         log,

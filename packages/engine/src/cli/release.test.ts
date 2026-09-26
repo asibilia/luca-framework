@@ -397,6 +397,69 @@ describe('luca-release refuses while a run is going', () => {
         await expectNothingChanged({ paseo })
     }, 60_000)
 
+    test('a run paused at the usage line alone is enough to refuse, and is listed by spec and repo', async () => {
+        const paseo = fakePaseo()
+        writeRun({
+            run_id: 'run-usage-line',
+            spec_number: 30,
+            run_repo: '/code/paused',
+            entries: [
+                {
+                    kind: 'usage_line_wait_started',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        window: 'seven_day',
+                        line: 80,
+                        percent: 81,
+                        resets_at: '2026-09-27T12:00:00.000Z',
+                        until: '2026-09-27T12:01:00.000Z',
+                    },
+                },
+            ],
+        })
+
+        const end = await release({ paseo: paseo.paseo })
+
+        expect(end.ok).toBe(false)
+        expect(printed(end)).toContain('#30')
+        expect(printed(end)).toContain('/code/paused')
+        await expectNothingChanged({ paseo })
+    }, 60_000)
+
+    test('a run stuck on its run budget, waiting for a reply, alone is enough to refuse, and is listed by spec and repo', async () => {
+        const paseo = fakePaseo()
+        writeRun({
+            run_id: 'run-budget',
+            spec_number: 40,
+            run_repo: '/code/spent',
+            entries: [
+                {
+                    kind: 'run_stuck',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        reason: 'run_budget',
+                        detail: 'The run used 50,000 tokens of its 50,000 budget.',
+                    },
+                },
+                {
+                    kind: 'stuck_reported',
+                    ticket: null,
+                    role: null,
+                    content: { comment_id: 7, body: 'The run is stuck.' },
+                },
+            ],
+        })
+
+        const end = await release({ paseo: paseo.paseo })
+
+        expect(end.ok).toBe(false)
+        expect(printed(end)).toContain('#40')
+        expect(printed(end)).toContain('/code/spent')
+        await expectNothingChanged({ paseo })
+    }, 60_000)
+
     test('finished runs, in journals or the board registry, do not stop a release', async () => {
         const paseo = fakePaseo()
         writeRun({

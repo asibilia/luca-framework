@@ -2,10 +2,11 @@ import { describe, expect, test } from 'bun:test'
 
 import { roleInstructions } from './role-instructions'
 
+import { EngineConfigSchema } from '../config/engine-config'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
 
 describe('instructions with several test commands', () => {
-    const config = {
+    const config = EngineConfigSchema.parse({
         ...PRACTICE_ENGINE_CONFIG,
         checks: {
             ...PRACTICE_ENGINE_CONFIG.checks,
@@ -14,7 +15,7 @@ describe('instructions with several test commands', () => {
                 { run: 'bun run test:workers', results: 'pass_fail' },
             ],
         },
-    } as unknown as Parameters<typeof roleInstructions>[0]['config']
+    })
 
     test('let writers run each test command, with options only after a bun one', () => {
         for (const role of ['test-writer', 'implementer'] as const) {

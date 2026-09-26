@@ -1,5 +1,4 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { z } from 'zod'
@@ -8,7 +7,13 @@ import { windowName } from './limit-wait'
 import { RateLimitReadingSchema } from './plan-signals'
 import { windowSamples } from './plan-usage'
 
-import type { JournalRecord, UsageLineWindow } from '../journal/journal-record'
+import { boardStateDir } from '../board/board-state-dir'
+import { defaultRunsDir } from '../journal/journal'
+import {
+    UsageLineWindowSchema,
+    type JournalRecord,
+    type UsageLineWindow,
+} from '../journal/journal-record'
 
 /**
  * The **usage lines**: how full, in percent, the account's weekly
@@ -32,10 +37,8 @@ export const LINE_OF: Record<UsageLineWindow, keyof UsageLines> = {
     five_hour: 'five_hour_line',
 }
 
-const WINDOWS = Object.keys(LINE_OF) as UsageLineWindow[]
-
 const isGuarded = (name: string): name is UsageLineWindow =>
-    (WINDOWS as string[]).includes(name)
+    UsageLineWindowSchema.safeParse(name).success
 
 /** One guarded window's fill level in one reading, and when it arrived. */
 export type WindowReading = {
@@ -165,26 +168,24 @@ export const usageLineEndedComment = ({
         ? `The plan's ${windowWords(window)} window reset, so the run carries on from the usage line.`
         : `The ${windowWords(window)} usage line was raised above ${percent}%, so the run carries on.`
 
-/** Luca's state folder: the runs folder's parent, `~/.local/state/luca`. */
-const stateDir = (): string =>
-    process.env.LUCA_RUNS_DIR === undefined
-        ? join(homedir(), '.local', 'state', 'luca')
-        : dirname(process.env.LUCA_RUNS_DIR)
-
-/** The file every run shares its newest readings in. */
+/**
+ * The file every run shares its newest readings in, in Luca's state folder
+ * (the runs folder's parent, `~/.local/state/luca`).
+ */
 export const defaultSharedReadingsPath = (): string =>
-    join(stateDir(), 'plan-readings.json')
+    join(dirname(defaultRunsDir()), 'plan-readings.json')
 
 /**
- * The file the `luca-board` plugin keeps its usage lines in, for the engine:
- * `$LUCA_BOARD_STATE_DIR/usage-lines.json`, else in `board/` in Luca's state
- * folder.
+ * The file the `luca-board` plugin keeps its usage lines in:
+ * `usage-lines.json` in the board's state folder (see `boardStateDir`).
  */
-export const defaultUsageLinesPath = (): string =>
-    join(
-        process.env.LUCA_BOARD_STATE_DIR || join(stateDir(), 'board'),
-        'usage-lines.json'
-    )
+export const defaultUsageLinesPath = ({
+    env,
+    home_dir,
+}: {
+    env: Record<string, string | undefined>
+    home_dir: string
+}): string => join(boardStateDir({ env, home_dir }), 'usage-lines.json')
 
 /** Reads a JSON file, or `null` when it is missing or not JSON. */
 const readJson = async (file: string): Promise<unknown> => {
@@ -298,7 +299,7 @@ export type UsageLineDeps = {
  * and the run goes on.
  *
  * @example
- * runEngine({ ..., usage: fileUsageLine({ lines_file: defaultUsageLinesPath(), shared_file: defaultSharedReadingsPath(), now: Date.now, log }) })
+ * runEngine({ ..., usage: fileUsageLine({ lines_file: defaultUsageLinesPath({ env: process.env, home_dir: homedir() }), shared_file: defaultSharedReadingsPath(), now: Date.now, log }) })
  */
 export const fileUsageLine = ({
     lines_file,

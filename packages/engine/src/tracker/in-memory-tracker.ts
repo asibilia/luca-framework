@@ -48,16 +48,23 @@ export const createInMemoryTracker = ({
     issues,
     sub_tickets,
     engine_login,
+    repo_labels = [],
+    issue_links = { sub_issues: true, dependencies: true },
 }: {
     issues: TrackerIssue[]
     /** Sub-ticket numbers per spec number. */
     sub_tickets: Record<number, number[]>
     /** Who the engine's own comments are from. Defaults to `luca-engine`. */
     engine_login?: string
+    /** The names of the labels the repo has. Defaults to none. */
+    repo_labels?: string[]
+    /** Whether the repo has sub-issues and dependencies. Defaults to both. */
+    issue_links?: { sub_issues: boolean; dependencies: boolean }
 }): InMemoryTracker => {
     const store = new Map(
         issues.map((issue) => [issue.number, cloneDeep(issue)])
     )
+    const labels = [...repo_labels]
     const comments = new Map<number, TrackerComment[]>()
     let lastCommentId = 0
     const pulls: InMemoryPullRequest[] = []
@@ -132,6 +139,14 @@ export const createInMemoryTracker = ({
                 ? null
                 : { number: pull.number, url: pull.url }
         },
+        listLabels: async () => [...labels],
+        createLabel: async ({ name }) => {
+            if (labels.includes(name)) {
+                throw new Error(`The label ${name} already exists`)
+            }
+            labels.push(name)
+        },
+        issueLinks: async () => ({ ...issue_links }),
         pullRequests: () => cloneDeep(pulls),
         commentsOn: ({ number }) =>
             (comments.get(number) ?? []).map(({ body }) => body),

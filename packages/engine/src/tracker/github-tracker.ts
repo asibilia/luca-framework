@@ -28,6 +28,11 @@ const GitHubCommentPostedSchema = z.object({ id: z.number().int() })
 
 const GitHubIssueListSchema = z.array(GitHubIssueSchema)
 
+/** Issues listed only for their numbers. */
+const GitHubIssueNumbersSchema = z.array(
+    z.object({ number: z.number().int().positive() })
+)
+
 /** Pull requests as `gh pr list --json number,url` prints them. */
 const GitHubPullListSchema = z.array(OpenedPullRequestSchema)
 
@@ -184,5 +189,74 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             })
             return pull ?? null
         },
+        listLabels: async () => {
+            const listed =
+                await $`gh label list --repo ${repo} --limit 1000 --json name --jq ${'.[].name'}`.quiet()
+            return listed.stdout
+                .toString()
+                .split('\n')
+                .filter((name) => name !== '')
+        },
+        createLabel: async ({ name, color, description }) => {
+            await $`gh label create ${name} --repo ${repo} --color ${color} --description ${description}`.quiet()
+        },
+        // Checked on the repo's newest issue; a repo with no issues yet
+        // can't show them missing, so both count as there.
+        issueLinks: async () => {
+            const value = await ghApi({
+                path: `repos/${repo}/issues?state=all&per_page=1`,
+            })
+            if (value === null) {
+                throw new Error(`gh couldn't list the issues of ${repo}`)
+            }
+            const [newest] = parseOrThrow({
+                schema: GitHubIssueNumbersSchema,
+                value,
+                what: `the newest issue of ${repo}`,
+            })
+            if (newest === undefined) {
+                return { sub_issues: true, dependencies: true }
+            }
+            const works = async (path: string): Promise<boolean> =>
+                (await ghApi({ path })) !== null
+            return {
+                sub_issues: await works(
+                    `repos/${repo}/issues/${newest.number}/sub_issues`
+                ),
+                dependencies: await works(
+                    `repos/${repo}/issues/${newest.number}/dependencies/blocked_by`
+                ),
+            }
+        },
     }
+}
+
+/**
+ * The GitHub `owner/name` of the repo checked out at `repo`, from `gh`.
+ * Throws when `gh` can't find it.
+ */
+export const githubRepoOf = async ({
+    repo,
+}: {
+    repo: string
+}): Promise<string> => {
+    const result =
+        await $`gh repo view --json nameWithOwner --jq .nameWithOwner`
+            .cwd(repo)
+            .quiet()
+            .nothrow()
+    const name = result.stdout.toString().trim()
+    if (result.exitCode !== 0 || name === '') {
+        throw new Error(
+            `Could not find the GitHub repo of ${repo} with gh: ${result.stderr.toString().trim()}`
+        )
+    }
+    return name
+}
+
+/** The login `gh` is signed in as, or `null` when it isn't. */
+export const ghLogin = async (): Promise<string | null> => {
+    const result = await $`gh api user --jq .login`.quiet().nothrow()
+    const login = result.stdout.toString().trim()
+    return result.exitCode === 0 && login !== '' ? login : null
 }

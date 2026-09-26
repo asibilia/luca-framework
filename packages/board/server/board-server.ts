@@ -1,6 +1,8 @@
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { join, resolve } from 'node:path'
 
+import { z } from 'zod'
+
 import { readRecord } from './board-vocabulary'
 import {
     engineArgs,
@@ -146,13 +148,13 @@ type OutsideRun = Replay & {
     repo: string | null
 }
 
+const RunRepoSchema = z.object({ repo: z.string().min(1) })
+
 /** The repo a run's `run_started` record names, if any. */
 const repoOf = ({ records }: { records: EngineRecord[] }): string | null => {
     const started = records.find((record) => record.kind === 'run_started')
-    const content: unknown = started?.content
-    if (typeof content !== 'object' || content === null) return null
-    const repo: unknown = (content as { repo?: unknown }).repo
-    return typeof repo === 'string' && repo !== '' ? resolve(repo) : null
+    const parsed = RunRepoSchema.safeParse(started?.content)
+    return parsed.success ? resolve(parsed.data.repo) : null
 }
 
 /** How many runs the plugin didn't start it shows, the latest changed first. */

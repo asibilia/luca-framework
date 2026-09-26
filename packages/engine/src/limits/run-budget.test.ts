@@ -69,9 +69,7 @@ describe('engine config: run_budget_tokens', () => {
         const result = await loadEngineConfig({ repo_root: repoRoot })
         if (!result.ok) throw new Error(result.error)
 
-        expect(
-            (result.config as { run_budget_tokens?: number }).run_budget_tokens
-        ).toBeUndefined()
+        expect(result.config.run_budget_tokens).toBeUndefined()
     })
 
     test('a run_budget_tokens that is not a positive whole number is refused with a clear error', async () => {

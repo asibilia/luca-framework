@@ -13,8 +13,6 @@
  *
  * Exits 0 when nothing is left to do, 1 when there is, 2 on bad flags.
  */
-import { $ } from 'bun'
-
 import { runSetup, type SetupGitHub } from './setup'
 
 import type { MemoryClient } from '../memory/memory-client'
@@ -23,108 +21,37 @@ import {
     createMuninnMcpClient,
     muninnSettings,
 } from '../memory/muninn-mcp-client'
-
-/** Calls `gh` in `cwd`; its trimmed stdout, or `null` when it fails. */
-const gh = async ({
-    cwd,
-    args,
-}: {
-    cwd: string
-    args: string[]
-}): Promise<string | null> => {
-    const result = await $`gh ${args}`.cwd(cwd).quiet().nothrow()
-    return result.exitCode === 0 ? result.stdout.toString().trim() : null
-}
+import {
+    createGitHubTracker,
+    ghLogin,
+    githubRepoOf,
+} from '../tracker/github-tracker'
 
 /**
- * The real GitHub side, through the `gh` CLI. Sub-issues and dependencies
- * are checked on the repo's newest issue; a repo with no issues yet can't
- * show them missing, so both count as there.
+ * The real GitHub side: the GitHub tracker of the repo at `cwd` for its
+ * labels and issue links, and `gh` for the login. With no GitHub repo, the
+ * tracker's calls fail with why (setup doesn't make them then).
  */
-const createGhSetupGitHub = ({ cwd }: { cwd: string }): SetupGitHub => {
-    const nameOf = async (): Promise<string> => {
-        const name = await gh({
-            cwd,
-            args: [
-                'repo',
-                'view',
-                '--json',
-                'nameWithOwner',
-                '--jq',
-                '.nameWithOwner',
-            ],
-        })
-        if (name === null || name === '') {
-            throw new Error(`gh can't find the GitHub repo of ${cwd}`)
+const githubOf = async ({ cwd }: { cwd: string }): Promise<SetupGitHub> => {
+    const name = await githubRepoOf({ repo: cwd }).catch(() => null)
+    if (name === null) {
+        const fail = () =>
+            Promise.reject(new Error(`gh can't find the GitHub repo of ${cwd}`))
+        return {
+            login: ghLogin,
+            githubRepo: async () => null,
+            listLabels: fail,
+            createLabel: fail,
+            issueLinks: fail,
         }
-        return name
     }
-    const works = async (path: string): Promise<boolean> =>
-        (await gh({ cwd, args: ['api', path] })) !== null
+    const tracker = createGitHubTracker({ repo: name })
     return {
-        login: async () => {
-            const login = await gh({
-                cwd,
-                args: ['api', 'user', '--jq', '.login'],
-            })
-            return login === null || login === '' ? null : login
-        },
-        githubRepo: async () => nameOf().catch(() => null),
-        issueLinks: async () => {
-            const repo = await nameOf()
-            const newest = await gh({
-                cwd,
-                args: [
-                    'api',
-                    `repos/${repo}/issues?state=all&per_page=1`,
-                    '--jq',
-                    '.[0].number // empty',
-                ],
-            })
-            if (newest === null || newest === '') {
-                return { sub_issues: true, dependencies: true }
-            }
-            return {
-                sub_issues: await works(
-                    `repos/${repo}/issues/${newest}/sub_issues`
-                ),
-                dependencies: await works(
-                    `repos/${repo}/issues/${newest}/dependencies/blocked_by`
-                ),
-            }
-        },
-        listLabels: async () => {
-            const listed = await gh({
-                cwd,
-                args: [
-                    'label',
-                    'list',
-                    '--limit',
-                    '1000',
-                    '--json',
-                    'name',
-                    '--jq',
-                    '.[].name',
-                ],
-            })
-            if (listed === null) throw new Error('gh label list failed')
-            return listed.split('\n').filter((name) => name !== '')
-        },
-        createLabel: async ({ name, color, description }) => {
-            const made = await gh({
-                cwd,
-                args: [
-                    'label',
-                    'create',
-                    name,
-                    '--color',
-                    color,
-                    '--description',
-                    description,
-                ],
-            })
-            if (made === null) throw new Error(`gh label create ${name} failed`)
-        },
+        login: ghLogin,
+        githubRepo: async () => name,
+        listLabels: tracker.listLabels,
+        createLabel: tracker.createLabel,
+        issueLinks: tracker.issueLinks,
     }
 }
 
@@ -171,7 +98,7 @@ const main = async (): Promise<number> => {
     try {
         const end = await runSetup({
             repo: cwd,
-            github: createGhSetupGitHub({ cwd }),
+            github: await githubOf({ cwd }),
             memory,
             base_branch,
             log: (line) => {

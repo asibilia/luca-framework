@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { decide } from './decide'
 
+import { EngineConfigSchema } from '../config/engine-config'
 import type { EngineConfig } from '../config/engine-config'
 import type { IntakeRead } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
@@ -27,7 +28,7 @@ import { REFACTOR_LABEL } from '../tracker/tracker'
  */
 
 /** tmnb's test commands: bun's for the red check, vitest's as a gate. */
-const TWO_RUNNERS = {
+const TWO_RUNNERS = EngineConfigSchema.parse({
     checks: {
         test: [
             'bun test',
@@ -39,13 +40,13 @@ const TWO_RUNNERS = {
     test_file_patterns: ['**/*.test.ts'],
     test_setup_files: [],
     rule_files: [],
-} as unknown as EngineConfig
+})
 
 const withTests = (test: unknown): EngineConfig =>
-    ({
+    EngineConfigSchema.parse({
         ...BUILD_CONFIG,
         checks: { ...BUILD_CONFIG.checks, test },
-    }) as unknown as EngineConfig
+    })
 
 const decideAfterIntake = ({
     config,

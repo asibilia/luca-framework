@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
 import { createHarness, type Harness } from './testing/board-harness'
 import {
@@ -22,11 +23,14 @@ afterEach(async () => {
     harness = null
 })
 
+/** A `run_started` record's content, its config and any other fields. */
+const RunStartedContentSchema = z.looseObject({ config: z.looseObject({}) })
+
 /** Intake of three tickets, its config's run budget set to `budget` if given. */
 const intakeWithBudget = ({ budget }: { budget?: number }): Entry[] =>
     intakeOfThree().map((entry) => {
         if (entry.kind !== 'run_started' || budget === undefined) return entry
-        const content = entry.content as { config: object }
+        const content = RunStartedContentSchema.parse(entry.content)
         return {
             ...entry,
             content: {

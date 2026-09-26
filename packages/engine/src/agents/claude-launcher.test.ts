@@ -13,6 +13,7 @@ import type {
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
 import type { AgentMessaging, AgentTurn } from './agent-launcher'
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
@@ -1171,9 +1172,14 @@ const appendOf = (options: Options | undefined): string => {
         : ''
 }
 
+/** An MCP tool result: its content blocks, text ones among them. */
+const ToolResultSchema = z.looseObject({
+    content: z.array(z.looseObject({ text: z.string().optional() })).optional(),
+})
+
 const textOf = (result: unknown): string => {
-    const content = (result as { content?: { text?: string }[] }).content
-    return content?.[0]?.text ?? ''
+    const parsed = ToolResultSchema.safeParse(result)
+    return parsed.success ? (parsed.data.content?.[0]?.text ?? '') : ''
 }
 
 describe('agent messages', () => {

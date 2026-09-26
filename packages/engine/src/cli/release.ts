@@ -8,6 +8,7 @@ import { z } from 'zod'
 
 import { readRunStart, unfinishedRuns, type RunEnd } from './run-modes'
 
+import { boardStateDir } from '../board/board-state-dir'
 import { loadEngineConfig } from '../config/engine-config'
 import { decide } from '../core/decide'
 import { STOP_ACTIONS } from '../core/execute'
@@ -41,8 +42,8 @@ export const defaultPinnedDir = ({ home_dir }: { home_dir: string }): string =>
     join(home_dir, '.local', 'share', 'luca')
 
 /**
- * The board's run registry: `$LUCA_BOARD_STATE_DIR/runs.json`, else
- * `~/.local/state/luca/board/runs.json`, as the board plugin keeps it.
+ * The board's run registry: `runs.json` in the board's state folder (see
+ * `boardStateDir`), as the board plugin keeps it.
  */
 export const defaultRegistryPath = ({
     env,
@@ -50,11 +51,7 @@ export const defaultRegistryPath = ({
 }: {
     env: Record<string, string | undefined>
     home_dir: string
-}): string =>
-    join(
-        env.LUCA_BOARD_STATE_DIR || join(home_dir, '.local/state/luca/board'),
-        'runs.json'
-    )
+}): string => join(boardStateDir({ env, home_dir }), 'runs.json')
 
 const pad = (value: number): string => String(value).padStart(2, '0')
 
@@ -176,24 +173,31 @@ export const goingRuns = async ({
 const describeRun = ({ run_id, spec, repo }: GoingRun): string =>
     `- ${spec === null ? 'a demo' : `spec #${spec}`} in ${repo ?? 'an unknown repo'} (run ${run_id})`
 
-/** Why the release stopped; everything before it was done. */
-class ReleaseStop extends Error {}
+/**
+ * What one release step gives: its value, or why the release stops there
+ * (everything before it was done).
+ */
+type Step<T> = { ok: true; value: T } | { ok: false; error: string }
 
-/** Runs git in `cwd` and returns its trimmed output; stops the release on a failure. */
+const stop = (error: string): { ok: false; error: string } => ({
+    ok: false,
+    error,
+})
+
+/** Runs git in `cwd`: its trimmed output, or why it failed. */
 const git = async ({
     cwd,
     args,
 }: {
     cwd: string
     args: string[]
-}): Promise<string> => {
+}): Promise<Step<string>> => {
     const result = await runCommand({ cmd: ['git', ...args], cwd })
-    if (result.exit_code !== 0) {
-        throw new ReleaseStop(
-            `git ${args.join(' ')} failed in ${cwd}: ${result.stderr.trim()}`
-        )
-    }
-    return result.stdout.trim()
+    return result.exit_code === 0
+        ? { ok: true, value: result.stdout.trim() }
+        : stop(
+              `git ${args.join(' ')} failed in ${cwd}: ${result.stderr.trim()}`
+          )
 }
 
 /** The ref names in `git ls-remote` output, without their `refs/.../` prefix. */
@@ -205,33 +209,39 @@ const remoteNames = ({ text, prefix }: { text: string; prefix: string }) =>
         .map((ref) => ref.slice(prefix.length))
 
 /** Step 1: `main` is checked out, clean, and the same commit as `origin/main`. */
-const checkCleanMain = async ({ repo }: { repo: string }): Promise<string> => {
+const checkCleanMain = async ({
+    repo,
+}: {
+    repo: string
+}): Promise<Step<string>> => {
     const branch = await runCommand({
         cmd: ['git', 'symbolic-ref', '--quiet', '--short', 'HEAD'],
         cwd: repo,
     })
     const on = branch.stdout.trim()
     if (branch.exit_code !== 0 || on !== 'main') {
-        throw new ReleaseStop(
+        return stop(
             `The working copy is on ${on === '' ? 'no branch' : `branch ${on}`}, not main. Check out main first.`
         )
     }
     const status = await git({ cwd: repo, args: ['status', '--porcelain'] })
-    if (status !== '') {
-        throw new ReleaseStop(
-            `main has uncommitted changes. Commit or remove them first:\n${status}`
+    if (!status.ok) return status
+    if (status.value !== '') {
+        return stop(
+            `main has uncommitted changes. Commit or remove them first:\n${status.value}`
         )
     }
     const local = await git({ cwd: repo, args: ['rev-parse', 'main'] })
-    const remote = (
-        await git({
-            cwd: repo,
-            args: ['ls-remote', 'origin', 'refs/heads/main'],
-        })
-    ).split('\t')[0]
-    if (remote !== local) {
-        throw new ReleaseStop(
-            `main (${local.slice(0, 12)}) doesn't match origin/main (${remote === '' ? 'missing' : remote?.slice(0, 12)}). Pull or push until they match, then try again.`
+    if (!local.ok) return local
+    const listed = await git({
+        cwd: repo,
+        args: ['ls-remote', 'origin', 'refs/heads/main'],
+    })
+    if (!listed.ok) return listed
+    const remote = listed.value.split('\t')[0]
+    if (remote !== local.value) {
+        return stop(
+            `main (${local.value.slice(0, 12)}) doesn't match origin/main (${remote === '' ? 'missing' : remote?.slice(0, 12)}). Pull or push until they match, then try again.`
         )
     }
     return local
@@ -244,9 +254,9 @@ const checkGates = async ({
 }: {
     repo: string
     log: (line: string) => void
-}) => {
+}): Promise<Step<null>> => {
     const loaded = await loadEngineConfig({ repo_root: repo })
-    if (!loaded.ok) throw new ReleaseStop(loaded.error)
+    if (!loaded.ok) return stop(loaded.error)
     const reports = await mkdtemp(join(tmpdir(), 'luca-release-gates-'))
     try {
         const { ok, checks } = await runGates({
@@ -263,10 +273,11 @@ const checkGates = async ({
         }
         const failed = checks.find((check) => !check.ok)
         if (!ok && failed !== undefined) {
-            throw new ReleaseStop(
+            return stop(
                 `The ${failed.name} gate failed (${failed.command}):\n${failed.output}`
             )
         }
+        return { ok: true, value: null }
     } finally {
         await rm(reports, { recursive: true, force: true })
     }
@@ -281,33 +292,33 @@ const tagRelease = async ({
     repo: string
     sha: string
     date: Date
-}): Promise<string> => {
-    const local = (
-        await git({ cwd: repo, args: ['tag', '--list', 'luca-*'] })
-    ).split('\n')
-    const remote = remoteNames({
-        text: await git({
-            cwd: repo,
-            args: ['ls-remote', '--tags', '--refs', 'origin', 'luca-*'],
-        }),
-        prefix: 'refs/tags/',
+}): Promise<Step<string>> => {
+    const local = await git({ cwd: repo, args: ['tag', '--list', 'luca-*'] })
+    if (!local.ok) return local
+    const listed = await git({
+        cwd: repo,
+        args: ['ls-remote', '--tags', '--refs', 'origin', 'luca-*'],
     })
-    const tag = nextReleaseTag({ date, existing: uniq([...local, ...remote]) })
-    await git({
+    if (!listed.ok) return listed
+    const remote = remoteNames({ text: listed.value, prefix: 'refs/tags/' })
+    const tag = nextReleaseTag({
+        date,
+        existing: uniq([...local.value.split('\n'), ...remote]),
+    })
+    const tagged = await git({
         cwd: repo,
         args: ['tag', '-a', tag, '-m', `Luca release ${tag}`, sha],
     })
+    if (!tagged.ok) return tagged
     const pushed = await runCommand({
         cmd: ['git', 'push', '-q', 'origin', `refs/tags/${tag}`],
         cwd: repo,
     })
     if (pushed.exit_code !== 0) {
         await runCommand({ cmd: ['git', 'tag', '-d', tag], cwd: repo })
-        throw new ReleaseStop(
-            `Couldn't push the tag ${tag}: ${pushed.stderr.trim()}`
-        )
+        return stop(`Couldn't push the tag ${tag}: ${pushed.stderr.trim()}`)
     }
-    return tag
+    return { ok: true, value: tag }
 }
 
 /**
@@ -322,10 +333,10 @@ const movePinnedClone = async ({
     repo: string
     pinned_dir: string
     tag: string
-}) => {
+}): Promise<Step<null>> => {
     if (!existsSync(join(pinned_dir, '.git'))) {
         if (existsSync(pinned_dir) && readdirSync(pinned_dir).length > 0) {
-            throw new ReleaseStop(
+            return stop(
                 `${pinned_dir} exists but is not a clone of Luca. Move it away, then try again.`
             )
         }
@@ -333,30 +344,35 @@ const movePinnedClone = async ({
             cwd: repo,
             args: ['remote', 'get-url', 'origin'],
         })
+        if (!url.ok) return url
         await mkdir(dirname(pinned_dir), { recursive: true })
-        await git({
+        const cloned = await git({
             cwd: dirname(pinned_dir),
-            args: ['clone', '-q', '--no-checkout', url, pinned_dir],
+            args: ['clone', '-q', '--no-checkout', url.value, pinned_dir],
         })
+        if (!cloned.ok) return cloned
     }
-    await git({
+    const fetched = await git({
         cwd: pinned_dir,
         args: ['fetch', '-q', 'origin', `refs/tags/${tag}:refs/tags/${tag}`],
     })
-    await git({
+    if (!fetched.ok) return fetched
+    const checked_out = await git({
         cwd: pinned_dir,
         args: ['checkout', '-q', '--detach', `refs/tags/${tag}`],
     })
+    if (!checked_out.ok) return checked_out
     // The Bun running this command, so it needn't be on PATH.
     const installed = await runCommand({
         cmd: [process.execPath, 'install', '--frozen-lockfile'],
         cwd: pinned_dir,
     })
     if (installed.exit_code !== 0) {
-        throw new ReleaseStop(
+        return stop(
             `${FROZEN_INSTALL} failed in ${pinned_dir}:\n${installed.stdout}\n${installed.stderr}`
         )
     }
+    return { ok: true, value: null }
 }
 
 /**
@@ -395,27 +411,41 @@ export const runRelease = async ({
     log: (line: string) => void
 }): Promise<RunEnd> => {
     let tag: string | null = null
+    const stopped = (reason: string): RunEnd => {
+        const message =
+            tag === null
+                ? `Refused: ${reason}`
+                : `Stopped after pushing ${tag}: ${reason}`
+        log(`[luca-release] ${message}`)
+        return { ok: false, message }
+    }
     try {
-        const sha = await checkCleanMain({ repo })
+        const clean = await checkCleanMain({ repo })
+        if (!clean.ok) return stopped(clean.error)
+        const sha = clean.value
         log(
             `[luca-release] main is clean and matches origin/main (${sha.slice(0, 12)})`
         )
 
         const going = await goingRuns({ runs_dir, registry_path })
-        if (!going.ok) throw new ReleaseStop(going.error)
+        if (!going.ok) return stopped(going.error)
         if (going.runs.length > 0) {
-            throw new ReleaseStop(
+            return stopped(
                 `Runs are going, so a release would change their engine halfway. Wait for them to end (or stop them), then try again:\n${going.runs.map(describeRun).join('\n')}`
             )
         }
         log('[luca-release] no run is going')
 
-        await checkGates({ repo, log })
+        const gates = await checkGates({ repo, log })
+        if (!gates.ok) return stopped(gates.error)
 
-        tag = await tagRelease({ repo, sha, date: new Date(now()) })
+        const tagged = await tagRelease({ repo, sha, date: new Date(now()) })
+        if (!tagged.ok) return stopped(tagged.error)
+        tag = tagged.value
         log(`[luca-release] tagged and pushed ${tag}`)
 
-        await movePinnedClone({ repo, pinned_dir, tag })
+        const moved = await movePinnedClone({ repo, pinned_dir, tag })
+        if (!moved.ok) return stopped(moved.error)
         log(
             `[luca-release] ${pinned_dir} is at ${tag}, installed from the lockfile`
         )
@@ -441,12 +471,7 @@ export const runRelease = async ({
         log(`[luca-release] ${message}`)
         return { ok: true, message }
     } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error)
-        const message =
-            tag === null
-                ? `Refused: ${reason}`
-                : `Stopped after pushing ${tag}: ${reason}`
-        log(`[luca-release] ${message}`)
-        return { ok: false, message }
+        // Such as a Paseo call that failed.
+        return stopped(error instanceof Error ? error.message : String(error))
     }
 }

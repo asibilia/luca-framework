@@ -5,7 +5,10 @@ import { z } from 'zod'
 
 import {
     ENGINE_CONFIG_FILE,
+    EngineConfigSchema,
+    isBunTestCommand,
     loadEngineConfig,
+    MuninnConfigSchema,
     testCommands,
     type EngineConfig,
     type TestCommand,
@@ -16,6 +19,7 @@ import {
     NEEDS_INFO_LABEL,
     READY_LABEL,
     REFACTOR_LABEL,
+    type Tracker,
 } from '../tracker/tracker'
 
 /**
@@ -26,22 +30,18 @@ import {
  * running it again gives the same result, so it doubles as a health check.
  */
 
-/** The GitHub side of setup, behind an adapter so tests can use a fake. */
-export type SetupGitHub = {
+/**
+ * The GitHub side of setup: the tracker's labels and issue links, plus the
+ * `gh` login and the repo's GitHub name, so tests can use a fake.
+ */
+export type SetupGitHub = Pick<
+    Tracker,
+    'listLabels' | 'createLabel' | 'issueLinks'
+> & {
     /** The login `gh` is signed in as, or `null` when it isn't. */
     login: () => Promise<string | null>
     /** The repo's GitHub `owner/name`, or `null` when it has none. */
     githubRepo: () => Promise<string | null>
-    /** Whether the repo's issues have sub-issues and issue dependencies. */
-    issueLinks: () => Promise<{ sub_issues: boolean; dependencies: boolean }>
-    /** The names of the repo's labels. */
-    listLabels: () => Promise<string[]>
-    /** Creates a label the repo doesn't have yet. */
-    createLabel: (args: {
-        name: string
-        color: string
-        description: string
-    }) => Promise<void>
 }
 
 /** The checks setup runs, by name. */
@@ -82,17 +82,12 @@ const LABELS = [
 ]
 
 /**
- * The top-level keys of a new-style engine config. A config with any other
- * key (such as old Luca's `lucaVersion`) is an old-Luca config.
+ * The top-level and `muninn` keys of a new-style engine config, from its
+ * schema. A config with any other key (such as old Luca's `lucaVersion`) is
+ * an old-Luca config.
  */
-const NEW_CONFIG_KEYS = new Set([
-    'checks',
-    'test_file_patterns',
-    'test_setup_files',
-    'rule_files',
-    'muninn',
-    'run_budget_tokens',
-])
+const NEW_CONFIG_KEYS = new Set(Object.keys(EngineConfigSchema.shape))
+const NEW_MUNINN_KEYS = new Set(Object.keys(MuninnConfigSchema.shape))
 
 const PackageJsonSchema = z.looseObject({
     scripts: z.record(z.string(), z.string()).default({}),
@@ -103,10 +98,6 @@ const errorText = (error: unknown): string =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
-
-/** A script that is a `bun test` command gives bun's per-test results. */
-const isBunTest = (script: string): boolean =>
-    /^bun\s+test(\s|$)/.test(script.trim())
 
 /**
  * The checks guessed from `package.json` scripts: `test` and `test:*`
@@ -128,7 +119,7 @@ export const guessChecks = ({
         .filter(([name]) => name === 'test' || name.startsWith('test:'))
         .toSorted(([a], [b]) => Number(b === 'test') - Number(a === 'test'))
         .map(([name, script]) =>
-            isBunTest(script)
+            isBunTestCommand(script)
                 ? { run: script.trim(), results: 'bun' }
                 : { run: `bun run ${name}`, results: 'pass_fail' }
         )
@@ -182,7 +173,8 @@ const findConfig = async ({ repo }: { repo: string }): Promise<FoundConfig> => {
     const muninn = raw.muninn
     const old =
         Object.keys(raw).some((key) => !NEW_CONFIG_KEYS.has(key)) ||
-        (isRecord(muninn) && Object.keys(muninn).some((key) => key !== 'vault'))
+        (isRecord(muninn) &&
+            Object.keys(muninn).some((key) => !NEW_MUNINN_KEYS.has(key)))
     return old ? { kind: 'old', raw } : { kind: 'new' }
 }
 

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
 import { createHarness, type Harness } from './testing/board-harness'
 import {
@@ -69,6 +70,12 @@ const tokens = (
 const OPUS = 'claude-opus-5-5'
 const HAIKU = 'claude-haiku-4-5-20251001'
 
+/** An `agent_session` record's content: its role and session. */
+const AgentSessionContentSchema = z.object({
+    role: z.string(),
+    session: z.looseObject({}),
+})
+
 /**
  * An agent turn's session with its tokens per model, as the launcher now
  * journals them, and a main loop's usage that leaves subagents out.
@@ -90,7 +97,7 @@ const sessionWithModels = ({
         cache_read: 1,
         cache_creation: 1,
     })
-    const content = base.content as { role: string; session: object }
+    const content = AgentSessionContentSchema.parse(base.content)
     return {
         ...base,
         content: {

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { $ } from 'bun'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
 import { runSetup } from './setup'
 
@@ -318,10 +319,9 @@ describe('luca-setup converts an old-Luca config', () => {
             memory: createFakeMuninn({ vaults: { tmnb: [] } }),
         })
 
-        const written = JSON.parse(await readConfigText()) as Record<
-            string,
-            unknown
-        >
+        const written = z
+            .record(z.string(), z.unknown())
+            .parse(JSON.parse(await readConfigText()))
         for (const key of Object.keys(written)) {
             expect(NEW_CONFIG_KEYS).toContain(key)
         }

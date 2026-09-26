@@ -62,22 +62,21 @@ const turnSession = ({
     ticket: number | null
     role: AgentRole
     model_usage: Record<string, Tokens>
-}): JournalEntry =>
-    ({
-        kind: 'agent_session',
-        ticket,
+}): JournalEntry => ({
+    kind: 'agent_session',
+    ticket,
+    role,
+    content: {
         role,
-        content: {
-            role,
-            session: {
-                session_id: SESSIONS[role],
-                usage: tokens(0, 0, 0, 0),
-                model_usage,
-                rate_limit_events: [],
-                billing_error: false,
-            },
+        session: {
+            session_id: SESSIONS[role],
+            usage: tokens(0, 0, 0, 0),
+            model_usage,
+            rate_limit_events: [],
+            billing_error: false,
         },
-    }) as JournalEntry
+    },
+})
 
 /** A turn that counts exactly `counted` tokens, all output, on Opus. */
 const turnOf = ({
@@ -112,19 +111,20 @@ const stepsAfter = ({
     decideSteps({
         records: recordsFrom({
             entries: [
-                ...intakePassed({ tickets }).map((entry) =>
-                    entry.kind === 'run_started' && budget !== undefined
-                        ? ({
-                              ...entry,
-                              content: {
-                                  ...entry.content,
-                                  config: {
-                                      ...entry.content.config,
-                                      run_budget_tokens: budget,
+                ...intakePassed({ tickets }).map(
+                    (entry): JournalEntry =>
+                        entry.kind === 'run_started' && budget !== undefined
+                            ? {
+                                  ...entry,
+                                  content: {
+                                      ...entry.content,
+                                      config: {
+                                          ...entry.content.config,
+                                          run_budget_tokens: budget,
+                                      },
                                   },
-                              },
-                          } as JournalEntry)
-                        : entry
+                              }
+                            : entry
                 ),
                 ...withInstalls({ entries }),
             ],
@@ -145,16 +145,15 @@ const sumSpent = (counted: number): JournalEntry[] => [
 ]
 
 /** The run went stuck on its budget. */
-const runStuck = (): JournalEntry =>
-    ({
-        kind: 'run_stuck',
-        ticket: null,
-        role: null,
-        content: {
-            reason: 'run_budget',
-            detail: `The run used ${BUDGET} tokens of its ${BUDGET} budget.`,
-        },
-    }) as JournalEntry
+const runStuck = (): JournalEntry => ({
+    kind: 'run_stuck',
+    ticket: null,
+    role: null,
+    content: {
+        reason: 'run_budget',
+        detail: `The run used ${BUDGET} tokens of its ${BUDGET} budget.`,
+    },
+})
 
 /** The engine told the spec issue the run is stuck, in comment 150. */
 const runStuckReported = (): JournalEntry => ({

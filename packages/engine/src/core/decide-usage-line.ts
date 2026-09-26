@@ -1,6 +1,10 @@
 import { LIMIT_WAIT_MARGIN_MS } from './decide-plan'
 
-import type { JournalRecord, UsageLineWindow } from '../journal/journal-record'
+import {
+    UsageLineWindowSchema,
+    type JournalRecord,
+    type UsageLineWindow,
+} from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
 import {
     LINE_OF,
@@ -90,12 +94,9 @@ export const decideUsageLine = ({
             ...sharedReadings({ readings: shared_readings }),
         ].filter(({ resets_at }) => resets_at * 1000 > past),
     })
-    for (const [window, key] of Object.entries(LINE_OF) as [
-        UsageLineWindow,
-        keyof UsageLines,
-    ][]) {
+    for (const window of UsageLineWindowSchema.options) {
         const reading = newest[window]
-        const line = usage_lines[key]
+        const line = usage_lines[LINE_OF[window]]
         if (reading === undefined || reading.percent < line) continue
         const resets_ms = reading.resets_at * 1000
         return {

@@ -8,6 +8,7 @@ import {
     type GuardRole,
 } from './role-rules'
 
+import { EngineConfigSchema } from '../config/engine-config'
 import type { EngineConfig } from '../config/engine-config'
 
 /** Seam 3: the guard rules, table by table. Pure: no files, no git. */
@@ -500,7 +501,7 @@ describe('check commands with shell syntax', () => {
 describe('several test commands', () => {
     // tmnb's shape (#428): bun's tests, read per test, and a vitest file
     // run as a pass-or-fail gate.
-    const config = {
+    const config = EngineConfigSchema.parse({
         ...CONFIG,
         checks: {
             ...CONFIG.checks,
@@ -510,7 +511,7 @@ describe('several test commands', () => {
                 'bun test e2e',
             ],
         },
-    } as unknown as EngineConfig
+    })
     const run = (role: GuardRole, command: string) =>
         checkToolCall({
             role,

@@ -27,6 +27,12 @@ const TestCommandEntrySchema = z.union([
     }),
 ])
 
+/** The config's `muninn` block. */
+export const MuninnConfigSchema = z.object({
+    /** The project's memory vault. */
+    vault: z.string().min(1),
+})
+
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule
  * files for the rules lens, the project's memory vault, and the run budget.
@@ -51,12 +57,7 @@ export const EngineConfigSchema = z.object({
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
-    muninn: z
-        .object({
-            /** The project's memory vault. */
-            vault: z.string().min(1),
-        })
-        .optional(),
+    muninn: MuninnConfigSchema.optional(),
     /**
      * The repo's run budget in tokens; left out, the engine's default
      * (`DEFAULT_RUN_BUDGET_TOKENS`).
@@ -69,9 +70,13 @@ export type EngineConfig = z.infer<typeof EngineConfigSchema>
 /** One test command the engine runs, and how it reads the results. */
 export type TestCommand = { run: string; results: TestResults }
 
+/** Whether `run` is a `bun test` command, which gives bun's per-test results. */
+export const isBunTestCommand = (run: string): boolean =>
+    /^bun\s+test(\s|$)/.test(run.trim())
+
 /** A command starting with `bun test` gives bun's per-test results. */
 const defaultResults = (run: string): TestResults =>
-    /^bun\s+test(\s|$)/.test(run.trim()) ? 'bun' : 'pass_fail'
+    isBunTestCommand(run) ? 'bun' : 'pass_fail'
 
 /**
  * Every test command in the config, in order, each with its results kind.

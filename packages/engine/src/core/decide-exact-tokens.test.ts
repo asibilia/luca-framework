@@ -70,22 +70,21 @@ const turnSession = ({
 }: {
     role: AgentRole
     model_usage: Record<string, Tokens>
-}): JournalEntry =>
-    ({
-        kind: 'agent_session',
-        ticket: 11,
+}): JournalEntry => ({
+    kind: 'agent_session',
+    ticket: 11,
+    role,
+    content: {
         role,
-        content: {
-            role,
-            session: {
-                session_id: SESSIONS[role],
-                usage: tokens(1, 1, 1, 1),
-                model_usage,
-                rate_limit_events: [],
-                billing_error: false,
-            },
+        session: {
+            session_id: SESSIONS[role],
+            usage: tokens(1, 1, 1, 1),
+            model_usage,
+            rate_limit_events: [],
+            billing_error: false,
         },
-    }) as JournalEntry
+    },
+})
 
 /** Ticket #11 built and pushed, with these sessions after each agent's result. */
 const builtWith = (sessions: [JournalEntry, JournalEntry, JournalEntry]) => {
@@ -152,7 +151,7 @@ describe('decision step: exact tokens', () => {
 
     test("an older journal, with no tokens per model, still replays: the run's usage counts each turn by its main loop's usage", () => {
         const steps = ticketBuilt({ ticket: 11 })
-        const ticketUsage = {
+        const ticketUsage: JournalEntry = {
             kind: 'usage_recorded',
             ticket: 11,
             role: null,
@@ -163,7 +162,7 @@ describe('decision step: exact tokens', () => {
                 tokens: tokens(30, 300, 0, 0),
                 windows: {},
             },
-        } as JournalEntry
+        }
         const paths = [ticketPath(11), RUN_BRANCH_PATH]
         const action = decideAfter([
             runBranchCreated(),

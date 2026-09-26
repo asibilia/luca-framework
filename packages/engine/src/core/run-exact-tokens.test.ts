@@ -54,8 +54,10 @@ const tokens = (
 const OPUS = 'claude-opus-5-5'
 const HAIKU = 'claude-haiku-4-5-20251001'
 
+type ModelUsage = Record<string, Tokens>
+
 /** Each scripted agent's tokens per model, in the order the agents run. */
-const MODEL_USAGE: Record<string, Tokens>[] = [
+const MODEL_USAGE: [ModelUsage, ModelUsage, ModelUsage, ModelUsage] = [
     // The test-writer, whose subagent ran on Haiku.
     {
         [OPUS]: tokens(1000, 2000, 50_000, 3000),
@@ -90,12 +92,7 @@ const sessionWith = ({
 /** The happy path, each agent reporting its tokens per model. */
 const turnsWithTokens = (): ScriptedTurn[] => {
     const { testWriter, implementer, reviewer } = happyTurns()
-    const [tw, impl, rev, lens] = MODEL_USAGE as [
-        Record<string, Tokens>,
-        Record<string, Tokens>,
-        Record<string, Tokens>,
-        Record<string, Tokens>,
-    ]
+    const [tw, impl, rev, lens] = MODEL_USAGE
     return [
         {
             ...testWriter,
@@ -143,9 +140,7 @@ describe('exact tokens in the practice run', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const sessions = records.flatMap((record) =>
-            record.kind === 'agent_session'
-                ? [record.content.session as Record<string, unknown>]
-                : []
+            record.kind === 'agent_session' ? [record.content.session] : []
         )
         expect(sessions.map((session) => session.model_usage)).toEqual(
             MODEL_USAGE
@@ -179,12 +174,7 @@ describe('exact tokens in the practice run', () => {
         expect(totals).toEqual([19_100, 19_700])
         const journaled = records.flatMap((record) =>
             record.kind === 'agent_session'
-                ? [
-                      counted(
-                          ((record.content.session as Record<string, unknown>)
-                              .model_usage ?? {}) as Record<string, Tokens>
-                      ),
-                  ]
+                ? [counted(record.content.session.model_usage)]
                 : []
         )
         const sum = journaled.reduce((total, each) => total + each, 0)
