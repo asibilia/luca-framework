@@ -119,6 +119,22 @@ describe('luca subcommands', () => {
         expect(end.exit_code).toBe(2)
         expect(`${end.stdout}\n${end.stderr}`).toContain('luca setup')
     }, 30_000)
+
+    test('luca --help lists init', async () => {
+        const end = await luca({ args: ['--help'] })
+
+        expect(end.exit_code).toBe(0)
+        expect(`${end.stdout}\n${end.stderr}`).toMatch(/^\s+init\b/m)
+    }, 30_000)
+
+    test('luca init is reached through luca, and a bad flag prints its usage and exits 2', async () => {
+        const end = await luca({ args: ['init', '--no-such-flag'] })
+
+        expect(end.exit_code).toBe(2)
+        const output = `${end.stdout}\n${end.stderr}`
+        expect(output).toContain('luca init')
+        expect(output).toContain('--skip-muninndb')
+    }, 30_000)
 })
 
 describe('the engine package bins', () => {
