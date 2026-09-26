@@ -1162,7 +1162,8 @@ export const BoardPanel = ({
             {state.run_tokens > 0 ? (
                 <Text style={styles.mono}>
                     This run&apos;s tokens:{' '}
-                    {tokensText({ tokens: state.run_tokens })}
+                    {tokensText({ tokens: state.run_tokens })} of its run budget{' '}
+                    {tokensText({ tokens: state.run_budget_tokens })}
                 </Text>
             ) : null}
             {state.run_plan_used.length > 0 ? (

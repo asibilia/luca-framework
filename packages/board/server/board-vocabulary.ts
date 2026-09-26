@@ -98,7 +98,21 @@ const AgentSessionSchema = z.looseObject({
 const JevJobSchema = z.looseObject({ job: z.string() })
 
 export const BOARD_VOCABULARY = {
-    run_started: z.looseObject({ spec_number: z.number().int() }),
+    run_started: z.looseObject({
+        spec_number: z.number().int(),
+        /** The engine config; the board reads only its run budget. */
+        config: z
+            .looseObject({
+                run_budget_tokens: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .catch(undefined),
+            })
+            .optional()
+            .catch(undefined),
+    }),
     intake_read: z.looseObject({
         spec: z.looseObject({ number: z.number(), title: z.string() }),
     }),
@@ -205,6 +219,11 @@ export const BOARD_VOCABULARY = {
     }),
     run_branch_pushed: z.looseObject({ branch: z.string() }),
     ticket_stuck: z.looseObject({
+        reason: z.string(),
+        detail: z.string().catch(''),
+    }),
+    /** The whole run is stuck (#435): `run_budget`, it used up its budget. */
+    run_stuck: z.looseObject({
         reason: z.string(),
         detail: z.string().catch(''),
     }),
@@ -386,6 +405,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'ticket_rebased' }),
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
+    entry({ kind: 'run_stuck' }),
     entry({ kind: 'pull_request_opened' }),
     entry({ kind: 'worktrees_removed' }),
     entry({ kind: 'jev_asked' }),

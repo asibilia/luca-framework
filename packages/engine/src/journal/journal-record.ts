@@ -585,10 +585,25 @@ const TicketStuckEntrySchema = z.object({
     content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
 })
 
+/** Why the whole run is stuck: it used up its run budget of tokens. */
+export const RunStuckReasonSchema = z.enum(['run_budget'])
+
+export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
+
+/**
+ * The whole run is stuck (`ticket: null`): nothing new starts until the
+ * spec owner replies `retry` (one more full run budget) or `stop`.
+ */
+const RunStuckEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_stuck'),
+    content: z.object({ reason: RunStuckReasonSchema, detail: z.string() }),
+})
+
 /**
  * The engine told the spec issue that a ticket (or, with `ticket: null`,
- * the final review) is stuck, in its comment `comment_id`, and now waits
- * for the spec owner's reply.
+ * the stuck run, else the final review) is stuck, in its comment
+ * `comment_id`, and now waits for the spec owner's reply.
  */
 const StuckReportedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -624,8 +639,9 @@ export type ReplyWord = z.infer<typeof ReplyWordSchema>
 
 /**
  * The engine took the spec owner's reply: `retry` or `skip` for `ticket`,
- * `stop` for the whole run, or `retry` or `ship` for the stuck final review
- * (`ticket` is `null` for these).
+ * `stop` for the whole run, `retry` for the run stuck on its budget, or
+ * `retry` or `ship` for the stuck final review (`ticket` is `null` for
+ * these).
  */
 const ReplyReceivedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -1064,6 +1080,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketRebasedEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
+    RunStuckEntrySchema,
     PullRequestOpenedEntrySchema,
     JevAskedEntrySchema,
     JevAnsweredEntrySchema,
@@ -1135,6 +1152,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketRebasedEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
+    RunStuckEntrySchema.extend(STAMP_FIELDS),
     PullRequestOpenedEntrySchema.extend(STAMP_FIELDS),
     JevAskedEntrySchema.extend(STAMP_FIELDS),
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
@@ -1205,6 +1223,7 @@ export const JournalKindSchema = z.enum([
     'ticket_rebased',
     'run_branch_pushed',
     'ticket_stuck',
+    'run_stuck',
     'pull_request_opened',
     'jev_asked',
     'jev_answered',

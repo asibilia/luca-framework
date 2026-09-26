@@ -241,6 +241,59 @@ export const finalStuckComment = ({
     ].join('\n\n')
 }
 
+/** A token count with thousands separators, such as `50,000`. */
+const tokensText = (tokens: number): string =>
+    String(tokens).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+/**
+ * Why the run is stuck on its budget, in one line.
+ *
+ * @example
+ * runBudgetDetail({ tokens: 50_100, budget: 50_000 })
+ * // 'The run used 50,100 tokens of its run budget of 50,000.'
+ */
+export const runBudgetDetail = ({
+    tokens,
+    budget,
+}: {
+    tokens: number
+    budget: number
+}): string =>
+    `The run used ${tokensText(tokens)} tokens of its run budget of ${tokensText(budget)}.`
+
+/**
+ * The comment on the spec issue when the whole run is stuck on its run
+ * budget: why, how big one budget is, and the replies `retry` and `stop`
+ * (never `skip` or `ship`).
+ *
+ * @example
+ * runStuckComment({ detail, budget: 9_000_000 })
+ * // '**The run is stuck: it used up its run budget**\n\nWhy: ...'
+ */
+export const runStuckComment = ({
+    detail,
+    budget,
+}: {
+    detail: string
+    /** One full run budget. */
+    budget: number
+}): string =>
+    [
+        '**The run is stuck: it used up its run budget**',
+        [
+            `Why: ${detail}`,
+            `One run budget is ${tokensText(budget)} tokens (input, output, and cache writes; cache reads don't count). A repo changes it with \`run_budget_tokens\` in \`.luca/config.json\`.`,
+            'Nothing new starts until you reply. Other stuck work waits for its reply until the run carries on.',
+        ].join('\n'),
+        [
+            'Reply with one word on this issue:',
+            `- \`retry\`: add one more full run budget (${tokensText(budget)} tokens) and carry on where it stopped.`,
+            '- `stop`: end the run without a PR. The branch is kept.',
+            '',
+            'Only the spec owner counts.',
+        ].join('\n'),
+    ].join('\n\n')
+
 /**
  * The detail of a ticket stuck on a test setup file change: the file, why,
  * and what to do.

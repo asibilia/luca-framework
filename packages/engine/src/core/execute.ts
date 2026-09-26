@@ -393,6 +393,8 @@ export const executeAction = async ({
         case 'report_final_review_stuck':
         case 'ship_final_review':
         case 'retry_final_review':
+        case 'mark_run_stuck':
+        case 'report_run_stuck':
             return executeStuckAction({
                 action,
                 journal,

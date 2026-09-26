@@ -2,6 +2,7 @@ import { decideBuild, type BuildAction } from './decide-build'
 import { decideCrashes, type CrashAction } from './decide-crashes'
 import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
+import { decideRunBudget, type RunBudgetAction } from './decide-run-budget'
 import { decideUsage, type UsageAction } from './decide-usage'
 import { decideUsageLine, type UsageLineAction } from './decide-usage-line'
 
@@ -25,6 +26,8 @@ export type EngineAction =
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
     /** A limit wait, or a billing stop, before any build step. */
     | PlanAction
+    /** The run used up its run budget: it is stuck until the owner replies. */
+    | RunBudgetAction
     /** A pause at the usage line, before the next agent's turn. */
     | UsageLineAction
     /** A finished ticket's usage, or the run's before it ends. */
@@ -49,8 +52,10 @@ export type EngineAction =
  * plan: a limit wait or a billing stop is the only action,
  * for the whole run, however many tickets are in flight (the scheduler lets
  * them settle first, then every cut-off step is taken again after the
- * wait). Then the usage line (`decide-usage-line.ts`): at or over a line,
- * a usage-line wait comes alone before the next agent's turn. A finished
+ * wait). Then the run budget: a run whose tokens reached it is stuck, and
+ * only its report and the owner's reply come next (`decide-run-budget.ts`).
+ * Then the usage line (`decide-usage-line.ts`): at or over a line, a
+ * usage-line wait comes alone before the next agent's turn. A finished
  * ticket's usage is recorded beside the build steps, and
  * the run's alone, just before it ends. A stop action (`done`,
  * `invalid_journal`) always comes alone.
@@ -93,6 +98,8 @@ export const decideSteps = ({
                 : null
         return [usage ?? plan]
     }
+    const budget = decideRunBudget({ state, records, spec_number })
+    if (budget !== null) return budget
     const build = decideMemory({
         state,
         records,

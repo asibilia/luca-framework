@@ -29,7 +29,7 @@ const TestCommandEntrySchema = z.union([
 
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule
- * files for the rules lens, and the project's memory vault.
+ * files for the rules lens, the project's memory vault, and the run budget.
  *
  * Unknown keys, such as old Luca's, are dropped when the file is read.
  *
@@ -57,6 +57,11 @@ export const EngineConfigSchema = z.object({
             vault: z.string().min(1),
         })
         .optional(),
+    /**
+     * The repo's run budget in tokens; left out, the engine's default
+     * (`DEFAULT_RUN_BUDGET_TOKENS`).
+     */
+    run_budget_tokens: z.number().int().positive().optional(),
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>

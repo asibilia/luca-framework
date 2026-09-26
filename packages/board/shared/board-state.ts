@@ -317,7 +317,7 @@ export type TicketCard = z.infer<typeof TicketCardSchema>
 
 /** Stuck work waiting for a one-word reply on the spec issue. */
 export const NeedsYouSchema = z.object({
-    /** `ticket-<n>` or `final`. */
+    /** `ticket-<n>`, `final`, or `run` (the run stuck on its budget). */
     key: z.string(),
     ticket: z.number().int().nullable(),
     subject: z.string(),
@@ -405,6 +405,14 @@ export type Usage = z.infer<typeof UsageSchema>
  * run's and chat's, never one run's.
  */
 export const USAGE_LABEL = 'plan usage (account-wide)'
+
+/**
+ * The engine's default run budget in tokens (its
+ * `DEFAULT_RUN_BUDGET_TOKENS`, in `engine/src/limits/run-budget.ts`), for a
+ * run whose engine config sets no `run_budget_tokens`. The plugin never
+ * loads the engine's code, so the number is kept here too.
+ */
+export const DEFAULT_RUN_BUDGET_TOKENS = 9_000_000
 
 export const EngineEndedSchema = z.object({
     ok: z.boolean(),
@@ -537,6 +545,14 @@ export const BoardStateSchema = z.object({
      * an older board state still parses.
      */
     run_tokens: z.number().min(0).default(0),
+    /**
+     * The tokens the run may use before it is stuck (#435): one full run
+     * budget, plus one more for each `retry` the owner gave it. Defaulted,
+     * so an older board state still parses.
+     */
+    run_budget_tokens: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
+    /** One full run budget: the engine config's, else the default. */
+    run_budget_each: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
     /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
         .object({

@@ -8,6 +8,7 @@ import {
     reasonText,
     RETRY_REFUSED_TEXT,
     rebasedText,
+    runReasonText,
     reviewCountsText,
     roleWords,
     startKind,
@@ -363,6 +364,11 @@ export const describeRecord = ({
         case 'ticket_stuck':
             return event({
                 text: `${at}stuck. ${reasonText({ reason: record.content.reason })}`,
+                tone: 'danger',
+            })
+        case 'run_stuck':
+            return event({
+                text: `The run is stuck. ${runReasonText({ reason: record.content.reason })}`,
                 tone: 'danger',
             })
         case 'pull_request_opened':

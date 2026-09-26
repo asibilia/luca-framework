@@ -184,9 +184,11 @@ export const statusText = ({ status }: { status: RunStatus }): string => {
 export const percentText = ({ percent }: { percent: number | null }): string =>
     percent === null ? '–' : `${percent}%`
 
-/** 1234 → "1.2k". */
-export const tokensText = ({ tokens }: { tokens: number }): string =>
-    tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens)
+/** 1234 → "1.2k"; 9000000 → "9.0M". */
+export const tokensText = ({ tokens }: { tokens: number }): string => {
+    if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
+    return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens)
+}
 
 const two = ({ value }: { value: number }) => String(value).padStart(2, '0')
 

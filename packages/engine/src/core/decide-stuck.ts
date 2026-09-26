@@ -90,6 +90,43 @@ export const parseReply = ({ body }: { body: string }): ParsedReply | null => {
     return { word, ticket: match[2] === undefined ? null : Number(match[2]) }
 }
 
+/**
+ * The spec owner's comments that read as replies and aren't handled yet,
+ * oldest first. Comments from anyone else, the engine's own, and the
+ * owner's other comments are never replies.
+ */
+export const pendingReplies = ({
+    state,
+}: {
+    state: RunState
+}): (ParsedReply & { comment_id: number })[] => {
+    const owner = (state.snapshot?.spec.author ?? '').toLowerCase()
+    return state.comments.flatMap(({ comment_id, author, body }) => {
+        if (owner === '' || author.toLowerCase() !== owner) return []
+        if (state.handled_comments.includes(comment_id)) return []
+        if (state.engine_comments.includes(comment_id)) return []
+        const reply = parseReply({ body })
+        return reply === null ? [] : [{ comment_id, ...reply }]
+    })
+}
+
+/** Wait for a reply: read the spec issue's comments after the newest seen. */
+export const waitForReply = ({
+    state,
+    spec_number,
+}: {
+    state: RunState
+    spec_number: number
+}): StuckAction => ({
+    type: 'wait_for_reply',
+    spec_number,
+    since_id:
+        max([
+            ...state.comments.map(({ comment_id }) => comment_id),
+            ...state.engine_comments,
+        ]) ?? 0,
+})
+
 /** Whether a ticket is stuck, told, and waiting for the owner's reply. */
 const awaitingReply = (progress: TicketProgress): boolean =>
     progress.stuck !== null &&
@@ -236,19 +273,11 @@ export const replySteps = ({
     /** The run's tickets. */
     numbers: number[]
 }): StuckAction[] => {
-    const owner = (state.snapshot?.spec.author ?? '').toLowerCase()
     const waiting = numbers.filter((number) => {
         const progress = state.tickets[number]
         return progress !== undefined && awaitingReply(progress)
     })
-    const pending = state.comments.flatMap(({ comment_id, author, body }) => {
-        if (owner === '' || author.toLowerCase() !== owner) return []
-        if (state.handled_comments.includes(comment_id)) return []
-        if (state.engine_comments.includes(comment_id)) return []
-        const reply = parseReply({ body })
-        return reply === null ? [] : [{ comment_id, ...reply }]
-    })
-    const next = pending[0]
+    const next = pendingReplies({ state })[0]
     if (next !== undefined) {
         const ignore = (reason: ReplyProblem): StuckAction[] => [
             {
@@ -314,10 +343,5 @@ export const replySteps = ({
         ]
     }
     if (waiting.length === 0 && !finalAwaitingReply(state)) return []
-    const since_id =
-        max([
-            ...state.comments.map(({ comment_id }) => comment_id),
-            ...state.engine_comments,
-        ]) ?? 0
-    return [{ type: 'wait_for_reply', spec_number, since_id }]
+    return [waitForReply({ state, spec_number })]
 }

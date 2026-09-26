@@ -2,6 +2,7 @@ import type { BoardRecord } from './board-vocabulary'
 
 import {
     ALL_STEPS_DONE,
+    DEFAULT_RUN_BUDGET_TOKENS,
     LENS_NAMES,
     LOOP_CAP,
     NO_MEMORY,
@@ -171,6 +172,8 @@ export const createBoardState = ({
     usage: null,
     usage_label: USAGE_LABEL,
     run_tokens: 0,
+    run_budget_tokens: DEFAULT_RUN_BUDGET_TOKENS,
+    run_budget_each: DEFAULT_RUN_BUDGET_TOKENS,
     limit_wait: null,
     usage_line_wait: null,
     run_plan_used: [],
@@ -316,6 +319,19 @@ export const ticketKey = ({ ticket }: { ticket: number }): string =>
 
 /** The key of the final review's "Needs you" item. */
 export const FINAL_KEY = 'final'
+
+/** The key of the "Needs you" item for the whole run, stuck on its budget. */
+export const RUN_KEY = 'run'
+
+/** Why the whole run is stuck (`run_stuck`'s reason), in words. */
+const RUN_STUCK_REASONS: Record<string, string> = {
+    run_budget:
+        'The run used up its run budget of tokens. `retry` adds one more full budget.',
+}
+
+/** A run stuck reason code in words. */
+export const runReasonText = ({ reason }: { reason: string }): string =>
+    RUN_STUCK_REASONS[reason] ?? `${reason.replaceAll('_', ' ')}.`
 
 /**
  * A role in words: a final review lens's role (`security-lens`) reads
@@ -734,15 +750,21 @@ const applyKind = ({
 }): BoardState => {
     const { ticket } = record
     switch (record.kind) {
-        case 'run_started':
+        case 'run_started': {
+            const budget =
+                record.content.config?.run_budget_tokens ??
+                DEFAULT_RUN_BUDGET_TOKENS
             return {
                 ...state,
+                run_budget_tokens: budget,
+                run_budget_each: budget,
                 run: {
                     ...state.run,
                     spec_number: record.content.spec_number,
                     phase: 'intake',
                 },
             }
+        }
         case 'intake_read':
             return {
                 ...state,
@@ -1098,6 +1120,23 @@ const applyKind = ({
                 },
             })
         }
+        case 'run_stuck':
+            return addNeedsYou({
+                state,
+                item: {
+                    key: RUN_KEY,
+                    ticket: null,
+                    subject: 'The run is stuck',
+                    reason: runReasonText({ reason: record.content.reason }),
+                    detail: clip({
+                        text: record.content.detail,
+                        max: DETAIL_MAX,
+                    }),
+                    tried: [],
+                    replies: ['retry', 'stop'],
+                    since: record.time,
+                },
+            })
         case 'pull_request_opened':
             return {
                 ...state,
@@ -1775,6 +1814,18 @@ const replyReceived = ({
                     key: ticketKey({ ticket }),
                 })
             }
+            // A bare `retry` while the run is stuck on its budget adds one
+            // more full budget; the final review is left as it is.
+            if (state.needs_you.some((item) => item.key === RUN_KEY)) {
+                return resolveNeedsYou({
+                    state: {
+                        ...state,
+                        run_budget_tokens:
+                            state.run_budget_tokens + state.run_budget_each,
+                    },
+                    key: RUN_KEY,
+                })
+            }
             return resolveNeedsYou({
                 state: updateFinal({
                     state,
@@ -1827,6 +1878,8 @@ const runStatus = ({ state }: { state: BoardState }): RunStatus => {
     if (engine_ended && !engine_ended.ok) return 'ended_with_error'
     if (state.limit_wait) return 'limit_wait'
     if (state.usage_line_wait) return 'usage_line_wait'
+    // Nothing new starts while the run is stuck on its budget.
+    if (state.needs_you.some((item) => item.key === RUN_KEY)) return 'stuck'
     if (state.needs_you.length > 0 && !isActive({ state })) return 'stuck'
     return phase
 }

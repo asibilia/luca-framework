@@ -53,6 +53,8 @@ on with a run from its journal (#369).
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
+| `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
+| `src/limits/run-budget.ts` | Pure: the default run budget, a run's budget from its config, and its tokens so far. |
 | `src/limits/plan-signals.ts` | Pure: what a rate-limit reading or a session says (fine, a limit, or billing). |
 | `src/limits/plan-usage.ts` | Pure: a ticket's or the run's tokens and plan-window movement. |
 | `src/limits/limit-wait.ts` | The engine's clock, waiting until a time, and the spec's limit-wait comment. |
@@ -1152,6 +1154,42 @@ record gets a new record over all of its sessions, so a ticket's latest
 `usage_recorded` is its whole usage. Readings come in hundredths, so
 per-ticket numbers are rough, and other sessions on the same plan count too.
 A ticket or run with no agent sessions (scripted agents) records nothing.
+
+**The run budget** (#435, `decideRunBudget`, `src/limits/run-budget.ts`).
+Each run may use a budget of tokens, so a runaway run can't quietly use up
+the week. A run's tokens are every agent turn's input, output, and
+cache-creation tokens per model, subagents included, over every ticket, the
+final review, and the learner; cache reads don't count. The default budget,
+`DEFAULT_RUN_BUDGET_TOKENS` (9,000,000), is 3 times the largest run total in
+the v1 dogfood journals; its comment says how it was worked out. A repo
+changes it with `run_budget_tokens` (a positive whole number) in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "run_budget_tokens": 12000000 }
+```
+
+Once the run's tokens reach the budget, the run is **stuck** with the reason
+"run budget": nothing new starts, and steps in flight finish first.
+
+```
+decide ──> mark_run_stuck (reason run_budget) ──> run_stuck (ticket null)
+decide ──> report_run_stuck    stuck comment on the spec ──> stuck_reported (ticket null)
+decide ──> wait_for_reply ... ──> comment_read
+decide ──> take_reply (retry or stop, ticket null) ──> reply_received
+```
+
+The spec owner replies on the spec issue with one word:
+
+- `retry` adds one more full budget (the run may now use 2 budgets, then 3,
+  ...), and the run carries on where it stopped.
+- `stop` ends the run without a PR, as for any stop.
+
+Only the spec owner counts. While the run is stuck on its budget, only a
+bare `retry` or a `stop` is taken; the owner's other replies (such as
+`retry #12` for a stuck ticket) wait until the run carries on. The board
+shows the run's tokens against its budget, and the run stuck on it under
+**Needs you**.
 
 ## The usage line
 
