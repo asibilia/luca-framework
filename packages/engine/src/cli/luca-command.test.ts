@@ -136,6 +136,22 @@ describe('luca subcommands', () => {
         expect(output).toContain('--skip-muninndb')
     }, 30_000)
 
+    test('luca --help lists upgrade', async () => {
+        const end = await luca({ args: ['--help'] })
+
+        expect(end.exit_code).toBe(0)
+        expect(`${end.stdout}\n${end.stderr}`).toMatch(/^\s+upgrade\b/m)
+    }, 30_000)
+
+    test('luca upgrade is reached through luca, and a bad flag prints its usage with --to and exits 2', async () => {
+        const end = await luca({ args: ['upgrade', '--no-such-flag'] })
+
+        expect(end.exit_code).toBe(2)
+        const output = `${end.stdout}\n${end.stderr}`
+        expect(output).toContain('luca upgrade')
+        expect(output).toContain('--to')
+    }, 30_000)
+
     test('luca init usage names --skip-skills', async () => {
         const end = await luca({ args: ['init', '--no-such-flag'] })
 
