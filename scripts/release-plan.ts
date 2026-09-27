@@ -4,8 +4,8 @@
  * `changeset status` and npm's registry. It writes these outputs to
  * `$GITHUB_OUTPUT` (or prints them, run by hand):
  *
- *   pending   `true` when changesets are pending: open or update the
- *             Version PR
+ *   pending   `true` when changesets that release something are pending:
+ *             open or update the Version PR. Empty changesets don't count.
  *   title     the Version PR's title and commit message, such as
  *             `chore(release): version packages (luca@14.0.0-alpha.0)`
  *   version   the publish package's version
@@ -29,7 +29,12 @@ const NPM_REGISTRY = 'https://registry.npmjs.org'
 const TITLE = 'chore(release): version packages'
 
 const StatusSchema = z.looseObject({
-    changesets: z.array(z.looseObject({ id: z.string() })),
+    changesets: z.array(
+        z.looseObject({
+            id: z.string(),
+            releases: z.array(z.looseObject({ name: z.string() })),
+        })
+    ),
     releases: z.array(
         z.looseObject({
             name: z.string(),
@@ -94,7 +99,12 @@ const versionTitle = (releases: z.infer<typeof StatusSchema>['releases']) => {
 const plan = async ({ work_dir }: { work_dir: string }) => {
     const status = await releasePlan({ work_dir })
     const manifest = ManifestSchema.parse(await Bun.file(LUCA_MANIFEST).json())
-    const pending = status.changesets.length > 0
+    // Empty changesets (`changeset add --empty`) don't count: changesets/action
+    // skips the Version PR when every changeset is empty, so counting them
+    // would block both the Version PR and the publish job.
+    const pending = status.changesets.some(
+        (changeset) => changeset.releases.length > 0
+    )
     const publish = !pending && !(await onNpm(manifest))
     return {
         pending: String(pending),
