@@ -2,7 +2,8 @@
 /**
  * `luca`: the command people run, with subcommands:
  *
- *   luca init [--skip-muninndb]    sets up this computer, once
+ *   luca init [--skip-muninndb] [--skip-skills]
+ *                                  sets up this computer, once
  *   luca setup [--base <branch>]   gets the repo in this folder ready
  *   luca hook <anything>           does nothing, quietly
  *
@@ -17,7 +18,8 @@
 const USAGE = `Usage: luca <command>
 
 Commands:
-  init [--skip-muninndb]    Set up this computer for Luca (once)
+  init [--skip-muninndb] [--skip-skills]
+                            Set up this computer for Luca (once)
   setup [--base <branch>]   Get the repo in this folder ready for Luca`
 
 const main = async (): Promise<number> => {
