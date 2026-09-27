@@ -249,16 +249,21 @@ const SettingsWriteSchema = z.object({
 
 /**
  * Paseo through the local daemon: its `pluginsEnabled` config, its plugins,
- * and the board's settings RPCs. Connects on first use; `close` ends it.
+ * and the board's settings RPCs. Connects on first use as `client_id`;
+ * `close` ends it.
  */
-const paseoOf = (): PaseoPlugins & { close: () => Promise<void> } => {
+export const paseoOf = ({
+    client_id,
+}: {
+    client_id: string
+}): PaseoPlugins & { close: () => Promise<void> } => {
     let client: DaemonClient | null = null
     const connected = async (): Promise<DaemonClient> => {
         if (client !== null) return client
         const password = process.env.PASEO_PASSWORD
         const fresh = new DaemonClient({
             url: `ws://${await daemonAddress()}/ws`,
-            clientId: 'luca-init',
+            clientId: client_id,
             clientType: 'cli',
             reconnect: { enabled: false },
             connectTimeoutMs: 5000,
@@ -376,7 +381,7 @@ const skillsOf = ({ home }: { home: string }): SkillsTool => ({
  * The board folder in Luca's install folder: `board/` next to `engine/` in
  * the published package, or `packages/board` in a working copy.
  */
-const boardDir = async (): Promise<string> => {
+export const boardDir = async (): Promise<string> => {
     const candidates = [
         join(import.meta.dir, '..', '..', 'board'),
         join(import.meta.dir, '..', '..', '..', 'board'),
@@ -402,7 +407,7 @@ export const initCommand = async ({
         return 2
     }
     const home = homedir()
-    const paseo = paseoOf()
+    const paseo = paseoOf({ client_id: 'luca-init' })
     try {
         const end = await runInit({
             home,

@@ -118,11 +118,14 @@ on with a run from its journal (#369).
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
-| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca setup`, and a quiet `luca hook`. |
+| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, and a quiet `luca hook`. |
 | `src/cli/setup-command.ts` | `luca setup`'s flags and its real GitHub and MuninnDB adapters. |
 | `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels, the config, and the checks a run needs. |
+| `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
+| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, and reloads the board. |
+| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
 | `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
-| `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the runs that are going (`goingRuns`), the next date tag (`nextReleaseTag`), the pinned clone. |
+| `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the next date tag (`nextReleaseTag`), the pinned clone. |
 
 ## How a run moves
 

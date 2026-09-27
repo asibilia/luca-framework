@@ -20,12 +20,8 @@ import { join } from 'node:path'
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client'
 import { z } from 'zod'
 
-import {
-    defaultPinnedDir,
-    defaultRegistryPath,
-    runRelease,
-    type ReleasePaseo,
-} from './release'
+import { defaultRegistryPath } from './going-runs'
+import { defaultPinnedDir, runRelease, type ReleasePaseo } from './release'
 
 import { daemonAddress } from '../board/paseo-board-link'
 import { defaultRunsDir } from '../journal/journal'

@@ -226,13 +226,18 @@ const realFolder = (path: string): string => {
 }
 
 /** How one step of init ended; `message` is the last line it printed. */
-type StepEnd = { ok: boolean; message: string }
+export type StepEnd = { ok: boolean; message: string }
 
 /**
- * Puts the board into Paseo from `board_dir` and writes its engine and Bun
- * paths. Never throws.
+ * Puts the board into Paseo from `board_dir` (reloaded when it is already
+ * installed from there, its settings kept) and writes its engine and Bun
+ * paths. Each line it logs starts with `[<command>]`. Never throws.
+ *
+ * @example
+ * const end = await setUpBoard({ command: 'luca upgrade', paseo, ask, board_dir, engine_path, bun_path, log: console.log })
  */
-const setUpBoard = async ({
+export const setUpBoard = async ({
+    command = 'luca init',
     paseo,
     ask,
     board_dir,
@@ -240,6 +245,8 @@ const setUpBoard = async ({
     bun_path,
     log,
 }: {
+    /** The command that logs, such as `luca init`. */
+    command?: string
     paseo: PaseoPlugins
     ask: Ask
     board_dir: string
@@ -259,12 +266,12 @@ const setUpBoard = async ({
             })
             if (!yes) {
                 return say(
-                    "[luca init] Board: Paseo's plugins are off, so the board wasn't installed. Turn them on in Paseo's Settings, then run luca init again.",
+                    `[${command}] Board: Paseo's plugins are off, so the board wasn't installed. Turn them on in Paseo's Settings, then run luca init again.`,
                     false
                 )
             }
             await paseo.enablePlugins()
-            log("[luca init] Board: turned Paseo's plugins on")
+            log(`[${command}] Board: turned Paseo's plugins on`)
         }
 
         const current = (await paseo.listPlugins()).find(
@@ -275,11 +282,11 @@ const setUpBoard = async ({
         if (current === undefined) {
             await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
             installed = true
-            log(`[luca init] Board: installed from ${board_dir}`)
+            log(`[${command}] Board: installed from ${board_dir}`)
         } else if (realFolder(current.path) === realFolder(board_dir)) {
             kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
             await paseo.reloadPlugin({ id: BOARD_PLUGIN_ID })
-            log(`[luca init] Board: reloaded from ${board_dir}`)
+            log(`[${command}] Board: reloaded from ${board_dir}`)
         } else {
             // Removing wipes the settings, so they are read first.
             kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
@@ -287,7 +294,7 @@ const setUpBoard = async ({
             await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
             installed = true
             log(
-                `[luca init] Board: moved from ${current.path} to ${board_dir}, settings kept`
+                `[${command}] Board: moved from ${current.path} to ${board_dir}, settings kept`
             )
         }
 
@@ -296,16 +303,16 @@ const setUpBoard = async ({
             values: { ...kept, engine_path, bun_path },
         })
         log(
-            `[luca init] Board: engine path ${engine_path}, Bun path ${bun_path}`
+            `[${command}] Board: engine path ${engine_path}, Bun path ${bun_path}`
         )
         return say(
             installed
-                ? '[luca init] Board is ready. Run /reload-skills in a Paseo chat so /luca-run shows up.'
-                : '[luca init] Board is ready.',
+                ? `[${command}] Board is ready. Run /reload-skills in a Paseo chat so /luca-run shows up.`
+                : `[${command}] Board is ready.`,
             true
         )
     } catch (error) {
-        return say(`[luca init] Board: ${reason(error)}`, false)
+        return say(`[${command}] Board: ${reason(error)}`, false)
     }
 }
 
