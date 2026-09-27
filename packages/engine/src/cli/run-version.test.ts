@@ -197,16 +197,20 @@ describe("each resume records Luca's version", () => {
         const records = recordsOf({ runs_dir })
         expect(startedOn(records)).toBe(STARTED_ON)
         expect(resumedOn(records)).toEqual([UPGRADED_TO])
-        // The resume is recorded before the engine's first step on it.
+        // The resume is recorded before the engine launches the implementer
+        // again. The crashed run's own implementer start comes before it:
+        // the engine journals `agent_started` before the launch that threw.
         const resumedAt = records.findIndex(
             (record) => record.kind === 'engine_resumed'
         )
-        const implementerAt = records.findIndex(
-            (record) =>
-                record.kind === 'agent_started' && record.role === 'implementer'
+        const isImplementerStart = (record: JournalRecord) =>
+            record.kind === 'agent_started' && record.role === 'implementer'
+        const relaunchedAt = records.findIndex(
+            (record, index) => index > resumedAt && isImplementerStart(record)
         )
         expect(resumedAt).toBeGreaterThan(-1)
-        expect(implementerAt).toBeGreaterThan(resumedAt)
+        expect(records.slice(0, resumedAt).some(isImplementerStart)).toBe(true)
+        expect(relaunchedAt).toBeGreaterThan(resumedAt)
     }, 120_000)
 })
 
