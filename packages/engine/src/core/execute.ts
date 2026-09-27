@@ -13,6 +13,7 @@ import {
     executeBuildAction,
     type BuildDeps,
 } from './execute-build'
+import { writeChangeset } from './execute-changeset'
 import { executeFinalReviewAction } from './execute-final-review'
 import { executeMemoryAction } from './execute-memory'
 import { executeStuckAction } from './execute-stuck'
@@ -24,6 +25,7 @@ import {
 
 import type { BoardSync } from '../board/board-sync'
 import type { EngineConfig } from '../config/engine-config'
+import { lucaVersion } from '../config/luca-version'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
@@ -73,7 +75,8 @@ export const STOP_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
 
 /**
  * Starts a run by writing its first record. The spec and config it names are
- * what every later step of the run works from.
+ * what every later step of the run works from; the Luca version it names is
+ * the one the run started on.
  */
 export const startRun = ({
     journal,
@@ -82,6 +85,7 @@ export const startRun = ({
     base_branch,
     memory,
     repo,
+    luca_version = lucaVersion(),
 }: {
     journal: Journal
     spec_number: number
@@ -95,6 +99,8 @@ export const startRun = ({
     memory?: { project_vault: string | null }
     /** The repo the run is on, so a resume can find it. Defaults to `null`. */
     repo?: string | null
+    /** Luca's version. Defaults to the engine's own. */
+    luca_version?: string
 }): JournalRecord =>
     journal.append({
         kind: 'run_started',
@@ -106,7 +112,27 @@ export const startRun = ({
             base_branch,
             memory: memory ?? null,
             repo,
+            luca_version,
         },
+    })
+
+/**
+ * Records that the engine started again on a run's journal, on Luca's
+ * version `luca_version`, before its first step.
+ */
+export const recordResume = ({
+    journal,
+    luca_version = lucaVersion(),
+}: {
+    journal: Journal
+    /** Luca's version. Defaults to the engine's own. */
+    luca_version?: string
+}): JournalRecord =>
+    journal.append({
+        kind: 'engine_resumed',
+        ticket: null,
+        role: null,
+        content: { luca_version },
     })
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
@@ -513,6 +539,17 @@ export const executeAction = async ({
                     }),
                 })
             }
+            if (action.type === 'write_changeset') {
+                return writeChangeset({
+                    action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
+            }
             return executeBuildAction({
                 action,
                 journal,
@@ -650,6 +687,7 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'run_final_gates':
         case 'commit_final_fix':
         case 'push_final_fixes':
+        case 'write_changeset':
         case 'undo_join':
         case 'retry_ticket':
             return true

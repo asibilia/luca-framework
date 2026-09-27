@@ -1197,6 +1197,15 @@ export const BoardPanel = ({
                     })}
                 </Banner>
             ) : null}
+            {run.version_note ? (
+                <Banner
+                    icon="Info"
+                    color={theme.colors.statusWarning}
+                    styles={styles}
+                >
+                    {run.version_note}
+                </Banner>
+            ) : null}
             {run.stopped ? (
                 <Banner
                     icon="OctagonX"

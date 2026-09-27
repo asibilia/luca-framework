@@ -38,6 +38,7 @@ on with a run from its journal (#369).
 | Module | What it does |
 | --- | --- |
 | `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
+| `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
@@ -117,8 +118,21 @@ on with a run from its journal (#369).
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
-| `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
-| `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the runs that are going (`goingRuns`), the next date tag (`nextReleaseTag`), the pinned clone. |
+| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, and a quiet `luca hook`. |
+| `src/cli/setup-command.ts` | `luca setup`'s flags, wired to the real repo adapters. |
+| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels and the config, then `repoChecks` once; `repoChecks` are its checks, read-only, for `luca doctor` too. |
+| `src/cli/repo-adapters-real.ts` | The real repo adapters `luca setup` and `luca doctor` share: the repo's GitHub side and MuninnDB over MCP. |
+| `src/cli/computer-adapters.ts` | The adapter types `luca init`, `luca doctor`, and `luca upgrade` share (MuninnDB, `claude mcp`, Paseo, the computer's tools), and their constants. |
+| `src/cli/computer-adapters-real.ts` | The real ones, and where the installed Luca and its board are (`lucaInstall`, its version from `config/luca-version.ts`). |
+| `src/cli/muninn-entry.ts` | Claude Code's user-scope `muninn` entry: what's right (`rightEntry`), and making it right (`ensureMuninnEntry`). The token is never shown. |
+| `src/cli/board-in-paseo.ts` | Puts the board into Paseo from Luca's folder, settings kept, and writes its engine and Bun paths (`placeBoard`, `setUpBoard`). |
+| `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
+| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, reloads the board, and ends with doctor's computer checks. |
+| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
+| `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
+| `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
+| `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
+| `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
 
 ## How a run moves
 
@@ -181,6 +195,10 @@ once every ticket pushed, the final review, on the run branch's worktree:
       start_final_review               only the lenses with findings, only the new changes
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
+with a changesets config (.changeset/config.json when the run branch was made, #461):
+  write_changeset           git: commit one changeset (the changed workspace packages
+                            minus the config's ignore, the bump from the spec's release:*
+                            label, patch with none, empty for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
@@ -429,6 +447,16 @@ folder; it keeps the journal and runs the engine on it. A run id with no
 journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 })` lists the runs whose next action is not a stop (`done`,
 `invalid_journal`).
+
+**Luca's version (#460).** `lucaVersion()` is the version of the installed
+`@alecsibilia/luca` package, found by walking up from the engine's own
+files, or `DEV_VERSION` when the engine runs from the repo's source. A new
+run records it in `run_started` (`luca_version`; `null` in older journals),
+and each time the engine starts again on a run's journal it appends an
+`engine_resumed` (`{ luca_version }`) before its first step. The decision
+step reads neither; the board shows a note when a run resumed on a
+different version. Every agent's Agent SDK client tag is
+`luca-engine/<version>`.
 
 **Restarting runs from Paseo (#375).** `luca-run --unfinished` prints one
 JSON object to stdout, and nothing else, then exits 0:
@@ -705,61 +733,32 @@ show up but nothing leaves the machine. No GitHub, no models. It prints the temp
 paths and the PR it opened in memory, then removes the temp folder (which
 also holds its journal).
 
-## Releasing Luca
+## Publishing Luca
 
-Runs never use the development working copy. They use a **release**: a
-pinned clone of this repo in `~/.local/share/luca/`, checked out at a date
-tag. The `luca-board` plugin and its engine path both point at that clone,
-so runs on `luca-framework` itself can't change the engine they run on.
+Runs never use the development working copy. A **release** is a published
+npm version of `@alecsibilia/luca`, and every run uses the installed one,
+including runs on `luca-framework` itself, so a run can't change the engine
+it runs on. Changes reach runs only by publishing. See
+[For maintainers](../luca/README.md#for-maintainers) in the publish
+package's README for changesets, the Version PR, and the `alpha` guard.
 
-`luca-release` makes a release and switches to it. Run it from the working
-copy:
-
-```bash
-bun packages/engine/src/cli/luca-release.ts
-```
-
-Each step runs only if the one before it worked. A refusal changes nothing.
-
-1. **Clean `main`.** The working copy must be on `main`, with no uncommitted
-   or untracked changes, at the same commit as `origin/main`.
-2. **No run going.** A run is going when its journal in the runs folder has
-   no run-ended record (limit waits and stuck runs waiting for a reply count),
-   or the board's run registry has it with no `ended`. It lists them by spec
-   and repo, then refuses.
-3. **Gates.** It runs the gates from `.luca/config.json` in the working copy.
-   A failed gate refuses, naming the gate.
-4. **Tag.** It picks `luca-YYYY.MM.DD` (local date), or `.2`, `.3`, and so on
-   for another release that day, then creates the tag at `main` and pushes it.
-   The date names never clash with old Luca's `v2.x` to `v13.x` tags.
-5. **Pinned clone.** It clones `origin` into `~/.local/share/luca/` on first
-   use (a clone, not a worktree), fetches the tag, checks it out, and runs
-   `bun install --frozen-lockfile` there.
-6. **Plugin.** It runs `paseo plugin install <pinned>/packages/board --id luca-board`.
-7. **Engine path.** It sets the plugin's `engine_path` setting to
-   `<pinned>/packages/engine/src/cli/luca-run.ts`, through the plugin's
-   settings RPC on the local Paseo daemon.
-8. It prints the live release. Then run `/reload-skills` in a Paseo chat, so
-   Paseo picks up the new plugin.
-
-It exits 0 when the release is live and 1 otherwise. A step that fails after
-the tag was pushed says so; fix the cause and run it again for a `.2` tag.
-
-The very first release has to be run from the working copy by hand. Installing
-and upgrading are the same command. `runRelease` is handed its folders (the
-working copy, the pinned clone, the runs folder, the board registry) and its
-Paseo adapter (`ReleasePaseo`), so the tests (`src/cli/release.test.ts`) run it
-end to end with real git in throwaway repos with a local bare `origin`, a fake
-Paseo, and fake run state.
+`luca upgrade` moves this computer to another published version. It refuses
+while any run is going (`goingRuns` in `src/cli/going-runs.ts`).
 
 ## Setting up a repo
 
-`luca-setup` gets a repo ready for Luca in one step. Run it inside the
+`luca setup` gets a repo ready for Luca in one step. Run it inside the
 target repo:
 
 ```bash
-bun ~/.local/share/luca/packages/engine/src/cli/luca-setup.ts [--base <branch>]
+luca setup [--base <branch>]
 ```
+
+`luca` is the engine package's command for people (`src/cli/luca.ts`), next
+to `luca-run`. `luca --help` lists its subcommands, and an unknown one prints
+the usage and exits 2. `luca hook <anything>` exits 0 and prints nothing:
+old Luca (v13) left a global Claude Code hook that runs `luca hook
+stage-gate` before every edit, write, and shell call, and it must never block.
 
 It never commits, and running it again gives the same result, so it doubles
 as a health check.
@@ -773,8 +772,9 @@ as a health check.
   `typecheck` script becomes the types check (`bun run <script>`), and
   `lint` becomes `bun run lint`.
 - **An old-Luca config** (any key a new-style config doesn't have, such as
-  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` and writes
-  the rest fresh from `package.json`, as above.
+  `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` (or an
+  older top-level `vault`) and writes the rest fresh from `package.json`, as
+  above.
 - **A new-style config:** it leaves the file alone and only reports on it.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
@@ -783,7 +783,9 @@ as a health check.
 
 It ends with a plain list of what's done and what's left, each to-do with its
 fix, and a reminder that tickets needing tests the red check can't read (for
-`tmnb`, new vitest tests) should be `ready-for-human`. A written config waits
+`tmnb`, new vitest tests) should be `ready-for-human`. Its last line says to
+run `/setup-matt-pocock-skills` in Claude Code in the repo, so the planning
+skills know it. A written config waits
 in the working tree: check it, then merge it through a normal PR. It exits 0
 when nothing is left to do and 1 otherwise.
 
@@ -791,6 +793,34 @@ when nothing is left to do and 1 otherwise.
 the tests (`src/cli/setup.test.ts`) run it end to end with real git in
 throwaway repos with a local bare `origin`, a fake GitHub, and a fake
 MuninnDB.
+
+## Checking a setup: `luca doctor`
+
+```bash
+luca doctor [--fix]
+```
+
+It checks this computer (Bun; exactly one `luca` on the PATH, and it's v14;
+Claude Code 2.1.280+; `gh` signed in; Paseo 0.9.1+ with plugins on; the
+board installed from Luca's own folder, loaded at the installed version, with
+its engine and Bun paths; MuninnDB 0.11.0+ answering its health check, and
+Claude Code's user-scope `muninn` entry with its token; the planning skills
+still writing what intake needs), then, inside a repo, `luca setup`'s checks
+without changing anything. Each line prints OK, or the problem and its exact
+fix. It exits 1 on any problem. MuninnDB not installed (memory off) and
+planning-skill drift are warnings, which don't fail it.
+
+`--fix` fixes what's safe without asking: it starts MuninnDB, repairs the
+`muninn` entry as `luca init` does, reloads (or moves) the board keeping its
+settings and rewrites its paths, and runs `luca setup` in a repo, then lists
+the files to commit. It never deletes and never commits. Installs, sign-ins,
+Paseo's plugin consent, and other `luca` copies are only reported.
+
+`luca init` ends with the computer checks, and `luca setup` with the repo
+checks. The board reports its loaded version through its `board.version`
+RPC, read from its folder's package.json when Paseo loads it. The tests
+(`src/cli/doctor.test.ts`) run doctor end to end in a throwaway home folder
+and throwaway repos, with fakes for every tool.
 
 ## Choices made
 

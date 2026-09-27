@@ -15,7 +15,7 @@ import { createFakeMuninn, type FakeMuninn } from '../testing/fake-muninn'
 import { git } from '../testing/practice-repo'
 
 /**
- * `luca-setup` end to end (seam 4): a throwaway repo with a local bare
+ * `luca setup` end to end (seam 4): a throwaway repo with a local bare
  * `origin`, a fake GitHub (labels, the `gh` login, the repo, and its issue
  * links), and a fake MuninnDB.
  */
@@ -113,7 +113,7 @@ const log = (line: string) => {
 }
 
 beforeEach(async () => {
-    root = realpathSync(await mkdtemp(join(tmpdir(), 'luca-setup-')))
+    root = realpathSync(await mkdtemp(join(tmpdir(), 'setup-repo-')))
     repo = join(root, 'repo')
     origin = join(root, 'origin.git')
     logs.length = 0
@@ -242,6 +242,114 @@ describe('luca-setup creates the labels a run needs', () => {
     }, 60_000)
 })
 
+describe('luca setup creates the release labels in a repo with changesets', () => {
+    const CHANGESET_CONFIG = join('.changeset', 'config.json')
+    const RELEASE_LABELS = [
+        'release:major',
+        'release:minor',
+        'release:none',
+        'release:patch',
+    ]
+    const releaseLabels = (names: string[]): string[] =>
+        names.filter((name) => name.startsWith('release:')).toSorted()
+
+    test('a repo with .changeset/config.json gets the four release labels and the run labels', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: JSON.stringify(
+                    { baseBranch: 'main', ignore: [] },
+                    null,
+                    4
+                ),
+            },
+        })
+        const github = fakeGitHub()
+
+        const end = await setup({
+            github: github.github,
+            memory: createFakeMuninn(),
+        })
+
+        expect(github.created().toSorted()).toEqual(
+            [
+                'needs-info',
+                'ready-for-agent',
+                'refactor',
+                ...RELEASE_LABELS,
+            ].toSorted()
+        )
+        for (const label of RELEASE_LABELS) {
+            expect(printed(end)).toContain(label)
+        }
+    }, 60_000)
+
+    test('release labels a changesets repo already has are left as they are', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: '{}\n',
+            },
+        })
+        const mine = {
+            name: 'release:minor',
+            color: 'abcdef',
+            description: 'Mine',
+        }
+        const github = fakeGitHub({ labels: [mine] })
+
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.created())).toEqual([
+            'release:major',
+            'release:none',
+            'release:patch',
+        ])
+        expect(
+            github.labels().find(({ name }) => name === 'release:minor')
+        ).toEqual(mine)
+    }, 60_000)
+
+    test('a repo without .changeset/config.json gets no release labels until it has one', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+        const github = fakeGitHub()
+
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.labels().map(({ name }) => name))).toEqual(
+            []
+        )
+        expect(github.created().toSorted()).toEqual([
+            'needs-info',
+            'ready-for-agent',
+            'refactor',
+        ])
+
+        await Bun.write(join(repo, CHANGESET_CONFIG), '{}\n')
+        await setup({ github: github.github, memory: createFakeMuninn() })
+
+        expect(releaseLabels(github.created())).toEqual(RELEASE_LABELS)
+    }, 60_000)
+
+    test('a second run in a changesets repo creates nothing more', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CHANGESET_CONFIG]: '{}\n',
+            },
+        })
+        const github = fakeGitHub()
+        const memory = createFakeMuninn()
+
+        await setup({ github: github.github, memory })
+        const created_after_first = github.created()
+        await setup({ github: github.github, memory })
+
+        expect(releaseLabels(created_after_first)).toEqual(RELEASE_LABELS)
+        expect(github.created()).toEqual(created_after_first)
+    }, 60_000)
+})
+
 describe('luca-setup writes a starting config when there is none', () => {
     test('a repo shaped like tmnb gets its test, type, and lint checks from package.json', async () => {
         await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
@@ -333,6 +441,44 @@ describe('luca-setup converts an old-Luca config', () => {
             { run: 'bun test', results: 'bun' },
             { run: 'bun run test:workers', results: 'pass_fail' },
         ])
+    }, 60_000)
+})
+
+describe('luca setup converts an old-Luca config with a top-level vault', () => {
+    test('an old config with a top-level vault keeps that vault as muninn.vault', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CONFIG_PATH]: JSON.stringify(
+                    {
+                        lucaVersion: '12.4.0',
+                        oversight: 'full-auto',
+                        vault: 'movie-rankings',
+                    },
+                    null,
+                    2
+                ),
+            },
+        })
+        const memory = createFakeMuninn({ vaults: { 'movie-rankings': [] } })
+
+        const end = await setup({ github: fakeGitHub().github, memory })
+
+        const written = z
+            .record(z.string(), z.unknown())
+            .parse(JSON.parse(await readConfigText()))
+        for (const key of Object.keys(written)) {
+            expect(NEW_CONFIG_KEYS).toContain(key)
+        }
+        expect(written.muninn).toEqual({ vault: 'movie-rankings' })
+        const loaded = await loadEngineConfig({ repo_root: repo })
+        if (!loaded.ok) throw new Error(loaded.error)
+        expect(loaded.config.muninn).toEqual({ vault: 'movie-rankings' })
+        expect(checkNamed(end, 'vault').status).toBe('done')
+        expect(
+            memory.calls().some(({ vault }) => vault === 'movie-rankings')
+        ).toBe(true)
+        expect(printed(end)).toContain('movie-rankings')
     }, 60_000)
 })
 
@@ -534,6 +680,81 @@ describe('luca-setup never commits and is safe to run again', () => {
     }, 60_000)
 })
 
+/** The last line the command printed that isn't blank. */
+const lastLine = (): string =>
+    logs
+        .join('\n')
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .at(-1) ?? ''
+
+describe('luca setup speaks as luca setup', () => {
+    test('its output and fixes name `luca setup`, never the old luca-setup', async () => {
+        await makeRepo({
+            files: { 'package.json': TMNB_PACKAGE },
+            push: false,
+        })
+
+        const end = await setup({
+            github: fakeGitHub({ login: null, sub_issues: false }).github,
+            memory: createFakeMuninn({ fail: [{ vault: 'tmnb' }] }),
+        })
+
+        expect(printed(end)).toContain('luca setup')
+        expect(printed(end)).not.toContain('luca-setup')
+        for (const { detail } of end.checks) {
+            expect(detail).not.toContain('luca-setup')
+        }
+    }, 60_000)
+})
+
+describe('luca setup ends with the planning-skills pointer', () => {
+    test('with things left to do, the last line points to /setup-matt-pocock-skills', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+
+        const end = await setup({
+            github: fakeGitHub().github,
+            memory: createFakeMuninn(),
+        })
+
+        expect(end.ok).toBe(false)
+        expect(lastLine()).toContain('/setup-matt-pocock-skills')
+        expect(
+            end.message
+                .split('\n')
+                .filter((line) => line.trim() !== '')
+                .at(-1)
+        ).toContain('/setup-matt-pocock-skills')
+    }, 60_000)
+
+    test('in a ready repo, the last line still points to /setup-matt-pocock-skills', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CONFIG_PATH]: JSON.stringify(
+                    {
+                        checks: {
+                            test: 'bun test',
+                            types: 'bun run type-check',
+                            lint: 'bun run lint',
+                        },
+                        muninn: { vault: 'tmnb' },
+                    },
+                    null,
+                    4
+                ),
+            },
+        })
+
+        await setup({
+            github: fakeGitHub().github,
+            memory: createFakeMuninn({ vaults: { tmnb: [] } }),
+        })
+
+        expect(lastLine()).toContain('/setup-matt-pocock-skills')
+    }, 60_000)
+})
+
 describe('the engine README', () => {
     test('has a "Setting up a repo" section about luca-setup', async () => {
         const readme = await Bun.file(
@@ -544,7 +765,30 @@ describe('the engine README', () => {
         const rest = readme.slice(start + 1)
         const next = rest.indexOf('\n## ')
         const section = next === -1 ? rest : rest.slice(0, next)
-        expect(section).toContain('luca-setup')
+        // The command is `luca setup` now; this section still covers it.
+        expect(section).toMatch(/luca[ -]setup/)
         expect(section).toContain('.luca/config.json')
+    })
+
+    test('has a "Setting up a repo" section about luca setup', async () => {
+        const readme = await Bun.file(
+            join(import.meta.dir, '..', '..', 'README.md')
+        ).text()
+        const start = readme.indexOf('\n## Setting up a repo')
+        expect(start).toBeGreaterThan(-1)
+        const rest = readme.slice(start + 1)
+        const next = rest.indexOf('\n## ')
+        const section = next === -1 ? rest : rest.slice(0, next)
+        expect(section).toContain('luca setup')
+        expect(section).toContain('.luca/config.json')
+        expect(section).toContain('/setup-matt-pocock-skills')
+    })
+
+    test('no longer mentions the luca-setup command', async () => {
+        const readme = await Bun.file(
+            join(import.meta.dir, '..', '..', 'README.md')
+        ).text()
+
+        expect(readme).not.toContain('luca-setup')
     })
 })

@@ -1,0 +1,10 @@
+{
+    "mode": "pre",
+    "tag": "alpha",
+    "initialVersions": {
+        "@alecsibilia/luca": "13.0.1",
+        "@luca/board": "0.0.0",
+        "@luca/engine": "0.0.0"
+    },
+    "changesets": []
+}

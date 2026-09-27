@@ -1364,3 +1364,16 @@ describe('agent messages', () => {
         ])
     })
 })
+
+describe("the Agent SDK client tag carries Luca's version (#460)", () => {
+    test("an agent's session is tagged with the engine's own version (the dev value from source), not 0.0.0", async () => {
+        const fake = fakeQuery({ messages: [INIT, result({})] })
+
+        await launch({ query: fake.query, role: 'implementer' })
+
+        const tag = fake.calls[0]?.options.env?.CLAUDE_AGENT_SDK_CLIENT_APP
+        expect(tag).not.toBe('luca-engine/0.0.0')
+        // Run from the repo's source, the engine's version is the dev value.
+        expect(tag).toMatch(/^luca-engine\/.*dev/)
+    })
+})

@@ -9,11 +9,12 @@ You write a **spec** (one feature: the problem, the solution, and how it will be
 | Package | What it is |
 | ------- | ---------- |
 | [`packages/engine`](packages/engine/README.md) | The engine (`@luca/engine`). It drives a run of one spec with Claude agents, keeps the journal, and has the `luca-run` command line. |
+| [`packages/luca`](packages/luca/README.md) | `@alecsibilia/luca`, the one package on npm: the engine and the board, with the `luca` command. Its README is what npm shows. |
 | [`packages/board`](packages/board/README.md) | The board, the Paseo plugin `luca-board`. Type `/luca-run <spec>` in a Paseo chat to start a run and watch it in the side panel and the chat. |
 
 ## Start a run
 
-From Paseo, install the board plugin and type `/luca-run <spec number>` (or `/luca-run demo` for a practice run with no GitHub and no models). See [Install and try it](packages/board/README.md#install-and-try-it).
+Install `@alecsibilia/luca`, run `luca init` and `luca setup`, then type `/luca-run <spec number>` in a Paseo chat (or `/luca-run demo` for a practice run with no GitHub and no models). See [What you need and the first run](packages/luca/README.md#what-you-need).
 
 From the command line:
 
@@ -38,6 +39,10 @@ bun run lint                                 # Lint
 ```
 
 These are the engine's own gates for this repo, set in [`.luca/config.json`](.luca/config.json) along with the test file patterns, the rule files, and the memory vault.
+
+## Release (maintainers)
+
+`@alecsibilia/luca` ([`packages/luca`](packages/luca/README.md)) is released with changesets and the [`release.yml`](.github/workflows/release.yml) workflow, in changesets' pre mode `alpha`. Every run uses the installed version, including runs on this repo. See [For maintainers](packages/luca/README.md#for-maintainers) for the Version PR, the `-alpha.N` guard, and the one reviewed PR that later switches on `latest`.
 
 ## Documentation
 

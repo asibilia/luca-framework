@@ -205,6 +205,12 @@ export const describeRecord = ({
                 text: `The run started on spec #${record.content.spec_number}.`,
                 tone: 'info',
             })
+        // Only a resume on a different Luca version is worth a row.
+        case 'engine_resumed':
+            return after.run.version_note !== null &&
+                after.run.version_note !== before.run.version_note
+                ? event({ text: after.run.version_note, tone: 'warning' })
+                : null
         case 'intake_refused':
             return event({
                 text: `Intake refused the run. ${after.run.refusal.join('; ')}`,

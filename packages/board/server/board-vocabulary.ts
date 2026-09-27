@@ -112,7 +112,11 @@ export const BOARD_VOCABULARY = {
             })
             .optional()
             .catch(undefined),
+        /** Luca's version the run started on (#460); older journals have none. */
+        luca_version: z.string().nullable().catch(null),
     }),
+    /** The engine started again on the run's journal, on Luca's `luca_version`. */
+    engine_resumed: z.looseObject({ luca_version: z.string() }),
     intake_read: z.looseObject({
         spec: z.looseObject({ number: z.number(), title: z.string() }),
     }),
@@ -381,6 +385,7 @@ const entry = <Kind extends BoardKind>({ kind }: { kind: Kind }) =>
 
 const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_started' }),
+    entry({ kind: 'engine_resumed' }),
     entry({ kind: 'intake_read' }),
     entry({ kind: 'intake_refused' }),
     entry({ kind: 'nothing_to_do' }),

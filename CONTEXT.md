@@ -41,7 +41,7 @@ The plain code that drives a run and picks every next step.
 _Avoid_: orchestrator
 
 **Release**:
-A tagged version of Luca, pinned in its own copy, that every run uses, including runs on Luca itself.
+A published npm version of Luca. Every run uses the installed one, including runs on Luca itself.
 _Avoid_: deploy, install
 
 **Agent**:

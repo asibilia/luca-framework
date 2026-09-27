@@ -17,6 +17,7 @@ import {
 } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
+import { lucaVersion } from '../config/luca-version'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
@@ -78,15 +79,18 @@ export const BANNED_ENV = [
 /**
  * A clean environment for an agent's process, built from an allow-list, so
  * no API key, token, or other secret of the engine's reaches it. Auto memory
- * and claude.ai MCP servers are off.
+ * and claude.ai MCP servers are off. The Agent SDK client tag names the
+ * engine at Luca's version (the engine's own, unless given).
  *
  * @example
  * const env = agentEnv({ source: process.env })
  */
 export const agentEnv = ({
     source,
+    luca_version = lucaVersion(),
 }: {
     source: Record<string, string | undefined>
+    luca_version?: string
 }): Record<string, string> => {
     const env: Record<string, string> = {}
     for (const name of ENV_ALLOW_LIST) {
@@ -99,7 +103,7 @@ export const agentEnv = ({
         ...env,
         CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
         ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
-        CLAUDE_AGENT_SDK_CLIENT_APP: 'luca-engine/0.0.0',
+        CLAUDE_AGENT_SDK_CLIENT_APP: `luca-engine/${luca_version}`,
     }
 }
 

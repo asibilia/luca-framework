@@ -185,6 +185,7 @@ const OUTSIDE_RUNS_SHOWN = 50
  *     run_command: runCommand,
  *     read_settings: async () => EngineSettingsSchema.parse({}),
  *     file_exists: ({ path }) => existsSync(path),
+ *     real_path: ({ path }) => realpathSync(path),
  *     home_dir: homedir(),
  *     env: process.env,
  *     log_dir: '/tmp',
@@ -202,6 +203,7 @@ export const createBoardServer = ({
     run_command,
     read_settings,
     file_exists,
+    real_path,
     home_dir,
     env,
     log_dir,
@@ -217,6 +219,8 @@ export const createBoardServer = ({
     run_command: RunCommand
     read_settings: () => Promise<EngineSettings>
     file_exists: ({ path }: { path: string }) => boolean
+    /** Follows an installed `luca-run`'s symlink; the path as is without it. */
+    real_path?: ({ path }: { path: string }) => string
     home_dir: string
     env: Record<string, string | undefined>
     log_dir: string
@@ -490,7 +494,13 @@ export const createBoardServer = ({
         } catch (error) {
             log(`Couldn't read the engine settings: ${errorText({ error })}`)
         }
-        return resolveEngine({ settings, env, home_dir, file_exists })
+        return resolveEngine({
+            settings,
+            env,
+            home_dir,
+            file_exists,
+            real_path,
+        })
     }
 
     /**

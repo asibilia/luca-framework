@@ -1,5 +1,7 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import type {
     PluginHandlerContext,
@@ -18,7 +20,12 @@ import {
     writeUsageLines,
 } from './server/usage-lines-file'
 import { ROW_VERSION } from './shared/board-rows'
-import { boardReadRpc, engineEventRpc, runStartRpc } from './shared/board-rpc'
+import {
+    boardReadRpc,
+    boardVersionRpc,
+    engineEventRpc,
+    runStartRpc,
+} from './shared/board-rpc'
 import { PLUGIN_ID } from './shared/board-state'
 import {
     EngineSettingsSchema,
@@ -29,6 +36,29 @@ import {
 type Paseo = PluginHandlerContext['paseo']
 
 const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
+
+/**
+ * The Luca version in the board folder's package.json, which the published
+ * package stamps with its own version; `null` when it can't be read.
+ */
+const loadedVersion = (): string | null => {
+    try {
+        const manifest: unknown = JSON.parse(
+            readFileSync(
+                join(dirname(fileURLToPath(import.meta.url)), 'package.json'),
+                'utf8'
+            )
+        )
+        return typeof manifest === 'object' &&
+            manifest !== null &&
+            'version' in manifest &&
+            typeof manifest.version === 'string'
+            ? manifest.version
+            : null
+    } catch {
+        return null
+    }
+}
 
 /**
  * The board plugin's daemon side: the engine settings (their usage lines
@@ -98,6 +128,13 @@ export default function contribute(server: PluginServerContext) {
         run_command: runCommand,
         read_settings: readSettings,
         file_exists: ({ path }) => existsSync(path),
+        real_path: ({ path }) => {
+            try {
+                return realpathSync(path)
+            } catch {
+                return path
+            }
+        },
         home_dir: homedir(),
         env: process.env,
         log_dir: '/tmp',
@@ -117,6 +154,9 @@ export default function contribute(server: PluginServerContext) {
         connect({ context })
         return board.readBoard(input)
     })
+    // Read once, as loaded: after an upgrade it differs until a reload.
+    const version = loadedVersion()
+    server.handle(boardVersionRpc, () => ({ version }))
 
     // Lifecycle hooks time out at 30 s, so the first check is not awaited.
     void board.checkEngines()

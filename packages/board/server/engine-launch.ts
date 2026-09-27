@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { PLUGIN_ID, RUN_USAGE } from '../shared/board-state'
 import type { EngineSettings } from '../shared/engine-settings'
@@ -84,9 +84,28 @@ const bunPaths = ({ home_dir }: { home_dir: string }): string[] => [
 export const SETTINGS_HINT = `Set the engine path in Settings → Plugins → ${PLUGIN_ID}`
 
 /**
+ * The Bun flags that keep the target repo's `.env` and `bunfig.toml` (and any
+ * `preload` in it) out of the engine, which runs in the repo's folder: no env
+ * file, and Luca's own bunfig, which ships next to the engine's entry.
+ *
+ * @example
+ * isolationArgs({ engine_path: '/opt/luca/src/cli/luca-run.ts' })
+ * // ['--no-env-file', '--config=/opt/luca/src/cli/bunfig.toml']
+ */
+const isolationArgs = ({ engine_path }: { engine_path: string }): string[] => [
+    '--no-env-file',
+    `--config=${join(dirname(engine_path), 'bunfig.toml')}`,
+]
+
+const NO_BUN = `Couldn't find Bun. Set the Bun path in Settings → Plugins → ${PLUGIN_ID}, or set LUCA_BUN.`
+
+/**
  * Finds how to start the engine. The `engine_path` setting (run with Bun)
- * wins; else an installed `luca-run` command, run directly (it has a Bun
- * shebang). Paths are absolute because Paseo swaps a bare `bun` for its Node.
+ * wins; else an installed `luca-run` command. Its real path (the bin is a
+ * symlink to the engine's `luca-run.ts`) runs with Bun and the isolation
+ * flags when Luca's bunfig is beside it; an older install without one runs
+ * directly (it has a Bun shebang). Paths are absolute because Paseo swaps a
+ * bare `bun` for its Node.
  *
  * @returns the command and the args that go before the run's own args, or a
  *   message that says what to set.
@@ -96,14 +115,22 @@ export const resolveEngine = ({
     env,
     home_dir,
     file_exists,
+    real_path = ({ path }) => path,
 }: {
     settings: EngineSettings
     env: Record<string, string | undefined>
     home_dir: string
     file_exists: ({ path }: { path: string }) => boolean
+    /** Follows symlinks; the path as is when it can't. */
+    real_path?: ({ path }: { path: string }) => string
 }):
     | { ok: true; command: string; lead_args: string[] }
     | { ok: false; message: string } => {
+    const bun = [
+        settings.bun_path.trim(),
+        env.LUCA_BUN ?? '',
+        ...bunPaths({ home_dir }),
+    ].find((path) => path.startsWith('/') && file_exists({ path }))
     const engine_path = settings.engine_path.trim()
     if (engine_path !== '') {
         if (!engine_path.startsWith('/')) {
@@ -118,23 +145,28 @@ export const resolveEngine = ({
                 message: `The engine path ${engine_path} doesn't exist. ${SETTINGS_HINT}.`,
             }
         }
-        const bun = [
-            settings.bun_path.trim(),
-            env.LUCA_BUN ?? '',
-            ...bunPaths({ home_dir }),
-        ].find((path) => path.startsWith('/') && file_exists({ path }))
-        if (!bun) {
-            return {
-                ok: false,
-                message: `Couldn't find Bun. Set the Bun path in Settings → Plugins → ${PLUGIN_ID}, or set LUCA_BUN.`,
-            }
+        if (!bun) return { ok: false, message: NO_BUN }
+        return {
+            ok: true,
+            command: bun,
+            lead_args: [...isolationArgs({ engine_path }), engine_path],
         }
-        return { ok: true, command: bun, lead_args: [engine_path] }
     }
     const installed = installedCommandPaths({ home_dir }).find((path) =>
         file_exists({ path })
     )
-    if (installed) return { ok: true, command: installed, lead_args: [] }
+    if (installed) {
+        const entry = real_path({ path: installed })
+        if (!file_exists({ path: join(dirname(entry), 'bunfig.toml') })) {
+            return { ok: true, command: installed, lead_args: [] }
+        }
+        if (!bun) return { ok: false, message: NO_BUN }
+        return {
+            ok: true,
+            command: bun,
+            lead_args: [...isolationArgs({ engine_path: entry }), entry],
+        }
+    }
     return {
         ok: false,
         message: `Couldn't find the Luca engine: no engine path is set and no luca-run command is installed. ${SETTINGS_HINT} (the absolute path to the engine's luca-run.ts).`,

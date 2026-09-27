@@ -25,10 +25,11 @@ The code reuses the designs of the board prototype (`prototype/paseo-board`: var
    - It spawns the engine **detached**, by absolute paths, and returns at once:
 
      ```
-     <bun> <engine_path> --spec <n> | --demo --repo <cwd> --run-id <id> --board-plugin luca-board
+     <bun> --no-env-file --config=<engine_dir>/bunfig.toml <engine_path> --spec <n> | --demo --repo <cwd> --run-id <id> --board-plugin luca-board
      ```
 
      The env is the daemon's env plus `LUCA_BOARD_TOKEN=<token>`. Output goes to `/tmp/<run id>.log`.
+   - **Why the extra Bun flags.** The engine runs in the target repo's folder, so a plain `bun` would load that repo's `.env` and its `bunfig.toml`, including any `preload` script, into the engine. On someone else's repo, their preload would run inside Luca. So every launch (a new run, `--resume`, and the `--unfinished` check) passes `--no-env-file` and `--config=` pointing at Luca's own `bunfig.toml`, which ships next to the engine's `luca-run.ts` and preloads nothing. Agents don't need this: they already get an allow-listed env.
    - It returns `{ ok, message, run_id }`. The message names the log file. If the engine can't be found, it returns `ok: false` and says what to set.
 3. The engine sends its journal records through `engine.event`, described in the next section. The plugin keeps each run's board state and appends the chat rows.
 4. The panel polls `board.read` every 2 s.
@@ -85,7 +86,7 @@ If an engine process dies (a crash, a kill, a reboot) before its run ends, the p
 **Which runs can go on.** For the runs whose engine is gone, the plugin asks the engine once, with a 20 s timeout:
 
 ```
-<bun> <engine_path> --unfinished
+<bun> --no-env-file --config=<engine_dir>/bunfig.toml <engine_path> --unfinished
 ```
 
 It prints `{ "runs": [{ run_id, restart, reason, message }] }` (see the engine's README, "Crash recovery"). Then for each run:
@@ -93,7 +94,7 @@ It prints `{ "runs": [{ run_id, restart, reason, message }] }` (see the engine's
 - **`restart: true`**: the plugin starts the engine again, detached, with the run's token in `LUCA_BOARD_TOKEN` and its output appended to the same log:
 
   ```
-  <bun> <engine_path> --resume <run id> --repo <repo> --board-plugin luca-board
+  <bun> --no-env-file --config=<engine_dir>/bunfig.toml <engine_path> --resume <run id> --repo <repo> --board-plugin luca-board
   ```
 
   The chat gets a row: "The engine was gone, so Paseo restarted the run from its journal (restart 1 of 3)." The engine resends its journal, and the board skips the records it already has.
@@ -116,7 +117,8 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 | kind | Panel | Chat row |
 | --- | --- | --- |
-| `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". | "The run started on spec #n." |
+| `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". It also keeps `luca_version`, the Luca version the run started on (#460; `null` in older journals). | "The run started on spec #n." |
+| `engine_resumed` | the engine started again on the run's journal (#460; `{ luca_version }`, the Luca version it resumed on). When that differs from `run_started`'s `luca_version`, the run card shows a note naming both: "This run started on Luca 14.0.0-alpha.1 and resumed on Luca 14.0.0-alpha.2. It keeps going." The note stays for the rest of the run. The same version, or a journal whose `run_started` has no version, shows nothing. The run keeps going either way. | the note, once (warning); nothing on the same version |
 | `intake_read` | the spec's title | none |
 | `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
 | `nothing_to_do` | run status `nothing to do` | one line |
@@ -229,10 +231,10 @@ Windows in words: `five_hour` is "five-hour", `seven_day` is "weekly", `seven_da
 
 Go to **Settings → Plugins → luca-board → Engine**. These settings are a host settings document (`engine`), so they survive restarts. It holds where the engine lives and the two usage lines.
 
-- **Engine path:** the absolute path to the engine's entry, for example `/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts`. The plugin runs it with Bun.
+- **Engine path:** the absolute path to the engine's entry, for example `/Users/you/luca-framework/packages/engine/src/cli/luca-run.ts`. The plugin runs it with Bun, with `--no-env-file` and the `bunfig.toml` in the same folder (`<engine_dir>`, see [The route](#the-route)).
 - **Bun path:** the absolute path to Bun. If it's empty, the plugin tries `LUCA_BUN`, then `~/.bun/bin/bun`, `/opt/homebrew/bin/bun`, and `/usr/local/bin/bun`. It needs an absolute path, because Paseo swaps a bare `bun` for its own Node.
 
-If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, run directly (it has a Bun shebang). The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
+If the engine path is empty, the plugin uses an installed `luca-run` command from `~/.bun/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`. It follows the command's symlink to the engine's `luca-run.ts` and runs that with Bun and the same flags, `--no-env-file` and the `bunfig.toml` beside it. Only an older install with no `bunfig.toml` there runs directly through its Bun shebang, and so without that protection. The plugin never looks in its own folder: inside the plugin process, `import.meta.url` is undefined and the cwd is `/`.
 
 The **usage lines** keep Luca below a share of your Claude plan, so you always have room for your own work. They count the whole account, not one run:
 

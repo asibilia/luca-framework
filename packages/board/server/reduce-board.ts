@@ -17,6 +17,7 @@ import {
     type LensCard,
     type NeedsYou,
     type PlanUsed,
+    type RunInfo,
     type RunStatus,
     type TicketCard,
     type Usage,
@@ -118,6 +119,23 @@ const FINAL_STUCK_REASONS: Record<string, string> = {
 export const finalReasonText = ({ reason }: { reason: string }): string =>
     FINAL_STUCK_REASONS[reason] ?? reasonText({ reason })
 
+/**
+ * The run's version note after a resume on Luca `resumed_on`: both versions
+ * when it differs from the one the run started on, else the note so far (a
+ * run that once changed version keeps saying so). Nothing when the journal
+ * doesn't say what the run started on.
+ */
+const versionNote = ({
+    run,
+    resumed_on,
+}: {
+    run: RunInfo
+    resumed_on: string
+}): string | null =>
+    run.started_on === null || run.started_on === resumed_on
+        ? run.version_note
+        : `This run started on Luca ${run.started_on} and resumed on Luca ${resumed_on}. It keeps going.`
+
 const noFindings = (): FindingCounts => ({ blocker: 0, should_fix: 0, nit: 0 })
 
 const freshLenses = (): LensCard[] =>
@@ -168,6 +186,8 @@ export const createBoardState = ({
         engine_ended: null,
         stopped: null,
         log_path,
+        started_on: null,
+        version_note: null,
     },
     usage: null,
     usage_label: USAGE_LABEL,
@@ -353,6 +373,7 @@ const STEP_WORDS: Record<string, string> = {
     join_run_branch: 'joining the run branch',
     push_run_branch: 'pushing the run branch',
     push_final_fixes: 'pushing the run branch',
+    write_changeset: 'writing the changeset',
     open_pull_request: 'opening the pull request',
 }
 
@@ -762,9 +783,21 @@ const applyKind = ({
                     ...state.run,
                     spec_number: record.content.spec_number,
                     phase: 'intake',
+                    started_on: record.content.luca_version,
                 },
             }
         }
+        case 'engine_resumed':
+            return {
+                ...state,
+                run: {
+                    ...state.run,
+                    version_note: versionNote({
+                        run: state.run,
+                        resumed_on: record.content.luca_version,
+                    }),
+                },
+            }
         case 'intake_read':
             return {
                 ...state,
