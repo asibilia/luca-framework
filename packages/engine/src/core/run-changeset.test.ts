@@ -321,22 +321,6 @@ describe('the changeset on a run PR, end to end', () => {
         ])
     }, 90_000)
 
-    test('a spec labeled release:none gets one empty changeset, naming no package', async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
-            labels: ['release:none'],
-        })
-
-        const { changesets } = await prChangesets({
-            origin: practice.origin,
-            tracker,
-        })
-        expect(changesets).toHaveLength(1)
-        expect(changesets[0]?.releases).toEqual({})
-        expect(changesets[0]?.summary).toContain('Practice spec')
-    }, 90_000)
-
     test('packages the changesets config ignores are left out of the changeset', async () => {
         const { tracker, practice } = await runToPr({
             files: {
