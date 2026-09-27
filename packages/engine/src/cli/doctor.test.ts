@@ -1,5 +1,5 @@
-import { realpathSync } from 'node:fs'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { existsSync, readdirSync, realpathSync } from 'node:fs'
+import { chmod, mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -11,6 +11,7 @@ import { runDoctor } from './doctor'
 import { runInit } from './init'
 import { runSetup } from './setup'
 
+import { loadV13Manifest, type V13Manifest } from '../doctor/v13-manifest'
 import { createFakeMuninn, type FakeMuninn } from '../testing/fake-muninn'
 import { git } from '../testing/practice-repo'
 
@@ -25,7 +26,8 @@ import { git } from '../testing/practice-repo'
  * - computer: `bun`, `luca`, `claude_code`, `gh_login`, `paseo`,
  *   `paseo_plugins`, `board`, `muninndb`, `muninn_entry`, `planning_skills`;
  * - repo: `labels`, `config`, `github_remote`, `issue_links`,
- *   `base_branch`, `vault`.
+ *   `base_branch`, `vault`;
+ * - v13: what old Luca v13 left behind, found by the group alone.
  *
  * A check's `status` is `ok`, `warning`, or `problem`; a warning or problem
  * carries the exact `fix`. Its line prints OK, or the problem and the fix.
@@ -129,6 +131,8 @@ let origin = ''
 let luca_dir = ''
 let board_dir = ''
 let engine_path = ''
+/** Stands in for `/tmp`, where v13 left its `luca-*.json` payloads. */
+let tmp_dir = ''
 const bun_path = realpathSync(process.execPath)
 /** What the MuninnDB and Claude Code fakes were asked to do, in order. */
 const events: string[] = []
@@ -153,6 +157,8 @@ beforeEach(async () => {
         '@alecsibilia',
         'luca'
     )
+    tmp_dir = join(root, 'tmp')
+    await mkdir(tmp_dir)
     board_dir = join(luca_dir, 'board')
     engine_path = join(luca_dir, 'engine', 'cli', 'luca-run.ts')
     await mkdir(board_dir, { recursive: true })
@@ -553,6 +559,7 @@ const doctor = ({
     fakes,
     fix = false,
     in_repo = null,
+    v13_manifest,
 }: {
     fakes: Fakes
     fix?: boolean
@@ -560,6 +567,8 @@ const doctor = ({
         github: ReturnType<typeof fakeGitHub>['github']
         memory: FakeMuninn
     } | null
+    /** The v13 fingerprint list; defaults to the committed one. */
+    v13_manifest?: V13Manifest
 }) =>
     runDoctor({
         home,
@@ -581,6 +590,8 @@ const doctor = ({
                       github: in_repo.github,
                       memory: in_repo.memory,
                   },
+        tmp_dir,
+        ...(v13_manifest === undefined ? {} : { v13_manifest }),
         log,
     })
 
@@ -1572,4 +1583,651 @@ describe('luca setup ends with the repo checks', () => {
 
         expectProblem(end.doctor, 'base_branch', /git push/, 'repo')
     }, 60_000)
+})
+
+/*
+ * v13 leftovers. The committed fingerprint list holds only hashes, so each
+ * test seeds stand-in files at v13's targets and hands doctor a copy of the
+ * list with the stand-ins' sha256 added: the same list, the same matching.
+ */
+
+/** v13 files seeded in the home folder, by their target in the list. */
+const HOME_STAND_INS = [
+    '~/.claude/skills/lu/SKILL.md',
+    '~/.claude/agents/plan.md',
+    '~/.claude/commands/luca-init.md',
+    '~/.claude/luca-statusline.ts',
+    '~/.gemini/antigravity-cli/skills/lu/SKILL.md',
+    '~/.gemini/antigravity-cli/agents/plan.md',
+]
+
+/** v13's hook scripts, seeded in the repo. */
+const REPO_STAND_INS = [
+    '<repo>/.claude/hooks/context-refresher.ts',
+    '<repo>/.claude/hooks/continuation-messages.ts',
+    '<repo>/.claude/hooks/pipeline-guard.ts',
+]
+
+const standIn = (target: string) => `// A v13 stand-in for ${target}\n`
+
+const sha256 = (text: string) =>
+    new Bun.CryptoHasher('sha256').update(text).digest('hex')
+
+/** The committed fingerprint list, plus the stand-ins' hashes. */
+const manifestWithStandIns = async (): Promise<V13Manifest> => {
+    const manifest = await loadV13Manifest()
+    const targets = [...HOME_STAND_INS, ...REPO_STAND_INS]
+    for (const target of targets) {
+        if (!manifest.files.some((file) => file.target === target)) {
+            throw new Error(`${target} is not in the v13 fingerprint list`)
+        }
+    }
+    return {
+        ...manifest,
+        files: manifest.files.map((file) =>
+            targets.includes(file.target)
+                ? {
+                      ...file,
+                      sha256: [...file.sha256, sha256(standIn(file.target))],
+                  }
+                : file
+        ),
+    }
+}
+
+/** A target's path in the throwaway home. */
+const inHome = (target: string) => join(home, target.slice('~/'.length))
+
+/** A target's path, relative to the repo. */
+const inRepo = (target: string) => target.slice('<repo>/'.length)
+
+/** A hook entry of the user's own, which must outlive the cleanup. */
+const USER_HOOK = {
+    matcher: 'Bash',
+    hooks: [{ type: 'command', command: 'my-own-guard.sh' }],
+}
+
+/** v13's global stage-gate hook, exactly as v13 wrote it. */
+const STAGE_GATE_HOOK = {
+    matcher: 'Edit|Write|NotebookEdit|Bash',
+    hooks: [{ type: 'command', command: 'luca hook stage-gate', timeout: 30 }],
+}
+
+const repoHook = (name: string, matcher: string) => ({
+    hooks: [
+        {
+            type: 'command',
+            command: `bun "$CLAUDE_PROJECT_DIR"/.claude/hooks/${name}.ts`,
+            timeout: 5,
+        },
+    ],
+    matcher,
+})
+
+/** A stray payload v13 left in `/tmp`. */
+const TMP_PAYLOAD = 'luca-3f2a9c.json'
+
+/** Where `--fix` puts v13's files: dated folders under here. */
+const backupRoot = () => join(home, '.local', 'state', 'luca', 'v13-backup')
+
+/**
+ * Seeds the home folder and the temp folder with what v13 left behind: its
+ * skills, agents, commands, and status line script, the global hook and the
+ * status line in Claude Code's settings, `~/.luca/`, Antigravity's copies,
+ * and a stray payload. With `muninn_data`, `~/.luca/`'s MuninnDB data folder
+ * holds data.
+ */
+const seedHomeV13 = async ({
+    muninn_data = false,
+}: { muninn_data?: boolean } = {}) => {
+    for (const target of HOME_STAND_INS) {
+        await Bun.write(inHome(target), standIn(target))
+    }
+    await Bun.write(
+        join(home, '.claude', 'settings.json'),
+        JSON.stringify(
+            {
+                model: 'opus',
+                hooks: { PreToolUse: [USER_HOOK, STAGE_GATE_HOOK] },
+                statusLine: {
+                    type: 'command',
+                    command: `bun "${home}/.claude/luca-statusline.ts"`,
+                    padding: 0,
+                },
+            },
+            null,
+            2
+        )
+    )
+    await Bun.write(
+        join(home, '.gemini', 'antigravity-cli', 'hooks.json'),
+        JSON.stringify(
+            {
+                'luca-stage-gate': {
+                    enabled: true,
+                    PreToolUse: [
+                        {
+                            matcher:
+                                'replace|write_file|run_shell_command|run_command',
+                            hooks: [
+                                {
+                                    type: 'command',
+                                    command: 'luca hook stage-gate',
+                                    timeout: 30,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+            null,
+            2
+        )
+    )
+    await Bun.write(
+        join(home, '.gemini', 'antigravity-cli', 'mcp_config.json'),
+        JSON.stringify(
+            {
+                mcpServers: {
+                    muninn: {
+                        serverUrl: MUNINN_MCP_URL,
+                        headers: { Authorization: `Bearer ${TOKEN}` },
+                        enabledTools: ['*'],
+                    },
+                    my_server: { serverUrl: 'http://127.0.0.1:9999/mcp' },
+                },
+            },
+            null,
+            2
+        )
+    )
+    await Bun.write(join(home, '.luca', 'bin', 'muninndb'), 'v13 muninndb\n')
+    await mkdir(join(home, '.luca', 'muninndb-data'), { recursive: true })
+    if (muninn_data) {
+        await Bun.write(
+            join(home, '.luca', 'muninndb-data', 'vault-0001.db'),
+            'memories\n'
+        )
+    }
+    await Bun.write(join(tmp_dir, TMP_PAYLOAD), '{"hook":"stage-gate"}\n')
+}
+
+/** The repo's `.gitignore`: the user's lines, then v13's managed block. */
+const v13Gitignore = async () => {
+    const { variants } = (await loadV13Manifest()).gitignore_block
+    const block = variants[variants.length - 1]
+    if (block === undefined) throw new Error('No .gitignore block variant')
+    return `node_modules/\ndist/\n\n${[...block.header, ...block.entries].join('\n')}\n`
+}
+
+/** A repo where v13's `luca init` ran, all of it committed. */
+const makeV13Repo = async () =>
+    makeRepo({
+        files: {
+            'package.json': PACKAGE_JSON,
+            [CONFIG_PATH]: JSON.stringify(
+                { lucaVersion: '13.0.1', vault: 'tmnb' },
+                null,
+                2
+            ),
+            '.claude/settings.json': JSON.stringify(
+                {
+                    permissions: { allow: ['Bash(bun test)'] },
+                    hooks: {
+                        PreToolUse: [
+                            repoHook('pipeline-guard', 'Bash'),
+                            USER_HOOK,
+                        ],
+                        PostToolUse: [
+                            repoHook('context-refresher', '*'),
+                            repoHook('continuation-messages', 'Bash'),
+                        ],
+                    },
+                },
+                null,
+                2
+            ),
+            '.claude/cache/context-refresher-state.json': '{"calls":3}\n',
+            '.gitignore': await v13Gitignore(),
+            ...Object.fromEntries(
+                REPO_STAND_INS.map((target) => [
+                    inRepo(target),
+                    standIn(target),
+                ])
+            ),
+        },
+    })
+
+const inV13Repo = () => ({
+    github: fakeGitHub().github,
+    memory: createFakeMuninn({ vaults: { tmnb: [] } }),
+})
+
+/** The v13 checks that aren't OK. */
+const v13Found = (checks: Check[]): Check[] =>
+    checks.filter((check) => check.group === 'v13' && check.status !== 'ok')
+
+/** What the v13 checks that aren't OK say, and their fixes. */
+const v13Text = (checks: Check[]): string =>
+    v13Found(checks)
+        .map((check) => `${check.detail}\n${check.fix ?? ''}`)
+        .join('\n')
+
+/** Every file under `dir` (leaving out `.git`) and its text, by relative path. */
+const snapshot = async (dir: string): Promise<Map<string, string>> => {
+    const files = new Map<string, string>()
+    if (!existsSync(dir)) return files
+    for (const path of await filesUnder(dir)) {
+        files.set(path, await Bun.file(join(dir, path)).text())
+    }
+    return files
+}
+
+/** The backed-up file whose path ends with `path`, and its text. */
+const backedUp = (backup: Map<string, string>, path: string) =>
+    [...backup].find(
+        ([file]) => file === path || file.endsWith(`/${path}`)
+    )?.[1]
+
+/** Every file from `before` is still at its path, or in the backup as it was. */
+const expectNothingDeleted = async ({
+    dir,
+    before,
+    backup,
+}: {
+    dir: string
+    before: Map<string, string>
+    backup: Map<string, string>
+}) => {
+    for (const [path, text] of before) {
+        const kept = existsSync(join(dir, path))
+        expect({
+            path,
+            kept: kept || backedUp(backup, path) === text,
+        }).toEqual({ path, kept: true })
+    }
+}
+
+describe('luca doctor finds v13 leftovers', () => {
+    test('on the computer it finds the global hook, the status line, v13 skills, agents, and commands, ~/.luca, Antigravity copies, and /tmp payloads', async () => {
+        await seedHomeV13()
+
+        const end = await doctor({
+            fakes: healthy(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const found = v13Found(end.checks)
+        expect(found.length).toBeGreaterThan(0)
+        for (const check of found) {
+            expect(check.fix ?? '').not.toBe('')
+            expect(printed()).toContain(check.detail)
+        }
+        const text = v13Text(end.checks)
+        expect(text).toContain('stage-gate')
+        expect(text).toMatch(/status ?line/i)
+        for (const target of HOME_STAND_INS) {
+            expect(text).toContain(target.slice('~/'.length))
+        }
+        expect(
+            text.includes('~/.luca') || text.includes(join(home, '.luca'))
+        ).toBe(true)
+        expect(text).toContain('antigravity-cli/hooks.json')
+        expect(text).toContain('antigravity-cli/mcp_config.json')
+        expect(text).toContain(TMP_PAYLOAD)
+        expect(printed()).not.toContain(TOKEN)
+    })
+
+    test('in the repo it finds the hook scripts, their wiring, the cache file, and the managed .gitignore block', async () => {
+        await makeV13Repo()
+
+        const end = await doctor({
+            fakes: healthy(),
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const text = v13Text(end.checks)
+        for (const target of REPO_STAND_INS) {
+            expect(text).toContain(inRepo(target))
+        }
+        expect(text).toContain('.claude/settings.json')
+        expect(text).toContain('.claude/cache')
+        expect(text).toContain('.gitignore')
+        for (const check of v13Found(end.checks)) {
+            expect(check.fix ?? '').not.toBe('')
+            expect(printed()).toContain(check.detail)
+        }
+    }, 60_000)
+
+    test('without --fix it reports the leftovers and changes nothing', async () => {
+        await seedHomeV13()
+        await makeV13Repo()
+        const home_before = await snapshot(home)
+        const repo_before = await snapshot(repo)
+        const tmp_before = await snapshot(tmp_dir)
+
+        const end = await doctor({
+            fakes: healthy(),
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        expect(v13Found(end.checks).length).toBeGreaterThan(0)
+        expect(await snapshot(home)).toEqual(home_before)
+        expect(await snapshot(repo)).toEqual(repo_before)
+        expect(await snapshot(tmp_dir)).toEqual(tmp_before)
+    }, 60_000)
+
+    test('with no v13 leftovers, the v13 group prints OK and the migration guide is not linked', async () => {
+        await Bun.write(join(tmp_dir, 'notes.json'), '{}\n')
+
+        const end = await doctor({
+            fakes: healthy(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const v13 = end.checks.filter((check: Check) => check.group === 'v13')
+        expect(v13.length).toBeGreaterThan(0)
+        for (const check of v13) {
+            expect(check.status).toBe('ok')
+            expect(
+                lines().some(
+                    (line) => /\bOK\b/.test(line) && line.includes(check.detail)
+                )
+            ).toBe(true)
+        }
+        expect(printed()).not.toContain('migrating-')
+        expect(end.exit_code).toBe(0)
+    })
+})
+
+describe('luca doctor matches v13 files by content, not by name', () => {
+    test('a same-named file with different content is not reported, and --fix leaves it in place', async () => {
+        await seedHomeV13()
+        const research = join(home, '.claude', 'agents', 'research.md')
+        const grill_me = join(home, '.claude', 'skills', 'grill-me', 'SKILL.md')
+        const lu_command = join(home, '.claude', 'commands', 'lu.md')
+        const mine = new Map([
+            [research, '# My own research agent\n'],
+            [grill_me, '# My own grill-me skill\n'],
+            [lu_command, '# My own /lu command\n'],
+        ])
+        for (const [path, text] of mine) await Bun.write(path, text)
+        const manifest = await manifestWithStandIns()
+
+        const found = await doctor({
+            fakes: healthy(),
+            v13_manifest: manifest,
+        })
+
+        const text = v13Text(found.checks)
+        expect(text).toContain('.claude/agents/plan.md')
+        expect(text).not.toContain('agents/research.md')
+        expect(text).not.toContain('skills/grill-me')
+        expect(text).not.toContain('commands/lu.md')
+
+        await doctor({ fakes: healthy(), fix: true, v13_manifest: manifest })
+
+        for (const [path, text] of mine) {
+            expect(await Bun.file(path).text()).toBe(text)
+        }
+        const backup = await snapshot(backupRoot())
+        expect(backedUp(backup, '.claude/agents/research.md')).toBeUndefined()
+        expect(
+            backedUp(backup, '.claude/skills/grill-me/SKILL.md')
+        ).toBeUndefined()
+        expect(backedUp(backup, '.claude/commands/lu.md')).toBeUndefined()
+    })
+})
+
+describe('luca doctor --fix cleans up v13 leftovers', () => {
+    test('matched files move to one dated backup folder with their paths kept', async () => {
+        await seedHomeV13()
+        await makeV13Repo()
+
+        await doctor({
+            fakes: healthy(),
+            fix: true,
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const dated = readdirSync(backupRoot())
+        expect(dated).toHaveLength(1)
+        expect(dated[0]).toMatch(/^\d{4}-\d{2}-\d{2}/)
+        const backup = await snapshot(backupRoot())
+        for (const path of backup.keys()) {
+            expect(path.startsWith(`${dated[0]}/`)).toBe(true)
+        }
+        for (const target of HOME_STAND_INS) {
+            const path = target.slice('~/'.length)
+            expect({ path, left: existsSync(inHome(target)) }).toEqual({
+                path,
+                left: false,
+            })
+            expect(backedUp(backup, path)).toBe(standIn(target))
+        }
+        for (const target of REPO_STAND_INS) {
+            const path = inRepo(target)
+            expect({ path, left: existsSync(join(repo, path)) }).toEqual({
+                path,
+                left: false,
+            })
+            expect(backedUp(backup, path)).toBe(standIn(target))
+        }
+    }, 60_000)
+
+    test('it unwires the global hook, the status line, and the repo hooks, and keeps the user own settings', async () => {
+        await seedHomeV13()
+        await makeV13Repo()
+
+        await doctor({
+            fakes: healthy(),
+            fix: true,
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const user_settings = await Bun.file(
+            join(home, '.claude', 'settings.json')
+        ).json()
+        expect(user_settings.model).toBe('opus')
+        expect(user_settings.statusLine).toBeUndefined()
+        expect(user_settings.hooks.PreToolUse).toEqual([USER_HOOK])
+
+        const repo_settings = await Bun.file(
+            join(repo, '.claude', 'settings.json')
+        ).json()
+        expect(repo_settings.permissions).toEqual({
+            allow: ['Bash(bun test)'],
+        })
+        expect(repo_settings.hooks?.PreToolUse).toEqual([USER_HOOK])
+        expect(repo_settings.hooks?.PostToolUse ?? []).toEqual([])
+        expect(JSON.stringify(repo_settings)).not.toContain('.claude/hooks/')
+
+        const antigravity_hooks = await Bun.file(
+            join(home, '.gemini', 'antigravity-cli', 'hooks.json')
+        ).json()
+        expect(antigravity_hooks['luca-stage-gate']).toBeUndefined()
+    }, 60_000)
+
+    test('when the repo hook wiring cannot be removed, the hook scripts stay in place', async () => {
+        await makeV13Repo()
+        // Neither a write in place nor a write-and-rename can change it.
+        const claude_dir = join(repo, '.claude')
+        await chmod(join(claude_dir, 'settings.json'), 0o444)
+        await chmod(claude_dir, 0o555)
+        try {
+            const end = await doctor({
+                fakes: healthy(),
+                fix: true,
+                in_repo: inV13Repo(),
+                v13_manifest: await manifestWithStandIns(),
+            })
+
+            for (const target of REPO_STAND_INS) {
+                const path = inRepo(target)
+                expect({ path, kept: existsSync(join(repo, path)) }).toEqual({
+                    path,
+                    kept: true,
+                })
+            }
+            expect(v13Text(end.checks)).toContain('.claude/settings.json')
+        } finally {
+            await chmod(claude_dir, 0o755)
+            await chmod(join(claude_dir, 'settings.json'), 0o644)
+        }
+    }, 60_000)
+
+    test('it deletes nothing in the home folder, the repo, or the temp folder', async () => {
+        await seedHomeV13()
+        await makeV13Repo()
+        await Bun.write(join(tmp_dir, 'notes.json'), '{}\n')
+        const home_before = await snapshot(home)
+        const repo_before = await snapshot(repo)
+        const tmp_before = await snapshot(tmp_dir)
+
+        await doctor({
+            fakes: healthy(),
+            fix: true,
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        const backup = await snapshot(backupRoot())
+        // The cleanup ran: v13's files were moved, not deleted.
+        expect(backup.size).toBeGreaterThan(0)
+        await expectNothingDeleted({ dir: home, before: home_before, backup })
+        await expectNothingDeleted({ dir: repo, before: repo_before, backup })
+        await expectNothingDeleted({ dir: tmp_dir, before: tmp_before, backup })
+        expect(await Bun.file(join(tmp_dir, 'notes.json')).text()).toBe('{}\n')
+    }, 60_000)
+
+    test('~/.luca/ with an empty MuninnDB data folder moves to the backup', async () => {
+        await seedHomeV13()
+
+        await doctor({
+            fakes: healthy(),
+            fix: true,
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        expect(existsSync(join(home, '.luca'))).toBe(false)
+        const backup = await snapshot(backupRoot())
+        expect(backedUp(backup, '.luca/bin/muninndb')).toBe('v13 muninndb\n')
+    })
+})
+
+describe('luca doctor --fix keeps ~/.luca/ holding MuninnDB data', () => {
+    test('~/.luca/ stays in place, still reported, when its MuninnDB data folder is not empty', async () => {
+        await seedHomeV13({ muninn_data: true })
+
+        const end = await doctor({
+            fakes: healthy(),
+            fix: true,
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        expect(
+            await Bun.file(
+                join(home, '.luca', 'muninndb-data', 'vault-0001.db')
+            ).text()
+        ).toBe('memories\n')
+        expect(
+            await Bun.file(join(home, '.luca', 'bin', 'muninndb')).text()
+        ).toBe('v13 muninndb\n')
+        const backup = await snapshot(backupRoot())
+        expect(
+            backedUp(backup, '.luca/muninndb-data/vault-0001.db')
+        ).toBeUndefined()
+        expect(backedUp(backup, '.luca/bin/muninndb')).toBeUndefined()
+        const text = v13Text(end.checks)
+        expect(
+            text.includes('~/.luca') || text.includes(join(home, '.luca'))
+        ).toBe(true)
+    })
+})
+
+describe('luca doctor --fix commits nothing after v13 cleanup', () => {
+    test('nothing is committed or staged, and the de-hooked settings and the new config are listed to commit', async () => {
+        await seedHomeV13()
+        await makeV13Repo()
+        const head = (await git(repo, 'rev-parse', 'HEAD')).trim()
+        const origin_head = (await git(origin, 'rev-parse', 'main')).trim()
+
+        await doctor({
+            fakes: healthy(),
+            fix: true,
+            in_repo: inV13Repo(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        expect((await git(repo, 'rev-parse', 'HEAD')).trim()).toBe(head)
+        expect((await git(repo, 'rev-list', '--count', 'main')).trim()).toBe(
+            '1'
+        )
+        expect((await git(origin, 'rev-parse', 'main')).trim()).toBe(
+            origin_head
+        )
+        expect(
+            (await git(repo, 'diff', '--cached', '--name-only')).trim()
+        ).toBe('')
+        // The de-hooked settings are a change left for the user to commit.
+        expect(await git(repo, 'status', '--porcelain')).toContain(
+            '.claude/settings.json'
+        )
+        const to_commit = lines()
+            .filter((line) => /commit/i.test(line))
+            .join('\n')
+        expect(to_commit).toContain('.claude/settings.json')
+        expect(to_commit).toContain('.luca/config.json')
+    }, 60_000)
+})
+
+/** The migration guide, at the repo root's `docs/`. */
+const MIGRATION_GUIDE = join(
+    import.meta.dir,
+    '..',
+    '..',
+    '..',
+    '..',
+    'docs',
+    'migrating-to-v14.md'
+)
+
+describe('v13 migration guide', () => {
+    test('docs/migrating-to-v14.md says what is gone, what replaced it, luca doctor --fix, and one global luca', async () => {
+        expect(await Bun.file(MIGRATION_GUIDE).exists()).toBe(true)
+        const guide = await Bun.file(MIGRATION_GUIDE).text()
+
+        // What's gone.
+        expect(guide).toMatch(/\/lu\b/)
+        expect(guide).toContain('/luca-init')
+        expect(guide).toMatch(/skills/i)
+        expect(guide).toMatch(/agents/i)
+        expect(guide).toMatch(/commands/i)
+        expect(guide).toMatch(/hooks?\b/i)
+        expect(guide).toContain('luca vault:init')
+        expect(guide).toMatch(/status ?line/i)
+        expect(guide).toMatch(/antigravity/i)
+        // What replaced it.
+        expect(guide).toMatch(/matt pocock/i)
+        expect(guide).toContain('/luca-run')
+        // The cleanup.
+        expect(guide).toContain('luca doctor --fix')
+        // One computer, one global luca.
+        expect(guide).toMatch(/one global `?luca/i)
+    })
+
+    test('doctor links the migration guide when it finds v13 leftovers', async () => {
+        await seedHomeV13()
+
+        await doctor({
+            fakes: healthy(),
+            v13_manifest: await manifestWithStandIns(),
+        })
+
+        expect(printed()).toContain('docs/migrating-to-v14.md')
+    })
 })
