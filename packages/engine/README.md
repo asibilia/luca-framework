@@ -128,8 +128,6 @@ on with a run from its journal (#369).
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
-| `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
-| `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the next date tag (`nextReleaseTag`), the pinned clone. |
 
 ## How a run moves
 
@@ -730,52 +728,17 @@ show up but nothing leaves the machine. No GitHub, no models. It prints the temp
 paths and the PR it opened in memory, then removes the temp folder (which
 also holds its journal).
 
-## Releasing Luca
+## Publishing Luca
 
-Runs never use the development working copy. They use a **release**: a
-pinned clone of this repo in `~/.local/share/luca/`, checked out at a date
-tag. The `luca-board` plugin and its engine path both point at that clone,
-so runs on `luca-framework` itself can't change the engine they run on.
+Runs never use the development working copy. A **release** is a published
+npm version of `@alecsibilia/luca`, and every run uses the installed one,
+including runs on `luca-framework` itself, so a run can't change the engine
+it runs on. Changes reach runs only by publishing. See
+[For maintainers](../luca/README.md#for-maintainers) in the publish
+package's README for changesets, the Version PR, and the `alpha` guard.
 
-`luca-release` makes a release and switches to it. Run it from the working
-copy:
-
-```bash
-bun packages/engine/src/cli/luca-release.ts
-```
-
-Each step runs only if the one before it worked. A refusal changes nothing.
-
-1. **Clean `main`.** The working copy must be on `main`, with no uncommitted
-   or untracked changes, at the same commit as `origin/main`.
-2. **No run going.** A run is going when its journal in the runs folder has
-   no run-ended record (limit waits and stuck runs waiting for a reply count),
-   or the board's run registry has it with no `ended`. It lists them by spec
-   and repo, then refuses.
-3. **Gates.** It runs the gates from `.luca/config.json` in the working copy.
-   A failed gate refuses, naming the gate.
-4. **Tag.** It picks `luca-YYYY.MM.DD` (local date), or `.2`, `.3`, and so on
-   for another release that day, then creates the tag at `main` and pushes it.
-   The date names never clash with old Luca's `v2.x` to `v13.x` tags.
-5. **Pinned clone.** It clones `origin` into `~/.local/share/luca/` on first
-   use (a clone, not a worktree), fetches the tag, checks it out, and runs
-   `bun install --frozen-lockfile` there.
-6. **Plugin.** It runs `paseo plugin install <pinned>/packages/board --id luca-board`.
-7. **Engine path.** It sets the plugin's `engine_path` setting to
-   `<pinned>/packages/engine/src/cli/luca-run.ts`, through the plugin's
-   settings RPC on the local Paseo daemon.
-8. It prints the live release. Then run `/reload-skills` in a Paseo chat, so
-   Paseo picks up the new plugin.
-
-It exits 0 when the release is live and 1 otherwise. A step that fails after
-the tag was pushed says so; fix the cause and run it again for a `.2` tag.
-
-The very first release has to be run from the working copy by hand. Installing
-and upgrading are the same command. `runRelease` is handed its folders (the
-working copy, the pinned clone, the runs folder, the board registry) and its
-Paseo adapter (`ReleasePaseo`), so the tests (`src/cli/release.test.ts`) run it
-end to end with real git in throwaway repos with a local bare `origin`, a fake
-Paseo, and fake run state.
+`luca upgrade` moves this computer to another published version. It refuses
+while any run is going (`goingRuns` in `src/cli/going-runs.ts`).
 
 ## Setting up a repo
 

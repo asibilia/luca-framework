@@ -12,7 +12,7 @@ import { createJournal, runJournalPath } from '../journal/journal'
 
 /**
  * The runs that are going, for the commands that must not change Luca under
- * them (`luca upgrade`, `luca-release`).
+ * them (`luca upgrade`).
  */
 
 /**

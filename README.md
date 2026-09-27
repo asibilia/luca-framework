@@ -9,11 +9,12 @@ You write a **spec** (one feature: the problem, the solution, and how it will be
 | Package | What it is |
 | ------- | ---------- |
 | [`packages/engine`](packages/engine/README.md) | The engine (`@luca/engine`). It drives a run of one spec with Claude agents, keeps the journal, and has the `luca-run` command line. |
+| [`packages/luca`](packages/luca/README.md) | `@alecsibilia/luca`, the one package on npm: the engine and the board, with the `luca` command. Its README is what npm shows. |
 | [`packages/board`](packages/board/README.md) | The board, the Paseo plugin `luca-board`. Type `/luca-run <spec>` in a Paseo chat to start a run and watch it in the side panel and the chat. |
 
 ## Start a run
 
-From Paseo, install the board plugin and type `/luca-run <spec number>` (or `/luca-run demo` for a practice run with no GitHub and no models). See [Install and try it](packages/board/README.md#install-and-try-it).
+Install `@alecsibilia/luca`, run `luca init` and `luca setup`, then type `/luca-run <spec number>` in a Paseo chat (or `/luca-run demo` for a practice run with no GitHub and no models). See [What you need and the first run](packages/luca/README.md#what-you-need).
 
 From the command line:
 
@@ -41,13 +42,7 @@ These are the engine's own gates for this repo, set in [`.luca/config.json`](.lu
 
 ## Release (maintainers)
 
-`@alecsibilia/luca` ([`packages/luca`](packages/luca/README.md)) is released with changesets and the [`release.yml`](.github/workflows/release.yml) workflow. The repo is in changesets' pre mode `alpha`, so only `14.0.0-alpha.N` versions go out, under npm's `alpha` tag, and `latest` stays on `13.0.1`.
-
-1. Merge a PR with a changeset. On the push to `main`, the workflow opens or updates the Version PR, "chore(release): version packages (...)".
-2. The Version PR is opened by the bot, so its checks don't start on their own: on the PR, click **Approve workflows to run**.
-3. Merge the Version PR. The workflow sees no pending changesets and a version that isn't on npm yet, so it publishes: the PR checks, `bun pm pack`, an install of the tarball with `luca-run --demo`, a guard that fails unless the version is `-alpha.N`, `npm publish --tag alpha` over npm trusted publishing (no token), and a GitHub release marked as a prerelease.
-
-Switch on `latest` later, after a real `tmnb` run works, with one reviewed PR that runs `changeset pre exit` and changes the `-alpha.N` guard (and the `--tag alpha`) in `release.yml` together.
+`@alecsibilia/luca` ([`packages/luca`](packages/luca/README.md)) is released with changesets and the [`release.yml`](.github/workflows/release.yml) workflow, in changesets' pre mode `alpha`. Every run uses the installed version, including runs on this repo. See [For maintainers](packages/luca/README.md#for-maintainers) for the Version PR, the `-alpha.N` guard, and the one reviewed PR that later switches on `latest`.
 
 ## Documentation
 
