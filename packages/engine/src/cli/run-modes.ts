@@ -10,8 +10,14 @@ import type { AgentLauncher } from '../agents/agent-launcher'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
 import type { BoardSync } from '../board/board-sync'
 import { loadEngineConfig } from '../config/engine-config'
+import { lucaVersion } from '../config/luca-version'
 import { decide, type EngineAction } from '../core/decide'
-import { runEngine, startRun, STOP_ACTIONS } from '../core/execute'
+import {
+    recordResume,
+    runEngine,
+    startRun,
+    STOP_ACTIONS,
+} from '../core/execute'
 import { createGitAdapter } from '../git/git-adapter'
 import { createTypeSafeJev } from '../jev/jev-client'
 import type { JevShadow } from '../jev/jev-shadow'
@@ -170,6 +176,7 @@ export const runSpec = async ({
     usage,
     board,
     log,
+    luca_version = lucaVersion(),
 }: {
     spec_number: number
     repo: string
@@ -187,6 +194,8 @@ export const runSpec = async ({
     usage?: UsageLineDeps
     board: BoardSync | null
     log: (line: string) => void
+    /** Luca's version, recorded on start and resume. Defaults to the engine's own. */
+    luca_version?: string
 }): Promise<RunEnd> => {
     const journal = createJournal({
         file: runJournalPath({ runs_dir, run_id }),
@@ -213,9 +222,11 @@ export const runSpec = async ({
                     ? undefined
                     : { project_vault: loaded.config.muninn?.vault ?? null },
             repo,
+            luca_version,
         })
     } else {
         log('[luca-run] resuming the run from its journal')
+        recordResume({ journal, luca_version })
     }
     return driveRun({
         journal,
@@ -440,6 +451,7 @@ export const resumeRun = async ({
     usage,
     board,
     log,
+    luca_version,
 }: {
     run_id: string
     runs_dir: string
@@ -458,6 +470,8 @@ export const resumeRun = async ({
     usage?: UsageLineDeps
     board: BoardSync | null
     log: (line: string) => void
+    /** Luca's version, recorded on the resume. Defaults to the engine's own. */
+    luca_version?: string
 }): Promise<RunEnd> => {
     const stop = async (message: string): Promise<RunEnd> => {
         log(`[luca-run] stopped: ${message}`)
@@ -490,6 +504,7 @@ export const resumeRun = async ({
         usage,
         board,
         log,
+        luca_version,
     })
 }
 

@@ -38,6 +38,7 @@ on with a run from its journal (#369).
 | Module | What it does |
 | --- | --- |
 | `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
+| `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
@@ -436,6 +437,16 @@ folder; it keeps the journal and runs the engine on it. A run id with no
 journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 })` lists the runs whose next action is not a stop (`done`,
 `invalid_journal`).
+
+**Luca's version (#460).** `lucaVersion()` is the version of the installed
+`@alecsibilia/luca` package, found by walking up from the engine's own
+files, or `DEV_VERSION` when the engine runs from the repo's source. A new
+run records it in `run_started` (`luca_version`; `null` in older journals),
+and each time the engine starts again on a run's journal it appends an
+`engine_resumed` (`{ luca_version }`) before its first step. The decision
+step reads neither; the board shows a note when a run resumed on a
+different version. Every agent's Agent SDK client tag is
+`luca-engine/<version>`.
 
 **Restarting runs from Paseo (#375).** `luca-run --unfinished` prints one
 JSON object to stdout, and nothing else, then exits 0:

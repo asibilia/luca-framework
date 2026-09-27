@@ -948,6 +948,9 @@ const applyRecord = ({
             return next
         case 'run_resumed':
             return resumedAfter({ state: next, record })
+        // Luca's version on a resume changes no step: only the board reads it.
+        case 'engine_resumed':
+            return next
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
         case 'run_stuck':
@@ -1590,6 +1593,7 @@ type TicketRecord = Exclude<
             | 'step_started'
             | 'step_ended'
             | 'run_resumed'
+            | 'engine_resumed'
             | 'join_started'
             | 'memory_write_started'
             | 'memory_write_done'

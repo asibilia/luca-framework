@@ -70,7 +70,24 @@ const RunStartedEntrySchema = z.object({
          * can find it. `null` in older journals.
          */
         repo: z.string().min(1).nullable().default(null),
+        /**
+         * Luca's version the run started on (#460). `null` in older
+         * journals.
+         */
+        luca_version: z.string().min(1).nullable().default(null),
     }),
+})
+
+/**
+ * The engine started again on the run's journal (#460), on Luca's version
+ * `luca_version`, which may differ from the one in `run_started`. Journaled
+ * once per resume, before the engine's first step. Nothing reads it but
+ * the board.
+ */
+const EngineResumedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('engine_resumed'),
+    content: z.object({ luca_version: z.string().min(1) }),
 })
 
 const IntakeReadEntrySchema = z.object({
@@ -1152,6 +1169,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     StepEndedEntrySchema,
     RunResumedEntrySchema,
     JoinStartedEntrySchema,
+    EngineResumedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -1225,6 +1243,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     StepEndedEntrySchema.extend(STAMP_FIELDS),
     RunResumedEntrySchema.extend(STAMP_FIELDS),
     JoinStartedEntrySchema.extend(STAMP_FIELDS),
+    EngineResumedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -1297,6 +1316,7 @@ export const JournalKindSchema = z.enum([
     'step_ended',
     'run_resumed',
     'join_started',
+    'engine_resumed',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

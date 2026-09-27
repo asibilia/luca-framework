@@ -458,6 +458,17 @@ export const RunInfoSchema = z.object({
     /** Set by `run_stopped`, cleared once the engine moves on. */
     stopped: RunStoppedSchema.nullable(),
     log_path: z.string().nullable(),
+    /**
+     * Luca's version the run started on (#460); `null` when its journal
+     * doesn't say. Defaulted, so an older board state still parses.
+     */
+    started_on: z.string().nullable().default(null),
+    /**
+     * Set once the run resumed on a different Luca version than it started
+     * on, naming both. The run keeps going. Defaulted, so an older board
+     * state still parses.
+     */
+    version_note: z.string().nullable().default(null),
 })
 
 export type RunInfo = z.infer<typeof RunInfoSchema>

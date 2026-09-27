@@ -117,7 +117,8 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 | kind | Panel | Chat row |
 | --- | --- | --- |
-| `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". | "The run started on spec #n." |
+| `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". It also keeps `luca_version`, the Luca version the run started on (#460; `null` in older journals). | "The run started on spec #n." |
+| `engine_resumed` | the engine started again on the run's journal (#460; `{ luca_version }`, the Luca version it resumed on). When that differs from `run_started`'s `luca_version`, the run card shows a note naming both: "This run started on Luca 14.0.0-alpha.1 and resumed on Luca 14.0.0-alpha.2. It keeps going." The note stays for the rest of the run. The same version, or a journal whose `run_started` has no version, shows nothing. The run keeps going either way. | the note, once (warning); nothing on the same version |
 | `intake_read` | the spec's title | none |
 | `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
 | `nothing_to_do` | run status `nothing to do` | one line |
