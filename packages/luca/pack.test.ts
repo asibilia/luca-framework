@@ -354,11 +354,13 @@ describe('the packed @alecsibilia/luca tarball', () => {
 })
 
 describe('the @alecsibilia/luca package', () => {
-    test('its version is 13.0.1 and it is public', async () => {
+    test('its version is a release version and it is public', async () => {
         const manifest = await readManifest(join(LUCA_DIR, 'package.json'))
 
         expect(manifest.name).toBe('@alecsibilia/luca')
-        expect(manifest.version).toBe('13.0.1')
+        // Changesets bumps the version on every Version PR, so only its shape
+        // is checked: `X.Y.Z`, or `X.Y.Z-alpha.N` while in pre mode.
+        expect(manifest.version).toMatch(/^\d+\.\d+\.\d+(-alpha\.\d+)?$/)
         expect(manifest.private).not.toBe(true)
         expect(manifest.publishConfig?.access).toBe('public')
     })
