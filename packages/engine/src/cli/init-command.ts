@@ -15,11 +15,21 @@
  */
 import { readdir, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client'
 import { z } from 'zod'
 
+import {
+    BOARD_PLUGIN_ID,
+    LUCA_PACKAGE,
+    MUNINN_HEALTH_URL,
+    type Computer,
+    type LucaCopy,
+    type MuninnHealth,
+    type Paseo,
+} from './computer-checks'
+import { versionIn } from './doctor-checks'
 import {
     runInit,
     type Ask,
@@ -27,12 +37,12 @@ import {
     type Launchctl,
     type McpServer,
     type MuninnCli,
-    type PaseoPlugins,
     type SkillsTool,
 } from './init'
 
 import { daemonAddress } from '../board/paseo-board-link'
 import { runCommand } from '../shell/run-command'
+import { ghLogin } from '../tracker/github-tracker'
 
 /** `luca init`'s flags. */
 const INIT_FLAGS = ['--skip-muninndb', '--skip-skills']
@@ -56,7 +66,7 @@ const failure = ({
     )
 
 /** MuninnDB's CLI, found on the PATH or where its install script puts it. */
-const muninnOf = ({ home }: { home: string }): MuninnCli => {
+export const muninnOf = ({ home }: { home: string }): MuninnCli => {
     const which = async () => {
         const found = Bun.which('muninn')
         if (found !== null) return found
@@ -149,7 +159,7 @@ const serversIn = ({
  * top-level servers are user scope, each project's are local scope), as
  * `claude mcp list` checks every server's health and shows no scope.
  */
-const claudeOf = ({ home }: { home: string }): ClaudeMcp => ({
+export const claudeOf = ({ home }: { home: string }): ClaudeMcp => ({
     listMcpServers: async () => {
         const file = Bun.file(join(home, '.claude.json'))
         if (!(await file.exists())) return []
@@ -247,16 +257,18 @@ const SettingsWriteSchema = z.object({
     error: z.string().optional(),
 })
 
+const BoardVersionSchema = z.object({ version: z.string().nullable() })
+
 /**
- * Paseo through the local daemon: its `pluginsEnabled` config, its plugins,
- * and the board's settings RPCs. Connects on first use as `client_id`;
- * `close` ends it.
+ * Paseo through the local daemon: its version, its `pluginsEnabled` config,
+ * its plugins, and the board's settings and version RPCs. Connects on first
+ * use as `client_id`; `close` ends it.
  */
 export const paseoOf = ({
     client_id,
 }: {
     client_id: string
-}): PaseoPlugins & { close: () => Promise<void> } => {
+}): Paseo & { close: () => Promise<void> } => {
     let client: DaemonClient | null = null
     const connected = async (): Promise<DaemonClient> => {
         if (client !== null) return client
@@ -285,6 +297,39 @@ export const paseoOf = ({
             )
         )
     return {
+        version: async () => {
+            const daemon = await connected()
+            // The server's info comes right after connecting; a round trip
+            // makes sure it's in.
+            if (daemon.getLastServerInfoMessage() === null) {
+                await daemon.getDaemonConfig()
+            }
+            const version = daemon.getLastServerInfoMessage()?.version
+            if (version === undefined || version === null) {
+                throw new Error("Paseo didn't say its version")
+            }
+            return version
+        },
+        boardVersion: async () => {
+            const daemon = await connected()
+            const board = (await daemon.listPlugins()).find(
+                ({ id }) => id === BOARD_PLUGIN_ID
+            )
+            if (board === undefined) return null
+            try {
+                const { version } = BoardVersionSchema.parse(
+                    await daemon.invokePluginRpc(
+                        BOARD_PLUGIN_ID,
+                        'board.version',
+                        {}
+                    )
+                )
+                return version ?? 'of an unknown version'
+            } catch {
+                // A board from before `board.version` can't say.
+                return 'of an unknown version'
+            }
+        },
         pluginsEnabled: async () =>
             (await (await connected()).getDaemonConfig()).config
                 .pluginsEnabled === true,
@@ -396,6 +441,134 @@ export const boardDir = async (): Promise<string> => {
     )
 }
 
+const PackageJsonSchema = z.looseObject({
+    name: z.string().optional(),
+    version: z.string().optional(),
+})
+
+/** The package.json in `dir`, or `null` when it has no readable one. */
+const packageIn = async (
+    dir: string
+): Promise<z.infer<typeof PackageJsonSchema> | null> => {
+    const file = Bun.file(join(dir, 'package.json'))
+    if (!(await file.exists())) return null
+    try {
+        const parsed = PackageJsonSchema.safeParse(await file.json())
+        return parsed.success ? parsed.data : null
+    } catch {
+        return null
+    }
+}
+
+/** Every folder from `dir` up to the root, nearest first. */
+const foldersUp = (dir: string): string[] => {
+    const folders = [dir]
+    while (dirname(folders.at(-1) ?? '/') !== folders.at(-1)) {
+        folders.push(dirname(folders.at(-1) ?? '/'))
+    }
+    return folders
+}
+
+/** The package a file belongs to: the nearest package.json with a name. */
+const packageOf = async (
+    file: string
+): Promise<{ name: string; version: string | null } | null> => {
+    for (const dir of foldersUp(dirname(file))) {
+        const found = await packageIn(dir)
+        if (found?.name !== undefined) {
+            return { name: found.name, version: found.version ?? null }
+        }
+    }
+    return null
+}
+
+/**
+ * The installed Luca's version: the `@alecsibilia/luca` package this file
+ * is in, or else the nearest package.json's.
+ */
+const lucaVersion = async (): Promise<string> => {
+    let nearest: string | null = null
+    for (const dir of foldersUp(import.meta.dir)) {
+        const found = await packageIn(dir)
+        if (found?.name === LUCA_PACKAGE && found.version !== undefined) {
+            return found.version
+        }
+        nearest ??= found?.version ?? null
+    }
+    return nearest ?? '0.0.0'
+}
+
+/** The installed Luca: its version, its board folder, and its paths. */
+export const lucaInstall = async () => ({
+    luca_version: await lucaVersion(),
+    board_dir: await boardDir(),
+    engine_path: await realpath(join(import.meta.dir, 'luca-run.ts')),
+    bun_path: await realpath(process.execPath),
+})
+
+/** MuninnDB's health endpoint, asked with a short timeout. */
+export const muninnHealth: MuninnHealth = async () => {
+    try {
+        const response = await fetch(MUNINN_HEALTH_URL, {
+            signal: AbortSignal.timeout(3000),
+        })
+        if (!response.ok) return null
+        const parsed = z
+            .looseObject({ version: z.string() })
+            .safeParse(await response.json())
+        return parsed.success ? { version: parsed.data.version } : null
+    } catch {
+        return null
+    }
+}
+
+/** A tool's version from its `--version`, or `null` when it isn't there. */
+const toolVersion = async ({
+    tool,
+    home,
+}: {
+    tool: string
+    home: string
+}): Promise<string | null> => {
+    const bin = Bun.which(tool)
+    if (bin === null) return null
+    const end = await runCommand({
+        cmd: [bin, '--version'],
+        cwd: home,
+        timeout_ms: 30_000,
+    })
+    return end.exit_code === 0 ? versionIn(end.stdout) : null
+}
+
+/** Every `luca` on the PATH, once per real file, in PATH order. */
+const lucaCopies = async (): Promise<LucaCopy[]> => {
+    const copies: LucaCopy[] = []
+    const seen = new Set<string>()
+    for (const dir of (process.env.PATH ?? '').split(':')) {
+        if (dir === '') continue
+        const path = join(dir, 'luca')
+        if (!(await Bun.file(path).exists())) continue
+        const real = await realpath(path).catch(() => path)
+        if (seen.has(real)) continue
+        seen.add(real)
+        const found = await packageOf(real)
+        copies.push({
+            path,
+            package_name: found?.name ?? null,
+            version: found?.version ?? null,
+        })
+    }
+    return copies
+}
+
+/** The computer's tools, as `luca doctor` reads them. */
+export const computerOf = ({ home }: { home: string }): Computer => ({
+    bunVersion: () => toolVersion({ tool: 'bun', home }),
+    claudeVersion: () => toolVersion({ tool: 'claude', home }),
+    ghLogin: () => ghLogin().catch(() => null),
+    lucaCopies,
+})
+
 /** Runs `luca init` with the flags after `init`; returns the exit code. */
 export const initCommand = async ({
     argv,
@@ -414,14 +587,14 @@ export const initCommand = async ({
             skip_muninndb: argv.includes('--skip-muninndb'),
             skip_skills: argv.includes('--skip-skills'),
             muninn: muninnOf({ home }),
+            muninn_health: muninnHealth,
             claude: claudeOf({ home }),
             launchctl: launchctlOf({ home }),
             paseo,
             skills: skillsOf({ home }),
             ask: askInTerminal,
-            board_dir: await boardDir(),
-            engine_path: await realpath(join(import.meta.dir, 'luca-run.ts')),
-            bun_path: await realpath(process.execPath),
+            computer: computerOf({ home }),
+            ...(await lucaInstall()),
             log: (line) => {
                 console.log(line)
             },

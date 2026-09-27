@@ -1,10 +1,24 @@
-import { realpathSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
+
+import {
+    BOARD_PLUGIN_ID,
+    computerChecks,
+    isRight,
+    MUNINN_SERVER_NAME,
+    realPath,
+    rightEntry,
+    userMuninnEntry,
+    type Computer,
+    type MuninnHealth,
+    type Paseo,
+} from './computer-checks'
+import { formatChecks, hasProblem, type DoctorCheck } from './doctor-checks'
 
 /**
  * `luca init`: sets up this computer for Luca, once, and is safe to run
- * again. It has three parts, each run even when an earlier one failed.
+ * again. It has three parts, each run even when an earlier one failed, and
+ * ends with doctor's computer checks.
  *
  * Memory:
  *
@@ -36,15 +50,9 @@ import { join, resolve } from 'node:path'
  * `skip_skills` skips this part.
  *
  * MuninnDB's CLI, `claude mcp`, `launchctl`, Paseo, the question to the
- * user, and the `skills` tool are adapters, so tests use fakes. The token
- * is never printed, returned, or thrown.
+ * user, the `skills` tool, and the computer's tools are adapters, so tests
+ * use fakes. The token is never printed, returned, or thrown.
  */
-
-/** Where MuninnDB serves MCP. */
-export const MUNINN_MCP_URL = 'http://127.0.0.1:8750/mcp'
-
-/** The name of Claude Code's MuninnDB entry, the one the engine reads. */
-export const MUNINN_SERVER_NAME = 'muninn'
 
 /** The login item's launchd label, and its file name without `.plist`. */
 export const LOGIN_ITEM_LABEL = 'com.alecsibilia.luca.muninn'
@@ -126,15 +134,21 @@ export type SkillsTool = {
     installSkills: (args: { source: string; skills: string[] }) => Promise<void>
 }
 
-/** How init ended; `message` is the last line it printed. */
-export type InitEnd = { ok: boolean; memory: 'on' | 'off'; message: string }
+/**
+ * How init ended: `ok` when every step worked and no check is a problem;
+ * `message` is the last line of its own steps; `doctor` holds the computer
+ * checks it ended with.
+ */
+export type InitEnd = {
+    ok: boolean
+    memory: 'on' | 'off'
+    message: string
+    doctor: DoctorCheck[]
+}
 
 /** The note printed when MuninnDB is skipped. */
 export const MEMORY_OFF_NOTE =
     'Skipped MuninnDB (--skip-muninndb): runs will have memory off.'
-
-/** The board plugin's id in Paseo. */
-export const BOARD_PLUGIN_ID = 'luca-board'
 
 /** Where the planning skills come from, for the `skills` tool. */
 export const PLANNING_SKILLS_SOURCE = 'mattpocock/skills'
@@ -182,28 +196,8 @@ export const loginItemPlist = ({ muninn }: { muninn: string }): string => {
 `
 }
 
-/** The user-scope entry init leaves in Claude Code. Pure. */
-const rightEntry = ({ token }: { token: string }): McpServer => ({
-    name: MUNINN_SERVER_NAME,
-    scope: 'user',
-    transport: 'http',
-    url: MUNINN_MCP_URL,
-    headers: { Authorization: `Bearer ${token}` },
-})
-
-const isRight = ({
-    server,
-    right,
-}: {
-    server: McpServer
-    right: McpServer
-}): boolean =>
-    server.transport === right.transport &&
-    server.url === right.url &&
-    server.headers.Authorization === right.headers.Authorization
-
 /** Any text with the token swapped for `***`. Pure. */
-const hideToken = ({
+export const hideToken = ({
     text,
     token,
 }: {
@@ -216,22 +210,102 @@ const hideToken = ({
 const reason = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
 
-/** A folder's real path, or the folder as is when it can't be resolved. */
-const realFolder = (path: string): string => {
-    try {
-        return realpathSync(path)
-    } catch {
-        return resolve(path)
-    }
-}
-
 /** How one step of init ended; `message` is the last line it printed. */
 export type StepEnd = { ok: boolean; message: string }
 
 /**
+ * Makes Claude Code's user-scope `muninn` entry the right one for `token`:
+ * a right one is left alone, a wrong one is removed, then added. Logs each
+ * change after `prefix`, never the token. Throws when `claude mcp` fails.
+ */
+export const ensureMuninnEntry = async ({
+    claude,
+    token,
+    prefix,
+    log,
+}: {
+    claude: ClaudeMcp
+    token: string
+    prefix: string
+    log: (line: string) => void
+}): Promise<void> => {
+    const right = rightEntry({ token })
+    const current = await userMuninnEntry({ claude })
+    if (current !== undefined && isRight({ server: current, right })) {
+        log(`${prefix} Claude Code: the user-scope muninn entry is right`)
+        return
+    }
+    if (current !== undefined) {
+        await claude.removeMcpServer({
+            name: MUNINN_SERVER_NAME,
+            scope: 'user',
+        })
+        log(`${prefix} Claude Code: removed the wrong muninn entry`)
+    }
+    await claude.addMcpServer(right)
+    log(`${prefix} Claude Code: added the user-scope muninn entry`)
+}
+
+/**
+ * Puts the board into Paseo from `board_dir`, with Paseo's plugins on, and
+ * writes its engine and Bun paths, keeping its other settings. When the
+ * board is already installed from that folder, it is reloaded; from another
+ * folder, its settings are read, it is removed and installed again, and
+ * they are written back. Logs each step after `prefix`. Throws when Paseo
+ * fails. `installed` says whether the board was installed anew.
+ */
+export const placeBoard = async ({
+    paseo,
+    board_dir,
+    engine_path,
+    bun_path,
+    prefix,
+    log,
+}: {
+    paseo: PaseoPlugins
+    board_dir: string
+    engine_path: string
+    bun_path: string
+    prefix: string
+    log: (line: string) => void
+}): Promise<{ installed: boolean }> => {
+    const current = (await paseo.listPlugins()).find(
+        ({ id }) => id === BOARD_PLUGIN_ID
+    )
+    let kept: PluginSettings = {}
+    let installed = false
+    if (current === undefined) {
+        await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
+        installed = true
+        log(`${prefix} Board: installed from ${board_dir}`)
+    } else if (realPath(current.path) === realPath(board_dir)) {
+        kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
+        await paseo.reloadPlugin({ id: BOARD_PLUGIN_ID })
+        log(`${prefix} Board: reloaded from ${board_dir}`)
+    } else {
+        // Removing wipes the settings, so they are read first.
+        kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
+        await paseo.removePlugin({ id: BOARD_PLUGIN_ID })
+        await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
+        installed = true
+        log(
+            `${prefix} Board: moved from ${current.path} to ${board_dir}, settings kept`
+        )
+    }
+
+    await paseo.writeSettings({
+        plugin_id: BOARD_PLUGIN_ID,
+        values: { ...kept, engine_path, bun_path },
+    })
+    log(`${prefix} Board: engine path ${engine_path}, Bun path ${bun_path}`)
+    return { installed }
+}
+
+/**
  * Puts the board into Paseo from `board_dir` (reloaded when it is already
  * installed from there, its settings kept) and writes its engine and Bun
- * paths. Each line it logs starts with `[<command>]`. Never throws.
+ * paths, asking before it turns Paseo's plugins on. Each line it logs starts
+ * with `[<command>]`. Never throws.
  *
  * @example
  * const end = await setUpBoard({ command: 'luca upgrade', paseo, ask, board_dir, engine_path, bun_path, log: console.log })
@@ -274,37 +348,14 @@ export const setUpBoard = async ({
             log(`[${command}] Board: turned Paseo's plugins on`)
         }
 
-        const current = (await paseo.listPlugins()).find(
-            ({ id }) => id === BOARD_PLUGIN_ID
-        )
-        let kept: PluginSettings = {}
-        let installed = false
-        if (current === undefined) {
-            await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
-            installed = true
-            log(`[${command}] Board: installed from ${board_dir}`)
-        } else if (realFolder(current.path) === realFolder(board_dir)) {
-            kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
-            await paseo.reloadPlugin({ id: BOARD_PLUGIN_ID })
-            log(`[${command}] Board: reloaded from ${board_dir}`)
-        } else {
-            // Removing wipes the settings, so they are read first.
-            kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
-            await paseo.removePlugin({ id: BOARD_PLUGIN_ID })
-            await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
-            installed = true
-            log(
-                `[${command}] Board: moved from ${current.path} to ${board_dir}, settings kept`
-            )
-        }
-
-        await paseo.writeSettings({
-            plugin_id: BOARD_PLUGIN_ID,
-            values: { ...kept, engine_path, bun_path },
+        const { installed } = await placeBoard({
+            paseo,
+            board_dir,
+            engine_path,
+            bun_path,
+            prefix: `[${command}]`,
+            log,
         })
-        log(
-            `[${command}] Board: engine path ${engine_path}, Bun path ${bun_path}`
-        )
         return say(
             installed
                 ? `[${command}] Board is ready. Run /reload-skills in a Paseo chat so /luca-run shows up.`
@@ -362,7 +413,7 @@ const setUpMemory = async ({
     claude: ClaudeMcp
     launchctl: Launchctl
     log: (line: string) => void
-}): Promise<InitEnd> => {
+}): Promise<Omit<InitEnd, 'doctor'>> => {
     if (skip_muninndb) {
         log(`[luca init] ${MEMORY_OFF_NOTE}`)
         return { ok: true, memory: 'off', message: MEMORY_OFF_NOTE }
@@ -396,23 +447,12 @@ const setUpMemory = async ({
                 "MuninnDB's token file is missing after muninn init. Run muninn init --yes, then luca init again."
             )
         }
-        const right = rightEntry({ token })
-        const current = (await claude.listMcpServers()).find(
-            ({ name, scope }) => name === MUNINN_SERVER_NAME && scope === 'user'
-        )
-        if (current !== undefined && isRight({ server: current, right })) {
-            log('[luca init] Claude Code: the user-scope muninn entry is right')
-        } else {
-            if (current !== undefined) {
-                await claude.removeMcpServer({
-                    name: MUNINN_SERVER_NAME,
-                    scope: 'user',
-                })
-                log('[luca init] Claude Code: removed the wrong muninn entry')
-            }
-            await claude.addMcpServer(right)
-            log('[luca init] Claude Code: added the user-scope muninn entry')
-        }
+        await ensureMuninnEntry({
+            claude,
+            token,
+            prefix: '[luca init]',
+            log,
+        })
 
         const folder = join(home, 'Library', 'LaunchAgents')
         const plist = join(folder, `${LOGIN_ITEM_LABEL}.plist`)
@@ -446,22 +486,26 @@ const setUpMemory = async ({
 
 /**
  * Runs `luca init` against `home` with these adapters: memory, then the
- * board, then the planning skills. Never throws: a failure is logged (token
- * hidden) and ends with `ok: false`.
+ * board, then the planning skills, then doctor's computer checks, printed
+ * last. Never throws: a failure is logged (token hidden) and ends with
+ * `ok: false`, as does a check that is a problem.
  *
  * @example
- * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, muninn, claude, launchctl, paseo, skills, ask, board_dir, engine_path, bun_path, log: console.log })
+ * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, muninn, muninn_health, claude, launchctl, paseo, skills, ask, computer, luca_version, board_dir, engine_path, bun_path, log: console.log })
  */
 export const runInit = async ({
     home,
     skip_muninndb,
     skip_skills,
     muninn,
+    muninn_health,
     claude,
     launchctl,
     paseo,
     skills,
     ask,
+    computer,
+    luca_version,
     board_dir,
     engine_path,
     bun_path,
@@ -471,11 +515,15 @@ export const runInit = async ({
     skip_muninndb: boolean
     skip_skills: boolean
     muninn: MuninnCli
+    muninn_health: MuninnHealth
     claude: ClaudeMcp
     launchctl: Launchctl
-    paseo: PaseoPlugins
+    paseo: Paseo
     skills: SkillsTool
     ask: Ask
+    computer: Computer
+    /** The installed Luca's version. */
+    luca_version: string
     /** The board folder inside Luca's install folder. */
     board_dir: string
     /** The real path of the installed `luca-run`. */
@@ -508,9 +556,27 @@ export const runInit = async ({
     } else {
         planning = await setUpSkills({ skills, log })
     }
+    const doctor = await computerChecks({
+        home,
+        luca_version,
+        board_dir,
+        engine_path,
+        bun_path,
+        computer,
+        muninn,
+        muninn_health,
+        claude,
+        paseo,
+    })
+    for (const line of formatChecks({ checks: doctor })) log(line)
     return {
-        ok: memory.ok && board.ok && planning.ok,
+        ok:
+            memory.ok &&
+            board.ok &&
+            planning.ok &&
+            !hasProblem({ checks: doctor }),
         memory: memory.memory,
         message: planning.message,
+        doctor,
     }
 }

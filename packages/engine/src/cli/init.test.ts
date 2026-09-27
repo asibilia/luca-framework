@@ -54,6 +54,9 @@ const PLANNING_SKILLS = [
 
 const SKILLS_SOURCE = 'mattpocock/skills'
 
+/** The installed Luca's version, for the checks init ends with. */
+const LUCA_VERSION = '14.0.0-alpha.3'
+
 let home = ''
 let muninn_bin = ''
 /** Luca's install folder, as `bun add -g` leaves it. */
@@ -240,6 +243,9 @@ const fakePaseo = ({
     }
     return {
         paseo: {
+            version: async () => '0.9.1',
+            boardVersion: async () =>
+                at(BOARD_ID) === -1 ? null : LUCA_VERSION,
             pluginsEnabled: async () => is_enabled,
             enablePlugins: async () => {
                 paseo_events.push('enable plugins')
@@ -377,11 +383,25 @@ const init = ({
         skip_muninndb,
         skip_skills,
         muninn: fakes.muninn,
+        muninn_health: async () => ({ version: '0.11.0' }),
         claude: fakes.claude.claude,
         launchctl: fakes.launchctl.launchctl,
         paseo: (fakes.paseo ?? fakePaseo()).paseo,
         skills: (fakes.skills ?? fakeSkills()).skills,
         ask: answer(yes),
+        computer: {
+            bunVersion: async () => '1.3.11',
+            claudeVersion: async () => '2.1.280',
+            ghLogin: async () => 'asibilia',
+            lucaCopies: async () => [
+                {
+                    path: join(home, '.bun', 'bin', 'luca'),
+                    package_name: '@alecsibilia/luca',
+                    version: LUCA_VERSION,
+                },
+            ],
+        },
+        luca_version: LUCA_VERSION,
         board_dir,
         engine_path,
         bun_path,

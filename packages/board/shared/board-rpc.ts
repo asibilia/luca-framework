@@ -13,6 +13,7 @@ import {
  * - `run.start`: the `/luca-run` slash command asks the daemon to launch a run.
  * - `engine.event`: the engine sends its journal records to the board.
  * - `board.read`: the side panel polls the runs of one workspace.
+ * - `board.version`: `luca doctor` asks which Luca version is loaded.
  */
 
 /**
@@ -114,3 +115,17 @@ export const boardReadRpc = defineRpc({
 
 export type BoardReadInput = z.input<typeof BoardReadInputSchema>
 export type BoardReadOutput = z.infer<typeof BoardReadOutputSchema>
+
+/**
+ * API Response: the Luca version of the loaded board, read from its folder's
+ * package.json when it was loaded; `null` when it has none.
+ */
+export const BoardVersionOutputSchema = z.object({
+    version: z.string().nullable(),
+})
+
+export const boardVersionRpc = defineRpc({
+    name: 'board.version',
+    input: z.object({}),
+    output: BoardVersionOutputSchema,
+})

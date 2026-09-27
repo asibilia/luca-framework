@@ -7,8 +7,8 @@
  * It creates the labels a run needs, writes or converts `.luca/config.json`
  * (a new-style one is left alone), checks the `gh` login, the GitHub remote,
  * sub-issues and issue dependencies, the base branch (default `main`) on
- * `origin`, and the memory vault, and prints what's done and what's left.
- * It never commits. See `runSetup`.
+ * `origin`, and the memory vault, and prints what's done and what's left,
+ * with `luca doctor`'s repo checks. It never commits. See `runSetup`.
  *
  * Exits 0 when nothing is left to do, 1 when there is, 2 on bad flags.
  */
@@ -34,7 +34,11 @@ export const SETUP_USAGE = 'Usage: luca setup [--base <branch>]'
  * labels and issue links, and `gh` for the login. With no GitHub repo, the
  * tracker's calls fail with why (setup doesn't make them then).
  */
-const githubOf = async ({ cwd }: { cwd: string }): Promise<SetupGitHub> => {
+export const githubOf = async ({
+    cwd,
+}: {
+    cwd: string
+}): Promise<SetupGitHub> => {
     const name = await githubRepoOf({ repo: cwd }).catch(() => null)
     if (name === null) {
         const fail = () =>
@@ -61,7 +65,7 @@ const githubOf = async ({ cwd }: { cwd: string }): Promise<SetupGitHub> => {
  * MuninnDB over MCP, found as `luca-run` finds it. With no settings, a
  * client whose every call fails with why, so the vault check says so.
  */
-const memoryOf = async (): Promise<MemoryClient> => {
+export const memoryOf = async (): Promise<MemoryClient> => {
     const file = Bun.file(CLAUDE_JSON)
     const found = muninnSettings({
         env: process.env,

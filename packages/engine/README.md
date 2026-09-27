@@ -118,12 +118,16 @@ on with a run from its journal (#369).
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
-| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, and a quiet `luca hook`. |
+| `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, and a quiet `luca hook`. |
 | `src/cli/setup-command.ts` | `luca setup`'s flags and its real GitHub and MuninnDB adapters. |
-| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels, the config, and the checks a run needs. |
+| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels, the config, and the checks a run needs; `repoChecks` are its checks, read-only, for `luca doctor`. |
 | `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
 | `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, and reloads the board. |
 | `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
+| `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
+| `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
+| `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
+| `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
 | `src/cli/luca-release.ts` | The `luca-release` command line, with the real Paseo adapter. |
 | `src/cli/release.ts` | Makes a **release** and switches to it (`runRelease`): the next date tag (`nextReleaseTag`), the pinned clone. |
 
@@ -821,6 +825,34 @@ when nothing is left to do and 1 otherwise.
 the tests (`src/cli/setup.test.ts`) run it end to end with real git in
 throwaway repos with a local bare `origin`, a fake GitHub, and a fake
 MuninnDB.
+
+## Checking a setup: `luca doctor`
+
+```bash
+luca doctor [--fix]
+```
+
+It checks this computer (Bun; exactly one `luca` on the PATH, and it's v14;
+Claude Code 2.1.280+; `gh` signed in; Paseo 0.9.1+ with plugins on; the
+board installed from Luca's own folder, loaded at the installed version, with
+its engine and Bun paths; MuninnDB 0.11.0+ answering its health check, and
+Claude Code's user-scope `muninn` entry with its token; the planning skills
+still writing what intake needs), then, inside a repo, `luca setup`'s checks
+without changing anything. Each line prints OK, or the problem and its exact
+fix. It exits 1 on any problem. MuninnDB not installed (memory off) and
+planning-skill drift are warnings, which don't fail it.
+
+`--fix` fixes what's safe without asking: it starts MuninnDB, repairs the
+`muninn` entry as `luca init` does, reloads (or moves) the board keeping its
+settings and rewrites its paths, and runs `luca setup` in a repo, then lists
+the files to commit. It never deletes and never commits. Installs, sign-ins,
+Paseo's plugin consent, and other `luca` copies are only reported.
+
+`luca init` ends with the computer checks, and `luca setup` with the repo
+checks. The board reports its loaded version through its `board.version`
+RPC, read from its folder's package.json when Paseo loads it. The tests
+(`src/cli/doctor.test.ts`) run doctor end to end in a throwaway home folder
+and throwaway repos, with fakes for every tool.
 
 ## Choices made
 

@@ -4,6 +4,15 @@ import { dirname, join } from 'node:path'
 import { z } from 'zod'
 
 import {
+    checksFor,
+    formatChecks,
+    ok,
+    problem,
+    type DoctorCheck,
+    type Found,
+} from './doctor-checks'
+
+import {
     ENGINE_CONFIG_FILE,
     EngineConfigSchema,
     isBunTestCommand,
@@ -61,8 +70,16 @@ export type SetupCheck = {
     detail: string
 }
 
-/** How setup ended: `ok` when nothing is left to do. */
-export type SetupEnd = { ok: boolean; message: string; checks: SetupCheck[] }
+/**
+ * How setup ended: `ok` when nothing is left to do; `doctor` holds the repo
+ * checks it ended with.
+ */
+export type SetupEnd = {
+    ok: boolean
+    message: string
+    checks: SetupCheck[]
+    doctor: DoctorCheck[]
+}
 
 /** The labels a run needs, with what they're for. */
 const LABELS = [
@@ -350,16 +367,35 @@ const check = async ({
 const done = (detail: string) => ({ status: 'done' as const, detail })
 const todo = (detail: string) => ({ status: 'todo' as const, detail })
 
+/** A doctor check's result as a setup check: a to-do's detail ends with its fix. */
+const asSetup = (found: Found): Omit<SetupCheck, 'name'> =>
+    found.status === 'ok'
+        ? done(found.detail)
+        : todo(`${found.detail} ${found.fix ?? ''}`.trim())
+
+const checkGitHubRemote = ({
+    github_repo,
+}: {
+    github_repo: string | null
+}): Found =>
+    github_repo === null
+        ? problem(
+              'The repo has no GitHub remote.',
+              'Create one with `gh repo create --source . --push`, or add it with `git remote add origin <url>`.'
+          )
+        : ok(`The repo is ${github_repo} on GitHub`)
+
 const checkIssueLinks = async ({
     github,
     github_repo,
 }: {
     github: SetupGitHub
     github_repo: string | null
-}) => {
+}): Promise<Found> => {
     if (github_repo === null) {
-        return todo(
-            "Sub-issues and issue dependencies can't be checked without a GitHub remote. Add one, then run luca setup again."
+        return problem(
+            "Sub-issues and issue dependencies can't be checked without a GitHub remote.",
+            'Add one, then run luca setup again.'
         )
     }
     const { sub_issues, dependencies } = await github.issueLinks()
@@ -368,10 +404,11 @@ const checkIssueLinks = async ({
         ...(dependencies ? [] : ['issue dependencies']),
     ]
     if (missing.length === 0) {
-        return done(`${github_repo} has sub-issues and issue dependencies`)
+        return ok(`${github_repo} has sub-issues and issue dependencies`)
     }
-    return todo(
-        `${github_repo} has no ${missing.join(' or ')}. Luca reads a spec's tickets and blockers from them: turn them on for the repo's issues, then run luca setup again.`
+    return problem(
+        `${github_repo} has no ${missing.join(' or ')}. Luca reads a spec's tickets and blockers from them.`,
+        "Turn them on for the repo's issues, then run luca setup again."
     )
 }
 
@@ -381,22 +418,24 @@ const checkBaseBranch = async ({
 }: {
     repo: string
     base_branch: string
-}) => {
+}): Promise<Found> => {
     const listed = await runCommand({
         cmd: ['git', 'ls-remote', '--heads', 'origin', base_branch],
         cwd: repo,
     })
     if (listed.exit_code !== 0) {
-        return todo(
-            `Couldn't reach origin (${listed.stderr.trim()}). Add an \`origin\` remote on GitHub and push \`${base_branch}\` to it.`
+        return problem(
+            `Couldn't reach origin (${listed.stderr.trim()}).`,
+            `Add an \`origin\` remote on GitHub and push \`${base_branch}\` to it: \`git push -u origin ${base_branch}\`.`
         )
     }
     if (listed.stdout.trim() === '') {
-        return todo(
-            `origin has no \`${base_branch}\` branch. Push it: \`git push -u origin ${base_branch}\`.`
+        return problem(
+            `origin has no \`${base_branch}\` branch.`,
+            `Push it: \`git push -u origin ${base_branch}\`.`
         )
     }
-    return done(`origin has \`${base_branch}\``)
+    return ok(`origin has \`${base_branch}\``)
 }
 
 const checkVault = async ({
@@ -405,10 +444,11 @@ const checkVault = async ({
 }: {
     memory: MemoryClient
     vault: string | null
-}) => {
+}): Promise<Found> => {
     if (vault === null) {
-        return todo(
-            `No memory vault. Set \`muninn.vault\` in ${ENGINE_CONFIG_FILE} to the project's MuninnDB vault (such as the repo's name).`
+        return problem(
+            'No memory vault.',
+            `Set \`muninn.vault\` in ${ENGINE_CONFIG_FILE} to the project's MuninnDB vault (such as the repo's name).`
         )
     }
     const found = await safeMemory({ deps: { client: memory } }).recall({
@@ -418,11 +458,120 @@ const checkVault = async ({
         threshold: 0,
     })
     if (!found.ok) {
-        return todo(
-            `MuninnDB couldn't search the \`${vault}\` vault (${found.error}). Start MuninnDB, or set LUCA_MUNINN_URL and LUCA_MUNINN_TOKEN, then run luca setup again.`
+        return problem(
+            `MuninnDB couldn't search the \`${vault}\` vault (${found.error}).`,
+            'Start MuninnDB, or set LUCA_MUNINN_URL and LUCA_MUNINN_TOKEN, then run luca setup again.'
         )
     }
-    return done(`MuninnDB has the \`${vault}\` vault`)
+    return ok(`MuninnDB has the \`${vault}\` vault`)
+}
+
+const SETUP_FIX = 'Run luca setup (or luca doctor --fix)'
+
+/** The repo's labels, read-only: missing ones are a problem. */
+const checkLabels = async ({
+    repo,
+    github,
+    github_repo,
+}: {
+    repo: string
+    github: SetupGitHub
+    github_repo: string | null
+}): Promise<Found> => {
+    if (github_repo === null) {
+        return problem(
+            "The labels weren't checked: the repo has no GitHub remote.",
+            `Add a GitHub remote, then ${SETUP_FIX.toLowerCase()}.`
+        )
+    }
+    const have = new Set(await github.listLabels())
+    const needed = (await labelsFor({ repo })).map(({ name }) => name)
+    const missing = needed.filter((name) => !have.has(name))
+    if (missing.length > 0) {
+        return problem(
+            `The repo is missing the ${missing.map((name) => `\`${name}\``).join(', ')} label${missing.length === 1 ? '' : 's'}.`,
+            `${SETUP_FIX} to create them.`
+        )
+    }
+    return ok(`The repo has the labels a run needs: ${needed.join(', ')}`)
+}
+
+/** The repo's `.luca/config.json`, read-only. */
+const checkConfig = async ({
+    repo,
+    loaded,
+}: {
+    repo: string
+    loaded: Awaited<ReturnType<typeof loadEngineConfig>>
+}): Promise<Found> => {
+    const found = await findConfig({ repo })
+    if (found.kind === 'missing') {
+        return problem(
+            `The repo has no ${ENGINE_CONFIG_FILE}.`,
+            `${SETUP_FIX} to write one from package.json's scripts.`
+        )
+    }
+    if (found.kind === 'old') {
+        return problem(
+            `${ENGINE_CONFIG_FILE} is old Luca's.`,
+            `${SETUP_FIX} to convert it, keeping its vault.`
+        )
+    }
+    if (found.kind === 'broken') {
+        return problem(
+            `${ENGINE_CONFIG_FILE} is broken: ${found.error}.`,
+            `Fix ${ENGINE_CONFIG_FILE} by hand, then run luca doctor again.`
+        )
+    }
+    if (!loaded.ok) {
+        return problem(
+            `${ENGINE_CONFIG_FILE} doesn't load: ${loaded.error}`,
+            `Fix ${ENGINE_CONFIG_FILE}, then run luca doctor again.`
+        )
+    }
+    if (testCommands({ config: loaded.config }).length === 0) {
+        return problem(
+            `${ENGINE_CONFIG_FILE} has no test command.`,
+            `Add one to \`checks.test\` in ${ENGINE_CONFIG_FILE}. Intake refuses a run without one.`
+        )
+    }
+    return ok(`${ENGINE_CONFIG_FILE} is new-style and has a test command`)
+}
+
+/**
+ * `luca setup`'s checks as doctor's repo group, read-only: they create no
+ * label and write no file. Each problem carries its fix.
+ *
+ * @example
+ * const checks = await repoChecks({ repo: process.cwd(), github, memory })
+ */
+export const repoChecks = async ({
+    repo,
+    github,
+    memory,
+    base_branch = 'main',
+}: {
+    repo: string
+    github: SetupGitHub
+    memory: MemoryClient
+    base_branch?: string
+}): Promise<DoctorCheck[]> => {
+    const github_repo = await github.githubRepo().catch(() => null)
+    const loaded = await loadEngineConfig({ repo_root: repo }).catch(
+        (error: unknown) => ({ ok: false as const, error: errorText(error) })
+    )
+    const vault = loaded.ok ? (loaded.config.muninn?.vault ?? null) : null
+    return checksFor({
+        group: 'repo',
+        checks: [
+            ['labels', () => checkLabels({ repo, github, github_repo })],
+            ['config', () => checkConfig({ repo, loaded })],
+            ['github_remote', async () => checkGitHubRemote({ github_repo })],
+            ['issue_links', () => checkIssueLinks({ github, github_repo })],
+            ['base_branch', () => checkBaseBranch({ repo, base_branch })],
+            ['vault', () => checkVault({ memory, vault })],
+        ],
+    })
 }
 
 const list = (lines: string[]): string =>
@@ -440,8 +589,9 @@ const list = (lines: string[]): string =>
  * new-style config alone; then checks the `gh` login, the GitHub remote,
  * sub-issues and issue dependencies, `base_branch` (default `main`) on
  * `origin`, and the vault through `memory`. It never commits and never
- * throws: it ends with the done and to-do list and a pointer to
- * `/setup-matt-pocock-skills`, logged and returned.
+ * throws: it ends with `luca doctor`'s repo checks (`repoChecks`), then the
+ * done and to-do list and a pointer to `/setup-matt-pocock-skills`, logged
+ * and returned.
  *
  * @example
  * const end = await runSetup({ repo: process.cwd(), github, memory, log: console.log })
@@ -475,11 +625,7 @@ export const runSetup = async ({
     const github_repo = await github.githubRepo().catch(() => null)
     const remote: SetupCheck = {
         name: 'github_remote',
-        ...(github_repo === null
-            ? todo(
-                  'The repo has no GitHub remote. Create one with `gh repo create --source . --push`, or add it with `git remote add origin <url>`.'
-              )
-            : done(`The repo is ${github_repo} on GitHub`)),
+        ...asSetup(checkGitHubRemote({ github_repo })),
     }
 
     if (login.status === 'done' && remote.status === 'done') {
@@ -539,15 +685,17 @@ export const runSetup = async ({
         remote,
         await check({
             name: 'issue_links',
-            run: () => checkIssueLinks({ github, github_repo }),
+            run: async () =>
+                asSetup(await checkIssueLinks({ github, github_repo })),
         }),
         await check({
             name: 'base_branch',
-            run: () => checkBaseBranch({ repo, base_branch }),
+            run: async () =>
+                asSetup(await checkBaseBranch({ repo, base_branch })),
         }),
         await check({
             name: 'vault',
-            run: () => checkVault({ memory, vault }),
+            run: async () => asSetup(await checkVault({ memory, vault })),
         }),
     ]
     for (const { name, status, detail } of checks) {
@@ -569,6 +717,8 @@ export const runSetup = async ({
         note,
         SKILLS_POINTER,
     ].join('\n\n')
+    const doctor = await repoChecks({ repo, github, memory, base_branch })
+    for (const line of formatChecks({ checks: doctor })) log(line)
     log(message)
-    return { ok: todo_lines.length === 0, message, checks }
+    return { ok: todo_lines.length === 0, message, checks, doctor }
 }

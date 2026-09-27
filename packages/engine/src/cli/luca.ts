@@ -6,6 +6,8 @@
  *                                  sets up this computer, once
  *   luca setup [--base <branch>]   gets the repo in this folder ready
  *   luca upgrade [--to <version>]  moves to another version of Luca
+ *   luca doctor [--fix]            checks this computer and repo; --fix
+ *                                  fixes what's safe
  *   luca hook <anything>           does nothing, quietly
  *
  * `luca hook` is for old Luca (v13), whose global Claude Code hook runs
@@ -22,7 +24,8 @@ Commands:
   init [--skip-muninndb] [--skip-skills]
                             Set up this computer for Luca (once)
   setup [--base <branch>]   Get the repo in this folder ready for Luca
-  upgrade [--to <version>]  Move to the newest Luca on your channel, or to <version>`
+  upgrade [--to <version>]  Move to the newest Luca on your channel, or to <version>
+  doctor [--fix]            Check this computer and repo; --fix fixes what's safe`
 
 const main = async (): Promise<number> => {
     const [command, ...rest] = Bun.argv.slice(2)
@@ -40,6 +43,10 @@ const main = async (): Promise<number> => {
         case 'upgrade': {
             const { upgradeCommand } = await import('./upgrade-command')
             return upgradeCommand({ argv: rest })
+        }
+        case 'doctor': {
+            const { doctorCommand } = await import('./doctor-command')
+            return doctorCommand({ argv: rest })
         }
         case '--help':
         case '-h':

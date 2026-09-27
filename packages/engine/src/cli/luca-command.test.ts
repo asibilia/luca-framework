@@ -158,6 +158,22 @@ describe('luca subcommands', () => {
         expect(end.exit_code).toBe(2)
         expect(`${end.stdout}\n${end.stderr}`).toContain('--skip-skills')
     }, 30_000)
+
+    test('luca --help lists doctor', async () => {
+        const end = await luca({ args: ['--help'] })
+
+        expect(end.exit_code).toBe(0)
+        expect(`${end.stdout}\n${end.stderr}`).toMatch(/^\s+doctor\b/m)
+    }, 30_000)
+
+    test('luca doctor is reached through luca, and a bad flag prints its usage and exits 2', async () => {
+        const end = await luca({ args: ['doctor', '--no-such-flag'] })
+
+        expect(end.exit_code).toBe(2)
+        const output = `${end.stdout}\n${end.stderr}`
+        expect(output).toContain('luca doctor')
+        expect(output).toContain('--fix')
+    }, 30_000)
 })
 
 describe('the engine package bins', () => {
