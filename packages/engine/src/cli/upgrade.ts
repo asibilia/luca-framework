@@ -1,8 +1,15 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { setUpBoard } from './board-in-paseo'
+import type { PaseoPlugins } from './computer-adapters'
+import {
+    formatChecks,
+    hasProblem,
+    reason,
+    type DoctorCheck,
+} from './doctor-checks'
 import { describeRun, goingRuns } from './going-runs'
-import { setUpBoard, type PaseoPlugins } from './init'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
 
@@ -21,8 +28,10 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * 4. Reloads the board in Paseo, keeping its settings, and rewrites its
  *    engine and Bun paths (see `setUpBoard`).
  * 5. Says when `/reload-skills` is needed: when the board's files changed.
+ * 6. Ends with doctor's computer checks (see `computerChecks`).
  *
- * npm's registry, Bun, and Paseo are adapters, so tests use fakes.
+ * npm's registry, Bun, Paseo, and the computer checks are adapters, so
+ * tests use fakes.
  */
 
 /** npm's registry lookups for `@alecsibilia/luca`. */
@@ -134,12 +143,12 @@ const fingerprint = async (dir: string): Promise<string | null> => {
 
 /**
  * Runs `luca upgrade`: refuses while a run is going, picks the version,
- * installs it with Bun, and reloads the board with its settings kept and
- * its paths rewritten. Never throws: a refusal or a failed step ends it
- * with `ok: false` and a plain message.
+ * installs it with Bun, reloads the board with its settings kept and its
+ * paths rewritten, then prints `computer_checks`. Never throws: a refusal,
+ * a failed step, or a check that is a problem ends it with `ok: false`.
  *
  * @example
- * const end = await runUpgrade({ to: null, installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, npm, bun, paseo, board_dir, engine_path, bun_path, log: console.log })
+ * const end = await runUpgrade({ to: null, installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, npm, bun, paseo, board_dir, engine_path, bun_path, computer_checks, log: console.log })
  */
 export const runUpgrade = async ({
     to,
@@ -152,6 +161,7 @@ export const runUpgrade = async ({
     board_dir,
     engine_path,
     bun_path,
+    computer_checks,
     log,
 }: {
     /** `--to <version>`, or `null` to stay on the installed channel. */
@@ -170,20 +180,27 @@ export const runUpgrade = async ({
     engine_path: string
     /** Bun's own path. */
     bun_path: string
+    /**
+     * Doctor's computer checks of the new install, run after the board
+     * reload; none when not given.
+     */
+    computer_checks?: () => Promise<DoctorCheck[]>
     log: (line: string) => void
 }): Promise<UpgradeEnd> => {
-    const say = (message: string, ok: boolean): UpgradeEnd => {
+    const say = ({ message, ok }: UpgradeEnd): UpgradeEnd => {
         log(`[luca upgrade] ${message}`)
         return { ok, message }
     }
     try {
         const going = await goingRuns({ runs_dir, registry_path })
-        if (!going.ok) return say(`Refused: ${going.error}`, false)
+        if (!going.ok) {
+            return say({ message: `Refused: ${going.error}`, ok: false })
+        }
         if (going.runs.length > 0) {
-            return say(
-                `Refused: runs are going, so an upgrade would change their engine halfway. Wait for them to end (or stop them), then try again:\n${going.runs.map(describeRun).join('\n')}`,
-                false
-            )
+            return say({
+                message: `Refused: runs are going, so an upgrade would change their engine halfway. Wait for them to end (or stop them), then try again:\n${going.runs.map(describeRun).join('\n')}`,
+                ok: false,
+            })
         }
         log('[luca upgrade] no run is going')
 
@@ -195,11 +212,14 @@ export const runUpgrade = async ({
                 installed: installed_version,
                 dist_tags: await npm.distTags(),
             })
-            if (!target.ok) return say(target.error, false)
+            if (!target.ok) return say({ message: target.error, ok: false })
             version = target.version
         }
         if (version === installed_version) {
-            return say(`Luca ${version} is already installed.`, true)
+            return say({
+                message: `Luca ${version} is already installed.`,
+                ok: true,
+            })
         }
 
         const before = await fingerprint(board_dir)
@@ -218,24 +238,25 @@ export const runUpgrade = async ({
             bun_path,
             log,
         })
-        if (!board.ok) {
-            return say(
-                `Luca ${version} is installed, but the board wasn't reloaded. Run luca init to fix it.`,
-                false
-            )
+        if (board.ok) {
+            const after = await fingerprint(board_dir)
+            if (before === null || after === null || before !== after) {
+                log(
+                    "[luca upgrade] The board's files changed: run /reload-skills in a Paseo chat so its slash commands are up to date."
+                )
+            }
         }
-        const after = await fingerprint(board_dir)
-        if (before === null || after === null || before !== after) {
-            log(
-                "[luca upgrade] The board's files changed: run /reload-skills in a Paseo chat so its slash commands are up to date."
-            )
-        }
-        return say(`Luca ${version} is installed.`, true)
+        const end = say({
+            message: board.ok
+                ? `Luca ${version} is installed.`
+                : `Luca ${version} is installed, but the board wasn't reloaded. Run luca init to fix it.`,
+            ok: board.ok,
+        })
+        const checks = (await computer_checks?.()) ?? []
+        for (const line of formatChecks({ checks })) log(line)
+        return { ...end, ok: end.ok && !hasProblem({ checks }) }
     } catch (error) {
         // Such as a failed `bun add -g` or registry lookup.
-        return say(
-            error instanceof Error ? error.message : String(error),
-            false
-        )
+        return say({ message: reason(error), ok: false })
     }
 }

@@ -1,22 +1,20 @@
-import {
-    computerChecks,
-    type Computer,
-    type MuninnHealth,
-    type Paseo,
-} from './computer-checks'
+import { placeBoard } from './board-in-paseo'
+import type {
+    ClaudeMcp,
+    Computer,
+    LucaInstall,
+    MuninnCli,
+    MuninnHealth,
+    Paseo,
+} from './computer-adapters'
+import { computerChecks } from './computer-checks'
 import {
     formatChecks,
     hasProblem,
     reason,
     type DoctorCheck,
 } from './doctor-checks'
-import {
-    ensureMuninnEntry,
-    hideToken,
-    placeBoard,
-    type ClaudeMcp,
-    type MuninnCli,
-} from './init'
+import { ensureMuninnEntry, hideToken } from './muninn-entry'
 import { repoChecks, runSetup, type SetupGitHub } from './setup'
 import {
     fixV13,
@@ -264,17 +262,9 @@ export const runDoctor = async ({
     tmp_dir,
     v13_manifest,
     log,
-}: {
+}: LucaInstall & {
     home: string
     fix: boolean
-    /** The installed Luca's version. */
-    luca_version: string
-    /** The board folder inside Luca's install folder. */
-    board_dir: string
-    /** The real path of the installed `luca-run`. */
-    engine_path: string
-    /** Bun's own path. */
-    bun_path: string
     computer: Computer
     muninn: MuninnCli
     muninn_health: MuninnHealth

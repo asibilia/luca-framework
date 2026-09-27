@@ -1,115 +1,44 @@
-import { realpathSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 
+import { realPath } from './board-in-paseo'
+import {
+    BOARD_PLUGIN_ID,
+    MUNINN_HEALTH_URL,
+    MUNINN_MCP_URL,
+    type ClaudeMcp,
+    type Computer,
+    type LucaCopy,
+    type MuninnCli,
+    type MuninnHealth,
+    type Paseo,
+} from './computer-adapters'
 import {
     checksFor,
     ok,
     problem,
+    reason,
     versionAtLeast,
     warning,
     type DoctorCheck,
     type Found,
 } from './doctor-checks'
-import type { ClaudeMcp, McpServer, MuninnCli, PaseoPlugins } from './init'
+import { isRight, rightEntry, userMuninnEntry } from './muninn-entry'
 
+import { LUCA_PACKAGE } from '../config/luca-version'
 import { READY_LABEL } from '../tracker/tracker'
 
 /**
  * `luca doctor`'s checks of this computer, read-only: Bun, the `luca`
  * copies on the PATH, Claude Code, the `gh` login, Paseo and its plugins,
  * the board, MuninnDB and Claude Code's `muninn` entry, and the planning
- * skills. `luca init` ends with them too. The token is never shown.
+ * skills. `luca init` and `luca upgrade` end with them too. The token is
+ * never shown.
  */
-
-/** Luca's npm package. */
-export const LUCA_PACKAGE = '@alecsibilia/luca'
-
-/** Where MuninnDB serves MCP. */
-export const MUNINN_MCP_URL = 'http://127.0.0.1:8750/mcp'
-
-/** MuninnDB's health endpoint. */
-export const MUNINN_HEALTH_URL = 'http://127.0.0.1:8475/api/health'
-
-/** The name of Claude Code's MuninnDB entry, the one the engine reads. */
-export const MUNINN_SERVER_NAME = 'muninn'
-
-/** The board plugin's id in Paseo. */
-export const BOARD_PLUGIN_ID = 'luca-board'
 
 /** The oldest tool versions Luca works with. */
 const MIN_CLAUDE_CODE = '2.1.280'
 const MIN_PASEO = '0.9.1'
 const MIN_MUNINNDB = '0.11.0'
-
-/** One `luca` on the PATH, and the package it belongs to when known. */
-export type LucaCopy = {
-    path: string
-    package_name: string | null
-    version: string | null
-}
-
-/** The computer's tools, as doctor reads them. */
-export type Computer = {
-    /** Bun's version, or `null` when it isn't installed. */
-    bunVersion: () => Promise<string | null>
-    /** Claude Code's version, or `null` when it isn't installed. */
-    claudeVersion: () => Promise<string | null>
-    /** The login `gh` is signed in as, or `null`. */
-    ghLogin: () => Promise<string | null>
-    /** Every `luca` on the PATH, in PATH order. */
-    lucaCopies: () => Promise<LucaCopy[]>
-}
-
-/** MuninnDB's health endpoint: its version while it runs, else `null`. */
-export type MuninnHealth = () => Promise<{ version: string } | null>
-
-/** Paseo: its plugins, its version, and the loaded board's Luca version. */
-export type Paseo = PaseoPlugins & {
-    /** Paseo's version. Fails when Paseo isn't running. */
-    version: () => Promise<string>
-    /** The Luca version the loaded board reports; `null` with no board. */
-    boardVersion: () => Promise<string | null>
-}
-
-/** The user-scope entry `luca init` leaves in Claude Code. Pure. */
-export const rightEntry = ({ token }: { token: string }): McpServer => ({
-    name: MUNINN_SERVER_NAME,
-    scope: 'user',
-    transport: 'http',
-    url: MUNINN_MCP_URL,
-    headers: { Authorization: `Bearer ${token}` },
-})
-
-/** Whether a server is the right entry, name and scope aside. Pure. */
-export const isRight = ({
-    server,
-    right,
-}: {
-    server: McpServer
-    right: McpServer
-}): boolean =>
-    server.transport === right.transport &&
-    server.url === right.url &&
-    server.headers.Authorization === right.headers.Authorization
-
-/** Claude Code's user-scope `muninn` entry, if any. */
-export const userMuninnEntry = async ({
-    claude,
-}: {
-    claude: ClaudeMcp
-}): Promise<McpServer | undefined> =>
-    (await claude.listMcpServers()).find(
-        ({ name, scope }) => name === MUNINN_SERVER_NAME && scope === 'user'
-    )
-
-/** A path's real path, or the path as is when it can't be resolved. */
-export const realPath = (path: string): string => {
-    try {
-        return realpathSync(path)
-    } catch {
-        return resolve(path)
-    }
-}
 
 const describeCopy = ({ path, package_name, version }: LucaCopy): string =>
     package_name === null
@@ -142,18 +71,19 @@ const checkLuca = async ({ computer }: { computer: Computer }) => {
                     )
             )
             .map(removal)
-        return problem(
-            copies.length === 0
-                ? 'No luca on the PATH.'
-                : `No v14 luca on the PATH, only ${others.map(describeCopy).join(', ')}.`,
-            [...removals, install].join(', then ')
-        )
+        return problem({
+            detail:
+                copies.length === 0
+                    ? 'No luca on the PATH.'
+                    : `No v14 luca on the PATH, only ${others.map(describeCopy).join(', ')}.`,
+            fix: [...removals, install].join(', then '),
+        })
     }
     if (others.length > 0) {
-        return problem(
-            `Other luca copies are on the PATH besides ${describeCopy(kept)}: ${others.map(describeCopy).join(', ')}.`,
-            `Remove them: ${others.map(removal).join(', then ')}.`
-        )
+        return problem({
+            detail: `Other luca copies are on the PATH besides ${describeCopy(kept)}: ${others.map(describeCopy).join(', ')}.`,
+            fix: `Remove them: ${others.map(removal).join(', then ')}.`,
+        })
     }
     return ok(`luca ${kept.version ?? ''} is the only luca on the PATH`)
 }
@@ -161,26 +91,26 @@ const checkLuca = async ({ computer }: { computer: Computer }) => {
 const checkBun = async ({ computer }: { computer: Computer }) => {
     const version = await computer.bunVersion()
     return version === null
-        ? problem(
-              "Bun isn't installed.",
-              'Install it: curl -fsSL https://bun.sh/install | bash'
-          )
+        ? problem({
+              detail: "Bun isn't installed.",
+              fix: 'Install it: curl -fsSL https://bun.sh/install | bash',
+          })
         : ok(`Bun ${version}`)
 }
 
 const checkClaudeCode = async ({ computer }: { computer: Computer }) => {
     const version = await computer.claudeVersion()
     if (version === null) {
-        return problem(
-            "Claude Code isn't installed.",
-            'Install it: curl -fsSL https://claude.ai/install.sh | bash'
-        )
+        return problem({
+            detail: "Claude Code isn't installed.",
+            fix: 'Install it: curl -fsSL https://claude.ai/install.sh | bash',
+        })
     }
     if (!versionAtLeast({ version, min: MIN_CLAUDE_CODE })) {
-        return problem(
-            `Claude Code ${version} is older than ${MIN_CLAUDE_CODE}.`,
-            'Run claude update'
-        )
+        return problem({
+            detail: `Claude Code ${version} is older than ${MIN_CLAUDE_CODE}.`,
+            fix: 'Run claude update',
+        })
     }
     return ok(`Claude Code ${version}`)
 }
@@ -188,10 +118,10 @@ const checkClaudeCode = async ({ computer }: { computer: Computer }) => {
 const checkGhLogin = async ({ computer }: { computer: Computer }) => {
     const login = await computer.ghLogin()
     return login === null
-        ? problem(
-              "gh isn't signed in.",
-              'Run gh auth login (install gh first with brew install gh if it is missing)'
-          )
+        ? problem({
+              detail: "gh isn't signed in.",
+              fix: 'Run gh auth login (install gh first with brew install gh if it is missing)',
+          })
         : ok(`gh is signed in as ${login}`)
 }
 
@@ -202,16 +132,16 @@ const checkPaseo = async ({ paseo }: { paseo: Paseo }) => {
     try {
         version = await paseo.version()
     } catch (error) {
-        return problem(
-            `Paseo isn't running, or can't be reached (${error instanceof Error ? error.message : String(error)}).`,
-            PASEO_DOWN_FIX
-        )
+        return problem({
+            detail: `Paseo isn't running, or can't be reached (${reason(error)}).`,
+            fix: PASEO_DOWN_FIX,
+        })
     }
     if (!versionAtLeast({ version, min: MIN_PASEO })) {
-        return problem(
-            `Paseo ${version} is older than ${MIN_PASEO}.`,
-            `Update Paseo to ${MIN_PASEO} or newer (Paseo's menu, Check for Updates).`
-        )
+        return problem({
+            detail: `Paseo ${version} is older than ${MIN_PASEO}.`,
+            fix: `Update Paseo to ${MIN_PASEO} or newer (Paseo's menu, Check for Updates).`,
+        })
     }
     return ok(`Paseo ${version}`)
 }
@@ -219,10 +149,10 @@ const checkPaseo = async ({ paseo }: { paseo: Paseo }) => {
 const checkPaseoPlugins = async ({ paseo }: { paseo: Paseo }) =>
     (await paseo.pluginsEnabled())
         ? ok("Paseo's plugins are on")
-        : problem(
-              "Paseo's plugins are off.",
-              "Turn plugins on in Paseo's Settings, then run luca doctor --fix."
-          )
+        : problem({
+              detail: "Paseo's plugins are off.",
+              fix: "Turn plugins on in Paseo's Settings, then run luca doctor --fix.",
+          })
 
 const checkBoard = async ({
     paseo,
@@ -241,23 +171,23 @@ const checkBoard = async ({
         ({ id }) => id === BOARD_PLUGIN_ID
     )
     if (board === undefined) {
-        return problem(
-            "The board isn't installed in Paseo.",
-            "Run luca doctor --fix (or luca init) to install it from Luca's folder."
-        )
+        return problem({
+            detail: "The board isn't installed in Paseo.",
+            fix: "Run luca doctor --fix (or luca init) to install it from Luca's folder.",
+        })
     }
     if (realPath(board.path) !== realPath(board_dir)) {
-        return problem(
-            `The board is installed from ${board.path}, not from Luca's folder ${board_dir}.`,
-            "Run luca doctor --fix to move it to Luca's folder, keeping its settings."
-        )
+        return problem({
+            detail: `The board is installed from ${board.path}, not from Luca's folder ${board_dir}.`,
+            fix: "Run luca doctor --fix to move it to Luca's folder, keeping its settings.",
+        })
     }
     const loaded = await paseo.boardVersion()
     if (loaded !== luca_version) {
-        return problem(
-            `The board loaded in Paseo is ${loaded ?? 'of an unknown version'}, but the installed Luca is ${luca_version}.`,
-            'Run luca doctor --fix to reload it.'
-        )
+        return problem({
+            detail: `The board loaded in Paseo is ${loaded ?? 'of an unknown version'}, but the installed Luca is ${luca_version}.`,
+            fix: 'Run luca doctor --fix to reload it.',
+        })
     }
     const settings = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
     const wrong = [
@@ -269,10 +199,10 @@ const checkBoard = async ({
             realPath(have) !== realPath(String(want))
     )
     if (wrong.length > 0) {
-        return problem(
-            `The board's ${wrong.map(([what, have, want]) => `${what} is ${typeof have === 'string' ? have : 'not set'}, not ${want}`).join(', and its ')}.`,
-            "Run luca doctor --fix to rewrite the board's paths."
-        )
+        return problem({
+            detail: `The board's ${wrong.map(([what, have, want]) => `${what} is ${typeof have === 'string' ? have : 'not set'}, not ${want}`).join(', and its ')}.`,
+            fix: "Run luca doctor --fix to rewrite the board's paths.",
+        })
     }
     return ok(
         `The board ${luca_version} is installed from ${board_dir}, and its engine and Bun paths are right`
@@ -290,20 +220,23 @@ const checkMuninnDb = async ({
     muninn_health: MuninnHealth
 }) => {
     if ((await muninn.which()) === null) {
-        return warning("MuninnDB isn't installed: memory off.", MEMORY_OFF_FIX)
+        return warning({
+            detail: "MuninnDB isn't installed: memory off.",
+            fix: MEMORY_OFF_FIX,
+        })
     }
     const health = await muninn_health()
     if (health === null) {
-        return problem(
-            `MuninnDB isn't answering at ${MUNINN_HEALTH_URL}.`,
-            'Run muninn start (or luca doctor --fix).'
-        )
+        return problem({
+            detail: `MuninnDB isn't answering at ${MUNINN_HEALTH_URL}.`,
+            fix: 'Run muninn start (or luca doctor --fix).',
+        })
     }
     if (!versionAtLeast({ version: health.version, min: MIN_MUNINNDB })) {
-        return problem(
-            `MuninnDB ${health.version} is older than ${MIN_MUNINNDB}.`,
-            'Run muninn upgrade'
-        )
+        return problem({
+            detail: `MuninnDB ${health.version} is older than ${MIN_MUNINNDB}.`,
+            fix: 'Run muninn upgrade',
+        })
     }
     return ok(`MuninnDB ${health.version} is up`)
 }
@@ -316,30 +249,30 @@ const checkMuninnEntry = async ({
     claude: ClaudeMcp
 }) => {
     if ((await muninn.which()) === null) {
-        return warning(
-            "MuninnDB isn't installed, so there's no muninn entry to check: memory off.",
-            MEMORY_OFF_FIX
-        )
+        return warning({
+            detail: "MuninnDB isn't installed, so there's no muninn entry to check: memory off.",
+            fix: MEMORY_OFF_FIX,
+        })
     }
     const token = await muninn.token()
     if (token === null || token === '') {
-        return problem(
-            "MuninnDB has no token file, so Claude Code's muninn entry can't be checked.",
-            'Run muninn init --yes, then luca doctor --fix.'
-        )
+        return problem({
+            detail: "MuninnDB has no token file, so Claude Code's muninn entry can't be checked.",
+            fix: 'Run muninn init --yes, then luca doctor --fix.',
+        })
     }
     const current = await userMuninnEntry({ claude })
     if (current === undefined) {
-        return problem(
-            'Claude Code has no user-scope muninn entry.',
-            'Run luca doctor --fix (or luca init) to add it.'
-        )
+        return problem({
+            detail: 'Claude Code has no user-scope muninn entry.',
+            fix: 'Run luca doctor --fix (or luca init) to add it.',
+        })
     }
     if (!isRight({ server: current, right: rightEntry({ token }) })) {
-        return problem(
-            `Claude Code's user-scope muninn entry doesn't match MuninnDB (it needs HTTP to ${MUNINN_MCP_URL} with MuninnDB's token).`,
-            'Run luca doctor --fix (or luca init) to replace it.'
-        )
+        return problem({
+            detail: `Claude Code's user-scope muninn entry doesn't match MuninnDB (it needs HTTP to ${MUNINN_MCP_URL} with MuninnDB's token).`,
+            fix: 'Run luca doctor --fix (or luca init) to replace it.',
+        })
     }
     return ok(
         "Claude Code has the user-scope muninn entry with MuninnDB's token"
@@ -386,10 +319,10 @@ const checkPlanningSkills = async ({ home }: { home: string }) => {
         }
     }
     if (drift.length > 0) {
-        return warning(
-            `The planning skills no longer write what intake needs: ${drift.join('; ')}.`,
-            `Intake refuses specs and tickets without these. Run luca init to install missing skills, or edit the installed ones so they write them again.`
-        )
+        return warning({
+            detail: `The planning skills no longer write what intake needs: ${drift.join('; ')}.`,
+            fix: `Intake refuses specs and tickets without these. Run luca init to install missing skills, or edit the installed ones so they write them again.`,
+        })
     }
     return ok('The planning skills write what intake needs')
 }
@@ -431,10 +364,10 @@ export const computerChecks = async ({
         (run: () => Promise<Found>) => async (): Promise<Found> =>
             paseo_up
                 ? run()
-                : problem(
-                      "Paseo isn't running, so this wasn't checked.",
-                      PASEO_DOWN_FIX
-                  )
+                : problem({
+                      detail: "Paseo isn't running, so this wasn't checked.",
+                      fix: PASEO_DOWN_FIX,
+                  })
     return checksFor({
         group: 'computer',
         checks: [

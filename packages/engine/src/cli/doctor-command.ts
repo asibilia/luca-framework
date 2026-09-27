@@ -15,7 +15,6 @@
  */
 import { homedir } from 'node:os'
 
-import { runDoctor } from './doctor'
 import {
     claudeOf,
     computerOf,
@@ -23,8 +22,9 @@ import {
     muninnHealth,
     muninnOf,
     paseoOf,
-} from './init-command'
-import { githubOf, memoryOf } from './setup-command'
+} from './computer-adapters-real'
+import { runDoctor } from './doctor'
+import { githubOf, memoryOf } from './repo-adapters-real'
 
 import type { MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'

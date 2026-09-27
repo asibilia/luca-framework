@@ -15,6 +15,8 @@
 import { cp, rm } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
+import { z } from 'zod'
+
 const PACKAGE_DIR = join(import.meta.dir, '..')
 const PACKAGES_DIR = join(PACKAGE_DIR, '..')
 const REPO_DIR = join(PACKAGES_DIR, '..')
@@ -55,14 +57,25 @@ const clean = async () => {
     }
 }
 
+const BoardManifestSchema = z.looseObject({
+    name: z.string(),
+    type: z.string(),
+})
+
+const LucaManifestSchema = z.looseObject({ version: z.string() })
+
 /**
  * The board's package.json for its folder in the tarball: its name and
  * module type, at this package's version, with no dependencies of its own
  * (this package carries them).
  */
 const boardManifest = async (): Promise<string> => {
-    const board = await Bun.file(join(BOARD_DIR, 'package.json')).json()
-    const luca = await Bun.file(join(PACKAGE_DIR, 'package.json')).json()
+    const board = BoardManifestSchema.parse(
+        await Bun.file(join(BOARD_DIR, 'package.json')).json()
+    )
+    const luca = LucaManifestSchema.parse(
+        await Bun.file(join(PACKAGE_DIR, 'package.json')).json()
+    )
     const manifest = {
         name: board.name,
         version: luca.version,

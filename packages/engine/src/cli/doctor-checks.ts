@@ -31,13 +31,25 @@ export const ok = (detail: string): Found => ({
     fix: null,
 })
 
-export const warning = (detail: string, fix: string): Found => ({
+export const warning = ({
+    detail,
+    fix,
+}: {
+    detail: string
+    fix: string
+}): Found => ({
     status: 'warning',
     detail,
     fix,
 })
 
-export const problem = (detail: string, fix: string): Found => ({
+export const problem = ({
+    detail,
+    fix,
+}: {
+    detail: string
+    fix: string
+}): Found => ({
     status: 'problem',
     detail,
     fix,
@@ -64,10 +76,10 @@ export const checksFor = async ({
         try {
             found = await run()
         } catch (error) {
-            found = problem(
-                `The ${name} check failed: ${reason(error)}`,
-                'Fix what the error says, then run luca doctor again.'
-            )
+            found = problem({
+                detail: `The ${name} check failed: ${reason(error)}`,
+                fix: 'Fix what the error says, then run luca doctor again.',
+            })
         }
         done.push({ group, name, ...found })
     }

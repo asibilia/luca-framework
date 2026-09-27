@@ -7,21 +7,29 @@
  * Without `--to`, it stays on the installed version's channel (`alpha`
  * stays `alpha`, otherwise `latest`) and never goes back to v13. `--to`
  * installs that exact version, older ones included. Then it reloads the
- * board in Paseo, keeping its settings. See `runUpgrade`.
+ * board in Paseo, keeping its settings, and ends with `luca doctor`'s
+ * computer checks. See `runUpgrade`.
  *
  * Exits 0 when done, 1 when it refused or a step failed, 2 on bad flags.
  */
-import { realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import {
+    claudeOf,
+    computerOf,
+    lucaInstall,
+    muninnHealth,
+    muninnOf,
+    paseoOf,
+} from './computer-adapters-real'
+import { computerChecks } from './computer-checks'
+import { reason } from './doctor-checks'
 import { defaultRegistryPath } from './going-runs'
-import { boardDir, paseoOf } from './init-command'
 import { runUpgrade, type BunGlobal, type NpmRegistry } from './upgrade'
 
-import { LUCA_PACKAGE, lucaVersion } from '../config/luca-version'
+import { LUCA_PACKAGE } from '../config/luca-version'
 import { defaultRunsDir } from '../journal/journal'
 import { runCommand } from '../shell/run-command'
 
@@ -94,9 +102,10 @@ export const upgradeCommand = async ({
     const home = homedir()
     const paseo = paseoOf({ client_id: 'luca-upgrade' })
     try {
+        const { luca_version, ...install } = await lucaInstall()
         const end = await runUpgrade({
             to,
-            installed_version: lucaVersion(),
+            installed_version: luca_version,
             runs_dir: defaultRunsDir(),
             registry_path: defaultRegistryPath({
                 env: process.env,
@@ -105,18 +114,25 @@ export const upgradeCommand = async ({
             npm: npmOf(),
             bun: bunOf({ home }),
             paseo,
-            board_dir: await boardDir(),
-            engine_path: await realpath(join(import.meta.dir, 'luca-run.ts')),
-            bun_path: await realpath(process.execPath),
+            ...install,
+            computer_checks: async () =>
+                computerChecks({
+                    home,
+                    // Read again: the install changed the version on disk.
+                    ...(await lucaInstall()),
+                    computer: computerOf({ home }),
+                    muninn: muninnOf({ home }),
+                    muninn_health: muninnHealth,
+                    claude: claudeOf({ home }),
+                    paseo,
+                }),
             log: (line) => {
                 console.log(line)
             },
         })
         return end.ok ? 0 : 1
     } catch (error) {
-        console.error(
-            `[luca upgrade] ${error instanceof Error ? error.message : String(error)}`
-        )
+        console.error(`[luca upgrade] ${reason(error)}`)
         return 1
     } finally {
         await paseo.close()

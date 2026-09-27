@@ -119,10 +119,15 @@ on with a run from its journal (#369).
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
 | `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
 | `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, and a quiet `luca hook`. |
-| `src/cli/setup-command.ts` | `luca setup`'s flags and its real GitHub and MuninnDB adapters. |
-| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels, the config, and the checks a run needs; `repoChecks` are its checks, read-only, for `luca doctor`. |
+| `src/cli/setup-command.ts` | `luca setup`'s flags, wired to the real repo adapters. |
+| `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels and the config, then `repoChecks` once; `repoChecks` are its checks, read-only, for `luca doctor` too. |
+| `src/cli/repo-adapters-real.ts` | The real repo adapters `luca setup` and `luca doctor` share: the repo's GitHub side and MuninnDB over MCP. |
+| `src/cli/computer-adapters.ts` | The adapter types `luca init`, `luca doctor`, and `luca upgrade` share (MuninnDB, `claude mcp`, Paseo, the computer's tools), and their constants. |
+| `src/cli/computer-adapters-real.ts` | The real ones, and where the installed Luca and its board are (`lucaInstall`, its version from `config/luca-version.ts`). |
+| `src/cli/muninn-entry.ts` | Claude Code's user-scope `muninn` entry: what's right (`rightEntry`), and making it right (`ensureMuninnEntry`). The token is never shown. |
+| `src/cli/board-in-paseo.ts` | Puts the board into Paseo from Luca's folder, settings kept, and writes its engine and Bun paths (`placeBoard`, `setUpBoard`). |
 | `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
-| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, and reloads the board. |
+| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, reloads the board, and ends with doctor's computer checks. |
 | `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
 | `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |

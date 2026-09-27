@@ -129,8 +129,14 @@ const sha256Of = async (path: string): Promise<string> =>
         .update(await Bun.file(path).arrayBuffer())
         .digest('hex')
 
+/** A file system error's code, such as `ENOENT`, or `null` without one. */
+const errorCode = (error: unknown): string | null =>
+    error instanceof Error && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : null
+
 /** The value at `path` in parsed JSON, if every step is an object key. */
-const valueAt = (json: unknown, path: string[]): unknown =>
+const valueAt = ({ json, path }: { json: unknown; path: string[] }): unknown =>
     path.reduce<unknown>(
         (node, key) => (isRecord(node) ? node[key] : undefined),
         json
@@ -153,7 +159,7 @@ const holds = ({
     home: string
 }): boolean => {
     const { match, path } = setting
-    const node = valueAt(json, path)
+    const node = valueAt({ json, path })
     if (match.kind === 'array_entry_hook_command_contains') {
         return (
             Array.isArray(node) &&
@@ -174,7 +180,7 @@ const holds = ({
                 .includes(node.command.trim())
         )
     }
-    const parent = valueAt(json, path.slice(0, -1))
+    const parent = valueAt({ json, path: path.slice(0, -1) })
     return isRecord(parent) && Object.hasOwn(parent, path.at(-1) ?? '')
 }
 
@@ -182,9 +188,9 @@ const isEmpty = (value: Record<string, unknown>) =>
     Object.keys(value).length === 0
 
 /** Drops the key at `path`, then each parent object it leaves empty. */
-const dropKey = (json: unknown, path: string[]) => {
+const dropKey = ({ json, path }: { json: unknown; path: string[] }) => {
     for (let depth = path.length; depth > 0; depth -= 1) {
-        const parent = valueAt(json, path.slice(0, depth - 1))
+        const parent = valueAt({ json, path: path.slice(0, depth - 1) })
         const key = path[depth - 1]
         if (!isRecord(parent) || key === undefined) return
         const value = parent[key]
@@ -201,10 +207,10 @@ const dropKey = (json: unknown, path: string[]) => {
 const unwire = ({ json, setting }: { json: unknown; setting: V13Setting }) => {
     const { match, path } = setting
     if (match.kind !== 'array_entry_hook_command_contains') {
-        dropKey(json, path)
+        dropKey({ json, path })
         return
     }
-    const node = valueAt(json, path)
+    const node = valueAt({ json, path })
     if (!Array.isArray(node)) return
     const kept = node.flatMap((entry: unknown) => {
         if (!isRecord(entry) || !Array.isArray(entry.hooks)) return [entry]
@@ -214,11 +220,11 @@ const unwire = ({ json, setting }: { json: unknown; setting: V13Setting }) => {
         if (hooks.length === entry.hooks.length) return [entry]
         return hooks.length === 0 ? [] : [{ ...entry, hooks }]
     })
-    const parent = valueAt(json, path.slice(0, -1))
+    const parent = valueAt({ json, path: path.slice(0, -1) })
     const key = path.at(-1)
     if (!isRecord(parent) || key === undefined) return
     if (kept.length > 0) parent[key] = kept
-    else dropKey(json, path)
+    else dropKey({ json, path })
 }
 
 /** A JSON file's parsed text, or `null` when it's missing or isn't JSON. */
@@ -287,7 +293,7 @@ const hasMuninnData = async (luca_dir: string): Promise<boolean> => {
         return (await readdir(join(luca_dir, 'muninndb-data'))).length > 0
     } catch (error) {
         // Missing means no data; anything else, keep it to be safe.
-        return (error as NodeJS.ErrnoException).code !== 'ENOENT'
+        return errorCode(error) !== 'ENOENT'
     }
 }
 
@@ -394,10 +400,10 @@ const checksOf = (found: V13Leftovers): DoctorCheck[] => {
     for (const wiring of found.wiring) {
         checks.push([
             `wiring ${wiring.shown}`,
-            problem(
-                `${wiring.shown} still has v13's ${wiring.settings.map(labelOf).join(', ')}.`,
-                `${FIX} to remove them; your own settings stay${wiring.place === 'repo' ? '. Then commit the file' : ''}.`
-            ),
+            problem({
+                detail: `${wiring.shown} still has v13's ${wiring.settings.map(labelOf).join(', ')}.`,
+                fix: `${FIX} to remove them; your own settings stay${wiring.place === 'repo' ? '. Then commit the file' : ''}.`,
+            }),
         ])
     }
     for (const place of ['home', 'repo'] as const) {
@@ -405,51 +411,51 @@ const checksOf = (found: V13Leftovers): DoctorCheck[] => {
         if (files.length === 0) continue
         checks.push([
             `${place}_files`,
-            problem(
-                `v13's files are still in ${place === 'home' ? 'the home folder' : 'the repo'}: ${listed(files)}.`,
-                `${FIX} to move them to ${BACKUP}${place === 'repo' ? '. Then commit the change' : ''}.`
-            ),
+            problem({
+                detail: `v13's files are still in ${place === 'home' ? 'the home folder' : 'the repo'}: ${listed(files)}.`,
+                fix: `${FIX} to move them to ${BACKUP}${place === 'repo' ? '. Then commit the change' : ''}.`,
+            }),
         ])
     }
     if (found.cache !== null) {
         checks.push([
             'repo_cache',
-            problem(
-                `v13's hook cache is still in the repo: ${found.cache.shown}.`,
-                `${FIX} to move it to ${BACKUP}.`
-            ),
+            problem({
+                detail: `v13's hook cache is still in the repo: ${found.cache.shown}.`,
+                fix: `${FIX} to move it to ${BACKUP}.`,
+            }),
         ])
     }
     if (found.gitignore !== null) {
         checks.push([
             'gitignore',
-            problem(
-                `${found.gitignore.shown} still has v13's managed block of .luca/ entries.`,
-                `${FIX} to remove it, then commit ${found.gitignore.shown}.`
-            ),
+            problem({
+                detail: `${found.gitignore.shown} still has v13's managed block of .luca/ entries.`,
+                fix: `${FIX} to remove it, then commit ${found.gitignore.shown}.`,
+            }),
         ])
     }
     if (found.luca_dir !== null) {
         checks.push([
             'luca_dir',
             found.luca_dir.has_data
-                ? warning(
-                      "~/.luca/ (v13's own MuninnDB) is still there, and its data folder ~/.luca/muninndb-data isn't empty.",
-                      'luca doctor --fix keeps it. Once you no longer need the memories in it, stop that MuninnDB and move ~/.luca/ away yourself.'
-                  )
-                : problem(
-                      "~/.luca/ (v13's own MuninnDB) is still there.",
-                      `Its MuninnDB data folder is empty: ${FIX} to move it to ${BACKUP}.`
-                  ),
+                ? warning({
+                      detail: "~/.luca/ (v13's own MuninnDB) is still there, and its data folder ~/.luca/muninndb-data isn't empty.",
+                      fix: 'luca doctor --fix keeps it. Once you no longer need the memories in it, stop that MuninnDB and move ~/.luca/ away yourself.',
+                  })
+                : problem({
+                      detail: "~/.luca/ (v13's own MuninnDB) is still there.",
+                      fix: `Its MuninnDB data folder is empty: ${FIX} to move it to ${BACKUP}.`,
+                  }),
         ])
     }
     if (found.payloads.length > 0) {
         checks.push([
             'tmp_payloads',
-            problem(
-                `v13's payloads are still in the temp folder: ${listed(found.payloads)}.`,
-                `${FIX} to move them to ${BACKUP}.`
-            ),
+            problem({
+                detail: `v13's payloads are still in the temp folder: ${listed(found.payloads)}.`,
+                fix: `${FIX} to move them to ${BACKUP}.`,
+            }),
         ])
     }
     if (checks.length === 0) {
@@ -483,10 +489,10 @@ export const v13Checks = async ({
             {
                 group: 'v13',
                 name: 'leftovers',
-                ...problem(
-                    `The v13 leftovers check failed: ${reason(error)}`,
-                    'Fix what the error says, then run luca doctor again.'
-                ),
+                ...problem({
+                    detail: `The v13 leftovers check failed: ${reason(error)}`,
+                    fix: 'Fix what the error says, then run luca doctor again.',
+                }),
             },
         ]
     }
@@ -524,7 +530,7 @@ const move = async ({ from, to }: { from: string; to: string }) => {
     try {
         await rename(from, to)
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
+        if (errorCode(error) !== 'EXDEV') throw error
         // Another disk: copy it all, then take the original away.
         await cp(from, to, {
             recursive: true,
@@ -585,7 +591,7 @@ export const fixV13 = async ({
     const shown_backup = backup.startsWith(`${home}/`)
         ? `~/${backup.slice(home.length + 1)}`
         : backup
-    const failed = (what: string, error: unknown) => {
+    const failed = ({ what, error }: { what: string; error: unknown }) => {
         log(`${prefix} v13: couldn't ${what}: ${reason(error)}`)
     }
     let manifest: V13Manifest
@@ -594,7 +600,7 @@ export const fixV13 = async ({
         manifest = given ?? (await loadV13Manifest())
         found = await findV13({ manifest, home, repo, tmp_dir })
     } catch (error) {
-        failed('look for leftovers', error)
+        failed({ what: 'look for leftovers', error })
         return
     }
     const moved: string[] = []
@@ -606,7 +612,7 @@ export const fixV13 = async ({
             })
             moved.push(leftover.shown)
         } catch (error) {
-            failed(`move ${leftover.shown}`, error)
+            failed({ what: `move ${leftover.shown}`, error })
         }
     }
 
@@ -637,7 +643,7 @@ export const fixV13 = async ({
                 `${prefix} v13: removed its ${file.settings.map(labelOf).join(', ')} from ${file.shown}`
             )
         } catch (error) {
-            failed(`edit ${file.shown}`, error)
+            failed({ what: `edit ${file.shown}`, error })
         }
     }
 
@@ -665,7 +671,7 @@ export const fixV13 = async ({
             await Bun.write(path, lines.join('\n'))
             log(`${prefix} v13: removed its managed block from ${shown}`)
         } catch (error) {
-            failed(`edit ${shown}`, error)
+            failed({ what: `edit ${shown}`, error })
         }
     }
 

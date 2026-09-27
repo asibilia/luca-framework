@@ -76,7 +76,7 @@ To stay on v13, don't install v14: v13 stays on npm. One computer holds one glob
 
 This package is released with changesets and the [`release.yml`](https://github.com/asibilia/luca-framework/blob/main/.github/workflows/release.yml) workflow. The repo is in changesets' pre mode `alpha`, so only `14.0.0-alpha.N` versions go out, under npm's `alpha` tag, and `latest` stays on `13.0.1`.
 
-1. Merge a PR with a changeset (`bunx changeset`). On the push to `main`, the workflow opens or updates the Version PR, "chore(release): version packages (...)".
+1. Merge a PR with a changeset (`bunx changeset`). On the push to `main`, the workflow opens or updates the Version PR, "chore(release): version packages (...)". This package, `@luca/engine`, and `@luca/board` are one `fixed` group in `.changeset/config.json`: this package ships the engine's and board's files without depending on them, so a changeset that names only the private engine or board (as the engine's own changesets on its runs' PRs do) still bumps this package.
 2. The Version PR is opened by the bot, so its checks don't start on their own: on the PR, click **Approve workflows to run**.
 3. Merge the Version PR. The workflow sees no pending changesets and a version that isn't on npm yet, so it publishes: the PR checks, `bun pm pack`, an install of the tarball with `luca-run --demo`, a guard that fails unless the version is `-alpha.N`, `npm publish --tag alpha` over npm trusted publishing (no token), and a GitHub release marked as a prerelease.
 

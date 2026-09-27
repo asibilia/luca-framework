@@ -1,19 +1,24 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { setUpBoard, type StepEnd } from './board-in-paseo'
+import type {
+    Ask,
+    ClaudeMcp,
+    Computer,
+    LucaInstall,
+    MuninnCli,
+    MuninnHealth,
+    Paseo,
+} from './computer-adapters'
+import { computerChecks } from './computer-checks'
 import {
-    BOARD_PLUGIN_ID,
-    computerChecks,
-    isRight,
-    MUNINN_SERVER_NAME,
-    realPath,
-    rightEntry,
-    userMuninnEntry,
-    type Computer,
-    type MuninnHealth,
-    type Paseo,
-} from './computer-checks'
-import { formatChecks, hasProblem, type DoctorCheck } from './doctor-checks'
+    formatChecks,
+    hasProblem,
+    reason,
+    type DoctorCheck,
+} from './doctor-checks'
+import { ensureMuninnEntry, hideToken } from './muninn-entry'
 
 /**
  * `luca init`: sets up this computer for Luca, once, and is safe to run
@@ -28,22 +33,16 @@ import { formatChecks, hasProblem, type DoctorCheck } from './doctor-checks'
  * 3. makes sure Claude Code has a user-scope `muninn` MCP server over HTTP
  *    whose `Authorization` header holds the literal token from MuninnDB's
  *    token file, as the engine reads only that entry: a right one is left
- *    alone, a wrong one is removed, then added;
+ *    alone, a wrong one is removed, then added (see `ensureMuninnEntry`);
  * 4. writes and loads a login item, a LaunchAgent that runs `muninn start`
  *    once at login, with no KeepAlive (it would fight `muninn stop` and
  *    `muninn upgrade`).
  *
  * `skip_muninndb` skips all of it: runs then have memory off.
  *
- * The board: installs the `luca-board` plugin into Paseo as a folder source,
- * the board folder inside Luca's own install folder, so the board and the
- * engine are always the same version. When the board is already installed
- * from that folder, it is reloaded; from another folder (such as the old
- * pinned clone), its settings are read, it is removed and installed again,
- * and they are written back, as removing a plugin wipes its settings and
- * installing over an id fails. Then the board's engine and Bun paths are
- * written. When Paseo's plugins are off, the user is asked before they are
- * turned on; on no, nothing in Paseo changes.
+ * The board: installs the `luca-board` plugin into Paseo from Luca's own
+ * install folder and writes its engine and Bun paths, asking before it
+ * turns Paseo's plugins on (see `setUpBoard`).
  *
  * The planning skills: installs the ones Luca's intake expects from
  * `mattpocock/skills` with the `skills` tool, skipping any already there.
@@ -57,41 +56,6 @@ import { formatChecks, hasProblem, type DoctorCheck } from './doctor-checks'
 /** The login item's launchd label, and its file name without `.plist`. */
 export const LOGIN_ITEM_LABEL = 'com.alecsibilia.luca.muninn'
 
-/** MuninnDB's CLI. */
-export type MuninnCli = {
-    /** The `muninn` binary's path, or `null` when it isn't installed. */
-    which: () => Promise<string | null>
-    /** Downloads and installs MuninnDB. */
-    install: () => Promise<void>
-    /** Runs `muninn <args>`. */
-    run: (args: {
-        args: string[]
-    }) => Promise<{ exit_code: number | null; stdout: string; stderr: string }>
-    /** The token in MuninnDB's own token file, or `null` when there is none. */
-    token: () => Promise<string | null>
-}
-
-/** One of Claude Code's MCP servers. */
-export type McpServer = {
-    name: string
-    scope: 'user' | 'local' | 'project'
-    transport: 'http' | 'sse' | 'stdio'
-    /** `''` for a stdio server. */
-    url: string
-    headers: Record<string, string>
-}
-
-/** Claude Code's `claude mcp`. */
-export type ClaudeMcp = {
-    listMcpServers: () => Promise<McpServer[]>
-    /** Fails when a server of that name is already in that scope. */
-    addMcpServer: (server: McpServer) => Promise<void>
-    removeMcpServer: (args: {
-        name: string
-        scope: McpServer['scope']
-    }) => Promise<void>
-}
-
 /** macOS's `launchctl`, for the login item. */
 export type Launchctl = {
     /** Whether a job with this label is loaded. */
@@ -99,33 +63,6 @@ export type Launchctl = {
     /** Loads the job in this plist file. */
     load: (args: { plist: string }) => Promise<void>
 }
-
-/** A Paseo plugin's settings document, as its settings RPCs hold it. */
-export type PluginSettings = Record<string, unknown>
-
-/** Paseo's plugins and their settings. */
-export type PaseoPlugins = {
-    /** Whether Paseo's plugins are on. */
-    pluginsEnabled: () => Promise<boolean>
-    /** Turns Paseo's plugins on. Only after the user said yes. */
-    enablePlugins: () => Promise<void>
-    /** Every installed plugin: its id and the folder it was installed from. */
-    listPlugins: () => Promise<{ id: string; path: string }[]>
-    /** Installs a folder source. Fails when the id is already installed. */
-    installPlugin: (args: { path: string; id: string }) => Promise<void>
-    reloadPlugin: (args: { id: string }) => Promise<void>
-    /** Removes a plugin, and its settings with it. */
-    removePlugin: (args: { id: string }) => Promise<void>
-    /** The board's `engine` settings document. */
-    readSettings: (args: { plugin_id: string }) => Promise<PluginSettings>
-    writeSettings: (args: {
-        plugin_id: string
-        values: PluginSettings
-    }) => Promise<void>
-}
-
-/** A yes-or-no question to the user; `true` is yes. */
-export type Ask = (args: { question: string }) => Promise<boolean>
 
 /** The `skills` tool, for the user's global skills. */
 export type SkillsTool = {
@@ -196,177 +133,6 @@ export const loginItemPlist = ({ muninn }: { muninn: string }): string => {
 `
 }
 
-/** Any text with the token swapped for `***`. Pure. */
-export const hideToken = ({
-    text,
-    token,
-}: {
-    text: string
-    token: string | null
-}): string =>
-    token === null || token === '' ? text : text.split(token).join('***')
-
-/** Why a step failed, in words. Pure. */
-const reason = (error: unknown): string =>
-    error instanceof Error ? error.message : String(error)
-
-/** How one step of init ended; `message` is the last line it printed. */
-export type StepEnd = { ok: boolean; message: string }
-
-/**
- * Makes Claude Code's user-scope `muninn` entry the right one for `token`:
- * a right one is left alone, a wrong one is removed, then added. Logs each
- * change after `prefix`, never the token. Throws when `claude mcp` fails.
- */
-export const ensureMuninnEntry = async ({
-    claude,
-    token,
-    prefix,
-    log,
-}: {
-    claude: ClaudeMcp
-    token: string
-    prefix: string
-    log: (line: string) => void
-}): Promise<void> => {
-    const right = rightEntry({ token })
-    const current = await userMuninnEntry({ claude })
-    if (current !== undefined && isRight({ server: current, right })) {
-        log(`${prefix} Claude Code: the user-scope muninn entry is right`)
-        return
-    }
-    if (current !== undefined) {
-        await claude.removeMcpServer({
-            name: MUNINN_SERVER_NAME,
-            scope: 'user',
-        })
-        log(`${prefix} Claude Code: removed the wrong muninn entry`)
-    }
-    await claude.addMcpServer(right)
-    log(`${prefix} Claude Code: added the user-scope muninn entry`)
-}
-
-/**
- * Puts the board into Paseo from `board_dir`, with Paseo's plugins on, and
- * writes its engine and Bun paths, keeping its other settings. When the
- * board is already installed from that folder, it is reloaded; from another
- * folder, its settings are read, it is removed and installed again, and
- * they are written back. Logs each step after `prefix`. Throws when Paseo
- * fails. `installed` says whether the board was installed anew.
- */
-export const placeBoard = async ({
-    paseo,
-    board_dir,
-    engine_path,
-    bun_path,
-    prefix,
-    log,
-}: {
-    paseo: PaseoPlugins
-    board_dir: string
-    engine_path: string
-    bun_path: string
-    prefix: string
-    log: (line: string) => void
-}): Promise<{ installed: boolean }> => {
-    const current = (await paseo.listPlugins()).find(
-        ({ id }) => id === BOARD_PLUGIN_ID
-    )
-    let kept: PluginSettings = {}
-    let installed = false
-    if (current === undefined) {
-        await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
-        installed = true
-        log(`${prefix} Board: installed from ${board_dir}`)
-    } else if (realPath(current.path) === realPath(board_dir)) {
-        kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
-        await paseo.reloadPlugin({ id: BOARD_PLUGIN_ID })
-        log(`${prefix} Board: reloaded from ${board_dir}`)
-    } else {
-        // Removing wipes the settings, so they are read first.
-        kept = await paseo.readSettings({ plugin_id: BOARD_PLUGIN_ID })
-        await paseo.removePlugin({ id: BOARD_PLUGIN_ID })
-        await paseo.installPlugin({ path: board_dir, id: BOARD_PLUGIN_ID })
-        installed = true
-        log(
-            `${prefix} Board: moved from ${current.path} to ${board_dir}, settings kept`
-        )
-    }
-
-    await paseo.writeSettings({
-        plugin_id: BOARD_PLUGIN_ID,
-        values: { ...kept, engine_path, bun_path },
-    })
-    log(`${prefix} Board: engine path ${engine_path}, Bun path ${bun_path}`)
-    return { installed }
-}
-
-/**
- * Puts the board into Paseo from `board_dir` (reloaded when it is already
- * installed from there, its settings kept) and writes its engine and Bun
- * paths, asking before it turns Paseo's plugins on. Each line it logs starts
- * with `[<command>]`. Never throws.
- *
- * @example
- * const end = await setUpBoard({ command: 'luca upgrade', paseo, ask, board_dir, engine_path, bun_path, log: console.log })
- */
-export const setUpBoard = async ({
-    command = 'luca init',
-    paseo,
-    ask,
-    board_dir,
-    engine_path,
-    bun_path,
-    log,
-}: {
-    /** The command that logs, such as `luca init`. */
-    command?: string
-    paseo: PaseoPlugins
-    ask: Ask
-    board_dir: string
-    engine_path: string
-    bun_path: string
-    log: (line: string) => void
-}): Promise<StepEnd> => {
-    const say = (message: string, ok: boolean): StepEnd => {
-        log(message)
-        return { ok, message }
-    }
-    try {
-        if (!(await paseo.pluginsEnabled())) {
-            const yes = await ask({
-                question:
-                    "Paseo's plugins are off. Turn them on so Luca can install its board?",
-            })
-            if (!yes) {
-                return say(
-                    `[${command}] Board: Paseo's plugins are off, so the board wasn't installed. Turn them on in Paseo's Settings, then run luca init again.`,
-                    false
-                )
-            }
-            await paseo.enablePlugins()
-            log(`[${command}] Board: turned Paseo's plugins on`)
-        }
-
-        const { installed } = await placeBoard({
-            paseo,
-            board_dir,
-            engine_path,
-            bun_path,
-            prefix: `[${command}]`,
-            log,
-        })
-        return say(
-            installed
-                ? `[${command}] Board is ready. Run /reload-skills in a Paseo chat so /luca-run shows up.`
-                : `[${command}] Board is ready.`,
-            true
-        )
-    } catch (error) {
-        return say(`[${command}] Board: ${reason(error)}`, false)
-    }
-}
-
 /** Installs the planning skills that aren't there yet. Never throws. */
 const setUpSkills = async ({
     skills,
@@ -375,7 +141,7 @@ const setUpSkills = async ({
     skills: SkillsTool
     log: (line: string) => void
 }): Promise<StepEnd> => {
-    const say = (message: string, ok: boolean): StepEnd => {
+    const say = ({ message, ok }: StepEnd): StepEnd => {
         log(message)
         return { ok, message }
     }
@@ -383,18 +149,24 @@ const setUpSkills = async ({
         const have = new Set(await skills.installedSkills())
         const missing = PLANNING_SKILLS.filter((skill) => !have.has(skill))
         if (missing.length === 0) {
-            return say('[luca init] Planning skills: all installed', true)
+            return say({
+                message: '[luca init] Planning skills: all installed',
+                ok: true,
+            })
         }
         await skills.installSkills({
             source: PLANNING_SKILLS_SOURCE,
             skills: missing,
         })
-        return say(
-            `[luca init] Planning skills: installed ${missing.join(', ')} from ${PLANNING_SKILLS_SOURCE}`,
-            true
-        )
+        return say({
+            message: `[luca init] Planning skills: installed ${missing.join(', ')} from ${PLANNING_SKILLS_SOURCE}`,
+            ok: true,
+        })
     } catch (error) {
-        return say(`[luca init] Planning skills: ${reason(error)}`, false)
+        return say({
+            message: `[luca init] Planning skills: ${reason(error)}`,
+            ok: false,
+        })
     }
 }
 
@@ -473,7 +245,7 @@ const setUpMemory = async ({
         }
     } catch (error) {
         const message = hideToken({
-            text: `[luca init] ${error instanceof Error ? error.message : String(error)}`,
+            text: `[luca init] ${reason(error)}`,
             token,
         })
         log(message)
@@ -491,7 +263,7 @@ const setUpMemory = async ({
  * `ok: false`, as does a check that is a problem.
  *
  * @example
- * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, muninn, muninn_health, claude, launchctl, paseo, skills, ask, computer, luca_version, board_dir, engine_path, bun_path, log: console.log })
+ * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, muninn, muninn_health, claude, launchctl, paseo, skills, ask, computer, ...(await lucaInstall()), log: console.log })
  */
 export const runInit = async ({
     home,
@@ -510,7 +282,7 @@ export const runInit = async ({
     engine_path,
     bun_path,
     log,
-}: {
+}: LucaInstall & {
     home: string
     skip_muninndb: boolean
     skip_skills: boolean
@@ -522,14 +294,6 @@ export const runInit = async ({
     skills: SkillsTool
     ask: Ask
     computer: Computer
-    /** The installed Luca's version. */
-    luca_version: string
-    /** The board folder inside Luca's install folder. */
-    board_dir: string
-    /** The real path of the installed `luca-run`. */
-    engine_path: string
-    /** Bun's own path. */
-    bun_path: string
     log: (line: string) => void
 }): Promise<InitEnd> => {
     const memory = await setUpMemory({

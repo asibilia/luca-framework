@@ -1,7 +1,7 @@
 {
     "changelog": "@changesets/cli/changelog",
     "commit": false,
-    "fixed": [],
+    "fixed": [["@alecsibilia/luca", "@luca/engine", "@luca/board"]],
     "linked": [],
     "access": "public",
     "baseBranch": "main",

@@ -23,7 +23,7 @@ This document defines the coding standards and patterns for the Luca Framework c
 
 ## Overview
 
-Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. It holds two packages: `packages/engine` (the engine that drives a run) and `packages/board` (the Paseo plugin `luca-board`). It follows strict patterns for consistency, type safety, and maintainability.
+Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. It holds three packages: `packages/engine` (the engine that drives a run, and the `luca` command) and `packages/board` (the Paseo plugin `luca-board`), both private, and `packages/luca`, the publish package `@alecsibilia/luca` that copies in the engine's source and the board's folder at pack time. It follows strict patterns for consistency, type safety, and maintainability.
 
 ### Tech Stack
 
@@ -113,12 +113,15 @@ const DEFAULT_AGENT_COLOR = "blue";
 
 ```
 packages/
-  engine/           # The engine (@luca/engine): runs, journal, gates, agents, the luca-run CLI
+  engine/           # The engine (@luca/engine): runs, journal, gates, agents, the luca and luca-run CLIs
     src/            # Modules by area (config, journal, core, gates, agents, guards, ...)
   board/            # The Paseo plugin luca-board (@luca/board)
     shared/         # Zod contracts and plain values only
     server/         # Plugin server side (reducer, rows, registry, launcher)
     client/         # React Native panel
+  luca/             # The publish package @alecsibilia/luca: no source of its own
+    scripts/        # Pack-time copy of the engine and board, and the pack check
+.changeset/         # Changesets, in pre mode alpha
 docs/               # Documentation
 .luca/config.json   # Engine config: checks, test patterns, rule files, memory vault
 CONTEXT.md          # Domain words
