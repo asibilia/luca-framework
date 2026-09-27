@@ -1,13 +1,14 @@
 /**
- * `luca doctor`: checks this computer, and the repo in the current folder
- * when there is one, and prints each check as OK, or the problem and its
- * exact fix:
+ * `luca doctor`: checks this computer, the repo in the current folder when
+ * there is one, and what old Luca v13 left behind, and prints each check as
+ * OK, or the problem and its exact fix:
  *
  *   luca doctor [--fix]
  *
- * `--fix` fixes what's safe without asking: it starts MuninnDB, repairs
- * Claude Code's `muninn` entry, reloads the board and rewrites its paths,
- * and runs `luca setup` in a repo. It never deletes and never commits.
+ * `--fix` fixes what's safe without asking: it moves v13's leftovers to a
+ * dated backup, starts MuninnDB, repairs Claude Code's `muninn` entry,
+ * reloads the board and rewrites its paths, and runs `luca setup` in a
+ * repo. It never deletes and never commits.
  * See `runDoctor`.
  *
  * Exits 0 when no check is a problem, 1 when one is, 2 on bad flags.
@@ -75,6 +76,7 @@ export const doctorCommand = async ({
                           github: await githubOf({ cwd: top }),
                           memory,
                       },
+            tmp_dir: '/tmp',
             log: (line) => {
                 console.log(line)
             },

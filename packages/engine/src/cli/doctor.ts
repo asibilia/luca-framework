@@ -18,21 +18,30 @@ import {
     type MuninnCli,
 } from './init'
 import { repoChecks, runSetup, type SetupGitHub } from './setup'
+import {
+    fixV13,
+    hasV13Leftovers,
+    MIGRATION_GUIDE_URL,
+    v13Checks,
+} from './v13-leftovers'
 
+import type { V13Manifest } from '../doctor/v13-manifest'
 import type { MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'
 
 /**
- * `luca doctor [--fix]`: checks this computer, and the repo when run inside
- * one, and prints each check as OK, or the problem and its exact fix. It
- * exits 1 when any check is a problem; warnings (memory off, planning-skill
- * drift) don't fail it.
+ * `luca doctor [--fix]`: checks this computer, the repo when run inside
+ * one, and what old Luca v13 left behind, and prints each check as OK, or
+ * the problem and its exact fix. It exits 1 when any check is a problem;
+ * warnings (memory off, planning-skill drift) don't fail it. When it finds
+ * v13 leftovers, it links the migration guide.
  *
- * `--fix` fixes what's safe, without asking: it starts MuninnDB and repairs
- * Claude Code's `muninn` entry (as `luca init` does), reloads the board and
- * rewrites its paths, and runs `luca setup` in a repo. It never deletes and
- * never commits: it lists the repo files to commit. Installs, sign-ins,
- * Paseo's plugin consent, and other `luca` copies are only reported.
+ * `--fix` fixes what's safe, without asking: it cleans up v13's leftovers
+ * first (see `fixV13`), starts MuninnDB and repairs Claude Code's `muninn`
+ * entry (as `luca init` does), reloads the board and rewrites its paths,
+ * and runs `luca setup` in a repo. It never deletes and never commits: it
+ * lists the repo files to commit. Installs, sign-ins, Paseo's plugin
+ * consent, and other `luca` copies are only reported.
  */
 
 const PREFIX = '[luca doctor]'
@@ -185,7 +194,7 @@ const fixComputer = async ({
     }
 }
 
-/** Runs `luca setup` in the repo, then lists the files it left to commit. */
+/** Runs `luca setup` in the repo. */
 const fixRepo = async ({
     repo,
     log,
@@ -193,7 +202,6 @@ const fixRepo = async ({
     repo: DoctorRepo
     log: (line: string) => void
 }) => {
-    const before = new Set(await changedFiles({ repo: repo.path }))
     await tryFix({
         what: 'luca setup',
         run: () =>
@@ -207,7 +215,20 @@ const fixRepo = async ({
         token: null,
         log,
     })
-    const changed = (await changedFiles({ repo: repo.path })).filter(
+}
+
+/** Lists the repo files `--fix` changed, for the user to commit. */
+const listToCommit = async ({
+    repo,
+    before,
+    log,
+}: {
+    repo: string
+    /** The files `git status` listed before `--fix` ran. */
+    before: Set<string>
+    log: (line: string) => void
+}) => {
+    const changed = (await changedFiles({ repo })).filter(
         (file) => !before.has(file)
     )
     if (changed.length > 0) {
@@ -219,12 +240,12 @@ const fixRepo = async ({
 
 /**
  * Runs `luca doctor` against `home` with these adapters: the computer
- * checks, then the repo checks when `repo` is given. With `fix`, it fixes
- * what's safe first, then checks again. Never throws, and never shows the
- * token.
+ * checks, then the repo checks when `repo` is given, then v13's leftovers
+ * in `home`, `repo`, and `tmp_dir`. With `fix`, it fixes what's safe first,
+ * then checks again. Never throws, and never shows the token.
  *
  * @example
- * const end = await runDoctor({ home: homedir(), fix: false, luca_version, board_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo, repo: null, log: console.log })
+ * const end = await runDoctor({ home: homedir(), fix: false, luca_version, board_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo, repo: null, tmp_dir: '/tmp', log: console.log })
  * process.exit(end.exit_code)
  */
 export const runDoctor = async ({
@@ -240,6 +261,8 @@ export const runDoctor = async ({
     claude,
     paseo,
     repo,
+    tmp_dir,
+    v13_manifest,
     log,
 }: {
     home: string
@@ -259,6 +282,10 @@ export const runDoctor = async ({
     paseo: Paseo
     /** The repo doctor runs in, or `null` outside one. */
     repo: DoctorRepo | null
+    /** Where v13 left its `luca-*.json` payloads: `/tmp`. */
+    tmp_dir: string
+    /** The v13 fingerprint list; defaults to the committed one. */
+    v13_manifest?: V13Manifest
     log: (line: string) => void
 }): Promise<DoctorEnd> => {
     const check = async (): Promise<DoctorCheck[]> => [
@@ -282,10 +309,37 @@ export const runDoctor = async ({
                   memory: repo.memory,
                   base_branch: repo.base_branch,
               })),
+        ...(await v13Checks({
+            manifest: v13_manifest,
+            home,
+            repo: repo?.path ?? null,
+            tmp_dir,
+        })),
     ]
 
     let checks = await check()
+    const found_v13 = hasV13Leftovers({ checks })
     if (fix) {
+        const before =
+            repo === null
+                ? new Set<string>()
+                : new Set(await changedFiles({ repo: repo.path }))
+        // v13's global hook is unwired before anything else.
+        if (found_v13) {
+            await tryFix({
+                what: 'v13 cleanup',
+                run: () =>
+                    fixV13({
+                        manifest: v13_manifest,
+                        home,
+                        repo: repo?.path ?? null,
+                        tmp_dir,
+                        log,
+                    }),
+                token: null,
+                log,
+            })
+        }
         await fixComputer({
             checks,
             board_dir,
@@ -305,10 +359,16 @@ export const runDoctor = async ({
         ) {
             await fixRepo({ repo, log })
         }
+        if (repo !== null) await listToCommit({ repo: repo.path, before, log })
         checks = await check()
     }
 
     for (const line of formatChecks({ checks })) log(line)
+    if (found_v13) {
+        log(
+            `${PREFIX} Old Luca v13 was here. What changed, and how to move over: ${MIGRATION_GUIDE_URL}`
+        )
+    }
     const failed = hasProblem({ checks })
     log(
         failed

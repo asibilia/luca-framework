@@ -1,11 +1,12 @@
 /**
  * The checks `luca doctor` runs, and how they print. Each check belongs to
- * a group (this computer, or this repo) and is OK, a warning, or a problem.
- * A warning or a problem carries the exact fix. Only problems fail doctor.
+ * a group (this computer, this repo, or old Luca v13's leftovers) and is OK,
+ * a warning, or a problem. A warning or a problem carries the exact fix.
+ * Only problems fail doctor.
  */
 
 /** Which part of the setup a check looks at. */
-export type CheckGroup = 'computer' | 'repo'
+export type CheckGroup = 'computer' | 'repo' | 'v13'
 
 /** `ok`, or a `warning` (doesn't fail doctor), or a `problem` (does). */
 export type CheckStatus = 'ok' | 'warning' | 'problem'
@@ -76,6 +77,7 @@ export const checksFor = async ({
 const GROUP_TITLES: Record<CheckGroup, string> = {
     computer: 'This computer:',
     repo: 'This repo:',
+    v13: 'Old Luca v13 leftovers:',
 }
 
 const LABELS: Record<CheckStatus, string> = {

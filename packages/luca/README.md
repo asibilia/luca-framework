@@ -66,7 +66,7 @@ A run with no `muninn` server in Claude Code has memory off, and `luca doctor` w
 
 ## Coming from v13
 
-v14 is a new Luca: `/lu`, `/luca-init`, v13's skills, agents, commands, hooks, and status line are gone. Matt Pocock's skills do the planning, and `/luca-run` does the building. Run `luca doctor --fix` to move what v13 left behind to a backup folder. See the [migration guide](https://github.com/asibilia/luca-framework/blob/main/docs/migrating-from-v13.md).
+v14 is a new Luca: `/lu`, `/luca-init`, v13's skills, agents, commands, hooks, and status line are gone. Matt Pocock's skills do the planning, and `/luca-run` does the building. Run `luca doctor --fix` to move what v13 left behind to a backup folder. See the [migration guide](https://github.com/asibilia/luca-framework/blob/main/docs/migrating-to-v14.md).
 
 To stay on v13, don't install v14: v13 stays on npm. One computer holds one global `luca`.
 
