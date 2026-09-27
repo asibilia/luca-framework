@@ -135,6 +135,13 @@ describe('luca subcommands', () => {
         expect(output).toContain('luca init')
         expect(output).toContain('--skip-muninndb')
     }, 30_000)
+
+    test('luca init usage names --skip-skills', async () => {
+        const end = await luca({ args: ['init', '--no-such-flag'] })
+
+        expect(end.exit_code).toBe(2)
+        expect(`${end.stdout}\n${end.stderr}`).toContain('--skip-skills')
+    }, 30_000)
 })
 
 describe('the engine package bins', () => {

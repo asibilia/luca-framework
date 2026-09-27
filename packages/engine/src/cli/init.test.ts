@@ -1,5 +1,5 @@
 import { realpathSync } from 'node:fs'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -10,10 +10,11 @@ import { runInit } from './init'
 import { muninnSettings } from '../memory/muninn-mcp-client'
 
 /**
- * `luca init`'s memory part end to end (seam 4): a throwaway home folder,
- * with fakes behind the adapters for MuninnDB's CLI, Claude Code's
- * `claude mcp`, and `launchctl`. Every fake writes what it did to one
- * event list, in order.
+ * `luca init` end to end (seam 4): a throwaway home folder, with fakes
+ * behind the adapters for MuninnDB's CLI, Claude Code's `claude mcp`,
+ * `launchctl`, Paseo's plugins and their settings, the question to the
+ * user, and the `skills` tool. The memory fakes write what they did to one
+ * event list, in order; Paseo's and the skills tool's have their own.
  */
 
 /** MuninnDB's own token: the `mdb_` one that reaches every vault. */
@@ -39,9 +40,35 @@ const RIGHT_ENTRY: McpServer = {
     headers: { Authorization: `Bearer ${TOKEN}` },
 }
 
+/** The board plugin's id in Paseo. */
+const BOARD_ID = 'luca-board'
+
+/** The planning skills Luca's intake expects, from `mattpocock/skills`. */
+const PLANNING_SKILLS = [
+    'to-spec',
+    'to-tickets',
+    'setup-matt-pocock-skills',
+    'grilling',
+    'domain-modeling',
+]
+
+const SKILLS_SOURCE = 'mattpocock/skills'
+
 let home = ''
 let muninn_bin = ''
+/** Luca's install folder, as `bun add -g` leaves it. */
+let luca_dir = ''
+/** The board folder inside Luca's install folder. */
+let board_dir = ''
+/** The real path of the installed `luca-run`. */
+let engine_path = ''
+/** Bun's own path. */
+const bun_path = realpathSync(process.execPath)
 const events: string[] = []
+/** What the fake Paseo was asked to do, in order. */
+const paseo_events: string[] = []
+/** The questions put to the user, in order. */
+const questions: string[] = []
 const logs: string[] = []
 const log = (line: string) => {
     logs.push(line)
@@ -50,7 +77,27 @@ const log = (line: string) => {
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-init-home-')))
     muninn_bin = join(home, '.local', 'bin', 'muninn')
+    luca_dir = join(
+        home,
+        '.bun',
+        'install',
+        'global',
+        'node_modules',
+        '@alecsibilia',
+        'luca'
+    )
+    board_dir = join(luca_dir, 'board')
+    engine_path = join(luca_dir, 'engine', 'cli', 'luca-run.ts')
+    await mkdir(board_dir, { recursive: true })
+    await Bun.write(
+        join(board_dir, 'paseo-plugin.json'),
+        JSON.stringify({ id: BOARD_ID })
+    )
+    await mkdir(join(luca_dir, 'engine', 'cli'), { recursive: true })
+    await Bun.write(engine_path, '#!/usr/bin/env bun\n')
     events.length = 0
+    paseo_events.length = 0
+    questions.length = 0
     logs.length = 0
 })
 
@@ -162,31 +209,182 @@ const fakeLaunchctl = () => {
     }
 }
 
+/** One installed Paseo plugin: its id and the folder it was installed from. */
+type Plugin = { id: string; path: string }
+
+type Settings = Record<string, unknown>
+
+/**
+ * A fake Paseo: its plugins, whether plugins are on, and each plugin's
+ * settings. As in the real one, installing an id that is already there
+ * fails, removing a plugin wipes its settings, a new install starts with
+ * none, and nothing can be installed while plugins are off.
+ */
+const fakePaseo = ({
+    enabled = true,
+    plugins = [],
+    settings = {},
+}: {
+    enabled?: boolean
+    plugins?: Plugin[]
+    settings?: Record<string, Settings>
+} = {}) => {
+    let is_enabled = enabled
+    const store: Plugin[] = plugins.map((plugin) => ({ ...plugin }))
+    const saved = new Map<string, Settings>(
+        Object.entries(settings).map(([id, values]) => [id, { ...values }])
+    )
+    const at = (id: string) => store.findIndex((plugin) => plugin.id === id)
+    const mustExist = (id: string) => {
+        if (at(id) === -1) throw new Error(`No plugin ${id} is installed`)
+    }
+    return {
+        paseo: {
+            pluginsEnabled: async () => is_enabled,
+            enablePlugins: async () => {
+                paseo_events.push('enable plugins')
+                is_enabled = true
+            },
+            listPlugins: async () => store.map((plugin) => ({ ...plugin })),
+            installPlugin: async ({
+                path,
+                id,
+            }: {
+                path: string
+                id: string
+            }) => {
+                paseo_events.push(`install ${id} ${path}`)
+                if (!is_enabled) throw new Error('Paseo plugins are off')
+                if (at(id) !== -1) {
+                    throw new Error(`Plugin ${id} is already installed`)
+                }
+                store.push({ id, path })
+                saved.set(id, {})
+            },
+            reloadPlugin: async ({ id }: { id: string }) => {
+                paseo_events.push(`reload ${id}`)
+                mustExist(id)
+            },
+            removePlugin: async ({ id }: { id: string }) => {
+                paseo_events.push(`remove ${id}`)
+                mustExist(id)
+                store.splice(at(id), 1)
+                saved.delete(id)
+            },
+            readSettings: async ({
+                plugin_id,
+            }: {
+                plugin_id: string
+            }): Promise<Settings> => {
+                paseo_events.push(`read settings ${plugin_id}`)
+                mustExist(plugin_id)
+                return { ...(saved.get(plugin_id) ?? {}) }
+            },
+            writeSettings: async ({
+                plugin_id,
+                values,
+            }: {
+                plugin_id: string
+                values: Settings
+            }) => {
+                paseo_events.push(`write settings ${plugin_id}`)
+                mustExist(plugin_id)
+                saved.set(plugin_id, { ...values })
+            },
+        },
+        /** Every installed plugin now. */
+        plugins: () => store.map((plugin) => ({ ...plugin })),
+        /** A plugin's settings now, or `null` when it has none. */
+        settings: (id: string): Settings | null => {
+            const values = saved.get(id)
+            return values === undefined ? null : { ...values }
+        },
+        enabled: () => is_enabled,
+    }
+}
+
+/** The user's answer to every question, recorded in `questions`. */
+const answer =
+    (yes: boolean) =>
+    async ({ question }: { question: string }) => {
+        questions.push(question)
+        return yes
+    }
+
+/** A fake `skills` tool: the skills installed, and each install asked for. */
+const fakeSkills = ({ installed = [] }: { installed?: string[] } = {}) => {
+    const have = new Set(installed)
+    const asked: { source: string; skills: string[] }[] = []
+    let looks = 0
+    return {
+        skills: {
+            installedSkills: async () => {
+                looks += 1
+                return [...have]
+            },
+            installSkills: async ({
+                source,
+                skills,
+            }: {
+                source: string
+                skills: string[]
+            }) => {
+                asked.push({ source, skills: [...skills] })
+                for (const skill of skills) have.add(skill)
+            },
+        },
+        /** Every skill name passed to an install, in order. */
+        requested: () => asked.flatMap(({ skills }) => skills),
+        /** Every source passed to an install. */
+        sources: () => asked.map(({ source }) => source),
+        /** The skills installed now, sorted. */
+        installed: () => [...have].sort(),
+        /** How many times the installed skills were looked up. */
+        looks: () => looks,
+    }
+}
+
 type Fakes = {
     muninn: ReturnType<typeof fakeMuninn>
     claude: ReturnType<typeof fakeClaude>
     launchctl: ReturnType<typeof fakeLaunchctl>
+    paseo?: ReturnType<typeof fakePaseo>
+    skills?: ReturnType<typeof fakeSkills>
 }
 
 const freshFakes = (): Fakes => ({
     muninn: fakeMuninn(),
     claude: fakeClaude(),
     launchctl: fakeLaunchctl(),
+    paseo: fakePaseo(),
+    skills: fakeSkills(),
 })
 
 const init = ({
     fakes,
     skip_muninndb = false,
+    skip_skills = false,
+    yes = false,
 }: {
     fakes: Fakes
     skip_muninndb?: boolean
+    skip_skills?: boolean
+    /** The user's answer when asked. */
+    yes?: boolean
 }) =>
     runInit({
         home,
         skip_muninndb,
+        skip_skills,
         muninn: fakes.muninn,
         claude: fakes.claude.claude,
         launchctl: fakes.launchctl.launchctl,
+        paseo: (fakes.paseo ?? fakePaseo()).paseo,
+        skills: (fakes.skills ?? fakeSkills()).skills,
+        ask: answer(yes),
+        board_dir,
+        engine_path,
+        bun_path,
         log,
     })
 
@@ -489,5 +687,307 @@ describe('luca init never shows the token', () => {
         expect(printed()).not.toContain(TOKEN)
         expect(thrown).not.toContain(TOKEN)
         expect(JSON.stringify(end) ?? '').not.toContain(TOKEN)
+    })
+})
+
+/** What the fake Paseo was asked to change, leaving out reads. */
+const paseoChanges = (): string[] =>
+    paseo_events.filter((event) => !event.startsWith('read '))
+
+/** The settings a user tuned on the old board: its usage lines too. */
+const TUNED_LINES = { weekly_line: 55, five_hour_line: 65 }
+
+describe('luca init puts the board into Paseo on a fresh computer', () => {
+    test('the board is installed once as a folder source with id luca-board, from the board folder in the Luca install folder', async () => {
+        const fakes = freshFakes()
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...fakes, paseo } })
+
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(
+            paseo_events.filter((event) => event.startsWith('install '))
+        ).toEqual([`install ${BOARD_ID} ${board_dir}`])
+        expect(paseo_events).not.toContain(`remove ${BOARD_ID}`)
+    })
+
+    test('the board engine path is the installed luca-run and its Bun path is the path of Bun itself', async () => {
+        const fakes = freshFakes()
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...fakes, paseo } })
+
+        expect(paseo.settings(BOARD_ID)).toMatchObject({
+            engine_path,
+            bun_path,
+        })
+        expect(
+            paseo_events.indexOf(`install ${BOARD_ID} ${board_dir}`)
+        ).toBeLessThan(paseo_events.lastIndexOf(`write settings ${BOARD_ID}`))
+    })
+
+    test('the board is installed even when MuninnDB is skipped', async () => {
+        const fakes = freshFakes()
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...fakes, paseo }, skip_muninndb: true })
+
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(paseo.settings(BOARD_ID)).toMatchObject({
+            engine_path,
+            bun_path,
+        })
+    })
+
+    test('init says /reload-skills is needed after installing the board', async () => {
+        await init({ fakes: freshFakes() })
+
+        expect(printed()).toContain('/reload-skills')
+    })
+
+    test('with plugins on, the user is not asked anything', async () => {
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        expect(questions).toEqual([])
+        expect(paseo_events).not.toContain('enable plugins')
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+    })
+})
+
+describe('luca init with the board already installed from the same folder', () => {
+    test('the board is reloaded, not removed or installed again, and its settings are kept', async () => {
+        const kept = { engine_path, bun_path, ...TUNED_LINES }
+        const paseo = fakePaseo({
+            plugins: [{ id: BOARD_ID, path: board_dir }],
+            settings: { [BOARD_ID]: kept },
+        })
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        expect(paseo_events).toContain(`reload ${BOARD_ID}`)
+        expect(paseo_events).not.toContain(`remove ${BOARD_ID}`)
+        expect(
+            paseo_events.filter((event) => event.startsWith('install '))
+        ).toEqual([])
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(paseo.settings(BOARD_ID)).toEqual(kept)
+    })
+
+    test('a stale engine or Bun path is corrected and the usage lines are kept', async () => {
+        const paseo = fakePaseo({
+            plugins: [{ id: BOARD_ID, path: board_dir }],
+            settings: {
+                [BOARD_ID]: {
+                    engine_path: '/old/luca-run.ts',
+                    bun_path: '/old/bun',
+                    ...TUNED_LINES,
+                },
+            },
+        })
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        expect(paseo_events).toContain(`reload ${BOARD_ID}`)
+        expect(paseo_events).not.toContain(`remove ${BOARD_ID}`)
+        expect(paseo.settings(BOARD_ID)).toEqual({
+            engine_path,
+            bun_path,
+            ...TUNED_LINES,
+        })
+    })
+})
+
+describe('luca init with the board installed from another folder', () => {
+    test('the settings, usage lines included, are read, the source is switched to the Luca install folder, and the settings are written back', async () => {
+        const old_board = join(
+            home,
+            '.local',
+            'share',
+            'luca',
+            'packages',
+            'board'
+        )
+        const paseo = fakePaseo({
+            plugins: [{ id: BOARD_ID, path: old_board }],
+            settings: {
+                [BOARD_ID]: {
+                    engine_path: join(
+                        home,
+                        '.local',
+                        'share',
+                        'luca',
+                        'packages',
+                        'engine',
+                        'src',
+                        'cli',
+                        'luca-run.ts'
+                    ),
+                    bun_path: '/old/bun',
+                    ...TUNED_LINES,
+                },
+            },
+        })
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(paseo.settings(BOARD_ID)).toEqual({
+            engine_path,
+            bun_path,
+            ...TUNED_LINES,
+        })
+    })
+
+    test('the settings are read before the old board is removed, and written back after the new one is installed', async () => {
+        const old_board = join(home, 'old-clone', 'packages', 'board')
+        const paseo = fakePaseo({
+            plugins: [{ id: BOARD_ID, path: old_board }],
+            settings: {
+                [BOARD_ID]: {
+                    engine_path: '/old/luca-run.ts',
+                    bun_path: '/old/bun',
+                    ...TUNED_LINES,
+                },
+            },
+        })
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        const read = paseo_events.indexOf(`read settings ${BOARD_ID}`)
+        const removed = paseo_events.indexOf(`remove ${BOARD_ID}`)
+        const installed = paseo_events.indexOf(
+            `install ${BOARD_ID} ${board_dir}`
+        )
+        const written = paseo_events.lastIndexOf(`write settings ${BOARD_ID}`)
+        expect(read).not.toBe(-1)
+        expect(read).toBeLessThan(removed)
+        expect(removed).toBeLessThan(installed)
+        expect(installed).toBeLessThan(written)
+        expect(
+            paseo_events.filter((event) => event.startsWith('remove '))
+        ).toEqual([`remove ${BOARD_ID}`])
+    })
+
+    test('another plugin in Paseo is left alone', async () => {
+        const other: Plugin = { id: 'someone-else', path: join(home, 'other') }
+        const paseo = fakePaseo({
+            plugins: [
+                other,
+                { id: BOARD_ID, path: join(home, 'old-clone', 'board') },
+            ],
+            settings: { 'someone-else': { theme: 'dark' } },
+        })
+
+        await init({ fakes: { ...freshFakes(), paseo } })
+
+        expect(paseo.plugins()).toContainEqual(other)
+        expect(paseo.plugins()).toContainEqual({
+            id: BOARD_ID,
+            path: board_dir,
+        })
+        expect(paseo.settings('someone-else')).toEqual({ theme: 'dark' })
+        expect(paseo_events).not.toContain('remove someone-else')
+    })
+})
+
+describe('luca init with Paseo plugins off', () => {
+    test('the user is asked before plugins are turned on', async () => {
+        const paseo = fakePaseo({ enabled: false })
+
+        await init({ fakes: { ...freshFakes(), paseo }, yes: false })
+
+        expect(questions).toHaveLength(1)
+        expect(questions[0]).toMatch(/plugins/i)
+    })
+
+    test('on no, it is reported and nothing in Paseo changes', async () => {
+        const paseo = fakePaseo({ enabled: false })
+
+        await init({ fakes: { ...freshFakes(), paseo }, yes: false })
+
+        expect(paseoChanges()).toEqual([])
+        expect(paseo.enabled()).toBe(false)
+        expect(paseo.plugins()).toEqual([])
+        expect(paseo.settings(BOARD_ID)).toBeNull()
+        expect(printed()).toMatch(/plugins/i)
+    })
+
+    test('on yes, plugins are turned on, then the board is installed with its paths', async () => {
+        const paseo = fakePaseo({ enabled: false })
+
+        await init({ fakes: { ...freshFakes(), paseo }, yes: true })
+
+        expect(questions).toHaveLength(1)
+        expect(paseo.enabled()).toBe(true)
+        expect(paseo_events.indexOf('enable plugins')).toBeLessThan(
+            paseo_events.indexOf(`install ${BOARD_ID} ${board_dir}`)
+        )
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(paseo.settings(BOARD_ID)).toMatchObject({
+            engine_path,
+            bun_path,
+        })
+    })
+})
+
+describe('luca init installs the planning skills', () => {
+    test('on a computer with none, all five are installed from mattpocock/skills', async () => {
+        const skills = fakeSkills()
+
+        await init({ fakes: { ...freshFakes(), skills } })
+
+        expect([...skills.requested()].sort()).toEqual(
+            [...PLANNING_SKILLS].sort()
+        )
+        expect(skills.sources().length).toBeGreaterThan(0)
+        for (const source of skills.sources()) {
+            expect(source).toBe(SKILLS_SOURCE)
+        }
+        expect(skills.installed()).toEqual([...PLANNING_SKILLS].sort())
+    })
+
+    test('only the missing planning skills are installed, and other skills of the user are left alone', async () => {
+        const skills = fakeSkills({
+            installed: ['to-spec', 'grilling', 'my-own-skill'],
+        })
+
+        await init({ fakes: { ...freshFakes(), skills } })
+
+        expect([...skills.requested()].sort()).toEqual(
+            ['domain-modeling', 'setup-matt-pocock-skills', 'to-tickets'].sort()
+        )
+        expect(skills.installed()).toEqual(
+            [...PLANNING_SKILLS, 'my-own-skill'].sort()
+        )
+    })
+
+    test('with every planning skill already there, they are looked up and nothing is installed', async () => {
+        const skills = fakeSkills({ installed: [...PLANNING_SKILLS] })
+
+        await init({ fakes: { ...freshFakes(), skills } })
+
+        expect(skills.looks()).toBeGreaterThan(0)
+        expect(skills.requested()).toEqual([])
+        expect(skills.installed()).toEqual([...PLANNING_SKILLS].sort())
+    })
+
+    test('--skip-skills installs no skills and says they were skipped', async () => {
+        const skills = fakeSkills()
+
+        await init({ fakes: { ...freshFakes(), skills }, skip_skills: true })
+
+        expect(skills.requested()).toEqual([])
+        expect(skills.installed()).toEqual([])
+        expect(printed()).toContain('--skip-skills')
+    })
+
+    test('--skip-skills still puts the board into Paseo', async () => {
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...freshFakes(), paseo }, skip_skills: true })
+
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
     })
 })
