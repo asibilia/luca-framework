@@ -20,7 +20,8 @@
   "scripts": {
     "commit": "bunx --bun @alecsibilia/commit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "version": "changeset version && bun install"
   },
   "type": "module",
   "workspaces": {
