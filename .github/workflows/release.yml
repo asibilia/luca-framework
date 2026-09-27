@@ -76,9 +76,8 @@ jobs:
           commit-message: ${{ steps.plan.outputs.title }}
           # The publish job makes the GitHub release.
           create-github-releases: false
-          # Commit through GitHub's API, so the Version PR's commits are
-          # signed by GitHub and pass main's required-signatures rule.
-          commit-mode: github-api
+          # v2 pushes through GitHub's API by default. Don't add the old
+          # `commit-mode` input: v2 refuses to run with it.
           github-token: ${{ github.token }}
 
       - name: Label the Version PR "automated"
