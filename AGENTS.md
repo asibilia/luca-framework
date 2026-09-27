@@ -6,6 +6,7 @@
 
 - **Old Luca is gone.** The `luca` CLI and its packages (`packages/luca`, `luca-cli`, `luca-core`, `luca-tools`, `luca-code`) have been deleted, along with the npm release workflow and changesets, so old Luca no longer publishes to npm. The last old-Luca code is at the tag `old-luca-final`. To read or copy from it, run `git show old-luca-final:<path>`, or check the tag out in a separate worktree.
 - **New work goes in `packages/engine`.**
+- **Changesets are back, fresh**, in pre mode `alpha` (`.changeset/`). A PR that changes a package needs a changeset (`bunx changeset`). The PR check (`.github/workflows/pr-check.yml`, on macOS, with Bun pinned in `.bun-version`) runs the checks in `.luca/config.json` (`bun scripts/run-checks.ts`), packs the publish package (`bun packages/luca/scripts/check-pack.ts`), and runs `changeset status`.
 - **Read these before you build.** `CONTEXT.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
 - `.luca/config.json` is the engine's config: check commands, test file patterns, test setup files, rule files, and `muninn.vault` (the project's memory vault; memory tooling reads it at that path). Old Luca's data that used to live in `.luca/` is at the tag `old-luca-final`.
 

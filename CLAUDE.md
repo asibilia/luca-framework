@@ -16,6 +16,7 @@ Default to using Bun instead of Node.js.
 
 - **Old Luca is gone.** The `luca` CLI and its packages (`packages/luca`, `luca-cli`, `luca-core`, `luca-tools`, `luca-code`) have been deleted, along with the npm release workflow and changesets. The last old-Luca code is at the tag `old-luca-final`. To read or copy from it, run `git show old-luca-final:<path>`, or check the tag out in a separate worktree.
 - **New work goes in `packages/engine`.**
+- **Changesets are back, fresh**, in pre mode `alpha`. A PR that changes a package needs a changeset (`bunx changeset`); the PR check (`.github/workflows/pr-check.yml`) runs `changeset status`.
 - **Read these before you build.** `CONTEXT.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
 - `.luca/config.json` is the engine's config: check commands, test file patterns, test setup files, rule files, and `muninn.vault` (the project's memory vault; memory tooling reads it at that path). Old Luca's data that used to live in `.luca/` is at the tag `old-luca-final`.
 - Install deps: `bun install`. Type check: `bunx --bun tsc --noEmit`.
