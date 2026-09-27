@@ -617,17 +617,6 @@ describe('luca-setup checks what a run needs', () => {
 
         expectToDo(end, 'vault')
     }, 60_000)
-
-    test('a config with no vault is a to-do with a fix', async () => {
-        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
-
-        const end = await setup({
-            github: fakeGitHub().github,
-            memory: createFakeMuninn(),
-        })
-
-        expectToDo(end, 'vault')
-    }, 60_000)
 })
 
 describe('luca-setup never commits and is safe to run again', () => {
