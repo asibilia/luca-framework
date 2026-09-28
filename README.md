@@ -14,7 +14,7 @@ You write a **spec** (one feature: the problem, the solution, and how it will be
 
 ## Start a run
 
-Install `@alecsibilia/luca`, run `luca init` and `luca setup`, then type `/luca-run <spec number>` in a Paseo chat (or `/luca-run demo` for a practice run with no GitHub and no models). See [What you need and the first run](packages/luca/README.md#what-you-need).
+Install `@alecsibilia/luca`, run `luca init` inside your repo (it sets up the computer, then the repo), then type `/luca-run <spec number>` in a Paseo chat (or `/luca-run demo` for a practice run with no GitHub and no models). See [What you need and the first run](packages/luca/README.md#what-you-need).
 
 From the command line:
 

@@ -9,7 +9,8 @@
  * all of that: runs then have memory off. It puts the board into Paseo from
  * Luca's own install folder and writes its engine and Bun paths, asking
  * before it turns Paseo's plugins on. It installs the planning skills that
- * aren't there yet; `--skip-skills` skips them. See `runInit`.
+ * aren't there yet; `--skip-skills` skips them. Inside a git repo, it then
+ * runs `luca setup` for that repo. See `runInit`.
  *
  * Exits 0 when done, 1 when a step failed, 2 on bad flags.
  */
@@ -29,7 +30,9 @@ import {
 } from './computer-adapters-real'
 import { reason } from './doctor-checks'
 import { runInit, type Launchctl, type SkillsTool } from './init'
+import { githubOf, memoryOf, repoTop } from './repo-adapters-real'
 
+import type { MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'
 
 /** `luca init`'s flags. */
@@ -103,6 +106,24 @@ const skillsOf = ({ home }: { home: string }): SkillsTool => ({
     },
 })
 
+/**
+ * MuninnDB over MCP, found on first use: init writes Claude Code's `muninn`
+ * entry before its repo part reads it.
+ */
+const lazyMemory = (): MemoryClient => {
+    let client: Promise<MemoryClient> | null = null
+    const found = () => (client ??= memoryOf())
+    return {
+        recall: async (args) => (await found()).recall(args),
+        remember: async (args) => (await found()).remember(args),
+        evolve: async (args) => (await found()).evolve(args),
+        feedback: async (args) => (await found()).feedback(args),
+        close: async () => {
+            if (client !== null) await (await client).close()
+        },
+    }
+}
+
 /** Runs `luca init` with the flags after `init`; returns the exit code. */
 export const initCommand = async ({
     argv,
@@ -115,11 +136,21 @@ export const initCommand = async ({
     }
     const home = homedir()
     const paseo = paseoOf({ client_id: 'luca-init' })
+    const memory = lazyMemory()
     try {
+        const top = await repoTop({ cwd: process.cwd() })
         const end = await runInit({
             home,
             skip_muninndb: argv.includes('--skip-muninndb'),
             skip_skills: argv.includes('--skip-skills'),
+            repo:
+                top === null
+                    ? null
+                    : {
+                          path: top,
+                          github: await githubOf({ cwd: top }),
+                          memory,
+                      },
             muninn: muninnOf({ home }),
             muninn_health: muninnHealth,
             claude: claudeOf({ home }),
@@ -139,5 +170,6 @@ export const initCommand = async ({
         return 1
     } finally {
         await paseo.close()
+        await memory.close().catch(() => undefined)
     }
 }

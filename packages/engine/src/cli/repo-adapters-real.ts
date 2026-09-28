@@ -1,6 +1,7 @@
 /**
- * The real repo adapters `luca setup` and `luca doctor` share: the repo's
- * GitHub side, and MuninnDB over MCP for its vault.
+ * The real repo adapters `luca setup`, `luca init`, and `luca doctor`
+ * share: the repo's top folder, its GitHub side, and MuninnDB over MCP for
+ * its vault.
  */
 import type { SetupGitHub } from './setup'
 
@@ -10,11 +11,27 @@ import {
     createMuninnMcpClient,
     muninnSettings,
 } from '../memory/muninn-mcp-client'
+import { runCommand } from '../shell/run-command'
 import {
     createGitHubTracker,
     ghLogin,
     githubRepoOf,
 } from '../tracker/github-tracker'
+
+/** The top of the git repo `cwd` is in, or `null` outside one. */
+export const repoTop = async ({
+    cwd,
+}: {
+    cwd: string
+}): Promise<string | null> => {
+    const top = await runCommand({
+        cmd: ['git', 'rev-parse', '--show-toplevel'],
+        cwd,
+    })
+    return top.exit_code === 0 && top.stdout.trim() !== ''
+        ? top.stdout.trim()
+        : null
+}
 
 /**
  * The real GitHub side: the GitHub tracker of the repo at `cwd` for its

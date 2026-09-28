@@ -794,12 +794,15 @@ as a health check.
   that is a `bun test` command runs as written and is bun-readable, and the
   rest run as `bun run <script>` and are pass-or-fail. A `type-check` or
   `typecheck` script becomes the types check (`bun run <script>`), and
-  `lint` becomes `bun run lint`.
+  `lint` becomes `bun run lint`. Its `muninn.vault` is the repo's GitHub
+  name (the `repo` of `owner/repo`), and the done list names it and says it
+  can be changed.
 - **An old-Luca config** (any key a new-style config doesn't have, such as
   `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` (or an
   older top-level `vault`) and writes the rest fresh from `package.json`, as
   above.
 - **A new-style config:** it leaves the file alone and only reports on it.
+  With no vault, the vault is a to-do.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
   `origin`, and MuninnDB can search the config's vault (found as `luca-run`
@@ -840,8 +843,8 @@ settings and rewrites its paths, and runs `luca setup` in a repo, then lists
 the files to commit. It never deletes and never commits. Installs, sign-ins,
 Paseo's plugin consent, and other `luca` copies are only reported.
 
-`luca init` ends with the computer checks, and `luca setup` with the repo
-checks. The board reports its loaded version through its `board.version`
+`luca init` ends with the computer checks, then, inside a git repo, runs
+`luca setup` there, which ends with the repo checks. The board reports its loaded version through its `board.version`
 RPC, read from its folder's package.json when Paseo loads it. The tests
 (`src/cli/doctor.test.ts`) run doctor end to end in a throwaway home folder
 and throwaway repos, with fakes for every tool.

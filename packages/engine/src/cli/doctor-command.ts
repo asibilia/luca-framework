@@ -24,24 +24,12 @@ import {
     paseoOf,
 } from './computer-adapters-real'
 import { runDoctor } from './doctor'
-import { githubOf, memoryOf } from './repo-adapters-real'
+import { githubOf, memoryOf, repoTop } from './repo-adapters-real'
 
 import type { MemoryClient } from '../memory/memory-client'
-import { runCommand } from '../shell/run-command'
 
 /** `luca doctor`'s usage line. */
 export const DOCTOR_USAGE = 'Usage: luca doctor [--fix]'
-
-/** The top of the git repo `cwd` is in, or `null` outside one. */
-const repoTop = async ({ cwd }: { cwd: string }): Promise<string | null> => {
-    const top = await runCommand({
-        cmd: ['git', 'rev-parse', '--show-toplevel'],
-        cwd,
-    })
-    return top.exit_code === 0 && top.stdout.trim() !== ''
-        ? top.stdout.trim()
-        : null
-}
 
 /** Runs `luca doctor` with the flags after `doctor`; returns the exit code. */
 export const doctorCommand = async ({

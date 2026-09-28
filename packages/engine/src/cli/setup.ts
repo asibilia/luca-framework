@@ -35,7 +35,8 @@ import {
 /**
  * `luca setup`: gets a repo ready for Luca. It creates the labels a run
  * needs (and the `release:*` ones in a repo with changesets), writes a
- * starting `.luca/config.json` (or converts old Luca's, or leaves a
+ * starting `.luca/config.json` with the repo's GitHub name as its vault
+ * (or converts old Luca's, or leaves a
  * new-style one alone), runs `luca doctor`'s repo checks once, and ends
  * with a plain list of what's done and what's left, then a pointer to
  * `/setup-matt-pocock-skills`. It never commits, and running it again
@@ -261,6 +262,18 @@ const vaultName = (vault: unknown): string | null =>
 const oldVault = ({ raw }: { raw: Record<string, unknown> }): string | null =>
     vaultName(isRecord(raw.muninn) ? raw.muninn.vault : undefined) ??
     vaultName(raw.vault)
+
+/**
+ * The `name` part of a GitHub `owner/name`, a new repo's vault. Pure.
+ *
+ * @example
+ * repoName({ github_repo: 'asibilia/tmnb' }) // 'tmnb'
+ */
+const repoName = ({
+    github_repo,
+}: {
+    github_repo: string | null
+}): string | null => vaultName(github_repo?.split('/').at(-1)?.trim() ?? null)
 
 const writeConfig = async ({
     repo,
@@ -591,7 +604,7 @@ const list = (lines: string[]): string =>
  * `refactor`, and `needs-info` labels, and in a repo with
  * `.changeset/config.json` the `release:*` ones too; writes a starting
  * `.luca/config.json` from `package.json` when there is none (see
- * `guessChecks`), rewrites an old-Luca config into the new shape keeping
+ * `guessChecks`), with the repo's GitHub name as its `muninn.vault`, rewrites an old-Luca config into the new shape keeping
  * its `muninn.vault` (or an older top-level `vault`), and leaves a
  * new-style config alone; then checks the `gh` login and runs `luca
  * doctor`'s repo checks (`repoChecks`) once: the GitHub remote, sub-issues
@@ -640,7 +653,10 @@ export const runSetup = async ({
 
     const found = await findConfig({ repo })
     if (found.kind === 'missing' || found.kind === 'old') {
-        const vault = found.kind === 'old' ? oldVault({ raw: found.raw }) : null
+        const vault =
+            found.kind === 'old'
+                ? oldVault({ raw: found.raw })
+                : repoName({ github_repo })
         await writeConfig({
             repo,
             config: startingConfig({
@@ -653,6 +669,11 @@ export const runSetup = async ({
                 ? `Wrote ${ENGINE_CONFIG_FILE} from package.json's scripts. Check it, then merge it to main through a PR.`
                 : `Rewrote old Luca's ${ENGINE_CONFIG_FILE} into the new shape${vault === null ? '' : `, keeping the \`${vault}\` vault`}. Check it, then merge it to main through a PR.`
         )
+        if (found.kind === 'missing' && vault !== null) {
+            done_lines.push(
+                `Set the memory vault to \`${vault}\`, the repo's GitHub name. Change \`muninn.vault\` in ${ENGINE_CONFIG_FILE} to use another.`
+            )
+        }
     } else if (found.kind === 'new') {
         done_lines.push(
             `${ENGINE_CONFIG_FILE} is new-style, so it was left as it is`

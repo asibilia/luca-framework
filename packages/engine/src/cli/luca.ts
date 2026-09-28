@@ -3,7 +3,8 @@
  * `luca`: the command people run, with subcommands:
  *
  *   luca init [--skip-muninndb] [--skip-skills]
- *                                  sets up this computer, once
+ *                                  sets up this computer, once, then
+ *                                  the repo in this folder
  *   luca setup [--base <branch>]   gets the repo in this folder ready
  *   luca upgrade [--to <version>]  moves to another version of Luca
  *   luca doctor [--fix]            checks this computer and repo; --fix
@@ -22,7 +23,7 @@ const USAGE = `Usage: luca <command>
 
 Commands:
   init [--skip-muninndb] [--skip-skills]
-                            Set up this computer for Luca (once)
+                            Set up this computer for Luca (once), then the repo you're in
   setup [--base <branch>]   Get the repo in this folder ready for Luca
   upgrade [--to <version>]  Move to the newest Luca on your channel, or to <version>
   doctor [--fix]            Check this computer and repo; --fix fixes what's safe`
