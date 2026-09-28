@@ -42,6 +42,10 @@ export const newCodeFiles = ({
         .filter((path) => importStem(path) !== 'index')
 
 const nameHit = (path: string): string | null => {
+    // git lists a folder with its own repo as one path ending in a slash.
+    if (path.endsWith('/')) {
+        return 'a folder with its own git repo in it, which git cannot commit as files'
+    }
     const name = basename(path)
     if (name === '.DS_Store') return 'a Finder leftover (.DS_Store)'
     if (TOOL_LEFTOVER.test(name) || name.endsWith('~')) {
@@ -59,8 +63,9 @@ const nameHit = (path: string): string | null => {
  * engine must not commit. It runs before every engine commit.
  *
  * Blocks scratch files, logs, `.orig` and other tool leftovers, `.DS_Store`,
- * new markdown the spec and ticket don't name, and new scripts or modules
- * that nothing uses.
+ * new markdown the spec and ticket don't name, new scripts or modules
+ * that nothing uses, and a folder with its own git repo in it (which
+ * `git add` can't take as files).
  *
  * @param mention_text - The spec's and ticket's text; a new markdown file is
  *   fine if it names the file.

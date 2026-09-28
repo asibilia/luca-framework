@@ -502,6 +502,12 @@ export type RunState = {
     run_notes: ReplayedRunNote[]
     /** The latest gates on the run branch: after a join, or a final review fix. */
     run_branch_gates: ReplayedGates | null
+    /**
+     * Every untracked path a prepare run made in any of the run's checkouts
+     * (`prepare_made`), in journal order. Never an agent's work: the engine
+     * leaves them out of commits, the leftover scan, and role rules.
+     */
+    prepare_made: string[]
     final_review: FinalReviewState
     /** Comments read on the spec issue while waiting for replies, oldest first. */
     comments: ReplayedComment[]
@@ -600,6 +606,7 @@ const EMPTY_STATE: RunState = {
     removed_worktrees: [],
     run_notes: [],
     run_branch_gates: null,
+    prepare_made: [],
     final_review: EMPTY_FINAL_REVIEW,
     comments: [],
     handled_comments: [],
@@ -1099,6 +1106,14 @@ const applyRecord = ({
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
             return next
+        case 'prepare_made':
+            return {
+                ...next,
+                prepare_made: uniq([
+                    ...state.prepare_made,
+                    ...record.content.paths,
+                ]),
+            }
         case 'agent_session_closed':
             return closedSessionAfter({
                 state: next,
@@ -1601,6 +1616,7 @@ type TicketRecord = Exclude<
             | 'memory_write_started'
             | 'memory_write_done'
             | 'baseline_reused'
+            | 'prepare_made'
     }
 >
 

@@ -100,6 +100,8 @@ export const prepareCheck = async ({
  * as the `install` check. A failed install stops there: the other gates
  * would only fail on the missing packages. The config's prepare command
  * runs next, as the `prepare` check, and a failed one stops there too.
+ * `around_prepare`, if given, runs the prepare check (so the engine can see
+ * what it made).
  *
  * @example
  * const { ok, checks } = await runGates({ cwd, config, test_files, report_file, install: null })
@@ -110,12 +112,17 @@ export const runGates = async ({
     test_files,
     report_file,
     install,
+    around_prepare,
 }: {
     cwd: string
     config: EngineConfig
     test_files: string[]
     report_file: string
     install: string | null
+    /** Wraps the prepare run. Left out, it runs as is. */
+    around_prepare?: (
+        prepare: () => Promise<GateCheck | null>
+    ) => Promise<GateCheck | null>
 }): Promise<{ ok: boolean; checks: GateCheck[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -127,7 +134,8 @@ export const runGates = async ({
         checks.push(installed)
         if (!installed.ok) return { ok: false, checks }
     }
-    const prepared = await prepareCheck({ config, cwd })
+    const prepare = () => prepareCheck({ config, cwd })
+    const prepared = await (around_prepare?.(prepare) ?? prepare())
     if (prepared !== null) {
         checks.push(prepared)
         if (!prepared.ok) return { ok: false, checks }

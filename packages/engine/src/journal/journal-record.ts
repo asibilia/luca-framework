@@ -162,6 +162,24 @@ const BaselinePreparedEntrySchema = z.object({
     content: z.object({ check: GateCheckSchema }),
 })
 
+/**
+ * New untracked paths a run of the config's prepare command made in a
+ * checkout (#486): there after it ran, not before, such as a symlinked
+ * tools folder or a build file the repo's `.gitignore` misses. They are not
+ * an agent's work, so the engine never commits them or judges them by role
+ * rules, in any checkout of the run. Journaled right after the prepare run
+ * (at the baseline, the red check, or the gates), only when it made any.
+ * `ticket` is the step's, as on its `gates_run`: `null` in the final review.
+ */
+const PrepareMadeEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('prepare_made'),
+    content: z.object({
+        /** Worktree-relative, as git lists them (`git ls-files --others`). */
+        paths: z.array(z.string()),
+    }),
+})
+
 /** The tests as they stood before any agent worked on a ticket. */
 const BaselineTestsEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -1125,6 +1143,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema,
     TicketWorktreeCreatedEntrySchema,
     BaselinePreparedEntrySchema,
+    PrepareMadeEntrySchema,
     BaselineTestsEntrySchema,
     BaselineReusedEntrySchema,
     AgentStartedEntrySchema,
@@ -1200,6 +1219,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema.extend(STAMP_FIELDS),
     TicketWorktreeCreatedEntrySchema.extend(STAMP_FIELDS),
     BaselinePreparedEntrySchema.extend(STAMP_FIELDS),
+    PrepareMadeEntrySchema.extend(STAMP_FIELDS),
     BaselineTestsEntrySchema.extend(STAMP_FIELDS),
     BaselineReusedEntrySchema.extend(STAMP_FIELDS),
     AgentStartedEntrySchema.extend(STAMP_FIELDS),
@@ -1274,6 +1294,7 @@ export const JournalKindSchema = z.enum([
     'run_branch_created',
     'ticket_worktree_created',
     'baseline_prepared',
+    'prepare_made',
     'baseline_tests',
     'baseline_reused',
     'agent_started',

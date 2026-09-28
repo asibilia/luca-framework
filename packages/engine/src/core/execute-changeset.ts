@@ -145,7 +145,11 @@ export const writeChangeset = async ({
     await Bun.write(join(cwd, path), changesetText({ packages, bump, summary }))
     const changes = await git.changes({ cwd })
     if (changes.some((change) => change.path === path)) {
-        await git.commitAll({ cwd, message })
+        await git.commitAll({
+            cwd,
+            message,
+            leave_out: state.prepare_made,
+        })
     }
     await git.push({ cwd, branch })
     journal.append({

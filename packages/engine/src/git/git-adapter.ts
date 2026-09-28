@@ -65,12 +65,28 @@ export type GitAdapter = {
         from: string
         to: string
     }) => Promise<string[]>
+    /**
+     * Untracked paths git doesn't ignore, as git sees them: a symlink is one
+     * path (never followed), and a folder with its own repo is one path
+     * ending in `/`.
+     */
+    untracked: (args: { cwd: string }) => Promise<string[]>
     /** Tracked and untracked files, minus ignored ones. */
     listFiles: (args: { cwd: string }) => Promise<string[]>
     /** Tracked files whose text contains `text`. */
     filesMentioning: (args: { cwd: string; text: string }) => Promise<string[]>
-    /** Stages everything and commits it, skipping hooks (the engine ran the gates). */
-    commitAll: (args: { cwd: string; message: string }) => Promise<EngineCommit>
+    /**
+     * Stages everything and commits it, skipping hooks (the engine ran the
+     * gates). Paths in `leave_out` (what the prepare command made) are
+     * never staged, however odd: not even a folder with its own repo, which
+     * `git add` would fail on.
+     */
+    commitAll: (args: {
+        cwd: string
+        message: string
+        /** Untracked paths to keep out of the commit. Left out, none. */
+        leave_out?: string[]
+    }) => Promise<EngineCommit>
     /**
      * Throws away every uncommitted change at `cwd`, new untracked files
      * included (ignored files such as `node_modules` stay), and returns the
@@ -180,6 +196,45 @@ const parseStatus = ({ text }: { text: string }): FileChange[] => {
         else changes.push({ path, change: 'modified' })
     }
     return sortBy(changes, 'path')
+}
+
+/**
+ * Stages every change at `cwd` (`git add -A`) but the paths in `leave_out`,
+ * which git never looks at: each is an exact, literal pathspec to exclude,
+ * passed through a file so any number of them fit.
+ */
+const stageAll = async ({
+    cwd,
+    leave_out,
+}: {
+    cwd: string
+    leave_out: string[]
+}): Promise<void> => {
+    if (leave_out.length === 0) {
+        await gitOk({ cwd, args: ['add', '-A'] })
+        return
+    }
+    const folder = await mkdtemp(join(tmpdir(), 'luca-stage-'))
+    try {
+        const pathspecs = join(folder, 'pathspecs')
+        await Bun.write(
+            pathspecs,
+            ['.', ...leave_out.map((path) => `:(exclude,literal)${path}`)]
+                .map((spec) => `${spec}\0`)
+                .join('')
+        )
+        await gitOk({
+            cwd,
+            args: [
+                'add',
+                '-A',
+                `--pathspec-from-file=${pathspecs}`,
+                '--pathspec-file-nul',
+            ],
+        })
+    } finally {
+        await rm(folder, { recursive: true, force: true })
+    }
 }
 
 /**
@@ -359,6 +414,15 @@ export const createGitAdapter = ({
             lines(
                 await gitOk({ cwd, args: ['diff', '--name-only', from, to] })
             ).toSorted(),
+        untracked: async ({ cwd }) =>
+            (
+                await gitOk({
+                    cwd,
+                    args: ['ls-files', '--others', '--exclude-standard', '-z'],
+                })
+            )
+                .split('\0')
+                .filter((path) => path !== ''),
         listFiles: async ({ cwd }) =>
             lines(
                 await gitOk({
@@ -379,8 +443,8 @@ export const createGitAdapter = ({
             })
             return result.exit_code === 0 ? lines(result.stdout) : []
         },
-        commitAll: async ({ cwd, message }) => {
-            await gitOk({ cwd, args: ['add', '-A'] })
+        commitAll: async ({ cwd, message, leave_out }) => {
+            await stageAll({ cwd, leave_out: leave_out ?? [] })
             await gitOk({
                 cwd,
                 args: ['commit', '--quiet', '--no-verify', '-m', message],
@@ -518,6 +582,7 @@ export const createGitAdapter = ({
         changes: serial(raw.changes),
         changedSince: serial(raw.changedSince),
         filesBetween: serial(raw.filesBetween),
+        untracked: serial(raw.untracked),
         listFiles: serial(raw.listFiles),
         filesMentioning: serial(raw.filesMentioning),
         commitAll: serial(raw.commitAll),

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
+import difference from 'lodash/difference'
 import uniq from 'lodash/uniq'
 
 import { CHANGESET_CONFIG } from './changeset'
@@ -29,7 +30,8 @@ import {
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import { runBunTests, testFilesAmong } from '../gates/test-runner'
-import type { GitAdapter } from '../git/git-adapter'
+import type { FileChange, GitAdapter } from '../git/git-adapter'
+import { pathText } from '../git/path-text'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
@@ -137,8 +139,57 @@ const testFilesIn = async ({
         test_file_patterns: context.config.test_file_patterns,
     })
 
-const readOrNull = async (path: string): Promise<string | null> =>
-    existsSync(path) ? Bun.file(path).text() : null
+/**
+ * Runs `run`, a run of the config's prepare command in `cwd`, and journals
+ * as `prepare_made` the untracked paths it made: there after it ran, not
+ * before, and not known yet. Without a prepare command it only runs `run`.
+ *
+ * A crash in the middle of a prepare run leaves what it made so far; the
+ * redo's own "before" then holds those paths, so they count as the
+ * ticket's unless an earlier prepare run already noted them.
+ */
+const watchPrepare = async <Result>({
+    context,
+    cwd,
+    ticket,
+    run,
+}: {
+    context: BuildContext
+    cwd: string
+    /** The step's ticket, `null` in the final review. */
+    ticket: number | null
+    run: () => Promise<Result>
+}): Promise<Result> => {
+    if (context.config.prepare === undefined) return run()
+    const before = await context.git.untracked({ cwd })
+    const result = await run()
+    const paths = difference(
+        await context.git.untracked({ cwd }),
+        before,
+        context.state.prepare_made
+    )
+    if (paths.length > 0) {
+        context.journal.append({
+            kind: 'prepare_made',
+            ticket,
+            role: null,
+            content: { paths },
+        })
+    }
+    return result
+}
+
+/** A ticket's changes, less what the prepare command made. */
+const ticketChanges = async ({
+    context,
+    cwd,
+}: {
+    context: BuildContext
+    cwd: string
+}): Promise<FileChange[]> =>
+    (await context.git.changes({ cwd })).filter(
+        ({ path }) => !context.state.prepare_made.includes(path)
+    )
 
 const runRedCheck = async ({
     context,
@@ -156,7 +207,12 @@ const runRedCheck = async ({
         what: `baseline test run for #${action.ticket}`,
     })
     const test_files = await testFilesIn({ context, cwd: path })
-    const prepare = await prepareCheck({ config: context.config, cwd: path })
+    const prepare = await watchPrepare({
+        context,
+        cwd: path,
+        ticket: action.ticket,
+        run: () => prepareCheck({ config: context.config, cwd: path }),
+    })
     const current = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
@@ -171,7 +227,9 @@ const runRedCheck = async ({
         action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
     )
     const sources: Record<string, string | null> = {}
-    for (const file of files) sources[file] = await readOrNull(join(path, file))
+    for (const file of files) {
+        sources[file] = await pathText({ path: join(path, file) })
+    }
     const checked = checkRed({
         criteria_ids: action.criteria_ids,
         mapping: action.mapping,
@@ -252,12 +310,13 @@ const leftCommit = async ({
 
 /**
  * The leftover scan, then an engine commit of everything in `cwd`, both
- * journaled. A hit blocks the commit. A `fix` commit with nothing to commit
- * (every finding was a "won't fix") journals the current commit with no
- * files instead. A redo after a crash that already committed (nothing left
- * to commit, and HEAD is an unjournaled commit with this message) journals
- * that commit instead of making another; its scan, of a clean worktree,
- * finds nothing, as the first try's did before it committed.
+ * journaled. What the prepare command made (`prepare_made`) is neither
+ * scanned nor committed. A hit blocks the commit. A `fix` commit with
+ * nothing to commit (every finding was a "won't fix") journals the current
+ * commit with no files instead. A redo after a crash that already committed
+ * (nothing left to commit, and HEAD is an unjournaled commit with this
+ * message) journals that commit instead of making another; its scan, of a
+ * clean worktree, finds nothing, as the first try's did before it committed.
  */
 export const commitIn = async ({
     context,
@@ -276,7 +335,7 @@ export const commitIn = async ({
     /** The spec and ticket text a new markdown file may be named in. */
     mention_text: string
 }) => {
-    const changes = await context.git.changes({ cwd })
+    const changes = await ticketChanges({ context, cwd })
     const test_files = testFilesAmong({
         files: changes.map(({ path }) => path),
         test_file_patterns: context.config.test_file_patterns,
@@ -284,7 +343,7 @@ export const commitIn = async ({
     const added = changes.filter(({ change }) => change === 'added')
     const added_texts: Record<string, string> = {}
     for (const { path } of added) {
-        added_texts[path] = (await readOrNull(join(cwd, path))) ?? ''
+        added_texts[path] = (await pathText({ path: join(cwd, path) })) ?? ''
     }
     const used_code: Record<string, boolean> = {}
     for (const path of newCodeFiles({ changes, test_files })) {
@@ -327,7 +386,11 @@ export const commitIn = async ({
         })
         return
     }
-    const commit = await context.git.commitAll({ cwd, message })
+    const commit = await context.git.commitAll({
+        cwd,
+        message,
+        leave_out: context.state.prepare_made,
+    })
     context.journal.append({
         kind: 'commit_made',
         ticket,
@@ -440,6 +503,7 @@ export const runTurn = async ({
         may_edit_tests,
         config: context.config,
         before,
+        leave_out: context.state.prepare_made,
     })
     // Others' changes to the shared .git: noted, never blamed or undone.
     if (outside.length > 0) {
@@ -762,12 +826,13 @@ export const gatesIn = async ({
         cwd,
         config: context.config,
         install: installCommand({
-            changed_files: await context.git.changedSince({
-                cwd,
-                from: base_sha,
-            }),
+            changed_files: difference(
+                await context.git.changedSince({ cwd, from: base_sha }),
+                context.state.prepare_made
+            ),
             target,
         }),
+        around_prepare: (run) => watchPrepare({ context, cwd, ticket, run }),
         test_files: await testFilesIn({ context, cwd }),
         report_file: await reportFile({
             context,
@@ -950,9 +1015,11 @@ export const executeBuildAction = async ({
         }
         case 'run_baseline_tests': {
             const { path } = ticketWorktree({ state, ticket: action.ticket })
-            const prepare = await prepareCheck({
-                config: context.config,
+            const prepare = await watchPrepare({
+                context,
                 cwd: path,
+                ticket: action.ticket,
+                run: () => prepareCheck({ config: context.config, cwd: path }),
             })
             if (prepare !== null) {
                 journal.append({
