@@ -1,5 +1,5 @@
 import { existsSync, realpathSync } from 'node:fs'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { builtinModules } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, normalize } from 'node:path'
@@ -20,6 +20,18 @@ const BOARD_DIR = join(PACKAGES_DIR, 'board')
 
 /** Packing copies the engine and board, so the first test waits for it. */
 const PACK_TIMEOUT_MS = 120_000
+
+/**
+ * The module in the board's folder that holds its Luca version, which its
+ * server imports: the dev version in the repo, stamped by the pack step.
+ */
+const BOARD_VERSION_MODULE = 'server/luca-version.ts'
+
+/** Luca's version when it runs from the repo's source, not an install. */
+const DEV_VERSION = 'dev (source)'
+
+/** The packages Paseo supplies a plugin's server, left out of its bundle. */
+const PASEO_SUPPLIED = ['@getpaseo/*', 'zod']
 
 const DependenciesSchema = z.record(z.string(), z.string()).default({})
 
@@ -211,6 +223,89 @@ const copyProblems = async ({
     return { missing, changed }
 }
 
+/**
+ * Loads the bundled board with a stand-in for Paseo's plugin server, asks
+ * `board.version`, and prints the answer as JSON.
+ */
+const BUNDLE_RUNNER = `import contribute from './board-server.js'
+
+const handlers = new Map()
+const cleanup = contribute({
+    registerSettings: () => ({
+        read: async () => ({ status: 'invalid', revision: '0', error: 'none' }),
+        subscribe: () => async () => {},
+    }),
+    handle: (contract, handler) => handlers.set(contract.name, handler),
+    registerProvider: () => {},
+    on: () => () => {},
+    before: () => () => {},
+})
+const answer = await handlers.get('board.version')({}, { paseo: {} })
+await cleanup()
+console.log(JSON.stringify(answer))
+process.exit(0)
+`
+
+const BoardVersionAnswerSchema = z.object({ version: z.string().nullable() })
+
+let bundles = 0
+
+/**
+ * The version the packed board answers at `board.version` once loaded the
+ * way Paseo loads a folder plugin: its server entry compiled into one file
+ * in another folder (the packages Paseo supplies left external), run in its
+ * own process. `beside` is a package.json to put next to the bundle.
+ */
+const bundledBoardVersion = async ({
+    tarball,
+    beside,
+}: {
+    tarball: Tarball
+    beside?: object
+}): Promise<string | null> => {
+    const root = rootHolding(tarball, 'paseo-plugin.json') ?? ''
+    const dir = join(workDir, `bundle-${++bundles}`)
+    await mkdir(dir)
+    const build = await Bun.build({
+        entrypoints: [join(tarball.dir, `${root}index.server.ts`)],
+        outdir: dir,
+        naming: 'board-server.js',
+        target: 'node',
+        format: 'esm',
+        external: PASEO_SUPPLIED,
+    })
+    if (!build.success) {
+        throw new Error(`The board didn't bundle:\n${build.logs.join('\n')}`)
+    }
+    // The packages Paseo supplies, where the bundle can import them.
+    await symlink(join(BOARD_DIR, 'node_modules'), join(dir, 'node_modules'))
+    await Bun.write(join(dir, 'run-board.mjs'), BUNDLE_RUNNER)
+    if (beside !== undefined) {
+        await Bun.write(join(dir, 'package.json'), JSON.stringify(beside))
+    }
+
+    const child = Bun.spawn([process.execPath, 'run-board.mjs'], {
+        cwd: dir,
+        env: {
+            ...process.env,
+            HOME: join(dir, 'home'),
+            LUCA_BOARD_STATE_DIR: join(dir, 'state'),
+            LUCA_RUNS_DIR: join(dir, 'runs'),
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
+    })
+    const [stdout, stderr, exit_code] = await Promise.all([
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+        child.exited,
+    ])
+    if (exit_code !== 0) {
+        throw new Error(`The bundled board exited ${exit_code}\n${stderr}`)
+    }
+    return BoardVersionAnswerSchema.parse(JSON.parse(stdout)).version
+}
+
 afterAll(async () => {
     if (workDir !== '') await rm(workDir, { recursive: true, force: true })
 })
@@ -251,14 +346,33 @@ describe('the packed @alecsibilia/luca tarball', () => {
             const root = rootHolding(tarball, 'paseo-plugin.json')
             expect(root).toBeDefined()
 
+            // The version module is stamped in the copy, so it differs.
             const problems = await copyProblems({
                 tarball,
                 root: root ?? '',
                 source_dir: BOARD_DIR,
-                files: await boardFiles(),
+                files: (await boardFiles()).filter(
+                    (file) => file !== BOARD_VERSION_MODULE
+                ),
             })
             expect(problems).toEqual({ missing: [], changed: [] })
             expect(tarball.files).toContain(`${root}package.json`)
+        },
+        PACK_TIMEOUT_MS
+    )
+
+    test(
+        "its board's version module holds the package's version",
+        async () => {
+            const tarball = await packed()
+            const root = rootHolding(tarball, 'paseo-plugin.json') ?? ''
+            expect(tarball.files).toContain(`${root}${BOARD_VERSION_MODULE}`)
+
+            const module = await Bun.file(
+                join(tarball.dir, `${root}${BOARD_VERSION_MODULE}`)
+            ).text()
+            expect(module).toContain(tarball.manifest.version)
+            expect(module).not.toContain(DEV_VERSION)
         },
         PACK_TIMEOUT_MS
     )
@@ -348,6 +462,38 @@ describe('the packed @alecsibilia/luca tarball', () => {
 
             expect(files).toContain('README.md')
             expect(files).toContain('LICENSE')
+        },
+        PACK_TIMEOUT_MS
+    )
+})
+
+describe('the packed board, bundled and loaded the way Paseo loads it', () => {
+    test(
+        'board.version answers the package version',
+        async () => {
+            const tarball = await packed()
+
+            expect(await bundledBoardVersion({ tarball })).toBe(
+                tarball.manifest.version
+            )
+        },
+        PACK_TIMEOUT_MS
+    )
+
+    test(
+        'board.version ignores a package.json next to the bundle',
+        async () => {
+            const tarball = await packed()
+
+            const version = await bundledBoardVersion({
+                tarball,
+                beside: {
+                    name: '@luca/board',
+                    version: '0.0.0-beside-the-bundle',
+                    type: 'module',
+                },
+            })
+            expect(version).toBe(tarball.manifest.version)
         },
         PACK_TIMEOUT_MS
     )
