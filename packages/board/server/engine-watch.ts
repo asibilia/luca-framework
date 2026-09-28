@@ -132,6 +132,18 @@ export type StopWhy =
     | { kind: 'spawn_failed'; error: string }
 
 /**
+ * How the owner resumes run `run_id` with the board attached: the
+ * `/luca-run resume` slash command (see `resumeRow`). A bare
+ * `luca-run --resume` would run without the board's token, so the board
+ * would show it read-only.
+ *
+ * @example
+ * resumeHint({ run_id: 'r1' }) // 'type /luca-run resume r1 in a Paseo chat'
+ */
+export const resumeHint = ({ run_id }: { run_id: string }): string =>
+    `type /luca-run resume ${run_id} in a Paseo chat`
+
+/**
  * What the board says when a run's engine is gone and the plugin won't
  * restart it. The panel and header show it as "The engine stopped: <text>".
  *
@@ -147,22 +159,22 @@ export const engineStoppedText = ({
     run_id: string
     log_path: string
 }): string => {
-    const resume = `luca-run --resume ${run_id}`
+    const resume = resumeHint({ run_id })
     switch (why.kind) {
         case 'demo':
             return `its process is gone, and a demo can't be picked up again. Start a new one with /luca-run demo. Its log is ${log_path}.`
         case 'not_listed':
             return `its process is gone, and its journal has nothing to pick up again (it never wrote one, or the run already ended). Read its log: ${log_path}.`
         case 'launcher_stopped':
-            return `The run stopped: ${why.reason}. It isn't restarted automatically, because it would stop the same way. Fix that, then run ${resume}. Its log is ${log_path}.`
+            return `The run stopped: ${why.reason}. It isn't restarted automatically, because it would stop the same way. Fix that, then ${resume}. Its log is ${log_path}.`
         case 'billing_stopped':
             return `The run stopped for billing: ${why.reason}. It will not go on; start a new run once per-token billing is off.`
         case 'restarts_used_up':
-            return `it stopped again after ${MAX_AUTO_RESTARTS} automatic restarts, so Paseo stopped restarting it. Read its log: ${log_path}. To try once more, run ${resume}.`
+            return `it stopped again after ${MAX_AUTO_RESTARTS} automatic restarts, so Paseo stopped restarting it. Read its log: ${log_path}. To try once more, ${resume}.`
         case 'check_failed':
-            return `its process is gone, and Paseo couldn't check whether the run can go on (${why.error}). To go on from its journal, run ${resume}. Its log is ${log_path}.`
+            return `its process is gone, and Paseo couldn't check whether the run can go on (${why.error}). To go on from its journal, ${resume}. Its log is ${log_path}.`
         case 'spawn_failed':
-            return `its process is gone, and Paseo couldn't restart the engine: ${why.error}. To go on from its journal, run ${resume}. Its log is ${log_path}.`
+            return `its process is gone, and Paseo couldn't restart the engine: ${why.error}. To go on from its journal, ${resume}. Its log is ${log_path}.`
     }
 }
 
@@ -193,5 +205,33 @@ export const restartRow = ({
         ticket: null,
         text: restartText({ restart }),
         tone: 'warning',
+    },
+})
+
+/** The words of the chat row for a run resumed with `/luca-run resume`. */
+export const RESUMED_TEXT =
+    'The run was resumed from its journal with /luca-run resume.'
+
+/**
+ * The chat row for a run resumed with `/luca-run resume`; its id is unique
+ * per run and time, so each resume gets its own row.
+ *
+ * @example
+ * resumeRow({ run_id, time: new Date().toISOString() })
+ */
+export const resumeRow = ({
+    run_id,
+    time,
+}: {
+    run_id: string
+    time: string
+}): BoardRow => ({
+    id: `${run_id}-resumed-${time}`,
+    kind: ROW_KIND.event,
+    data: {
+        time,
+        ticket: null,
+        text: RESUMED_TEXT,
+        tone: 'info',
     },
 })

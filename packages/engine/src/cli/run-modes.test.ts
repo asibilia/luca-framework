@@ -275,7 +275,8 @@ describe('luca-run --spec', () => {
 
         expect(result).toEqual({
             ok: false,
-            message: 'Run stopped: An API key was used, not the Claude plan.',
+            message:
+                'Run stopped: An API key was used, not the Claude plan. Fix that, then, to go on from its journal, type /luca-run resume run-1 in a Paseo chat.',
         })
         expect(recorder.kinds().at(-1)).toBe('run_stopped')
         expect(recorder.endings()).toEqual([result])
@@ -408,7 +409,8 @@ describe('luca-run --resume', () => {
         })
         expect(crashed).toEqual({
             ok: false,
-            message: 'The engine crashed: The engine was killed.',
+            message:
+                'The engine crashed: The engine was killed. To go on from its journal, run luca-run --resume run-1.',
         })
         const journal = createJournal({
             file: runJournalPath({ runs_dir, run_id: 'run-1' }),

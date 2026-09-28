@@ -1,6 +1,6 @@
 # Luca board (Paseo plugin `luca-board`)
 
-The board is the live view of a Luca run inside Paseo. You start a run by typing `/luca-run <spec>` in a Paseo chat. The engine runs as its own background process and sends its journal to this plugin. The plugin shows the run in two places:
+The board is the live view of a Luca run inside Paseo. You start a run by typing `/luca-run <spec>` in a Paseo chat, and pick one back up with `/luca-run resume <run id>` (see [Resuming a run](#resuming-a-run)). The engine runs as its own background process and sends its journal to this plugin. The plugin shows the run in two places:
 
 - **The side panel** ("Luca board", a workspace tab that also opens in the Explorer). From top to bottom it shows:
   - plan usage (five-hour and weekly), from the rate-limit readings in the agents' sessions, colored green below 60%, yellow from 60% to 85%, and red above 85%
@@ -18,7 +18,7 @@ The code reuses the designs of the board prototype (`prototype/paseo-board`: var
 
 1. `/luca-run <spec>` (a client slash command) calls the plugin RPC `run.start` with the chat's agent id, its workspace id, its working directory, and the args. Then it opens the panel.
 2. `run.start` does the following:
-   - It reads the args: `123`, `#123`, or `demo`. Anything else is an error that shows the usage.
+   - It reads the args: `123`, `#123`, `demo`, or `resume <run id>` (see [Resuming a run](#resuming-a-run)). Anything else is an error that shows the usage.
    - It finds the engine (see [Settings](#settings)).
    - It mints a run id (`luca-<yyyymmdd-hhmmss>-<4 random [a-z0-9]>`, UTC) and a random per-run token.
    - It records the run in the run registry and appends the chat's header row ("starting").
@@ -98,14 +98,44 @@ It prints `{ "runs": [{ run_id, restart, reason, message }] }` (see the engine's
   ```
 
   The chat gets a row: "The engine was gone, so Paseo restarted the run from its journal (restart 1 of 3)." The engine resends its journal, and the board skips the records it already has.
-- **A launcher stop** (`launcher_stopped`, such as the wrong login or model): not restarted, because it would stop the same way. Fix it, then run `luca-run --resume <run id>`.
+- **A launcher stop** (`launcher_stopped`, such as the wrong login or model): not restarted, because it would stop the same way. Fix it, then type `/luca-run resume <run id>`.
 - **A billing stop** (`billing_stopped`): never restarted. Start a new run once per-token billing is off.
 - **Not listed**: its journal has nothing to pick up again. The engine died before it wrote one, or the run already ended.
 - **A demo run**: never restarted, because its journal was in a temp folder that is gone. Start a new one with `/luca-run demo`.
 - **The cap**: a run is restarted at most 3 times by the plugin. If it dies a 4th time, it isn't restarted again, so a run that dies at every start can't loop forever.
-- **The check failed** (no engine found, `--unfinished` failed, timed out, or printed something else): the plugin can't tell whether the run can go on, so it doesn't restart it, and says how to go on by hand with `luca-run --resume <run id>`.
+- **The check failed** (no engine found, `--unfinished` failed, timed out, or printed something else): the plugin can't tell whether the run can go on, so it doesn't restart it, and says how to go on by hand with `/luca-run resume <run id>`.
 
-**How "engine stopped" looks.** A run that isn't restarted gets `ended` with `ok: false` and the reason in words. The header row and the panel then show "The engine stopped: ...", with the log path where it helps, instead of staying on "starting". `ended` and `restarts` are kept in the registry, so a run marked this way is never checked again, even after a plugin restart.
+**How "engine stopped" looks.** A run that isn't restarted gets `ended` with `ok: false` and the reason in words. The header row and the panel then show "The engine stopped: ...", with the log path where it helps, instead of staying on "starting". Where the run can go on, the words end with `/luca-run resume <run id>`. `ended` and `restarts` are kept in the registry, so a run marked this way is never checked again, even after a plugin restart, until you resume it.
+
+**When the engine ends itself.** An engine that crashes, or that the launcher stops, tells the board how it ended, so the plugin never checks or restarts it. Its message says how to go on: "The engine crashed: <error>. To go on from its journal, type /luca-run resume <run id> in a Paseo chat."
+
+## Resuming a run
+
+`/luca-run resume <run id>` picks a run the plugin started back up from its journal, with the board attached (#493). Use it after a crash, a launcher stop you fixed, or when the 3 automatic restarts are used up. The run id is in the run's header row and the panel.
+
+It is refused, and nothing starts, when:
+
+- the plugin doesn't know the run (it didn't start it, or the run is older than the 50 the registry keeps). A run started from the command line goes on with `luca-run --resume <run id>`, without the board.
+- it is a demo. A demo can't be picked up again.
+- the run is over (done, refused, or nothing to do).
+- its engine is still running (`ps` shows `--run-id <id>` or `--resume <id>`).
+- `ps` fails. Two engines on one run would be far worse than trying again.
+
+Otherwise the plugin:
+
+- gives the run a new token, clears its `ended`, and sets its `restarts` back to 0, so it gets 3 automatic restarts again;
+- keeps its chat, workspace, repo, and log;
+- starts the engine detached, the same way as an automatic restart:
+
+  ```
+  <bun> --no-env-file --config=<engine_dir>/bunfig.toml <engine_path> --resume <run id> --repo <repo> --board-plugin luca-board
+  ```
+
+- adds a row to the chat the run started in, "The run was resumed from its journal with /luca-run resume.", and updates its header row.
+
+The engine resends its journal with the new token, so the chat rows and `engine.event` work again. Resumes and the engine checks run one at a time, so they never both start an engine for the same run.
+
+**Why not `luca-run --resume` in a terminal?** It runs without the run's token, so `engine.event` refuses it and the board shows it read-only, with no chat rows.
 
 ## The board's vocabulary
 

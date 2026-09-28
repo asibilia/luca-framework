@@ -28,7 +28,10 @@ export const RunEntrySchema = z.object({
     log_path: z.string(),
     /** How the run's engine ended, once it did; `null` while it may run. */
     ended: EngineEndedSchema.nullable().default(null),
-    /** How many times the plugin restarted the run by itself (#375). */
+    /**
+     * How many times the plugin restarted the run by itself (#375); back to
+     * 0 when the owner resumes it (#493).
+     */
     restarts: z.number().int().min(0).default(0),
 })
 
@@ -136,15 +139,16 @@ export const createRunRegistry = ({
             write()
         },
         /**
-         * Changes a known run's `ended` or `restarts` and writes the file.
-         * Returns the changed entry, or `null` for an unknown run.
+         * Changes a known run's `ended`, `restarts`, or `token` (a resume
+         * gets a new one) and writes the file. Returns the changed entry, or
+         * `null` for an unknown run.
          */
         update: ({
             run_id,
             change,
         }: {
             run_id: string
-            change: Partial<Pick<RunEntry, 'ended' | 'restarts'>>
+            change: Partial<Pick<RunEntry, 'ended' | 'restarts' | 'token'>>
         }): RunEntry | null => {
             reread()
             const known = entries.find((entry) => entry.run_id === run_id)

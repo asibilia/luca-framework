@@ -15,7 +15,7 @@ export const PLUGIN_ID = 'luca-board'
 export const POLL_MS = 2000
 
 /** How to call the slash command, as shown to people. */
-export const RUN_USAGE = '/luca-run <spec number> | demo'
+export const RUN_USAGE = '/luca-run <spec number> | demo | resume <run id>'
 
 /** The side panel's text when this workspace has no run yet. */
 export const EMPTY_BOARD_TEXT =

@@ -31,7 +31,7 @@ export default function contribute(client: PluginClientContext) {
     client.addSlashCommand({
         name: 'luca-run',
         description:
-            'Start a Luca run for a spec: live rows here, and the Luca board panel',
+            'Start a Luca run for a spec, or resume one: live rows here, and the Luca board panel',
         argumentHint: RUN_USAGE.replace('/luca-run ', ''),
         context: 'agent',
         onSubmit: async ({ args, agent, workspace, rpc, openPanel }) => {

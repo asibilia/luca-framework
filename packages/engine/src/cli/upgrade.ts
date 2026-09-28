@@ -10,6 +10,8 @@ import {
     type DoctorCheck,
 } from './doctor-checks'
 import { describeRun, goingRuns } from './going-runs'
+import type { ListProcesses } from './live-runs'
+import { resumeCommand } from './run-modes'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
 
@@ -18,7 +20,11 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * never under a going run.
  *
  * 1. Refuses while any run is going (limit waits and stuck runs included)
- *    and lists them by spec and repo.
+ *    and lists them by spec and repo. A run is going when `ps` shows its
+ *    engine, or its engine is gone but the board will restart it; when `ps`
+ *    fails, every unfinished run is (see `goingRuns`). An unfinished run
+ *    nothing runs (such as a crash) doesn't stop it: upgrade says how to
+ *    resume it on the new version.
  * 2. Picks the version: `to` exactly when given, older ones included (the
  *    way back from a broken version). Without it, the installed version's
  *    channel: an alpha install gets the `alpha` tag, any other gets
@@ -30,8 +36,8 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * 5. Says when `/reload-skills` is needed: when the board's files changed.
  * 6. Ends with doctor's computer checks (see `computerChecks`).
  *
- * npm's registry, Bun, Paseo, and the computer checks are adapters, so
- * tests use fakes.
+ * npm's registry, Bun, Paseo, `ps`, and the computer checks are adapters,
+ * so tests use fakes.
  */
 
 /** npm's registry lookups for `@alecsibilia/luca`. */
@@ -148,13 +154,14 @@ const fingerprint = async (dir: string): Promise<string | null> => {
  * a failed step, or a check that is a problem ends it with `ok: false`.
  *
  * @example
- * const end = await runUpgrade({ to: null, installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, npm, bun, paseo, board_dir, engine_path, bun_path, computer_checks, log: console.log })
+ * const end = await runUpgrade({ to: null, installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, list_processes: listProcesses, npm, bun, paseo, board_dir, engine_path, bun_path, computer_checks, log: console.log })
  */
 export const runUpgrade = async ({
     to,
     installed_version,
     runs_dir,
     registry_path,
+    list_processes,
     npm,
     bun,
     paseo,
@@ -171,6 +178,8 @@ export const runUpgrade = async ({
     runs_dir: string
     /** The board's run registry. */
     registry_path: string
+    /** Every running process's command line, to tell live engines from gone ones. */
+    list_processes: ListProcesses
     npm: NpmRegistry
     bun: BunGlobal
     paseo: PaseoPlugins
@@ -192,17 +201,30 @@ export const runUpgrade = async ({
         return { ok, message }
     }
     try {
-        const going = await goingRuns({ runs_dir, registry_path })
+        const going = await goingRuns({
+            runs_dir,
+            registry_path,
+            list_processes,
+        })
         if (!going.ok) {
             return say({ message: `Refused: ${going.error}`, ok: false })
         }
         if (going.runs.length > 0) {
+            const unchecked =
+                going.ps_error === null
+                    ? ''
+                    : ` Luca couldn't list the processes (${going.ps_error}), so every unfinished run counts as going.`
             return say({
-                message: `Refused: runs are going, so an upgrade would change their engine halfway. Wait for them to end (or stop them), then try again:\n${going.runs.map(describeRun).join('\n')}`,
+                message: `Refused: runs are going, so an upgrade would change their engine halfway.${unchecked} Wait for them to end (or stop them), then try again:\n${going.runs.map(describeRun).join('\n')}`,
                 ok: false,
             })
         }
         log('[luca upgrade] no run is going')
+        if (going.stopped.length > 0) {
+            log(
+                `[luca upgrade] These runs stopped before they ended, and nothing runs them now. They don't stop the upgrade. To go on with one on the new version, after the upgrade:\n${going.stopped.map((run) => `${describeRun(run)}: ${resumeCommand(run)}`).join('\n')}`
+            )
+        }
 
         let version: string
         if (to !== null) {
