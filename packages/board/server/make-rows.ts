@@ -13,6 +13,7 @@ import {
     roleWords,
     shortSha,
     startKind,
+    testsSentBackText,
 } from './reduce-board'
 
 import {
@@ -371,6 +372,11 @@ export const describeRecord = ({
         case 'ticket_rebased':
             return event({
                 text: `${at}${lowerFirst({ text: rebasedText({ content: record.content }) })}.`,
+                tone: 'warning',
+            })
+        case 'tests_sent_back':
+            return event({
+                text: `${at}${lowerFirst({ text: testsSentBackText({ content: record.content }) })}.`,
                 tone: 'warning',
             })
         case 'ticket_stuck':

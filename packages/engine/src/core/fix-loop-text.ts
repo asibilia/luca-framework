@@ -1,4 +1,5 @@
 import { rejoinOpening, type RejoinContext } from '../agents/role-prompts'
+import type { BadTest } from '../agents/role-results'
 import type { AgentFailure } from '../journal/journal-record'
 import type { ReplayedGates, ReplayedRedCheck } from '../journal/replay'
 import { clipOutput } from '../shell/run-command'
@@ -92,6 +93,30 @@ export const clashFixMessage = ({
         `These files have conflict markers:\n\n${rejoin.code.map((file) => `- ${file}`).join('\n')}`,
         'Resolve them so the code keeps both what the run branch has and what this ticket adds. ' +
             'Never edit a test file. Make every gate pass, then answer again.',
+    ].join('\n\n')
+
+/**
+ * What the implementer is told once the test-writer updated the tests it
+ * sent back after a rebase (#489): which test, the test-writer's summary,
+ * and to finish the ticket on top of the run branch. A follow-up's message,
+ * or a fresh implementer's prompt section. The engine journals it word for
+ * word.
+ *
+ * @example
+ * const message = testsUpdatedMessage({ bad_test, summary: 'Expect the hint line.' })
+ */
+export const testsUpdatedMessage = ({
+    bad_test,
+    summary,
+}: {
+    bad_test: BadTest
+    summary: string
+}): string =>
+    [
+        '## The test-writer updated the tests',
+        `You sent back ${[bad_test.file, bad_test.name].filter(Boolean).join(' > ') || 'a test'} as a bad test. The test-writer updated this ticket's tests to fit the run branch${summary.trim() === '' ? '.' : `: ${summary.trim()}`}`,
+        'Finish the ticket on top of the run branch: resolve any conflict markers left, keep what the run branch has and what this ticket adds, and make every gate pass. ' +
+            'Never edit a test file. If a test is still wrong, answer "bad_test" with your reason.',
     ].join('\n\n')
 
 /**

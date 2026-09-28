@@ -519,7 +519,7 @@ describe('decision step: a clash on the run branch', () => {
         ])
     })
 
-    test('a bad test while fixing on the run branch is stuck: a reset would throw the ticket away', () => {
+    test('a bad test while fixing on the run branch goes back to the test-writer, not a reset that would throw the ticket away', () => {
         expect(
             oneSteps([
                 ...clashed(),
@@ -531,9 +531,7 @@ describe('decision step: a clash on the run branch', () => {
                 }),
                 implemented({ ticket: 11, outcome: 'bad_test' }),
             ])
-        ).toMatchObject([
-            { type: 'mark_stuck', ticket: 11, reason: 'bad_test' },
-        ])
+        ).toMatchObject([{ type: 'send_tests_back', ticket: 11, round: 1 }])
     })
 })
 

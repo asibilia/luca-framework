@@ -67,6 +67,13 @@ const setupFiles = ({ config }: { config: EngineConfig }): string =>
         ? ` (${config.test_setup_files.join(', ')})`
         : ''
 
+const TEST_UPDATE = `## Updating tests after a rebase
+Sometimes other tickets joined the run branch after this ticket's tests were written, and the engine moved this ticket's change on top of it. If the implementer then says one of your tests is wrong, the tests come back to you. Your prompt says what joined, and the test and the implementer's reason. Then:
+- The ticket's code is already in the worktree. Never touch it; edit test files only.
+- Change a test only where the run branch's behavior changed what it should expect. Read what joined with \`git log\` and \`git show\`. Don't weaken a test just to make it pass.
+- Every criterion still needs a test. Your updated tests may pass now, since the code is there; that is fine. The engine runs every test in the gates after the implementer's turn.
+- Answer "tests_written" with the full criterion mapping again.`
+
 const TEST_WRITER = ({
     config,
 }: {
@@ -88,6 +95,8 @@ Your result (structured output):
 - done_by: empty, unless the outcome is "already_done".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
 - summary, assumptions, run_notes.
+
+${TEST_UPDATE}
 
 ${REVIEW_FIXER}`
 

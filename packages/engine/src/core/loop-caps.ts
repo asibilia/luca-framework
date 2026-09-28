@@ -17,6 +17,14 @@ export const MAX_FIX_ROUNDS = 3
 export const MAX_BAD_TEST_BOUNCES = 1
 
 /**
+ * Times a ticket's tests may go back to its test-writer after a rebase
+ * (#489): the implementer sent a test back as bad, because tickets that
+ * joined the run branch made it wrong. The bad test after these makes the
+ * ticket stuck.
+ */
+export const MAX_TEST_UPDATES = 2
+
+/**
  * Engine failures in a row (the SDK crashed, or a follow-up's session was
  * gone) after which a ticket is stuck. Each one before it starts a fresh
  * agent without using up a try.

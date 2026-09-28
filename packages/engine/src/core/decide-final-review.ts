@@ -13,6 +13,7 @@ import {
     gateFixMessage,
 } from './fix-loop-text'
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
+import { badTestDetail } from './stuck-text'
 
 import type { PromptRunNote } from '../agents/role-prompts'
 import {
@@ -288,11 +289,9 @@ const fixStep = (args: DecideArgs): FinalReviewAction | null => {
         return launchFixer({ ...args, role: 'test-writer' })
     if (!fix.code_answered) return launchFixer({ ...args, role: 'implementer' })
     if (fix.bad_test !== null) {
-        const { file, name, reason } = fix.bad_test
-        const where = [file, name].filter(Boolean).join(' > ')
         return stuck({
             reason: 'bad_test',
-            detail: `While fixing the final review's findings, the implementer sent a test back as bad: ${where === '' ? reason : `${where}: ${reason}`}`,
+            detail: `While fixing the final review's findings, the implementer sent a test back as bad: ${badTestDetail({ bad_test: fix.bad_test })}`,
         })
     }
     const { gates } = review

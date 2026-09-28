@@ -647,6 +647,38 @@ export const ticketRebased = ({
     },
 })
 
+/**
+ * After a rebase, the engine sent a ticket's tests back to its test-writer
+ * (#489): #12 "Add product" joined, and `src/index.ts` changed.
+ */
+export const testsSentBack = ({
+    ticket,
+    round,
+    reason,
+}: {
+    ticket: number
+    /** Defaults to 1. */
+    round?: number
+    /** The bad test's reason. Defaults to "Wrong sum." */
+    reason?: string
+}): JournalEntry => ({
+    kind: 'tests_sent_back',
+    ticket,
+    role: null,
+    content: {
+        round: round ?? 1,
+        bad_test: {
+            file: 'src/sum.test.ts',
+            name: 'sum adds two numbers',
+            reason: reason ?? 'Wrong sum.',
+        },
+        from_sha: 'b0',
+        base_sha: 'onto-sha',
+        joined: [{ ticket: 12, title: 'Add product' }],
+        files: ['src/index.ts', 'src/product.ts'],
+    },
+})
+
 /** The engine removed these worktrees at the end of the run. */
 export const worktreesRemoved = ({
     paths,

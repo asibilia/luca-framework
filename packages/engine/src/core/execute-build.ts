@@ -809,6 +809,50 @@ const rebaseTicket = async ({
 }
 
 /**
+ * Sends a ticket's tests back to its test-writer after a rebase (#489):
+ * looks up the tickets whose joined commits the run branch got between the
+ * ticket's old base and its new one, and the files the run branch changed
+ * there, then journals it all as `tests_sent_back`. Reads git only.
+ */
+const sendTestsBack = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'send_tests_back' }>
+}) => {
+    const { git, state, journal } = context
+    const { ticket, round, bad_test, from_sha, base_sha } = action
+    const worktree = ticketWorktree({ state, ticket })
+    const commits = await git.commitsBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const files = await git.filesBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const joined = Object.entries(state.tickets).flatMap(
+        ([number, progress]) => {
+            const other = Number(number)
+            const shas = progress.joined?.ok ? progress.joined.shas : []
+            if (other === ticket || !shas.some((sha) => commits.includes(sha)))
+                return []
+            const title = state.snapshot?.tickets[other]?.title ?? ''
+            return [{ ticket: other, title }]
+        }
+    )
+    journal.append({
+        kind: 'tests_sent_back',
+        ticket,
+        role: null,
+        content: { round, bad_test, from_sha, base_sha, joined, files },
+    })
+}
+
+/**
  * The config's gates in a worktree (with the install first when a manifest
  * changed since its base), journaled as `gates_run`.
  */
@@ -1080,6 +1124,8 @@ export const executeBuildAction = async ({
             })
             return
         }
+        case 'send_tests_back':
+            return sendTestsBack({ context, action })
         case 'run_red_check':
             return runRedCheck({ context, action })
         case 'commit_ticket':
