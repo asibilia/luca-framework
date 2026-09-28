@@ -4,12 +4,17 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { NO_RED_CHANGES } from './execute-build'
+
+import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import {
     createPracticeRepo,
+    git,
     happyTurns,
     latestStuck,
     PRACTICE_ENGINE_CONFIG,
+    SUM_TEST,
 } from '../testing/practice-repo'
 
 /**
@@ -121,4 +126,107 @@ describe("a prepare command's side effects", () => {
         )
         expect(red?.content.files).toEqual(['src/sum.test.ts'])
     }, 90_000)
+
+    test('a run from before the engine noted what prepare made, resumed, does not commit the links prepare made (#496)', async () => {
+        // HeartGold's prepare links its vendor tools in from the owner's
+        // checkout, outside the worktree.
+        const vendor = join(root, 'vendor-tools')
+        await mkdir(vendor, { recursive: true })
+        const practice = await createPracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                prepare: `mkdir -p tools && ln -sfn ${vendor} tools/bin`,
+            },
+            files: PREPARE_FILES,
+        })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        // An older engine (14.0.0-alpha.1) journaled no `prepare_made`.
+        const olderEngine = (real: Journal): Journal => ({
+            ...real,
+            append: (entry) =>
+                entry.kind === 'prepare_made'
+                    ? ({ ...entry, seq: 0, time: '' } as JournalRecord)
+                    : real.append(entry),
+        })
+        const before = await practice.run({
+            turns: [testWriter],
+            journal: olderEngine,
+            stop_before: ['commit_ticket'],
+        })
+        expect(before.action).toMatchObject({ type: 'commit_ticket' })
+        expect(byKind(before.records, 'prepare_made')).toEqual([])
+
+        // The newer engine carries the same journal on.
+        const { action, records } = await practice.run({
+            turns: [implementer, reviewer],
+            resume: true,
+        })
+
+        expect(latestStuck(records)).toBeNull()
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const commits = byKind(records, 'commit_made').map(
+            ({ content }) => content
+        )
+        expect(commits.map(({ stage, files }) => ({ stage, files }))).toEqual([
+            { stage: 'red', files: ['src/sum.test.ts'] },
+            { stage: 'green', files: ['src/index.ts', 'src/sum.ts'] },
+        ])
+        // The link to the vendor folder was left out, with a note saying so.
+        const noted = byKind(records, 'prepare_made').filter(
+            ({ content }) => content.outside_links === true
+        )
+        expect(noted.flatMap(({ content }) => content.paths)).toEqual([
+            'tools/bin',
+        ])
+        const [created] = byKind(before.records, 'run_branch_created')
+        const pushed = await git(
+            practice.origin,
+            'ls-tree',
+            '-r',
+            '--name-only',
+            created?.content.branch ?? 'missing'
+        )
+        expect(pushed.split('\n')).toContain('src/sum.ts')
+        expect(pushed).not.toContain('tools/bin')
+    }, 120_000)
+})
+
+describe('nothing to commit (#494)', () => {
+    test("a test-writer turn that changes nothing, with only prepare's file in the worktree, fails the red check with a clear problem instead of crashing the commit", async () => {
+        // The tests are already on main, so the red check finds them failing
+        // with no change at all: only the empty red commit is wrong.
+        const practice = await createPracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                prepare: 'echo built > build-stamp.txt',
+            },
+            files: { 'src/sum.test.ts': SUM_TEST },
+        })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const idle = { ...testWriter, files: {} }
+        const touched = {
+            ...testWriter,
+            files: { 'src/sum.test.ts': `${SUM_TEST}// Covers AC1 and AC2.\n` },
+        }
+
+        const { action, records } = await practice.run({
+            turns: [idle, touched, implementer, reviewer],
+        })
+
+        expect(latestStuck(records)).toBeNull()
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const checks = byKind(records, 'red_check').map(
+            ({ content }) => content
+        )
+        expect(checks.map(({ ok, problems }) => ({ ok, problems }))).toEqual([
+            { ok: false, problems: [NO_RED_CHANGES] },
+            { ok: true, problems: [] },
+        ])
+        const red = byKind(records, 'commit_made').find(
+            ({ content }) => content.stage === 'red'
+        )
+        expect(red?.content.files).toEqual(['src/sum.test.ts'])
+    }, 120_000)
 })

@@ -1,7 +1,9 @@
 import type { GateCheck, GateName } from './gate-schemas'
+import { PREPARE_SLOTS } from './prepare-slots'
 import { reportFileFor, runTests } from './test-runner'
 
 import {
+    prepareConcurrencyOf,
     prepareTimeoutOf,
     testCommands,
     type EngineConfig,
@@ -68,6 +70,10 @@ export const shellCheck = async ({
  * It gets its own time limit (see `prepareTimeoutOf`), since a first build
  * can take far longer than other commands.
  *
+ * At most `prepareConcurrencyOf` prepare runs go at once in the engine (see
+ * `PREPARE_SLOTS`); the rest wait their turn. The time limit starts when a
+ * run starts, so waiting for a turn never counts toward it.
+ *
  * @example
  * const prepare = await prepareCheck({ config, cwd })
  * if (prepare !== null && !prepare.ok) console.log(prepare.output)
@@ -78,17 +84,22 @@ export const prepareCheck = async ({
 }: {
     config: EngineConfig
     cwd: string
-}): Promise<GateCheck | null> =>
-    config.prepare === undefined
-        ? null
-        : shellCheck({
-              name: 'prepare',
-              command: config.prepare,
-              cwd,
-              timeout_ms: prepareTimeoutOf({ config }),
-              timeout_hint:
-                  'To give it longer, raise `prepare_timeout_ms` in `.luca/config.json`.',
-          })
+}): Promise<GateCheck | null> => {
+    const { prepare } = config
+    if (prepare === undefined) return null
+    return PREPARE_SLOTS.run({
+        limit: prepareConcurrencyOf({ config }),
+        work: () =>
+            shellCheck({
+                name: 'prepare',
+                command: prepare,
+                cwd,
+                timeout_ms: prepareTimeoutOf({ config }),
+                timeout_hint:
+                    'To give it longer, raise `prepare_timeout_ms` in `.luca/config.json`.',
+            }),
+    })
+}
 
 /**
  * Runs every gate the engine config names, in order: each test command,

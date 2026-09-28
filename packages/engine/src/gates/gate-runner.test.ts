@@ -1,4 +1,6 @@
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 
@@ -46,6 +48,38 @@ describe('prepareCheck', () => {
             output: '',
         })
     })
+})
+
+describe('prepareCheck: one at a time (#492)', () => {
+    test('with a cap of 1, two prepare runs never overlap, and waiting for a turn does not count toward the time limit', async () => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-prepare-slots-'))
+        try {
+            const log = join(folder, 'log')
+            // Each run takes 0.6 seconds of a 1-second limit; the second
+            // waits 0.6 seconds first, 1.2 seconds in all.
+            const config = EngineConfigSchema.parse({
+                prepare: `echo start >> ${log}; sleep 0.6; echo end >> ${log}`,
+                prepare_timeout_ms: 1_000,
+                prepare_concurrency: 1,
+            })
+
+            const checks = await Promise.all([
+                prepareCheck({ config, cwd: folder }),
+                prepareCheck({ config, cwd: folder }),
+            ])
+
+            expect(checks.map((check) => check?.ok)).toEqual([true, true])
+            expect((await Bun.file(log).text()).split('\n')).toEqual([
+                'start',
+                'end',
+                'start',
+                'end',
+                '',
+            ])
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }, 20_000)
 })
 
 describe('shellCheck', () => {

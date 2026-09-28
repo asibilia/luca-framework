@@ -86,9 +86,11 @@ on with a run from its journal (#369).
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
+| `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
+| `src/gates/prepare-slots.ts` | Lets only so many prepare runs go at once (`prepare_concurrency`, 1 by default); the rest wait their turn. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
@@ -161,7 +163,8 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   launch_agent test-writer                                               ──> agent_started, agent_finished
     already_done: mark_already_done  comment on the spec issue; the ticket
                           is done, like a pushed one                     ──> ticket_already_done
-  run_red_check           criteria covered, new tests fail, old pass     ──> red_check
+  run_red_check           criteria covered, new tests fail, old pass,
+                          and some file changed                          ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
   commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
   launch_agent implementer                                               ──> agent_started, agent_finished
@@ -342,6 +345,20 @@ the 5 minutes other commands get. A repo with a slower build raises it with
 A prepare that runs out of time fails like any other. Its output starts with
 "Timed out after 30 minutes" and says to raise `prepare_timeout_ms`.
 
+**One prepare at a time (#492).** A build uses a lot of CPU, so builds at
+the same time only slow each other down. HeartGold's first build takes 8 to
+10 minutes alone; four at once took 19 to 25 minutes each. So the engine
+runs one prepare at a time, across every ticket in the run. The others wait
+their turn, in order. A repo whose builds are light can allow more with
+`prepare_concurrency` (a positive whole number) in `.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom", "prepare_concurrency": 2 }
+```
+
+The time limit starts when a prepare starts, so waiting for a turn never
+counts toward `prepare_timeout_ms`.
+
 **A timeout stops everything (#485).** Every command the engine runs gets its
 own process group. When one runs out of time, the engine kills the whole
 group: the shell and all it started (`make`, the compiler, `wine`...). It
@@ -365,11 +382,34 @@ agent that runs the build itself isn't blamed for what it rewrote. The
 engine does not write them into `.git/info/exclude`: a ticket's worktree
 shares that file with your own checkout, so it would hide them there too.
 
-Two limits. Only untracked paths count: a tracked file prepare changes
-still shows as the ticket's change. And if the engine crashes in the middle
+**Links that point outside the checkout are never committed (#496).** A
+run started on an older engine (14.0.0-alpha.1 or before) never noted what
+prepare made. Resumed on a newer engine, its worktrees may still hold
+prepare's links, and prepare won't make them again, so the engine can't see
+them appear. So before every commit (and at the red check), the engine
+looks at each untracked symlink. One whose target is outside the checkout
+only works on one machine, so no commit may hold it. The engine leaves it
+out, like what prepare made, and journals it once as
+`prepare_made { paths, outside_links: true }`. The link stays in the
+worktree, untracked. The ticket doesn't get stuck on it, since such links
+are almost always prepare's.
+
+Three limits. Only untracked paths count: a tracked file prepare changes
+still shows as the ticket's change. If the engine crashes in the middle
 of a prepare run, the redo can't tell what the first try already made, so
 those paths count as the ticket's unless an earlier prepare run already
-noted them.
+noted them. And on a run from an older engine, only outside-pointing links
+are caught: other files its prepare made still count as the ticket's.
+
+**Nothing to commit never crashes the run (#494).** When prepare made every
+change in a worktree, there is nothing left to commit, and `git commit`
+would fail. So the engine never runs it then. At the red check, a
+test-writer turn that changed no file is one more red check problem ("No
+file changed, so the red commit would be empty"), for the test-writer's fix
+loop. At any other commit (green, a review fix round, the final review),
+the engine journals the current commit as `commit_made` with no files and
+moves on. A green stage can be empty that way when a rebase finds the
+ticket's change already on the run branch.
 
 An odd path in a worktree never crashes the run. The engine reads a
 changed path as git stores it: a symlink as its target (never followed), a

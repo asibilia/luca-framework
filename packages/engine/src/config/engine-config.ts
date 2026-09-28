@@ -65,6 +65,11 @@ export const EngineConfigSchema = z.object({
      * engine's default (`DEFAULT_PREPARE_TIMEOUT_MS`, 30 minutes).
      */
     prepare_timeout_ms: z.number().int().positive().optional(),
+    /**
+     * How many prepare runs may go at once across the run; left out, the
+     * engine's default (`DEFAULT_PREPARE_CONCURRENCY`, 1).
+     */
+    prepare_concurrency: z.number().int().positive().optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
@@ -97,6 +102,27 @@ export const prepareTimeoutOf = ({
 }: {
     config: EngineConfig
 }): number => config.prepare_timeout_ms ?? DEFAULT_PREPARE_TIMEOUT_MS
+
+/**
+ * How many prepare runs may go at once when the config doesn't say: 1. A
+ * build is often heavy on the CPU, so builds at the same time only slow each
+ * other down (HeartGold's four first builds took 19 to 25 minutes each at
+ * once, against 8 to 10 alone).
+ */
+export const DEFAULT_PREPARE_CONCURRENCY = 1
+
+/**
+ * How many prepare runs may go at once: the config's `prepare_concurrency`,
+ * else the default.
+ *
+ * @example
+ * prepareConcurrencyOf({ config: { ...config, prepare_concurrency: 2 } }) // 2
+ */
+export const prepareConcurrencyOf = ({
+    config,
+}: {
+    config: EngineConfig
+}): number => config.prepare_concurrency ?? DEFAULT_PREPARE_CONCURRENCY
 
 /** One test command the engine runs, and how it reads the results. */
 export type TestCommand = { run: string; results: TestResults }
