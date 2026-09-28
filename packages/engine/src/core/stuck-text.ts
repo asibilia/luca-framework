@@ -1,7 +1,7 @@
 import compact from 'lodash/compact'
 import max from 'lodash/max'
 
-import type { AgentRole } from '../agents/role-results'
+import type { AgentRole, BadTest } from '../agents/role-results'
 import type { ReplyProblem, StuckReason } from '../journal/journal-record'
 import type {
     FinalReviewState,
@@ -9,6 +9,7 @@ import type {
     ReplayedWorktree,
     TicketProgress,
 } from '../journal/replay'
+import { clipOutput } from '../shell/run-command'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
 /** Longest error text a comment or prompt quotes. */
@@ -117,6 +118,8 @@ export const triedText = ({
         reviewFixRounds > 0 && plural(reviewFixRounds, 'review fix round'),
         progress.rejoins > 0 &&
             `${plural(progress.rejoins, 'rebase')} onto the run branch`,
+        progress.test_updates > 0 &&
+            `${plural(progress.test_updates, 'test update')} after a rebase`,
         progress.engine_failures > 0 &&
             `${plural(progress.engine_failures, 'engine failure')} in a row`,
         ...tries,
@@ -317,6 +320,31 @@ export const setupChangeDetail = ({
 }): string =>
     `The ${role} needs the test setup file \`${file || 'unnamed'}\` changed: ${reason || 'no reason given'}\n` +
     `Agents may never change a test setup file${setup_files.length > 0 ? ` (${setup_files.join(', ')})` : ''}. Make the change yourself in the ticket's worktree, then reply retry.`
+
+/**
+ * A test sent back as bad, for a stuck detail: its file and name, then the
+ * implementer's reason, clipped like other outputs (#490). "no reason given"
+ * only when there is none.
+ *
+ * @example
+ * badTestDetail({ bad_test: { file: 'src/sum.test.ts', name: 'sum > adds', reason: 'Wrong sum.' } })
+ * // 'src/sum.test.ts > sum > adds: Wrong sum.'
+ */
+export const badTestDetail = ({
+    bad_test,
+}: {
+    bad_test: BadTest | null
+}): string => {
+    const reason =
+        bad_test === null || bad_test.reason.trim() === ''
+            ? 'no reason given'
+            : clipOutput({ text: bad_test.reason })
+    const where =
+        bad_test === null
+            ? ''
+            : [bad_test.file, bad_test.name].filter(Boolean).join(' > ')
+    return where === '' ? reason : `${where}: ${reason}`
+}
 
 /** The comment a skipped ticket gets on its own issue. */
 export const skipComment = ({

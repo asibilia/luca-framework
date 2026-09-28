@@ -1,6 +1,7 @@
 /**
  * `luca upgrade`: moves this computer to another published version of
- * Luca, never while a run is going:
+ * Luca, never while a run is going (its engine is running, or the board
+ * will restart it):
  *
  *   luca upgrade [--to <version>]
  *
@@ -27,6 +28,7 @@ import {
 import { computerChecks } from './computer-checks'
 import { reason } from './doctor-checks'
 import { defaultRegistryPath } from './going-runs'
+import { listProcesses } from './live-runs'
 import { runUpgrade, type BunGlobal, type NpmRegistry } from './upgrade'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
@@ -111,6 +113,7 @@ export const upgradeCommand = async ({
                 env: process.env,
                 home_dir: home,
             }),
+            list_processes: listProcesses,
             npm: npmOf(),
             bun: bunOf({ home }),
             paseo,

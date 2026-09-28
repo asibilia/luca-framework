@@ -87,7 +87,24 @@ export type ReplayedWorktree = {
 export type ReplayedRejoin = RejoinContext & {
     tests_pending: boolean
     code_pending: boolean
+    /** Where the ticket started from before this rebase. */
+    from_sha: string
 }
+
+/**
+ * The open test update after a rebase (`tests_sent_back`, #489): the bad
+ * test, what joined the run branch, and the test-writer's answer once it
+ * gave one. It closes when the implementer answers after it.
+ */
+export type TestUpdate = TestsSentBackContent & {
+    /** The test-writer's answer, `null` until it gave one. */
+    result: TestWriterResult | null
+}
+
+type TestsSentBackContent = Extract<
+    JournalRecord,
+    { kind: 'tests_sent_back' }
+>['content']
 
 /** One gate run, as journaled. */
 export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
@@ -150,6 +167,12 @@ export type TicketProgress = {
     baseline_sha: string | null
     test_writer: TestWriterResult | null
     red_check: ReplayedRedCheck | null
+    /**
+     * The engine's check of the test-writer's latest `already_done`
+     * evidence (#495), `null` until it runs. A new test-writer result
+     * clears it.
+     */
+    already_done_check: { ok: boolean; problems: string[] } | null
     /** Follow-ups the test-writer answered after a failed red check. */
     red_fix_rounds: number
     implementer: ImplementerResult | null
@@ -185,6 +208,13 @@ export type TicketProgress = {
     rejoins: number
     /** The latest time it was sent back, `null` if it never was. */
     rejoin: ReplayedRejoin | null
+    /**
+     * How many times its tests went back to the test-writer after a rebase
+     * made them wrong (`tests_sent_back`, #489).
+     */
+    test_updates: number
+    /** The open test update, `null` when none is open. */
+    test_update: TestUpdate | null
     /**
      * The latest failed agent turn, if no agent finished after it: its role,
      * error, how it failed, and the session it ran in (for a follow-up).
@@ -551,6 +581,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     baseline_sha: null,
     test_writer: null,
     red_check: null,
+    already_done_check: null,
     red_fix_rounds: 0,
     implementer: null,
     gate_fix_rounds: 0,
@@ -567,6 +598,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     approved_seq: null,
     rejoins: 0,
     rejoin: null,
+    test_updates: 0,
+    test_update: null,
     agent_failure: null,
     failed_tries: {},
     engine_failures: 0,
@@ -1665,9 +1698,16 @@ const resultChange = ({
     seq: number
 }): Partial<TicketProgress> => {
     const fix = progress.review_fix
-    const { rejoin } = progress
+    const { rejoin, test_update } = progress
     switch (finished.role) {
         case 'test-writer':
+            // The test-writer's answer to a test update after a rebase: the
+            // red check stands, as for clashed tests (#489).
+            if (test_update !== null && test_update.result === null) {
+                return {
+                    test_update: { ...test_update, result: finished.result },
+                }
+            }
             // The fresh test-writer after a rebase fixed the clashed tests:
             // no fix round, and the red check stands.
             if (rejoin?.tests_pending) {
@@ -1685,20 +1725,44 @@ const resultChange = ({
                     },
                 }
             }
+            // A new answer is checked afresh if it is `already_done` (#495).
             return progress.red_check === null
-                ? { test_writer: finished.result }
+                ? { test_writer: finished.result, already_done_check: null }
                 : {
                       test_writer: finished.result,
+                      already_done_check: null,
                       red_check: null,
                       red_fix_rounds: progress.red_fix_rounds + 1,
                   }
         case 'implementer': {
             const { result } = finished
+            const bad_test = badTestOf(result)
+            // Its answer after the test-writer updated the tests closes the
+            // update; a done answer settles the bad test (#489).
+            if (test_update !== null && test_update.result !== null) {
+                return {
+                    implementer: result,
+                    test_update: null,
+                    ...(bad_test === null
+                        ? { bad_test: null }
+                        : {
+                              bad_test,
+                              bad_test_bounces: progress.bad_test_bounces + 1,
+                          }),
+                }
+            }
             // The implementer's answer to the clash message is no fix round.
+            // A bad test is kept, for the test update or the stuck text.
             if (rejoin?.code_pending) {
                 return {
                     implementer: result,
                     rejoin: { ...rejoin, code_pending: false },
+                    ...(bad_test === null
+                        ? {}
+                        : {
+                              bad_test,
+                              bad_test_bounces: progress.bad_test_bounces + 1,
+                          }),
                 }
             }
             if (fix !== null && fix.tests_answered && !fix.code_answered) {
@@ -1710,28 +1774,17 @@ const resultChange = ({
                             ...fix.responses,
                             ...result.finding_responses,
                         ],
-                        bad_test:
-                            result.outcome === 'bad_test'
-                                ? (result.bad_test ?? {
-                                      file: '',
-                                      name: '',
-                                      reason: result.summary,
-                                  })
-                                : null,
+                        bad_test,
                     },
                 }
             }
             const bounce: Partial<TicketProgress> =
-                result.outcome === 'bad_test'
-                    ? {
+                bad_test === null
+                    ? {}
+                    : {
                           bad_test_bounces: progress.bad_test_bounces + 1,
-                          bad_test: result.bad_test ?? {
-                              file: '',
-                              name: '',
-                              reason: result.summary,
-                          },
+                          bad_test,
                       }
-                    : {}
             const round: Partial<TicketProgress> =
                 progress.gates === null
                     ? {}
@@ -1848,6 +1901,43 @@ const sessionsAfter = ({
     return session_id === null ? rest : { ...rest, [role]: session_id }
 }
 
+type AlreadyDoneCheckedContent = Extract<
+    JournalRecord,
+    { kind: 'already_done_checked' }
+>['content']
+
+/**
+ * The engine's check of a test-writer's `already_done` evidence (#495). A
+ * failed one is a failed try for the test-writer, in the session that gave
+ * the evidence, as if its turn had failed: the decision step sends it what
+ * did not check out, or makes the ticket stuck once its tries run out.
+ */
+const alreadyDoneCheckedChange = ({
+    progress,
+    checked,
+}: {
+    progress: TicketProgress
+    checked: AlreadyDoneCheckedContent
+}): Partial<TicketProgress> => {
+    const { ok, problems } = checked
+    if (ok) return { already_done_check: { ok, problems } }
+    const role = 'test-writer'
+    return {
+        already_done_check: { ok, problems },
+        agent_failure: {
+            role,
+            error: problems.map((problem) => `- ${problem}`).join('\n'),
+            failure: 'evidence',
+            session_id: progress.sessions[role] ?? null,
+        },
+        engine_failures: 0,
+        failed_tries: {
+            ...progress.failed_tries,
+            [role]: (progress.failed_tries[role] ?? 0) + 1,
+        },
+    }
+}
+
 const progressChange = ({
     progress,
     record,
@@ -1911,6 +2001,11 @@ const progressChange = ({
             const { ok, problems, notes, tests } = record.content
             return { red_check: { ok, problems, notes, output: tests.output } }
         }
+        case 'already_done_checked':
+            return alreadyDoneCheckedChange({
+                progress,
+                checked: record.content,
+            })
         case 'worktree_reset':
             // A fresh test-writer and implementer start over on a clean
             // worktree; the bad test and its count stay.
@@ -1956,6 +2051,11 @@ const progressChange = ({
             return { joined: record.content }
         case 'ticket_rebased':
             return rebasedChange({ progress, rebased: record.content })
+        case 'tests_sent_back':
+            return {
+                test_updates: progress.test_updates + 1,
+                test_update: { ...record.content, result: null },
+            }
         case 'run_branch_pushed':
             return { pushed: record.content.sha }
         case 'ticket_stuck':
@@ -2131,8 +2231,8 @@ const retriedChange = ({
 /**
  * A stuck ticket resumed by `retry`: it picks up where it stopped, with a
  * fresh agent (no session is kept) and fresh counts (fix rounds, failed
- * tries, bad-test bounces, rebases), and keeps whatever the user changed in
- * its worktree. The step that got stuck runs again:
+ * tries, bad-test bounces, rebases, test updates), and keeps whatever the
+ * user changed in its worktree. An open test update is dropped. The step that got stuck runs again:
  * - before the red commit, a fresh test-writer writes the tests;
  * - before the green commit, a fresh implementer builds (on top of the run
  *   branch after a rebase), then the gates;
@@ -2162,6 +2262,8 @@ const resumedProgress = ({
         gate_fix_rounds: 0,
         bad_test_bounces: 0,
         rejoins: 0,
+        test_updates: 0,
+        test_update: null,
         install:
             progress.install?.check?.ok === false ? null : progress.install,
         prepare: progress.prepare?.ok === false ? null : progress.prepare,
@@ -2190,7 +2292,12 @@ const resumedProgress = ({
             commits.red === null &&
             progress.test_writer !== null
         ) {
-            return { ...base, test_writer: null, red_check: null }
+            return {
+                ...base,
+                test_writer: null,
+                red_check: null,
+                already_done_check: null,
+            }
         }
         return { ...base, implementer: null, gates: null }
     }
@@ -2253,6 +2360,7 @@ const rebasedChange = ({
             code,
             tests_pending: tests.length > 0,
             code_pending: code.length > 0,
+            from_sha: progress.worktree?.base_sha ?? base_sha,
             earlier_findings: [
                 ...(progress.review?.findings ?? []),
                 ...progress.declined.map(({ finding }) => finding),

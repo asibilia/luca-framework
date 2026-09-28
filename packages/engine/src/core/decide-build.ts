@@ -2,8 +2,10 @@ import sortBy from 'lodash/sortBy'
 
 import {
     alreadyDoneStep,
+    checkAlreadyDoneStep,
     closeTicketStep,
     type AlreadyDoneAction,
+    type CheckAlreadyDoneAction,
 } from './already-done'
 import { changesetStep } from './changeset'
 import { crashDetail, crashedOut } from './decide-crashes'
@@ -26,12 +28,14 @@ import {
     followUpSection,
     gateFixMessage,
     redFixMessage,
+    testsUpdatedMessage,
 } from './fix-loop-text'
 import {
     MAX_BAD_TEST_BOUNCES,
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
     MAX_REJOINS,
+    MAX_TEST_UPDATES,
 } from './loop-caps'
 import { pullRequestText } from './pull-request-text'
 import {
@@ -40,14 +44,15 @@ import {
     reviewFixSection,
     reviewSections,
 } from './review-text'
-import { retrySection, setupChangeDetail } from './stuck-text'
+import { badTestDetail, retrySection, setupChangeDetail } from './stuck-text'
 
 import {
     prepareSection,
     rejoinSection,
     rolePrompt,
+    testUpdateSection,
 } from '../agents/role-prompts'
-import type { AgentRole, CriterionTests } from '../agents/role-results'
+import type { AgentRole, BadTest, CriterionTests } from '../agents/role-results'
 import { endedText } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
@@ -73,6 +78,7 @@ export {
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
     MAX_REJOINS,
+    MAX_TEST_UPDATES,
 } from './loop-caps'
 
 /**
@@ -190,6 +196,20 @@ export type BuildAction =
           cause: RejoinCause
           undo_first_sha: string | null
       }
+    /**
+     * After a rebase, send the test the implementer called bad back to the
+     * ticket's test-writer to update (#489), keeping the implementer's code.
+     * The engine looks up what joined the run branch between `from_sha` and
+     * `base_sha` and journals it all as `tests_sent_back`.
+     */
+    | {
+          type: 'send_tests_back'
+          ticket: number
+          round: number
+          bad_test: BadTest
+          from_sha: string
+          base_sha: string
+      }
     /** Remove these git worktrees at the end of the run; branches stay. */
     | { type: 'remove_worktrees'; paths: string[] }
     /** No ticket can move, and not every ticket has joined. */
@@ -238,6 +258,8 @@ export type BuildAction =
     | StuckAction
     /** A ticket whose work was already on the base branch (#484). */
     | AlreadyDoneAction
+    /** Check a test-writer's evidence that the work is already done (#495). */
+    | CheckAlreadyDoneAction
 
 /** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
 export const isRefactorTicket = ({
@@ -331,7 +353,38 @@ const buildPromptSections = ({
     // A review fix round after the rejoin has its own findings.
     if (progress.commits.green !== null) return review
     const section = rejoinSection({ role, rejoin })
-    return section === null ? review : [...review, section]
+    return [
+        ...review,
+        ...(section === null ? [] : [section]),
+        ...testUpdateSections({ role, progress }),
+    ]
+}
+
+/**
+ * The sections a launch adds while a test update is open (#489): the
+ * test-writer's task, then, once it answered, the implementer's news.
+ */
+const testUpdateSections = ({
+    role,
+    progress,
+}: {
+    role: AgentRole
+    progress: TicketProgress
+}): string[] => {
+    const update = progress.test_update
+    if (update === null) return []
+    if (role === 'test-writer' && update.result === null) {
+        return [testUpdateSection({ since: update, bad_test: update.bad_test })]
+    }
+    if (role === 'implementer' && update.result !== null) {
+        return [
+            testsUpdatedMessage({
+                bad_test: update.bad_test,
+                summary: update.result.summary,
+            }),
+        ]
+    }
+    return []
 }
 
 /**
@@ -392,7 +445,8 @@ const launch = ({
         spec: snapshot.spec,
         ticket,
         refactor: isRefactorTicket({ ticket }),
-        bad_test: progress.bad_test,
+        // A test update names the bad test in its own section.
+        bad_test: progress.test_update === null ? progress.bad_test : null,
         sections: [
             ...promptSections({ role, progress }),
             ...(follow_up === undefined
@@ -455,12 +509,9 @@ const commitStep = ({
     }
 }
 
-const badTestText = ({ progress }: { progress: TicketProgress }): string => {
-    const { bad_test } = progress
-    if (bad_test === null) return 'no reason given'
-    const where = [bad_test.file, bad_test.name].filter(Boolean).join(' > ')
-    return where === '' ? bad_test.reason : `${where}: ${bad_test.reason}`
-}
+/** The latest bad test, for a stuck detail (#490). */
+const badTestText = ({ progress }: { progress: TicketProgress }): string =>
+    badTestDetail({ bad_test: progress.bad_test })
 
 /**
  * The test-writer's half of a ticket: fresh tests, the red check and its fix
@@ -488,6 +539,24 @@ const testStep = ({
         })
     }
     if (test_writer.outcome === 'already_done') {
+        // Its evidence is checked first (#495). A failed check is a failed
+        // try, which `failedTurnStep` takes before this step; checking the
+        // same evidence again would only loop, so one left here is stuck.
+        const check = progress.already_done_check
+        if (check === null) {
+            return checkAlreadyDoneStep({
+                ticket,
+                base_sha: progress.worktree?.base_sha ?? 'HEAD',
+                result: test_writer,
+            })
+        }
+        if (!check.ok) {
+            return stuck({
+                ticket: number,
+                reason: 'agent_failed',
+                detail: `The test-writer's "already_done" evidence did not check out:\n${check.problems.map((problem) => `- ${problem}`).join('\n')}`,
+            })
+        }
         return alreadyDoneStep({
             spec_number: snapshot.spec.number,
             base_branch,
@@ -701,7 +770,7 @@ const reviewStep = ({
         return stuck({
             ticket: number,
             reason: 'bad_test',
-            detail: `While fixing review findings, the implementer sent a test back as bad: ${badTestText({ progress: { ...progress, bad_test: fix.bad_test } })}`,
+            detail: `While fixing review findings, the implementer sent a test back as bad: ${badTestDetail({ bad_test: fix.bad_test })}`,
         })
     }
     return (
@@ -775,8 +844,12 @@ const failedTurnStep = ({
  * The fix on top of the run branch after a rebase: first a fresh test-writer
  * for clashed tests, then the implementer for clashed code. `null` once both
  * have answered; the gates, the green commit, and a fresh review of the new
- * changes follow as usual. A bad test here is stuck: resetting the worktree
- * would throw away the ticket's uncommitted change.
+ * changes follow as usual.
+ *
+ * A bad test here can't reset the worktree, which would throw the ticket's
+ * uncommitted change away. Instead its tests go back to the test-writer
+ * (`send_tests_back`, #489), up to `MAX_TEST_UPDATES` times per ticket, then
+ * it is stuck. A refactor ticket has no test-writer, so it is stuck at once.
  */
 const rejoinStep = ({
     snapshot,
@@ -786,12 +859,11 @@ const rejoinStep = ({
 }: StepArgs): BuildAction | null => {
     const { rejoin } = progress
     if (rejoin === null) return null
+    if (progress.test_update !== null) {
+        return testUpdateStep({ snapshot, ticket, progress, run_notes })
+    }
     if (progress.implementer?.outcome === 'bad_test') {
-        return stuck({
-            ticket: ticket.number,
-            reason: 'bad_test',
-            detail: `The implementer sent a test back as bad while fixing the ticket on top of the run branch; resetting the worktree would throw the ticket's change away: ${badTestText({ progress })}`,
-        })
+        return sendTestsBackStep({ ticket, progress, rejoin })
     }
     if (rejoin.tests_pending) {
         return launch({
@@ -822,6 +894,123 @@ const rejoinStep = ({
         }
     }
     return null
+}
+
+/**
+ * A bad test after a rebase: its tests go back to the test-writer, or, past
+ * the cap or on a refactor ticket, it is stuck with the implementer's reason.
+ */
+const sendTestsBackStep = ({
+    ticket,
+    progress,
+    rejoin,
+}: {
+    ticket: TicketSnapshot
+    progress: TicketProgress
+    rejoin: NonNullable<TicketProgress['rejoin']>
+}): BuildAction => {
+    const number = ticket.number
+    if (isRefactorTicket({ ticket })) {
+        return stuck({
+            ticket: number,
+            reason: 'bad_test',
+            detail: `The implementer of a refactor ticket sent a test back as bad while fixing the ticket on top of the run branch; there is no test-writer to update it: ${badTestText({ progress })}`,
+        })
+    }
+    if (progress.test_updates >= MAX_TEST_UPDATES) {
+        return stuck({
+            ticket: number,
+            reason: 'bad_test',
+            detail: `The implementer sent a test back as bad on top of the run branch after the test-writer updated the tests ${MAX_TEST_UPDATES} times: ${badTestText({ progress })}`,
+        })
+    }
+    return {
+        type: 'send_tests_back',
+        ticket: number,
+        round: progress.test_updates + 1,
+        bad_test: progress.bad_test ?? {
+            file: '',
+            name: '',
+            reason: progress.implementer?.summary ?? '',
+        },
+        from_sha: rejoin.from_sha,
+        base_sha: rejoin.base_sha,
+    }
+}
+
+/**
+ * The open test update after a rebase (#489): a fresh test-writer updates
+ * the tests (its prompt says what joined and why the test is wrong), then
+ * the implementer finishes the ticket (a follow-up in its session, or a
+ * fresh one). There is no red check here: the implementer's code is already
+ * in the worktree, so the updated tests may pass, and the red commit already
+ * proved the ticket's tests failed first. The test-writer's mapping must
+ * still give every criterion a test; then the gates run every test, the
+ * updated ones and the run branch's together, and a fresh reviewer checks
+ * the whole change.
+ */
+const testUpdateStep = ({
+    snapshot,
+    ticket,
+    progress,
+    run_notes,
+}: StepArgs): BuildAction => {
+    const update = progress.test_update
+    if (update === null || update.result === null) {
+        return launch({
+            role: 'test-writer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
+    }
+    const { result } = update
+    if (result.outcome !== 'tests_written') {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'bad_test',
+            detail:
+                `The implementer sent a test back as bad on top of the run branch, and the test-writer answered "${result.outcome}" instead of updating the tests: ${result.summary || 'no reason given'}\n` +
+                `The bad test: ${badTestDetail({ bad_test: update.bad_test })}`,
+        })
+    }
+    const unmapped = ticket.criteria
+        .map(({ id }) => id)
+        .filter(
+            (id) =>
+                !result.criteria.some(
+                    ({ criterion_id, tests }) =>
+                        criterion_id === id && tests.length > 0
+                )
+        )
+    if (unmapped.length > 0) {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'red_check_failed',
+            detail: `After updating the tests on top of the run branch, the test-writer mapped no test to ${unmapped.join(', ')}. Every criterion needs a test.`,
+        })
+    }
+    const session_id = progress.sessions.implementer
+    if (session_id === undefined) {
+        return launch({
+            role: 'implementer',
+            snapshot,
+            ticket,
+            progress,
+            run_notes,
+        })
+    }
+    return {
+        type: 'follow_up_agent',
+        ticket: ticket.number,
+        role: 'implementer',
+        session_id,
+        message: testsUpdatedMessage({
+            bad_test: update.bad_test,
+            summary: result.summary,
+        }),
+    }
 }
 
 /**
@@ -1079,12 +1268,17 @@ const notRemoved = ({
  * up to `MAX_FIX_ROUNDS` follow-ups; then the ticket is stuck. A bad test
  * throws away the implementer's work and goes to a fresh test-writer, whose
  * tests get their own red check and red commit; the next bad test is stuck.
- * "Nothing new to test" is stuck at once. A refactor ticket skips the
- * test-writer and the red check. The ticket review's findings go back for
- * fixing in capped rounds, each re-reviewed.
+ * After a rebase, a bad test can't throw the work away: the tests go back
+ * to the test-writer to fit the run branch, with the code kept, up to
+ * `MAX_TEST_UPDATES` times (#489). "Nothing new to test" is stuck at once.
+ * A refactor ticket skips the test-writer and the red check. The ticket
+ * review's findings go back for fixing in capped rounds, each re-reviewed.
  *
  * Already done (#484): a ticket whose test-writer found its work already on
- * the base branch is marked done (`mark_already_done`), not stuck. It counts
+ * the base branch has that evidence checked first (`check_already_done`,
+ * #495); evidence that doesn't check out is a failed try for the
+ * test-writer. Once it checks out, the ticket is marked done
+ * (`mark_already_done`), not stuck. It counts
  * as pushed for the tickets that wait on it, and the PR closes it. With no
  * ticket pushed, the engine closes the already-done tickets itself
  * (`close_ticket`); if every ticket was already done, the run ends with

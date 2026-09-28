@@ -53,7 +53,8 @@ on with a run from its journal (#369).
 | `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
-| `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
+| `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
+| `src/gates/already-done-check.ts` | Pure: the check of a test-writer's `already_done` evidence (#495). Each commit is on the base, each criterion names a test, and each named test exists, is as it is on the base, and passes there. |
 | `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
@@ -86,9 +87,11 @@ on with a run from its journal (#369).
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
+| `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
+| `src/gates/prepare-slots.ts` | Lets only so many prepare runs go at once (`prepare_concurrency`, 1 by default); the rest wait their turn. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
@@ -121,7 +124,7 @@ on with a run from its journal (#369).
 | `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
-| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
+| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), how to resume one (`resumeCommand`), and the practice `--demo`. |
 | `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, and a quiet `luca hook`. |
 | `src/cli/setup-command.ts` | `luca setup`'s flags, wired to the real repo adapters. |
 | `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels and the config, then `repoChecks` once; `repoChecks` are its checks, read-only, for `luca doctor` too. |
@@ -132,7 +135,8 @@ on with a run from its journal (#369).
 | `src/cli/board-in-paseo.ts` | Puts the board into Paseo from Luca's folder, settings kept, and writes its engine and Bun paths (`placeBoard`, `setUpBoard`). |
 | `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
 | `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, reloads the board, and ends with doctor's computer checks. |
-| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
+| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals, the board's run registry, and `ps`; and the unfinished runs nothing runs now. |
+| `src/cli/live-runs.ts` | Which runs have a live engine: every process's command line from `ps` (`listProcesses`), and the run ids in them (`liveRunIds`). A copy of the board's check. |
 | `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
@@ -158,9 +162,13 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
                                                         baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
-    already_done: mark_already_done  comment on the spec issue; the ticket
+    already_done: check_already_done  the commits are on the ticket's base,
+                          the named tests (just those, after prepare) pass ──> already_done_checked
+      failed: follow_up_agent test-writer (same session), a failed try, ≤ 3 tries
+      then mark_already_done  comment on the spec issue; the ticket
                           is done, like a pushed one                     ──> ticket_already_done
-  run_red_check           criteria covered, new tests fail, old pass     ──> red_check
+  run_red_check           criteria covered, new tests fail, old pass,
+                          and some file changed                          ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
   commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
   launch_agent implementer                                               ──> agent_started, agent_finished
@@ -186,6 +194,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
                           uncommitted, conflict markers kept              ──> ticket_rebased
       clashed tests: launch_agent test-writer (fresh, told the files)
       clashed code:  launch_agent implementer (fresh, told the files)
+      bad_test:      send_tests_back (what joined, the files it changed) ──> tests_sent_back
+                     launch_agent test-writer (fresh: update the tests, keep the code)
+                     then the implementer (same session), ≤ 2 times, then stuck
       then run_gates ticket (and its fix loop), one commit_ticket green,
       a fresh launch_agent ticket-reviewer (re-review only the new changes),
       and the join again
@@ -280,9 +291,27 @@ change becomes **one** commit (`fix: rejoin #n <title> onto the run branch`;
 its old red and green commits are left behind), a fresh reviewer re-reviews
 only the new changes, and the ticket joins again. A ticket is rebased at most
 `MAX_REJOINS` (3) times; the next clash is stuck (`join_failed`), and so are
-failed gates after joining (`join_gates_failed`). A bad test while fixing on
-the run branch is stuck too: resetting the worktree would throw the ticket's
-change away.
+failed gates after joining (`join_gates_failed`).
+
+**A test the run branch made wrong (#489).** On top of the run branch, the
+implementer may answer `bad_test`: another ticket joined first and changed
+what the test should expect. Resetting the worktree would throw the ticket's
+change away, so the engine sends the tests back to the ticket's test-writer
+instead (`send_tests_back`). It looks up which tickets' commits the run
+branch got since the ticket's old base, and the files they changed, and
+journals it all with the bad test as `tests_sent_back`. A fresh test-writer
+is told what joined, the test, and the implementer's reason. It updates the
+tests (test files only) to fit the run branch, and still maps a test to
+every criterion. The implementer's code stays in the worktree. Then the
+implementer's session (a fresh one if it is gone) hears the tests changed,
+and finishes. There is no red check this time: the code is already there, so
+the updated tests may pass, and the ticket's red commit already proved its
+tests failed first. Instead, an answer that leaves a criterion without a test
+is stuck (`red_check_failed`), the gates run every test (the updated ones and
+the run branch's together), and a fresh reviewer re-reviews the change. A
+ticket gets at most `MAX_TEST_UPDATES` (2) of these; the next bad test is
+stuck (`bad_test`). A refactor ticket has no test-writer, so its bad test on
+the run branch is stuck at once.
 
 After a rebase the ticket review starts over: the first reviewer on top of
 the run branch gets the review's own re-review section (only the changes
@@ -341,6 +370,20 @@ the 5 minutes other commands get. A repo with a slower build raises it with
 A prepare that runs out of time fails like any other. Its output starts with
 "Timed out after 30 minutes" and says to raise `prepare_timeout_ms`.
 
+**One prepare at a time (#492).** A build uses a lot of CPU, so builds at
+the same time only slow each other down. HeartGold's first build takes 8 to
+10 minutes alone; four at once took 19 to 25 minutes each. So the engine
+runs one prepare at a time, across every ticket in the run. The others wait
+their turn, in order. A repo whose builds are light can allow more with
+`prepare_concurrency` (a positive whole number) in `.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom", "prepare_concurrency": 2 }
+```
+
+The time limit starts when a prepare starts, so waiting for a turn never
+counts toward `prepare_timeout_ms`.
+
 **A timeout stops everything (#485).** Every command the engine runs gets its
 own process group. When one runs out of time, the engine kills the whole
 group: the shell and all it started (`make`, the compiler, `wine`...). It
@@ -364,11 +407,34 @@ agent that runs the build itself isn't blamed for what it rewrote. The
 engine does not write them into `.git/info/exclude`: a ticket's worktree
 shares that file with your own checkout, so it would hide them there too.
 
-Two limits. Only untracked paths count: a tracked file prepare changes
-still shows as the ticket's change. And if the engine crashes in the middle
+**Links that point outside the checkout are never committed (#496).** A
+run started on an older engine (14.0.0-alpha.1 or before) never noted what
+prepare made. Resumed on a newer engine, its worktrees may still hold
+prepare's links, and prepare won't make them again, so the engine can't see
+them appear. So before every commit (and at the red check), the engine
+looks at each untracked symlink. One whose target is outside the checkout
+only works on one machine, so no commit may hold it. The engine leaves it
+out, like what prepare made, and journals it once as
+`prepare_made { paths, outside_links: true }`. The link stays in the
+worktree, untracked. The ticket doesn't get stuck on it, since such links
+are almost always prepare's.
+
+Three limits. Only untracked paths count: a tracked file prepare changes
+still shows as the ticket's change. If the engine crashes in the middle
 of a prepare run, the redo can't tell what the first try already made, so
 those paths count as the ticket's unless an earlier prepare run already
-noted them.
+noted them. And on a run from an older engine, only outside-pointing links
+are caught: other files its prepare made still count as the ticket's.
+
+**Nothing to commit never crashes the run (#494).** When prepare made every
+change in a worktree, there is nothing left to commit, and `git commit`
+would fail. So the engine never runs it then. At the red check, a
+test-writer turn that changed no file is one more red check problem ("No
+file changed, so the red commit would be empty"), for the test-writer's fix
+loop. At any other commit (green, a review fix round, the final review),
+the engine journals the current commit as `commit_made` with no files and
+moves on. A green stage can be empty that way when a rebase finds the
+ticket's change already on the run branch.
 
 An odd path in a worktree never crashes the run. The engine reads a
 changed path as git stores it: a symlink as its target (never followed), a
@@ -406,7 +472,22 @@ on the base branch answers `already_done`, with its evidence: in `done_by`,
 the commits that did the work (`{ sha, title }`), and in `criteria`, the
 tests that already cover each criterion. It may only say so when every
 criterion is met and tested; an `already_done` with no commit or no tests is
-a failed try. The ticket is then done, not stuck, and nobody has to reply:
+a failed try.
+
+The engine checks the evidence before it believes it (#495):
+`check_already_done` runs in the ticket's worktree, on the commit the
+worktree started from (its base). Each commit must be in the repo and on
+the base. Each criterion must name a test. Each named test file must exist,
+be a test file, and have no changes in the worktree. The engine runs just
+those files (the config's bun test commands with the files added, after the
+prepare command if there is one), and each named test must pass. It
+journals `already_done_checked` with what did not check out. If anything
+did not, that is a failed try for the test-writer: it gets the list in its
+session, and can fix its answer or write the tests instead. After 3 failed
+tries the ticket is stuck (`agent_failed`), with the list.
+
+Once the evidence checks out, the ticket is done, not stuck, and nobody has
+to reply:
 `mark_already_done` comments on the spec issue with the commits and the
 tests, and journals `ticket_already_done`. Tickets that wait on it start as
 if it had pushed. The run's PR closes it, listed as
@@ -437,7 +518,10 @@ ignored files kept) and sends the ticket to a fresh test-writer, told which
 test was bad and why. Its tests get their own red check and their own red
 commit (`test: replace a bad test for ...`), then a fresh implementer builds.
 The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
-test on a refactor ticket.
+test on a refactor ticket. Every bad-test stuck detail, and so the spec
+comment, names the test's file and name and quotes the implementer's reason,
+clipped like other outputs (#490). It says "no reason given" only when the
+implementer gave none.
 
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,
@@ -450,7 +534,10 @@ disallowed changes were undone (`failedTryMessage`); a reviewer, or an agent
 with no session, gets a fresh launch. The last try's failure is stuck. An
 `engine` failure (the SDK crashed, or a follow-up's session is gone) starts a
 fresh agent of that role without using up a try; three in a row
-(`MAX_ENGINE_FAILURES`) are stuck. A retry that finishes flows on like any
+(`MAX_ENGINE_FAILURES`) are stuck. A failed `already_done_checked` is an
+`evidence` failure for the test-writer (#495): it uses up a try the same
+way, but its follow-up asks the test-writer to fix its evidence or write
+the tests. A retry that finishes flows on like any
 result: it can set the role's first result, or answer a fix round and rerun
 the red check or the gates.
 
@@ -725,8 +812,8 @@ final_review_stuck
   starts over from scratch (`restart`); a copy that isn't ready is refused
   on the spec, and the ticket stays stuck. Otherwise it resumes
   (`resume`): a fresh agent (no old session), fresh counts (fix rounds,
-  failed tries, bad-test bounces, rebases), and whatever the owner changed in
-  its worktree is kept. The first fresh agent is told why it got stuck. A
+  failed tries, bad-test bounces, rebases, test updates), and whatever the
+  owner changed in its worktree is kept. The first fresh agent is told why it got stuck. A
   review fix round starts over as round 1, so the owner's edits are gated,
   committed, and re-reviewed. A ticket stuck at its join joins again.
 - **`skip`** leaves the ticket out, then every ticket that waits on it
@@ -829,7 +916,11 @@ paid by your Claude plan; see Guards) and closes its open sessions with
 no key each ask is journaled as `jev_failed` (`missing_key`), nothing is
 sent, and the run goes on. A launcher stop (`run_stopped`) ends the process
 with "Run stopped: <reason>"; run it again with `--resume <run-id>` (or the
-same `--spec` and `--run-id`) to pick the step up again. `runSpec` takes the launcher as an argument, so its tests
+same `--spec` and `--run-id`) to pick the step up again. A crash ends it with
+"The engine crashed: <error>". Both messages end with how to go on
+(`resumeCommand`): `/luca-run resume <run-id>` in a Paseo chat when the board
+started the run, so the board stays attached, else `luca-run --resume
+<run-id>`. `runSpec` takes the launcher as an argument, so its tests
 hand in scripted agents and never call a model.
 
 **The demo** (`--demo`) is safe to try the board with: it makes the practice
@@ -852,7 +943,26 @@ it runs on. Changes reach runs only by publishing. See
 package's README for changesets, the Version PR, and the `alpha` guard.
 
 `luca upgrade` moves this computer to another published version. It refuses
-while any run is going (`goingRuns` in `src/cli/going-runs.ts`).
+while any run is going (`goingRuns` in `src/cli/going-runs.ts`). A run is
+going when its engine process is running, or when its engine is gone but the
+board will restart it. Stuck runs and limit waits count, because their
+engine keeps running while it waits.
+
+- **Is the engine running?** Upgrade lists every process's command line with
+  `ps -axww -o command=`. A line with `--run-id <id>` or `--resume <id>`, as
+  whole words, means that run's engine is running. The board checks the same
+  way; the engine has its own copy (`src/cli/live-runs.ts`), because neither
+  package imports the other.
+- **Will the board restart it?** Yes when the board started the run, its
+  registry entry has no `ended`, it isn't a demo, it has automatic restarts
+  left (fewer than 3), and its journal can go on.
+- **`ps` fails:** every unfinished run counts as going, and upgrade says why.
+  Upgrading under a live engine is far worse than a refused upgrade.
+- **A run nothing runs** (it crashed, or the launcher stopped it) doesn't stop
+  the upgrade. Upgrade lists it and says how to pick it up on the new
+  version: `/luca-run resume <run id>` in a Paseo chat for a run the board
+  started, so the board shows it live, else `luca-run --resume <run id>`.
+  A billing stop never goes on, so it isn't listed.
 
 ## Setting up a repo
 

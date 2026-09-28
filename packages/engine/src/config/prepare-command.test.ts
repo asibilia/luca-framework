@@ -5,9 +5,11 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+    DEFAULT_PREPARE_CONCURRENCY,
     DEFAULT_PREPARE_TIMEOUT_MS,
     EngineConfigSchema,
     loadEngineConfig,
+    prepareConcurrencyOf,
     prepareTimeoutOf,
 } from './engine-config'
 
@@ -118,6 +120,53 @@ describe('engine config: the prepare time limit (#485)', () => {
     )
 })
 
+describe('engine config: how many prepare runs go at once (#492)', () => {
+    test('prepare_concurrency is kept as written', async () => {
+        await writeConfig({
+            config: {
+                checks: { test: 'bun test' },
+                prepare: 'make',
+                prepare_concurrency: 2,
+            },
+        })
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+        if (!result.ok) throw new Error(result.error)
+
+        expect(result.config.prepare_concurrency).toBe(2)
+        expect(prepareConcurrencyOf({ config: result.config })).toBe(2)
+    })
+
+    test('left out, one prepare runs at a time', async () => {
+        await writeConfig({
+            config: { checks: { test: 'bun test' }, prepare: 'make' },
+        })
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+        if (!result.ok) throw new Error(result.error)
+
+        expect(DEFAULT_PREPARE_CONCURRENCY).toBe(1)
+        expect(prepareConcurrencyOf({ config: result.config })).toBe(1)
+    })
+
+    test.each([0, -1, 1.5, 'two', null])(
+        'prepare_concurrency of %p is an error naming it',
+        async (value) => {
+            await writeConfig({
+                config: {
+                    checks: { test: 'bun test' },
+                    prepare: 'make',
+                    prepare_concurrency: value,
+                },
+            })
+            const result = await loadEngineConfig({ repo_root: repoRoot })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain('prepare_concurrency')
+            }
+        }
+    )
+})
+
 describe('the engine README', () => {
     test('documents the prepare command with the HeartGold example', async () => {
         const text = await Bun.file(
@@ -135,5 +184,13 @@ describe('the engine README', () => {
 
         expect(text).toContain('prepare_timeout_ms')
         expect(text).toContain('30 minutes')
+    })
+
+    test('documents how many prepare runs go at once and how to change it', async () => {
+        const text = await Bun.file(
+            join(import.meta.dir, '..', '..', 'README.md')
+        ).text()
+
+        expect(text).toContain('prepare_concurrency')
     })
 })

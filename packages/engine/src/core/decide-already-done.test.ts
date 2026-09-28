@@ -6,6 +6,7 @@ import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
 import {
     alreadyDone,
+    alreadyDoneChecked,
     baselineTests,
     DONE_SHA,
     intakePassed,
@@ -13,6 +14,8 @@ import {
     practiceTicket,
     RUN_BRANCH_PATH,
     runBranchCreated,
+    SESSIONS,
+    testsWritten,
     ticketAlreadyDone,
     ticketBuilt,
     ticketClosed,
@@ -44,11 +47,15 @@ const recordsAfter = ({
         entries: [...intakePassed({ tickets }), ...withInstalls({ entries })],
     })
 
-/** A ticket's worktree, its baseline, and its test-writer's "already done". */
+/**
+ * A ticket's worktree, its baseline, its test-writer's "already done", and
+ * the engine's check of that evidence, which passed.
+ */
 const answeredDone = (ticket: number): JournalEntry[] => [
     ticketWorktreeCreated({ ticket }),
     baselineTests({ ticket }),
     alreadyDone({ ticket }),
+    alreadyDoneChecked({ ticket }),
 ]
 
 describe('decision step: a ticket that is already done', () => {
@@ -176,6 +183,96 @@ describe('decision step: a ticket that is already done', () => {
             '- Closes #11: Add sum (already done before this run, by 3559c25)'
         )
         expect(action.body).toContain('- Closes #12: Add product')
+    })
+})
+
+describe("decision step: the engine checks a test-writer's already-done evidence (#495)", () => {
+    const answered = [
+        runBranchCreated(),
+        ticketWorktreeCreated({ ticket: 11 }),
+        baselineTests({ ticket: 11 }),
+        alreadyDone({ ticket: 11 }),
+    ]
+    const at = (entries: JournalEntry[]) =>
+        decide({ records: recordsAfter({ tickets: [SUM], entries }) })
+    const NOT_FOUND = `commit ${DONE_SHA}: not found in the repo`
+
+    test("before the ticket counts as done, the engine checks the commits and the named tests on the ticket's base", () => {
+        expect(at(answered)).toEqual({
+            type: 'check_already_done',
+            ticket: 11,
+            base_sha: 'b0',
+            criteria_ids: ['AC1'],
+            done_by: [{ sha: DONE_SHA, title: 'feat: add sum' }],
+            criteria: [
+                {
+                    criterion_id: 'AC1',
+                    tests: [
+                        {
+                            file: 'src/sum.test.ts',
+                            name: 'sum adds two numbers',
+                        },
+                    ],
+                },
+            ],
+        })
+    })
+
+    test('evidence that does not check out is a failed try: the test-writer hears what failed, in its session', () => {
+        const action = at([
+            ...answered,
+            alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'follow_up_agent',
+            ticket: 11,
+            role: 'test-writer',
+            session_id: SESSIONS['test-writer'],
+        })
+        if (action.type !== 'follow_up_agent') throw new Error(action.type)
+        expect(action.message).toContain('"already_done"')
+        expect(action.message).toContain(NOT_FOUND)
+        expect(action.message).toContain('"tests_written"')
+        expect(action.message).not.toContain('undid')
+    })
+
+    test('a new "already done" answer is checked again, and tests written go to the red check', () => {
+        const failed = [
+            ...answered,
+            alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+        ]
+
+        expect(at([...failed, alreadyDone({ ticket: 11 })])).toMatchObject({
+            type: 'check_already_done',
+            ticket: 11,
+        })
+        expect(at([...failed, testsWritten({ ticket: 11 })])).toMatchObject({
+            type: 'run_red_check',
+            ticket: 11,
+        })
+    })
+
+    test('when the failed tries run out, the ticket is stuck with what did not check out', () => {
+        const failing =
+            '"sum adds two numbers" in src/sum.test.ts: fails on the base'
+        const action = at([
+            ...answered,
+            alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+            alreadyDone({ ticket: 11 }),
+            alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+            alreadyDone({ ticket: 11 }),
+            alreadyDoneChecked({ ticket: 11, problems: [failing] }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'agent_failed',
+        })
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain('test-writer failed 3 tries')
+        expect(action.detail).toContain(failing)
     })
 })
 

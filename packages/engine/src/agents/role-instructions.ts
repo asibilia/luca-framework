@@ -67,6 +67,13 @@ const setupFiles = ({ config }: { config: EngineConfig }): string =>
         ? ` (${config.test_setup_files.join(', ')})`
         : ''
 
+const TEST_UPDATE = `## Updating tests after a rebase
+Sometimes other tickets joined the run branch after this ticket's tests were written, and the engine moved this ticket's change on top of it. If the implementer then says one of your tests is wrong, the tests come back to you. Your prompt says what joined, and the test and the implementer's reason. Then:
+- The ticket's code is already in the worktree. Never touch it; edit test files only.
+- Change a test only where the run branch's behavior changed what it should expect. Read what joined with \`git log\` and \`git show\`. Don't weaken a test just to make it pass.
+- Every criterion still needs a test. Your updated tests may pass now, since the code is there; that is fine. The engine runs every test in the gates after the implementer's turn.
+- Answer "tests_written" with the full criterion mapping again.`
+
 const TEST_WRITER = ({
     config,
 }: {
@@ -83,11 +90,13 @@ You write the failing tests for ONE ticket, before any code exists.
 
 Your result (structured output):
 - outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor), or "already_done" if the ticket's work is already on the base branch, or "needs_setup_change" if the tests can't work without a change to a test setup file${setupFiles({ config })} (you may never change one): say which file and why in "setup_change", and the user makes the change.
-- Answer "already_done" only when EVERY acceptance criterion is already met on the base branch and already has a test that checks it. Look with \`git log\` and \`git show\`, and read the code and tests. Then write no tests, and give your evidence: in "done_by", the commits that did the work, as { sha, title }; in "criteria", the existing tests that cover each criterion. If even one criterion is not met, or not tested, write the tests instead.
+- Answer "already_done" only when EVERY acceptance criterion is already met on the base branch and already has a test that checks it. Look with \`git log\` and \`git show\`, and read the code and tests. Then write no tests, and give your evidence: in "done_by", the commits that did the work, as { sha, title }; in "criteria", the existing tests that cover each criterion. The engine checks this evidence: each commit must be on the base branch, and each test must exist and pass there. If even one criterion is not met, or not tested, write the tests instead.
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
 - done_by: empty, unless the outcome is "already_done".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
 - summary, assumptions, run_notes.
+
+${TEST_UPDATE}
 
 ${REVIEW_FIXER}`
 

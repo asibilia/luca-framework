@@ -17,6 +17,12 @@ export type FileChange = {
 /** A commit the engine made. */
 export type EngineCommit = { sha: string; files: string[] }
 
+/** Where a commit is, next to a base commit (see `commitOnBase`). */
+export type CommitPlace = 'on_base' | 'not_on_base' | 'unknown'
+
+/** A full or short commit id, in hex. Anything else is no commit id. */
+const COMMIT_ID = /^[0-9a-f]{4,64}$/i
+
 /**
  * Every git side effect of a run. Only the engine calls these; agents never
  * commit, branch, or push.
@@ -150,6 +156,16 @@ export type GitAdapter = {
     push: (args: { cwd: string; branch: string }) => Promise<void>
     /** The commit checked out at `cwd`. */
     head: (args: { cwd: string }) => Promise<string>
+    /**
+     * Where commit `sha` is: `on_base` if it is `base` or in its history,
+     * `not_on_base` if the repo has it but `base` doesn't, `unknown` if the
+     * repo has no such commit (or `sha` is no commit id).
+     */
+    commitOnBase: (args: {
+        cwd: string
+        sha: string
+        base: string
+    }) => Promise<CommitPlace>
     /**
      * The commit checked out at `cwd` with its whole message (trimmed) and
      * its files, such as to adopt a commit a crash left out of the journal.
@@ -556,6 +572,21 @@ export const createGitAdapter = ({
             })
         },
         head,
+        commitOnBase: async ({ cwd, sha, base }) => {
+            if (!COMMIT_ID.test(sha)) return 'unknown'
+            const found = await gitRun({
+                cwd,
+                args: ['rev-parse', '--verify', '--quiet', `${sha}^{commit}`],
+            })
+            if (found.exit_code !== 0) return 'unknown'
+            const args = ['merge-base', '--is-ancestor', sha, base]
+            const ancestor = await gitRun({ cwd, args })
+            if (ancestor.exit_code === 0) return 'on_base'
+            if (ancestor.exit_code === 1) return 'not_on_base'
+            throw new Error(
+                `git ${args.join(' ')} failed in ${cwd}:\n${ancestor.stderr || ancestor.stdout}`
+            )
+        },
         lastCommit: async ({ cwd }) => {
             const sha = await head({ cwd })
             const message = await gitOk({
@@ -595,6 +626,7 @@ export const createGitAdapter = ({
         removeWorktree: serial(raw.removeWorktree),
         push: serial(raw.push),
         head: serial(raw.head),
+        commitOnBase: serial(raw.commitOnBase),
         lastCommit: serial(raw.lastCommit),
     }
 }

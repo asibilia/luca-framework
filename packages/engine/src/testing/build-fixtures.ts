@@ -341,6 +341,29 @@ export const alreadyDone = ({
     },
 })
 
+/**
+ * The engine checked a test-writer's "already done" evidence (#495): it
+ * passed, or, with `problems`, it did not.
+ */
+export const alreadyDoneChecked = ({
+    ticket,
+    problems,
+}: {
+    ticket: number
+    /** What did not check out. Left out, none: the check passed. */
+    problems?: string[]
+}): JournalEntry => ({
+    kind: 'already_done_checked',
+    ticket,
+    role: null,
+    content: {
+        ok: (problems ?? []).length === 0,
+        problems: problems ?? [],
+        base_sha: 'b0',
+        tests: null,
+    },
+})
+
 /** The engine noted that a ticket's work is already done, on the spec issue. */
 export const ticketAlreadyDone = ({
     ticket,
@@ -644,6 +667,38 @@ export const ticketRebased = ({
         tests: tests ?? [],
         code: code ?? [],
         undone: undone ?? [],
+    },
+})
+
+/**
+ * After a rebase, the engine sent a ticket's tests back to its test-writer
+ * (#489): #12 "Add product" joined, and `src/index.ts` changed.
+ */
+export const testsSentBack = ({
+    ticket,
+    round,
+    reason,
+}: {
+    ticket: number
+    /** Defaults to 1. */
+    round?: number
+    /** The bad test's reason. Defaults to "Wrong sum." */
+    reason?: string
+}): JournalEntry => ({
+    kind: 'tests_sent_back',
+    ticket,
+    role: null,
+    content: {
+        round: round ?? 1,
+        bad_test: {
+            file: 'src/sum.test.ts',
+            name: 'sum adds two numbers',
+            reason: reason ?? 'Wrong sum.',
+        },
+        from_sha: 'b0',
+        base_sha: 'onto-sha',
+        joined: [{ ticket: 12, title: 'Add product' }],
+        files: ['src/index.ts', 'src/product.ts'],
     },
 })
 

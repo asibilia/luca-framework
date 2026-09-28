@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AgentSessionSchema } from '../agents/agent-launcher'
 import {
     AgentRoleSchema,
+    BadTestSchema,
     LensNameSchema,
     RoleResultSchema,
 } from '../agents/role-results'
@@ -178,6 +179,12 @@ const BaselinePreparedEntrySchema = z.object({
  * rules, in any checkout of the run. Journaled right after the prepare run
  * (at the baseline, the red check, or the gates), only when it made any.
  * `ticket` is the step's, as on its `gates_run`: `null` in the final review.
+ *
+ * With `outside_links`, the paths are untracked symlinks pointing outside
+ * their checkout, found just before a commit rather than around a prepare
+ * run (#496): most likely a prepare run's from before the engine noted what
+ * prepare made (an older engine's run, resumed). No commit may hold such a
+ * link, so the engine leaves them out the same way.
  */
 const PrepareMadeEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -185,6 +192,8 @@ const PrepareMadeEntrySchema = z.object({
     content: z.object({
         /** Worktree-relative, as git lists them (`git ls-files --others`). */
         paths: z.array(z.string()),
+        /** `true` when found as outside-pointing links before a commit. */
+        outside_links: z.boolean().optional(),
     }),
 })
 
@@ -254,11 +263,20 @@ const AgentFinishedEntrySchema = z.object({
  * - `guard`: the after-turn check found a change the role may not make.
  * - `engine`: the engine's side failed (the SDK crashed, or a follow-up's
  *   session is gone).
+ * - `evidence`: a test-writer's `already_done` evidence did not check out
+ *   (#495). Replay makes it from a failed `already_done_checked`, not from
+ *   an `agent_failed` record.
  *
- * The decision step counts the first three as failed tries; an engine
+ * The decision step counts all but `engine` as failed tries; an engine
  * failure starts a fresh agent without using one.
  */
-export const AgentFailureSchema = z.enum(['agent', 'result', 'guard', 'engine'])
+export const AgentFailureSchema = z.enum([
+    'agent',
+    'result',
+    'guard',
+    'engine',
+    'evidence',
+])
 
 export type AgentFailure = z.infer<typeof AgentFailureSchema>
 
@@ -474,6 +492,25 @@ const RedCheckEntrySchema = z.object({
 })
 
 /**
+ * The engine checked a test-writer's `already_done` evidence (#495) in the
+ * ticket's worktree, at `base_sha`, the commit it started from: each named
+ * commit is on the base, and each named test exists and passes there.
+ * `problems` says what did not check out; `tests` is the run of the named
+ * test files (`null` if none ran). A failed check is a failed try for the
+ * test-writer.
+ */
+const AlreadyDoneCheckedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('already_done_checked'),
+    content: z.object({
+        ok: z.boolean(),
+        problems: z.array(z.string()),
+        base_sha: z.string(),
+        tests: TestRunSchema.nullable(),
+    }),
+})
+
+/**
  * The commits the engine makes on a ticket: tests first (`red`), then code
  * (`green`), then one per review fix round (`fix`).
  */
@@ -600,6 +637,33 @@ const TicketRebasedEntrySchema = z.object({
          * (A ticket that changes a manifest gets the install in its gates.)
          */
         reinstall: z.boolean().default(false),
+    }),
+})
+
+/**
+ * After a rebase, the implementer sent one of the ticket's tests back as bad
+ * (#489): the tickets that joined the run branch since the ticket's old base
+ * made it wrong. The engine sends it to the ticket's test-writer to update,
+ * with the implementer's code kept in the worktree. `round` counts these per
+ * ticket, from 1. `joined` are the tickets whose commits the run branch got
+ * between `from_sha` (the ticket's base before the rebase) and `base_sha`
+ * (its base now), and `files` the files the run branch changed between them.
+ */
+const TestsSentBackEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('tests_sent_back'),
+    content: z.object({
+        round: z.number().int().positive(),
+        bad_test: BadTestSchema,
+        from_sha: z.string().min(1),
+        base_sha: z.string().min(1),
+        joined: z.array(
+            z.object({
+                ticket: z.number().int().positive(),
+                title: z.string(),
+            })
+        ),
+        files: z.array(z.string()),
     }),
 })
 
@@ -1184,6 +1248,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     AgentFinishedEntrySchema,
     AgentFailedEntrySchema,
     RedCheckEntrySchema,
+    AlreadyDoneCheckedEntrySchema,
     LeftoverScanEntrySchema,
     CommitMadeEntrySchema,
     WorktreeResetEntrySchema,
@@ -1191,6 +1256,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     GatesRunEntrySchema,
     TicketJoinedEntrySchema,
     TicketRebasedEntrySchema,
+    TestsSentBackEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     RunStuckEntrySchema,
@@ -1262,6 +1328,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     AgentFinishedEntrySchema.extend(STAMP_FIELDS),
     AgentFailedEntrySchema.extend(STAMP_FIELDS),
     RedCheckEntrySchema.extend(STAMP_FIELDS),
+    AlreadyDoneCheckedEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
     WorktreeResetEntrySchema.extend(STAMP_FIELDS),
@@ -1269,6 +1336,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     GatesRunEntrySchema.extend(STAMP_FIELDS),
     TicketJoinedEntrySchema.extend(STAMP_FIELDS),
     TicketRebasedEntrySchema.extend(STAMP_FIELDS),
+    TestsSentBackEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
     RunStuckEntrySchema.extend(STAMP_FIELDS),
@@ -1339,6 +1407,7 @@ export const JournalKindSchema = z.enum([
     'agent_finished',
     'agent_failed',
     'red_check',
+    'already_done_checked',
     'leftover_scan',
     'commit_made',
     'worktree_reset',
@@ -1346,6 +1415,7 @@ export const JournalKindSchema = z.enum([
     'gates_run',
     'ticket_joined',
     'ticket_rebased',
+    'tests_sent_back',
     'run_branch_pushed',
     'ticket_stuck',
     'run_stuck',

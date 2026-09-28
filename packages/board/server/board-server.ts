@@ -15,9 +15,11 @@ import {
     liveRunIds,
     MAX_AUTO_RESTARTS,
     parseUnfinished,
+    RESUMED_TEXT,
     restartRow,
     restartText,
     resumeArgs,
+    resumeRow,
     UNFINISHED_TIMEOUT_MS,
     type StopWhy,
     type UnfinishedRun,
@@ -450,7 +452,7 @@ export const createBoardServer = ({
         change,
     }: {
         memory: RunMemory
-        change: Partial<Pick<RunEntry, 'ended' | 'restarts'>>
+        change: Partial<Pick<RunEntry, 'ended' | 'restarts' | 'token'>>
     }) => {
         memory.entry = registry.update({
             run_id: memory.entry.run_id,
@@ -503,15 +505,221 @@ export const createBoardServer = ({
         })
     }
 
+    /** Waits for rows being added, but at most `HEADER_WAIT_MS`. */
+    const waitForRows = async (adding: Promise<unknown>) => {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        await Promise.race([
+            adding,
+            new Promise((resolve) => {
+                timer = setTimeout(resolve, HEADER_WAIT_MS)
+            }),
+        ])
+        clearTimeout(timer)
+    }
+
+    /**
+     * Engine checks and resumes run one at a time, so a resume and a check
+     * never both start an engine for the same run.
+     */
+    let engine_work: Promise<unknown> = Promise.resolve()
+    const exclusive = <Result>(work: () => Promise<Result>) => {
+        const result = engine_work.then(work)
+        engine_work = result.catch(() => undefined)
+        return result
+    }
+
+    /** Spawns a run's engine with `--resume` and its token; returns its pid. */
+    const spawnResume = ({
+        memory,
+        engine,
+        on_failed,
+    }: {
+        memory: RunMemory
+        engine: { command: string; lead_args: string[] }
+        /** What the log says when the process fails after the spawn. */
+        on_failed: string
+    }): number | null => {
+        const { run_id, repo, token, log_path } = memory.entry
+        return spawn_engine({
+            command: engine.command,
+            args: [...engine.lead_args, ...resumeArgs({ run_id, repo })],
+            env: childEnv({ token }),
+            cwd: repo,
+            log_path,
+            on_error: (error) => {
+                log(`[${run_id}] ${on_failed}: ${errorText({ error })}`)
+                void enqueue({
+                    run_id,
+                    work: () =>
+                        endRun({
+                            memory,
+                            ended: {
+                                ok: false,
+                                message: engineStoppedText({
+                                    why: {
+                                        kind: 'spawn_failed',
+                                        error: errorText({ error }),
+                                    },
+                                    run_id,
+                                    log_path,
+                                }),
+                            },
+                        }),
+                })
+            },
+        }).pid
+    }
+
+    /**
+     * `/luca-run resume <run id>` (#493): goes on with a run this plugin
+     * started, from its journal, with the board attached again. Refused for
+     * an unknown run, a demo, a run that is over, a run whose engine is
+     * still running, or when `ps` fails. Otherwise the run gets a new token,
+     * loses its `ended`, and starts its restart count again at 0; it keeps
+     * its chat, workspace, repo, and log. The engine is spawned with
+     * `--resume`, and the run's chat gets a row saying so.
+     */
+    const resumeRun = async ({
+        run_id,
+        input,
+    }: {
+        run_id: string
+        input: RunStartInput
+    }): Promise<RunStartOutput> => {
+        const refuse = (message: string): RunStartOutput => ({
+            ok: false,
+            message,
+            run_id: null,
+        })
+        const memory = runs.get(run_id)
+        if (!memory) {
+            return refuse(
+                `The board doesn't know run ${run_id}, so it can't resume it. Check the id: the run's header row and the board panel show it. A run the board didn't start goes on from a terminal with luca-run --resume ${run_id}, without the board.`
+            )
+        }
+        if (memory.entry.demo) {
+            return refuse(
+                `Run ${run_id} is a demo, and a demo can't be picked up again. Start a new one with /luca-run demo.`
+            )
+        }
+        if (OVER_PHASES.has(memory.state.run.phase)) {
+            return refuse(
+                `Run ${run_id} is over, so there is nothing to resume.`
+            )
+        }
+        const engine = await findEngine()
+        if (!engine.ok) return refuse(engine.message)
+
+        return exclusive(async () => {
+            let command_lines: string[]
+            try {
+                command_lines = await list_processes()
+            } catch (error) {
+                return refuse(
+                    `Couldn't check whether run ${run_id}'s engine is still running (${errorText({ error })}), so it wasn't resumed: two engines on one run would be far worse. Try again.`
+                )
+            }
+            if (liveRunIds({ command_lines }).has(run_id)) {
+                return refuse(
+                    `Run ${run_id} is still running (its engine is live), so there is nothing to resume.`
+                )
+            }
+            return enqueue({
+                run_id,
+                work: async (): Promise<RunStartOutput> => {
+                    const before = memory.entry
+                    // The new token is kept first: the engine may send
+                    // before the spawn returns.
+                    updateEntry({
+                        memory,
+                        change: {
+                            token: randomBytes(24).toString('hex'),
+                            ended: null,
+                            restarts: 0,
+                        },
+                    })
+                    let pid: number | null = null
+                    try {
+                        pid = spawnResume({
+                            memory,
+                            engine,
+                            on_failed: 'the resumed engine failed',
+                        })
+                    } catch (error) {
+                        updateEntry({
+                            memory,
+                            change: {
+                                token: before.token,
+                                ended: before.ended,
+                                restarts: before.restarts,
+                            },
+                        })
+                        return refuse(
+                            `Couldn't start the engine: ${errorText({ error })}`
+                        )
+                    }
+                    const { log_path, spec, agent_id } = memory.entry
+                    log(
+                        `[${run_id}] resumed with /luca-run resume: ${engine.command} with --resume (pid ${pid ?? '?'}), log ${log_path}`
+                    )
+                    memory.rows_stopped = false
+                    memory.append_failures = 0
+                    memory.state = {
+                        ...memory.state,
+                        run: { ...memory.state.run, engine_ended: null },
+                        latest: RESUMED_TEXT,
+                    }
+                    void enqueue({
+                        run_id,
+                        work: () =>
+                            appendRows({
+                                memory,
+                                rows: [
+                                    resumeRow({
+                                        run_id,
+                                        time: now().toISOString(),
+                                    }),
+                                    header({ memory }),
+                                ],
+                            }),
+                    })
+                    const what =
+                        spec === null
+                            ? `run ${run_id}`
+                            : `spec #${spec} (run ${run_id})`
+                    const where =
+                        agent_id === input.agent_id
+                            ? ''
+                            : ' Its rows go on in the chat it started in.'
+                    return {
+                        ok: true,
+                        run_id,
+                        message: `Resumed ${what} from its journal.${where} Its log is ${log_path}.`,
+                    }
+                },
+            })
+        })
+    }
+
     /**
      * `run.start`: parses the args, finds the engine, records the run, spawns
      * the engine detached, and adds the chat's header row. Returns at once.
+     * `resume <run id>` goes on with a run instead (see `resumeRun`).
      */
     const startRun = async (input: RunStartInput): Promise<RunStartOutput> => {
         await ready
         const parsed = parseRunArgs({ args: input.args })
         if (!parsed.ok)
             return { ok: false, message: parsed.message, run_id: null }
+        if (parsed.target.kind === 'resume') {
+            const output = await resumeRun({
+                run_id: parsed.target.run_id,
+                input,
+            })
+            const rows = queues.get(parsed.target.run_id)
+            if (output.ok && rows) await waitForRows(rows)
+            return output
+        }
 
         const engine = await findEngine()
         if (!engine.ok)
@@ -523,7 +731,7 @@ export const createBoardServer = ({
         }
         const token = randomBytes(24).toString('hex')
         const log_path = join(log_dir, `${run_id}.log`)
-        const { target } = parsed
+        const target = parsed.target
         const entry: RunEntry = {
             run_id,
             token,
@@ -583,18 +791,12 @@ export const createBoardServer = ({
             `[${run_id}] started ${engine.command} (pid ${pid ?? '?'}), log ${log_path}`
         )
 
-        const headerAdded = enqueue({
-            run_id,
-            work: () => appendRows({ memory, rows: [header({ memory })] }),
-        })
-        let timer: ReturnType<typeof setTimeout> | undefined
-        await Promise.race([
-            headerAdded,
-            new Promise((resolve) => {
-                timer = setTimeout(resolve, HEADER_WAIT_MS)
-            }),
-        ])
-        clearTimeout(timer)
+        await waitForRows(
+            enqueue({
+                run_id,
+                work: () => appendRows({ memory, rows: [header({ memory })] }),
+            })
+        )
 
         const what =
             target.kind === 'demo' ? 'a demo run' : `spec #${target.spec}`
@@ -805,39 +1007,14 @@ export const createBoardServer = ({
         memory: RunMemory
         engine: { command: string; lead_args: string[] }
     }): Promise<{ ok: true } | { ok: false; error: string }> => {
-        const { run_id, repo, token, log_path } = memory.entry
+        const { run_id, log_path } = memory.entry
         let pid: number | null = null
         try {
-            pid = spawn_engine({
-                command: engine.command,
-                args: [...engine.lead_args, ...resumeArgs({ run_id, repo })],
-                env: childEnv({ token }),
-                cwd: repo,
-                log_path,
-                on_error: (error) => {
-                    log(
-                        `[${run_id}] the restarted engine failed: ${errorText({ error })}`
-                    )
-                    void enqueue({
-                        run_id,
-                        work: () =>
-                            endRun({
-                                memory,
-                                ended: {
-                                    ok: false,
-                                    message: engineStoppedText({
-                                        why: {
-                                            kind: 'spawn_failed',
-                                            error: errorText({ error }),
-                                        },
-                                        run_id,
-                                        log_path,
-                                    }),
-                                },
-                            }),
-                    })
-                },
-            }).pid
+            pid = spawnResume({
+                memory,
+                engine,
+                on_failed: 'the restarted engine failed',
+            })
         } catch (error) {
             return { ok: false, error: errorText({ error }) }
         }
@@ -957,7 +1134,7 @@ export const createBoardServer = ({
      * const { restarted, stopped } = await board.checkEngines()
      */
     const checkEngines = (): Promise<EngineCheck> => {
-        checking ??= runCheck()
+        checking ??= exclusive(runCheck)
             .catch((error: unknown) => {
                 log(`The engine check failed: ${errorText({ error })}`)
                 return { restarted: [], stopped: [] }
@@ -972,6 +1149,7 @@ export const createBoardServer = ({
     const idle = async () => {
         await ready
         await checking
+        await engine_work
         await Promise.all([...queues.values()])
     }
 

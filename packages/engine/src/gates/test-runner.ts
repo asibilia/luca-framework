@@ -128,6 +128,27 @@ export const runTests = async ({
     }
 }
 
+/** A word quoted for `sh`, whatever it holds. */
+const shellWord = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`
+
+/**
+ * A bun test command that runs just these test files: the config's command
+ * with each file after it, as a `./` path so bun takes it as a path, not a
+ * name to match. A command that already names a folder runs that too.
+ *
+ * @example
+ * onlyTestFiles({ command: 'bun test', files: ['src/sum.test.ts'] })
+ * // "bun test './src/sum.test.ts'"
+ */
+export const onlyTestFiles = ({
+    command,
+    files,
+}: {
+    command: string
+    files: string[]
+}): string =>
+    [command, ...files.map((file) => shellWord(`./${file}`))].join(' ')
+
 /**
  * The report file for the `index`th of several commands: the first keeps
  * `report_file`, the others get a numbered one beside it.

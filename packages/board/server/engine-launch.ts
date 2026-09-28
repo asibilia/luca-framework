@@ -10,24 +10,41 @@ import type { EngineSettings } from '../shared/engine-settings'
  * `import.meta.url` is undefined and the cwd is `/`.
  */
 
-/** What a run builds: one spec, or the engine's safe practice run. */
+/** What a new run builds: one spec, or the engine's safe practice run. */
 export type RunTarget = { kind: 'spec'; spec: number } | { kind: 'demo' }
 
+/** What `/luca-run` asks for: a new run, or to resume a run the board started. */
+export type RunRequest = RunTarget | { kind: 'resume'; run_id: string }
+
 /**
- * Reads what followed `/luca-run`: `123`, `#123`, or `demo`.
+ * Reads what followed `/luca-run`: `123`, `#123`, `demo`, or
+ * `resume <run id>`.
  *
  * @example
  * parseRunArgs({ args: '#12' }) // { ok: true, target: { kind: 'spec', spec: 12 } }
+ * parseRunArgs({ args: 'resume luca-20260928-124805-69hp' }) // { ok: true, target: { kind: 'resume', run_id: 'luca-20260928-124805-69hp' } }
  * parseRunArgs({ args: 'soon' }).ok // false
  */
 export const parseRunArgs = ({
     args,
 }: {
     args: string
-}): { ok: true; target: RunTarget } | { ok: false; message: string } => {
+}): { ok: true; target: RunRequest } | { ok: false; message: string } => {
     const text = args.trim()
     if (text.toLowerCase() === 'demo') {
         return { ok: true, target: { kind: 'demo' } }
+    }
+    const words = text.split(/\s+/)
+    if (words[0]?.toLowerCase() === 'resume') {
+        const run_id = words[1]
+        return run_id !== undefined &&
+            words.length === 2 &&
+            !run_id.startsWith('-')
+            ? { ok: true, target: { kind: 'resume', run_id } }
+            : {
+                  ok: false,
+                  message: `Which run? Give its id, as the board shows it. Usage: ${RUN_USAGE}`,
+              }
     }
     const match = /^#?(\d+)$/.exec(text)
     const spec = match?.[1] ? Number(match[1]) : 0

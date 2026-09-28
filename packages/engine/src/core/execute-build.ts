@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path'
 
 import difference from 'lodash/difference'
 import uniq from 'lodash/uniq'
+import uniqBy from 'lodash/uniqBy'
 
 import type { AlreadyDoneAction } from './already-done'
 import { CHANGESET_CONFIG } from './changeset'
@@ -21,6 +22,7 @@ import {
     type RoleResult,
 } from '../agents/role-results'
 import { bunTestCommands, type EngineConfig } from '../config/engine-config'
+import { checkAlreadyDone } from '../gates/already-done-check'
 import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
@@ -32,8 +34,13 @@ import {
     rebaseNeedsInstall,
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
-import { runBunTests, testFilesAmong } from '../gates/test-runner'
+import {
+    onlyTestFiles,
+    runBunTests,
+    testFilesAmong,
+} from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
+import { outsideLinks } from '../git/outside-links'
 import { pathText } from '../git/path-text'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
@@ -182,17 +189,67 @@ const watchPrepare = async <Result>({
     return result
 }
 
-/** A ticket's changes, less what the prepare command made. */
-const ticketChanges = async ({
+/**
+ * The paths the engine leaves out of the changes at `cwd`: what prepare
+ * made (`prepare_made`), and every untracked symlink pointing outside the
+ * checkout, which no commit may hold (#496). Such a link not noted yet is
+ * most likely a prepare run's from before the engine noted what prepare
+ * made (an older engine's run, resumed); it is journaled as
+ * `prepare_made { paths, outside_links: true }`, so every later step leaves
+ * it out too.
+ *
+ * @param ticket - The step's ticket, `null` on the run branch.
+ * @returns Every path to leave out, the new links included.
+ *
+ * @example
+ * const leave_out = await leaveOutIn({ context, cwd, ticket: 11 })
+ * await context.git.commitAll({ cwd, message, leave_out })
+ */
+export const leaveOutIn = async ({
     context,
     cwd,
+    ticket,
 }: {
     context: BuildContext
     cwd: string
+    ticket: number | null
+}): Promise<string[]> => {
+    const { prepare_made } = context.state
+    const links = await outsideLinks({
+        cwd,
+        paths: difference(await context.git.untracked({ cwd }), prepare_made),
+    })
+    if (links.length > 0) {
+        context.journal.append({
+            kind: 'prepare_made',
+            ticket,
+            role: null,
+            content: { paths: links, outside_links: true },
+        })
+    }
+    return [...prepare_made, ...links]
+}
+
+/** The changes at `cwd`, less the paths in `leave_out`. */
+const ticketChanges = async ({
+    context,
+    cwd,
+    leave_out,
+}: {
+    context: BuildContext
+    cwd: string
+    leave_out: string[]
 }): Promise<FileChange[]> =>
     (await context.git.changes({ cwd })).filter(
-        ({ path }) => !context.state.prepare_made.includes(path)
+        ({ path }) => !leave_out.includes(path)
     )
+
+/**
+ * The red check's problem when the test-writer changed no file (what
+ * prepare made aside): the red commit would have nothing to commit.
+ */
+export const NO_RED_CHANGES =
+    'No file changed, so the red commit would be empty: write the tests for the criteria in the worktree (new or changed test files).'
 
 const runRedCheck = async ({
     context,
@@ -210,6 +267,16 @@ const runRedCheck = async ({
         what: `baseline test run for #${action.ticket}`,
     })
     const test_files = await testFilesIn({ context, cwd: path })
+    // Before prepare runs, so what it makes now can't count as a change.
+    const changed = await ticketChanges({
+        context,
+        cwd: path,
+        leave_out: await leaveOutIn({
+            context,
+            cwd: path,
+            ticket: action.ticket,
+        }),
+    })
     const prepare = await watchPrepare({
         context,
         cwd: path,
@@ -242,23 +309,124 @@ const runRedCheck = async ({
         sources,
     })
     // A failed prepare after the test-writer's turn is one more problem,
-    // for the test-writer's fix loop.
+    // for the test-writer's fix loop; so is a turn that changed no file,
+    // which would leave the red commit nothing to commit (#494).
+    const problems = [
+        ...(prepare === null || prepare.ok
+            ? []
+            : [
+                  `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
+              ]),
+        ...(changed.length > 0 ? [] : [NO_RED_CHANGES]),
+    ]
     const result =
-        prepare === null || prepare.ok
+        problems.length === 0
             ? checked
             : {
                   ...checked,
                   ok: false,
-                  problems: [
-                      `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
-                      ...checked.problems,
-                  ],
+                  problems: [...problems, ...checked.problems],
               }
     context.journal.append({
         kind: 'red_check',
         ticket: action.ticket,
         role: null,
         content: { ...result, tests: current },
+    })
+}
+
+/**
+ * Checks a test-writer's `already_done` evidence (#495) in the ticket's
+ * worktree, then journals the check (`already_done_checked`): where git
+ * finds each named commit, next to the commit the worktree started from,
+ * and a run of just the named test files that exist, are test files, and
+ * are as they are on the base, after the prepare command if the config has
+ * one. What the check means is `checkAlreadyDone`'s; replay makes a failed
+ * one a failed try for the test-writer.
+ */
+const checkAlreadyDoneIn = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'check_already_done' }>
+}) => {
+    const { path } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const commits = []
+    for (const { sha } of uniqBy(action.done_by, 'sha')) {
+        const place = await context.git.commitOnBase({
+            cwd: path,
+            sha,
+            base: action.base_sha,
+        })
+        commits.push({ sha, place })
+    }
+    const files = uniq(
+        action.criteria.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const missing = files.filter((file) => !existsSync(join(path, file)))
+    const test_files = await testFilesIn({ context, cwd: path })
+    const changed = (
+        await ticketChanges({
+            context,
+            cwd: path,
+            leave_out: await leaveOutIn({
+                context,
+                cwd: path,
+                ticket: action.ticket,
+            }),
+        })
+    ).map((change) => change.path)
+    const runnable = files.filter(
+        (file) =>
+            !missing.includes(file) &&
+            test_files.includes(file) &&
+            !changed.includes(file)
+    )
+    const prepare =
+        runnable.length === 0
+            ? null
+            : await watchPrepare({
+                  context,
+                  cwd: path,
+                  ticket: action.ticket,
+                  run: () =>
+                      prepareCheck({ config: context.config, cwd: path }),
+              })
+    const run =
+        runnable.length === 0 || (prepare !== null && !prepare.ok)
+            ? null
+            : await runBunTests({
+                  cwd: path,
+                  commands: bunTestCommands(context).map((command) =>
+                      onlyTestFiles({ command, files: runnable })
+                  ),
+                  test_files: runnable,
+                  report_file: await reportFile({
+                      context,
+                      ticket: action.ticket,
+                      label: 'already-done',
+                  }),
+              })
+    const { ok, problems } = checkAlreadyDone({
+        base_sha: action.base_sha,
+        criteria_ids: action.criteria_ids,
+        criteria: action.criteria,
+        commits,
+        missing,
+        test_files,
+        changed,
+        prepare,
+        run,
+    })
+    context.journal.append({
+        kind: 'already_done_checked',
+        ticket: action.ticket,
+        role: null,
+        content: { ok, problems, base_sha: action.base_sha, tests: run },
     })
 }
 
@@ -313,13 +481,20 @@ const leftCommit = async ({
 
 /**
  * The leftover scan, then an engine commit of everything in `cwd`, both
- * journaled. What the prepare command made (`prepare_made`) is neither
- * scanned nor committed. A hit blocks the commit. A `fix` commit with
- * nothing to commit (every finding was a "won't fix") journals the current
- * commit with no files instead. A redo after a crash that already committed
- * (nothing left to commit, and HEAD is an unjournaled commit with this
- * message) journals that commit instead of making another; its scan, of a
- * clean worktree, finds nothing, as the first try's did before it committed.
+ * journaled. What the prepare command made (`prepare_made`) and untracked
+ * links pointing outside the checkout (see `leaveOutIn`) are neither
+ * scanned nor committed. A hit blocks the commit. A redo after a crash that
+ * already committed (nothing left to commit, and HEAD is an unjournaled
+ * commit with this message) journals that commit instead of making
+ * another; its scan, of a clean worktree, finds nothing, as the first try's
+ * did before it committed.
+ *
+ * Nothing to commit never runs `git commit`, which would fail (#494): the
+ * current commit is journaled with no files instead. That is a `fix` round
+ * whose every finding was a "won't fix", a green stage whose change a
+ * rebase found already on the run branch, or one whose every change came
+ * from prepare. (A red stage with nothing to commit fails its red check
+ * first, so it gets here only if the worktree changed after that check.)
  */
 export const commitIn = async ({
     context,
@@ -338,7 +513,8 @@ export const commitIn = async ({
     /** The spec and ticket text a new markdown file may be named in. */
     mention_text: string
 }) => {
-    const changes = await ticketChanges({ context, cwd })
+    const leave_out = await leaveOutIn({ context, cwd, ticket })
+    const changes = await ticketChanges({ context, cwd, leave_out })
     const test_files = testFilesAmong({
         files: changes.map(({ path }) => path),
         test_file_patterns: context.config.test_file_patterns,
@@ -373,9 +549,9 @@ export const commitIn = async ({
         })
         return
     }
-    if (changes.length === 0 && stage === 'fix') {
-        // The fixers changed nothing (every finding was a "won't fix"): no
-        // commit to make, so the re-review's new changes are empty.
+    if (changes.length === 0) {
+        // Nothing to commit: `git commit` would fail. For a fix round, the
+        // re-review's new changes are then empty.
         context.journal.append({
             kind: 'commit_made',
             ticket,
@@ -389,11 +565,7 @@ export const commitIn = async ({
         })
         return
     }
-    const commit = await context.git.commitAll({
-        cwd,
-        message,
-        leave_out: context.state.prepare_made,
-    })
+    const commit = await context.git.commitAll({ cwd, message, leave_out })
     context.journal.append({
         kind: 'commit_made',
         ticket,
@@ -809,6 +981,50 @@ const rebaseTicket = async ({
 }
 
 /**
+ * Sends a ticket's tests back to its test-writer after a rebase (#489):
+ * looks up the tickets whose joined commits the run branch got between the
+ * ticket's old base and its new one, and the files the run branch changed
+ * there, then journals it all as `tests_sent_back`. Reads git only.
+ */
+const sendTestsBack = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'send_tests_back' }>
+}) => {
+    const { git, state, journal } = context
+    const { ticket, round, bad_test, from_sha, base_sha } = action
+    const worktree = ticketWorktree({ state, ticket })
+    const commits = await git.commitsBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const files = await git.filesBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const joined = Object.entries(state.tickets).flatMap(
+        ([number, progress]) => {
+            const other = Number(number)
+            const shas = progress.joined?.ok ? progress.joined.shas : []
+            if (other === ticket || !shas.some((sha) => commits.includes(sha)))
+                return []
+            const title = state.snapshot?.tickets[other]?.title ?? ''
+            return [{ ticket: other, title }]
+        }
+    )
+    journal.append({
+        kind: 'tests_sent_back',
+        ticket,
+        role: null,
+        content: { round, bad_test, from_sha, base_sha, joined, files },
+    })
+}
+
+/**
  * The config's gates in a worktree (with the install first when a manifest
  * changed since its base), journaled as `gates_run`.
  */
@@ -1080,8 +1296,12 @@ export const executeBuildAction = async ({
             })
             return
         }
+        case 'send_tests_back':
+            return sendTestsBack({ context, action })
         case 'run_red_check':
             return runRedCheck({ context, action })
+        case 'check_already_done':
+            return checkAlreadyDoneIn({ context, action })
         case 'commit_ticket':
             return commitTicket({ context, action })
         case 'run_gates':

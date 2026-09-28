@@ -1,4 +1,5 @@
 import { rejoinOpening, type RejoinContext } from '../agents/role-prompts'
+import type { BadTest } from '../agents/role-results'
 import type { AgentFailure } from '../journal/journal-record'
 import type { ReplayedGates, ReplayedRedCheck } from '../journal/replay'
 import { clipOutput } from '../shell/run-command'
@@ -49,12 +50,23 @@ const FAILED_TRY_OPENINGS: Record<Exclude<AgentFailure, 'engine'>, string> = {
     agent: 'Your last turn failed before it gave a result.',
     result: "Your last turn ended without a result that fits your role's schema.",
     guard: 'Your last turn changed things your role may not change.',
+    evidence:
+        'The engine checked the evidence in your "already_done" answer, and some of it did not check out.',
 }
+
+const TRY_AGAIN =
+    "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result."
+
+const CHECK_EVIDENCE_AGAIN =
+    'If you named the wrong commits or tests, answer "already_done" again with the right ones: commits on the base branch, and tests that exist and pass there. ' +
+    'If the work is not all on the base branch, or a criterion has no passing test there, write the tests and answer "tests_written" instead.'
 
 /**
  * The follow-up an agent gets after a failed try (its turn failed, gave no
  * usable result, or broke its role's rules): what failed, the error, that
  * the engine undid every change the role may not make, and to try again.
+ * A test-writer whose `already_done` evidence did not check out (#495)
+ * hears what did not, and to fix its answer or write the tests instead.
  * The engine journals it word for word.
  *
  * @example
@@ -70,7 +82,7 @@ export const failedTryMessage = ({
     [
         FAILED_TRY_OPENINGS[failure],
         `## Error\n\n${clipOutput({ text: error })}`,
-        "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result.",
+        failure === 'evidence' ? CHECK_EVIDENCE_AGAIN : TRY_AGAIN,
     ].join('\n\n')
 
 /**
@@ -92,6 +104,30 @@ export const clashFixMessage = ({
         `These files have conflict markers:\n\n${rejoin.code.map((file) => `- ${file}`).join('\n')}`,
         'Resolve them so the code keeps both what the run branch has and what this ticket adds. ' +
             'Never edit a test file. Make every gate pass, then answer again.',
+    ].join('\n\n')
+
+/**
+ * What the implementer is told once the test-writer updated the tests it
+ * sent back after a rebase (#489): which test, the test-writer's summary,
+ * and to finish the ticket on top of the run branch. A follow-up's message,
+ * or a fresh implementer's prompt section. The engine journals it word for
+ * word.
+ *
+ * @example
+ * const message = testsUpdatedMessage({ bad_test, summary: 'Expect the hint line.' })
+ */
+export const testsUpdatedMessage = ({
+    bad_test,
+    summary,
+}: {
+    bad_test: BadTest
+    summary: string
+}): string =>
+    [
+        '## The test-writer updated the tests',
+        `You sent back ${[bad_test.file, bad_test.name].filter(Boolean).join(' > ') || 'a test'} as a bad test. The test-writer updated this ticket's tests to fit the run branch${summary.trim() === '' ? '.' : `: ${summary.trim()}`}`,
+        'Finish the ticket on top of the run branch: resolve any conflict markers left, keep what the run branch has and what this ticket adds, and make every gate pass. ' +
+            'Never edit a test file. If a test is still wrong, answer "bad_test" with your reason.',
     ].join('\n\n')
 
 /**

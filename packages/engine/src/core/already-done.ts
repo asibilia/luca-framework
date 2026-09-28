@@ -37,6 +37,47 @@ export type AlreadyDoneAction =
           already_done: number[]
       }
 
+/**
+ * Check a test-writer's `already_done` evidence (#495) in the ticket's
+ * worktree before the ticket counts as done: each commit in `done_by` is on
+ * `base_sha` (the commit the worktree started from), every criterion names
+ * a test, and each named test exists and passes there. The engine journals
+ * the check as `already_done_checked`.
+ */
+export type CheckAlreadyDoneAction = {
+    type: 'check_already_done'
+    ticket: number
+    base_sha: string
+    criteria_ids: string[]
+    done_by: DoneCommit[]
+    criteria: CriterionTests[]
+}
+
+/**
+ * The step that checks a test-writer's `already_done` evidence (#495), on
+ * the commit the ticket's worktree started from.
+ *
+ * @example
+ * checkAlreadyDoneStep({ ticket, base_sha: 'b0', result })
+ * // { type: 'check_already_done', ticket: 11, base_sha: 'b0', criteria_ids: ['AC1'], done_by, criteria }
+ */
+export const checkAlreadyDoneStep = ({
+    ticket,
+    base_sha,
+    result,
+}: {
+    ticket: TicketSnapshot
+    base_sha: string
+    result: TestWriterResult
+}): CheckAlreadyDoneAction => ({
+    type: 'check_already_done',
+    ticket: ticket.number,
+    base_sha,
+    criteria_ids: ticket.criteria.map(({ id }) => id),
+    done_by: result.done_by,
+    criteria: result.criteria,
+})
+
 /** How many characters of a sha the engine shows. */
 const SHORT_SHA = 7
 

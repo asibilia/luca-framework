@@ -34,6 +34,7 @@ import {
     ticketRetried,
     ticketSkipped,
     ticketSnapshot,
+    testsSentBack,
     ticketStuck,
     ticketWorktreeCreated,
     unifiedRateLimit,
@@ -1216,6 +1217,36 @@ describe('many tickets: a clash on the run branch', () => {
         expect(await harness.ticket({ number: 13 })).toMatchObject({
             stage: 'building',
             step: 0,
+        })
+    })
+
+    test('a test the joined tickets made wrong goes back to the test-writer, saying which', async () => {
+        await runWith({
+            entries: [
+                ...approved13(),
+                joinClashed({ ticket: 13 }),
+                ticketRebased({
+                    ticket: 13,
+                    cause: 'clash',
+                    code: ['src/index.ts'],
+                }),
+                testsSentBack({ ticket: 13, joined: [11] }),
+            ],
+        })
+
+        const card = await harness.ticket({ number: 13 })
+        expect(card).toMatchObject({
+            stage: 'building',
+            step: 0,
+            role: null,
+            activity: 'updating tests for the run branch',
+        })
+        expect(card?.tried.at(-1)).toBe(
+            'Test update 1: src/menu.test.ts > menu > lists three items is wrong on the run branch after #11 joined; back to the test-writer'
+        )
+        expect(eventRows().at(-1)).toEqual({
+            text: '#13: test update 1: src/menu.test.ts > menu > lists three items is wrong on the run branch after #11 joined; back to the test-writer.',
+            tone: 'warning',
         })
     })
 

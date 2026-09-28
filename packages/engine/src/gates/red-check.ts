@@ -8,7 +8,15 @@ const lastPart = (name: string): string =>
 /** Quote-insensitive text, so a test name found in source matches its printed name. */
 const loose = (text: string): string => text.replace(/[\\'"`]/g, '')
 
-const findCase = ({
+/**
+ * The test case a named test is, in its file: the one whose full name
+ * matches, else the only one whose last part does. `undefined` if none (or
+ * more than one) does.
+ *
+ * @example
+ * findCase({ cases: run.cases, test: { file: 'src/sum.test.ts', name: 'sum > adds' } })
+ */
+export const findCase = ({
     cases,
     test,
 }: {
