@@ -1180,9 +1180,9 @@ describe('luca init inside a git repo', () => {
         expect((await git(origin, 'rev-parse', 'main')).trim()).toBe(
             origin_head
         )
-        expect(await git(repo, 'status', '--porcelain')).toContain(
-            '.luca/config.json'
-        )
+        expect(
+            await git(repo, 'status', '--porcelain', '--untracked-files=all')
+        ).toContain('?? .luca/config.json')
     }, 60_000)
 
     test('a second run leaves the repo as the first run did', async () => {
