@@ -1,5 +1,14 @@
 # @luca/engine
 
+## 14.0.0-alpha.3
+
+### Patch Changes
+
+- 4bd296d: The engine checks a test-writer's "already done" evidence (the commits are on the base, the named tests exist and pass) before counting a ticket as done (#495).
+- 4bd296d: A crashed run whose engine is gone no longer blocks `luca upgrade` (#491), and `/luca-run resume <run id>` picks a run back up with the board attached (#493).
+- 4bd296d: Prepare runs one at a time by default (`prepare_concurrency`) (#492), a commit with nothing left to commit no longer crashes the run (#494), and prepare's files from before an upgrade aren't committed (#496).
+- 4bd296d: When a rebase makes a ticket's tests wrong, the test-writer gets a turn to update them instead of the ticket getting stuck (#489), and a stuck bad test keeps the implementer's reason (#490).
+
 ## 14.0.0-alpha.2
 
 ### Patch Changes
