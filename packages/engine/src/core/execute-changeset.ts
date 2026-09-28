@@ -12,7 +12,7 @@ import {
     type WorkspacePackage,
 } from './changeset'
 import type { BuildAction } from './decide-build'
-import { need, type BuildContext } from './execute-build'
+import { leaveOutIn, need, type BuildContext } from './execute-build'
 
 /** The part of the changesets config the engine reads: what it ignores. */
 const ChangesetConfigSchema = z
@@ -148,7 +148,7 @@ export const writeChangeset = async ({
         await git.commitAll({
             cwd,
             message,
-            leave_out: state.prepare_made,
+            leave_out: await leaveOutIn({ context, cwd, ticket: null }),
         })
     }
     await git.push({ cwd, branch })

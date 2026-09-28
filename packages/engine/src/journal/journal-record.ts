@@ -178,6 +178,12 @@ const BaselinePreparedEntrySchema = z.object({
  * rules, in any checkout of the run. Journaled right after the prepare run
  * (at the baseline, the red check, or the gates), only when it made any.
  * `ticket` is the step's, as on its `gates_run`: `null` in the final review.
+ *
+ * With `outside_links`, the paths are untracked symlinks pointing outside
+ * their checkout, found just before a commit rather than around a prepare
+ * run (#496): most likely a prepare run's from before the engine noted what
+ * prepare made (an older engine's run, resumed). No commit may hold such a
+ * link, so the engine leaves them out the same way.
  */
 const PrepareMadeEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -185,6 +191,8 @@ const PrepareMadeEntrySchema = z.object({
     content: z.object({
         /** Worktree-relative, as git lists them (`git ls-files --others`). */
         paths: z.array(z.string()),
+        /** `true` when found as outside-pointing links before a commit. */
+        outside_links: z.boolean().optional(),
     }),
 })
 

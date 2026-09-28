@@ -34,6 +34,7 @@ import {
 import { checkRed } from '../gates/red-check'
 import { runBunTests, testFilesAmong } from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
+import { outsideLinks } from '../git/outside-links'
 import { pathText } from '../git/path-text'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
@@ -182,17 +183,67 @@ const watchPrepare = async <Result>({
     return result
 }
 
-/** A ticket's changes, less what the prepare command made. */
-const ticketChanges = async ({
+/**
+ * The paths the engine leaves out of the changes at `cwd`: what prepare
+ * made (`prepare_made`), and every untracked symlink pointing outside the
+ * checkout, which no commit may hold (#496). Such a link not noted yet is
+ * most likely a prepare run's from before the engine noted what prepare
+ * made (an older engine's run, resumed); it is journaled as
+ * `prepare_made { paths, outside_links: true }`, so every later step leaves
+ * it out too.
+ *
+ * @param ticket - The step's ticket, `null` on the run branch.
+ * @returns Every path to leave out, the new links included.
+ *
+ * @example
+ * const leave_out = await leaveOutIn({ context, cwd, ticket: 11 })
+ * await context.git.commitAll({ cwd, message, leave_out })
+ */
+export const leaveOutIn = async ({
     context,
     cwd,
+    ticket,
 }: {
     context: BuildContext
     cwd: string
+    ticket: number | null
+}): Promise<string[]> => {
+    const { prepare_made } = context.state
+    const links = await outsideLinks({
+        cwd,
+        paths: difference(await context.git.untracked({ cwd }), prepare_made),
+    })
+    if (links.length > 0) {
+        context.journal.append({
+            kind: 'prepare_made',
+            ticket,
+            role: null,
+            content: { paths: links, outside_links: true },
+        })
+    }
+    return [...prepare_made, ...links]
+}
+
+/** The changes at `cwd`, less the paths in `leave_out`. */
+const ticketChanges = async ({
+    context,
+    cwd,
+    leave_out,
+}: {
+    context: BuildContext
+    cwd: string
+    leave_out: string[]
 }): Promise<FileChange[]> =>
     (await context.git.changes({ cwd })).filter(
-        ({ path }) => !context.state.prepare_made.includes(path)
+        ({ path }) => !leave_out.includes(path)
     )
+
+/**
+ * The red check's problem when the test-writer changed no file (what
+ * prepare made aside): the red commit would have nothing to commit.
+ */
+export const NO_RED_CHANGES =
+    'No file changed, so the red commit would be empty: write the tests for the criteria in the worktree (new or changed test files).'
 
 const runRedCheck = async ({
     context,
@@ -210,6 +261,16 @@ const runRedCheck = async ({
         what: `baseline test run for #${action.ticket}`,
     })
     const test_files = await testFilesIn({ context, cwd: path })
+    // Before prepare runs, so what it makes now can't count as a change.
+    const changed = await ticketChanges({
+        context,
+        cwd: path,
+        leave_out: await leaveOutIn({
+            context,
+            cwd: path,
+            ticket: action.ticket,
+        }),
+    })
     const prepare = await watchPrepare({
         context,
         cwd: path,
@@ -242,17 +303,23 @@ const runRedCheck = async ({
         sources,
     })
     // A failed prepare after the test-writer's turn is one more problem,
-    // for the test-writer's fix loop.
+    // for the test-writer's fix loop; so is a turn that changed no file,
+    // which would leave the red commit nothing to commit (#494).
+    const problems = [
+        ...(prepare === null || prepare.ok
+            ? []
+            : [
+                  `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
+              ]),
+        ...(changed.length > 0 ? [] : [NO_RED_CHANGES]),
+    ]
     const result =
-        prepare === null || prepare.ok
+        problems.length === 0
             ? checked
             : {
                   ...checked,
                   ok: false,
-                  problems: [
-                      `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
-                      ...checked.problems,
-                  ],
+                  problems: [...problems, ...checked.problems],
               }
     context.journal.append({
         kind: 'red_check',
@@ -313,13 +380,20 @@ const leftCommit = async ({
 
 /**
  * The leftover scan, then an engine commit of everything in `cwd`, both
- * journaled. What the prepare command made (`prepare_made`) is neither
- * scanned nor committed. A hit blocks the commit. A `fix` commit with
- * nothing to commit (every finding was a "won't fix") journals the current
- * commit with no files instead. A redo after a crash that already committed
- * (nothing left to commit, and HEAD is an unjournaled commit with this
- * message) journals that commit instead of making another; its scan, of a
- * clean worktree, finds nothing, as the first try's did before it committed.
+ * journaled. What the prepare command made (`prepare_made`) and untracked
+ * links pointing outside the checkout (see `leaveOutIn`) are neither
+ * scanned nor committed. A hit blocks the commit. A redo after a crash that
+ * already committed (nothing left to commit, and HEAD is an unjournaled
+ * commit with this message) journals that commit instead of making
+ * another; its scan, of a clean worktree, finds nothing, as the first try's
+ * did before it committed.
+ *
+ * Nothing to commit never runs `git commit`, which would fail (#494): the
+ * current commit is journaled with no files instead. That is a `fix` round
+ * whose every finding was a "won't fix", a green stage whose change a
+ * rebase found already on the run branch, or one whose every change came
+ * from prepare. (A red stage with nothing to commit fails its red check
+ * first, so it gets here only if the worktree changed after that check.)
  */
 export const commitIn = async ({
     context,
@@ -338,7 +412,8 @@ export const commitIn = async ({
     /** The spec and ticket text a new markdown file may be named in. */
     mention_text: string
 }) => {
-    const changes = await ticketChanges({ context, cwd })
+    const leave_out = await leaveOutIn({ context, cwd, ticket })
+    const changes = await ticketChanges({ context, cwd, leave_out })
     const test_files = testFilesAmong({
         files: changes.map(({ path }) => path),
         test_file_patterns: context.config.test_file_patterns,
@@ -373,9 +448,9 @@ export const commitIn = async ({
         })
         return
     }
-    if (changes.length === 0 && stage === 'fix') {
-        // The fixers changed nothing (every finding was a "won't fix"): no
-        // commit to make, so the re-review's new changes are empty.
+    if (changes.length === 0) {
+        // Nothing to commit: `git commit` would fail. For a fix round, the
+        // re-review's new changes are then empty.
         context.journal.append({
             kind: 'commit_made',
             ticket,
@@ -389,11 +464,7 @@ export const commitIn = async ({
         })
         return
     }
-    const commit = await context.git.commitAll({
-        cwd,
-        message,
-        leave_out: context.state.prepare_made,
-    })
+    const commit = await context.git.commitAll({ cwd, message, leave_out })
     context.journal.append({
         kind: 'commit_made',
         ticket,
