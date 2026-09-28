@@ -3,11 +3,17 @@ import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { $ } from 'bun'
+
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import type { DoctorRepo } from './doctor'
 import { runInit } from './init'
 
+import { loadEngineConfig } from '../config/engine-config'
 import { muninnSettings } from '../memory/muninn-mcp-client'
+import { createFakeMuninn } from '../testing/fake-muninn'
+import { git } from '../testing/practice-repo'
 
 /**
  * `luca init` end to end (seam 4): a throwaway home folder, with fakes
@@ -371,17 +377,21 @@ const init = ({
     skip_muninndb = false,
     skip_skills = false,
     yes = false,
+    repo = null,
 }: {
     fakes: Fakes
     skip_muninndb?: boolean
     skip_skills?: boolean
     /** The user's answer when asked. */
     yes?: boolean
+    /** The git repo init runs in, or `null` outside one. */
+    repo?: DoctorRepo | null
 }) =>
     runInit({
         home,
         skip_muninndb,
         skip_skills,
+        repo,
         muninn: fakes.muninn,
         muninn_health: async () => ({ version: '0.11.0' }),
         claude: fakes.claude.claude,
@@ -1009,5 +1019,296 @@ describe('luca init installs the planning skills', () => {
         await init({ fakes: { ...freshFakes(), paseo }, skip_skills: true })
 
         expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+    })
+})
+
+/** A `package.json` shaped like tmnb's: test, type, and lint scripts. */
+const TMNB_PACKAGE = JSON.stringify(
+    {
+        name: 'tmnb',
+        private: true,
+        scripts: {
+            test: 'bun test',
+            'type-check': 'tsc --noEmit',
+            lint: 'eslint .',
+        },
+    },
+    null,
+    4
+)
+
+const CONFIG_PATH = join('.luca', 'config.json')
+
+/** The labels a run needs, which setup creates in a repo with none. */
+const RUN_LABELS = ['needs-info', 'ready-for-agent', 'refactor']
+
+/** A fake GitHub side for the repo: labels, the login, and issue links. */
+const fakeGitHub = ({
+    repo_name = 'asibilia/tmnb',
+}: { repo_name?: string } = {}) => {
+    const have: string[] = []
+    const created: string[] = []
+    return {
+        github: {
+            login: async () => 'asibilia',
+            githubRepo: async () => repo_name,
+            issueLinks: async () => ({ sub_issues: true, dependencies: true }),
+            listLabels: async () => [...have],
+            createLabel: async ({ name }: { name: string }) => {
+                if (have.includes(name)) {
+                    throw new Error(`label ${name} already exists`)
+                }
+                have.push(name)
+                created.push(name)
+            },
+        },
+        /** The names of the labels created, oldest first. */
+        created: () => [...created],
+    }
+}
+
+/**
+ * A throwaway repo shaped like tmnb, with no `.luca/config.json`, its first
+ * commit pushed to a local bare `origin`.
+ */
+const makeTmnbRepo = async ({
+    root,
+}: {
+    root: string
+}): Promise<{ repo: string; origin: string }> => {
+    const repo = join(root, 'repo')
+    const origin = join(root, 'origin.git')
+    await $`git init -q --bare -b main ${origin}`.quiet()
+    await $`git init -q -b main ${repo}`.quiet()
+    const hooks = join(root, 'no-hooks')
+    await mkdir(hooks)
+    await git(repo, 'config', 'user.name', 'Practice')
+    await git(repo, 'config', 'user.email', 'practice@example.com')
+    await git(repo, 'config', 'commit.gpgsign', 'false')
+    await git(repo, 'config', 'core.hooksPath', hooks)
+    await Bun.write(join(repo, 'README.md'), '# Throwaway\n')
+    await Bun.write(join(repo, 'package.json'), TMNB_PACKAGE)
+    await git(repo, 'add', '-A')
+    await git(repo, 'commit', '-q', '-m', 'initial')
+    await git(repo, 'remote', 'add', 'origin', origin)
+    await git(repo, 'push', '-q', 'origin', 'main')
+    return { repo, origin }
+}
+
+describe('luca init inside a git repo', () => {
+    let root = ''
+    let repo = ''
+    let origin = ''
+
+    beforeEach(async () => {
+        root = realpathSync(await mkdtemp(join(tmpdir(), 'luca-init-repo-')))
+        ;({ repo, origin } = await makeTmnbRepo({ root }))
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('with no config, the computer part is done, then the config is written and the labels are created', async () => {
+        const fakes = freshFakes()
+        const paseo = fakePaseo()
+        const github = fakeGitHub()
+
+        await init({
+            fakes: { ...fakes, paseo },
+            repo: {
+                path: repo,
+                github: github.github,
+                memory: createFakeMuninn(),
+            },
+        })
+
+        // The computer part, as init does it outside a repo.
+        expect(events).toContain('muninn init --yes')
+        expect(fakes.claude.servers()).toEqual([RIGHT_ENTRY])
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        // The repo part, as luca setup does it.
+        expect(await Bun.file(join(repo, CONFIG_PATH)).exists()).toBe(true)
+        const loaded = await loadEngineConfig({ repo_root: repo })
+        if (!loaded.ok) throw new Error(loaded.error)
+        expect(loaded.config.checks.types).toBe('bun run type-check')
+        expect(loaded.config.muninn).toEqual({ vault: 'tmnb' })
+        expect(github.created().toSorted()).toEqual(RUN_LABELS)
+    }, 60_000)
+
+    test('the output shows the computer part, then the repo part as luca setup prints it', async () => {
+        await init({
+            fakes: freshFakes(),
+            repo: {
+                path: repo,
+                github: fakeGitHub().github,
+                memory: createFakeMuninn(),
+            },
+        })
+
+        const lines = printed().split('\n')
+        const computer = lines.indexOf('This computer:')
+        const memory_done = lines.indexOf(
+            '[luca init] MuninnDB is set up: runs will have memory.'
+        )
+        const repo_checks = lines.indexOf('This repo:')
+        const setup_report = lines.findIndex((line) =>
+            line.startsWith(`luca setup in ${repo}. Nothing was committed.`)
+        )
+        expect(memory_done).toBeGreaterThan(-1)
+        expect(computer).toBeGreaterThan(memory_done)
+        expect(repo_checks).toBeGreaterThan(computer)
+        expect(setup_report).toBeGreaterThan(repo_checks)
+        expect(lines).toContain('[luca setup] vault: done')
+        expect(printed()).toContain('/setup-matt-pocock-skills')
+    }, 60_000)
+
+    test('the repo part never commits', async () => {
+        const head = (await git(repo, 'rev-parse', 'HEAD')).trim()
+        const origin_head = (await git(origin, 'rev-parse', 'main')).trim()
+
+        await init({
+            fakes: freshFakes(),
+            repo: {
+                path: repo,
+                github: fakeGitHub().github,
+                memory: createFakeMuninn(),
+            },
+        })
+
+        expect((await git(repo, 'rev-parse', 'HEAD')).trim()).toBe(head)
+        expect((await git(origin, 'rev-parse', 'main')).trim()).toBe(
+            origin_head
+        )
+        expect(await git(repo, 'status', '--porcelain')).toContain(
+            '.luca/config.json'
+        )
+    }, 60_000)
+
+    test('a second run leaves the repo as the first run did', async () => {
+        const fakes = freshFakes()
+        const github = fakeGitHub()
+        const memory = createFakeMuninn()
+        const in_repo = { path: repo, github: github.github, memory }
+
+        await init({ fakes, repo: in_repo })
+        const config_after_first = await Bun.file(
+            join(repo, CONFIG_PATH)
+        ).text()
+        const created_after_first = github.created()
+        await init({ fakes, repo: in_repo })
+
+        expect(created_after_first.toSorted()).toEqual(RUN_LABELS)
+        expect(github.created()).toEqual(created_after_first)
+        expect(await Bun.file(join(repo, CONFIG_PATH)).text()).toBe(
+            config_after_first
+        )
+    }, 60_000)
+})
+
+describe('luca init outside a git repo', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = realpathSync(await mkdtemp(join(tmpdir(), 'luca-init-repo-')))
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('only the computer part is done: the output is what init inside a repo prints before its repo part', async () => {
+        const { repo } = await makeTmnbRepo({ root })
+        await init({
+            fakes: freshFakes(),
+            repo: {
+                path: repo,
+                github: fakeGitHub().github,
+                memory: createFakeMuninn(),
+            },
+        })
+        const inside = printed().split('\n')
+        // The same computer, fresh again, for the run outside a repo.
+        await rm(join(home, 'Library'), { recursive: true, force: true })
+        events.length = 0
+        logs.length = 0
+        const fakes = freshFakes()
+        const paseo = fakePaseo()
+
+        await init({ fakes: { ...fakes, paseo }, repo: null })
+
+        const outside = printed().split('\n')
+        expect(events).toContain('muninn init --yes')
+        expect(fakes.claude.servers()).toEqual([RIGHT_ENTRY])
+        expect(paseo.plugins()).toEqual([{ id: BOARD_ID, path: board_dir }])
+        expect(outside).toContain('This computer:')
+        expect(outside).not.toContain('This repo:')
+        expect(printed()).not.toContain('[luca setup]')
+        expect(printed()).not.toMatch(/^luca setup in /m)
+        expect(await Bun.file(join(home, CONFIG_PATH)).exists()).toBe(false)
+        // Inside a repo, init prints the same computer part, then more.
+        expect(inside.slice(0, outside.length)).toEqual(outside)
+        expect(inside.length).toBeGreaterThan(outside.length)
+        expect(inside).toContain('This repo:')
+    }, 60_000)
+})
+
+/** The section of a markdown file under the heading that starts with `heading`. */
+const sectionOf = ({
+    text,
+    heading,
+}: {
+    text: string
+    heading: string
+}): string => {
+    const start = text.indexOf(`\n${heading}`)
+    if (start === -1) throw new Error(`No ${heading} section`)
+    const rest = text.slice(start + 1)
+    const next = rest.indexOf('\n## ', 1)
+    return next === -1 ? rest : rest.slice(0, next)
+}
+
+/**
+ * Whether one paragraph of `text` says that `luca init`, run inside a repo,
+ * also sets that repo up.
+ */
+const saysInitSetsUpTheRepo = (text: string): boolean =>
+    text
+        .split(/\n\s*\n/)
+        .some(
+            (paragraph) =>
+                paragraph.includes('luca init') &&
+                /\b(?:inside|in|from inside|within) (?:a|your|the|that) (?:git )?repo\b/i.test(
+                    paragraph
+                ) &&
+                /\bset(?:s|ting)? (?:it|the repo|that repo|your repo) up\b|\bset(?:s|ting)? up (?:[^.\n]{0,40}\b)?(?:the|that|your) repo\b|\bruns? `?luca setup\b/i.test(
+                    paragraph
+                )
+        )
+
+describe('the docs say luca init inside a repo also sets it up', () => {
+    test("the publish package README's first-run steps say it", async () => {
+        const readme = await Bun.file(
+            join(import.meta.dir, '..', '..', '..', 'luca', 'README.md')
+        ).text()
+
+        const first_run = sectionOf({ text: readme, heading: '## First run' })
+        expect(saysInitSetsUpTheRepo(first_run)).toBe(true)
+    })
+
+    test('the migration guide says it', async () => {
+        const guide = await Bun.file(
+            join(
+                import.meta.dir,
+                '..',
+                '..',
+                '..',
+                '..',
+                'docs',
+                'migrating-to-v14.md'
+            )
+        ).text()
+
+        expect(saysInitSetsUpTheRepo(guide)).toBe(true)
     })
 })
