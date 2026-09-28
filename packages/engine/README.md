@@ -87,7 +87,7 @@ on with a run from its journal (#369).
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
-| `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
+| `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
 | `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
@@ -315,6 +315,27 @@ a `retry` runs it again. The prompts of fresh
 test-writers and implementers name the command, so they know tests needing
 its outputs may fail when they run them and pass at the engine's checks.
 Without `prepare`, nothing changes.
+
+**The prepare time limit (#485).** A first build in a fresh worktree can be
+slow: HeartGold's takes about 8 minutes. So `prepare` gets 30 minutes, not
+the 5 minutes other commands get. A repo with a slower build raises it with
+`prepare_timeout_ms` (a positive whole number of milliseconds) in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom", "prepare_timeout_ms": 3600000 }
+```
+
+A prepare that runs out of time fails like any other. Its output starts with
+"Timed out after 30 minutes" and says to raise `prepare_timeout_ms`.
+
+**A timeout stops everything (#485).** Every command the engine runs gets its
+own process group. When one runs out of time, the engine kills the whole
+group: the shell and all it started (`make`, the compiler, `wine`...). It
+then waits at most 2 seconds more for output, so a child that left the
+group can't hold the step open. The result says `timed_out: true`, with no
+exit code. If the engine itself is stopped (Ctrl-C, say), it passes the
+signal on to the commands it is running.
 
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree

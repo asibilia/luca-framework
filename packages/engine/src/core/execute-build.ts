@@ -18,6 +18,7 @@ import {
 } from '../agents/role-results'
 import { bunTestCommands, type EngineConfig } from '../config/engine-config'
 import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
+import { endedText } from '../gates/gate-schemas'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
 import {
     dependenciesChanged,
@@ -188,7 +189,7 @@ const runRedCheck = async ({
                   ...checked,
                   ok: false,
                   problems: [
-                      `The prepare command \`${prepare.command}\` failed (exit ${prepare.exit_code ?? 'none'}):\n${prepare.output}`,
+                      `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
                       ...checked.problems,
                   ],
               }

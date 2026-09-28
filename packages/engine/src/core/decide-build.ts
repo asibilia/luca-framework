@@ -43,6 +43,7 @@ import {
     rolePrompt,
 } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
+import { endedText } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     ChangesetBump,
@@ -416,7 +417,7 @@ const installFailure = ({
 }): string | null => {
     const { check } = install
     if (check === null || check.ok) return null
-    return `\`${check.command}\` failed in ${where} (exit ${check.exit_code ?? 'none'}). Agents never run the install, so fix the manifest or lockfile on the base branch and retry.\n${check.output}`
+    return `\`${check.command}\` failed in ${where} (${endedText(check)}). Agents never run the install, so fix the manifest or lockfile on the base branch and retry.\n${check.output}`
 }
 
 const commitStep = ({
@@ -979,7 +980,7 @@ const nextTicketStep = ({
         return stuck({
             ticket: number,
             reason: 'prepare_failed',
-            detail: `\`${prepare.command}\` failed in the worktree of #${number} (exit ${prepare.exit_code ?? 'none'}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
+            detail: `\`${prepare.command}\` failed in the worktree of #${number} (${endedText(prepare)}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
         })
     }
     if (progress.baseline === null) return baseline_step
