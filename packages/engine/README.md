@@ -82,6 +82,7 @@ on with a run from its journal (#369).
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
+| `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
@@ -150,7 +151,8 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's prepare command, if any, then its bun test
-                          commands, before any agent ──> baseline_prepared (with a prepare), baseline_tests
+                          commands, before any agent ──> prepare_made (if it made new untracked paths),
+                                                        baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -315,6 +317,33 @@ a `retry` runs it again. The prompts of fresh
 test-writers and implementers name the command, so they know tests needing
 its outputs may fail when they run them and pass at the engine's checks.
 Without `prepare`, nothing changes.
+
+**Files prepare makes stay out of the ticket (#486).** A build can leave
+files the repo's `.gitignore` misses. HeartGold's prepare links its vendor
+tools in as symlinks to folders, and its `.gitignore` names those paths as
+folders (`decomp/tools/bin/`). Git sees a symlink as a file, so the folder
+pattern misses it and the link shows up as untracked. Such paths are not an
+agent's work. Each time the engine runs prepare, it lists the untracked
+paths before and after. The new ones are journaled as
+`prepare_made { paths }`, right after that prepare run. From then on, in
+every checkout of the run, the engine leaves those paths out of the
+ticket's changes: the leftover scan skips them, no commit takes them (not
+even the changeset's), and the guard never judges an agent by them, so an
+agent that runs the build itself isn't blamed for what it rewrote. The
+engine does not write them into `.git/info/exclude`: a ticket's worktree
+shares that file with your own checkout, so it would hide them there too.
+
+Two limits. Only untracked paths count: a tracked file prepare changes
+still shows as the ticket's change. And if the engine crashes in the middle
+of a prepare run, the redo can't tell what the first try already made, so
+those paths count as the ticket's unless an earlier prepare run already
+noted them.
+
+An odd path in a worktree never crashes the run. The engine reads a
+changed path as git stores it: a symlink as its target (never followed), a
+folder as no text. A folder with its own git repo in it, which git can't
+commit as files, is a leftover scan hit, so the ticket gets stuck with that
+reason.
 
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
