@@ -5,7 +5,6 @@ import uniq from 'lodash/uniq'
 
 import type {
     AgentFailure,
-    BaselineRun,
     CommitStage,
     JournalRecord,
     RunStuckReason,
@@ -35,6 +34,7 @@ import type {
     GateCheck,
     LeftoverHit,
     RedCheckResult,
+    TestRun,
 } from '../gates/gate-schemas'
 import type {
     IntakeProblem,
@@ -139,11 +139,10 @@ export type TicketProgress = {
     worktree: ReplayedWorktree | null
     /** The install in the new worktree; its `check` is `null` with no manifest. */
     install: ReplayedInstall | null
-    /**
-     * Its own baseline test run, or the one it reused (`baseline_reused`),
-     * with the prepare command run before it.
-     */
-    baseline: BaselineRun | null
+    /** The prepare command run before its baseline tests (`baseline_prepared`). */
+    prepare: GateCheck | null
+    /** Its own baseline test run, or the one it reused (`baseline_reused`). */
+    baseline: TestRun | null
     /**
      * The run-branch commit the baseline was taken at. It stays when a rebase
      * moves the worktree, so the baseline is only lent to tickets from there.
@@ -534,6 +533,7 @@ export type RunState = {
 export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     worktree: null,
     install: null,
+    prepare: null,
     baseline: null,
     baseline_sha: null,
     test_writer: null,
@@ -1823,6 +1823,8 @@ const progressChange = ({
             return { worktree: record.content }
         case 'dependencies_installed':
             return { install: { check: record.content.check } }
+        case 'baseline_prepared':
+            return { prepare: record.content.check }
         case 'baseline_tests':
             return {
                 baseline: record.content,
@@ -2121,8 +2123,7 @@ const resumedProgress = ({
         rejoins: 0,
         install:
             progress.install?.check?.ok === false ? null : progress.install,
-        baseline:
-            progress.baseline?.prepare?.ok === false ? null : progress.baseline,
+        prepare: progress.prepare?.ok === false ? null : progress.prepare,
         leftovers: {
             red: commits.red === null ? null : progress.leftovers.red,
             green: commits.green === null ? null : progress.leftovers.green,

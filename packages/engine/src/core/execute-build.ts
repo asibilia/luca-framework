@@ -953,25 +953,16 @@ export const executeBuildAction = async ({
                 config: context.config,
                 cwd: path,
             })
-            if (prepare !== null && !prepare.ok) {
-                // No agent has worked yet, so the tests are left unrun and
-                // the ticket is stuck on the prepare command's output.
+            if (prepare !== null) {
                 journal.append({
-                    kind: 'baseline_tests',
+                    kind: 'baseline_prepared',
                     ticket: action.ticket,
                     role: null,
-                    content: {
-                        command: prepare.command,
-                        ok: false,
-                        exit_code: prepare.exit_code,
-                        no_test_files: false,
-                        cases: [],
-                        files_without_results: [],
-                        output: prepare.output,
-                        prepare,
-                    },
+                    content: { check: prepare },
                 })
-                return
+                // No agent has worked yet, so a failed prepare leaves the
+                // tests unrun and the ticket stuck on its output.
+                if (!prepare.ok) return
             }
             const run = await runBunTests({
                 cwd: path,
@@ -987,7 +978,7 @@ export const executeBuildAction = async ({
                 kind: 'baseline_tests',
                 ticket: action.ticket,
                 role: null,
-                content: prepare === null ? run : { ...run, prepare },
+                content: run,
             })
             return
         }

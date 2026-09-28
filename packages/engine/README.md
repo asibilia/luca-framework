@@ -149,7 +149,8 @@ install_dependencies    bun install --frozen-lockfile, if there's a package.json
 for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
-  run_baseline_tests      the config's bun test commands, before any agent ──> baseline_tests
+  run_baseline_tests      the config's prepare command, if any, then its bun test
+                          commands, before any agent ──> baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -198,7 +199,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
 with a changesets config (.changeset/config.json when the run branch was made, #461):
   write_changeset           git: commit one changeset (the changed workspace packages
                             minus the config's ignore, the bump from the spec's release:*
-                            label, patch with none, empty for release:none), then push ──> changeset_written
+                            label, patch with none; no changeset for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
@@ -306,10 +307,11 @@ incremental builds keep later runs quick. In the gates it is the `prepare`
 check, after any `install`; a failed one fails the gates without running the
 rest and goes through the gate fix loop, and a failed one at the red check is
 one more red check problem for the test-writer. A failed one at the baseline,
-before any agent worked, leaves the tests unrun (`baseline_tests` holds the
-failed check as `prepare`) and is stuck at once as `prepare_failed`, with its
-output: only a person can fix a build that can't run (a missing toolchain,
-say). Such a baseline is never lent to another ticket. The prompts of fresh
+before any agent worked, leaves the tests unrun and is stuck at once as
+`prepare_failed`, with its output: only a person can fix a build that can't
+run (a missing toolchain, say). The baseline's prepare is journaled as its
+own `baseline_prepared { check }`, before the `baseline_tests` it lets run;
+a `retry` runs it again. The prompts of fresh
 test-writers and implementers name the command, so they know tests needing
 its outputs may fail when they run them and pass at the engine's checks.
 Without `prepare`, nothing changes.
@@ -845,7 +847,10 @@ Paseo's plugin consent, and other `luca` copies are only reported.
 
 `luca init` ends with the computer checks, then, inside a git repo, runs
 `luca setup` there, which ends with the repo checks. The board reports its loaded version through its `board.version`
-RPC, read from its folder's package.json when Paseo loads it. The tests
+RPC, from its version module (`packages/board/server/luca-version.ts`), which
+Paseo bundles with the board: `dev (source)` from the repo's source, the
+package's version once packed (`packages/luca/scripts/copy-sources.ts` stamps
+it in the packed copy). The tests
 (`src/cli/doctor.test.ts`) run doctor end to end in a throwaway home folder
 and throwaway repos, with fakes for every tool.
 

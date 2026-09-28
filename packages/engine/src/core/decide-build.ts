@@ -871,9 +871,7 @@ const joinStep = ({
  * How a ticket with no baseline gets one. Tickets whose worktrees start from
  * the same run-branch commit share one baseline test run: a ticket reuses a
  * baseline taken at its commit, or else the first such ticket still able to
- * move runs the tests and the rest wait for it. A baseline whose prepare
- * command failed is never lent: each ticket runs that command itself.
- * `null`: it waits.
+ * move runs the tests and the rest wait for it. `null`: it waits.
  */
 const sharedBaselineStep = ({
     number,
@@ -894,7 +892,6 @@ const sharedBaselineStep = ({
         (other) =>
             other !== number &&
             progress(other).baseline !== null &&
-            progress(other).baseline?.prepare?.ok !== false &&
             progress(other).baseline_sha === base_sha
     )
     if (lender !== undefined) {
@@ -977,15 +974,15 @@ const nextTicketStep = ({
             detail: ticketFailure,
         })
     }
-    if (progress.baseline === null) return baseline_step
-    const { prepare } = progress.baseline
-    if (prepare !== undefined && !prepare.ok) {
+    const { prepare } = progress
+    if (prepare !== null && !prepare.ok) {
         return stuck({
             ticket: number,
             reason: 'prepare_failed',
             detail: `\`${prepare.command}\` failed in the worktree of #${number} (exit ${prepare.exit_code ?? 'none'}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
         })
     }
+    if (progress.baseline === null) return baseline_step
     if (progress.commits.green === null) {
         const rejoin = rejoinStep({
             snapshot,
