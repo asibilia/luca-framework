@@ -49,12 +49,23 @@ const FAILED_TRY_OPENINGS: Record<Exclude<AgentFailure, 'engine'>, string> = {
     agent: 'Your last turn failed before it gave a result.',
     result: "Your last turn ended without a result that fits your role's schema.",
     guard: 'Your last turn changed things your role may not change.',
+    evidence:
+        'The engine checked the evidence in your "already_done" answer, and some of it did not check out.',
 }
+
+const TRY_AGAIN =
+    "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result."
+
+const CHECK_EVIDENCE_AGAIN =
+    'If you named the wrong commits or tests, answer "already_done" again with the right ones: commits on the base branch, and tests that exist and pass there. ' +
+    'If the work is not all on the base branch, or a criterion has no passing test there, write the tests and answer "tests_written" instead.'
 
 /**
  * The follow-up an agent gets after a failed try (its turn failed, gave no
  * usable result, or broke its role's rules): what failed, the error, that
  * the engine undid every change the role may not make, and to try again.
+ * A test-writer whose `already_done` evidence did not check out (#495)
+ * hears what did not, and to fix its answer or write the tests instead.
  * The engine journals it word for word.
  *
  * @example
@@ -70,7 +81,7 @@ export const failedTryMessage = ({
     [
         FAILED_TRY_OPENINGS[failure],
         `## Error\n\n${clipOutput({ text: error })}`,
-        "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result.",
+        failure === 'evidence' ? CHECK_EVIDENCE_AGAIN : TRY_AGAIN,
     ].join('\n\n')
 
 /**

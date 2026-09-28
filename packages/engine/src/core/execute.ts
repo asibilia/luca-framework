@@ -677,6 +677,7 @@ const SLOW_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'install_dependencies',
     'run_baseline_tests',
     'run_red_check',
+    'check_already_done',
     'run_gates',
     'run_final_gates',
 ])

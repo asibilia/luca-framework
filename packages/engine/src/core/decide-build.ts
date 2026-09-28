@@ -2,8 +2,10 @@ import sortBy from 'lodash/sortBy'
 
 import {
     alreadyDoneStep,
+    checkAlreadyDoneStep,
     closeTicketStep,
     type AlreadyDoneAction,
+    type CheckAlreadyDoneAction,
 } from './already-done'
 import { changesetStep } from './changeset'
 import { crashDetail, crashedOut } from './decide-crashes'
@@ -238,6 +240,8 @@ export type BuildAction =
     | StuckAction
     /** A ticket whose work was already on the base branch (#484). */
     | AlreadyDoneAction
+    /** Check a test-writer's evidence that the work is already done (#495). */
+    | CheckAlreadyDoneAction
 
 /** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
 export const isRefactorTicket = ({
@@ -488,6 +492,24 @@ const testStep = ({
         })
     }
     if (test_writer.outcome === 'already_done') {
+        // Its evidence is checked first (#495). A failed check is a failed
+        // try, which `failedTurnStep` takes before this step; checking the
+        // same evidence again would only loop, so one left here is stuck.
+        const check = progress.already_done_check
+        if (check === null) {
+            return checkAlreadyDoneStep({
+                ticket,
+                base_sha: progress.worktree?.base_sha ?? 'HEAD',
+                result: test_writer,
+            })
+        }
+        if (!check.ok) {
+            return stuck({
+                ticket: number,
+                reason: 'agent_failed',
+                detail: `The test-writer's "already_done" evidence did not check out:\n${check.problems.map((problem) => `- ${problem}`).join('\n')}`,
+            })
+        }
         return alreadyDoneStep({
             spec_number: snapshot.spec.number,
             base_branch,
@@ -1084,7 +1106,10 @@ const notRemoved = ({
  * fixing in capped rounds, each re-reviewed.
  *
  * Already done (#484): a ticket whose test-writer found its work already on
- * the base branch is marked done (`mark_already_done`), not stuck. It counts
+ * the base branch has that evidence checked first (`check_already_done`,
+ * #495); evidence that doesn't check out is a failed try for the
+ * test-writer. Once it checks out, the ticket is marked done
+ * (`mark_already_done`), not stuck. It counts
  * as pushed for the tickets that wait on it, and the PR closes it. With no
  * ticket pushed, the engine closes the already-done tickets itself
  * (`close_ticket`); if every ticket was already done, the run ends with

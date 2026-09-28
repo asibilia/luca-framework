@@ -341,6 +341,29 @@ export const alreadyDone = ({
     },
 })
 
+/**
+ * The engine checked a test-writer's "already done" evidence (#495): it
+ * passed, or, with `problems`, it did not.
+ */
+export const alreadyDoneChecked = ({
+    ticket,
+    problems,
+}: {
+    ticket: number
+    /** What did not check out. Left out, none: the check passed. */
+    problems?: string[]
+}): JournalEntry => ({
+    kind: 'already_done_checked',
+    ticket,
+    role: null,
+    content: {
+        ok: (problems ?? []).length === 0,
+        problems: problems ?? [],
+        base_sha: 'b0',
+        tests: null,
+    },
+})
+
 /** The engine noted that a ticket's work is already done, on the spec issue. */
 export const ticketAlreadyDone = ({
     ticket,
