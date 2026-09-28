@@ -67,6 +67,70 @@ export const rejoinSection = ({
     return null
 }
 
+/** What joined the run branch, as a test update names it (#489). */
+export type JoinedSince = {
+    /** Where the ticket started from before the rebase. */
+    from_sha: string
+    /** Where it starts from now. */
+    base_sha: string
+    joined: { ticket: number; title: string }[]
+    files: string[]
+}
+
+/** How many changed files a test update lists before it says "and N more". */
+const FILES_LISTED = 30
+
+const joinedText = ({ since }: { since: JoinedSince }): string => {
+    const tickets =
+        since.joined.length === 0
+            ? '- (no ticket of this run: other commits on the run branch)'
+            : since.joined
+                  .map(({ ticket, title }) => `- #${ticket} ${title}`)
+                  .join('\n')
+    const listed = since.files.slice(0, FILES_LISTED)
+    const more = since.files.length - listed.length
+    const files =
+        since.files.length === 0
+            ? '- (none)'
+            : fileList(listed) + (more > 0 ? `\n- and ${more} more` : '')
+    return [
+        `What joined the run branch since this ticket's tests were written (\`git log ${since.from_sha}..${since.base_sha}\`):\n\n${tickets}`,
+        `The files it changed (\`git diff ${since.from_sha} ${since.base_sha}\`):\n\n${files}`,
+    ].join('\n\n')
+}
+
+/**
+ * The section a test-writer gets when its ticket's tests go back to it
+ * after a rebase (#489): what joined the run branch since the tests were
+ * written, the test the implementer sent back and why, and what to do. The
+ * implementer's code stays in the worktree.
+ *
+ * @example
+ * testUpdateSection({ since, bad_test })
+ * // '## The run branch changed under this ticket\'s tests\n\n...'
+ */
+export const testUpdateSection = ({
+    since,
+    bad_test,
+}: {
+    since: JoinedSince
+    bad_test: BadTest
+}): string =>
+    [
+        "## The run branch changed under this ticket's tests",
+        `Other tickets joined the run branch after this ticket's tests were written. The engine put this ticket's whole change on top of the run branch (commit ${since.base_sha}), as uncommitted changes in the worktree. The implementer's code is already there.`,
+        joinedText({ since }),
+        `The implementer says this test is wrong now:\n\n- File: ${bad_test.file}\n- Test: ${bad_test.name}\n- Reason: ${bad_test.reason}`,
+        [
+            "Update this ticket's tests so they fit what the run branch does now, and still check every criterion of this ticket. " +
+                "Read what joined (`git log`, `git show`) before you change a test: the run branch's behavior wins where it and an old test disagree.",
+            '- Edit test files only. Keep the code as it is: the implementer finishes it after you.',
+            "- Keep the other tests unless the run branch makes them wrong too. Don't weaken a test to make it pass: change what it expects only where the run branch changed.",
+            "- The ticket's code is already in the worktree, so your updated tests may pass now. That is fine here.",
+            '- Answer with the full criterion mapping again: every criterion, the kept tests included.',
+        ].join('\n'),
+    ].join('\n\n')
+
 /** A refactor ticket's implementer's task, in place of the usual one. */
 const REFACTOR_TASK =
     'This is a refactor ticket: change how the code is shaped, not what it does. Add no new behavior. ' +

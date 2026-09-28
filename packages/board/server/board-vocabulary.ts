@@ -224,6 +224,20 @@ export const BOARD_VOCABULARY = {
         tests: z.array(z.string()).catch([]),
         code: z.array(z.string()).catch([]),
     }),
+    /**
+     * After a rebase, a test the joined tickets made wrong went back to the
+     * ticket's test-writer (#489). `round` counts these per ticket.
+     */
+    tests_sent_back: z.looseObject({
+        round: z.number().int().min(1).catch(1),
+        bad_test: z
+            .looseObject({
+                file: z.string().catch(''),
+                name: z.string().catch(''),
+            })
+            .catch({ file: '', name: '' }),
+        joined: z.array(z.looseObject({ ticket: z.number().int() })).catch([]),
+    }),
     run_branch_pushed: z.looseObject({ branch: z.string() }),
     ticket_stuck: z.looseObject({
         reason: z.string(),
@@ -417,6 +431,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'gates_run' }),
     entry({ kind: 'ticket_joined' }),
     entry({ kind: 'ticket_rebased' }),
+    entry({ kind: 'tests_sent_back' }),
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
     entry({ kind: 'run_stuck' }),

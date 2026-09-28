@@ -1135,6 +1135,21 @@ const applyKind = ({
             })
         case 'ticket_rebased':
             return ticketRebased({ state, record })
+        case 'tests_sent_back':
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    step: 0,
+                    role: null,
+                    activity: 'updating tests for the run branch',
+                    tried: withTried({
+                        tried: card.tried,
+                        line: testsSentBackText({ content: record.content }),
+                    }),
+                }),
+            })
         case 'run_branch_pushed':
             return updateTicket({
                 state,
@@ -1729,6 +1744,19 @@ export const rebasedText = ({
     return files.length === 0
         ? 'Clashed with the run branch; fixing on top of it'
         : `Clashed with the run branch in ${files.join(', ')}`
+}
+
+/** A test sent back to the test-writer after a rebase (#489), in words. */
+export const testsSentBackText = ({
+    content,
+}: {
+    content: Extract<BoardRecord, { kind: 'tests_sent_back' }>['content']
+}): string => {
+    const test = [content.bad_test.file, content.bad_test.name]
+        .filter(Boolean)
+        .join(' > ')
+    const joined = content.joined.map(({ ticket }) => `#${ticket}`).join(', ')
+    return `Test update ${content.round}: ${test || 'a test'} is wrong on the run branch${joined === '' ? '' : ` after ${joined} joined`}; back to the test-writer`
 }
 
 /**

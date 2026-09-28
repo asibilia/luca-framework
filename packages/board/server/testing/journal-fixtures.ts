@@ -736,6 +736,34 @@ export const ticketRebased = ({
         content: { cause, base_sha: 'onto', tests, code, undone: [] },
     })
 
+/** After a rebase, a ticket's tests went back to its test-writer (#489). */
+export const testsSentBack = ({
+    ticket,
+    joined,
+}: {
+    ticket: number
+    joined: number[]
+}): Entry =>
+    entry({
+        kind: 'tests_sent_back',
+        ticket,
+        content: {
+            round: 1,
+            bad_test: {
+                file: 'src/menu.test.ts',
+                name: 'menu > lists three items',
+                reason: 'Another ticket added a fourth item.',
+            },
+            from_sha: 'b0',
+            base_sha: 'onto',
+            joined: joined.map((number) => ({
+                ticket: number,
+                title: `Ticket ${number}`,
+            })),
+            files: ['src/menu.ts'],
+        },
+    })
+
 export const worktreesRemoved = ({ paths }: { paths: string[] }): Entry =>
     entry({ kind: 'worktrees_removed', content: { paths } })
 

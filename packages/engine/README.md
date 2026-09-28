@@ -190,6 +190,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
                           uncommitted, conflict markers kept              ──> ticket_rebased
       clashed tests: launch_agent test-writer (fresh, told the files)
       clashed code:  launch_agent implementer (fresh, told the files)
+      bad_test:      send_tests_back (what joined, the files it changed) ──> tests_sent_back
+                     launch_agent test-writer (fresh: update the tests, keep the code)
+                     then the implementer (same session), ≤ 2 times, then stuck
       then run_gates ticket (and its fix loop), one commit_ticket green,
       a fresh launch_agent ticket-reviewer (re-review only the new changes),
       and the join again
@@ -284,9 +287,27 @@ change becomes **one** commit (`fix: rejoin #n <title> onto the run branch`;
 its old red and green commits are left behind), a fresh reviewer re-reviews
 only the new changes, and the ticket joins again. A ticket is rebased at most
 `MAX_REJOINS` (3) times; the next clash is stuck (`join_failed`), and so are
-failed gates after joining (`join_gates_failed`). A bad test while fixing on
-the run branch is stuck too: resetting the worktree would throw the ticket's
-change away.
+failed gates after joining (`join_gates_failed`).
+
+**A test the run branch made wrong (#489).** On top of the run branch, the
+implementer may answer `bad_test`: another ticket joined first and changed
+what the test should expect. Resetting the worktree would throw the ticket's
+change away, so the engine sends the tests back to the ticket's test-writer
+instead (`send_tests_back`). It looks up which tickets' commits the run
+branch got since the ticket's old base, and the files they changed, and
+journals it all with the bad test as `tests_sent_back`. A fresh test-writer
+is told what joined, the test, and the implementer's reason. It updates the
+tests (test files only) to fit the run branch, and still maps a test to
+every criterion. The implementer's code stays in the worktree. Then the
+implementer's session (a fresh one if it is gone) hears the tests changed,
+and finishes. There is no red check this time: the code is already there, so
+the updated tests may pass, and the ticket's red commit already proved its
+tests failed first. Instead, an answer that leaves a criterion without a test
+is stuck (`red_check_failed`), the gates run every test (the updated ones and
+the run branch's together), and a fresh reviewer re-reviews the change. A
+ticket gets at most `MAX_TEST_UPDATES` (2) of these; the next bad test is
+stuck (`bad_test`). A refactor ticket has no test-writer, so its bad test on
+the run branch is stuck at once.
 
 After a rebase the ticket review starts over: the first reviewer on top of
 the run branch gets the review's own re-review section (only the changes
@@ -478,7 +499,10 @@ ignored files kept) and sends the ticket to a fresh test-writer, told which
 test was bad and why. Its tests get their own red check and their own red
 commit (`test: replace a bad test for ...`), then a fresh implementer builds.
 The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
-test on a refactor ticket.
+test on a refactor ticket. Every bad-test stuck detail, and so the spec
+comment, names the test's file and name and quotes the implementer's reason,
+clipped like other outputs (#490). It says "no reason given" only when the
+implementer gave none.
 
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,
@@ -766,8 +790,8 @@ final_review_stuck
   starts over from scratch (`restart`); a copy that isn't ready is refused
   on the spec, and the ticket stays stuck. Otherwise it resumes
   (`resume`): a fresh agent (no old session), fresh counts (fix rounds,
-  failed tries, bad-test bounces, rebases), and whatever the owner changed in
-  its worktree is kept. The first fresh agent is told why it got stuck. A
+  failed tries, bad-test bounces, rebases, test updates), and whatever the
+  owner changed in its worktree is kept. The first fresh agent is told why it got stuck. A
   review fix round starts over as round 1, so the owner's edits are gated,
   committed, and re-reviewed. A ticket stuck at its join joins again.
 - **`skip`** leaves the ticket out, then every ticket that waits on it

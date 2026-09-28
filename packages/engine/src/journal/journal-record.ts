@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AgentSessionSchema } from '../agents/agent-launcher'
 import {
     AgentRoleSchema,
+    BadTestSchema,
     LensNameSchema,
     RoleResultSchema,
 } from '../agents/role-results'
@@ -612,6 +613,33 @@ const TicketRebasedEntrySchema = z.object({
 })
 
 /**
+ * After a rebase, the implementer sent one of the ticket's tests back as bad
+ * (#489): the tickets that joined the run branch since the ticket's old base
+ * made it wrong. The engine sends it to the ticket's test-writer to update,
+ * with the implementer's code kept in the worktree. `round` counts these per
+ * ticket, from 1. `joined` are the tickets whose commits the run branch got
+ * between `from_sha` (the ticket's base before the rebase) and `base_sha`
+ * (its base now), and `files` the files the run branch changed between them.
+ */
+const TestsSentBackEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('tests_sent_back'),
+    content: z.object({
+        round: z.number().int().positive(),
+        bad_test: BadTestSchema,
+        from_sha: z.string().min(1),
+        base_sha: z.string().min(1),
+        joined: z.array(
+            z.object({
+                ticket: z.number().int().positive(),
+                title: z.string(),
+            })
+        ),
+        files: z.array(z.string()),
+    }),
+})
+
+/**
  * The engine removed these git worktrees at the end of a run. Their branches
  * and the journal are kept.
  */
@@ -1199,6 +1227,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     GatesRunEntrySchema,
     TicketJoinedEntrySchema,
     TicketRebasedEntrySchema,
+    TestsSentBackEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     RunStuckEntrySchema,
@@ -1277,6 +1306,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     GatesRunEntrySchema.extend(STAMP_FIELDS),
     TicketJoinedEntrySchema.extend(STAMP_FIELDS),
     TicketRebasedEntrySchema.extend(STAMP_FIELDS),
+    TestsSentBackEntrySchema.extend(STAMP_FIELDS),
     RunBranchPushedEntrySchema.extend(STAMP_FIELDS),
     TicketStuckEntrySchema.extend(STAMP_FIELDS),
     RunStuckEntrySchema.extend(STAMP_FIELDS),
@@ -1354,6 +1384,7 @@ export const JournalKindSchema = z.enum([
     'gates_run',
     'ticket_joined',
     'ticket_rebased',
+    'tests_sent_back',
     'run_branch_pushed',
     'ticket_stuck',
     'run_stuck',
