@@ -1,5 +1,10 @@
 import sortBy from 'lodash/sortBy'
 
+import {
+    alreadyDoneStep,
+    closeTicketStep,
+    type AlreadyDoneAction,
+} from './already-done'
 import { changesetStep } from './changeset'
 import { crashDetail, crashedOut } from './decide-crashes'
 import {
@@ -43,6 +48,7 @@ import {
     rolePrompt,
 } from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
+import { endedText } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     ChangesetBump,
@@ -230,6 +236,8 @@ export type BuildAction =
     | { type: 'done'; outcome: 'all_skipped' }
     /** Telling the owner about stuck work, and acting on their replies. */
     | StuckAction
+    /** A ticket whose work was already on the base branch (#484). */
+    | AlreadyDoneAction
 
 /** Whether a ticket is a refactor ticket: it skips the test-writer and red check. */
 export const isRefactorTicket = ({
@@ -416,7 +424,7 @@ const installFailure = ({
 }): string | null => {
     const { check } = install
     if (check === null || check.ok) return null
-    return `\`${check.command}\` failed in ${where} (exit ${check.exit_code ?? 'none'}). Agents never run the install, so fix the manifest or lockfile on the base branch and retry.\n${check.output}`
+    return `\`${check.command}\` failed in ${where} (${endedText(check)}). Agents never run the install, so fix the manifest or lockfile on the base branch and retry.\n${check.output}`
 }
 
 const commitStep = ({
@@ -456,14 +464,18 @@ const badTestText = ({ progress }: { progress: TicketProgress }): string => {
 
 /**
  * The test-writer's half of a ticket: fresh tests, the red check and its fix
- * loop, then the red commit. `null` once the red commit is made.
+ * loop, then the red commit. `null` once the red commit is made. A ticket
+ * whose work the test-writer found already on the base branch is marked
+ * done instead (#484); one that changes no behavior is stuck, as a refactor
+ * ticket without its label.
  */
 const testStep = ({
     snapshot,
     ticket,
     progress,
     run_notes,
-}: StepArgs): BuildAction | null => {
+    base_branch,
+}: StepArgs & { base_branch: string }): BuildAction | null => {
     const number = ticket.number
     const { test_writer, red_check } = progress
     if (test_writer === null) {
@@ -475,13 +487,21 @@ const testStep = ({
             run_notes,
         })
     }
+    if (test_writer.outcome === 'already_done') {
+        return alreadyDoneStep({
+            spec_number: snapshot.spec.number,
+            base_branch,
+            ticket,
+            result: test_writer,
+        })
+    }
     if (test_writer.outcome === 'nothing_new_to_test') {
         return stuck({
             ticket: number,
             reason: 'nothing_new_to_test',
             detail:
-                `The test-writer found nothing new to test: ${test_writer.summary || 'no reason given'}\n` +
-                `If this ticket changes no behavior, add the \`${REFACTOR_LABEL}\` label and start the run again.`,
+                `The test-writer says this ticket changes no behavior, so no new test can fail first: ${test_writer.summary || 'no reason given'}\n` +
+                `A ticket like that is a refactor ticket: add the \`${REFACTOR_LABEL}\` label and retry it.`,
         })
     }
     if (red_check === null) {
@@ -927,8 +947,11 @@ const nextTicketStep = ({
     joiner,
     setup_files,
     baseline_step,
+    base_branch,
 }: StepArgs & {
     run_branch: ReplayedWorktree
+    /** The branch the run started from. */
+    base_branch: string
     /** Whether the ticket is first in the join queue. */
     joiner: boolean
     /** The config's test setup files. */
@@ -979,7 +1002,7 @@ const nextTicketStep = ({
         return stuck({
             ticket: number,
             reason: 'prepare_failed',
-            detail: `\`${prepare.command}\` failed in the worktree of #${number} (exit ${prepare.exit_code ?? 'none'}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
+            detail: `\`${prepare.command}\` failed in the worktree of #${number} (${endedText(prepare)}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
         })
     }
     if (progress.baseline === null) return baseline_step
@@ -993,7 +1016,13 @@ const nextTicketStep = ({
         if (rejoin !== null) return rejoin
         const tests = isRefactorTicket({ ticket })
             ? null
-            : testStep({ snapshot, ticket, progress, run_notes })
+            : testStep({
+                  snapshot,
+                  ticket,
+                  progress,
+                  run_notes,
+                  base_branch,
+              })
         if (tests !== null) return tests
         const code = codeStep({ snapshot, ticket, progress, run_notes })
         if (code !== null) return code
@@ -1053,6 +1082,13 @@ const notRemoved = ({
  * "Nothing new to test" is stuck at once. A refactor ticket skips the
  * test-writer and the red check. The ticket review's findings go back for
  * fixing in capped rounds, each re-reviewed.
+ *
+ * Already done (#484): a ticket whose test-writer found its work already on
+ * the base branch is marked done (`mark_already_done`), not stuck. It counts
+ * as pushed for the tickets that wait on it, and the PR closes it. With no
+ * ticket pushed, the engine closes the already-done tickets itself
+ * (`close_ticket`); if every ticket was already done, the run ends with
+ * nothing to do (`finish_nothing_to_do`).
  *
  * Failed tries: a failed agent turn goes back to the same session with what
  * failed (a reviewer gets a fresh launch), up to `MAX_FIX_ROUNDS` failed
@@ -1124,14 +1160,18 @@ const buildSteps = ({
     const skipped = (number: number) => progress(number).skipped !== null
     const pushed = (number: number) =>
         !numbers.includes(number) || progress(number).pushed !== null
+    const alreadyDone = (number: number) =>
+        progress(number).already_done !== null
+    /** Pushed, or its work was already on the base branch (#484). */
+    const finished = (number: number) => pushed(number) || alreadyDone(number)
 
     if (state.stop !== null) {
-        // Nothing new starts; pushed tickets' worktrees go, the rest stay.
+        // Nothing new starts; finished tickets' worktrees go, the rest stay.
         const paths = notRemoved({
             state,
             paths: numbers.flatMap((number) => {
                 const { worktree } = progress(number)
-                return pushed(number) && worktree !== null
+                return finished(number) && worktree !== null
                     ? [worktree.path]
                     : []
             }),
@@ -1188,7 +1228,7 @@ const buildSteps = ({
             return [...numbers.filter(isStuck).flatMap(stuckSteps), ...replies]
         }
         const first = numbers.find(
-            (number) => !pushed(number) && !skipped(number)
+            (number) => !finished(number) && !skipped(number)
         )
         if (first !== undefined) {
             return [
@@ -1222,7 +1262,7 @@ const buildSteps = ({
     const steps = numbers.flatMap((number): BuildAction[] => {
         const ticket = snapshot.tickets[number]
         const ticketProgress = progress(number)
-        if (ticket === undefined || ticketProgress.pushed !== null) return []
+        if (ticket === undefined || finished(number)) return []
         if (skipped(number)) return []
         // The same step cut off by crashes too often is not taken again.
         const crash = crashedOut({
@@ -1253,7 +1293,7 @@ const buildSteps = ({
             const ready =
                 queue.length === 0 &&
                 !stuckJoinOnRunBranch &&
-                ticket.blockers.every(pushed)
+                ticket.blockers.every(finished)
             return ready
                 ? [
                       {
@@ -1270,6 +1310,7 @@ const buildSteps = ({
             progress: ticketProgress,
             run_notes,
             run_branch,
+            base_branch,
             joiner: number === joiner,
             setup_files: state.config?.test_setup_files ?? [],
             baseline_step:
@@ -1279,7 +1320,7 @@ const buildSteps = ({
                           numbers,
                           progress,
                           can_move: (other) =>
-                              !pushed(other) &&
+                              !finished(other) &&
                               !skipped(other) &&
                               !isStuck(other),
                       })
@@ -1290,10 +1331,24 @@ const buildSteps = ({
     if (steps.length > 0 || replies.length > 0) return [...steps, ...replies]
 
     if (
-        numbers.every((number) => pushed(number) || skipped(number)) &&
+        numbers.every((number) => finished(number) || skipped(number)) &&
         !numbers.some(pushed)
     ) {
-        // Every ticket was skipped: no PR, and nothing left to build.
+        // No ticket joined the run branch: no PR, and nothing left to build.
+        // The engine closes the already-done tickets itself (#484).
+        const closing = numbers.filter(
+            (number) => alreadyDone(number) && !progress(number).closed
+        )
+        if (closing.length > 0) {
+            return closing.map((number) =>
+                closeTicketStep({
+                    spec_number,
+                    base_branch,
+                    ticket: number,
+                    shas: progress(number).already_done?.shas ?? [],
+                })
+            )
+        }
         const paths = notRemoved({
             state,
             paths: [
@@ -1305,9 +1360,19 @@ const buildSteps = ({
             ],
         })
         if (paths.length > 0) return [{ type: 'remove_worktrees', paths }]
-        return [{ type: 'done', outcome: 'all_skipped' }]
+        if (numbers.some(skipped)) {
+            return [{ type: 'done', outcome: 'all_skipped' }]
+        }
+        // Every ticket's work was already done: nothing to do.
+        return [
+            {
+                type: 'finish_nothing_to_do',
+                closed_tickets: snapshot.closed_tickets,
+                already_done: numbers.filter(alreadyDone),
+            },
+        ]
     }
-    if (numbers.every((number) => pushed(number) || skipped(number))) {
+    if (numbers.every((number) => finished(number) || skipped(number))) {
         const final = decideFinalReview({
             review: state.final_review,
             crashes: state.crashes,
@@ -1360,7 +1425,7 @@ const buildSteps = ({
         {
             type: 'invalid_journal',
             reason: `No ticket can move: ${numbers
-                .filter((number) => !pushed(number))
+                .filter((number) => !finished(number))
                 .map((number) => `#${number}`)
                 .join(', ')} wait on tickets that never join.`,
         },

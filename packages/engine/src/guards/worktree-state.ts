@@ -10,6 +10,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
+import omitBy from 'lodash/omitBy'
 import sortBy from 'lodash/sortBy'
 import uniq from 'lodash/uniq'
 
@@ -856,6 +857,7 @@ export const enforceAfterTurn = async ({
     may_edit_tests,
     config,
     before,
+    leave_out,
 }: {
     cwd: string
     branch: string
@@ -864,6 +866,12 @@ export const enforceAfterTurn = async ({
     may_edit_tests: boolean
     config: EngineConfig
     before: TurnSnapshot
+    /**
+     * Paths the prepare command made (`prepare_made`): never judged, so an
+     * agent that runs the build again is not blamed for its output. Left
+     * out, none.
+     */
+    leave_out?: string[]
 }): Promise<{ violations: Violation[]; outside: string[] }> => {
     const { common_dir } = before.saved_git
     const { gitProblems, outside, configFailed, files } = await withExcludeFile(
@@ -918,12 +926,16 @@ export const enforceAfterTurn = async ({
             },
         }
     )
+    // What the prepare command made is not the agent's to be judged on.
+    const skipped = new Set(leave_out)
+    const judged = (states: Record<string, string>) =>
+        omitBy(states, (_state, path) => skipped.has(path))
     const pathProblems = pathViolations({
         role,
         may_edit_tests,
         config,
-        before: before.files,
-        after: files,
+        before: judged(before.files),
+        after: judged(files),
     })
     const reinstall: string[] = []
     for (const violation of pathProblems) {

@@ -53,6 +53,8 @@ on with a run from its journal (#369).
 | `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
+| `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
+| `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
 | `src/limits/run-budget.ts` | Pure: the default run budget, a run's budget from its config, and its tokens so far. |
@@ -62,7 +64,8 @@ on with a run from its journal (#369).
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
 | `src/core/final-review-text.ts` | The **final review**'s texts: each lens's prompt (the whole run branch, the rule files for the rules lens, or a re-review of only the new changes), what each fixer is sent, and the open findings of a shipped final review. |
-| `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes, the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
+| `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes (an already-done one with its commits), the spec's open tickets not in the run, the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
+| `src/core/not-in-run.ts` | Just before the PR: the spec's open sub-issues that aren't in the run (#484). |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends), and `runEngine`: the scheduler that runs tickets' steps at the same time. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
@@ -82,12 +85,13 @@ on with a run from its journal (#369).
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
 | `src/guards/worktree-state.ts` | Snapshots a worktree and its git state, and undoes violations. The engine's own refs (the run branch, other tickets' branches) don't count. |
 | `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
+| `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
-| `src/shell/run-command.ts` | Runs a command with a timeout and collects its output. |
+| `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
 | `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
 | `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
@@ -150,9 +154,12 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's prepare command, if any, then its bun test
-                          commands, before any agent ──> baseline_prepared (with a prepare), baseline_tests
+                          commands, before any agent ──> prepare_made (if it made new untracked paths),
+                                                        baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
+    already_done: mark_already_done  comment on the spec issue; the ticket
+                          is done, like a pushed one                     ──> ticket_already_done
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
   commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
@@ -203,9 +210,14 @@ with a changesets config (.changeset/config.json when the run branch was made, #
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
-open_pull_request         tracker: one PR from the run branch            ──> pull_request_opened
+open_pull_request         tracker: re-read the spec's sub-issues, then one PR from the run branch ──> pull_request_opened
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
+with no ticket pushed, but some already done (#484):
+  close_ticket × n          tracker: comment on each already-done ticket, then close it ──> ticket_closed
+  remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
+  finish_nothing_to_do      every ticket was already done                ──> nothing_to_do (already_done)
+  done (nothing_to_do)      or, with a ticket skipped, done (all_skipped)
 ```
 
 With memory on, a `recall_memories` search (──> `memory_recalled`) also comes
@@ -316,6 +328,54 @@ test-writers and implementers name the command, so they know tests needing
 its outputs may fail when they run them and pass at the engine's checks.
 Without `prepare`, nothing changes.
 
+**The prepare time limit (#485).** A first build in a fresh worktree can be
+slow: HeartGold's takes about 8 minutes. So `prepare` gets 30 minutes, not
+the 5 minutes other commands get. A repo with a slower build raises it with
+`prepare_timeout_ms` (a positive whole number of milliseconds) in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom", "prepare_timeout_ms": 3600000 }
+```
+
+A prepare that runs out of time fails like any other. Its output starts with
+"Timed out after 30 minutes" and says to raise `prepare_timeout_ms`.
+
+**A timeout stops everything (#485).** Every command the engine runs gets its
+own process group. When one runs out of time, the engine kills the whole
+group: the shell and all it started (`make`, the compiler, `wine`...). It
+then waits at most 2 seconds more for output, so a child that left the
+group can't hold the step open. The result says `timed_out: true`, with no
+exit code. If the engine itself is stopped (Ctrl-C, say), it passes the
+signal on to the commands it is running.
+
+**Files prepare makes stay out of the ticket (#486).** A build can leave
+files the repo's `.gitignore` misses. HeartGold's prepare links its vendor
+tools in as symlinks to folders, and its `.gitignore` names those paths as
+folders (`decomp/tools/bin/`). Git sees a symlink as a file, so the folder
+pattern misses it and the link shows up as untracked. Such paths are not an
+agent's work. Each time the engine runs prepare, it lists the untracked
+paths before and after. The new ones are journaled as
+`prepare_made { paths }`, right after that prepare run. From then on, in
+every checkout of the run, the engine leaves those paths out of the
+ticket's changes: the leftover scan skips them, no commit takes them (not
+even the changeset's), and the guard never judges an agent by them, so an
+agent that runs the build itself isn't blamed for what it rewrote. The
+engine does not write them into `.git/info/exclude`: a ticket's worktree
+shares that file with your own checkout, so it would hide them there too.
+
+Two limits. Only untracked paths count: a tracked file prepare changes
+still shows as the ticket's change. And if the engine crashes in the middle
+of a prepare run, the redo can't tell what the first try already made, so
+those paths count as the ticket's unless an earlier prepare run already
+noted them.
+
+An odd path in a worktree never crashes the run. The engine reads a
+changed path as git stores it: a symlink as its target (never followed), a
+folder as no text. A folder with its own git repo in it, which git can't
+commit as files, is a leftover scan hit, so the ticket gets stuck with that
+reason.
+
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
 prune`). After a `stop` reply, only the worktrees of the tickets that pushed
@@ -340,6 +400,27 @@ for it (`agent_message_delivered`). Neither changes a ticket's progress; see
 A refactor ticket (labelled `refactor`) skips the test-writer, the red check,
 and the red commit: its implementer may follow renames into test files, but
 must not change what a test checks.
+
+**Already done (#484).** A test-writer that finds the ticket's work already
+on the base branch answers `already_done`, with its evidence: in `done_by`,
+the commits that did the work (`{ sha, title }`), and in `criteria`, the
+tests that already cover each criterion. It may only say so when every
+criterion is met and tested; an `already_done` with no commit or no tests is
+a failed try. The ticket is then done, not stuck, and nobody has to reply:
+`mark_already_done` comments on the spec issue with the commits and the
+tests, and journals `ticket_already_done`. Tickets that wait on it start as
+if it had pushed. The run's PR closes it, listed as
+`Closes #11: Add sum (already done before this run, by 3559c25)`. A run
+with no PR closes it itself: a comment on the ticket naming the commits,
+then `closeIssue` (`ticket_closed`). If every ticket was already done, the
+run ends with nothing to do (`finish_nothing_to_do` ──> `nothing_to_do`
+with `already_done`, exit 0).
+
+**Not in this run (#484).** Just before it opens the PR, the engine reads
+the spec's sub-issues again. An open one that isn't in the run (reopened
+while the run went, or closed at intake and reopened since) is named in the
+PR, under "Not in this run", with its number and title. The PR doesn't close
+it.
 
 **Fix loops.** A failed red check goes back to the same test-writer session,
 and failed gates to the same implementer session, with their output
@@ -405,7 +486,8 @@ finding with the fixer's and the reviewer's reasons.
 
 Anything else that fails (the leftover scan, a join after its last rebase),
 a fix loop or failed tries at their cap, a second bad test, a test-writer
-with nothing new to test, or an agent that needs a test setup file changed
+with nothing new to test (a ticket that changes no behavior, but has no
+`refactor` label), or an agent that needs a test setup file changed
 becomes `mark_stuck` ──> `ticket_stuck` with its reason. What happens next
 is in "Stuck work" below.
 
@@ -733,7 +815,8 @@ with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
 `bin` also names it `luca-run`, so an installed command can be found.
 
 It logs to stdout, always tells the board how it ended, and exits 0 when the
-run finished (PR opened, or nothing to do), 1 when it stopped (refused,
+run finished (PR opened, or nothing to do, such as every ticket already
+done), 1 when it stopped (refused,
 stuck, stopped by the launcher, crashed, or `--resume` of a run with no
 journal to go on from), and 2 on bad flags. `--unfinished` exits 0 once it
 printed the list.
@@ -910,8 +993,10 @@ and throwaway repos, with fakes for every tool.
 - **Engine commits skip git hooks** (`--no-verify`): the engine already ran
   the gates, and hooks that run tests from inside a run have frozen machines.
 - **A test-writer answering "nothing new to test"** makes the ticket stuck at
-  once, with a hint: if the ticket changes no behavior, add the `refactor`
-  label and start the run again.
+  once. That answer means the ticket changes no behavior, so the hint speaks
+  only to that: add the `refactor` label, then reply `retry`. A ticket whose
+  work is already done is a different answer, `already_done`, and is never
+  stuck.
 - **`may_edit_tests`** on each launch tells the launcher's guards whether the
   agent may edit test files: true for the test-writer and for a refactor
   ticket's implementer, false otherwise (`mayEditTests`). A follow-up keeps

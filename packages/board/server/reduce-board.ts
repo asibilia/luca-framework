@@ -40,7 +40,7 @@ const STUCK_REASONS: Record<string, string> = {
     agent_failed: 'An agent failed on its last try.',
     red_check_failed: 'The red check failed.',
     nothing_new_to_test:
-        'The test-writer found nothing new to test. If the ticket changes no behavior, label it refactor and start the run again.',
+        'The test-writer says the ticket changes no behavior, so there is nothing new to test. Label it refactor and retry it.',
     leftovers_found:
         'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks failed.',
@@ -54,6 +54,24 @@ const STUCK_REASONS: Record<string, string> = {
         'An agent needs a test setup file changed; only you may change one.',
     crashed: 'The engine crashed in the same step again and again.',
 }
+
+/**
+ * A commit's short sha, as git and GitHub show it.
+ *
+ * @example
+ * shortSha({ sha: '3559c25f5a1b' }) // '3559c25'
+ */
+export const shortSha = ({ sha }: { sha: string }): string => sha.slice(0, 7)
+
+/**
+ * An already-done ticket's activity (#484): calm, with the commits that
+ * did its work.
+ *
+ * @example
+ * alreadyDoneText({ shas: ['3559c25f5a1b'] }) // 'already done · 3559c25'
+ */
+export const alreadyDoneText = ({ shas }: { shas: string[] }): string =>
+    ['already done', ...shas.map((sha) => shortSha({ sha }))].join(' · ')
 
 /** Why a retry of an edited ticket was refused, in words. */
 export const RETRY_REFUSED_TEXT =
@@ -376,6 +394,8 @@ const STEP_WORDS: Record<string, string> = {
     push_final_fixes: 'pushing the run branch',
     write_changeset: 'writing the changeset',
     open_pull_request: 'opening the pull request',
+    mark_already_done: 'noting the work is already done',
+    close_ticket: 'closing the ticket',
 }
 
 /**
@@ -1275,6 +1295,23 @@ const applyKind = ({
                 ticket,
                 because: record.content.because,
             })
+        // Done, not stuck (#484): its work was already on the base branch.
+        case 'ticket_already_done':
+            return updateTicket({
+                state,
+                number: ticket,
+                update: (card) => ({
+                    ...card,
+                    stage: 'done',
+                    step: ALL_STEPS_DONE,
+                    role: null,
+                    open_check: null,
+                    activity: alreadyDoneText({ shas: record.content.shas }),
+                }),
+            })
+        // Its closing changes nothing the board shows.
+        case 'ticket_closed':
+            return state
         case 'ticket_retried':
             return ticketRetried({ state, record })
         // An ignored reply is only a chat row; the engine answered it.
@@ -1576,6 +1613,9 @@ const agentFinished = ({
             if (role === 'test-writer') {
                 if (card.open_check === 'review') {
                     return { ...done, activity: 'test findings answered' }
+                }
+                if (result.outcome === 'already_done') {
+                    return { ...done, activity: 'already done' }
                 }
                 return result.outcome === 'nothing_new_to_test'
                     ? { ...done, step: 2, activity: 'nothing new to test' }

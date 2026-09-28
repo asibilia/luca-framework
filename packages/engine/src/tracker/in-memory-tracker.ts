@@ -117,6 +117,9 @@ export const createInMemoryTracker = ({
                 number,
                 find(number).labels.filter((each) => each !== label)
             ),
+        closeIssue: async ({ number }) => {
+            store.set(number, { ...find(number), state: 'closed' })
+        },
         openPullRequest: async (request) => {
             // Pull requests share numbers with issues, as on GitHub.
             const number =

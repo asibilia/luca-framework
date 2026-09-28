@@ -102,10 +102,18 @@ const IntakeRefusedEntrySchema = z.object({
     content: z.object({ problems: z.array(IntakeProblemSchema) }),
 })
 
+/**
+ * The run ends with nothing to do: at intake, as every ticket of the spec
+ * is closed, or after it, as every ticket's work was already on the base
+ * branch (`already_done`, #484; the engine closed those tickets).
+ */
 const NothingToDoEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('nothing_to_do'),
-    content: z.object({ closed_tickets: z.array(z.number().int()) }),
+    content: z.object({
+        closed_tickets: z.array(z.number().int()),
+        already_done: z.array(z.number().int().positive()).default([]),
+    }),
 })
 
 const SpecSnapshotEntrySchema = z.object({
@@ -160,6 +168,24 @@ const BaselinePreparedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('baseline_prepared'),
     content: z.object({ check: GateCheckSchema }),
+})
+
+/**
+ * New untracked paths a run of the config's prepare command made in a
+ * checkout (#486): there after it ran, not before, such as a symlinked
+ * tools folder or a build file the repo's `.gitignore` misses. They are not
+ * an agent's work, so the engine never commits them or judges them by role
+ * rules, in any checkout of the run. Journaled right after the prepare run
+ * (at the baseline, the red check, or the gates), only when it made any.
+ * `ticket` is the step's, as on its `gates_run`: `null` in the final review.
+ */
+const PrepareMadeEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('prepare_made'),
+    content: z.object({
+        /** Worktree-relative, as git lists them (`git ls-files --others`). */
+        paths: z.array(z.string()),
+    }),
 })
 
 /** The tests as they stood before any agent worked on a ticket. */
@@ -756,6 +782,32 @@ const TicketSkippedEntrySchema = z.object({
 })
 
 /**
+ * A ticket whose work is already on the base branch (#484): its
+ * test-writer answered `already_done`, and `shas` are the commits that did
+ * the work. The ticket counts as done, not stuck, and tickets that wait on
+ * it go on. The engine said so on the spec issue, in its comment
+ * `comment_id`. The run's PR closes it; with no PR, `ticket_closed` follows.
+ */
+const TicketAlreadyDoneEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_already_done'),
+    content: z.object({
+        shas: z.array(z.string().min(1)),
+        comment_id: z.number().int(),
+    }),
+})
+
+/**
+ * The engine closed an already-done ticket itself, as the run opens no PR
+ * to close it, after its comment `comment_id` on the ticket said why.
+ */
+const TicketClosedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_closed'),
+    content: z.object({ comment_id: z.number().int() }),
+})
+
+/**
  * The owner replied `retry` to the stuck final review: its open fix round
  * starts over as round 1 with fresh fixers and fresh counts, keeping any
  * edits the owner made in the run branch's worktree.
@@ -1125,6 +1177,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema,
     TicketWorktreeCreatedEntrySchema,
     BaselinePreparedEntrySchema,
+    PrepareMadeEntrySchema,
     BaselineTestsEntrySchema,
     BaselineReusedEntrySchema,
     AgentStartedEntrySchema,
@@ -1171,6 +1224,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     ReplyIgnoredEntrySchema,
     TicketRetriedEntrySchema,
     TicketSkippedEntrySchema,
+    TicketAlreadyDoneEntrySchema,
+    TicketClosedEntrySchema,
     JoinUndoneEntrySchema,
     FinalReviewRetriedEntrySchema,
     MemoryRecalledEntrySchema,
@@ -1200,6 +1255,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunBranchCreatedEntrySchema.extend(STAMP_FIELDS),
     TicketWorktreeCreatedEntrySchema.extend(STAMP_FIELDS),
     BaselinePreparedEntrySchema.extend(STAMP_FIELDS),
+    PrepareMadeEntrySchema.extend(STAMP_FIELDS),
     BaselineTestsEntrySchema.extend(STAMP_FIELDS),
     BaselineReusedEntrySchema.extend(STAMP_FIELDS),
     AgentStartedEntrySchema.extend(STAMP_FIELDS),
@@ -1246,6 +1302,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     ReplyIgnoredEntrySchema.extend(STAMP_FIELDS),
     TicketRetriedEntrySchema.extend(STAMP_FIELDS),
     TicketSkippedEntrySchema.extend(STAMP_FIELDS),
+    TicketAlreadyDoneEntrySchema.extend(STAMP_FIELDS),
+    TicketClosedEntrySchema.extend(STAMP_FIELDS),
     JoinUndoneEntrySchema.extend(STAMP_FIELDS),
     FinalReviewRetriedEntrySchema.extend(STAMP_FIELDS),
     MemoryRecalledEntrySchema.extend(STAMP_FIELDS),
@@ -1274,6 +1332,7 @@ export const JournalKindSchema = z.enum([
     'run_branch_created',
     'ticket_worktree_created',
     'baseline_prepared',
+    'prepare_made',
     'baseline_tests',
     'baseline_reused',
     'agent_started',
@@ -1320,6 +1379,8 @@ export const JournalKindSchema = z.enum([
     'reply_ignored',
     'ticket_retried',
     'ticket_skipped',
+    'ticket_already_done',
+    'ticket_closed',
     'join_undone',
     'final_review_retried',
     'memory_recalled',

@@ -82,8 +82,10 @@ You write the failing tests for ONE ticket, before any code exists.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 
 Your result (structured output):
-- outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor), or "needs_setup_change" if the tests can't work without a change to a test setup file${setupFiles({ config })} (you may never change one): say which file and why in "setup_change", and the user makes the change.
+- outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor), or "already_done" if the ticket's work is already on the base branch, or "needs_setup_change" if the tests can't work without a change to a test setup file${setupFiles({ config })} (you may never change one): say which file and why in "setup_change", and the user makes the change.
+- Answer "already_done" only when EVERY acceptance criterion is already met on the base branch and already has a test that checks it. Look with \`git log\` and \`git show\`, and read the code and tests. Then write no tests, and give your evidence: in "done_by", the commits that did the work, as { sha, title }; in "criteria", the existing tests that cover each criterion. If even one criterion is not met, or not tested, write the tests instead.
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
+- done_by: empty, unless the outcome is "already_done".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
 - summary, assumptions, run_notes.
 

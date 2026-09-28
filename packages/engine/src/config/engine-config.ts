@@ -60,6 +60,11 @@ export const EngineConfigSchema = z.object({
      * that are gitignored, such as `bun run build:rom`. Agents never run it.
      */
     prepare: z.string().min(1).optional(),
+    /**
+     * How long the prepare command may run, in milliseconds; left out, the
+     * engine's default (`DEFAULT_PREPARE_TIMEOUT_MS`, 30 minutes).
+     */
+    prepare_timeout_ms: z.number().int().positive().optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
@@ -72,6 +77,26 @@ export const EngineConfigSchema = z.object({
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>
+
+/**
+ * How long the prepare command may run when the config doesn't say: 30
+ * minutes. A first build in a fresh worktree can take many minutes
+ * (HeartGold's takes about 8), far past the 5 minutes other commands get.
+ */
+export const DEFAULT_PREPARE_TIMEOUT_MS = 30 * 60 * 1000
+
+/**
+ * The prepare command's time limit: the config's `prepare_timeout_ms`, else
+ * the default.
+ *
+ * @example
+ * prepareTimeoutOf({ config: { ...config, prepare_timeout_ms: 3_600_000 } }) // 3_600_000
+ */
+export const prepareTimeoutOf = ({
+    config,
+}: {
+    config: EngineConfig
+}): number => config.prepare_timeout_ms ?? DEFAULT_PREPARE_TIMEOUT_MS
 
 /** One test command the engine runs, and how it reads the results. */
 export type TestCommand = { run: string; results: TestResults }
