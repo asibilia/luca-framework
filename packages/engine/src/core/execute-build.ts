@@ -369,9 +369,17 @@ const checkAlreadyDoneIn = async ({
     )
     const missing = files.filter((file) => !existsSync(join(path, file)))
     const test_files = await testFilesIn({ context, cwd: path })
-    const changed = (await ticketChanges({ context, cwd: path })).map(
-        (change) => change.path
-    )
+    const changed = (
+        await ticketChanges({
+            context,
+            cwd: path,
+            leave_out: await leaveOutIn({
+                context,
+                cwd: path,
+                ticket: action.ticket,
+            }),
+        })
+    ).map((change) => change.path)
     const runnable = files.filter(
         (file) =>
             !missing.includes(file) &&
