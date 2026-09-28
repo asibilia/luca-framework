@@ -4,10 +4,13 @@ import { basename, dirname, join } from 'node:path'
 
 import uniq from 'lodash/uniq'
 
+import type { AlreadyDoneAction } from './already-done'
 import { CHANGESET_CONFIG } from './changeset'
 import { mayEditTests, type BuildAction } from './decide-build'
 import type { FinalReviewAction } from './decide-final-review'
 import { retryTicket } from './execute-stuck'
+import { openTicketsNotInRun } from './not-in-run'
+import { withNotInRun } from './pull-request-text'
 import { closeSessions, openSessionsIn } from './session-close'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
@@ -865,12 +868,13 @@ export const executeBuildAction = async ({
     step,
 }: BuildDeps & {
     /**
-     * The final review's steps go to `executeFinalReviewAction`, and the
-     * changeset to `writeChangeset`.
+     * The final review's steps go to `executeFinalReviewAction`, the
+     * changeset to `writeChangeset`, and an already-done ticket's to
+     * `executeAlreadyDoneAction`.
      */
     action: Exclude<
         BuildAction,
-        FinalReviewAction | { type: 'write_changeset' }
+        FinalReviewAction | AlreadyDoneAction | { type: 'write_changeset' }
     >
     journal: Journal
     tracker: Tracker
@@ -1132,14 +1136,27 @@ export const executeBuildAction = async ({
             const adopted = context.step.redo
                 ? await tracker.findOpenPullRequest({ head })
                 : null
+            // The spec's open tickets not in the run are named in the PR.
+            const full = withNotInRun({
+                body,
+                open: await openTicketsNotInRun({
+                    tracker,
+                    state: context.state,
+                }),
+            })
             const opened =
                 adopted ??
-                (await tracker.openPullRequest({ head, base, title, body }))
+                (await tracker.openPullRequest({
+                    head,
+                    base,
+                    title,
+                    body: full,
+                }))
             journal.append({
                 kind: 'pull_request_opened',
                 ticket: null,
                 role: null,
-                content: { ...opened, head, base, title, body },
+                content: { ...opened, head, base, title, body: full },
             })
             return
         }

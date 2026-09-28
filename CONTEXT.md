@@ -100,6 +100,10 @@ _Avoid_: blocked, halted
 Stuck work asking a person for help.
 _Avoid_: halt
 
+**Already-done ticket**:
+A ticket whose work is already on the base branch when its run reaches it. It counts as done, not stuck, and the run's pull request closes it.
+_Avoid_: stale ticket, duplicate
+
 **Skipped ticket**:
 A ticket you chose to leave out of a run after it got stuck. It stays open for a later run, along with the tickets that wait on it.
 _Avoid_: dropped, abandoned

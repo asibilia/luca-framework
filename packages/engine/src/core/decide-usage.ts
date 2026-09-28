@@ -27,11 +27,11 @@ const sessionsIn = ({ records }: { records: JournalRecord[] }): SeqSession[] =>
 
 /**
  * The usage half of the decision step. Pure. Each ticket that is done
- * (pushed) or stuck gets its usage recorded once per finish: a retried
+ * (pushed, or already done) or stuck gets its usage recorded once per finish: a retried
  * ticket that finishes again with agent sessions newer than its last record
  * gets a new one, over all of its sessions, so its latest record is its whole
  * usage. The run gets its own once it is `ending` (its next action is
- * `done`). A ticket or run with no agent sessions records nothing. `null`
+ * `done`, or `finish_nothing_to_do` after its tickets were already done). A ticket or run with no agent sessions records nothing. `null`
  * when there is nothing to record.
  */
 export const decideUsage = ({
@@ -51,7 +51,9 @@ export const decideUsage = ({
         const progress = state.tickets[number]
         const finished =
             progress !== undefined &&
-            (progress.pushed !== null || progress.stuck !== null)
+            (progress.pushed !== null ||
+                progress.already_done !== null ||
+                progress.stuck !== null)
         if (!finished) continue
         const since = recorded.tickets[number] ?? 0
         const fresh = sessions.some(

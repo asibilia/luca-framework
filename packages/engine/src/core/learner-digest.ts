@@ -170,7 +170,9 @@ export const learnerPrompt = ({
                     ? 'stuck'
                     : progress.pushed !== null
                       ? 'joined the run branch'
-                      : 'unfinished'
+                      : progress.already_done !== null
+                        ? 'already done on the base branch'
+                        : 'unfinished'
         return `- #${number} ${title}: ${standing}`
     })
     const shown = uniqBy(

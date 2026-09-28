@@ -62,8 +62,9 @@ type FailedTurn = { role: AgentRole; session_id: string | null }
  * - a test-writer's or implementer's failed turn, until its next turn.
  *
  * Nothing else is ever followed up: reviewers, lenses, and the learner get
- * a fresh agent. A stuck or skipped ticket, the stuck final review, and a
- * stopped run (by the owner, billing, or crashes) keep no session.
+ * a fresh agent. A stuck, skipped, or already-done ticket, the stuck final
+ * review, and a stopped run (by the owner, billing, or crashes) keep no
+ * session.
  */
 const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
     const reachable = new Set<string>()
@@ -85,7 +86,13 @@ const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
         }
     }
     for (const progress of Object.values(state.tickets)) {
-        if (progress.stuck !== null || progress.skipped !== null) continue
+        if (
+            progress.stuck !== null ||
+            progress.skipped !== null ||
+            progress.already_done !== null
+        ) {
+            continue
+        }
         const { sessions, commits, review_fix } = progress
         keepFailed(progress.agent_failure)
         if (commits.red === null) keep(sessions['test-writer'])

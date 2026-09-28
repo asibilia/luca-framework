@@ -126,21 +126,39 @@ const SHARED_FIELDS = {
     run_notes: z.array(z.string()).default([]),
 }
 
+/** A commit on the base branch that did a ticket's work (#484). */
+export const DoneCommitSchema = z.object({
+    sha: z.string().min(1),
+    /** Its subject line, if the agent read it. */
+    title: z.string().default(''),
+})
+
+export type DoneCommit = z.infer<typeof DoneCommitSchema>
+
 /**
  * The test-writer's result. `nothing_new_to_test` is an honest answer for a
  * ticket that changes no behavior; the engine then makes the ticket stuck,
- * with a hint to label it `refactor`. `needs_setup_change` says the tests
- * can't be written without a change to a test setup file (`setup_change`),
- * which only the user may make.
+ * with a hint to label it `refactor`. `already_done` says the ticket's work
+ * is already on the base branch (#484): `done_by` names the commits that did
+ * it and `criteria` the existing tests that cover each criterion; the engine
+ * counts the ticket as done. `needs_setup_change` says the tests can't be
+ * written without a change to a test setup file (`setup_change`), which
+ * only the user may make.
  */
 export const TestWriterResultSchema = z.object({
     outcome: z.enum([
         'tests_written',
         'nothing_new_to_test',
+        'already_done',
         'needs_setup_change',
     ]),
-    /** For each criterion id (AC1, AC2, ...), the tests that check it. */
+    /**
+     * For each criterion id (AC1, AC2, ...), the tests that check it: new
+     * ones, or with `already_done`, the ones already on the base branch.
+     */
     criteria: z.array(CriterionTestsSchema).default([]),
+    /** With `already_done`: the base branch's commits that did the work. */
+    done_by: z.array(DoneCommitSchema).default([]),
     ...SETUP_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
@@ -317,8 +335,24 @@ export const parseRoleResult = ({
             error: `The ${role}'s result does not fit its schema:\n${z.prettifyError(parsed.error)}`,
         }
     }
-    // Every reviewer (the ticket reviewer and each lens) gives a verdict.
     const { result } = parsed.data
+    // "Already done" is only an answer with its evidence (#484).
+    if (parsed.data.role === 'test-writer') {
+        const { outcome, done_by, criteria } = parsed.data.result
+        if (outcome === 'already_done' && done_by.length === 0) {
+            return {
+                ok: false,
+                error: 'The test-writer\'s "already_done" names no commit: list in "done_by" the base branch\'s commits that did the work.',
+            }
+        }
+        if (outcome === 'already_done' && criteria.length === 0) {
+            return {
+                ok: false,
+                error: 'The test-writer\'s "already_done" names no tests: list in "criteria" the existing tests that cover each criterion.',
+            }
+        }
+    }
+    // Every reviewer (the ticket reviewer and each lens) gives a verdict.
     if ('verdict' in result) {
         const { verdict, findings } = result
         const expected = findings.some(isBlocking)

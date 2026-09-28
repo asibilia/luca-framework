@@ -128,7 +128,10 @@ export const BOARD_VOCABULARY = {
             })
         ),
     }),
-    nothing_to_do: z.looseObject({}),
+    /** The run ends with nothing to do; `already_done` is empty at intake (#484). */
+    nothing_to_do: z.looseObject({
+        already_done: z.array(z.number().int()).catch([]).default([]),
+    }),
     spec_snapshot: z.looseObject({
         spec: z.looseObject({ number: z.number(), title: z.string() }),
         ticket_order: z.array(z.number()).catch([]),
@@ -313,6 +316,12 @@ export const BOARD_VOCABULARY = {
     ticket_skipped: z.looseObject({
         because: z.number().int().nullable().catch(null),
     }),
+    /** A ticket whose work was already on the base branch (#484), done by `shas`. */
+    ticket_already_done: z.looseObject({
+        shas: z.array(z.string()).catch([]),
+    }),
+    /** The engine closed an already-done ticket, as the run opens no PR. */
+    ticket_closed: z.looseObject({}),
 
     // The final review (#367). Its agent, gate, scan, commit, and push
     // records are the usual kinds with `ticket: null`.
@@ -428,6 +437,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'reply_ignored' }),
     entry({ kind: 'ticket_retried' }),
     entry({ kind: 'ticket_skipped' }),
+    entry({ kind: 'ticket_already_done' }),
+    entry({ kind: 'ticket_closed' }),
     entry({ kind: 'final_review_started' }),
     entry({ kind: 'lens_started' }),
     entry({ kind: 'lens_finished' }),

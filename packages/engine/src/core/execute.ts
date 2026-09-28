@@ -8,6 +8,7 @@ import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
 import type { PlanAction } from './decide-plan'
 import type { UsageLineAction } from './decide-usage-line'
+import { executeAlreadyDoneAction } from './execute-already-done'
 import {
     buildContext,
     executeBuildAction,
@@ -489,12 +490,23 @@ export const executeAction = async ({
                 tracker,
                 step: tried,
             })
+        case 'mark_already_done':
+        case 'close_ticket':
+            return executeAlreadyDoneAction({
+                action,
+                journal,
+                tracker,
+                step: tried,
+            })
         case 'finish_nothing_to_do':
             journal.append({
                 kind: 'nothing_to_do',
                 ticket: null,
                 role: null,
-                content: { closed_tickets: action.closed_tickets },
+                content: {
+                    closed_tickets: action.closed_tickets,
+                    already_done: action.already_done,
+                },
             })
             return
         case 'snapshot_intake': {

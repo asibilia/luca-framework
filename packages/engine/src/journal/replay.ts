@@ -218,6 +218,13 @@ export type TicketProgress = {
     /** Left out of the run: skipped by reply, or waits on a skipped ticket. */
     skipped: { because: number | null } | null
     /**
+     * Its work was already on the base branch, done by these commits (#484):
+     * the ticket is done without a join, like a pushed one.
+     */
+    already_done: { shas: string[] } | null
+    /** The engine closed it (an already-done ticket in a run with no PR). */
+    closed: boolean
+    /**
      * Why the ticket got stuck before its latest `retry` resumed it; the next
      * fresh agent is told. Cleared once an agent starts.
      */
@@ -568,6 +575,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     stuck_report: null,
     reply: null,
     skipped: null,
+    already_done: null,
+    closed: false,
     retried: null,
     setup_change: null,
     crashed_turn: null,
@@ -1050,6 +1059,18 @@ const applyRecord = ({
                   }
                 : applyTicketRecord({ state: reported, record })
         }
+        // Its note on the spec issue is the engine's own, never a reply.
+        case 'ticket_already_done':
+            return applyTicketRecord({
+                state: {
+                    ...next,
+                    engine_comments: engineCommentsAfter({
+                        state,
+                        comment_id: record.content.comment_id,
+                    }),
+                },
+                record,
+            })
         case 'ticket_retried': {
             const { answer_id, mode } = record.content
             const install = state.run_branch_install?.check
@@ -1939,6 +1960,10 @@ const progressChange = ({
                 skipped: { because: record.content.because },
                 reply: null,
             }
+        case 'ticket_already_done':
+            return { already_done: { shas: record.content.shas } }
+        case 'ticket_closed':
+            return { closed: true }
         case 'join_undone':
             return { joined: null, join_gates: null }
     }
