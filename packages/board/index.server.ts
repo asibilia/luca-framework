@@ -1,7 +1,5 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type {
     PluginHandlerContext,
@@ -11,6 +9,7 @@ import type {
 import { createBoardServer } from './server/board-server'
 import { ENGINE_CHECK_MS } from './server/engine-watch'
 import { listProcesses } from './server/list-processes'
+import { LUCA_VERSION } from './server/luca-version'
 import { runCommand } from './server/run-command'
 import { defaultRunsDir } from './server/run-journals'
 import { defaultRegistryPath } from './server/run-registry'
@@ -36,29 +35,6 @@ import {
 type Paseo = PluginHandlerContext['paseo']
 
 const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
-
-/**
- * The Luca version in the board folder's package.json, which the published
- * package stamps with its own version; `null` when it can't be read.
- */
-const loadedVersion = (): string | null => {
-    try {
-        const manifest: unknown = JSON.parse(
-            readFileSync(
-                join(dirname(fileURLToPath(import.meta.url)), 'package.json'),
-                'utf8'
-            )
-        )
-        return typeof manifest === 'object' &&
-            manifest !== null &&
-            'version' in manifest &&
-            typeof manifest.version === 'string'
-            ? manifest.version
-            : null
-    } catch {
-        return null
-    }
-}
 
 /**
  * The board plugin's daemon side: the engine settings (their usage lines
@@ -154,9 +130,8 @@ export default function contribute(server: PluginServerContext) {
         connect({ context })
         return board.readBoard(input)
     })
-    // Read once, as loaded: after an upgrade it differs until a reload.
-    const version = loadedVersion()
-    server.handle(boardVersionRpc, () => ({ version }))
+    // Fixed as loaded: after an upgrade it differs until a reload.
+    server.handle(boardVersionRpc, () => ({ version: LUCA_VERSION }))
 
     // Lifecycle hooks time out at 30 s, so the first check is not awaited.
     void board.checkEngines()
