@@ -86,9 +86,9 @@ export const workspacePackages = async ({
  * Writes the run's changeset on the run branch, commits it, and pushes the
  * run branch, then journals `changeset_written`. It names every workspace
  * package with files changed since the run branch's base, minus the ones
- * the config ignores; `release:none` names none. A redo after a crash finds
- * its own file already committed and commits nothing twice. A repo whose
- * config is gone by now gets no changeset.
+ * the config ignores. A redo after a crash finds its own file already
+ * committed and commits nothing twice. A `release:none` spec (#476), or a
+ * repo whose config is gone by now, gets no changeset.
  */
 export const writeChangeset = async ({
     context,
@@ -118,21 +118,29 @@ export const writeChangeset = async ({
         })
         return
     }
+    if (bump === 'none') {
+        await git.push({ cwd, branch })
+        journal.append({
+            kind: 'changeset_written',
+            ticket: null,
+            role: null,
+            content: {
+                path: null,
+                bump,
+                packages: [],
+                sha: await git.head({ cwd }),
+            },
+        })
+        return
+    }
     const { ignore } = ChangesetConfigSchema.parse(
         await readJson(join(cwd, CHANGESET_CONFIG))
     )
-    const packages =
-        bump === 'none'
-            ? []
-            : changedPackages({
-                  packages: await workspacePackages({ cwd }),
-                  files: await git.filesBetween({
-                      cwd,
-                      from: base_sha,
-                      to: 'HEAD',
-                  }),
-                  ignore,
-              })
+    const packages = changedPackages({
+        packages: await workspacePackages({ cwd }),
+        files: await git.filesBetween({ cwd, from: base_sha, to: 'HEAD' }),
+        ignore,
+    })
     const path = changesetPath({ spec_number, run_id: basename(run_dir) })
     await Bun.write(join(cwd, path), changesetText({ packages, bump, summary }))
     const changes = await git.changes({ cwd })

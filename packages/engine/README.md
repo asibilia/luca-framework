@@ -149,7 +149,8 @@ install_dependencies    bun install --frozen-lockfile, if there's a package.json
 for each ticket, at the same time, once every ticket it waits on has pushed:
   create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
-  run_baseline_tests      the config's bun test commands, before any agent ──> baseline_tests
+  run_baseline_tests      the config's prepare command, if any, then its bun test
+                          commands, before any agent ──> baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
   run_red_check           criteria covered, new tests fail, old pass     ──> red_check
@@ -198,7 +199,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
 with a changesets config (.changeset/config.json when the run branch was made, #461):
   write_changeset           git: commit one changeset (the changed workspace packages
                             minus the config's ignore, the bump from the spec's release:*
-                            label, patch with none, empty for release:none), then push ──> changeset_written
+                            label, patch with none; no changeset for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
@@ -289,6 +290,31 @@ gates, as always. Undoing a join whose commits changed dependency files runs
 the frozen install on the run branch's checkout again
 (`dependencies_installed`, target `run_branch`); a failed one is stuck
 (`install_failed`).
+
+**A prepare command (#481).** Some repos' tests need files only a build
+makes, and a fresh worktree doesn't have them when they're gitignored. Such a
+repo names the build as `prepare` in `.luca/config.json`, as HeartGold does:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom" }
+```
+
+The engine (never an agent) runs it in a checkout before every test run
+there: the baseline, the red check, every gate run and fix-loop re-check, the
+run branch's gates after a join, and the final review's gates. It runs every
+time, not once, because a ticket's code changes what the build makes;
+incremental builds keep later runs quick. In the gates it is the `prepare`
+check, after any `install`; a failed one fails the gates without running the
+rest and goes through the gate fix loop, and a failed one at the red check is
+one more red check problem for the test-writer. A failed one at the baseline,
+before any agent worked, leaves the tests unrun and is stuck at once as
+`prepare_failed`, with its output: only a person can fix a build that can't
+run (a missing toolchain, say). The baseline's prepare is journaled as its
+own `baseline_prepared { check }`, before the `baseline_tests` it lets run;
+a `retry` runs it again. The prompts of fresh
+test-writers and implementers name the command, so they know tests needing
+its outputs may fail when they run them and pass at the engine's checks.
+Without `prepare`, nothing changes.
 
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
@@ -770,12 +796,15 @@ as a health check.
   that is a `bun test` command runs as written and is bun-readable, and the
   rest run as `bun run <script>` and are pass-or-fail. A `type-check` or
   `typecheck` script becomes the types check (`bun run <script>`), and
-  `lint` becomes `bun run lint`.
+  `lint` becomes `bun run lint`. Its `muninn.vault` is the repo's GitHub
+  name (the `repo` of `owner/repo`), and the done list names it and says it
+  can be changed.
 - **An old-Luca config** (any key a new-style config doesn't have, such as
   `lucaVersion` or `muninn.todoBacklog`): it keeps `muninn.vault` (or an
   older top-level `vault`) and writes the rest fresh from `package.json`, as
   above.
 - **A new-style config:** it leaves the file alone and only reports on it.
+  With no vault, the vault is a to-do.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
   `origin`, and MuninnDB can search the config's vault (found as `luca-run`
@@ -816,9 +845,12 @@ settings and rewrites its paths, and runs `luca setup` in a repo, then lists
 the files to commit. It never deletes and never commits. Installs, sign-ins,
 Paseo's plugin consent, and other `luca` copies are only reported.
 
-`luca init` ends with the computer checks, and `luca setup` with the repo
-checks. The board reports its loaded version through its `board.version`
-RPC, read from its folder's package.json when Paseo loads it. The tests
+`luca init` ends with the computer checks, then, inside a git repo, runs
+`luca setup` there, which ends with the repo checks. The board reports its loaded version through its `board.version`
+RPC, from its version module (`packages/board/server/luca-version.ts`), which
+Paseo bundles with the board: `dev (source)` from the repo's source, the
+package's version once packed (`packages/luca/scripts/copy-sources.ts` stamps
+it in the packed copy). The tests
 (`src/cli/doctor.test.ts`) run doctor end to end in a throwaway home folder
 and throwaway repos, with fakes for every tool.
 

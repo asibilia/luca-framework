@@ -117,8 +117,8 @@ export type BoardReadInput = z.input<typeof BoardReadInputSchema>
 export type BoardReadOutput = z.infer<typeof BoardReadOutputSchema>
 
 /**
- * API Response: the Luca version of the loaded board, read from its folder's
- * package.json when it was loaded; `null` when it has none.
+ * API Response: the Luca version of the loaded board, from its version
+ * module (the dev value from the repo's source); `null` from older boards.
  */
 export const BoardVersionOutputSchema = z.object({
     version: z.string().nullable(),

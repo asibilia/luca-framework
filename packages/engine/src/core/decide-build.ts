@@ -37,7 +37,11 @@ import {
 } from './review-text'
 import { retrySection, setupChangeDetail } from './stuck-text'
 
-import { rejoinSection, rolePrompt } from '../agents/role-prompts'
+import {
+    prepareSection,
+    rejoinSection,
+    rolePrompt,
+} from '../agents/role-prompts'
 import type { AgentRole, CriterionTests } from '../agents/role-results'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
@@ -970,6 +974,14 @@ const nextTicketStep = ({
             detail: ticketFailure,
         })
     }
+    const { prepare } = progress
+    if (prepare !== null && !prepare.ok) {
+        return stuck({
+            ticket: number,
+            reason: 'prepare_failed',
+            detail: `\`${prepare.command}\` failed in the worktree of #${number} (exit ${prepare.exit_code ?? 'none'}) before any agent worked on it. Agents never run the prepare command, so fix what it needs (a missing tool, say) and retry.\n${prepare.output}`,
+        })
+    }
     if (progress.baseline === null) return baseline_step
     if (progress.commits.green === null) {
         const rejoin = rejoinStep({
@@ -1053,6 +1065,44 @@ const notRemoved = ({
  * // [{ type: 'create_ticket_worktree', ticket: 11, ... }, { type: 'create_ticket_worktree', ticket: 12, ... }]
  */
 export const decideBuild = ({
+    state,
+    spec_number,
+}: {
+    state: RunState
+    spec_number: number
+}): BuildAction[] => {
+    const steps = buildSteps({ state, spec_number })
+    const command = state.config?.prepare
+    return command === undefined
+        ? steps
+        : steps.map((step) => withPrepareSection({ step, command }))
+}
+
+/**
+ * A fresh test-writer's or implementer's launch (a ticket's or the final
+ * review's fixers), with the repo's prepare command named in its prompt.
+ * Any other step as it is.
+ */
+const withPrepareSection = ({
+    step,
+    command,
+}: {
+    step: BuildAction
+    command: string
+}): BuildAction => {
+    const writesCode =
+        (step.type === 'launch_agent' || step.type === 'launch_final_fixer') &&
+        (step.role === 'test-writer' || step.role === 'implementer')
+    return writesCode
+        ? {
+              ...step,
+              prompt: `${step.prompt}\n\n${prepareSection({ command })}`,
+          }
+        : step
+}
+
+/** `decideBuild`'s steps, before the prepare command joins any prompt. */
+const buildSteps = ({
     state,
     spec_number,
 }: {

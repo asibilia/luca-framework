@@ -139,6 +139,8 @@ export type TicketProgress = {
     worktree: ReplayedWorktree | null
     /** The install in the new worktree; its `check` is `null` with no manifest. */
     install: ReplayedInstall | null
+    /** The prepare command run before its baseline tests (`baseline_prepared`). */
+    prepare: GateCheck | null
     /** Its own baseline test run, or the one it reused (`baseline_reused`). */
     baseline: TestRun | null
     /**
@@ -531,6 +533,7 @@ export type RunState = {
 export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     worktree: null,
     install: null,
+    prepare: null,
     baseline: null,
     baseline_sha: null,
     test_writer: null,
@@ -1820,6 +1823,8 @@ const progressChange = ({
             return { worktree: record.content }
         case 'dependencies_installed':
             return { install: { check: record.content.check } }
+        case 'baseline_prepared':
+            return { prepare: record.content.check }
         case 'baseline_tests':
             return {
                 baseline: record.content,
@@ -2092,8 +2097,9 @@ const retriedChange = ({
  *   branch after a rebase), then the gates;
  * - in a review fix round, the round starts over as round 1 with fresh
  *   fixers, so the user's changes are gated, committed, and re-reviewed;
- * - a leftover scan, a failed install, a reviewer's failed tries, a
- *   failed join, or a step crashes cut off just run again.
+ * - a leftover scan, a failed install, a failed prepare command at the
+ *   baseline, a reviewer's failed tries, a failed join, or a step crashes
+ *   cut off just run again.
  */
 const resumedProgress = ({
     progress,
@@ -2117,6 +2123,7 @@ const resumedProgress = ({
         rejoins: 0,
         install:
             progress.install?.check?.ok === false ? null : progress.install,
+        prepare: progress.prepare?.ok === false ? null : progress.prepare,
         leftovers: {
             red: commits.red === null ? null : progress.leftovers.red,
             green: commits.green === null ? null : progress.leftovers.green,
@@ -2128,6 +2135,7 @@ const resumedProgress = ({
     if (
         reason === 'leftovers_found' ||
         reason === 'install_failed' ||
+        reason === 'prepare_failed' ||
         reason === 'join_failed' ||
         reason === 'join_gates_failed' ||
         reason === 'crashed' ||

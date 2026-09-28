@@ -116,8 +116,8 @@ export const changedPackages = ({
 
 /**
  * A changeset's text: front matter naming each package with the bump, then
- * the summary. `release:none` (or no package) gives empty front matter, a
- * changeset that bumps nothing.
+ * the summary. `release:none` gets no changeset at all (#476), so it has no
+ * text.
  *
  * @example
  * changesetText({ packages: ['@acme/a'], bump: 'minor', summary: 'Add a' })
@@ -129,12 +129,11 @@ export const changesetText = ({
     summary,
 }: {
     packages: string[]
-    bump: ChangesetBump
+    bump: Exclude<ChangesetBump, 'none'>
     summary: string
 }): string => {
-    const releases =
-        bump === 'none'
-            ? []
-            : packages.map((name) => `${JSON.stringify(name)}: ${bump}\n`)
+    const releases = packages.map(
+        (name) => `${JSON.stringify(name)}: ${bump}\n`
+    )
     return `---\n${releases.join('')}---\n\n${summary}\n`
 }

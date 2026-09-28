@@ -151,6 +151,17 @@ const TicketWorktreeCreatedEntrySchema = z.object({
     content: WorktreeSchema,
 })
 
+/**
+ * The config's prepare command (#481), run in a new ticket worktree before
+ * its baseline tests. Journaled only with a prepare command. A failed one
+ * leaves the baseline tests unrun.
+ */
+const BaselinePreparedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('baseline_prepared'),
+    content: z.object({ check: GateCheckSchema }),
+})
+
 /** The tests as they stood before any agent worked on a ticket. */
 const BaselineTestsEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -597,6 +608,7 @@ export const StuckReasonSchema = z.enum([
     'join_failed',
     'join_gates_failed',
     'install_failed',
+    'prepare_failed',
     'setup_change_needed',
     'crashed',
 ])
@@ -772,8 +784,9 @@ export type ChangesetBump = z.infer<typeof ChangesetBumpSchema>
 /**
  * The engine committed the run's one changeset (#461) at `path` on the run
  * branch and pushed it (`sha` is the run branch's HEAD after). `packages`
- * are the ones it names (none for `release:none`). `path` is `null` when
- * the repo no longer had a changesets config, so nothing was written.
+ * are the ones it names. `path` is `null` when nothing was written: the
+ * spec is `release:none` (#476), or the repo no longer had a changesets
+ * config.
  */
 const ChangesetWrittenEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -1111,6 +1124,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketSnapshotEntrySchema,
     RunBranchCreatedEntrySchema,
     TicketWorktreeCreatedEntrySchema,
+    BaselinePreparedEntrySchema,
     BaselineTestsEntrySchema,
     BaselineReusedEntrySchema,
     AgentStartedEntrySchema,
@@ -1185,6 +1199,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketSnapshotEntrySchema.extend(STAMP_FIELDS),
     RunBranchCreatedEntrySchema.extend(STAMP_FIELDS),
     TicketWorktreeCreatedEntrySchema.extend(STAMP_FIELDS),
+    BaselinePreparedEntrySchema.extend(STAMP_FIELDS),
     BaselineTestsEntrySchema.extend(STAMP_FIELDS),
     BaselineReusedEntrySchema.extend(STAMP_FIELDS),
     AgentStartedEntrySchema.extend(STAMP_FIELDS),
@@ -1258,6 +1273,7 @@ export const JournalKindSchema = z.enum([
     'ticket_snapshot',
     'run_branch_created',
     'ticket_worktree_created',
+    'baseline_prepared',
     'baseline_tests',
     'baseline_reused',
     'agent_started',

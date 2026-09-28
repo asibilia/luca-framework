@@ -6,7 +6,8 @@
  *   engine/   the engine's TypeScript source, as is (the bins run it)
  *   board/    the board plugin's folder, as Paseo installs it from a folder
  *             source: its manifest, entry points, client, server, and shared
- *             code, and its own package.json
+ *             code, and its own package.json; its version module stamped
+ *             with this package's version
  *   LICENSE   the repo's license
  *
  * Test files, and the board's test helpers, stay out. There is no build: the
@@ -64,26 +65,48 @@ const BoardManifestSchema = z.looseObject({
 
 const LucaManifestSchema = z.looseObject({ version: z.string() })
 
+/** The board's version module, which holds the dev value in the repo. */
+const BOARD_VERSION_MODULE = join('server', 'luca-version.ts')
+
+/** This package's version. */
+const lucaVersion = async (): Promise<string> =>
+    LucaManifestSchema.parse(
+        await Bun.file(join(PACKAGE_DIR, 'package.json')).json()
+    ).version
+
 /**
  * The board's package.json for its folder in the tarball: its name and
  * module type, at this package's version, with no dependencies of its own
  * (this package carries them).
  */
-const boardManifest = async (): Promise<string> => {
+const boardManifest = async ({
+    version,
+}: {
+    version: string
+}): Promise<string> => {
     const board = BoardManifestSchema.parse(
         await Bun.file(join(BOARD_DIR, 'package.json')).json()
     )
-    const luca = LucaManifestSchema.parse(
-        await Bun.file(join(PACKAGE_DIR, 'package.json')).json()
-    )
     const manifest = {
         name: board.name,
-        version: luca.version,
+        version,
         private: true,
         type: board.type,
     }
     return `${JSON.stringify(manifest, null, 4)}\n`
 }
+
+/**
+ * The board's version module for its folder in the tarball, holding this
+ * package's version. Paseo bundles the board's server, so the version has
+ * to be in its code, not in a file beside it (#477).
+ */
+const boardVersionModule = ({ version }: { version: string }): string =>
+    [
+        '/** The Luca version of this board, stamped when the package was packed. */',
+        `export const LUCA_VERSION: string = ${JSON.stringify(version)}`,
+        '',
+    ].join('\n')
 
 const fill = async () => {
     await clean()
@@ -98,9 +121,14 @@ const fill = async () => {
             filter: keepBoardFile,
         })
     }
+    const version = await lucaVersion()
     await Bun.write(
         join(PACKAGE_DIR, 'board', 'package.json'),
-        await boardManifest()
+        await boardManifest({ version })
+    )
+    await Bun.write(
+        join(PACKAGE_DIR, 'board', BOARD_VERSION_MODULE),
+        boardVersionModule({ version })
     )
     await cp(join(REPO_DIR, 'LICENSE'), join(PACKAGE_DIR, 'LICENSE'))
 }

@@ -321,6 +321,50 @@ describe('the changeset on a run PR, end to end', () => {
         ])
     }, 90_000)
 
+    test('a spec labeled release:none gets a PR branch with no new changeset file and no changeset commit', async () => {
+        const { tracker, practice, records } = await runToPr({
+            files: CHANGESET_FILES,
+            changed: { 'packages/math/index.ts': MATH_CHANGE },
+            labels: ['release:none'],
+        })
+
+        const { head, changesets } = await prChangesets({
+            origin: practice.origin,
+            tracker,
+        })
+        expect(changesets).toEqual([])
+        const added = (
+            await git(
+                practice.origin,
+                'diff',
+                '--name-only',
+                '--diff-filter=A',
+                `main..${head}`,
+                '--',
+                '.changeset/'
+            )
+        )
+            .split('\n')
+            .filter((path) => path !== '')
+        expect(added).toEqual([])
+        const subjects = (
+            await git(practice.origin, 'log', '--format=%s', `main..${head}`)
+        )
+            .split('\n')
+            .filter((subject) => subject !== '')
+        expect(subjects).toEqual([
+            'feat: build #11 Add sum',
+            'test: add failing tests for #11 Add sum',
+        ])
+        const written = records.filter(
+            (record) => record.kind === 'changeset_written'
+        )
+        expect(written).toHaveLength(1)
+        expect(written[0]).toMatchObject({
+            content: { path: null, bump: 'none', packages: [] },
+        })
+    }, 90_000)
+
     test('packages the changesets config ignores are left out of the changeset', async () => {
         const { tracker, practice } = await runToPr({
             files: {

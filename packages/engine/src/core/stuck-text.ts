@@ -30,6 +30,8 @@ const REASON_LINES: Record<StuckReason, string> = {
     join_gates_failed:
         'The checks still fail once the ticket joins the run branch.',
     install_failed: 'Installing the dependencies failed.',
+    prepare_failed:
+        "The repo's prepare command failed before any agent worked.",
     setup_change_needed:
         'An agent needs a test setup file changed, and only you may change one.',
     crashed: 'The engine crashed in the same step, again and again.',
@@ -65,6 +67,8 @@ const suggestion = ({
             return `Its join was undone, so the run branch is safe. Reply ${retry} to join again and fix it on top of the run branch, or \`skip #${n}\`.`
         case 'install_failed':
             return `Fix the manifest or lockfile on the base branch, then reply ${retry}.`
+        case 'prepare_failed':
+            return `Fix what the prepare command needs on this computer (a missing tool, say), or the command in \`.luca/config.json\`, then reply ${retry}.`
         case 'setup_change_needed':
             return `Make that change yourself in the worktree, then reply ${retry}.`
         case 'crashed':

@@ -12,6 +12,7 @@ import type {
     Paseo,
 } from './computer-adapters'
 import { computerChecks } from './computer-checks'
+import type { DoctorRepo } from './doctor'
 import {
     formatChecks,
     hasProblem,
@@ -19,11 +20,12 @@ import {
     type DoctorCheck,
 } from './doctor-checks'
 import { ensureMuninnEntry, hideToken } from './muninn-entry'
+import { runSetup } from './setup'
 
 /**
  * `luca init`: sets up this computer for Luca, once, and is safe to run
  * again. It has three parts, each run even when an earlier one failed, and
- * ends with doctor's computer checks.
+ * ends with doctor's computer checks, then sets up the repo it runs in.
  *
  * Memory:
  *
@@ -47,6 +49,10 @@ import { ensureMuninnEntry, hideToken } from './muninn-entry'
  * The planning skills: installs the ones Luca's intake expects from
  * `mattpocock/skills` with the `skills` tool, skipping any already there.
  * `skip_skills` skips this part.
+ *
+ * The repo: inside a git repo, after the computer's checks, it runs `luca
+ * setup` for that repo (see `runSetup`), with the output setup gives on its
+ * own. Outside one, it stops after the computer part.
  *
  * MuninnDB's CLI, `claude mcp`, `launchctl`, Paseo, the question to the
  * user, the `skills` tool, and the computer's tools are adapters, so tests
@@ -258,17 +264,19 @@ const setUpMemory = async ({
 
 /**
  * Runs `luca init` against `home` with these adapters: memory, then the
- * board, then the planning skills, then doctor's computer checks, printed
- * last. Never throws: a failure is logged (token hidden) and ends with
- * `ok: false`, as does a check that is a problem.
+ * board, then the planning skills, then doctor's computer checks, then
+ * `luca setup` in `repo` when there is one. Never throws: a failure is
+ * logged (token hidden) and ends with `ok: false`, as does a check that is
+ * a problem or a setup to-do.
  *
  * @example
- * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, muninn, muninn_health, claude, launchctl, paseo, skills, ask, computer, ...(await lucaInstall()), log: console.log })
+ * const end = await runInit({ home: homedir(), skip_muninndb: false, skip_skills: false, repo: null, muninn, muninn_health, claude, launchctl, paseo, skills, ask, computer, ...(await lucaInstall()), log: console.log })
  */
 export const runInit = async ({
     home,
     skip_muninndb,
     skip_skills,
+    repo = null,
     muninn,
     muninn_health,
     claude,
@@ -286,6 +294,8 @@ export const runInit = async ({
     home: string
     skip_muninndb: boolean
     skip_skills: boolean
+    /** The git repo init runs in, set up after the computer; `null` outside one. */
+    repo?: DoctorRepo | null
     muninn: MuninnCli
     muninn_health: MuninnHealth
     claude: ClaudeMcp
@@ -333,12 +343,23 @@ export const runInit = async ({
         paseo,
     })
     for (const line of formatChecks({ checks: doctor })) log(line)
+    const setup =
+        repo === null
+            ? null
+            : await runSetup({
+                  repo: repo.path,
+                  github: repo.github,
+                  memory: repo.memory,
+                  base_branch: repo.base_branch,
+                  log,
+              })
     return {
         ok:
             memory.ok &&
             board.ok &&
             planning.ok &&
-            !hasProblem({ checks: doctor }),
+            !hasProblem({ checks: doctor }) &&
+            (setup?.ok ?? true),
         memory: memory.memory,
         message: planning.message,
         doctor,

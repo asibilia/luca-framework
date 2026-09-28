@@ -35,12 +35,13 @@ This guide is for people who used `@alecsibilia/luca` v13. It says what's gone, 
 
    It finds v13's files by their content, not their names, so your own files that share a name (like `research` or `plan`) are never touched. It removes the hook wiring before it moves the hook scripts, so no tool call breaks halfway. It never deletes: v13's files go to a dated backup folder, `~/.local/state/luca/v13-backup/<date>/`, with their paths kept, and each settings file it edits is copied there first. It keeps `~/.luca/` while its MuninnDB data folder isn't empty. It never commits: it lists the repo files to commit (such as the de-hooked `.claude/settings.json` and the new `.luca/config.json`), so your team gets the change too.
 
-3. Set up this computer and your repo:
+3. Set up this computer and your repo, from inside your repo:
 
    ```bash
    luca init
-   luca setup
    ```
+
+   Run inside a git repo, `luca init` sets up this computer, then runs `luca setup` to set up that repo too, keeping the vault your old config names. Run outside a repo, it sets up only this computer. For each other repo, run `luca setup` from inside it.
 
 4. Run `luca doctor` again. Every line should say OK.
 

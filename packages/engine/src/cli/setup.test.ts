@@ -619,6 +619,194 @@ describe('luca-setup checks what a run needs', () => {
     }, 60_000)
 })
 
+/** The lines of the "Done:" list in setup's end message. */
+const doneLines = (end: { message: string }): string[] => {
+    const start = end.message.indexOf('Done:\n')
+    const stop = end.message.indexOf('To do:', start)
+    if (start === -1 || stop === -1) throw new Error('No Done list')
+    return end.message
+        .slice(start, stop)
+        .split('\n')
+        .filter((line) => line.startsWith('- '))
+}
+
+const readConfigJson = async (): Promise<Record<string, unknown>> =>
+    z.record(z.string(), z.unknown()).parse(JSON.parse(await readConfigText()))
+
+describe('luca setup gives a new repo a vault', () => {
+    test('a repo with no config gets muninn.vault set to its GitHub repo name', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+
+        await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/movie-night' }).github,
+            memory: createFakeMuninn(),
+        })
+
+        const written = await readConfigJson()
+        expect(written.muninn).toEqual({ vault: 'movie-night' })
+        const loaded = await loadEngineConfig({ repo_root: repo })
+        if (!loaded.ok) throw new Error(loaded.error)
+        expect(loaded.config.muninn).toEqual({ vault: 'movie-night' })
+    }, 60_000)
+
+    test('the done list names the vault it wrote and says it can be changed', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/movie-night' }).github,
+            memory: createFakeMuninn(),
+        })
+
+        const named = doneLines(end).filter((line) =>
+            line.includes('movie-night')
+        )
+        expect(named.some((line) => /change/i.test(line))).toBe(true)
+        expect(printed(end)).toContain('movie-night')
+    }, 60_000)
+
+    test('the new vault, with no memories yet, passes the vault check', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+        const memory = createFakeMuninn()
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/movie-night' }).github,
+            memory,
+        })
+
+        expect(checkNamed(end, 'vault').status).toBe('done')
+        expect(
+            memory.calls().some(({ vault }) => vault === 'movie-night')
+        ).toBe(true)
+    }, 60_000)
+
+    test('a second run keeps the vault the first run wrote', async () => {
+        await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
+        const github = fakeGitHub({ repo_name: 'asibilia/movie-night' })
+        const memory = createFakeMuninn()
+
+        await setup({ github: github.github, memory })
+        const config_after_first = await readConfigText()
+        await setup({ github: github.github, memory })
+
+        expect(await readConfigText()).toBe(config_after_first)
+        expect((await readConfigJson()).muninn).toEqual({
+            vault: 'movie-night',
+        })
+    }, 60_000)
+})
+
+/**
+ * The other side of keeping a vault: in the same repo, with its config
+ * removed, setup gives it the GitHub repo name (`tmnb`) as its vault.
+ */
+const expectNoConfigGetsGitHubName = async () => {
+    await rm(join(repo, CONFIG_PATH))
+
+    await setup({
+        github: fakeGitHub({ repo_name: 'asibilia/tmnb' }).github,
+        memory: createFakeMuninn(),
+    })
+
+    expect((await readConfigJson()).muninn).toEqual({ vault: 'tmnb' })
+}
+
+describe('luca setup keeps an existing vault', () => {
+    test('a new-style config keeps its own vault, while a repo with no config gets the GitHub repo name', async () => {
+        const mine = `${JSON.stringify(
+            { checks: { test: 'bun test' }, muninn: { vault: 'my-notes' } },
+            null,
+            2
+        )}\n`
+        await makeRepo({
+            files: { 'package.json': TMNB_PACKAGE, [CONFIG_PATH]: mine },
+        })
+        const memory = createFakeMuninn({ vaults: { 'my-notes': [] } })
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/tmnb' }).github,
+            memory,
+        })
+
+        expect(await readConfigText()).toBe(mine)
+        expect(checkNamed(end, 'vault').status).toBe('done')
+        expect(memory.calls().some(({ vault }) => vault === 'my-notes')).toBe(
+            true
+        )
+        expect(memory.calls().some(({ vault }) => vault === 'tmnb')).toBe(false)
+        await expectNoConfigGetsGitHubName()
+    }, 60_000)
+
+    test('a v13 config keeps its muninn.vault, while a repo with no config gets the GitHub repo name', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CONFIG_PATH]: JSON.stringify(
+                    {
+                        lucaVersion: '13.1.0-alpha.0',
+                        oversight: 'full-auto',
+                        muninn: { vault: 'old-notes' },
+                    },
+                    null,
+                    2
+                ),
+            },
+        })
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/tmnb' }).github,
+            memory: createFakeMuninn({ vaults: { 'old-notes': [] } }),
+        })
+
+        expect((await readConfigJson()).muninn).toEqual({ vault: 'old-notes' })
+        expect(checkNamed(end, 'vault').status).toBe('done')
+        await expectNoConfigGetsGitHubName()
+    }, 60_000)
+
+    test('a v13 config keeps its top-level vault, while a repo with no config gets the GitHub repo name', async () => {
+        await makeRepo({
+            files: {
+                'package.json': TMNB_PACKAGE,
+                [CONFIG_PATH]: JSON.stringify(
+                    {
+                        lucaVersion: '12.4.0',
+                        oversight: 'full-auto',
+                        vault: 'older-notes',
+                    },
+                    null,
+                    2
+                ),
+            },
+        })
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/tmnb' }).github,
+            memory: createFakeMuninn({ vaults: { 'older-notes': [] } }),
+        })
+
+        expect((await readConfigJson()).muninn).toEqual({
+            vault: 'older-notes',
+        })
+        expect(checkNamed(end, 'vault').status).toBe('done')
+        await expectNoConfigGetsGitHubName()
+    }, 60_000)
+
+    test('a new-style config with no vault is left as it is and the vault is a to-do, while a repo with no config gets the GitHub repo name', async () => {
+        const mine = `${JSON.stringify({ checks: { test: 'bun test' } }, null, 2)}\n`
+        await makeRepo({
+            files: { 'package.json': TMNB_PACKAGE, [CONFIG_PATH]: mine },
+        })
+
+        const end = await setup({
+            github: fakeGitHub({ repo_name: 'asibilia/tmnb' }).github,
+            memory: createFakeMuninn(),
+        })
+
+        expect(await readConfigText()).toBe(mine)
+        expectToDo(end, 'vault')
+        await expectNoConfigGetsGitHubName()
+    }, 60_000)
+})
+
 describe('luca-setup never commits and is safe to run again', () => {
     test('it leaves the commits, locally and on origin, as they were', async () => {
         await makeRepo({
@@ -702,7 +890,7 @@ describe('luca setup ends with the planning-skills pointer', () => {
         await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
 
         const end = await setup({
-            github: fakeGitHub().github,
+            github: fakeGitHub({ login: null }).github,
             memory: createFakeMuninn(),
         })
 

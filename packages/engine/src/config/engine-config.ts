@@ -54,6 +54,12 @@ export const EngineConfigSchema = z.object({
             lint: z.string().min(1).optional(),
         })
         .default({}),
+    /**
+     * A command the engine runs in a checkout before every test run there
+     * (baseline, red check, gates), for repos whose tests need build outputs
+     * that are gitignored, such as `bun run build:rom`. Agents never run it.
+     */
+    prepare: z.string().min(1).optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),

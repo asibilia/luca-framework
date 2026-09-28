@@ -24,17 +24,15 @@ This is Luca v14, in alpha. Old Luca (v13) is still on npm; see [Coming from v13
 
    While v14 is in alpha, npm's `latest` is still v13, so install `@alecsibilia/luca@alpha` for now.
 
-2. Set up this computer, once:
+2. Set up this computer and your repo, once, from inside your repo:
 
    ```bash
    luca init
    ```
 
-3. Set up your repo, once, from inside it:
+   Run inside a git repo, `luca init` sets up this computer, then runs `luca setup` to set up that repo too. Run outside a repo, it sets up only this computer. For another repo later, run `luca setup` from inside it.
 
-   ```bash
-   luca setup
-   ```
+3. Check what `luca setup` wrote to `.luca/config.json`. It names your repo's GitHub name (like `tmnb`) as its memory vault in `muninn.vault`; change it if you want another.
 
 4. In Claude Code, in your repo, run `/setup-matt-pocock-skills` so the planning skills know your repo.
 5. Write a spec with `/to-spec`, then split it into tickets with `/to-tickets`.
@@ -44,8 +42,8 @@ This is Luca v14, in alpha. Old Luca (v13) is still on npm; see [Coming from v13
 
 | Command | What it does |
 | ------- | ------------ |
-| `luca init` | Sets up this computer, once (safe to run again): MuninnDB and its Claude Code entry, the board in Paseo with its engine and Bun paths, and the planning skills (`to-spec`, `to-tickets`, `setup-matt-pocock-skills`, `grilling`, `domain-modeling`). It asks before turning on Paseo's plugins, and leaves skills you already have alone. `--skip-skills` skips the skills. |
-| `luca setup` | Gets the repo in this folder ready: the labels a run needs (and the `release:*` labels when the repo uses changesets), `.luca/config.json`, and a check of GitHub sub-issues and dependencies. `--base <branch>` names the base branch. |
+| `luca init` | Sets up this computer, once (safe to run again): MuninnDB and its Claude Code entry, the board in Paseo with its engine and Bun paths, and the planning skills (`to-spec`, `to-tickets`, `setup-matt-pocock-skills`, `grilling`, `domain-modeling`). It asks before turning on Paseo's plugins, and leaves skills you already have alone. `--skip-skills` skips the skills. Inside a git repo, it then runs `luca setup` for that repo. |
+| `luca setup` | Gets the repo in this folder ready: the labels a run needs (and the `release:*` labels when the repo uses changesets), `.luca/config.json` (a new one gets the repo's GitHub name as its vault; an existing vault is kept), and a check of GitHub sub-issues and dependencies. `--base <branch>` names the base branch. |
 | `luca doctor` | Checks this computer, this repo when you're in one, and what v13 left behind. Each problem comes with its exact fix. `luca doctor --fix` fixes what's safe without asking: it never deletes (v13 files go to a dated backup folder) and never commits, and it lists the repo files to commit. |
 | `luca upgrade` | Moves to the newest Luca on your channel: `alpha` stays on `alpha`, and it never goes back to v13. It refuses while any run is going (stuck runs and limit waits count) and lists them. Then it reloads the board and says when to run `/reload-skills`. |
 | `luca upgrade --to <version>` | Installs that exact version, an older one too, to go back when a version breaks. |

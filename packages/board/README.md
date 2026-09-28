@@ -182,7 +182,7 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 
 The engine reads the replies a stuck ticket offers (`retry #n`, `skip #n`, `stop`) and a stuck final review offers (`retry`, `stop`, `ship`) on the spec issue, and the other tickets keep building while one is stuck. A run can also end with `stopped_by_user` (reply `stop`) or `all_skipped`; those come through the usual `ended` message.
 
-The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket, the run, or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), and `join_undone` (a stuck ticket's join was undone on the run branch, never pushed).
+The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket, the run, or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), `join_undone` (a stuck ticket's join was undone on the run branch, never pushed), and `baseline_prepared` (the repo's prepare command before a ticket's baseline tests, #481; a failed one is shown by the `ticket_stuck` after it).
 
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 
