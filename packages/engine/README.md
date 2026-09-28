@@ -290,6 +290,30 @@ the frozen install on the run branch's checkout again
 (`dependencies_installed`, target `run_branch`); a failed one is stuck
 (`install_failed`).
 
+**A prepare command (#481).** Some repos' tests need files only a build
+makes, and a fresh worktree doesn't have them when they're gitignored. Such a
+repo names the build as `prepare` in `.luca/config.json`, as HeartGold does:
+
+```json
+{ "checks": { "test": "bun test" }, "prepare": "bun run build:rom" }
+```
+
+The engine (never an agent) runs it in a checkout before every test run
+there: the baseline, the red check, every gate run and fix-loop re-check, the
+run branch's gates after a join, and the final review's gates. It runs every
+time, not once, because a ticket's code changes what the build makes;
+incremental builds keep later runs quick. In the gates it is the `prepare`
+check, after any `install`; a failed one fails the gates without running the
+rest and goes through the gate fix loop, and a failed one at the red check is
+one more red check problem for the test-writer. A failed one at the baseline,
+before any agent worked, leaves the tests unrun (`baseline_tests` holds the
+failed check as `prepare`) and is stuck at once as `prepare_failed`, with its
+output: only a person can fix a build that can't run (a missing toolchain,
+say). Such a baseline is never lent to another ticket. The prompts of fresh
+test-writers and implementers name the command, so they know tests needing
+its outputs may fail when they run them and pass at the engine's checks.
+Without `prepare`, nothing changes.
+
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
 prune`). After a `stop` reply, only the worktrees of the tickets that pushed

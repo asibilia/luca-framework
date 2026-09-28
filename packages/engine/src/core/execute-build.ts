@@ -17,7 +17,7 @@ import {
     type RoleResult,
 } from '../agents/role-results'
 import { bunTestCommands, type EngineConfig } from '../config/engine-config'
-import { runGates, shellCheck } from '../gates/gate-runner'
+import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
 import {
     dependenciesChanged,
@@ -155,6 +155,7 @@ const runRedCheck = async ({
         what: `baseline test run for #${action.ticket}`,
     })
     const test_files = await testFilesIn({ context, cwd: path })
+    const prepare = await prepareCheck({ config: context.config, cwd: path })
     const current = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
@@ -170,7 +171,7 @@ const runRedCheck = async ({
     )
     const sources: Record<string, string | null> = {}
     for (const file of files) sources[file] = await readOrNull(join(path, file))
-    const result = checkRed({
+    const checked = checkRed({
         criteria_ids: action.criteria_ids,
         mapping: action.mapping,
         baseline,
@@ -178,6 +179,19 @@ const runRedCheck = async ({
         test_files,
         sources,
     })
+    // A failed prepare after the test-writer's turn is one more problem,
+    // for the test-writer's fix loop.
+    const result =
+        prepare === null || prepare.ok
+            ? checked
+            : {
+                  ...checked,
+                  ok: false,
+                  problems: [
+                      `The prepare command \`${prepare.command}\` failed (exit ${prepare.exit_code ?? 'none'}):\n${prepare.output}`,
+                      ...checked.problems,
+                  ],
+              }
     context.journal.append({
         kind: 'red_check',
         ticket: action.ticket,
@@ -935,6 +949,30 @@ export const executeBuildAction = async ({
         }
         case 'run_baseline_tests': {
             const { path } = ticketWorktree({ state, ticket: action.ticket })
+            const prepare = await prepareCheck({
+                config: context.config,
+                cwd: path,
+            })
+            if (prepare !== null && !prepare.ok) {
+                // No agent has worked yet, so the tests are left unrun and
+                // the ticket is stuck on the prepare command's output.
+                journal.append({
+                    kind: 'baseline_tests',
+                    ticket: action.ticket,
+                    role: null,
+                    content: {
+                        command: prepare.command,
+                        ok: false,
+                        exit_code: prepare.exit_code,
+                        no_test_files: false,
+                        cases: [],
+                        files_without_results: [],
+                        output: prepare.output,
+                        prepare,
+                    },
+                })
+                return
+            }
             const run = await runBunTests({
                 cwd: path,
                 commands: bunTestCommands(context),
@@ -949,7 +987,7 @@ export const executeBuildAction = async ({
                 kind: 'baseline_tests',
                 ticket: action.ticket,
                 role: null,
-                content: run,
+                content: prepare === null ? run : { ...run, prepare },
             })
             return
         }

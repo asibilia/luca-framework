@@ -49,6 +49,7 @@ const STUCK_REASONS: Record<string, string> = {
     join_failed: "The ticket couldn't join the run branch.",
     join_gates_failed: 'The checks failed after the ticket joined.',
     install_failed: 'Installing the dependencies failed.',
+    prepare_failed: "The repo's prepare command failed.",
     setup_change_needed:
         'An agent needs a test setup file changed; only you may change one.',
     crashed: 'The engine crashed in the same step again and again.',

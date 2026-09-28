@@ -151,11 +151,22 @@ const TicketWorktreeCreatedEntrySchema = z.object({
     content: WorktreeSchema,
 })
 
+/**
+ * The baseline test run, with the config's prepare command run before it
+ * (`prepare`, left out with none). A failed prepare leaves the tests unrun:
+ * the run then holds the prepare command and its output.
+ */
+export const BaselineRunSchema = TestRunSchema.extend({
+    prepare: GateCheckSchema.optional(),
+})
+
+export type BaselineRun = z.infer<typeof BaselineRunSchema>
+
 /** The tests as they stood before any agent worked on a ticket. */
 const BaselineTestsEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('baseline_tests'),
-    content: TestRunSchema,
+    content: BaselineRunSchema,
 })
 
 /**
@@ -597,6 +608,7 @@ export const StuckReasonSchema = z.enum([
     'join_failed',
     'join_gates_failed',
     'install_failed',
+    'prepare_failed',
     'setup_change_needed',
     'crashed',
 ])

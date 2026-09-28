@@ -5,6 +5,7 @@ import uniq from 'lodash/uniq'
 
 import type {
     AgentFailure,
+    BaselineRun,
     CommitStage,
     JournalRecord,
     RunStuckReason,
@@ -34,7 +35,6 @@ import type {
     GateCheck,
     LeftoverHit,
     RedCheckResult,
-    TestRun,
 } from '../gates/gate-schemas'
 import type {
     IntakeProblem,
@@ -139,8 +139,11 @@ export type TicketProgress = {
     worktree: ReplayedWorktree | null
     /** The install in the new worktree; its `check` is `null` with no manifest. */
     install: ReplayedInstall | null
-    /** Its own baseline test run, or the one it reused (`baseline_reused`). */
-    baseline: TestRun | null
+    /**
+     * Its own baseline test run, or the one it reused (`baseline_reused`),
+     * with the prepare command run before it.
+     */
+    baseline: BaselineRun | null
     /**
      * The run-branch commit the baseline was taken at. It stays when a rebase
      * moves the worktree, so the baseline is only lent to tickets from there.
@@ -2092,8 +2095,9 @@ const retriedChange = ({
  *   branch after a rebase), then the gates;
  * - in a review fix round, the round starts over as round 1 with fresh
  *   fixers, so the user's changes are gated, committed, and re-reviewed;
- * - a leftover scan, a failed install, a reviewer's failed tries, a
- *   failed join, or a step crashes cut off just run again.
+ * - a leftover scan, a failed install, a failed prepare command at the
+ *   baseline, a reviewer's failed tries, a failed join, or a step crashes
+ *   cut off just run again.
  */
 const resumedProgress = ({
     progress,
@@ -2117,6 +2121,8 @@ const resumedProgress = ({
         rejoins: 0,
         install:
             progress.install?.check?.ok === false ? null : progress.install,
+        baseline:
+            progress.baseline?.prepare?.ok === false ? null : progress.baseline,
         leftovers: {
             red: commits.red === null ? null : progress.leftovers.red,
             green: commits.green === null ? null : progress.leftovers.green,
@@ -2128,6 +2134,7 @@ const resumedProgress = ({
     if (
         reason === 'leftovers_found' ||
         reason === 'install_failed' ||
+        reason === 'prepare_failed' ||
         reason === 'join_failed' ||
         reason === 'join_gates_failed' ||
         reason === 'crashed' ||

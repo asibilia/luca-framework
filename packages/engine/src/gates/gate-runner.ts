@@ -34,6 +34,26 @@ export const shellCheck = async ({
 }
 
 /**
+ * Runs the config's prepare command in `cwd`, as the `prepare` check, or
+ * `null` when the config has none. The engine runs it before every test run
+ * in a checkout, so tests that need build outputs find them up to date.
+ *
+ * @example
+ * const prepare = await prepareCheck({ config, cwd })
+ * if (prepare !== null && !prepare.ok) console.log(prepare.output)
+ */
+export const prepareCheck = async ({
+    config,
+    cwd,
+}: {
+    config: EngineConfig
+    cwd: string
+}): Promise<GateCheck | null> =>
+    config.prepare === undefined
+        ? null
+        : shellCheck({ name: 'prepare', command: config.prepare, cwd })
+
+/**
  * Runs every gate the engine config names, in order: each test command,
  * types, lint. All must pass. Unset gates are left out; intake refuses a
  * config with no test command. A `bun` test command runs with bun's JUnit
@@ -41,7 +61,8 @@ export const shellCheck = async ({
  *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
- * would only fail on the missing packages.
+ * would only fail on the missing packages. The config's prepare command
+ * runs next, as the `prepare` check, and a failed one stops there too.
  *
  * @example
  * const { ok, checks } = await runGates({ cwd, config, test_files, report_file, install: null })
@@ -68,6 +89,11 @@ export const runGates = async ({
         })
         checks.push(installed)
         if (!installed.ok) return { ok: false, checks }
+    }
+    const prepared = await prepareCheck({ config, cwd })
+    if (prepared !== null) {
+        checks.push(prepared)
+        if (!prepared.ok) return { ok: false, checks }
     }
     const { types, lint } = config.checks
     for (const [index, { run: command, results }] of testCommands({

@@ -109,6 +109,23 @@ export const runNotesSection = ({
                   .join('\n'),
           ]
 
+/**
+ * The section a test-writer or implementer gets when the repo has a prepare
+ * command: the engine runs it before its test runs, so tests that need its
+ * outputs may fail when the agent runs them itself.
+ *
+ * @example
+ * prepareSection({ command: 'bun run build:rom' })
+ * // '## This repo has a prepare command\n\n...'
+ */
+export const prepareSection = ({ command }: { command: string }): string =>
+    [
+        '## This repo has a prepare command',
+        `The engine runs \`${command}\` in the worktree before each of its test runs (the red check and the gates), so tests that need its outputs find them up to date. ` +
+            "Never run it yourself. Tests that need its outputs may fail when you run them, and still pass at the engine's checks. " +
+            "If the engine's prepare command fails after your turn, its output comes back to you like a failed check.",
+    ].join('\n\n')
+
 /** What each lens judges the whole run branch on, in one paragraph. */
 const LENS_TASK_TEXT =
     'You are one lens of the final review: a fresh, read-only reviewer of the WHOLE run branch, every ticket of the spec together. Write nothing.'
