@@ -1,5 +1,12 @@
 # @luca/board
 
+## 14.0.0-alpha.3
+
+### Patch Changes
+
+- 4bd296d: A crashed run whose engine is gone no longer blocks `luca upgrade` (#491), and `/luca-run resume <run id>` picks a run back up with the board attached (#493).
+- 4bd296d: When a rebase makes a ticket's tests wrong, the test-writer gets a turn to update them instead of the ticket getting stuck (#489), and a stuck bad test keeps the implementer's reason (#490).
+
 ## 14.0.0-alpha.2
 
 ### Patch Changes
