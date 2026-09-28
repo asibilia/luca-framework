@@ -267,7 +267,7 @@ describe('restarts: a run whose engine is gone', () => {
             "isn't restarted automatically"
         )
         expect(launcherRun.engine_ended?.message).toContain(
-            `luca-run --resume ${launcher_id}`
+            `/luca-run resume ${launcher_id}`
         )
         const billingRun = await runOf({
             harness: restarted,
@@ -464,7 +464,7 @@ describe('restarts: a run whose engine is gone', () => {
                 "Paseo couldn't check whether the run can go on"
             )
             expect(ended?.message).toContain(words)
-            expect(ended?.message).toContain(`luca-run --resume ${run_id}`)
+            expect(ended?.message).toContain(`/luca-run resume ${run_id}`)
             expect(restarted.logs.join('\n')).toContain(words)
         }
     )

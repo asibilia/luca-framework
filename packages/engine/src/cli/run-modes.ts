@@ -107,13 +107,39 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
 }
 
 /**
+ * How to go on with run `run_id` from its journal: `/luca-run resume <id>`
+ * in Paseo when the board plugin started it (so the board shows it live),
+ * else `luca-run --resume <id>`. Pure.
+ *
+ * @example
+ * resumeCommand({ run_id: 'r1', board: true }) // 'type /luca-run resume r1 in a Paseo chat'
+ * resumeCommand({ run_id: 'r1', board: false }) // 'run luca-run --resume r1'
+ */
+export const resumeCommand = ({
+    run_id,
+    board,
+}: {
+    run_id: string
+    board: boolean
+}): string =>
+    board
+        ? `type /luca-run resume ${run_id} in a Paseo chat`
+        : `run luca-run --resume ${run_id}`
+
+/** `text` as a sentence, then `more`. Pure. */
+const thenSay = ({ text, more }: { text: string; more: string }): string =>
+    `${text}${/[.!?]$/.test(text) ? '' : '.'} ${more}`
+
+/**
  * Runs the engine to its end and turns what happened into a `RunEnd`, then
  * closes the launcher's open sessions and tells the board. A crash is caught
- * and reported, never thrown.
+ * and reported, never thrown. With `run_id`, a crash or a launcher stop says
+ * how to go on from the journal (see `resumeCommand`).
  */
 const driveRun = async ({
     journal,
     run,
+    run_id,
     launcher,
     memory,
     board,
@@ -121,6 +147,8 @@ const driveRun = async ({
 }: {
     journal: Journal
     run: () => Promise<EngineAction>
+    /** The run's id, or `null` for one that can't go on again (the demo). */
+    run_id: string | null
     launcher: RunLauncher
     /** Closed at the end too. */
     memory?: MemoryDeps
@@ -133,9 +161,22 @@ const driveRun = async ({
     } catch (error) {
         const message = errorText(error)
         // A launcher stop is journaled as run_stopped, then thrown.
-        end = message.startsWith('Run stopped:')
-            ? { ok: false, message }
-            : { ok: false, message: `The engine crashed: ${message}` }
+        const stopped = message.startsWith('Run stopped:')
+        const text = stopped ? message : `The engine crashed: ${message}`
+        if (run_id === null) {
+            end = { ok: false, message: text }
+        } else {
+            const how = resumeCommand({ run_id, board: board !== null })
+            end = {
+                ok: false,
+                message: thenSay({
+                    text,
+                    more: stopped
+                        ? `Fix that, then, to go on from its journal, ${how}.`
+                        : `To go on from its journal, ${how}.`,
+                }),
+            }
+        }
     } finally {
         await launcher.closeAll?.()
         await memory?.client.close().catch(() => undefined)
@@ -230,6 +271,7 @@ export const runSpec = async ({
     }
     return driveRun({
         journal,
+        run_id,
         launcher,
         memory,
         board,
@@ -598,6 +640,8 @@ export const runDemo = async ({
         })
         const end = await driveRun({
             journal,
+            // A demo's journal is in a temp folder that is removed at its end.
+            run_id: null,
             launcher,
             memory,
             board,

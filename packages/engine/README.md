@@ -121,7 +121,7 @@ on with a run from its journal (#369).
 | `src/board/paseo-board-link.ts` | The board link over Paseo: the plugin's `engine.event` RPC through the daemon. |
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
-| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), and the practice `--demo`. |
+| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), how to resume one (`resumeCommand`), and the practice `--demo`. |
 | `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, and a quiet `luca hook`. |
 | `src/cli/setup-command.ts` | `luca setup`'s flags, wired to the real repo adapters. |
 | `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels and the config, then `repoChecks` once; `repoChecks` are its checks, read-only, for `luca doctor` too. |
@@ -132,7 +132,8 @@ on with a run from its journal (#369).
 | `src/cli/board-in-paseo.ts` | Puts the board into Paseo from Luca's folder, settings kept, and writes its engine and Bun paths (`placeBoard`, `setUpBoard`). |
 | `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
 | `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, reloads the board, and ends with doctor's computer checks. |
-| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals and the board's run registry. |
+| `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals, the board's run registry, and `ps`; and the unfinished runs nothing runs now. |
+| `src/cli/live-runs.ts` | Which runs have a live engine: every process's command line from `ps` (`listProcesses`), and the run ids in them (`liveRunIds`). A copy of the board's check. |
 | `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
@@ -829,7 +830,11 @@ paid by your Claude plan; see Guards) and closes its open sessions with
 no key each ask is journaled as `jev_failed` (`missing_key`), nothing is
 sent, and the run goes on. A launcher stop (`run_stopped`) ends the process
 with "Run stopped: <reason>"; run it again with `--resume <run-id>` (or the
-same `--spec` and `--run-id`) to pick the step up again. `runSpec` takes the launcher as an argument, so its tests
+same `--spec` and `--run-id`) to pick the step up again. A crash ends it with
+"The engine crashed: <error>". Both messages end with how to go on
+(`resumeCommand`): `/luca-run resume <run-id>` in a Paseo chat when the board
+started the run, so the board stays attached, else `luca-run --resume
+<run-id>`. `runSpec` takes the launcher as an argument, so its tests
 hand in scripted agents and never call a model.
 
 **The demo** (`--demo`) is safe to try the board with: it makes the practice
@@ -852,7 +857,26 @@ it runs on. Changes reach runs only by publishing. See
 package's README for changesets, the Version PR, and the `alpha` guard.
 
 `luca upgrade` moves this computer to another published version. It refuses
-while any run is going (`goingRuns` in `src/cli/going-runs.ts`).
+while any run is going (`goingRuns` in `src/cli/going-runs.ts`). A run is
+going when its engine process is running, or when its engine is gone but the
+board will restart it. Stuck runs and limit waits count, because their
+engine keeps running while it waits.
+
+- **Is the engine running?** Upgrade lists every process's command line with
+  `ps -axww -o command=`. A line with `--run-id <id>` or `--resume <id>`, as
+  whole words, means that run's engine is running. The board checks the same
+  way; the engine has its own copy (`src/cli/live-runs.ts`), because neither
+  package imports the other.
+- **Will the board restart it?** Yes when the board started the run, its
+  registry entry has no `ended`, it isn't a demo, it has automatic restarts
+  left (fewer than 3), and its journal can go on.
+- **`ps` fails:** every unfinished run counts as going, and upgrade says why.
+  Upgrading under a live engine is far worse than a refused upgrade.
+- **A run nothing runs** (it crashed, or the launcher stopped it) doesn't stop
+  the upgrade. Upgrade lists it and says how to pick it up on the new
+  version: `/luca-run resume <run id>` in a Paseo chat for a run the board
+  started, so the board shows it live, else `luca-run --resume <run id>`.
+  A billing stop never goes on, so it isn't listed.
 
 ## Setting up a repo
 

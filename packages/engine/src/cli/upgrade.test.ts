@@ -42,6 +42,23 @@ const logs: string[] = []
 const log = (line: string) => {
     logs.push(line)
 }
+/** Every process's command line, as `ps` would list them. */
+const processes: string[] = []
+/** When set, listing the processes fails with this message. */
+let ps_error: string | null = null
+
+/** A live engine for `run_id`, as `ps` shows the board's launch of it. */
+const engineRunning = ({
+    run_id,
+    flag = '--run-id',
+}: {
+    run_id: string
+    flag?: '--run-id' | '--resume'
+}) => {
+    processes.push(
+        `/home/me/.bun/bin/bun --no-env-file ${engine_path} ${flag} ${run_id} --repo /code --board-plugin luca-board`
+    )
+}
 
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-upgrade-home-')))
@@ -67,6 +84,8 @@ beforeEach(async () => {
     await Bun.write(engine_path, '#!/usr/bin/env bun\n')
     events.length = 0
     logs.length = 0
+    processes.length = 0
+    ps_error = null
 })
 
 afterEach(async () => {
@@ -233,6 +252,10 @@ const upgrade = ({
         board_dir,
         engine_path,
         bun_path,
+        list_processes: async () => {
+            if (ps_error !== null) throw new Error(ps_error)
+            return [...processes]
+        },
         log,
     })
 
@@ -311,11 +334,15 @@ const registryEntry = ({
     spec,
     run_repo,
     ended,
+    restarts = 0,
+    demo = false,
 }: {
     run_id: string
     spec: number
     run_repo: string
     ended: { ok: boolean; message: string } | null
+    restarts?: number
+    demo?: boolean
 }) => ({
     run_id,
     token: 'secret',
@@ -323,11 +350,11 @@ const registryEntry = ({
     workspace_id: 'workspace-1',
     repo: run_repo,
     spec,
-    demo: false,
+    demo,
     started_at: '2026-09-26T10:00:00.000Z',
     log_path: `/tmp/${run_id}.log`,
     ended,
-    restarts: 0,
+    restarts,
 })
 
 const writeRegistry = async ({ runs }: { runs: object[] }) => {
@@ -353,7 +380,7 @@ const freshFakes = ({
 })
 
 describe('luca upgrade refuses while a run is going', () => {
-    test('a going run, a run in a limit wait, a stuck run, and a board run are listed by spec and repo, and nothing is installed', async () => {
+    test('a going run, a run in a limit wait, a stuck run, and a board run, each with a live engine, are listed by spec and repo, and nothing is installed', async () => {
         const fakes = freshFakes()
         writeRun({
             run_id: 'run-going',
@@ -382,6 +409,11 @@ describe('luca upgrade refuses while a run is going', () => {
                 }),
             ],
         })
+        for (const run_id of ['run-going', 'run-limit', 'run-stuck']) {
+            engineRunning({ run_id })
+        }
+        // A restarted engine names its run with --resume.
+        engineRunning({ run_id: 'run-board', flag: '--resume' })
 
         const end = await upgrade({
             fakes,
@@ -415,6 +447,7 @@ describe('luca upgrade refuses while a run is going', () => {
             run_repo: '/code/app',
             entries: [LIMIT_WAIT],
         })
+        engineRunning({ run_id: 'run-limit' })
 
         const end = await upgrade({
             fakes,
@@ -436,6 +469,7 @@ describe('luca upgrade refuses while a run is going', () => {
             run_repo: '/code/other',
             entries: STUCK,
         })
+        engineRunning({ run_id: 'run-stuck' })
 
         const end = await upgrade({
             fakes,
@@ -470,6 +504,7 @@ describe('luca upgrade refuses while a run is going', () => {
                 },
             ],
         })
+        engineRunning({ run_id: 'run-usage-line' })
 
         const end = await upgrade({
             fakes,
@@ -508,6 +543,7 @@ describe('luca upgrade refuses while a run is going', () => {
                 },
             ],
         })
+        engineRunning({ run_id: 'run-budget' })
 
         const end = await upgrade({
             fakes,
@@ -529,6 +565,7 @@ describe('luca upgrade refuses while a run is going', () => {
             spec_number: 5,
             run_repo: '/code/busy',
         })
+        engineRunning({ run_id: 'run-going' })
 
         const end = await upgrade({
             fakes,
@@ -576,6 +613,146 @@ describe('luca upgrade refuses while a run is going', () => {
 
         expect(end.ok).toBe(true)
         expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.5`])
+    })
+})
+
+describe('luca upgrade and runs whose engine is gone (#491)', () => {
+    test('a crashed run with no engine does not stop the upgrade, and the upgrade says how to resume it on the new version', async () => {
+        const fakes = freshFakes()
+        writeRun({
+            run_id: 'run-crashed',
+            spec_number: 7,
+            run_repo: '/code/app',
+        })
+        // Another run's engine, whose id only starts the same way.
+        engineRunning({ run_id: 'run-crashed-2', flag: '--resume' })
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(true)
+        expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.5`])
+        const text = printed(end)
+        expect(text).toContain('#7')
+        expect(text).toContain('/code/app')
+        expect(text).toContain('luca-run --resume run-crashed')
+        expect(text).toContain('new version')
+    })
+
+    test('a board run that crashed (ended in the registry) does not stop the upgrade, and says to resume it with /luca-run resume', async () => {
+        const fakes = freshFakes()
+        writeRun({
+            run_id: 'luca-20260928-124805-69hp',
+            spec_number: 133,
+            run_repo: '/code/heartgold',
+        })
+        await writeRegistry({
+            runs: [
+                registryEntry({
+                    run_id: 'luca-20260928-124805-69hp',
+                    spec: 133,
+                    run_repo: '/code/heartgold',
+                    ended: {
+                        ok: false,
+                        message:
+                            'The engine crashed: Directories cannot be read like files',
+                    },
+                }),
+            ],
+        })
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(true)
+        expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.5`])
+        expect(printed(end)).toContain(
+            '/luca-run resume luca-20260928-124805-69hp'
+        )
+    })
+
+    test('a board run whose engine is gone but that the board will restart stops the upgrade', async () => {
+        const fakes = freshFakes()
+        writeRun({
+            run_id: 'run-board',
+            spec_number: 42,
+            run_repo: '/code/tmnb',
+        })
+        await writeRegistry({
+            runs: [
+                registryEntry({
+                    run_id: 'run-board',
+                    spec: 42,
+                    run_repo: '/code/tmnb',
+                    ended: null,
+                    restarts: 1,
+                }),
+            ],
+        })
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(false)
+        expect(printed(end)).toContain('#42')
+        expect(printed(end)).toContain('the board will restart it')
+        expect(bunAdds()).toEqual([])
+    })
+
+    test('a board run whose automatic restarts are used up does not stop the upgrade', async () => {
+        const fakes = freshFakes()
+        writeRun({
+            run_id: 'run-board',
+            spec_number: 42,
+            run_repo: '/code/tmnb',
+        })
+        await writeRegistry({
+            runs: [
+                registryEntry({
+                    run_id: 'run-board',
+                    spec: 42,
+                    run_repo: '/code/tmnb',
+                    ended: null,
+                    restarts: 3,
+                }),
+            ],
+        })
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(true)
+        expect(printed(end)).toContain('/luca-run resume run-board')
+    })
+
+    test('when ps fails, every unfinished run counts as going, and the upgrade is refused', async () => {
+        const fakes = freshFakes()
+        writeRun({
+            run_id: 'run-crashed',
+            spec_number: 7,
+            run_repo: '/code/app',
+        })
+        ps_error = 'ps: not found'
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(false)
+        const text = printed(end)
+        expect(text).toContain('#7')
+        expect(text).toContain('ps: not found')
+        expect(bunAdds()).toEqual([])
+        expect(paseoChanges()).toEqual([])
     })
 })
 
