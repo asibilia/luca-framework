@@ -263,11 +263,20 @@ const AgentFinishedEntrySchema = z.object({
  * - `guard`: the after-turn check found a change the role may not make.
  * - `engine`: the engine's side failed (the SDK crashed, or a follow-up's
  *   session is gone).
+ * - `evidence`: a test-writer's `already_done` evidence did not check out
+ *   (#495). Replay makes it from a failed `already_done_checked`, not from
+ *   an `agent_failed` record.
  *
- * The decision step counts the first three as failed tries; an engine
+ * The decision step counts all but `engine` as failed tries; an engine
  * failure starts a fresh agent without using one.
  */
-export const AgentFailureSchema = z.enum(['agent', 'result', 'guard', 'engine'])
+export const AgentFailureSchema = z.enum([
+    'agent',
+    'result',
+    'guard',
+    'engine',
+    'evidence',
+])
 
 export type AgentFailure = z.infer<typeof AgentFailureSchema>
 
@@ -480,6 +489,25 @@ const RedCheckEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('red_check'),
     content: RedCheckResultSchema.extend({ tests: TestRunSchema }),
+})
+
+/**
+ * The engine checked a test-writer's `already_done` evidence (#495) in the
+ * ticket's worktree, at `base_sha`, the commit it started from: each named
+ * commit is on the base, and each named test exists and passes there.
+ * `problems` says what did not check out; `tests` is the run of the named
+ * test files (`null` if none ran). A failed check is a failed try for the
+ * test-writer.
+ */
+const AlreadyDoneCheckedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('already_done_checked'),
+    content: z.object({
+        ok: z.boolean(),
+        problems: z.array(z.string()),
+        base_sha: z.string(),
+        tests: TestRunSchema.nullable(),
+    }),
 })
 
 /**
@@ -1220,6 +1248,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     AgentFinishedEntrySchema,
     AgentFailedEntrySchema,
     RedCheckEntrySchema,
+    AlreadyDoneCheckedEntrySchema,
     LeftoverScanEntrySchema,
     CommitMadeEntrySchema,
     WorktreeResetEntrySchema,
@@ -1299,6 +1328,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     AgentFinishedEntrySchema.extend(STAMP_FIELDS),
     AgentFailedEntrySchema.extend(STAMP_FIELDS),
     RedCheckEntrySchema.extend(STAMP_FIELDS),
+    AlreadyDoneCheckedEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
     WorktreeResetEntrySchema.extend(STAMP_FIELDS),
@@ -1377,6 +1407,7 @@ export const JournalKindSchema = z.enum([
     'agent_finished',
     'agent_failed',
     'red_check',
+    'already_done_checked',
     'leftover_scan',
     'commit_made',
     'worktree_reset',

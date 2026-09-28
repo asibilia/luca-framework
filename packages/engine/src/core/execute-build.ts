@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path'
 
 import difference from 'lodash/difference'
 import uniq from 'lodash/uniq'
+import uniqBy from 'lodash/uniqBy'
 
 import type { AlreadyDoneAction } from './already-done'
 import { CHANGESET_CONFIG } from './changeset'
@@ -21,6 +22,7 @@ import {
     type RoleResult,
 } from '../agents/role-results'
 import { bunTestCommands, type EngineConfig } from '../config/engine-config'
+import { checkAlreadyDone } from '../gates/already-done-check'
 import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
@@ -32,7 +34,11 @@ import {
     rebaseNeedsInstall,
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
-import { runBunTests, testFilesAmong } from '../gates/test-runner'
+import {
+    onlyTestFiles,
+    runBunTests,
+    testFilesAmong,
+} from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
 import { outsideLinks } from '../git/outside-links'
 import { pathText } from '../git/path-text'
@@ -326,6 +332,93 @@ const runRedCheck = async ({
         ticket: action.ticket,
         role: null,
         content: { ...result, tests: current },
+    })
+}
+
+/**
+ * Checks a test-writer's `already_done` evidence (#495) in the ticket's
+ * worktree, then journals the check (`already_done_checked`): where git
+ * finds each named commit, next to the commit the worktree started from,
+ * and a run of just the named test files that exist, are test files, and
+ * are as they are on the base, after the prepare command if the config has
+ * one. What the check means is `checkAlreadyDone`'s; replay makes a failed
+ * one a failed try for the test-writer.
+ */
+const checkAlreadyDoneIn = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'check_already_done' }>
+}) => {
+    const { path } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const commits = []
+    for (const { sha } of uniqBy(action.done_by, 'sha')) {
+        const place = await context.git.commitOnBase({
+            cwd: path,
+            sha,
+            base: action.base_sha,
+        })
+        commits.push({ sha, place })
+    }
+    const files = uniq(
+        action.criteria.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const missing = files.filter((file) => !existsSync(join(path, file)))
+    const test_files = await testFilesIn({ context, cwd: path })
+    const changed = (await ticketChanges({ context, cwd: path })).map(
+        (change) => change.path
+    )
+    const runnable = files.filter(
+        (file) =>
+            !missing.includes(file) &&
+            test_files.includes(file) &&
+            !changed.includes(file)
+    )
+    const prepare =
+        runnable.length === 0
+            ? null
+            : await watchPrepare({
+                  context,
+                  cwd: path,
+                  ticket: action.ticket,
+                  run: () =>
+                      prepareCheck({ config: context.config, cwd: path }),
+              })
+    const run =
+        runnable.length === 0 || (prepare !== null && !prepare.ok)
+            ? null
+            : await runBunTests({
+                  cwd: path,
+                  commands: bunTestCommands(context).map((command) =>
+                      onlyTestFiles({ command, files: runnable })
+                  ),
+                  test_files: runnable,
+                  report_file: await reportFile({
+                      context,
+                      ticket: action.ticket,
+                      label: 'already-done',
+                  }),
+              })
+    const { ok, problems } = checkAlreadyDone({
+        base_sha: action.base_sha,
+        criteria_ids: action.criteria_ids,
+        criteria: action.criteria,
+        commits,
+        missing,
+        test_files,
+        changed,
+        prepare,
+        run,
+    })
+    context.journal.append({
+        kind: 'already_done_checked',
+        ticket: action.ticket,
+        role: null,
+        content: { ok, problems, base_sha: action.base_sha, tests: run },
     })
 }
 
@@ -1199,6 +1292,8 @@ export const executeBuildAction = async ({
             return sendTestsBack({ context, action })
         case 'run_red_check':
             return runRedCheck({ context, action })
+        case 'check_already_done':
+            return checkAlreadyDoneIn({ context, action })
         case 'commit_ticket':
             return commitTicket({ context, action })
         case 'run_gates':

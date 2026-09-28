@@ -53,7 +53,8 @@ on with a run from its journal (#369).
 | `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
 | `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
-| `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
+| `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
+| `src/gates/already-done-check.ts` | Pure: the check of a test-writer's `already_done` evidence (#495). Each commit is on the base, each criterion names a test, and each named test exists, is as it is on the base, and passes there. |
 | `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
 | `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
@@ -161,7 +162,10 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
                                                         baseline_prepared (with a prepare), baseline_tests
     or reuse_baseline_tests  another ticket's baseline from the same run-branch commit ──> baseline_reused
   launch_agent test-writer                                               ──> agent_started, agent_finished
-    already_done: mark_already_done  comment on the spec issue; the ticket
+    already_done: check_already_done  the commits are on the ticket's base,
+                          the named tests (just those, after prepare) pass ──> already_done_checked
+      failed: follow_up_agent test-writer (same session), a failed try, ≤ 3 tries
+      then mark_already_done  comment on the spec issue; the ticket
                           is done, like a pushed one                     ──> ticket_already_done
   run_red_check           criteria covered, new tests fail, old pass,
                           and some file changed                          ──> red_check
@@ -468,7 +472,22 @@ on the base branch answers `already_done`, with its evidence: in `done_by`,
 the commits that did the work (`{ sha, title }`), and in `criteria`, the
 tests that already cover each criterion. It may only say so when every
 criterion is met and tested; an `already_done` with no commit or no tests is
-a failed try. The ticket is then done, not stuck, and nobody has to reply:
+a failed try.
+
+The engine checks the evidence before it believes it (#495):
+`check_already_done` runs in the ticket's worktree, on the commit the
+worktree started from (its base). Each commit must be in the repo and on
+the base. Each criterion must name a test. Each named test file must exist,
+be a test file, and have no changes in the worktree. The engine runs just
+those files (the config's bun test commands with the files added, after the
+prepare command if there is one), and each named test must pass. It
+journals `already_done_checked` with what did not check out. If anything
+did not, that is a failed try for the test-writer: it gets the list in its
+session, and can fix its answer or write the tests instead. After 3 failed
+tries the ticket is stuck (`agent_failed`), with the list.
+
+Once the evidence checks out, the ticket is done, not stuck, and nobody has
+to reply:
 `mark_already_done` comments on the spec issue with the commits and the
 tests, and journals `ticket_already_done`. Tickets that wait on it start as
 if it had pushed. The run's PR closes it, listed as
@@ -515,7 +534,10 @@ disallowed changes were undone (`failedTryMessage`); a reviewer, or an agent
 with no session, gets a fresh launch. The last try's failure is stuck. An
 `engine` failure (the SDK crashed, or a follow-up's session is gone) starts a
 fresh agent of that role without using up a try; three in a row
-(`MAX_ENGINE_FAILURES`) are stuck. A retry that finishes flows on like any
+(`MAX_ENGINE_FAILURES`) are stuck. A failed `already_done_checked` is an
+`evidence` failure for the test-writer (#495): it uses up a try the same
+way, but its follow-up asks the test-writer to fix its evidence or write
+the tests. A retry that finishes flows on like any
 result: it can set the role's first result, or answer a fix round and rerun
 the red check or the gates.
 

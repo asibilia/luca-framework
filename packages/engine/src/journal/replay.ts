@@ -167,6 +167,12 @@ export type TicketProgress = {
     baseline_sha: string | null
     test_writer: TestWriterResult | null
     red_check: ReplayedRedCheck | null
+    /**
+     * The engine's check of the test-writer's latest `already_done`
+     * evidence (#495), `null` until it runs. A new test-writer result
+     * clears it.
+     */
+    already_done_check: { ok: boolean; problems: string[] } | null
     /** Follow-ups the test-writer answered after a failed red check. */
     red_fix_rounds: number
     implementer: ImplementerResult | null
@@ -575,6 +581,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     baseline_sha: null,
     test_writer: null,
     red_check: null,
+    already_done_check: null,
     red_fix_rounds: 0,
     implementer: null,
     gate_fix_rounds: 0,
@@ -1718,10 +1725,12 @@ const resultChange = ({
                     },
                 }
             }
+            // A new answer is checked afresh if it is `already_done` (#495).
             return progress.red_check === null
-                ? { test_writer: finished.result }
+                ? { test_writer: finished.result, already_done_check: null }
                 : {
                       test_writer: finished.result,
+                      already_done_check: null,
                       red_check: null,
                       red_fix_rounds: progress.red_fix_rounds + 1,
                   }
@@ -1892,6 +1901,43 @@ const sessionsAfter = ({
     return session_id === null ? rest : { ...rest, [role]: session_id }
 }
 
+type AlreadyDoneCheckedContent = Extract<
+    JournalRecord,
+    { kind: 'already_done_checked' }
+>['content']
+
+/**
+ * The engine's check of a test-writer's `already_done` evidence (#495). A
+ * failed one is a failed try for the test-writer, in the session that gave
+ * the evidence, as if its turn had failed: the decision step sends it what
+ * did not check out, or makes the ticket stuck once its tries run out.
+ */
+const alreadyDoneCheckedChange = ({
+    progress,
+    checked,
+}: {
+    progress: TicketProgress
+    checked: AlreadyDoneCheckedContent
+}): Partial<TicketProgress> => {
+    const { ok, problems } = checked
+    if (ok) return { already_done_check: { ok, problems } }
+    const role = 'test-writer'
+    return {
+        already_done_check: { ok, problems },
+        agent_failure: {
+            role,
+            error: problems.map((problem) => `- ${problem}`).join('\n'),
+            failure: 'evidence',
+            session_id: progress.sessions[role] ?? null,
+        },
+        engine_failures: 0,
+        failed_tries: {
+            ...progress.failed_tries,
+            [role]: (progress.failed_tries[role] ?? 0) + 1,
+        },
+    }
+}
+
 const progressChange = ({
     progress,
     record,
@@ -1955,6 +2001,11 @@ const progressChange = ({
             const { ok, problems, notes, tests } = record.content
             return { red_check: { ok, problems, notes, output: tests.output } }
         }
+        case 'already_done_checked':
+            return alreadyDoneCheckedChange({
+                progress,
+                checked: record.content,
+            })
         case 'worktree_reset':
             // A fresh test-writer and implementer start over on a clean
             // worktree; the bad test and its count stay.
@@ -2241,7 +2292,12 @@ const resumedProgress = ({
             commits.red === null &&
             progress.test_writer !== null
         ) {
-            return { ...base, test_writer: null, red_check: null }
+            return {
+                ...base,
+                test_writer: null,
+                red_check: null,
+                already_done_check: null,
+            }
         }
         return { ...base, implementer: null, gates: null }
     }
