@@ -52,6 +52,20 @@ export const GateCheckSchema = z.object({
 
 export type GateCheck = z.infer<typeof GateCheckSchema>
 
+/**
+ * How a failed check ended, for a message: `exit 2`, say, or `timed out`.
+ * The engine gives a check no exit code only when it stopped it for running
+ * too long.
+ *
+ * @example
+ * endedText({ exit_code: null }) // 'timed out'
+ */
+export const endedText = ({
+    exit_code,
+}: {
+    exit_code: number | null
+}): string => (exit_code === null ? 'timed out' : `exit ${exit_code}`)
+
 /** The red check's verdict: `ok` only with no problems. */
 export const RedCheckResultSchema = z.object({
     ok: z.boolean(),

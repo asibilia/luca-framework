@@ -11,8 +11,96 @@ export type CommandResult = {
 export const DEFAULT_COMMAND_TIMEOUT_MS = 300_000
 
 /**
- * Runs a command and collects its output. Never throws on a non-zero exit;
- * a command that runs past `timeout_ms` is killed and marked `timed_out`.
+ * After a timed-out command is killed, how long the engine still waits for
+ * its output. A child that left the command's process group can hold the
+ * output pipe open; past this, the engine stops reading and moves on.
+ */
+const PIPE_GRACE_MS = 2_000
+
+/**
+ * The process groups of commands still running. Each command runs in its
+ * own group, so a Ctrl-C to the engine no longer reaches it by itself: the
+ * engine passes signals on (see `stopCommandsOnExit`).
+ */
+const liveGroups = new Set<number>()
+
+/** Sends `signal` to a command and everything it started. */
+const signalGroup = ({
+    pid,
+    signal,
+}: {
+    pid: number
+    signal: NodeJS.Signals
+}): void => {
+    try {
+        process.kill(-pid, signal)
+    } catch {
+        // The group is gone already.
+    }
+}
+
+/** Sends `signal` to every command still running. */
+const signalLiveGroups = (signal: NodeJS.Signals): void => {
+    for (const pid of liveGroups) signalGroup({ pid, signal })
+}
+
+let stopOnExitSet = false
+
+/**
+ * Once: when the engine exits, or a signal ends it, the commands it is
+ * running end too, as they would if they shared its process group. A signal
+ * is passed on, then raised again so the engine ends the way it would have.
+ */
+const stopCommandsOnExit = (): void => {
+    if (stopOnExitSet) return
+    stopOnExitSet = true
+    process.on('exit', () => signalLiveGroups('SIGKILL'))
+    for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+        process.once(signal, () => {
+            signalLiveGroups(signal)
+            process.kill(process.pid, signal)
+        })
+    }
+}
+
+/**
+ * Reads a whole output stream as text. `stop` ends the read early and keeps
+ * what came so far.
+ */
+const collectText = (
+    stream: ReadableStream<Uint8Array>
+): { text: Promise<string>; stop: () => void } => {
+    const reader = stream.getReader()
+    const decoder = new TextDecoder()
+    const read = async (): Promise<string> => {
+        let text = ''
+        try {
+            for (;;) {
+                const chunk = await reader.read()
+                if (chunk.done) break
+                text += decoder.decode(chunk.value, { stream: true })
+            }
+        } catch {
+            // Stopped or broken: keep what came.
+        }
+        return text + decoder.decode()
+    }
+    return {
+        text: read(),
+        stop: () => {
+            reader.cancel().catch(() => undefined)
+        },
+    }
+}
+
+/**
+ * Runs a command and collects its output. Never throws on a non-zero exit.
+ *
+ * The command runs in its own process group. One that runs past
+ * `timeout_ms` is killed with everything it started (the whole group) and
+ * marked `timed_out`, with `exit_code: null`. The engine then waits at most
+ * a moment more for its output, so a child that left the group can't hold
+ * the engine.
  *
  * @example
  * const result = await runCommand({ cmd: ['git', 'status'], cwd })
@@ -31,6 +119,7 @@ export const runCommand = async ({
     /** Variables set on top of the engine's own environment. */
     env?: Record<string, string>
 }): Promise<CommandResult> => {
+    stopCommandsOnExit()
     const proc = Bun.spawn({
         cmd,
         cwd,
@@ -38,22 +127,35 @@ export const runCommand = async ({
         stdin: 'ignore',
         stdout: 'pipe',
         stderr: 'pipe',
+        // Its own process group, so a timeout can kill all it started.
+        detached: true,
     })
+    liveGroups.add(proc.pid)
+    const stdout = collectText(proc.stdout)
+    const stderr = collectText(proc.stderr)
     let timedOut = false
+    let grace: ReturnType<typeof setTimeout> | undefined
     const timer = setTimeout(() => {
         timedOut = true
+        signalGroup({ pid: proc.pid, signal: 'SIGKILL' })
         proc.kill('SIGKILL')
+        grace = setTimeout(() => {
+            stdout.stop()
+            stderr.stop()
+        }, PIPE_GRACE_MS)
     }, timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS)
-    const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
+    const [out, err, exitCode] = await Promise.all([
+        stdout.text,
+        stderr.text,
         proc.exited,
     ])
     clearTimeout(timer)
+    clearTimeout(grace)
+    liveGroups.delete(proc.pid)
     return {
         exit_code: timedOut ? null : exitCode,
-        stdout,
-        stderr,
+        stdout: out,
+        stderr: err,
         timed_out: timedOut,
     }
 }

@@ -68,7 +68,7 @@ const suggestion = ({
         case 'install_failed':
             return `Fix the manifest or lockfile on the base branch, then reply ${retry}.`
         case 'prepare_failed':
-            return `Fix what the prepare command needs on this computer (a missing tool, say), or the command in \`.luca/config.json\`, then reply ${retry}.`
+            return `Fix what the prepare command needs on this computer (a missing tool, say), or the command in \`.luca/config.json\`, then reply ${retry}. If it ran out of time, raise \`prepare_timeout_ms\` there (30 minutes by default).`
         case 'setup_change_needed':
             return `Make that change yourself in the worktree, then reply ${retry}.`
         case 'crashed':

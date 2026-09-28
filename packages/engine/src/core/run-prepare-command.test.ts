@@ -320,6 +320,34 @@ describe('a prepare command, end to end', () => {
         )
     }, 90_000)
 
+    test('a prepare command that runs out of time before any agent has worked makes the ticket stuck, saying how to give it longer (#485)', async () => {
+        const practice = await createPracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                prepare: 'sleep 30',
+                prepare_timeout_ms: 500,
+            },
+            files: PREPARE_FILES,
+        })
+        const { testWriter, implementer, reviewer } = prepareTurns()
+        const started = Date.now()
+
+        const { action, records } = await practice.run({
+            turns: [testWriter, implementer, reviewer],
+        })
+
+        expect(Date.now() - started).toBeLessThan(30_000)
+        expect(action).toMatchObject({ type: 'wait_for_reply' })
+        const stuck = latestStuck(records)
+        expect(stuck?.ticket).toBe(11)
+        expect(stuck?.reason).toBe('prepare_failed')
+        expect(stuck?.detail).toContain('timed out')
+        expect(stuck?.detail).toContain('Timed out after 0.5 seconds')
+        expect(stuck?.detail).toContain('`prepare_timeout_ms`')
+        expect(stuck?.detail).not.toContain('exit none')
+    }, 90_000)
+
     test('the test-writer and implementer prompts name the prepare command', async () => {
         const practice = await createPracticeRepo({
             root,

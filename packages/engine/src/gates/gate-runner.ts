@@ -1,12 +1,30 @@
 import type { GateCheck, GateName } from './gate-schemas'
 import { reportFileFor, runTests } from './test-runner'
 
-import { testCommands, type EngineConfig } from '../config/engine-config'
-import { clipOutput, runShell } from '../shell/run-command'
+import {
+    prepareTimeoutOf,
+    testCommands,
+    type EngineConfig,
+} from '../config/engine-config'
+import {
+    clipOutput,
+    DEFAULT_COMMAND_TIMEOUT_MS,
+    runShell,
+} from '../shell/run-command'
+
+/** A time limit in words: `30 minutes`, `1 minute`, `0.3 seconds`. */
+const durationText = (ms: number): string => {
+    const [amount, unit] =
+        ms >= 60_000 ? [ms / 60_000, 'minute'] : [ms / 1000, 'second']
+    const rounded = Math.round(amount * 10) / 10
+    return `${rounded} ${unit}${rounded === 1 ? '' : 's'}`
+}
 
 /**
  * Runs one shell command as a named check: `ok` on exit 0, with the clipped
- * output only when it failed.
+ * output only when it failed. One that runs past `timeout_ms` is stopped,
+ * with everything it started, and its output starts by saying so, then
+ * `timeout_hint`, if any.
  *
  * @example
  * const install = await shellCheck({ name: 'install', command: 'bun install', cwd })
@@ -15,13 +33,23 @@ export const shellCheck = async ({
     name,
     command,
     cwd,
+    timeout_ms,
+    timeout_hint,
 }: {
     name: GateName
     command: string
     cwd: string
+    /** Defaults to `DEFAULT_COMMAND_TIMEOUT_MS`. */
+    timeout_ms?: number
+    /** How to give the command longer, for the timed-out message. */
+    timeout_hint?: string
 }): Promise<GateCheck> => {
-    const result = await runShell({ command, cwd })
+    const limit = timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS
+    const result = await runShell({ command, cwd, timeout_ms: limit })
     const ok = result.exit_code === 0
+    const timedOut = result.timed_out
+        ? `Timed out after ${durationText(limit)}, so the engine stopped it and everything it started.${timeout_hint === undefined ? '' : ` ${timeout_hint}`}\n`
+        : ''
     return {
         name,
         command,
@@ -29,7 +57,7 @@ export const shellCheck = async ({
         exit_code: result.exit_code,
         output: ok
             ? ''
-            : clipOutput({ text: `${result.stdout}\n${result.stderr}` }),
+            : `${timedOut}${clipOutput({ text: `${result.stdout}\n${result.stderr}` })}`,
     }
 }
 
@@ -37,6 +65,8 @@ export const shellCheck = async ({
  * Runs the config's prepare command in `cwd`, as the `prepare` check, or
  * `null` when the config has none. The engine runs it before every test run
  * in a checkout, so tests that need build outputs find them up to date.
+ * It gets its own time limit (see `prepareTimeoutOf`), since a first build
+ * can take far longer than other commands.
  *
  * @example
  * const prepare = await prepareCheck({ config, cwd })
@@ -51,7 +81,14 @@ export const prepareCheck = async ({
 }): Promise<GateCheck | null> =>
     config.prepare === undefined
         ? null
-        : shellCheck({ name: 'prepare', command: config.prepare, cwd })
+        : shellCheck({
+              name: 'prepare',
+              command: config.prepare,
+              cwd,
+              timeout_ms: prepareTimeoutOf({ config }),
+              timeout_hint:
+                  'To give it longer, raise `prepare_timeout_ms` in `.luca/config.json`.',
+          })
 
 /**
  * Runs every gate the engine config names, in order: each test command,
