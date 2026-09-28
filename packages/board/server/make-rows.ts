@@ -11,6 +11,7 @@ import {
     runReasonText,
     reviewCountsText,
     roleWords,
+    shortSha,
     startKind,
 } from './reduce-board'
 
@@ -216,11 +217,16 @@ export const describeRecord = ({
                 text: `Intake refused the run. ${after.run.refusal.join('; ')}`,
                 tone: 'danger',
             })
-        case 'nothing_to_do':
+        case 'nothing_to_do': {
+            const done = record.content.already_done
             return event({
-                text: 'Nothing to do: the spec has no open tickets.',
+                text:
+                    done.length === 0
+                        ? 'Nothing to do: the spec has no open tickets.'
+                        : `Nothing to do: the work of ${done.map((number) => `#${number}`).join(', ')} was already on the base branch.`,
                 tone: 'info',
             })
+        }
         case 'spec_snapshot':
             return event({
                 text: `Intake passed: spec #${record.content.spec.number}, ${record.content.ticket_order.length} tickets.`,
@@ -389,6 +395,16 @@ export const describeRecord = ({
                 tone: 'info',
             })
         }
+        case 'ticket_already_done':
+            return event({
+                text: `${at}already done on the base branch, by ${record.content.shas.map((sha) => shortSha({ sha })).join(', ')}. Nothing to build.`,
+                tone: 'success',
+            })
+        case 'ticket_closed':
+            return event({
+                text: `${at}closed, since its work was already done.`,
+                tone: 'info',
+            })
         case 'ticket_skipped': {
             const { because } = record.content
             return event({
@@ -689,6 +705,12 @@ const finishedText = ({
         })
     }
     if (role === 'test-writer') {
+        if (result.outcome === 'already_done') {
+            return event({
+                text: `${at}the test-writer found the work already done.`,
+                tone: 'info',
+            })
+        }
         return result.outcome === 'nothing_new_to_test'
             ? event({ text: `${at}nothing new to test.`, tone: 'info' })
             : event({ text: `${at}tests written.`, tone: 'info' })

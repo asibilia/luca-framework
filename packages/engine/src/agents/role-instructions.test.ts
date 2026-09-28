@@ -67,3 +67,25 @@ describe("the learner's instructions", () => {
         )
     })
 })
+
+describe("the test-writer's outcomes (#484)", () => {
+    const text = roleInstructions({
+        role: 'test-writer',
+        may_edit_tests: true,
+        config: PRACTICE_ENGINE_CONFIG,
+    })
+
+    test('"already_done" is only for a ticket whose every criterion is met and tested on the base branch, with the commits', () => {
+        expect(text).toContain('"already_done"')
+        expect(text).toContain(
+            'only when EVERY acceptance criterion is already met on the base branch and already has a test'
+        )
+        expect(text).toContain('"done_by"')
+    })
+
+    test('"nothing_new_to_test" stays for a ticket that changes no behavior', () => {
+        expect(text).toContain(
+            '"nothing_new_to_test" if the ticket truly changes no behavior (a refactor)'
+        )
+    })
+})

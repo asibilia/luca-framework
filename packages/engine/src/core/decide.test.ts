@@ -375,6 +375,7 @@ describe('decision step: nothing to do', () => {
         expect(action).toEqual({
             type: 'finish_nothing_to_do',
             closed_tickets: [11],
+            already_done: [],
         })
     })
 
@@ -390,6 +391,7 @@ describe('decision step: nothing to do', () => {
         expect(action).toEqual({
             type: 'finish_nothing_to_do',
             closed_tickets: [],
+            already_done: [],
         })
     })
 

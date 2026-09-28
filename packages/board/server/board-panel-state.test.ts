@@ -1140,7 +1140,7 @@ describe('a bad test', () => {
         ])
     })
 
-    test('nothing new to test is stuck with its hint', async () => {
+    test('nothing new to test is stuck with its refactor hint', async () => {
         await runWith({
             entries: [
                 ticketWorktreeCreated({ ticket: 13 }),
@@ -1153,7 +1153,7 @@ describe('a bad test', () => {
         })
 
         expect((await harness.state()).needs_you[0]?.reason).toBe(
-            'The test-writer found nothing new to test. If the ticket changes no behavior, label it refactor and start the run again.'
+            'The test-writer says the ticket changes no behavior, so there is nothing new to test. Label it refactor and retry it.'
         )
     })
 })

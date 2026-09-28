@@ -166,6 +166,11 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
                 .quiet()
                 .nothrow()
         },
+        closeIssue: async ({ number }) => {
+            const issue = await readIssue({ number })
+            if (issue?.state === 'closed') return
+            await $`gh issue close ${number} --repo ${repo} --reason completed`.quiet()
+        },
         openPullRequest: async ({ head, base, title, body }) => {
             const url = (
                 await $`gh pr create --repo ${repo} --head ${head} --base ${base} --title ${title} --body ${body}`.quiet()

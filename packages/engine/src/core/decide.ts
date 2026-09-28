@@ -20,8 +20,6 @@ export type EngineAction =
     | { type: 'read_intake'; spec_number: number }
     /** Tell each bad ticket what is missing, then end the run. */
     | { type: 'refuse_intake'; spec_number: number; problems: IntakeProblem[] }
-    /** The spec has no open tickets; end the run. */
-    | { type: 'finish_nothing_to_do'; closed_tickets: number[] }
     /** Write the spec and every ticket into the journal. */
     | { type: 'snapshot_intake'; snapshot: IntakeSnapshot }
     /** A limit wait, or a billing stop, before any build step. */
@@ -34,7 +32,11 @@ export type EngineAction =
     | UsageAction
     /** Stopping the run for good after crashes on a run-level step. */
     | CrashAction
-    /** Intake passed and every ticket is snapshotted: build the tickets. */
+    /**
+     * Intake passed and every ticket is snapshotted: build the tickets. Its
+     * `finish_nothing_to_do` also ends a run at intake whose spec has no
+     * open tickets.
+     */
     | BuildAction
     /** Memory's recall points, the learner, and its saves (#370). */
     | MemoryAction
@@ -115,7 +117,10 @@ export const decideSteps = ({
         shared_readings: shared_readings ?? [],
     })
     if (pause !== null) return [pause]
-    const ending = build.length === 1 && build[0]?.type === 'done'
+    // A run whose every ticket was already done ends with nothing to do.
+    const ending =
+        build.length === 1 &&
+        (build[0]?.type === 'done' || build[0]?.type === 'finish_nothing_to_do')
     const usage = decideUsage({ records, state, ending })
     if (usage === null) return build
     return ending ? [usage] : [usage, ...build]
@@ -190,6 +195,7 @@ const decideIntake = ({ state }: { state: RunState }): EngineAction => {
                 return {
                     type: 'finish_nothing_to_do',
                     closed_tickets: result.closed_tickets,
+                    already_done: [],
                 }
             }
             // A snapshot cut short by a crash is taken again in full; replay

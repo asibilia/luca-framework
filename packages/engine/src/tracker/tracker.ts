@@ -68,6 +68,11 @@ export type Tracker = {
     addLabel: (args: { number: number; label: string }) => Promise<void>
     /** Removes a label from an issue. Removing a missing label does nothing. */
     removeLabel: (args: { number: number; label: string }) => Promise<void>
+    /**
+     * Closes an issue as completed, such as a ticket whose work was already
+     * done (#484). Closing a closed issue does nothing.
+     */
+    closeIssue: (args: { number: number }) => Promise<void>
     /** Opens a pull request from `head` into `base`. */
     openPullRequest: (args: PullRequestRequest) => Promise<OpenedPullRequest>
     /**

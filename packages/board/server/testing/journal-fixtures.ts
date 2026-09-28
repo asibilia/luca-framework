@@ -861,6 +861,24 @@ export const ticketSkipped = ({
     because?: number | null
 }): Entry => entry({ kind: 'ticket_skipped', ticket, content: { because } })
 
+/** A ticket whose work was already on the base branch (#484), done by `shas`. */
+export const ticketAlreadyDone = ({
+    ticket,
+    shas,
+}: {
+    ticket: number
+    shas: string[]
+}): Entry =>
+    entry({
+        kind: 'ticket_already_done',
+        ticket,
+        content: { shas, comment_id: 300 + ticket },
+    })
+
+/** The engine closed an already-done ticket, as the run made no PR. */
+export const ticketClosed = ({ ticket }: { ticket: number }): Entry =>
+    entry({ kind: 'ticket_closed', ticket, content: { comment_id: 400 } })
+
 /** How the engine took a `retry` reply for a stuck ticket. */
 export const ticketRetried = ({
     ticket,

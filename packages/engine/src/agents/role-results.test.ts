@@ -67,3 +67,54 @@ describe("parseRoleResult, the learner's memories", () => {
         })
     })
 })
+
+describe("parseRoleResult, a test-writer's already_done (#484)", () => {
+    const criteria = [
+        {
+            criterion_id: 'AC1',
+            tests: [{ file: 'src/sum.test.ts', name: 'sum adds two numbers' }],
+        },
+    ]
+
+    test('keeps the commits that did the work and the tests that cover each criterion', () => {
+        expect(
+            parseRoleResult({
+                role: 'test-writer',
+                output: {
+                    outcome: 'already_done',
+                    done_by: [{ sha: '3559c25f5', title: 'feat: add sum' }],
+                    criteria,
+                    summary: 'Already on main.',
+                },
+            })
+        ).toMatchObject({
+            ok: true,
+            value: {
+                result: {
+                    outcome: 'already_done',
+                    done_by: [{ sha: '3559c25f5', title: 'feat: add sum' }],
+                    criteria,
+                },
+            },
+        })
+    })
+
+    test('without a commit, or without the tests, it is no answer', () => {
+        const noCommit = parseRoleResult({
+            role: 'test-writer',
+            output: { outcome: 'already_done', done_by: [], criteria },
+        })
+        expect(noCommit.ok).toBe(false)
+        if (!noCommit.ok) expect(noCommit.error).toContain('done_by')
+
+        const noTests = parseRoleResult({
+            role: 'test-writer',
+            output: {
+                outcome: 'already_done',
+                done_by: [{ sha: '3559c25f5' }],
+            },
+        })
+        expect(noTests.ok).toBe(false)
+        if (!noTests.ok) expect(noTests.error).toContain('criteria')
+    })
+})

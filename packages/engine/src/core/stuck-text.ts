@@ -19,7 +19,8 @@ const REASON_LINES: Record<StuckReason, string> = {
     agent_failed: 'An agent failed on every try it had.',
     red_check_failed:
         "The red check still fails: the new tests don't fail the way they should.",
-    nothing_new_to_test: 'The test-writer found nothing new to test.',
+    nothing_new_to_test:
+        'The test-writer says the ticket changes no behavior, so there is nothing new to test: it looks like a refactor.',
     leftovers_found:
         'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks still fail.',
@@ -52,7 +53,7 @@ const suggestion = ({
         case 'red_check_failed':
             return `Make the ticket's criteria clearer, or fix the tests in the worktree yourself, then reply ${retry}.`
         case 'nothing_new_to_test':
-            return `If the ticket changes no behavior, add the \`${REFACTOR_LABEL}\` label, then reply ${retry}. Otherwise say in the ticket what should change.`
+            return `A ticket that changes no behavior is a refactor ticket: add the \`${REFACTOR_LABEL}\` label, then reply ${retry}. It is built again as a refactor, with no new tests.`
         case 'leftovers_found':
             return `Delete those files in the worktree (or move them out of it), then reply ${retry}.`
         case 'gates_failed':
