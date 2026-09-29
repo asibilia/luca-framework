@@ -494,8 +494,9 @@ export const EMPTY_MEMORY: MemoryState = {
 export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
 /**
- * The run budget (#435): whether the run is stuck on it and told, and how
- * many more full budgets the owner's `retry` replies added.
+ * The run budget (#435): whether the run is stuck on it (or on its PR,
+ * #508) and told, and how many more full budgets the owner's `retry`
+ * replies added.
  */
 export type RunBudgetState = {
     /** The run is stuck, until the owner's `retry`. */
@@ -1050,18 +1051,18 @@ const applyRecord = ({
             const { word, comment_id, ticket } = record.content
             if (word === 'stop') return { ...handled, stop: { comment_id } }
             // A bare `retry` while the run is stuck on its budget adds one
-            // more full budget, and the run carries on.
-            if (
-                ticket === null &&
-                word === 'retry' &&
-                state.run_budget.stuck !== null
-            ) {
+            // more full budget, and the run carries on; stuck on its PR,
+            // the PR is tried again.
+            const { stuck } = state.run_budget
+            if (ticket === null && word === 'retry' && stuck !== null) {
                 return {
                     ...handled,
                     run_budget: {
                         stuck: null,
                         report: null,
-                        retries: state.run_budget.retries + 1,
+                        retries:
+                            state.run_budget.retries +
+                            (stuck.reason === 'run_budget' ? 1 : 0),
                     },
                 }
             }

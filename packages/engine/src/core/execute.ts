@@ -17,6 +17,7 @@ import {
 import { writeChangeset } from './execute-changeset'
 import { executeFinalReviewAction } from './execute-final-review'
 import { executeMemoryAction } from './execute-memory'
+import { openPullRequest } from './execute-pull-request'
 import { executeStuckAction } from './execute-stuck'
 import {
     closeSessions,
@@ -595,6 +596,17 @@ export const executeAction = async ({
             }
             if (action.type === 'write_changeset') {
                 return writeChangeset({
+                    action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
+            }
+            if (action.type === 'open_pull_request') {
+                return openPullRequest({
                     action,
                     context: buildContext({
                         journal,

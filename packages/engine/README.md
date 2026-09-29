@@ -225,7 +225,9 @@ with a changesets config (.changeset/config.json when the run branch was made, #
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
-open_pull_request         tracker: re-read the spec's sub-issues, then one PR from the run branch ──> pull_request_opened
+open_pull_request         tracker: re-read the spec's sub-issues, save pull-request.md, reuse an open PR
+                          from the run branch or open one, then post what didn't fit as PR comments ──> pull_request_opened
+                          (gh pr create failed: ──> run_stuck (reason pull_request_failed); see "Opening the PR")
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 with no ticket pushed, but some already done (#484):
@@ -857,6 +859,34 @@ final_review_stuck
 - The tracker's `comment` returns the new comment's id, and `listComments`
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.
+
+### Opening the PR (#508)
+
+The PR is the run's last step, so it must always open, however many
+tickets and notes a run has.
+
+- **The saved text.** Before `gh pr create`, the engine writes the PR's full
+  text to `pull-request.md` in the run folder (next to the journal), so it
+  is never lost.
+- **The body budget.** GitHub takes at most 65,536 characters in a PR body
+  or a comment. The body the engine sends stays under 60,000
+  (`PULL_REQUEST_BUDGET`, `fitPullRequestBody`). The essentials always stay
+  in it: the open findings of a shipped final review, the `Closes` list,
+  and the skipped, for a person, waiting on a person, and not in this run
+  sections. The long parts (the assumptions, nits, declined findings, and
+  new memories) stay while they fit; the rest moves into **PR comments**
+  posted right after the PR opens, each under the budget and cut between
+  list items, and the body says so. Anything still too long is clipped,
+  pointing at `pull-request.md`.
+- **A failed `gh pr create`** is no crash. The engine journals the run
+  stuck (`run_stuck`, reason `pull_request_failed`) with `gh`'s error, tells
+  the spec issue why, and waits: a bare `retry` tries the PR again (it adds
+  no run budget), and `stop` ends the run without one. Any other error in
+  the step is a crash, taken again on resume.
+- **Never a second PR.** Before creating, the engine looks for an open PR
+  from the run branch (`findOpenPullRequest`) and reuses it: the one a try
+  opened before a crash or a failure, or one the owner opened by hand. Its
+  PR comments are posted once, even on a redo after a crash.
 
 ### Getting a stuck run moving (#504)
 

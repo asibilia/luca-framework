@@ -15,7 +15,7 @@ export type InMemoryPullRequest = PullRequestRequest & OpenedPullRequest
 
 /** An in-memory tracker, plus what tests need to look inside it. */
 export type InMemoryTracker = Tracker & {
-    /** Every comment's body on an issue, oldest first. */
+    /** Every comment's body on an issue or a pull request, oldest first. */
     commentsOn: (args: { number: number }) => string[]
     /** A person comments on an issue, as on the tracker; returns the comment's id. */
     addComment: (args: {
@@ -84,7 +84,8 @@ export const createInMemoryTracker = ({
         author: string
         body: string
     }): number => {
-        find(number)
+        // A pull request takes comments too, as on GitHub.
+        if (!pulls.some((pull) => pull.number === number)) find(number)
         lastCommentId += 1
         const comment = { id: lastCommentId, author, body }
         comments.set(number, [...(comments.get(number) ?? []), comment])

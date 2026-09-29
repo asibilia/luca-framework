@@ -57,7 +57,10 @@ export type Tracker = {
     listSubTickets: (args: { spec_number: number }) => Promise<TrackerIssue[]>
     /** Reads any issue, such as a blocker outside the spec. `null` if missing. */
     readIssue: (args: { number: number }) => Promise<TrackerIssue | null>
-    /** Posts a comment on an issue, and returns the new comment's id. */
+    /**
+     * Posts a comment on an issue or a pull request, and returns the new
+     * comment's id.
+     */
     comment: (args: { number: number; body: string }) => Promise<{ id: number }>
     /** An issue's comments with an id above `since_id`, oldest first. */
     listComments: (args: {
@@ -83,8 +86,8 @@ export type Tracker = {
     /** Opens a pull request from `head` into `base`. */
     openPullRequest: (args: PullRequestRequest) => Promise<OpenedPullRequest>
     /**
-     * The open pull request from branch `head`, or `null`: a redo after a
-     * crash adopts the PR its first try opened.
+     * The open pull request from branch `head`, or `null`: the PR step
+     * reuses one, such as the PR a try opened before a crash or a failure.
      */
     findOpenPullRequest: (args: {
         head: string

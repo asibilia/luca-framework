@@ -740,14 +740,21 @@ const TicketStuckEntrySchema = z.object({
     content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
 })
 
-/** Why the whole run is stuck: it used up its run budget of tokens. */
-export const RunStuckReasonSchema = z.enum(['run_budget'])
+/**
+ * Why the whole run is stuck: it used up its run budget of tokens, or its
+ * pull request didn't open (`gh pr create` failed, #508).
+ */
+export const RunStuckReasonSchema = z.enum([
+    'run_budget',
+    'pull_request_failed',
+])
 
 export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
 
 /**
  * The whole run is stuck (`ticket: null`): nothing new starts until the
- * spec owner replies `retry` (one more full run budget) or `stop`.
+ * spec owner replies `retry` (one more full run budget, or another try at
+ * the PR) or `stop`.
  */
 const RunStuckEntrySchema = z.object({
     ...ENTRY_FIELDS,

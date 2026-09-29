@@ -279,7 +279,10 @@ export const BOARD_VOCABULARY = {
         reason: z.string(),
         detail: z.string().catch(''),
     }),
-    /** The whole run is stuck (#435): `run_budget`, it used up its budget. */
+    /**
+     * The whole run is stuck (#435): `run_budget`, it used up its budget,
+     * or `pull_request_failed`, its PR didn't open (#508).
+     */
     run_stuck: z.looseObject({
         reason: z.string(),
         detail: z.string().catch(''),

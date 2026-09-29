@@ -11,8 +11,6 @@ import { CHANGESET_CONFIG } from './changeset'
 import { mayEditTests, type BuildAction } from './decide-build'
 import type { FinalReviewAction } from './decide-final-review'
 import { retryTicket } from './execute-stuck'
-import { openTicketsNotInRun } from './not-in-run'
-import { withNotInRun } from './pull-request-text'
 import { closeSessions, openSessionsIn } from './session-close'
 
 import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
@@ -1151,12 +1149,15 @@ export const executeBuildAction = async ({
 }: BuildDeps & {
     /**
      * The final review's steps go to `executeFinalReviewAction`, the
-     * changeset to `writeChangeset`, and an already-done ticket's to
-     * `executeAlreadyDoneAction`.
+     * changeset to `writeChangeset`, the PR to `openPullRequest`, and an
+     * already-done ticket's to `executeAlreadyDoneAction`.
      */
     action: Exclude<
         BuildAction,
-        FinalReviewAction | AlreadyDoneAction | { type: 'write_changeset' }
+        | FinalReviewAction
+        | AlreadyDoneAction
+        | { type: 'write_changeset' }
+        | { type: 'open_pull_request' }
     >
     journal: Journal
     tracker: Tracker
@@ -1418,36 +1419,6 @@ export const executeBuildAction = async ({
                 content: { reason: action.reason, detail: action.detail },
             })
             return
-        case 'open_pull_request': {
-            const { head, base, title, body } = action
-            // A redo adopts the PR its first try opened before the crash.
-            const adopted = context.step.redo
-                ? await tracker.findOpenPullRequest({ head })
-                : null
-            // The spec's open tickets not in the run are named in the PR.
-            const full = withNotInRun({
-                body,
-                open: await openTicketsNotInRun({
-                    tracker,
-                    state: context.state,
-                }),
-            })
-            const opened =
-                adopted ??
-                (await tracker.openPullRequest({
-                    head,
-                    base,
-                    title,
-                    body: full,
-                }))
-            journal.append({
-                kind: 'pull_request_opened',
-                ticket: null,
-                role: null,
-                content: { ...opened, head, base, title, body: full },
-            })
-            return
-        }
         case 'done':
         case 'invalid_journal':
             return

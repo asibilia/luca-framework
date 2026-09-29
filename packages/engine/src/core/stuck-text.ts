@@ -303,6 +303,35 @@ export const runStuckComment = ({
     ].join('\n\n')
 
 /**
+ * The comment on the spec issue when the run is stuck because its pull
+ * request didn't open (#508): `gh`'s error, where the PR's full text is
+ * saved, and the replies `retry` and `stop`.
+ *
+ * @example
+ * pullRequestStuckComment({ detail: 'gh pr create failed (exit code 1): ...' })
+ * // "**The run is stuck: its pull request didn't open**\n\nWhy: ..."
+ */
+export const pullRequestStuckComment = ({
+    detail,
+}: {
+    detail: string
+}): string =>
+    [
+        "**The run is stuck: its pull request didn't open**",
+        [
+            `Why: ${detail}`,
+            `The run branch is pushed, and the PR's full text is saved in the run folder as \`pull-request.md\`.`,
+        ].join('\n'),
+        [
+            'Reply with one word on this issue:',
+            '- `retry`: try to open the PR again. A PR already open from the run branch, such as one you opened by hand, is reused, never opened twice.',
+            '- `stop`: end the run without a PR. The branch is kept.',
+            '',
+            'Only the spec owner counts.',
+        ].join('\n'),
+    ].join('\n\n')
+
+/**
  * The detail of a ticket stuck on a test setup file change: the file, why,
  * and what to do.
  */
