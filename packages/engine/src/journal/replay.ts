@@ -39,6 +39,7 @@ import type {
 import type {
     IntakeProblem,
     IntakeRead,
+    LeftOutTicket,
     SpecSnapshot,
     TicketSnapshot,
 } from '../intake/intake-schemas'
@@ -68,6 +69,8 @@ export type ReplayedSnapshot = {
     closed_tickets: number[]
     /** The latest snapshot of each ticket, keyed by ticket number. */
     tickets: Record<number, TicketSnapshot>
+    /** The open tickets intake left out for a person, and why (#499). */
+    left_out: LeftOutTicket[]
 }
 
 /** A worktree the engine made, as journaled. */
@@ -910,6 +913,7 @@ const applyRecord = ({
                 ticket_order: record.content.ticket_order,
                 closed_tickets: record.content.closed_tickets,
                 tickets: {},
+                left_out: record.content.left_out,
             }
             return { ...next, snapshot, phase: snapshotPhase({ snapshot }) }
         }

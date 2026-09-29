@@ -18,6 +18,7 @@ import {
     startRun,
     STOP_ACTIONS,
 } from '../core/execute'
+import { nothingToDoText } from '../core/left-out'
 import { createGitAdapter } from '../git/git-adapter'
 import { createTypeSafeJev } from '../jev/jev-client'
 import type { JevShadow } from '../jev/jev-shadow'
@@ -50,8 +51,17 @@ export const DEMO_TURN_DELAY_MS = 1500
 const errorText = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
 
-/** What a run's last action means for the person watching it. */
-const endOf = ({ action }: { action: EngineAction }): RunEnd => {
+/**
+ * What a run's last action means for the person watching it. A run with
+ * nothing to do says why, from its `nothing_to_do` record in `records`.
+ */
+const endOf = ({
+    action,
+    records,
+}: {
+    action: EngineAction
+    records: JournalRecord[]
+}): RunEnd => {
     if (action.type === 'invalid_journal') {
         return {
             ok: false,
@@ -70,11 +80,24 @@ const endOf = ({ action }: { action: EngineAction }): RunEnd => {
                 ok: true,
                 message: `PR opened: ${action.pull_request.url}`,
             }
-        case 'nothing_to_do':
+        case 'nothing_to_do': {
+            const end = records.findLast(
+                (record) => record.kind === 'nothing_to_do'
+            )
             return {
                 ok: true,
-                message: 'Nothing to do: every ticket of the spec is closed.',
+                message: nothingToDoText({
+                    content:
+                        end?.kind === 'nothing_to_do'
+                            ? end.content
+                            : {
+                                  closed_tickets: [],
+                                  already_done: [],
+                                  left_out: [],
+                              },
+                }),
             }
+        }
         case 'refused':
             return {
                 ok: false,
@@ -157,7 +180,8 @@ const driveRun = async ({
 }): Promise<RunEnd> => {
     let end: RunEnd
     try {
-        end = endOf({ action: await run() })
+        const action = await run()
+        end = endOf({ action, records: journal.read() })
     } catch (error) {
         const message = errorText(error)
         // A launcher stop is journaled as run_stopped, then thrown.

@@ -241,6 +241,50 @@ describe('crash recovery, end to end', () => {
         expect(ofKind(journal.read(), 'intake_refused')).toHaveLength(1)
     })
 
+    test('a refusal redone after a crash past its comments and labels posts nothing twice (#500)', async () => {
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir: root, run_id: 'run-1' }),
+        })
+        const config: EngineConfig = {
+            checks: { test: 'bun test' },
+            test_file_patterns: ['**/*.test.ts'],
+            test_setup_files: [],
+            rule_files: [],
+        }
+        const tracker = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+                ticketIssue({ number: 13, labels: ['enhancement'] }),
+            ],
+            sub_tickets: { 10: [12, 13] },
+        })
+        startRun({ journal, spec_number: 10, config })
+        // The engine dies as it journals the refusal, as the first try of
+        // run luca-20260929-011317-wq72 died in refuse_intake.
+        const dying: typeof journal = {
+            ...journal,
+            append: (entry) => {
+                if (entry.kind === 'intake_refused') {
+                    throw new Error('The engine crashed.')
+                }
+                return journal.append(entry)
+            },
+        }
+
+        await expect(runEngine({ journal: dying, tracker })).rejects.toThrow(
+            'The engine crashed.'
+        )
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        for (const number of [12, 13]) {
+            expect(tracker.commentsOn({ number })).toHaveLength(1)
+            expect(tracker.labelsOf({ number })).toContain('needs-info')
+        }
+        expect(ofKind(journal.read(), 'intake_refused')).toHaveLength(1)
+    })
+
     test('a stuck report is posted once when a crash came between posting and journaling it', async () => {
         const practice = await createPracticeRepo({ root })
         const tracker = practiceTracker()

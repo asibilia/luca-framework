@@ -118,6 +118,9 @@ const LENS_STAGES: { stage: LensState; title: string; icon: string }[] = [
 /** A card or stage key. */
 type Key = string
 
+/** The key of the fold for tickets left out for a person (#499). */
+const FOR_A_PERSON: Key = 'for_a_person'
+
 type DotKind = 'done' | 'current' | 'todo' | 'skip' | 'stopped'
 
 const makeStyles = ({
@@ -1063,11 +1066,12 @@ export const BoardPanel = ({
     )
     const [folded, setFolded] = useState<ReadonlySet<Key>>(
         () =>
-            new Set(
-                TICKET_STAGES.filter((entry) => entry.folded).map(
+            new Set<Key>([
+                ...TICKET_STAGES.filter((entry) => entry.folded).map(
                     (entry) => entry.stage
-                )
-            )
+                ),
+                FOR_A_PERSON,
+            ])
     )
     const look = { theme, styles }
     const state = board.data?.selected ?? null
@@ -1292,6 +1296,39 @@ export const BoardPanel = ({
                     </Section>
                 )
             })}
+
+            {state.for_a_person.length > 0 ? (
+                <Section styles={styles}>
+                    <StageHeader
+                        title="For a person"
+                        hint="left out of this run: a person does these, or they wait on one"
+                        icon="User"
+                        count={state.for_a_person.length}
+                        color={theme.colors.foregroundMuted}
+                        folded={folded.has(FOR_A_PERSON)}
+                        onPress={() =>
+                            setFolded((set) =>
+                                toggled({ set, key: FOR_A_PERSON })
+                            )
+                        }
+                        {...look}
+                    />
+                    {folded.has(FOR_A_PERSON) ? null : (
+                        <View style={styles.stageBody}>
+                            {state.for_a_person.map((ticket) => (
+                                <Text
+                                    key={ticket.number}
+                                    style={styles.muted}
+                                    numberOfLines={2}
+                                >
+                                    #{ticket.number} {ticket.title} ·{' '}
+                                    {ticket.why}
+                                </Text>
+                            ))}
+                        </View>
+                    )}
+                </Section>
+            ) : null}
 
             {showsFinalReview({ state }) ? (
                 <>

@@ -1040,7 +1040,12 @@ const TMNB_PACKAGE = JSON.stringify(
 const CONFIG_PATH = join('.luca', 'config.json')
 
 /** The labels a run needs, which setup creates in a repo with none. */
-const RUN_LABELS = ['needs-info', 'ready-for-agent', 'refactor']
+const RUN_LABELS = [
+    'needs-info',
+    'ready-for-agent',
+    'ready-for-human',
+    'refactor',
+]
 
 /** A fake GitHub side for the repo: labels, the login, and issue links. */
 const fakeGitHub = ({

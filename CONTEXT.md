@@ -22,6 +22,10 @@ _Avoid_: chore, cleanup
 A ticket that waits on another ticket that isn't done yet.
 _Avoid_: stuck, waiting
 
+**Ticket for a person**:
+A ticket only a person can do, labeled `ready-for-human`. A run leaves it out, along with the tickets that wait on it, and builds the rest.
+_Avoid_: human task, manual ticket
+
 ### Running the work
 
 **Run**:
@@ -33,7 +37,7 @@ The branch a run's finished tickets join one at a time, and that its one pull re
 _Avoid_: integration branch, feature branch
 
 **Intake**:
-The check, before a run starts, that a spec and all its open tickets are ready to build. If anything fails, the run does not start.
+The check, before a run starts, that a spec and all its open tickets are ready to build. If anything fails, the run does not start. Tickets for a person are left out, not checked.
 _Avoid_: preflight, validation
 
 **Engine**:

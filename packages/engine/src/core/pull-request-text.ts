@@ -4,6 +4,7 @@ import uniq from 'lodash/uniq'
 
 import { alreadyDoneNote } from './already-done'
 import { shippedFindingsSection } from './final-review-text'
+import { leftOutSections } from './left-out'
 import { newMemoriesSection } from './memory-text'
 import { reasonLine } from './stuck-text'
 
@@ -27,7 +28,8 @@ const fileText = (file: string | null): string =>
 /**
  * The run's pull request title and body, from the snapshot, each ticket's
  * progress, and the final review: which tickets it closes (an already-done
- * one with the commits that did its work, #484), the tickets left
+ * one with the commits that did its work, #484), the tickets left for a
+ * person and the ones waiting on them (#499), the tickets left
  * out (skipped, and why), the assumptions agents made (from every round of
  * every agent on each ticket, and in the final review), the reviews' nits,
  * the findings declined through "won't fix", and the memories the learner
@@ -138,6 +140,7 @@ export const pullRequestText = ({
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,
         `## Tickets\n\n${closes.join('\n')}`,
+        ...leftOutSections({ left_out: snapshot.left_out }),
         skipped.length === 0
             ? ''
             : `## Skipped tickets\n\nLeft out of this run. They stay open for a later run.\n\n${skipped.join('\n')}`,

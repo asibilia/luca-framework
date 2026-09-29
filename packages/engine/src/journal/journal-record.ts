@@ -17,6 +17,7 @@ import {
 import {
     IntakeProblemSchema,
     IntakeReadSchema,
+    LeftOutTicketSchema,
     SpecSnapshotSchema,
     TicketSnapshotSchema,
 } from '../intake/intake-schemas'
@@ -97,16 +98,38 @@ const IntakeReadEntrySchema = z.object({
     content: IntakeReadSchema,
 })
 
+/**
+ * A label the refusal couldn't add or remove (#500), with the tracker's
+ * error. The refusal goes on without it.
+ */
+export const LabelFailureSchema = z.object({
+    ticket: z.number().int().positive(),
+    label: z.string(),
+    change: z.enum(['add', 'remove']),
+    error: z.string(),
+})
+
+export type LabelFailure = z.infer<typeof LabelFailureSchema>
+
+/**
+ * Intake refused the run. `label_failures` are the labels it couldn't
+ * move; older journals have none.
+ */
 const IntakeRefusedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('intake_refused'),
-    content: z.object({ problems: z.array(IntakeProblemSchema) }),
+    content: z.object({
+        problems: z.array(IntakeProblemSchema),
+        label_failures: z.array(LabelFailureSchema).default([]),
+    }),
 })
 
 /**
  * The run ends with nothing to do: at intake, as every ticket of the spec
  * is closed, or after it, as every ticket's work was already on the base
- * branch (`already_done`, #484; the engine closed those tickets).
+ * branch (`already_done`, #484; the engine closed those tickets). At
+ * intake, `left_out` names the open tickets left for a person (#499), when
+ * those are all that is open. Older journals have none.
  */
 const NothingToDoEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -114,6 +137,7 @@ const NothingToDoEntrySchema = z.object({
     content: z.object({
         closed_tickets: z.array(z.number().int()),
         already_done: z.array(z.number().int().positive()).default([]),
+        left_out: z.array(LeftOutTicketSchema).default([]),
     }),
 })
 
@@ -125,6 +149,11 @@ const SpecSnapshotEntrySchema = z.object({
         /** The open tickets in blocker order; one `ticket_snapshot` each. */
         ticket_order: z.array(z.number().int().positive()),
         closed_tickets: z.array(z.number().int().positive()),
+        /**
+         * The open tickets left out for a person, and why (#499). The run
+         * doesn't build them or touch them. Older journals have none.
+         */
+        left_out: z.array(LeftOutTicketSchema).default([]),
     }),
 })
 

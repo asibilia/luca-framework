@@ -3,12 +3,16 @@ import { $ } from 'bun'
 import { z } from 'zod'
 
 import {
+    labelDefinition,
     OpenedPullRequestSchema,
     TrackerCommentSchema,
     TrackerIssueSchema,
+    type LabelDefinition,
     type Tracker,
     type TrackerIssue,
 } from './tracker'
+
+import type { CommandResult } from '../shell/run-command'
 
 /** An issue as GitHub's REST API returns it (only the fields we use). */
 const GitHubIssueSchema = z.object({
@@ -38,12 +42,36 @@ const GitHubPullListSchema = z.array(OpenedPullRequestSchema)
 
 type GitHubIssue = z.infer<typeof GitHubIssueSchema>
 
-/** Calls `gh api`; `null` when the call fails (such as a 404). */
-const ghApi = async ({ path }: { path: string }): Promise<unknown> => {
-    const result = await $`gh api ${path}`.quiet().nothrow()
-    if (result.exitCode !== 0) return null
-    return JSON.parse(result.stdout.toString())
+/**
+ * Runs `gh` with `args` and collects its output. Never throws on a non-zero
+ * exit. The GitHub tracker makes every call through one, so tests can fake
+ * `gh`.
+ */
+export type GhRunner = (
+    args: string[]
+) => Promise<Pick<CommandResult, 'exit_code' | 'stdout' | 'stderr'>>
+
+/** The real `gh`, on the `PATH`. */
+const runGh: GhRunner = async (args) => {
+    const result = await $`gh ${args}`.quiet().nothrow()
+    return {
+        exit_code: result.exitCode,
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString(),
+    }
 }
+
+/** A failed `gh` call as an error, in `gh`'s own words. */
+const ghError = ({
+    args,
+    result,
+}: {
+    args: string[]
+    result: Awaited<ReturnType<GhRunner>>
+}): Error =>
+    new Error(
+        `\`gh ${args.slice(0, 2).join(' ')}\` failed (exit code ${result.exit_code}): ${result.stderr.trim()}`
+    )
 
 const parseOrThrow = <T>({
     schema,
@@ -65,14 +93,44 @@ const parseOrThrow = <T>({
 
 /**
  * The real tracker: GitHub issues through the `gh` CLI, which must be
- * installed and logged in. Not exercised by tests; the in-memory tracker
- * stands in for it.
+ * installed and logged in. Engine tests use the in-memory tracker; the
+ * tracker's own tests pass a fake `gh`.
+ *
+ * Adding a label the repo lacks creates it first (#500): when the add
+ * fails, the repo's labels are read, and a missing one is created as
+ * `labelDefinition` describes it, then added again. A failure with the
+ * label there is thrown as it is. The happy path costs one call, and
+ * nothing hangs on the wording of `gh`'s error.
+ *
+ * @param gh - Runs `gh`. Defaults to the real one.
  *
  * @example
  * const tracker = createGitHubTracker({ repo: 'asibilia/luca-framework' })
  * const spec = await tracker.readSpec({ spec_number: 359 })
  */
-export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
+export const createGitHubTracker = ({
+    repo,
+    gh,
+}: {
+    repo: string
+    gh?: GhRunner
+}): Tracker => {
+    const run = gh ?? runGh
+
+    /** Runs `gh` and returns its output; throws when it fails. */
+    const ghOk = async (args: string[]): Promise<string> => {
+        const result = await run(args)
+        if (result.exit_code !== 0) throw ghError({ args, result })
+        return result.stdout
+    }
+
+    /** Calls `gh api`; `null` when the call fails (such as a 404). */
+    const ghApi = async ({ path }: { path: string }): Promise<unknown> => {
+        const result = await run(['api', path])
+        if (result.exit_code !== 0) return null
+        return JSON.parse(result.stdout)
+    }
+
     const blockedBy = async (number: number): Promise<number[]> => {
         const value = await ghApi({
             path: `repos/${repo}/issues/${number}/dependencies/blocked_by`,
@@ -111,6 +169,63 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
         )
     }
 
+    const listLabels: Tracker['listLabels'] = async () =>
+        (
+            await ghOk([
+                'label',
+                'list',
+                '--repo',
+                repo,
+                '--limit',
+                '1000',
+                '--json',
+                'name',
+                '--jq',
+                '.[].name',
+            ])
+        )
+            .split('\n')
+            .filter((name) => name !== '')
+
+    const createLabelArgs = ({
+        name,
+        color,
+        description,
+    }: LabelDefinition): string[] => [
+        'label',
+        'create',
+        name,
+        '--repo',
+        repo,
+        '--color',
+        color,
+        '--description',
+        description,
+    ]
+
+    /** Adds or removes one label of an issue; never throws. */
+    const editLabel = async ({
+        number,
+        label,
+        change,
+    }: {
+        number: number
+        label: string
+        change: 'add' | 'remove'
+    }): Promise<Error | null> => {
+        const args = [
+            'issue',
+            'edit',
+            String(number),
+            '--repo',
+            repo,
+            `--${change}-label`,
+            label,
+        ]
+        const result = await run(args)
+        return result.exit_code === 0 ? null : ghError({ args, result })
+    }
+
     return {
         readIssue,
         readSpec: async ({ spec_number }) => {
@@ -133,20 +248,28 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             return Promise.all(issues.map(toTrackerIssue))
         },
         comment: async ({ number, body }) => {
-            const posted =
-                await $`gh api repos/${repo}/issues/${number}/comments -f body=${body}`.quiet()
+            const posted = await ghOk([
+                'api',
+                `repos/${repo}/issues/${number}/comments`,
+                '-f',
+                `body=${body}`,
+            ])
             return parseOrThrow({
                 schema: GitHubCommentPostedSchema,
-                value: JSON.parse(posted.stdout.toString()),
+                value: JSON.parse(posted),
                 what: `the comment posted on #${number}`,
             })
         },
         listComments: async ({ number, since_id }) => {
             // One JSON object per line, across every page.
-            const listed =
-                await $`gh api --paginate repos/${repo}/issues/${number}/comments?per_page=100 --jq ${'.[] | {id, author: (.user.login // ""), body: (.body // "")}'}`.quiet()
-            return listed.stdout
-                .toString()
+            const listed = await ghOk([
+                'api',
+                '--paginate',
+                `repos/${repo}/issues/${number}/comments?per_page=100`,
+                '--jq',
+                '.[] | {id, author: (.user.login // ""), body: (.body // "")}',
+            ])
+            return listed
                 .split('\n')
                 .filter((line) => line.trim() !== '')
                 .map((line) =>
@@ -159,24 +282,57 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
                 .filter(({ id }) => id > since_id)
         },
         addLabel: async ({ number, label }) => {
-            await $`gh issue edit ${number} --repo ${repo} --add-label ${label}`.quiet()
+            const failed = await editLabel({ number, label, change: 'add' })
+            if (failed === null) return
+            if ((await listLabels()).includes(label)) throw failed
+            // A failed create still tries the add again: another run may
+            // have just created the label.
+            const created = await run(
+                createLabelArgs(labelDefinition({ name: label }))
+            )
+            const again = await editLabel({ number, label, change: 'add' })
+            if (again === null) return
+            if (created.exit_code === 0) throw again
+            throw new Error(
+                `${again.message}; creating the label failed too: ${created.stderr.trim()}`
+            )
         },
         removeLabel: async ({ number, label }) => {
-            await $`gh issue edit ${number} --repo ${repo} --remove-label ${label}`
-                .quiet()
-                .nothrow()
+            const failed = await editLabel({ number, label, change: 'remove' })
+            if (failed === null) return
+            // A label the repo lacks can't be on the issue.
+            if ((await listLabels()).includes(label)) throw failed
         },
         closeIssue: async ({ number }) => {
             const issue = await readIssue({ number })
             if (issue?.state === 'closed') return
-            await $`gh issue close ${number} --repo ${repo} --reason completed`.quiet()
+            await ghOk([
+                'issue',
+                'close',
+                String(number),
+                '--repo',
+                repo,
+                '--reason',
+                'completed',
+            ])
         },
         openPullRequest: async ({ head, base, title, body }) => {
             const url = (
-                await $`gh pr create --repo ${repo} --head ${head} --base ${base} --title ${title} --body ${body}`.quiet()
-            ).stdout
-                .toString()
-                .trim()
+                await ghOk([
+                    'pr',
+                    'create',
+                    '--repo',
+                    repo,
+                    '--head',
+                    head,
+                    '--base',
+                    base,
+                    '--title',
+                    title,
+                    '--body',
+                    body,
+                ])
+            ).trim()
             const number = Number(/\/pull\/(\d+)/.exec(url)?.[1])
             return parseOrThrow({
                 schema: OpenedPullRequestSchema,
@@ -185,25 +341,28 @@ export const createGitHubTracker = ({ repo }: { repo: string }): Tracker => {
             })
         },
         findOpenPullRequest: async ({ head }) => {
-            const listed =
-                await $`gh pr list --repo ${repo} --head ${head} --state open --json number,url`.quiet()
+            const listed = await ghOk([
+                'pr',
+                'list',
+                '--repo',
+                repo,
+                '--head',
+                head,
+                '--state',
+                'open',
+                '--json',
+                'number,url',
+            ])
             const [pull] = parseOrThrow({
                 schema: GitHubPullListSchema,
-                value: JSON.parse(listed.stdout.toString()),
+                value: JSON.parse(listed),
                 what: `the open pull requests from ${head}`,
             })
             return pull ?? null
         },
-        listLabels: async () => {
-            const listed =
-                await $`gh label list --repo ${repo} --limit 1000 --json name --jq ${'.[].name'}`.quiet()
-            return listed.stdout
-                .toString()
-                .split('\n')
-                .filter((name) => name !== '')
-        },
-        createLabel: async ({ name, color, description }) => {
-            await $`gh label create ${name} --repo ${repo} --color ${color} --description ${description}`.quiet()
+        listLabels,
+        createLabel: async (label) => {
+            await ghOk(createLabelArgs(label))
         },
         // Checked on the repo's newest issue; a repo with no issues yet
         // can't show them missing, so both count as there.

@@ -89,12 +89,12 @@ const fakeGitHub = ({
             githubRepo: async () => repo_name,
             issueLinks: async () => ({ sub_issues, dependencies }),
             listLabels: async () => store.map(({ name }) => name),
-            createLabel: async ({ name }: { name: string }) => {
+            createLabel: async ({ name, color, description }: FakeLabel) => {
                 if (store.some((label) => label.name === name)) {
                     throw new Error(`label ${name} already exists`)
                 }
                 created.push(name)
-                store.push({ name, color: 'ededed', description: '' })
+                store.push({ name, color, description })
             },
         },
         /** Every label now, as stored. */
@@ -203,6 +203,7 @@ describe('luca-setup creates the labels a run needs', () => {
         expect(github.created().toSorted()).toEqual([
             'needs-info',
             'ready-for-agent',
+            'ready-for-human',
         ])
         const labels = github.labels()
         expect(labels.find(({ name }) => name === 'refactor')).toEqual(refactor)
@@ -211,11 +212,12 @@ describe('luca-setup creates the labels a run needs', () => {
             'bug',
             'needs-info',
             'ready-for-agent',
+            'ready-for-human',
             'refactor',
         ])
     }, 60_000)
 
-    test('a repo with no labels gets all three', async () => {
+    test('a repo with no labels gets all four', async () => {
         await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
         const github = fakeGitHub()
 
@@ -224,16 +226,25 @@ describe('luca-setup creates the labels a run needs', () => {
         expect(github.created().toSorted()).toEqual([
             'needs-info',
             'ready-for-agent',
+            'ready-for-human',
             'refactor',
         ])
+        // A spec's tickets for a person are left out of a run (#499).
+        expect(
+            github.labels().find(({ name }) => name === 'ready-for-human')
+                ?.description
+        ).toBe('Needs a person, not an agent')
     }, 60_000)
 
     test('a repo that has every label gets none created', async () => {
         await makeRepo({ files: { 'package.json': TMNB_PACKAGE } })
         const github = fakeGitHub({
-            labels: ['ready-for-agent', 'refactor', 'needs-info'].map(
-                (name) => ({ name, color: '123456', description: 'Mine' })
-            ),
+            labels: [
+                'ready-for-agent',
+                'ready-for-human',
+                'refactor',
+                'needs-info',
+            ].map((name) => ({ name, color: '123456', description: 'Mine' })),
         })
 
         await setup({ github: github.github, memory: createFakeMuninn() })
@@ -275,6 +286,7 @@ describe('luca setup creates the release labels in a repo with changesets', () =
             [
                 'needs-info',
                 'ready-for-agent',
+                'ready-for-human',
                 'refactor',
                 ...RELEASE_LABELS,
             ].toSorted()
@@ -322,6 +334,7 @@ describe('luca setup creates the release labels in a repo with changesets', () =
         expect(github.created().toSorted()).toEqual([
             'needs-info',
             'ready-for-agent',
+            'ready-for-human',
             'refactor',
         ])
 

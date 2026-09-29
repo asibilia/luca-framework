@@ -5,6 +5,7 @@ import {
     failureText,
     finalReasonText,
     LEARNER,
+    numbersText,
     reasonText,
     RETRY_REFUSED_TEXT,
     rebasedText,
@@ -187,6 +188,44 @@ const ignoredText = ({
 }
 
 /**
+ * Why a run ended with nothing to do: its tickets were already done (#484),
+ * or what is open is for a person or waits on one (#499), or the spec has
+ * no open tickets.
+ */
+const nothingToDoText = ({
+    content,
+}: {
+    content: Extract<BoardRecord, { kind: 'nothing_to_do' }>['content']
+}): string => {
+    const numbersOf = (reason: 'for_a_person' | 'waits_on_person') =>
+        content.left_out
+            .filter((ticket) => ticket.reason === reason)
+            .map(({ number }) => number)
+    const people = numbersOf('for_a_person')
+    const waiting = numbersOf('waits_on_person')
+    const done = content.already_done
+    const parts = [
+        done.length === 0
+            ? ''
+            : `the work of ${done.map((number) => `#${number}`).join(', ')} was already on the base branch`,
+        people.length === 0
+            ? ''
+            : `${numbersText({ numbers: people })} ${people.length === 1 ? 'is' : 'are'} for a person`,
+        waiting.length === 0
+            ? ''
+            : `${numbersText({ numbers: waiting })} ${waiting.length === 1 ? 'waits' : 'wait'} on a ticket for a person`,
+    ].filter((part) => part !== '')
+    if (parts.length === 0)
+        return 'Nothing to do: the spec has no open tickets.'
+    const last = parts.at(-1) ?? ''
+    const text =
+        parts.length === 1
+            ? last
+            : `${parts.slice(0, -1).join(', ')}, and ${last}`
+    return `Nothing to do: ${text}.`
+}
+
+/**
  * What a record means in one line, or `null` for records that are noise in
  * a chat (snapshots, session summaries, a clean leftover scan, Jev in shadow
  * mode, ...).
@@ -218,21 +257,22 @@ export const describeRecord = ({
                 text: `Intake refused the run. ${after.run.refusal.join('; ')}`,
                 tone: 'danger',
             })
-        case 'nothing_to_do': {
-            const done = record.content.already_done
+        case 'nothing_to_do':
             return event({
-                text:
-                    done.length === 0
-                        ? 'Nothing to do: the spec has no open tickets.'
-                        : `Nothing to do: the work of ${done.map((number) => `#${number}`).join(', ')} was already on the base branch.`,
+                text: nothingToDoText({ content: record.content }),
                 tone: 'info',
             })
-        }
-        case 'spec_snapshot':
+        case 'spec_snapshot': {
+            const { spec, ticket_order, left_out } = record.content
+            const people =
+                left_out.length === 0
+                    ? ''
+                    : ` ${left_out.length} left for a person: ${left_out.map(({ number }) => `#${number}`).join(', ')}.`
             return event({
-                text: `Intake passed: spec #${record.content.spec.number}, ${record.content.ticket_order.length} tickets.`,
+                text: `Intake passed: spec #${spec.number}, ${ticket_order.length} tickets.${people}`,
                 tone: 'success',
             })
+        }
         case 'run_branch_created':
             return event({
                 text: `The run branch ${record.content.branch} is ready.`,
