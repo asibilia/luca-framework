@@ -1,4 +1,4 @@
-import type { BoardRecord } from './board-vocabulary'
+import type { BoardRecord, LeftOutList } from './board-vocabulary'
 
 import {
     ALL_STEPS_DONE,
@@ -16,6 +16,7 @@ import {
     type FindingCounts,
     type LensCard,
     type NeedsYou,
+    type PersonTicket,
     type PlanUsed,
     type RunInfo,
     type RunStatus,
@@ -208,6 +209,7 @@ export const createBoardState = ({
         started_on: null,
         version_note: null,
     },
+    for_a_person: [],
     usage: null,
     usage_label: USAGE_LABEL,
     run_tokens: 0,
@@ -235,6 +237,47 @@ export const createBoardState = ({
     event_count: 0,
     latest: null,
 })
+
+/** Issue numbers as `#12`, `#12 and #13`, or `#12, #13 and #14`. */
+export const numbersText = ({ numbers }: { numbers: number[] }): string => {
+    const refs = numbers.map((number) => `#${number}`)
+    const last = refs.at(-1) ?? ''
+    return refs.length <= 1
+        ? last
+        : `${refs.slice(0, -1).join(', ')} and ${last}`
+}
+
+/**
+ * The tickets left out for a person (#499), with why in words, as the
+ * engine's PR says it.
+ *
+ * @example
+ * personTickets({ left_out: [{ number: 13, title: 'Link', reason: 'waits_on_person', waits_on: [12], through: [] }] })
+ * // [{ number: 13, title: 'Link', why: 'waits on #12, which is for a person' }]
+ */
+const personTickets = ({
+    left_out,
+}: {
+    left_out: LeftOutList
+}): PersonTicket[] =>
+    left_out.map(({ number, title, reason, waits_on, through }) => {
+        if (reason === 'for_a_person') {
+            return { number, title, why: 'for a person' }
+        }
+        const which =
+            waits_on.length === 1
+                ? 'which is for a person'
+                : 'which are for a person'
+        const via =
+            through.length === 0
+                ? ''
+                : ` (through ${numbersText({ numbers: through })})`
+        return {
+            number,
+            title,
+            why: `waits on ${numbersText({ numbers: waits_on })}, ${which}${via}`,
+        }
+    })
 
 const newTicket = ({
     number,
@@ -842,10 +885,19 @@ const applyKind = ({
                 },
             }
         case 'nothing_to_do':
-            return { ...state, run: { ...state.run, phase: 'nothing_to_do' } }
+            return {
+                ...state,
+                for_a_person: personTickets({
+                    left_out: record.content.left_out,
+                }),
+                run: { ...state.run, phase: 'nothing_to_do' },
+            }
         case 'spec_snapshot':
             return {
                 ...state,
+                for_a_person: personTickets({
+                    left_out: record.content.left_out,
+                }),
                 run: {
                     ...state.run,
                     spec_number: record.content.spec.number,

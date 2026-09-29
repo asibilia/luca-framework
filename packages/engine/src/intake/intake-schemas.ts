@@ -62,11 +62,41 @@ export const TicketSnapshotSchema = z.object({
 
 export type TicketSnapshot = z.infer<typeof TicketSnapshotSchema>
 
-/** The spec and its open tickets, in blocker order (blockers first). */
+/**
+ * Why intake left an open ticket out of the run (#499): `for_a_person`, as
+ * it has the `ready-for-human` label, or `waits_on_person`, as it is
+ * blocked, directly or through other tickets, by an open one that has.
+ */
+export const LeftOutReasonSchema = z.enum(['for_a_person', 'waits_on_person'])
+
+export type LeftOutReason = z.infer<typeof LeftOutReasonSchema>
+
+/** An open ticket intake left out of the run, and why (#499). */
+export const LeftOutTicketSchema = z.object({
+    number: z.number().int().positive(),
+    title: z.string(),
+    url: z.string().default(''),
+    reason: LeftOutReasonSchema,
+    /** For `waits_on_person`: the tickets for a person it waits on. */
+    waits_on: z.array(z.number().int().positive()).default([]),
+    /**
+     * For `waits_on_person`: its own blockers that wait on a person too,
+     * when it waits through them rather than (or as well as) directly.
+     */
+    through: z.array(z.number().int().positive()).default([]),
+})
+
+export type LeftOutTicket = z.infer<typeof LeftOutTicketSchema>
+
+/**
+ * The spec and its open tickets, in blocker order (blockers first), and
+ * the open tickets left out for a person (#499), by number.
+ */
 export const IntakeSnapshotSchema = z.object({
     spec: SpecSnapshotSchema,
     tickets: z.array(TicketSnapshotSchema),
     closed_tickets: z.array(z.number().int().positive()),
+    left_out: z.array(LeftOutTicketSchema).default([]),
 })
 
 export type IntakeSnapshot = z.infer<typeof IntakeSnapshotSchema>
@@ -74,5 +104,10 @@ export type IntakeSnapshot = z.infer<typeof IntakeSnapshotSchema>
 /** The result of intake's checks. */
 export type IntakeOutcome =
     | { outcome: 'refused'; problems: IntakeProblem[] }
-    | { outcome: 'nothing_to_do'; closed_tickets: number[] }
+    | {
+          outcome: 'nothing_to_do'
+          closed_tickets: number[]
+          /** Open tickets left out for a person (#499): none left to build. */
+          left_out: LeftOutTicket[]
+      }
     | { outcome: 'passed'; snapshot: IntakeSnapshot }

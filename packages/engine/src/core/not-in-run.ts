@@ -6,7 +6,8 @@ import type { Tracker } from '../tracker/tracker'
  * again just before the PR opens (#484): a ticket reopened while the run
  * went, or one that was closed at intake and reopened since. The PR names
  * them (`withNotInRun`), so they are no surprise later. Oldest first, as
- * the tracker lists them.
+ * the tracker lists them. The tickets intake left out for a person (#499)
+ * aren't among them: the PR names those in their own sections.
  *
  * @example
  * const open = await openTicketsNotInRun({ tracker, state })
@@ -21,9 +22,12 @@ export const openTicketsNotInRun = async ({
 }): Promise<{ number: number; title: string }[]> => {
     const { spec_number, snapshot } = state
     if (spec_number === null) return []
-    const inRun = new Set(snapshot?.ticket_order ?? [])
+    const known = new Set([
+        ...(snapshot?.ticket_order ?? []),
+        ...(snapshot?.left_out ?? []).map(({ number }) => number),
+    ])
     const tickets = await tracker.listSubTickets({ spec_number })
     return tickets
-        .filter(({ number, state }) => state === 'open' && !inRun.has(number))
+        .filter(({ number, state }) => state === 'open' && !known.has(number))
         .map(({ number, title }) => ({ number, title }))
 }

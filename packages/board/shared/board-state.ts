@@ -544,8 +544,27 @@ export const NO_MEMORY: MemoryCounts = {
     failed: 0,
 }
 
+/**
+ * An open ticket the run left out for a person (#499): one labeled
+ * `ready-for-human`, or one waiting on such a ticket. Not a problem, so the
+ * board lists it calmly and nobody is asked to act.
+ */
+export const PersonTicketSchema = z.object({
+    number: z.number().int(),
+    title: z.string(),
+    /** Why, in words: `for a person`, or `waits on #12, which is for a person`. */
+    why: z.string(),
+})
+
+export type PersonTicket = z.infer<typeof PersonTicketSchema>
+
 export const BoardStateSchema = z.object({
     run: RunInfoSchema,
+    /**
+     * The open tickets left out for a person (#499), by number. Defaulted,
+     * so an older board state still parses.
+     */
+    for_a_person: z.array(PersonTicketSchema).default([]),
     usage: UsageSchema.nullable(),
     /** What `usage` is, in words. Defaulted, so an older board state still parses. */
     usage_label: z.string().default(USAGE_LABEL),

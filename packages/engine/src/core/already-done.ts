@@ -3,7 +3,7 @@ import type {
     DoneCommit,
     TestWriterResult,
 } from '../agents/role-results'
-import type { TicketSnapshot } from '../intake/intake-schemas'
+import type { LeftOutTicket, TicketSnapshot } from '../intake/intake-schemas'
 
 /**
  * A ticket whose work is already on the base branch (#484): its
@@ -30,11 +30,13 @@ export type AlreadyDoneAction =
     /**
      * End the run with nothing to do: at intake (`already_done` is empty),
      * or once every ticket's work was already done and those are closed.
+     * At intake, `left_out` names the open tickets left for a person (#499).
      */
     | {
           type: 'finish_nothing_to_do'
           closed_tickets: number[]
           already_done: number[]
+          left_out?: LeftOutTicket[]
       }
 
 /**

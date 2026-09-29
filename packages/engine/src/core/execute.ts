@@ -506,11 +506,12 @@ export const executeAction = async ({
                 content: {
                     closed_tickets: action.closed_tickets,
                     already_done: action.already_done,
+                    left_out: action.left_out ?? [],
                 },
             })
             return
         case 'snapshot_intake': {
-            const { spec, tickets, closed_tickets } = action.snapshot
+            const { spec, tickets, closed_tickets, left_out } = action.snapshot
             journal.append({
                 kind: 'spec_snapshot',
                 ticket: spec.number,
@@ -519,6 +520,7 @@ export const executeAction = async ({
                     spec,
                     ticket_order: tickets.map((ticket) => ticket.number),
                     closed_tickets,
+                    left_out,
                 },
             })
             for (const ticket of tickets) {

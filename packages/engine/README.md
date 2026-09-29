@@ -43,7 +43,7 @@ on with a run from its journal (#369).
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
 | `src/journal/step-records.ts` | Pure: the steps a crash cut off (`resumeEntry`, the `run_resumed` a restarted engine appends), each step's crashes in a row, and a redo's first try. |
-| `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot. |
+| `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot, with the tickets left out for a person (#499). |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. |
 | `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
@@ -65,8 +65,9 @@ on with a run from its journal (#369).
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
 | `src/core/final-review-text.ts` | The **final review**'s texts: each lens's prompt (the whole run branch, the rule files for the rules lens, or a re-review of only the new changes), what each fixer is sent, and the open findings of a shipped final review. |
-| `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes (an already-done one with its commits), the spec's open tickets not in the run, the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
+| `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes (an already-done one with its commits), the spec's open tickets not in the run, the tickets for a person and the ones waiting on them (#499), the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
 | `src/core/not-in-run.ts` | Just before the PR: the spec's open sub-issues that aren't in the run (#484). |
+| `src/core/left-out.ts` | The words for tickets left out for a person (#499): why each is out, the PR's "For a person" and "Waiting on a person", and why a run had nothing to do. |
 | `src/core/execute.ts` | Carries out an action (tracker calls, journal appends), and `runEngine`: the scheduler that runs tickets' steps at the same time. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
@@ -501,7 +502,20 @@ with `already_done`, exit 0).
 the spec's sub-issues again. An open one that isn't in the run (reopened
 while the run went, or closed at intake and reopened since) is named in the
 PR, under "Not in this run", with its number and title. The PR doesn't close
-it.
+it. Tickets left out for a person (below) aren't listed there again.
+
+**Tickets for a person (#499).** A spec can mix agent work and work only a
+person can do, such as renaming the repo or shipping after a hands-on check.
+Label those tickets `ready-for-human`. Intake leaves them out of the run: no
+checks, no comment, no relabel. A `ready-for-agent` ticket blocked by one,
+directly or through other tickets, is left out too, since it can't be built
+yet. The rest builds. A ticket for a person blocked by agent tickets is fine:
+it just stays open for the person. What was left out, and why, is in the
+`spec_snapshot` record's `left_out` (older journals have none). The PR lists
+them under "For a person" and "Waiting on a person"
+(`- #13 Link the store: waits on #12, which is for a person`). If nothing is
+left to build, the run ends with nothing to do (`nothing_to_do` with
+`left_out`), and says why.
 
 **Fix loops.** A failed red check goes back to the same test-writer session,
 and failed gates to the same implementer session, with their output
@@ -982,8 +996,8 @@ stage-gate` before every edit, write, and shell call, and it must never block.
 It never commits, and running it again gives the same result, so it doubles
 as a health check.
 
-- **Labels.** It creates `ready-for-agent`, `refactor`, and `needs-info` if
-  they're missing. Labels that are already there are left as they are.
+- **Labels.** It creates `ready-for-agent`, `ready-for-human` ("Needs a
+  person, not an agent"), `refactor`, and `needs-info` if they're missing. Labels that are already there are left as they are.
 - **No `.luca/config.json` yet:** it writes a starting one from the
   `package.json` scripts. `test` and `test:*` become test commands: a script
   that is a `bun test` command runs as written and is bun-readable, and the
@@ -1063,6 +1077,13 @@ and throwaway repos, with fakes for every tool.
 - **Refusing a ticket** comments with what is missing, adds `needs-info`, and
   removes `ready-for-agent`. Spec problems land on the spec the same way.
   Config problems (no issue to comment on) are only journaled.
+- **Tickets for a person are left out, not refused** (#499). A ticket with
+  `ready-for-human` is left out, and so is a ticket waiting on one. A ticket
+  with neither ready label (or with `needs-info`) is still refused. A ticket
+  with both `ready-for-agent` and `ready-for-human` counts as for a person:
+  leaving it out is the safe side, since no agent does a person's work, and
+  the PR and board still name it. A left-out agent ticket is still checked,
+  so a later run can build it.
 - **Blockers** are native "blocked by" links plus `#N` refs in a ticket's
   "Blocked by" section. A closed blocker is fine anywhere; an open one must be
   an open ticket of the same spec, and those must not form a loop.

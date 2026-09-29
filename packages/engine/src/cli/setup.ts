@@ -25,6 +25,7 @@ import {
 import { safeMemory, type MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'
 import {
+    HUMAN_LABEL,
     NEEDS_INFO_LABEL,
     READY_LABEL,
     REFACTOR_LABEL,
@@ -92,6 +93,12 @@ const LABELS = [
         name: READY_LABEL,
         color: '0e8a16',
         description: 'Ready for a Luca run',
+    },
+    {
+        // A run leaves these, and the tickets waiting on them, out (#499).
+        name: HUMAN_LABEL,
+        color: 'c5def5',
+        description: 'Needs a person, not an agent',
     },
     {
         name: REFACTOR_LABEL,
@@ -601,7 +608,7 @@ const list = (lines: string[]): string =>
 
 /**
  * Gets `repo` ready for Luca. It creates the missing `ready-for-agent`,
- * `refactor`, and `needs-info` labels, and in a repo with
+ * `ready-for-human`, `refactor`, and `needs-info` labels, and in a repo with
  * `.changeset/config.json` the `release:*` ones too; writes a starting
  * `.luca/config.json` from `package.json` when there is none (see
  * `guessChecks`), with the repo's GitHub name as its `muninn.vault`, rewrites an old-Luca config into the new shape keeping

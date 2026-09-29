@@ -48,6 +48,26 @@ const TestRunSchema = z.looseObject({
 
 const WorktreeSchema = z.looseObject({ branch: z.string() })
 
+/**
+ * The open tickets intake left out for a person (#499): `for_a_person`, or
+ * `waits_on_person` with the tickets for a person it `waits_on`, and the
+ * blockers it waits `through`. Missing in older journals.
+ */
+const LeftOutListSchema = z
+    .array(
+        z.looseObject({
+            number: z.number().int(),
+            title: z.string().catch(''),
+            reason: z.enum(['for_a_person', 'waits_on_person']),
+            waits_on: z.array(z.number().int()).catch([]).default([]),
+            through: z.array(z.number().int()).catch([]).default([]),
+        })
+    )
+    .catch([])
+    .default([])
+
+export type LeftOutList = z.infer<typeof LeftOutListSchema>
+
 const tokenCount = z.number().min(0).catch(0)
 
 /** One plan window's reading: `utilization` 0 to 1, `resetsAt` in seconds. */
@@ -128,13 +148,19 @@ export const BOARD_VOCABULARY = {
             })
         ),
     }),
-    /** The run ends with nothing to do; `already_done` is empty at intake (#484). */
+    /**
+     * The run ends with nothing to do; `already_done` is empty at intake
+     * (#484), and `left_out` names the tickets left for a person (#499).
+     */
     nothing_to_do: z.looseObject({
         already_done: z.array(z.number().int()).catch([]).default([]),
+        left_out: LeftOutListSchema,
     }),
     spec_snapshot: z.looseObject({
         spec: z.looseObject({ number: z.number(), title: z.string() }),
         ticket_order: z.array(z.number()).catch([]),
+        /** The tickets left out for a person (#499); older journals have none. */
+        left_out: LeftOutListSchema,
     }),
     ticket_snapshot: z.looseObject({
         number: z.number().int(),
