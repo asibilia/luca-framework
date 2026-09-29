@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
 import difference from 'lodash/difference'
@@ -23,7 +23,13 @@ import { bunTestCommands, type EngineConfig } from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
 import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
-import { newCodeFiles, importStem, scanLeftovers } from '../gates/leftover-scan'
+import {
+    importStem,
+    isAgentChangeset,
+    nameCheckFiles,
+    newCodeFiles,
+    scanLeftovers,
+} from '../gates/leftover-scan'
 import {
     dependenciesChanged,
     installCommand,
@@ -449,6 +455,59 @@ const isUsed = async ({
 }
 
 /**
+ * Whether a tracked file other than itself and the tests names this file by
+ * its basename, as a TOC, `package.json`, or a config does. A mention in a
+ * test doesn't make a file the repo's.
+ */
+const isNamed = async ({
+    context,
+    cwd,
+    path,
+}: {
+    context: BuildContext
+    cwd: string
+    path: string
+}): Promise<boolean> => {
+    const files = (
+        await context.git.filesMentioning({ cwd, text: basename(path) })
+    ).filter((file) => file !== path)
+    const tests = testFilesAmong({
+        files,
+        test_file_patterns: context.config.test_file_patterns,
+    })
+    return files.some((file) => !tests.includes(file))
+}
+
+/**
+ * In a repo with changesets, removes the changesets an agent wrote (see
+ * `isAgentChangeset`) from the worktree and journals `changeset_dropped`:
+ * the engine writes the run's one itself. Returns the other changes.
+ */
+const dropAgentChangesets = async ({
+    context,
+    cwd,
+    ticket,
+    changes,
+}: {
+    context: BuildContext
+    cwd: string
+    ticket: number | null
+    changes: FileChange[]
+}): Promise<FileChange[]> => {
+    if (!context.state.changesets) return changes
+    const paths = changes.filter(isAgentChangeset).map(({ path }) => path)
+    if (paths.length === 0) return changes
+    for (const path of paths) await rm(join(cwd, path), { force: true })
+    context.journal.append({
+        kind: 'changeset_dropped',
+        ticket,
+        role: null,
+        content: { paths },
+    })
+    return changes.filter(({ path }) => !paths.includes(path))
+}
+
+/**
  * The commit a crash left behind at `cwd`: HEAD carries `message` and no
  * record names it yet, so the step's first try made it and died before
  * journaling it. `null` when HEAD is no such commit.
@@ -481,7 +540,8 @@ const leftCommit = async ({
  * The leftover scan, then an engine commit of everything in `cwd`, both
  * journaled. What the prepare command made (`prepare_made`) and untracked
  * links pointing outside the checkout (see `leaveOutIn`) are neither
- * scanned nor committed. A hit blocks the commit. A redo after a crash that
+ * scanned nor committed. An agent's changeset is dropped before the scan
+ * (see `dropAgentChangesets`). A hit blocks the commit. A redo after a crash that
  * already committed (nothing left to commit, and HEAD is an unjournaled
  * commit with this message) journals that commit instead of making
  * another; its scan, of a clean worktree, finds nothing, as the first try's
@@ -512,7 +572,12 @@ export const commitIn = async ({
     mention_text: string
 }) => {
     const leave_out = await leaveOutIn({ context, cwd, ticket })
-    const changes = await ticketChanges({ context, cwd, leave_out })
+    const changes = await dropAgentChangesets({
+        context,
+        cwd,
+        ticket,
+        changes: await ticketChanges({ context, cwd, leave_out }),
+    })
     const test_files = testFilesAmong({
         files: changes.map(({ path }) => path),
         test_file_patterns: context.config.test_file_patterns,
@@ -526,7 +591,17 @@ export const commitIn = async ({
     for (const path of newCodeFiles({ changes, test_files })) {
         used_code[path] = await isUsed({ context, cwd, path, added_texts })
     }
-    const hits = scanLeftovers({ changes, test_files, mention_text, used_code })
+    const named: string[] = []
+    for (const path of nameCheckFiles({ changes, test_files })) {
+        if (await isNamed({ context, cwd, path })) named.push(path)
+    }
+    const hits = scanLeftovers({
+        changes,
+        test_files,
+        mention_text,
+        used_code,
+        named,
+    })
     context.journal.append({
         kind: 'leftover_scan',
         ticket,

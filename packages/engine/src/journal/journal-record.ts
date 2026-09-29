@@ -557,6 +557,18 @@ const LeftoverScanEntrySchema = z.object({
     }),
 })
 
+/**
+ * Before an engine commit's leftover scan, in a repo with changesets, the
+ * engine removed the changesets an agent wrote (new `.changeset/*.md` files
+ * other than the README) from the worktree: it writes the run's one itself.
+ * No ticket for the final review's fix commit.
+ */
+const ChangesetDroppedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('changeset_dropped'),
+    content: z.object({ paths: z.array(z.string().min(1)).min(1) }),
+})
+
 const CommitMadeEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('commit_made'),
@@ -1296,6 +1308,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema,
     AlreadyDoneCheckedEntrySchema,
     LeftoverScanEntrySchema,
+    ChangesetDroppedEntrySchema,
     CommitMadeEntrySchema,
     WorktreeResetEntrySchema,
     DependenciesInstalledEntrySchema,
@@ -1376,6 +1389,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema.extend(STAMP_FIELDS),
     AlreadyDoneCheckedEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
+    ChangesetDroppedEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
     WorktreeResetEntrySchema.extend(STAMP_FIELDS),
     DependenciesInstalledEntrySchema.extend(STAMP_FIELDS),
@@ -1455,6 +1469,7 @@ export const JournalKindSchema = z.enum([
     'red_check',
     'already_done_checked',
     'leftover_scan',
+    'changeset_dropped',
     'commit_made',
     'worktree_reset',
     'dependencies_installed',

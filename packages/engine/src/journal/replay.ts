@@ -1171,6 +1171,9 @@ const applyRecord = ({
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
             return next
+        // An agent's changeset the engine removed: noted, never acted on.
+        case 'changeset_dropped':
+            return next
         case 'prepare_made':
             return {
                 ...next,
@@ -1664,6 +1667,7 @@ type TicketRecord = Exclude<
             | 'agent_message'
             | 'agent_message_delivered'
             | 'shared_git_changed'
+            | 'changeset_dropped'
             | 'final_review_started'
             | 'lens_started'
             | 'lens_finished'

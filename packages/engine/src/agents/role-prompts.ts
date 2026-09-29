@@ -190,6 +190,28 @@ export const prepareSection = ({ command }: { command: string }): string =>
             "If the engine's prepare command fails after your turn, its output comes back to you like a failed check.",
     ].join('\n\n')
 
+/**
+ * The section a test-writer or implementer (a ticket's or the final
+ * review's fixers) gets in a repo with changesets: the engine writes the
+ * run's one changeset, so an agent's own is extra.
+ */
+export const CHANGESETS_SECTION = [
+    '## The engine writes the changeset',
+    "Don't write changesets, even if the repo's rules ask for one: the engine writes the run's one changeset when it opens the PR. " +
+        'A new file you add in `.changeset/` is removed before the commit. ' +
+        'A finding that only asks for a changeset is answered by this: answer it "wont_fix" and say the engine adds it.',
+].join('\n\n')
+
+/**
+ * The section the rules lens gets in a repo with changesets, so a rule like
+ * "every PR needs a changeset" raises no finding.
+ */
+export const CHANGESETS_LENS_SECTION = [
+    '## The engine writes the changeset',
+    "The engine adds the run's one changeset when it opens the PR, so a rule that asks for a changeset is met. " +
+        'Raise no finding that only asks for a changeset.',
+].join('\n\n')
+
 /** What each lens judges the whole run branch on, in one paragraph. */
 const LENS_TASK_TEXT =
     'You are one lens of the final review: a fresh, read-only reviewer of the WHOLE run branch, every ticket of the spec together. Write nothing.'

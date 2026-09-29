@@ -449,6 +449,37 @@ folder as no text. A folder with its own git repo in it, which git can't
 commit as files, is a leftover scan hit, so the ticket gets stuck with that
 reason.
 
+**Files a tool loads by name are not "unused" (#507).** The leftover scan's
+"a new script or module that nothing uses" skips files a tool or framework
+loads by their name or folder, so nothing imports them: `*.config.{ts,js,mjs,cjs,mts,cts}`
+(vite, vitest, eslint, tailwind, postcss, react-router, astro, next...),
+`entry.server.*` and `entry.client.*`, `root.*`, `routes.*`, `middleware.*`,
+and any file under `app/routes/`, `pages/`, `src/app/`, or `src/pages/`, at
+any depth. The allowlist is `LOADED_BY_NAME` and `ROUTER_FOLDER` in
+`src/gates/leftover-scan.ts`.
+
+**A file the repo names is neither unused nor scratch (#507).** Before the
+scan, the engine looks for each scratch-named file (`debug.*`, `notes.*`,
+`tmp.*`, ...) and each new code file by its basename in the tracked files
+(`git grep`, the worktree's text). If a tracked file other than itself and
+the tests names it, as an addon's TOC lists `core\debug.lua`, a
+`package.json` script runs `tools/notes.ts`, or a config points at it, it
+is the repo's: never "a scratch file", never "nothing uses it". A mention in
+a test alone doesn't count, so a stray `tmp.ts` a test names is still
+flagged, like a `notes.md` or `scratch.ts` nothing names.
+
+**Agents don't write changesets (#507).** In a repo with changesets
+(`.changeset/config.json` when the run branch was made), the engine writes
+the run's one changeset at PR time. So the test-writers' and implementers'
+prompts (the final review's fixers too) say not to write one, even if the
+repo's rules ask for it, and the rules lens is told the engine adds it.
+One an agent writes anyway, a new `.changeset/*.md` other than
+`.changeset/README.md`, is removed from the worktree before the leftover
+scan and journaled as `changeset_dropped { paths }` (no ticket at the final
+review's fix commit). It is no leftover hit, so the ticket moves on. Edits to
+`.changeset/config.json`, `pre.json`, or the README are the agent's work and
+are committed as usual.
+
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
 prune`). After a `stop` reply, only the worktrees of the tickets that pushed
