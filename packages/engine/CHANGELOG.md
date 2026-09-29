@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.5
+
+### Patch Changes
+
+- bdfc285: New `/luca-unstick` skill, installed by `luca init` and `luca upgrade`: it explains why a run is stuck, fixes what it safely can, and posts the reply for you after you confirm (#504).
+
 ## 14.0.0-alpha.4
 
 ### Patch Changes
