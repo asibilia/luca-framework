@@ -386,6 +386,54 @@ describe('commitIn with a file the repo names (#507)', () => {
         ])
     })
 
+    test('a new TOC added in the same change clears the new core/debug.lua it lists, and both are committed', async () => {
+        await writeFiles({
+            'Turbo/Turbo.toc':
+                '## Interface: 110002\n## Title: Turbo\n\ncore\\debug.lua\n',
+            'Turbo/core/debug.lua':
+                'local _, Turbo = ...\nTurbo.debugMode = false\n',
+        })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual(
+            []
+        )
+        expect(byKind(records, 'commit_made')[0]?.content.files).toEqual([
+            'Turbo/Turbo.toc',
+            'Turbo/core/debug.lua',
+        ])
+    })
+
+    test('a new package.json added in the same change clears the new tools/notes.ts its script runs, and both are committed', async () => {
+        await writeFiles({
+            'package.json': JSON.stringify(
+                {
+                    name: 'app',
+                    private: true,
+                    scripts: { 'release-notes': 'bun tools/notes.ts' },
+                },
+                null,
+                4
+            ),
+            'tools/notes.ts': "process.stdout.write('What changed\\n')\n",
+        })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual(
+            []
+        )
+        expect(byKind(records, 'commit_made')[0]?.content.files).toEqual([
+            'package.json',
+            'tools/notes.ts',
+        ])
+    })
+
     test('tools/notes.ts named in a package.json script is not flagged as unused or as scratch', async () => {
         await commitFiles({
             'package.json': JSON.stringify(
