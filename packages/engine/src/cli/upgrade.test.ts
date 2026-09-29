@@ -32,6 +32,8 @@ let registry_path = ''
 let luca_dir = ''
 /** The board folder inside Luca's install folder. */
 let board_dir = ''
+/** The skills folder inside Luca's install folder. */
+let skills_dir = ''
 /** The real path of the installed `luca-run`. */
 let engine_path = ''
 /** Bun's own path. */
@@ -74,7 +76,12 @@ beforeEach(async () => {
         'luca'
     )
     board_dir = join(luca_dir, 'board')
+    skills_dir = join(luca_dir, 'skills')
     engine_path = join(luca_dir, 'engine', 'cli', 'luca-run.ts')
+    await Bun.write(
+        join(skills_dir, 'luca-unstick', 'SKILL.md'),
+        '---\nname: luca-unstick\n---\nOld text.\n'
+    )
     await mkdir(board_dir, { recursive: true })
     await Bun.write(
         join(board_dir, 'paseo-plugin.json'),
@@ -243,6 +250,7 @@ const upgrade = ({
 }) =>
     runUpgrade({
         to,
+        home,
         installed_version,
         runs_dir,
         registry_path,
@@ -250,6 +258,7 @@ const upgrade = ({
         bun: fakes.bun.bun,
         paseo: fakes.paseo.paseo,
         board_dir,
+        skills_dir,
         engine_path,
         bun_path,
         list_processes: async () => {
@@ -953,5 +962,56 @@ describe('luca upgrade reloads the board', () => {
             bun_path,
             ...TUNED_LINES,
         })
+    })
+})
+
+describe("luca upgrade copies Luca's own skills (#504)", () => {
+    const installedSkill = (file: string) =>
+        Bun.file(join(home, '.claude', 'skills', 'luca-unstick', file))
+
+    test("after bun add -g, the new install's /luca-unstick replaces the old copy, and other skills stay", async () => {
+        await Bun.write(installedSkill('SKILL.md'), 'An old copy.\n')
+        const other = join(home, '.claude', 'skills', 'to-spec', 'SKILL.md')
+        await Bun.write(other, 'Mine.\n')
+        const fakes = freshFakes()
+        // `bun add -g` puts the new version's files in the install folder.
+        const new_text = '---\nname: luca-unstick\n---\nNew text.\n'
+        fakes.bun.bun.addGlobal = async ({ spec }: { spec: string }) => {
+            events.push(`bun add -g ${spec}`)
+            await Bun.write(
+                join(skills_dir, 'luca-unstick', 'SKILL.md'),
+                new_text
+            )
+        }
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(true)
+        expect(await installedSkill('SKILL.md').text()).toBe(new_text)
+        expect(await Bun.file(other).text()).toBe('Mine.\n')
+        expect(logs.join('\n')).toContain(
+            "[luca upgrade] Luca's skills: installed /luca-unstick"
+        )
+    })
+
+    test('a refused upgrade copies nothing', async () => {
+        const fakes = freshFakes()
+        engineRunning({ run_id: 'run-going' })
+        writeRun({
+            run_id: 'run-going',
+            spec_number: 7,
+            run_repo: '/code/app',
+        })
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end.ok).toBe(false)
+        expect(await installedSkill('SKILL.md').exists()).toBe(false)
     })
 })

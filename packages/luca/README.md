@@ -38,14 +38,16 @@ This is Luca v14, in alpha. Old Luca (v13) is still on npm; see [Coming from v13
 5. Write a spec with `/to-spec`, then split it into tickets with `/to-tickets`.
 6. In a Paseo chat, type `/luca-run <spec number>`. The board shows the run in the side panel, and the run ends in one pull request.
 
+If a ticket gets stuck, Luca comments on the spec and waits for your one-word reply. Type `/luca-unstick` in Claude Code or a Paseo chat, in the repo: it reads why, says what to do, and posts the reply once you say yes.
+
 ## Commands
 
 | Command | What it does |
 | ------- | ------------ |
-| `luca init` | Sets up this computer, once (safe to run again): MuninnDB and its Claude Code entry, the board in Paseo with its engine and Bun paths, and the planning skills (`to-spec`, `to-tickets`, `setup-matt-pocock-skills`, `grilling`, `domain-modeling`). It asks before turning on Paseo's plugins, and leaves skills you already have alone. `--skip-skills` skips the skills. Inside a git repo, it then runs `luca setup` for that repo. |
+| `luca init` | Sets up this computer, once (safe to run again): MuninnDB and its Claude Code entry, the board in Paseo with its engine and Bun paths, the planning skills (`to-spec`, `to-tickets`, `setup-matt-pocock-skills`, `grilling`, `domain-modeling`), and Luca's own `/luca-unstick` skill. It asks before turning on Paseo's plugins, and leaves skills you already have alone (it only replaces its own `/luca-unstick`). `--skip-skills` skips the planning skills. Inside a git repo, it then runs `luca setup` for that repo. |
 | `luca setup` | Gets the repo in this folder ready: the labels a run needs (and the `release:*` labels when the repo uses changesets), `.luca/config.json` (a new one gets the repo's GitHub name as its vault; an existing vault is kept), and a check of GitHub sub-issues and dependencies. `--base <branch>` names the base branch. |
 | `luca doctor` | Checks this computer, this repo when you're in one, and what v13 left behind. Each problem comes with its exact fix. `luca doctor --fix` fixes what's safe without asking: it never deletes (v13 files go to a dated backup folder) and never commits, and it lists the repo files to commit. |
-| `luca upgrade` | Moves to the newest Luca on your channel: `alpha` stays on `alpha`, and it never goes back to v13. It refuses while any run is going (stuck runs and limit waits count) and lists them. A run that crashed, with no engine running it, doesn't stop it: upgrade says how to resume it on the new version. Then it reloads the board and says when to run `/reload-skills`. |
+| `luca upgrade` | Moves to the newest Luca on your channel: `alpha` stays on `alpha`, and it never goes back to v13. It refuses while any run is going (stuck runs and limit waits count) and lists them. A run that crashed, with no engine running it, doesn't stop it: upgrade says how to resume it on the new version. Then it reloads the board, copies the new `/luca-unstick` skill, and says when to run `/reload-skills`. |
 | `luca upgrade --to <version>` | Installs that exact version, an older one too, to go back when a version breaks. |
 
 `init`, `setup`, and `upgrade` end with their part of `luca doctor`'s checks.
@@ -88,6 +90,7 @@ This is the one package that goes to npm. It's TypeScript source with no build a
 | ------ | ---------- |
 | `engine/` | The engine's source, from [`packages/engine/src`](../engine/src). Both bins point into it. |
 | `board/` | The board plugin's folder, from [`packages/board`](../board): `paseo-plugin.json`, its entry points, its client, server, and shared code, and its own `package.json`, so Paseo can install it as a folder source. |
+| `skills/` | Luca's own Claude Code skills, such as `luca-unstick`, from [`packages/engine/skills`](../engine/skills). `luca init` and `luca upgrade` copy them to `~/.claude/skills`. |
 | `LICENSE` | The repo's license. |
 
 Test files and test helpers stay out. The engine and the board stay private workspace packages, and this package lists every package they import at runtime as its own dependency.

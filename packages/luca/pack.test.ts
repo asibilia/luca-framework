@@ -17,6 +17,7 @@ const LUCA_DIR = import.meta.dir
 const PACKAGES_DIR = join(import.meta.dir, '..')
 const ENGINE_SRC = join(PACKAGES_DIR, 'engine', 'src')
 const BOARD_DIR = join(PACKAGES_DIR, 'board')
+const SKILLS_DIR = join(PACKAGES_DIR, 'engine', 'skills')
 
 /** Packing copies the engine and board, so the first test waits for it. */
 const PACK_TIMEOUT_MS = 120_000
@@ -78,6 +79,10 @@ const run = async ({ cmd, cwd }: { cmd: string[]; cwd: string }) => {
 /** The engine's source files the package must carry (not its tests). */
 const engineFiles = async (): Promise<string[]> =>
     (await filesUnder(ENGINE_SRC)).filter((file) => !isTestFile(file))
+
+/** Luca's own skills' files the package must carry (not their tests). */
+const skillFiles = async (): Promise<string[]> =>
+    (await filesUnder(SKILLS_DIR)).filter((file) => !isTestFile(file))
 
 /**
  * The board's plugin files Paseo loads from a folder source: its manifest,
@@ -357,6 +362,28 @@ describe('the packed @alecsibilia/luca tarball', () => {
             })
             expect(problems).toEqual({ missing: [], changed: [] })
             expect(tarball.files).toContain(`${root}package.json`)
+        },
+        PACK_TIMEOUT_MS
+    )
+
+    test(
+        "it has Luca's own skills, unchanged and without tests, next to the engine where the engine looks for them",
+        async () => {
+            const tarball = await packed()
+            const engine_root = rootHolding(tarball, 'cli/luca-run.ts') ?? ''
+            // The engine finds them two folders up from its `cli/` (`skillsDir`).
+            const root = `${normalize(join(engine_root, 'cli', '..', '..', 'skills'))}/`
+            const files = await skillFiles()
+            expect(files).toContain('luca-unstick/SKILL.md')
+            expect(files).toContain('luca-unstick/scripts/stuck-summary.ts')
+
+            const problems = await copyProblems({
+                tarball,
+                root,
+                source_dir: SKILLS_DIR,
+                files,
+            })
+            expect(problems).toEqual({ missing: [], changed: [] })
         },
         PACK_TIMEOUT_MS
     )

@@ -14,6 +14,7 @@ import {
     reason,
     type DoctorCheck,
 } from './doctor-checks'
+import { installLucaSkills } from './luca-skills'
 import { ensureMuninnEntry, hideToken } from './muninn-entry'
 import { repoChecks, runSetup, type SetupGitHub } from './setup'
 import {
@@ -37,7 +38,7 @@ import { runCommand } from '../shell/run-command'
  * `--fix` fixes what's safe, without asking: it cleans up v13's leftovers
  * first (see `fixV13`), starts MuninnDB and repairs Claude Code's `muninn`
  * entry (as `luca init` does), reloads the board and rewrites its paths,
- * and runs `luca setup` in a repo. It never deletes and never commits: it
+ * installs Luca's own skills again, and runs `luca setup` in a repo. It never deletes and never commits: it
  * lists the repo files to commit. Installs, sign-ins, Paseo's plugin
  * consent, and other `luca` copies are only reported.
  */
@@ -126,8 +127,10 @@ const tryFix = async ({
 
 /** Fixes what's safe on this computer, guided by the checks. */
 const fixComputer = async ({
+    home,
     checks,
     board_dir,
+    skills_dir,
     engine_path,
     bun_path,
     muninn,
@@ -136,8 +139,10 @@ const fixComputer = async ({
     paseo,
     log,
 }: {
+    home: string
     checks: DoctorCheck[]
     board_dir: string
+    skills_dir: string
     engine_path: string
     bun_path: string
     muninn: MuninnCli
@@ -189,6 +194,9 @@ const fixComputer = async ({
             token: null,
             log,
         })
+    }
+    if (statusOf({ checks, name: 'luca_skills' }) === 'problem') {
+        await installLucaSkills({ home, skills_dir, prefix: PREFIX, log })
     }
 }
 
@@ -243,7 +251,7 @@ const listToCommit = async ({
  * then checks again. Never throws, and never shows the token.
  *
  * @example
- * const end = await runDoctor({ home: homedir(), fix: false, luca_version, board_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo, repo: null, tmp_dir: '/tmp', log: console.log })
+ * const end = await runDoctor({ home: homedir(), fix: false, luca_version, board_dir, skills_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo, repo: null, tmp_dir: '/tmp', log: console.log })
  * process.exit(end.exit_code)
  */
 export const runDoctor = async ({
@@ -251,6 +259,7 @@ export const runDoctor = async ({
     fix,
     luca_version,
     board_dir,
+    skills_dir,
     engine_path,
     bun_path,
     computer,
@@ -283,6 +292,7 @@ export const runDoctor = async ({
             home,
             luca_version,
             board_dir,
+            skills_dir,
             engine_path,
             bun_path,
             computer,
@@ -331,8 +341,10 @@ export const runDoctor = async ({
             })
         }
         await fixComputer({
+            home,
             checks,
             board_dir,
+            skills_dir,
             engine_path,
             bun_path,
             muninn,

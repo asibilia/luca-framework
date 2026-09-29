@@ -69,6 +69,8 @@ let muninn_bin = ''
 let luca_dir = ''
 /** The board folder inside Luca's install folder. */
 let board_dir = ''
+/** The skills folder inside Luca's install folder. */
+let skills_dir = ''
 /** The real path of the installed `luca-run`. */
 let engine_path = ''
 /** Bun's own path. */
@@ -83,6 +85,28 @@ const log = (line: string) => {
     logs.push(line)
 }
 
+/** Luca's own skill, as its install folder ships it (#504). */
+const SHIPPED_SKILL = {
+    'SKILL.md':
+        '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
+    'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+}
+
+/** Writes Luca's own skill into its install folder, with a test that stays out. */
+const writeShippedSkill = async () => {
+    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
+        await Bun.write(join(skills_dir, 'luca-unstick', file), text)
+    }
+    await Bun.write(
+        join(skills_dir, 'luca-unstick', 'scripts', 'stuck-summary.test.ts'),
+        'test file\n'
+    )
+}
+
+/** A file of the installed `/luca-unstick` in the home folder. */
+const installedSkill = (file: string) =>
+    Bun.file(join(home, '.claude', 'skills', 'luca-unstick', file))
+
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-init-home-')))
     muninn_bin = join(home, '.local', 'bin', 'muninn')
@@ -96,7 +120,9 @@ beforeEach(async () => {
         'luca'
     )
     board_dir = join(luca_dir, 'board')
+    skills_dir = join(luca_dir, 'skills')
     engine_path = join(luca_dir, 'engine', 'cli', 'luca-run.ts')
+    await writeShippedSkill()
     await mkdir(board_dir, { recursive: true })
     await Bun.write(
         join(board_dir, 'paseo-plugin.json'),
@@ -413,6 +439,7 @@ const init = ({
         },
         luca_version: LUCA_VERSION,
         board_dir,
+        skills_dir,
         engine_path,
         bun_path,
         log,
@@ -1100,6 +1127,64 @@ const makeTmnbRepo = async ({
     return { repo, origin }
 }
 
+describe("luca init installs Luca's own skills (#504)", () => {
+    test('/luca-unstick lands in ~/.claude/skills, without its tests', async () => {
+        const end = await init({ fakes: freshFakes() })
+
+        for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
+            expect(await installedSkill(file).text()).toBe(text)
+        }
+        expect(
+            await installedSkill('scripts/stuck-summary.test.ts').exists()
+        ).toBe(false)
+        expect(logs).toContain(
+            `[luca init] Luca's skills: installed /luca-unstick in ${join(home, '.claude', 'skills')}`
+        )
+        expect(
+            end.doctor.find(({ name }) => name === 'luca_skills')
+        ).toMatchObject({ status: 'ok' })
+    })
+
+    test("it overwrites Luca's older copy, and leaves other skills and extra files alone", async () => {
+        await Bun.write(installedSkill('SKILL.md'), 'An older copy.\n')
+        await Bun.write(installedSkill('notes.md'), 'My notes.\n')
+        const other = join(home, '.claude', 'skills', 'to-spec', 'SKILL.md')
+        await Bun.write(other, 'Mine.\n')
+
+        await init({ fakes: freshFakes() })
+
+        expect(await installedSkill('SKILL.md').text()).toBe(
+            SHIPPED_SKILL['SKILL.md']
+        )
+        expect(await installedSkill('notes.md').text()).toBe('My notes.\n')
+        expect(await Bun.file(other).text()).toBe('Mine.\n')
+    })
+
+    test('run again, it says the skills are up to date', async () => {
+        await init({ fakes: freshFakes() })
+        logs.length = 0
+
+        await init({ fakes: freshFakes() })
+
+        expect(logs).toContain("[luca init] Luca's skills: up to date")
+    })
+
+    test('--skip-skills still installs them: they are part of Luca', async () => {
+        await init({ fakes: freshFakes(), skip_skills: true })
+
+        expect(await installedSkill('SKILL.md').exists()).toBe(true)
+    })
+
+    test('a Luca install with no skills folder fails init, and says to reinstall', async () => {
+        await rm(skills_dir, { recursive: true, force: true })
+
+        const end = await init({ fakes: freshFakes() })
+
+        expect(end.ok).toBe(false)
+        expect(logs.join('\n')).toContain('Reinstall Luca')
+    })
+})
+
 describe('luca init inside a git repo', () => {
     let root = ''
     let repo = ''
@@ -1235,6 +1320,10 @@ describe('luca init outside a git repo', () => {
         const inside = printed().split('\n')
         // The same computer, fresh again, for the run outside a repo.
         await rm(join(home, 'Library'), { recursive: true, force: true })
+        await rm(join(home, '.claude', 'skills', 'luca-unstick'), {
+            recursive: true,
+            force: true,
+        })
         events.length = 0
         logs.length = 0
         const fakes = freshFakes()
