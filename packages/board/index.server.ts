@@ -23,6 +23,7 @@ import {
     boardReadRpc,
     boardVersionRpc,
     engineEventRpc,
+    replyPostRpc,
     runStartRpc,
 } from './shared/board-rpc'
 import { PLUGIN_ID } from './shared/board-state'
@@ -40,7 +41,8 @@ const log = (message: string) => console.error(`[${PLUGIN_ID}] ${message}`)
  * The board plugin's daemon side: the engine settings (their usage lines
  * kept in a file for the engine), `run.start` (launch a
  * run from `/luca-run`), `engine.event` (the engine's journal records in),
- * and `board.read` (the side panel's poll). On start, and every 15 s after,
+ * `board.read` (the side panel's poll), and `reply.post` (a reply button on
+ * stuck work posts its word on the spec, #503). On start, and every 15 s after,
  * it checks for runs whose engine is gone and restarts the ones that can go
  * on (#375). The logic lives in `createBoardServer`; this entry only wires it
  * to Paseo.
@@ -129,6 +131,10 @@ export default function contribute(server: PluginServerContext) {
     server.handle(boardReadRpc, (input, context) => {
         connect({ context })
         return board.readBoard(input)
+    })
+    server.handle(replyPostRpc, (input, context) => {
+        connect({ context })
+        return board.postReply(input)
     })
     // Fixed as loaded: after an upgrade it differs until a reload.
     server.handle(boardVersionRpc, () => ({ version: LUCA_VERSION }))

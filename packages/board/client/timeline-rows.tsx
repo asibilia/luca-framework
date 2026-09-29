@@ -20,6 +20,7 @@ import {
     usageColor,
     useNow,
 } from './board-look'
+import { StuckActions } from './stuck-actions'
 
 import type { EventRow, LimitRow, RunRow, StuckRow } from '../shared/board-rows'
 import { currentStepText, USAGE_LABEL } from '../shared/board-state'
@@ -294,9 +295,14 @@ export const EventRowLine = ({
     )
 }
 
-/** Stuck work, with the exact replies; resolved in place. */
+/**
+ * Stuck work, with a button per reply and "Help me", which sends
+ * `/luca-unstick` to this chat (#503); resolved in place. A row added
+ * before the buttons shows the replies as text.
+ */
 export const StuckRowCard = ({
     item,
+    agentId,
     theme,
     layout,
 }: PluginTimelineItemProps<StuckRow>) => {
@@ -333,20 +339,41 @@ export const StuckRowCard = ({
                             · {line}
                         </Text>
                     ))}
-                    <View style={styles.replyRow}>
-                        <Text style={styles.muted}>
-                            Reply with a comment on{' '}
-                            {row.spec_number === null
-                                ? 'the spec issue'
-                                : `spec issue #${row.spec_number}`}
-                            :
-                        </Text>
-                        {row.replies.map((reply) => (
-                            <Text key={reply} style={styles.reply} selectable>
-                                {reply}
+                    {row.run_id !== null &&
+                    row.key !== null &&
+                    row.since !== null ? (
+                        <StuckActions
+                            run_id={row.run_id}
+                            item={{
+                                key: row.key,
+                                ticket: row.ticket,
+                                since: row.since,
+                            }}
+                            spec_number={row.spec_number}
+                            posted={[]}
+                            chat_agent_id={agentId}
+                            theme={theme}
+                        />
+                    ) : (
+                        <View style={styles.replyRow}>
+                            <Text style={styles.muted}>
+                                Reply with a comment on{' '}
+                                {row.spec_number === null
+                                    ? 'the spec issue'
+                                    : `spec issue #${row.spec_number}`}
+                                :
                             </Text>
-                        ))}
-                    </View>
+                            {row.replies.map((reply) => (
+                                <Text
+                                    key={reply}
+                                    style={styles.reply}
+                                    selectable
+                                >
+                                    {reply}
+                                </Text>
+                            ))}
+                        </View>
+                    )}
                 </>
             ) : (
                 <Text style={styles.muted}>{row.resolution}</Text>

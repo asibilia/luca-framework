@@ -22,7 +22,8 @@ through five **lenses** before the PR opens, with its own capped fix loop
 (#367).
 Stuck work reaches the spec's owner as a comment on the spec issue, the other
 tickets keep building, and the owner's one-word replies (`retry`, `skip`,
-`stop`) move it on (#366).
+`stop`) move it on (#366). The `/luca-unstick` skill reads why for the
+owner and posts the reply once they say yes (#504).
 With **memory** on, the engine searches MuninnDB at four **recall points** and
 hands the memories to agents, and at the end of every run a learner proposes
 new memories that plain code routes to a vault by type and scope and saves
@@ -140,7 +141,9 @@ on with a run from its journal (#369).
 | `src/cli/live-runs.ts` | Which runs have a live engine: every process's command line from `ps` (`listProcesses`), and the run ids in them (`liveRunIds`). A copy of the board's check. |
 | `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
-| `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, and the planning skills. |
+| `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, the planning skills, and Luca's own skills. |
+| `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
+| `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply. See "Getting a stuck run moving". |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
 
 ## How a run moves
@@ -855,6 +858,44 @@ final_review_stuck
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.
 
+### Getting a stuck run moving (#504)
+
+Picking the right reply takes reading: the journal, the ticket's worktree,
+and the agent's reason. The `/luca-unstick` skill does that reading for you.
+In Claude Code or a Paseo chat, in the run's repo, type:
+
+```
+/luca-unstick [run id] [#ticket]
+```
+
+With no run id, it picks this repo's newest run that waits on a reply. The
+board's "Help me" button sends the same command. The skill:
+
+1. Sums the run up with its helper, `scripts/stuck-summary.ts`, which only
+   reads: what is stuck and why, the worktree, the agent's last result, the
+   failed checks, the replies since, and whether the engine is running.
+2. Says why in plain words, and recommends one reply (or a fix first), from
+   a playbook with an entry for every stuck reason.
+3. May fix tests (test files only) in the ticket's worktree, runs just those
+   tests with a time limit, and never commits: a `retry` keeps the edits.
+4. Asks you, then posts the one-word reply with `gh issue comment`, but
+   only when `gh` is signed in as the spec's owner.
+5. Waits up to 3 minutes for the engine to take it (`reply_received`, then
+   `ticket_retried` and the like).
+
+A crash is an engine bug, not the ticket's fault: the skill says so, and
+points to `/luca-run resume <run id>` (or `luca-run --resume <run id>`) and
+to filing an issue.
+
+The skill lives in [`skills/luca-unstick/`](skills/luca-unstick). The
+publish package ships it as `skills/` next to `engine/`, and `luca init`
+and `luca upgrade` copy it to `~/.claude/skills/luca-unstick/`, over Luca's
+own earlier copy. `luca doctor` checks the copy is the one the installed
+Luca ships, and `luca doctor --fix` copies it again. Its tests check that
+every record kind and stuck reason it names is the journal's, and that its
+playbook covers every stuck reason, so a new reason fails them until the
+skill covers it.
+
 ## The board
 
 The engine sends its journal records to the board plugin as they are
@@ -1041,14 +1082,16 @@ Claude Code 2.1.280+; `gh` signed in; Paseo 0.9.1+ with plugins on; the
 board installed from Luca's own folder, loaded at the installed version, with
 its engine and Bun paths; MuninnDB 0.11.0+ answering its health check, and
 Claude Code's user-scope `muninn` entry with its token; the planning skills
-still writing what intake needs), then, inside a repo, `luca setup`'s checks
+still writing what intake needs; Luca's own skills, such as `/luca-unstick`,
+in `~/.claude/skills` as the installed Luca ships them), then, inside a repo, `luca setup`'s checks
 without changing anything. Each line prints OK, or the problem and its exact
 fix. It exits 1 on any problem. MuninnDB not installed (memory off) and
 planning-skill drift are warnings, which don't fail it.
 
 `--fix` fixes what's safe without asking: it starts MuninnDB, repairs the
 `muninn` entry as `luca init` does, reloads (or moves) the board keeping its
-settings and rewrites its paths, and runs `luca setup` in a repo, then lists
+settings and rewrites its paths, copies Luca's own skills again, and runs
+`luca setup` in a repo, then lists
 the files to commit. It never deletes and never commits. Installs, sign-ins,
 Paseo's plugin consent, and other `luca` copies are only reported.
 

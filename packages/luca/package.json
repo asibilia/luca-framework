@@ -24,6 +24,7 @@
     "files": [
         "engine/",
         "board/",
+        "skills/",
         "README.md",
         "LICENSE",
         "CHANGELOG.md"

@@ -22,6 +22,7 @@ import {
     type DoctorCheck,
     type Found,
 } from './doctor-checks'
+import { claudeSkillsDir, skillDrift } from './luca-skills'
 import { isRight, rightEntry, userMuninnEntry } from './muninn-entry'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
@@ -30,8 +31,8 @@ import { READY_LABEL } from '../tracker/tracker'
 /**
  * `luca doctor`'s checks of this computer, read-only: Bun, the `luca`
  * copies on the PATH, Claude Code, the `gh` login, Paseo and its plugins,
- * the board, MuninnDB and Claude Code's `muninn` entry, and the planning
- * skills. `luca init` and `luca upgrade` end with them too. The token is
+ * the board, MuninnDB and Claude Code's `muninn` entry, the planning
+ * skills, and Luca's own skills. `luca init` and `luca upgrade` end with them too. The token is
  * never shown.
  */
 
@@ -328,16 +329,57 @@ const checkPlanningSkills = async ({ home }: { home: string }) => {
 }
 
 /**
+ * Luca's own skills (#504): each is in `~/.claude/skills`, and its files
+ * are the ones the installed Luca ships.
+ */
+const checkLucaSkills = async ({
+    home,
+    skills_dir,
+    luca_version,
+}: {
+    home: string
+    skills_dir: string
+    luca_version: string
+}) => {
+    const drift = await skillDrift({ home, skills_dir })
+    const unshipped = drift.filter(({ unshipped }) => unshipped)
+    if (unshipped.length > 0) {
+        return problem({
+            detail: `Luca's folder ${skills_dir} has no ${unshipped.map(({ skill }) => skill).join(', ')} skill.`,
+            fix: `Reinstall Luca: bun add -g ${LUCA_PACKAGE}@alpha`,
+        })
+    }
+    const off = drift.filter(
+        ({ missing, changed }) => missing.length + changed.length > 0
+    )
+    if (off.length > 0) {
+        const described = off.map(({ skill, missing }) =>
+            missing.includes('SKILL.md')
+                ? `/${skill} isn't installed`
+                : `/${skill} isn't the one Luca ${luca_version} ships`
+        )
+        return problem({
+            detail: `In ${claudeSkillsDir({ home })}, ${described.join('; ')}.`,
+            fix: 'Run luca doctor --fix (or luca init) to install it.',
+        })
+    }
+    return ok(
+        `Luca's skills (${drift.map(({ skill }) => `/${skill}`).join(', ')}) match Luca ${luca_version}`
+    )
+}
+
+/**
  * Runs the computer checks, in order, read-only. Never throws: a check that
  * fails becomes a problem.
  *
  * @example
- * const checks = await computerChecks({ home, luca_version, board_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo })
+ * const checks = await computerChecks({ home, luca_version, board_dir, skills_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo })
  */
 export const computerChecks = async ({
     home,
     luca_version,
     board_dir,
+    skills_dir,
     engine_path,
     bun_path,
     computer,
@@ -350,6 +392,8 @@ export const computerChecks = async ({
     /** The installed Luca's version. */
     luca_version: string
     board_dir: string
+    /** The skills folder inside Luca's install folder. */
+    skills_dir: string
     engine_path: string
     bun_path: string
     computer: Computer
@@ -399,6 +443,10 @@ export const computerChecks = async ({
             ['muninndb', () => checkMuninnDb({ muninn, muninn_health })],
             ['muninn_entry', () => checkMuninnEntry({ muninn, claude })],
             ['planning_skills', () => checkPlanningSkills({ home })],
+            [
+                'luca_skills',
+                () => checkLucaSkills({ home, skills_dir, luca_version }),
+            ],
         ],
     })
 }

@@ -6,6 +6,7 @@ import {
     EngineEndedSchema,
     RunSummarySchema,
 } from './board-state'
+import { PostedReplySchema } from './reply-actions'
 
 /**
  * The plugin's RPCs. Payload keys are snake_case (API convention).
@@ -14,6 +15,7 @@ import {
  * - `engine.event`: the engine sends its journal records to the board.
  * - `board.read`: the side panel polls the runs of one workspace.
  * - `board.version`: `luca doctor` asks which Luca version is loaded.
+ * - `reply.post`: a reply button on stuck work posts its word on the spec.
  */
 
 /**
@@ -105,6 +107,13 @@ export const BoardReadInputSchema = z.object({
 export const BoardReadOutputSchema = z.object({
     runs: z.array(RunSummarySchema),
     selected: BoardStateSchema.nullable(),
+    /**
+     * The chat the selected run started in, for "Help me"; `null` for a run
+     * the plugin didn't start. Defaulted, so an older daemon's answer parses.
+     */
+    chat_agent_id: z.string().nullable().default(null),
+    /** The replies the board posted for the selected run (#503). */
+    posted: z.array(PostedReplySchema).default([]),
 })
 
 export const boardReadRpc = defineRpc({
@@ -129,3 +138,36 @@ export const boardVersionRpc = defineRpc({
     input: z.object({}),
     output: BoardVersionOutputSchema,
 })
+
+/**
+ * API Request: post one reply on a run's spec issue (#503). `key` is the
+ * stuck item's (`ticket-<n>`, `final`, or `run`), and `reply` one of the
+ * words the engine takes for it, such as `retry #134`.
+ */
+export const ReplyPostInputSchema = z.object({
+    run_id: z.string().min(1),
+    key: z.string().min(1),
+    reply: z.string().min(1),
+})
+
+/**
+ * API Response: `posted` (it went on the spec now), `already_posted` (the
+ * same reply was posted for this item before; nothing was posted again),
+ * `refused` (the board won't post it, and says why), or `failed` (`gh`
+ * failed). `ok` is true for the first two.
+ */
+export const ReplyPostOutputSchema = z.object({
+    ok: z.boolean(),
+    status: z.enum(['posted', 'already_posted', 'refused', 'failed']),
+    message: z.string(),
+    posted: PostedReplySchema.nullable(),
+})
+
+export const replyPostRpc = defineRpc({
+    name: 'reply.post',
+    input: ReplyPostInputSchema,
+    output: ReplyPostOutputSchema,
+})
+
+export type ReplyPostInput = z.infer<typeof ReplyPostInputSchema>
+export type ReplyPostOutput = z.infer<typeof ReplyPostOutputSchema>

@@ -11,6 +11,7 @@ import {
 } from './doctor-checks'
 import { describeRun, goingRuns } from './going-runs'
 import type { ListProcesses } from './live-runs'
+import { installLucaSkills } from './luca-skills'
 import { resumeCommand } from './run-modes'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
@@ -34,7 +35,9 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * 4. Reloads the board in Paseo, keeping its settings, and rewrites its
  *    engine and Bun paths (see `setUpBoard`).
  * 5. Says when `/reload-skills` is needed: when the board's files changed.
- * 6. Ends with doctor's computer checks (see `computerChecks`).
+ * 6. Copies Luca's own skills (such as `/luca-unstick`) from the new
+ *    install into `~/.claude/skills` (see `installLucaSkills`).
+ * 7. Ends with doctor's computer checks (see `computerChecks`).
  *
  * npm's registry, Bun, Paseo, `ps`, and the computer checks are adapters,
  * so tests use fakes.
@@ -154,10 +157,11 @@ const fingerprint = async (dir: string): Promise<string | null> => {
  * a failed step, or a check that is a problem ends it with `ok: false`.
  *
  * @example
- * const end = await runUpgrade({ to: null, installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, list_processes: listProcesses, npm, bun, paseo, board_dir, engine_path, bun_path, computer_checks, log: console.log })
+ * const end = await runUpgrade({ to: null, home: homedir(), installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, list_processes: listProcesses, npm, bun, paseo, board_dir, skills_dir, engine_path, bun_path, computer_checks, log: console.log })
  */
 export const runUpgrade = async ({
     to,
+    home,
     installed_version,
     runs_dir,
     registry_path,
@@ -166,6 +170,7 @@ export const runUpgrade = async ({
     bun,
     paseo,
     board_dir,
+    skills_dir,
     engine_path,
     bun_path,
     computer_checks,
@@ -173,6 +178,8 @@ export const runUpgrade = async ({
 }: {
     /** `--to <version>`, or `null` to stay on the installed channel. */
     to: string | null
+    /** The home folder, whose `.claude/skills` gets Luca's own skills. */
+    home: string
     /** The version of Luca installed now. */
     installed_version: string
     runs_dir: string
@@ -185,6 +192,8 @@ export const runUpgrade = async ({
     paseo: PaseoPlugins
     /** The board folder inside Luca's install folder. */
     board_dir: string
+    /** The skills folder inside Luca's install folder. */
+    skills_dir: string
     /** The real path of the installed `luca-run`. */
     engine_path: string
     /** Bun's own path. */
@@ -268,11 +277,19 @@ export const runUpgrade = async ({
                 )
             }
         }
+        const skills = await installLucaSkills({
+            home,
+            skills_dir,
+            prefix: '[luca upgrade]',
+            log,
+        })
         const end = say({
-            message: board.ok
-                ? `Luca ${version} is installed.`
-                : `Luca ${version} is installed, but the board wasn't reloaded. Run luca init to fix it.`,
-            ok: board.ok,
+            message: !board.ok
+                ? `Luca ${version} is installed, but the board wasn't reloaded. Run luca init to fix it.`
+                : !skills.ok
+                  ? `Luca ${version} is installed, but its skills weren't copied. Run luca doctor --fix to fix it.`
+                  : `Luca ${version} is installed.`,
+            ok: board.ok && skills.ok,
         })
         const checks = (await computer_checks?.()) ?? []
         for (const line of formatChecks({ checks })) log(line)

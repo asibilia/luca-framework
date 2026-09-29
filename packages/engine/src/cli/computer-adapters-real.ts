@@ -372,12 +372,24 @@ export const boardDir = async (): Promise<string> => {
 }
 
 /**
- * The installed Luca: its version (see `lucaVersion`), its board folder,
- * the real path of its `luca-run`, and Bun's own path.
+ * The skills folder in Luca's install folder: `skills/` next to `engine/`
+ * in the published package, or `packages/engine/skills` in a working copy
+ * (both two folders up from this file). Its real path when it exists;
+ * `luca doctor` reports it when it doesn't.
+ */
+export const skillsDir = async (): Promise<string> => {
+    const dir = join(import.meta.dir, '..', '..', 'skills')
+    return realpath(dir).catch(() => dir)
+}
+
+/**
+ * The installed Luca: its version (see `lucaVersion`), its board and skills
+ * folders, the real path of its `luca-run`, and Bun's own path.
  */
 export const lucaInstall = async (): Promise<LucaInstall> => ({
     luca_version: lucaVersion(),
     board_dir: await boardDir(),
+    skills_dir: await skillsDir(),
     engine_path: await realpath(join(import.meta.dir, 'luca-run.ts')),
     bun_path: await realpath(process.execPath),
 })

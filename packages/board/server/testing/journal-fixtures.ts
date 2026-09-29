@@ -70,10 +70,13 @@ export const specSnapshot = ({
     spec,
     title,
     order,
+    author = 'owner',
 }: {
     spec: number
     title: string
     order: number[]
+    /** The spec's owner; `null` leaves it out, as older journals do. */
+    author?: string | null
 }): Entry =>
     entry({
         kind: 'spec_snapshot',
@@ -85,6 +88,7 @@ export const specSnapshot = ({
                 body: '## Testing Decisions\n...',
                 labels: [],
                 url: `https://github.com/o/r/issues/${spec}`,
+                ...(author === null ? {} : { author }),
             },
             ticket_order: order,
             closed_tickets: [],
