@@ -1,6 +1,6 @@
 {
     "name": "@luca/board",
-    "version": "14.0.0-alpha.3",
+    "version": "14.0.0-alpha.4",
     "private": true,
     "type": "module",
     "files": [

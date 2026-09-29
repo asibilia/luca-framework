@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.4
+
+### Patch Changes
+
+- befad59: A spec can hold tickets for a person: `ready-for-human` tickets, and the tickets that wait on them, are left out of the run instead of refusing it (#499).
+
 ## 14.0.0-alpha.3
 
 ### Patch Changes
