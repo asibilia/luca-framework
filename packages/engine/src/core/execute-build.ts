@@ -455,22 +455,28 @@ const isUsed = async ({
 }
 
 /**
- * Whether a tracked file other than itself and the tests names this file by
- * its basename, as a TOC, `package.json`, or a config does. A mention in a
- * test doesn't make a file the repo's.
+ * Whether a file other than itself and the tests names this file by its
+ * basename, as a TOC, `package.json`, or a config does: a tracked file, or
+ * one this change adds (a new addon's TOC names its new modules). A mention
+ * in a test doesn't make a file the repo's.
  */
 const isNamed = async ({
     context,
     cwd,
     path,
+    added_texts,
 }: {
     context: BuildContext
     cwd: string
     path: string
+    added_texts: Record<string, string>
 }): Promise<boolean> => {
-    const files = (
-        await context.git.filesMentioning({ cwd, text: basename(path) })
-    ).filter((file) => file !== path)
+    const name = basename(path)
+    const tracked = await context.git.filesMentioning({ cwd, text: name })
+    const added = Object.entries(added_texts)
+        .filter(([, text]) => text.includes(name))
+        .map(([file]) => file)
+    const files = [...tracked, ...added].filter((file) => file !== path)
     const tests = testFilesAmong({
         files,
         test_file_patterns: context.config.test_file_patterns,
@@ -593,7 +599,9 @@ export const commitIn = async ({
     }
     const named: string[] = []
     for (const path of nameCheckFiles({ changes, test_files })) {
-        if (await isNamed({ context, cwd, path })) named.push(path)
+        if (await isNamed({ context, cwd, path, added_texts })) {
+            named.push(path)
+        }
     }
     const hits = scanLeftovers({
         changes,

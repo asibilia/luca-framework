@@ -461,8 +461,9 @@ any depth. The allowlist is `LOADED_BY_NAME` and `ROUTER_FOLDER` in
 **A file the repo names is neither unused nor scratch (#507).** Before the
 scan, the engine looks for each scratch-named file (`debug.*`, `notes.*`,
 `tmp.*`, ...) and each new code file by its basename in the tracked files
-(`git grep`, the worktree's text). If a tracked file other than itself and
-the tests names it, as an addon's TOC lists `core\debug.lua`, a
+(`git grep`, the worktree's text) and in the files the same change adds.
+If such a file other than itself and the tests names it, as an addon's TOC
+(tracked, or new in the same ticket) lists `core\debug.lua`, a
 `package.json` script runs `tools/notes.ts`, or a config points at it, it
 is the repo's: never "a scratch file", never "nothing uses it". A mention in
 a test alone doesn't count, so a stray `tmp.ts` a test names is still

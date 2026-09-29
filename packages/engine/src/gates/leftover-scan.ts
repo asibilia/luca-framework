@@ -72,7 +72,8 @@ export const newCodeFiles = ({
 
 /**
  * Files the "named by the repo" rule can clear: scratch-named files and new
- * code files. Each needs a "does a tracked non-test file name it?" answer.
+ * code files. Each needs a "does a tracked or newly added non-test file
+ * name it?" answer.
  */
 export const nameCheckFiles = ({
     changes,
@@ -122,8 +123,8 @@ const nameHit = (path: string): string | null => {
  *   fine if it names the file.
  * @param used_code - For each of `newCodeFiles(...)`, whether another file
  *   mentions it.
- * @param named - Those of `nameCheckFiles(...)` whose basename a tracked
- *   non-test file names (a TOC, `package.json`, a config).
+ * @param named - Those of `nameCheckFiles(...)` whose basename a tracked or
+ *   newly added non-test file names (a TOC, `package.json`, a config).
  *
  * @example
  * const hits = scanLeftovers({ changes, test_files, mention_text, used_code, named })
