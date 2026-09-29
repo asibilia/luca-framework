@@ -4,6 +4,7 @@ import { isAbsolute, join } from 'node:path'
 import type { FinalReviewAction } from './decide-final-review'
 import {
     commitIn,
+    dropAgentChangesets,
     gatesIn,
     leaveOutIn,
     need,
@@ -356,8 +357,10 @@ export const shippedEditsMessage = ({ round }: { round: number }): string =>
  * uncommitted in the run branch's worktree (a fixer's, or the owner's) get
  * their own commit (`shippedEditsMessage`), which is pushed, then
  * `shipFinalReview` journals it with the ship, so the PR lists its files as
- * not reviewed. What prepare made stays out. With no edits, no commit. A
- * redo after a crash that already committed adopts that commit.
+ * not reviewed. What prepare made stays out, and a changeset a fixer wrote
+ * is dropped as at any engine commit (`dropAgentChangesets`), so the PR has
+ * only the engine's. With no edits, no commit. A redo after a crash that
+ * already committed adopts that commit.
  */
 export const shipFinalReviewIn = async ({
     context,
@@ -373,9 +376,14 @@ export const shipFinalReviewIn = async ({
     })
     const message = shippedEditsMessage({ round: state.final_review.round })
     const leave_out = await leaveOutIn({ context, cwd, ticket: null })
-    const changes = (await git.changes({ cwd })).filter(
-        ({ path }) => !leave_out.includes(path)
-    )
+    const changes = await dropAgentChangesets({
+        context,
+        cwd,
+        ticket: null,
+        changes: (await git.changes({ cwd })).filter(
+            ({ path }) => !leave_out.includes(path)
+        ),
+    })
     let commit: (EngineCommit & { message: string }) | undefined
     if (changes.length > 0) {
         commit = {

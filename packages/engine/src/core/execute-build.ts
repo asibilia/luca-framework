@@ -26,9 +26,9 @@ import { endedText } from '../gates/gate-schemas'
 import {
     importStem,
     isAgentChangeset,
-    nameCheckFiles,
     newCodeFiles,
     scanLeftovers,
+    scratchNamedFiles,
 } from '../gates/leftover-scan'
 import {
     dependenciesChanged,
@@ -455,10 +455,10 @@ const isUsed = async ({
 }
 
 /**
- * Whether a file other than itself and the tests names this file by its
- * basename, as a TOC, `package.json`, or a config does: a tracked file, or
- * one this change adds (a new addon's TOC names its new modules). A mention
- * in a test doesn't make a file the repo's.
+ * Whether a file other than itself and the tests names this scratch-named
+ * file by its basename, as a TOC, `package.json`, or a config does: a
+ * tracked file, or one this change adds (a new addon's TOC names its new
+ * modules). A mention in a test doesn't make a file the repo's.
  */
 const isNamed = async ({
     context,
@@ -489,7 +489,7 @@ const isNamed = async ({
  * `isAgentChangeset`) from the worktree and journals `changeset_dropped`:
  * the engine writes the run's one itself. Returns the other changes.
  */
-const dropAgentChangesets = async ({
+export const dropAgentChangesets = async ({
     context,
     cwd,
     ticket,
@@ -598,7 +598,7 @@ export const commitIn = async ({
         used_code[path] = await isUsed({ context, cwd, path, added_texts })
     }
     const named: string[] = []
-    for (const path of nameCheckFiles({ changes, test_files })) {
+    for (const path of scratchNamedFiles({ changes })) {
         if (await isNamed({ context, cwd, path, added_texts })) {
             named.push(path)
         }

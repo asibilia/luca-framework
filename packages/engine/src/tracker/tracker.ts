@@ -83,11 +83,17 @@ export type Tracker = {
      * done (#484). Closing a closed issue does nothing.
      */
     closeIssue: (args: { number: number }) => Promise<void>
-    /** Opens a pull request from `head` into `base`. */
+    /**
+     * Opens a pull request from `head` into `base`. Throws a `TrackerError`
+     * when the tracker couldn't open it (such as a failed `gh pr create`),
+     * which the PR step makes a stuck run the owner can `retry` (#508).
+     */
     openPullRequest: (args: PullRequestRequest) => Promise<OpenedPullRequest>
     /**
-     * The open pull request from branch `head`, or `null`: the PR step
-     * reuses one, such as the PR a try opened before a crash or a failure.
+     * The open pull request from branch `head` of the repo itself (never a
+     * fork's), or `null`: the PR step reuses one, such as the PR a try
+     * opened before a crash or a failure. Throws a `TrackerError` when the
+     * tracker couldn't list them.
      */
     findOpenPullRequest: (args: {
         head: string
@@ -106,6 +112,30 @@ export type Tracker = {
      */
     issueLinks: () => Promise<{ sub_issues: boolean; dependencies: boolean }>
 }
+
+/**
+ * A tracker call that failed, such as a `gh` command that exited non-zero.
+ * The PR step makes one a stuck run (#508); any other error is a crash.
+ */
+export class TrackerError extends Error {
+    override name = 'TrackerError'
+}
+
+/** A failed `gh` call, in the words `TrackerError`s from `gh` use. */
+const GH_FAILED = /\bgh \w+ \w+`? failed\b/
+
+/**
+ * Whether `error` is a failed tracker call: a `TrackerError`, or a plain
+ * error worded like one from `gh` ("gh pr create failed ..."), as a tracker
+ * wrapped around the GitHub one may throw.
+ *
+ * @example
+ * isTrackerFailure(new TrackerError('gh pr create failed')) // true
+ * isTrackerFailure(new Error('The engine crashed.')) // false
+ */
+export const isTrackerFailure = (error: unknown): boolean =>
+    error instanceof TrackerError ||
+    (error instanceof Error && GH_FAILED.test(error.message))
 
 /** The label a ticket needs before intake lets a run build it. */
 export const READY_LABEL = 'ready-for-agent'

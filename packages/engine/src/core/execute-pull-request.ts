@@ -10,10 +10,7 @@ import {
 } from './pull-request-text'
 
 import { postCommentOnce } from '../tracker/post-comment-once'
-import type { OpenedPullRequest } from '../tracker/tracker'
-
-/** A failed `gh` call's error, as the GitHub tracker words it. */
-const GH_FAILED = /\bgh \w+ \w+`? failed\b/
+import { isTrackerFailure, type OpenedPullRequest } from '../tracker/tracker'
 
 const errorText = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
@@ -26,8 +23,9 @@ const errorText = (error: unknown): string =>
  * try opened before a crash or a failure, or one the owner opened by hand.
  * The body sent keeps under `PULL_REQUEST_BUDGET`, and what doesn't fit
  * is posted as PR comments after it (`fitPullRequestBody`), each once. A
- * failed `gh` call journals the run stuck (`pull_request_failed`) with its
- * error, for the owner's `retry`; any other error is a crash.
+ * failed tracker call (`isTrackerFailure`: finding or opening the PR, such
+ * as a failed `gh pr create`) journals the run stuck (`pull_request_failed`)
+ * with its error, for the owner's `retry`; any other error is a crash.
  */
 export const openPullRequest = async ({
     context,
@@ -56,13 +54,15 @@ export const openPullRequest = async ({
                 body: fitted.body,
             }))
     } catch (error) {
-        const detail = errorText(error)
-        if (!GH_FAILED.test(detail)) throw error
+        if (!isTrackerFailure(error)) throw error
         journal.append({
             kind: 'run_stuck',
             ticket: null,
             role: null,
-            content: { reason: 'pull_request_failed', detail },
+            content: {
+                reason: 'pull_request_failed',
+                detail: errorText(error),
+            },
         })
         return
     }

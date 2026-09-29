@@ -71,25 +71,20 @@ export const newCodeFiles = ({
         .filter((path) => !loadedByName(path))
 
 /**
- * Files the "named by the repo" rule can clear: scratch-named files and new
- * code files. Each needs a "does a tracked or newly added non-test file
- * name it?" answer.
+ * Scratch-named files, which the "named by the repo" rule can clear. Each
+ * needs a "does a tracked or newly added non-test file name it?" answer.
+ * (A new code file needs none: its basename holds its import stem, so a
+ * file that names it already makes it used.)
  */
-export const nameCheckFiles = ({
+export const scratchNamedFiles = ({
     changes,
-    test_files,
 }: {
     changes: FileChange[]
-    test_files: string[]
-}): string[] => [
-    ...new Set([
-        ...changes
-            .filter(({ change }) => change !== 'deleted')
-            .map(({ path }) => path)
-            .filter((path) => SCRATCH_NAME.test(basename(path))),
-        ...newCodeFiles({ changes, test_files }),
-    ]),
-]
+}): string[] =>
+    changes
+        .filter(({ change }) => change !== 'deleted')
+        .map(({ path }) => path)
+        .filter((path) => SCRATCH_NAME.test(basename(path)))
 
 const nameHit = (path: string): string | null => {
     // git lists a folder with its own repo as one path ending in a slash.
@@ -117,14 +112,14 @@ const nameHit = (path: string): string | null => {
  * that nothing uses, and a folder with its own git repo in it (which
  * `git add` can't take as files). A file a tool or framework loads by name
  * (`*.config.*`, `entry.server.*`, a route file) is never "unused", and a
- * file the repo names is neither "unused" nor scratch.
+ * scratch-named file the repo names is not scratch.
  *
  * @param mention_text - The spec's and ticket's text; a new markdown file is
  *   fine if it names the file.
  * @param used_code - For each of `newCodeFiles(...)`, whether another file
  *   mentions it.
- * @param named - Those of `nameCheckFiles(...)` whose basename a tracked or
- *   newly added non-test file names (a TOC, `package.json`, a config).
+ * @param named - Those of `scratchNamedFiles(...)` whose basename a tracked
+ *   or newly added non-test file names (a TOC, `package.json`, a config).
  *
  * @example
  * const hits = scanLeftovers({ changes, test_files, mention_text, used_code, named })
@@ -163,7 +158,7 @@ export const scanLeftovers = ({
         }
     }
     for (const path of newCodeFiles({ changes, test_files })) {
-        if (used_code[path] === false && !named.includes(path)) {
+        if (used_code[path] === false) {
             hits.push({
                 path,
                 reason: 'a new script or module that nothing uses',

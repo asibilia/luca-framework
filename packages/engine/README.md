@@ -460,14 +460,16 @@ any depth. The allowlist is `LOADED_BY_NAME` and `ROUTER_FOLDER` in
 
 **A file the repo names is neither unused nor scratch (#507).** Before the
 scan, the engine looks for each scratch-named file (`debug.*`, `notes.*`,
-`tmp.*`, ...) and each new code file by its basename in the tracked files
-(`git grep`, the worktree's text) and in the files the same change adds.
-If such a file other than itself and the tests names it, as an addon's TOC
-(tracked, or new in the same ticket) lists `core\debug.lua`, a
-`package.json` script runs `tools/notes.ts`, or a config points at it, it
-is the repo's: never "a scratch file", never "nothing uses it". A mention in
-a test alone doesn't count, so a stray `tmp.ts` a test names is still
-flagged, like a `notes.md` or `scratch.ts` nothing names.
+`tmp.*`, ...) by its basename in the tracked files (`git grep`, the
+worktree's text) and in the files the same change adds. If such a file
+other than itself and the tests names it, as an addon's TOC (tracked, or
+new in the same ticket) lists `core\debug.lua`, a `package.json` script
+runs `tools/notes.ts`, or a config points at it, it is the repo's: never "a
+scratch file". A mention in a test alone doesn't count, so a stray `tmp.ts`
+a test names is still flagged as scratch, like a `notes.md` or `scratch.ts`
+nothing names. A new code file needs no such look: "nothing uses it" already
+searches for its name without the extension, which a file naming it holds,
+so a file the repo names is never "unused".
 
 **Agents don't write changesets (#507).** In a repo with changesets
 (`.changeset/config.json` when the run branch was made), the engine writes
@@ -793,7 +795,8 @@ runs, even for a one-ticket spec.
   findings", pushes it, and calls `shipFinalReview({ journal, commit })`,
   which journals `final_review_shipped { commit? }` (and refuses a final
   review that isn't stuck). With no edits, no commit. What prepare made
-  stays out. The PR then opens with an "Open findings" section at the very
+  stays out, and in a changesets run a changeset a fixer wrote is dropped
+  (`changeset_dropped`), as at any engine commit. The PR then opens with an "Open findings" section at the very
   top (each with its lens, severity, and file, then the edits' files as
   "Uncommitted fixer edits, not reviewed"), and the worktrees are removed.
   The changeset commit, made after, holds only the changeset (#509). `retry`
@@ -917,15 +920,21 @@ tickets and notes a run has.
   posted right after the PR opens, each under the budget and cut between
   list items, and the body says so. Anything still too long is clipped,
   pointing at `pull-request.md`.
-- **A failed `gh pr create`** is no crash. The engine journals the run
-  stuck (`run_stuck`, reason `pull_request_failed`) with `gh`'s error, tells
+- **A failed `gh pr create`** is no crash. A failed tracker call throws a
+  `TrackerError` (`src/tracker/tracker.ts`; the GitHub tracker's failed
+  `gh` calls do), and one from `openPullRequest` or `findOpenPullRequest`
+  (`isTrackerFailure`) journals the run
+  stuck (`run_stuck`, reason `pull_request_failed`) with the error, tells
   the spec issue why, and waits: a bare `retry` tries the PR again (it adds
   no run budget), and `stop` ends the run without one. Any other error in
   the step is a crash, taken again on resume.
 - **Never a second PR.** Before creating, the engine looks for an open PR
   from the run branch (`findOpenPullRequest`) and reuses it: the one a try
-  opened before a crash or a failure, or one the owner opened by hand. Its
-  PR comments are posted once, even on a redo after a crash.
+  opened before a crash or a failure, or one the owner opened by hand. Only
+  a PR from the repo itself counts: `gh pr list --head` matches the branch
+  name alone, so a fork's PR from a branch of the same name
+  (`isCrossRepository`) is never taken for the run's. Its PR comments are
+  posted once, even on a redo after a crash.
 
 ### Getting a stuck run moving (#504)
 
