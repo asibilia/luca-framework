@@ -85,6 +85,15 @@ export const StuckRowSchema = z.object({
     tried: z.array(z.string()),
     replies: z.array(z.string()),
     resolution: z.string().nullable(),
+    /**
+     * The run and the stuck item, for the row's reply buttons and "Help me"
+     * (#503). Defaulted, so a row added before them still renders (without
+     * the buttons).
+     */
+    run_id: z.string().nullable().default(null),
+    key: z.string().nullable().default(null),
+    ticket: z.number().int().nullable().default(null),
+    since: z.string().nullable().default(null),
 })
 
 export type StuckRow = z.infer<typeof StuckRowSchema>

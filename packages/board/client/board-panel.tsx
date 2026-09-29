@@ -6,12 +6,7 @@ import {
     useWorkspace,
     type PluginWorkspacePanelProps,
 } from '@getpaseo/plugin/client'
-import {
-    Icon,
-    ScrollView,
-    copyText,
-    useToast,
-} from '@getpaseo/plugin/client/react-native'
+import { Icon, ScrollView } from '@getpaseo/plugin/client/react-native'
 import { ExternalLink } from '@getpaseo/plugin/client/ui'
 import { useQuery } from '@tanstack/react-query'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
@@ -31,6 +26,7 @@ import {
     usageLineWaitText,
     useNow,
 } from './board-look'
+import { StuckActions } from './stuck-actions'
 
 import { boardReadRpc } from '../shared/board-rpc'
 import {
@@ -54,6 +50,7 @@ import {
     type TicketCard,
     type TicketStage,
 } from '../shared/board-state'
+import { postedText, type PostedReply } from '../shared/reply-actions'
 
 /**
  * The side panel: one run of this workspace, top to bottom. Plan usage, a
@@ -254,21 +251,6 @@ const makeStyles = ({
             fontSize: 12,
             fontWeight: '700',
         },
-        replyRow: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 5,
-        },
-        reply: {
-            color: colors.foreground,
-            backgroundColor: colors.surface2,
-            borderRadius: 4,
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            fontSize: 12,
-            fontFamily: MONO,
-        },
         rule: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
         reviewTitle: {
             color: colors.foreground,
@@ -439,56 +421,21 @@ const StepLine = ({
     )
 }
 
-/** The exact replies; tap one to copy it. */
-const Replies = ({
-    replies,
-    spec_number,
-    styles,
-}: {
-    replies: string[]
-    spec_number: number | null
-    styles: Styles
-}) => {
-    const toast = useToast()
-    const copy = async ({ reply }: { reply: string }) => {
-        try {
-            await copyText(reply)
-            toast.show(`Copied "${reply}"`, { variant: 'success' })
-        } catch {
-            toast.error('Could not copy. Select the text and use Copy.')
-        }
-    }
-    return (
-        <View style={styles.replyRow}>
-            <Text style={styles.label}>
-                Reply on{' '}
-                {spec_number === null
-                    ? 'the spec issue'
-                    : `spec issue #${spec_number}`}{' '}
-                with
-            </Text>
-            {replies.map((reply) => (
-                <Pressable
-                    key={reply}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Copy the reply ${reply}`}
-                    onPress={() => void copy({ reply })}
-                >
-                    <Text style={styles.reply} selectable>
-                        {reply}
-                    </Text>
-                </Pressable>
-            ))}
-        </View>
-    )
-}
-
 const NeedsYouCard = ({
     item,
+    run_id,
     spec_number,
+    posted,
+    chat_agent_id,
     theme,
     styles,
-}: { item: NeedsYou; spec_number: number | null } & Look) => (
+}: {
+    item: NeedsYou
+    run_id: string
+    spec_number: number | null
+    posted: PostedReply[]
+    chat_agent_id: string | null
+} & Look) => (
     <View style={[styles.card, styles.cardStuck]}>
         <View style={styles.cardTop}>
             <Icon
@@ -518,10 +465,13 @@ const NeedsYouCard = ({
                 ))}
             </>
         ) : null}
-        <Replies
-            replies={item.replies}
+        <StuckActions
+            run_id={run_id}
+            item={item}
             spec_number={spec_number}
-            styles={styles}
+            posted={posted}
+            chat_agent_id={chat_agent_id}
+            theme={theme}
         />
     </View>
 )
@@ -1096,6 +1046,15 @@ export const BoardPanel = ({
 
     const { run } = state
     const runs = board.data?.runs ?? []
+    const posted = board.data?.posted ?? []
+    const chat_agent_id = board.data?.chat_agent_id ?? null
+    // Replies the board posted whose stuck item is gone: say what came of them.
+    const answered = posted.filter(
+        (entry) =>
+            !state.needs_you.some(
+                (item) => item.key === entry.key && item.since === entry.since
+            )
+    )
     const card = (ticket: TicketCard) => {
         const key = `ticket-${ticket.number}`
         return (
@@ -1257,11 +1216,26 @@ export const BoardPanel = ({
                     <View style={styles.stageBody}>
                         {state.needs_you.map((item) => (
                             <NeedsYouCard
-                                key={item.key}
+                                key={`${item.key}-${item.since}`}
                                 item={item}
+                                run_id={run.run_id}
                                 spec_number={run.spec_number}
+                                posted={posted}
+                                chat_agent_id={chat_agent_id}
                                 {...look}
                             />
+                        ))}
+                    </View>
+                ) : null}
+                {answered.length > 0 ? (
+                    <View style={styles.stageBody}>
+                        {answered.map((entry) => (
+                            <Text
+                                key={`${entry.key}-${entry.since}`}
+                                style={styles.muted}
+                            >
+                                {postedText({ posted: entry })}
+                            </Text>
                         ))}
                     </View>
                 ) : null}

@@ -44,6 +44,11 @@ export const unfinishedResult = ({
     stderr: '',
 })
 
+/** Answers one command, or `null` to use the default answer. */
+export type CommandHandler = (
+    request: CommandRequest
+) => CommandResult | null | Promise<CommandResult | null>
+
 /** One appended row and the chat it went to. */
 export type AppendedRow = { agent_id: string; row: BoardRow }
 
@@ -84,6 +89,7 @@ export const createHarness = async ({
     const processes: string[] = []
     const commands: CommandRequest[] = []
     let command_result: CommandResult = unfinishedResult({ runs: [] })
+    let command_handler: CommandHandler | null = null
     let clock = Date.parse('2026-09-23T12:30:42.000Z')
     const existing = new Set(files)
 
@@ -105,7 +111,7 @@ export const createHarness = async ({
         },
         run_command: async (request) => {
             commands.push(request)
-            return command_result
+            return (await command_handler?.(request)) ?? command_result
         },
         read_settings: async () => EngineSettingsSchema.parse(settings),
         file_exists: ({ path }) => existing.has(path),
@@ -200,6 +206,14 @@ export const createHarness = async ({
         command_result = result
     }
 
+    /**
+     * Answers each command with `handler`, such as a fake `gh`; a `null`
+     * answer falls back to the `setCommandResult` one.
+     */
+    const setCommandHandler = ({ handler }: { handler: CommandHandler }) => {
+        command_handler = handler
+    }
+
     /** The command line of a live engine for `run_id`, as `ps` shows it. */
     const engineRunning = ({ run_id }: { run_id: string }) => {
         processes.push(
@@ -220,6 +234,7 @@ export const createHarness = async ({
         processes,
         commands,
         setCommandResult,
+        setCommandHandler,
         engineRunning,
         start,
         send,

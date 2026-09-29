@@ -469,6 +469,14 @@ export const RunInfoSchema = z.object({
      * state still parses.
      */
     version_note: z.string().nullable().default(null),
+    /**
+     * The spec's owner (its issue's author), from intake (#503): only their
+     * replies count. `null` when the journal doesn't say. Defaulted, so an
+     * older board state still parses.
+     */
+    spec_author: z.string().nullable().default(null),
+    /** The spec's repo as `owner/repo`, from its URL; `null` when not known. */
+    spec_repo: z.string().nullable().default(null),
 })
 
 export type RunInfo = z.infer<typeof RunInfoSchema>

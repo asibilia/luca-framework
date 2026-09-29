@@ -117,6 +117,18 @@ const AgentSessionSchema = z.looseObject({
 
 const JevJobSchema = z.looseObject({ job: z.string() })
 
+/**
+ * The spec issue as intake read it. `author` (the spec's owner, whose
+ * replies alone count) and `url` feed the reply buttons (#503); older
+ * journals may lack them.
+ */
+const SpecIssueSchema = z.looseObject({
+    number: z.number(),
+    title: z.string(),
+    author: z.string().optional().catch(undefined),
+    url: z.string().optional().catch(undefined),
+})
+
 export const BOARD_VOCABULARY = {
     run_started: z.looseObject({
         spec_number: z.number().int(),
@@ -137,9 +149,7 @@ export const BOARD_VOCABULARY = {
     }),
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
-    intake_read: z.looseObject({
-        spec: z.looseObject({ number: z.number(), title: z.string() }),
-    }),
+    intake_read: z.looseObject({ spec: SpecIssueSchema }),
     intake_refused: z.looseObject({
         problems: z.array(
             z.looseObject({
@@ -157,7 +167,7 @@ export const BOARD_VOCABULARY = {
         left_out: LeftOutListSchema,
     }),
     spec_snapshot: z.looseObject({
-        spec: z.looseObject({ number: z.number(), title: z.string() }),
+        spec: SpecIssueSchema,
         ticket_order: z.array(z.number()).catch([]),
         /** The tickets left out for a person (#499); older journals have none. */
         left_out: LeftOutListSchema,

@@ -23,6 +23,13 @@ import {
     type TicketCard,
     type Usage,
 } from '../shared/board-state'
+import {
+    FINAL_KEY,
+    RUN_KEY,
+    allowedReplies,
+    repoOfIssueUrl,
+    ticketKey,
+} from '../shared/reply-actions'
 
 /**
  * The board's reducer: pure functions that turn journal records into board
@@ -208,6 +215,8 @@ export const createBoardState = ({
         log_path,
         started_on: null,
         version_note: null,
+        spec_author: null,
+        spec_repo: null,
     },
     for_a_person: [],
     usage: null,
@@ -394,16 +403,6 @@ const resolveNeedsYou = ({
             ? []
             : state.needs_you.filter((entry) => entry.key !== key),
 })
-
-/** The key of a ticket's "Needs you" item. */
-export const ticketKey = ({ ticket }: { ticket: number }): string =>
-    `ticket-${ticket}`
-
-/** The key of the final review's "Needs you" item. */
-export const FINAL_KEY = 'final'
-
-/** The key of the "Needs you" item for the whole run, stuck on its budget. */
-export const RUN_KEY = 'run'
 
 /** Why the whole run is stuck (`run_stuck`'s reason), in words. */
 const RUN_STUCK_REASONS: Record<string, string> = {
@@ -870,6 +869,7 @@ const applyKind = ({
                     spec_title:
                         state.run.spec_title ?? record.content.spec.title,
                     phase: 'intake',
+                    ...specOwner({ run: state.run, spec: record.content.spec }),
                 },
             }
         case 'intake_refused':
@@ -903,6 +903,7 @@ const applyKind = ({
                     spec_number: record.content.spec.number,
                     spec_title: record.content.spec.title,
                     phase: 'building',
+                    ...specOwner({ run: state.run, spec: record.content.spec }),
                 },
             }
         case 'ticket_snapshot': {
@@ -1236,7 +1237,10 @@ const applyKind = ({
                         max: DETAIL_MAX,
                     }),
                     tried: card?.tried ?? [],
-                    replies: [`retry #${ticket}`, `skip #${ticket}`, 'stop'],
+                    replies: allowedReplies({
+                        key: ticketKey({ ticket }),
+                        ticket,
+                    }),
                     since: record.time,
                 },
             })
@@ -1254,7 +1258,7 @@ const applyKind = ({
                         max: DETAIL_MAX,
                     }),
                     tried: [],
-                    replies: ['retry', 'stop'],
+                    replies: allowedReplies({ key: RUN_KEY, ticket: null }),
                     since: record.time,
                 },
             })
@@ -1496,7 +1500,7 @@ const applyKind = ({
                         max: DETAIL_MAX,
                     }),
                     tried: state.final_review.tried,
-                    replies: ['retry', 'stop', 'ship'],
+                    replies: allowedReplies({ key: FINAL_KEY, ticket: null }),
                     since: record.time,
                 },
             })
@@ -1935,13 +1939,36 @@ const ticketRetried = ({
                         max: DETAIL_MAX,
                     }),
                     tried: card?.tried ?? [],
-                    replies: [`retry #${ticket}`, `skip #${ticket}`, 'stop'],
+                    replies: allowedReplies({
+                        key: ticketKey({ ticket }),
+                        ticket,
+                    }),
                     since: record.time,
                 },
             })
         }
     }
 }
+
+/**
+ * The spec's owner and repo from intake's copy of the spec issue, keeping
+ * what the board knew when the record lacks them (older journals).
+ */
+const specOwner = ({
+    run,
+    spec,
+}: {
+    run: RunInfo
+    spec: { author?: string; url?: string }
+}): Pick<RunInfo, 'spec_author' | 'spec_repo'> => ({
+    spec_author:
+        spec.author === undefined || spec.author === ''
+            ? run.spec_author
+            : spec.author,
+    spec_repo:
+        (spec.url === undefined ? null : repoOfIssueUrl({ url: spec.url })) ??
+        run.spec_repo,
+})
 
 const replyReceived = ({
     state,
