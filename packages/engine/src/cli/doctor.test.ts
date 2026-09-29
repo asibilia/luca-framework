@@ -24,7 +24,8 @@ import { git } from '../testing/practice-repo'
  *
  * Each check is found by its group and name:
  * - computer: `bun`, `luca`, `claude_code`, `gh_login`, `paseo`,
- *   `paseo_plugins`, `board`, `muninndb`, `muninn_entry`, `planning_skills`;
+ *   `paseo_plugins`, `board`, `muninndb`, `muninn_entry`, `planning_skills`,
+ *   `luca_skills`;
  * - repo: `labels`, `config`, `github_remote`, `issue_links`,
  *   `base_branch`, `vault`;
  * - v13: what old Luca v13 left behind, found by the group alone.
@@ -74,6 +75,7 @@ const COMPUTER_CHECKS = [
     'muninndb',
     'muninn_entry',
     'planning_skills',
+    'luca_skills',
 ]
 
 const REPO_CHECKS = [
@@ -130,6 +132,8 @@ let repo = ''
 let origin = ''
 let luca_dir = ''
 let board_dir = ''
+/** The skills folder inside Luca's install folder. */
+let skills_dir = ''
 let engine_path = ''
 /** Stands in for `/tmp`, where v13 left its `luca-*.json` payloads. */
 let tmp_dir = ''
@@ -142,6 +146,28 @@ const logs: string[] = []
 const log = (line: string) => {
     logs.push(line)
 }
+
+/** Luca's own skill, as its install folder ships it (#504). */
+const SHIPPED_SKILL = {
+    'SKILL.md':
+        '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
+    'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+}
+
+/** Writes Luca's own skill into its install folder, with a test that stays out. */
+const writeShippedSkill = async () => {
+    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
+        await Bun.write(join(skills_dir, 'luca-unstick', file), text)
+    }
+    await Bun.write(
+        join(skills_dir, 'luca-unstick', 'scripts', 'stuck-summary.test.ts'),
+        'test file\n'
+    )
+}
+
+/** A file of the installed `/luca-unstick` in the home folder. */
+const installedSkill = (file: string) =>
+    Bun.file(join(home, '.claude', 'skills', 'luca-unstick', file))
 
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-doctor-home-')))
@@ -160,7 +186,9 @@ beforeEach(async () => {
     tmp_dir = join(root, 'tmp')
     await mkdir(tmp_dir)
     board_dir = join(luca_dir, 'board')
+    skills_dir = join(luca_dir, 'skills')
     engine_path = join(luca_dir, 'engine', 'cli', 'luca-run.ts')
+    await writeShippedSkill()
     await mkdir(board_dir, { recursive: true })
     await Bun.write(
         join(board_dir, 'paseo-plugin.json'),
@@ -169,6 +197,13 @@ beforeEach(async () => {
     await mkdir(join(luca_dir, 'engine', 'cli'), { recursive: true })
     await Bun.write(engine_path, '#!/usr/bin/env bun\n')
     await writeSkills({})
+    // Luca's own skill, installed as `luca init` leaves it.
+    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
+        await Bun.write(
+            join(home, '.claude', 'skills', 'luca-unstick', file),
+            text
+        )
+    }
     events.length = 0
     paseo_events.length = 0
     logs.length = 0
@@ -576,6 +611,7 @@ const doctor = ({
         fix,
         luca_version: LUCA_VERSION,
         board_dir,
+        skills_dir,
         engine_path,
         bun_path,
         computer: fakes.computer,
@@ -1053,6 +1089,68 @@ describe('luca doctor checks the planning skills', () => {
     })
 })
 
+describe("luca doctor checks Luca's own skills (#504)", () => {
+    test('the copy the installed Luca ships is OK, naming its version', async () => {
+        const end = await doctor({ fakes: healthy() })
+
+        expectOk(end.checks, 'luca_skills')
+        const check = checkOf(end.checks, 'luca_skills')
+        expect(check.detail).toContain('/luca-unstick')
+        expect(check.detail).toContain(LUCA_VERSION)
+    })
+
+    test('a missing /luca-unstick is a problem, and --fix installs it', async () => {
+        await rm(join(home, '.claude', 'skills', 'luca-unstick'), {
+            recursive: true,
+            force: true,
+        })
+
+        const found = await doctor({ fakes: healthy() })
+        const check = expectProblem(found.checks, 'luca_skills', /doctor --fix/)
+        expect(check.detail).toContain("/luca-unstick isn't installed")
+        expect(found.exit_code).toBe(1)
+
+        logs.length = 0
+        const fixed = await doctor({ fakes: healthy(), fix: true })
+        expectOk(fixed.checks, 'luca_skills')
+        expect(fixed.exit_code).toBe(0)
+        for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
+            expect(await installedSkill(file).text()).toBe(text)
+        }
+        expect(
+            await installedSkill('scripts/stuck-summary.test.ts').exists()
+        ).toBe(false)
+    })
+
+    test('a copy from another Luca is a problem naming the installed version, and --fix replaces it', async () => {
+        await Bun.write(installedSkill('scripts/stuck-summary.ts'), 'old\n')
+
+        const found = await doctor({ fakes: healthy() })
+        const check = expectProblem(found.checks, 'luca_skills', /doctor --fix/)
+        expect(check.detail).toContain(
+            `/luca-unstick isn't the one Luca ${LUCA_VERSION} ships`
+        )
+
+        const fixed = await doctor({ fakes: healthy(), fix: true })
+        expectOk(fixed.checks, 'luca_skills')
+        expect(await installedSkill('scripts/stuck-summary.ts').text()).toBe(
+            SHIPPED_SKILL['scripts/stuck-summary.ts']
+        )
+    })
+
+    test('a Luca install with no skills folder is a problem that says to reinstall Luca', async () => {
+        await rm(skills_dir, { recursive: true, force: true })
+
+        const end = await doctor({ fakes: healthy() })
+
+        expectProblem(
+            end.checks,
+            'luca_skills',
+            /bun add -g @alecsibilia\/luca@alpha/
+        )
+    })
+})
+
 describe('luca doctor inside a repo', () => {
     test('in a ready repo every repo check prints OK and it exits 0', async () => {
         await makeRepo({
@@ -1499,6 +1597,7 @@ const init = ({
         computer: fakes.computer,
         luca_version: LUCA_VERSION,
         board_dir,
+        skills_dir,
         engine_path,
         bun_path,
         log,

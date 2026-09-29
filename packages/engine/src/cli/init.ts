@@ -19,6 +19,7 @@ import {
     reason,
     type DoctorCheck,
 } from './doctor-checks'
+import { installLucaSkills } from './luca-skills'
 import { ensureMuninnEntry, hideToken } from './muninn-entry'
 import { runSetup } from './setup'
 
@@ -49,6 +50,11 @@ import { runSetup } from './setup'
  * The planning skills: installs the ones Luca's intake expects from
  * `mattpocock/skills` with the `skills` tool, skipping any already there.
  * `skip_skills` skips this part.
+ *
+ * Luca's own skills: copies them (such as `/luca-unstick`) from Luca's
+ * install folder into `~/.claude/skills`, over Luca's earlier copy (see
+ * `installLucaSkills`). They are part of Luca, so `skip_skills` doesn't
+ * skip them.
  *
  * The repo: inside a git repo, after the computer's checks, it runs `luca
  * setup` for that repo (see `runSetup`), with the output setup gives on its
@@ -264,7 +270,8 @@ const setUpMemory = async ({
 
 /**
  * Runs `luca init` against `home` with these adapters: memory, then the
- * board, then the planning skills, then doctor's computer checks, then
+ * board, then the planning skills, then Luca's own skills, then doctor's
+ * computer checks, then
  * `luca setup` in `repo` when there is one. Never throws: a failure is
  * logged (token hidden) and ends with `ok: false`, as does a check that is
  * a problem or a setup to-do.
@@ -287,6 +294,7 @@ export const runInit = async ({
     computer,
     luca_version,
     board_dir,
+    skills_dir,
     engine_path,
     bun_path,
     log,
@@ -330,10 +338,17 @@ export const runInit = async ({
     } else {
         planning = await setUpSkills({ skills, log })
     }
+    const own_skills = await installLucaSkills({
+        home,
+        skills_dir,
+        prefix: '[luca init]',
+        log,
+    })
     const doctor = await computerChecks({
         home,
         luca_version,
         board_dir,
+        skills_dir,
         engine_path,
         bun_path,
         computer,
@@ -358,6 +373,7 @@ export const runInit = async ({
             memory.ok &&
             board.ok &&
             planning.ok &&
+            own_skills.ok &&
             !hasProblem({ checks: doctor }) &&
             (setup?.ok ?? true),
         memory: memory.memory,

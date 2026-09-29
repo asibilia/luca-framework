@@ -115,6 +115,8 @@ export type LucaInstall = {
     luca_version: string
     /** The board folder inside Luca's install folder. */
     board_dir: string
+    /** The skills folder inside Luca's install folder (Luca's own skills). */
+    skills_dir: string
     /** The real path of the installed `luca-run`. */
     engine_path: string
     /** Bun's own path. */

@@ -107,6 +107,7 @@ export const upgradeCommand = async ({
         const { luca_version, ...install } = await lucaInstall()
         const end = await runUpgrade({
             to,
+            home,
             installed_version: luca_version,
             runs_dir: defaultRunsDir(),
             registry_path: defaultRegistryPath({

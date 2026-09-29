@@ -8,6 +8,9 @@
  *             source: its manifest, entry points, client, server, and shared
  *             code, and its own package.json; its version module stamped
  *             with this package's version
+ *   skills/   Luca's own Claude Code skills (such as `luca-unstick`), from
+ *             the engine's `skills/` folder, which `luca init` and `luca
+ *             upgrade` copy to `~/.claude/skills`
  *   LICENSE   the repo's license
  *
  * Test files, and the board's test helpers, stay out. There is no build: the
@@ -22,10 +25,11 @@ const PACKAGE_DIR = join(import.meta.dir, '..')
 const PACKAGES_DIR = join(PACKAGE_DIR, '..')
 const REPO_DIR = join(PACKAGES_DIR, '..')
 const ENGINE_SRC = join(PACKAGES_DIR, 'engine', 'src')
+const SKILLS_DIR = join(PACKAGES_DIR, 'engine', 'skills')
 const BOARD_DIR = join(PACKAGES_DIR, 'board')
 
 /** What the pack adds to the package folder, removed again by `--clean`. */
-const COPIES = ['engine', 'board', 'LICENSE']
+const COPIES = ['engine', 'board', 'skills', 'LICENSE']
 
 /** The board's files and folders Paseo loads, besides its package.json. */
 const BOARD_ENTRIES = [
@@ -115,6 +119,11 @@ const fill = async () => {
         filter: (source) => !isTestFile(source),
     })
     await Bun.write(join(PACKAGE_DIR, 'engine', '.npmignore'), ENGINE_NPMIGNORE)
+    // Next to `engine/`, where the engine looks for them (`skillsDir`).
+    await cp(SKILLS_DIR, join(PACKAGE_DIR, 'skills'), {
+        recursive: true,
+        filter: (source) => !isTestFile(source),
+    })
     for (const entry of BOARD_ENTRIES) {
         await cp(join(BOARD_DIR, entry), join(PACKAGE_DIR, 'board', entry), {
             recursive: true,
