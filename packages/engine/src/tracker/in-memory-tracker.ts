@@ -110,8 +110,11 @@ export const createInMemoryTracker = ({
                 (comments.get(number) ?? []).filter(({ id }) => id > since_id)
             ),
         addComment: (args) => post(args),
-        addLabel: async ({ number, label }) =>
-            setLabels(number, uniq([...find(number).labels, label])),
+        // A label the repo lacks is created first, as on GitHub (#500).
+        addLabel: async ({ number, label }) => {
+            if (!labels.includes(label)) labels.push(label)
+            setLabels(number, uniq([...find(number).labels, label]))
+        },
         removeLabel: async ({ number, label }) =>
             setLabels(
                 number,

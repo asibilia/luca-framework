@@ -25,10 +25,9 @@ import {
 import { safeMemory, type MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'
 import {
-    NEEDS_INFO_LABEL,
-    READY_LABEL,
-    REFACTOR_LABEL,
+    RELEASE_LABEL_DEFINITIONS,
     RELEASE_LABELS,
+    RUN_LABELS,
     type Tracker,
 } from '../tracker/tracker'
 
@@ -86,56 +85,14 @@ export type SetupEnd = {
     doctor: DoctorCheck[]
 }
 
-/** The labels a run needs, with what they're for. */
-const LABELS = [
-    {
-        name: READY_LABEL,
-        color: '0e8a16',
-        description: 'Ready for a Luca run',
-    },
-    {
-        name: REFACTOR_LABEL,
-        color: '5319e7',
-        description: 'Changes shape, not behavior: no new tests',
-    },
-    {
-        name: NEEDS_INFO_LABEL,
-        color: 'd93f0b',
-        description: 'Luca needs more detail before it can build this',
-    },
-]
-
-/** The version-bump labels a repo with changesets gets, one per bump. */
-const RELEASE_LABEL_INFO: Record<
-    (typeof RELEASE_LABELS)[number],
-    { color: string; description: string }
-> = {
-    'release:patch': {
-        color: 'c2e0c6',
-        description: "A patch bump for this spec's changeset (the default)",
-    },
-    'release:minor': {
-        color: 'fbca04',
-        description: "A minor bump for this spec's changeset",
-    },
-    'release:major': {
-        color: 'b60205',
-        description: "A major bump for this spec's changeset",
-    },
-    'release:none': {
-        color: 'ededed',
-        description: 'No version bump: an empty changeset',
-    },
-}
-
 /** Where a repo that uses changesets keeps their config. */
 const CHANGESET_CONFIG_FILE = join('.changeset', 'config.json')
 
 /** The labels `repo` needs: the run's, plus the release ones with changesets. */
 const labelsFor = async ({ repo }: { repo: string }) => [
-    ...LABELS,
+    ...RUN_LABELS,
     ...((await Bun.file(join(repo, CHANGESET_CONFIG_FILE)).exists())
-        ? RELEASE_LABELS.map((name) => ({ name, ...RELEASE_LABEL_INFO[name] }))
+        ? RELEASE_LABELS.map((name) => RELEASE_LABEL_DEFINITIONS[name])
         : []),
 ]
 

@@ -95,9 +95,9 @@ on with a run from its journal (#369).
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
 | `src/gates/leftover-scan.ts` | The **leftover scan**. Pure. |
 | `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
-| `src/tracker/tracker.ts` | The tracker interface: an object of async functions. |
+| `src/tracker/tracker.ts` | The tracker interface: an object of async functions. Also the labels Luca creates, with their colors and descriptions (`RUN_LABELS`, `labelDefinition`). |
 | `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
-| `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. |
+| `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. Every call goes through one `gh` runner, which tests fake. A label the repo lacks is created before it's added. |
 | `src/tracker/post-comment-once.ts` | Engine comments carry an invisible marker, so a step redone after a crash adopts its comment instead of posting it again, and the engine never takes its own comments as replies. |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
 | `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
@@ -1063,6 +1063,15 @@ and throwaway repos, with fakes for every tool.
 - **Refusing a ticket** comments with what is missing, adds `needs-info`, and
   removes `ready-for-agent`. Spec problems land on the spec the same way.
   Config problems (no issue to comment on) are only journaled.
+- **A repo without the labels** (no `luca setup` yet) still gets them: adding
+  a label the repo doesn't have creates it first, with the same color and
+  description `luca setup` gives it. Removing a label the issue or the repo
+  doesn't have does nothing.
+- **A label that won't move doesn't stop a refusal.** If adding or removing
+  a label still fails, the comments are posted anyway, the failure goes in
+  `intake_refused` as `label_failures` (the issue, the label, add or remove,
+  and the error), and the run ends refused, not crashed. A redo after a crash
+  doesn't post a refusal comment twice.
 - **Blockers** are native "blocked by" links plus `#N` refs in a ticket's
   "Blocked by" section. A closed blocker is fine anywhere; an open one must be
   an open ticket of the same spec, and those must not form a loop.

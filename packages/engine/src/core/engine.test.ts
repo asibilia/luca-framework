@@ -165,6 +165,107 @@ describe('engine: intake refuses the run', () => {
     })
 })
 
+describe('engine: a refusal whose labels fail (#500)', () => {
+    test('a labeling failure is journaled, and the refusal still ends refused', async () => {
+        const inMemory = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+                ticketIssue({ number: 13, labels: ['enhancement'] }),
+            ],
+            sub_tickets: { 10: [12, 13] },
+        })
+        const tracker = {
+            ...inMemory,
+            addLabel: async () => {
+                throw new Error("could not add label: 'needs-info' not found")
+            },
+        }
+        startRun({ journal, spec_number: 10, config: CONFIG })
+
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        for (const number of [12, 13]) {
+            expect(inMemory.commentsOn({ number })).toHaveLength(1)
+        }
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({
+            label_failures: [
+                {
+                    ticket: 12,
+                    label: 'needs-info',
+                    change: 'add',
+                    error: "could not add label: 'needs-info' not found",
+                },
+                {
+                    ticket: 13,
+                    label: 'needs-info',
+                    change: 'add',
+                    error: "could not add label: 'needs-info' not found",
+                },
+            ],
+        })
+        // The ready label still comes off: one failure doesn't stop the next.
+        expect(inMemory.labelsOf({ number: 13 })).toEqual(['enhancement'])
+    })
+
+    test('a failing label removal is journaled too, and the refusal ends refused', async () => {
+        const inMemory = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+            ],
+            sub_tickets: { 10: [12] },
+        })
+        const tracker = {
+            ...inMemory,
+            removeLabel: async () => {
+                throw new Error('HTTP 502: Bad Gateway')
+            },
+        }
+        startRun({ journal, spec_number: 10, config: CONFIG })
+
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(inMemory.labelsOf({ number: 12 })).toContain('needs-info')
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({
+            label_failures: [
+                {
+                    ticket: 12,
+                    label: 'ready-for-agent',
+                    change: 'remove',
+                    error: 'HTTP 502: Bad Gateway',
+                },
+            ],
+        })
+    })
+
+    test('a refusal on a repo without the needs-info label creates it', async () => {
+        const { tracker } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+            ],
+            sub_tickets: [12],
+        })
+
+        expect(await tracker.listLabels()).toContain('needs-info')
+        expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({ label_failures: [] })
+    })
+})
+
 describe('engine: intake and the spec release labels', () => {
     const specWithLabels = (labels: string[]): TrackerIssue => ({
         ...specIssue({ number: 10 }),

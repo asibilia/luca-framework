@@ -32,7 +32,7 @@ import type { IntakeProblem } from '../intake/intake-schemas'
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
 import { askJevInShadow, type JevShadow } from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
-import type { JournalRecord } from '../journal/journal-record'
+import type { JournalRecord, LabelFailure } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import {
     crashesAfter,
@@ -178,6 +178,46 @@ const readIntake = async ({
     })
 }
 
+/**
+ * Moves a refused ticket from the ready label to needs-info. A label the
+ * tracker can't move doesn't stop the refusal (#500): each failure comes
+ * back, to be journaled.
+ */
+const moveToNeedsInfo = async ({
+    tracker,
+    ticket,
+}: {
+    tracker: Tracker
+    ticket: number
+}): Promise<LabelFailure[]> => {
+    const changes = [
+        { label: NEEDS_INFO_LABEL, change: 'add' },
+        { label: READY_LABEL, change: 'remove' },
+    ] as const
+    const failures: LabelFailure[] = []
+    for (const { label, change } of changes) {
+        try {
+            await (change === 'add' ? tracker.addLabel : tracker.removeLabel)({
+                number: ticket,
+                label,
+            })
+        } catch (error) {
+            failures.push({
+                ticket,
+                label,
+                change,
+                error: error instanceof Error ? error.message : String(error),
+            })
+        }
+    }
+    return failures
+}
+
+/**
+ * Refuses the run: each bad issue gets its comment (once, even on a redo
+ * after a crash) and moves to needs-info. The refusal is journaled even
+ * when a label couldn't move, so the run ends refused, not crashed.
+ */
 const refuseIntake = async ({
     spec_number,
     problems,
@@ -191,6 +231,7 @@ const refuseIntake = async ({
     tracker: Tracker
     step: CommentStep
 }) => {
+    const labelFailures: LabelFailure[] = []
     for (const [n, { ticket, missing }] of problems.entries()) {
         if (ticket === null) continue
         await postCommentOnce({
@@ -200,14 +241,13 @@ const refuseIntake = async ({
             step,
             n,
         })
-        await tracker.addLabel({ number: ticket, label: NEEDS_INFO_LABEL })
-        await tracker.removeLabel({ number: ticket, label: READY_LABEL })
+        labelFailures.push(...(await moveToNeedsInfo({ tracker, ticket })))
     }
     journal.append({
         kind: 'intake_refused',
         ticket: null,
         role: null,
-        content: { problems },
+        content: { problems, label_failures: labelFailures },
     })
 }
 
