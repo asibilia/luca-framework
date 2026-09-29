@@ -97,10 +97,30 @@ const IntakeReadEntrySchema = z.object({
     content: IntakeReadSchema,
 })
 
+/**
+ * A label the refusal couldn't add or remove (#500), with the tracker's
+ * error. The refusal goes on without it.
+ */
+export const LabelFailureSchema = z.object({
+    ticket: z.number().int().positive(),
+    label: z.string(),
+    change: z.enum(['add', 'remove']),
+    error: z.string(),
+})
+
+export type LabelFailure = z.infer<typeof LabelFailureSchema>
+
+/**
+ * Intake refused the run. `label_failures` are the labels it couldn't
+ * move; older journals have none.
+ */
 const IntakeRefusedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('intake_refused'),
-    content: z.object({ problems: z.array(IntakeProblemSchema) }),
+    content: z.object({
+        problems: z.array(IntakeProblemSchema),
+        label_failures: z.array(LabelFailureSchema).default([]),
+    }),
 })
 
 /**

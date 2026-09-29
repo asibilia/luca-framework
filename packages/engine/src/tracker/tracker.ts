@@ -64,9 +64,16 @@ export type Tracker = {
         number: number
         since_id: number
     }) => Promise<TrackerComment[]>
-    /** Adds a label to an issue. Adding a label it already has does nothing. */
+    /**
+     * Adds a label to an issue. Adding a label it already has does nothing. A
+     * label the repo lacks is created first, as `labelDefinition` describes
+     * it (#500).
+     */
     addLabel: (args: { number: number; label: string }) => Promise<void>
-    /** Removes a label from an issue. Removing a missing label does nothing. */
+    /**
+     * Removes a label from an issue. Removing a label the issue or the repo
+     * lacks does nothing.
+     */
     removeLabel: (args: { number: number; label: string }) => Promise<void>
     /**
      * Closes an issue as completed, such as a ticket whose work was already
@@ -122,3 +129,74 @@ export const RELEASE_LABELS = [
     'release:major',
     'release:none',
 ] as const
+
+/**
+ * A label as the engine creates it in a repo: `luca setup` does, and so
+ * does `addLabel` when the repo lacks it.
+ */
+export type LabelDefinition = {
+    name: string
+    /** Six hex digits, without `#`. */
+    color: string
+    description: string
+}
+
+/** The labels a run needs, with what they're for. */
+export const RUN_LABELS: LabelDefinition[] = [
+    {
+        name: READY_LABEL,
+        color: '0e8a16',
+        description: 'Ready for a Luca run',
+    },
+    {
+        name: REFACTOR_LABEL,
+        color: '5319e7',
+        description: 'Changes shape, not behavior: no new tests',
+    },
+    {
+        name: NEEDS_INFO_LABEL,
+        color: 'd93f0b',
+        description: 'Luca needs more detail before it can build this',
+    },
+]
+
+/** The version-bump labels a repo with changesets gets, one per bump. */
+export const RELEASE_LABEL_DEFINITIONS: Record<
+    (typeof RELEASE_LABELS)[number],
+    LabelDefinition
+> = {
+    'release:patch': {
+        name: 'release:patch',
+        color: 'c2e0c6',
+        description: "A patch bump for this spec's changeset (the default)",
+    },
+    'release:minor': {
+        name: 'release:minor',
+        color: 'fbca04',
+        description: "A minor bump for this spec's changeset",
+    },
+    'release:major': {
+        name: 'release:major',
+        color: 'b60205',
+        description: "A major bump for this spec's changeset",
+    },
+    'release:none': {
+        name: 'release:none',
+        color: 'ededed',
+        description: 'No version bump: an empty changeset',
+    },
+}
+
+/**
+ * How the engine creates the label `name` in a repo that lacks it: as
+ * `luca setup` would, or plain grey with no description for a label Luca
+ * doesn't define.
+ *
+ * @example
+ * labelDefinition({ name: 'needs-info' }).color // 'd93f0b'
+ * labelDefinition({ name: 'odd' }) // { name: 'odd', color: 'ededed', description: '' }
+ */
+export const labelDefinition = ({ name }: { name: string }): LabelDefinition =>
+    [...RUN_LABELS, ...Object.values(RELEASE_LABEL_DEFINITIONS)].find(
+        (label) => label.name === name
+    ) ?? { name, color: 'ededed', description: '' }
