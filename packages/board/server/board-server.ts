@@ -26,6 +26,7 @@ import {
 } from './engine-watch'
 import { describeRecord, headerRow, rowsForRecord } from './make-rows'
 import { applyEnded, applyRecord, createBoardState } from './reduce-board'
+import { createReplyPoster, type ReplyRun } from './reply-post'
 import { listJournals, readJournal } from './run-journals'
 import { createRunRegistry, type RunEntry } from './run-registry'
 
@@ -36,6 +37,8 @@ import type {
     EngineEventInput,
     EngineEventOutput,
     EngineRecord,
+    ReplyPostInput,
+    ReplyPostOutput,
     RunStartInput,
     RunStartOutput,
 } from '../shared/board-rpc'
@@ -233,6 +236,14 @@ export const createBoardServer = ({
     const runs = new Map<string, RunMemory>()
     const outside = new Map<string, OutsideRun>()
     const queues = new Map<string, Promise<unknown>>()
+    const poster = createReplyPoster({
+        run_command,
+        env,
+        home_dir,
+        file_exists,
+        now,
+        log,
+    })
 
     /** Runs `work` after everything already queued for the same run. */
     const enqueue = <Result>({
@@ -304,6 +315,15 @@ export const createBoardServer = ({
         }
         const before = memory.state
         const after = applyRecord({ state: before, record: read.record })
+        if (read.record.kind === 'reply_received') {
+            poster.noteTaken({
+                run_id,
+                seq: read.record.seq,
+                time: read.record.time,
+                word: read.record.content.word,
+                ticket: read.record.content.ticket ?? read.record.ticket,
+            })
+        }
         const described = describeRecord({
             before,
             after,
@@ -934,6 +954,7 @@ export const createBoardServer = ({
             (input.run_id
                 ? list.find((state) => state.run.run_id === input.run_id)
                 : undefined) ?? list[0]
+        const selected_id = selected?.run.run_id ?? null
         return {
             runs: list.map((state) => ({
                 run_id: state.run.run_id,
@@ -945,7 +966,43 @@ export const createBoardServer = ({
                 needs_you: state.needs_you.length,
             })),
             selected: selected ?? null,
+            chat_agent_id:
+                selected_id === null
+                    ? null
+                    : (runs.get(selected_id)?.entry.agent_id ?? null),
+            posted:
+                selected_id === null
+                    ? []
+                    : poster.postedOf({ run_id: selected_id }),
         }
+    }
+
+    /**
+     * `reply.post` (#503): posts a reply button's word on the run's spec
+     * issue. Works for runs this plugin started and for runs it only reads
+     * (their journal is read again first); see `createReplyPoster`.
+     */
+    const postReply = async (
+        input: ReplyPostInput
+    ): Promise<ReplyPostOutput> => {
+        await ready
+        await readOutside()
+        const memory = runs.get(input.run_id)
+        const other = outside.get(input.run_id)
+        const run: ReplyRun | null = memory
+            ? {
+                  state: memory.state,
+                  repo_dir: memory.entry.repo,
+                  next_seq: memory.next_seq,
+              }
+            : other
+              ? {
+                    state: other.state,
+                    repo_dir: other.repo,
+                    next_seq: other.next_seq,
+                }
+              : null
+        return poster.postReply({ run, input })
     }
 
     /** Whether a run may still need an engine: not ended, not over. */
@@ -1160,7 +1217,14 @@ export const createBoardServer = ({
         )
     })
 
-    return { startRun, handleEngineEvent, readBoard, checkEngines, idle }
+    return {
+        startRun,
+        handleEngineEvent,
+        readBoard,
+        postReply,
+        checkEngines,
+        idle,
+    }
 }
 
 export type BoardServer = ReturnType<typeof createBoardServer>

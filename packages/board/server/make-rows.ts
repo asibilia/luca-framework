@@ -852,6 +852,10 @@ export const rowsForRecord = ({
             kind: ROW_KIND.stuck,
             data: {
                 status: 'waiting',
+                run_id,
+                key: item.key,
+                ticket: item.ticket,
+                since: item.since,
                 subject: item.subject,
                 spec_number: after.run.spec_number,
                 reason: item.reason,
@@ -869,6 +873,10 @@ export const rowsForRecord = ({
             kind: ROW_KIND.stuck,
             data: {
                 status: 'resolved',
+                run_id,
+                key: item.key,
+                ticket: item.ticket,
+                since: item.since,
                 subject: item.subject,
                 spec_number: after.run.spec_number,
                 reason: item.reason,

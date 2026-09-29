@@ -7,11 +7,11 @@ The board is the live view of a Luca run inside Paseo. You start a run by typing
   - how much of the plan the whole run used, once the engine records it
   - a banner when the run stopped (for example, the wrong credentials, or a billing stop) or its engine stopped
   - a limit-wait banner that names the window that was hit
-  - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and the exact reply to post on the spec issue (tap a reply to copy it)
+  - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and a button for each reply the engine takes, and **Help me** (see [Replying from the board](#replying-from-the-board))
   - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. A card shows how much of the plan its ticket used, once the engine records it. Tap a card for its details.
   - **For a person**, only when the run left some tickets out (#499): the tickets labeled `ready-for-human`, and the ones that wait on them, each with why ("for a person", or "waits on #12, which is for a person"). They aren't a problem, so this is a quiet, muted list that starts folded, never in **Needs you**.
   - the final review's 5 lenses, as a second stack (Waiting → Reviewing → Fixing → Clean). It stays dimmed until every ticket is done or skipped. A run that ended with nothing to do, or that intake refused, has nothing to review, so the panel leaves this section out and the header row says "none, nothing to review".
-- **Live rows in the chat where you started the run**: a header row that updates in place, one row per meaningful event, stuck rows with the exact reply, and a limit-wait row. The rows never reach the model.
+- **Live rows in the chat where you started the run**: a header row that updates in place, one row per meaningful event, stuck rows with the same reply buttons and **Help me**, and a limit-wait row. The rows never reach the model.
 
 The code reuses the designs of the board prototype (`prototype/paseo-board`: variant B v2 for the panel and variant C for the rows), but none of its code.
 
@@ -33,7 +33,7 @@ The code reuses the designs of the board prototype (`prototype/paseo-board`: var
    - **Why the extra Bun flags.** The engine runs in the target repo's folder, so a plain `bun` would load that repo's `.env` and its `bunfig.toml`, including any `preload` script, into the engine. On someone else's repo, their preload would run inside Luca. So every launch (a new run, `--resume`, and the `--unfinished` check) passes `--no-env-file` and `--config=` pointing at Luca's own `bunfig.toml`, which ships next to the engine's `luca-run.ts` and preloads nothing. Agents don't need this: they already get an allow-listed env.
    - It returns `{ ok, message, run_id }`. The message names the log file. If the engine can't be found, it returns `ok: false` and says what to set.
 3. The engine sends its journal records through `engine.event`, described in the next section. The plugin keeps each run's board state and appends the chat rows.
-4. The panel polls `board.read` every 2 s.
+4. The panel polls `board.read` every 2 s. Its answer also carries the chat the selected run started in (`chat_agent_id`, `null` for a run the plugin didn't start) and the replies the board posted for it (`posted`).
 
 ## Journals on disk
 
@@ -150,10 +150,10 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | --- | --- | --- |
 | `run_started` | run status `intake`, the spec number, and the **run budget** from its `config.run_budget_tokens` (the engine's default, 9,000,000 tokens, when it sets none). The run card shows the run's tokens against it: "This run's tokens: 17.7k of its run budget 9.0M". It also keeps `luca_version`, the Luca version the run started on (#460; `null` in older journals). | "The run started on spec #n." |
 | `engine_resumed` | the engine started again on the run's journal (#460; `{ luca_version }`, the Luca version it resumed on). When that differs from `run_started`'s `luca_version`, the run card shows a note naming both: "This run started on Luca 14.0.0-alpha.1 and resumed on Luca 14.0.0-alpha.2. It keeps going." The note stays for the rest of the run. The same version, or a journal whose `run_started` has no version, shows nothing. The run keeps going either way. | the note, once (warning); nothing on the same version |
-| `intake_read` | the spec's title | none |
+| `intake_read` | the spec's title, and its owner (`spec.author`) and repo (from `spec.url`) for the reply buttons | none |
 | `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
 | `nothing_to_do` | run status `nothing to do`. At intake the spec has no open tickets, or all of them are for a person (`left_out`, #499); with `already_done` (#484), every ticket's work was already on the base branch. Its `left_out` fills **For a person** | "Nothing to do: the spec has no open tickets.", "Nothing to do: the work of #n was already on the base branch.", or "Nothing to do: #12 is for a person, and #13 waits on a ticket for a person." |
-| `spec_snapshot` | run status `building`. Its `left_out` (#499; none in older journals) fills **For a person** | "Intake passed" with the ticket count, and "n left for a person: #12, #13." when some were left out |
+| `spec_snapshot` | run status `building`, and the spec's owner and repo, as for `intake_read`. Its `left_out` (#499; none in older journals) fills **For a person** | "Intake passed" with the ticket count, and "n left for a person: #12, #13." when some were left out |
 | `ticket_snapshot` | a card; a `refactor` label makes a refactor ticket; `blockers` keep it Blocked until they're done | none |
 | `run_branch_created` | the run branch | one line |
 | `ticket_worktree_created` | card to Building, started | "#n: started." |
@@ -176,7 +176,7 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `ticket_stuck` | card to Stuck, and **Needs you** with the reason in words (every `StuckReason` has one), the detail, what was tried, and the replies. `nothing_new_to_test` speaks only to a ticket that changes no behavior: "Label it refactor and retry it." | a stuck row |
 | `run_stuck` | the whole run is stuck (#435; `ticket: null`, `{ reason: 'run_budget', detail }`): it used up its **run budget** of tokens. Run status `stuck`, and **Needs you** ("The run is stuck", the reason in words, the detail, and the replies `retry`, `stop`) | "The run is stuck. The run used up its run budget of tokens. ..." (danger), and a stuck row |
 | `pull_request_opened` | run status `done`, the PR link | the PR |
-| `reply_received` | the owner's reply on the spec issue (#366). `ticket` is the ticket or `null`; content `{ word: 'retry' \| 'skip' \| 'stop', ticket: number \| null, comment_id, author }`. `retry #n` resolves the stuck item and puts the card back to building ("retrying"); `skip #n` skips it; `stop` clears Needs you. With `ticket: null`, `retry` adds one more full run budget to a run stuck on its budget (the final review stays as it is), else sends a stuck final review back to reviewing, and `ship` passes it (the engine then journals `final_review_shipped`). | "You replied `retry #13`."; the stuck row turns resolved in place |
+| `reply_received` | the owner's reply on the spec issue (#366). A reply the board posted for it shows as taken (see [Replying from the board](#replying-from-the-board)). `ticket` is the ticket or `null`; content `{ word: 'retry' \| 'skip' \| 'stop', ticket: number \| null, comment_id, author }`. `retry #n` resolves the stuck item and puts the card back to building ("retrying"); `skip #n` skips it; `stop` clears Needs you. With `ticket: null`, `retry` adds one more full run budget to a run stuck on its budget (the final review stays as it is), else sends a stuck final review back to reviewing, and `ship` passes it (the engine then journals `final_review_shipped`). | "You replied `retry #13`."; the stuck row turns resolved in place |
 | `ticket_retried` | how the engine took a `retry` (`{ mode: 'resume' \| 'restart' \| 'refused', base_sha, problems, answer_id }`). `resume`: a fresh agent picks up where it stopped; nothing more changes. `restart`: the ticket's text or labels changed (its new `ticket_snapshot` came just before, so the title and labels are already new); the card starts over from scratch, "starting over from the edited ticket", with a "tried" line. `refused`: the edited ticket isn't ready to build; the card goes back to Stuck and **Needs you** ("Retry of #n was refused", "Its new text or labels aren't ready to build.", the `problems`, and the replies `retry #n`, `skip #n`, `stop`) | `resume`: none. `restart`: "starts over from the edited ticket." `refused`: the reason and problems (warning), and the stuck row waits again |
 | `ticket_already_done` | a ticket whose work was already on the base branch (#484; `{ shas, comment_id }`): card to Done, calmly, with the activity "already done · 3559c25" (each commit's short sha). It never goes in **Needs you**, the run isn't stuck because of it, and tickets that wait on it are no longer blocked. The test-writer's `agent_finished` before it (outcome `already_done`) sets the activity "already done" | "#n: already done on the base branch, by 3559c25. Nothing to build." (success); the test-writer's answer reads "the test-writer found the work already done." |
 | `ticket_closed` | the engine closed an already-done ticket, as the run opens no PR (#484). The card stays in Done | "#n: closed, since its work was already done." |
@@ -260,6 +260,45 @@ The engine journals these with `ticket` and `role` set to `null`, except `usage_
 ```
 
 Windows in words: `five_hour` is "five-hour", `seven_day` is "weekly", `seven_day_opus` is "weekly Opus", and `seven_day_sonnet` is "weekly Sonnet". Any other window shows its raw name.
+
+## Replying from the board
+
+A stuck card's replies are buttons (#503), in the panel's **Needs you** and in the chat's stuck rows. Each button is one word the engine takes for that stuck item, and no other:
+
+| Stuck | Buttons |
+| --- | --- |
+| a ticket | `retry #n`, `skip #n`, `stop` (always with the ticket, since a bare word only works while one ticket is stuck) |
+| the final review | `retry`, `stop`, `ship` |
+| the run, on its budget | `retry`, `stop` |
+
+Tap one, and the card asks first: "Post `retry #134` on spec #133?". Tap **Post**, and the plugin RPC `reply.post` posts it as a comment on the spec issue. The card then shows it was posted, and "The engine took it." once the journal has the engine's `reply_received` for it. The engine reads the spec about once a minute. Once a reply is posted for a stuck item, its other buttons lock, since the engine takes only the first reply.
+
+**`reply.post`.** Keys are snake_case.
+
+```ts
+// input
+{ run_id: string; key: string; reply: string } // key: `ticket-<n>`, `final`, or `run`
+
+// output
+{
+    ok: boolean
+    status: 'posted' | 'already_posted' | 'refused' | 'failed'
+    message: string // in words, for the card
+    posted: { key, since, reply, posted_at, comment_url, taken_at } | null
+}
+```
+
+It never trusts the button. Before it posts, it checks again:
+
+- **The run and the item.** The run is one the board knows, not a demo, and names its spec. Its board has the item stuck under `key` now, and `reply` is one of that item's buttons. Anything else is `refused`, and nothing runs.
+- **Once per stuck item.** The same reply again (a double tap, the panel and a chat row, or a second tap while it is in flight) posts nothing and answers `already_posted`. A different word for the same stuck item is `refused`. A ticket stuck again later is a new item, with its buttons open again. What was posted is kept in the plugin's memory, so a plugin restart forgets it.
+- **The owner.** The engine only counts the spec owner's replies (the spec issue's author). The plugin asks `gh api user --jq .login` who is signed in and compares it, without case, with the owner from the journal (`spec_snapshot` or `intake_read`). A journal without the owner is answered by `gh issue view <spec> --json author,url`. If they differ, it doesn't post, and the card says so: "You're signed in to gh as x, but spec #133 is y's. The engine only counts y's replies, ..."
+
+Then it runs `gh issue comment <spec> --repo <owner/repo> --body <reply>` in the run's repo folder. The repo comes from the spec's URL. `gh` always gets an argument list, never a shell, and `GH_PROMPT_DISABLED=1`. A `gh` that fails (not signed in, no access, a timeout after 30 s) is `failed`, with `gh`'s own words, and the reply can be tried again.
+
+The plugin looks for `gh` in `LUCA_GH`, then the daemon's `PATH`, `/opt/homebrew/bin`, `/usr/local/bin`, and `~/.local/bin`. Posting needs no engine token, so the buttons work for runs the plugin didn't start (read-only runs) too.
+
+**Help me.** Each stuck card also has **Help me**. It sends `/luca-unstick <run id> #<ticket>` (or `/luca-unstick <run id>` for the final review or the run budget) as a prompt to a chat's agent, through Paseo's `agents.ref(id).send`, so an agent can look into why it is stuck. From a chat's stuck row, that chat gets it. From the panel, the chat the run started in gets it. A run the plugin didn't start has no chat, so the panel copies the command instead, for you to paste in a chat (it copies too when the send fails, for example because the chat is gone). The `/luca-unstick` skill itself ships with Luca's skills.
 
 ## Settings
 
