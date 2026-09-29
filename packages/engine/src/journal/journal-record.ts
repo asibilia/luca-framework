@@ -1041,12 +1041,22 @@ const FinalReviewPassedEntrySchema = z.object({
 /**
  * The person replied `ship` to the stuck final review: the PR opens with the
  * findings still open listed at the top. Appended by the reply reader (#366)
- * through `shipFinalReview`.
+ * through `shipFinalReview`. `commit` is the commit of the edits left
+ * uncommitted in the run branch's worktree at ship time (#509), listed in
+ * the PR as not reviewed; with none, it is left out.
  */
 const FinalReviewShippedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('final_review_shipped'),
-    content: z.object({}),
+    content: z.object({
+        commit: z
+            .object({
+                sha: z.string(),
+                message: z.string(),
+                files: z.array(z.string()),
+            })
+            .optional(),
+    }),
 })
 
 /**

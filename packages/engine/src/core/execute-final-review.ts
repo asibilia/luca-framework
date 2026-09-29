@@ -5,14 +5,20 @@ import type { FinalReviewAction } from './decide-final-review'
 import {
     commitIn,
     gatesIn,
+    leaveOutIn,
     need,
     runTurn,
     type BuildContext,
 } from './execute-build'
 import { closeSessions, openSessionsIn } from './session-close'
 
+import type { EngineCommit } from '../git/git-adapter'
 import type { Journal } from '../journal/journal'
-import { replayRun, type RuleFile } from '../journal/replay'
+import {
+    replayRun,
+    type FinalReviewState,
+    type RuleFile,
+} from '../journal/replay'
 
 /**
  * Carries out the final review's steps on the run branch's worktree: its
@@ -293,7 +299,8 @@ export const executeFinalReviewAction = async ({
 
 /**
  * The seam for replies (#366): when the person replies `ship` to a stuck
- * final review, the reply reader calls this. It journals
+ * final review, the reply reader calls this (the engine's ship step,
+ * `shipFinalReviewIn`, after committing any edits left over). It journals
  * `final_review_shipped`, and the next `runEngine` on the journal opens the
  * PR with the findings still open listed at the top of its description.
  * A final review that isn't stuck (or was already shipped) gets nothing.
@@ -304,21 +311,82 @@ export const executeFinalReviewAction = async ({
  */
 export const shipFinalReview = ({
     journal,
+    commit,
 }: {
     journal: Journal
+    /** The commit of the edits left uncommitted at ship time, if any. */
+    commit?: EngineCommit & { message: string }
 }): { ok: true } | { ok: false; reason: string } => {
-    const { final_review } = replayRun({ records: journal.read() })
-    if (final_review.stuck === null) {
-        return { ok: false, reason: 'The final review is not stuck.' }
-    }
-    if (final_review.shipped) {
-        return { ok: false, reason: 'The final review was already shipped.' }
-    }
+    const refused = shipRefusal({
+        final_review: replayRun({ records: journal.read() }).final_review,
+    })
+    if (refused !== null) return { ok: false, reason: refused }
     journal.append({
         kind: 'final_review_shipped',
         ticket: null,
         role: null,
-        content: {},
+        content: commit === undefined ? {} : { commit },
     })
     return { ok: true }
+}
+
+/** Why a final review can't be shipped, or `null` when it can. */
+const shipRefusal = ({
+    final_review,
+}: {
+    final_review: FinalReviewState
+}): string | null => {
+    if (final_review.stuck === null) return 'The final review is not stuck.'
+    if (final_review.shipped) return 'The final review was already shipped.'
+    return null
+}
+
+/**
+ * The commit message for the edits left uncommitted in the run branch's
+ * worktree when a stuck final review is shipped (#509).
+ *
+ * @example
+ * shippedEditsMessage({ round: 4 }) // 'fix: final review round 4, shipped with open findings'
+ */
+export const shippedEditsMessage = ({ round }: { round: number }): string =>
+    `fix: final review round ${round}, shipped with open findings`
+
+/**
+ * Carries out a `ship` reply to the stuck final review (#509): edits left
+ * uncommitted in the run branch's worktree (a fixer's, or the owner's) get
+ * their own commit (`shippedEditsMessage`), which is pushed, then
+ * `shipFinalReview` journals it with the ship, so the PR lists its files as
+ * not reviewed. What prepare made stays out. With no edits, no commit. A
+ * redo after a crash that already committed adopts that commit.
+ */
+export const shipFinalReviewIn = async ({
+    context,
+}: {
+    context: BuildContext
+}): Promise<void> => {
+    const { journal, git, state } = context
+    const refused = shipRefusal({ final_review: state.final_review })
+    if (refused !== null) throw new Error(refused)
+    const { path: cwd, branch } = need({
+        value: state.run_branch,
+        what: 'run branch',
+    })
+    const message = shippedEditsMessage({ round: state.final_review.round })
+    const leave_out = await leaveOutIn({ context, cwd, ticket: null })
+    const changes = (await git.changes({ cwd })).filter(
+        ({ path }) => !leave_out.includes(path)
+    )
+    let commit: (EngineCommit & { message: string }) | undefined
+    if (changes.length > 0) {
+        commit = {
+            ...(await git.commitAll({ cwd, message, leave_out })),
+            message,
+        }
+    } else if (context.step.redo) {
+        const last = await git.lastCommit({ cwd })
+        if (last.message === message) commit = last
+    }
+    if (commit !== undefined) await git.push({ cwd, branch })
+    const shipped = shipFinalReview({ journal, commit })
+    if (!shipped.ok) throw new Error(shipped.reason)
 }

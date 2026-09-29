@@ -217,9 +217,10 @@ once every ticket pushed, the final review, on the run branch's worktree:
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
-      done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
+      done (final_review_stuck); a ship reply (edits left uncommitted get their own commit
+      "fix: final review round N, shipped with open findings", then shipFinalReview ──> final_review_shipped) opens the PR anyway
 with a changesets config (.changeset/config.json when the run branch was made, #461):
-  write_changeset           git: commit one changeset (the changed workspace packages
+  write_changeset           git: commit one changeset, and only it (the changed workspace packages
                             minus the config's ignore, the bump from the spec's release:*
                             label, patch with none; no changeset for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
@@ -754,10 +755,16 @@ runs, even for a one-ticket spec.
   (the run branch's worktree stays), and the spec issue hears why, like a
   stuck ticket (see "Stuck work"). No PR opens while it waits for a reply.
 - **Replies.** Only the spec owner's count: `ship` journals the reply, then
-  calls `shipFinalReview({ journal })`, which journals
-  `final_review_shipped` (and refuses a final review that isn't stuck); the
-  PR then opens with an "Open findings" section at the very top (each with
-  its lens, severity, and file), and the worktrees are removed. `retry`
+  the ship step (`shipFinalReviewIn`) commits any edits left uncommitted in
+  the run branch's worktree (a fixer's cut-off work, or the owner's) as
+  their own commit, "fix: final review round N, shipped with open
+  findings", pushes it, and calls `shipFinalReview({ journal, commit })`,
+  which journals `final_review_shipped { commit? }` (and refuses a final
+  review that isn't stuck). With no edits, no commit. What prepare made
+  stays out. The PR then opens with an "Open findings" section at the very
+  top (each with its lens, severity, and file, then the edits' files as
+  "Uncommitted fixer edits, not reviewed"), and the worktrees are removed.
+  The changeset commit, made after, holds only the changeset (#509). `retry`
   journals `final_review_retried`: fresh fixers (no session kept) and fresh
   counts, keeping the owner's edits in the run branch's worktree. The open
   fix round starts over as round 1 (a failed lens, failed gates, or a
@@ -808,7 +815,7 @@ ticket_stuck
 
 final_review_stuck
   decide ──> report_final_review_stuck  comment on the spec issue           ──> stuck_reported (ticket null)
-  ship  ──> ship_final_review           shipFinalReview                     ──> final_review_shipped, then the PR
+  ship  ──> ship_final_review           commit edits left over, shipFinalReview ──> final_review_shipped, then the PR
   retry ──> retry_final_review                                              ──> final_review_retried
 ```
 

@@ -94,6 +94,15 @@ export type GitAdapter = {
         leave_out?: string[]
     }) => Promise<EngineCommit>
     /**
+     * Commits only `paths` (new or changed), skipping hooks. Every other
+     * change at `cwd`, staged or not, stays out of the commit, as it was.
+     */
+    commitPaths: (args: {
+        cwd: string
+        message: string
+        paths: string[]
+    }) => Promise<EngineCommit>
+    /**
      * Throws away every uncommitted change at `cwd`, new untracked files
      * included (ignored files such as `node_modules` stay), and returns the
      * commit it went back to.
@@ -468,6 +477,25 @@ export const createGitAdapter = ({
             const sha = await head({ cwd })
             return { sha, files: await filesOf({ cwd, sha }) }
         },
+        commitPaths: async ({ cwd, message, paths }) => {
+            const pathspecs = paths.map((path) => `:(literal)${path}`)
+            await gitOk({ cwd, args: ['add', '--', ...pathspecs] })
+            // With paths, `git commit` commits just them (`--only`).
+            await gitOk({
+                cwd,
+                args: [
+                    'commit',
+                    '--quiet',
+                    '--no-verify',
+                    '-m',
+                    message,
+                    '--',
+                    ...pathspecs,
+                ],
+            })
+            const sha = await head({ cwd })
+            return { sha, files: await filesOf({ cwd, sha }) }
+        },
         discardChanges: async ({ cwd }) => {
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', 'HEAD'] })
             await gitOk({ cwd, args: ['clean', '--quiet', '-f', '-d'] })
@@ -617,6 +645,7 @@ export const createGitAdapter = ({
         listFiles: serial(raw.listFiles),
         filesMentioning: serial(raw.filesMentioning),
         commitAll: serial(raw.commitAll),
+        commitPaths: serial(raw.commitPaths),
         discardChanges: serial(raw.discardChanges),
         resetWorktree: serial(raw.resetWorktree),
         commitsBetween: serial(raw.commitsBetween),

@@ -12,7 +12,7 @@ import {
     type WorkspacePackage,
 } from './changeset'
 import type { BuildAction } from './decide-build'
-import { leaveOutIn, need, type BuildContext } from './execute-build'
+import { need, type BuildContext } from './execute-build'
 
 /** The part of the changesets config the engine reads: what it ignores. */
 const ChangesetConfigSchema = z
@@ -83,8 +83,9 @@ export const workspacePackages = async ({
 }
 
 /**
- * Writes the run's changeset on the run branch, commits it, and pushes the
- * run branch, then journals `changeset_written`. It names every workspace
+ * Writes the run's changeset on the run branch, commits it (only it: other
+ * uncommitted edits stay out, #509), and pushes the run branch, then
+ * journals `changeset_written`. It names every workspace
  * package with files changed since the run branch's base, minus the ones
  * the config ignores. A redo after a crash finds its own file already
  * committed and commits nothing twice. A `release:none` spec (#476), or a
@@ -145,11 +146,8 @@ export const writeChangeset = async ({
     await Bun.write(join(cwd, path), changesetText({ packages, bump, summary }))
     const changes = await git.changes({ cwd })
     if (changes.some((change) => change.path === path)) {
-        await git.commitAll({
-            cwd,
-            message,
-            leave_out: await leaveOutIn({ context, cwd, ticket: null }),
-        })
+        // Only the changeset: any other edit left in the worktree stays out.
+        await git.commitPaths({ cwd, message, paths: [path] })
     }
     await git.push({ cwd, branch })
     journal.append({

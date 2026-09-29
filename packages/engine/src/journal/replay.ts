@@ -353,6 +353,11 @@ export type FinalReviewState = {
     passed: boolean
     stuck: { reason: StuckReason; detail: string } | null
     shipped: boolean
+    /**
+     * The commit of the edits left uncommitted at ship time (#509), not
+     * reviewed; `null` with none.
+     */
+    shipped_edits: { sha: string; message: string; files: string[] } | null
     /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
     crashed_turn: AgentRole | null
 }
@@ -383,6 +388,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     passed: false,
     stuck: null,
     shipped: false,
+    shipped_edits: null,
     crashed_turn: null,
 }
 
@@ -1556,7 +1562,13 @@ const finalReviewAfter = ({
         case 'final_review_passed':
             return { ...review, passed: true }
         case 'final_review_shipped':
-            return review.stuck === null ? review : { ...review, shipped: true }
+            return review.stuck === null
+                ? review
+                : {
+                      ...review,
+                      shipped: true,
+                      shipped_edits: record.content.commit ?? null,
+                  }
         case 'agent_finished': {
             const finished = record.content
             const { role } = finished

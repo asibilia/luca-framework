@@ -134,6 +134,7 @@ export const pullRequestText = ({
             ? shippedFindingsSection({
                   findings: review.fix?.findings ?? [],
                   stuck: review.stuck,
+                  edits: review.shipped_edits,
               })
             : ''
     const body = [
