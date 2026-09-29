@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.6
+
+### Patch Changes
+
+- 09716cc: Spec: fewer false stops, and a PR that always opens ([#510](https://github.com/asibilia/luca-framework/issues/510))
+
 ## 14.0.0-alpha.5
 
 ### Patch Changes
