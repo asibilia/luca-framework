@@ -408,6 +408,8 @@ const resolveNeedsYou = ({
 const RUN_STUCK_REASONS: Record<string, string> = {
     run_budget:
         'The run used up its run budget of tokens. `retry` adds one more full budget.',
+    pull_request_failed:
+        "The run's pull request didn't open. `retry` tries again, reusing a PR already open from the run branch.",
 }
 
 /** A run stuck reason code in words. */

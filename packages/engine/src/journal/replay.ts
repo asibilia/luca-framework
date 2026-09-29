@@ -353,6 +353,11 @@ export type FinalReviewState = {
     passed: boolean
     stuck: { reason: StuckReason; detail: string } | null
     shipped: boolean
+    /**
+     * The commit of the edits left uncommitted at ship time (#509), not
+     * reviewed; `null` with none.
+     */
+    shipped_edits: { sha: string; message: string; files: string[] } | null
     /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
     crashed_turn: AgentRole | null
 }
@@ -383,6 +388,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     passed: false,
     stuck: null,
     shipped: false,
+    shipped_edits: null,
     crashed_turn: null,
 }
 
@@ -494,8 +500,9 @@ export const EMPTY_MEMORY: MemoryState = {
 export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
 /**
- * The run budget (#435): whether the run is stuck on it and told, and how
- * many more full budgets the owner's `retry` replies added.
+ * The run budget (#435): whether the run is stuck on it (or on its PR,
+ * #508) and told, and how many more full budgets the owner's `retry`
+ * replies added.
  */
 export type RunBudgetState = {
     /** The run is stuck, until the owner's `retry`. */
@@ -1050,18 +1057,18 @@ const applyRecord = ({
             const { word, comment_id, ticket } = record.content
             if (word === 'stop') return { ...handled, stop: { comment_id } }
             // A bare `retry` while the run is stuck on its budget adds one
-            // more full budget, and the run carries on.
-            if (
-                ticket === null &&
-                word === 'retry' &&
-                state.run_budget.stuck !== null
-            ) {
+            // more full budget, and the run carries on; stuck on its PR,
+            // the PR is tried again.
+            const { stuck } = state.run_budget
+            if (ticket === null && word === 'retry' && stuck !== null) {
                 return {
                     ...handled,
                     run_budget: {
                         stuck: null,
                         report: null,
-                        retries: state.run_budget.retries + 1,
+                        retries:
+                            state.run_budget.retries +
+                            (stuck.reason === 'run_budget' ? 1 : 0),
                     },
                 }
             }
@@ -1163,6 +1170,9 @@ const applyRecord = ({
             return next
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
+            return next
+        // An agent's changeset the engine removed: noted, never acted on.
+        case 'changeset_dropped':
             return next
         case 'prepare_made':
             return {
@@ -1555,7 +1565,13 @@ const finalReviewAfter = ({
         case 'final_review_passed':
             return { ...review, passed: true }
         case 'final_review_shipped':
-            return review.stuck === null ? review : { ...review, shipped: true }
+            return review.stuck === null
+                ? review
+                : {
+                      ...review,
+                      shipped: true,
+                      shipped_edits: record.content.commit ?? null,
+                  }
         case 'agent_finished': {
             const finished = record.content
             const { role } = finished
@@ -1651,6 +1667,7 @@ type TicketRecord = Exclude<
             | 'agent_message'
             | 'agent_message_delivered'
             | 'shared_git_changed'
+            | 'changeset_dropped'
             | 'final_review_started'
             | 'lens_started'
             | 'lens_finished'

@@ -217,15 +217,18 @@ once every ticket pushed, the final review, on the run branch's worktree:
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
-      done (final_review_stuck); a ship reply (shipFinalReview ──> final_review_shipped) opens the PR anyway
+      done (final_review_stuck); a ship reply (edits left uncommitted get their own commit
+      "fix: final review round N, shipped with open findings", then shipFinalReview ──> final_review_shipped) opens the PR anyway
 with a changesets config (.changeset/config.json when the run branch was made, #461):
-  write_changeset           git: commit one changeset (the changed workspace packages
+  write_changeset           git: commit one changeset, and only it (the changed workspace packages
                             minus the config's ignore, the bump from the spec's release:*
                             label, patch with none; no changeset for release:none), then push ──> changeset_written
 with memory on (#370), before the PR:
   launch_learner            a fresh read-only learner, the journal's digest ──> agent_started, agent_finished (role learner)
   save_memories             update a similar memory or add one, then feedback ──> memory_write_started, memory_write_done (each write), memories_saved
-open_pull_request         tracker: re-read the spec's sub-issues, then one PR from the run branch ──> pull_request_opened
+open_pull_request         tracker: re-read the spec's sub-issues, save pull-request.md, reuse an open PR
+                          from the run branch or open one, then post what didn't fit as PR comments ──> pull_request_opened
+                          (gh pr create failed: ──> run_stuck (reason pull_request_failed); see "Opening the PR")
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 with no ticket pushed, but some already done (#484):
@@ -445,6 +448,40 @@ changed path as git stores it: a symlink as its target (never followed), a
 folder as no text. A folder with its own git repo in it, which git can't
 commit as files, is a leftover scan hit, so the ticket gets stuck with that
 reason.
+
+**Files a tool loads by name are not "unused" (#507).** The leftover scan's
+"a new script or module that nothing uses" skips files a tool or framework
+loads by their name or folder, so nothing imports them: `*.config.{ts,js,mjs,cjs,mts,cts}`
+(vite, vitest, eslint, tailwind, postcss, react-router, astro, next...),
+`entry.server.*` and `entry.client.*`, `root.*`, `routes.*`, `middleware.*`,
+and any file under `app/routes/`, `pages/`, `src/app/`, or `src/pages/`, at
+any depth. The allowlist is `LOADED_BY_NAME` and `ROUTER_FOLDER` in
+`src/gates/leftover-scan.ts`.
+
+**A file the repo names is neither unused nor scratch (#507).** Before the
+scan, the engine looks for each scratch-named file (`debug.*`, `notes.*`,
+`tmp.*`, ...) by its basename in the tracked files (`git grep`, the
+worktree's text) and in the files the same change adds. If such a file
+other than itself and the tests names it, as an addon's TOC (tracked, or
+new in the same ticket) lists `core\debug.lua`, a `package.json` script
+runs `tools/notes.ts`, or a config points at it, it is the repo's: never "a
+scratch file". A mention in a test alone doesn't count, so a stray `tmp.ts`
+a test names is still flagged as scratch, like a `notes.md` or `scratch.ts`
+nothing names. A new code file needs no such look: "nothing uses it" already
+searches for its name without the extension, which a file naming it holds,
+so a file the repo names is never "unused".
+
+**Agents don't write changesets (#507).** In a repo with changesets
+(`.changeset/config.json` when the run branch was made), the engine writes
+the run's one changeset at PR time. So the test-writers' and implementers'
+prompts (the final review's fixers too) say not to write one, even if the
+repo's rules ask for it, and the rules lens is told the engine adds it.
+One an agent writes anyway, a new `.changeset/*.md` other than
+`.changeset/README.md`, is removed from the worktree before the leftover
+scan and journaled as `changeset_dropped { paths }` (no ticket at the final
+review's fix commit). It is no leftover hit, so the ticket moves on. Edits to
+`.changeset/config.json`, `pre.json`, or the README are the agent's work and
+are committed as usual.
 
 **Cleaning up.** Once the PR is open, every ticket's worktree and the run
 branch's are removed (`git worktree remove --force`, then `git worktree
@@ -752,10 +789,17 @@ runs, even for a one-ticket spec.
   (the run branch's worktree stays), and the spec issue hears why, like a
   stuck ticket (see "Stuck work"). No PR opens while it waits for a reply.
 - **Replies.** Only the spec owner's count: `ship` journals the reply, then
-  calls `shipFinalReview({ journal })`, which journals
-  `final_review_shipped` (and refuses a final review that isn't stuck); the
-  PR then opens with an "Open findings" section at the very top (each with
-  its lens, severity, and file), and the worktrees are removed. `retry`
+  the ship step (`shipFinalReviewIn`) commits any edits left uncommitted in
+  the run branch's worktree (a fixer's cut-off work, or the owner's) as
+  their own commit, "fix: final review round N, shipped with open
+  findings", pushes it, and calls `shipFinalReview({ journal, commit })`,
+  which journals `final_review_shipped { commit? }` (and refuses a final
+  review that isn't stuck). With no edits, no commit. What prepare made
+  stays out, and in a changesets run a changeset a fixer wrote is dropped
+  (`changeset_dropped`), as at any engine commit. The PR then opens with an "Open findings" section at the very
+  top (each with its lens, severity, and file, then the edits' files as
+  "Uncommitted fixer edits, not reviewed"), and the worktrees are removed.
+  The changeset commit, made after, holds only the changeset (#509). `retry`
   journals `final_review_retried`: fresh fixers (no session kept) and fresh
   counts, keeping the owner's edits in the run branch's worktree. The open
   fix round starts over as round 1 (a failed lens, failed gates, or a
@@ -806,7 +850,7 @@ ticket_stuck
 
 final_review_stuck
   decide ──> report_final_review_stuck  comment on the spec issue           ──> stuck_reported (ticket null)
-  ship  ──> ship_final_review           shipFinalReview                     ──> final_review_shipped, then the PR
+  ship  ──> ship_final_review           commit edits left over, shipFinalReview ──> final_review_shipped, then the PR
   retry ──> retry_final_review                                              ──> final_review_retried
 ```
 
@@ -857,6 +901,40 @@ final_review_stuck
 - The tracker's `comment` returns the new comment's id, and `listComments`
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.
+
+### Opening the PR (#508)
+
+The PR is the run's last step, so it must always open, however many
+tickets and notes a run has.
+
+- **The saved text.** Before `gh pr create`, the engine writes the PR's full
+  text to `pull-request.md` in the run folder (next to the journal), so it
+  is never lost.
+- **The body budget.** GitHub takes at most 65,536 characters in a PR body
+  or a comment. The body the engine sends stays under 60,000
+  (`PULL_REQUEST_BUDGET`, `fitPullRequestBody`). The essentials always stay
+  in it: the open findings of a shipped final review, the `Closes` list,
+  and the skipped, for a person, waiting on a person, and not in this run
+  sections. The long parts (the assumptions, nits, declined findings, and
+  new memories) stay while they fit; the rest moves into **PR comments**
+  posted right after the PR opens, each under the budget and cut between
+  list items, and the body says so. Anything still too long is clipped,
+  pointing at `pull-request.md`.
+- **A failed `gh pr create`** is no crash. A failed tracker call throws a
+  `TrackerError` (`src/tracker/tracker.ts`; the GitHub tracker's failed
+  `gh` calls do), and one from `openPullRequest` or `findOpenPullRequest`
+  (`isTrackerFailure`) journals the run
+  stuck (`run_stuck`, reason `pull_request_failed`) with the error, tells
+  the spec issue why, and waits: a bare `retry` tries the PR again (it adds
+  no run budget), and `stop` ends the run without one. Any other error in
+  the step is a crash, taken again on resume.
+- **Never a second PR.** Before creating, the engine looks for an open PR
+  from the run branch (`findOpenPullRequest`) and reuses it: the one a try
+  opened before a crash or a failure, or one the owner opened by hand. Only
+  a PR from the repo itself counts: `gh pr list --head` matches the branch
+  name alone, so a fork's PR from a branch of the same name
+  (`isCrossRepository`) is never taken for the run's. Its PR comments are
+  posted once, even on a redo after a crash.
 
 ### Getting a stuck run moving (#504)
 

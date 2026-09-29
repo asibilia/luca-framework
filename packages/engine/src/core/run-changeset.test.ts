@@ -9,6 +9,7 @@ import {
     createPracticeRepo,
     git,
     happyTurns,
+    latestStuck,
     PRACTICE_SPEC_NUMBER,
     practiceTracker,
     SUM,
@@ -435,6 +436,41 @@ describe('the changeset on a run PR, end to end', () => {
             'feat: build #11 Add sum',
             'test: add failing tests for #11 Add sum',
         ])
+    }, 90_000)
+})
+
+describe("an agent's own changeset (#507)", () => {
+    test("is dropped and journaled, the ticket isn't stuck, and the PR holds only the engine's changeset", async () => {
+        const agent_changeset = '.changeset/add-double.md'
+        const { tracker, practice, records } = await runToPr({
+            files: CHANGESET_FILES,
+            changed: {
+                'packages/math/index.ts': MATH_CHANGE,
+                [agent_changeset]:
+                    '---\n"@practice/math": minor\n---\n\nAdd double\n',
+            },
+        })
+
+        expect(latestStuck(records)).toBeNull()
+        const dropped = records.filter(
+            (record) => record.kind === 'changeset_dropped'
+        )
+        expect(dropped.map((record) => record.ticket)).toContain(11)
+        expect(
+            dropped.flatMap((record) =>
+                record.kind === 'changeset_dropped' ? record.content.paths : []
+            )
+        ).toContain(agent_changeset)
+        const { head, changesets } = await prChangesets({
+            origin: practice.origin,
+            tracker,
+        })
+        expect(changesets.map(({ releases }) => releases)).toEqual([
+            { '@practice/math': 'patch' },
+        ])
+        expect(
+            await changesetsAt({ cwd: practice.origin, ref: head })
+        ).not.toContain(agent_changeset)
     }, 90_000)
 })
 

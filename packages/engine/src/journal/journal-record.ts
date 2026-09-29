@@ -557,6 +557,18 @@ const LeftoverScanEntrySchema = z.object({
     }),
 })
 
+/**
+ * Before an engine commit's leftover scan, in a repo with changesets, the
+ * engine removed the changesets an agent wrote (new `.changeset/*.md` files
+ * other than the README) from the worktree: it writes the run's one itself.
+ * No ticket for the final review's fix commit.
+ */
+const ChangesetDroppedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('changeset_dropped'),
+    content: z.object({ paths: z.array(z.string().min(1)).min(1) }),
+})
+
 const CommitMadeEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('commit_made'),
@@ -740,14 +752,21 @@ const TicketStuckEntrySchema = z.object({
     content: z.object({ reason: StuckReasonSchema, detail: z.string() }),
 })
 
-/** Why the whole run is stuck: it used up its run budget of tokens. */
-export const RunStuckReasonSchema = z.enum(['run_budget'])
+/**
+ * Why the whole run is stuck: it used up its run budget of tokens, or its
+ * pull request didn't open (`gh pr create` failed, #508).
+ */
+export const RunStuckReasonSchema = z.enum([
+    'run_budget',
+    'pull_request_failed',
+])
 
 export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
 
 /**
  * The whole run is stuck (`ticket: null`): nothing new starts until the
- * spec owner replies `retry` (one more full run budget) or `stop`.
+ * spec owner replies `retry` (one more full run budget, or another try at
+ * the PR) or `stop`.
  */
 const RunStuckEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -1034,12 +1053,22 @@ const FinalReviewPassedEntrySchema = z.object({
 /**
  * The person replied `ship` to the stuck final review: the PR opens with the
  * findings still open listed at the top. Appended by the reply reader (#366)
- * through `shipFinalReview`.
+ * through `shipFinalReview`. `commit` is the commit of the edits left
+ * uncommitted in the run branch's worktree at ship time (#509), listed in
+ * the PR as not reviewed; with none, it is left out.
  */
 const FinalReviewShippedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('final_review_shipped'),
-    content: z.object({}),
+    content: z.object({
+        commit: z
+            .object({
+                sha: z.string(),
+                message: z.string(),
+                files: z.array(z.string()),
+            })
+            .optional(),
+    }),
 })
 
 /**
@@ -1279,6 +1308,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema,
     AlreadyDoneCheckedEntrySchema,
     LeftoverScanEntrySchema,
+    ChangesetDroppedEntrySchema,
     CommitMadeEntrySchema,
     WorktreeResetEntrySchema,
     DependenciesInstalledEntrySchema,
@@ -1359,6 +1389,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RedCheckEntrySchema.extend(STAMP_FIELDS),
     AlreadyDoneCheckedEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
+    ChangesetDroppedEntrySchema.extend(STAMP_FIELDS),
     CommitMadeEntrySchema.extend(STAMP_FIELDS),
     WorktreeResetEntrySchema.extend(STAMP_FIELDS),
     DependenciesInstalledEntrySchema.extend(STAMP_FIELDS),
@@ -1438,6 +1469,7 @@ export const JournalKindSchema = z.enum([
     'red_check',
     'already_done_checked',
     'leftover_scan',
+    'changeset_dropped',
     'commit_made',
     'worktree_reset',
     'dependencies_installed',

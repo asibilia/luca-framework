@@ -134,6 +134,7 @@ export const pullRequestText = ({
             ? shippedFindingsSection({
                   findings: review.fix?.findings ?? [],
                   stuck: review.stuck,
+                  edits: review.shipped_edits,
               })
             : ''
     const body = [
@@ -158,6 +159,145 @@ export const pullRequestText = ({
     return {
         title: `${spec.title} (#${spec.number})`,
         body: compact(body).join('\n\n'),
+    }
+}
+
+/**
+ * What the engine keeps the PR body, and each of its PR comments, under
+ * (#508): a margin below GitHub's limit of 65,536 characters.
+ */
+export const PULL_REQUEST_BUDGET = 60_000
+
+/** The file in the run folder the PR's full text is saved to first (#508). */
+export const PULL_REQUEST_FILE = 'pull-request.md'
+
+/**
+ * The body's long parts, which move into PR comments when the body is over
+ * its budget. The rest (open findings, the tickets it closes, and the ones
+ * left out) always stays in the body.
+ */
+const MOVABLE_HEADINGS = [
+    '## Assumptions',
+    '## Nits',
+    '## Declined findings',
+    '## New memories',
+]
+
+const CLIPPED = `\n\n… (clipped: the full text is in the run folder's \`${PULL_REQUEST_FILE}\`)`
+
+/** Room kept in each comment for its heading and the engine's marker. */
+const COMMENT_ROOM = 200
+
+/** `text`, clipped to stay under `limit` characters. */
+const clip = ({ text, limit }: { text: string; limit: number }): string =>
+    text.length < limit
+        ? text
+        : `${text.slice(0, limit - CLIPPED.length - 1)}${CLIPPED}`
+
+const isMovable = (section: string): boolean =>
+    MOVABLE_HEADINGS.some(
+        (heading) => section === heading || section.startsWith(`${heading}\n`)
+    )
+
+/**
+ * A section cut into pieces under `limit`, between its list items; each
+ * piece after the first repeats its heading. An item over the limit alone
+ * is clipped.
+ */
+const sectionPieces = ({
+    section,
+    limit,
+}: {
+    section: string
+    limit: number
+}): string[] => {
+    if (section.length < limit) return [section]
+    const heading = section.split('\n', 1)[0] ?? ''
+    const pieces: string[] = []
+    let current = ''
+    for (const item of section.split(/\n(?=- )/)) {
+        const joined = current === '' ? item : `${current}\n${item}`
+        if (joined.length < limit) {
+            current = joined
+            continue
+        }
+        if (current !== '') pieces.push(current)
+        current = clip({ text: `${heading} (continued)\n\n${item}`, limit })
+    }
+    return current === '' ? pieces : [...pieces, current]
+}
+
+/** Pieces packed into as few texts under `limit` as they fit in. */
+const packed = ({
+    pieces,
+    limit,
+}: {
+    pieces: string[]
+    limit: number
+}): string[] =>
+    pieces.reduce<string[]>((texts, piece) => {
+        const last = texts.at(-1)
+        if (last !== undefined && `${last}\n\n${piece}`.length < limit) {
+            return [...texts.slice(0, -1), `${last}\n\n${piece}`]
+        }
+        return [...texts, piece]
+    }, [])
+
+/**
+ * The PR body as sent to GitHub, and the PR comments posted after it, from
+ * its full text (#508). A body under `budget` goes as it is. A longer one
+ * keeps its essentials (open findings, the tickets it closes, and the
+ * tickets left out), and its long parts (assumptions, nits, declined
+ * findings, new memories) as long as they fit; the rest moves into PR
+ * comments, each under the budget, cut between list items, and the body
+ * says so. Whatever is still too long is clipped, pointing at the full
+ * text in the run folder.
+ *
+ * @example
+ * fitPullRequestBody({ body: full })
+ * // { body: '...## More in the PR comments\n\n...', comments: ['## Assumptions\n\n...'] }
+ */
+export const fitPullRequestBody = ({
+    body,
+    budget = PULL_REQUEST_BUDGET,
+}: {
+    body: string
+    budget?: number
+}): { body: string; comments: string[] } => {
+    if (body.length < budget) return { body, comments: [] }
+    const note = (moved: string[]) =>
+        `## More in the PR comments\n\nThis PR's text is too long for its body, so its ${moved.map((section) => section.split('\n', 1)[0]?.replace('## ', '').toLowerCase()).join(', ')} are in the PR comments below. The full text is in the run folder's \`${PULL_REQUEST_FILE}\`.`
+    const kept: string[] = []
+    const moved: string[] = []
+    for (const section of body.split(/\n\n(?=## )/)) {
+        if (!isMovable(section)) {
+            kept.push(section)
+            continue
+        }
+        const fits =
+            moved.length === 0 &&
+            [...kept, section, note([section])].join('\n\n').length < budget
+        if (fits) kept.push(section)
+        else moved.push(section)
+    }
+    const comments = packed({
+        pieces: moved.flatMap((section) =>
+            sectionPieces({ section, limit: budget - COMMENT_ROOM })
+        ),
+        limit: budget - COMMENT_ROOM,
+    })
+    return {
+        body: clip({
+            text: [...kept, ...(moved.length === 0 ? [] : [note(moved)])].join(
+                '\n\n'
+            ),
+            limit: budget,
+        }),
+        comments: comments.map((text, index) =>
+            comments.length === 1
+                ? text
+                : `**More of this PR's notes (${index + 1} of ${comments.length})**\n\n${text}`
+        ),
     }
 }
 

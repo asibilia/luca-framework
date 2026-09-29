@@ -250,19 +250,23 @@ export const openFinalFindingsText = ({
 
 /**
  * The "Open findings" section a shipped final review's PR starts with: why
- * it was stuck, and each finding still open with its lens, severity, and
- * file.
+ * it was stuck, each finding still open with its lens, severity, and file,
+ * and the files of the edits left uncommitted at ship time (#509), which
+ * went in their own commit without a review.
  *
  * @example
- * shippedFindingsSection({ findings, stuck })
+ * shippedFindingsSection({ findings, stuck, edits: null })
  * // '## Open findings\n\n...\n\n- security lens, should-fix (src/sum.ts): security-S1 Sum trusts its input'
  */
 export const shippedFindingsSection = ({
     findings,
     stuck,
+    edits,
 }: {
     findings: FinalFinding[]
     stuck: { reason: string; detail: string }
+    /** The commit of the edits left uncommitted at ship time, if any. */
+    edits: { message: string; files: string[] } | null
 }): string => {
     const lines = findings.map(
         ({ lens, severity, file, id, title }) =>
@@ -274,5 +278,10 @@ export const shippedFindingsSection = ({
         lines.length === 0
             ? `No lens finding was open. Why it was stuck:\n\n${stuck.detail}`
             : `These findings are still open:\n\n${lines.join('\n')}`,
-    ].join('\n\n')
+        edits === null || edits.files.length === 0
+            ? ''
+            : `Uncommitted fixer edits, not reviewed: these files were changed in the run branch's worktree when you replied \`ship\`, so they went in their own commit, "${edits.message}":\n\n${edits.files.map((file) => `- ${file}`).join('\n')}`,
+    ]
+        .filter((part) => part !== '')
+        .join('\n\n')
 }

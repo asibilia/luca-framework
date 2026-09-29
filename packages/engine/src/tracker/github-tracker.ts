@@ -6,6 +6,7 @@ import {
     labelDefinition,
     OpenedPullRequestSchema,
     TrackerCommentSchema,
+    TrackerError,
     TrackerIssueSchema,
     type LabelDefinition,
     type Tracker,
@@ -37,8 +38,13 @@ const GitHubIssueNumbersSchema = z.array(
     z.object({ number: z.number().int().positive() })
 )
 
-/** Pull requests as `gh pr list --json number,url` prints them. */
-const GitHubPullListSchema = z.array(OpenedPullRequestSchema)
+/**
+ * Pull requests as `gh pr list --json number,url,isCrossRepository` prints
+ * them. A fork's PR has `isCrossRepository` set.
+ */
+const GitHubPullListSchema = z.array(
+    OpenedPullRequestSchema.extend({ isCrossRepository: z.boolean() })
+)
 
 type GitHubIssue = z.infer<typeof GitHubIssueSchema>
 
@@ -61,15 +67,15 @@ const runGh: GhRunner = async (args) => {
     }
 }
 
-/** A failed `gh` call as an error, in `gh`'s own words. */
+/** A failed `gh` call as a `TrackerError`, in `gh`'s own words. */
 const ghError = ({
     args,
     result,
 }: {
     args: string[]
     result: Awaited<ReturnType<GhRunner>>
-}): Error =>
-    new Error(
+}): TrackerError =>
+    new TrackerError(
         `\`gh ${args.slice(0, 2).join(' ')}\` failed (exit code ${result.exit_code}): ${result.stderr.trim()}`
     )
 
@@ -351,14 +357,18 @@ export const createGitHubTracker = ({
                 '--state',
                 'open',
                 '--json',
-                'number,url',
+                'number,url,isCrossRepository',
             ])
-            const [pull] = parseOrThrow({
+            // `--head` matches the branch name alone, so a fork's PR from a
+            // branch of the same name is left out: it isn't the run's.
+            const pull = parseOrThrow({
                 schema: GitHubPullListSchema,
                 value: JSON.parse(listed),
                 what: `the open pull requests from ${head}`,
-            })
-            return pull ?? null
+            }).find(({ isCrossRepository }) => !isCrossRepository)
+            return pull === undefined
+                ? null
+                : { number: pull.number, url: pull.url }
         },
         listLabels,
         createLabel: async (label) => {

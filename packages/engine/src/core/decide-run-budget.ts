@@ -1,5 +1,9 @@
 import { pendingReplies, waitForReply, type StuckAction } from './decide-stuck'
-import { runBudgetDetail, runStuckComment } from './stuck-text'
+import {
+    pullRequestStuckComment,
+    runBudgetDetail,
+    runStuckComment,
+} from './stuck-text'
 
 import type { JournalRecord, RunStuckReason } from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
@@ -19,7 +23,9 @@ export type RunBudgetAction =
  * reason "run budget": that is its only step, and nothing new starts. The
  * spec issue is told, then the run waits for the owner: a bare `retry`
  * adds one more full budget (replay does that), and `stop` ends the run.
- * The owner's other replies wait until the run carries on. `null` when
+ * The owner's other replies wait until the run carries on. A run whose PR
+ * didn't open (#508) is stuck the same way, told why, and a `retry` tries
+ * the PR again, adding no budget. `null` when
  * the budget has nothing to say: the run is under it, stopping, or its PR
  * is open.
  *
@@ -56,7 +62,10 @@ export const decideRunBudget = ({
             {
                 type: 'report_run_stuck',
                 spec_number,
-                body: runStuckComment({ detail: stuck.detail, budget }),
+                body:
+                    stuck.reason === 'pull_request_failed'
+                        ? pullRequestStuckComment({ detail: stuck.detail })
+                        : runStuckComment({ detail: stuck.detail, budget }),
             },
         ]
     }

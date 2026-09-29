@@ -47,6 +47,8 @@ import {
 import { badTestDetail, retrySection, setupChangeDetail } from './stuck-text'
 
 import {
+    CHANGESETS_LENS_SECTION,
+    CHANGESETS_SECTION,
     prepareSection,
     rejoinSection,
     rolePrompt,
@@ -1303,33 +1305,46 @@ export const decideBuild = ({
 }): BuildAction[] => {
     const steps = buildSteps({ state, spec_number })
     const command = state.config?.prepare
-    return command === undefined
-        ? steps
-        : steps.map((step) => withPrepareSection({ step, command }))
+    const prepared =
+        command === undefined
+            ? steps
+            : steps.map((step) =>
+                  withWriterSection({
+                      step,
+                      section: prepareSection({ command }),
+                  })
+              )
+    return state.changesets ? prepared.map(withChangesetsSections) : prepared
 }
 
 /**
  * A fresh test-writer's or implementer's launch (a ticket's or the final
- * review's fixers), with the repo's prepare command named in its prompt.
- * Any other step as it is.
+ * review's fixers), with `section` added to its prompt, such as the repo's
+ * prepare command. Any other step as it is.
  */
-const withPrepareSection = ({
+const withWriterSection = ({
     step,
-    command,
+    section,
 }: {
     step: BuildAction
-    command: string
+    section: string
 }): BuildAction => {
     const writesCode =
         (step.type === 'launch_agent' || step.type === 'launch_final_fixer') &&
         (step.role === 'test-writer' || step.role === 'implementer')
     return writesCode
-        ? {
-              ...step,
-              prompt: `${step.prompt}\n\n${prepareSection({ command })}`,
-          }
+        ? { ...step, prompt: `${step.prompt}\n\n${section}` }
         : step
 }
+
+/**
+ * In a repo with changesets, the writers are told not to write one and the
+ * rules lens that the engine adds the run's one at PR time (#507).
+ */
+const withChangesetsSections = (step: BuildAction): BuildAction =>
+    step.type === 'launch_lens' && step.lens === 'rules'
+        ? { ...step, prompt: `${step.prompt}\n\n${CHANGESETS_LENS_SECTION}` }
+        : withWriterSection({ step, section: CHANGESETS_SECTION })
 
 /** `decideBuild`'s steps, before the prepare command joins any prompt. */
 const buildSteps = ({

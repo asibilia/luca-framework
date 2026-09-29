@@ -73,6 +73,7 @@ Find the stuck reason: `ticket_stuck` (a ticket), `final_review_stuck` (the fina
 | `setup_change_needed` | An agent needs a test setup file changed, and only a person may do that. | Read what it asks for. If it's right, make that change yourself in the worktree (ask the owner first: this one isn't a test file), then `retry #n`. |
 | `crashed` | The engine crashed in the same step, again and again. | That's an engine bug, not the ticket (see below). |
 | `run_budget` | The whole run used up its budget of tokens. | Look at what used them (a ticket stuck in fix loops?). A bare `retry` gives one more full budget; `stop` ends the run. |
+| `pull_request_failed` | Every ticket is done, but `gh pr create` failed, so the run's PR didn't open. The run branch is pushed, and the PR's full text is in the run folder's `pull-request.md`. | Read `gh`'s error. A GitHub or sign-in hiccup: a bare `retry` opens the PR. If you open it by hand from the run branch first, `retry` reuses it and never opens a second one. |
 
 The final review, when `final_review_stuck`:
 

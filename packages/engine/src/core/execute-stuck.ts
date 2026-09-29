@@ -3,7 +3,6 @@ import sortBy from 'lodash/sortBy'
 import type { RunBudgetAction } from './decide-run-budget'
 import type { StuckAction } from './decide-stuck'
 import { need, ticketWorktree, type BuildContext } from './execute-build'
-import { shipFinalReview } from './execute-final-review'
 
 import { checkIntake } from '../intake/intake-checks'
 import type { TicketSnapshot } from '../intake/intake-schemas'
@@ -44,8 +43,8 @@ export const ticketChanged = ({
  * marking the run stuck on its budget, telling the spec issue a ticket, the
  * run, or the final review is stuck, waiting for
  * and reading its comments, taking or sending back a reply, skipping a
- * ticket (with a comment on it), and shipping (`shipFinalReview`) or
- * retrying the stuck final review. Its comments are posted once
+ * ticket (with a comment on it), and retrying the stuck final review
+ * (shipping it is `shipFinalReviewIn`'s). Its comments are posted once
  * (`postCommentOnce`), even when a crash cut off the step after posting.
  */
 export const executeStuckAction = async ({
@@ -56,8 +55,12 @@ export const executeStuckAction = async ({
     reply_poll_ms,
     step,
 }: {
+    /** Shipping is `shipFinalReviewIn`'s: it commits edits left over. */
     action:
-        | Exclude<StuckAction, { type: 'undo_join' | 'retry_ticket' }>
+        | Exclude<
+              StuckAction,
+              { type: 'undo_join' | 'retry_ticket' | 'ship_final_review' }
+          >
         | RunBudgetAction
     journal: Journal
     tracker: Tracker
@@ -160,11 +163,6 @@ export const executeStuckAction = async ({
                 role: null,
                 content: { comment_id: id, body: action.body },
             })
-            return
-        }
-        case 'ship_final_review': {
-            const shipped = shipFinalReview({ journal })
-            if (!shipped.ok) throw new Error(shipped.reason)
             return
         }
         case 'retry_final_review':

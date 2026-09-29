@@ -15,8 +15,12 @@ import {
     type BuildDeps,
 } from './execute-build'
 import { writeChangeset } from './execute-changeset'
-import { executeFinalReviewAction } from './execute-final-review'
+import {
+    executeFinalReviewAction,
+    shipFinalReviewIn,
+} from './execute-final-review'
 import { executeMemoryAction } from './execute-memory'
+import { openPullRequest } from './execute-pull-request'
 import { executeStuckAction } from './execute-stuck'
 import {
     closeSessions,
@@ -458,7 +462,6 @@ export const executeAction = async ({
         case 'ignore_reply':
         case 'skip_ticket':
         case 'report_final_review_stuck':
-        case 'ship_final_review':
         case 'retry_final_review':
         case 'mark_run_stuck':
         case 'report_run_stuck':
@@ -596,6 +599,27 @@ export const executeAction = async ({
             if (action.type === 'write_changeset') {
                 return writeChangeset({
                     action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
+            }
+            if (action.type === 'open_pull_request') {
+                return openPullRequest({
+                    action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
+            }
+            if (action.type === 'ship_final_review') {
+                return shipFinalReviewIn({
                     context: buildContext({
                         journal,
                         tracker,
@@ -743,6 +767,7 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'commit_final_fix':
         case 'push_final_fixes':
         case 'write_changeset':
+        case 'ship_final_review':
         case 'undo_join':
         case 'retry_ticket':
             return true
