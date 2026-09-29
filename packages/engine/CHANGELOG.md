@@ -1,5 +1,12 @@
 # @luca/engine
 
+## 14.0.0-alpha.4
+
+### Patch Changes
+
+- befad59: A spec can hold tickets for a person: `ready-for-human` tickets, and the tickets that wait on them, are left out of the run instead of refusing it (#499).
+- befad59: A refusal no longer crashes when the repo lacks a label: the engine creates it, and a labeling failure can't stop the refusal (#500).
+
 ## 14.0.0-alpha.3
 
 ### Patch Changes
