@@ -15,7 +15,11 @@ import {
     postCommentOnce,
     type CommentStep,
 } from '../tracker/post-comment-once'
-import type { Tracker, TrackerIssue } from '../tracker/tracker'
+import {
+    HUMAN_LABEL,
+    type Tracker,
+    type TrackerIssue,
+} from '../tracker/tracker'
 
 /**
  * How long the engine waits between reads of the spec issue while stuck
@@ -303,6 +307,16 @@ export const retryTicket = async ({
                   (ticket) => ticket.number === number
               )
             : undefined
+    const leftOut = (
+        checked.outcome === 'passed'
+            ? checked.snapshot.left_out
+            : checked.left_out
+    ).some((ticket) => ticket.number === number)
+    if (fresh === undefined && leftOut) {
+        return refuse([
+            `The ticket is now for a person (\`${HUMAN_LABEL}\`), or waits on one, so a run can't build it.`,
+        ])
+    }
     if (fresh === undefined) return refuse(['The ticket is no longer open.'])
     const sha = await resetToRunBranch()
     journal.append({

@@ -495,6 +495,7 @@ const fakeGitHub = ({
 /** The run labels a ready repo has. */
 const RUN_LABELS: FakeLabel[] = [
     'ready-for-agent',
+    'ready-for-human',
     'refactor',
     'needs-info',
 ].map((name) => ({ name, color: '123456', description: 'Mine' }))
@@ -1317,6 +1318,7 @@ describe('luca doctor --fix repairs what is safe', () => {
         expect(github.created().toSorted()).toEqual([
             'needs-info',
             'ready-for-agent',
+            'ready-for-human',
             'refactor',
         ])
         expect(await Bun.file(join(repo, CONFIG_PATH)).exists()).toBe(true)

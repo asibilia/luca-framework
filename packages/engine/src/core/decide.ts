@@ -196,6 +196,7 @@ const decideIntake = ({ state }: { state: RunState }): EngineAction => {
                     type: 'finish_nothing_to_do',
                     closed_tickets: result.closed_tickets,
                     already_done: [],
+                    left_out: result.left_out,
                 }
             }
             // A snapshot cut short by a crash is taken again in full; replay

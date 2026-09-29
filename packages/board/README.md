@@ -9,6 +9,7 @@ The board is the live view of a Luca run inside Paseo. You start a run by typing
   - a limit-wait banner that names the window that was hit
   - **Needs you**, pinned on top: stuck work, with the reason, what was tried, and the exact reply to post on the spec issue (tap a reply to copy it)
   - the tickets, as a stack of stages: Blocked → Building → Reviewing → Done → Skipped. Each card has step dots for tests → red check → code → checks → review. A refactor ticket's first two dots are dashed, because it skips them. Done and Skipped start folded. A card shows how much of the plan its ticket used, once the engine records it. Tap a card for its details.
+  - **For a person**, only when the run left some tickets out (#499): the tickets labeled `ready-for-human`, and the ones that wait on them, each with why ("for a person", or "waits on #12, which is for a person"). They aren't a problem, so this is a quiet, muted list that starts folded, never in **Needs you**.
   - the final review's 5 lenses, as a second stack (Waiting → Reviewing → Fixing → Clean). It stays dimmed until every ticket is done or skipped. A run that ended with nothing to do, or that intake refused, has nothing to review, so the panel leaves this section out and the header row says "none, nothing to review".
 - **Live rows in the chat where you started the run**: a header row that updates in place, one row per meaningful event, stuck rows with the exact reply, and a limit-wait row. The rows never reach the model.
 
@@ -151,8 +152,8 @@ A record is `{ seq, time, kind, ticket, role, content }`. Unknown kinds are skip
 | `engine_resumed` | the engine started again on the run's journal (#460; `{ luca_version }`, the Luca version it resumed on). When that differs from `run_started`'s `luca_version`, the run card shows a note naming both: "This run started on Luca 14.0.0-alpha.1 and resumed on Luca 14.0.0-alpha.2. It keeps going." The note stays for the rest of the run. The same version, or a journal whose `run_started` has no version, shows nothing. The run keeps going either way. | the note, once (warning); nothing on the same version |
 | `intake_read` | the spec's title | none |
 | `intake_refused` | run status `refused`, one line per problem | the problems (danger) |
-| `nothing_to_do` | run status `nothing to do`. At intake the spec has no open tickets; with `already_done` (#484), every ticket's work was already on the base branch | "Nothing to do: the spec has no open tickets.", or "Nothing to do: the work of #n was already on the base branch." |
-| `spec_snapshot` | run status `building` | "Intake passed" with the ticket count |
+| `nothing_to_do` | run status `nothing to do`. At intake the spec has no open tickets, or all of them are for a person (`left_out`, #499); with `already_done` (#484), every ticket's work was already on the base branch. Its `left_out` fills **For a person** | "Nothing to do: the spec has no open tickets.", "Nothing to do: the work of #n was already on the base branch.", or "Nothing to do: #12 is for a person, and #13 waits on a ticket for a person." |
+| `spec_snapshot` | run status `building`. Its `left_out` (#499; none in older journals) fills **For a person** | "Intake passed" with the ticket count, and "n left for a person: #12, #13." when some were left out |
 | `ticket_snapshot` | a card; a `refactor` label makes a refactor ticket; `blockers` keep it Blocked until they're done | none |
 | `run_branch_created` | the run branch | one line |
 | `ticket_worktree_created` | card to Building, started | "#n: started." |

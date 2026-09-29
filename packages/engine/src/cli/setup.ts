@@ -558,7 +558,7 @@ const list = (lines: string[]): string =>
 
 /**
  * Gets `repo` ready for Luca. It creates the missing `ready-for-agent`,
- * `refactor`, and `needs-info` labels, and in a repo with
+ * `ready-for-human`, `refactor`, and `needs-info` labels, and in a repo with
  * `.changeset/config.json` the `release:*` ones too; writes a starting
  * `.luca/config.json` from `package.json` when there is none (see
  * `guessChecks`), with the repo's GitHub name as its `muninn.vault`, rewrites an old-Luca config into the new shape keeping

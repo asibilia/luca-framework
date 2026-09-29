@@ -108,6 +108,14 @@ export type Tracker = {
 export const READY_LABEL = 'ready-for-agent'
 
 /**
+ * The label on a ticket only a person can do (#499), such as renaming the
+ * repo or shipping after a hands-on check. Intake leaves it out of the run,
+ * with the tickets that wait on it, and never comments on it or relabels
+ * it. A ticket with both this and `READY_LABEL` counts as for a person.
+ */
+export const HUMAN_LABEL = 'ready-for-human'
+
+/**
  * The label that makes a ticket a refactor ticket: it changes how the code is
  * shaped, not what it does, so it skips the test-writer and the red check.
  */
@@ -147,6 +155,12 @@ export const RUN_LABELS: LabelDefinition[] = [
         name: READY_LABEL,
         color: '0e8a16',
         description: 'Ready for a Luca run',
+    },
+    {
+        // A run leaves these, and the tickets waiting on them, out (#499).
+        name: HUMAN_LABEL,
+        color: 'c5def5',
+        description: 'Needs a person, not an agent',
     },
     {
         name: REFACTOR_LABEL,

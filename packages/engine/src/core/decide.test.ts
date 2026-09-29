@@ -376,6 +376,7 @@ describe('decision step: nothing to do', () => {
             type: 'finish_nothing_to_do',
             closed_tickets: [11],
             already_done: [],
+            left_out: [],
         })
     })
 
@@ -392,6 +393,7 @@ describe('decision step: nothing to do', () => {
             type: 'finish_nothing_to_do',
             closed_tickets: [],
             already_done: [],
+            left_out: [],
         })
     })
 

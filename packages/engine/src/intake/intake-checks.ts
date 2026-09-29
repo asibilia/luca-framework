@@ -6,6 +6,7 @@ import type {
     IntakeOutcome,
     IntakeProblem,
     IntakeRead,
+    LeftOutTicket,
     TicketSnapshot,
 } from './intake-schemas'
 
@@ -15,6 +16,7 @@ import {
     type EngineConfig,
 } from '../config/engine-config'
 import {
+    HUMAN_LABEL,
     READY_LABEL,
     REFACTOR_LABEL,
     RELEASE_LABEL_PREFIX,
@@ -94,6 +96,88 @@ export const outsideBlockerNumbers = ({
 
 type Finding = { ticket: number | null; message: string }
 
+/** Whether a ticket is for a person (#499): it has `ready-for-human`. */
+export const isForAPerson = ({ issue }: { issue: TrackerIssue }): boolean =>
+    issue.labels.includes(HUMAN_LABEL)
+
+/**
+ * The open tickets intake leaves out of the run (#499), by number: each one
+ * for a person, and each other one blocked by one, directly or through
+ * other open tickets of the spec. A ticket for a person stops the walk: what
+ * blocks it doesn't matter to the tickets that wait on it. Pure.
+ *
+ * @example
+ * leftOutTickets({ open: [agent11, human12, agent13BlockedBy12] })
+ * // [{ number: 12, reason: 'for_a_person', ... },
+ * //  { number: 13, reason: 'waits_on_person', waits_on: [12], through: [], ... }]
+ */
+export const leftOutTickets = ({
+    open,
+}: {
+    /** The spec's open sub-tickets. */
+    open: TrackerIssue[]
+}): LeftOutTicket[] => {
+    const byNumber = new Map(open.map((issue) => [issue.number, issue]))
+    const blockersOf = (issue: TrackerIssue): TrackerIssue[] =>
+        blockerNumbers({ issue }).flatMap((number) => {
+            const blocker = byNumber.get(number)
+            return blocker === undefined ? [] : [blocker]
+        })
+    const found = new Map<number, number[]>()
+    // The tickets for a person that `issue` waits on. A blocker loop among
+    // agent tickets refuses the run, so a loop just stops the walk here.
+    const waitsOn = (issue: TrackerIssue, walking: number[]): number[] => {
+        const known = found.get(issue.number)
+        if (known !== undefined) return known
+        if (walking.includes(issue.number)) return []
+        const people = sortBy(
+            uniq(
+                blockersOf(issue).flatMap((blocker) =>
+                    isForAPerson({ issue: blocker })
+                        ? [blocker.number]
+                        : waitsOn(blocker, [...walking, issue.number])
+                )
+            )
+        )
+        found.set(issue.number, people)
+        return people
+    }
+    return sortBy(open, 'number').flatMap((issue): LeftOutTicket[] => {
+        const { number, title, url } = issue
+        if (isForAPerson({ issue })) {
+            return [
+                {
+                    number,
+                    title,
+                    url,
+                    reason: 'for_a_person',
+                    waits_on: [],
+                    through: [],
+                },
+            ]
+        }
+        const waits_on = waitsOn(issue, [])
+        if (waits_on.length === 0) return []
+        const through = blockersOf(issue)
+            .filter(
+                (blocker) =>
+                    !isForAPerson({ issue: blocker }) &&
+                    waitsOn(blocker, []).length > 0
+            )
+            .map((blocker) => blocker.number)
+        return [
+            {
+                number,
+                title,
+                url,
+                reason: 'waits_on_person',
+                waits_on,
+                through: sortBy(through),
+            },
+        ]
+    })
+}
+
 /**
  * Walks blockers depth-first, blockers before the tickets they block. Returns
  * that order and every loop found, as a path such as `[12, 13, 12]`.
@@ -147,9 +231,15 @@ const groupFindings = ({
  *
  * Pure. Every miss refuses the whole run, and every problem is collected (not
  * just the first), grouped by the spec or ticket it is on. Config and spec
- * problems refuse even an empty spec; otherwise a spec with no open tickets
- * has nothing to do. When everything passes, the result is the snapshot the
- * run builds from, with tickets in blocker order.
+ * problems refuse even an empty spec; otherwise a spec with nothing left to
+ * build has nothing to do. When everything passes, the result is the
+ * snapshot the run builds from, with tickets in blocker order.
+ *
+ * Tickets for a person (#499): an open ticket with `ready-for-human` (even
+ * with `ready-for-agent` too) is left out of the run, unchecked. An agent
+ * ticket that waits on one, directly or through other tickets, is left out
+ * too, but still checked, so a later run can build it. The run builds the
+ * rest. A ticket with neither ready label is still refused.
  */
 export const checkIntake = ({
     config,
@@ -160,6 +250,14 @@ export const checkIntake = ({
 }): IntakeOutcome => {
     const { spec, sub_tickets, outside_blockers } = intake_read
     const findings: Finding[] = []
+    const open = sortBy(
+        sub_tickets.filter((ticket) => ticket.state === 'open'),
+        'number'
+    )
+    const left_out = leftOutTickets({ open })
+    const leftOut = new Set(left_out.map(({ number }) => number))
+    // Every open ticket an agent builds: in this run, or once a person is done.
+    const forAgents = open.filter((issue) => !isForAPerson({ issue }))
     const onSpec = (message: string) =>
         findings.push({ ticket: spec.number, message })
 
@@ -171,11 +269,7 @@ export const checkIntake = ({
         })
     } else if (
         !tests.some(({ results }) => results === 'bun') &&
-        sub_tickets.some(
-            (ticket) =>
-                ticket.state === 'open' &&
-                !ticket.labels.includes(REFACTOR_LABEL)
-        )
+        forAgents.some((ticket) => !ticket.labels.includes(REFACTOR_LABEL))
     ) {
         // The red check reads per-test results, which only bun's give today.
         findings.push({
@@ -196,10 +290,6 @@ export const checkIntake = ({
         )
     }
 
-    const open = sortBy(
-        sub_tickets.filter((ticket) => ticket.state === 'open'),
-        'number'
-    )
     const closedTickets = sortBy(
         sub_tickets
             .filter((ticket) => ticket.state === 'closed')
@@ -211,7 +301,7 @@ export const checkIntake = ({
         outside_blockers.map((issue) => [issue.number, issue])
     )
 
-    const tickets: TicketSnapshot[] = open.map((ticket) => {
+    const tickets: TicketSnapshot[] = forAgents.map((ticket) => {
         const onTicket = (message: string) =>
             findings.push({ ticket: ticket.number, message })
         if (section({ body: ticket.body, heading: 'What to build' }) === '') {
@@ -273,10 +363,18 @@ export const checkIntake = ({
     if (findings.length > 0) {
         return { outcome: 'refused', problems: groupFindings({ findings }) }
     }
-    if (tickets.length === 0) {
-        return { outcome: 'nothing_to_do', closed_tickets: closedTickets }
+    const byNumber = new Map(
+        tickets
+            .filter((ticket) => !leftOut.has(ticket.number))
+            .map((ticket) => [ticket.number, ticket])
+    )
+    if (byNumber.size === 0) {
+        return {
+            outcome: 'nothing_to_do',
+            closed_tickets: closedTickets,
+            left_out,
+        }
     }
-    const byNumber = new Map(tickets.map((ticket) => [ticket.number, ticket]))
     return {
         outcome: 'passed',
         snapshot: {
@@ -290,6 +388,7 @@ export const checkIntake = ({
             },
             tickets: order.flatMap((number) => byNumber.get(number) ?? []),
             closed_tickets: closedTickets,
+            left_out,
         },
     }
 }
