@@ -124,6 +124,10 @@ _Avoid_: quota, threshold, cap
 The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.
 _Avoid_: quota, token limit
 
+**Config reload**:
+What a resumed run does with the repo's `.luca/config.json`: it takes the new build fields (the prepare command, its time limit, and how many may run at once) and keeps everything else, such as the checks, as the run started with it. A config it can't use leaves the run's own in place.
+_Avoid_: hot reload, config refresh
+
 **Agent message**:
 A one-way heads-up one agent sends another during a run, handed over by the engine at the receiver's next tool call.
 _Avoid_: chat, ping, prompt

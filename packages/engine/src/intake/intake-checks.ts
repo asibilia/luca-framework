@@ -227,6 +227,43 @@ const groupFindings = ({
 }
 
 /**
+ * Intake's checks on the engine config, as messages for a person: a test
+ * command, and one with bun's per-test results unless every ticket in
+ * `tickets` is a refactor ticket (the red check reads per-test results,
+ * which only bun's give today). Pure. Empty when the config is fine.
+ *
+ * Intake runs it on the open tickets agents build; a resume runs it on the
+ * repo's config file before taking its new build fields (#PRNUM).
+ *
+ * @example
+ * configProblems({ config: { ...config, checks: {} }, tickets: [] })
+ * // ['The engine config (.luca/config.json) has no test command at checks.test.']
+ */
+export const configProblems = ({
+    config,
+    tickets,
+}: {
+    config: EngineConfig
+    tickets: { labels: string[] }[]
+}): string[] => {
+    const tests = testCommands({ config })
+    if (tests.length === 0) {
+        return [
+            `The engine config (${ENGINE_CONFIG_FILE}) has no test command at checks.test.`,
+        ]
+    }
+    if (
+        !tests.some(({ results }) => results === 'bun') &&
+        tickets.some((ticket) => !ticket.labels.includes(REFACTOR_LABEL))
+    ) {
+        return [
+            `The engine config (${ENGINE_CONFIG_FILE}) has no test command with bun results at checks.test, so the red check can't prove new tests fail first. Add a \`bun test\` command, or label every open ticket \`${REFACTOR_LABEL}\`.`,
+        ]
+    }
+    return []
+}
+
+/**
  * Intake's checks: is the spec, and every open ticket in it, ready to build?
  *
  * Pure. Every miss refuses the whole run, and every problem is collected (not
@@ -261,21 +298,8 @@ export const checkIntake = ({
     const onSpec = (message: string) =>
         findings.push({ ticket: spec.number, message })
 
-    const tests = testCommands({ config })
-    if (tests.length === 0) {
-        findings.push({
-            ticket: null,
-            message: `The engine config (${ENGINE_CONFIG_FILE}) has no test command at checks.test.`,
-        })
-    } else if (
-        !tests.some(({ results }) => results === 'bun') &&
-        forAgents.some((ticket) => !ticket.labels.includes(REFACTOR_LABEL))
-    ) {
-        // The red check reads per-test results, which only bun's give today.
-        findings.push({
-            ticket: null,
-            message: `The engine config (${ENGINE_CONFIG_FILE}) has no test command with bun results at checks.test, so the red check can't prove new tests fail first. Add a \`bun test\` command, or label every open ticket \`${REFACTOR_LABEL}\`.`,
-        })
+    for (const message of configProblems({ config, tickets: forAgents })) {
+        findings.push({ ticket: null, message })
     }
     if (spec.state !== 'open') onSpec('The spec is closed.')
     if (section({ body: spec.body, heading: 'Testing Decisions' }) === '') {

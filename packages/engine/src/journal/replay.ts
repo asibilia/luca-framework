@@ -29,6 +29,7 @@ import {
     type TestWriterResult,
     type TicketReviewResult,
 } from '../agents/role-results'
+import { withConfigChanges } from '../config/config-reload'
 import type { EngineConfig } from '../config/engine-config'
 import type {
     GateCheck,
@@ -1014,6 +1015,21 @@ const applyRecord = ({
         // Luca's version on a resume changes no step: only the board reads it.
         case 'engine_resumed':
             return next
+        // A resume's new build fields (#PRNUM): every later step uses them.
+        case 'config_reloaded':
+            return {
+                ...next,
+                config:
+                    state.config === null
+                        ? null
+                        : withConfigChanges({
+                              config: state.config,
+                              changes: record.content.changes,
+                          }),
+            }
+        // The run kept its config; only the board and the log read why.
+        case 'config_reload_refused':
+            return next
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
         case 'run_stuck':
@@ -1687,6 +1703,8 @@ type TicketRecord = Exclude<
             | 'step_ended'
             | 'run_resumed'
             | 'engine_resumed'
+            | 'config_reloaded'
+            | 'config_reload_refused'
             | 'join_started'
             | 'memory_write_started'
             | 'memory_write_done'

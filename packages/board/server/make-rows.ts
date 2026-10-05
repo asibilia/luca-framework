@@ -252,6 +252,16 @@ export const describeRecord = ({
                 after.run.version_note !== before.run.version_note
                 ? event({ text: after.run.version_note, tone: 'warning' })
                 : null
+        case 'config_reloaded':
+            return event({
+                text: `Config reloaded: ${record.content.changes.map(({ field }) => field).join(', ')} changed.`,
+                tone: 'info',
+            })
+        case 'config_reload_refused':
+            return event({
+                text: `Config not reloaded, so the run keeps its own: ${record.content.reason.split('\n')[0] ?? ''}`,
+                tone: 'warning',
+            })
         case 'intake_refused':
             return event({
                 text: `Intake refused the run. ${after.run.refusal.join('; ')}`,

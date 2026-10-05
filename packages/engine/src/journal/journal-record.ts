@@ -7,6 +7,7 @@ import {
     LensNameSchema,
     RoleResultSchema,
 } from '../agents/role-results'
+import { ConfigChangeSchema } from '../config/config-reload'
 import { EngineConfigSchema } from '../config/engine-config'
 import {
     GateCheckSchema,
@@ -90,6 +91,29 @@ const EngineResumedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('engine_resumed'),
     content: z.object({ luca_version: z.string().min(1) }),
+})
+
+/**
+ * A resume read the repo's `.luca/config.json` again (#PRNUM), and the
+ * build fields it reloads (`RELOADED_FIELDS`) changed: each one, old to
+ * new. Journaled right after the resume's `engine_resumed`, only when
+ * something changed. Replay puts the new values on the run's config.
+ */
+const ConfigReloadedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('config_reloaded'),
+    content: z.object({ changes: z.array(ConfigChangeSchema).min(1) }),
+})
+
+/**
+ * A resume could not take the repo's config (#PRNUM): it is missing, not
+ * JSON, not a valid config, or one intake would refuse. The run keeps the
+ * config it had and goes on. `reason` says what is wrong.
+ */
+const ConfigReloadRefusedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('config_reload_refused'),
+    content: z.object({ reason: z.string().min(1) }),
 })
 
 const IntakeReadEntrySchema = z.object({
@@ -1364,6 +1388,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RunResumedEntrySchema,
     JoinStartedEntrySchema,
     EngineResumedEntrySchema,
+    ConfigReloadedEntrySchema,
+    ConfigReloadRefusedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -1445,6 +1471,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RunResumedEntrySchema.extend(STAMP_FIELDS),
     JoinStartedEntrySchema.extend(STAMP_FIELDS),
     EngineResumedEntrySchema.extend(STAMP_FIELDS),
+    ConfigReloadedEntrySchema.extend(STAMP_FIELDS),
+    ConfigReloadRefusedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -1525,6 +1553,8 @@ export const JournalKindSchema = z.enum([
     'run_resumed',
     'join_started',
     'engine_resumed',
+    'config_reloaded',
+    'config_reload_refused',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

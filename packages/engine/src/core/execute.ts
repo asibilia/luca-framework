@@ -2,6 +2,7 @@ import { basename, dirname } from 'node:path'
 
 import has from 'lodash/has'
 import partition from 'lodash/partition'
+import values from 'lodash/values'
 
 import { decideSteps, type EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
@@ -29,9 +30,13 @@ import {
 } from './session-close'
 
 import type { BoardSync } from '../board/board-sync'
-import type { EngineConfig } from '../config/engine-config'
+import { configChanges } from '../config/config-reload'
+import type {
+    EngineConfig,
+    LoadEngineConfigResult,
+} from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
-import { outsideBlockerNumbers } from '../intake/intake-checks'
+import { configProblems, outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
 import { askJevInShadow, type JevShadow } from '../jev/jev-shadow'
@@ -139,6 +144,62 @@ export const recordResume = ({
         role: null,
         content: { luca_version },
     })
+
+/**
+ * On a resume, takes the repo's config again (#PRNUM), just read as
+ * `loaded`, and journals what came of it, right after `recordResume`:
+ *
+ * - a `config_reloaded` with the build fields (`RELOADED_FIELDS`) that
+ *   changed, old to new, which replay puts on the run's config;
+ * - nothing, when none changed (frozen fields never count, see
+ *   `FROZEN_FIELDS`);
+ * - a `config_reload_refused` with the reason, when the file is missing,
+ *   not JSON, not a valid config, or one intake would refuse
+ *   (`configProblems`, on the run's tickets). The run keeps its config.
+ *
+ * Never throws for a bad file: the run always goes on. Returns the record
+ * it appended, or `null`. A journal with no config yet (not a run) gets
+ * nothing; the decision step says what is wrong with it.
+ *
+ * @example
+ * recordResume({ journal })
+ * const reload = recordConfigReload({ journal, loaded: await loadEngineConfig({ repo_root }) })
+ */
+export const recordConfigReload = ({
+    journal,
+    loaded,
+}: {
+    journal: Journal
+    loaded: LoadEngineConfigResult
+}): JournalRecord | null => {
+    const state = replayRun({ records: journal.read() })
+    if (state.config === null) return null
+    const refuse = (reason: string): JournalRecord =>
+        journal.append({
+            kind: 'config_reload_refused',
+            ticket: null,
+            role: null,
+            content: { reason },
+        })
+    if (!loaded.ok) return refuse(loaded.error)
+    const problems = configProblems({
+        config: loaded.config,
+        tickets: values(state.snapshot?.tickets ?? {}),
+    })
+    if (problems.length > 0) return refuse(problems.join('\n'))
+    const changes = configChanges({
+        current: state.config,
+        next: loaded.config,
+    })
+    return changes.length === 0
+        ? null
+        : journal.append({
+              kind: 'config_reloaded',
+              ticket: null,
+              role: null,
+              content: { changes },
+          })
+}
 
 /** The comment a bad spec or ticket gets when intake refuses the run. */
 export const refusalComment = ({
