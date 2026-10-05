@@ -9,7 +9,7 @@ import {
 import { EngineConfigSchema, type EngineConfig } from './engine-config'
 
 /**
- * A resume re-reads the repo's config (#PRNUM): only the build fields
+ * A resume re-reads the repo's config (#516): only the build fields
  * (`prepare`, `prepare_timeout_ms`, `prepare_concurrency`) may change in a
  * run; every other field stays as the run started with it.
  */

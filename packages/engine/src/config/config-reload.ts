@@ -6,7 +6,7 @@ import type { EngineConfig } from './engine-config'
 
 /**
  * The config fields a resumed run takes from the repo's
- * `.luca/config.json` again (#PRNUM). They say how the engine builds a
+ * `.luca/config.json` again (#516). They say how the engine builds a
  * checkout before its tests, not what the tests are, so a run can change
  * them halfway without making its earlier results wrong: a repo that swaps
  * a slow `prepare` for a fast cached one gets it on the next resume.

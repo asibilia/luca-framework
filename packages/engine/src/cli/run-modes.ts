@@ -217,7 +217,7 @@ const fieldValue = (value: string | number | null): string =>
 
 /**
  * The log line for a resume's `config_reloaded` or `config_reload_refused`
- * (#PRNUM).
+ * (#516).
  *
  * @example
  * configReloadText({ reload }) // 'config reloaded: prepare changed (make rom -> make rom-cached)'
@@ -250,7 +250,7 @@ export const configReloadText = ({
  * with the engine config's `muninn.vault` as the project vault (none:
  * `default` only); a resumed run keeps what its journal says. A new run
  * stops on a bad config; a resume takes the config's build fields again
- * and keeps its own on a bad one (`recordConfigReload`, #PRNUM). Never throws;
+ * and keeps its own on a bad one (`recordConfigReload`, #516). Never throws;
  * the launcher's sessions and the memory client are closed and the board
  * always gets the run's end.
  *
@@ -303,7 +303,7 @@ export const runSpec = async ({
     log(`[luca-run] journal: ${journal.file}`)
     const loaded = await loadEngineConfig({ repo_root: repo })
     const fresh = isEmpty(journal.read())
-    // A new run needs a good config; a resume keeps its own (#PRNUM).
+    // A new run needs a good config; a resume keeps its own (#516).
     if (fresh && !loaded.ok) {
         log(`[luca-run] stopped: ${loaded.error}`)
         await launcher.closeAll?.()

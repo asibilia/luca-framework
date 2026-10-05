@@ -698,7 +698,7 @@ journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 })` lists the runs whose next action is not a stop (`done`,
 `invalid_journal`).
 
-**A resume re-reads the config (#PRNUM).** A run's config is the one in
+**A resume re-reads the config (#516).** A run's config is the one in
 its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:

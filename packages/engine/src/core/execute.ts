@@ -146,7 +146,7 @@ export const recordResume = ({
     })
 
 /**
- * On a resume, takes the repo's config again (#PRNUM), just read as
+ * On a resume, takes the repo's config again (#516), just read as
  * `loaded`, and journals what came of it, right after `recordResume`:
  *
  * - a `config_reloaded` with the build fields (`RELOADED_FIELDS`) that

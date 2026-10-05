@@ -10,7 +10,7 @@ import {
 } from './testing/journal-fixtures'
 
 /**
- * A resume that re-read the repo's config, on the board (#PRNUM): the
+ * A resume that re-read the repo's config, on the board (#516): the
  * engine journals `config_reloaded { changes }` when the build fields
  * changed, or `config_reload_refused { reason }` when it kept the run's
  * config. Each adds one short line to the run's chat; the run keeps going.

@@ -150,7 +150,7 @@ export const BOARD_VOCABULARY = {
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
     /**
-     * A resume took the repo's new build fields (#PRNUM); the board reads
+     * A resume took the repo's new build fields (#516); the board reads
      * only which fields changed.
      */
     config_reloaded: z.looseObject({

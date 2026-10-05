@@ -1015,7 +1015,7 @@ const applyRecord = ({
         // Luca's version on a resume changes no step: only the board reads it.
         case 'engine_resumed':
             return next
-        // A resume's new build fields (#PRNUM): every later step uses them.
+        // A resume's new build fields (#516): every later step uses them.
         case 'config_reloaded':
             return {
                 ...next,

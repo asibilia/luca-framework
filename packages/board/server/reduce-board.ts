@@ -863,7 +863,7 @@ const applyKind = ({
                     }),
                 },
             }
-        // A resume's config reload (#PRNUM) is only a chat row.
+        // A resume's config reload (#516) is only a chat row.
         case 'config_reloaded':
         case 'config_reload_refused':
             return state

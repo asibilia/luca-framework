@@ -233,7 +233,7 @@ const groupFindings = ({
  * which only bun's give today). Pure. Empty when the config is fine.
  *
  * Intake runs it on the open tickets agents build; a resume runs it on the
- * repo's config file before taking its new build fields (#PRNUM).
+ * repo's config file before taking its new build fields (#516).
  *
  * @example
  * configProblems({ config: { ...config, checks: {} }, tickets: [] })

@@ -94,7 +94,7 @@ const EngineResumedEntrySchema = z.object({
 })
 
 /**
- * A resume read the repo's `.luca/config.json` again (#PRNUM), and the
+ * A resume read the repo's `.luca/config.json` again (#516), and the
  * build fields it reloads (`RELOADED_FIELDS`) changed: each one, old to
  * new. Journaled right after the resume's `engine_resumed`, only when
  * something changed. Replay puts the new values on the run's config.
@@ -106,7 +106,7 @@ const ConfigReloadedEntrySchema = z.object({
 })
 
 /**
- * A resume could not take the repo's config (#PRNUM): it is missing, not
+ * A resume could not take the repo's config (#516): it is missing, not
  * JSON, not a valid config, or one intake would refuse. The run keeps the
  * config it had and goes on. `reason` says what is wrong.
  */

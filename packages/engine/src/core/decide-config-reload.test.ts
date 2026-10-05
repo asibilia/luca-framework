@@ -17,7 +17,7 @@ import {
 import { recordsFrom } from '../testing/intake-fixtures'
 
 /**
- * A resume re-reads the repo's config (#PRNUM), at seam 1: the decision
+ * A resume re-reads the repo's config (#516), at seam 1: the decision
  * step handed a journal with a `config_reloaded` (old to new values of the
  * build fields that changed) or a `config_reload_refused` (the file was
  * bad, so the run keeps its config). Replay puts the new values on

@@ -17,7 +17,7 @@ import {
 } from '../testing/practice-repo'
 
 /**
- * A resume re-reads the repo's config (#PRNUM), end to end on the practice
+ * A resume re-reads the repo's config (#516), end to end on the practice
  * repo, through `resumeRun` (what `luca-run --resume` and the board's
  * auto-restart run). A run crashes at its implementer; the repo's
  * `.luca/config.json` changes; the resume journals a `config_reloaded`
