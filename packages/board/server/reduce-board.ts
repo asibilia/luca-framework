@@ -863,6 +863,10 @@ const applyKind = ({
                     }),
                 },
             }
+        // A resume's config reload (#516) is only a chat row.
+        case 'config_reloaded':
+        case 'config_reload_refused':
+            return state
         case 'intake_read':
             return {
                 ...state,

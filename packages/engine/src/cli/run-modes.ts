@@ -13,6 +13,7 @@ import { loadEngineConfig } from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
 import { decide, type EngineAction } from '../core/decide'
 import {
+    recordConfigReload,
     recordResume,
     runEngine,
     startRun,
@@ -210,13 +211,46 @@ const driveRun = async ({
     return end
 }
 
+/** A value of a reloaded config field in a log line; `null` is "none". */
+const fieldValue = (value: string | number | null): string =>
+    value === null ? 'none' : String(value)
+
+/**
+ * The log line for a resume's `config_reloaded` or `config_reload_refused`
+ * (#516).
+ *
+ * @example
+ * configReloadText({ reload }) // 'config reloaded: prepare changed (make rom -> make rom-cached)'
+ */
+export const configReloadText = ({
+    reload,
+}: {
+    reload: JournalRecord
+}): string => {
+    switch (reload.kind) {
+        case 'config_reloaded':
+            return `config reloaded: ${reload.content.changes
+                .map(
+                    ({ field, from, to }) =>
+                        `${field} changed (${fieldValue(from)} -> ${fieldValue(to)})`
+                )
+                .join(', ')}`
+        case 'config_reload_refused':
+            return `kept the run's config, as the repo's can't be used: ${reload.content.reason}`
+        default:
+            return reload.kind
+    }
+}
+
 /**
  * A real run of `spec_number` on `repo`: loads the repo's engine config,
  * opens (or resumes) the run's journal at `<runs_dir>/<run_id>`, and runs the
  * engine with the board kept in step, the agents from `launcher`, and Jev
  * in shadow mode if given. With `memory`, a new run turns memory on (#370),
  * with the engine config's `muninn.vault` as the project vault (none:
- * `default` only); a resumed run keeps what its journal says. Never throws;
+ * `default` only); a resumed run keeps what its journal says. A new run
+ * stops on a bad config; a resume takes the config's build fields again
+ * and keeps its own on a bad one (`recordConfigReload`, #516). Never throws;
  * the launcher's sessions and the memory client are closed and the board
  * always gets the run's end.
  *
@@ -268,7 +302,9 @@ export const runSpec = async ({
     log(`[luca-run] spec #${spec_number} in ${repo}, run ${run_id}`)
     log(`[luca-run] journal: ${journal.file}`)
     const loaded = await loadEngineConfig({ repo_root: repo })
-    if (!loaded.ok) {
+    const fresh = isEmpty(journal.read())
+    // A new run needs a good config; a resume keeps its own (#516).
+    if (fresh && !loaded.ok) {
         log(`[luca-run] stopped: ${loaded.error}`)
         await launcher.closeAll?.()
         await memory?.client.close().catch(() => undefined)
@@ -276,7 +312,7 @@ export const runSpec = async ({
         await board?.end({ records: journal.read(), ...end })
         return end
     }
-    if (isEmpty(journal.read())) {
+    if (fresh && loaded.ok) {
         startRun({
             journal,
             spec_number,
@@ -292,6 +328,8 @@ export const runSpec = async ({
     } else {
         log('[luca-run] resuming the run from its journal')
         recordResume({ journal, luca_version })
+        const reload = recordConfigReload({ journal, loaded })
+        if (reload !== null) log(`[luca-run] ${configReloadText({ reload })}`)
     }
     return driveRun({
         journal,

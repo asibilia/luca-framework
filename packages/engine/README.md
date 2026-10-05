@@ -39,6 +39,7 @@ on with a run from its journal (#369).
 | Module | What it does |
 | --- | --- |
 | `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
+| `src/config/config-reload.ts` | Pure: the config fields a resume takes again (`RELOADED_FIELDS`) and the ones it keeps (`FROZEN_FIELDS`), what changed (`configChanges`), and a config with the changes (`withConfigChanges`). |
 | `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
@@ -696,6 +697,28 @@ folder; it keeps the journal and runs the engine on it. A run id with no
 journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 })` lists the runs whose next action is not a stop (`done`,
 `invalid_journal`).
+
+**A resume re-reads the config (#516).** A run's config is the one in
+its `run_started`. On a resume (`--resume`, a run id whose journal exists,
+or the board's auto-restart, which runs `--resume`), the engine reads the
+repo's `.luca/config.json` again and takes its new **build fields**:
+`prepare`, `prepare_timeout_ms`, and `prepare_concurrency`, including one
+added or removed. So a repo that swaps a slow `prepare` for a fast cached one
+gets it in its runs that are going, without losing their work. Right after
+the resume's `engine_resumed`, and before its first step, it journals
+`config_reloaded { changes: [{ field, from, to }] }` (`null` for a field
+left out), only for fields that changed; replay puts the new values on the
+run's config, so the decision step, the prepare runs, and the board use
+them. A resume with nothing changed adds no record. Every other field stays
+as the run started with it (`FROZEN_FIELDS` in `config/config-reload.ts`
+says why for each): `checks` above all, since a ticket's baseline, its red
+check, and its gates compare test results across the run, and a baseline
+taken with old commands is not comparable with new ones. A config that is
+missing, not JSON, not a valid config, or one intake would refuse (no test
+command, say; intake's own `configProblems`) is not taken: the engine logs
+why, journals `config_reload_refused { reason }`, and the run goes on with
+the config it had. A new run with a bad config still stops before its
+journal starts.
 
 **Luca's version (#460).** `lucaVersion()` is the version of the installed
 `@alecsibilia/luca` package, found by walking up from the engine's own

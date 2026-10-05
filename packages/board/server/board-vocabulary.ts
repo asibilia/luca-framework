@@ -149,6 +149,15 @@ export const BOARD_VOCABULARY = {
     }),
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
+    /**
+     * A resume took the repo's new build fields (#516); the board reads
+     * only which fields changed.
+     */
+    config_reloaded: z.looseObject({
+        changes: z.array(z.looseObject({ field: z.string() })),
+    }),
+    /** A resume kept the run's config, as the repo's couldn't be used. */
+    config_reload_refused: z.looseObject({ reason: z.string() }),
     intake_read: z.looseObject({ spec: SpecIssueSchema }),
     intake_refused: z.looseObject({
         problems: z.array(
@@ -448,6 +457,8 @@ const entry = <Kind extends BoardKind>({ kind }: { kind: Kind }) =>
 const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_started' }),
     entry({ kind: 'engine_resumed' }),
+    entry({ kind: 'config_reloaded' }),
+    entry({ kind: 'config_reload_refused' }),
     entry({ kind: 'intake_read' }),
     entry({ kind: 'intake_refused' }),
     entry({ kind: 'nothing_to_do' }),
