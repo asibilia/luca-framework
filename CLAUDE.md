@@ -18,7 +18,7 @@ Default to using Bun instead of Node.js.
 - **New work goes in `packages/engine`** (the engine and the `luca` command) and `packages/board` (the Paseo board plugin). Both are private.
 - **`packages/luca` is v14's publish package**, `@alecsibilia/luca` on npm. It holds no source of its own: at pack time it copies in the engine's source and the board's folder.
 - **Changesets are back, fresh**, in pre mode `alpha`. A PR that changes a package needs a changeset (`bunx changeset`); the PR check (`.github/workflows/pr-check.yml`) runs `changeset status`. `@alecsibilia/luca`, `@luca/engine`, and `@luca/board` are one `fixed` group, so a changeset for the engine or board bumps the published package too.
-- **Read these before you build.** `CONTEXT.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
+- **Read these before you build.** `GLOSSARY.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
 - `.luca/config.json` is the engine's config: check commands, test file patterns, test setup files, rule files, and `muninn.vault` (the project's memory vault; memory tooling reads it at that path). Old Luca's data that used to live in `.luca/` is at the tag `old-luca-final`.
 - Install deps: `bun install`. Type check: `bunx --bun tsc --noEmit`.
 
@@ -38,4 +38,4 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

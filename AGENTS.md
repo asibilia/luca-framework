@@ -8,7 +8,7 @@
 - **New work goes in `packages/engine`** (the engine and the `luca` command) and `packages/board` (the Paseo board plugin). Both are private.
 - **`packages/luca` is v14's publish package**, `@alecsibilia/luca` on npm. It holds no source of its own: at pack time it copies in the engine's source and the board's folder (`packages/luca/scripts/copy-sources.ts`). It's released with changesets and `.github/workflows/release.yml`.
 - **Changesets are back, fresh**, in pre mode `alpha` (`.changeset/`). A PR that changes a package needs a changeset (`bunx changeset`). `@alecsibilia/luca`, `@luca/engine`, and `@luca/board` are one `fixed` group, so a changeset for the private engine or board bumps the published package too (it ships their files but doesn't depend on them). The PR check (`.github/workflows/pr-check.yml`, on macOS, with Bun pinned in `.bun-version`) runs the checks in `.luca/config.json` (`bun scripts/run-checks.ts`), packs the publish package (`bun packages/luca/scripts/check-pack.ts`), and runs `changeset status`.
-- **Read these before you build.** `CONTEXT.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
+- **Read these before you build.** `GLOSSARY.md` has the domain words. The plan is the wayfinder map, issue #325, "Map: Luca v1 on Paseo + Claude Code".
 - `.luca/config.json` is the engine's config: check commands, test file patterns, test setup files, rule files, and `muninn.vault` (the project's memory vault; memory tooling reads it at that path). Old Luca's data that used to live in `.luca/` is at the tag `old-luca-final`.
 
 ## Setup

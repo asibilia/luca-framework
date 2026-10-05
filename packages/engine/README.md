@@ -1,7 +1,7 @@
 # @luca/engine
 
 The Luca v1 **engine**: plain Bun and TypeScript that drives a **run** of one
-**spec** and picks every next step. See `CONTEXT.md` at the repo root for the
+**spec** and picks every next step. See `GLOSSARY.md` at the repo root for the
 domain words, and spec #359 for the plan.
 
 This package covers the start of a run (#360): the engine config, the

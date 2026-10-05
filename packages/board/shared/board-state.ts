@@ -3,7 +3,7 @@ import { z } from 'zod'
 /**
  * The board's view of one run, as the plugin's server keeps it and the side
  * panel reads it. Shared by both runtimes, so it holds only Zod schemas and
- * plain values. Words follow CONTEXT.md: ticket, blocked, gate, red check,
+ * plain values. Words follow GLOSSARY.md: ticket, blocked, gate, red check,
  * fix loop, ticket review, final review, lens, finding, stuck, skipped ticket,
  * limit wait, shadow mode.
  */

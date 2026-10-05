@@ -124,7 +124,7 @@ packages/
 .changeset/         # Changesets, in pre mode alpha
 docs/               # Documentation
 .luca/config.json   # Engine config: checks, test patterns, rule files, memory vault
-CONTEXT.md          # Domain words
+GLOSSARY.md         # Domain words
 ```
 
 Tests live next to the code they test, as `*.test.ts`.

@@ -2,7 +2,7 @@
 
 Luca turns planned work into a reviewed pull request by running a team of AI agents under strict, code-driven control.
 
-You write a **spec** (one feature: the problem, the solution, and how it will be tested) and split it into **tickets**. A **run** takes the spec's tickets through the **engine**: plain code that picks every next step. Agents write the tests, then the code, and a fresh reviewer checks each ticket. The engine runs its own **gates** (tests, type checks, lint) before the run moves on. Finished tickets join one **run branch**, a **final review** looks at the whole branch, and the run ends in one pull request. Everything that happens is written to the run's **journal**, and the **board** shows the run live in Paseo. The domain words are defined in [CONTEXT.md](CONTEXT.md).
+You write a **spec** (one feature: the problem, the solution, and how it will be tested) and split it into **tickets**. A **run** takes the spec's tickets through the **engine**: plain code that picks every next step. Agents write the tests, then the code, and a fresh reviewer checks each ticket. The engine runs its own **gates** (tests, type checks, lint) before the run moves on. Finished tickets join one **run branch**, a **final review** looks at the whole branch, and the run ends in one pull request. Everything that happens is written to the run's **journal**, and the **board** shows the run live in Paseo. The domain words are defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## Packages
 
@@ -46,7 +46,7 @@ These are the engine's own gates for this repo, set in [`.luca/config.json`](.lu
 
 ## Documentation
 
-- [CONTEXT.md](CONTEXT.md): the domain words
+- [GLOSSARY.md](GLOSSARY.md): the domain words
 - [docs/README.md](docs/README.md): the docs index
 - [AGENTS.md](AGENTS.md): instructions for AI coding agents working on this repo
 - [docs/guides/coding-standards.md](docs/guides/coding-standards.md): coding standards
