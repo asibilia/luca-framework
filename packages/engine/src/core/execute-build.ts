@@ -950,10 +950,36 @@ const undoCutOffJoin = async ({
 }
 
 /**
+ * The run branch commits an undo of `ticket`'s join may take (#519): its
+ * own joined commits, and those of any other ticket that joined and has not
+ * pushed (a later join on top goes with it, and replay clears that join
+ * too). A pushed ticket's commits never.
+ */
+const undoableCommits = ({
+    state,
+    ticket,
+}: {
+    state: RunState
+    ticket: number
+}): string[] =>
+    uniq(
+        Object.entries(state.tickets).flatMap(([number, progress]) => {
+            const { joined } = progress
+            if (!joined?.ok) return []
+            const own = Number(number) === ticket
+            return own || progress.pushed === null ? joined.shas : []
+        })
+    )
+
+/**
  * Undoes a ticket's join on the run branch, back to before `first_sha`, and
- * returns the commits undone. The undone join's install is still in the run
- * branch's `node_modules`, so when its commits changed dependency files the
- * lockfile's install runs there again.
+ * returns the commits undone. It never rewinds over other work (#519): it
+ * may only undo the ticket's own join and later joins not pushed yet
+ * (`undoableCommits`). When git refuses, the run branch is left alone, the
+ * ticket is stuck (`undo_refused`) with why, and it returns `null`, so the
+ * caller does nothing more. The undone joins' install is still in the run
+ * branch's `node_modules`, so when their commits changed dependency files
+ * the lockfile's install runs there again.
  */
 const undoJoin = async ({
     context,
@@ -963,20 +989,45 @@ const undoJoin = async ({
     context: BuildContext
     ticket: number
     first_sha: string
-}): Promise<string[]> => {
-    const { git, state, journal } = context
+}): Promise<string[] | null> => {
+    const { git, state, journal, launcher } = context
     const runBranch = need({ value: state.run_branch, what: 'run branch' })
     const joined = state.tickets[ticket]?.joined
-    const last = joined?.ok ? joined.shas.at(-1) : undefined
+    const tip = await git.head({ cwd: runBranch.path })
+    const undo = await git.undoReplay({
+        cwd: runBranch.path,
+        first_sha,
+        only: undoableCommits({ state, ticket }),
+    })
+    if (!undo.ok) {
+        // A stuck ticket's agents take no more follow-ups.
+        await closeSessions({
+            journal,
+            launcher,
+            sessions: openSessionsIn({ records: journal.read() }).filter(
+                (session) => session.ticket === ticket
+            ),
+        })
+        journal.append({
+            kind: 'ticket_stuck',
+            ticket,
+            role: null,
+            content: {
+                reason: 'undo_refused',
+                detail: `The engine went to undo this ticket's join on the run branch (from ${first_sha.slice(0, 7)}), but that would have rewound the run branch over other work, so the run branch was left alone:\n${undo.error}`,
+            },
+        })
+        return null
+    }
+    const { undone } = undo
     const undoneFiles =
-        last === undefined
+        undone.length === 0
             ? []
             : await git.filesBetween({
                   cwd: runBranch.path,
                   from: `${first_sha}^`,
-                  to: last,
+                  to: tip,
               })
-    const { undone } = await git.undoReplay({ cwd: runBranch.path, first_sha })
     // A redo whose first try undid the join before a crash finds nothing
     // left to undo: the commits it undid are the journaled join's.
     const named =
@@ -999,7 +1050,8 @@ const undoJoin = async ({
  * join first if asked (its gates failed), then resets the ticket's worktree
  * to the run branch's tip and applies the ticket's whole diff there,
  * uncommitted, with conflict markers in the files that clash. Journals the
- * clashed files split into tests and code.
+ * clashed files split into tests and code. A refused undo (#519) leaves the
+ * ticket stuck, and nothing is rebased.
  */
 const rebaseTicket = async ({
     context,
@@ -1025,6 +1077,8 @@ const rebaseTicket = async ({
                   ticket: action.ticket,
                   first_sha: action.undo_first_sha,
               })
+    // A refused undo left the run branch alone and the ticket stuck.
+    if (undone === null) return
     const onto = await git.head({ cwd: runBranch.path })
     const moved_files = await git.filesBetween({
         cwd: worktree.path,
@@ -1458,20 +1512,22 @@ export const executeBuildAction = async ({
             })
             return
         }
-        case 'undo_join':
+        case 'undo_join': {
+            const shas = await undoJoin({
+                context,
+                ticket: action.ticket,
+                first_sha: action.first_sha,
+            })
+            // A refused undo left the run branch alone and the ticket stuck.
+            if (shas === null) return
             journal.append({
                 kind: 'join_undone',
                 ticket: action.ticket,
                 role: null,
-                content: {
-                    shas: await undoJoin({
-                        context,
-                        ticket: action.ticket,
-                        first_sha: action.first_sha,
-                    }),
-                },
+                content: { shas },
             })
             return
+        }
         case 'retry_ticket':
             return retryTicket({ context, action })
         case 'report_stuck':

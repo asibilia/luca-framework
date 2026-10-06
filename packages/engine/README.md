@@ -910,6 +910,13 @@ final_review_stuck
   (`join_gates_failed`) has unpushed commits on the run branch; they are
   undone (`git.undoReplay`, and the install again if they changed
   dependencies) before any other ticket starts or joins.
+- **An undo never rewinds over other work (#519).** `undoReplay` undoes
+  only commits the engine names: the ticket's own join and any later,
+  unpushed joins. A join that isn't on the run branch, or other commits on
+  top of it, and it refuses: the run branch is left alone and the ticket is
+  stuck (`undo_refused`), never undone again until a `retry`. Every ticket
+  whose joined commits an undo took (`join_undone`'s `shas`) has its join
+  cleared, so it joins again on the run branch as it is now.
 - **A run branch whose install failed** stops every ticket but the stuck
   one; a `retry` installs it again.
 - **Waiting.** `wait_for_reply` sleeps `reply_poll_ms` (default

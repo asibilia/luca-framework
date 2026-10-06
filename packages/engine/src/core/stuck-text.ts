@@ -37,6 +37,8 @@ const REASON_LINES: Record<StuckReason, string> = {
     setup_change_needed:
         'An agent needs a test setup file changed, and only you may change one.',
     crashed: 'The engine crashed in the same step, again and again.',
+    undo_refused:
+        'Undoing its join would have rewound the run branch over other work, so the run branch was left alone.',
 }
 
 /** What the user could do, per reason; `n` is the ticket. */
@@ -75,6 +77,8 @@ const suggestion = ({
             return `Make that change yourself in the worktree, then reply ${retry}.`
         case 'crashed':
             return `Read the engine's log for why it crashed, fix what trips it, then reply ${retry} to take the step again with a fresh agent.`
+        case 'undo_refused':
+            return `Put the run branch back so this ticket's join is on top (or take its join off by hand), then reply ${retry}; or reply \`skip #${n}\`.`
     }
 }
 

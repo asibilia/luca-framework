@@ -61,6 +61,8 @@ const STUCK_REASONS: Record<string, string> = {
     setup_change_needed:
         'An agent needs a test setup file changed; only you may change one.',
     crashed: 'The engine crashed in the same step again and again.',
+    undo_refused:
+        'Undoing its join would have rewound the run branch over other work.',
 }
 
 /**
