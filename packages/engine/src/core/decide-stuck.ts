@@ -137,7 +137,9 @@ const awaitingReply = (progress: TicketProgress): boolean =>
 /**
  * The next steps of one stuck ticket: undo a join its stuck left on the run
  * branch (so no other ticket builds on it), tell the spec issue, then act
- * on the owner's reply. Nothing while it waits for one.
+ * on the owner's reply. Nothing while it waits for one. A ticket stuck
+ * because its undo was refused (`undo_refused`, #519) is never undone again
+ * before a reply: it is told at once, with its join left where it is.
  */
 export const stuckTicketSteps = ({
     spec_number,
@@ -151,7 +153,11 @@ export const stuckTicketSteps = ({
     const { stuck, joined } = progress
     if (stuck === null) return []
     const number = ticket.number
-    if (joined?.ok === true && progress.pushed === null) {
+    if (
+        joined?.ok === true &&
+        progress.pushed === null &&
+        stuck.reason !== 'undo_refused'
+    ) {
         const first_sha = joined.shas[0]
         if (first_sha !== undefined) {
             return [{ type: 'undo_join', ticket: number, first_sha }]

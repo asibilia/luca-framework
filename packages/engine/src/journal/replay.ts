@@ -1208,6 +1208,18 @@ const applyRecord = ({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
                 record,
             })
+        case 'join_undone':
+            return undoneJoinsAfter({
+                state: applyTicketRecord({ state: next, record }),
+                ticket: record.ticket,
+                shas: record.content.shas,
+            })
+        case 'ticket_rebased':
+            return undoneJoinsAfter({
+                state: applyTicketRecord({ state: next, record }),
+                ticket: record.ticket,
+                shas: record.content.undone,
+            })
         // Always the final review's (see finalRecordOf above).
         case 'final_review_started':
         case 'lens_started':
@@ -2278,8 +2290,8 @@ const retriedChange = ({
  * - in a review fix round, the round starts over as round 1 with fresh
  *   fixers, so the user's changes are gated, committed, and re-reviewed;
  * - a leftover scan, a failed install, a failed prepare command at the
- *   baseline, a reviewer's failed tries, a failed join, or a step crashes
- *   cut off just run again.
+ *   baseline, a reviewer's failed tries, a failed join, a refused undo of
+ *   its join (#519), or a step crashes cut off just run again.
  */
 const resumedProgress = ({
     progress,
@@ -2320,6 +2332,7 @@ const resumedProgress = ({
         reason === 'prepare_failed' ||
         reason === 'join_failed' ||
         reason === 'join_gates_failed' ||
+        reason === 'undo_refused' ||
         reason === 'crashed' ||
         reviewerFailed
     ) {
@@ -2561,6 +2574,41 @@ const closedSessionAfter = ({
                         : forget(learner.agent_failure),
             },
         },
+    }
+}
+
+/**
+ * The other tickets whose joins an undo took off the run branch (#519): an
+ * undo resets the run branch to before the undone ticket's join, so any
+ * join on top of it goes too. Each such ticket's join and join gates are
+ * cleared, as its own undo would, so it joins again on the run branch as it
+ * is now, and a stuck one is never undone a second time. Its push, stuck,
+ * and reply are kept.
+ */
+const undoneJoinsAfter = ({
+    state,
+    ticket,
+    shas,
+}: {
+    state: RunState
+    /** The ticket whose join was undone. */
+    ticket: number | null
+    /** Every commit the undo took off the run branch. */
+    shas: string[]
+}): RunState => {
+    if (shas.length === 0) return state
+    return {
+        ...state,
+        tickets: mapValues(state.tickets, (progress, number) => {
+            const { joined } = progress
+            const taken =
+                Number(number) !== ticket &&
+                joined?.ok === true &&
+                joined.shas.some((sha) => shas.includes(sha))
+            return taken
+                ? { ...progress, joined: null, join_gates: null }
+                : progress
+        }),
     }
 }
 

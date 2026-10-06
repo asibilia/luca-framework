@@ -684,7 +684,9 @@ export type RejoinCause = z.infer<typeof RejoinCauseSchema>
  * and `code` are the files that clashed (conflict markers left in them),
  * split by the config's test file patterns. `undone` are the run branch
  * commits the engine undid first (a join whose gates failed), and
- * `reinstall` says whether the worktree needs its install again.
+ * `reinstall` says whether the worktree needs its install again. As with
+ * `join_undone`, replay clears the join of any other ticket whose joined
+ * commits are among `undone` (#519).
  */
 const TicketRebasedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -751,6 +753,8 @@ const RunBranchPushedEntrySchema = z.object({
 /**
  * Why a ticket (or the final review) is stuck. A failed red check or gate is only stuck once its
  * fix loop reaches its cap, and a bad test only on its second bounce.
+ * `undo_refused`: undoing its join would have rewound the run branch over
+ * other work, so the engine left the run branch alone (#519).
  */
 export const StuckReasonSchema = z.enum([
     'agent_failed',
@@ -766,6 +770,7 @@ export const StuckReasonSchema = z.enum([
     'prepare_failed',
     'setup_change_needed',
     'crashed',
+    'undo_refused',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -956,7 +961,11 @@ const FinalReviewRetriedEntrySchema = z.object({
 
 /**
  * A stuck ticket's join was undone on the run branch (its commits were
- * never pushed), so no other ticket builds on them.
+ * never pushed), so no other ticket builds on them. `shas` are every commit
+ * the undo took off the run branch, oldest first: the ticket's own join and
+ * any later, unpushed joins on top of it (#519). Replay clears the join of
+ * every ticket whose joined commits are among them, not only this one's, so
+ * those tickets join again on the run branch as it is now.
  */
 const JoinUndoneEntrySchema = z.object({
     ...ENTRY_FIELDS,

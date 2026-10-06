@@ -1254,13 +1254,16 @@ const notRemoved = ({
  * the run branch's tip, then its install) once every ticket it waits on has
  * pushed, and while no ticket waits to join, so it never builds on joined
  * commits whose gates have not passed yet. Approved tickets join one at a
- * time, in the order their reviews finally approved them. A clash or failed
+ * time, in the order their reviews finally approved them, except that one
+ * already joining finishes first. A clash or failed
  * gates after joining puts the ticket's change back on top of the run
- * branch to be fixed there (up to `MAX_REJOINS` times), then re-reviewed. A
- * stuck ticket ends the run: no ticket starts or moves on, and the worktrees
- * of pushed tickets are removed. Once every ticket pushed, the final review
- * looks at the whole run branch (`decideFinalReview`) before the PR opens; a
- * stuck final review ends the run with the run branch's worktree kept. In a
+ * branch to be fixed there (up to `MAX_REJOINS` times), then re-reviewed.
+ * While a stuck ticket's join is still on the run branch, no ticket starts
+ * or joins until it is undone (#519), so no join lands on top of a join
+ * that is going away. A stuck ticket ends the run: no ticket starts or
+ * moves on, and the worktrees of pushed tickets are removed. Once every
+ * ticket pushed, the final review looks at the whole run branch
+ * (`decideFinalReview`) before the PR opens; a stuck final review ends the run with the run branch's worktree kept. In a
  * repo with changesets, the run's changeset is written just before the PR
  * (`write_changeset`), once. Once
  * the PR is open, every worktree is removed. Branches and the journal stay.
@@ -1450,6 +1453,8 @@ const buildSteps = ({
         }
     }
 
+    // A ticket already on the run branch finishes its join first (#519): a
+    // retried ticket approved earlier never joins on top of it.
     const queue = sortBy(
         numbers.filter(
             (number) =>
@@ -1457,16 +1462,20 @@ const buildSteps = ({
                 !isStuck(number) &&
                 !skipped(number)
         ),
-        (number) => progress(number).approved_seq
+        [
+            (number) => progress(number).joined === null,
+            (number) => progress(number).approved_seq,
+        ]
     )
-    const joiner = queue[0] ?? null
-    // A stuck ticket's join is undone before any new ticket starts on it.
+    // A stuck ticket's join is undone before any new ticket starts on it
+    // or joins on top of it (#519): a join on top would be undone with it.
     const stuckJoinOnRunBranch = numbers.some(
         (number) =>
             isStuck(number) &&
             progress(number).joined?.ok === true &&
             progress(number).pushed === null
     )
+    const joiner = stuckJoinOnRunBranch ? null : (queue[0] ?? null)
 
     const steps = numbers.flatMap((number): BuildAction[] => {
         const ticket = snapshot.tickets[number]

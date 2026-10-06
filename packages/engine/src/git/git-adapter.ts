@@ -134,14 +134,21 @@ export type GitAdapter = {
     }) => Promise<{ ok: true; shas: string[] } | { ok: false; error: string }>
     /**
      * Undoes a replay on the branch checked out at `cwd`: resets it hard to
-     * the commit before `first_sha`. Safe to run twice.
+     * the commit before `first_sha`. It never rewinds over other work
+     * (#519), so it refuses, with the branch left as it is, when
+     * `first_sha` is no commit (or has no parent), is not on the branch, or
+     * when any commit from `first_sha` up to the branch's tip is not in
+     * `only`. Safe to run twice: with the branch already at the commit
+     * before `first_sha`, it undoes nothing.
      *
-     * @returns The commits it undid, oldest first.
+     * @returns The commits it undid, oldest first, or why it refused.
      */
     undoReplay: (args: {
         cwd: string
         first_sha: string
-    }) => Promise<{ undone: string[] }>
+        /** The commits it may undo: any other on top of `first_sha` refuses. */
+        only: string[]
+    }) => Promise<{ ok: true; undone: string[] } | { ok: false; error: string }>
     /**
      * Moves a worktree's change onto another commit: resets the worktree at
      * `cwd` hard to `onto`, then applies the whole diff from `from` to `to`
@@ -535,16 +542,52 @@ export const createGitAdapter = ({
                 ),
             }
         },
-        undoReplay: async ({ cwd, first_sha }) => {
-            const before = `${first_sha}^`
+        undoReplay: async ({ cwd, first_sha, only }) => {
+            const short = first_sha.slice(0, 7)
+            const parent = await gitRun({
+                cwd,
+                args: [
+                    'rev-parse',
+                    '--verify',
+                    '--quiet',
+                    `${first_sha}^{commit}^`,
+                ],
+            })
+            if (parent.exit_code !== 0) {
+                return {
+                    ok: false,
+                    error: `Commit ${short} is not in the repo (or has no parent), so there is no join to undo.`,
+                }
+            }
+            const before = parent.stdout.trim()
+            const tip = await head({ cwd })
+            const ancestor = await gitRun({
+                cwd,
+                args: ['merge-base', '--is-ancestor', first_sha, 'HEAD'],
+            })
+            if (ancestor.exit_code !== 0) {
+                // Already undone, such as a redo after a crash.
+                if (tip === before) return { ok: true, undone: [] }
+                return {
+                    ok: false,
+                    error: `Commit ${short} is not on the branch, so undoing it (a reset to its parent) would rewind the branch over other work.`,
+                }
+            }
             const undone = lines(
                 await gitOk({
                     cwd,
                     args: ['rev-list', '--reverse', `${before}..HEAD`],
                 })
             )
+            const others = undone.filter((sha) => !only.includes(sha))
+            if (others.length > 0) {
+                return {
+                    ok: false,
+                    error: `Undoing ${short} would also undo other work on top of it: ${others.map((sha) => sha.slice(0, 7)).join(', ')}.`,
+                }
+            }
             await gitOk({ cwd, args: ['reset', '--quiet', '--hard', before] })
-            return { undone }
+            return { ok: true, undone }
         },
         rebaseWorktree: async ({ cwd, from, to, onto }) => {
             const folder = await mkdtemp(join(tmpdir(), 'luca-rebase-'))
