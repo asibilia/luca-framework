@@ -20,7 +20,7 @@ Run the helper from the repo's folder. It only reads.
 bun ~/.claude/skills/luca-retro/scripts/retro-summary.ts [run id ...]
 ```
 
-- No run id: it sums up this repo's newest finished run (one that opened its PR, was stopped, or had nothing to do). If that isn't the one the owner means, ask.
+- No run id: it sums up this repo's newest finished run (one that opened its PR, was stopped, or had nothing to do), found from the main checkout, any of its worktrees, or a subfolder. If that isn't the one the owner means, ask.
 - Several run ids: it sums up each, then lists the patterns that repeat across them. A repeat ranks higher.
 - It prints the run's spec, repo, Luca versions, and how it ended; then what got stuck and how long the owner took to reply, fix loops that hit their cap, leftover scan hits, agents out of turns, "No open agent session" failures, Jev calls that failed, checks and tests that failed again and again, setup changes agents asked for, joins that clashed, replies, the agents' assumptions, the findings fixers declined, slow steps, and tokens. Every line names its journal seq (`#123`).
 

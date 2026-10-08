@@ -25,7 +25,7 @@ bun ~/.claude/skills/luca-unstick/scripts/stuck-summary.ts <run id> <ticket numb
 Pass the ticket as a bare number (`134`, not `#134`): in the shell, `#` starts a comment, so `#134` would be lost. Leave out what you weren't given.
 
 - With a run id, it sums up that run. With a ticket too, only that ticket (and the run itself).
-- With no run id, it lists this repo's runs, newest first, and sums up the newest one that waits on a reply. If that isn't the one the owner means, ask.
+- With no run id, it lists this repo's runs (from the main checkout, any of its worktrees, or a subfolder), newest first, and sums up the newest one that waits on a reply. If that isn't the one the owner means, ask.
 - It prints: the spec, its owner, the repo (`owner/repo`), the Luca version the run is on, the run branch, whether the engine is running now, how the board saw it end, and, for each stuck thing, the stuck reason and detail, the worktree, the agent's last result (such as a `bad_test` with its file, test, and reason), the last failed checks with the end of their output, and the replies since.
 
 Where things live, if you need more:
