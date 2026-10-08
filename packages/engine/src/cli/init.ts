@@ -51,7 +51,7 @@ import { runSetup } from './setup'
  * `mattpocock/skills` with the `skills` tool, skipping any already there.
  * `skip_skills` skips this part.
  *
- * Luca's own skills: copies them (such as `/luca-unstick`) from Luca's
+ * Luca's own skills: copies them (`/luca-unstick`, `/luca-retro`) from Luca's
  * install folder into `~/.claude/skills`, over Luca's earlier copy (see
  * `installLucaSkills`). They are part of Luca, so `skip_skills` doesn't
  * skip them.

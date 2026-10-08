@@ -376,6 +376,8 @@ describe('the packed @alecsibilia/luca tarball', () => {
             const files = await skillFiles()
             expect(files).toContain('luca-unstick/SKILL.md')
             expect(files).toContain('luca-unstick/scripts/stuck-summary.ts')
+            expect(files).toContain('luca-retro/SKILL.md')
+            expect(files).toContain('luca-retro/scripts/retro-summary.ts')
 
             const problems = await copyProblems({
                 tarball,

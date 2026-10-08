@@ -8,7 +8,7 @@
  *             source: its manifest, entry points, client, server, and shared
  *             code, and its own package.json; its version module stamped
  *             with this package's version
- *   skills/   Luca's own Claude Code skills (such as `luca-unstick`), from
+ *   skills/   Luca's own Claude Code skills (`luca-unstick`, `luca-retro`), from
  *             the engine's `skills/` folder, which `luca init` and `luca
  *             upgrade` copy to `~/.claude/skills`
  *   LICENSE   the repo's license

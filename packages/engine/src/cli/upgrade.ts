@@ -35,7 +35,7 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * 4. Reloads the board in Paseo, keeping its settings, and rewrites its
  *    engine and Bun paths (see `setUpBoard`).
  * 5. Says when `/reload-skills` is needed: when the board's files changed.
- * 6. Copies Luca's own skills (such as `/luca-unstick`) from the new
+ * 6. Copies Luca's own skills (`/luca-unstick`, `/luca-retro`) from the new
  *    install into `~/.claude/skills` (see `installLucaSkills`).
  * 7. Ends with doctor's computer checks (see `computerChecks`).
  *

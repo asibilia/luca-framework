@@ -82,6 +82,10 @@ beforeEach(async () => {
         join(skills_dir, 'luca-unstick', 'SKILL.md'),
         '---\nname: luca-unstick\n---\nOld text.\n'
     )
+    await Bun.write(
+        join(skills_dir, 'luca-retro', 'SKILL.md'),
+        '---\nname: luca-retro\n---\nOld text.\n'
+    )
     await mkdir(board_dir, { recursive: true })
     await Bun.write(
         join(board_dir, 'paseo-plugin.json'),
@@ -993,7 +997,7 @@ describe("luca upgrade copies Luca's own skills (#504)", () => {
         expect(await installedSkill('SKILL.md').text()).toBe(new_text)
         expect(await Bun.file(other).text()).toBe('Mine.\n')
         expect(logs.join('\n')).toContain(
-            "[luca upgrade] Luca's skills: installed /luca-unstick"
+            "[luca upgrade] Luca's skills: installed /luca-unstick, /luca-retro"
         )
     })
 
