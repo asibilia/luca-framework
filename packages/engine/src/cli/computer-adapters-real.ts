@@ -400,7 +400,7 @@ const PackageJsonSchema = z.looseObject({
 })
 
 /** The package a file belongs to: the nearest package.json with a name. */
-const packageOf = async (
+export const packageOf = async (
     file: string
 ): Promise<{ name: string; version: string | null } | null> => {
     for (let dir = dirname(file); ; dir = dirname(dir)) {

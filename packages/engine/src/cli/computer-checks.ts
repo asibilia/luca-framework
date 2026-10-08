@@ -329,8 +329,8 @@ const checkPlanningSkills = async ({ home }: { home: string }) => {
 }
 
 /**
- * Luca's own skills (#504): each is in `~/.claude/skills`, and its files
- * are the ones the installed Luca ships.
+ * Luca's own skills (#504): each one in the installed Luca's skills folder
+ * (#529) is in `~/.claude/skills`, and its files are the ones it ships.
  */
 const checkLucaSkills = async ({
     home,
@@ -342,10 +342,9 @@ const checkLucaSkills = async ({
     luca_version: string
 }) => {
     const drift = await skillDrift({ home, skills_dir })
-    const unshipped = drift.filter(({ unshipped }) => unshipped)
-    if (unshipped.length > 0) {
+    if (drift.length === 0) {
         return problem({
-            detail: `Luca's folder ${skills_dir} has no ${unshipped.map(({ skill }) => skill).join(', ')} skill.`,
+            detail: `Luca's folder ${skills_dir} has no skills.`,
             fix: `Reinstall Luca: bun add -g ${LUCA_PACKAGE}@alpha`,
         })
     }

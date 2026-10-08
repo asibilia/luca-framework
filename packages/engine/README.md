@@ -138,14 +138,15 @@ on with a run from its journal (#369).
 | `src/cli/computer-adapters-real.ts` | The real ones, and where the installed Luca and its board are (`lucaInstall`, its version from `config/luca-version.ts`). |
 | `src/cli/muninn-entry.ts` | Claude Code's user-scope `muninn` entry: what's right (`rightEntry`), and making it right (`ensureMuninnEntry`). The token is never shown. |
 | `src/cli/board-in-paseo.ts` | Puts the board into Paseo from Luca's folder, settings kept, and writes its engine and Bun paths (`placeBoard`, `setUpBoard`). |
-| `src/cli/upgrade-command.ts` | `luca upgrade`'s flags and its real npm registry and `bun add -g` adapters. |
-| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, reloads the board, and ends with doctor's computer checks. |
+| `src/cli/upgrade-command.ts` | `luca upgrade`'s flags (`--finish` included) and its real npm registry, `bun add -g`, and new-install adapters: finding the new install (`findNewInstall`) and handing off to it (`handOff`). |
+| `src/cli/upgrade.ts` | Moves to another version of Luca (`runUpgrade`): refuses while runs go, picks the version on the installed channel (`channelTarget`), installs it, then hands the last steps to the new install. |
+| `src/cli/upgrade-finish.ts` | `luca upgrade`'s last steps (`finishUpgrade`), run by the version just installed: reloads the board, copies Luca's skills, and ends with doctor's computer checks. Older Luca looks for this file, so don't rename it. |
 | `src/cli/going-runs.ts` | The runs that are going (`goingRuns`), from their journals, the board's run registry, and `ps`; and the unfinished runs nothing runs now. |
 | `src/cli/live-runs.ts` | Which runs have a live engine: every process's command line from `ps` (`listProcesses`), and the run ids in them (`liveRunIds`). A copy of the board's check. |
 | `src/cli/doctor.ts` | `luca doctor [--fix]` (`runDoctor`): the computer and repo checks, and the safe fixes. |
 | `src/cli/doctor-checks.ts` | A doctor check (OK, warning, or problem, with its fix), how checks print, and version comparison. Pure. |
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, the planning skills, and Luca's own skills. |
-| `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
+| `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): which there are (`lucaSkills`, every folder in `skills/` with a `SKILL.md`), the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
 | `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply. See "Getting a stuck run moving". |
 | `skills/luca-retro/` | The `/luca-retro` skill (#514): its `SKILL.md`, and `scripts/retro-summary.ts`, which sums up what went wrong in finished runs, from their journals, and the patterns that repeat across them. See "Looking back at a run". |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
@@ -1161,6 +1162,25 @@ engine keeps running while it waits.
   version: `/luca-run resume <run id>` in a Paseo chat for a run the board
   started, so the board shows it live, else `luca-run --resume <run id>`.
   A billing stop never goes on, so it isn't listed.
+
+After `bun add -g`, the rest of the upgrade runs in the version just
+installed, not the one that installed it (#529). The process that runs
+`luca upgrade` is the old version's, so its own board setup, skill list, and
+checks are the old ones: a skill new in the release wouldn't be copied. So
+upgrade finds the new install the way the PATH does (the `luca` in
+`bun pm bin -g`), checks it is the version it just installed, and runs its
+`luca upgrade --finish`. That reloads the board, copies the skills, and runs
+the checks with the new code, its output goes straight to the terminal, and
+its exit code is upgrade's. It doesn't check for going runs again or
+install anything.
+
+- **A version from before the hand-off** (such as `--to` an older one) has
+  no `src/cli/upgrade-finish.ts` next to its `luca.ts`. Upgrade says so and
+  runs the last steps itself, as before.
+- **The hand-off fails to start, or exits non-zero:** the new version stays
+  installed, and upgrade says what failed and what to run next.
+- **Either way, the skill list comes from the install's `skills/` folder**,
+  not a list in the code, so even old code copies every skill it ships.
 
 ## Setting up a repo
 

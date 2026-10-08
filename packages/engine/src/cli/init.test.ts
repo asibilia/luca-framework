@@ -1152,7 +1152,7 @@ describe("luca init installs Luca's own skills (#504)", () => {
             ).toBe(false)
         }
         expect(logs).toContain(
-            `[luca init] Luca's skills: installed /luca-unstick, /luca-retro in ${join(home, '.claude', 'skills')}`
+            `[luca init] Luca's skills: installed /luca-retro, /luca-unstick in ${join(home, '.claude', 'skills')}`
         )
         expect(
             end.doctor.find(({ name }) => name === 'luca_skills')
