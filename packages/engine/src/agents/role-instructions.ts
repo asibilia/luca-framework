@@ -222,6 +222,16 @@ Only real risks count; a theoretical risk with no path to it is a nit at most.`,
 - a rule file the engine could not read is noted in your prompt; don't guess its content`,
 }
 
+/**
+ * What a lens adds to its result. Only the integration lens adds anything:
+ * the PR's Summary picture and Merge Danger, on its first round (#513).
+ */
+const LENS_EXTRA_RESULT: Partial<Record<LensName, string>> = {
+    integration: `- summary_picture and merge_danger, for the top of the PR:
+  - On the first round (you review the whole branch): in "summary_picture", the smallest picture that makes the change clear: a call tree, a file tree, a Mermaid diagram, or a diff sketch, as markdown in a fenced block. Keep it short, about 20 lines at most. In "merge_danger": "door" ("one_way" or "two_way") with a one-line "door_reason", and "blast_radius" ("small", "medium", or "large": how much breaks if the change is wrong) with a one-line "blast_radius_reason". A one-way door is a change a revert can't undo out in the world: a migration that drops data, a publish, sent messages, a deploy.
+  - On a re-review: null for both summary_picture and merge_danger. The first round's stand.`,
+}
+
 const LENS = ({
     lens,
 }: {
@@ -248,7 +258,7 @@ Your result (structured output):
 - verdict: "changes_requested" if any finding is a blocker or a should_fix, else "approve". It must match your findings.
 - findings: each with a short unique id (the engine puts your lens's name in front of it, like ${lens}-F1; keep that full id when you list a finding again), a severity ("blocker", "should_fix", or "nit"), a kind ("test" if the fix belongs in a test file, else "code"), the file (or null), a title, and detail. An empty list is a fine answer.
 - rulings: one per "won't fix" on a re-review, else empty.
-- summary, assumptions.`
+- summary, assumptions.${LENS_EXTRA_RESULT[lens] === undefined ? '' : `\n${LENS_EXTRA_RESULT[lens]}`}`
 
 /**
  * The instructions a role's agent gets, appended to Claude Code's own system
@@ -257,8 +267,10 @@ Your result (structured output):
  * what the structured result holds. A refactor ticket's implementer (who
  * may edit tests) is told it may follow renames into test files. Test-writers
  * and implementers with messaging are told how agent messages work;
- * reviewers aren't. Each final review lens gets its own focus. The learner
- * (#370) gets its own task and rules: no shell, nothing written.
+ * reviewers aren't. Each final review lens gets its own focus; the
+ * integration lens also gives the PR's Summary picture and Merge Danger
+ * (#513). The learner (#370) gets its own task and rules: no shell,
+ * nothing written.
  *
  * @example
  * const append = roleInstructions({ role: 'implementer', may_edit_tests: false, config })

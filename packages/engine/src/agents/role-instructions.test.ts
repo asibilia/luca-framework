@@ -89,3 +89,32 @@ describe("the test-writer's outcomes (#484)", () => {
         )
     })
 })
+
+describe("the integration lens's instructions (#513)", () => {
+    const lens = (role: 'integration-lens' | 'security-lens') =>
+        roleInstructions({
+            role,
+            may_edit_tests: false,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+
+    test('ask for a summary picture and the merge danger on the first round', () => {
+        const text = lens('integration-lens')
+        expect(text).toContain('summary_picture')
+        expect(text).toContain('merge_danger')
+        expect(text).toContain('one-way door')
+        expect(text).toContain('blast_radius')
+    })
+
+    test('give null for both on a re-review', () => {
+        expect(lens('integration-lens')).toMatch(
+            /re-review[^\n]*null[^\n]*summary_picture|re-review[^\n]*summary_picture[^\n]*null/
+        )
+    })
+
+    test('the other lenses are not asked for them', () => {
+        const text = lens('security-lens')
+        expect(text).not.toContain('summary_picture')
+        expect(text).not.toContain('merge_danger')
+    })
+})

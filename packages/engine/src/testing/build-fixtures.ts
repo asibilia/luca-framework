@@ -2,6 +2,7 @@ import { SPEC_OWNER } from './intake-fixtures'
 
 import type {
     AgentRole,
+    CriterionTests,
     Finding,
     FindingResponse,
     FindingRuling,
@@ -243,11 +244,14 @@ export const testsWritten = ({
     assumptions,
     finding_responses,
     run_notes,
+    criteria,
 }: {
     /** `null` for the final review. */
     ticket: number | null
     /** Defaults to `SESSIONS['test-writer']`. */
     session_id?: string
+    /** Defaults to one test, `sum adds two numbers`, for AC1. */
+    criteria?: CriterionTests[]
     /** Defaults to one assumption. */
     assumptions?: string[]
     /** A review fixer's answer to each finding it got. */
@@ -263,7 +267,7 @@ export const testsWritten = ({
         session_id: session_id ?? SESSIONS['test-writer'],
         result: {
             outcome: 'tests_written',
-            criteria: [
+            criteria: criteria ?? [
                 {
                     criterion_id: 'AC1',
                     tests: [

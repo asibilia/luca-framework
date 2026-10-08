@@ -3,11 +3,13 @@ import flatMap from 'lodash/flatMap'
 import uniq from 'lodash/uniq'
 
 import { alreadyDoneNote } from './already-done'
+import { evidenceSection } from './evidence-text'
 import { shippedFindingsSection } from './final-review-text'
 import { leftOutSections } from './left-out'
 import { newMemoriesSection } from './memory-text'
 import { reasonLine } from './stuck-text'
 
+import type { MergeDanger } from '../agents/role-results'
 import {
     EMPTY_FINAL_REVIEW,
     type FinalReviewState,
@@ -26,6 +28,37 @@ const fileText = (file: string | null): string =>
     file === null ? '' : ` (${file})`
 
 /**
+ * The longest Summary picture the PR body shows (#513); a longer one is
+ * clipped, so a runaway picture can't blow the body's budget.
+ */
+export const MAX_SUMMARY_PICTURE = 3_000
+
+const FENCE = '```'
+
+/**
+ * The Summary section (#513): the integration lens's picture, clipped to
+ * `MAX_SUMMARY_PICTURE` (a fence the clip leaves open is closed), or a
+ * note that there is none.
+ */
+const summarySection = (picture: string | null): string => {
+    if (picture === null) {
+        return '## Summary\n\nNot available: the final review gave no picture.'
+    }
+    if (picture.length <= MAX_SUMMARY_PICTURE) return `## Summary\n\n${picture}`
+    const clipped = picture.slice(0, MAX_SUMMARY_PICTURE)
+    const open = clipped.split(FENCE).length % 2 === 0
+    return `## Summary\n\n${clipped}${open ? `\n${FENCE}` : ''}\n\n… (clipped: the picture is over ${MAX_SUMMARY_PICTURE.toLocaleString('en-US')} characters)`
+}
+
+const DOOR_TEXT = { one_way: 'one-way', two_way: 'two-way' } as const
+
+/** The Merge danger section (#513), or a note that there is none. */
+const mergeDangerSection = (danger: MergeDanger | null): string =>
+    danger === null
+        ? '## Merge danger\n\nNot available: the final review gave no merge danger.'
+        : `## Merge danger\n\n- **Door:** ${DOOR_TEXT[danger.door]}: ${danger.door_reason}\n- **Blast radius:** ${danger.blast_radius}: ${danger.blast_radius_reason}`
+
+/**
  * The run's pull request title and body, from the snapshot, each ticket's
  * progress, and the final review: which tickets it closes (an already-done
  * one with the commits that did its work, #484), the tickets left for a
@@ -34,7 +67,11 @@ const fileText = (file: string | null): string =>
  * every agent on each ticket, and in the final review), the reviews' nits,
  * the findings declined through "won't fix", and the memories the learner
  * added or updated (#370). A final review shipped
- * while stuck puts its open findings at the very top.
+ * while stuck puts its open findings at the very top. Right after the
+ * "Built by" line come the Summary picture and the Merge Danger (from the
+ * final review's integration lens, or "Not available" without them) and
+ * the Evidence that each ticket's new tests failed first and pass now
+ * (#513), then the tickets.
  *
  * @example
  * const { title, body } = pullRequestText({ snapshot, tickets, final_review })
@@ -140,6 +177,9 @@ export const pullRequestText = ({
     const body = [
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,
+        summarySection(review.summary_picture),
+        mergeDangerSection(review.merge_danger),
+        evidenceSection({ snapshot, tickets }),
         `## Tickets\n\n${closes.join('\n')}`,
         ...leftOutSections({ left_out: snapshot.left_out }),
         skipped.length === 0
@@ -173,10 +213,11 @@ export const PULL_REQUEST_FILE = 'pull-request.md'
 
 /**
  * The body's long parts, which move into PR comments when the body is over
- * its budget. The rest (open findings, the tickets it closes, and the ones
- * left out) always stays in the body.
+ * its budget. The rest (open findings, the Summary and Merge danger, the
+ * tickets it closes, and the ones left out) always stays in the body.
  */
 const MOVABLE_HEADINGS = [
+    '## Evidence',
     '## Assumptions',
     '## Nits',
     '## Declined findings',
@@ -246,9 +287,10 @@ const packed = ({
 /**
  * The PR body as sent to GitHub, and the PR comments posted after it, from
  * its full text (#508). A body under `budget` goes as it is. A longer one
- * keeps its essentials (open findings, the tickets it closes, and the
- * tickets left out), and its long parts (assumptions, nits, declined
- * findings, new memories) as long as they fit; the rest moves into PR
+ * keeps its essentials (open findings, the Summary and Merge danger, the
+ * tickets it closes, and the tickets left out), and its long parts (the
+ * Evidence, assumptions, nits, declined findings, new memories) as long as
+ * they fit beside every essential (#513); the rest moves into PR
  * comments, each under the budget, cut between list items, and the body
  * says so. Whatever is still too long is clipped, pointing at the full
  * text in the run folder.
@@ -267,18 +309,25 @@ export const fitPullRequestBody = ({
     if (body.length < budget) return { body, comments: [] }
     const note = (moved: string[]) =>
         `## More in the PR comments\n\nThis PR's text is too long for its body, so its ${moved.map((section) => section.split('\n', 1)[0]?.replace('## ', '').toLowerCase()).join(', ')} are in the PR comments below. The full text is in the run folder's \`${PULL_REQUEST_FILE}\`.`
+    const sections = body.split(/\n\n(?=## )/)
+    // Essentials after a long part still need their room (#513).
+    const essentials = sections.filter((section) => !isMovable(section))
     const kept: string[] = []
+    const kept_long: string[] = []
     const moved: string[] = []
-    for (const section of body.split(/\n\n(?=## )/)) {
+    for (const section of sections) {
         if (!isMovable(section)) {
             kept.push(section)
             continue
         }
         const fits =
             moved.length === 0 &&
-            [...kept, section, note([section])].join('\n\n').length < budget
-        if (fits) kept.push(section)
-        else moved.push(section)
+            [...essentials, ...kept_long, section, note([section])].join('\n\n')
+                .length < budget
+        if (fits) {
+            kept.push(section)
+            kept_long.push(section)
+        } else moved.push(section)
     }
     const comments = packed({
         pieces: moved.flatMap((section) =>

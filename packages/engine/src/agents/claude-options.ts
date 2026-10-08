@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { roleInstructions } from './role-instructions'
 import {
     ImplementerResultSchema,
+    IntegrationLensResultSchema,
     LearnerResultSchema,
     LensReviewResultSchema,
     TestWriterResultSchema,
@@ -114,7 +115,7 @@ const RESULT_SCHEMAS: Record<AgentRole, z.ZodType> = {
     'architecture-lens': LensReviewResultSchema,
     'simplification-lens': LensReviewResultSchema,
     'security-lens': LensReviewResultSchema,
-    'integration-lens': LensReviewResultSchema,
+    'integration-lens': IntegrationLensResultSchema,
     'rules-lens': LensReviewResultSchema,
     learner: LearnerResultSchema,
 }

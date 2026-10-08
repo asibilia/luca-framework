@@ -251,6 +251,37 @@ export const LensReviewResultSchema = TicketReviewResultSchema
 
 export type LensReviewResult = z.infer<typeof LensReviewResultSchema>
 
+/**
+ * How dangerous the branch is to merge (#513), as the integration lens
+ * judges it. A **one-way door** is a change a revert can't undo out in the
+ * world: a migration that drops data, a publish, sent messages, a deploy.
+ * A two-way door a revert undoes. The **blast radius** is how much breaks
+ * if the change is wrong. Each comes with a one-line reason.
+ */
+export const MergeDangerSchema = z.object({
+    door: z.enum(['one_way', 'two_way']),
+    door_reason: z.string(),
+    blast_radius: z.enum(['small', 'medium', 'large']),
+    blast_radius_reason: z.string(),
+})
+
+export type MergeDanger = z.infer<typeof MergeDangerSchema>
+
+/**
+ * The integration lens's result (#513): a lens result, plus, on its first
+ * round, the PR's Summary picture and Merge Danger. `summary_picture` is the
+ * smallest visual that makes the change clear (a call tree, a file tree, a
+ * Mermaid diagram, or a diff sketch), as markdown with its fenced block. A
+ * re-review gives null for both. Both default to null, so older journals
+ * still parse.
+ */
+export const IntegrationLensResultSchema = LensReviewResultSchema.extend({
+    summary_picture: z.string().nullable().default(null),
+    merge_danger: MergeDangerSchema.nullable().default(null),
+})
+
+export type IntegrationLensResult = z.infer<typeof IntegrationLensResultSchema>
+
 /** The most memories one learner may propose. */
 export const MAX_PROPOSED_MEMORIES = 10
 
@@ -306,7 +337,10 @@ export const RoleResultSchema = z.discriminatedUnion('role', [
     lensResult('architecture-lens'),
     lensResult('simplification-lens'),
     lensResult('security-lens'),
-    lensResult('integration-lens'),
+    z.object({
+        role: z.literal('integration-lens'),
+        result: IntegrationLensResultSchema,
+    }),
     lensResult('rules-lens'),
     z.object({ role: z.literal('learner'), result: LearnerResultSchema }),
 ])

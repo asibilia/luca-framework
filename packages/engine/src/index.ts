@@ -128,6 +128,7 @@ export {
     shipFinalReview,
 } from './core/execute-final-review'
 export { finalFixerPrompt, lensPrompt } from './core/final-review-text'
+export { evidenceSection } from './core/evidence-text'
 export { pullRequestText } from './core/pull-request-text'
 export {
     DEFAULT_MAX_STEPS,
