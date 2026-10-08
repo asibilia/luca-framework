@@ -23,6 +23,7 @@ import {
     TicketSnapshotSchema,
 } from '../intake/intake-schemas'
 import {
+    DecisionModelOffReasonSchema,
     JevAnswerSchema,
     JevFailureReasonSchema,
     JevFixedSchema,
@@ -1212,7 +1213,11 @@ const MemoriesReportedEntrySchema = z.object({
     }),
 })
 
-/** The engine asked Jev, in shadow mode, with its own fixed choice beside. */
+/**
+ * The engine asked the decision model (Clef; Jev in older journals), in
+ * shadow mode, with its own fixed choice beside. `model` is the model asked;
+ * journals from before #534 have none.
+ */
 const JevAskedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('jev_asked'),
@@ -1220,10 +1225,15 @@ const JevAskedEntrySchema = z.object({
         job: JevJobSchema,
         request: JevRequestSchema,
         fixed: JevFixedSchema,
+        model: z.string().optional(),
     }),
 })
 
-/** Jev's answers to the `jev_asked` record at `asked_seq`. The engine ignores them. */
+/**
+ * The decision model's answers to the `jev_asked` record at `asked_seq`.
+ * The engine ignores them. `model` is the model that answered, as it named
+ * itself (such as `clef`); journals from before #534 have none.
+ */
 const JevAnsweredEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('jev_answered'),
@@ -1233,10 +1243,11 @@ const JevAnsweredEntrySchema = z.object({
         answers: z.record(z.string(), JevAnswerSchema),
         /** How long the call took. */
         ms: z.number().min(0),
+        model: z.string().optional(),
     }),
 })
 
-/** The Jev call at `asked_seq` gave no answers. The run goes on regardless. */
+/** The decision model call at `asked_seq` gave no answers. The run goes on regardless. */
 const JevFailedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('jev_failed'),
@@ -1246,6 +1257,25 @@ const JevFailedEntrySchema = z.object({
         reason: JevFailureReasonSchema,
         error: z.string(),
         ms: z.number().min(0),
+    }),
+})
+
+/**
+ * The decision model is off for the rest of the run (#534), so the engine
+ * asks it nothing more: `no_credentials` at the start (Luca's env file and
+ * the process env have no Cloudflare account id or token), or `rejected`
+ * after an ask Cloudflare turned down. `model` is the model it would have
+ * asked; `detail` is one plain sentence (the file and keys to add, or
+ * Cloudflare's answer), never the token. Shadow mode only: it changes
+ * nothing in the run.
+ */
+const DecisionModelOffEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('decision_model_off'),
+    content: z.object({
+        model: z.string(),
+        reason: DecisionModelOffReasonSchema,
+        detail: z.string(),
     }),
 })
 
@@ -1357,6 +1387,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     JevAskedEntrySchema,
     JevAnsweredEntrySchema,
     JevFailedEntrySchema,
+    DecisionModelOffEntrySchema,
     AgentSessionEntrySchema,
     AgentSessionClosedEntrySchema,
     SharedGitChangedEntrySchema,
@@ -1440,6 +1471,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     JevAskedEntrySchema.extend(STAMP_FIELDS),
     JevAnsweredEntrySchema.extend(STAMP_FIELDS),
     JevFailedEntrySchema.extend(STAMP_FIELDS),
+    DecisionModelOffEntrySchema.extend(STAMP_FIELDS),
     AgentSessionEntrySchema.extend(STAMP_FIELDS),
     AgentSessionClosedEntrySchema.extend(STAMP_FIELDS),
     SharedGitChangedEntrySchema.extend(STAMP_FIELDS),
@@ -1522,6 +1554,7 @@ export const JournalKindSchema = z.enum([
     'jev_asked',
     'jev_answered',
     'jev_failed',
+    'decision_model_off',
     'agent_session',
     'agent_session_closed',
     'shared_git_changed',

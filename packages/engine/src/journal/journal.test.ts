@@ -3,6 +3,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import omit from 'lodash/omit'
 
 import {
     createJournal,
@@ -232,6 +233,126 @@ describe('journal', () => {
         expect(
             replayRun({ records: journal.read() }).tickets[11]?.sessions
         ).toEqual({})
+    })
+
+    test('Jev records from before Clef (#534) read and replay', async () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'run_started',
+            ticket: null,
+            role: null,
+            content: { spec_number: 10, config: CONFIG },
+        })
+        const time = '2026-09-28T00:00:00.000Z'
+        const request = {
+            state: { ticket: '#11 Add sum' },
+            questions: { tdd: { type: 'noul', instructions: 'Use tdd?' } },
+        }
+        const old = [
+            {
+                seq: 2,
+                time,
+                kind: 'jev_asked',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    job: 'agent_skills',
+                    request,
+                    fixed: { tdd: false },
+                },
+            },
+            {
+                seq: 3,
+                time,
+                kind: 'jev_answered',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    job: 'agent_skills',
+                    asked_seq: 2,
+                    answers: {
+                        tdd: {
+                            value: 0.9,
+                            confidence: null,
+                            raw: { probability: 0.9 },
+                        },
+                    },
+                    ms: 300,
+                },
+            },
+            {
+                seq: 4,
+                time,
+                kind: 'jev_asked',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    job: 'agent_skills',
+                    request,
+                    fixed: { tdd: false },
+                },
+            },
+            {
+                seq: 5,
+                time,
+                kind: 'jev_failed',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    job: 'agent_skills',
+                    asked_seq: 4,
+                    reason: 'missing_key',
+                    error: 'TYPESAFE_API_KEY is not set.',
+                    ms: 0,
+                },
+            },
+        ]
+        await Bun.write(
+            file,
+            `${await readFile(file, 'utf8')}${old.map((record) => JSON.stringify(record)).join('\n')}\n`
+        )
+
+        const records = journal.read()
+        expect(records.map(({ kind }) => kind)).toEqual([
+            'run_started',
+            'jev_asked',
+            'jev_answered',
+            'jev_asked',
+            'jev_failed',
+        ])
+        expect(records[2]?.content).not.toHaveProperty('model')
+        expect(records[4]?.content).toMatchObject({ reason: 'missing_key' })
+        expect(omit(replayRun({ records }), 'last_seq')).toEqual(
+            omit(replayRun({ records: records.slice(0, 1) }), 'last_seq')
+        )
+    })
+
+    test('a decision_model_off record reads and changes nothing on replay', () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'run_started',
+            ticket: null,
+            role: null,
+            content: { spec_number: 10, config: CONFIG },
+        })
+        journal.append({
+            kind: 'decision_model_off',
+            ticket: null,
+            role: null,
+            content: {
+                model: '@cf/cloudflare/clef',
+                reason: 'no_credentials',
+                detail: 'No Cloudflare credentials.',
+            },
+        })
+
+        const records = journal.read()
+        expect(records[1]?.kind).toBe('decision_model_off')
+        expect(omit(replayRun({ records }), 'last_seq')).toEqual(
+            omit(replayRun({ records: records.slice(0, 1) }), 'last_seq')
+        )
     })
 
     test.each(AgentRoleSchema.options)(

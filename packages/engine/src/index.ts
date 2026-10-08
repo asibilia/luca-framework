@@ -60,6 +60,8 @@ export {
 } from './board/paseo-board-link'
 export {
     bunTestCommands,
+    DecisionModelConfigSchema,
+    decisionModelOf,
     ENGINE_CONFIG_FILE,
     EngineConfigSchema,
     loadEngineConfig,
@@ -193,13 +195,27 @@ export {
 } from './intake/intake-checks'
 export * from './intake/intake-schemas'
 export {
-    createTypeSafeJev,
-    JEV_MODEL,
-    JEV_URL,
-    type JevClient,
-    type JevFetch,
-    type JevReply,
-} from './jev/jev-client'
+    clefUrl,
+    createClefClient,
+    type ClefCredentials,
+    type DecisionModelClient,
+    type DecisionModelFetch,
+    type DecisionModelReply,
+} from './jev/clef-client'
+export {
+    CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_AUTH_TOKEN,
+    DECISION_MODEL_KEYS,
+    describeDecisionModelCredentials,
+    loadDecisionModelCredentials,
+    lucaEnvFile,
+    missingKeyLines,
+    noCredentialsText,
+    parseEnvFile,
+    type DecisionModelCredentials,
+    type DecisionModelKey,
+} from './jev/decision-model-credentials'
 export {
     JEV_CANDIDATE_SKILLS,
     JEV_FAILURE_TEXT_CHARS,
@@ -211,9 +227,10 @@ export {
 } from './jev/jev-jobs'
 export * from './jev/jev-schemas'
 export {
-    askJevInShadow,
     DEFAULT_JEV_TIMEOUT_MS,
+    shadowAsker,
     type JevShadow,
+    type ShadowAsker,
 } from './jev/jev-shadow'
 export {
     createJournal,

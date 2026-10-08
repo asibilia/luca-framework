@@ -109,10 +109,11 @@ on with a run from its journal (#369).
 | `src/testing/final-review-fixtures.ts` | Journal entry builders for the final review: rounds, lens turns, fix rounds, passed, stuck, shipped. |
 | `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). `CLEAN_LENS_TURNS` are five approving lenses; its runs fall back on them for any lens the turns don't script. |
 | `src/testing/many-tickets.ts` | The many-ticket practice runs: three tickets, two at once with a clash and one waiting on both (`SUM_PRODUCT_AVERAGE`); two tickets that break each other's gates after joining (`BROKEN_JOIN`); a plan limit with two tickets in flight (`LIMIT_HIT`); and a rebase across a new dependency (`REINSTALL`). |
-| `src/jev/jev-schemas.ts` | Jev's questions, requests, and answers, and the engine's fixed choices, as Zod schemas. |
-| `src/jev/jev-client.ts` | The Jev client through TypeSafe's API. Never throws. |
-| `src/jev/jev-jobs.ts` | What to ask Jev around each step, with the engine's fixed choice. Pure. |
-| `src/jev/jev-shadow.ts` | Asks Jev in **shadow mode** and journals each call and answer. |
+| `src/jev/jev-schemas.ts` | The decision model's questions, requests, and answers, the engine's fixed choices, failure and off reasons, and the Clef model ids, as Zod schemas. The folder and names keep the Jev name, so old journals read. |
+| `src/jev/clef-client.ts` | The decision model client for Cloudflare's **Clef** on Workers AI. Never throws, and never puts the token in an error. |
+| `src/jev/decision-model-credentials.ts` | Reads the Cloudflare credentials from Luca's own env file (`~/.config/luca/.env`), with the process env winning key by key. Never a repo's `.env`. |
+| `src/jev/jev-jobs.ts` | What to ask the decision model around each step, with the engine's fixed choice. Pure. |
+| `src/jev/jev-shadow.ts` | Asks the decision model in **shadow mode**, journals each call and answer, and turns it off for the run when Cloudflare turns the token down. |
 | `src/memory/memory-schemas.ts` | **Memory**'s shapes as Zod schemas (a hit, a shown memory, a vault's search, a save, a feedback) and its numbers: `MIN_MEMORY_SCORE`, `MAX_MEMORIES_PER_RECALL`, `SIMILAR_MEMORY_SCORE`, `DEFAULT_MEMORY_TIMEOUT_MS`. |
 | `src/memory/memory-client.ts` | The memory client interface (an object of async functions), and `safeMemory`: every call with a timeout, every error a value. Never throws. |
 | `src/memory/memory-recall.ts` | Pure: the vaults a search covers, and the merge by score (minimum score, one per vault and id, at most 5). |
@@ -857,7 +858,7 @@ Choices made:
   agent does get the run's newest notes, like a ticket's agents; notes a
   final review agent leaves are not kept, since no agent comes after them
   that would read them.
-- Final review agents get no Jev asks (no skills ask for lenses), and their
+- Final review agents get no decision model asks (no skills ask for lenses), and their
   failures and findings are asked about only for records of their own lens.
 ## Stuck work (#366)
 
@@ -1024,7 +1025,7 @@ also looks for what repeats across them. The skill:
 1. Sums the runs up with its helper, `scripts/retro-summary.ts`, which only
    reads the journal (agents keep no transcripts): what got stuck and why,
    fix loops at their cap, leftover scan hits, agents out of turns, failed
-   agent turns and Jev calls, checks and tests that failed again and again,
+   agent turns and decision model calls, checks and tests that failed again and again,
    setup changes asked for, joins that clashed, the agents' assumptions,
    the findings fixers declined, slow steps, and tokens. Each line names
    its journal seq.
@@ -1046,7 +1047,8 @@ The engine sends its journal records to the board plugin as they are
 appended, verbatim: the event *is* the record (`seq`, `time`, `kind`,
 `ticket`, `role`, `content`). The plugin keeps and reduces the run's state;
 the engine computes nothing for the board. Every kind above maps onto the
-board, Jev's included (only counted, since shadow mode decides nothing); see
+board, the decision model's included (only counted, since shadow mode
+decides nothing); see
 "The board's vocabulary" in `packages/board/README.md`.
 
 `runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
@@ -1110,10 +1112,11 @@ printed the list.
 **A real run** (`--spec`) builds with real Claude agents: `runSpec` gets
 `createClaudeLauncher({})` (Claude Opus 5.5 at `high` effort, every guard on,
 paid by your Claude plan; see Guards) and closes its open sessions with
-`closeAll()` however the run ends. It asks Jev in shadow mode with
-`jev: { client: createTypeSafeJev() }`, which reads `TYPESAFE_API_KEY`; with
-no key each ask is journaled as `jev_failed` (`missing_key`), nothing is
-sent, and the run goes on. A launcher stop (`run_stopped`) ends the process
+`closeAll()` however the run ends. It asks the decision model, Clef, in
+shadow mode, with the credentials from Luca's own env file (see "The
+decision model in shadow mode"); with none, the decision model is off for
+the run: one line and one `decision_model_off` record, no asks, and the run
+goes on. A launcher stop (`run_stopped`) ends the process
 with "Run stopped: <reason>"; run it again with `--resume <run-id>` (or the
 same `--spec` and `--run-id`) to pick the step up again. A crash ends it with
 "The engine crashed: <error>". Both messages end with how to go on
@@ -1126,7 +1129,8 @@ hand in scripted agents and never call a model.
 repo (`src/testing/practice-repo.ts`, with a local bare `origin`) in a temp
 folder, fills an in-memory tracker with the practice spec and two tickets
 (#12 blocked by #11), and runs the engine with scripted agents that take
-1.5 s per turn. Jev is asked in shadow mode with no key, and memory is a fake
+1.5 s per turn. The decision model is off (the demo never reads its
+credentials or asks it), and memory is a fake
 MuninnDB with two seeded memories and a scripted learner, so their records
 show up but nothing leaves the machine. No GitHub, no models. It prints the temp
 paths and the PR it opened in memory, then removes the temp folder (which
@@ -1737,12 +1741,14 @@ newest reading at or over a line, and an agent's turn next
 (`fileUsageLine`); left out, as in tests and the demo, there is no usage
 line.
 
-## Jev in shadow mode
+## The decision model in shadow mode
 
-Jev is TypeSafe's labeling model. `runEngine({ ..., jev })` asks it around
-each step in **shadow mode**: every call and answer goes in the journal, and
-the engine still acts on its own fixed choices. `decide` never reads Jev's
-records, so the run goes exactly as it would without Jev.
+The **decision model** is Cloudflare's **Clef**, on Workers AI (#534; before
+it, TypeSafe's Jev, so the code's folder and the journal's record kinds keep
+the `jev` name and old journals still read). `runEngine({ ..., jev })` asks
+it around each step in **shadow mode**: every call and answer goes in the
+journal, and the engine still acts on its own fixed choices. `decide` never
+reads these records, so the run goes exactly as it would without it.
 
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
@@ -1752,23 +1758,60 @@ records, so the run goes exactly as it would without Jev.
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
 
-Each call writes `jev_asked` (the job, the request, the fixed choice), then
-`jev_answered` (the answers, each with its value and confidence) or
-`jev_failed` (`missing_key`, `timeout`, or `error`). Both point back with
-`asked_seq`. A Jev error, timeout, or missing key is journaled and the run
-goes on. Each call waits at most `timeout_ms` (default 10 seconds).
+Each call writes `jev_asked` (the job, the request, the fixed choice, and
+the `model` asked), then `jev_answered` (the answers, each with its value
+and confidence, and the `model` that answered) or `jev_failed`
+(`missing_credentials`, `rejected`, `timeout`, or `error`; old journals also
+hold Jev's `missing_key`). Both point back with `asked_seq`. An error or a
+timeout is journaled and the run goes on, and the next ask tries again. Each
+call waits at most `timeout_ms` (default 10 seconds).
 
-```ts
-import { createTypeSafeJev, runEngine } from '@luca/engine'
+**Credentials.** The engine reads them itself from **Luca's own env file**,
+`~/.config/luca/.env` (or `$XDG_CONFIG_HOME/luca/.env`), the same for runs
+the board starts and runs started in a terminal. It never reads a repo's
+`.env`. Put in:
 
-// Reads TYPESAFE_API_KEY on each call. With no key, each ask is journaled
-// as jev_failed with reason missing_key, and nothing is sent.
-await runEngine({ journal, tracker, git, launcher, jev: { client: createTypeSafeJev() } })
+```
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-workers-ai-token
 ```
 
-Leave `jev` out to run without Jev; the journal is then exactly as before.
-With many tickets at once, the asks after a step look only at the new
-records of that step's own ticket.
+`CLOUDFLARE_AUTH_TOKEN` works as the token too (`CLOUDFLARE_API_TOKEN` wins).
+A key set in the process env wins over the file, key by key. Note that Bun
+loads the `.env` of the folder it starts in, so a `luca-run` started by hand
+in a repo whose `.env` sets these keys uses the repo's; the board starts the
+engine with `--no-env-file`, so board runs never do. `luca doctor` says
+whether Clef is set up, and which keys to add where.
+
+**Off for the run.** With no credentials, the decision model is off from
+the start: one line (`decision model off: No Cloudflare credentials: add
+... to <file>.`) and one `decision_model_off { model, reason:
+'no_credentials', detail }` record, and nothing is asked. When Cloudflare
+turns the token down (HTTP 401 or 403), that ask's `jev_failed` says
+`rejected`, then one `decision_model_off { reason: 'rejected' }` and one
+line, and no later ask in the run is sent or journaled. The off switch
+belongs to the run (each `runEngine` call), never the process.
+
+**The model.** `decision_model.model` in `.luca/config.json` picks it:
+`@cf/cloudflare/clef` (the default, the accurate one) or
+`@cf/cloudflare/clef-flash` (the fast one). It is fixed for a run at start,
+like `checks`, so a run's asks are all of one model.
+
+```ts
+import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'
+
+const credentials = await loadDecisionModelCredentials({ env: process.env, home: homedir() })
+if (credentials.ok) {
+    const client = createClefClient({ credentials, model: '@cf/cloudflare/clef' })
+    await runEngine({ journal, tracker, git, launcher, jev: { client } })
+}
+```
+
+`runSpec` and `resumeRun` do this for you: they take `decision_model: {
+credentials }` and journal the off record when there are none. Leave `jev`
+out to run without the decision model; the journal is then exactly as
+before. With many tickets at once, the asks after a step look only at the
+new records of that step's own ticket.
 
 ## Memory (#370)
 
@@ -1952,7 +1995,7 @@ test-writer waits until the other has started), #12 finishes and joins first,
 #11 clashes on `src/index.ts`, is fixed on top of the run branch, re-reviewed,
 and joins, and #13 starts only after both pushed. It checks the order of the
 joins, the follow-up and re-review prompts, origin's run branch, and that the
-worktrees are gone. A second run with a Jev that always picks another ticket
+worktrees are gone. A second run with a decision model that always picks another ticket
 shows its pick journaled and ignored. `src/core/run-broken-join.test.ts` runs
 `BROKEN_JOIN`: #21 adds `double` on top of `helper` in `src/util.ts`, and
 #22 renames `helper`, so both pass alone and git sees no clash, but the
@@ -1994,10 +2037,13 @@ run with messages across #11 and #12 while both build, `all`, a message
 that waits for #11's clash follow-up, and a run note reaching #12 and #13.
 `src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
-`src/jev/jev-shadow.test.ts` runs the same practice repo with a fake Jev, one
-that disagrees with everything, throws, never answers, or has no key, and
-checks the run matches a run without Jev. `src/jev/jev-client.test.ts` tests
-the TypeSafe client with a fake `fetch`; no test reaches the network.
+`src/jev/jev-shadow.test.ts` runs the same practice repo with a fake
+decision model, one that disagrees with everything, throws, never answers,
+has no credentials, or has its token turned down (one ask, then off), and
+checks the run matches a run without one. `src/jev/clef-client.test.ts`
+tests the Clef client with a fake `fetch`, and
+`src/jev/decision-model-credentials.test.ts` reads Luca's env file from a
+temp home; no test reaches the network or reads the real home folder.
 
 `src/core/decide-limits.test.ts` hands the decision step scripted
 rate-limit readings (allowed, allowed_warning, rejected days away, the Opus
@@ -2029,8 +2075,9 @@ connection; no test reaches a real MuninnDB.
 arrive in seq order, a board that restarted gets a replay, and a failing board
 never breaks the run. `src/cli/run-modes.test.ts` runs the demo, and the
 real-run path with the in-memory tracker and a scripted stand-in for the
-Claude launcher: it builds to a PR and closes the sessions, passes Jev
-through, ends on a launcher stop, resumes a journal, and reports a missing
+Claude launcher: it builds to a PR and closes the sessions, asks Clef
+through a fake `fetch` with the config's model, turns the decision model off
+with no credentials, ends on a launcher stop, resumes a journal, and reports a missing
 config. Its `--resume` test crashes a real run after its red commit, lists it
 in `unfinishedRuns`, then `resumeRun` finishes it: one PR, each commit once,
 no comment twice, and `run_resumed` in the journal. `src/core/decide-crash-recovery.test.ts`

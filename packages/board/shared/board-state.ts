@@ -482,8 +482,9 @@ export const RunInfoSchema = z.object({
 export type RunInfo = z.infer<typeof RunInfoSchema>
 
 /**
- * Jev in shadow mode: how often the engine asked it and what came back. The
- * engine never acts on the answers, so the board only counts them.
+ * The decision model (Clef; Jev in older journals) in shadow mode: how often
+ * the engine asked it and what came back. The engine never acts on the
+ * answers, so the board only counts them.
  */
 export const JevCountsSchema = z.object({
     asked: z.number().int().min(0),

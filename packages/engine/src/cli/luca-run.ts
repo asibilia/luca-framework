@@ -7,9 +7,13 @@
  *       --run-id <id> --board-plugin luca-board      (token in $LUCA_BOARD_TOKEN)
  *
  * A real run builds with real Claude agents (`createClaudeLauncher`: Claude
- * Opus 5.5, every guard on, paid by your Claude plan) and asks Jev in shadow
- * mode (`createTypeSafeJev`, which reads `TYPESAFE_API_KEY`; with no key each
- * ask is journaled as `missing_key` and the run goes on). Memory (#370) is
+ * Opus 5.5, every guard on, paid by your Claude plan) and asks the decision
+ * model, Cloudflare's Clef, in shadow mode (#534). Its credentials,
+ * `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, come from Luca's own
+ * env file, `~/.config/luca/.env` (or `$XDG_CONFIG_HOME/luca/.env`), with
+ * the process env winning key by key; never from the repo's `.env`. With
+ * none, the decision model is off for the run: one line and one
+ * `decision_model_off` record, and no asks. Memory (#370) is
  * MuninnDB over MCP, found through `LUCA_MUNINN_URL` and `LUCA_MUNINN_TOKEN`
  * or Claude Code's `mcpServers.muninn` in `~/.claude.json`; with neither,
  * the run goes on without memory.
@@ -39,7 +43,7 @@ import {
 import { createClaudeLauncher } from '../agents/claude-launcher'
 import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
-import { createTypeSafeJev } from '../jev/jev-client'
+import { loadDecisionModelCredentials } from '../jev/decision-model-credentials'
 import { defaultRunsDir } from '../journal/journal'
 import {
     defaultSharedReadingsPath,
@@ -75,6 +79,14 @@ const memoryOf = async (): Promise<MemoryDeps | undefined> => {
     log(`[luca-run] memory: MuninnDB at ${found.settings.url}`)
     return { client: createMuninnMcpClient({ settings: found.settings }) }
 }
+
+/** The decision model's setup: its credentials from Luca's own env file. */
+const decisionModelSetup = async () => ({
+    credentials: await loadDecisionModelCredentials({
+        env: process.env,
+        home: homedir(),
+    }),
+})
 
 /**
  * The usage line (#434): the `luca-board` plugin's lines, and the readings
@@ -119,7 +131,7 @@ const run = async ({
             tracker: async ({ repo }) =>
                 createGitHubTracker({ repo: await githubRepoOf({ repo }) }),
             launcher: createClaudeLauncher({}),
-            jev: { client: createTypeSafeJev() },
+            decision_model: await decisionModelSetup(),
             memory: await memoryOf(),
             usage: usageLine(),
             board,
@@ -137,7 +149,7 @@ const run = async ({
         runs_dir: defaultRunsDir(),
         tracker,
         launcher: createClaudeLauncher({}),
-        jev: { client: createTypeSafeJev() },
+        decision_model: await decisionModelSetup(),
         memory: await memoryOf(),
         usage: usageLine(),
         board,

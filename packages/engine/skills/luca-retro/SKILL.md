@@ -22,7 +22,7 @@ bun ~/.claude/skills/luca-retro/scripts/retro-summary.ts [run id ...]
 
 - No run id: it sums up this repo's newest finished run (one that opened its PR, was stopped, or had nothing to do), found from the main checkout, any of its worktrees, or a subfolder. If that isn't the one the owner means, ask.
 - Several run ids: it sums up each, then lists the patterns that repeat across them. A repeat ranks higher.
-- It prints the run's spec, repo, Luca versions, and how it ended; then what got stuck and how long the owner took to reply, fix loops that hit their cap, leftover scan hits, agents out of turns, "No open agent session" failures, Jev calls that failed, checks and tests that failed again and again, setup changes agents asked for, joins that clashed, replies, the agents' assumptions, the findings fixers declined, slow steps, and tokens. Every line names its journal seq (`#123`).
+- It prints the run's spec, repo, Luca versions, and how it ended; then what got stuck and how long the owner took to reply, fix loops that hit their cap, leftover scan hits, agents out of turns, "No open agent session" failures, decision model calls that failed, checks and tests that failed again and again, setup changes agents asked for, joins that clashed, replies, the agents' assumptions, the findings fixers declined, slow steps, and tokens. Every line names its journal seq (`#123`).
 
 The journal is all there is: agents run without saved sessions, so there are no transcripts. To read one record in full: `jq -c 'select(.seq == 123)' ~/.local/state/luca/runs/<run id>/journal.jsonl` (or under `$LUCA_RUNS_DIR`). The records are JSON lines: `seq`, `time`, `kind`, `ticket`, `role`, `content`.
 
@@ -49,7 +49,7 @@ Some signs, from the helper's sections:
 - The same stuck reason (such as `leftovers_found`) again and again: a rule or a check, or a Luca bug when the engine was wrong to block it.
 - A `setup_change_needed`: the repo's setup was missing something every ticket like it will need.
 - Agents out of turns, or "No open agent session" failures: often (e) or (f).
-- A `jev_failed` on every call: a missing key or setting, (e).
+- A `jev_failed` on every call, or a `decision_model_off`: missing or turned-down Cloudflare credentials in `~/.config/luca/.env`, (e).
 - One test failing in many gates: a flaky or build-bound test, (a) or (f).
 - Many assumptions about the same thing: (d).
 - A finding declined with `wont_fix` for a reason the run can't change (a role can't write a file): (f) or (b).

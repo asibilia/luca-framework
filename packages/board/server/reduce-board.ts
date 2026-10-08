@@ -114,6 +114,7 @@ const QUIET_KINDS = new Set([
     'jev_asked',
     'jev_answered',
     'jev_failed',
+    'decision_model_off',
     'agent_message',
     'agent_message_delivered',
     'shared_git_changed',
@@ -1298,6 +1299,9 @@ const applyKind = ({
                 ...state,
                 jev: { ...state.jev, failed: state.jev.failed + 1 },
             }
+        // The decision model turning off is only a chat line (#534).
+        case 'decision_model_off':
+            return state
         case 'agent_message': {
             const refused = record.content.status === 'refused'
             return {

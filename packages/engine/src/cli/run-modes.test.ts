@@ -25,7 +25,7 @@ import {
     type BoardLink,
 } from '../board/board-sync'
 import { startRun } from '../core/execute'
-import { createTypeSafeJev } from '../jev/jev-client'
+import type { DecisionModelFetch } from '../jev/clef-client'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { createFakeMuninn } from '../testing/fake-muninn'
@@ -105,13 +105,27 @@ afterEach(async () => {
 describe('luca-run --demo', () => {
     test('builds both practice tickets, opens one PR, tells the board, and cleans up', async () => {
         const recorder = recordingBoard()
+        const realFetch = globalThis.fetch
+        let fetched = 0
+        globalThis.fetch = Object.assign(
+            async () => {
+                fetched += 1
+                throw new Error('the demo must not reach the network')
+            },
+            { preconnect: realFetch.preconnect }
+        )
 
-        const result = await runDemo({
-            run_id: 'luca-20260923-141500-ab12',
-            board: recorder.board,
-            log,
-            turn_delay_ms: 0,
-        })
+        let result: Awaited<ReturnType<typeof runDemo>>
+        try {
+            result = await runDemo({
+                run_id: 'luca-20260923-141500-ab12',
+                board: recorder.board,
+                log,
+                turn_delay_ms: 0,
+            })
+        } finally {
+            globalThis.fetch = realFetch
+        }
 
         expect(result.ok).toBe(true)
         expect(result.pull_requests).toHaveLength(1)
@@ -122,8 +136,11 @@ describe('luca-run --demo', () => {
             'pull_request_opened',
             'worktrees_removed',
         ])
-        // Jev is asked in shadow mode with no key: journaled, never sent.
-        expect(recorder.kinds()).toContain('jev_asked')
+        // The decision model is off in the demo: no asks, nothing sent.
+        expect(recorder.kinds()).not.toContain('jev_asked')
+        expect(recorder.kinds()).not.toContain('jev_failed')
+        expect(fetched).toBe(0)
+        expect(logs.join('\n')).toContain('decision model off')
         // Memory is a fake MuninnDB: searched, learned, and saved offline.
         expect(recorder.kinds()).toContain('memory_recalled')
         expect(recorder.kinds()).toContain('memories_saved')
@@ -178,9 +195,25 @@ describe('luca-run --spec', () => {
         expect(recorder.endings()).toEqual([result])
     }, 60_000)
 
-    test('asks Jev in shadow mode when given one', async () => {
-        const { repo } = await makePracticeRepo({ root })
+    test('with credentials, asks Clef in shadow mode with the config’s model', async () => {
+        const { repo } = await makePracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                decision_model: { model: '@cf/cloudflare/clef-flash' },
+            },
+        })
         const recorder = recordingBoard()
+        const urls: string[] = []
+        const fetch: DecisionModelFetch = async (url) => {
+            urls.push(url)
+            return new Response(
+                JSON.stringify({
+                    result: { model: 'clef-flash', answers: {} },
+                    success: true,
+                })
+            )
+        }
 
         const result = await runSpec({
             spec_number: 10,
@@ -190,14 +223,82 @@ describe('luca-run --spec', () => {
             runs_dir: join(root, 'runs'),
             tracker: practiceTracker(),
             launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
-            jev: { client: createTypeSafeJev({ api_key: '' }) },
+            decision_model: {
+                credentials: {
+                    ok: true,
+                    account_id: 'acc',
+                    api_token: 'not-real-tok',
+                    file: '/home/.config/luca/.env',
+                },
+                fetch,
+            },
             board: recorder.board,
             log,
         })
 
         expect(result.ok).toBe(true)
         expect(recorder.kinds()).toContain('jev_asked')
-        expect(recorder.kinds()).toContain('jev_failed')
+        expect(recorder.kinds()).toContain('jev_answered')
+        expect(recorder.kinds()).not.toContain('decision_model_off')
+        expect(urls.length).toBeGreaterThan(0)
+        expect(
+            urls.every((url) =>
+                url.endsWith('/accounts/acc/ai/run/@cf/cloudflare/clef-flash')
+            )
+        ).toBe(true)
+        expect(logs.join('\n')).toContain('@cf/cloudflare/clef-flash')
+        expect(logs.join('\n')).not.toContain('not-real-tok')
+    }, 60_000)
+
+    test('with no credentials, the decision model is off: one line, one record, and no asks', async () => {
+        const { repo } = await makePracticeRepo({ root })
+        const file = join(root, 'config', 'luca', '.env')
+
+        const result = await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'run-1',
+            base_branch: null,
+            runs_dir: join(root, 'runs'),
+            tracker: practiceTracker(),
+            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+            decision_model: {
+                credentials: {
+                    ok: false,
+                    missing: ['CLOUDFLARE_API_TOKEN'],
+                    file,
+                },
+                fetch: async () => {
+                    throw new Error('fetch must not be called')
+                },
+            },
+            board: null,
+            log,
+        })
+
+        expect(result.ok).toBe(true)
+        const records = createJournal({
+            file: runJournalPath({
+                runs_dir: join(root, 'runs'),
+                run_id: 'run-1',
+            }),
+        }).read()
+        const kinds = records.map(({ kind }) => kind)
+        expect(
+            kinds.filter((kind) => kind === 'decision_model_off')
+        ).toHaveLength(1)
+        expect(kinds).not.toContain('jev_asked')
+        expect(kinds).not.toContain('jev_failed')
+        const off = records.find(({ kind }) => kind === 'decision_model_off')
+        expect(off?.content).toEqual({
+            model: '@cf/cloudflare/clef',
+            reason: 'no_credentials',
+            detail: expect.stringContaining(file),
+        })
+        const lines = logs.filter((line) => line.includes('decision model'))
+        expect(lines).toHaveLength(1)
+        expect(lines[0]).toContain(file)
+        expect(lines[0]).toContain('CLOUDFLARE_API_TOKEN')
     }, 60_000)
 
     test('with a memory client, memory is on with the config’s vault, and the client is closed', async () => {

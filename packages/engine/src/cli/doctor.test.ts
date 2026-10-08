@@ -25,7 +25,7 @@ import { git } from '../testing/practice-repo'
  * Each check is found by its group and name:
  * - computer: `bun`, `luca`, `claude_code`, `gh_login`, `paseo`,
  *   `paseo_plugins`, `board`, `muninndb`, `muninn_entry`, `planning_skills`,
- *   `luca_skills`;
+ *   `luca_skills`, `decision_model`;
  * - repo: `labels`, `config`, `github_remote`, `issue_links`,
  *   `base_branch`, `vault`;
  * - v13: what old Luca v13 left behind, found by the group alone.
@@ -76,7 +76,14 @@ const COMPUTER_CHECKS = [
     'muninn_entry',
     'planning_skills',
     'luca_skills',
+    'decision_model',
 ]
+
+/** A Workers AI token for Clef, as Luca's own env file holds it. Not real. */
+const CF_TOKEN = 'cf_test_token_1a2b3c4d5e6f'
+
+/** Luca's own env file in the throwaway home. */
+const lucaEnvPath = () => join(home, '.config', 'luca', '.env')
 
 const REPO_CHECKS = [
     'labels',
@@ -137,6 +144,8 @@ let skills_dir = ''
 let engine_path = ''
 /** Stands in for `/tmp`, where v13 left its `luca-*.json` payloads. */
 let tmp_dir = ''
+/** The process env doctor is given; empty unless a test sets it. */
+let doctor_env: Record<string, string | undefined> = {}
 const bun_path = realpathSync(process.execPath)
 /** What the MuninnDB and Claude Code fakes were asked to do, in order. */
 const events: string[] = []
@@ -215,6 +224,12 @@ beforeEach(async () => {
             await Bun.write(join(home, '.claude', 'skills', skill, file), text)
         }
     }
+    // Clef's credentials, in Luca's own env file (#534).
+    await Bun.write(
+        lucaEnvPath(),
+        `CLOUDFLARE_ACCOUNT_ID=acc123\nCLOUDFLARE_API_TOKEN=${CF_TOKEN}\n`
+    )
+    doctor_env = {}
     events.length = 0
     paseo_events.length = 0
     logs.length = 0
@@ -640,6 +655,7 @@ const doctor = ({
                   },
         tmp_dir,
         ...(v13_manifest === undefined ? {} : { v13_manifest }),
+        env: doctor_env,
         log,
     })
 
@@ -1058,6 +1074,62 @@ describe('luca doctor when MuninnDB was skipped', () => {
             []
         )
         expect(end.exit_code).toBe(0)
+    })
+})
+
+describe('luca doctor checks the decision model (#534)', () => {
+    test('with credentials in Luca’s env file, Clef is set up', async () => {
+        const end = await doctor({ fakes: healthy() })
+
+        expectOk(end.checks, 'decision_model')
+        expect(checkOf(end.checks, 'decision_model').detail).toContain(
+            'Clef set up (@cf/cloudflare/clef)'
+        )
+        expect(printed()).not.toContain(CF_TOKEN)
+    })
+
+    test('with no credentials it is off: a warning naming the file and the keys, and it exits 0', async () => {
+        await rm(lucaEnvPath())
+
+        const end = await doctor({ fakes: healthy() })
+
+        const check = expectWarning(
+            end.checks,
+            'decision_model',
+            /CLOUDFLARE_ACCOUNT_ID=.*CLOUDFLARE_API_TOKEN=/s
+        )
+        expect(check.detail).toMatch(/off: no credentials/)
+        expect(`${check.detail}\n${check.fix ?? ''}`).toContain(lucaEnvPath())
+        expect(end.exit_code).toBe(0)
+    })
+
+    test('a missing token is named, and the account id kept', async () => {
+        await Bun.write(lucaEnvPath(), 'CLOUDFLARE_ACCOUNT_ID=acc123\n')
+
+        const end = await doctor({ fakes: healthy() })
+
+        const check = expectWarning(
+            end.checks,
+            'decision_model',
+            /CLOUDFLARE_API_TOKEN=/
+        )
+        expect(check.fix ?? '').not.toContain('CLOUDFLARE_ACCOUNT_ID=')
+    })
+
+    test('the process env counts, XDG_CONFIG_HOME moves the file, and the token is never shown', async () => {
+        await rm(lucaEnvPath())
+        const xdg = join(home, 'xdg')
+        await Bun.write(
+            join(xdg, 'luca', '.env'),
+            'CLOUDFLARE_ACCOUNT_ID=acc123\n'
+        )
+        doctor_env = { XDG_CONFIG_HOME: xdg, CLOUDFLARE_API_TOKEN: CF_TOKEN }
+
+        const end = await doctor({ fakes: healthy() })
+
+        expectOk(end.checks, 'decision_model')
+        expect(printed()).not.toContain(CF_TOKEN)
+        expect(JSON.stringify(end.checks)).not.toContain(CF_TOKEN)
     })
 })
 

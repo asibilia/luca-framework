@@ -227,8 +227,8 @@ const nothingToDoText = ({
 
 /**
  * What a record means in one line, or `null` for records that are noise in
- * a chat (snapshots, session summaries, a clean leftover scan, Jev in shadow
- * mode, ...).
+ * a chat (snapshots, session summaries, a clean leftover scan, the decision
+ * model's asks in shadow mode, ...).
  */
 export const describeRecord = ({
     before,
@@ -255,6 +255,11 @@ export const describeRecord = ({
         case 'config_reloaded':
             return event({
                 text: `Config reloaded: ${record.content.changes.map(({ field }) => field).join(', ')} changed.`,
+                tone: 'info',
+            })
+        case 'decision_model_off':
+            return event({
+                text: `Decision model off: ${record.content.detail}`,
                 tone: 'info',
             })
         case 'config_reload_refused':

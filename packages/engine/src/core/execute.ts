@@ -39,7 +39,11 @@ import { lucaVersion } from '../config/luca-version'
 import { configProblems, outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
-import { askJevInShadow, type JevShadow } from '../jev/jev-shadow'
+import {
+    shadowAsker,
+    type JevShadow,
+    type ShadowAsker,
+} from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord, LabelFailure } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
@@ -844,14 +848,14 @@ const usesRunBranch = (action: EngineAction): boolean => {
 }
 
 /**
- * Carries out one action with Jev in shadow mode: asks Jev before it (ticket
- * order, model, skills), then after it about the records it appended
- * (failure kinds, finding severities). Only the action's own ticket's new
- * records count, since other tickets append at the same time. Jev's answers
- * change nothing.
+ * Carries out one action with the decision model in shadow mode: asks it
+ * before the action (ticket order, model, skills), then after it about the
+ * records it appended (failure kinds, finding severities). Only the action's
+ * own ticket's new records count, since other tickets append at the same
+ * time. The answers change nothing.
  */
 const executeWithJev = async ({
-    jev,
+    ask,
     action,
     journal,
     tracker,
@@ -862,7 +866,7 @@ const executeWithJev = async ({
     step,
     read_usage_lines,
 }: {
-    jev: JevShadow
+    ask: ShadowAsker
     action: EngineAction
     journal: Journal
     tracker: Tracker
@@ -873,14 +877,12 @@ const executeWithJev = async ({
     step?: StepTry
     read_usage_lines?: () => Promise<UsageLines>
 }): Promise<void> => {
-    const shadow = { jev: jev.client, journal, timeout_ms: jev.timeout_ms }
-    await askJevInShadow({
-        ...shadow,
-        asks: jevAsksBefore({
+    await ask(
+        jevAsksBefore({
             action,
             state: replayRun({ records: journal.read() }),
-        }),
-    })
+        })
+    )
     const lastSeq = journal.read().at(-1)?.seq ?? 0
     await executeAction({
         action,
@@ -894,16 +896,15 @@ const executeWithJev = async ({
         read_usage_lines,
     })
     const records = journal.read()
-    await askJevInShadow({
-        ...shadow,
-        asks: jevAsksAfter({
+    await ask(
+        jevAsksAfter({
             records: records.filter(
                 (record) =>
                     record.seq > lastSeq && ownsRecord({ action, record })
             ),
             state: replayRun({ records }),
-        }),
-    })
+        })
+    )
 }
 
 /**
@@ -991,8 +992,10 @@ const followUpSessionOf = (action: EngineAction): string[] =>
  * let finish, then the first error is thrown. `max_steps` counts the actions
  * started.
  *
- * With `jev`, Jev is asked around each step in **shadow mode** and its
- * answers are journaled but never acted on. Without it, nothing changes.
+ * With `jev`, the decision model is asked around each step in **shadow
+ * mode** and its answers are journaled but never acted on (see
+ * `shadowAsker`; a rejected token turns it off for the rest of this call).
+ * Without it, nothing changes.
  *
  * With `memory`, a run whose `run_started` turned memory on searches
  * MuninnDB at each recall point and saves the learner's memories at its
@@ -1045,7 +1048,7 @@ export const runEngine = async ({
     max_steps?: number
     /** Action types to stop at without carrying them out, such as in tests. */
     stop_before?: EngineAction['type'][]
-    /** Jev in shadow mode. Leave it out to run without Jev. */
+    /** The decision model in shadow mode. Leave it out to run without one. */
     jev?: JevShadow
     /** Sends the journal to the board after every step. Never throws. */
     board?: BoardSync
@@ -1069,9 +1072,11 @@ export const runEngine = async ({
             : { git, launcher }
     const inFlight = new Map<string, InFlight>()
     let started = 0
+    // The run's own asker, so turning the decision model off lasts this run.
+    const ask = jev === undefined ? undefined : shadowAsker({ jev, journal })
 
     const execute = (action: EngineAction, step?: StepTry): Promise<void> =>
-        jev === undefined
+        ask === undefined
             ? executeAction({
                   action,
                   journal,
@@ -1084,7 +1089,7 @@ export const runEngine = async ({
                   read_usage_lines: usage?.read_lines,
               })
             : executeWithJev({
-                  jev,
+                  ask,
                   action,
                   journal,
                   tracker,

@@ -9,7 +9,7 @@ import { z } from 'zod'
 import type { AgentLauncher } from '../agents/agent-launcher'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
 import type { BoardSync } from '../board/board-sync'
-import { loadEngineConfig } from '../config/engine-config'
+import { decisionModelOf, loadEngineConfig } from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
 import { decide, type EngineAction } from '../core/decide'
 import {
@@ -21,10 +21,16 @@ import {
 } from '../core/execute'
 import { nothingToDoText } from '../core/left-out'
 import { createGitAdapter } from '../git/git-adapter'
-import { createTypeSafeJev } from '../jev/jev-client'
+import { createClefClient, type DecisionModelFetch } from '../jev/clef-client'
+import {
+    noCredentialsText,
+    type DecisionModelCredentials,
+} from '../jev/decision-model-credentials'
+import { DEFAULT_DECISION_MODEL } from '../jev/jev-schemas'
 import type { JevShadow } from '../jev/jev-shadow'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
 import type { UsageLineDeps } from '../limits/usage-line'
 import type { MemoryDeps } from '../memory/memory-client'
 import {
@@ -243,10 +249,66 @@ export const configReloadText = ({
 }
 
 /**
+ * What a real run needs to ask the decision model (#534): its Cloudflare
+ * credentials (`loadDecisionModelCredentials`), and for tests a fake
+ * `fetch` and a shorter timeout. The model comes from the run's config.
+ */
+export type DecisionModelSetup = {
+    credentials: DecisionModelCredentials
+    /** Defaults to the global `fetch`. */
+    fetch?: DecisionModelFetch
+    /** Defaults to `DEFAULT_JEV_TIMEOUT_MS`. */
+    timeout_ms?: number
+}
+
+/**
+ * The decision model for this run, from `setup` and the model in the run's
+ * own config (its `run_started`, so a resume keeps it). With no credentials
+ * it is off for the run: one `decision_model_off { reason: 'no_credentials' }`
+ * record and one line naming Luca's env file and the keys to add, and no
+ * shadow, so nothing is ever asked. Never logs the token.
+ */
+const openDecisionModel = ({
+    setup,
+    journal,
+    log,
+}: {
+    setup: DecisionModelSetup | undefined
+    journal: Journal
+    log: (line: string) => void
+}): JevShadow | undefined => {
+    if (setup === undefined) return undefined
+    const { config } = replayRun({ records: journal.read() })
+    const model =
+        config === null ? DEFAULT_DECISION_MODEL : decisionModelOf({ config })
+    const { credentials } = setup
+    if (!credentials.ok) {
+        const detail = noCredentialsText(credentials)
+        journal.append({
+            kind: 'decision_model_off',
+            ticket: null,
+            role: null,
+            content: { model, reason: 'no_credentials', detail },
+        })
+        log(`[luca-run] decision model off: ${detail}`)
+        return undefined
+    }
+    log(`[luca-run] decision model: Clef (${model}), in shadow mode`)
+    return {
+        client: createClefClient({ credentials, model, fetch: setup.fetch }),
+        timeout_ms: setup.timeout_ms,
+        log: (line) => {
+            log(`[luca-run] ${line}`)
+        },
+    }
+}
+
+/**
  * A real run of `spec_number` on `repo`: loads the repo's engine config,
  * opens (or resumes) the run's journal at `<runs_dir>/<run_id>`, and runs the
- * engine with the board kept in step, the agents from `launcher`, and Jev
- * in shadow mode if given. With `memory`, a new run turns memory on (#370),
+ * engine with the board kept in step, the agents from `launcher`, and the
+ * decision model in shadow mode if given (`decision_model`; with no
+ * credentials it is off for the run, see `openDecisionModel`). With `memory`, a new run turns memory on (#370),
  * with the engine config's `muninn.vault` as the project vault (none:
  * `default` only); a resumed run keeps what its journal says. A new run
  * stops on a bad config; a resume takes the config's build fields again
@@ -258,7 +320,8 @@ export const configReloadText = ({
  * const end = await runSpec({
  *     spec_number: 374, repo: '/code/app', run_id, base_branch: null,
  *     runs_dir: defaultRunsDir(), tracker: createGitHubTracker({ repo: 'acme/app' }),
- *     launcher: createClaudeLauncher({}), jev: { client: createTypeSafeJev() },
+ *     launcher: createClaudeLauncher({}),
+ *     decision_model: { credentials: await loadDecisionModelCredentials({ env: process.env, home: homedir() }) },
  *     board, log: console.log,
  * })
  */
@@ -270,7 +333,7 @@ export const runSpec = async ({
     runs_dir,
     tracker,
     launcher,
-    jev,
+    decision_model,
     memory,
     usage,
     board,
@@ -285,8 +348,8 @@ export const runSpec = async ({
     runs_dir: string
     tracker: Tracker
     launcher: RunLauncher
-    /** Jev in shadow mode. Leave it out to run without Jev. */
-    jev?: JevShadow
+    /** The decision model's setup (#534). Leave it out to run without one. */
+    decision_model?: DecisionModelSetup
     /** MuninnDB (#370). Leave it out to run without memory. */
     memory?: MemoryDeps
     /** The usage line (#434). Leave it out to run without one. */
@@ -331,6 +394,7 @@ export const runSpec = async ({
         const reload = recordConfigReload({ journal, loaded })
         if (reload !== null) log(`[luca-run] ${configReloadText({ reload })}`)
     }
+    const jev = openDecisionModel({ setup: decision_model, journal, log })
     return driveRun({
         journal,
         run_id,
@@ -550,7 +614,7 @@ export const resumeRun = async ({
     repo,
     tracker,
     launcher,
-    jev,
+    decision_model,
     memory,
     usage,
     board,
@@ -563,8 +627,8 @@ export const resumeRun = async ({
     repo: string | null
     tracker: ({ repo }: { repo: string }) => Tracker | Promise<Tracker>
     launcher: RunLauncher
-    /** Jev in shadow mode. Leave it out to run without Jev. */
-    jev?: JevShadow
+    /** The decision model's setup (#534). Leave it out to go on without one. */
+    decision_model?: DecisionModelSetup
     /**
      * MuninnDB (#370), used when the run's `run_started` turned memory on.
      * Leave it out to go on without memory.
@@ -603,7 +667,7 @@ export const resumeRun = async ({
         runs_dir,
         tracker: made,
         launcher,
-        jev,
+        decision_model,
         memory,
         usage,
         board,
@@ -636,18 +700,11 @@ const slowLauncher = ({
 })
 
 /**
- * The demo's Jev: the real client with no key, so every ask is journaled as
- * `jev_failed` (`missing_key`) and nothing is sent, as in a real run without
- * `TYPESAFE_API_KEY`.
- */
-const OFFLINE_JEV: JevShadow = { client: createTypeSafeJev({ api_key: '' }) }
-
-/**
  * A practice run, safe to try the board with: a throwaway repo with a local
  * bare origin in a temp folder, the practice spec with two tickets (#12
  * blocked by #11) in an in-memory tracker, and scripted agents that take
- * `turn_delay_ms` per turn. No GitHub, no models, no network: Jev is asked in
- * shadow mode with no key, and memory (#370) is a fake MuninnDB seeded with
+ * `turn_delay_ms` per turn. No GitHub, no models, no network: the decision
+ * model is off (its credentials are never read), and memory (#370) is a fake MuninnDB seeded with
  * a few memories, so the board shows searches, the learner, and a save
  * with nothing leaving the machine. The temp folder (which also holds the run's
  * journal) is removed at the end.
@@ -681,6 +738,7 @@ export const runDemo = async ({
         log(`[luca-run] repo: ${repo}`)
         log(`[luca-run] origin: ${origin}`)
         log(`[luca-run] journal: ${journal.file}`)
+        log('[luca-run] decision model off: the demo never asks it.')
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
         const tracker = demoTracker()
@@ -714,7 +772,6 @@ export const runDemo = async ({
                     tracker,
                     git: createGitAdapter({ repo_root: repo }),
                     launcher,
-                    jev: OFFLINE_JEV,
                     memory,
                     board: board ?? undefined,
                 }),

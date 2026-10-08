@@ -145,8 +145,12 @@ A fixed moment in a run when the engine searches memory and hands the results to
 _Avoid_: pre-flight, lookup
 
 **Shadow mode**:
-A trial setup for a labeling model: the engine asks it every time and records its answer in the journal, but acts on a fixed choice until the journal shows the labels are right.
+A trial setup for the decision model: the engine asks it every time and records its answer in the journal, but acts on a fixed choice until the journal shows the answers are right. With no credentials, or credentials Cloudflare turns down, the decision model is off for the run and nothing is asked.
 _Avoid_: dry run, trial mode
+
+**Decision model**:
+The model the engine asks in shadow mode which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
+_Avoid_: labeling model, Jev (except for the record names)
 
 ### Seeing the work
 
