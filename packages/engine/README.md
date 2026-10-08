@@ -23,7 +23,9 @@ through five **lenses** before the PR opens, with its own capped fix loop
 Stuck work reaches the spec's owner as a comment on the spec issue, the other
 tickets keep building, and the owner's one-word replies (`retry`, `skip`,
 `stop`) move it on (#366). The `/luca-unstick` skill reads why for the
-owner and posts the reply once they say yes (#504).
+owner and posts the reply once they say yes (#504). After a run,
+`/luca-retro` reads its journal and suggests what to change so the next one
+goes better (#514).
 With **memory** on, the engine searches MuninnDB at four **recall points** and
 hands the memories to agents, and at the end of every run a learner proposes
 new memories that plain code routes to a vault by type and scope and saves
@@ -145,6 +147,7 @@ on with a run from its journal (#369).
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, the planning skills, and Luca's own skills. |
 | `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
 | `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply. See "Getting a stuck run moving". |
+| `skills/luca-retro/` | The `/luca-retro` skill (#514): its `SKILL.md`, and `scripts/retro-summary.ts`, which sums up what went wrong in finished runs, from their journals, and the patterns that repeat across them. See "Looking back at a run". |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
 
 ## How a run moves
@@ -1004,6 +1007,38 @@ every record kind and stuck reason it names is the journal's, and that its
 playbook covers every stuck reason, so a new reason fails them until the
 skill covers it.
 
+### Looking back at a run (#514)
+
+After a run, the `/luca-retro` skill asks what would have stopped the
+agents' mistakes, and suggests changes to their environment, not the code.
+In Claude Code or a Paseo chat, in the run's repo, type:
+
+```
+/luca-retro [run id ...]
+```
+
+With no run id, it takes this repo's newest finished run. With several, it
+also looks for what repeats across them. The skill:
+
+1. Sums the runs up with its helper, `scripts/retro-summary.ts`, which only
+   reads the journal (agents keep no transcripts): what got stuck and why,
+   fix loops at their cap, leftover scan hits, agents out of turns, failed
+   agent turns and Jev calls, checks and tests that failed again and again,
+   setup changes asked for, joins that clashed, the agents' assumptions,
+   the findings fixers declined, slow steps, and tokens. Each line names
+   its journal seq.
+2. Ranks what went wrong, most serious first, each with its evidence and
+   one of six changes: a check to add, a line for the repo's rules file, an
+   instruction to delete, missing information for agents, waste to cut, or
+   a Luca bug.
+3. Stops until you pick findings by number. For each pick, it looks for an
+   issue that already covers it, else shows the issue it would open and
+   opens it once you say yes: Luca bugs on `asibilia/luca-framework`, the
+   rest on the run's repo.
+
+It never edits code or rule files, and never runs by itself. It ships, and
+is installed and checked, the same way as `/luca-unstick`.
+
 ## The board
 
 The engine sends its journal records to the board plugin as they are
@@ -1190,7 +1225,7 @@ Claude Code 2.1.280+; `gh` signed in; Paseo 0.9.1+ with plugins on; the
 board installed from Luca's own folder, loaded at the installed version, with
 its engine and Bun paths; MuninnDB 0.11.0+ answering its health check, and
 Claude Code's user-scope `muninn` entry with its token; the planning skills
-still writing what intake needs; Luca's own skills, such as `/luca-unstick`,
+still writing what intake needs; Luca's own skills, `/luca-unstick` and `/luca-retro`,
 in `~/.claude/skills` as the installed Luca ships them), then, inside a repo, `luca setup`'s checks
 without changing anything. Each line prints OK, or the problem and its exact
 fix. It exits 1 on any problem. MuninnDB not installed (memory off) and

@@ -5,9 +5,9 @@ import type { StepEnd } from './board-in-paseo'
 import { reason } from './doctor-checks'
 
 /**
- * Luca's own Claude Code skills, such as `/luca-unstick` (#504). They ship
- * in the package's `skills/` folder, next to `engine/` and `board/`
- * (`packages/engine/skills/` in the repo). `luca init` and `luca upgrade`
+ * Luca's own Claude Code skills: `/luca-unstick` (#504) and `/luca-retro`
+ * (#514). They ship in the package's `skills/` folder, next to `engine/`
+ * and `board/` (`packages/engine/skills/` in the repo). `luca init` and `luca upgrade`
  * copy them to `~/.claude/skills/<skill>/`, so they work in any repo and
  * any Paseo chat, and `luca doctor` checks the copy is the one the
  * installed Luca ships (`luca doctor --fix` copies it again).
@@ -17,7 +17,7 @@ import { reason } from './doctor-checks'
  */
 
 /** Luca's own skills, by folder name. */
-export const LUCA_SKILLS = ['luca-unstick']
+export const LUCA_SKILLS = ['luca-unstick', 'luca-retro']
 
 /** Test files stay in the repo: they aren't part of a skill. */
 const isTestFile = (path: string) => /\.test\.[cm]?[jt]sx?$/.test(path)
@@ -107,7 +107,7 @@ export const skillDrift = async ({
  *
  * @example
  * await installLucaSkills({ home: homedir(), skills_dir, prefix: '[luca init]', log: console.log })
- * // [luca init] Luca's skills: installed /luca-unstick in ~/.claude/skills
+ * // [luca init] Luca's skills: installed /luca-unstick, /luca-retro in ~/.claude/skills
  */
 export const installLucaSkills = async ({
     home,

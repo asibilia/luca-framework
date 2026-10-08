@@ -147,27 +147,39 @@ const log = (line: string) => {
     logs.push(line)
 }
 
-/** Luca's own skill, as its install folder ships it (#504). */
-const SHIPPED_SKILL = {
-    'SKILL.md':
-        '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
-    'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+/** Luca's own skills, as its install folder ships them (#504, #514). */
+const SHIPPED_SKILLS = {
+    'luca-unstick': {
+        'SKILL.md':
+            '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
+        'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+    },
+    'luca-retro': {
+        'SKILL.md':
+            '---\nname: luca-retro\ndescription: Looks back at a run.\n---\n',
+        'scripts/retro-summary.ts': 'console.log("retro")\n',
+    },
 }
 
-/** Writes Luca's own skill into its install folder, with a test that stays out. */
+/** `/luca-unstick`'s files, as Luca ships them. */
+const SHIPPED_SKILL = SHIPPED_SKILLS['luca-unstick']
+
+/** Writes Luca's own skills into its install folder, each with a test that stays out. */
 const writeShippedSkill = async () => {
-    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
-        await Bun.write(join(skills_dir, 'luca-unstick', file), text)
+    for (const [skill, files] of Object.entries(SHIPPED_SKILLS)) {
+        for (const [file, text] of Object.entries(files)) {
+            await Bun.write(join(skills_dir, skill, file), text)
+        }
+        await Bun.write(
+            join(skills_dir, skill, 'scripts', 'summary.test.ts'),
+            'test file\n'
+        )
     }
-    await Bun.write(
-        join(skills_dir, 'luca-unstick', 'scripts', 'stuck-summary.test.ts'),
-        'test file\n'
-    )
 }
 
-/** A file of the installed `/luca-unstick` in the home folder. */
-const installedSkill = (file: string) =>
-    Bun.file(join(home, '.claude', 'skills', 'luca-unstick', file))
+/** A file of an installed skill of Luca's (`/luca-unstick` by default) in the home folder. */
+const installedSkill = (file: string, skill = 'luca-unstick') =>
+    Bun.file(join(home, '.claude', 'skills', skill, file))
 
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-doctor-home-')))
@@ -197,12 +209,11 @@ beforeEach(async () => {
     await mkdir(join(luca_dir, 'engine', 'cli'), { recursive: true })
     await Bun.write(engine_path, '#!/usr/bin/env bun\n')
     await writeSkills({})
-    // Luca's own skill, installed as `luca init` leaves it.
-    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
-        await Bun.write(
-            join(home, '.claude', 'skills', 'luca-unstick', file),
-            text
-        )
+    // Luca's own skills, installed as `luca init` leaves them.
+    for (const [skill, files] of Object.entries(SHIPPED_SKILLS)) {
+        for (const [file, text] of Object.entries(files)) {
+            await Bun.write(join(home, '.claude', 'skills', skill, file), text)
+        }
     }
     events.length = 0
     paseo_events.length = 0
@@ -1095,7 +1106,7 @@ describe("luca doctor checks Luca's own skills (#504)", () => {
 
         expectOk(end.checks, 'luca_skills')
         const check = checkOf(end.checks, 'luca_skills')
-        expect(check.detail).toContain('/luca-unstick')
+        expect(check.detail).toContain('/luca-unstick, /luca-retro')
         expect(check.detail).toContain(LUCA_VERSION)
     })
 
@@ -1117,9 +1128,29 @@ describe("luca doctor checks Luca's own skills (#504)", () => {
         for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
             expect(await installedSkill(file).text()).toBe(text)
         }
-        expect(
-            await installedSkill('scripts/stuck-summary.test.ts').exists()
-        ).toBe(false)
+        expect(await installedSkill('scripts/summary.test.ts').exists()).toBe(
+            false
+        )
+    })
+
+    test('a missing /luca-retro is a problem too, and --fix installs it', async () => {
+        await rm(join(home, '.claude', 'skills', 'luca-retro'), {
+            recursive: true,
+            force: true,
+        })
+
+        const found = await doctor({ fakes: healthy() })
+        const check = expectProblem(found.checks, 'luca_skills', /doctor --fix/)
+        expect(check.detail).toContain("/luca-retro isn't installed")
+        expect(check.detail).not.toContain('/luca-unstick')
+
+        const fixed = await doctor({ fakes: healthy(), fix: true })
+        expectOk(fixed.checks, 'luca_skills')
+        for (const [file, text] of Object.entries(
+            SHIPPED_SKILLS['luca-retro']
+        )) {
+            expect(await installedSkill(file, 'luca-retro').text()).toBe(text)
+        }
     })
 
     test('a copy from another Luca is a problem naming the installed version, and --fix replaces it', async () => {

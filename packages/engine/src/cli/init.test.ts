@@ -85,27 +85,39 @@ const log = (line: string) => {
     logs.push(line)
 }
 
-/** Luca's own skill, as its install folder ships it (#504). */
-const SHIPPED_SKILL = {
-    'SKILL.md':
-        '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
-    'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+/** Luca's own skills, as its install folder ships them (#504, #514). */
+const SHIPPED_SKILLS = {
+    'luca-unstick': {
+        'SKILL.md':
+            '---\nname: luca-unstick\ndescription: Gets a stuck run moving.\n---\n',
+        'scripts/stuck-summary.ts': 'console.log("stuck")\n',
+    },
+    'luca-retro': {
+        'SKILL.md':
+            '---\nname: luca-retro\ndescription: Looks back at a run.\n---\n',
+        'scripts/retro-summary.ts': 'console.log("retro")\n',
+    },
 }
 
-/** Writes Luca's own skill into its install folder, with a test that stays out. */
+/** `/luca-unstick`'s files, as Luca ships them. */
+const SHIPPED_SKILL = SHIPPED_SKILLS['luca-unstick']
+
+/** Writes Luca's own skills into its install folder, each with a test that stays out. */
 const writeShippedSkill = async () => {
-    for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
-        await Bun.write(join(skills_dir, 'luca-unstick', file), text)
+    for (const [skill, files] of Object.entries(SHIPPED_SKILLS)) {
+        for (const [file, text] of Object.entries(files)) {
+            await Bun.write(join(skills_dir, skill, file), text)
+        }
+        await Bun.write(
+            join(skills_dir, skill, 'scripts', 'summary.test.ts'),
+            'test file\n'
+        )
     }
-    await Bun.write(
-        join(skills_dir, 'luca-unstick', 'scripts', 'stuck-summary.test.ts'),
-        'test file\n'
-    )
 }
 
-/** A file of the installed `/luca-unstick` in the home folder. */
-const installedSkill = (file: string) =>
-    Bun.file(join(home, '.claude', 'skills', 'luca-unstick', file))
+/** A file of an installed skill of Luca's (`/luca-unstick` by default) in the home folder. */
+const installedSkill = (file: string, skill = 'luca-unstick') =>
+    Bun.file(join(home, '.claude', 'skills', skill, file))
 
 beforeEach(async () => {
     home = realpathSync(await mkdtemp(join(tmpdir(), 'luca-init-home-')))
@@ -1128,17 +1140,19 @@ const makeTmnbRepo = async ({
 }
 
 describe("luca init installs Luca's own skills (#504)", () => {
-    test('/luca-unstick lands in ~/.claude/skills, without its tests', async () => {
+    test('/luca-unstick and /luca-retro land in ~/.claude/skills, without their tests', async () => {
         const end = await init({ fakes: freshFakes() })
 
-        for (const [file, text] of Object.entries(SHIPPED_SKILL)) {
-            expect(await installedSkill(file).text()).toBe(text)
+        for (const [skill, files] of Object.entries(SHIPPED_SKILLS)) {
+            for (const [file, text] of Object.entries(files)) {
+                expect(await installedSkill(file, skill).text()).toBe(text)
+            }
+            expect(
+                await installedSkill('scripts/summary.test.ts', skill).exists()
+            ).toBe(false)
         }
-        expect(
-            await installedSkill('scripts/stuck-summary.test.ts').exists()
-        ).toBe(false)
         expect(logs).toContain(
-            `[luca init] Luca's skills: installed /luca-unstick in ${join(home, '.claude', 'skills')}`
+            `[luca init] Luca's skills: installed /luca-unstick, /luca-retro in ${join(home, '.claude', 'skills')}`
         )
         expect(
             end.doctor.find(({ name }) => name === 'luca_skills')
@@ -1320,10 +1334,12 @@ describe('luca init outside a git repo', () => {
         const inside = printed().split('\n')
         // The same computer, fresh again, for the run outside a repo.
         await rm(join(home, 'Library'), { recursive: true, force: true })
-        await rm(join(home, '.claude', 'skills', 'luca-unstick'), {
-            recursive: true,
-            force: true,
-        })
+        for (const skill of Object.keys(SHIPPED_SKILLS)) {
+            await rm(join(home, '.claude', 'skills', skill), {
+                recursive: true,
+                force: true,
+            })
+        }
         events.length = 0
         logs.length = 0
         const fakes = freshFakes()
