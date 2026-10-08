@@ -19,6 +19,7 @@ import {
     summarizeJournal,
     tokensText,
     type LooseRecord,
+    currentRepos,
 } from './retro-summary'
 
 import { FindingResponseSchema } from '../../../src/agents/role-results'
@@ -47,6 +48,7 @@ import {
     ticketRebased,
     ticketStuck,
 } from '../../../src/testing/build-fixtures'
+import { makeCheckouts } from '../../../src/testing/checkouts-fixtures'
 import { recordsFrom } from '../../../src/testing/intake-fixtures'
 
 /**
@@ -651,6 +653,53 @@ describe('several runs', () => {
 })
 
 describe('finding the run', () => {
+    // Twin of the same test in ../../luca-unstick/scripts: the two helpers'
+    // `currentRepos` must find the same runs from the same folders.
+    test("from the main checkout, a worktree, a subfolder, or a symlink, the main checkout's runs", async () => {
+        const checkouts = await makeCheckouts({ dir: join(dir, 'git') })
+        const runs_dir = join(dir, 'runs')
+        const entries = [
+            ...intakePassed({ tickets: TICKETS }),
+            pullRequestOpened(),
+        ]
+        const write = async (run_id: string, repo: string) => {
+            await mkdir(join(runs_dir, run_id), { recursive: true })
+            await Bun.write(
+                join(runs_dir, run_id, 'journal.jsonl'),
+                recordsFrom({ entries })
+                    .map((record) =>
+                        JSON.stringify(
+                            record.kind === 'run_started'
+                                ? {
+                                      ...record,
+                                      content: { ...record.content, repo },
+                                  }
+                                : record
+                        )
+                    )
+                    .join('\n') + '\n'
+            )
+        }
+        await write('of-main', checkouts.main)
+        await write('of-outside', checkouts.outside)
+        for (const cwd of [
+            checkouts.main,
+            checkouts.worktree,
+            checkouts.subfolder,
+            checkouts.link,
+        ]) {
+            const runs = repoRuns({ runs_dir, repos: currentRepos({ cwd }) })
+            expect(runs.map(({ run_id }) => run_id)).toEqual(['of-main'])
+        }
+        // Outside git, the folder itself, as before.
+        expect(
+            repoRuns({
+                runs_dir,
+                repos: currentRepos({ cwd: checkouts.outside }),
+            }).map(({ run_id }) => run_id)
+        ).toEqual(['of-outside'])
+    })
+
     test('with no id, the newest finished run of the repo, from any of its checkouts', async () => {
         const finished = [
             ...intakePassed({ tickets: TICKETS }),

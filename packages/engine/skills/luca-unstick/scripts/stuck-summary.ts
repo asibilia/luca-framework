@@ -20,9 +20,9 @@
  * engine's own fixtures, and every kind in `KINDS_READ` against the
  * journal's kinds, so the two can't drift apart unseen.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 
 /** Every journal record kind this script reads. */
 export const KINDS_READ = [
@@ -761,17 +761,18 @@ export type RunChoice = {
 
 /**
  * The runs of `repo` in `runs_dir`, newest first, with how many things
- * wait on a reply in each. A run's repo is its `run_started` repo.
+ * wait on a reply in each. A run's repo is its `run_started` repo; it
+ * matches any of `repos`, symlinks followed.
  */
 export const repoRuns = ({
     runs_dir,
-    repo,
+    repos,
 }: {
     runs_dir: string
-    repo: string
+    repos: string[]
 }): RunChoice[] => {
     if (!existsSync(runs_dir)) return []
-    const want = resolve(repo)
+    const want = new Set(repos.map(realPath))
     return readdirSync(runs_dir)
         .map((run_id) => ({
             run_id,
@@ -783,7 +784,7 @@ export const repoRuns = ({
             const started = records.find((r) => r.kind === 'run_started')
             return (
                 started !== undefined &&
-                resolve(text(started.content.repo) || '/') === want
+                want.has(realPath(text(started.content.repo) || '/'))
             )
         })
         .map(({ run_id, records }) => ({
@@ -939,10 +940,50 @@ const watchReply = async ({
     }
 }
 
-/** The git repo the current folder is in, or the folder itself. */
-const currentRepo = (): string => {
-    const top = Bun.spawnSync(['git', 'rev-parse', '--show-toplevel'])
-    return top.exitCode === 0 ? top.stdout.toString().trim() : process.cwd()
+/**
+ * A path with its symlinks followed (`/tmp` is `/private/tmp` on macOS), or
+ * just made absolute when it doesn't exist.
+ */
+const realPath = (path: string): string => {
+    try {
+        return realpathSync(path)
+    } catch {
+        return resolve(path)
+    }
+}
+
+/**
+ * The repos a run started from `cwd` may name, real paths, main first: the
+ * main checkout (a run's repo is the main checkout), then the git top folder
+ * (a worktree's own, or a subfolder's repo). Outside git, `cwd` itself. A
+ * bare repo or a submodule has no `<checkout>/.git` common dir, so it adds
+ * no main checkout, only its top folder.
+ *
+ * Its twin is `currentRepos` in `luca-retro/scripts/retro-summary.ts`: each skill folder is installed
+ * to `~/.claude/skills/` on its own, so they can't share a file. Keep the two
+ * the same; a test in each pins it.
+ *
+ * @example
+ * currentRepos({ cwd: '/code/app-worktree' }) // ['/code/app', '/code/app-worktree']
+ */
+export const currentRepos = ({ cwd }: { cwd: string }): string[] => {
+    const git = (...args: string[]) => {
+        const out = Bun.spawnSync(['git', '-C', cwd, ...args])
+        const said = out.stdout.toString().trim()
+        return out.exitCode === 0 && said !== '' ? said : null
+    }
+    const top = git('rev-parse', '--show-toplevel')
+    const common = git(
+        'rev-parse',
+        '--path-format=absolute',
+        '--git-common-dir'
+    )
+    const main =
+        common !== null && basename(common) === '.git' ? dirname(common) : null
+    return [main, top ?? cwd]
+        .filter((repo) => repo !== null)
+        .map(realPath)
+        .filter((repo, index, all) => all.indexOf(repo) === index)
 }
 
 const main = async () => {
@@ -966,13 +1007,18 @@ const main = async () => {
     }
     let run_id = args.run_id
     if (run_id === null) {
-        const repo = args.repo ?? currentRepo()
-        const runs = repoRuns({ runs_dir: args.runs_dir, repo })
+        const repos =
+            args.repo === null
+                ? currentRepos({ cwd: process.cwd() })
+                : [args.repo]
+        const runs = repoRuns({ runs_dir: args.runs_dir, repos })
         if (runs.length === 0) {
-            console.log(`No Luca runs of ${repo} in ${args.runs_dir}.`)
+            console.log(
+                `No Luca runs of ${repos.join(' or ')} in ${args.runs_dir}.`
+            )
             return
         }
-        console.log(`Runs of ${repo}, newest first:`)
+        console.log(`Runs of ${repos[0]}, newest first:`)
         for (const run of runs.slice(0, 10)) {
             console.log(
                 `- ${run.run_id}: spec #${run.spec ?? '?'}, started ${run.started}, ${run.over ? 'over' : 'not over'}, ${run.stuck} waiting on a reply`

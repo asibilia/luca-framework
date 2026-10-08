@@ -27,9 +27,9 @@
  * own fixtures, and every kind in `KINDS_READ` against the journal's kinds,
  * so the two can't drift apart unseen.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 
 /** Every journal record kind this script reads. */
 export const KINDS_READ = [
@@ -1185,7 +1185,7 @@ export const repoRuns = ({
     repos: string[]
 }): RunChoice[] => {
     if (!existsSync(runs_dir)) return []
-    const want = new Set(repos.map((repo) => resolve(repo)))
+    const want = new Set(repos.map(realPath))
     return readdirSync(runs_dir)
         .map((run_id) => ({
             run_id,
@@ -1197,7 +1197,7 @@ export const repoRuns = ({
             const started = records.find((r) => r.kind === 'run_started')
             return (
                 started !== undefined &&
-                want.has(resolve(text(started.content.repo) || '/'))
+                want.has(realPath(text(started.content.repo) || '/'))
             )
         })
         .map(({ run_id, records }) => ({
@@ -1258,14 +1258,36 @@ export const parseArgs = ({
 }
 
 /**
- * The current folder's repo: its git top folder, and, in a worktree, the
- * main checkout's too (a run's repo is the main checkout). The folder
- * itself outside git.
+ * A path with its symlinks followed (`/tmp` is `/private/tmp` on macOS), or
+ * just made absolute when it doesn't exist.
  */
-const currentRepos = (): string[] => {
+const realPath = (path: string): string => {
+    try {
+        return realpathSync(path)
+    } catch {
+        return resolve(path)
+    }
+}
+
+/**
+ * The repos a run started from `cwd` may name, real paths, main first: the
+ * main checkout (a run's repo is the main checkout), then the git top folder
+ * (a worktree's own, or a subfolder's repo). Outside git, `cwd` itself. A
+ * bare repo or a submodule has no `<checkout>/.git` common dir, so it adds
+ * no main checkout, only its top folder.
+ *
+ * Its twin is `currentRepos` in `luca-unstick/scripts/stuck-summary.ts`: each skill folder is installed
+ * to `~/.claude/skills/` on its own, so they can't share a file. Keep the two
+ * the same; a test in each pins it.
+ *
+ * @example
+ * currentRepos({ cwd: '/code/app-worktree' }) // ['/code/app', '/code/app-worktree']
+ */
+export const currentRepos = ({ cwd }: { cwd: string }): string[] => {
     const git = (...args: string[]) => {
-        const out = Bun.spawnSync(['git', ...args])
-        return out.exitCode === 0 ? out.stdout.toString().trim() : null
+        const out = Bun.spawnSync(['git', '-C', cwd, ...args])
+        const said = out.stdout.toString().trim()
+        return out.exitCode === 0 && said !== '' ? said : null
     }
     const top = git('rev-parse', '--show-toplevel')
     const common = git(
@@ -1273,10 +1295,12 @@ const currentRepos = (): string[] => {
         '--path-format=absolute',
         '--git-common-dir'
     )
-    return [
-        top ?? process.cwd(),
-        ...(common === null ? [] : [dirname(common)]),
-    ].filter((repo, index, all) => all.indexOf(repo) === index)
+    const main =
+        common !== null && basename(common) === '.git' ? dirname(common) : null
+    return [main, top ?? cwd]
+        .filter((repo) => repo !== null)
+        .map(realPath)
+        .filter((repo, index, all) => all.indexOf(repo) === index)
 }
 
 const main = () => {
@@ -1287,7 +1311,10 @@ const main = () => {
     })
     let run_ids = args.run_ids
     if (run_ids.length === 0) {
-        const repos = args.repo === null ? currentRepos() : [args.repo]
+        const repos =
+            args.repo === null
+                ? currentRepos({ cwd: process.cwd() })
+                : [args.repo]
         const runs = repoRuns({ runs_dir: args.runs_dir, repos })
         const pick = newestFinished({ runs })
         if (pick === null) {

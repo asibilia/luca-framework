@@ -1,6 +1,9 @@
+import { realpathSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+import { $ } from 'bun'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
@@ -16,6 +19,7 @@ import {
     repoRuns,
     runState,
     type LooseRecord,
+    currentRepos,
 } from './stuck-summary'
 
 import {
@@ -42,6 +46,7 @@ import {
     testsSentBack,
     billingStopped,
 } from '../../../src/testing/build-fixtures'
+import { makeCheckouts } from '../../../src/testing/checkouts-fixtures'
 import {
     finalReviewRetried,
     finalReviewStuck,
@@ -49,6 +54,7 @@ import {
     lensReviewed,
 } from '../../../src/testing/final-review-fixtures'
 import { recordsFrom } from '../../../src/testing/intake-fixtures'
+import { currentRepos as retroCurrentRepos } from '../../luca-retro/scripts/retro-summary'
 
 /**
  * The `/luca-unstick` helper against journals built with the engine's own
@@ -419,6 +425,65 @@ describe('checking the engine took a reply', () => {
 })
 
 describe('finding the run', () => {
+    test("the repo lookup is the same code as /luca-retro's twin", () => {
+        expect(currentRepos.toString()).toBe(retroCurrentRepos.toString())
+    })
+
+    test('a bare repo, or a worktree of one, has no main checkout: its own folder', async () => {
+        const bare = join(dir, 'app.git')
+        const worktree = join(dir, 'bare-worktree')
+        await $`git init -q --bare -b main ${bare}`.quiet()
+        await $`git -C ${bare} worktree add -q --orphan -b side ${worktree}`.quiet()
+        expect(currentRepos({ cwd: bare })).toEqual([realpathSync(bare)])
+        expect(currentRepos({ cwd: worktree })).toEqual([
+            realpathSync(worktree),
+        ])
+    })
+
+    // Twin of the same test in ../../luca-retro/scripts: the two helpers'
+    // `currentRepos` must find the same runs from the same folders.
+    test("from the main checkout, a worktree, a subfolder, or a symlink, the main checkout's runs", async () => {
+        const checkouts = await makeCheckouts({ dir: join(dir, 'git') })
+        const runs_dir = join(dir, 'runs')
+        const entries = stuckOnBadTest()
+        const write = async (run_id: string, repo: string) => {
+            await mkdir(join(runs_dir, run_id), { recursive: true })
+            await Bun.write(
+                join(runs_dir, run_id, 'journal.jsonl'),
+                recordsFrom({ entries })
+                    .map((record) =>
+                        JSON.stringify(
+                            record.kind === 'run_started'
+                                ? {
+                                      ...record,
+                                      content: { ...record.content, repo },
+                                  }
+                                : record
+                        )
+                    )
+                    .join('\n') + '\n'
+            )
+        }
+        await write('of-main', checkouts.main)
+        await write('of-outside', checkouts.outside)
+        for (const cwd of [
+            checkouts.main,
+            checkouts.worktree,
+            checkouts.subfolder,
+            checkouts.link,
+        ]) {
+            const runs = repoRuns({ runs_dir, repos: currentRepos({ cwd }) })
+            expect(runs.map(({ run_id }) => run_id)).toEqual(['of-main'])
+        }
+        // Outside git, the folder itself, as before.
+        expect(
+            repoRuns({
+                runs_dir,
+                repos: currentRepos({ cwd: checkouts.outside }),
+            }).map(({ run_id }) => run_id)
+        ).toEqual(['of-outside'])
+    })
+
     test("the repo's runs, newest first, with what waits in each", async () => {
         await writeRun({ run_id: 'old', entries: stuckOnBadTest() })
         await writeRun({
@@ -426,7 +491,7 @@ describe('finding the run', () => {
             entries: stuckOnBadTest(),
             repo: '/repos/other',
         })
-        const runs = repoRuns({ runs_dir: dir, repo: '/repos/app' })
+        const runs = repoRuns({ runs_dir: dir, repos: ['/repos/app'] })
         expect(runs.map(({ run_id }) => run_id)).toEqual(['old'])
         expect(runs[0]).toMatchObject({ spec: 10, over: false, stuck: 1 })
     })
