@@ -1,7 +1,7 @@
 {
     "name": "@alecsibilia/luca",
     "description": "Luca: turns a spec on GitHub Issues into a reviewed pull request, run from Paseo with Claude Code",
-    "version": "14.0.0-alpha.8",
+    "version": "14.0.0-alpha.9",
     "license": "Apache-2.0",
     "author": "Alec Sibilia <sibilia.alec@gmail.com>",
     "homepage": "https://github.com/asibilia/luca-framework#readme",
