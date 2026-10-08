@@ -1,10 +1,10 @@
 # Luca documentation
 
-Start with `CONTEXT.md` for the domain words, then read the README of the package you're working in.
+Start with `GLOSSARY.md` for the domain words, then read the README of the package you're working in.
 
 | Doc | What it covers |
 | --- | --- |
-| [../CONTEXT.md](../CONTEXT.md) | The domain words: spec, ticket, run, engine, gate, journal, board, and the rest |
+| [../GLOSSARY.md](../GLOSSARY.md) | The domain words: spec, ticket, run, engine, gate, journal, board, and the rest |
 | [../packages/engine/README.md](../packages/engine/README.md) | The engine: how a run moves, crash recovery, reviews, stuck work, the `luca-run` command line, memory, tests |
 | [../packages/board/README.md](../packages/board/README.md) | The board, the Paseo plugin `luca-board`: `/luca-run`, the `engine.event` contract, settings, install, develop |
 | [agents/](agents/) | How agents use this repo: the [issue tracker](agents/issue-tracker.md), [triage labels](agents/triage-labels.md), and [domain docs](agents/domain.md) |
