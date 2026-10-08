@@ -428,6 +428,9 @@ describe('the PR names the tickets left for a person', () => {
         expect(body).toBe(
             [
                 'Built by the Luca engine from spec #10.',
+                '## Summary\n\nNot available: the final review gave no picture.',
+                '## Merge danger\n\nNot available: the final review gave no merge danger.',
+                "## Evidence\n\nEach ticket's new tests failed before its code was written (the red check), and pass now (the gates).\n\n- #11: no red check recorded.",
                 '## Tickets\n\n- Closes #11: Add sum',
                 "## For a person\n\nTickets labeled `ready-for-human`. An agent doesn't build them, so this PR doesn't close them.\n\n- #12 Make the store page",
                 "## Waiting on a person\n\nTickets that can't be built until a person's ticket is done. A later run builds them.\n\n" +

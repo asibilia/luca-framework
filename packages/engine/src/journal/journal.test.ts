@@ -14,6 +14,15 @@ import { JournalEntrySchema } from './journal-record'
 import { replayRun } from './replay'
 
 import { AgentRoleSchema } from '../agents/role-results'
+import {
+    intakePassed,
+    practiceTicket,
+    redCheck,
+    testsWritten,
+    ticketWorktreeCreated,
+    worktreeReset,
+} from '../testing/build-fixtures'
+import { recordsFrom } from '../testing/intake-fixtures'
 
 const CONFIG = {
     checks: { test: 'bun test' },
@@ -265,5 +274,84 @@ describe('journal', () => {
 
         expect(first).not.toBe(second)
         expect(first).toMatch(/^[a-z0-9-]+$/)
+    })
+})
+
+/**
+ * A ticket's `red_tests` (#513): the new tests its latest passing red check
+ * proved fail first, from the test-writer's criteria, one per file and
+ * name. The PR's Evidence section lists them.
+ */
+describe("replay: a ticket's red tests", () => {
+    const CRITERIA = [
+        {
+            criterion_id: 'AC1',
+            tests: [
+                { file: 'src/sum.test.ts', name: 'sum > adds' },
+                { file: 'src/sum.test.ts', name: 'sum > subtracts' },
+            ],
+        },
+        {
+            criterion_id: 'AC2',
+            tests: [
+                { file: 'src/sum.test.ts', name: 'sum > adds' },
+                { file: 'src/menu.test.ts', name: 'sum > adds' },
+            ],
+        },
+    ]
+
+    const redTestsAfter = (
+        entries: Parameters<typeof recordsFrom>[0]['entries']
+    ) =>
+        replayRun({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassed({
+                        tickets: [practiceTicket({ number: 11 })],
+                    }),
+                    ticketWorktreeCreated({ ticket: 11 }),
+                    ...entries,
+                ],
+            }),
+        }).tickets[11]?.red_tests
+
+    test("a passing red check sets them from the test-writer's criteria, each test once", () => {
+        expect(
+            redTestsAfter([
+                testsWritten({ ticket: 11, criteria: CRITERIA }),
+                redCheck({ ticket: 11, ok: true }),
+            ])
+        ).toEqual([
+            { file: 'src/sum.test.ts', name: 'sum > adds' },
+            { file: 'src/sum.test.ts', name: 'sum > subtracts' },
+            { file: 'src/menu.test.ts', name: 'sum > adds' },
+        ])
+    })
+
+    test('a failed red check leaves them as they were', () => {
+        expect(
+            redTestsAfter([
+                testsWritten({ ticket: 11, criteria: CRITERIA }),
+                redCheck({ ticket: 11, ok: false }),
+            ])
+        ).toEqual([])
+        expect(
+            redTestsAfter([
+                testsWritten({ ticket: 11 }),
+                redCheck({ ticket: 11, ok: true }),
+                testsWritten({ ticket: 11, criteria: CRITERIA }),
+                redCheck({ ticket: 11, ok: false }),
+            ])
+        ).toEqual([{ file: 'src/sum.test.ts', name: 'sum adds two numbers' }])
+    })
+
+    test('a worktree reset clears them', () => {
+        expect(
+            redTestsAfter([
+                testsWritten({ ticket: 11 }),
+                redCheck({ ticket: 11, ok: true }),
+                worktreeReset({ ticket: 11 }),
+            ])
+        ).toEqual([])
     })
 })

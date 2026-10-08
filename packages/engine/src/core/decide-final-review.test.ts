@@ -5,6 +5,7 @@ import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
 
 import { LENS_NAMES } from '../agents/role-results'
 import type { JournalEntry } from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
 import {
     agentFailed,
     agentStarted,
@@ -670,5 +671,116 @@ describe('decision step: a stuck final review', () => {
         expect(stepAfter([...built(), finalReviewShipped()])).toMatchObject({
             type: 'start_final_review',
         })
+    })
+})
+
+/**
+ * The integration lens also gives the PR's Summary picture and Merge Danger
+ * on its first round (#513). Replay keeps them across rounds: a re-review
+ * gives null for both, which never wipes the first round's.
+ */
+describe("the integration lens's Summary and Merge Danger", () => {
+    const PICTURE = '```\nsum()\n└── add()\n```'
+    const DANGER = {
+        door: 'two_way' as const,
+        door_reason: 'A revert undoes it.',
+        blast_radius: 'small' as const,
+        blast_radius_reason: 'Only sum changes.',
+    }
+    const INTEGRATION = lensFinding({ id: 'I1', title: 'Sum and add disagree' })
+
+    const stateAfter = (entries: JournalEntry[]) =>
+        replayRun({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassed({ tickets: [TICKET] }),
+                    ...withInstalls({ entries }),
+                ],
+            }),
+        })
+
+    const firstRound = (findings: ReturnType<typeof lensFinding>[]) => [
+        finalReviewStarted({ round: 1 }),
+        ...LENS_NAMES.flatMap((lens) =>
+            lens === 'integration'
+                ? lensReviewed({
+                      lens,
+                      round: 1,
+                      findings,
+                      summary_picture: PICTURE,
+                      merge_danger: DANGER,
+                  })
+                : lensReviewed({ lens, round: 1 })
+        ),
+    ]
+
+    test('replay keeps them from the first round', () => {
+        const state = stateAfter([...built(), ...firstRound([])])
+
+        expect(state.final_review.summary_picture).toBe(PICTURE)
+        expect(state.final_review.merge_danger).toEqual(DANGER)
+    })
+
+    test("a re-review's nulls do not wipe them", () => {
+        const state = stateAfter([
+            ...built(),
+            ...firstRound([INTEGRATION]),
+            ...[
+                finalReviewFixing({ round: 1 }),
+                implemented({
+                    ticket: null,
+                    finding_responses: [
+                        {
+                            finding_id: 'integration-I1',
+                            response: 'fixed',
+                            reason: '',
+                        },
+                    ],
+                }),
+                ...fixesLanded({ sha: 'fix-1' }),
+            ],
+            finalReviewStarted({
+                round: 2,
+                lenses: ['integration'],
+                from_sha: 'g1',
+                head_sha: 'fix-1',
+            }),
+            ...lensReviewed({
+                lens: 'integration',
+                round: 2,
+                summary_picture: null,
+                merge_danger: null,
+            }),
+        ])
+
+        expect(state.final_review.round).toBe(2)
+        expect(state.final_review.summary_picture).toBe(PICTURE)
+        expect(state.final_review.merge_danger).toEqual(DANGER)
+    })
+
+    test('an older journal, whose integration lens gave neither, replays with null for both', () => {
+        const state = stateAfter([...built(), ...lensRound({ round: 1 })])
+
+        expect(state.final_review.summary_picture).toBeNull()
+        expect(state.final_review.merge_danger).toBeNull()
+    })
+
+    test('the PR shows the picture and the merge danger', () => {
+        const pr = stepsAfter([
+            ...built(),
+            ...firstRound([]),
+            finalReviewPassed(),
+            worktreesRemoved({ paths: [ticketPath(11)] }),
+        ]).find((step) => step.type === 'open_pull_request')
+        if (pr?.type !== 'open_pull_request') throw new Error('no PR')
+
+        expect(pr.body).toContain(`## Summary\n\n${PICTURE}`)
+        expect(pr.body).toContain(
+            '## Merge danger\n\n- **Door:** two-way: A revert undoes it.\n- **Blast radius:** small: Only sum changes.'
+        )
+        expect(pr.body).toContain('## Evidence\n\n')
+        expect(pr.body).toContain(
+            '- #11: 1 new test failed first, now passes: sum adds two numbers'
+        )
     })
 })

@@ -4,6 +4,7 @@ import {
     type Finding,
     type FindingRuling,
     type LensName,
+    type MergeDanger,
 } from '../agents/role-results'
 import type { JournalEntry, StuckReason } from '../journal/journal-record'
 
@@ -79,12 +80,18 @@ export const lensReviewed = ({
     findings,
     rulings,
     assumptions,
+    summary_picture,
+    merge_danger,
 }: {
     lens: LensName
     round: number
     findings?: Finding[]
     rulings?: FindingRuling[]
     assumptions?: string[]
+    /** The integration lens's Summary picture (#513); left out by default. */
+    summary_picture?: string | null
+    /** The integration lens's Merge Danger (#513); left out by default. */
+    merge_danger?: MergeDanger | null
 }): JournalEntry[] => {
     const list = findings ?? []
     const role = lensRole({ lens })
@@ -118,6 +125,10 @@ export const lensReviewed = ({
                     rulings: rulings ?? [],
                     summary: `The ${lens} lens looked.`,
                     assumptions: assumptions ?? [],
+                    ...(summary_picture === undefined
+                        ? {}
+                        : { summary_picture }),
+                    ...(merge_danger === undefined ? {} : { merge_danger }),
                 },
             },
         },

@@ -2,6 +2,7 @@ import mapValues from 'lodash/mapValues'
 import omit from 'lodash/omit'
 import omitBy from 'lodash/omitBy'
 import uniq from 'lodash/uniq'
+import uniqBy from 'lodash/uniqBy'
 
 import type {
     AgentFailure,
@@ -26,6 +27,8 @@ import {
     type LearnerResult,
     type LensName,
     type LensReviewResult,
+    type MergeDanger,
+    type TestRef,
     type TestWriterResult,
     type TicketReviewResult,
 } from '../agents/role-results'
@@ -171,6 +174,12 @@ export type TicketProgress = {
     baseline_sha: string | null
     test_writer: TestWriterResult | null
     red_check: ReplayedRedCheck | null
+    /**
+     * The new tests the latest passing red check proved fail first (#513),
+     * from the test-writer's criteria, one per file and name. A failed red
+     * check leaves them; a worktree reset clears them.
+     */
+    red_tests: TestRef[]
     /**
      * The engine's check of the test-writer's latest `already_done`
      * evidence (#495), `null` until it runs. A new test-writer result
@@ -361,6 +370,16 @@ export type FinalReviewState = {
     shipped_edits: { sha: string; message: string; files: string[] } | null
     /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
     crashed_turn: AgentRole | null
+    /**
+     * The PR's Summary picture, from the integration lens (#513). It is kept
+     * across rounds; a later non-null answer replaces it.
+     */
+    summary_picture: string | null
+    /**
+     * The PR's Merge Danger, from the integration lens (#513). It is kept
+     * across rounds; a later non-null answer replaces it.
+     */
+    merge_danger: MergeDanger | null
 }
 
 /** The final review before it starts. */
@@ -391,6 +410,8 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     shipped: false,
     shipped_edits: null,
     crashed_turn: null,
+    summary_picture: null,
+    merge_danger: null,
 }
 
 /** The engine's install in a new worktree: `null` check means nothing to install. */
@@ -592,6 +613,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     baseline_sha: null,
     test_writer: null,
     red_check: null,
+    red_tests: [],
     already_done_check: null,
     red_fix_rounds: 0,
     implementer: null,
@@ -1503,8 +1525,16 @@ const finalResultChange = ({
     const { fix } = review
     if (lens !== null && 'verdict' in finished.result) {
         if (!review.lenses_due.includes(lens)) return review
-        const next = {
+        // The integration lens's first round gives the PR's Summary and
+        // Merge Danger; a re-review's nulls keep them (#513).
+        const { summary_picture, merge_danger } =
+            finished.role === 'integration-lens'
+                ? finished.result
+                : { summary_picture: null, merge_danger: null }
+        const next: FinalReviewState = {
             ...review,
+            summary_picture: summary_picture ?? review.summary_picture,
+            merge_danger: merge_danger ?? review.merge_danger,
             results: {
                 ...review.results,
                 [lens]: namespaced({ lens, result: finished.result }),
@@ -2050,7 +2080,16 @@ const progressChange = ({
         }
         case 'red_check': {
             const { ok, problems, notes, tests } = record.content
-            return { red_check: { ok, problems, notes, output: tests.output } }
+            const red_check = { ok, problems, notes, output: tests.output }
+            if (!ok) return { red_check }
+            // The tests it proved fail first, for the PR's Evidence (#513).
+            const red_tests = uniqBy(
+                (progress.test_writer?.criteria ?? []).flatMap(
+                    (criterion) => criterion.tests
+                ),
+                ({ file, name }) => `${file}\u0000${name}`
+            )
+            return { red_check, red_tests }
         }
         case 'already_done_checked':
             return alreadyDoneCheckedChange({
@@ -2063,6 +2102,7 @@ const progressChange = ({
             return {
                 test_writer: null,
                 red_check: null,
+                red_tests: [],
                 red_fix_rounds: 0,
                 implementer: null,
                 gates: null,
@@ -2348,6 +2388,7 @@ const resumedProgress = ({
                 ...base,
                 test_writer: null,
                 red_check: null,
+                red_tests: [],
                 already_done_check: null,
             }
         }
