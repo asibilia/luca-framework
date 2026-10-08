@@ -1,5 +1,12 @@
 # @luca/engine
 
+## 14.0.0-alpha.10
+
+### Patch Changes
+
+- 575f6d6: New `/luca-retro` skill, installed by `luca init` and `luca upgrade`: after a run, it reads the journal, ranks what went wrong, and suggests a check, a rule, or a deletion for each, not a code change. It opens an issue for each one you pick, after you confirm (#514).
+- f88b183: The run's PR now starts with a Summary picture and a Merge Danger from the final review's integration lens, and Evidence from the journal that each ticket's new tests failed first and pass now (#513).
+
 ## 14.0.0-alpha.9
 
 ### Patch Changes
