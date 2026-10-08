@@ -1106,7 +1106,7 @@ describe("luca doctor checks Luca's own skills (#504)", () => {
 
         expectOk(end.checks, 'luca_skills')
         const check = checkOf(end.checks, 'luca_skills')
-        expect(check.detail).toContain('/luca-unstick, /luca-retro')
+        expect(check.detail).toContain('/luca-retro, /luca-unstick')
         expect(check.detail).toContain(LUCA_VERSION)
     })
 

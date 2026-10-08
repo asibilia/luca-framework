@@ -5,19 +5,21 @@ import type { StepEnd } from './board-in-paseo'
 import { reason } from './doctor-checks'
 
 /**
- * Luca's own Claude Code skills: `/luca-unstick` (#504) and `/luca-retro`
- * (#514). They ship in the package's `skills/` folder, next to `engine/`
- * and `board/` (`packages/engine/skills/` in the repo). `luca init` and `luca upgrade`
- * copy them to `~/.claude/skills/<skill>/`, so they work in any repo and
- * any Paseo chat, and `luca doctor` checks the copy is the one the
- * installed Luca ships (`luca doctor --fix` copies it again).
+ * Luca's own Claude Code skills, such as `/luca-unstick` (#504) and
+ * `/luca-retro` (#514). They ship in the package's `skills/` folder, next
+ * to `engine/` and `board/` (`packages/engine/skills/` in the repo). `luca
+ * init` and `luca upgrade` copy them to `~/.claude/skills/<skill>/`, so
+ * they work in any repo and any Paseo chat, and `luca doctor` checks the
+ * copy is the one the installed Luca ships (`luca doctor --fix` copies it
+ * again).
+ *
+ * Which skills there are comes from that folder, not a list in the code
+ * (#529): every folder in it with a `SKILL.md`. So a skill new in a
+ * release is copied and checked even by code from before it.
  *
  * A copy writes every file the skill ships (not its tests), over Luca's own
  * earlier copy. It never deletes, and never touches other skills.
  */
-
-/** Luca's own skills, by folder name. */
-export const LUCA_SKILLS = ['luca-unstick', 'luca-retro']
 
 /** Test files stay in the repo: they aren't part of a skill. */
 const isTestFile = (path: string) => /\.test\.[cm]?[jt]sx?$/.test(path)
@@ -25,6 +27,31 @@ const isTestFile = (path: string) => /\.test\.[cm]?[jt]sx?$/.test(path)
 /** Where Claude Code finds a user's own skills. */
 export const claudeSkillsDir = ({ home }: { home: string }): string =>
     join(home, '.claude', 'skills')
+
+/**
+ * Luca's own skills in `skills_dir`, by folder name, sorted: each folder
+ * with a `SKILL.md`. None when the folder is missing.
+ *
+ * @example
+ * await lucaSkills({ skills_dir }) // ['luca-retro', 'luca-unstick']
+ */
+export const lucaSkills = async ({
+    skills_dir,
+}: {
+    skills_dir: string
+}): Promise<string[]> => {
+    try {
+        const manifests = await Array.fromAsync(
+            new Bun.Glob('*/SKILL.md').scan({
+                cwd: skills_dir,
+                onlyFiles: true,
+            })
+        )
+        return manifests.map((manifest) => dirname(manifest)).toSorted()
+    } catch {
+        return []
+    }
+}
 
 /**
  * The files one skill ships, relative to its folder in `skills_dir`,
@@ -57,8 +84,6 @@ export const skillFiles = async ({
 /** How one installed skill differs from the one Luca ships. */
 export type SkillDrift = {
     skill: string
-    /** Luca's install folder has no files for it. */
-    unshipped: boolean
     /** Shipped files the installed copy lacks. */
     missing: string[]
     /** Shipped files whose installed copy has other content. */
@@ -67,7 +92,8 @@ export type SkillDrift = {
 
 /**
  * How each of Luca's skills in `~/.claude/skills` differs from the ones in
- * `skills_dir`; a skill that matches has empty lists. Read-only.
+ * `skills_dir`; a skill that matches has empty lists. None when
+ * `skills_dir` has no skills. Read-only.
  */
 export const skillDrift = async ({
     home,
@@ -77,7 +103,7 @@ export const skillDrift = async ({
     skills_dir: string
 }): Promise<SkillDrift[]> => {
     const drift: SkillDrift[] = []
-    for (const skill of LUCA_SKILLS) {
+    for (const skill of await lucaSkills({ skills_dir })) {
         const files = await skillFiles({ skills_dir, skill })
         const missing: string[] = []
         const changed: string[] = []
@@ -94,7 +120,7 @@ export const skillDrift = async ({
                 changed.push(file)
             }
         }
-        drift.push({ skill, unshipped: files.length === 0, missing, changed })
+        drift.push({ skill, missing, changed })
     }
     return drift
 }
@@ -107,7 +133,7 @@ export const skillDrift = async ({
  *
  * @example
  * await installLucaSkills({ home: homedir(), skills_dir, prefix: '[luca init]', log: console.log })
- * // [luca init] Luca's skills: installed /luca-unstick, /luca-retro in ~/.claude/skills
+ * // [luca init] Luca's skills: installed /luca-retro, /luca-unstick in ~/.claude/skills
  */
 export const installLucaSkills = async ({
     home,
@@ -125,17 +151,15 @@ export const installLucaSkills = async ({
         return { ok, message }
     }
     try {
+        const drift = await skillDrift({ home, skills_dir })
+        if (drift.length === 0) {
+            return say({
+                message: `${prefix} Luca's skills: Luca's folder ${skills_dir} has none. Reinstall Luca.`,
+                ok: false,
+            })
+        }
         const written: string[] = []
-        for (const { skill, unshipped, missing, changed } of await skillDrift({
-            home,
-            skills_dir,
-        })) {
-            if (unshipped) {
-                return say({
-                    message: `${prefix} Luca's skills: ${skill} isn't in Luca's folder ${skills_dir}. Reinstall Luca.`,
-                    ok: false,
-                })
-            }
+        for (const { skill, missing, changed } of drift) {
             for (const file of [...missing, ...changed]) {
                 const target = join(claudeSkillsDir({ home }), skill, file)
                 await mkdir(dirname(target), { recursive: true })

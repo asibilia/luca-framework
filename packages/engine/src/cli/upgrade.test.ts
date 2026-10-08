@@ -5,7 +5,9 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { runUpgrade } from './upgrade'
+import { skillDrift } from './luca-skills'
+import { runUpgrade, type NewInstall } from './upgrade'
+import { finishUpgrade } from './upgrade-finish'
 
 import { startRun } from '../core/execute'
 import { createJournal, runJournalPath } from '../journal/journal'
@@ -16,8 +18,9 @@ import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
  * `luca upgrade` end to end (seam 4): a throwaway home folder with Luca's
  * install folder in it, run state (journals and a board registry) in temp
  * folders, and fakes behind the adapters for npm's registry lookups,
- * `bun add -g`, and Paseo's plugins and their settings. The Bun and Paseo
- * fakes write what they did to one event list, in order.
+ * `bun add -g`, Paseo's plugins and their settings, and the new install
+ * that finishes the upgrade (#529). The Bun, Paseo, and new-install fakes
+ * write what they did to one event list, in order.
  */
 
 const PACKAGE = '@alecsibilia/luca'
@@ -241,16 +244,50 @@ type Fakes = {
     paseo: ReturnType<typeof fakePaseo>
 }
 
+/**
+ * A fake new install that can finish an upgrade, as `luca upgrade --finish`
+ * does in its own process: it runs the last steps with the same fakes, and
+ * exits 0 when they went well.
+ */
+const handsOff = ({ fakes }: { fakes: Fakes }): NewInstall => ({
+    finish: async ({ version, board_before }) => {
+        events.push(`hand off to ${version}`)
+        const end = await finishUpgrade({
+            version,
+            board_before,
+            home,
+            paseo: fakes.paseo.paseo,
+            board_dir,
+            skills_dir,
+            engine_path,
+            bun_path,
+            log,
+        })
+        return { handed_off: true, exit_code: end.ok ? 0 : 1 }
+    },
+})
+
+/** A fake new install that can't finish an upgrade, such as one from before #529. */
+const cantHandOff = ({ why }: { why: string }): NewInstall => ({
+    finish: async ({ version }) => {
+        events.push(`hand off to ${version}`)
+        return { handed_off: false, why }
+    },
+})
+
 const upgrade = ({
     fakes,
     installed_version,
     to = null,
+    new_install = handsOff({ fakes }),
 }: {
     fakes: Fakes
     /** The version of Luca installed now. */
     installed_version: string
     /** `--to <version>`, or `null` without it. */
     to?: string | null
+    /** The new install; by default one that finishes the upgrade. */
+    new_install?: NewInstall
 }) =>
     runUpgrade({
         to,
@@ -265,6 +302,7 @@ const upgrade = ({
         skills_dir,
         engine_path,
         bun_path,
+        new_install,
         list_processes: async () => {
             if (ps_error !== null) throw new Error(ps_error)
             return [...processes]
@@ -997,7 +1035,7 @@ describe("luca upgrade copies Luca's own skills (#504)", () => {
         expect(await installedSkill('SKILL.md').text()).toBe(new_text)
         expect(await Bun.file(other).text()).toBe('Mine.\n')
         expect(logs.join('\n')).toContain(
-            "[luca upgrade] Luca's skills: installed /luca-unstick, /luca-retro"
+            "[luca upgrade] Luca's skills: installed /luca-retro, /luca-unstick"
         )
     })
 
@@ -1017,5 +1055,165 @@ describe("luca upgrade copies Luca's own skills (#504)", () => {
 
         expect(end.ok).toBe(false)
         expect(await installedSkill('SKILL.md').exists()).toBe(false)
+    })
+})
+
+describe('luca upgrade finishes on the version it installed (#529)', () => {
+    /** `bun add -g` that ships a skill the running Luca has never heard of. */
+    const shipsNewSkill = (fakes: Fakes) => {
+        fakes.bun.bun.addGlobal = async ({ spec }: { spec: string }) => {
+            events.push(`bun add -g ${spec}`)
+            await Bun.write(
+                join(skills_dir, 'luca-new', 'SKILL.md'),
+                '---\nname: luca-new\n---\nNew in this release.\n'
+            )
+        }
+    }
+    const installedNewSkill = () =>
+        Bun.file(join(home, '.claude', 'skills', 'luca-new', 'SKILL.md'))
+
+    test('after bun add -g, the new install does the last steps, so a skill new in the release is installed and checked', async () => {
+        const fakes = freshFakes()
+        shipsNewSkill(fakes)
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+        })
+
+        expect(end).toEqual({
+            ok: true,
+            message: 'Luca 14.0.0-alpha.5 is installed.',
+        })
+        expect(
+            events.filter(
+                (event) =>
+                    event.startsWith('bun add -g ') ||
+                    event.startsWith('hand off ') ||
+                    event.startsWith('paseo reload ')
+            )
+        ).toEqual([
+            `bun add -g ${PACKAGE}@14.0.0-alpha.5`,
+            'hand off to 14.0.0-alpha.5',
+            // Once, by the new install: the old one didn't reload it too.
+            `paseo reload ${BOARD_ID}`,
+        ])
+        expect(await installedNewSkill().exists()).toBe(true)
+        expect(logs.join('\n')).toContain(
+            "[luca upgrade] Luca's skills: installed /luca-new"
+        )
+        // What `luca doctor` checks: every skill the install ships.
+        const drift = await skillDrift({ home, skills_dir })
+        expect(drift.map(({ skill }) => skill).toSorted()).toEqual([
+            'luca-new',
+            'luca-retro',
+            'luca-unstick',
+        ])
+        expect(
+            drift.filter(
+                ({ missing, changed }) => missing.length + changed.length > 0
+            )
+        ).toEqual([])
+    })
+
+    test("a skill new in the release is installed even when the running Luca does the last steps: the list is the install's skills folder", async () => {
+        const fakes = freshFakes()
+        shipsNewSkill(fakes)
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+            new_install: cantHandOff({
+                why: "Luca 14.0.0-alpha.5 can't finish an upgrade itself",
+            }),
+        })
+
+        expect(end.ok).toBe(true)
+        expect(await installedNewSkill().exists()).toBe(true)
+    })
+
+    test('a downgrade to a version without the hand-off still finishes, with the running Luca doing the last steps', async () => {
+        const fakes = freshFakes()
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+            to: '14.0.0-alpha.1',
+            new_install: cantHandOff({
+                why: "Luca 14.0.0-alpha.1 can't finish an upgrade itself",
+            }),
+        })
+
+        expect(end).toEqual({
+            ok: true,
+            message: 'Luca 14.0.0-alpha.1 is installed.',
+        })
+        expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.1`])
+        expect(events).toContain(`paseo reload ${BOARD_ID}`)
+        expect(logs).toContain(
+            "[luca upgrade] Luca 14.0.0-alpha.1 can't finish an upgrade itself, so Luca 14.0.0-alpha.3 does the last steps."
+        )
+        expect(logs.at(-1)).toBe(
+            '[luca upgrade] Luca 14.0.0-alpha.1 is installed.'
+        )
+    })
+
+    test('a hand-off that fails to start is reported, with the package still installed and nothing done twice', async () => {
+        const fakes = freshFakes()
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+            new_install: {
+                finish: async () => {
+                    throw new Error('spawn ENOENT')
+                },
+            },
+        })
+
+        expect(end.ok).toBe(false)
+        expect(end.message).toBe(
+            "Luca 14.0.0-alpha.5 is installed, but Luca couldn't start it to finish the upgrade (spawn ENOENT). Run luca init to finish: it reloads the board and copies Luca's skills."
+        )
+        expect(logs.at(-1)).toBe(`[luca upgrade] ${end.message}`)
+        expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.5`])
+        expect(paseoChanges()).toEqual([])
+    })
+
+    test('a hand-off that exits non-zero is reported with its exit code, and the upgrade fails', async () => {
+        const fakes = freshFakes()
+
+        const end = await upgrade({
+            fakes,
+            installed_version: '14.0.0-alpha.3',
+            new_install: {
+                finish: async () => ({ handed_off: true, exit_code: 3 }),
+            },
+        })
+
+        expect(end.ok).toBe(false)
+        expect(end.message).toBe(
+            'Luca 14.0.0-alpha.5 is installed, but its last steps failed (exit 3). See above for what to fix.'
+        )
+        expect(bunAdds()).toEqual([`bun add -g ${PACKAGE}@14.0.0-alpha.5`])
+        expect(paseoChanges()).toEqual([])
+    })
+
+    test("the new install says to /reload-skills only when the board's files changed in the install", async () => {
+        const fakes = freshFakes()
+
+        await upgrade({ fakes, installed_version: '14.0.0-alpha.3' })
+
+        expect(logs.join('\n')).not.toContain('/reload-skills')
+
+        logs.length = 0
+        const changed = freshFakes()
+        changed.bun.bun.addGlobal = async ({ spec }: { spec: string }) => {
+            events.push(`bun add -g ${spec}`)
+            await Bun.write(join(board_dir, 'index.server.ts'), 'new\n')
+        }
+        await upgrade({ fakes: changed, installed_version: '14.0.0-alpha.3' })
+
+        expect(logs.join('\n')).toContain('/reload-skills')
     })
 })

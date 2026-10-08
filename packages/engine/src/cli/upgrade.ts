@@ -1,18 +1,13 @@
-import { readdir } from 'node:fs/promises'
-import { join } from 'node:path'
-
-import { setUpBoard } from './board-in-paseo'
 import type { PaseoPlugins } from './computer-adapters'
-import {
-    formatChecks,
-    hasProblem,
-    reason,
-    type DoctorCheck,
-} from './doctor-checks'
+import { reason, type DoctorCheck } from './doctor-checks'
 import { describeRun, goingRuns } from './going-runs'
 import type { ListProcesses } from './live-runs'
-import { installLucaSkills } from './luca-skills'
 import { resumeCommand } from './run-modes'
+import {
+    boardFingerprint,
+    finishUpgrade,
+    type UpgradeEnd,
+} from './upgrade-finish'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
 
@@ -35,12 +30,20 @@ import { LUCA_PACKAGE } from '../config/luca-version'
  * 4. Reloads the board in Paseo, keeping its settings, and rewrites its
  *    engine and Bun paths (see `setUpBoard`).
  * 5. Says when `/reload-skills` is needed: when the board's files changed.
- * 6. Copies Luca's own skills (`/luca-unstick`, `/luca-retro`) from the new
- *    install into `~/.claude/skills` (see `installLucaSkills`).
+ * 6. Copies Luca's own skills (every one in the new install's `skills/`)
+ *    into `~/.claude/skills` (see `installLucaSkills`).
  * 7. Ends with doctor's computer checks (see `computerChecks`).
  *
- * npm's registry, Bun, Paseo, `ps`, and the computer checks are adapters,
- * so tests use fakes.
+ * Steps 4-7 (`finishUpgrade`) run in the new install, not in this process
+ * (#529): this process runs the old version's code, which doesn't know
+ * what the new version's board setup, skills, and checks are. So after
+ * step 3 upgrade hands off to the new install's `luca upgrade --finish`,
+ * passes its exit code through, and doesn't run them itself. A new install
+ * that can't finish (a version from before #529, such as a downgrade's)
+ * gets them from this process, as before.
+ *
+ * npm's registry, Bun, Paseo, `ps`, the new install, and the computer
+ * checks are adapters, so tests use fakes.
  */
 
 /** npm's registry lookups for `@alecsibilia/luca`. */
@@ -55,8 +58,28 @@ export type BunGlobal = {
     addGlobal: (args: { spec: string }) => Promise<void>
 }
 
-/** How upgrade ended; `message` is the last line it printed. */
-export type UpgradeEnd = { ok: boolean; message: string }
+export type { UpgradeEnd }
+
+/** How handing the last steps to the new install went. */
+export type HandOff =
+    /** The new install ran them; it exited with `exit_code`. */
+    | { handed_off: true; exit_code: number }
+    /** The new install can't run them, and `why` (one sentence, no period). */
+    | { handed_off: false; why: string }
+
+/** The newly installed Luca. */
+export type NewInstall = {
+    /**
+     * Runs `luca upgrade --finish` in the new install of `version`, which
+     * prints its own lines; or says why it can't. Throws when the new
+     * install couldn't be started.
+     */
+    finish: (args: {
+        version: string
+        /** The board folder's fingerprint before the install. */
+        board_before: string | null
+    }) => Promise<HandOff>
+}
 
 /** The first version of new Luca; without `--to`, nothing older is installed. */
 const FIRST_NEW_MAJOR = 14
@@ -125,39 +148,14 @@ export const channelTarget = ({
 }
 
 /**
- * A fingerprint of every file in `dir` but its `node_modules`, or `null`
- * when it can't be read.
- */
-const fingerprint = async (dir: string): Promise<string | null> => {
-    const lines: string[] = []
-    const walk = async (at: string): Promise<void> => {
-        const entries = await readdir(at, { withFileTypes: true })
-        for (const entry of entries) {
-            const path = join(at, entry.name)
-            if (entry.isDirectory()) {
-                if (entry.name !== 'node_modules') await walk(path)
-            } else if (entry.isFile()) {
-                const bytes = await Bun.file(path).arrayBuffer()
-                lines.push(`${path}\t${Bun.hash(bytes)}`)
-            }
-        }
-    }
-    try {
-        await walk(dir)
-    } catch {
-        return null
-    }
-    return lines.sort().join('\n')
-}
-
-/**
  * Runs `luca upgrade`: refuses while a run is going, picks the version,
- * installs it with Bun, reloads the board with its settings kept and its
- * paths rewritten, then prints `computer_checks`. Never throws: a refusal,
- * a failed step, or a check that is a problem ends it with `ok: false`.
+ * installs it with Bun, then hands the last steps to `new_install` (see
+ * `finishUpgrade`), or runs them here when it can't take them. Never
+ * throws: a refusal, a failed step, or a check that is a problem ends it
+ * with `ok: false`.
  *
  * @example
- * const end = await runUpgrade({ to: null, home: homedir(), installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, list_processes: listProcesses, npm, bun, paseo, board_dir, skills_dir, engine_path, bun_path, computer_checks, log: console.log })
+ * const end = await runUpgrade({ to: null, home: homedir(), installed_version: lucaVersion(), runs_dir: defaultRunsDir(), registry_path, list_processes: listProcesses, npm, bun, paseo, board_dir, skills_dir, engine_path, bun_path, new_install, computer_checks, log: console.log })
  */
 export const runUpgrade = async ({
     to,
@@ -173,6 +171,7 @@ export const runUpgrade = async ({
     skills_dir,
     engine_path,
     bun_path,
+    new_install,
     computer_checks,
     log,
 }: {
@@ -198,9 +197,11 @@ export const runUpgrade = async ({
     engine_path: string
     /** Bun's own path. */
     bun_path: string
+    /** The install `bun add -g` makes, which finishes the upgrade. */
+    new_install: NewInstall
     /**
      * Doctor's computer checks of the new install, run after the board
-     * reload; none when not given.
+     * reload when this process runs the last steps; none when not given.
      */
     computer_checks?: () => Promise<DoctorCheck[]>
     log: (line: string) => void
@@ -253,47 +254,48 @@ export const runUpgrade = async ({
             })
         }
 
-        const before = await fingerprint(board_dir)
+        const before = await boardFingerprint(board_dir)
         const spec = `${LUCA_PACKAGE}@${version}`
         log(`[luca upgrade] installing ${spec} (from ${installed_version})`)
         await bun.addGlobal({ spec })
         log(`[luca upgrade] installed ${spec}`)
 
-        const board = await setUpBoard({
-            command: 'luca upgrade',
+        let hand_off: HandOff
+        try {
+            hand_off = await new_install.finish({
+                version,
+                board_before: before,
+            })
+        } catch (error) {
+            return say({
+                message: `Luca ${version} is installed, but Luca couldn't start it to finish the upgrade (${reason(error)}). Run luca init to finish: it reloads the board and copies Luca's skills.`,
+                ok: false,
+            })
+        }
+        if (hand_off.handed_off) {
+            // The new install printed its own lines, its last one included.
+            return hand_off.exit_code === 0
+                ? { ok: true, message: `Luca ${version} is installed.` }
+                : say({
+                      message: `Luca ${version} is installed, but its last steps failed (exit ${hand_off.exit_code}). See above for what to fix.`,
+                      ok: false,
+                  })
+        }
+        log(
+            `[luca upgrade] ${hand_off.why}, so Luca ${installed_version} does the last steps.`
+        )
+        return await finishUpgrade({
+            version,
+            board_before: before,
+            home,
             paseo,
-            // Upgrade only reloads; `luca init` asks to turn plugins on.
-            ask: async () => false,
             board_dir,
+            skills_dir,
             engine_path,
             bun_path,
+            computer_checks,
             log,
         })
-        if (board.ok) {
-            const after = await fingerprint(board_dir)
-            if (before === null || after === null || before !== after) {
-                log(
-                    "[luca upgrade] The board's files changed: run /reload-skills in a Paseo chat so its slash commands are up to date."
-                )
-            }
-        }
-        const skills = await installLucaSkills({
-            home,
-            skills_dir,
-            prefix: '[luca upgrade]',
-            log,
-        })
-        const end = say({
-            message: !board.ok
-                ? `Luca ${version} is installed, but the board wasn't reloaded. Run luca init to fix it.`
-                : !skills.ok
-                  ? `Luca ${version} is installed, but its skills weren't copied. Run luca doctor --fix to fix it.`
-                  : `Luca ${version} is installed.`,
-            ok: board.ok && skills.ok,
-        })
-        const checks = (await computer_checks?.()) ?? []
-        for (const line of formatChecks({ checks })) log(line)
-        return { ...end, ok: end.ok && !hasProblem({ checks }) }
     } catch (error) {
         // Such as a failed `bun add -g` or registry lookup.
         return say({ message: reason(error), ok: false })
