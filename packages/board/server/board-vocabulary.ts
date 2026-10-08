@@ -304,10 +304,17 @@ export const BOARD_VOCABULARY = {
     worktrees_removed: z.looseObject({
         paths: z.array(z.string()).catch([]),
     }),
-    // Jev in shadow mode: counted, never acted on.
+    // The decision model (Clef; Jev in older journals) in shadow mode:
+    // counted, never acted on.
     jev_asked: JevJobSchema,
     jev_answered: JevJobSchema,
     jev_failed: JevJobSchema,
+    /**
+     * The decision model is off for the rest of the run (#534): no
+     * credentials, or Cloudflare turned them down. The board reads only the
+     * plain-words `detail`.
+     */
+    decision_model_off: z.looseObject({ detail: z.string().catch('') }),
     // Agent messages: sent inside an agent's turn, so they move nothing.
     agent_message: z.looseObject({
         from: z.string(),
@@ -490,6 +497,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'jev_asked' }),
     entry({ kind: 'jev_answered' }),
     entry({ kind: 'jev_failed' }),
+    entry({ kind: 'decision_model_off' }),
     entry({ kind: 'agent_message' }),
     entry({ kind: 'agent_message_delivered' }),
     entry({ kind: 'shared_git_changed' }),

@@ -43,6 +43,8 @@ export const RELOADED_FIELDS = [
  * - `muninn`: the run's memory vault is fixed at start (`run_started.memory`).
  * - `run_budget_tokens`: the budget the run's tokens are counted against,
  *   and the board's, from `run_started`; a raise is a `retry` reply.
+ * - `decision_model`: the model shadow mode asks (#534), so a run's asks
+ *   are all of one model and can be scored together.
  */
 export const FROZEN_FIELDS = [
     'checks',
@@ -51,6 +53,7 @@ export const FROZEN_FIELDS = [
     'rule_files',
     'muninn',
     'run_budget_tokens',
+    'decision_model',
 ] as const
 
 const positiveInt = z.number().int().positive().nullable()

@@ -1,9 +1,12 @@
 import { z } from 'zod'
 
 /**
- * Jev, TypeSafe's labeling model, runs in **shadow mode**: the engine asks it
- * and journals its answers, but acts on its own fixed choices. These are the
- * shapes of what the engine asks and what it keeps of each answer.
+ * The **decision model** (Cloudflare's Clef today; Jev, TypeSafe's labeling
+ * model, before #534) runs in **shadow mode**: the engine asks it and
+ * journals its answers, but acts on its own fixed choices. These are the
+ * shapes of what the engine asks and what it keeps of each answer. The
+ * names (and the journal's `jev_*` record kinds) keep the Jev name, so old
+ * journals still read.
  */
 
 /** Pick one of the criteria's keys. */
@@ -68,9 +71,17 @@ export const JevJobSchema = z.enum([
 
 export type JevJob = z.infer<typeof JevJobSchema>
 
-/** Why a Jev call gave no answers. */
+/**
+ * Why a decision model call gave no answers. New calls write
+ * `missing_credentials` (no Cloudflare account id or token), `rejected`
+ * (Cloudflare turned the token down: HTTP 401 or 403), `timeout`, or
+ * `error`. `missing_key` is Jev's old reason (it had no key), kept so old
+ * journals read.
+ */
 export const JevFailureReasonSchema = z.enum([
     'missing_key',
+    'missing_credentials',
+    'rejected',
     'timeout',
     'error',
 ])
@@ -87,3 +98,31 @@ export const JevFixedSchema = z.record(
 )
 
 export type JevFixed = z.infer<typeof JevFixedSchema>
+
+/** The Clef models on Workers AI the engine can ask (#534). */
+export const DECISION_MODEL_IDS = [
+    '@cf/cloudflare/clef',
+    '@cf/cloudflare/clef-flash',
+] as const
+
+/** A decision model's Workers AI id. */
+export const DecisionModelIdSchema = z.enum(DECISION_MODEL_IDS)
+
+export type DecisionModelId = z.infer<typeof DecisionModelIdSchema>
+
+/** The model the engine asks when the config doesn't say: Clef, the accurate one. */
+export const DEFAULT_DECISION_MODEL: DecisionModelId = '@cf/cloudflare/clef'
+
+/**
+ * Why the decision model is off for a run: `no_credentials` (Luca's env
+ * file and the process env have no Cloudflare account id or token), or
+ * `rejected` (Cloudflare turned the token down on an ask).
+ */
+export const DecisionModelOffReasonSchema = z.enum([
+    'no_credentials',
+    'rejected',
+])
+
+export type DecisionModelOffReason = z.infer<
+    typeof DecisionModelOffReasonSchema
+>

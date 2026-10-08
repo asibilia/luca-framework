@@ -462,6 +462,10 @@ export const jevAnswered = ({
         },
     })
 
+/**
+ * A failed ask as old journals hold it, from before Clef (#534): Jev's
+ * `missing_key`, kept so the board is shown still to read them.
+ */
 export const jevFailed = ({
     ticket,
     asked_seq,

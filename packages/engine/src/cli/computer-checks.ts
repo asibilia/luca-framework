@@ -26,14 +26,20 @@ import { claudeSkillsDir, skillDrift } from './luca-skills'
 import { isRight, rightEntry, userMuninnEntry } from './muninn-entry'
 
 import { LUCA_PACKAGE } from '../config/luca-version'
+import {
+    loadDecisionModelCredentials,
+    missingKeyLines,
+    type Env,
+} from '../jev/decision-model-credentials'
+import { DEFAULT_DECISION_MODEL } from '../jev/jev-schemas'
 import { READY_LABEL } from '../tracker/tracker'
 
 /**
  * `luca doctor`'s checks of this computer, read-only: Bun, the `luca`
  * copies on the PATH, Claude Code, the `gh` login, Paseo and its plugins,
  * the board, MuninnDB and Claude Code's `muninn` entry, the planning
- * skills, and Luca's own skills. `luca init` and `luca upgrade` end with them too. The token is
- * never shown.
+ * skills, Luca's own skills, and the decision model's credentials. `luca
+ * init` and `luca upgrade` end with them too. No token is ever shown.
  */
 
 /** The oldest tool versions Luca works with. */
@@ -368,11 +374,31 @@ const checkLucaSkills = async ({
 }
 
 /**
+ * The decision model's Cloudflare credentials (#534), from Luca's own env
+ * file and the process env. With none it is off: a warning, not a problem,
+ * since runs go on without it. Never shows the token.
+ */
+const checkDecisionModel = async ({
+    env,
+    home,
+}: {
+    env: Env
+    home: string
+}) => {
+    const credentials = await loadDecisionModelCredentials({ env, home })
+    if (credentials.ok) return ok(`Clef set up (${DEFAULT_DECISION_MODEL})`)
+    return warning({
+        detail: `Decision model off: no credentials (${credentials.missing.join(' and ')} not set in ${credentials.file}).`,
+        fix: `Add these lines to ${credentials.file}: ${missingKeyLines(credentials).join(', ')} (a Workers AI token from the Cloudflare dashboard), or leave the decision model off.`,
+    })
+}
+
+/**
  * Runs the computer checks, in order, read-only. Never throws: a check that
  * fails becomes a problem.
  *
  * @example
- * const checks = await computerChecks({ home, luca_version, board_dir, skills_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo })
+ * const checks = await computerChecks({ home, luca_version, board_dir, skills_dir, engine_path, bun_path, computer, muninn, muninn_health, claude, paseo, env: process.env })
  */
 export const computerChecks = async ({
     home,
@@ -386,6 +412,7 @@ export const computerChecks = async ({
     muninn_health,
     claude,
     paseo,
+    env,
 }: {
     home: string
     /** The installed Luca's version. */
@@ -400,6 +427,11 @@ export const computerChecks = async ({
     muninn_health: MuninnHealth
     claude: ClaudeMcp
     paseo: Paseo
+    /**
+     * The process env, for the decision model's keys and `XDG_CONFIG_HOME`.
+     * Left out, none: only Luca's env file in `home` counts.
+     */
+    env?: Env
 }): Promise<DoctorCheck[]> => {
     // With Paseo down, its plugins and the board aren't asked about.
     let paseo_up = true
@@ -445,6 +477,10 @@ export const computerChecks = async ({
             [
                 'luca_skills',
                 () => checkLucaSkills({ home, skills_dir, luca_version }),
+            ],
+            [
+                'decision_model',
+                () => checkDecisionModel({ env: env ?? {}, home }),
             ],
         ],
     })

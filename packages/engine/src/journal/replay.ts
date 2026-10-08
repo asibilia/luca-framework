@@ -1000,10 +1000,12 @@ const applyRecord = ({
                     url: record.content.url,
                 },
             }
-        // Jev's shadow-mode records change nothing: the engine ignores them.
+        // The decision model's shadow-mode records change nothing: the
+        // engine ignores them.
         case 'jev_asked':
         case 'jev_answered':
         case 'jev_failed':
+        case 'decision_model_off':
             return next
         // A session's readings and the stops and limit waits change no
         // ticket: the step they cut off is picked up again afterwards.
@@ -1714,6 +1716,7 @@ type TicketRecord = Exclude<
             | 'jev_asked'
             | 'jev_answered'
             | 'jev_failed'
+            | 'decision_model_off'
             | 'agent_session'
             | 'agent_session_closed'
             | 'run_stopped'

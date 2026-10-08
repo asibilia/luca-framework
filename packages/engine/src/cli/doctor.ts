@@ -25,6 +25,7 @@ import {
 } from './v13-leftovers'
 
 import type { V13Manifest } from '../doctor/v13-manifest'
+import type { Env } from '../jev/decision-model-credentials'
 import type { MemoryClient } from '../memory/memory-client'
 import { runCommand } from '../shell/run-command'
 
@@ -32,7 +33,8 @@ import { runCommand } from '../shell/run-command'
  * `luca doctor [--fix]`: checks this computer, the repo when run inside
  * one, and what old Luca v13 left behind, and prints each check as OK, or
  * the problem and its exact fix. It exits 1 when any check is a problem;
- * warnings (memory off, planning-skill drift) don't fail it. When it finds
+ * warnings (memory off, the decision model off, planning-skill drift)
+ * don't fail it. When it finds
  * v13 leftovers, it links the migration guide.
  *
  * `--fix` fixes what's safe, without asking: it cleans up v13's leftovers
@@ -270,6 +272,7 @@ export const runDoctor = async ({
     repo,
     tmp_dir,
     v13_manifest,
+    env,
     log,
 }: LucaInstall & {
     home: string
@@ -285,6 +288,8 @@ export const runDoctor = async ({
     tmp_dir: string
     /** The v13 fingerprint list; defaults to the committed one. */
     v13_manifest?: V13Manifest
+    /** The process env, for the decision model's check. Left out, none. */
+    env?: Env
     log: (line: string) => void
 }): Promise<DoctorEnd> => {
     const check = async (): Promise<DoctorCheck[]> => [
@@ -300,6 +305,7 @@ export const runDoctor = async ({
             muninn_health,
             claude,
             paseo,
+            env,
         })),
         ...(repo === null
             ? []

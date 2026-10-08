@@ -160,6 +160,7 @@ export const initCommand = async ({
             ask: askInTerminal,
             computer: computerOf({ home }),
             ...(await lucaInstall()),
+            env: process.env,
             log: (line) => {
                 console.log(line)
             },

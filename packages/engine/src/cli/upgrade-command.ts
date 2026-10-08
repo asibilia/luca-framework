@@ -261,6 +261,7 @@ const computerChecksOf =
             muninn_health: muninnHealth,
             claude: claudeOf({ home }),
             paseo,
+            env: process.env,
         })
 
 /** Runs `luca upgrade` with the flags after `upgrade`; returns the exit code. */

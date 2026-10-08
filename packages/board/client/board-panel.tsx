@@ -1327,7 +1327,7 @@ export const BoardPanel = ({
             ) : null}
             {state.jev.asked > 0 ? (
                 <Text style={styles.small}>
-                    Jev, in shadow mode: {state.jev.asked} asked,{' '}
+                    Decision model, in shadow mode: {state.jev.asked} asked,{' '}
                     {state.jev.answered} answered, {state.jev.failed} without an
                     answer. The engine doesn't act on them.
                 </Text>

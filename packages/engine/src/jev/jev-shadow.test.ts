@@ -4,7 +4,11 @@ import { join } from 'node:path'
 
 import { afterAll, describe, expect, test } from 'bun:test'
 
-import { createTypeSafeJev, type JevClient } from './jev-client'
+import {
+    createClefClient,
+    type DecisionModelClient,
+    type DecisionModelFetch,
+} from './clef-client'
 import { JEV_FIXED_MODEL } from './jev-jobs'
 import type { JevAnswer, JevQuestion } from './jev-schemas'
 
@@ -54,7 +58,9 @@ const baseline = ({
     return run
 }
 
-const isJev = (record: JournalRecord): boolean => record.kind.startsWith('jev_')
+/** A shadow-mode record: an ask, its reply, or the decision model turning off. */
+const isJev = (record: JournalRecord): boolean =>
+    record.kind.startsWith('jev_') || record.kind === 'decision_model_off'
 
 /**
  * Launches with test-run timings (" [7.00ms]") removed and commit shas
@@ -123,6 +129,9 @@ const expectSameRun = ({
     expect(run.tracker.pullRequests()).toEqual(without.tracker.pullRequests())
 }
 
+/** The model id the fake decision models say they are. */
+const FAKE_MODEL = '@cf/cloudflare/clef'
+
 /**
  * A Jev that answers every question, and never as the engine would: the
  * last option of each choice, the top of each score, yes to every skill.
@@ -150,10 +159,11 @@ const disagreeingAnswer = (question: JevQuestion): JevAnswer => {
     }
 }
 
-const disagreeingJev = (): JevClient & { signals: AbortSignal[] } => {
+const disagreeingJev = (): DecisionModelClient & { signals: AbortSignal[] } => {
     const signals: AbortSignal[] = []
     return {
         signals,
+        model: FAKE_MODEL,
         ask: async ({ request, signal }) => {
             signals.push(signal)
             return {
@@ -219,13 +229,16 @@ describe('Jev in shadow mode', () => {
         ])
         expect(jev.signals).toHaveLength(5)
 
-        // Each ask is answered right away, linked by asked_seq.
+        // Each ask is answered right away, linked by asked_seq, and both
+        // name the model.
         for (const ask of asks) {
+            expect(ask.content.model).toBe(FAKE_MODEL)
             const reply = replyTo(run.records, ask)
             expect(reply?.kind).toBe('jev_answered')
             expect(reply?.content).toMatchObject({
                 job: ask.content.job,
                 asked_seq: ask.seq,
+                model: FAKE_MODEL,
                 ms: expect.any(Number),
             })
             expect(reply?.ticket).toBe(11)
@@ -442,8 +455,8 @@ describe('Jev in shadow mode', () => {
 
     const failingJevs: {
         name: string
-        reason: 'error' | 'timeout' | 'missing_key'
-        jev: () => JevClient & { calls: () => number }
+        reason: 'error' | 'timeout' | 'missing_credentials'
+        jev: () => DecisionModelClient & { calls: () => number }
     }[] = [
         {
             name: 'a Jev that throws',
@@ -452,6 +465,7 @@ describe('Jev in shadow mode', () => {
                 let calls = 0
                 return {
                     calls: () => calls,
+                    model: FAKE_MODEL,
                     ask: async () => {
                         calls += 1
                         throw new Error('Jev fell over')
@@ -466,6 +480,7 @@ describe('Jev in shadow mode', () => {
                 let calls = 0
                 return {
                     calls: () => calls,
+                    model: FAKE_MODEL,
                     // It ignores the abort signal; the timeout still cuts it off.
                     ask: () => {
                         calls += 1
@@ -475,14 +490,15 @@ describe('Jev in shadow mode', () => {
             },
         },
         {
-            name: 'the TypeSafe client with no key',
-            reason: 'missing_key',
+            name: 'the Clef client with no credentials',
+            reason: 'missing_credentials',
             jev: () => {
                 let calls = 0
                 return {
                     calls: () => calls,
-                    ...createTypeSafeJev({
-                        api_key: '',
+                    ...createClefClient({
+                        credentials: null,
+                        model: FAKE_MODEL,
                         fetch: async () => {
                             calls += 1
                             throw new Error('fetch must not be called')
@@ -521,7 +537,70 @@ describe('Jev in shadow mode', () => {
             expect(
                 run.records.some((record) => record.kind === 'jev_answered')
             ).toBe(false)
-            expect(client.calls()).toBe(reason === 'missing_key' ? 0 : 5)
+            expect(client.calls()).toBe(
+                reason === 'missing_credentials' ? 0 : 5
+            )
         }, 60_000)
     }
+
+    test('a rejected token turns the decision model off for the rest of the run', async () => {
+        const urls: string[] = []
+        const fetch: DecisionModelFetch = async (url) => {
+            urls.push(url)
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    errors: [{ code: 10000, message: 'Authentication error' }],
+                }),
+                { status: 401 }
+            )
+        }
+        const logged: string[] = []
+        const jev = {
+            client: createClefClient({
+                credentials: { account_id: 'acc', api_token: 'not-real-tok' },
+                model: FAKE_MODEL,
+                fetch,
+            }),
+            log: (line: string) => {
+                logged.push(line)
+            },
+        }
+
+        const run = await runPractice({
+            root: await newRoot(),
+            turns: HAPPY_TURNS,
+            jev,
+        })
+
+        expectSameRun({
+            run,
+            without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
+        })
+        const shadow = run.records.filter(isJev)
+        expect(shadow.map(({ kind }) => kind)).toEqual([
+            'jev_asked',
+            'jev_failed',
+            'decision_model_off',
+        ])
+        expect(shadow[1]?.content).toMatchObject({ reason: 'rejected' })
+        expect(shadow[2]?.content).toEqual({
+            model: FAKE_MODEL,
+            reason: 'rejected',
+            detail: expect.stringContaining('401'),
+        })
+        expect(JSON.stringify(shadow)).not.toContain('not-real-tok')
+        expect(urls).toHaveLength(1)
+        expect(logged).toHaveLength(1)
+        expect(logged[0]).toContain('off')
+
+        // The off switch is the run's own: the next run asks again.
+        const again = await runPractice({
+            root: await newRoot(),
+            turns: HAPPY_TURNS,
+            jev,
+        })
+        expect(asked(again.records)).toHaveLength(1)
+        expect(urls).toHaveLength(2)
+    }, 60_000)
 })

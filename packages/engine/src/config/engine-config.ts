@@ -2,6 +2,12 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import {
+    DEFAULT_DECISION_MODEL,
+    DecisionModelIdSchema,
+    type DecisionModelId,
+} from '../jev/jev-schemas'
+
 /**
  * The engine config file, relative to the root of the repo a run works on.
  * `muninn.vault` sits at the same path old Luca used, because memory tooling
@@ -34,8 +40,18 @@ export const MuninnConfigSchema = z.object({
 })
 
 /**
+ * The config's `decision_model` block (#534): the Clef model shadow mode
+ * asks, `@cf/cloudflare/clef` (the accurate one, the default) or
+ * `@cf/cloudflare/clef-flash` (the fast one).
+ */
+export const DecisionModelConfigSchema = z.object({
+    model: DecisionModelIdSchema.default(DEFAULT_DECISION_MODEL),
+})
+
+/**
  * The per-repo engine config: the gate commands, where tests live, the rule
- * files for the rules lens, the project's memory vault, and the run budget.
+ * files for the rules lens, the project's memory vault, the decision model,
+ * and the run budget.
  *
  * Unknown keys, such as old Luca's, are dropped when the file is read.
  *
@@ -74,6 +90,8 @@ export const EngineConfigSchema = z.object({
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
     muninn: MuninnConfigSchema.optional(),
+    /** The decision model shadow mode asks; left out, Clef. */
+    decision_model: DecisionModelConfigSchema.optional(),
     /**
      * The repo's run budget in tokens; left out, the engine's default
      * (`DEFAULT_RUN_BUDGET_TOKENS`).
@@ -123,6 +141,21 @@ export const prepareConcurrencyOf = ({
 }: {
     config: EngineConfig
 }): number => config.prepare_concurrency ?? DEFAULT_PREPARE_CONCURRENCY
+
+/**
+ * The decision model a run asks: the config's `decision_model.model`, else
+ * Clef (`DEFAULT_DECISION_MODEL`).
+ *
+ * @example
+ * decisionModelOf({ config: { ...config, decision_model: { model: '@cf/cloudflare/clef-flash' } } })
+ * // '@cf/cloudflare/clef-flash'
+ */
+export const decisionModelOf = ({
+    config,
+}: {
+    config: EngineConfig
+}): DecisionModelId =>
+    config.decision_model?.model ?? DecisionModelConfigSchema.parse({}).model
 
 /** One test command the engine runs, and how it reads the results. */
 export type TestCommand = { run: string; results: TestResults }

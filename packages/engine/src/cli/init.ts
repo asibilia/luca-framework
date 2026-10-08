@@ -23,6 +23,8 @@ import { installLucaSkills } from './luca-skills'
 import { ensureMuninnEntry, hideToken } from './muninn-entry'
 import { runSetup } from './setup'
 
+import type { Env } from '../jev/decision-model-credentials'
+
 /**
  * `luca init`: sets up this computer for Luca, once, and is safe to run
  * again. It has three parts, each run even when an earlier one failed, and
@@ -297,6 +299,7 @@ export const runInit = async ({
     skills_dir,
     engine_path,
     bun_path,
+    env,
     log,
 }: LucaInstall & {
     home: string
@@ -312,6 +315,8 @@ export const runInit = async ({
     skills: SkillsTool
     ask: Ask
     computer: Computer
+    /** The process env, for the decision model's check. Left out, none. */
+    env?: Env
     log: (line: string) => void
 }): Promise<InitEnd> => {
     const memory = await setUpMemory({
@@ -356,6 +361,7 @@ export const runInit = async ({
         muninn_health,
         claude,
         paseo,
+        env,
     })
     for (const line of formatChecks({ checks: doctor })) log(line)
     const setup =

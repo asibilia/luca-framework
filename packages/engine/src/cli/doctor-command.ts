@@ -65,6 +65,7 @@ export const doctorCommand = async ({
                           memory,
                       },
             tmp_dir: '/tmp',
+            env: process.env,
             log: (line) => {
                 console.log(line)
             },

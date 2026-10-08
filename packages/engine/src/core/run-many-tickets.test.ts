@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { afterAll, describe, expect, test } from 'bun:test'
 
-import type { JevClient } from '../jev/jev-client'
+import type { DecisionModelClient } from '../jev/clef-client'
 import type { JevAnswer, JevQuestion } from '../jev/jev-schemas'
 import type { JournalRecord } from '../journal/journal-record'
 import {
@@ -365,7 +365,8 @@ const lastPick = (question: JevQuestion): JevAnswer => {
     }
 }
 
-const lastPickJev = (): JevClient => ({
+const lastPickJev = (): DecisionModelClient => ({
+    model: '@cf/cloudflare/clef',
     ask: async ({ request }) => ({
         ok: true,
         answers: Object.fromEntries(
