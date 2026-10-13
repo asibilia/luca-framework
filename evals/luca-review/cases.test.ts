@@ -15,7 +15,7 @@ import { CASES_DIR, buildWorkspace, filesUnder } from './lib/workspace'
  */
 
 /** The cases written so far. */
-const EXPECTED_CASES = ['1-wrong-finding', '2-missing-tool']
+const EXPECTED_CASES = ['1-wrong-finding', '2-missing-tool', '3-machine-blamed']
 
 const tmp = mkdtempSync(join(tmpdir(), 'lr-cases-'))
 afterAll(async () => {

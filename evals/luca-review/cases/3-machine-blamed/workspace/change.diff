@@ -1,0 +1,20 @@
+diff --git a/src/format.ts b/src/format.ts
+index 3b18e51..9c2d4f7 100644
+--- a/src/format.ts
++++ b/src/format.ts
+@@ -1,2 +1,3 @@
+-/** A price in cents, as dollars: 120 → "$1.20". */
+-export const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`
++/** A price in cents, rounded to a whole cent first, as dollars: 100.5 → "$1.01". */
++export const formatPrice = (cents: number): string =>
++    `$${(Math.round(cents) / 100).toFixed(2)}`
+diff --git a/test/format.test.ts b/test/format.test.ts
+index 51c2a0e..b7e93d1 100644
+--- a/test/format.test.ts
++++ b/test/format.test.ts
+@@ -5,4 +5,5 @@ import { formatPrice } from '../src/format'
+ describe('formatPrice', () => {
+     test('formats whole cents', () => expect(formatPrice(120)).toBe('$1.20'))
+     test('formats under a dollar', () => expect(formatPrice(95)).toBe('$0.95'))
++    test('rounds half a cent up', () => expect(formatPrice(100.5)).toBe('$1.01'))
+ })

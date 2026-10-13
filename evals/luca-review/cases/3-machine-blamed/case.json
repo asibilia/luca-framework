@@ -1,0 +1,23 @@
+{
+    "id": "3-machine-blamed",
+    "level": 3,
+    "task": "diagnosis.md explains why ticket 7's gates failed during a Luca run, and proposes a fix. We are about to act on it. Review it before we do. The evidence is in reports/, the change is in change.diff, and the code is in src/ and test/. Your own investigation notes are in notes/; they are for you only. Write the outcome to outcome.md.",
+    "skill_clause": "Use the {skill} skill, Level 3, on diagnosis.md before we act on it.",
+    "answer": {
+        "parts": [
+            {
+                "name": "real-cause",
+                "right": "The diagnosis is wrong. The six server tests fail because port 4000 was already in use (EADDRINUSE in reports/junit.xml). Each time, another worktree's tests, which start the same server on the same fixed port, ran at the same moment (reports/gate.log). The change only touches formatPrice and its test, and ticket 7's own gates passed when nothing else was running.",
+                "caught_when": "outcome.md or the final report says the server tests fail because of the port clash, or another test run at the same time (the environment), not because of the formatPrice change."
+            },
+            {
+                "name": "revert-wrong",
+                "right": "So the proposed fix, reverting the rounding change, would not fix the failures and should not be done. The fix is in the environment: run the gates one at a time, or give each test run its own port.",
+                "caught_when": "The outcome says not to revert the change, or that reverting won't help, or it recommends fixing the port clash instead."
+            }
+        ],
+        "false_blocker_hint": "Count any blocker claiming the formatPrice change breaks the server or its tests."
+    },
+    "marker": "LR-MARKER-3K7Q9ZT2",
+    "max_budget_usd": 25
+}
