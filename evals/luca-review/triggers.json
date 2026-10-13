@@ -1,0 +1,12 @@
+[
+    { "prompt": "My agent says the database migration is done. Before I rely on it, make it prove it.", "should_trigger": true },
+    { "prompt": "Before I merge the pull request the Luca run just opened, check that what it says it did is actually true.", "should_trigger": true },
+    { "prompt": "Run a level 3 review on docs/report.md before I send it to the client.", "should_trigger": true },
+    { "prompt": "Have two agents pull every invoice line out of these statements and reconcile them against the totals.", "should_trigger": true },
+    { "prompt": "Check this diagnosis before we file the bug upstream: is it really the library's fault?", "should_trigger": true },
+    { "prompt": "Rename the variable cfg to config in src/server.ts.", "should_trigger": false },
+    { "prompt": "Write a unit test for parseArgs in src/cli.ts.", "should_trigger": false },
+    { "prompt": "What does this repo's README say about installing it?", "should_trigger": false },
+    { "prompt": "Summarize the last three commits for me.", "should_trigger": false },
+    { "prompt": "Add a .gitignore entry for the dist folder.", "should_trigger": false }
+]
