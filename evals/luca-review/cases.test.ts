@@ -89,6 +89,7 @@ describe('the eval cases', () => {
                 '-C',
                 REPO_ROOT,
                 'ls-files',
+                '-z',
                 '--',
                 case_dir,
             ])
@@ -97,13 +98,16 @@ describe('the eval cases', () => {
                     `git ls-files failed: ${git_result.stderr.toString()}`
                 )
             }
-            const tracked_text = git_result.stdout.toString().trim()
+            const tracked_text = git_result.stdout.toString()
             const tracked_files =
                 tracked_text === ''
                     ? []
                     : tracked_text
-                          .split('\n')
-                          .map((path) => relative(case_dir, path))
+                          .split('\0')
+                          .filter((path) => path !== '')
+                          .map((path) =>
+                              relative(case_dir, join(REPO_ROOT, path))
+                          )
                           .sort()
             expect(local_files).toEqual(tracked_files)
         })
