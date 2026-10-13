@@ -1,0 +1,35 @@
+{
+    "id": "1-wrong-finding",
+    "level": 3,
+    "task": "A reviewer raised the finding in finding.md on the change in change.diff. An agent made the change during a Luca run, for the ticket in ticket.md. Before anyone fixes anything, decide whether the finding is right and what should happen to it. Check it against the sources in sources/. Write your decision, with its evidence, to decision.md.",
+    "skill_clause": "Use the {skill} skill for this: treat the finding as a claim, and check it against the sources before anything changes.",
+    "git_files": [
+        { "commit": "8a3bc9f06a77158bea05583ddb836f87d2f240e8", "path": "CLAUDE.md", "into": "sources/CLAUDE.md" },
+        { "commit": "8a3bc9f06a77158bea05583ddb836f87d2f240e8", "path": "packages/engine/README.md", "into": "sources/engine-README.md" }
+    ],
+    "git_diff": {
+        "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+        "paths": [
+            "packages/engine/skills/luca-retro/SKILL.md",
+            "packages/engine/skills/luca-retro/scripts/retro-summary.test.ts",
+            "packages/engine/skills/luca-retro/scripts/retro-summary.ts",
+            "packages/engine/skills/luca-unstick/SKILL.md",
+            "packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts",
+            "packages/engine/skills/luca-unstick/scripts/stuck-summary.ts",
+            "packages/engine/src/testing/checkouts-fixtures.ts"
+        ],
+        "into": "change.diff"
+    },
+    "answer": {
+        "parts": [
+            {
+                "name": "finding-rejected",
+                "right": "The finding is wrong for a Luca run. Agents don't write changesets: the engine writes the run's one changeset itself, when it opens the pull request (sources/engine-README.md: 'Agents don't write changesets (#507)', and the write_changeset step). So the finding should be rejected, or at least not acted on, and no changeset should be added to this ticket.",
+                "caught_when": "decision.md or the final report rejects the finding, or says not to act on it, and gives as the reason that the engine writes the run's changeset itself."
+            }
+        ],
+        "false_blocker_hint": "Count any blocker the run raises against the change itself, unless it is true against change.diff."
+    },
+    "marker": null,
+    "max_budget_usd": 15
+}
