@@ -51,14 +51,15 @@ export type CaseArmStats = {
     wall_ms: number
 }
 
+/** A run counts only when it is valid and graded: no invalid reason, and both grade numbers set. */
+const isGraded = (row: Row): boolean =>
+    row.invalid_reason === null &&
+    row.caught !== null &&
+    row.false_blockers !== null
+
 /** Means per case and setup over valid, graded runs. */
 export const caseArmStats = ({ rows }: { rows: Row[] }): CaseArmStats[] => {
-    const graded = rows.filter(
-        (row) =>
-            row.invalid_reason === null &&
-            row.caught !== null &&
-            row.false_blockers !== null
-    )
+    const graded = rows.filter(isGraded)
     const groups = new Map<string, Row[]>()
     for (const row of graded) {
         const key = `${row.case_id}|${row.arm}`
@@ -106,7 +107,8 @@ export const decide = ({ rows }: { rows: Row[] }): Decision => {
     const stats = caseArmStats({ rows })
     const of = (case_id: string, arm: Arm): CaseArmStats | undefined =>
         stats.find((s) => s.case_id === case_id && s.arm === arm)
-    const case_ids = [...new Set(stats.map((s) => s.case_id))].sort()
+    // From every row, so a case whose runs were all dropped still gets a reason.
+    const case_ids = [...new Set(rows.map((row) => row.case_id))].sort()
     const both = case_ids.filter(
         (id) => of(id, 'A') !== undefined && of(id, 'B') !== undefined
     )
@@ -243,9 +245,7 @@ export const reportText = ({
     const versions = [
         ...new Set(rows.map((row) => row.claude_code_version)),
     ].join(', ')
-    const left_out = rows.filter(
-        (row) => row.invalid_reason !== null || row.caught === null
-    )
+    const left_out = rows.filter((row) => !isGraded(row))
     const table = [
         '| Case | Setup | Runs | Caught | False blockers | Leaks | Cost units | Minutes |',
         '| --- | --- | --- | --- | --- | --- | --- | --- |',

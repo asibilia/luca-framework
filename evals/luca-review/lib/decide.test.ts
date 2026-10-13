@@ -178,6 +178,29 @@ describe('decide', () => {
         expect(decision.reasons).toEqual([])
     })
 
+    test('a case whose runs were all dropped blocks the ship, with its name', () => {
+        // Case 4 is graded and tied. Case 5 has only invalid runs of A and B.
+        const decision = decide({
+            rows: [
+                ...trio({}, {}),
+                row({
+                    case_id: '5-clean-change',
+                    arm: 'A',
+                    invalid_reason: 'the luca-review skill did not load',
+                }),
+                row({
+                    case_id: '5-clean-change',
+                    arm: 'B',
+                    invalid_reason: 'the luca-review skill did not load',
+                }),
+            ],
+        })
+        expect(decision.ships).toBe(false)
+        expect(decision.reasons).toEqual([
+            'case 5-clean-change has no graded runs of A or of B',
+        ])
+    })
+
     test('every case too easy, or a missing setup, means no decision', () => {
         expect(decide({ rows: trio({}, { caught: 1 }) }).reasons).toContain(
             'every case was too easy to tell the setups apart'
@@ -210,6 +233,28 @@ describe('decideTriggers', () => {
             'should not'
         )
     })
+
+    test('an invalid trigger run fails the test, even when the counts are equal', () => {
+        const a = [
+            trigger({}),
+            trigger({ should_trigger: false, triggered: false }),
+        ]
+        // The invalid result is on a should-not prompt that did not start the
+        // skill, so it changes neither setup's hits nor false hits.
+        const b = [
+            ...a,
+            trigger({
+                should_trigger: false,
+                triggered: false,
+                invalid_reason: 'claude started no session',
+            }),
+        ]
+        const decision = decideTriggers({ a, b })
+        expect(decision.hits).toEqual({ A: 1, B: 1 })
+        expect(decision.false_hits).toEqual({ A: 0, B: 0 })
+        expect(decision.passes).toBe(false)
+        expect(decision.reasons).toEqual(['1 trigger runs were invalid'])
+    })
 })
 
 describe('reportText', () => {
@@ -233,5 +278,52 @@ describe('reportText', () => {
         expect(text).toContain('**B ships.**')
         expect(text).toContain('4B2: the luca-review skill did not load')
         expect(text).toContain('No trigger test in this round.')
+    })
+
+    test('lists a run with caught set but false blockers missing as left out', () => {
+        const text = reportText({
+            round: 'r1',
+            rows: [
+                ...trio({}, {}),
+                row({ arm: 'B', rep: 3, caught: 0.5, false_blockers: null }),
+            ],
+            triggers: null,
+        })
+        expect(text).toContain('4 runs; 1 left out (invalid or ungraded).')
+        expect(text).toContain('- 4B3: not graded')
+    })
+
+    test('says why B does not ship', () => {
+        const text = reportText({
+            round: 'r1',
+            rows: trio({ caught: 0 }, {}),
+            triggers: null,
+        })
+        expect(text).toContain('**B does not ship yet:**')
+        expect(text).toContain('- B caught less than A')
+        expect(text).not.toContain('**B ships.**')
+    })
+
+    test('reports the trigger test, passing or failing', () => {
+        const a = [
+            trigger({}),
+            trigger({ should_trigger: false, triggered: false }),
+        ]
+        const passing = reportText({
+            round: 'r1',
+            rows: trio({}, {}),
+            triggers: { a, b: a },
+        })
+        expect(passing).toContain(
+            'A started on 1 should-prompts and 0 should-not prompts. B: 1 and 0.'
+        )
+        expect(passing).toContain('**Pass.**')
+        const failing = reportText({
+            round: 'r1',
+            rows: trio({}, {}),
+            triggers: { a, b: [trigger({ triggered: false }), ...a.slice(1)] },
+        })
+        expect(failing).toContain('**Fail:**')
+        expect(failing).toContain('- B started on fewer prompts')
     })
 })
