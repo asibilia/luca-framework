@@ -97,7 +97,7 @@ describe('runOutputs', () => {
             'skill\n'
         )
         await Bun.write(join(ws, 'tmp', 'scratch.md'), 'scratch\n')
-        await Bun.write(join(ws, 'node_modules', 'pkg', 'index.js'), 'code\n')
+        await Bun.write(join(ws, 'node_modules', 'pkg', 'readme.md'), 'doc\n')
         await Bun.write(join(reviews, 'findings.md'), 'register\n')
         await Bun.write(join(reviews, 'findings.json'), 'data\n')
         await Bun.write(join(reviews, 'workspaces', 'r1', 'copy.md'), 'raw\n')
@@ -121,7 +121,7 @@ describe('runOutputs', () => {
         expect(file?.text).toEndWith('[cut: 10 more characters]')
     })
 
-    test('respects the total size cap and reports remaining files', async () => {
+    test('respects the total size cap with exact count and text', async () => {
         const ws = join(tmp, 'ws')
         const reviews = join(tmp, 'reviews')
         await mkdir(ws, { recursive: true })
@@ -134,23 +134,33 @@ describe('runOutputs', () => {
             baseline[`file${i}.md`] = 'old'
         }
         const files = runOutputs({ ws, baseline, reviews_dir: reviews })
-        expect(files[files.length - 1]?.path).toBe('(more files)')
-        const moreFiles = files[files.length - 1]
-        expect(moreFiles?.text).toContain('more file')
-        expect(moreFiles?.text).toContain('left out')
-        const remaining =
-            files.length > 1
-                ? parseInt(moreFiles?.text.split(' ')[0] ?? '0', 10)
-                : 0
-        expect(remaining).toBeGreaterThan(0)
+        expect(files.length).toBe(9)
+        const before = files.slice(0, 8)
+        expect(before.map((f) => f.path)).toEqual([
+            'file0.md',
+            'file1.md',
+            'file2.md',
+            'file3.md',
+            'file4.md',
+            'file5.md',
+            'file6.md',
+            'file7.md',
+        ])
+        const moreFiles = files[8]
+        expect(moreFiles?.path).toBe('(more files)')
+        expect(moreFiles?.text).toBe(
+            '1 more file left out: the size cap was reached.'
+        )
     })
 
-    test('uses correct grammar for remaining files count', async () => {
+    test('uses correct grammar for 2+ remaining files', async () => {
         const ws = join(tmp, 'ws')
+        const reviews = join(tmp, 'reviews')
         await mkdir(ws, { recursive: true })
+        await mkdir(reviews, { recursive: true })
         const baseline: Record<string, string> = {}
         const filler = 'x'.repeat(MAX_FILE_CHARS)
-        for (let i = 0; i < 9; i++) {
+        for (let i = 0; i < 10; i++) {
             const path = join(ws, `file${i}.md`)
             await Bun.write(path, filler)
             baseline[`file${i}.md`] = 'old'
@@ -158,16 +168,13 @@ describe('runOutputs', () => {
         const files = runOutputs({
             ws,
             baseline,
-            reviews_dir: join(tmp, 'none'),
+            reviews_dir: reviews,
         })
         const moreFiles = files[files.length - 1]
-        const text = moreFiles?.text ?? ''
-        const count = parseInt(text.split(' ')[0] ?? '0', 10)
-        if (count === 1) {
-            expect(text).toContain('1 more file')
-        } else {
-            expect(text).toContain(`${count} more files`)
-        }
+        expect(moreFiles?.path).toBe('(more files)')
+        expect(moreFiles?.text).toBe(
+            '2 more files left out: the size cap was reached.'
+        )
     })
 })
 
