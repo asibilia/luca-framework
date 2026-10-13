@@ -1,12 +1,17 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 
 import { afterAll, describe, expect, test } from 'bun:test'
 
 import { loadCase } from './lib/case-schema'
-import { CASES_DIR, buildWorkspace, filesUnder } from './lib/workspace'
+import {
+    CASES_DIR,
+    REPO_ROOT,
+    buildWorkspace,
+    filesUnder,
+} from './lib/workspace'
 
 /**
  * Every eval case is well formed. Its case.json parses and names its own
@@ -75,6 +80,32 @@ describe('the eval cases', () => {
             expect(textOf({ dir: join(case_dir, 'workspace') })).not.toContain(
                 the_case.marker
             )
+        })
+
+        test(`${name}: every file in its folder is tracked by git`, () => {
+            const local_files = filesUnder({ dir: case_dir }).sort()
+            const git_result = Bun.spawnSync([
+                'git',
+                '-C',
+                REPO_ROOT,
+                'ls-files',
+                '--',
+                case_dir,
+            ])
+            if (git_result.exitCode !== 0) {
+                throw new Error(
+                    `git ls-files failed: ${git_result.stderr.toString()}`
+                )
+            }
+            const tracked_text = git_result.stdout.toString().trim()
+            const tracked_files =
+                tracked_text === ''
+                    ? []
+                    : tracked_text
+                          .split('\n')
+                          .map((path) => relative(case_dir, path))
+                          .sort()
+            expect(local_files).toEqual(tracked_files)
         })
     }
 })

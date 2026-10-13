@@ -98,6 +98,8 @@ packages/luca-tools/skill-opt/staging/
 
 # AI-session debris — never commit run logs or harness caches
 *.log
+# The eval's case folders hold sample logs agents must read.
+!evals/luca-review/cases/**/*.log
 .claude/cache/
 # Harness caches live under .claude/cache/ in every package too
 **/.claude/cache/
