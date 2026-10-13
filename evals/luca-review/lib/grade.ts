@@ -32,7 +32,10 @@ export const runOutputs = ({
     baseline: Record<string, string>
     reviews_dir: string
 }): OutputFile[] => {
-    const written = filesUnder({ dir: ws, skip: ['.claude', 'tmp'] }).filter(
+    const written = filesUnder({
+        dir: ws,
+        skip: ['.claude', 'tmp', 'node_modules'],
+    }).filter(
         (path) =>
             TEXT_FILE.test(path) &&
             baseline[path] !== sha256({ bytes: readFileSync(join(ws, path)) })
@@ -54,9 +57,10 @@ export const runOutputs = ({
     let total = 0
     for (const [index, source] of sources.entries()) {
         if (total >= MAX_TOTAL_CHARS) {
+            const remaining = sources.length - index
             files.push({
                 path: '(more files)',
-                text: `${sources.length - index} more files left out: the size cap was reached.`,
+                text: `${remaining} more ${remaining === 1 ? 'file' : 'files'} left out: the size cap was reached.`,
             })
             break
         }
