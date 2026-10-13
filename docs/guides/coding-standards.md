@@ -32,7 +32,7 @@ Luca Framework is a **TypeScript monorepo** using **Bun** as the runtime. It hol
 | Runtime     | Bun                                            |
 | Language    | TypeScript (strict mode)                       |
 | Validation  | Zod                                            |
-| Collections | Lodash                                         |
+| Collections | Native array methods; Lodash per function      |
 | Tests       | `bun test`                                     |
 | Lint        | ESLint + Prettier                              |
 
@@ -250,24 +250,31 @@ Avoid `as` type casting and `!` non-null assertions. Use Zod parsing or optional
 
 ## Collections
 
-### Prefer Lodash Over Native Array Methods
+### Native Array Methods First, Lodash Where It Adds Something
 
-Use Lodash functions with named imports for array and object operations.
+Use native array methods (`.map`, `.filter`, `.some`, `.find`, `.flatMap`) for plain transforms. Reach for Lodash when it says something native code can't say as clearly: dropping duplicates, sorting by a key without mutating, grouping, or picking and omitting keys. Import each function on its own, from its own path.
 
 **DO:**
 
 ```typescript
-import { map, filter, groupBy, sortBy } from "lodash";
+import sortBy from 'lodash/sortBy'
+import uniq from 'lodash/uniq'
 
-const agentNames = map(filter(agents, { is_active: true }), "name");
+const agentNames = agents.filter((agent) => agent.is_active).map((agent) => agent.name)
 
-const agentsByCategory = groupBy(agents, "category");
+const roles = uniq(agents.map((agent) => agent.role))
+const byStart = sortBy(tickets, (ticket) => ticket.started_seq)
 ```
 
 **DON'T:**
 
 ```typescript
-const agentNames = agents.filter((a) => a.is_active).map((a) => a.name);
+import { map, filter } from 'lodash' // pulls in all of Lodash
+import _ from 'lodash'
+
+const agentNames = map(filter(agents, { is_active: true }), 'name') // native reads as well here
+
+tickets.sort((a, b) => a.started_seq - b.started_seq) // mutates; use sortBy
 ```
 
 ---
@@ -316,7 +323,7 @@ When writing new code, verify:
 - [ ] Types are inferred from Zod schemas (`z.infer<typeof Schema>`)
 - [ ] No `any` types used
 - [ ] No `as` type casting or `!` assertions
-- [ ] Lodash used for array/object operations
+- [ ] Native array methods for plain transforms; Lodash imported per function (`lodash/<fn>`) where it adds something
 - [ ] Functional patterns preferred over classes
 - [ ] Tests, both type checks, and lint pass (see [Verification](#verification))
 - [ ] Commits follow conventional commit format
