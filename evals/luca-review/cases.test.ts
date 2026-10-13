@@ -151,5 +151,24 @@ describe('the eval cases', () => {
             'files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts',
             'pr.md',
         ])
+
+        const twins = [
+            'files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts',
+            'files/packages/engine/skills/luca-retro/scripts/retro-summary.ts',
+        ]
+        for (const twin of twins) {
+            expect(readFileSync(join(built_four.ws, twin), 'utf8')).toContain(
+                "want.has(resolve(text(started.content.repo) || '/'))"
+            )
+            expect(readFileSync(join(built_five.ws, twin), 'utf8')).toContain(
+                "want.has(realPath(text(started.content.repo) || '/'))"
+            )
+        }
+        expect(readFileSync(join(built_four.ws, 'pr.md'), 'utf8')).toContain(
+            "- From a bare repo or a submodule, it now finds the parent repo's runs too."
+        )
+        expect(readFileSync(join(built_five.ws, 'pr.md'), 'utf8')).toContain(
+            '- A bare repo or a submodule has no'
+        )
     })
 })

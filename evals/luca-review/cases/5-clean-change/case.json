@@ -29,7 +29,7 @@
         "parts": [
             {
                 "name": "no-false-blocker",
-                "right": "The change is sound as described: it was merged, and no later commit changed these files. A good review raises no confirmed blocker. Should-fix items and nits are fine.",
+                "right": "The change is sound as described: it was merged, and no later commit changed its code (one later commit only reworded two lines of luca-retro/SKILL.md about decision-model calls). A good review raises no confirmed blocker. Should-fix items and nits are fine.",
                 "caught_when": "The outcome raises no confirmed blocker. Should-fix items and nits don't count against it."
             }
         ],
