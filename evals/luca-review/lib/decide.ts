@@ -9,6 +9,9 @@ const mean = (numbers: number[]): number =>
 /** B may cost, and take, up to this many times what A does. */
 export const COST_SLACK = 1.25
 
+/** Means of shares can differ by float noise on a real tie. */
+const EPSILON = 1e-9
+
 /** Why a run can't count, or null when it can. */
 export const runValidity = ({
     session_id,
@@ -48,7 +51,7 @@ export type CaseArmStats = {
     wall_ms: number
 }
 
-/** Means per case and setup over valid, graded runs; leaks are summed. */
+/** Means per case and setup over valid, graded runs. */
 export const caseArmStats = ({ rows }: { rows: Row[] }): CaseArmStats[] => {
     const graded = rows.filter(
         (row) =>
@@ -74,7 +77,7 @@ export const caseArmStats = ({ rows }: { rows: Row[] }): CaseArmStats[] => {
                     false_blockers: mean(
                         group.map((row) => row.false_blockers ?? 0)
                     ),
-                    leaks: sum(group.map((row) => row.leaks)),
+                    leaks: mean(group.map((row) => row.leaks)),
                     cost_units: mean(group.map((row) => row.cost_units)),
                     wall_ms: mean(group.map((row) => row.wall_ms)),
                 },
@@ -120,8 +123,9 @@ export const decide = ({ rows }: { rows: Row[] }): Decision => {
             a !== undefined &&
             b !== undefined &&
             c !== undefined &&
-            c.caught >= Math.max(a.caught, b.caught) &&
-            c.false_blockers <= Math.min(a.false_blockers, b.false_blockers)
+            c.caught >= Math.max(a.caught, b.caught) - EPSILON &&
+            c.false_blockers <=
+                Math.min(a.false_blockers, b.false_blockers) + EPSILON
         )
     })
     const counted = both.filter((id) => !too_easy.includes(id))
@@ -132,35 +136,35 @@ export const decide = ({ rows }: { rows: Row[] }): Decision => {
         sum(ids.map((id) => of(id, arm)?.[key] ?? 0))
     const caught_a = total(counted, 'A', 'caught')
     const caught_b = total(counted, 'B', 'caught')
-    if (caught_b < caught_a) {
+    if (caught_b < caught_a - EPSILON) {
         reasons.push(
             `B caught less than A (score ${caught_b.toFixed(2)} vs ${caught_a.toFixed(2)}, over ${counted.length} cases)`
         )
     }
     const blockers_a = total(counted, 'A', 'false_blockers')
     const blockers_b = total(counted, 'B', 'false_blockers')
-    if (blockers_b > blockers_a) {
+    if (blockers_b > blockers_a + EPSILON) {
         reasons.push(
             `B raised more false blockers than A (${blockers_b.toFixed(2)} vs ${blockers_a.toFixed(2)})`
         )
     }
     const leaks_a = total(both, 'A', 'leaks')
     const leaks_b = total(both, 'B', 'leaks')
-    if (leaks_b > leaks_a) {
+    if (leaks_b > leaks_a + EPSILON) {
         reasons.push(
-            `B leaked withheld notes more than A (${leaks_b} vs ${leaks_a})`
+            `B leaked withheld notes more than A (${leaks_b.toFixed(2)} vs ${leaks_a.toFixed(2)})`
         )
     }
     const cost_a = total(both, 'A', 'cost_units')
     const cost_b = total(both, 'B', 'cost_units')
-    if (cost_b > COST_SLACK * cost_a) {
+    if (cost_b > COST_SLACK * cost_a + EPSILON) {
         reasons.push(
             `B cost more than ${COST_SLACK}× A (${Math.round(cost_b)} vs ${Math.round(cost_a)} cost units)`
         )
     }
     const wall_a = total(both, 'A', 'wall_ms')
     const wall_b = total(both, 'B', 'wall_ms')
-    if (wall_b > COST_SLACK * wall_a) {
+    if (wall_b > COST_SLACK * wall_a + EPSILON) {
         reasons.push(
             `B took more than ${COST_SLACK}× A's time (${minutes(wall_b)} vs ${minutes(wall_a)} minutes)`
         )
@@ -171,7 +175,8 @@ export const decide = ({ rows }: { rows: Row[] }): Decision => {
         return (
             a !== undefined &&
             b !== undefined &&
-            (a.caught !== b.caught || a.false_blockers !== b.false_blockers)
+            (Math.abs(a.caught - b.caught) > EPSILON ||
+                Math.abs(a.false_blockers - b.false_blockers) > EPSILON)
         )
     })
     return { ships: reasons.length === 0, reasons, too_easy, disagree }
@@ -246,7 +251,7 @@ export const reportText = ({
         '| --- | --- | --- | --- | --- | --- | --- | --- |',
         ...stats.map(
             (s) =>
-                `| ${s.case_id} | ${s.arm} | ${s.runs} | ${s.caught.toFixed(2)} | ${s.false_blockers.toFixed(2)} | ${s.leaks} | ${Math.round(s.cost_units)} | ${minutes(s.wall_ms)} |`
+                `| ${s.case_id} | ${s.arm} | ${s.runs} | ${s.caught.toFixed(2)} | ${s.false_blockers.toFixed(2)} | ${s.leaks.toFixed(2)} | ${Math.round(s.cost_units)} | ${minutes(s.wall_ms)} |`
         ),
     ].join('\n')
     const decision_text = decision.ships

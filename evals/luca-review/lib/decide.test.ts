@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { Row, TriggerResult } from './case-schema'
+import type { Arm, Row, TriggerResult } from './case-schema'
 import {
     caseArmStats,
     decide,
@@ -63,8 +63,8 @@ describe('caseArmStats', () => {
     test('averages valid, graded runs per case and setup', () => {
         const stats = caseArmStats({
             rows: [
-                row({ caught: 1, cost_units: 1000 }),
-                row({ rep: 2, caught: 0, cost_units: 3000 }),
+                row({ caught: 1, cost_units: 1000, leaks: 1 }),
+                row({ rep: 2, caught: 0, cost_units: 3000, leaks: 0 }),
                 row({ rep: 3, invalid_reason: 'skill did not load' }),
                 row({ rep: 4, caught: null, false_blockers: null }),
             ],
@@ -76,7 +76,7 @@ describe('caseArmStats', () => {
                 runs: 2,
                 caught: 0.5,
                 false_blockers: 0,
-                leaks: 0,
+                leaks: 0.5,
                 cost_units: 2000,
                 wall_ms: 600_000,
             },
@@ -135,6 +135,47 @@ describe('decide', () => {
         })
         expect(decision.too_easy).toEqual(['4-planted-bug'])
         expect(decision.ships).toBe(true)
+    })
+
+    test('equal means that differ by float noise are a tie, not a difference', () => {
+        // 2/3, 2/3, 1 and 1, 1, 1/3 both average 7/9, but not to the same double.
+        // Either way round, the setups tie.
+        const reps = (arm: Arm, shares: number[]): Row[] =>
+            shares.map((caught, i) => row({ arm, rep: i + 1, caught }))
+        const x = [2 / 3, 2 / 3, 1]
+        const y = [1, 1, 1 / 3]
+        const orders: [number[], number[]][] = [
+            [x, y],
+            [y, x],
+        ]
+        for (const [a, b] of orders) {
+            const decision = decide({
+                rows: [
+                    ...reps('A', a),
+                    ...reps('B', b),
+                    row({ arm: 'C', caught: 0 }),
+                ],
+            })
+            expect(decision.ships).toBe(true)
+            expect(decision.reasons).toEqual([])
+            expect(decision.disagree).toEqual([])
+        }
+    })
+
+    test('leaks are compared per run, so extra runs do not count against B', () => {
+        // A: one run with 1 leak. B: three runs with 1, 1 and 0 leaks.
+        // Summed, B has 2 leaks to A's 1; per run, B has 0.67 to A's 1.
+        const decision = decide({
+            rows: [
+                row({ arm: 'A', caught: 0.5, leaks: 1 }),
+                row({ arm: 'B', rep: 1, caught: 0.5, leaks: 1 }),
+                row({ arm: 'B', rep: 2, caught: 0.5, leaks: 1 }),
+                row({ arm: 'B', rep: 3, caught: 0.5, leaks: 0 }),
+                row({ arm: 'C', caught: 0 }),
+            ],
+        })
+        expect(decision.ships).toBe(true)
+        expect(decision.reasons).toEqual([])
     })
 
     test('every case too easy, or a missing setup, means no decision', () => {
