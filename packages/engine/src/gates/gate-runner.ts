@@ -1,26 +1,20 @@
 import type { GateCheck, GateName } from './gate-schemas'
 import { PREPARE_SLOTS } from './prepare-slots'
-import { reportFileFor, runTests } from './test-runner'
+import { reportFileFor, runTests, TEST_TIMEOUT_HINT } from './test-runner'
 
 import {
     prepareConcurrencyOf,
     prepareTimeoutOf,
     testCommands,
+    testTimeoutOf,
     type EngineConfig,
 } from '../config/engine-config'
 import {
     clipOutput,
     DEFAULT_COMMAND_TIMEOUT_MS,
     runShell,
+    timedOutLine,
 } from '../shell/run-command'
-
-/** A time limit in words: `30 minutes`, `1 minute`, `0.3 seconds`. */
-const durationText = (ms: number): string => {
-    const [amount, unit] =
-        ms >= 60_000 ? [ms / 60_000, 'minute'] : [ms / 1000, 'second']
-    const rounded = Math.round(amount * 10) / 10
-    return `${rounded} ${unit}${rounded === 1 ? '' : 's'}`
-}
 
 /**
  * Runs one shell command as a named check: `ok` on exit 0, with the clipped
@@ -50,7 +44,7 @@ export const shellCheck = async ({
     const result = await runShell({ command, cwd, timeout_ms: limit })
     const ok = result.exit_code === 0
     const timedOut = result.timed_out
-        ? `Timed out after ${durationText(limit)}, so the engine stopped it and everything it started.${timeout_hint === undefined ? '' : ` ${timeout_hint}`}\n`
+        ? timedOutLine({ timeout_ms: limit, hint: timeout_hint })
         : ''
     return {
         name,
@@ -106,6 +100,8 @@ export const prepareCheck = async ({
  * types, lint. All must pass. Unset gates are left out; intake refuses a
  * config with no test command. A `bun` test command runs with bun's JUnit
  * reporter; a `pass_fail` one runs as written and is judged by its exit code.
+ * Each test command gets the config's time limit (see `testTimeoutOf`);
+ * types and lint get the engine's default.
  *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
@@ -152,11 +148,20 @@ export const runGates = async ({
         if (!prepared.ok) return { ok: false, checks }
     }
     const { types, lint } = config.checks
+    const timeout_ms = testTimeoutOf({ config })
     for (const [index, { run: command, results }] of testCommands({
         config,
     }).entries()) {
         if (results === 'pass_fail') {
-            checks.push(await shellCheck({ name: 'test', command, cwd }))
+            checks.push(
+                await shellCheck({
+                    name: 'test',
+                    command,
+                    cwd,
+                    timeout_ms,
+                    timeout_hint: TEST_TIMEOUT_HINT,
+                })
+            )
             continue
         }
         const run = await runTests({
@@ -164,6 +169,7 @@ export const runGates = async ({
             command,
             test_files,
             report_file: reportFileFor({ report_file, index }),
+            timeout_ms,
         })
         checks.push({
             name: 'test',

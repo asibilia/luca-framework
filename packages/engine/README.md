@@ -383,6 +383,21 @@ the 5 minutes other commands get. A repo with a slower build raises it with
 A prepare that runs out of time fails like any other. Its output starts with
 "Timed out after 30 minutes" and says to raise `prepare_timeout_ms`.
 
+**The test time limit (#542).** Each test command gets 5 minutes
+(`DEFAULT_COMMAND_TIMEOUT_MS`), every time the engine runs one: the
+baseline, the red check, the already-done check, and the gates. A repo with
+slower tests raises it with `test_timeout_ms` (a positive whole number of
+milliseconds) in `.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "test_timeout_ms": 900000 }
+```
+
+It holds for both kinds of test command (`bun` and `pass_fail`). Types and
+lint keep 5 minutes. A test command that runs out of time fails, and its
+output starts with "Timed out after 5 minutes" and says to raise
+`test_timeout_ms`.
+
 **One prepare at a time (#492).** A build uses a lot of CPU, so builds at
 the same time only slow each other down. HeartGold's first build takes 8 to
 10 minutes alone; four at once took 19 to 25 minutes each. So the engine
@@ -707,8 +722,8 @@ journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:
-`prepare`, `prepare_timeout_ms`, and `prepare_concurrency`, including one
-added or removed. So a repo that swaps a slow `prepare` for a fast cached one
+`prepare`, `prepare_timeout_ms`, `prepare_concurrency`, and the test time
+limit `test_timeout_ms` (#542), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
 `config_reloaded { changes: [{ field, from, to }] }` (`null` for a field
