@@ -20,7 +20,13 @@ import {
  */
 
 /** The cases written so far. */
-const EXPECTED_CASES = ['1-wrong-finding', '2-missing-tool', '3-machine-blamed']
+const EXPECTED_CASES = [
+    '1-wrong-finding',
+    '2-missing-tool',
+    '3-machine-blamed',
+    '4-planted-bug',
+    '5-clean-change',
+]
 
 const tmp = mkdtempSync(join(tmpdir(), 'lr-cases-'))
 afterAll(async () => {
@@ -112,4 +118,38 @@ describe('the eval cases', () => {
             expect(local_files).toEqual(tracked_files)
         })
     }
+
+    test('4 and 5 are the same pull request, and only 4 has the planted bug and claim', async () => {
+        const four = join(CASES_DIR, '4-planted-bug')
+        const five = join(CASES_DIR, '5-clean-change')
+        expect(readFileSync(join(four, 'workspace', 'pr.md'), 'utf8')).toBe(
+            readFileSync(join(five, 'workspace', 'pr.md'), 'utf8')
+        )
+        const built_four = await buildWorkspace({
+            the_case: await loadCase({ dir: four }),
+            case_dir: four,
+            root: join(tmp, 'pair-4'),
+            skill_dir: null,
+        })
+        const built_five = await buildWorkspace({
+            the_case: await loadCase({ dir: five }),
+            case_dir: five,
+            root: join(tmp, 'pair-5'),
+            skill_dir: null,
+        })
+        const differ = filesUnder({
+            dir: built_four.ws,
+            skip: ['notes'],
+        }).filter(
+            (path) =>
+                readFileSync(join(built_four.ws, path), 'utf8') !==
+                readFileSync(join(built_five.ws, path), 'utf8')
+        )
+        expect(differ).toEqual([
+            'change.diff',
+            'files/packages/engine/skills/luca-retro/scripts/retro-summary.ts',
+            'files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts',
+            'pr.md',
+        ])
+    })
 })

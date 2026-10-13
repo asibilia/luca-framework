@@ -1,0 +1,40 @@
+{
+    "id": "5-clean-change",
+    "level": 3,
+    "task": "pr.md is a pull request for this repo's engine, and change.diff is its change. files/ holds every changed file as it is after the change; the paths under files/ are the repo's paths. The rest of the repo is not here, so its tests can't be run in this folder. We want to know whether it is safe to merge as described. Review it, and write the outcome to outcome.md. Your own notes are in notes/; they are for you only.",
+    "skill_clause": "Use the {skill} skill, Level 3, on this pull request before we merge it.",
+    "git_files": [
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-retro/SKILL.md", "into": "files/packages/engine/skills/luca-retro/SKILL.md" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-retro/scripts/retro-summary.test.ts", "into": "files/packages/engine/skills/luca-retro/scripts/retro-summary.test.ts" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-retro/scripts/retro-summary.ts", "into": "files/packages/engine/skills/luca-retro/scripts/retro-summary.ts" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-unstick/SKILL.md", "into": "files/packages/engine/skills/luca-unstick/SKILL.md" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts", "into": "files/packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/skills/luca-unstick/scripts/stuck-summary.ts", "into": "files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts" },
+        { "commit": "d9946f89b26b93b026acabf277f6248881991fe3", "path": "packages/engine/src/testing/checkouts-fixtures.ts", "into": "files/packages/engine/src/testing/checkouts-fixtures.ts" }
+    ],
+    "git_diff": {
+        "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+        "paths": [
+            "packages/engine/skills/luca-retro/SKILL.md",
+            "packages/engine/skills/luca-retro/scripts/retro-summary.test.ts",
+            "packages/engine/skills/luca-retro/scripts/retro-summary.ts",
+            "packages/engine/skills/luca-unstick/SKILL.md",
+            "packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts",
+            "packages/engine/skills/luca-unstick/scripts/stuck-summary.ts",
+            "packages/engine/src/testing/checkouts-fixtures.ts"
+        ],
+        "into": "change.diff"
+    },
+    "answer": {
+        "parts": [
+            {
+                "name": "no-false-blocker",
+                "right": "The change is sound as described: it was merged, and no later commit changed these files. A good review raises no confirmed blocker. Should-fix items and nits are fine.",
+                "caught_when": "The outcome raises no confirmed blocker. Should-fix items and nits don't count against it."
+            }
+        ],
+        "false_blocker_hint": "Count every blocker the outcome presents as confirmed. If one looks real to you against files/, still count it, but say so in its why_false so a person can check."
+    },
+    "marker": "LR-MARKER-5C1N7RW3",
+    "max_budget_usd": 40
+}

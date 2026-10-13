@@ -1,0 +1,83 @@
+{
+  "id": "4-planted-bug",
+  "level": 3,
+  "task": "pr.md is a pull request for this repo's engine, and change.diff is its change. files/ holds every changed file as it is after the change; the paths under files/ are the repo's paths. The rest of the repo is not here, so its tests can't be run in this folder. We want to know whether it is safe to merge as described. Review it, and write the outcome to outcome.md. Your own notes are in notes/; they are for you only.",
+  "skill_clause": "Use the {skill} skill, Level 3, on this pull request before we merge it.",
+  "git_files": [
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-retro/SKILL.md",
+      "into": "files/packages/engine/skills/luca-retro/SKILL.md"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-retro/scripts/retro-summary.test.ts",
+      "into": "files/packages/engine/skills/luca-retro/scripts/retro-summary.test.ts"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-retro/scripts/retro-summary.ts",
+      "into": "files/packages/engine/skills/luca-retro/scripts/retro-summary.ts"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-unstick/SKILL.md",
+      "into": "files/packages/engine/skills/luca-unstick/SKILL.md"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts",
+      "into": "files/packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/skills/luca-unstick/scripts/stuck-summary.ts",
+      "into": "files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts"
+    },
+    {
+      "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+      "path": "packages/engine/src/testing/checkouts-fixtures.ts",
+      "into": "files/packages/engine/src/testing/checkouts-fixtures.ts"
+    }
+  ],
+  "git_diff": {
+    "commit": "d9946f89b26b93b026acabf277f6248881991fe3",
+    "paths": [
+      "packages/engine/skills/luca-retro/SKILL.md",
+      "packages/engine/skills/luca-retro/scripts/retro-summary.test.ts",
+      "packages/engine/skills/luca-retro/scripts/retro-summary.ts",
+      "packages/engine/skills/luca-unstick/SKILL.md",
+      "packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts",
+      "packages/engine/skills/luca-unstick/scripts/stuck-summary.ts",
+      "packages/engine/src/testing/checkouts-fixtures.ts"
+    ],
+    "into": "change.diff"
+  },
+  "answer": {
+    "parts": [
+      {
+        "name": "planted-bug",
+        "right": "In files/packages/engine/skills/luca-unstick/scripts/stuck-summary.ts, and in its twin files/packages/engine/skills/luca-retro/scripts/retro-summary.ts, repoRuns checks want.has(resolve(text(started.content.repo) || '/')). The set `want` holds real paths (symlinks followed), but the run's repo is only made absolute. So a run whose repo is /tmp/x (real path /private/tmp/x on macOS), or any symlinked repo, no longer matches: the very case pr.md says is fixed. It should be realPath(...).",
+        "caught_when": "The outcome flags, as a blocker or a should-fix, that repoRuns compares the run's repo without following symlinks (resolve, not realPath), so /tmp vs /private/tmp or symlinked repos won't match."
+      },
+      {
+        "name": "overstated-claim",
+        "right": "pr.md says that from a bare repo or a submodule it now finds the parent repo's runs too. That is false: currentRepos adds a main checkout only when the git common dir is <checkout>/.git, which a bare repo or a submodule doesn't have (its own comment says so), so only the top folder is tried.",
+        "caught_when": "The outcome says pr.md's bare-repo or submodule claim is false, or not supported by the code."
+      }
+    ],
+    "false_blocker_hint": "Count any other blocker the outcome presents as confirmed. If one looks real to you against files/, still count it, but say so in its why_false so a person can check."
+  },
+  "marker": "LR-MARKER-4P8M2XQ6",
+  "max_budget_usd": 40,
+  "plants": [
+    {
+      "find": "want.has(realPath(text(started.content.repo) || '/'))",
+      "replace": "want.has(resolve(text(started.content.repo) || '/'))"
+    },
+    {
+      "find": "- A bare repo or a submodule has no `<checkout>/.git` common dir, so it adds no main checkout, only its top folder.",
+      "replace": "- From a bare repo or a submodule, it now finds the parent repo's runs too."
+    }
+  ]
+}
