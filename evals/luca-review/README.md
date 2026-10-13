@@ -10,18 +10,26 @@ This eval checks that our `/luca-review` skill works at least as well as the ski
 
 ## One run
 
-`run-eval.ts` builds a fresh folder, `<evals root>/<round>/<case><setup><rep>/`. The evals root is `$LUCA_EVALS_DIR`, else `~/.local/state/luca/evals`. The folder holds:
+`run-eval.ts` builds a fresh folder, `<evals root>/<round>/<case><setup><rep>/`. The evals root is `$LUCA_EVALS_DIR` (an empty value counts as unset), else `~/.local/state/luca/evals`. It must be an absolute path outside this repo and outside `~/.claude`; the commands refuse any other. The folder holds:
 - `ws/`: the case's files, plus that setup's skill as a project skill
 - `out/`: what the run produced, as described below
 - `tmp/` and `reviews/`: the run's own temp folder and review root
 
 It runs `claude -p --setting-sources project` in `ws/`, so only that skill and Claude Code's built-in ones load. The prompt goes in on stdin. Then it:
-1. checks that the right skill loaded and that transcripts exist
+1. checks that the run finished (its stream ends with a `result` event), that the right skill loaded, and that transcripts exist; a run that fails a check is invalid and is not graded
 2. counts tokens from Claude Code's transcripts of every session under the run's folder, which takes in subagents and any `claude -p` the run started
 3. checks every transcript but the coordinator's for the case's marker word, which sits only in its `notes/`
 4. has a grader (no tools, skill names hidden) score what the run wrote against the case's answer, which was written before any run
 
-Everything lands in `out/`: `prompt.md`, `stream.jsonl`, `usage.json`, `grader-prompt.md`, `grade.json` and `row.json`.
+Everything lands in `out/`:
+- `prompt.md`: what the run was asked
+- `baseline.json`: the hash of every file in `ws/` before the run, so the grader sees only what the run wrote
+- `stream.jsonl` and `stream.jsonl.stderr`: the run's output and its error output
+- `usage.json`: tokens, cost units, the stream's `is_error`, and the transcripts counted
+- `grader-prompt.md`: exactly what the grader was shown
+- `grader.json` and `grader.json.stderr`: the grader's output and its error output
+- `grade.json`, or `grade-error.txt` when the grade could not be read (a later good grade deletes the note)
+- `row.json`: the run's numbers, which the report reads
 
 **Cost units** weigh tokens by price, in input-token units: a cache write counts 1.25×, a cache read 0.1×, and output 5×.
 
@@ -48,11 +56,16 @@ bun evals/luca-review/report.ts --round r1                   # writes results/r1
 
 **Optional flags:**
 - `--case <id>`, `--arm <A|B|C>` and `--rep <n>` narrow a run down.
-- `--dry-run` builds the folder and prints the prompt, without running.
-- `--grade-only` grades a finished run again.
+- `--no-grade` runs without grading; `--grade-only` can grade those runs later.
+- `--dry-run` builds the folder and prints the prompt, without running. The folder stays, and a real run of the same round, case, setup and rep refuses a folder that exists, so dry-run in a throwaway round such as `r0-dry`.
+- `--grade-only` grades finished runs that have no `out/grade.json`, for example after the grader failed. A run that already has a grade is skipped ("already graded, skipped"), so a person's corrections are never overwritten. It can't be used with `--dry-run`.
+
+A run that fails in any way is printed as `ERROR <message>`, and the sweep goes on to the next run. The command exits 1 if any run was invalid, errored, or (unless `--no-grade`) was left ungraded.
+
+`report.ts` counts a run folder with no `out/row.json` as an invalid run ("unfinished: no row.json"), so it shows under "Runs left out" and its case can't drop out of the decision unseen. A trigger file cut short by a stopped run is filled out with invalid results.
 
 **After a round:**
-- A person checks every grade against `out/grader-prompt.md`. To correct one, edit `out/grade.json`, add a `"person_note"`, and run the report again.
+- A person checks every grade against `out/grader-prompt.md`. To correct one, edit `out/grade.json`, add a `"person_note"`, and run the report again. `--grade-only` will not touch a run that has a `grade.json`.
 - Run the cases that A and B disagree on again, with `--rep 2`.
 
 ## The decision rule

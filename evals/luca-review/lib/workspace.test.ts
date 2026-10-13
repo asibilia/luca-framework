@@ -1,14 +1,16 @@
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { CaseSchema } from './case-schema'
 import {
+    REPO_ROOT,
     WORKSPACE_RULES,
     buildWorkspace,
+    evalsRoot,
     runRoot,
     skillName,
     skillSource,
@@ -124,6 +126,58 @@ describe('runRoot', () => {
                 rep: 2,
             })
         ).toBe(join(tmp, 'evals', 'r1', '3B2'))
+    })
+})
+
+describe('evalsRoot', () => {
+    test('is $LUCA_EVALS_DIR when it is set to a folder outside the repo and ~/.claude', () => {
+        expect(evalsRoot()).toBe(join(tmp, 'evals'))
+    })
+
+    test('an empty $LUCA_EVALS_DIR counts as unset, so the default is used', () => {
+        process.env.LUCA_EVALS_DIR = ''
+        expect(evalsRoot()).toBe(
+            join(homedir(), '.local', 'state', 'luca', 'evals')
+        )
+    })
+
+    test('an unset $LUCA_EVALS_DIR uses the default too', () => {
+        delete process.env.LUCA_EVALS_DIR
+        expect(evalsRoot()).toBe(
+            join(homedir(), '.local', 'state', 'luca', 'evals')
+        )
+    })
+
+    test('a relative path is refused', () => {
+        process.env.LUCA_EVALS_DIR = join('relative', 'evals')
+        expect(() => evalsRoot()).toThrow('absolute')
+    })
+
+    test('a folder inside this repo is refused, even one that does not exist yet', () => {
+        process.env.LUCA_EVALS_DIR = join(REPO_ROOT, 'no-such-folder', 'evals')
+        expect(() => evalsRoot()).toThrow('inside this repo')
+    })
+
+    test('the repo itself is refused', () => {
+        process.env.LUCA_EVALS_DIR = REPO_ROOT
+        expect(() => evalsRoot()).toThrow('inside this repo')
+    })
+
+    test('a symlink into the repo is followed, so it cannot hide the repo', () => {
+        const link = join(tmp, 'link')
+        symlinkSync(REPO_ROOT, link)
+        process.env.LUCA_EVALS_DIR = join(link, 'no-such-folder')
+        expect(() => evalsRoot()).toThrow('inside this repo')
+    })
+
+    test('a folder inside ~/.claude is refused', () => {
+        process.env.LUCA_EVALS_DIR = join(homedir(), '.claude', 'x')
+        expect(() => evalsRoot()).toThrow('inside ~/.claude')
+    })
+
+    test('a folder that only shares a name prefix with the repo is allowed', () => {
+        process.env.LUCA_EVALS_DIR = `${REPO_ROOT}-evals`
+        expect(evalsRoot()).toBe(`${REPO_ROOT}-evals`)
     })
 })
 

@@ -1,7 +1,15 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { cp, mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import {
+    basename,
+    dirname,
+    isAbsolute,
+    join,
+    relative,
+    resolve,
+    sep,
+} from 'node:path'
 
 import type { Arm, Case } from './case-schema'
 
@@ -32,10 +40,64 @@ export const skillName = ({ skill_dir }: { skill_dir: string }): string => {
     return name
 }
 
-/** The eval's state folder: `$LUCA_EVALS_DIR`, else `~/.local/state/luca/evals`. */
-export const evalsRoot = (): string =>
-    process.env.LUCA_EVALS_DIR ??
-    join(homedir(), '.local', 'state', 'luca', 'evals')
+/**
+ * Where `path` really is: its longest part that exists is resolved through
+ * symlinks, and the rest is kept as written.
+ */
+const realLocation = ({ path }: { path: string }): string => {
+    const missing: string[] = []
+    let here = resolve(path)
+    while (!existsSync(here) && dirname(here) !== here) {
+        missing.unshift(basename(here))
+        here = dirname(here)
+    }
+    return join(existsSync(here) ? realpathSync(here) : here, ...missing)
+}
+
+/** True when `path` is `parent` or anywhere below it. */
+const isInside = ({ path, parent }: { path: string; parent: string }) => {
+    const from_parent = relative(parent, path)
+    return (
+        from_parent === '' ||
+        (from_parent !== '..' &&
+            !from_parent.startsWith(`..${sep}`) &&
+            !isAbsolute(from_parent))
+    )
+}
+
+/**
+ * The eval's state folder: `$LUCA_EVALS_DIR` (an empty value counts as
+ * unset), else `~/.local/state/luca/evals`.
+ *
+ * Runs write whole workspaces and transcripts here, and the report reads
+ * them back, so the folder must be absolute and must not be inside this
+ * repo or inside `~/.claude` (where a run could pick up, or write over,
+ * real settings and skills). Real paths are compared where the path
+ * exists, so a symlink can't hide a folder inside either. Throws otherwise.
+ */
+export const evalsRoot = (): string => {
+    const root =
+        process.env.LUCA_EVALS_DIR ||
+        join(homedir(), '.local', 'state', 'luca', 'evals')
+    if (!isAbsolute(root)) {
+        throw new Error(
+            `the evals folder must be an absolute path, but LUCA_EVALS_DIR is "${root}"`
+        )
+    }
+    const real = realLocation({ path: root })
+    const keep_out = [
+        { name: 'this repo', path: REPO_ROOT },
+        { name: '~/.claude', path: join(homedir(), '.claude') },
+    ]
+    for (const { name, path } of keep_out) {
+        if (isInside({ path: real, parent: realLocation({ path }) })) {
+            throw new Error(
+                `the evals folder ${root} is inside ${name}: set LUCA_EVALS_DIR to a folder elsewhere`
+            )
+        }
+    }
+    return root
+}
 
 /**
  * A run's folder, such as `<evals root>/r1/3B2`. Short on purpose: Claude

@@ -7,7 +7,10 @@
  *
  * Each prompt in triggers.json goes to a fresh `claude -p` that has only
  * the Skill tool and only that setup's skill, so it can start the skill
- * but do nothing else. Saves `<evals root>/<round>/triggers-<arm>.json`.
+ * but do nothing else. Saves `<evals root>/<round>/triggers-<arm>.json`
+ * after every prompt, so a run that stops early keeps what it did (the
+ * report fills the rest in as invalid). Refuses a round that already has
+ * any of this setup's ten run folders, before it runs anything.
  */
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
@@ -38,11 +41,19 @@ const args = ArgsSchema.parse(values)
 const triggers = TriggersSchema.parse(
     await Bun.file(join(EVAL_DIR, 'triggers.json')).json()
 )
+const rootOf = ({ index }: { index: number }) =>
+    join(evalsRoot(), args.round, `t${args.arm}${index + 1}`)
+const taken = triggers
+    .map((_, index) => rootOf({ index }))
+    .filter((root) => existsSync(root))
+if (taken.length > 0) {
+    throw new Error(
+        `${taken.join(', ')} already exist${taken.length === 1 ? 's' : ''}: use a new round`
+    )
+}
 const results: TriggerResult[] = []
 for (const [index, trigger] of triggers.entries()) {
-    const root = join(evalsRoot(), args.round, `t${args.arm}${index + 1}`)
-    if (existsSync(root))
-        throw new Error(`${root} already exists: use a new round`)
+    const root = rootOf({ index })
     const ws = join(root, 'ws')
     await mkdir(ws, { recursive: true })
     const skill_name = await installSkill({
@@ -77,11 +88,11 @@ for (const [index, trigger] of triggers.entries()) {
         triggered,
         invalid_reason,
     })
+    await Bun.write(
+        join(evalsRoot(), args.round, `triggers-${args.arm}.json`),
+        `${JSON.stringify(results, null, 2)}\n`
+    )
     console.log(
         `${args.arm} ${index + 1}: ${invalid_reason ?? (triggered ? 'started' : 'did not start')} (${trigger.should_trigger ? 'should' : 'should not'})`
     )
 }
-await Bun.write(
-    join(evalsRoot(), args.round, `triggers-${args.arm}.json`),
-    `${JSON.stringify(results, null, 2)}\n`
-)
