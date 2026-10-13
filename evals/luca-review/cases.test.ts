@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+} from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -170,5 +176,62 @@ describe('the eval cases', () => {
         expect(readFileSync(join(built_five.ws, 'pr.md'), 'utf8')).toContain(
             '- A bare repo or a submodule has no'
         )
+
+        // The retro twin's repoRuns line is the same before and after the
+        // planted change, so git would show no hunk for it at all: not a
+        // "-" line and a "+" line that read the same, and not a hunk of
+        // context only (which `git apply` refuses).
+        const planted_diff = readFileSync(
+            join(built_four.ws, 'change.diff'),
+            'utf8'
+        )
+        const planted_line =
+            "want.has(resolve(text(started.content.repo) || '/'))"
+        expect(planted_diff).not.toContain(
+            `-${' '.repeat(16)}${planted_line}\n+`
+        )
+        expect(planted_diff).not.toContain('@@ -1197,7 +1197,7 @@')
+        // Only the unstick twin's "+" line is left.
+        expect(planted_diff.split(planted_line)).toHaveLength(2)
     })
+
+    for (const name of ['4-planted-bug', '5-clean-change']) {
+        test(`${name}: its change.diff applies to the PR's parent and gives its files/`, async () => {
+            const case_dir = join(CASES_DIR, name)
+            const the_case = await loadCase({ dir: case_dir })
+            const git_diff = the_case.git_diff
+            if (git_diff === null) throw new Error(`${name} has no git_diff`)
+            const { ws } = await buildWorkspace({
+                the_case,
+                case_dir,
+                root: join(tmp, `apply-${name}`),
+                skill_dir: null,
+            })
+            const before = join(tmp, `before-${name}`)
+            mkdirSync(before, { recursive: true })
+            for (const path of git_diff.paths) {
+                const shown = Bun.spawnSync([
+                    'git',
+                    '-C',
+                    REPO_ROOT,
+                    'show',
+                    `${git_diff.commit}^:${path}`,
+                ])
+                // A file the pull request adds isn't in the parent.
+                if (shown.exitCode !== 0) continue
+                await Bun.write(join(before, path), shown.stdout)
+            }
+            const applied = Bun.spawnSync(
+                ['git', 'apply', join(ws, git_diff.into)],
+                { cwd: before }
+            )
+            expect(applied.stderr.toString()).toBe('')
+            expect(applied.exitCode).toBe(0)
+            for (const file of the_case.git_files) {
+                expect(readFileSync(join(before, file.path), 'utf8')).toBe(
+                    readFileSync(join(ws, file.into), 'utf8')
+                )
+            }
+        })
+    }
 })

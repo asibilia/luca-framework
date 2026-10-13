@@ -78,6 +78,10 @@
     {
       "find": "- A bare repo or a submodule has no `<checkout>/.git` common dir, so it adds no main checkout, only its top folder.",
       "replace": "- From a bare repo or a submodule, it now finds the parent repo's runs too."
+    },
+    {
+      "find": "@@ -1197,7 +1197,7 @@ export const repoRuns = ({\n             const started = records.find((r) => r.kind === 'run_started')\n             return (\n                 started !== undefined &&\n-                want.has(resolve(text(started.content.repo) || '/'))\n+                want.has(resolve(text(started.content.repo) || '/'))\n             )\n         })\n         .map(({ run_id, records }) => ({\n",
+      "replace": ""
     }
   ]
 }
