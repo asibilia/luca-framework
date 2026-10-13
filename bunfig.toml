@@ -12,3 +12,8 @@ minimumReleaseAge = 604800
 # attack used `"@tanstack/setup": "github:tanstack/router#<sha>"` as
 # its entrypoint dependency — this setting prevents that vector.
 blockExoticSubdeps = true
+
+[test]
+# The eval's case folders hold sample code, tests included, that only runs
+# inside an eval run (evals/luca-review/README.md).
+pathIgnorePatterns = ["evals/luca-review/cases/**"]

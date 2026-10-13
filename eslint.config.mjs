@@ -72,6 +72,7 @@ export default [
             '**/coverage/**',
             '**/next-env.d.ts',
             '.planning/**',
+            'evals/luca-review/cases/**',
             '.luca/**',
             '.changeset/**',
             '.claude/**',

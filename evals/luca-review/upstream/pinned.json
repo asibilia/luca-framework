@@ -1,0 +1,13 @@
+{
+  "repo": "https://github.com/captivus/agent-review",
+  "commit": "031841cb9e2d3403546d5e5b56cd877c51d86006",
+  "files": {
+    "LICENSE": "c654e55798efbcb2f503bd6e136fb0da15e27418ccb54d936993da7ae1acbbfb",
+    "README.md": "d932c2d3b95caf67ee9dfafe3ff82bfdc2e65d42c0da5bde5c1a5ffaf3eed7aa",
+    "SKILL.md": "83893816acfb7a3b6e592303d108ad98a8ffdb93110bead342f33ce42eb7ebf2",
+    "references/level-1-dispatch.md": "da900c57793ff570e49346d8691ea0673084af4b37735ca8f14d8888a0d0c45e",
+    "references/level-2-brief.md": "a20b994474b88d65253a332a95771011ed9be1f1384aa63beb048a98b3b9cac4",
+    "references/level-3-reviewer-prompts.md": "d074473cc0432b96d07480120cd924474d92cef342825cadff8dd39ea187c05b",
+    "references/tool-notes.md": "158a0e7d926f2dd42f351e1c54016e24b8cc7cf7f9eb8c3db818553f1842b08d"
+  }
+}

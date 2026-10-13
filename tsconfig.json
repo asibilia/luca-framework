@@ -31,6 +31,8 @@
   "exclude": [
     "dist",
     "**/dist",
-    "packages/board"
+    "packages/board",
+    // Sample code the eval's cases put in front of agents, not ours to check.
+    "evals/luca-review/cases"
   ]
 }
