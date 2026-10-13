@@ -158,4 +158,69 @@ describe('runClaude', () => {
         expect(run.exit_code).not.toBe(0)
         expect(run.wall_ms).toBeLessThan(3_000)
     })
+
+    test('normal exit while background child holds pipe', async () => {
+        const fake = join(tmp, 'bg-child')
+        await Bun.write(
+            fake,
+            '#!/bin/sh\necho "full-output-line"\nsleep 3 &\nexit 0\n'
+        )
+        chmodSync(fake, 0o755)
+        const out_file = join(tmp, 'bg.jsonl')
+        const run = await runClaude({
+            cwd: tmp,
+            args: [],
+            env: process.env,
+            stdin_text: '',
+            out_file,
+            timeout_ms: 10_000,
+            command: fake,
+        })
+        expect(run.exit_code).toBe(0)
+        expect(run.text).toContain('full-output-line')
+        expect(readFileSync(out_file, 'utf8')).toContain('full-output-line')
+        expect(run.wall_ms).toBeLessThan(2_000)
+    })
+
+    test('timeout with partial output', async () => {
+        const fake = join(tmp, 'partial')
+        await Bun.write(
+            fake,
+            '#!/bin/sh\necho "partial-before-timeout"\nsleep 5\n'
+        )
+        chmodSync(fake, 0o755)
+        const out_file = join(tmp, 'partial.jsonl')
+        const run = await runClaude({
+            cwd: tmp,
+            args: [],
+            env: process.env,
+            stdin_text: '',
+            out_file,
+            timeout_ms: 300,
+            command: fake,
+        })
+        expect(run.exit_code).not.toBe(0)
+        expect(run.text).toContain('partial-before-timeout')
+        expect(readFileSync(out_file, 'utf8')).toContain(
+            'partial-before-timeout'
+        )
+    })
+
+    test('child that ignores SIGTERM', async () => {
+        const fake = join(tmp, 'sigterm-ignore')
+        await Bun.write(fake, '#!/bin/sh\ntrap "" TERM\nsleep 30\n')
+        chmodSync(fake, 0o755)
+        const out_file = join(tmp, 'sigterm.jsonl')
+        const run = await runClaude({
+            cwd: tmp,
+            args: [],
+            env: process.env,
+            stdin_text: '',
+            out_file,
+            timeout_ms: 200,
+            command: fake,
+        })
+        expect(run.exit_code).not.toBe(0)
+        expect(run.wall_ms).toBeLessThan(5_000)
+    })
 })

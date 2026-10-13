@@ -120,10 +120,67 @@ export const parseStream = ({ text }: { text: string }): StreamSummary => {
     }
 }
 
+/** Time to allow SIGTERM to work before sending SIGKILL. */
+const KILL_GRACE_MS = 2_000
+
+/** Time to wait for stream data after process exits. */
+const DRAIN_GRACE_MS = 1_000
+
+/**
+ * Helper to read a stream incrementally, capturing all data even if cancelled.
+ * Exposes text(), done promise, and cancel() method.
+ */
+const createStreamReader = (stream: ReadableStream<Uint8Array>) => {
+    const decoder = new TextDecoder()
+    const chunks: string[] = []
+    let isCancelled = false
+
+    const reader = stream.getReader()
+
+    const donePromise = (async () => {
+        try {
+            while (!isCancelled) {
+                const { done, value } = await reader.read()
+                if (done) {
+                    // Flush any remaining data from the decoder
+                    const final = decoder.decode()
+                    if (final) chunks.push(final)
+                    break
+                }
+                if (value) {
+                    chunks.push(decoder.decode(value, { stream: true }))
+                }
+            }
+        } catch {
+            // Ignore read errors - return what we have
+        } finally {
+            try {
+                reader.releaseLock()
+            } catch {
+                // Already released
+            }
+        }
+    })()
+
+    return {
+        text: () => chunks.join(''),
+        done: donePromise,
+        cancel: async () => {
+            isCancelled = true
+            try {
+                await reader.cancel()
+            } catch {
+                // Swallow cancellation errors
+            }
+        },
+    }
+}
+
 /**
  * Runs `claude` (or `command`) with `args` in `cwd`, the prompt on stdin.
  * Saves stdout to `out_file` and stderr beside it, as `<out_file>.stderr`.
- * Kills the run after `timeout_ms`.
+ * Kills the run after `timeout_ms`, with escalation to SIGKILL after KILL_GRACE_MS.
+ * Always writes both output files and returns all accumulated data.
  */
 export const runClaude = async ({
     cwd,
@@ -150,24 +207,63 @@ export const runClaude = async ({
         stdout: 'pipe',
         stderr: 'pipe',
     })
-    let timer: NodeJS.Timeout | null = null
-    const timeoutPromise = new Promise<void>((resolve) => {
-        timer = setTimeout(() => {
-            proc.kill()
-            resolve()
+
+    const stdoutReader = createStreamReader(proc.stdout)
+    const stderrReader = createStreamReader(proc.stderr)
+
+    let sigTermTimer: NodeJS.Timeout | null = null
+    let sigKillTimer: NodeJS.Timeout | null = null
+
+    try {
+        // Schedule SIGTERM at timeout_ms
+        sigTermTimer = setTimeout(() => {
+            try {
+                proc.kill()
+            } catch {
+                // Process already dead
+            }
         }, timeout_ms)
-    })
-    const streamsPromise = Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-    ])
-    const [text, errors] = await Promise.race([
-        streamsPromise,
-        timeoutPromise.then(() => ['', ''] as [string, string]),
-    ])
-    const exit_code = await proc.exited
-    if (timer) clearTimeout(timer)
-    await Bun.write(out_file, text)
-    await Bun.write(`${out_file}.stderr`, errors)
-    return { text, exit_code, wall_ms: Math.round(performance.now() - started) }
+
+        // Schedule SIGKILL at timeout_ms + KILL_GRACE_MS for stubborn children
+        sigKillTimer = setTimeout(() => {
+            try {
+                proc.kill('SIGKILL')
+            } catch {
+                // Process already dead
+            }
+        }, timeout_ms + KILL_GRACE_MS)
+
+        // Wait for process to exit
+        const exit_code = await proc.exited
+
+        // Clear timers now that process has exited
+        if (sigTermTimer) clearTimeout(sigTermTimer)
+        if (sigKillTimer) clearTimeout(sigKillTimer)
+
+        // Wait for streams to finish or DRAIN_GRACE_MS, whichever comes first
+        // This handles cases where a background child holds a pipe open
+        await Promise.race([
+            Promise.all([stdoutReader.done, stderrReader.done]),
+            new Promise((resolve) => setTimeout(resolve, DRAIN_GRACE_MS)),
+        ])
+
+        // Cancel readers to ensure they stop waiting
+        await Promise.all([stdoutReader.cancel(), stderrReader.cancel()])
+
+        const text = stdoutReader.text()
+        const errors = stderrReader.text()
+
+        await Bun.write(out_file, text)
+        await Bun.write(`${out_file}.stderr`, errors)
+
+        return {
+            text,
+            exit_code,
+            wall_ms: Math.round(performance.now() - started),
+        }
+    } finally {
+        // Ensure timers are cleared even if an error occurs
+        if (sigTermTimer) clearTimeout(sigTermTimer)
+        if (sigKillTimer) clearTimeout(sigKillTimer)
+    }
 }
