@@ -1,0 +1,1565 @@
+import { existsSync } from 'node:fs'
+import { mkdir, rm } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
+
+import difference from 'lodash/difference'
+import uniq from 'lodash/uniq'
+import uniqBy from 'lodash/uniqBy'
+
+import type { AlreadyDoneAction } from './already-done'
+import { CHANGESET_CONFIG } from './changeset'
+import { mayEditTests, type BuildAction } from './decide-build'
+import type { FinalReviewAction } from './decide-final-review'
+import { retryTicket } from './execute-stuck'
+import { closeSessions, openSessionsIn } from './session-close'
+
+import type { AgentLauncher, AgentTurn } from '../agents/agent-launcher'
+import {
+    parseRoleResult,
+    type AgentRole,
+    type RoleResult,
+} from '../agents/role-results'
+import { bunTestCommands, type EngineConfig } from '../config/engine-config'
+import { checkAlreadyDone } from '../gates/already-done-check'
+import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
+import { endedText } from '../gates/gate-schemas'
+import {
+    importStem,
+    isAgentChangeset,
+    newCodeFiles,
+    scanLeftovers,
+    scratchNamedFiles,
+} from '../gates/leftover-scan'
+import {
+    dependenciesChanged,
+    installCommand,
+    MANIFEST,
+    newWorktreeInstall,
+    rebaseNeedsInstall,
+} from '../gates/lockfile-install'
+import { checkRed } from '../gates/red-check'
+import {
+    onlyTestFiles,
+    runBunTests,
+    testFilesAmong,
+} from '../gates/test-runner'
+import type { FileChange, GitAdapter } from '../git/git-adapter'
+import { outsideLinks } from '../git/outside-links'
+import { pathText } from '../git/path-text'
+import { describeViolations } from '../guards/after-turn-check'
+import { guardRoleOf } from '../guards/role-rules'
+import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
+import type { Journal } from '../journal/journal'
+import type {
+    AgentFailure,
+    CommitStage,
+    GateTarget,
+    JournalRecord,
+} from '../journal/journal-record'
+import {
+    replayRun,
+    type ReplayedWorktree,
+    type RunState,
+} from '../journal/replay'
+import { sessionSignal } from '../limits/plan-signals'
+import { createAgentMessaging } from '../messages/agent-messaging'
+import type { CommentStep } from '../tracker/post-comment-once'
+import type { Tracker } from '../tracker/tracker'
+
+/** What the engine needs, beyond the journal and tracker, to build tickets. */
+export type BuildDeps = {
+    git: GitAdapter
+    launcher: AgentLauncher
+}
+
+/** What a build step's executor works with. */
+export type BuildContext = BuildDeps & {
+    journal: Journal
+    tracker: Tracker
+    state: RunState
+    config: EngineConfig
+    /** The run's folder, next to its journal and outside git. */
+    run_dir: string
+    /**
+     * Which try of its step this is: a redo after a crash adopts what its
+     * first try left behind.
+     */
+    step: CommentStep
+}
+
+/** The run branch's name: one per run, so runs never share a branch. */
+export const runBranchName = ({
+    spec_number,
+    run_id,
+}: {
+    spec_number: number
+    run_id: string
+}): string => `luca/spec-${spec_number}-${run_id}`
+
+/** A journaled value, or a clear error that the journal has none yet. */
+export const need = <T>({
+    value,
+    what,
+}: {
+    value: T | null | undefined
+    what: string
+}): T => {
+    if (value === null || value === undefined) {
+        throw new Error(`The journal has no ${what} yet.`)
+    }
+    return value
+}
+
+export const ticketWorktree = ({
+    state,
+    ticket,
+}: {
+    state: RunState
+    ticket: number
+}): ReplayedWorktree =>
+    need({
+        value: state.tickets[ticket]?.worktree,
+        what: `worktree for #${ticket}`,
+    })
+
+/** A fresh report file outside the worktree, so it is never a leftover. */
+const reportFile = async ({
+    context,
+    ticket,
+    label,
+}: {
+    context: BuildContext
+    /** `null` for the final review. */
+    ticket: number | null
+    label: string
+}): Promise<string> => {
+    const folder = join(context.run_dir, 'reports')
+    await mkdir(folder, { recursive: true })
+    return join(
+        folder,
+        `${context.state.last_seq + 1}-${ticket ?? 'final'}-${label}.xml`
+    )
+}
+
+const testFilesIn = async ({
+    context,
+    cwd,
+}: {
+    context: BuildContext
+    cwd: string
+}): Promise<string[]> =>
+    testFilesAmong({
+        files: await context.git.listFiles({ cwd }),
+        test_file_patterns: context.config.test_file_patterns,
+    })
+
+/**
+ * Runs `run`, a run of the config's prepare command in `cwd`, and journals
+ * as `prepare_made` the untracked paths it made: there after it ran, not
+ * before, and not known yet. Without a prepare command it only runs `run`.
+ *
+ * A crash in the middle of a prepare run leaves what it made so far; the
+ * redo's own "before" then holds those paths, so they count as the
+ * ticket's unless an earlier prepare run already noted them.
+ */
+const watchPrepare = async <Result>({
+    context,
+    cwd,
+    ticket,
+    run,
+}: {
+    context: BuildContext
+    cwd: string
+    /** The step's ticket, `null` in the final review. */
+    ticket: number | null
+    run: () => Promise<Result>
+}): Promise<Result> => {
+    if (context.config.prepare === undefined) return run()
+    const before = await context.git.untracked({ cwd })
+    const result = await run()
+    const paths = difference(
+        await context.git.untracked({ cwd }),
+        before,
+        context.state.prepare_made
+    )
+    if (paths.length > 0) {
+        context.journal.append({
+            kind: 'prepare_made',
+            ticket,
+            role: null,
+            content: { paths },
+        })
+    }
+    return result
+}
+
+/**
+ * The paths the engine leaves out of the changes at `cwd`: what prepare
+ * made (`prepare_made`), and every untracked symlink pointing outside the
+ * checkout, which no commit may hold (#496). Such a link not noted yet is
+ * most likely a prepare run's from before the engine noted what prepare
+ * made (an older engine's run, resumed); it is journaled as
+ * `prepare_made { paths, outside_links: true }`, so every later step leaves
+ * it out too.
+ *
+ * @param ticket - The step's ticket, `null` on the run branch.
+ * @returns Every path to leave out, the new links included.
+ *
+ * @example
+ * const leave_out = await leaveOutIn({ context, cwd, ticket: 11 })
+ * await context.git.commitAll({ cwd, message, leave_out })
+ */
+export const leaveOutIn = async ({
+    context,
+    cwd,
+    ticket,
+}: {
+    context: BuildContext
+    cwd: string
+    ticket: number | null
+}): Promise<string[]> => {
+    const { prepare_made } = context.state
+    const links = await outsideLinks({
+        cwd,
+        paths: difference(await context.git.untracked({ cwd }), prepare_made),
+    })
+    if (links.length > 0) {
+        context.journal.append({
+            kind: 'prepare_made',
+            ticket,
+            role: null,
+            content: { paths: links, outside_links: true },
+        })
+    }
+    return [...prepare_made, ...links]
+}
+
+/** The changes at `cwd`, less the paths in `leave_out`. */
+const ticketChanges = async ({
+    context,
+    cwd,
+    leave_out,
+}: {
+    context: BuildContext
+    cwd: string
+    leave_out: string[]
+}): Promise<FileChange[]> =>
+    (await context.git.changes({ cwd })).filter(
+        ({ path }) => !leave_out.includes(path)
+    )
+
+/**
+ * The red check's problem when the test-writer changed no file (what
+ * prepare made aside): the red commit would have nothing to commit.
+ */
+export const NO_RED_CHANGES =
+    'No file changed, so the red commit would be empty: write the tests for the criteria in the worktree (new or changed test files).'
+
+const runRedCheck = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'run_red_check' }>
+}) => {
+    const { path } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const baseline = need({
+        value: context.state.tickets[action.ticket]?.baseline,
+        what: `baseline test run for #${action.ticket}`,
+    })
+    const test_files = await testFilesIn({ context, cwd: path })
+    // Before prepare runs, so what it makes now can't count as a change.
+    const changed = await ticketChanges({
+        context,
+        cwd: path,
+        leave_out: await leaveOutIn({
+            context,
+            cwd: path,
+            ticket: action.ticket,
+        }),
+    })
+    const prepare = await watchPrepare({
+        context,
+        cwd: path,
+        ticket: action.ticket,
+        run: () => prepareCheck({ config: context.config, cwd: path }),
+    })
+    const current = await runBunTests({
+        cwd: path,
+        commands: bunTestCommands(context),
+        test_files,
+        report_file: await reportFile({
+            context,
+            ticket: action.ticket,
+            label: 'red',
+        }),
+    })
+    const files = uniq(
+        action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const sources: Record<string, string | null> = {}
+    for (const file of files) {
+        sources[file] = await pathText({ path: join(path, file) })
+    }
+    const checked = checkRed({
+        criteria_ids: action.criteria_ids,
+        mapping: action.mapping,
+        baseline,
+        current,
+        test_files,
+        sources,
+    })
+    // A failed prepare after the test-writer's turn is one more problem,
+    // for the test-writer's fix loop; so is a turn that changed no file,
+    // which would leave the red commit nothing to commit (#494).
+    const problems = [
+        ...(prepare === null || prepare.ok
+            ? []
+            : [
+                  `The prepare command \`${prepare.command}\` failed (${endedText(prepare)}):\n${prepare.output}`,
+              ]),
+        ...(changed.length > 0 ? [] : [NO_RED_CHANGES]),
+    ]
+    const result =
+        problems.length === 0
+            ? checked
+            : {
+                  ...checked,
+                  ok: false,
+                  problems: [...problems, ...checked.problems],
+              }
+    context.journal.append({
+        kind: 'red_check',
+        ticket: action.ticket,
+        role: null,
+        content: { ...result, tests: current },
+    })
+}
+
+/**
+ * Checks a test-writer's `already_done` evidence (#495) in the ticket's
+ * worktree, then journals the check (`already_done_checked`): where git
+ * finds each named commit, next to the commit the worktree started from,
+ * and a run of just the named test files that exist, are test files, and
+ * are as they are on the base, after the prepare command if the config has
+ * one. What the check means is `checkAlreadyDone`'s; replay makes a failed
+ * one a failed try for the test-writer.
+ */
+const checkAlreadyDoneIn = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'check_already_done' }>
+}) => {
+    const { path } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const commits = []
+    for (const { sha } of uniqBy(action.done_by, 'sha')) {
+        const place = await context.git.commitOnBase({
+            cwd: path,
+            sha,
+            base: action.base_sha,
+        })
+        commits.push({ sha, place })
+    }
+    const files = uniq(
+        action.criteria.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const missing = files.filter((file) => !existsSync(join(path, file)))
+    const test_files = await testFilesIn({ context, cwd: path })
+    const changed = (
+        await ticketChanges({
+            context,
+            cwd: path,
+            leave_out: await leaveOutIn({
+                context,
+                cwd: path,
+                ticket: action.ticket,
+            }),
+        })
+    ).map((change) => change.path)
+    const runnable = files.filter(
+        (file) =>
+            !missing.includes(file) &&
+            test_files.includes(file) &&
+            !changed.includes(file)
+    )
+    const prepare =
+        runnable.length === 0
+            ? null
+            : await watchPrepare({
+                  context,
+                  cwd: path,
+                  ticket: action.ticket,
+                  run: () =>
+                      prepareCheck({ config: context.config, cwd: path }),
+              })
+    const run =
+        runnable.length === 0 || (prepare !== null && !prepare.ok)
+            ? null
+            : await runBunTests({
+                  cwd: path,
+                  commands: bunTestCommands(context).map((command) =>
+                      onlyTestFiles({ command, files: runnable })
+                  ),
+                  test_files: runnable,
+                  report_file: await reportFile({
+                      context,
+                      ticket: action.ticket,
+                      label: 'already-done',
+                  }),
+              })
+    const { ok, problems } = checkAlreadyDone({
+        base_sha: action.base_sha,
+        criteria_ids: action.criteria_ids,
+        criteria: action.criteria,
+        commits,
+        missing,
+        test_files,
+        changed,
+        prepare,
+        run,
+    })
+    context.journal.append({
+        kind: 'already_done_checked',
+        ticket: action.ticket,
+        role: null,
+        content: { ok, problems, base_sha: action.base_sha, tests: run },
+    })
+}
+
+/** Whether anything besides the file itself mentions a new code file. */
+const isUsed = async ({
+    context,
+    cwd,
+    path,
+    added_texts,
+}: {
+    context: BuildContext
+    cwd: string
+    path: string
+    added_texts: Record<string, string>
+}): Promise<boolean> => {
+    const stem = importStem(path)
+    const tracked = await context.git.filesMentioning({ cwd, text: stem })
+    if (tracked.some((file) => file !== path)) return true
+    return Object.entries(added_texts).some(
+        ([file, text]) => file !== path && text.includes(stem)
+    )
+}
+
+/**
+ * Whether a file other than itself and the tests names this scratch-named
+ * file by its basename, as a TOC, `package.json`, or a config does: a
+ * tracked file, or one this change adds (a new addon's TOC names its new
+ * modules). A mention in a test doesn't make a file the repo's.
+ */
+const isNamed = async ({
+    context,
+    cwd,
+    path,
+    added_texts,
+}: {
+    context: BuildContext
+    cwd: string
+    path: string
+    added_texts: Record<string, string>
+}): Promise<boolean> => {
+    const name = basename(path)
+    const tracked = await context.git.filesMentioning({ cwd, text: name })
+    const added = Object.entries(added_texts)
+        .filter(([, text]) => text.includes(name))
+        .map(([file]) => file)
+    const files = [...tracked, ...added].filter((file) => file !== path)
+    const tests = testFilesAmong({
+        files,
+        test_file_patterns: context.config.test_file_patterns,
+    })
+    return files.some((file) => !tests.includes(file))
+}
+
+/**
+ * In a repo with changesets, removes the changesets an agent wrote (see
+ * `isAgentChangeset`) from the worktree and journals `changeset_dropped`:
+ * the engine writes the run's one itself. Returns the other changes.
+ */
+export const dropAgentChangesets = async ({
+    context,
+    cwd,
+    ticket,
+    changes,
+}: {
+    context: BuildContext
+    cwd: string
+    ticket: number | null
+    changes: FileChange[]
+}): Promise<FileChange[]> => {
+    if (!context.state.changesets) return changes
+    const paths = changes.filter(isAgentChangeset).map(({ path }) => path)
+    if (paths.length === 0) return changes
+    for (const path of paths) await rm(join(cwd, path), { force: true })
+    context.journal.append({
+        kind: 'changeset_dropped',
+        ticket,
+        role: null,
+        content: { paths },
+    })
+    return changes.filter(({ path }) => !paths.includes(path))
+}
+
+/**
+ * The commit a crash left behind at `cwd`: HEAD carries `message` and no
+ * record names it yet, so the step's first try made it and died before
+ * journaling it. `null` when HEAD is no such commit.
+ */
+const leftCommit = async ({
+    context,
+    cwd,
+    message,
+}: {
+    context: BuildContext
+    cwd: string
+    message: string
+}): Promise<{ sha: string; message: string; files: string[] } | null> => {
+    const last = await context.git.lastCommit({ cwd })
+    if (last.message !== message.trim()) return null
+    const journaled = context.journal
+        .read()
+        .some(
+            (record) =>
+                (record.kind === 'commit_made' &&
+                    record.content.sha === last.sha) ||
+                (record.kind === 'ticket_joined' &&
+                    record.content.ok &&
+                    record.content.shas.includes(last.sha))
+        )
+    return journaled ? null : { sha: last.sha, message, files: last.files }
+}
+
+/**
+ * The leftover scan, then an engine commit of everything in `cwd`, both
+ * journaled. What the prepare command made (`prepare_made`) and untracked
+ * links pointing outside the checkout (see `leaveOutIn`) are neither
+ * scanned nor committed. An agent's changeset is dropped before the scan
+ * (see `dropAgentChangesets`). A hit blocks the commit. A redo after a crash that
+ * already committed (nothing left to commit, and HEAD is an unjournaled
+ * commit with this message) journals that commit instead of making
+ * another; its scan, of a clean worktree, finds nothing, as the first try's
+ * did before it committed.
+ *
+ * Nothing to commit never runs `git commit`, which would fail (#494): the
+ * current commit is journaled with no files instead. That is a `fix` round
+ * whose every finding was a "won't fix", a green stage whose change a
+ * rebase found already on the run branch, or one whose every change came
+ * from prepare. (A red stage with nothing to commit fails its red check
+ * first, so it gets here only if the worktree changed after that check.)
+ */
+export const commitIn = async ({
+    context,
+    cwd,
+    ticket,
+    stage,
+    message,
+    mention_text,
+}: {
+    context: BuildContext
+    cwd: string
+    /** `null` for the final review. */
+    ticket: number | null
+    stage: CommitStage
+    message: string
+    /** The spec and ticket text a new markdown file may be named in. */
+    mention_text: string
+}) => {
+    const leave_out = await leaveOutIn({ context, cwd, ticket })
+    const changes = await dropAgentChangesets({
+        context,
+        cwd,
+        ticket,
+        changes: await ticketChanges({ context, cwd, leave_out }),
+    })
+    const test_files = testFilesAmong({
+        files: changes.map(({ path }) => path),
+        test_file_patterns: context.config.test_file_patterns,
+    })
+    const added = changes.filter(({ change }) => change === 'added')
+    const added_texts: Record<string, string> = {}
+    for (const { path } of added) {
+        added_texts[path] = (await pathText({ path: join(cwd, path) })) ?? ''
+    }
+    const used_code: Record<string, boolean> = {}
+    for (const path of newCodeFiles({ changes, test_files })) {
+        used_code[path] = await isUsed({ context, cwd, path, added_texts })
+    }
+    const named: string[] = []
+    for (const path of scratchNamedFiles({ changes })) {
+        if (await isNamed({ context, cwd, path, added_texts })) {
+            named.push(path)
+        }
+    }
+    const hits = scanLeftovers({
+        changes,
+        test_files,
+        mention_text,
+        used_code,
+        named,
+    })
+    context.journal.append({
+        kind: 'leftover_scan',
+        ticket,
+        role: null,
+        content: { stage, hits },
+    })
+    if (hits.length > 0) return
+    const adopted =
+        changes.length === 0 && context.step.redo
+            ? await leftCommit({ context, cwd, message })
+            : null
+    if (adopted !== null) {
+        context.journal.append({
+            kind: 'commit_made',
+            ticket,
+            role: null,
+            content: { stage, ...adopted },
+        })
+        return
+    }
+    if (changes.length === 0) {
+        // Nothing to commit: `git commit` would fail. For a fix round, the
+        // re-review's new changes are then empty.
+        context.journal.append({
+            kind: 'commit_made',
+            ticket,
+            role: null,
+            content: {
+                stage,
+                sha: await context.git.head({ cwd }),
+                message,
+                files: [],
+            },
+        })
+        return
+    }
+    const commit = await context.git.commitAll({ cwd, message, leave_out })
+    context.journal.append({
+        kind: 'commit_made',
+        ticket,
+        role: null,
+        content: { stage, sha: commit.sha, message, files: commit.files },
+    })
+}
+
+const commitTicket = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'commit_ticket' }>
+}) => {
+    const { path: cwd } = ticketWorktree({
+        state: context.state,
+        ticket: action.ticket,
+    })
+    const snapshot = need({
+        value: context.state.snapshot,
+        what: 'spec snapshot',
+    })
+    const ticket = snapshot.tickets[action.ticket]
+    await commitIn({
+        context,
+        cwd,
+        ticket: action.ticket,
+        stage: action.stage,
+        message: action.message,
+        mention_text: [snapshot.spec.body, ticket?.body ?? ''].join('\n'),
+    })
+}
+
+const failTurn = ({
+    context,
+    ticket,
+    role,
+    error,
+    failure,
+    session_id,
+}: {
+    context: BuildContext
+    ticket: number | null
+    role: AgentRole
+    error: string
+    failure: AgentFailure
+    session_id: string | null
+}) => {
+    context.journal.append({
+        kind: 'agent_failed',
+        ticket,
+        role,
+        content: { role, error, failure, session_id },
+    })
+}
+
+/**
+ * Runs one agent turn, a launch or a follow-up, and journals how it ended.
+ * Before the turn the engine snapshots the worktree; after it, the
+ * after-turn check undoes and reports anything the role may not change, for
+ * every launcher alike; what others changed in the shared `.git` meanwhile
+ * is journaled as `shared_git_changed`. Then the result is judged by its
+ * structured output. Each failed turn is journaled once as `agent_failed`
+ * with how it failed; the decision step picks what happens next. A launcher stop journals
+ * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
+ * overage, a billing error) journals only its session. Both close the
+ * turn's session first, since no follow-up can reach it.
+ *
+ * @param worktree - Where the agent works: its ticket's worktree, or the run
+ *   branch's for the final review.
+ * @param ticket - The ticket its records name, `null` for the final review.
+ * @returns The role's result when the agent finished, else `null`.
+ */
+export const runTurn = async ({
+    context,
+    worktree,
+    ticket,
+    role,
+    may_edit_tests,
+    start,
+}: {
+    context: BuildContext
+    worktree: ReplayedWorktree
+    ticket: number | null
+    role: AgentRole
+    may_edit_tests: boolean
+    start: (cwd: string) => Promise<AgentTurn>
+}): Promise<RoleResult | null> => {
+    const { path, branch } = worktree
+    const before = await snapshotWorktree({
+        cwd: path,
+        branch,
+        config: context.config,
+    })
+    const turn = await start(path)
+    if (turn.session !== undefined) {
+        context.journal.append({
+            kind: 'agent_session',
+            ticket,
+            role,
+            content: { role, session: turn.session },
+        })
+    }
+    const guard_role = guardRoleOf({ role })
+    const { violations, outside } = await enforceAfterTurn({
+        cwd: path,
+        branch,
+        role: guard_role,
+        may_edit_tests,
+        config: context.config,
+        before,
+        leave_out: context.state.prepare_made,
+    })
+    // Others' changes to the shared .git: noted, never blamed or undone.
+    if (outside.length > 0) {
+        context.journal.append({
+            kind: 'shared_git_changed',
+            ticket,
+            role,
+            content: { role, changes: outside },
+        })
+    }
+    // The plan cut the turn off. Its session, journaled above, holds why,
+    // and the decision step reads it from there: a limit wait or a billing
+    // stop. The turn uses up no try, and its step is taken again. With no
+    // sign in the session, the engine can't tell which, so it stops.
+    const unexplained =
+        !turn.ok &&
+        turn.failure === 'plan' &&
+        (turn.session === undefined ||
+            sessionSignal({ session: turn.session }).kind === 'ok')
+    // Either way no follow-up reaches the session: close it now.
+    const cut = !turn.ok && (turn.failure === 'plan' || turn.failure === 'stop')
+    if (cut && turn.session_id !== undefined) {
+        await closeSessions({
+            journal: context.journal,
+            launcher: context.launcher,
+            sessions: [{ session_id: turn.session_id, ticket, role }],
+        })
+    }
+    if (!turn.ok && turn.failure === 'plan' && !unexplained) return null
+    if (!turn.ok && (turn.failure === 'stop' || unexplained)) {
+        context.journal.append({
+            kind: 'run_stopped',
+            ticket,
+            role,
+            content: { reason: turn.error, role, billing: false },
+        })
+        throw new Error(`Run stopped: ${turn.error}`)
+    }
+    const session_id = turn.session_id ?? null
+    const fail = (failure: AgentFailure, error: string) => {
+        failTurn({ context, ticket, role, error, failure, session_id })
+        return null
+    }
+    if (violations.length > 0) {
+        return fail(
+            'guard',
+            describeViolations({ role: guard_role, violations })
+        )
+    }
+    if (!turn.ok) {
+        return fail(turn.failure === 'engine' ? 'engine' : 'agent', turn.error)
+    }
+    if (
+        turn.structured_output === undefined ||
+        turn.structured_output === null
+    ) {
+        return fail('result', `The ${role} finished with no structured output.`)
+    }
+    const checked = parseRoleResult({ role, output: turn.structured_output })
+    if (!checked.ok) return fail('result', checked.error)
+    context.journal.append({
+        kind: 'agent_finished',
+        ticket,
+        role,
+        content: { ...checked.value, session_id },
+    })
+    return checked.value
+}
+
+const launchAgent = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'launch_agent' }>
+}) => {
+    const { ticket, role, prompt, may_edit_tests } = action
+    context.journal.append({
+        kind: 'agent_started',
+        ticket,
+        role,
+        content: { role, prompt, follow_up_of: null },
+    })
+    await runTurn({
+        context,
+        worktree: ticketWorktree({ state: context.state, ticket }),
+        ticket,
+        role,
+        may_edit_tests,
+        start: (cwd) =>
+            context.launcher.launch({
+                role,
+                ticket,
+                prompt,
+                cwd,
+                may_edit_tests,
+                config: context.config,
+                messaging: createAgentMessaging({
+                    journal: context.journal,
+                    ticket,
+                    role,
+                }),
+            }),
+    })
+}
+
+const followUpAgent = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'follow_up_agent' }>
+}) => {
+    const { ticket, role, session_id, message } = action
+    const snapshot = need({
+        value: context.state.snapshot?.tickets[ticket],
+        what: `snapshot of #${ticket}`,
+    })
+    context.journal.append({
+        kind: 'agent_started',
+        ticket,
+        role,
+        content: { role, prompt: message, follow_up_of: session_id },
+    })
+    await runTurn({
+        context,
+        worktree: ticketWorktree({ state: context.state, ticket }),
+        ticket,
+        role,
+        may_edit_tests: mayEditTests({ role, ticket: snapshot }),
+        start: (cwd) =>
+            context.launcher.followUp({
+                session_id,
+                role,
+                ticket,
+                message,
+                cwd,
+                config: context.config,
+            }),
+    })
+}
+
+/**
+ * Where the run branch stood before a join of `ticket` a crash cut off: the
+ * latest `join_started` for it with no `ticket_joined` or `ticket_stuck`
+ * for it after, else `null`.
+ *
+ * @example
+ * openJoin({ records: journal.read(), ticket: 11 }) // 'a1b2c3...' after a crash mid-join
+ */
+export const openJoin = ({
+    records,
+    ticket,
+}: {
+    records: JournalRecord[]
+    ticket: number
+}): string | null => {
+    const last = records.findLast(
+        (record) =>
+            record.ticket === ticket &&
+            (record.kind === 'join_started' ||
+                record.kind === 'ticket_joined' ||
+                record.kind === 'ticket_stuck')
+    )
+    return last?.kind === 'join_started' ? last.content.run_branch_sha : null
+}
+
+/**
+ * Puts the run branch back where it stood before a join of `ticket` a crash
+ * cut off, dropping whatever half of its commits the crash left there. A
+ * cut-off step is taken again before other steps start, so nothing else
+ * moved the run branch since. Does nothing when no join was cut off.
+ */
+const undoCutOffJoin = async ({
+    context,
+    ticket,
+}: {
+    context: BuildContext
+    ticket: number
+}) => {
+    const sha = openJoin({ records: context.journal.read(), ticket })
+    if (sha === null) return
+    const runBranch = need({
+        value: context.state.run_branch,
+        what: 'run branch',
+    })
+    await context.git.resetWorktree({ cwd: runBranch.path, to: sha })
+}
+
+/**
+ * The run branch commits an undo of `ticket`'s join may take (#519): its
+ * own joined commits, and those of any other ticket that joined and has not
+ * pushed (a later join on top goes with it, and replay clears that join
+ * too). A pushed ticket's commits never.
+ */
+const undoableCommits = ({
+    state,
+    ticket,
+}: {
+    state: RunState
+    ticket: number
+}): string[] =>
+    uniq(
+        Object.entries(state.tickets).flatMap(([number, progress]) => {
+            const { joined } = progress
+            if (!joined?.ok) return []
+            const own = Number(number) === ticket
+            return own || progress.pushed === null ? joined.shas : []
+        })
+    )
+
+/**
+ * Undoes a ticket's join on the run branch, back to before `first_sha`, and
+ * returns the commits undone. It never rewinds over other work (#519): it
+ * may only undo the ticket's own join and later joins not pushed yet
+ * (`undoableCommits`). When git refuses, the run branch is left alone, the
+ * ticket is stuck (`undo_refused`) with why, and it returns `null`, so the
+ * caller does nothing more. The undone joins' install is still in the run
+ * branch's `node_modules`, so when their commits changed dependency files
+ * the lockfile's install runs there again.
+ */
+const undoJoin = async ({
+    context,
+    ticket,
+    first_sha,
+}: {
+    context: BuildContext
+    ticket: number
+    first_sha: string
+}): Promise<string[] | null> => {
+    const { git, state, journal, launcher } = context
+    const runBranch = need({ value: state.run_branch, what: 'run branch' })
+    const joined = state.tickets[ticket]?.joined
+    const tip = await git.head({ cwd: runBranch.path })
+    const undo = await git.undoReplay({
+        cwd: runBranch.path,
+        first_sha,
+        only: undoableCommits({ state, ticket }),
+    })
+    if (!undo.ok) {
+        // A stuck ticket's agents take no more follow-ups.
+        await closeSessions({
+            journal,
+            launcher,
+            sessions: openSessionsIn({ records: journal.read() }).filter(
+                (session) => session.ticket === ticket
+            ),
+        })
+        journal.append({
+            kind: 'ticket_stuck',
+            ticket,
+            role: null,
+            content: {
+                reason: 'undo_refused',
+                detail: `The engine went to undo this ticket's join on the run branch (from ${first_sha.slice(0, 7)}), but that would have rewound the run branch over other work, so the run branch was left alone:\n${undo.error}`,
+            },
+        })
+        return null
+    }
+    const { undone } = undo
+    const undoneFiles =
+        undone.length === 0
+            ? []
+            : await git.filesBetween({
+                  cwd: runBranch.path,
+                  from: `${first_sha}^`,
+                  to: tip,
+              })
+    // A redo whose first try undid the join before a crash finds nothing
+    // left to undo: the commits it undid are the journaled join's.
+    const named =
+        undone.length === 0 && context.step.redo && joined?.ok === true
+            ? joined.shas
+            : undone
+    if (dependenciesChanged({ changed_files: undoneFiles })) {
+        await installIn({
+            journal,
+            cwd: runBranch.path,
+            target: 'run_branch',
+            ticket: null,
+        })
+    }
+    return named
+}
+
+/**
+ * Puts a joined ticket's change back on top of the run branch: undoes the
+ * join first if asked (its gates failed), then resets the ticket's worktree
+ * to the run branch's tip and applies the ticket's whole diff there,
+ * uncommitted, with conflict markers in the files that clash. Journals the
+ * clashed files split into tests and code. A refused undo (#519) leaves the
+ * ticket stuck, and nothing is rebased.
+ */
+const rebaseTicket = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'rebase_ticket' }>
+}) => {
+    const { git, state, journal, config } = context
+    const worktree = ticketWorktree({ state, ticket: action.ticket })
+    const runBranch = need({ value: state.run_branch, what: 'run branch' })
+    const progress = state.tickets[action.ticket]
+    // The ticket's latest commit: a review fix round's, or the green one.
+    const head = need({
+        value: progress?.commits.fix ?? progress?.commits.green,
+        what: `green commit for #${action.ticket}`,
+    })
+    const undone =
+        action.undo_first_sha === null
+            ? []
+            : await undoJoin({
+                  context,
+                  ticket: action.ticket,
+                  first_sha: action.undo_first_sha,
+              })
+    // A refused undo left the run branch alone and the ticket stuck.
+    if (undone === null) return
+    const onto = await git.head({ cwd: runBranch.path })
+    const moved_files = await git.filesBetween({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: onto,
+    })
+    const ticket_files = await git.filesBetween({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: head,
+    })
+    const { conflicts } = await git.rebaseWorktree({
+        cwd: worktree.path,
+        from: worktree.base_sha,
+        to: head,
+        onto,
+    })
+    const tests = testFilesAmong({
+        files: conflicts,
+        test_file_patterns: config.test_file_patterns,
+    })
+    journal.append({
+        kind: 'ticket_rebased',
+        ticket: action.ticket,
+        role: null,
+        content: {
+            cause: action.cause,
+            base_sha: onto,
+            tests,
+            code: conflicts.filter((file) => !tests.includes(file)),
+            undone,
+            reinstall: rebaseNeedsInstall({ moved_files, ticket_files }),
+        },
+    })
+}
+
+/**
+ * Sends a ticket's tests back to its test-writer after a rebase (#489):
+ * looks up the tickets whose joined commits the run branch got between the
+ * ticket's old base and its new one, and the files the run branch changed
+ * there, then journals it all as `tests_sent_back`. Reads git only.
+ */
+const sendTestsBack = async ({
+    context,
+    action,
+}: {
+    context: BuildContext
+    action: Extract<BuildAction, { type: 'send_tests_back' }>
+}) => {
+    const { git, state, journal } = context
+    const { ticket, round, bad_test, from_sha, base_sha } = action
+    const worktree = ticketWorktree({ state, ticket })
+    const commits = await git.commitsBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const files = await git.filesBetween({
+        cwd: worktree.path,
+        from: from_sha,
+        to: base_sha,
+    })
+    const joined = Object.entries(state.tickets).flatMap(
+        ([number, progress]) => {
+            const other = Number(number)
+            const shas = progress.joined?.ok ? progress.joined.shas : []
+            if (other === ticket || !shas.some((sha) => commits.includes(sha)))
+                return []
+            const title = state.snapshot?.tickets[other]?.title ?? ''
+            return [{ ticket: other, title }]
+        }
+    )
+    journal.append({
+        kind: 'tests_sent_back',
+        ticket,
+        role: null,
+        content: { round, bad_test, from_sha, base_sha, joined, files },
+    })
+}
+
+/**
+ * The config's gates in a worktree (with the install first when a manifest
+ * changed since its base), journaled as `gates_run`.
+ */
+export const gatesIn = async ({
+    context,
+    worktree,
+    target,
+    ticket,
+}: {
+    context: BuildContext
+    worktree: ReplayedWorktree
+    target: GateTarget
+    /** `null` for the final review. */
+    ticket: number | null
+}) => {
+    const { path: cwd, base_sha } = worktree
+    const result = await runGates({
+        cwd,
+        config: context.config,
+        install: installCommand({
+            changed_files: difference(
+                await context.git.changedSince({ cwd, from: base_sha }),
+                context.state.prepare_made
+            ),
+            target,
+        }),
+        around_prepare: (run) => watchPrepare({ context, cwd, ticket, run }),
+        test_files: await testFilesIn({ context, cwd }),
+        report_file: await reportFile({
+            context,
+            ticket,
+            label: `gates-${target}`,
+        }),
+    })
+    context.journal.append({
+        kind: 'gates_run',
+        ticket,
+        role: null,
+        content: { target, ...result },
+    })
+}
+
+/**
+ * The frozen install in a new (or moved) worktree, journaled as
+ * `dependencies_installed`. A worktree with no `package.json` has nothing
+ * to install (`check` is `null`).
+ */
+const installIn = async ({
+    journal,
+    cwd,
+    target,
+    ticket,
+}: {
+    journal: Journal
+    cwd: string
+    target: GateTarget
+    ticket: number | null
+}) => {
+    const command = newWorktreeInstall({
+        has_manifest: existsSync(join(cwd, MANIFEST)),
+    })
+    journal.append({
+        kind: 'dependencies_installed',
+        ticket,
+        role: null,
+        content: {
+            target,
+            check:
+                command === null
+                    ? null
+                    : await shellCheck({ name: 'install', command, cwd }),
+        },
+    })
+}
+
+/**
+ * What a build step's executor works with, from the journal as it is now.
+ *
+ * @example
+ * const context = buildContext({ journal, tracker, git, launcher })
+ */
+export const buildContext = ({
+    journal,
+    tracker,
+    git,
+    launcher,
+    step,
+}: BuildDeps & {
+    journal: Journal
+    tracker: Tracker
+    /** Left out, a first try, numbered after the journal's last record. */
+    step?: CommentStep
+}): BuildContext => {
+    const records = journal.read()
+    const state = replayRun({ records })
+    const run_dir = dirname(journal.file)
+    return {
+        git,
+        launcher,
+        journal,
+        tracker,
+        state,
+        config: need({ value: state.config, what: 'engine config' }),
+        run_dir,
+        step: step ?? {
+            run_id: basename(run_dir),
+            first_seq: (records.at(-1)?.seq ?? 0) + 1,
+            redo: false,
+        },
+    }
+}
+
+/**
+ * Carries out one build step: git, gates, agents, or the tracker, then
+ * records what happened in the journal. `decide` picks the step.
+ */
+export const executeBuildAction = async ({
+    action,
+    journal,
+    tracker,
+    git,
+    launcher,
+    step,
+}: BuildDeps & {
+    /**
+     * The final review's steps go to `executeFinalReviewAction`, the
+     * changeset to `writeChangeset`, the PR to `openPullRequest`, and an
+     * already-done ticket's to `executeAlreadyDoneAction`.
+     */
+    action: Exclude<
+        BuildAction,
+        | FinalReviewAction
+        | AlreadyDoneAction
+        | { type: 'write_changeset' }
+        | { type: 'open_pull_request' }
+    >
+    journal: Journal
+    tracker: Tracker
+    /** Which try of its step this is. Left out, a first try. */
+    step?: CommentStep
+}): Promise<void> => {
+    const context = buildContext({ journal, tracker, git, launcher, step })
+    const { state, run_dir } = context
+    switch (action.type) {
+        case 'create_run_branch': {
+            const branch = runBranchName({
+                spec_number: action.spec_number,
+                run_id: basename(run_dir),
+            })
+            const path = join(run_dir, 'run-branch')
+            // A new run starts from origin's latest; no fetch, no run. Like
+            // a launcher stop, it ends the run with a plain message.
+            const fetched = await git.fetchBase({
+                base_branch: action.base_branch,
+            })
+            if (!fetched.ok) {
+                const reason = `Could not fetch ${action.base_branch} from origin, so the run has no base to start from. Check the network and the repo's origin, then resume the run.\n${fetched.error}`
+                journal.append({
+                    kind: 'run_stopped',
+                    ticket: null,
+                    role: null,
+                    content: { reason, role: null, billing: false },
+                })
+                throw new Error(`Run stopped: ${reason}`)
+            }
+            const { base_sha } = await git.createRunBranch({
+                branch,
+                base_branch: action.base_branch,
+                path,
+            })
+            journal.append({
+                kind: 'run_branch_created',
+                ticket: null,
+                role: null,
+                content: {
+                    branch,
+                    path,
+                    base_sha,
+                    changesets: existsSync(join(path, CHANGESET_CONFIG)),
+                },
+            })
+            return
+        }
+        case 'create_ticket_worktree': {
+            const branch = `${action.run_branch}--ticket-${action.ticket}`
+            const path = join(run_dir, 'tickets', String(action.ticket))
+            const { base_sha } = await git.createWorktree({
+                branch,
+                from: action.run_branch,
+                path,
+            })
+            journal.append({
+                kind: 'ticket_worktree_created',
+                ticket: action.ticket,
+                role: null,
+                content: { branch, path, base_sha },
+            })
+            return
+        }
+        case 'install_dependencies': {
+            const { path: cwd } =
+                action.ticket === null
+                    ? need({ value: state.run_branch, what: 'run branch' })
+                    : ticketWorktree({ state, ticket: action.ticket })
+            return installIn({
+                journal,
+                cwd,
+                target: action.target,
+                ticket: action.ticket,
+            })
+        }
+        case 'run_baseline_tests': {
+            const { path } = ticketWorktree({ state, ticket: action.ticket })
+            const prepare = await watchPrepare({
+                context,
+                cwd: path,
+                ticket: action.ticket,
+                run: () => prepareCheck({ config: context.config, cwd: path }),
+            })
+            if (prepare !== null) {
+                journal.append({
+                    kind: 'baseline_prepared',
+                    ticket: action.ticket,
+                    role: null,
+                    content: { check: prepare },
+                })
+                // No agent has worked yet, so a failed prepare leaves the
+                // tests unrun and the ticket stuck on its output.
+                if (!prepare.ok) return
+            }
+            const run = await runBunTests({
+                cwd: path,
+                commands: bunTestCommands(context),
+                test_files: await testFilesIn({ context, cwd: path }),
+                report_file: await reportFile({
+                    context,
+                    ticket: action.ticket,
+                    label: 'baseline',
+                }),
+            })
+            journal.append({
+                kind: 'baseline_tests',
+                ticket: action.ticket,
+                role: null,
+                content: run,
+            })
+            return
+        }
+        case 'reuse_baseline_tests':
+            journal.append({
+                kind: 'baseline_reused',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    from_ticket: action.from_ticket,
+                    base_sha: action.base_sha,
+                },
+            })
+            return
+        case 'launch_agent':
+            return launchAgent({ context, action })
+        case 'follow_up_agent':
+            return followUpAgent({ context, action })
+        case 'reset_ticket_worktree': {
+            const { path } = ticketWorktree({ state, ticket: action.ticket })
+            const { sha } = await git.discardChanges({ cwd: path })
+            journal.append({
+                kind: 'worktree_reset',
+                ticket: action.ticket,
+                role: null,
+                content: { sha },
+            })
+            return
+        }
+        case 'send_tests_back':
+            return sendTestsBack({ context, action })
+        case 'run_red_check':
+            return runRedCheck({ context, action })
+        case 'check_already_done':
+            return checkAlreadyDoneIn({ context, action })
+        case 'commit_ticket':
+            return commitTicket({ context, action })
+        case 'run_gates':
+            return gatesIn({
+                context,
+                worktree:
+                    action.target === 'ticket'
+                        ? ticketWorktree({ state, ticket: action.ticket })
+                        : need({ value: state.run_branch, what: 'run branch' }),
+                target: action.target,
+                ticket: action.ticket,
+            })
+        case 'join_run_branch': {
+            const worktree = ticketWorktree({ state, ticket: action.ticket })
+            const runBranch = need({
+                value: state.run_branch,
+                what: 'run branch',
+            })
+            await undoCutOffJoin({ context, ticket: action.ticket })
+            journal.append({
+                kind: 'join_started',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    run_branch_sha: await git.head({ cwd: runBranch.path }),
+                },
+            })
+            const commits = await git.commitsBetween({
+                cwd: worktree.path,
+                from: worktree.base_sha,
+                to: 'HEAD',
+            })
+            const joined = await git.replay({ cwd: runBranch.path, commits })
+            journal.append({
+                kind: 'ticket_joined',
+                ticket: action.ticket,
+                role: null,
+                content: joined,
+            })
+            return
+        }
+        case 'rebase_ticket':
+            return rebaseTicket({ context, action })
+        case 'remove_worktrees': {
+            for (const path of action.paths) {
+                await git.removeWorktree({ path })
+            }
+            journal.append({
+                kind: 'worktrees_removed',
+                ticket: null,
+                role: null,
+                content: { paths: action.paths },
+            })
+            return
+        }
+        case 'push_run_branch': {
+            const { path } = need({
+                value: state.run_branch,
+                what: 'run branch',
+            })
+            await git.push({ cwd: path, branch: action.branch })
+            journal.append({
+                kind: 'run_branch_pushed',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    branch: action.branch,
+                    sha: await git.head({ cwd: path }),
+                },
+            })
+            return
+        }
+        case 'undo_join': {
+            const shas = await undoJoin({
+                context,
+                ticket: action.ticket,
+                first_sha: action.first_sha,
+            })
+            // A refused undo left the run branch alone and the ticket stuck.
+            if (shas === null) return
+            journal.append({
+                kind: 'join_undone',
+                ticket: action.ticket,
+                role: null,
+                content: { shas },
+            })
+            return
+        }
+        case 'retry_ticket':
+            return retryTicket({ context, action })
+        case 'report_stuck':
+        case 'wait_for_reply':
+        case 'take_reply':
+        case 'ignore_reply':
+        case 'skip_ticket':
+        case 'report_final_review_stuck':
+        case 'ship_final_review':
+        case 'retry_final_review':
+            // Stuck work's steps; `executeAction` carries them out.
+            throw new Error(`${action.type} is not a git or agent step.`)
+        case 'mark_stuck':
+            // A join crashes cut off too often leaves no half of it behind.
+            await undoCutOffJoin({ context, ticket: action.ticket })
+            // A stuck ticket's agents take no more follow-ups.
+            await closeSessions({
+                journal,
+                launcher,
+                sessions: openSessionsIn({ records: journal.read() }).filter(
+                    ({ ticket }) => ticket === action.ticket
+                ),
+            })
+            journal.append({
+                kind: 'ticket_stuck',
+                ticket: action.ticket,
+                role: null,
+                content: { reason: action.reason, detail: action.detail },
+            })
+            return
+        case 'done':
+        case 'invalid_journal':
+            return
+    }
+}

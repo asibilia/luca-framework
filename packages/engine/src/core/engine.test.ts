@@ -1,0 +1,437 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import escapeRegExp from 'lodash/escapeRegExp'
+
+import type { EngineAction } from './decide'
+import { runEngine, startRun } from './execute'
+
+import type { EngineConfig } from '../config/engine-config'
+import { createJournal, runJournalPath, type Journal } from '../journal/journal'
+import { replayRun } from '../journal/replay'
+import {
+    specIssue,
+    ticketIssue,
+    withoutStepRecords,
+} from '../testing/intake-fixtures'
+import { createInMemoryTracker } from '../tracker/in-memory-tracker'
+import type { TrackerIssue } from '../tracker/tracker'
+
+/** Intake passed: the next step is making the run branch. */
+const BUILD_STARTS: EngineAction = {
+    type: 'create_run_branch',
+    spec_number: 10,
+    base_branch: 'main',
+}
+
+const CONFIG: EngineConfig = {
+    checks: { test: 'bun test' },
+    test_file_patterns: ['**/*.test.ts'],
+    test_setup_files: [],
+    rule_files: [],
+}
+
+let runsDir = ''
+let journal: Journal
+
+beforeEach(async () => {
+    runsDir = await mkdtemp(join(tmpdir(), 'luca-engine-run-'))
+    journal = createJournal({
+        file: runJournalPath({ runs_dir: runsDir, run_id: 'run' }),
+    })
+})
+
+afterEach(async () => {
+    await rm(runsDir, { recursive: true, force: true })
+})
+
+const runSpec = async ({
+    issues,
+    sub_tickets,
+    config,
+}: {
+    issues: TrackerIssue[]
+    sub_tickets: number[]
+    config: EngineConfig
+}) => {
+    const tracker = createInMemoryTracker({
+        issues,
+        sub_tickets: { 10: sub_tickets },
+    })
+    startRun({ journal, spec_number: 10, config })
+    const action = await runEngine({
+        journal,
+        tracker,
+        stop_before: ['create_run_branch'],
+    })
+    return {
+        tracker,
+        action,
+        kinds: withoutStepRecords(journal.read()).map((r) => r.kind),
+    }
+}
+
+describe('engine: intake refuses the run', () => {
+    test('each bad ticket gets a comment and needs-info; good tickets are left alone', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 11 }),
+                ticketIssue({ number: 12, criteria: [] }),
+                ticketIssue({ number: 13, labels: ['enhancement'] }),
+            ],
+            sub_tickets: [11, 12, 13],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(kinds).toEqual(['run_started', 'intake_read', 'intake_refused'])
+
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+        expect(tracker.labelsOf({ number: 11 })).toEqual(['ready-for-agent'])
+
+        // Each engine comment ends with its invisible marker.
+        expect(tracker.commentsOn({ number: 12 })).toEqual([
+            expect.stringMatching(
+                new RegExp(
+                    `^${escapeRegExp(
+                        'Luca intake refused the run for spec #10. This issue is not ready yet:\n\n' +
+                            '- The ticket has no checkbox under "Acceptance criteria".\n\n' +
+                            'Fix these, move the issue back to `ready-for-agent`, and start the run again.'
+                    )}\n\n<!-- luca:run:\\d+:\\d+ -->$`
+                )
+            ),
+        ])
+        expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
+
+        expect(tracker.commentsOn({ number: 13 })).toHaveLength(1)
+        expect(tracker.labelsOf({ number: 13 })).toEqual([
+            'enhancement',
+            'needs-info',
+        ])
+    })
+
+    test('a spec without Testing Decisions gets the comment and needs-info', async () => {
+        const { tracker } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10, testing_decisions: '' }),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(tracker.commentsOn({ number: 10 })).toHaveLength(1)
+        expect(tracker.labelsOf({ number: 10 })).toEqual(['needs-info'])
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+    })
+
+    test('a missing test command refuses without touching any ticket', async () => {
+        const { tracker, action } = await runSpec({
+            config: { ...CONFIG, checks: {} },
+            issues: [specIssue({ number: 10 }), ticketIssue({ number: 11 })],
+            sub_tickets: [11],
+        })
+        const records = journal.read()
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(tracker.commentsOn({ number: 10 })).toEqual([])
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+        expect(replayRun({ records }).problems).toEqual([
+            {
+                ticket: null,
+                missing: [
+                    'The engine config (.luca/config.json) has no test command at checks.test.',
+                ],
+            },
+        ])
+    })
+
+    test('an open blocker outside the spec is read from the tracker and refused', async () => {
+        const { tracker, action } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 11, blocked_by_section: '- #99' }),
+                ticketIssue({ number: 99 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(tracker.labelsOf({ number: 11 })).toEqual(['needs-info'])
+    })
+})
+
+describe('engine: a refusal whose labels fail (#500)', () => {
+    test('a labeling failure is journaled, and the refusal still ends refused', async () => {
+        const inMemory = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+                ticketIssue({ number: 13, labels: ['enhancement'] }),
+            ],
+            sub_tickets: { 10: [12, 13] },
+        })
+        const tracker = {
+            ...inMemory,
+            addLabel: async () => {
+                throw new Error("could not add label: 'needs-info' not found")
+            },
+        }
+        startRun({ journal, spec_number: 10, config: CONFIG })
+
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        for (const number of [12, 13]) {
+            expect(inMemory.commentsOn({ number })).toHaveLength(1)
+        }
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({
+            label_failures: [
+                {
+                    ticket: 12,
+                    label: 'needs-info',
+                    change: 'add',
+                    error: "could not add label: 'needs-info' not found",
+                },
+                {
+                    ticket: 13,
+                    label: 'needs-info',
+                    change: 'add',
+                    error: "could not add label: 'needs-info' not found",
+                },
+            ],
+        })
+        // The ready label still comes off: one failure doesn't stop the next.
+        expect(inMemory.labelsOf({ number: 13 })).toEqual(['enhancement'])
+    })
+
+    test('a failing label removal is journaled too, and the refusal ends refused', async () => {
+        const inMemory = createInMemoryTracker({
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+            ],
+            sub_tickets: { 10: [12] },
+        })
+        const tracker = {
+            ...inMemory,
+            removeLabel: async () => {
+                throw new Error('HTTP 502: Bad Gateway')
+            },
+        }
+        startRun({ journal, spec_number: 10, config: CONFIG })
+
+        const action = await runEngine({ journal, tracker })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(inMemory.labelsOf({ number: 12 })).toContain('needs-info')
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({
+            label_failures: [
+                {
+                    ticket: 12,
+                    label: 'ready-for-agent',
+                    change: 'remove',
+                    error: 'HTTP 502: Bad Gateway',
+                },
+            ],
+        })
+    })
+
+    test('a refusal on a repo without the needs-info label creates it', async () => {
+        const { tracker } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 12, criteria: [] }),
+            ],
+            sub_tickets: [12],
+        })
+
+        expect(await tracker.listLabels()).toContain('needs-info')
+        expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
+        const [refused] = journal
+            .read()
+            .filter((record) => record.kind === 'intake_refused')
+        expect(refused?.content).toMatchObject({ label_failures: [] })
+    })
+})
+
+describe('engine: intake and the spec release labels', () => {
+    const specWithLabels = (labels: string[]): TrackerIssue => ({
+        ...specIssue({ number: 10 }),
+        labels,
+    })
+
+    test('a spec with two release labels is refused, and its comment names both', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels([
+                    'ready-for-agent',
+                    'release:minor',
+                    'release:major',
+                ]),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(kinds).toEqual(['run_started', 'intake_read', 'intake_refused'])
+        const comments = tracker.commentsOn({ number: 10 })
+        expect(comments).toHaveLength(1)
+        expect(comments[0]).toContain('release:minor')
+        expect(comments[0]).toContain('release:major')
+        expect(tracker.labelsOf({ number: 10 })).toContain('needs-info')
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+    })
+
+    test('a spec with one release label starts building, where two would refuse it', async () => {
+        const one = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels(['ready-for-agent', 'release:minor']),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(one.action).toEqual(BUILD_STARTS)
+        expect(one.tracker.commentsOn({ number: 10 })).toEqual([])
+
+        journal = createJournal({
+            file: runJournalPath({ runs_dir: runsDir, run_id: 'second' }),
+        })
+        const two = await runSpec({
+            config: CONFIG,
+            issues: [
+                specWithLabels([
+                    'ready-for-agent',
+                    'release:minor',
+                    'release:none',
+                ]),
+                ticketIssue({ number: 11 }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(two.action).toEqual({ type: 'done', outcome: 'refused' })
+    })
+})
+
+describe('engine: nothing to do', () => {
+    test('a spec whose tickets are all closed ends with nothing to do', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 11, state: 'closed' }),
+            ],
+            sub_tickets: [11],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'nothing_to_do' })
+        expect(kinds).toEqual(['run_started', 'intake_read', 'nothing_to_do'])
+        expect(tracker.commentsOn({ number: 10 })).toEqual([])
+    })
+})
+
+describe('engine: intake passes', () => {
+    const readySpec = (): TrackerIssue[] => [
+        specIssue({ number: 10, title: 'Checkout' }),
+        ticketIssue({ number: 11, title: 'Pay', blocked_by: [12] }),
+        ticketIssue({ number: 12, title: 'Cart', blocked_by: [99] }),
+        ticketIssue({ number: 99, title: 'Done elsewhere', state: 'closed' }),
+    ]
+
+    test('the spec and every ticket are snapshotted into the journal', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: readySpec(),
+            sub_tickets: [11, 12],
+        })
+
+        expect(action).toEqual(BUILD_STARTS)
+        expect(kinds).toEqual([
+            'run_started',
+            'intake_read',
+            'spec_snapshot',
+            'ticket_snapshot',
+            'ticket_snapshot',
+        ])
+        expect(journal.read().map(({ seq }) => seq)).toEqual(
+            journal.read().map((_, index) => index + 1)
+        )
+        const records = withoutStepRecords(journal.read())
+        expect(records.map(({ ticket, role }) => ({ ticket, role }))).toEqual([
+            { ticket: null, role: null },
+            { ticket: null, role: null },
+            { ticket: 10, role: null },
+            { ticket: 12, role: null },
+            { ticket: 11, role: null },
+        ])
+        expect(records[4]).toMatchObject({
+            kind: 'ticket_snapshot',
+            content: {
+                number: 11,
+                title: 'Pay',
+                criteria: [{ id: 'AC1', text: 'It works' }],
+                blockers: [12],
+            },
+        })
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+    })
+
+    test('editing a ticket after the snapshot does not change the run', async () => {
+        const { tracker } = await runSpec({
+            config: CONFIG,
+            issues: readySpec(),
+            sub_tickets: [11, 12],
+        })
+
+        tracker.updateIssue({
+            number: 11,
+            changes: { title: 'Pay (edited)', body: 'Rewritten.' },
+        })
+        const again = await runEngine({
+            journal,
+            tracker,
+            stop_before: ['create_run_branch'],
+        })
+
+        expect(again).toEqual(BUILD_STARTS)
+        const state = replayRun({ records: journal.read() })
+        expect(state.snapshot?.tickets[11]?.title).toBe('Pay')
+        expect(withoutStepRecords(journal.read())).toHaveLength(5)
+    })
+
+    test('a run picks up where its journal left off', async () => {
+        const tracker = createInMemoryTracker({
+            issues: readySpec(),
+            sub_tickets: { 10: [11, 12] },
+        })
+        startRun({ journal, spec_number: 10, config: CONFIG })
+
+        const reopened = createJournal({ file: journal.file })
+        const action = await runEngine({
+            journal: reopened,
+            tracker,
+            stop_before: ['create_run_branch'],
+        })
+
+        expect(action).toEqual(BUILD_STARTS)
+        const seqs = reopened.read().map((r) => r.seq)
+        expect(seqs).toEqual(seqs.map((_, index) => index + 1))
+        expect(withoutStepRecords(reopened.read())).toHaveLength(5)
+    })
+})

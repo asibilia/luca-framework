@@ -1,0 +1,57 @@
+# @alecsibilia/luca
+
+## 14.0.0-alpha.12
+
+No changes in this release.
+
+## 14.0.0-alpha.11
+
+No changes in this release.
+
+## 14.0.0-alpha.10
+
+No changes in this release.
+
+## 14.0.0-alpha.9
+
+No changes in this release.
+
+## 14.0.0-alpha.8
+
+No changes in this release.
+
+## 14.0.0-alpha.7
+
+No changes in this release.
+
+## 14.0.0-alpha.6
+
+No changes in this release.
+
+## 14.0.0-alpha.5
+
+No changes in this release.
+
+## 14.0.0-alpha.4
+
+No changes in this release.
+
+## 14.0.0-alpha.3
+
+No changes in this release.
+
+## 14.0.0-alpha.2
+
+No changes in this release.
+
+## 14.0.0-alpha.1
+
+### Patch Changes
+
+- 8a58510: Spec: Luca v14 fixes: no empty changesets, board version, init sets up the repo ([#480](https://github.com/asibilia/luca-framework/issues/480))
+
+## 14.0.0-alpha.0
+
+### Major Changes
+
+- f732641: Luca v14: new Luca on npm

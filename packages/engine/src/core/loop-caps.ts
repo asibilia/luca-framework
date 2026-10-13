@@ -1,0 +1,47 @@
+/**
+ * The caps of every **fix loop**, shared by the ticket steps
+ * (`decide-build.ts`) and the final review (`decide-final-review.ts`).
+ */
+
+/**
+ * Follow-ups an agent gets to fix a failed red check or failed gates, after
+ * its first try. A failure after the last follow-up makes the ticket stuck.
+ * Also the cap on review fix rounds and on failed tries per role.
+ */
+export const MAX_FIX_ROUNDS = 3
+
+/**
+ * Times an implementer may send a test back as bad, each to a fresh
+ * test-writer. The bounce after these makes the ticket stuck.
+ */
+export const MAX_BAD_TEST_BOUNCES = 1
+
+/**
+ * Times a ticket's tests may go back to its test-writer after a rebase
+ * (#489): the implementer sent a test back as bad, because tickets that
+ * joined the run branch made it wrong. The bad test after these makes the
+ * ticket stuck.
+ */
+export const MAX_TEST_UPDATES = 2
+
+/**
+ * Engine failures in a row (the SDK crashed, or a follow-up's session was
+ * gone) after which a ticket is stuck. Each one before it starts a fresh
+ * agent without using up a try.
+ */
+export const MAX_ENGINE_FAILURES = 3
+
+/**
+ * Times a joined ticket may be sent back onto the run branch, after a clash
+ * or failed gates after joining. The clash or failed join after these makes
+ * the ticket stuck.
+ */
+export const MAX_REJOINS = MAX_FIX_ROUNDS
+
+/**
+ * Crashes in a row that cut off the same step (`run_resumed`) after which
+ * it is not taken again: a ticket's step makes the ticket stuck, a final
+ * review step makes the final review stuck, and a run-level step (or
+ * taking a reply) stops the run for good.
+ */
+export const MAX_CRASHES = 3

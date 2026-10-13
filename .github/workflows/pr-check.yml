@@ -1,0 +1,53 @@
+# The required check on every pull request.
+#
+# It runs on macOS, like Luca: on Linux, Bun hard-links packages from its
+# cache, and two tests fail there.
+#
+#   1. Every check in .luca/config.json, read from that file by
+#      scripts/run-checks.ts, so CI and Luca's own gates can't drift apart.
+#   2. Bun-pack the publish package and fail on any catalog: or workspace:
+#      range left in its packed package.json.
+#   3. `changeset status` against main, to catch a forgotten changeset.
+#      Skipped on the Version PR's branch (changeset-release/*), which
+#      consumes the changesets.
+
+name: PR check
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # changeset status compares against origin/main.
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run the checks in .luca/config.json
+        run: bun scripts/run-checks.ts
+
+      - name: Pack the publish package
+        run: bun packages/luca/scripts/check-pack.ts
+
+      - name: Changeset status
+        if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
+        run: bunx changeset status --since=origin/main

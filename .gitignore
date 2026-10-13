@@ -1,0 +1,104 @@
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# generated output (built by build:all, deployed by deploy — source repo uses ~/.claude/ globally)
+.claude/agents/
+.claude/commands/
+.claude/skills/
+.claude/rules/
+.claude/hooks/
+.claude/statusline.sh
+.claude/settings.json
+.claude/.session-lock
+.claude/.build-manifest.json
+.claude/cache/
+
+# context monitoring (runtime artifacts) — legacy .planning/ layout
+.planning/.context-metrics.json
+.planning/.context-checkpoint.json
+.planning/.luca-lock.json
+.planning/session-ledger.jsonl
+.planning/verification-history.jsonl
+.planning/verification-result.json
+.planning/luca-state.json
+.planning/checks-convergence.json
+
+# DAG workflow checkpoints (ephemeral local state)
+.planning/checkpoints/
+
+# Eval results (generated, per-run)
+.planning/evals/
+
+# .luca/ holds the engine config (.luca/config.json, committed).
+# Old Luca's local-only files stay ignored; its tracked data is at the tag old-luca-final.
+.luca/state.json
+.luca/lock.json
+.luca/ledger.jsonl
+.luca/telemetry/
+.luca/tmp/
+
+# tests — only the throwaway tmp files are ignored. Packages keep their
+# unit tests in src/__tests__/ (run via `bun test`) so they stay visible
+# in PR diffs.
+.tmp-test-*
+
+# next.js
+.next
+
+# removed platform output directories (Claude Code is sole target)
+.cursor/
+.pi/
+.qwen/
+
+#Playwright CLI
+.playwright-cli/
+
+# Luca transient phase artifacts (per-iteration scratch, archived telemetry)
+.planning/telemetry/archive/
+.planning/**/checks-convergence.json
+.planning/**/*-capture-*.md
+.planning/audits/memory/state.json
+
+.luca/state.json.lock
+
+# skill-opt staging outputs (candidate skills, reports, baseline cache)
+packages/luca-tools/skill-opt/staging/
+
+# AI-session debris — never commit run logs or harness caches
+*.log
+.claude/cache/
+# Harness caches live under .claude/cache/ in every package too
+**/.claude/cache/
+.firecrawl/
