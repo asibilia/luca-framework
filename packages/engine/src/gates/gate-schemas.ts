@@ -82,3 +82,32 @@ export const LeftoverHitSchema = z.object({
 })
 
 export type LeftoverHit = z.infer<typeof LeftoverHitSchema>
+
+/**
+ * Why the leftover scan let a new markdown file through (#520): it sits in a
+ * doc place (a `docs` or `adr` folder, or a `README.md`), a tracked or newly
+ * added non-test file names it, or a `leftover_allow` pattern matches it.
+ */
+export const LeftoverPassReasonSchema = z.enum([
+    'doc_place',
+    'named_by_repo',
+    'config_pattern',
+])
+
+export type LeftoverPassReason = z.infer<typeof LeftoverPassReasonSchema>
+
+/**
+ * A new markdown file the leftover scan let through, and why, as the journal
+ * keeps it. The reason is a string there, so a later reason still reads.
+ */
+export const LeftoverPassSchema = z.object({
+    path: z.string(),
+    reason: z.string(),
+})
+
+/** A new markdown file the leftover scan let through, as the scan returns it. */
+export const LeftoverPassResultSchema = LeftoverPassSchema.extend({
+    reason: LeftoverPassReasonSchema,
+})
+
+export type LeftoverPass = z.infer<typeof LeftoverPassResultSchema>

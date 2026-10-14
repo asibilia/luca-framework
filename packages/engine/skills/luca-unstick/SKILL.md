@@ -27,6 +27,7 @@ Pass the ticket as a bare number (`134`, not `#134`): in the shell, `#` starts a
 - With a run id, it sums up that run. With a ticket too, only that ticket (and the run itself).
 - With no run id, it lists this repo's runs (from the main checkout, any of its worktrees, or a subfolder), newest first, and sums up the newest one that waits on a reply. If that isn't the one the owner means, ask.
 - It prints: the spec, its owner, the repo (`owner/repo`), the Luca version the run is on, the run branch, whether the engine is running now, how the board saw it end, and, for each stuck thing, the stuck reason and detail, the worktree, the agent's last result (such as a `bad_test` with its file, test, and reason), the last failed checks with the end of their output, and the replies since.
+- It cites each journal record as `seq <n>` (such as `seq 1234`), as `/luca-retro` does, and tickets as `#<n>`. Cite records the same way: on GitHub, `#<n>` links to an issue.
 
 Where things live, if you need more:
 
@@ -69,7 +70,7 @@ Find the stuck reason: `ticket_stuck` (a ticket), `final_review_stuck` (the fina
 | `join_failed` | The ticket still clashes with the run branch after every rebase. | `retry #n` puts it on the run branch's tip again (uncommitted edits in its worktree are replaced). If two tickets keep fighting over the same lines, `skip #n` and build it in a later run. |
 | `join_gates_failed` | The checks fail once the ticket joins the run branch. Its join was undone, so the run branch is safe. | Usually two tickets that pass alone but break together. `retry #n` fixes it on top of the run branch. |
 | `install_failed` | Installing the dependencies failed. | Fix the manifest or lockfile on the base branch, then `retry #n`. |
-| `leftovers_found` | The leftover scan found files that must not be committed (a report file, a nested git repo). | Delete or move those files out of the worktree (they're not the ticket's work), then `retry #n`. |
+| `leftovers_found` | The leftover scan found files that must not be committed (a report file, a nested git repo). | Delete or move those files out of the worktree (they're not the ticket's work), then `retry #n`. If one is a doc the repo wants, add a pattern for it to `leftover_allow` in the repo's `.luca/config.json` instead and resume the run (only a resume reads the config again, a plain `retry` doesn't), then `retry #n`. |
 | `setup_change_needed` | An agent needs a test setup file changed, and only a person may do that. | Read what it asks for. If it's right, make that change yourself in the worktree (ask the owner first: this one isn't a test file), then `retry #n`. |
 | `crashed` | The engine crashed in the same step, again and again. | That's an engine bug, not the ticket (see below). |
 | `undo_refused` | The ticket's join is still on the run branch, but undoing it would have rewound the run branch over other work (its join isn't on the branch, or other commits sit on top of it), so Luca left the run branch alone. Nothing new starts or joins until it's sorted (#519). | Look at the run branch's log next to the joins in the journal. Put the run branch back so the ticket's join is on top, or take its join off by hand (ask the owner first), then `retry #n`. Or `skip #n`. |
@@ -79,7 +80,7 @@ Find the stuck reason: `ticket_stuck` (a ticket), `final_review_stuck` (the fina
 The final review, when `final_review_stuck`:
 
 - `changes_requested`: read the lenses' open findings. If they can wait for review in the PR, reply `ship` (the PR opens with them listed at the top). If they matter, fix them in the run branch's worktree, then a bare `retry`.
-- Anything else (`gates_failed`, `agent_failed`, `bad_test`, `leftovers_found`): fix what trips it in the run branch's worktree, then `retry`; or `ship` to open the PR anyway.
+- Anything else (`gates_failed`, `agent_failed`, `bad_test`, `leftovers_found`): fix what trips it in the run branch's worktree, then `retry`; or `ship` to open the PR anyway. For `leftovers_found` on a doc the repo wants, add a `leftover_allow` pattern and resume the run instead, as for a ticket.
 - `skip` doesn't apply to the final review.
 
 The reply words, and when each fits:

@@ -1,3 +1,4 @@
+import isEqual from 'lodash/isEqual'
 import omit from 'lodash/omit'
 import reduce from 'lodash/reduce'
 import { z } from 'zod'
@@ -7,10 +8,10 @@ import type { EngineConfig } from './engine-config'
 /**
  * The config fields a resumed run takes from the repo's
  * `.luca/config.json` again (#516). They say how the engine builds a
- * checkout before its tests, or how long a test may run, not what the
- * tests are, so a run can change them halfway without making its earlier
- * results wrong: a repo that swaps a slow `prepare` for a fast cached one
- * gets it on the next resume.
+ * checkout before its tests, how long a test may run, or which new docs
+ * may be committed, not what the tests are, so a run can change them
+ * halfway without making its earlier results wrong: a repo that swaps a
+ * slow `prepare` for a fast cached one gets it on the next resume.
  *
  * - `prepare`: the command run before each test run in a checkout.
  * - `prepare_timeout_ms`: how long that command may run.
@@ -19,12 +20,16 @@ import type { EngineConfig } from './engine-config'
  *   one counts from the next prepare run.
  * - `test_timeout_ms`: how long each test command may run (#542). Each run
  *   of a test command reads it then, so a new one counts from the next.
+ * - `leftover_allow`: more new markdown the leftover scan lets through
+ *   (#520). Each scan reads it then, so a run stuck on a leftover can be
+ *   unstuck by allowing the file and resuming.
  */
 export const RELOADED_FIELDS = [
     'prepare',
     'prepare_timeout_ms',
     'prepare_concurrency',
     'test_timeout_ms',
+    'leftover_allow',
 ] as const
 
 /**
@@ -61,6 +66,7 @@ export const FROZEN_FIELDS = [
 ] as const
 
 const positiveInt = z.number().int().positive().nullable()
+const patterns = z.array(z.string().min(1)).nullable()
 
 /**
  * One reloaded field that changed: its value in the run before (`from`)
@@ -87,6 +93,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         field: z.literal('test_timeout_ms'),
         from: positiveInt,
         to: positiveInt,
+    }),
+    z.object({
+        field: z.literal('leftover_allow'),
+        from: patterns,
+        to: patterns,
     }),
 ])
 
@@ -129,8 +140,13 @@ export const configChanges = ({
             from: current.test_timeout_ms ?? null,
             to: next.test_timeout_ms ?? null,
         },
+        {
+            field: 'leftover_allow',
+            from: current.leftover_allow ?? null,
+            to: next.leftover_allow ?? null,
+        },
     ]
-    return all.filter(({ from, to }) => from !== to)
+    return all.filter(({ from, to }) => !isEqual(from, to))
 }
 
 const applyChange = ({
@@ -157,6 +173,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'test_timeout_ms')
                 : { ...config, test_timeout_ms: change.to }
+        case 'leftover_allow':
+            return change.to === null
+                ? omit(config, 'leftover_allow')
+                : { ...config, leftover_allow: change.to }
     }
 }
 

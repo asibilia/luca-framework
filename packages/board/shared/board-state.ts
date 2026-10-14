@@ -177,10 +177,20 @@ export const RunPhaseSchema = z.enum([
 
 export type RunPhase = z.infer<typeof RunPhaseSchema>
 
+/**
+ * What a ticket is really doing (#549): `building` its first test-writer and
+ * implementer pass, `reviewing` only while a reviewer works, `testing` the red
+ * check or the checks, `fixing` any fix round, `joining` the run branch and
+ * the checks there. Every older stage is still one, so a stored board state
+ * from before still parses.
+ */
 export const TicketStageSchema = z.enum([
     'blocked',
     'building',
     'reviewing',
+    'testing',
+    'fixing',
+    'joining',
     'stuck',
     'done',
     'skipped',

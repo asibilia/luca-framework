@@ -41,6 +41,13 @@ const REASON_LINES: Record<StuckReason, string> = {
         'Undoing its join would have rewound the run branch over other work, so the run branch was left alone.',
 }
 
+/**
+ * How to keep a flagged doc the repo wants, for a `leftovers_found` stuck
+ * (#520); `retry` is the reply that retries it.
+ */
+const leftoverAllowHint = ({ retry }: { retry: string }): string =>
+    `If one is a doc the repo wants, add a pattern for it to \`leftover_allow\` in the repo's \`.luca/config.json\` instead, resume the run (only a resume reads the config again, a plain \`retry\` doesn't), then reply ${retry}.`
+
 /** What the user could do, per reason; `n` is the ticket. */
 const suggestion = ({
     reason,
@@ -58,7 +65,7 @@ const suggestion = ({
         case 'nothing_new_to_test':
             return `A ticket that changes no behavior is a refactor ticket: add the \`${REFACTOR_LABEL}\` label, then reply ${retry}. It is built again as a refactor, with no new tests.`
         case 'leftovers_found':
-            return `Delete those files in the worktree (or move them out of it), then reply ${retry}.`
+            return `Delete those files in the worktree (or move them out of it), then reply ${retry}. ${leftoverAllowHint({ retry })}`
         case 'gates_failed':
             return `Fix the failing check in the worktree, or make the ticket clearer, then reply ${retry}.`
         case 'bad_test':
@@ -198,7 +205,7 @@ const finalSuggestion = ({ reason }: { reason: StuckReason }): string => {
         case 'changes_requested':
             return "Fix the open findings in the run branch's worktree, then reply `retry`; or reply `ship` if they can wait for review in the PR."
         case 'leftovers_found':
-            return "Delete those files in the run branch's worktree, then reply `retry`."
+            return `Delete those files in the run branch's worktree, then reply \`retry\`. ${leftoverAllowHint({ retry: '`retry`' })}`
         default:
             return "Read the last error, fix what trips it in the run branch's worktree, then reply `retry`; or reply `ship` to open the PR anyway."
     }

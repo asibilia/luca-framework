@@ -12,6 +12,7 @@ import { EngineConfigSchema } from '../config/engine-config'
 import {
     GateCheckSchema,
     LeftoverHitSchema,
+    LeftoverPassSchema,
     RedCheckResultSchema,
     TestRunSchema,
 } from '../gates/gate-schemas'
@@ -572,13 +573,18 @@ export const CommitStageSchema = z.enum(['red', 'green', 'fix'])
 
 export type CommitStage = z.infer<typeof CommitStageSchema>
 
-/** The leftover scan before an engine commit. Any hit blocks the commit. */
+/**
+ * The leftover scan before an engine commit. Any hit blocks the commit.
+ * `passed` lists the new markdown it let through and why (#520); left out
+ * when there was none, and in journals from before it.
+ */
 const LeftoverScanEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('leftover_scan'),
     content: z.object({
         stage: CommitStageSchema,
         hits: z.array(LeftoverHitSchema),
+        passed: z.array(LeftoverPassSchema).optional(),
     }),
 })
 

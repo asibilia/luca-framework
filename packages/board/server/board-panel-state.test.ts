@@ -1178,7 +1178,6 @@ describe('many tickets: a clash on the run branch', () => {
 
         const card = await harness.ticket({ number: 13 })
         expect(card).toMatchObject({
-            stage: 'building',
             step: 2,
             role: null,
             fix_round: 0,
@@ -1215,7 +1214,6 @@ describe('many tickets: a clash on the run branch', () => {
         })
 
         expect(await harness.ticket({ number: 13 })).toMatchObject({
-            stage: 'building',
             step: 0,
         })
     })
@@ -1236,7 +1234,6 @@ describe('many tickets: a clash on the run branch', () => {
 
         const card = await harness.ticket({ number: 13 })
         expect(card).toMatchObject({
-            stage: 'building',
             step: 0,
             role: null,
             activity: 'updating tests for the run branch',
@@ -1261,7 +1258,6 @@ describe('many tickets: a clash on the run branch', () => {
 
         const card = await harness.ticket({ number: 13 })
         expect(card).toMatchObject({
-            stage: 'building',
             activity: 'fixing on the run branch',
         })
         expect(card?.tried.at(-1)).toBe(

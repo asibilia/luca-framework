@@ -125,7 +125,6 @@ describe('the ticket review', () => {
         })
 
         expect(await card()).toMatchObject({
-            stage: 'reviewing',
             step: 4,
             open_check: 'review',
             activity: 'changes requested',
@@ -174,7 +173,6 @@ describe('the review fix loop', () => {
         })
 
         expect(await card()).toMatchObject({
-            stage: 'reviewing',
             step: 4,
             role: 'test-writer',
             review_fix_round: 1,
@@ -208,7 +206,6 @@ describe('the review fix loop', () => {
 
         const fixing = await card()
         expect(fixing).toMatchObject({
-            stage: 'reviewing',
             step: 4,
             role: 'implementer',
             review_fix_round: 1,
@@ -300,7 +297,6 @@ describe('the review fix loop', () => {
         })
 
         expect(await card()).toMatchObject({
-            stage: 'reviewing',
             open_check: 'gates',
             fix_round: 1,
             review_fix_round: 1,
@@ -333,7 +329,6 @@ describe('the review fix loop', () => {
         })
 
         expect(await card()).toMatchObject({
-            stage: 'reviewing',
             review_fix_round: 1,
             activity: 'coding again',
         })

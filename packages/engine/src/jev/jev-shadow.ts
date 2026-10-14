@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { DecisionModelClient, DecisionModelReply } from './clef-client'
 import type { JevAsk } from './jev-jobs'
-import { JevAnswerSchema } from './jev-schemas'
+import { ClefRequestSchema, JevAnswerSchema } from './jev-schemas'
 
 import type { Journal } from '../journal/journal'
 
@@ -91,8 +91,10 @@ export type ShadowAsker = (asks: JevAsk[]) => Promise<void>
  * Asks the decision model in **shadow mode** for one run: for each ask,
  * journals `jev_asked` with the engine's fixed choice and the model, then
  * `jev_answered` (with the model that answered) or `jev_failed`, linked back
- * by `asked_seq`. The answers change nothing. An error, timeout, or missing
- * credentials is journaled and never thrown, so the run goes on.
+ * by `asked_seq`. The answers change nothing. An ask outside Clef's limits
+ * (`ClefRequestSchema`) is skipped: not sent and not journaled. An error,
+ * timeout, or missing credentials is journaled and never thrown, so the run
+ * goes on.
  *
  * The first ask Cloudflare turns down (`rejected`: HTTP 401 or 403) turns
  * the decision model **off** for the rest of the run: one
@@ -117,6 +119,9 @@ export const shadowAsker = ({
     return async (asks) => {
         for (const ask of asks) {
             if (off) return
+            // Clef refuses it (a one-option choice, say), and the answer is
+            // obvious: no call and no record (#546).
+            if (!ClefRequestSchema.safeParse(ask.request).success) continue
             const { job, ticket, role, request, fixed } = ask
             const asked = journal.append({
                 kind: 'jev_asked',

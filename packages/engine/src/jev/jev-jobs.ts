@@ -1,6 +1,13 @@
+import chunk from 'lodash/chunk'
 import fromPairs from 'lodash/fromPairs'
 
-import type { JevFixed, JevJob, JevQuestion, JevRequest } from './jev-schemas'
+import {
+    CLEF_MAX_QUESTIONS,
+    type JevFixed,
+    type JevJob,
+    type JevQuestion,
+    type JevRequest,
+} from './jev-schemas'
 
 import type { Finding } from '../agents/role-results'
 import type { EngineAction } from '../core/decide'
@@ -133,25 +140,33 @@ const createTicketWorktreeAsks = ({
         })
         .join('\n')
     const base = ticketState({ state, ticket })
+    // With one ticket left the order is obvious, and Clef refuses a
+    // one-option choice (#546), so there's nothing to ask.
+    const orderAsk: JevAsk[] =
+        candidates.length < 2
+            ? []
+            : [
+                  {
+                      job: 'ticket_order',
+                      ticket,
+                      role: null,
+                      request: {
+                          state: { ...base, candidates: candidateList },
+                          questions: {
+                              next: choice({
+                                  instructions:
+                                      'Which of these tickets should be built next?',
+                                  options: candidates.map(({ number }) =>
+                                      ticketKey(number)
+                                  ),
+                              }),
+                          },
+                      },
+                      fixed: { next: ticketKey(ticket) },
+                  },
+              ]
     return [
-        {
-            job: 'ticket_order',
-            ticket,
-            role: null,
-            request: {
-                state: { ...base, candidates: candidateList },
-                questions: {
-                    next: choice({
-                        instructions:
-                            'Which of these tickets should be built next?',
-                        options: candidates.map(({ number }) =>
-                            ticketKey(number)
-                        ),
-                    }),
-                },
-            },
-            fixed: { next: ticketKey(ticket) },
-        },
+        ...orderAsk,
         {
             job: 'ticket_model',
             ticket,
@@ -306,17 +321,33 @@ const findingText = ({ title, detail, file }: Finding): string =>
         .filter((part) => part !== null && part !== '')
         .join('\n')
 
-const findingSeverityAsk = ({
+/**
+ * The severity of each finding a ticket reviewer reported, at most
+ * `CLEF_MAX_QUESTIONS` findings to an ask, since Clef takes no more.
+ */
+const findingSeverityAsks = ({
     record,
     state,
 }: {
     record: JournalRecord
     state: RunState
-}): JevAsk | null => {
-    if (record.kind !== 'agent_finished') return null
-    if (record.content.role !== 'ticket-reviewer') return null
-    const { findings } = record.content.result
-    if (findings.length === 0) return null
+}): JevAsk[] => {
+    if (record.kind !== 'agent_finished') return []
+    if (record.content.role !== 'ticket-reviewer') return []
+    return chunk(record.content.result.findings, CLEF_MAX_QUESTIONS).map(
+        (findings) => findingSeverityAsk({ record, state, findings })
+    )
+}
+
+const findingSeverityAsk = ({
+    record,
+    state,
+    findings,
+}: {
+    record: JournalRecord
+    state: RunState
+    findings: Finding[]
+}): JevAsk => {
     const key = (finding: Finding) => `finding_${questionId(finding.id)}`
     return {
         job: 'finding_severity',
@@ -361,9 +392,10 @@ export const jevAsksAfter = ({
     records: JournalRecord[]
     state: RunState
 }): JevAsk[] =>
-    records.flatMap((record) =>
-        [
-            failureAsk({ record, state }),
-            findingSeverityAsk({ record, state }),
-        ].filter((ask): ask is JevAsk => ask !== null)
-    )
+    records.flatMap((record) => {
+        const failure = failureAsk({ record, state })
+        return [
+            ...(failure === null ? [] : [failure]),
+            ...findingSeverityAsks({ record, state }),
+        ]
+    })

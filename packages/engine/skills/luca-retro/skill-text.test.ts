@@ -100,6 +100,19 @@ describe('the luca-retro skill', () => {
         expect(skill).toMatch(/Never open an issue without the owner's yes/)
     })
 
+    test('it cites journal records as seq <n>, never as #<n>', () => {
+        expect(skill).toMatch(/`seq (?:<n>|\d+)`/)
+        expect(inlineCode(skill).filter((code) => /^#\d+$/.test(code))).toEqual(
+            []
+        )
+    })
+
+    test("the issues it opens cite another repo's tickets as owner/repo#<n>", () => {
+        const opening = skill.slice(skill.indexOf('## 4.'))
+        expect(skill.indexOf('## 4.')).toBeGreaterThan(-1)
+        expect(opening).toMatch(/<?owner\/repo>?#(?:<n>|\d+)/)
+    })
+
     test('it never edits code, rule files, or the journal, and never commits', () => {
         expect(skill).toContain(
             'Never edit code or rule files, and never commit.'

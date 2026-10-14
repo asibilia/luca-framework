@@ -100,6 +100,10 @@ describe('the luca-unstick skill', () => {
         expect(skill).toMatch(/Wait for a yes/)
     })
 
+    test('it says the helper cites journal records as seq <n>, as /luca-retro does', () => {
+        expect(skill).toMatch(/`seq (?:<n>|\d+)`/)
+    })
+
     test('it runs its helper from where luca init installs it', () => {
         expect(skill).toContain(
             'bun ~/.claude/skills/luca-unstick/scripts/stuck-summary.ts'

@@ -72,23 +72,27 @@ const START = Date.parse('2026-01-01T00:00:00.000Z')
 
 /**
  * Writes a run's journal to the runs folder and reads it back loosely.
- * Record n is stamped n minutes after `start`, so steps take time.
+ * Record n is stamped n minutes after `start`, so steps take time. Its seqs
+ * start at `first_seq`.
  */
 const writeRun = async ({
     run_id = 'run-1',
     entries,
     repo = '/repos/app',
     start = START,
+    first_seq = 1,
 }: {
     run_id?: string
     entries: JournalEntry[]
     repo?: string
     start?: number
+    first_seq?: number
 }): Promise<LooseRecord[]> => {
     const records = recordsFrom({ entries }).map((record) => ({
         ...(record.kind === 'run_started'
             ? { ...record, content: { ...record.content, repo } }
             : record),
+        seq: record.seq + first_seq - 1,
         time: new Date(start + record.seq * 60_000).toISOString(),
     }))
     await mkdir(join(dir, run_id), { recursive: true })
@@ -391,8 +395,11 @@ describe('summing up a run', () => {
         const text = formatRunSummary({ run_id: 'run-1', summary })
         expect(text).toContain('== Run run-1: spec #10 "Practice spec"')
         expect(text).toContain('Repo: /repos/app (acme/app)')
-        expect(text).toContain(
-            `Ended: opened PR #99 https://github.com/acme/app/pull/99 (#${seqOf(records, 'pull_request_opened')})`
+        // The seq's form is pinned in "citing journal records" below.
+        expect(text).toMatch(
+            new RegExp(
+                `Ended: opened PR #99 https://github\\.com/acme/app/pull/99 \\((?:#|seq )${seqOf(records, 'pull_request_opened')}\\)`
+            )
         )
     })
 
@@ -425,11 +432,16 @@ describe('summing up a run', () => {
             run_id: 'run-1',
             summary: summarizeJournal({ records }),
         })
-        expect(text).toContain(
-            `#${leftover} ticket_stuck #11 "Add sum": leftovers_found -> retry (#${leftover + 1}, after 1m 00s)`
+        // The seq's form is pinned in "citing journal records" below.
+        expect(text).toMatch(
+            new RegExp(
+                `(?:#|seq )${leftover} ticket_stuck #11 "Add sum": leftovers_found -> retry \\((?:#|seq )${leftover + 1}, after 1m 00s\\)`
+            )
         )
         expect(text).toContain('Fix loops that hit their cap:')
-        expect(text).toMatch(/#\d+ #12 gates_failed after 3 fix rounds/)
+        expect(text).toMatch(
+            /(?:#|seq )\d+ #12 gates_failed after 3 fix rounds/
+        )
         expect(text).toContain('run_stuck run: run_budget -> retry')
     })
 
@@ -595,6 +607,103 @@ describe('summing up a run', () => {
                 summary: summarizeJournal({ records }),
             })
         ).toContain('Ended: not over yet')
+    })
+})
+
+describe('citing journal records', () => {
+    /** The real numbers in the fixture: spec #10, tickets #11 and #12, PR #99. */
+    const REAL_NUMBERS = [10, 11, 12, 99]
+
+    /**
+     * The messy run, resumed once, on disk with its seqs from 1001 up, so a
+     * seq can't be taken for a ticket, spec, or PR number.
+     */
+    const citedRun = (): Promise<LooseRecord[]> =>
+        writeRun({
+            entries: [
+                ...messyRun().slice(0, -1),
+                {
+                    kind: 'engine_resumed',
+                    ticket: null,
+                    role: null,
+                    content: { luca_version: '14.0.0-alpha.13' },
+                },
+                pullRequestOpened(),
+            ],
+            first_seq: 1001,
+        })
+
+    const summaryText = (records: LooseRecord[]): string =>
+        formatRunSummary({
+            run_id: 'run-1',
+            summary: summarizeJournal({ records }),
+        })
+
+    test('every journal record it cites prints as seq <n>', async () => {
+        const records = await citedRun()
+        const text = summaryText(records)
+        const cited = new Set(
+            [...text.matchAll(/\bseq (\d+)\b/g)].map((match) =>
+                Number(match[1])
+            )
+        )
+        // Each of these records is evidence the summary prints.
+        const evidence = records
+            .filter(
+                ({ kind, content }) =>
+                    [
+                        'pull_request_opened',
+                        'engine_resumed',
+                        'ticket_stuck',
+                        'run_stuck',
+                        'reply_received',
+                        'reply_ignored',
+                        'leftover_scan',
+                        'agent_failed',
+                        'agent_finished',
+                        'gates_run',
+                        'ticket_rebased',
+                        'join_undone',
+                        'tests_sent_back',
+                        'step_started',
+                    ].includes(kind) ||
+                    (kind === 'ticket_joined' && content.ok === false)
+            )
+            .map(({ seq }) => seq)
+        expect(evidence.length).toBeGreaterThan(20)
+        expect(evidence.filter((seq) => !cited.has(seq))).toEqual([])
+    })
+
+    test('no bare #<digits> stands for a journal record', async () => {
+        const text = summaryText(await citedRun())
+        const hashed = [...text.matchAll(/#(\d+)/g)].map((match) =>
+            Number(match[1])
+        )
+        expect(hashed.length).toBeGreaterThan(0)
+        expect(hashed.filter((n) => !REAL_NUMBERS.includes(n))).toEqual([])
+    })
+
+    test('ticket, spec, and PR numbers still print as #<n>, next to the seqs', async () => {
+        const records = await citedRun()
+        const text = summaryText(records)
+        const seqOf = (kind: string, ticket: number | null): number =>
+            records.find(
+                (record) => record.kind === kind && record.ticket === ticket
+            )?.seq ?? -1
+        expect(text).toContain('== Run run-1: spec #10 "Practice spec"')
+        expect(text).toContain(
+            `Ended: opened PR #99 https://github.com/acme/app/pull/99 (seq ${seqOf('pull_request_opened', null)})`
+        )
+        expect(text).toContain(
+            `seq ${seqOf('ticket_stuck', 11)} ticket_stuck #11 "Add sum": leftovers_found`
+        )
+        expect(text).toContain(
+            `seq ${seqOf('ticket_stuck', 12)} #12 gates_failed after 3 fix rounds`
+        )
+        expect(text).toContain(
+            `seq ${seqOf('agent_failed', 11)} #11 implementer: max 120 turns`
+        )
+        expect(text).toContain('costliest tickets: #11 1k')
     })
 })
 

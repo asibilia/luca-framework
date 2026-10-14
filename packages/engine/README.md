@@ -492,6 +492,22 @@ nothing names. A new code file needs no such look: "nothing uses it" already
 searches for its name without the extension, which a file naming it holds,
 so a file the repo names is never "unused".
 
+**Docs the repo asks for pass (#520).** A new markdown file the spec and
+ticket don't name is still let through when it is a `README.md`, sits under
+a `docs` or `adr` folder at any depth, is named by a tracked or newly added
+non-test file (the same look as for scratch-named files, so an index or a
+table of contents counts), or matches a glob pattern in the config's
+optional `leftover_allow`:
+
+```json
+{ "checks": { "test": "bun test" }, "leftover_allow": ["handbook/**/*.md"] }
+```
+
+Stray markdown next to code, such as `src/plan.md`, is still flagged. The
+`leftover_scan` record lists each file let through in `passed: [{ path,
+reason }]`, with `reason` `doc_place`, `named_by_repo`, or
+`config_pattern`; it is left out when none was.
+
 **Agents don't write changesets (#507).** In a repo with changesets
 (`.changeset/config.json` when the run branch was made), the engine writes
 the run's one changeset at PR time. So the test-writers' and implementers'
@@ -722,8 +738,9 @@ journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:
-`prepare`, `prepare_timeout_ms`, `prepare_concurrency`, and the test time
-limit `test_timeout_ms` (#542), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
+`prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test time
+limit `test_timeout_ms` (#542), and the leftover scan's `leftover_allow`
+(#520), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
 `config_reloaded { changes: [{ field, from, to }] }` (`null` for a field

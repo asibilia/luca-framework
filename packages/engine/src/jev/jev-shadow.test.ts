@@ -9,10 +9,12 @@ import {
     type DecisionModelClient,
     type DecisionModelFetch,
 } from './clef-client'
-import { JEV_FIXED_MODEL } from './jev-jobs'
-import type { JevAnswer, JevQuestion } from './jev-schemas'
+import { JEV_FIXED_MODEL, type JevAsk } from './jev-jobs'
+import type { JevAnswer, JevQuestion, JevRequest } from './jev-schemas'
+import { shadowAsker } from './jev-shadow'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
+import { createJournal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import {
     HAPPY_TURNS,
@@ -159,13 +161,27 @@ const disagreeingAnswer = (question: JevQuestion): JevAnswer => {
     }
 }
 
-const disagreeingJev = (): DecisionModelClient & { signals: AbortSignal[] } => {
+/** Whether a request has a choice Clef refuses: fewer than two options (#546). */
+const hasOneOptionChoice = (request: JevRequest): boolean =>
+    Object.values(request.questions).some(
+        (question) =>
+            question.type === 'choice' &&
+            Object.keys(question.criteria).length < 2
+    )
+
+const disagreeingJev = (): DecisionModelClient & {
+    signals: AbortSignal[]
+    requests: JevRequest[]
+} => {
     const signals: AbortSignal[] = []
+    const requests: JevRequest[] = []
     return {
         signals,
+        requests,
         model: FAKE_MODEL,
         ask: async ({ request, signal }) => {
             signals.push(signal)
+            requests.push(request)
             return {
                 ok: true,
                 answers: Object.fromEntries(
@@ -205,6 +221,9 @@ const SKILL_IDS = [
 ]
 
 describe('Jev in shadow mode', () => {
+    /** The one-ticket happy run, shared with the test after it. */
+    let happy: { run: PracticeRun; jev: ReturnType<typeof disagreeingJev> }
+
     test('is asked about order, model, and skills, and the engine ignores its answers', async () => {
         const jev = disagreeingJev()
         const run = await runPractice({
@@ -212,6 +231,7 @@ describe('Jev in shadow mode', () => {
             turns: HAPPY_TURNS,
             jev: { client: jev },
         })
+        happy = { run, jev }
 
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         expectSameRun({
@@ -219,15 +239,16 @@ describe('Jev in shadow mode', () => {
             without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
         })
 
-        const asks = asked(run.records)
+        const asks = asked(run.records).filter(
+            ({ content }) => content.job !== 'ticket_order'
+        )
         expect(asks.map(({ content }) => content.job)).toEqual([
-            'ticket_order',
             'ticket_model',
             'agent_skills',
             'agent_skills',
             'agent_skills',
         ])
-        expect(jev.signals).toHaveLength(5)
+        expect(jev.signals).toHaveLength(asked(run.records).length)
 
         // Each ask is answered right away, linked by asked_seq, and both
         // name the model.
@@ -245,19 +266,7 @@ describe('Jev in shadow mode', () => {
             expect(reply?.role).toBe(ask.role)
         }
 
-        const [order, model, ...skills] = asks
-        expect(order?.content.request.questions).toEqual({
-            next: {
-                type: 'choice',
-                instructions: 'Which of these tickets should be built next?',
-                criteria: { ticket_11: null },
-            },
-        })
-        expect(order?.content.request.state.candidates).toContain(
-            'ticket_11: #11 Add sum'
-        )
-        expect(order?.content.fixed).toEqual({ next: 'ticket_11' })
-
+        const [model, ...skills] = asks
         expect(model?.content.fixed).toEqual({ model: JEV_FIXED_MODEL })
         expect(model?.content.request.state).toMatchObject({
             spec: 'Practice spec',
@@ -298,6 +307,22 @@ describe('Jev in shadow mode', () => {
             expect(started?.role).toBe(skill.role)
         }
     }, 60_000)
+
+    test('with one ticket, asks no ticket order, sends no one-option choice, and journals no failure', () => {
+        const { run, jev } = happy
+
+        expect(asked(run.records).map(({ content }) => content.job)).toEqual([
+            'ticket_model',
+            'agent_skills',
+            'agent_skills',
+            'agent_skills',
+        ])
+        expect(jev.signals).toHaveLength(4)
+        expect(jev.requests.filter(hasOneOptionChoice)).toEqual([])
+        expect(
+            run.records.filter((record) => record.kind === 'jev_failed')
+        ).toEqual([])
+    })
 
     test('is asked the severity of each finding a reviewer reports', async () => {
         const [testWriter, implementer] = HAPPY_TURNS
@@ -523,7 +548,9 @@ describe('Jev in shadow mode', () => {
                 without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
             })
             const asks = asked(run.records)
-            expect(asks).toHaveLength(5)
+            expect(
+                asks.filter(({ content }) => content.job !== 'ticket_order')
+            ).toHaveLength(4)
             for (const ask of asks) {
                 const reply = replyTo(run.records, ask)
                 expect(reply?.kind).toBe('jev_failed')
@@ -538,7 +565,7 @@ describe('Jev in shadow mode', () => {
                 run.records.some((record) => record.kind === 'jev_answered')
             ).toBe(false)
             expect(client.calls()).toBe(
-                reason === 'missing_credentials' ? 0 : 5
+                reason === 'missing_credentials' ? 0 : asks.length
             )
         }, 60_000)
     }
@@ -603,4 +630,83 @@ describe('Jev in shadow mode', () => {
         expect(asked(again.records)).toHaveLength(1)
         expect(urls).toHaveLength(2)
     }, 60_000)
+})
+
+describe('shadowAsker', () => {
+    const choiceAsk = ({
+        job,
+        options,
+    }: {
+        job: JevAsk['job']
+        options: string[]
+    }): JevAsk => ({
+        job,
+        ticket: 11,
+        role: null,
+        request: {
+            state: { spec: 'Practice spec' },
+            questions: {
+                pick: {
+                    type: 'choice',
+                    instructions: 'Which one?',
+                    criteria: Object.fromEntries(
+                        options.map((option) => [option, null])
+                    ),
+                },
+            },
+        },
+        fixed: { pick: options[0] ?? 'none' },
+    })
+
+    test('skips any ask whose choice has fewer than two options: no call and no record', async () => {
+        const root = await newRoot()
+        const journal = createJournal({ file: join(root, 'journal.jsonl') })
+        const jev = disagreeingJev()
+        const ask = shadowAsker({ jev: { client: jev }, journal })
+
+        await ask([
+            choiceAsk({ job: 'ticket_order', options: ['ticket_11'] }),
+            choiceAsk({ job: 'failure_kind', options: ['code'] }),
+            choiceAsk({ job: 'ticket_model', options: [] }),
+        ])
+
+        expect(jev.signals).toHaveLength(0)
+        expect(journal.read()).toEqual([])
+    })
+
+    test('still asks the valid asks beside a skipped one, exactly as before', async () => {
+        const root = await newRoot()
+        const journal = createJournal({ file: join(root, 'journal.jsonl') })
+        const jev = disagreeingJev()
+        const ask = shadowAsker({ jev: { client: jev }, journal })
+        const valid = choiceAsk({
+            job: 'ticket_model',
+            options: ['claude-opus-5-5', 'claude-haiku-4-5'],
+        })
+
+        await ask([
+            choiceAsk({ job: 'ticket_order', options: ['ticket_11'] }),
+            valid,
+        ])
+
+        expect(jev.signals).toHaveLength(1)
+        const records = journal.read()
+        expect(records.map(({ kind }) => kind)).toEqual([
+            'jev_asked',
+            'jev_answered',
+        ])
+        expect(records[0]?.content).toEqual({
+            job: 'ticket_model',
+            request: valid.request,
+            fixed: valid.fixed,
+            model: FAKE_MODEL,
+        })
+        expect(records[1]?.content).toMatchObject({
+            job: 'ticket_model',
+            asked_seq: records[0]?.seq,
+            answers: {
+                pick: { value: 'claude-haiku-4-5', confidence: 0.7 },
+            },
+        })
+    })
 })

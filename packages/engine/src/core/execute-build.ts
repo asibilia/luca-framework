@@ -30,9 +30,10 @@ import { endedText } from '../gates/gate-schemas'
 import {
     importStem,
     isAgentChangeset,
+    leftoverPasses,
+    nameCheckedFiles,
     newCodeFiles,
     scanLeftovers,
-    scratchNamedFiles,
 } from '../gates/leftover-scan'
 import {
     dependenciesChanged,
@@ -462,7 +463,8 @@ const isUsed = async ({
 
 /**
  * Whether a file other than itself and the tests names this scratch-named
- * file by its basename, as a TOC, `package.json`, or a config does: a
+ * file or new markdown (#520) by its basename, as a TOC, `package.json`, a
+ * doc index, or a config does: a
  * tracked file, or one this change adds (a new addon's TOC names its new
  * modules). A mention in a test doesn't make a file the repo's.
  */
@@ -604,23 +606,26 @@ export const commitIn = async ({
         used_code[path] = await isUsed({ context, cwd, path, added_texts })
     }
     const named: string[] = []
-    for (const path of scratchNamedFiles({ changes })) {
+    for (const path of nameCheckedFiles({ changes })) {
         if (await isNamed({ context, cwd, path, added_texts })) {
             named.push(path)
         }
     }
-    const hits = scanLeftovers({
+    const inputs = {
         changes,
         test_files,
         mention_text,
         used_code,
         named,
-    })
+        leftover_allow: context.config.leftover_allow ?? [],
+    }
+    const hits = scanLeftovers(inputs)
+    const passed = leftoverPasses(inputs)
     context.journal.append({
         kind: 'leftover_scan',
         ticket,
         role: null,
-        content: { stage, hits },
+        content: { stage, hits, ...(passed.length > 0 ? { passed } : {}) },
     })
     if (hits.length > 0) return
     const adopted =

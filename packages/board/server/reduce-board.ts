@@ -21,6 +21,7 @@ import {
     type RunInfo,
     type RunStatus,
     type TicketCard,
+    type TicketStage,
     type Usage,
 } from '../shared/board-state'
 import {
@@ -494,9 +495,40 @@ const withoutSteps = ({ state }: { state: BoardState }): BoardState =>
         run_steps: [],
     })
 
+/** The stages a step doesn't move a ticket out of. */
+const SETTLED_STAGES = new Set<TicketStage>(['stuck', 'done', 'skipped'])
+
 /**
- * A step began: it is its ticket's current step, or one of the run's.
- * A new step on the same key (a crash's redo) replaces the one before it.
+ * The stage a ticket's step puts it in (#549): the red check and the checks
+ * are testing, but the checks after joining are still joining; joining and
+ * pushing the run branch are joining. Any other step, or a stuck, done or
+ * skipped ticket, keeps its stage.
+ */
+const stepStage = ({
+    card,
+    step,
+}: {
+    card: TicketCard
+    step: string
+}): TicketStage => {
+    if (SETTLED_STAGES.has(card.stage)) return card.stage
+    switch (step) {
+        case 'run_red_check':
+            return 'testing'
+        case 'run_gates':
+            return card.stage === 'joining' ? 'joining' : 'testing'
+        case 'join_run_branch':
+        case 'push_run_branch':
+            return 'joining'
+        default:
+            return card.stage
+    }
+}
+
+/**
+ * A step began: it is its ticket's current step, or one of the run's, and
+ * it sets the ticket's stage. A new step on the same key (a crash's redo)
+ * replaces the one before it.
  */
 const stepStarted = ({
     state,
@@ -506,7 +538,7 @@ const stepStarted = ({
     record: Extract<BoardRecord, { kind: 'step_started' }>
 }): BoardState => {
     // A replayed journal of an engine that ended has no step running.
-    if (state.run.engine_ended !== null) return state
+    const ended = state.run.engine_ended !== null
     const current_step = {
         text: stepText({ step: record.content.step }),
         since: record.time,
@@ -515,9 +547,14 @@ const stepStarted = ({
         return updateTicket({
             state,
             number: record.ticket,
-            update: (card) => ({ ...card, current_step }),
+            update: (card) => ({
+                ...card,
+                stage: stepStage({ card, step: record.content.step }),
+                current_step: ended ? card.current_step : current_step,
+            }),
         })
     }
+    if (ended) return state
     const { key } = record.content
     return withRunSteps({
         state,
@@ -1096,6 +1133,7 @@ const applyKind = ({
                 number: ticket,
                 update: (card) => ({
                     ...card,
+                    stage: 'building',
                     step: 0,
                     fix_round: 0,
                     open_check: null,
@@ -1177,11 +1215,13 @@ const applyKind = ({
             return updateTicket({
                 state,
                 number: ticket,
+                // Joined, it is done once its checks there pass and the run
+                // branch is pushed.
                 update: (card) =>
                     record.content.ok
                         ? {
                               ...card,
-                              stage: 'done',
+                              stage: 'joining',
                               step: ALL_STEPS_DONE,
                               role: null,
                               activity: 'joined',
@@ -1203,6 +1243,7 @@ const applyKind = ({
                 number: ticket,
                 update: (card) => ({
                     ...card,
+                    stage: 'fixing',
                     step: 0,
                     role: null,
                     activity: 'updating tests for the run branch',
@@ -1217,8 +1258,8 @@ const applyKind = ({
                 state,
                 number: ticket,
                 update: (card) =>
-                    card.stage === 'done'
-                        ? { ...card, activity: 'pushed' }
+                    card.stage === 'joining' || card.stage === 'done'
+                        ? { ...card, stage: 'done', activity: 'pushed' }
                         : card,
             })
         case 'ticket_stuck': {
@@ -1553,7 +1594,7 @@ const OPEN_CHECK_TEXT = {
 /**
  * A fixer's start in a review fix round. The round is the review's round (a
  * round follows each review that asked for changes); only the round's first
- * fixer adds its "tried" line. The card stays in Reviewing at its step.
+ * fixer adds its "tried" line. The card is fixing, at its step.
  */
 const reviewFixStarted = ({
     card,
@@ -1570,7 +1611,7 @@ const reviewFixStarted = ({
         ...card,
         started: true,
         role,
-        stage: 'reviewing',
+        stage: 'fixing',
         review_fix_round: round,
         activity: `fixing the review's findings (${round}/${LOOP_CAP})`,
         tried:
@@ -1613,15 +1654,19 @@ const agentStarted = ({
                       })
                     : card.tried
             const fixing = kind === 'fix' || kind === 'resent'
+            // A writer answering an open check, or fixing on top of the run
+            // branch, is fixing; its first pass is building.
+            const stage =
+                card.open_check !== null || card.stage === 'fixing'
+                    ? 'fixing'
+                    : 'building'
             if (role === 'test-writer') {
-                // During a ticket review (a retried review fixer) the card
-                // stays in Reviewing at its step.
-                const reviewing = card.stage === 'reviewing'
+                // A retried review fixer stays at its step.
                 return {
                     ...started,
                     tried,
-                    stage: reviewing ? 'reviewing' : 'building',
-                    step: reviewing ? card.step : 0,
+                    stage,
+                    step: card.open_check === 'review' ? card.step : 0,
                     activity: fixing
                         ? `fixing tests (${fix_round}/${LOOP_CAP})`
                         : kind === 'retry'
@@ -1633,8 +1678,7 @@ const agentStarted = ({
                 return {
                     ...started,
                     tried,
-                    stage:
-                        card.stage === 'reviewing' ? 'reviewing' : 'building',
+                    stage,
                     step: 2,
                     activity: fixing
                         ? `fixing (${fix_round}/${LOOP_CAP})`
@@ -1724,9 +1768,12 @@ const agentFinished = ({
                         }),
                     done.tried
                 )
+                // Approved, it joins the run branch next; else a review fix
+                // round follows.
                 return result.verdict === 'approve'
                     ? {
                           ...done,
+                          stage: 'joining',
                           step: ALL_STEPS_DONE,
                           findings,
                           open_check: null,
@@ -1735,6 +1782,7 @@ const agentFinished = ({
                       }
                     : {
                           ...done,
+                          stage: 'fixing',
                           findings,
                           open_check: 'review',
                           tried: ruled,
@@ -1828,9 +1876,9 @@ export const testsSentBackText = ({
 }
 
 /**
- * A ticket sent back onto the run branch builds again: its tests first if
- * test files clashed, else its code; then the checks and a fresh review,
- * whose fix rounds count from zero again.
+ * A ticket sent back onto the run branch is fixed on top of it: its tests
+ * first if test files clashed, else its code; then the checks and a fresh
+ * review, whose fix rounds count from zero again.
  */
 const ticketRebased = ({
     state,
@@ -1844,7 +1892,7 @@ const ticketRebased = ({
         number: record.ticket,
         update: (card) => ({
             ...card,
-            stage: 'building',
+            stage: 'fixing',
             step: record.content.tests.length > 0 ? 0 : 2,
             role: null,
             fix_round: 0,
@@ -2054,11 +2102,18 @@ export const unfinishedBlockers = ({
         return blocker !== undefined && blocker.stage !== 'done'
     })
 
+/** The stages of a ticket the engine is working on. */
+const ACTIVE_STAGES = new Set<TicketStage>([
+    'building',
+    'reviewing',
+    'testing',
+    'fixing',
+    'joining',
+])
+
 const isActive = ({ state }: { state: BoardState }): boolean =>
     state.tickets.some(
-        (ticket) =>
-            ticket.started &&
-            (ticket.stage === 'building' || ticket.stage === 'reviewing')
+        (ticket) => ticket.started && ACTIVE_STAGES.has(ticket.stage)
     ) ||
     state.final_review.state === 'reviewing' ||
     state.final_review.state === 'fixing'

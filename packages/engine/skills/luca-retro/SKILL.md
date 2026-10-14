@@ -22,7 +22,7 @@ bun ~/.claude/skills/luca-retro/scripts/retro-summary.ts [run id ...]
 
 - No run id: it sums up this repo's newest finished run (one that opened its PR, was stopped, or had nothing to do), found from the main checkout, any of its worktrees, or a subfolder. If that isn't the one the owner means, ask.
 - Several run ids: it sums up each, then lists the patterns that repeat across them. A repeat ranks higher.
-- It prints the run's spec, repo, Luca versions, and how it ended; then what got stuck and how long the owner took to reply, fix loops that hit their cap, leftover scan hits, agents out of turns, "No open agent session" failures, decision model calls that failed, checks and tests that failed again and again, setup changes agents asked for, joins that clashed, replies, the agents' assumptions, the findings fixers declined, slow steps, and tokens. Every line names its journal seq (`#123`).
+- It prints the run's spec, repo, Luca versions, and how it ended; then what got stuck and how long the owner took to reply, fix loops that hit their cap, leftover scan hits, agents out of turns, "No open agent session" failures, decision model calls that failed, checks and tests that failed again and again, setup changes agents asked for, joins that clashed, replies, the agents' assumptions, the findings fixers declined, slow steps, and tokens. Every line names its journal seq (`seq 123`).
 
 The journal is all there is: agents run without saved sessions, so there are no transcripts. To read one record in full: `jq -c 'select(.seq == 123)' ~/.local/state/luca/runs/<run id>/journal.jsonl` (or under `$LUCA_RUNS_DIR`). The records are JSON lines: `seq`, `time`, `kind`, `ticket`, `role`, `content`.
 
@@ -32,7 +32,7 @@ When a finding needs it, look (read only) at what the agents were given in the r
 
 List them most serious first: what cost the most time, tokens, or owner replies, and what repeats. For each:
 
-1. **What happened**, with evidence: seqs, tickets, counts. Say it plainly.
+1. **What happened**, with evidence: seqs, tickets, counts. Say it plainly. Cite a journal record as `seq <n>`, never `#<n>`: on GitHub, `#<n>` links to an unrelated issue. Tickets, PRs, and issues keep `#<n>`.
 2. **Its bucket**, one of six:
    - **(a) Check to add**: a lint rule, a gate, a guard, or a CI job, for a mistake a machine can spot.
    - **(b) Rules line**: one line for the repo's rules file, for a judgement call.
@@ -63,7 +63,7 @@ Show the ranked list, numbered, and stop. Nothing happens until the owner picks 
 For each finding the owner picked:
 
 1. Check for one already open or closed: `gh issue list --repo <owner/repo> --search "<a few words>" --state all`. If one fits, link it instead of opening a new one.
-2. Otherwise show the issue's exact title and body, and the repo it goes to: Luca bugs to `asibilia/luca-framework`, the rest to the run's repo (the "Repo" line). Put the evidence in the body: the run id, the seqs, the Luca version.
+2. Otherwise show the issue's exact title and body, and the repo it goes to: Luca bugs to `asibilia/luca-framework`, the rest to the run's repo (the "Repo" line). Put the evidence in the body: the run id, the seqs (as `seq <n>`), the Luca version. Cite a ticket, PR, or issue of another repo as `owner/repo#<n>`, so it links to the right place; a bare `#<n>` links to the repo the issue is in.
 3. Wait for a yes, then open it: `gh issue create --repo <owner/repo> --title "<title>" --body "<body>"`. Say the link.
 
 ## What not to do

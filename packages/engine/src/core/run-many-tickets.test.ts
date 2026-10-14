@@ -379,11 +379,14 @@ const lastPickJev = (): DecisionModelClient => ({
 })
 
 describe('many tickets with Jev in shadow mode', () => {
+    let jevRun: ManyTicketsRun
+
     test("Jev's ticket-order pick is journaled and ignored", async () => {
-        const { action, records } = await runManyTickets({
+        jevRun = await runManyTickets({
             root: await newRoot(),
             jev: { client: lastPickJev() },
         })
+        const { action, records } = jevRun
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const [firstAsk] = ofKind(records, 'jev_asked').filter(
@@ -409,4 +412,26 @@ describe('many tickets with Jev in shadow mode', () => {
             'joined #13 ok',
         ])
     }, 120_000)
+
+    test('asks the ticket order while two tickets are left, not for the last one, and journals no failure', () => {
+        const orderAsks = ofKind(jevRun.records, 'jev_asked').filter(
+            ({ content }) => content.job === 'ticket_order'
+        )
+        expect(orderAsks.map(({ ticket }) => ticket)).toEqual([11, 12])
+        // #11 and #12 start at once, so #12's ask may or may not list #11.
+        for (const ask of orderAsks) {
+            const next = ask.content.request.questions.next
+            const options =
+                next?.type === 'choice' ? Object.keys(next.criteria) : []
+            expect(options).toContain(`ticket_${ask.ticket}`)
+            expect(options).toContain('ticket_13')
+        }
+        // #13 still gets its model ask.
+        expect(
+            ofKind(jevRun.records, 'jev_asked')
+                .filter(({ content }) => content.job === 'ticket_model')
+                .map(({ ticket }) => ticket)
+        ).toEqual([11, 12, 13])
+        expect(ofKind(jevRun.records, 'jev_failed')).toEqual([])
+    })
 })

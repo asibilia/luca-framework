@@ -28,9 +28,13 @@ import {
 } from '../../../src/journal/journal-record'
 import type { JournalEntry } from '../../../src/journal/journal-record'
 import {
+    agentFailed,
+    alreadyDoneChecked,
     commentRead,
     gatesRun,
     implemented,
+    redCheck,
+    ticketRebased,
     intakePassed,
     practiceTicket,
     replyReceived,
@@ -72,21 +76,27 @@ afterEach(async () => {
     await rm(dir, { recursive: true, force: true })
 })
 
-/** Writes a run's journal to the runs folder and reads it back loosely. */
+/**
+ * Writes a run's journal to the runs folder and reads it back loosely. Its
+ * seqs start at `first_seq`.
+ */
 const writeRun = async ({
     run_id = 'run-1',
     entries,
     repo = '/repos/app',
+    first_seq = 1,
 }: {
     run_id?: string
     entries: JournalEntry[]
     repo?: string
+    first_seq?: number
 }): Promise<LooseRecord[]> => {
-    const records = recordsFrom({ entries }).map((record) =>
-        record.kind === 'run_started'
+    const records = recordsFrom({ entries }).map((record) => ({
+        ...(record.kind === 'run_started'
             ? { ...record, content: { ...record.content, repo } }
-            : record
-    )
+            : record),
+        seq: record.seq + first_seq - 1,
+    }))
     await mkdir(join(dir, run_id), { recursive: true })
     const file = join(dir, run_id, 'journal.jsonl')
     await Bun.write(
@@ -359,6 +369,207 @@ describe('the summary', () => {
         expect(summary).toContain('The engine crashed: Directories')
         expect(summary).toContain('create_run_branch on run')
         expect(summary).toContain('[luca-run] stopped')
+    })
+})
+
+describe('citing journal records', () => {
+    /** The real numbers in the fixture: spec #10, tickets #11 and #12. */
+    const REAL_NUMBERS = [10, 11, 12]
+
+    /**
+     * Every record the summary cites: ticket #11 stuck on a bad test after a
+     * failed try, a failed prepare, red check, evidence check, and gates, a
+     * rebase and its tests sent back, with replies since; ticket #12's step
+     * cut off by a crash; and the final review stuck on a lens's finding, a
+     * failed fixer, and failed gates. On disk with its seqs from 1001 up, so
+     * a seq can't be taken for a ticket or spec number.
+     */
+    const citedRun = (): Promise<LooseRecord[]> =>
+        writeRun({
+            entries: [
+                ...intakePassed({ tickets: TICKETS }),
+                runBranchCreated(),
+                ticketWorktreeCreated({ ticket: 11 }),
+                stepStarted({ ticket: 12, step: 'launch_agent:implementer' }),
+                {
+                    kind: 'baseline_prepared',
+                    ticket: 11,
+                    role: null,
+                    content: {
+                        check: {
+                            name: 'prepare',
+                            command: 'make',
+                            ok: false,
+                            exit_code: 2,
+                            output: 'make: *** No rule to make target',
+                        },
+                    },
+                },
+                agentFailed({
+                    ticket: 11,
+                    role: 'implementer',
+                    failure: 'agent',
+                }),
+                redCheck({ ticket: 11, ok: false }),
+                alreadyDoneChecked({
+                    ticket: 11,
+                    problems: ['The commit is not on main.'],
+                }),
+                implemented({
+                    ticket: 11,
+                    outcome: 'bad_test',
+                    reason: 'It pins build addresses.',
+                }),
+                gatesRun({ ticket: 11, target: 'ticket', ok: false }),
+                ticketRebased({ ticket: 11, cause: 'clash' }),
+                testsSentBack({ ticket: 11 }),
+                ticketStuck({ ticket: 11, reason: 'bad_test' }),
+                stuckReported({ ticket: 11 }),
+                commentRead({ comment_id: 200, body: 'retry #11' }),
+                replyReceived({ word: 'retry', ticket: 11, comment_id: 200 }),
+                ticketRetried({ ticket: 11, mode: 'refused' }),
+                {
+                    kind: 'reply_ignored',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        comment_id: 201,
+                        reason: 'not_stuck',
+                        answer_id: 202,
+                    },
+                },
+                ...lensReviewed({
+                    lens: 'security',
+                    round: 1,
+                    findings: [
+                        lensFinding({
+                            id: 'security-1',
+                            title: 'Token in a log',
+                        }),
+                    ],
+                }),
+                agentFailed({
+                    ticket: null,
+                    role: 'implementer',
+                    failure: 'result',
+                }),
+                gatesRun({ ticket: null, target: 'run_branch', ok: false }),
+                finalReviewStuck({ reason: 'changes_requested' }),
+            ],
+            first_seq: 1001,
+        })
+
+    /** The records the summary of `citedRun` names as evidence. */
+    const isEvidence = ({ kind, ticket }: LooseRecord): boolean =>
+        (ticket === 11 &&
+            [
+                'agent_finished',
+                'agent_failed',
+                'baseline_prepared',
+                'red_check',
+                'already_done_checked',
+                'gates_run',
+                'ticket_rebased',
+                'tests_sent_back',
+                'ticket_stuck',
+            ].includes(kind)) ||
+        (ticket === null &&
+            [
+                'agent_finished',
+                'agent_failed',
+                'gates_run',
+                'final_review_stuck',
+            ].includes(kind)) ||
+        (ticket === 12 && kind === 'step_started') ||
+        [
+            'stuck_reported',
+            'comment_read',
+            'reply_received',
+            'ticket_retried',
+            'reply_ignored',
+        ].includes(kind)
+
+    const seqsCited = (text: string): Set<number> =>
+        new Set(
+            [...text.matchAll(/\bseq (\d+)\b/g)].map((match) =>
+                Number(match[1])
+            )
+        )
+
+    const hashedNumbers = (text: string): number[] =>
+        [...text.matchAll(/#(\d+)/g)].map((match) => Number(match[1]))
+
+    test('every journal record it cites prints as seq <n>', async () => {
+        const records = await citedRun()
+        const summary = formatSummary({
+            run_id: 'run-1',
+            records,
+            running: false,
+        })
+        const cited = seqsCited(summary)
+        const evidence = [
+            ...records.filter(isEvidence).map(({ seq }) => seq),
+            records.at(-1)?.seq ?? -1,
+        ]
+        expect(evidence.length).toBeGreaterThan(15)
+        expect(evidence.filter((seq) => !cited.has(seq))).toEqual([])
+    })
+
+    test('no bare #<digits> stands for a journal record', async () => {
+        const summary = formatSummary({
+            run_id: 'run-1',
+            records: await citedRun(),
+            running: false,
+        })
+        const hashed = hashedNumbers(summary)
+        expect(hashed.length).toBeGreaterThan(0)
+        expect(hashed.filter((n) => !REAL_NUMBERS.includes(n))).toEqual([])
+    })
+
+    test('the records that say the engine took a reply print as seq <n>', async () => {
+        const records = await writeRun({
+            entries: [
+                ...stuckOnBadTest(),
+                commentRead({ comment_id: 200, body: 'retry #11' }),
+                replyReceived({ word: 'retry', ticket: 11, comment_id: 200 }),
+                ticketRetried({ ticket: 11, mode: 'resume' }),
+            ],
+            first_seq: 1001,
+        })
+        const after =
+            records.find(({ kind }) => kind === 'stuck_reported')?.seq ?? -1
+        const { status, lines } = replyOutcome({ records, after })
+        expect(status).toBe('done')
+        const text = lines.join('\n')
+        const cited = seqsCited(text)
+        const since = records
+            .filter(({ seq }) => seq > after)
+            .map(({ seq }) => seq)
+        expect(since).toHaveLength(3)
+        expect(since.filter((seq) => !cited.has(seq))).toEqual([])
+        expect(hashedNumbers(text).filter((n) => n !== 11)).toEqual([])
+    })
+
+    test('ticket and spec numbers still print as #<n>, next to the seqs', async () => {
+        const records = await citedRun()
+        const summary = formatSummary({
+            run_id: 'run-1',
+            records,
+            running: false,
+        })
+        const seqOf = (kind: string): number =>
+            records.find((record) => record.kind === kind)?.seq ?? -1
+        expect(summary).toContain('Run run-1: spec #10 "Practice spec"')
+        expect(summary).toContain(
+            `Ticket #11 "Add sum": bad_test (ticket_stuck seq ${seqOf('ticket_stuck')})`
+        )
+        expect(summary).toContain(
+            `seq ${seqOf('reply_received')} reply_received: retry #11 from spec-owner`
+        )
+        expect(summary).toContain(
+            `seq ${seqOf('ticket_retried')} ticket_retried #11: refused`
+        )
+        expect(summary).toContain('joined since: #12 Add product')
     })
 })
 

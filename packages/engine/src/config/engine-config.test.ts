@@ -116,6 +116,38 @@ describe('engine config', () => {
         expect(result.ok).toBe(false)
     })
 
+    test('a leftover_allow list of glob patterns is kept (#520)', async () => {
+        await writeConfig({
+            text: JSON.stringify({
+                checks: { test: 'bun test' },
+                leftover_allow: ['handbook/**/*.md', 'design/*.md'],
+            }),
+        })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok && result.config.leftover_allow).toEqual([
+            'handbook/**/*.md',
+            'design/*.md',
+        ])
+    })
+
+    test('a leftover_allow that is not a list of patterns is an error naming the field (#520)', async () => {
+        for (const leftover_allow of ['handbook/**', [42], { docs: true }]) {
+            await writeConfig({
+                text: JSON.stringify({
+                    checks: { test: 'bun test' },
+                    leftover_allow,
+                }),
+            })
+
+            const result = await loadEngineConfig({ repo_root: repoRoot })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('leftover_allow')
+        }
+    })
+
     test('a config with the wrong shape is an error naming the field', async () => {
         await writeConfig({ text: JSON.stringify({ checks: { test: 42 } }) })
 

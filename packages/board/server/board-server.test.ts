@@ -11,6 +11,7 @@ import {
     intakeOfThree,
     leftoverScan,
     redCheck,
+    runBranchPushed,
     ticketJoined,
     ticketWorktreeCreated,
     type Entry,
@@ -147,11 +148,17 @@ describe('engine.event: records in, board state out', () => {
                     ticketJoined({ ticket }),
                 ],
                 expected: {
-                    stage: 'done',
                     step: 5,
                     activity: 'joined',
                     findings: { blocker: 0, should_fix: 0, nit: 0 },
                 },
+            },
+            {
+                entries: [
+                    gatesRun({ ticket, ok: true, target: 'run_branch' }),
+                    runBranchPushed({ ticket }),
+                ],
+                expected: { stage: 'done', step: 5 },
             },
         ]
 
@@ -213,6 +220,8 @@ describe('engine.event: records in, board state out', () => {
             entries: [
                 ticketWorktreeCreated({ ticket: 11 }),
                 ticketJoined({ ticket: 11 }),
+                gatesRun({ ticket: 11, ok: true, target: 'run_branch' }),
+                runBranchPushed({ ticket: 11 }),
             ],
         })
 
