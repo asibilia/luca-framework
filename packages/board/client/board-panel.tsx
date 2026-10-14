@@ -55,8 +55,9 @@ import { postedText, type PostedReply } from '../shared/reply-actions'
 /**
  * The side panel: one run of this workspace, top to bottom. Plan usage, a
  * limit-wait banner, "Needs you" pinned on top, the tickets as a stack of
- * stages (Blocked → Building → Reviewing → Done → Skipped) with step dots,
- * then the final review's 5 lenses as a second stack. It polls `board.read`.
+ * stages (Blocked → Building → Reviewing → Testing → Fixing → Joining → Done
+ * → Skipped) with step dots, then the final review's 5 lenses as a second
+ * stack. It polls `board.read`.
  */
 
 type StackStage = Exclude<TicketStage, 'stuck'>
@@ -78,15 +79,36 @@ const TICKET_STAGES: {
     {
         stage: 'building',
         title: 'Building',
-        hint: 'tests, red check, code, checks',
+        hint: 'the first tests and code',
         icon: 'Hammer',
         folded: false,
     },
     {
         stage: 'reviewing',
         title: 'Reviewing',
-        hint: 'a fresh ticket review and its fix rounds',
+        hint: 'a reviewer reads the ticket',
         icon: 'ScanSearch',
+        folded: false,
+    },
+    {
+        stage: 'testing',
+        title: 'Testing',
+        hint: 'the red check or the checks running',
+        icon: 'FlaskConical',
+        folded: false,
+    },
+    {
+        stage: 'fixing',
+        title: 'Fixing',
+        hint: 'a fix round after the checks, a review or a join',
+        icon: 'Wrench',
+        folded: false,
+    },
+    {
+        stage: 'joining',
+        title: 'Joining',
+        hint: 'joining the run branch and its checks there',
+        icon: 'GitMerge',
         folded: false,
     },
     {

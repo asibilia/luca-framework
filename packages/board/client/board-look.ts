@@ -73,7 +73,11 @@ export const stageColor = ({
     switch (stage) {
         case 'building':
         case 'reviewing':
+        case 'testing':
+        case 'joining':
             return theme.colors.accent
+        case 'fixing':
+            return theme.colors.statusWarning
         case 'stuck':
             return theme.colors.statusDanger
         case 'done':
