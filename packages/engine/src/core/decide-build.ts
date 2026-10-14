@@ -1341,11 +1341,13 @@ const withWriterSection = ({
 }
 
 /**
- * In a repo with changesets, the writers are told not to write one and the
- * rules lens that the engine adds the run's one at PR time (#507).
+ * In a repo with changesets, the writers are told not to write one (#507),
+ * and every reviewer (the ticket-reviewer and each lens) that the engine adds
+ * the run's one at PR time (#507, #545).
  */
 const withChangesetsSections = (step: BuildAction): BuildAction =>
-    step.type === 'launch_lens' && step.lens === 'rules'
+    step.type === 'launch_lens' ||
+    (step.type === 'launch_agent' && step.role === 'ticket-reviewer')
         ? { ...step, prompt: `${step.prompt}\n\n${CHANGESETS_LENS_SECTION}` }
         : withWriterSection({ step, section: CHANGESETS_SECTION })
 

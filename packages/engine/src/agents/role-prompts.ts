@@ -203,8 +203,9 @@ export const CHANGESETS_SECTION = [
 ].join('\n\n')
 
 /**
- * The section the rules lens gets in a repo with changesets, so a rule like
- * "every PR needs a changeset" raises no finding.
+ * The section every reviewer (the ticket-reviewer and each lens) gets in a
+ * repo with changesets, so a rule like "every PR needs a changeset" raises
+ * no finding.
  */
 export const CHANGESETS_LENS_SECTION = [
     '## The engine writes the changeset',
