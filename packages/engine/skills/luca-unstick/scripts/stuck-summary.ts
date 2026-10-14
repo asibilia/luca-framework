@@ -106,6 +106,9 @@ const clip = (value: string, max = DETAIL_MAX): string =>
 const clipEnd = (value: string, max = OUTPUT_MAX): string =>
     value.length > max ? `(clipped) ... ${value.slice(-max)}` : value
 
+/** A journal record's seq as `seq 123`, never `#123`, which GitHub links. */
+const seqText = (seq: number): string => `seq ${seq}`
+
 /** Each line of each entry, after `by`. */
 const nest = (entries: string[], by: string): string[] =>
     entries.flatMap((entry) => entry.split('\n')).map((line) => `${by}${line}`)
@@ -360,20 +363,23 @@ const finalReviewLines = ({
     for (const [role, record] of lenses) {
         const findings = findingLines(objectOf(record.content.result))
         if (findings.length > 0) {
-            lines.push(`${role}'s open findings (#${record.seq}):`, ...findings)
+            lines.push(
+                `${role}'s open findings (${seqText(record.seq)}):`,
+                ...findings
+            )
         }
     }
     const failed = lastOf(run_level, 'agent_failed')
     if (failed !== undefined) {
         lines.push(
-            `Last failed try (#${failed.seq}): ${text(failed.content.role)} (${text(failed.content.failure) || 'agent'})`,
+            `Last failed try (${seqText(failed.seq)}): ${text(failed.content.role)} (${text(failed.content.failure) || 'agent'})`,
             indent(clip(text(failed.content.error), 800))
         )
     }
     const gates = lastOf(run_level, 'gates_run')
     if (gates !== undefined && gates.content.ok === false) {
         lines.push(
-            `Last gates on the run branch failed (#${gates.seq}):`,
+            `Last gates on the run branch failed (${seqText(gates.seq)}):`,
             ...listOf(gates.content.checks)
                 .map(objectOf)
                 .filter((check) => check.ok === false)
@@ -405,7 +411,9 @@ const ticketLines = ({
         const role = text(agent.content.role)
         const result = objectOf(agent.content.result)
         const outcome = text(result.outcome) || text(result.verdict)
-        lines.push(`Last agent result (#${agent.seq}): ${role} ${outcome}`)
+        lines.push(
+            `Last agent result (${seqText(agent.seq)}): ${role} ${outcome}`
+        )
         const bad = objectOf(result.bad_test)
         if (text(bad.file) !== '') {
             lines.push(
@@ -433,7 +441,7 @@ const ticketLines = ({
     const failed = lastOf(mine, 'agent_failed')
     if (failed !== undefined) {
         lines.push(
-            `Last failed try (#${failed.seq}): ${text(failed.content.role)} (${text(failed.content.failure) || 'agent'})`,
+            `Last failed try (${seqText(failed.seq)}): ${text(failed.content.role)} (${text(failed.content.failure) || 'agent'})`,
             indent(clip(text(failed.content.error), 800))
         )
     }
@@ -441,14 +449,14 @@ const ticketLines = ({
     const prepare_check = objectOf(prepared?.content.check)
     if (prepared !== undefined && prepare_check.ok === false) {
         lines.push(
-            `Prepare failed (#${prepared.seq}):`,
+            `Prepare failed (${seqText(prepared.seq)}):`,
             ...checkLines(prepare_check)
         )
     }
     const red = lastOf(mine, 'red_check')
     if (red !== undefined && red.content.ok === false) {
         lines.push(
-            `Last red check failed (#${red.seq}):`,
+            `Last red check failed (${seqText(red.seq)}):`,
             ...listOf(red.content.problems).map(
                 (p) => `  - ${clip(text(p), 600)}`
             )
@@ -457,7 +465,7 @@ const ticketLines = ({
     const evidence = lastOf(mine, 'already_done_checked')
     if (evidence !== undefined && evidence.content.ok === false) {
         lines.push(
-            `already_done evidence did not check out (#${evidence.seq}):`,
+            `already_done evidence did not check out (${seqText(evidence.seq)}):`,
             ...listOf(evidence.content.problems).map(
                 (p) => `  - ${clip(text(p), 600)}`
             )
@@ -466,7 +474,7 @@ const ticketLines = ({
     const gates = lastOf(mine, 'gates_run')
     if (gates !== undefined && gates.content.ok === false) {
         lines.push(
-            `Last gates failed (#${gates.seq}, on the ${text(gates.content.target) === 'run_branch' ? 'run branch' : 'ticket worktree'}):`,
+            `Last gates failed (${seqText(gates.seq)}, on the ${text(gates.content.target) === 'run_branch' ? 'run branch' : 'ticket worktree'}):`,
             ...listOf(gates.content.checks)
                 .map(objectOf)
                 .filter((check) => check.ok === false)
@@ -484,14 +492,14 @@ const ticketLines = ({
     const rebased = lastOf(mine, 'ticket_rebased')
     if (rebased !== undefined) {
         lines.push(
-            `Rebased onto the run branch (#${rebased.seq}, ${text(rebased.content.cause)}): clashed tests ${listOf(rebased.content.tests).map(text).join(', ') || 'none'}; clashed code ${listOf(rebased.content.code).map(text).join(', ') || 'none'}`
+            `Rebased onto the run branch (${seqText(rebased.seq)},${text(rebased.content.cause)}): clashed tests ${listOf(rebased.content.tests).map(text).join(', ') || 'none'}; clashed code ${listOf(rebased.content.code).map(text).join(', ') || 'none'}`
         )
     }
     const sent = lastOf(mine, 'tests_sent_back')
     if (sent !== undefined) {
         const bad = objectOf(sent.content.bad_test)
         lines.push(
-            `tests_sent_back round ${String(sent.content.round)} (#${sent.seq}): ${text(bad.file)} > ${text(bad.name)}`,
+            `tests_sent_back round ${String(sent.content.round)} (${seqText(sent.seq)}): ${text(bad.file)} > ${text(bad.name)}`,
             `  joined since: ${
                 listOf(sent.content.joined)
                     .map(objectOf)
@@ -517,25 +525,27 @@ const replyLines = ({
             const { kind, content, seq } = record
             if (kind === 'stuck_reported') {
                 return [
-                    `#${seq} stuck_reported: comment ${String(content.comment_id)}`,
+                    `${seqText(seq)} stuck_reported: comment ${String(content.comment_id)}`,
                 ]
             }
             if (kind === 'comment_read') {
                 return [
-                    `#${seq} comment_read by ${text(content.author)}: ${clip(text(content.body).replace(/\s+/g, ' '), 200)}`,
+                    `${seqText(seq)} comment_read by ${text(content.author)}: ${clip(text(content.body).replace(/\s+/g, ' '), 200)}`,
                 ]
             }
             if (kind === 'reply_received') {
                 return [
-                    `#${seq} reply_received: ${text(content.word)}${content.ticket === null ? '' : ` #${String(content.ticket)}`} from ${text(content.author)}`,
+                    `${seqText(seq)} reply_received: ${text(content.word)}${content.ticket === null ? '' : ` #${String(content.ticket)}`} from ${text(content.author)}`,
                 ]
             }
             if (kind === 'reply_ignored') {
-                return [`#${seq} reply_ignored: ${text(content.reason)}`]
+                return [
+                    `${seqText(seq)} reply_ignored: ${text(content.reason)}`,
+                ]
             }
             if (kind === 'ticket_retried') {
                 return [
-                    `#${seq} ticket_retried #${String(record.ticket)}: ${text(content.mode)}${listOf(content.problems).length === 0 ? '' : ` (${listOf(content.problems).map(text).join('; ')})`}`,
+                    `${seqText(seq)} ticket_retried #${String(record.ticket)}: ${text(content.mode)}${listOf(content.problems).length === 0 ? '' : ` (${listOf(content.problems).map(text).join('; ')})`}`,
                 ]
             }
             if (
@@ -544,7 +554,7 @@ const replyLines = ({
                 kind === 'final_review_shipped'
             ) {
                 return [
-                    `#${seq} ${kind}${record.ticket === null ? '' : ` #${record.ticket}`}`,
+                    `${seqText(seq)} ${kind}${record.ticket === null ? '' : ` #${record.ticket}`}`,
                 ]
             }
             return []
@@ -674,7 +684,9 @@ export const formatSummary = ({
     }
     const last = records.at(-1)
     if (last !== undefined) {
-        lines.push(`Last record: #${last.seq} ${last.kind} at ${last.time}`)
+        lines.push(
+            `Last record: ${seqText(last.seq)} ${last.kind} at ${last.time}`
+        )
     }
     lines.push(`State: ${state.line}`)
     lines.push(
@@ -694,7 +706,7 @@ export const formatSummary = ({
     }
     if (running === false && !state.over && cut.length > 0) {
         lines.push(
-            `Cut off (started, never ended): ${cut.map((step) => `${step.step} on ${step.key} (#${step.seq})`).join('; ')}`
+            `Cut off (started, never ended): ${cut.map((step) => `${step.step} on ${step.key} (${seqText(step.seq)})`).join('; ')}`
         )
     }
     if (log_tail !== null && registry?.ended?.ok === false && !state.over) {
@@ -728,7 +740,7 @@ export const formatSummary = ({
                   : 'The whole run'
         lines.push(
             '',
-            `${head}: ${item.reason} (${item.kind} #${item.seq})`,
+            `${head}: ${item.reason} (${item.kind} ${seqText(item.seq)})`,
             indent(`detail: ${clip(item.detail)}`)
         )
         if (item.refused.length > 0) {

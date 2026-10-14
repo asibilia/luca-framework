@@ -10,7 +10,7 @@
  * worktree it is in). With several, it sums up each, then the patterns that
  * repeat across them.
  *
- * Each summary names the journal's seq numbers (`#123`), so the skill can
+ * Each summary names the journal's seq numbers (`seq 123`), so the skill can
  * cite them: what got stuck and why, fix loops that hit their cap, leftover
  * scan hits, agents out of turns, failed agent turns, Jev calls that failed,
  * checks and tests that failed again and again, setup changes agents asked
@@ -200,14 +200,14 @@ const tally = (items: { key: string; seq: number }[]): Tally[] => {
     return [...groups.values()].toSorted((a, b) => b.count - a.count)
 }
 
-/** Seqs as `#1, #2, #3`, at most `max`. */
+/** A journal record's seq as `seq 123`, never `#123`, which GitHub links. */
+const seqText = (seq: number): string => `seq ${seq}`
+
+/** Seqs as `seq 1, seq 2, seq 3`, at most `max`. */
 const seqsText = (seqs: number[], max = 6): string =>
     seqs.length > max
-        ? `${seqs
-              .slice(0, max)
-              .map((seq) => `#${seq}`)
-              .join(', ')}, +${seqs.length - max}`
-        : seqs.map((seq) => `#${seq}`).join(', ')
+        ? `${seqs.slice(0, max).map(seqText).join(', ')}, +${seqs.length - max}`
+        : seqs.map(seqText).join(', ')
 
 /** The first `LIST_MAX` lines, then how many more there are. */
 const capped = (lines: string[], max = LIST_MAX): string[] =>
@@ -337,16 +337,19 @@ const runEnding = ({
     if (pr !== undefined) {
         return {
             over: true,
-            line: `opened PR #${String(pr.content.number)} ${text(pr.content.url)} (#${pr.seq})`,
+            line: `opened PR #${String(pr.content.number)} ${text(pr.content.url)} (${seqText(pr.seq)})`,
         }
     }
     const refused = lastOf(records, 'intake_refused')
     if (refused !== undefined) {
-        return { over: true, line: `intake refused it (#${refused.seq})` }
+        return {
+            over: true,
+            line: `intake refused it (${seqText(refused.seq)})`,
+        }
     }
     const nothing = lastOf(records, 'nothing_to_do')
     if (nothing !== undefined) {
-        return { over: true, line: `nothing to do (#${nothing.seq})` }
+        return { over: true, line: `nothing to do (${seqText(nothing.seq)})` }
     }
     const stopped = lastOf(records, 'run_stopped')
     if (
@@ -355,7 +358,7 @@ const runEnding = ({
     ) {
         return {
             over: true,
-            line: `stopped for good (#${stopped.seq}): ${clip(text(stopped.content.reason))}`,
+            line: `stopped for good (${seqText(stopped.seq)}): ${clip(text(stopped.content.reason))}`,
         }
     }
     const stop = lastOf(
@@ -366,7 +369,7 @@ const runEnding = ({
     if (stop !== undefined) {
         return {
             over: true,
-            line: `the owner replied stop (#${stop.seq}), no PR`,
+            line: `the owner replied stop (${seqText(stop.seq)}), no PR`,
         }
     }
     return { over: false, line: 'not over yet' }
@@ -900,11 +903,11 @@ const noteLines = (notes: AgentNote[]): string[] =>
     capped(
         notes.map(
             ({ seq, ticket, role, text: body }) =>
-                `  #${seq} ${ticketText(ticket)} ${role}: ${body}`
+                `  ${seqText(seq)} ${ticketText(ticket)} ${role}: ${body}`
         )
     )
 
-/** A tally as `key ×n (#1, #2)` lines, capped. */
+/** A tally as `key ×n (seq 1, seq 2)` lines, capped. */
 const tallyLines = (groups: Tally[], max = LIST_MAX): string[] =>
     capped(
         groups.map(
@@ -914,7 +917,7 @@ const tallyLines = (groups: Tally[], max = LIST_MAX): string[] =>
     )
 
 /**
- * One run's summary as plain text, with seq numbers (`#123`) for evidence.
+ * One run's summary as plain text, with seq numbers (`seq 123`) for evidence.
  * Sections with nothing in them are left out. Pure.
  */
 export const formatRunSummary = ({
@@ -931,13 +934,13 @@ export const formatRunSummary = ({
         `== Run ${run_id}: spec #${s.spec.number ?? '?'}${s.spec.title === '' ? '' : ` "${s.spec.title}"`}`,
         `Repo: ${s.repo || '?'}${gh_repo === undefined ? '' : ` (${gh_repo})`}`,
         `Luca: ${s.luca.join(' -> ')}`,
-        `Time: ${s.started} to ${s.ended} (${durationText(msBetween(s.started, s.ended))}), last record #${s.last_seq}`,
+        `Time: ${s.started} to ${s.ended} (${durationText(msBetween(s.started, s.ended))}), last record ${seqText(s.last_seq)}`,
         `Ended: ${s.ending}`,
         `Tickets: ${s.tickets.size}`,
     ]
     for (const resume of s.resumes) {
         lines.push(
-            `Engine resumed (#${resume.seq}) on ${resume.version} after ${durationText(resume.down_ms)} down${resume.cut_off === 0 ? '' : `, ${resume.cut_off} steps cut off`}`
+            `Engine resumed (${seqText(resume.seq)}) on ${resume.version} after ${durationText(resume.down_ms)} down${resume.cut_off === 0 ? '' : `, ${resume.cut_off} steps cut off`}`
         )
     }
     if (s.config_reloaded.length > 0) {
@@ -956,7 +959,7 @@ export const formatRunSummary = ({
         `Stuck (${s.stuck.length}; the owner took ${durationText(waited)} in all to reply):`,
         s.stuck.map(
             (event) =>
-                `  #${event.seq} ${event.kind} ${titledTicket(s, event.ticket)}: ${event.reason}${event.reply === null ? ', no reply' : ` -> ${event.reply.word} (#${event.reply.seq}, after ${durationText(event.reply.wait_ms)})`}\n    ${clip(event.detail)}`
+                `  ${seqText(event.seq)} ${event.kind} ${titledTicket(s, event.ticket)}: ${event.reason}${event.reply === null ? ', no reply' : ` -> ${event.reply.word} (${seqText(event.reply.seq)}, after ${durationText(event.reply.wait_ms)})`}\n    ${clip(event.detail)}`
         )
     )
     section(
@@ -965,7 +968,7 @@ export const formatRunSummary = ({
             .filter(({ cap }) => cap !== null)
             .map(
                 ({ seq, ticket, reason, cap }) =>
-                    `  #${seq} ${ticketText(ticket)} ${reason} after ${cap}`
+                    `  ${seqText(seq)} ${ticketText(ticket)} ${reason} after ${cap}`
             )
     )
     section(`Leftover scan blocked a commit (${s.leftovers.scans} scans):`, [
@@ -1041,7 +1044,7 @@ export const formatRunSummary = ({
             ),
             ...j.undone.map(
                 ({ seq, ticket, shas }) =>
-                    `  #${seq} join_undone ${ticketText(ticket)}: ${shas} commits taken off the run branch`
+                    `  ${seqText(seq)} join_undone ${ticketText(ticket)}: ${shas} commits taken off the run branch`
             ),
             ...noteLines(j.tests_sent_back).map((line) =>
                 line.replace(/^ {2}/, '  tests_sent_back ')
@@ -1092,7 +1095,7 @@ export const formatRunSummary = ({
             .slice(0, SLOW_STEPS_MAX)
             .map(
                 (step) =>
-                    `  ${step.step}: ${step.count}, ${durationText(step.total_ms)}, ${durationText(step.total_ms / step.count)}, ${durationText(step.max_ms)} (#${step.max_seq} ${ticketText(step.max_ticket)})`
+                    `  ${step.step}: ${step.count}, ${durationText(step.total_ms)}, ${durationText(step.total_ms / step.count)}, ${durationText(step.max_ms)} (${seqText(step.max_seq)} ${ticketText(step.max_ticket)})`
             )
     )
     const run = s.usage.run
