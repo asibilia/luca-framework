@@ -7,6 +7,7 @@ export const EVAL_MODEL = 'claude-opus-5-5'
  * The flags for one headless `claude` run; the prompt goes in on stdin.
  * `--setting-sources project` loads only built-in skills plus the run
  * folder's own `.claude/skills/`, so each setup sees only its own skill.
+ * `--strict-mcp-config` keeps the owner's account connectors out of eval sessions.
  * `tools` null keeps Claude Code's default tools; [] gives none.
  */
 export const claudeArgs = ({
@@ -25,6 +26,7 @@ export const claudeArgs = ({
     model,
     '--setting-sources',
     'project',
+    '--strict-mcp-config',
     '--permission-mode',
     'bypassPermissions',
     '--output-format',

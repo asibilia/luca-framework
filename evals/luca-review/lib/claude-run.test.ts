@@ -32,6 +32,7 @@ describe('claudeArgs', () => {
             'claude-opus-5-5',
             '--setting-sources',
             'project',
+            '--strict-mcp-config',
             '--permission-mode',
             'bypassPermissions',
             '--output-format',
@@ -59,6 +60,33 @@ describe('claudeArgs', () => {
                 tools: ['Skill'],
             }).slice(-2)
         ).toEqual(['--tools', 'Skill'])
+    })
+
+    test('every claudeArgs variant contains --strict-mcp-config', () => {
+        const variants = [
+            claudeArgs({
+                model: 'claude-opus-5-5',
+                max_budget_usd: 25,
+                output_format: 'stream-json',
+                tools: null,
+            }),
+            claudeArgs({
+                model: 'm',
+                max_budget_usd: 5,
+                output_format: 'json',
+                tools: [],
+            }),
+            claudeArgs({
+                model: 'm',
+                max_budget_usd: 2,
+                output_format: 'stream-json',
+                tools: ['Skill'],
+            }),
+        ]
+
+        variants.forEach((args) => {
+            expect(args).toContain('--strict-mcp-config')
+        })
     })
 })
 
