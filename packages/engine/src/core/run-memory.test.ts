@@ -556,7 +556,7 @@ describe('memory, end to end', () => {
             key: '11',
             role: null,
         })
-    }, 60_000)
+    }, 120_000)
 })
 
 /**

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { JEV_FAILURE_TEXT_CHARS, jevAsksAfter } from './jev-jobs'
+import { JEV_FAILURE_TEXT_CHARS, jevAsksAfter, jevAsksBefore } from './jev-jobs'
 
+import type { EngineAction } from '../core/decide'
 import {
     JournalRecordSchema,
     type JournalEntry,
@@ -13,6 +14,7 @@ import {
     intakePassed,
     practiceTicket,
     redCheck,
+    ticketWorktreeCreated,
 } from '../testing/build-fixtures'
 
 /** Stamps entries as the journal would, without a file. */
@@ -103,5 +105,80 @@ describe('jevAsksAfter', () => {
         expect(ask?.request.state.failure).toHaveLength(JEV_FAILURE_TEXT_CHARS)
         expect(ask?.request.state.failure?.endsWith('THE END')).toBe(true)
         expect(ask?.request.state.ticket).toBe('#11 Add sum')
+    })
+})
+
+/** A run with these tickets, and worktrees already made for `started`. */
+const runWith = ({
+    tickets,
+    started,
+}: {
+    tickets: number[]
+    started?: number[]
+}) =>
+    replayRun({
+        records: stamp([
+            ...intakePassed({
+                tickets: tickets.map((number) =>
+                    practiceTicket({ number, title: `Ticket ${number}` })
+                ),
+            }),
+            ...(started ?? []).map((ticket) =>
+                ticketWorktreeCreated({ ticket })
+            ),
+        ]),
+    })
+
+const createWorktree = (ticket: number): EngineAction => ({
+    type: 'create_ticket_worktree',
+    ticket,
+    run_branch: 'luca/spec-10-run',
+})
+
+describe('jevAsksBefore', () => {
+    test('asks no ticket order when only one ticket is in the run', () => {
+        const asks = jevAsksBefore({
+            action: createWorktree(11),
+            state: runWith({ tickets: [11] }),
+        })
+
+        expect(asks.map(({ job }) => job)).toEqual(['ticket_model'])
+    })
+
+    test('asks no ticket order when the other tickets have started', () => {
+        const asks = jevAsksBefore({
+            action: createWorktree(13),
+            state: runWith({ tickets: [11, 12, 13], started: [11, 12] }),
+        })
+
+        expect(asks.map(({ job }) => job)).toEqual(['ticket_model'])
+    })
+
+    test('asks the ticket order as before when two tickets are left', () => {
+        const asks = jevAsksBefore({
+            action: createWorktree(12),
+            state: runWith({ tickets: [11, 12, 13], started: [11] }),
+        })
+
+        expect(asks.map(({ job }) => job)).toEqual([
+            'ticket_order',
+            'ticket_model',
+        ])
+        const [order] = asks
+        expect(order?.ticket).toBe(12)
+        expect(order?.request.questions).toEqual({
+            next: {
+                type: 'choice',
+                instructions: 'Which of these tickets should be built next?',
+                criteria: { ticket_12: null, ticket_13: null },
+            },
+        })
+        expect(order?.request.state.candidates).toBe(
+            [
+                'ticket_12: #12 Ticket 12 (blocked by: none)',
+                'ticket_13: #13 Ticket 13 (blocked by: none)',
+            ].join('\n')
+        )
+        expect(order?.fixed).toEqual({ next: 'ticket_12' })
     })
 })
