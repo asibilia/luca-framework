@@ -47,6 +47,43 @@ export const JevRequestSchema = z.object({
 
 export type JevRequest = z.infer<typeof JevRequestSchema>
 
+/** The most questions Clef takes in one request. */
+export const CLEF_MAX_QUESTIONS = 64
+
+/**
+ * A request Clef will take (#546): 1 to 64 questions, 2 to 255 options per
+ * choice, and 2 to 10 levels per score. Clef refuses anything else, so the
+ * engine checks each ask against this before sending it. Journals keep the
+ * looser `JevRequestSchema`, so old asks still read.
+ */
+export const ClefRequestSchema = z.object({
+    state: z.record(z.string(), z.string()),
+    questions: z
+        .record(
+            z.string(),
+            z.discriminatedUnion('type', [
+                JevChoiceQuestionSchema.refine(
+                    ({ criteria }) => {
+                        const options = Object.keys(criteria).length
+                        return options >= 2 && options <= 255
+                    },
+                    { message: 'A choice takes 2 to 255 options.' }
+                ),
+                JevScoreQuestionSchema,
+                JevNoulQuestionSchema,
+            ])
+        )
+        .refine(
+            (questions) => {
+                const count = Object.keys(questions).length
+                return count >= 1 && count <= CLEF_MAX_QUESTIONS
+            },
+            {
+                message: `A request takes 1 to ${CLEF_MAX_QUESTIONS} questions.`,
+            }
+        ),
+})
+
 /**
  * What the engine keeps of one answer. `value` is the choice, score, or
  * probability Jev gave; `raw` is the answer exactly as it came back.
