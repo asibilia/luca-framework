@@ -92,6 +92,12 @@ export const EngineConfigSchema = z.object({
      * engine's default (`DEFAULT_COMMAND_TIMEOUT_MS`, 5 minutes).
      */
     test_timeout_ms: z.number().int().positive().optional(),
+    /**
+     * Glob patterns for more new markdown the leftover scan lets through,
+     * beyond doc folders, READMEs, and files the repo names (#520), such as
+     * `design/*.md`; left out, none.
+     */
+    leftover_allow: z.array(z.string().min(1)).optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),

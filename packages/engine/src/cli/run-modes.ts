@@ -218,8 +218,11 @@ const driveRun = async ({
 }
 
 /** A value of a reloaded config field in a log line; `null` is "none". */
-const fieldValue = (value: string | number | null): string =>
-    value === null ? 'none' : String(value)
+const fieldValue = (value: string | number | string[] | null): string => {
+    if (value === null) return 'none'
+    if (Array.isArray(value)) return `[${value.join(', ')}]`
+    return String(value)
+}
 
 /**
  * The log line for a resume's `config_reloaded` or `config_reload_refused`
