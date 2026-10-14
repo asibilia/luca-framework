@@ -88,10 +88,13 @@ export type LeftoverHit = z.infer<typeof LeftoverHitSchema>
  * doc place (a `docs` or `adr` folder, or a `README.md`), a tracked or newly
  * added non-test file names it, or a `leftover_allow` pattern matches it.
  */
-export type LeftoverPassReason =
-    | 'doc_place'
-    | 'named_by_repo'
-    | 'config_pattern'
+export const LeftoverPassReasonSchema = z.enum([
+    'doc_place',
+    'named_by_repo',
+    'config_pattern',
+])
+
+export type LeftoverPassReason = z.infer<typeof LeftoverPassReasonSchema>
 
 /**
  * A new markdown file the leftover scan let through, and why, as the journal
@@ -102,4 +105,9 @@ export const LeftoverPassSchema = z.object({
     reason: z.string(),
 })
 
-export type LeftoverPass = { path: string; reason: LeftoverPassReason }
+/** A new markdown file the leftover scan let through, as the scan returns it. */
+export const LeftoverPassResultSchema = LeftoverPassSchema.extend({
+    reason: LeftoverPassReasonSchema,
+})
+
+export type LeftoverPass = z.infer<typeof LeftoverPassResultSchema>
