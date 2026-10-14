@@ -186,6 +186,31 @@ describe('a resume adopts the repo’s new build fields', () => {
         expect(lines.some((line) => line.includes('prepare'))).toBe(true)
     }, 120_000)
 
+    test('a changed test time limit is journaled after engine_resumed (#542)', async () => {
+        const { repo, runs_dir, tracker } = await crashedRun()
+        await writeConfig({
+            repo,
+            config: { ...STARTED_CONFIG, test_timeout_ms: 600_000 },
+        })
+
+        const end = await resume({ runs_dir, tracker })
+
+        expect(end.ok).toBe(true)
+        const records = recordsOf({ runs_dir })
+        expect(kindsAfterResume(records).slice(0, 2)).toEqual([
+            'engine_resumed',
+            'config_reloaded',
+        ])
+        const reloaded = records.find(
+            (record) => record.kind === 'config_reloaded'
+        )
+        expect(
+            reloaded?.kind === 'config_reloaded' && reloaded.content
+        ).toEqual({
+            changes: [{ field: 'test_timeout_ms', from: null, to: 600_000 }],
+        })
+    }, 120_000)
+
     test('a removed prepare stops the gates running one', async () => {
         const { repo, runs_dir, tracker } = await crashedRun()
         await writeConfig({ repo, config: PRACTICE_ENGINE_CONFIG })

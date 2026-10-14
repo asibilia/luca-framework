@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 
 import type { TestCase, TestRun } from './gate-schemas'
 
-import { clipOutput, runShell } from '../shell/run-command'
+import { clipOutput, runShell, timedOutLine } from '../shell/run-command'
 
 const decode = (text: string): string =>
     text
@@ -84,28 +84,42 @@ export const testFilesAmong = ({
 const NO_TEST_FILES = /0 test files matching|No tests found!/
 
 /**
+ * How to give a test command longer, for the timed-out message. Every test
+ * command says the same, whatever its kind (#542).
+ */
+export const TEST_TIMEOUT_HINT =
+    'To give it longer, raise `test_timeout_ms` in `.luca/config.json`.'
+
+/**
  * Runs the engine config's test command with bun's JUnit reporter, so each
  * test case's outcome is known. The command must be a `bun test` command; the
  * reporter flags are added at its end. The report goes outside the worktree.
  *
  * A repo with no test files counts as a pass: `bun test` exits 1 there, but a
  * baseline with nothing to break is fine.
+ *
+ * One that runs past `timeout_ms` (see `testTimeoutOf`) is stopped, with
+ * everything it started, and fails; its output starts by saying so, and how
+ * to give it longer (#542).
  */
 export const runTests = async ({
     cwd,
     command,
     test_files,
     report_file,
+    timeout_ms,
 }: {
     cwd: string
     command: string
     /** The worktree's test files, to spot files that produced no results. */
     test_files: string[]
     report_file: string
+    timeout_ms: number
 }): Promise<TestRun> => {
     const shell = await runShell({
         command: `${command} --reporter=junit --reporter-outfile='${report_file}'`,
         cwd,
+        timeout_ms,
     })
     const output = `${shell.stdout}\n${shell.stderr}`
     const noTestFiles = NO_TEST_FILES.test(output)
@@ -124,7 +138,7 @@ export const runTests = async ({
         files_without_results: test_files.filter(
             (file) => !withResults.has(file)
         ),
-        output: clipOutput({ text: output }),
+        output: `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT }) : ''}${clipOutput({ text: output })}`,
     }
 }
 
@@ -176,18 +190,21 @@ export const reportFileFor = ({
  * empty passing run.
  *
  * @example
- * const run = await runBunTests({ cwd, commands: ['bun test'], test_files, report_file })
+ * const run = await runBunTests({ cwd, commands: ['bun test'], test_files, report_file, timeout_ms: testTimeoutOf({ config }) })
  */
 export const runBunTests = async ({
     cwd,
     commands,
     test_files,
     report_file,
+    timeout_ms,
 }: {
     cwd: string
     commands: string[]
     test_files: string[]
     report_file: string
+    /** Each command's time limit (see `runTests`). */
+    timeout_ms: number
 }): Promise<TestRun> => {
     const runs: TestRun[] = []
     for (const [index, command] of commands.entries()) {
@@ -197,6 +214,7 @@ export const runBunTests = async ({
                 command,
                 test_files,
                 report_file: reportFileFor({ report_file, index }),
+                timeout_ms,
             })
         )
     }

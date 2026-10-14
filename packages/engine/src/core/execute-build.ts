@@ -19,7 +19,11 @@ import {
     type AgentRole,
     type RoleResult,
 } from '../agents/role-results'
-import { bunTestCommands, type EngineConfig } from '../config/engine-config'
+import {
+    bunTestCommands,
+    testTimeoutOf,
+    type EngineConfig,
+} from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
 import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
@@ -291,6 +295,7 @@ const runRedCheck = async ({
         cwd: path,
         commands: bunTestCommands(context),
         test_files,
+        timeout_ms: testTimeoutOf({ config: context.config }),
         report_file: await reportFile({
             context,
             ticket: action.ticket,
@@ -409,6 +414,7 @@ const checkAlreadyDoneIn = async ({
                       onlyTestFiles({ command, files: runnable })
                   ),
                   test_files: runnable,
+                  timeout_ms: testTimeoutOf({ config: context.config }),
                   report_file: await reportFile({
                       context,
                       ticket: action.ticket,
@@ -1394,6 +1400,7 @@ export const executeBuildAction = async ({
                 cwd: path,
                 commands: bunTestCommands(context),
                 test_files: await testFilesIn({ context, cwd: path }),
+                timeout_ms: testTimeoutOf({ config: context.config }),
                 report_file: await reportFile({
                     context,
                     ticket: action.ticket,

@@ -172,6 +172,32 @@ export const runShell = ({
 }): Promise<CommandResult> =>
     runCommand({ cmd: ['sh', '-c', command], cwd, timeout_ms })
 
+/** A time limit in words: `30 minutes`, `1 minute`, `0.3 seconds`. */
+export const durationText = (ms: number): string => {
+    const [amount, unit] =
+        ms >= 60_000 ? [ms / 60_000, 'minute'] : [ms / 1000, 'second']
+    const rounded = Math.round(amount * 10) / 10
+    return `${rounded} ${unit}${rounded === 1 ? '' : 's'}`
+}
+
+/**
+ * The line a timed-out command's output starts with: how long it had, that
+ * the engine stopped it, then `hint`, if any.
+ *
+ * @example
+ * timedOutLine({ timeout_ms: 300_000, hint: 'To give it longer, raise `test_timeout_ms`.' })
+ * // 'Timed out after 5 minutes, so the engine stopped it and everything it started. To give it longer, raise `test_timeout_ms`.\n'
+ */
+export const timedOutLine = ({
+    timeout_ms,
+    hint,
+}: {
+    timeout_ms: number
+    /** How to give the command longer. */
+    hint?: string
+}): string =>
+    `Timed out after ${durationText(timeout_ms)}, so the engine stopped it and everything it started.${hint === undefined ? '' : ` ${hint}`}\n`
+
 /** Keeps the start and end of long output, for the journal and prompts. */
 export const clipOutput = ({
     text,

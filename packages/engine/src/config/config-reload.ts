@@ -7,20 +7,24 @@ import type { EngineConfig } from './engine-config'
 /**
  * The config fields a resumed run takes from the repo's
  * `.luca/config.json` again (#516). They say how the engine builds a
- * checkout before its tests, not what the tests are, so a run can change
- * them halfway without making its earlier results wrong: a repo that swaps
- * a slow `prepare` for a fast cached one gets it on the next resume.
+ * checkout before its tests, or how long a test may run, not what the
+ * tests are, so a run can change them halfway without making its earlier
+ * results wrong: a repo that swaps a slow `prepare` for a fast cached one
+ * gets it on the next resume.
  *
  * - `prepare`: the command run before each test run in a checkout.
  * - `prepare_timeout_ms`: how long that command may run.
  * - `prepare_concurrency`: how many prepare runs may go at once. The
  *   prepare slots take the limit on each call (`prepareCheck`), so a new
  *   one counts from the next prepare run.
+ * - `test_timeout_ms`: how long each test command may run (#542). Each run
+ *   of a test command reads it then, so a new one counts from the next.
  */
 export const RELOADED_FIELDS = [
     'prepare',
     'prepare_timeout_ms',
     'prepare_concurrency',
+    'test_timeout_ms',
 ] as const
 
 /**
@@ -79,6 +83,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         from: positiveInt,
         to: positiveInt,
     }),
+    z.object({
+        field: z.literal('test_timeout_ms'),
+        from: positiveInt,
+        to: positiveInt,
+    }),
 ])
 
 export type ConfigChange = z.infer<typeof ConfigChangeSchema>
@@ -115,6 +124,11 @@ export const configChanges = ({
             from: current.prepare_concurrency ?? null,
             to: next.prepare_concurrency ?? null,
         },
+        {
+            field: 'test_timeout_ms',
+            from: current.test_timeout_ms ?? null,
+            to: next.test_timeout_ms ?? null,
+        },
     ]
     return all.filter(({ from, to }) => from !== to)
 }
@@ -139,6 +153,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'prepare_concurrency')
                 : { ...config, prepare_concurrency: change.to }
+        case 'test_timeout_ms':
+            return change.to === null
+                ? omit(config, 'test_timeout_ms')
+                : { ...config, test_timeout_ms: change.to }
     }
 }
 

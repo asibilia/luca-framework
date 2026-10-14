@@ -11,9 +11,10 @@ import {
 
 /**
  * A resume that re-read the repo's config, on the board (#516): the
- * engine journals `config_reloaded { changes }` when the build fields
- * changed, or `config_reload_refused { reason }` when it kept the run's
- * config. Each adds one short line to the run's chat; the run keeps going.
+ * engine journals `config_reloaded { changes }` when the build fields or
+ * the test time limit changed, or `config_reload_refused { reason }` when it
+ * kept the run's config. Each adds one short line to the run's chat; the
+ * run keeps going.
  */
 
 let harness: Harness | null = null
@@ -76,6 +77,32 @@ describe('a reloaded config in the chat', () => {
             tone: 'info',
         })
         expect(state.run.status).toBe('building')
+    })
+
+    test('a new test time limit is named too (#542)', async () => {
+        const { rows } = await eventsAfter({
+            entries: [
+                {
+                    kind: 'config_reloaded',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        changes: [
+                            {
+                                field: 'test_timeout_ms',
+                                from: null,
+                                to: 900_000,
+                            },
+                        ],
+                    },
+                },
+            ],
+        })
+
+        expect(rows.at(-1)).toEqual({
+            text: 'Config reloaded: test_timeout_ms changed.',
+            tone: 'info',
+        })
     })
 
     test('a refused reload says the run keeps its config, and why', async () => {

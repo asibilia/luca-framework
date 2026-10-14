@@ -7,6 +7,7 @@ import {
     DecisionModelIdSchema,
     type DecisionModelId,
 } from '../jev/jev-schemas'
+import { DEFAULT_COMMAND_TIMEOUT_MS } from '../shell/run-command'
 
 /**
  * The engine config file, relative to the root of the repo a run works on.
@@ -86,6 +87,11 @@ export const EngineConfigSchema = z.object({
      * engine's default (`DEFAULT_PREPARE_CONCURRENCY`, 1).
      */
     prepare_concurrency: z.number().int().positive().optional(),
+    /**
+     * How long each test command may run, in milliseconds; left out, the
+     * engine's default (`DEFAULT_COMMAND_TIMEOUT_MS`, 5 minutes).
+     */
+    test_timeout_ms: z.number().int().positive().optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
@@ -120,6 +126,17 @@ export const prepareTimeoutOf = ({
 }: {
     config: EngineConfig
 }): number => config.prepare_timeout_ms ?? DEFAULT_PREPARE_TIMEOUT_MS
+
+/**
+ * Each test command's time limit (#542): the config's `test_timeout_ms`,
+ * else the engine's default for any command. It holds for every run of a
+ * test command (baseline, red check, gates); types and lint keep the default.
+ *
+ * @example
+ * testTimeoutOf({ config: { ...config, test_timeout_ms: 900_000 } }) // 900_000
+ */
+export const testTimeoutOf = ({ config }: { config: EngineConfig }): number =>
+    config.test_timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS
 
 /**
  * How many prepare runs may go at once when the config doesn't say: 1. A

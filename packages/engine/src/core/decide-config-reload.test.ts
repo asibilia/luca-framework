@@ -138,6 +138,22 @@ describe('a config_reloaded record', () => {
         })
     })
 
+    test('a new test time limit is set on the config (#542)', () => {
+        const config = stateOf([
+            ...UP_TO_TESTS,
+            resumed,
+            configReloaded([
+                { field: 'test_timeout_ms', from: null, to: 900_000 },
+            ]),
+        ]).config
+
+        expect(config).toEqual({
+            ...BUILD_CONFIG,
+            prepare: OLD_PREPARE,
+            test_timeout_ms: 900_000,
+        })
+    })
+
     test('a later reload wins over an earlier one', () => {
         expect(
             stateOf([
