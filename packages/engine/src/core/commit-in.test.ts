@@ -511,7 +511,7 @@ describe('commitIn still catches real leftovers (#507)', () => {
 const passedOf = (records: JournalRecord[]) =>
     (byKind(records, 'leftover_scan').at(-1)?.content.passed ?? [])
         .map(({ path, reason }) => ({ path, reason }))
-        .toSorted((a, b) => a.path.localeCompare(b.path))
+        .toSorted((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 
 const ADR = `# 1. Docs pass the leftover scan
 

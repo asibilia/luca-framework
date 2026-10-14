@@ -34,11 +34,11 @@ const inputsFor = ({
     ...(leftover_allow === undefined ? {} : { leftover_allow }),
 })
 
-/** Each pass as `{ path, reason }`, sorted by path. */
+/** Each pass as `{ path, reason }`, sorted by path in plain code-unit order. */
 const passesOf = (inputs: ReturnType<typeof inputsFor>) =>
     leftoverPasses(inputs)
         .map(({ path, reason }) => ({ path, reason }))
-        .toSorted((a, b) => a.path.localeCompare(b.path))
+        .toSorted((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 
 describe('the leftover scan lets doc places through (#520)', () => {
     test('a new .md under docs/ at any depth is not flagged, and passes as a doc place', () => {
