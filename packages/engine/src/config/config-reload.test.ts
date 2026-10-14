@@ -35,6 +35,51 @@ describe('the fields a resume reloads', () => {
     test('checks are frozen', () => {
         expect(FROZEN_FIELDS).toContain('checks')
     })
+
+    test('leftover_allow is reloaded, not frozen (#520)', () => {
+        expect(RELOADED_FIELDS).toContain('leftover_allow')
+        expect(FROZEN_FIELDS).not.toContain('leftover_allow')
+    })
+})
+
+describe('configChanges and withConfigChanges for leftover_allow (#520)', () => {
+    test('a changed leftover_allow is one change, old to new, and the same patterns in a new list are none', () => {
+        const current = { ...STARTED, leftover_allow: ['handbook/**/*.md'] }
+
+        expect(
+            configChanges({
+                current,
+                next: {
+                    ...STARTED,
+                    leftover_allow: ['handbook/**/*.md', 'design/*.md'],
+                },
+            })
+        ).toEqual([
+            {
+                field: 'leftover_allow',
+                from: ['handbook/**/*.md'],
+                to: ['handbook/**/*.md', 'design/*.md'],
+            },
+        ])
+        expect(
+            configChanges({
+                current,
+                next: { ...STARTED, leftover_allow: ['handbook/**/*.md'] },
+            })
+        ).toEqual([])
+    })
+
+    test('a new leftover_allow is set on the config, leaving the rest', () => {
+        const [change] = configChanges({
+            current: STARTED,
+            next: { ...STARTED, leftover_allow: ['design/*.md'] },
+        })
+        if (change === undefined) throw new Error('no change')
+
+        expect(
+            withConfigChanges({ config: STARTED, changes: [change] })
+        ).toEqual({ ...STARTED, leftover_allow: ['design/*.md'] })
+    })
 })
 
 describe('configChanges', () => {

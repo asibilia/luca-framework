@@ -11,7 +11,11 @@ import type { AgentLauncher } from '../agents/agent-launcher'
 import { EngineConfigSchema } from '../config/engine-config'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal } from '../journal/journal'
-import type { CommitStage, JournalRecord } from '../journal/journal-record'
+import {
+    JournalRecordSchema,
+    type CommitStage,
+    type JournalRecord,
+} from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import { git } from '../testing/practice-repo'
 import type { Tracker } from '../tracker/tracker'
@@ -50,16 +54,19 @@ afterEach(async () => {
 const contextWith = ({
     prepare_made,
     changesets = false,
+    config = {},
 }: {
     prepare_made: string[]
     changesets?: boolean
+    /** The repo's `.luca/config.json`, before defaults. */
+    config?: object
 }): BuildContext => ({
     git: createGitAdapter({ repo_root: repo }),
     launcher: {} as AgentLauncher,
     journal: createJournal({ file: join(root, 'run-1', 'journal.jsonl') }),
     tracker: {} as Tracker,
     state: { ...replayRun({ records: [] }), prepare_made, changesets },
-    config: EngineConfigSchema.parse({}),
+    config: EngineConfigSchema.parse(config),
     run_dir: join(root, 'run-1'),
     step: { run_id: 'run-1', first_seq: 1, redo: false },
 })
@@ -497,5 +504,179 @@ describe('commitIn still catches real leftovers (#507)', () => {
         ])
         expect(byKind(records, 'commit_made')).toEqual([])
         expect((await git(repo, 'rev-parse', 'HEAD')).trim()).toBe(head)
+    })
+})
+
+/** What the latest leftover scan let through, as `{ path, reason }`, sorted. */
+const passedOf = (records: JournalRecord[]) =>
+    (byKind(records, 'leftover_scan').at(-1)?.content.passed ?? [])
+        .map(({ path, reason }) => ({ path, reason }))
+        .toSorted((a, b) => a.path.localeCompare(b.path))
+
+const ADR = `# 1. Docs pass the leftover scan
+
+## Status
+
+Accepted
+`
+
+describe('commitIn with docs the repo asks for (#520)', () => {
+    test('a ticket commit with an ADR and a README passes the scan, journals both as doc places, and commits them', async () => {
+        await writeFiles({
+            ...SUM_CHANGE,
+            'docs/adr/0001-docs-pass.md': ADR,
+            'packages/app/README.md': '# App\n\nAdds numbers.\n',
+        })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual(
+            []
+        )
+        expect(passedOf(records)).toEqual([
+            { path: 'docs/adr/0001-docs-pass.md', reason: 'doc_place' },
+            { path: 'packages/app/README.md', reason: 'doc_place' },
+        ])
+        expect(byKind(records, 'commit_made')[0]?.content.files).toEqual([
+            'docs/adr/0001-docs-pass.md',
+            'packages/app/README.md',
+            'src/index.ts',
+            'src/sum.ts',
+        ])
+    })
+
+    test('a new .md that a tracked README names passes, and is journaled as named by the repo', async () => {
+        await commitFiles({
+            'README.md': '# App\n\nSee [setup](guides/setup.md) first.\n',
+        })
+        await writeFiles({ 'guides/setup.md': '# Setup\n\nRun `bun i`.\n' })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual(
+            []
+        )
+        expect(passedOf(records)).toEqual([
+            { path: 'guides/setup.md', reason: 'named_by_repo' },
+        ])
+        expect(byKind(records, 'commit_made')[0]?.content.files).toEqual([
+            'guides/setup.md',
+        ])
+    })
+
+    test('a new .md that a newly added non-test file names passes, but one only a test names is still flagged', async () => {
+        await writeFiles({
+            'handbook/SUMMARY.md':
+                '# Summary\n\n- [Setup](setup.md)\n- [Deploy](deploy.md)\n',
+            'handbook/setup.md': '# Setup\n',
+            'handbook/deploy.md': '# Deploy\n',
+            'handbook/release.md': '# Release\n',
+            'src/handbook.test.ts':
+                "import { expect, test } from 'bun:test'\n\ntest('names release.md', () => {\n    expect('release.md').toContain('.md')\n})\n",
+        })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        // Nothing names SUMMARY.md itself, and only a test names release.md.
+        expect(hitPaths(records)).toEqual([
+            'handbook/SUMMARY.md',
+            'handbook/release.md',
+        ])
+        expect(passedOf(records)).toEqual([
+            { path: 'handbook/deploy.md', reason: 'named_by_repo' },
+            { path: 'handbook/setup.md', reason: 'named_by_repo' },
+        ])
+        expect(byKind(records, 'commit_made')).toEqual([])
+    })
+
+    test("a new .md matching the config's leftover_allow passes, and is journaled as a config pattern", async () => {
+        await writeFiles({ 'handbook/ops/runbook.md': '# Runbook\n' })
+        const context = contextWith({
+            prepare_made: [],
+            config: { leftover_allow: ['handbook/**/*.md'] },
+        })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual(
+            []
+        )
+        expect(passedOf(records)).toEqual([
+            { path: 'handbook/ops/runbook.md', reason: 'config_pattern' },
+        ])
+        expect(byKind(records, 'commit_made')[0]?.content.files).toEqual([
+            'handbook/ops/runbook.md',
+        ])
+    })
+
+    test('a stray NOTES.md and plan.md next to code are still flagged with today’s reasons beside a passing README, and nothing is committed', async () => {
+        const head = (await git(repo, 'rev-parse', 'HEAD')).trim()
+        await writeFiles({
+            ...SUM_CHANGE,
+            'src/README.md': '# Source\n',
+            'src/NOTES.md': '# Notes\n\n- try the other layout\n',
+            'src/plan.md': '# Plan\n\n1. Write sum\n',
+        })
+        const context = contextWith({ prepare_made: [] })
+
+        await commit({ context, stage: 'green' })
+
+        const records = context.journal.read()
+        expect(byKind(records, 'leftover_scan').at(-1)?.content.hits).toEqual([
+            { path: 'src/NOTES.md', reason: 'a scratch file' },
+            {
+                path: 'src/plan.md',
+                reason: 'a new markdown file the spec and ticket do not name',
+            },
+        ])
+        expect(passedOf(records)).toEqual([
+            { path: 'src/README.md', reason: 'doc_place' },
+        ])
+        expect(byKind(records, 'commit_made')).toEqual([])
+        expect((await git(repo, 'rev-parse', 'HEAD')).trim()).toBe(head)
+    })
+})
+
+describe('the leftover_scan record and old journals (#520)', () => {
+    const scanRecord = (content: object) => ({
+        kind: 'leftover_scan',
+        ticket: 11,
+        role: null,
+        seq: 1,
+        time: '2026-10-14T12:00:00.000Z',
+        content,
+    })
+
+    test('a scan record keeps what it let through, and one from an old journal without it still parses and replays', () => {
+        const passed = [
+            { path: 'docs/adr/0001-docs-pass.md', reason: 'doc_place' },
+            { path: 'guides/setup.md', reason: 'named_by_repo' },
+            { path: 'handbook/intro.md', reason: 'config_pattern' },
+        ]
+        const fresh = JournalRecordSchema.parse(
+            scanRecord({ stage: 'green', hits: [], passed })
+        )
+        const old = JournalRecordSchema.parse(
+            scanRecord({ stage: 'green', hits: [] })
+        )
+
+        expect(
+            fresh.kind === 'leftover_scan' &&
+                (fresh.content.passed ?? []).map(({ path, reason }) => ({
+                    path,
+                    reason,
+                }))
+        ).toEqual(passed)
+        expect(old.content).toEqual({ stage: 'green', hits: [] })
+        expect(() =>
+            replayRun({ records: [old, { ...fresh, seq: 2 }] })
+        ).not.toThrow()
     })
 })

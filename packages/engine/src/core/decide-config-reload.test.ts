@@ -154,6 +154,26 @@ describe('a config_reloaded record', () => {
         })
     })
 
+    test('a new leftover_allow is set on the config, and frozen fields are as the run started (#520)', () => {
+        const config = stateOf([
+            ...UP_TO_TESTS,
+            resumed,
+            configReloaded([
+                {
+                    field: 'leftover_allow',
+                    from: null,
+                    to: ['handbook/**/*.md'],
+                },
+            ]),
+        ]).config
+
+        expect(config).toEqual({
+            ...BUILD_CONFIG,
+            prepare: OLD_PREPARE,
+            leftover_allow: ['handbook/**/*.md'],
+        })
+    })
+
     test('a later reload wins over an earlier one', () => {
         expect(
             stateOf([
