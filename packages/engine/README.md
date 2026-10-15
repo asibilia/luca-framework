@@ -2076,9 +2076,11 @@ that waits for #11's clash follow-up, and a run note reaching #12 and #13.
 `src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
 `src/jev/jev-shadow.e2e.test.ts` runs the same practice repo with a fake
-decision model, one that disagrees with everything, throws, never answers,
-has no credentials, or has its token turned down (one ask, then off), and
-checks the run matches a run without one. `src/jev/clef-client.test.ts`
+decision model that disagrees with everything, and checks the run matches a
+run without one. `src/jev/jev-shadow.test.ts` checks one that throws, never
+answers, has no credentials, or has its token turned down (one ask, then
+off) on `shadowAsker` itself: it journals the failure and never throws, so
+the run goes on. `src/jev/clef-client.test.ts`
 tests the Clef client with a fake `fetch`, and
 `src/jev/decision-model-credentials.test.ts` reads Luca's env file from a
 temp home; no test reaches the network or reads the real home folder.

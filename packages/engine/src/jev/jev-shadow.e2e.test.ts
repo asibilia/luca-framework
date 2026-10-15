@@ -2,13 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
-import {
-    createClefClient,
-    type DecisionModelClient,
-    type DecisionModelFetch,
-} from './clef-client'
+import type { DecisionModelClient } from './clef-client'
 import { JEV_FIXED_MODEL } from './jev-jobs'
 import type { JevAnswer, JevQuestion, JevRequest } from './jev-schemas'
 
@@ -24,39 +20,13 @@ import {
 /**
  * Seam B: the engine with a fake Jev in shadow mode, end to end on a practice
  * repo. Jev is asked and journaled, but the run must go exactly as it does
- * without Jev, whatever Jev answers or however it fails.
+ * without Jev, whatever Jev answers.
+ *
+ * Each run with Jev, and the same run without it, is built once (#566). A
+ * Jev that throws, never answers, has no credentials, or has its token
+ * turned down is checked on `shadowAsker` itself, in `jev-shadow.test.ts`:
+ * it journals the failure and never throws, so the run goes on as here.
  */
-
-const roots: string[] = []
-
-const newRoot = async (): Promise<string> => {
-    const root = await mkdtemp(join(tmpdir(), 'luca-engine-jev-'))
-    roots.push(root)
-    return root
-}
-
-afterAll(async () => {
-    await Promise.all(
-        roots.map((root) => rm(root, { recursive: true, force: true }))
-    )
-})
-
-/** Runs without Jev once per scenario; the Jev runs compare against it. */
-const baselines = new Map<string, Promise<PracticeRun>>()
-
-const baseline = ({
-    name,
-    turns,
-}: {
-    name: string
-    turns: ScriptedTurn[]
-}): Promise<PracticeRun> => {
-    const known = baselines.get(name)
-    if (known !== undefined) return known
-    const run = newRoot().then((root) => runPractice({ root, turns }))
-    baselines.set(name, run)
-    return run
-}
 
 /** A shadow-mode record: an ask, its reply, or the decision model turning off. */
 const isJev = (record: JournalRecord): boolean =>
@@ -218,24 +188,55 @@ const SKILL_IDS = [
     'domain_modeling',
 ]
 
-describe('Jev in shadow mode', () => {
-    /** The one-ticket happy run, shared with the test after it. */
-    let happy: { run: PracticeRun; jev: ReturnType<typeof disagreeingJev> }
-
-    test('is asked about order, model, and skills, and the engine ignores its answers', async () => {
+/** A practice run with Jev, and the same run without it, built once. */
+const shareRuns = ({ turns }: { turns: () => ScriptedTurn[] }) => {
+    const shared: {
+        roots: string[]
+        jev?: ReturnType<typeof disagreeingJev>
+        run?: PracticeRun
+        without?: PracticeRun
+    } = { roots: [] }
+    beforeAll(async () => {
+        const root = await mkdtemp(join(tmpdir(), 'luca-engine-jev-'))
+        shared.roots.push(root)
         const jev = disagreeingJev()
-        const run = await runPractice({
-            root: await newRoot(),
-            turns: HAPPY_TURNS,
+        shared.jev = jev
+        shared.run = await runPractice({
+            root: join(root, 'with-jev'),
+            turns: turns(),
             jev: { client: jev },
         })
-        happy = { run, jev }
+        shared.without = await runPractice({
+            root: join(root, 'without-jev'),
+            turns: turns(),
+        })
+    }, 120_000)
+    afterAll(async () => {
+        await Promise.all(
+            shared.roots.map((root) =>
+                rm(root, { recursive: true, force: true })
+            )
+        )
+    })
+    return () => {
+        const { jev, run, without } = shared
+        if (jev === undefined || run === undefined || without === undefined) {
+            throw new Error('The shared runs were not built.')
+        }
+        return { jev, run, without }
+    }
+}
+
+describe('Jev in shadow mode on the happy run', () => {
+    // The one-ticket happy run with a Jev that disagrees with everything,
+    // and the same run without Jev, built once (#566).
+    const happy = shareRuns({ turns: () => HAPPY_TURNS })
+
+    test('is asked about order, model, and skills, and the engine ignores its answers', () => {
+        const { run, jev, without } = happy()
 
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        expectSameRun({
-            run,
-            without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
-        })
+        expectSameRun({ run, without })
 
         const asks = asked(run.records).filter(
             ({ content }) => content.job !== 'ticket_order'
@@ -304,10 +305,10 @@ describe('Jev in shadow mode', () => {
             )
             expect(started?.role).toBe(skill.role)
         }
-    }, 60_000)
+    })
 
     test('with one ticket, asks no ticket order, sends no one-option choice, and journals no failure', () => {
-        const { run, jev } = happy
+        const { run, jev } = happy()
 
         expect(asked(run.records).map(({ content }) => content.job)).toEqual([
             'ticket_model',
@@ -321,70 +322,85 @@ describe('Jev in shadow mode', () => {
             run.records.filter((record) => record.kind === 'jev_failed')
         ).toEqual([])
     })
+})
 
-    test('is asked the severity of each finding a reviewer reports', async () => {
-        const [testWriter, implementer] = HAPPY_TURNS
-        if (!testWriter || !implementer) throw new Error('turns')
-        const turns: ScriptedTurn[] = [
-            testWriter,
-            implementer,
-            {
-                role: 'ticket-reviewer',
-                ticket: 11,
-                result: {
-                    verdict: 'changes_requested',
-                    findings: [
-                        {
-                            id: 'F-1',
-                            severity: 'should_fix',
-                            kind: 'code',
-                            file: 'src/sum.ts',
-                            title: 'The name is vague',
-                            detail: 'Call it total.',
-                        },
-                        {
-                            id: 'F2',
-                            severity: 'nit',
-                            kind: 'test',
-                            title: 'A typo in a test name',
-                        },
-                    ],
-                    summary: 'Two things to fix.',
-                    assumptions: [],
+describe('Jev in shadow mode on a run with a failed red check and review findings', () => {
+    // One run (and the same run without Jev), built once (#566): the
+    // test-writer's first tests pass already, so the red check fails and
+    // goes back to its session, which fixes them; then the reviewer reports
+    // a should-fix and a nit, the implementer declines the should-fix, and
+    // a re-review approves.
+    const changes = shareRuns({
+        turns: () => {
+            const [testWriter, implementer] = HAPPY_TURNS
+            if (!testWriter || !implementer) throw new Error('turns')
+            return [
+                {
+                    ...testWriter,
+                    files: {
+                        'src/sum.test.ts': SUM_TEST.replace(
+                            "import { sum } from './sum'",
+                            'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
+                        ),
+                    },
                 },
-            },
-            {
-                role: 'implementer',
-                ticket: 11,
-                result: {
-                    outcome: 'done',
-                    finding_responses: [
-                        {
-                            finding_id: 'F-1',
-                            response: 'wont_fix',
-                            reason: 'The spec names it sum.',
-                        },
-                    ],
+                // The engine sends the failed red check back to the
+                // test-writer's session, and this follow-up fixes the tests.
+                testWriter,
+                implementer,
+                {
+                    role: 'ticket-reviewer',
+                    ticket: 11,
+                    result: {
+                        verdict: 'changes_requested',
+                        findings: [
+                            {
+                                id: 'F-1',
+                                severity: 'should_fix',
+                                kind: 'code',
+                                file: 'src/sum.ts',
+                                title: 'The name is vague',
+                                detail: 'Call it total.',
+                            },
+                            {
+                                id: 'F2',
+                                severity: 'nit',
+                                kind: 'test',
+                                title: 'A typo in a test name',
+                            },
+                        ],
+                        summary: 'Two things to fix.',
+                        assumptions: [],
+                    },
                 },
-            },
-            {
-                role: 'ticket-reviewer',
-                ticket: 11,
-                result: { verdict: 'approve', findings: [] },
-            },
-        ]
+                {
+                    role: 'implementer',
+                    ticket: 11,
+                    result: {
+                        outcome: 'done',
+                        finding_responses: [
+                            {
+                                finding_id: 'F-1',
+                                response: 'wont_fix',
+                                reason: 'The spec names it sum.',
+                            },
+                        ],
+                    },
+                },
+                {
+                    role: 'ticket-reviewer',
+                    ticket: 11,
+                    result: { verdict: 'approve', findings: [] },
+                },
+            ]
+        },
+    })
 
-        const run = await runPractice({
-            root: await newRoot(),
-            turns,
-            jev: { client: disagreeingJev() },
-        })
+    test('is asked the severity of each finding a reviewer reports', () => {
+        const { run, without } = changes()
 
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        expectSameRun({
-            run,
-            without: await baseline({ name: 'changes', turns }),
-        })
+        expectSameRun({ run, without })
         const severity = asked(run.records).filter(
             ({ content }) => content.job === 'finding_severity'
         )
@@ -411,33 +427,10 @@ describe('Jev in shadow mode', () => {
                 record.role === 'ticket-reviewer'
         )
         expect((ask?.seq ?? 0) > (finished?.seq ?? Infinity)).toBe(true)
-    }, 60_000)
+    })
 
-    test('is asked the kind of a failure, with the engine routing it to the test-writer', async () => {
-        const [testWriter, implementer, reviewer] = HAPPY_TURNS
-        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const turns: ScriptedTurn[] = [
-            {
-                ...testWriter,
-                files: {
-                    'src/sum.test.ts': SUM_TEST.replace(
-                        "import { sum } from './sum'",
-                        'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
-                    ),
-                },
-            },
-            // The engine sends the failed red check back to the test-writer's
-            // session, and this follow-up fixes the tests.
-            testWriter,
-            implementer,
-            reviewer,
-        ]
-
-        const run = await runPractice({
-            root: await newRoot(),
-            turns,
-            jev: { client: disagreeingJev() },
-        })
+    test('is asked the kind of a failure, with the engine routing it to the test-writer', () => {
+        const { run, without } = changes()
 
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const followUps = run.records.flatMap((record) =>
@@ -446,10 +439,7 @@ describe('Jev in shadow mode', () => {
                 : []
         )
         expect(followUps).toEqual(['test-writer'])
-        expectSameRun({
-            run,
-            without: await baseline({ name: 'red', turns }),
-        })
+        expectSameRun({ run, without })
         const kinds = asked(run.records).filter(
             ({ content }) => content.job === 'failure_kind'
         )
@@ -474,158 +464,5 @@ describe('Jev in shadow mode', () => {
                 },
             }
         )
-    }, 60_000)
-
-    const failingJevs: {
-        name: string
-        reason: 'error' | 'timeout' | 'missing_credentials'
-        jev: () => DecisionModelClient & { calls: () => number }
-    }[] = [
-        {
-            name: 'a Jev that throws',
-            reason: 'error',
-            jev: () => {
-                let calls = 0
-                return {
-                    calls: () => calls,
-                    model: FAKE_MODEL,
-                    ask: async () => {
-                        calls += 1
-                        throw new Error('Jev fell over')
-                    },
-                }
-            },
-        },
-        {
-            name: 'a Jev that never answers',
-            reason: 'timeout',
-            jev: () => {
-                let calls = 0
-                return {
-                    calls: () => calls,
-                    model: FAKE_MODEL,
-                    // It ignores the abort signal; the timeout still cuts it off.
-                    ask: () => {
-                        calls += 1
-                        return new Promise(() => {})
-                    },
-                }
-            },
-        },
-        {
-            name: 'the Clef client with no credentials',
-            reason: 'missing_credentials',
-            jev: () => {
-                let calls = 0
-                return {
-                    calls: () => calls,
-                    ...createClefClient({
-                        credentials: null,
-                        model: FAKE_MODEL,
-                        fetch: async () => {
-                            calls += 1
-                            throw new Error('fetch must not be called')
-                        },
-                    }),
-                }
-            },
-        },
-    ]
-
-    for (const { name, reason, jev } of failingJevs) {
-        test(`${name} is journaled as ${reason} and the run goes on`, async () => {
-            const client = jev()
-            const run = await runPractice({
-                root: await newRoot(),
-                turns: HAPPY_TURNS,
-                jev: { client, timeout_ms: 50 },
-            })
-
-            expectSameRun({
-                run,
-                without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
-            })
-            const asks = asked(run.records)
-            expect(
-                asks.filter(({ content }) => content.job !== 'ticket_order')
-            ).toHaveLength(4)
-            for (const ask of asks) {
-                const reply = replyTo(run.records, ask)
-                expect(reply?.kind).toBe('jev_failed')
-                expect(reply?.content).toMatchObject({
-                    job: ask.content.job,
-                    asked_seq: ask.seq,
-                    reason,
-                    error: expect.any(String),
-                })
-            }
-            expect(
-                run.records.some((record) => record.kind === 'jev_answered')
-            ).toBe(false)
-            expect(client.calls()).toBe(
-                reason === 'missing_credentials' ? 0 : asks.length
-            )
-        }, 60_000)
-    }
-
-    test('a rejected token turns the decision model off for the rest of the run', async () => {
-        const urls: string[] = []
-        const fetch: DecisionModelFetch = async (url) => {
-            urls.push(url)
-            return new Response(
-                JSON.stringify({
-                    success: false,
-                    errors: [{ code: 10000, message: 'Authentication error' }],
-                }),
-                { status: 401 }
-            )
-        }
-        const logged: string[] = []
-        const jev = {
-            client: createClefClient({
-                credentials: { account_id: 'acc', api_token: 'not-real-tok' },
-                model: FAKE_MODEL,
-                fetch,
-            }),
-            log: (line: string) => {
-                logged.push(line)
-            },
-        }
-
-        const run = await runPractice({
-            root: await newRoot(),
-            turns: HAPPY_TURNS,
-            jev,
-        })
-
-        expectSameRun({
-            run,
-            without: await baseline({ name: 'happy', turns: HAPPY_TURNS }),
-        })
-        const shadow = run.records.filter(isJev)
-        expect(shadow.map(({ kind }) => kind)).toEqual([
-            'jev_asked',
-            'jev_failed',
-            'decision_model_off',
-        ])
-        expect(shadow[1]?.content).toMatchObject({ reason: 'rejected' })
-        expect(shadow[2]?.content).toEqual({
-            model: FAKE_MODEL,
-            reason: 'rejected',
-            detail: expect.stringContaining('401'),
-        })
-        expect(JSON.stringify(shadow)).not.toContain('not-real-tok')
-        expect(urls).toHaveLength(1)
-        expect(logged).toHaveLength(1)
-        expect(logged[0]).toContain('off')
-
-        // The off switch is the run's own: the next run asks again.
-        const again = await runPractice({
-            root: await newRoot(),
-            turns: HAPPY_TURNS,
-            jev,
-        })
-        expect(asked(again.records)).toHaveLength(1)
-        expect(urls).toHaveLength(2)
-    }, 60_000)
+    })
 })
