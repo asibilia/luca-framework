@@ -2051,8 +2051,10 @@ stuck after its fix rounds, told on the spec, then shipped by the owner's
 `ship` reply on the tracker, ending in a PR that starts with the open
 findings. `src/core/run-stuck.e2e.test.ts` runs it end to end, with a
 scripted person replying on the in-memory tracker through a fake clock:
-retry keeping the owner's fix, retry after a ticket edit, skip while another
-ticket builds and pushes, stop, and a test setup change. The other
+retry keeping the owner's fix, retry after a ticket edit, and skip while
+another ticket builds and pushes. `src/core/decide-stuck.test.ts` checks
+`stop` and a test setup change, and both run end to end in
+`src/core/run-session-close.e2e.test.ts`. The other
 end-to-end tests stop at the first `wait_for_reply` (the practice harnesses'
 default `stop_before`).
 
@@ -2063,7 +2065,8 @@ server in memory, and runs the delivery hooks as the SDK would.
 `src/messages/agent-messages.test.ts` tests the message rules on journals;
 `src/messages/agent-messaging.test.ts` runs it on a real journal file, a
 resumed engine included. The one-ticket end-to-end test sends a message from
-the test-writer to the implementer, and a run note between them;
+the test-writer to the implementer, and `src/core/decide-build.test.ts` checks
+which prompts a run note reaches;
 `src/core/run-many-tickets-messages.e2e.test.ts` runs the many-ticket practice
 run with messages across #11 and #12 while both build, `all`, a message
 that waits for #11's clash follow-up, and a run note reaching #12 and #13.

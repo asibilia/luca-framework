@@ -59,6 +59,31 @@ const crashingOn = ({
     closeSession: (args) => launcher.closeSession(args),
 })
 
+/**
+ * A tracker whose `comment` on issue `number` posts for real, then throws
+ * once, as if the engine died before journaling the comment.
+ */
+const crashAfterComment = ({
+    tracker,
+    number,
+}: {
+    tracker: InMemoryTracker
+    number: number
+}): InMemoryTracker => {
+    let crashed = false
+    return {
+        ...tracker,
+        comment: async (args) => {
+            const posted = await tracker.comment(args)
+            if (!crashed && args.number === number) {
+                crashed = true
+                throw new Error('The engine crashed.')
+            }
+            return posted
+        },
+    }
+}
+
 const ofKind = <Kind extends JournalRecord['kind']>(
     records: JournalRecord[],
     kind: Kind
@@ -99,18 +124,27 @@ describe('crash recovery, end to end', () => {
         ])
     }, 60_000)
 
-    test("the engine's own comments, even ones a crash orphaned, are never taken as replies", async () => {
+    test("a stuck report cut off between posting and journaling is posted once, and the engine's own comments, even ones a crash orphaned, are never taken as replies", async () => {
         const practice = await createPracticeRepo({ root })
         const tracker = practiceTracker()
         const crashingLauncher = crashingOn({
             launcher: createScriptedLauncher({ turns: [] }),
             kind: 'launch',
         })
+        // The test-writer's launch is cut off three times: the ticket is stuck.
         for (const resume of [false, true, true]) {
-            await practice
-                .run({ tracker, resume, launcher: crashingLauncher })
-                .catch(() => undefined)
+            await expect(
+                practice.run({ tracker, resume, launcher: crashingLauncher })
+            ).rejects.toThrow('The engine crashed.')
         }
+        // Then the engine dies right after posting its stuck report.
+        await expect(
+            practice.run({
+                resume: true,
+                tracker: crashAfterComment({ tracker, number: 10 }),
+                launcher: crashingLauncher,
+            })
+        ).rejects.toThrow('The engine crashed.')
         let polls = 0
         const { records } = await practice.run({
             resume: true,
@@ -141,9 +175,20 @@ describe('crash recovery, end to end', () => {
             },
         })
 
+        // The report, once, and the orphaned comment.
         expect(
             tracker.commentsOn({ number: 10 }).filter(hasLucaMarker)
         ).toHaveLength(2)
+        expect(tracker.commentsOn({ number: 10 })[0]).toContain(
+            'Ticket #11 is stuck'
+        )
+        const reports = ofKind(records, 'stuck_reported')
+        expect(reports).toHaveLength(1)
+        const state = replayRun({ records })
+        expect(state.tickets[11]?.stuck?.reason).toBe('crashed')
+        expect(state.engine_comments).toEqual([
+            reports[0]?.content.comment_id ?? -1,
+        ])
         expect(
             ofKind(records, 'comment_read').map(({ content }) => content.body)
         ).toEqual(['stop'])

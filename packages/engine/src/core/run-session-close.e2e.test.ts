@@ -903,7 +903,9 @@ describe('sessions close on every other way a step ends, end to end', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const records = practice.journal.read()
-        const resumedAt = records.find(({ kind }) => kind === 'run_resumed')
+        const resumes = records.filter(({ kind }) => kind === 'run_resumed')
+        expect(resumes).toHaveLength(1)
+        const [resumedAt] = resumes
         const redo = records.find(
             (record) =>
                 record.seq > (resumedAt?.seq ?? 0) &&
