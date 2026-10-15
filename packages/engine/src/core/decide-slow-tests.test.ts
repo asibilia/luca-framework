@@ -24,6 +24,7 @@ import {
     finalReviewFixing,
     finalReviewStarted,
     lensFinding,
+    lensReviewed,
     lensRound,
     slowTestsRun,
 } from '../testing/final-review-fixtures'
@@ -32,8 +33,10 @@ import { recordsFrom } from '../testing/intake-fixtures'
 /**
  * Seam 1, the final review's slow tests (#563): the decision step given a
  * journal in which every ticket pushed and the config has a slow test
- * command. The slow tests run beside round 1's lenses, the round waits for
- * them, and failing ones open a fix round like failed gates.
+ * command. The slow tests run once round 1's lenses are in (never while a
+ * lens runs, since a lens's after-turn guard judges the run branch's
+ * worktree), the round waits for them, and failing ones open a fix round
+ * like failed gates.
  */
 
 const TICKET = practiceTicket({ number: 11 })
@@ -118,14 +121,13 @@ const slowFailed = (): JournalEntry[] => [
 const SECURITY = lensFinding({ id: 'S1', title: 'Sum trusts its input' })
 
 describe('slow tests at the final review (#563)', () => {
-    test('round 1 with slow tests due runs them alongside the lenses', () => {
+    test('round 1 with slow tests due launches only the lenses first', () => {
         const steps = stepsAfter([
             ...built(),
             finalReviewStarted({ round: 1, slow_due: true }),
         ])
-        expect(steps.map(({ type }) => type)).toContain('run_final_slow_tests')
-        expect(steps.filter(({ type }) => type === 'launch_lens')).toHaveLength(
-            LENS_NAMES.length
+        expect(steps.map(({ type }) => type)).toEqual(
+            LENS_NAMES.map(() => 'launch_lens')
         )
     })
 
@@ -136,18 +138,22 @@ describe('slow tests at the final review (#563)', () => {
         )
     })
 
-    test('slow tests already in leave only the lenses still reviewing', () => {
+    test('a lens still reviewing keeps the slow tests waiting', () => {
         const steps = stepsAfter([
             ...built(),
             finalReviewStarted({ round: 1, slow_due: true }),
-            slowTestsRun({ ok: true }),
+            ...LENS_NAMES.filter((lens) => lens !== 'security').flatMap(
+                (lens) => lensReviewed({ lens, round: 1 })
+            ),
         ])
-        expect(steps.map(({ type }) => type)).toEqual(
-            LENS_NAMES.map(() => 'launch_lens')
-        )
+        expect(
+            steps.map((step) =>
+                step.type === 'launch_lens' ? step.lens : step.type
+            )
+        ).toEqual(['security'])
     })
 
-    test('clean lenses wait for the slow tests before passing', () => {
+    test('once every lens is in, the slow tests run, and the review waits for them', () => {
         expect(
             stepAfter([...built(), ...lensRound({ round: 1, slow_due: true })])
         ).toEqual({ type: 'run_final_slow_tests' })
@@ -160,8 +166,6 @@ describe('slow tests at the final review (#563)', () => {
             slowTestsRun({ ok: true }),
         ]
         expect(stepAfter(entries)).toEqual({ type: 'pass_final_review' })
-        // They passed on the round's HEAD.
-        expect(reviewAfter(entries).slow_ok_at).toBe('g1')
     })
 
     test('failing slow tests open a fix round whose first step is the gates', () => {
@@ -181,10 +185,9 @@ describe('slow tests at the final review (#563)', () => {
             tests_answered: true,
             code_answered: true,
         })
-        expect(review.slow_ok_at).toBeNull()
     })
 
-    test('slow tests failing beside a lens finding join its fix round, and the lens looks again after the push', () => {
+    test('slow tests failing after a lens finding join its fix round, and the lens looks again after the push', () => {
         const entries = [
             ...built(),
             ...lensRound({
@@ -216,8 +219,6 @@ describe('slow tests at the final review (#563)', () => {
             from_sha: 'g1',
             lenses: ['security'],
         })
-        // The fix round's gates ran the slow tests on what was pushed.
-        expect(reviewAfter(entries).slow_ok_at).toBe('fix-1')
         // Round 2's slow tests aren't due: the fix round's gates ran them.
         const round2 = [
             ...entries,
@@ -277,7 +278,6 @@ describe('slow tests at the final review (#563)', () => {
             pushed({ ticket: null, sha: 'fix-1' }),
         ]
         expect(stepAfter(pushedFix)).toEqual({ type: 'pass_final_review' })
-        expect(reviewAfter(pushedFix).slow_ok_at).toBe('fix-1')
     })
 
     test(`slow tests still failing after ${MAX_FIX_ROUNDS} gate fix rounds leave the review stuck with gates_failed, naming slow_test`, () => {
@@ -319,15 +319,13 @@ describe('slow tests at the final review (#563)', () => {
         expect(reviewAfter(entries)).toMatchObject({
             slow_due: false,
             slow_tests: null,
-            slow_ok_at: null,
         })
     })
 
-    test("the slow tests run under their own scheduler key, one of the final review's", () => {
+    test("the slow tests run under the final review's key, so a crash in them counts as its own", () => {
         const key = keyOf({ type: 'run_final_slow_tests' })
 
-        expect(key).toBe('final:slow')
-        expect(key).not.toBe(keyOf({ type: 'run_final_gates' }))
+        expect(key).toBe(keyOf({ type: 'run_final_gates' }))
         expect(isFinalKey(key)).toBe(true)
     })
 })

@@ -1222,8 +1222,8 @@ export const gatesIn = async ({
 }
 
 /**
- * The final review's slow tests (#563) in the run branch's worktree, beside
- * round 1's lenses: prepare (noting what it made), then each slow test
+ * The final review's slow tests (#563) in the run branch's worktree, once
+ * round 1's lenses are in: prepare (noting what it made), then each slow test
  * command, journaled as `gates_run` with `target: 'final_slow'` and no
  * ticket. They are not the fix round's gates.
  */

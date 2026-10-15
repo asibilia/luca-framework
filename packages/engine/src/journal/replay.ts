@@ -359,8 +359,6 @@ export type FinalReviewState = {
     slow_due: boolean
     /** This round's slow test run (`gates_run` `final_slow`), once journaled. */
     slow_tests: ReplayedGates | null
-    /** The run branch commit the slow tests last passed on (#563). */
-    slow_ok_at: string | null
     /** Every nit the lenses reported, one per id. */
     nits: FinalFinding[]
     declined: FinalDeclined[]
@@ -410,7 +408,6 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     pushed: null,
     slow_due: false,
     slow_tests: null,
-    slow_ok_at: null,
     nits: [],
     declined: [],
     assumptions: [],
@@ -1705,13 +1702,9 @@ const finalReviewAfter = ({
             const { ok, checks, target } = record.content
             // Round 1's slow tests (#563): not the fix round's gates.
             if (target === 'final_slow') {
-                const next = {
-                    ...review,
-                    slow_tests: { ok, checks },
-                    slow_ok_at: ok ? review.head_sha : review.slow_ok_at,
-                }
-                // The round settles on whichever comes last, the lenses or
-                // the slow tests; a run no round was waiting for settles none.
+                const next = { ...review, slow_tests: { ok, checks } }
+                // They run once the lenses are in, so they settle the round;
+                // a run no round was waiting for settles none.
                 const awaited = review.slow_due && review.slow_tests === null
                 return awaited && roundDone({ review: next })
                     ? settleRound({ review: next })
@@ -1730,17 +1723,7 @@ const finalReviewAfter = ({
                 },
             }
         case 'run_branch_pushed':
-            return {
-                ...review,
-                pushed: record.content.sha,
-                // The fix round's gates ran the slow tests on what was
-                // pushed (#563).
-                slow_ok_at:
-                    review.gates?.ok === true &&
-                    review.gates.checks.some(({ name }) => name === 'slow_test')
-                        ? record.content.sha
-                        : review.slow_ok_at,
-            }
+            return { ...review, pushed: record.content.sha }
     }
 }
 
@@ -2526,12 +2509,9 @@ const rebasedChange = ({
     }
 }
 
-/**
- * The final review's scheduler keys: `final`, every `final:<name>` (such as
- * `final:slow`, its slow tests, #563), and `lens:<lens>`.
- */
+/** The final review's scheduler keys: `final`, and `lens:<lens>`. */
 export const isFinalKey = (key: string): boolean =>
-    key === 'final' || key.startsWith('final:') || key.startsWith('lens:')
+    key === 'final' || key.startsWith('lens:')
 
 /** The crash counts without the final review's keys, for its `retry`. */
 const omitFinalKeys = ({ crashes }: { crashes: CrashCounts }): CrashCounts =>

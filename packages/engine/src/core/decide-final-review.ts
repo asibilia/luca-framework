@@ -49,7 +49,7 @@ export type FinalReviewAction =
       }
     /** Start a fresh, read-only lens reviewer on the run branch. */
     | { type: 'launch_lens'; lens: LensName; role: LensRole; prompt: string }
-    /** Run the config's slow tests on the run branch (#563), alongside round 1's lenses. */
+    /** Run the config's slow tests on the run branch (#563), once round 1's lenses are in. */
     | { type: 'run_final_slow_tests' }
     /** Every lens due this round approved. */
     | { type: 'pass_final_review' }
@@ -353,8 +353,8 @@ const fixStep = (args: DecideArgs): FinalReviewAction | null => {
  * findings re-review only the new changes (from the last round's HEAD),
  * with their earlier findings and the fixers' answers, and rule on each
  * "won't fix". With a slow test command (#563), round 1 also runs the slow
- * tests beside its lenses and settles only once they ran too; failing ones
- * open the fix round (or join it). A fix round with no finding, opened only
+ * tests once every lens finished, and settles only once they ran; failing
+ * ones open the fix round (or join it). A fix round with no finding, opened only
  * by them, is just its gates (which run the slow tests again) with their
  * fix loop, the commit, and the push, and the review passes there.
  * A review still asking for changes after `MAX_FIX_ROUNDS` fix
@@ -396,12 +396,6 @@ export const decideFinalReview = (args: DecideArgs): FinalReviewDecision => {
             },
         ])
     }
-    // Round 1's slow tests run beside its lenses, and the round waits for
-    // them (#563).
-    const slow: FinalReviewAction[] =
-        review.slow_due && review.slow_tests === null
-            ? [{ type: 'run_final_slow_tests' }]
-            : []
     const pending = review.lenses_due.filter(
         (lens) => review.results[lens] === undefined
     )
@@ -410,9 +404,14 @@ export const decideFinalReview = (args: DecideArgs): FinalReviewDecision => {
         const stop = steps.find(
             (step) => step.type === 'mark_final_review_stuck'
         )
-        return working(stop === undefined ? [...steps, ...slow] : [stop])
+        return working(stop === undefined ? steps : [stop])
     }
-    if (slow.length > 0) return working(slow)
+    // Round 1's slow tests run once its lenses are in, never beside them:
+    // a lens's after-turn guard judges the run branch's worktree, so nothing
+    // else may write there while a lens runs. The round waits for them (#563).
+    if (review.slow_due && review.slow_tests === null) {
+        return working([{ type: 'run_final_slow_tests' }])
+    }
     if (review.fix === null) return working([{ type: 'pass_final_review' }])
     const step = fixStep(args)
     if (step !== null) return working([step])

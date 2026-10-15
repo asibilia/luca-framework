@@ -740,9 +740,7 @@ const REPLY_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
 /**
  * The scheduler's key for an action: at most one action per key runs at a
  * time. Reading and taking replies has its own (`replies`). Each lens has
- * its own (`lens:<lens>`), so the five lenses review at once; the final
- * review's slow tests have `final:slow`, so they run beside the lenses
- * (#563); the final review's other steps share `final`; a ticket's steps its
+ * its own (`lens:<lens>`), so the five lenses review at once; the final review's other steps share `final`; a ticket's steps its
  * number; and the run's own steps `run`, which only ever run alone.
  */
 export const keyOf = (action: EngineAction): string => {
@@ -754,8 +752,6 @@ export const keyOf = (action: EngineAction): string => {
         return action.point === 'run_start' ? 'run' : 'final'
     }
     if (action.type === 'launch_lens') return `lens:${action.lens}`
-    // The slow tests run beside the lenses, under their own key (#563).
-    if (action.type === 'run_final_slow_tests') return 'final:slow'
     if (isFinalReviewAction(action)) return 'final'
     const ticket = ticketOf(action)
     return ticket === null ? 'run' : String(ticket)
@@ -822,8 +818,9 @@ const SLOW_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
  * Actions that read or move the run branch. At most one runs at a time, so
  * joins, their gates, pushes, and new worktrees see one run branch. The
  * final review's fixers, gates, slow tests (#563), commit, and push work in
- * the run branch's worktree; its lenses only read it, so the slow tests run
- * beside them.
+ * the run branch's worktree; its lenses only read it. Nothing writes there
+ * while a lens runs, though: its after-turn guard judges that worktree, so
+ * the slow tests wait for round 1's lenses (see `decideFinalReview`).
  */
 const usesRunBranch = (action: EngineAction): boolean => {
     switch (action.type) {

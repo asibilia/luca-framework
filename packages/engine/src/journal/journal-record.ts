@@ -618,8 +618,8 @@ export type GateTarget = z.infer<typeof GateTargetSchema>
 
 /**
  * Where a `gates_run` ran: a ticket's worktree, the run branch, or the
- * final review's slow tests on the run branch (#563), which start with
- * round 1's lenses and are not the fix round's gates.
+ * final review's slow tests on the run branch (#563), which run once
+ * round 1's lenses are in and are not the fix round's gates.
  */
 const GatesRunTargetSchema = z.enum([...GateTargetSchema.options, 'final_slow'])
 
@@ -1046,8 +1046,8 @@ const FinalReviewStartedEntrySchema = z.object({
             z.object({ path: z.string(), text: z.string().nullable() })
         ),
         /**
-         * Round 1 with a slow test command: its slow tests are due alongside
-         * the lenses (#563). An older engine's record has none.
+         * Round 1 with a slow test command: its slow tests are due once its
+         * lenses are in (#563). An older engine's record has none.
          */
         slow_due: z.boolean().optional(),
     }),

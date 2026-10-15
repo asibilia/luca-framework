@@ -220,8 +220,8 @@ describe('the final review as the engine journals it', () => {
         )
     })
 
-    test("the slow tests beside round 1's lenses (#563) are a row; failing, a tried line, and the fix round says what it fixes", async () => {
-        /** The slow tests' run, as the engine journals it beside the lenses. */
+    test("the slow tests after round 1's lenses (#563) are a row; failing, a tried line, and the fix round says what it fixes", async () => {
+        /** The slow tests' run, as the engine journals it once the lenses are in. */
         const slowTests = ({ ok }: { ok: boolean }): Entry => ({
             kind: 'gates_run',
             ticket: null,
@@ -251,8 +251,8 @@ describe('the final review as the engine journals it', () => {
                         slow_due: true,
                     },
                 },
-                slowTests({ ok: false }),
                 ...LENSES.flatMap((lens) => engineLensTurn({ lens, round: 1 })),
+                slowTests({ ok: false }),
                 finalReviewFixing({ round: 1 }),
             ],
         })

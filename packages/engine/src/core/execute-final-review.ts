@@ -121,8 +121,8 @@ export const executeFinalReviewAction = async ({
                         paths: config.rule_files,
                         worktree: worktree.path,
                     }),
-                    // Round 1's slow tests run beside its lenses (#563); a
-                    // later round's ran in the fix round's gates. A config
+                    // Round 1's slow tests run once its lenses are in (#563);
+                    // a later round's ran in the fix round's gates. A config
                     // with no slow command journals none, as before.
                     ...(hasSlowTests({ config })
                         ? { slow_due: action.round === 1 }

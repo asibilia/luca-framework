@@ -21,7 +21,7 @@ import {
  * practice repo: its config names the end-to-end tests in
  * `checks.slow_test` and leaves them out of `checks.test`. The ticket's
  * code passes the fast tests but not the slow one, which only the final
- * review runs: beside round 1's lenses, then in its fix round's gates,
+ * review runs: once round 1's lenses are in, then in its fix round's gates,
  * where a fresh implementer fixes it. The gates, commits, pushes, and PR
  * are real.
  */
@@ -131,7 +131,7 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
         }
     })
 
-    test("the slow tests start beside round 1's lenses, fail, and the review waits for them", () => {
+    test("the slow tests start once round 1's lenses are in, fail, and the review waits for them", () => {
         const started = run.records.find(
             (record) => record.kind === 'final_review_started'
         )
@@ -152,22 +152,35 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
         ).toEqual([{ name: 'slow_test', command: SLOW_TEST, ok: false }])
         expect(slow[0]?.checks[0]?.output).toContain('sum adds many numbers')
 
-        // It started in the lenses' scheduler pass, under its own key,
-        // before any lens finished.
+        // It started under the final review's key only once every round-1
+        // lens finished and its step ended: nothing writes in the run
+        // branch's worktree while a lens's guard judges it.
         const slowStep = journal.findIndex(
             (record) =>
                 record.kind === 'step_started' &&
-                record.content.key === 'final:slow' &&
+                record.content.key === 'final' &&
                 record.content.step === 'run_final_slow_tests'
         )
-        const firstLensDone = journal.findIndex(
+        const lastLensDone = journal.findLastIndex(
             (record) =>
                 record.kind === 'agent_finished' &&
                 record.ticket === null &&
                 record.content.role.endsWith('-lens')
         )
+        const lastLensStepEnded = journal.findLastIndex(
+            (record) =>
+                record.kind === 'step_ended' &&
+                record.content.key.startsWith('lens:')
+        )
+        const lensesDone = run.records.filter(
+            (record) =>
+                record.kind === 'agent_finished' &&
+                record.content.role.endsWith('-lens')
+        )
+        expect(lensesDone).toHaveLength(5)
         expect(slowStep).toBeGreaterThan(-1)
-        expect(slowStep).toBeLessThan(firstLensDone)
+        expect(slowStep).toBeGreaterThan(lastLensDone)
+        expect(slowStep).toBeGreaterThan(lastLensStepEnded)
 
         // Every lens approved, yet the fix round opened on the slow tests.
         const fixing = run.records.findIndex(

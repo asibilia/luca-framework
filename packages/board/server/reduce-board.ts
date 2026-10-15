@@ -1817,7 +1817,7 @@ const gatesRun = ({
         .map((check) => check.name)
         .join(', ')
     const afterJoin = target === 'run_branch'
-    // The final review's slow tests, beside round 1's lenses (#563).
+    // The final review's slow tests, after round 1's lenses (#563).
     if (target === 'final_slow') {
         return ok
             ? state

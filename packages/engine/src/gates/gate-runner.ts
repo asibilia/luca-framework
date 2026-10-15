@@ -262,8 +262,8 @@ export const runGates = async ({
 }
 
 /**
- * The final review's slow tests (#563), which start with round 1's lenses:
- * the prepare command, if any (a failed one stops there), then each slow
+ * The final review's slow tests (#563), once round 1's lenses are in: the
+ * prepare command, if any (a failed one stops there), then each slow
  * test command, in order, as `slow_test` checks with `test_timeout_ms`.
  * `around_prepare`, if given, runs the prepare check, as in `runGates`.
  *
