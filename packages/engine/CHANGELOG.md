@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.14
+
+### Patch Changes
+
+- 78e24c4: Spec: fewer false stops (Wave 1): reviewers, docs, Clef choices, seq citations, board states ([#552](https://github.com/asibilia/luca-framework/issues/552))
+
 ## 14.0.0-alpha.13
 
 ### Patch Changes
