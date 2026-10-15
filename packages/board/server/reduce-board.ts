@@ -53,7 +53,8 @@ const STUCK_REASONS: Record<string, string> = {
     leftovers_found:
         'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks failed.',
-    bad_test: 'The implementer sent back a bad test.',
+    bad_test:
+        'A test was sent back as bad, by the implementer or because it checks nothing.',
     changes_requested: 'The ticket review asked for changes.',
     join_failed: "The ticket couldn't join the run branch.",
     join_gates_failed: 'The checks failed after the ticket joined.',

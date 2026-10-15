@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { decideSteps } from './decide'
 import { MAX_TEST_UPDATES } from './decide-build'
-import { badTestDetail } from './stuck-text'
+import { badTestDetail, badTestTwiceText } from './stuck-text'
 
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
@@ -433,18 +433,22 @@ describe("stuck text keeps the implementer's reason (#490)", () => {
         ).toBe('src/sum.test.ts > sum > adds: Wrong sum.')
     })
 
-    test('a test the engine found checks nothing says so first (#581)', () => {
-        const bad_test = {
-            file: 'src/sum.test.ts',
-            name: 'sum > adds',
-            reason: 'It runs no expect().',
-        }
-
-        expect(badTestDetail({ bad_test, by: 'engine' })).toBe(
-            'The engine found this test checks nothing: src/sum.test.ts > sum > adds: It runs no expect().'
+    test('two bounces are worded from who sent each back, in order (#581)', () => {
+        expect(
+            badTestTwiceText({ earlier: 'implementer', latest: 'implementer' })
+        ).toBe('The implementer sent a test back as bad a second time')
+        expect(badTestTwiceText({ earlier: 'engine', latest: 'engine' })).toBe(
+            'A mapped test still checks nothing after a fresh test-writer'
         )
-        expect(badTestDetail({ bad_test, by: 'implementer' })).toBe(
-            badTestDetail({ bad_test })
+        expect(
+            badTestTwiceText({ earlier: 'implementer', latest: 'engine' })
+        ).toBe(
+            'The implementer sent a test back as bad, and then, after a fresh test-writer, the engine found a mapped test that checks nothing'
+        )
+        expect(
+            badTestTwiceText({ earlier: 'engine', latest: 'implementer' })
+        ).toBe(
+            'The engine found a mapped test that checks nothing, and then, after a fresh test-writer, the implementer sent a test back as bad'
         )
     })
 

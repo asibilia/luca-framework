@@ -22,6 +22,8 @@ import {
     practiceTicket,
     redCheck,
     testsWritten,
+    ticketRetried,
+    ticketStuck,
     ticketWorktreeCreated,
     worktreeReset,
 } from '../testing/build-fixtures'
@@ -506,13 +508,13 @@ describe('replay: a bad test the engine found (#581)', () => {
             }),
         }).tickets[11]
 
-    test('a reset with a bad_test sets it, names the engine as its source, and adds one to the bounces', () => {
+    test('a reset with a bad_test sets it, adds the engine to the bounce sources, and adds one to the bounces', () => {
         const progress = progressAfter([
             worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
         ])
 
         expect(progress?.bad_test).toEqual(BAD_TEST)
-        expect(progress?.bad_test_by).toBe('engine')
+        expect(progress?.bad_test_sources).toEqual(['engine'])
         expect(progress?.bad_test_bounces).toBe(1)
         // The rest of the reset is as for any reset.
         expect(progress?.implementer).toBeNull()
@@ -523,27 +525,62 @@ describe('replay: a bad test the engine found (#581)', () => {
         const fresh = progressAfter([worktreeReset({ ticket: 11 })])
 
         expect(fresh?.bad_test).toBeNull()
-        expect(fresh?.bad_test_by).toBe('implementer')
+        expect(fresh?.bad_test_sources).toEqual([])
         expect(fresh?.bad_test_bounces).toBe(0)
 
+        // The implementer's bounce was counted when it answered; the reset
+        // that follows adds nothing.
         const bounced = progressAfter([
             implemented({ ticket: 11, outcome: 'bad_test' }),
             worktreeReset({ ticket: 11 }),
         ])
         expect(bounced?.bad_test?.reason).toBe('Wrong sum.')
-        expect(bounced?.bad_test_by).toBe('implementer')
+        expect(bounced?.bad_test_sources).toEqual(['implementer'])
         expect(bounced?.bad_test_bounces).toBe(1)
     })
 
-    test("an implementer's bad test after the engine's names the implementer, and adds to the count", () => {
+    test('each bounce keeps its source, oldest first, whichever sent it back', () => {
+        const sourcesAfter = (
+            entries: Parameters<typeof recordsFrom>[0]['entries']
+        ) => progressAfter(entries)?.bad_test_sources
+
+        expect(
+            sourcesAfter([
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+            ])
+        ).toEqual(['engine', 'implementer'])
+        expect(
+            sourcesAfter([
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+                worktreeReset({ ticket: 11 }),
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+            ])
+        ).toEqual(['implementer', 'engine'])
+        expect(
+            sourcesAfter([
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+            ])
+        ).toEqual(['engine', 'engine'])
+        // The bounce count and the sources go together.
+        expect(
+            progressAfter([
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+            ])?.bad_test_bounces
+        ).toBe(2)
+    })
+
+    test('a retry starts the bounces over, and their sources with them', () => {
         const progress = progressAfter([
             worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
-            implemented({ ticket: 11, outcome: 'bad_test' }),
+            ticketStuck({ ticket: 11, reason: 'bad_test' }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
         ])
 
-        expect(progress?.bad_test?.reason).toBe('Wrong sum.')
-        expect(progress?.bad_test_by).toBe('implementer')
-        expect(progress?.bad_test_bounces).toBe(2)
+        expect(progress?.bad_test_bounces).toBe(0)
+        expect(progress?.bad_test_sources).toEqual([])
     })
 
     test("a ticket's gates keep the cases they journal; join gates and older records have none", () => {

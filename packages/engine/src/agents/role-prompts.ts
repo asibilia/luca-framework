@@ -1,4 +1,4 @@
-import type { AgentRole, BadTest, Finding } from './role-results'
+import type { AgentRole, BadTest, BadTestSource, Finding } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 import type { RejoinCause } from '../journal/journal-record'
@@ -147,7 +147,7 @@ const badTestSection = ({
     by,
 }: {
     bad_test: BadTest
-    by: 'implementer' | 'engine'
+    by: BadTestSource
 }): string =>
     [
         '## A test was sent back as a bad test',
@@ -296,7 +296,7 @@ export const rolePrompt = ({
     ticket: TicketSnapshot
     refactor?: boolean
     bad_test?: BadTest | null
-    bad_test_by?: 'implementer' | 'engine'
+    bad_test_by?: BadTestSource
     sections?: string[]
     run_notes?: PromptRunNote[]
 }): string =>

@@ -1,7 +1,8 @@
 import compact from 'lodash/compact'
 import max from 'lodash/max'
+import upperFirst from 'lodash/upperFirst'
 
-import type { AgentRole, BadTest } from '../agents/role-results'
+import type { AgentRole, BadTest, BadTestSource } from '../agents/role-results'
 import type { ReplyProblem, StuckReason } from '../journal/journal-record'
 import type {
     FinalReviewState,
@@ -26,7 +27,7 @@ const REASON_LINES: Record<StuckReason, string> = {
         'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks still fail.',
     bad_test:
-        'The implementer sent a test back as bad, and it cannot go back again.',
+        'A test was sent back as bad (by the implementer, or because it checks nothing), and it cannot go back again.',
     changes_requested: 'The ticket review still asks for changes.',
     join_failed: 'The ticket still clashes with the run branch.',
     join_gates_failed:
@@ -363,9 +364,9 @@ export const setupChangeDetail = ({
 
 /**
  * A test sent back as bad, for a stuck detail: its file and name, then the
- * implementer's reason, clipped like other outputs (#490). "no reason given"
- * only when there is none. A test the engine found checks nothing (#581,
- * `by: 'engine'`) says so first.
+ * reason (the implementer's, or the engine's finding that it checks nothing,
+ * #581), clipped like other outputs (#490). "no reason given" only when
+ * there is none.
  *
  * @example
  * badTestDetail({ bad_test: { file: 'src/sum.test.ts', name: 'sum > adds', reason: 'Wrong sum.' } })
@@ -373,11 +374,8 @@ export const setupChangeDetail = ({
  */
 export const badTestDetail = ({
     bad_test,
-    by,
 }: {
     bad_test: BadTest | null
-    /** Who sent the test back. Defaults to the implementer. */
-    by?: 'implementer' | 'engine'
 }): string => {
     const reason =
         bad_test === null || bad_test.reason.trim() === ''
@@ -387,10 +385,42 @@ export const badTestDetail = ({
         bad_test === null
             ? ''
             : [bad_test.file, bad_test.name].filter(Boolean).join(' > ')
-    const detail = where === '' ? reason : `${where}: ${reason}`
-    return by === 'engine'
-        ? `The engine found this test checks nothing: ${detail}`
-        : detail
+    return where === '' ? reason : `${where}: ${reason}`
+}
+
+/** What each source did when it sent a test back as bad (#581). */
+const BOUNCE_CLAUSES: Record<BadTestSource, string> = {
+    implementer: 'the implementer sent a test back as bad',
+    engine: 'the engine found a mapped test that checks nothing',
+}
+
+/**
+ * The start of a stuck detail for a test sent back as bad a second time
+ * (#581): who sent the first back, and who the second. A test can be sent
+ * back by the implementer, or by the engine when a mapped test passes with no
+ * `expect()`; the two share one cap, so the second may have another source
+ * than the first.
+ *
+ * @example
+ * badTestTwiceText({ earlier: 'engine', latest: 'implementer' })
+ * // 'The engine found a mapped test that checks nothing, and then, after a
+ * // fresh test-writer, the implementer sent a test back as bad'
+ */
+export const badTestTwiceText = ({
+    earlier,
+    latest,
+}: {
+    earlier: BadTestSource
+    latest: BadTestSource
+}): string => {
+    if (earlier === latest) {
+        return latest === 'engine'
+            ? 'A mapped test still checks nothing after a fresh test-writer'
+            : 'The implementer sent a test back as bad a second time'
+    }
+    return upperFirst(
+        `${BOUNCE_CLAUSES[earlier]}, and then, after a fresh test-writer, ${BOUNCE_CLAUSES[latest]}`
+    )
 }
 
 /** The comment a skipped ticket gets on its own issue. */

@@ -1039,58 +1039,69 @@ describe('a new test that checks nothing (#581)', () => {
         })
     })
 
-    test('the second time, the ticket is stuck with bad_test', () => {
-        const action = decideAfter([
-            ...replacedByEngine(),
-            implemented({ ticket: 11, session_id: 'impl-2' }),
-            passingGates(ranWith(0)),
-        ])
-
-        expect(action).toMatchObject({
-            type: 'mark_stuck',
-            ticket: 11,
-            reason: 'bad_test',
-        })
-        if (action.type !== 'mark_stuck') throw new Error(action.type)
-        expect(action.detail).toContain('runs no expect()')
-        expect(action.detail).toContain('src/sum.test.ts')
-        expect(action.detail).toContain('sum adds two numbers')
-    })
-
-    test('a bounce an implementer used counts toward the same cap: the first empty test is then stuck', () => {
-        expect(
-            decideAfter([
-                ...replaced(),
-                implemented({ ticket: 11, session_id: 'impl-2' }),
-                passingGates(ranWith(0)),
+    /**
+     * The second bounce makes the ticket stuck, whichever sent each one
+     * back; the detail names both, in order. Both bounces share one cap.
+     */
+    describe('the second bounce is stuck, and the detail names who sent each one back', () => {
+        /** The latest decision after a second implementer turn with this ending. */
+        const secondTurn = ({
+            entries,
+            ending,
+        }: {
+            entries: JournalEntry[]
+            ending: 'empty' | 'bad_test'
+        }) => {
+            const action = decideAfter([
+                ...entries,
+                ending === 'empty'
+                    ? implemented({ ticket: 11, session_id: 'impl-2' })
+                    : implemented({
+                          ticket: 11,
+                          outcome: 'bad_test',
+                          session_id: 'impl-2',
+                          reason: 'Still wrong.',
+                      }),
+                ...(ending === 'empty' ? [passingGates(ranWith(0))] : []),
             ])
-        ).toMatchObject({
-            type: 'mark_stuck',
-            ticket: 11,
-            reason: 'bad_test',
-        })
-    })
-
-    test("an implementer's bad test after the engine's bounce is stuck, with the implementer's reason", () => {
-        const action = decideAfter([
-            ...replacedByEngine(),
-            implemented({
+            expect(action).toMatchObject({
+                type: 'mark_stuck',
                 ticket: 11,
-                outcome: 'bad_test',
-                session_id: 'impl-2',
-                reason: 'Still wrong.',
-            }),
-        ])
+                reason: 'bad_test',
+            })
+            if (action.type !== 'mark_stuck') throw new Error(action.type)
+            return action.detail
+        }
 
-        expect(action).toMatchObject({
-            type: 'mark_stuck',
-            ticket: 11,
-            reason: 'bad_test',
+        test('the implementer, then the implementer again', () => {
+            expect(
+                secondTurn({ entries: replaced(), ending: 'bad_test' })
+            ).toBe(
+                'The implementer sent a test back as bad a second time: src/sum.test.ts > sum adds two numbers: Still wrong.'
+            )
         })
-        if (action.type !== 'mark_stuck') throw new Error(action.type)
-        expect(action.detail).toContain('second time')
-        expect(action.detail).toContain('Still wrong.')
-        expect(action.detail).not.toContain('The engine found')
+
+        test('the engine, then the engine again', () => {
+            expect(
+                secondTurn({ entries: replacedByEngine(), ending: 'empty' })
+            ).toBe(
+                'A mapped test still checks nothing after a fresh test-writer: "sum adds two numbers" in src/sum.test.ts runs no expect().'
+            )
+        })
+
+        test('the implementer, then the engine: the first bounce is not called an empty test', () => {
+            expect(secondTurn({ entries: replaced(), ending: 'empty' })).toBe(
+                'The implementer sent a test back as bad, and then, after a fresh test-writer, the engine found a mapped test that checks nothing: "sum adds two numbers" in src/sum.test.ts runs no expect().'
+            )
+        })
+
+        test('the engine, then the implementer: the first bounce is not blamed on the implementer', () => {
+            expect(
+                secondTurn({ entries: replacedByEngine(), ending: 'bad_test' })
+            ).toBe(
+                'The engine found a mapped test that checks nothing, and then, after a fresh test-writer, the implementer sent a test back as bad: src/sum.test.ts > sum adds two numbers: Still wrong.'
+            )
+        })
     })
 
     test('a refactor ticket is not checked: it has no map', () => {

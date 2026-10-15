@@ -21,6 +21,7 @@ import {
     lensOf,
     type AgentRole,
     type BadTest,
+    type BadTestSource,
     type Finding,
     type FindingResponse,
     type ImplementerResult,
@@ -200,16 +201,20 @@ export type TicketProgress = {
     implementer: ImplementerResult | null
     /** Follow-ups the implementer answered after failed gates. */
     gate_fix_rounds: number
-    /** How many times an implementer sent a test back as bad. */
+    /**
+     * How many times a test was sent back as bad, by the implementer or by
+     * the engine, which found a mapped test that passes with no `expect()`
+     * (#581). Both count toward `MAX_BAD_TEST_BOUNCES`.
+     */
     bad_test_bounces: number
     /** The latest test sent back as bad, for the fresh test-writer's prompt. */
     bad_test: BadTest | null
     /**
-     * Who sent `bad_test` back: the implementer, or the engine, which found a
-     * mapped test that passes with no `expect()` (#581). The prompt and the
-     * stuck text word it differently.
+     * Who sent each bounce counted in `bad_test_bounces`, oldest first (the
+     * last is who sent `bad_test`). The prompt and the stuck details word each
+     * bounce from its source (#581).
      */
-    bad_test_by: 'implementer' | 'engine'
+    bad_test_sources: BadTestSource[]
     /** The session each role's latest turn ran in, for follow-ups. */
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
@@ -641,7 +646,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     gate_fix_rounds: 0,
     bad_test_bounces: 0,
     bad_test: null,
-    bad_test_by: 'implementer',
+    bad_test_sources: [],
     sessions: {},
     assumptions: [],
     review: null,
@@ -1538,6 +1543,19 @@ const settleRound = ({
     }
 }
 
+/**
+ * The bounce sources once `by` sends one more test back as bad (#581), each
+ * kept in order so a stuck detail can name who sent the first and who the
+ * second. They go together with `bad_test_bounces`.
+ */
+const bouncedBy = ({
+    progress,
+    by,
+}: {
+    progress: TicketProgress
+    by: BadTestSource
+}): BadTestSource[] => [...progress.bad_test_sources, by]
+
 /** A fixer's bad test, or the implementer's summary as its reason. */
 const badTestOf = (result: ImplementerResult): BadTest | null =>
     result.outcome === 'bad_test'
@@ -1875,7 +1893,10 @@ const resultChange = ({
                         ? { bad_test: null }
                         : {
                               bad_test,
-                              bad_test_by: 'implementer',
+                              bad_test_sources: bouncedBy({
+                                  progress,
+                                  by: 'implementer',
+                              }),
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1890,7 +1911,10 @@ const resultChange = ({
                         ? {}
                         : {
                               bad_test,
-                              bad_test_by: 'implementer',
+                              bad_test_sources: bouncedBy({
+                                  progress,
+                                  by: 'implementer',
+                              }),
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1914,7 +1938,10 @@ const resultChange = ({
                     : {
                           bad_test_bounces: progress.bad_test_bounces + 1,
                           bad_test,
-                          bad_test_by: 'implementer',
+                          bad_test_sources: bouncedBy({
+                              progress,
+                              by: 'implementer',
+                          }),
                       }
             const round: Partial<TicketProgress> =
                 progress.gates === null
@@ -2150,13 +2177,16 @@ const progressChange = ({
             // A fresh test-writer and implementer start over on a clean
             // worktree; the bad test and its count stay. A reset that carries
             // a bad test is the engine's own finding (#581): it sets the bad
-            // test, names the engine as its source, and counts as a bounce.
+            // test and counts as a bounce, with the engine as its source.
             return {
                 ...(record.content.bad_test === undefined
                     ? {}
                     : {
                           bad_test: record.content.bad_test,
-                          bad_test_by: 'engine' as const,
+                          bad_test_sources: bouncedBy({
+                              progress,
+                              by: 'engine',
+                          }),
                           bad_test_bounces: progress.bad_test_bounces + 1,
                       }),
                 test_writer: null,
@@ -2418,6 +2448,7 @@ const resumedProgress = ({
         red_fix_rounds: 0,
         gate_fix_rounds: 0,
         bad_test_bounces: 0,
+        bad_test_sources: [],
         rejoins: 0,
         test_updates: 0,
         test_update: null,

@@ -44,7 +44,12 @@ import {
     reviewFixSection,
     reviewSections,
 } from './review-text'
-import { badTestDetail, retrySection, setupChangeDetail } from './stuck-text'
+import {
+    badTestDetail,
+    badTestTwiceText,
+    retrySection,
+    setupChangeDetail,
+} from './stuck-text'
 
 import {
     CHANGESETS_LENS_SECTION,
@@ -453,7 +458,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         // A test update names the bad test in its own section.
         bad_test: progress.test_update === null ? progress.bad_test : null,
-        bad_test_by: progress.bad_test_by,
+        bad_test_by: progress.bad_test_sources.at(-1),
         sections: [
             ...promptSections({ role, progress }),
             ...(follow_up === undefined
@@ -518,7 +523,7 @@ const commitStep = ({
 
 /** The latest bad test, for a stuck detail (#490). */
 const badTestText = ({ progress }: { progress: TicketProgress }): string =>
-    badTestDetail({ bad_test: progress.bad_test, by: progress.bad_test_by })
+    badTestDetail({ bad_test: progress.bad_test })
 
 /**
  * The test-writer's half of a ticket: fresh tests, the red check and its fix
@@ -653,7 +658,7 @@ const codeStep = ({
             return stuck({
                 ticket: number,
                 reason: 'bad_test',
-                detail: `The implementer sent a test back as bad a second time: ${badTestText({ progress })}`,
+                detail: `${badTestTwiceText({ earlier: progress.bad_test_sources.at(-2) ?? 'implementer', latest: 'implementer' })}: ${badTestText({ progress })}`,
             })
         }
         // Throw away the implementer's work; replay then clears the ticket's
@@ -699,7 +704,7 @@ const emptyTestStep = ({
         return stuck({
             ticket: ticket.number,
             reason: 'bad_test',
-            detail: `A mapped test still checks nothing after a fresh test-writer: "${empty.name}" in ${empty.file} runs no expect().`,
+            detail: `${badTestTwiceText({ earlier: progress.bad_test_sources.at(-1) ?? 'implementer', latest: 'engine' })}: "${empty.name}" in ${empty.file} runs no expect().`,
         })
     }
     return {

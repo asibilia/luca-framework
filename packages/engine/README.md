@@ -701,10 +701,12 @@ ignored files kept) and sends the ticket to a fresh test-writer, told which
 test was bad and why. Its tests get their own red check and their own red
 commit (`test: replace a bad test for ...`), then a fresh implementer builds.
 The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
-test on a refactor ticket. Every bad-test stuck detail, and so the spec
-comment, names the test's file and name and quotes the implementer's reason,
-clipped like other outputs (#490). It says "no reason given" only when the
-implementer gave none.
+test on a refactor ticket. A bad-test stuck detail, and so the spec comment,
+names the test's file and name and, for a test the implementer sent back,
+quotes its reason, clipped like other outputs (#490). It says "no reason
+given" only when the implementer gave none. A test the engine sent back (see
+below) names the test and says it runs no `expect()`. The "Why" line is the
+same whoever sent it back; the detail says who sent each of the two bounces.
 
 **A test that checks nothing** (#581). A ticket's gates journal `cases` in
 `gates_run`: the test cases of the ticket's red test files, from the fast runs
@@ -715,13 +717,18 @@ passed with `assertions` of 0 sends the ticket back the way a bad test does:
 file, the name, and why), and a fresh test-writer is told "The engine found
 this test checks nothing". It counts toward the same cap
 (`MAX_BAD_TEST_BOUNCES`), so a second empty test, or one after the implementer
-already sent a test back, is stuck (`bad_test`). A mapped test the gates did
-not run or that did not pass is left to the other checks, an older journal's
+already sent a test back (or the other way round), is stuck (`bad_test`). Replay
+keeps who sent each bounce, oldest first, as `bad_test_sources`, so the stuck
+detail words both ("The implementer sent a test back as bad, and then, after a
+fresh test-writer, the engine found a mapped test that checks nothing", say).
+A mapped test the gates did not run or that did not pass is left to the other
+checks, an older journal's
 cases carry no count so nothing is sent back, and a refactor ticket (no map)
 or a ticket rejoining after a rebase (its code is already reviewed) is not
 checked. A review fix's gates are not checked either: their tests are not
-red-checked. Replay keeps who sent the test back as `bad_test_by`
-(`implementer` or `engine`), which words the prompt and the stuck text.
+red-checked. The latest bounce's source also words the fresh test-writer's
+prompt ("The engine found this test checks nothing", or "The implementer says
+this test is wrong").
 
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,
