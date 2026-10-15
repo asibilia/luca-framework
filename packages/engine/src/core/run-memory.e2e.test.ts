@@ -24,6 +24,9 @@ import {
  * and they are listed in the PR, or on the spec after a `stop`. A MuninnDB
  * that errors or hangs never keeps a run from finishing. No real MuninnDB,
  * no models.
+ *
+ * Routing the learner's memories by scope, and what a `stop` reply makes
+ * the learner do, are decisions, checked in `decide-memory.test.ts` (#566).
  */
 
 let root = ''

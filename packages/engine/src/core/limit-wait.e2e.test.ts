@@ -20,9 +20,10 @@ import {
  * agent cut off by the plan, a fake clock, and the in-memory tracker. Nothing
  * really waits, and nothing is posted anywhere but in memory.
  *
- * A restart in the middle of a wait is decided in `decide-crash-recovery`'s
- * "a crash during a limit wait"; the wait from a later time, or past its
- * end, is `decide-limits.test.ts`'s "the limit wait itself" (#566).
+ * A restart in the middle of a wait is decided in
+ * `decide-crash-recovery.test.ts`'s "a crash during a limit wait"; the wait
+ * from a later time, or past its end, is `decide-limits.test.ts`'s "the
+ * limit wait itself" (#566).
  */
 
 let root = ''
