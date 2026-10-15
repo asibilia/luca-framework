@@ -3,7 +3,15 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import type { JournalRecord } from '../journal/journal-record'
 import { SPEC_OWNER } from '../testing/intake-fixtures'
@@ -23,16 +31,6 @@ import type { InMemoryTracker } from '../tracker/in-memory-tracker'
  * never a crash or a second PR.
  */
 
-let root = ''
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-pull-request-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
-
 /** GitHub's limit on a PR body or a comment. */
 const GITHUB_LIMIT = 65_536
 
@@ -40,7 +38,7 @@ const GITHUB_LIMIT = 65_536
 const BODY_BUDGET = 60_000
 
 /** Where a practice run's folder is: its journal's folder. */
-const runFolder = () => join(root, 'runs', 'run-1')
+const runFolder = (root: string) => join(root, 'runs', 'run-1')
 
 /** What a failing `gh pr create` says. */
 const GH_ERROR =
@@ -88,15 +86,29 @@ const runBranchOf = (records: JournalRecord[]): string => {
     return created?.kind === 'run_branch_created' ? created.content.branch : ''
 }
 
+/** A fresh folder for each test's practice repo. */
+const eachRoot = () => {
+    const folder = { root: '' }
+    beforeEach(async () => {
+        folder.root = await mkdtemp(join(tmpdir(), 'luca-pull-request-'))
+    })
+    afterEach(async () => {
+        await rm(folder.root, { recursive: true, force: true })
+    })
+    return folder
+}
+
 describe('the PR body in the run folder', () => {
+    const folder = eachRoot()
+
     test('the full PR body is written to pull-request.md in the run folder before the PR is created', async () => {
-        const practice = await createPracticeRepo({ root })
+        const practice = await createPracticeRepo({ root: folder.root })
         const tracker = practiceTracker()
         const seen: { exists: boolean; text: string; body: string }[] = []
         const watching: InMemoryTracker = {
             ...tracker,
             openPullRequest: async (request) => {
-                const file = join(runFolder(), 'pull-request.md')
+                const file = join(runFolder(folder.root), 'pull-request.md')
                 seen.push({
                     exists: existsSync(file),
                     text: existsSync(file) ? await Bun.file(file).text() : '',
@@ -119,11 +131,19 @@ describe('the PR body in the run folder', () => {
     }, 60_000)
 })
 
-describe('a PR body over the limit', () => {
-    test('notes over 65,536 characters open a PR with a body under 60,000 characters and the rest in PR comments', async () => {
+describe('a PR body over the limit, on one run', () => {
+    // One run whose test-writer's notes run over 65,536 characters, built
+    // once (#566).
+    let root = ''
+    let run: Awaited<
+        ReturnType<Awaited<ReturnType<typeof createPracticeRepo>>['run']>
+    >
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-pull-request-'))
         const practice = await createPracticeRepo({ root })
         const { testWriter, implementer, reviewer } = happyTurns()
-        const run = await practice.run({
+        run = await practice.run({
             turns: [
                 {
                     ...testWriter,
@@ -136,7 +156,13 @@ describe('a PR body over the limit', () => {
                 reviewer,
             ],
         })
+    }, 120_000)
 
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('notes over 65,536 characters open a PR with a body under 60,000 characters and the rest in PR comments', () => {
         expect(LONG_ASSUMPTIONS.join('\n').length).toBeGreaterThan(GITHUB_LIMIT)
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const [pr, ...others] = run.tracker.pullRequests()
@@ -158,39 +184,25 @@ describe('a PR body over the limit', () => {
                 !comments.some((comment) => comment.includes(text))
         )
         expect(missing).toEqual([])
-    }, 60_000)
+    })
 
     test('the saved pull-request.md holds the whole body, every note included', async () => {
-        const practice = await createPracticeRepo({ root })
-        const { testWriter, implementer, reviewer } = happyTurns()
-        const run = await practice.run({
-            turns: [
-                {
-                    ...testWriter,
-                    result: {
-                        ...TEST_WRITER_RESULT,
-                        assumptions: LONG_ASSUMPTIONS,
-                    },
-                },
-                implementer,
-                reviewer,
-            ],
-        })
-
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const file = join(runFolder(), 'pull-request.md')
+        const file = join(runFolder(root), 'pull-request.md')
         expect(existsSync(file)).toBe(true)
         const saved = await Bun.file(file).text()
         expect(saved).toContain('Closes #11: Add sum')
         const missing = LONG_ASSUMPTIONS.filter((text) => !saved.includes(text))
         expect(missing).toEqual([])
         expect(saved.length).toBeGreaterThan(GITHUB_LIMIT)
-    }, 60_000)
+    })
 })
 
 describe('a failed gh pr create', () => {
+    const folder = eachRoot()
+
     test('leaves the run stuck with the error in the stuck text, not a crash, and retry opens the PR', async () => {
-        const practice = await createPracticeRepo({ root })
+        const practice = await createPracticeRepo({ root: folder.root })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),
@@ -233,8 +245,10 @@ describe('a failed gh pr create', () => {
 })
 
 describe('an open PR from the run branch', () => {
+    const folder = eachRoot()
+
     test('a PR gh made before failing is reused on retry, never opened twice', async () => {
-        const practice = await createPracticeRepo({ root })
+        const practice = await createPracticeRepo({ root: folder.root })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),
@@ -271,7 +285,7 @@ describe('an open PR from the run branch', () => {
     }, 60_000)
 
     test('a PR the owner opened by hand from the run branch is reused on retry, never opened twice', async () => {
-        const practice = await createPracticeRepo({ root })
+        const practice = await createPracticeRepo({ root: folder.root })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),
