@@ -283,7 +283,7 @@ tickets.sort((a, b) => a.started_seq - b.started_seq) // mutates; use sortBy
 ## Testing
 
 - **One test per behavior, at the public seam.** A test checks what a caller sees, not private helpers. Mocks only when the spec asks.
-- **Fast tests stay fast.** A fast test must finish within 2 s (`test_case_timeout_ms`). A test that builds a practice repo is end-to-end: it lives in a `*.e2e.test.ts` file and runs at the final review (`checks.slow_test`).
+- **Fast tests stay fast.** A fast test must finish within this repo's `test_case_timeout_ms`, 2000 ms. A test that builds a practice repo is end-to-end: it lives in a `*.e2e.test.ts` file and runs at the final review (`checks.slow_test`), and in any ticket that adds or changes it.
 - **Few tests per criterion.** Write the fewest tests that prove each acceptance criterion: at most 3. Every test you add is mapped to the criterion it checks.
 - **Every test checks something.** A test that runs no `expect()` is sent back.
 - **Every test file belongs to a feature.** A new test file is listed under its feature in `docs/feature-map.md`.
