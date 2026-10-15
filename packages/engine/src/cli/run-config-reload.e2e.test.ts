@@ -2,7 +2,15 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import { resumeRun, runSpec, type RunLauncher } from './run-modes'
 
@@ -22,25 +30,18 @@ import {
  * auto-restart run). A run crashes at its implementer; the repo's
  * `.luca/config.json` changes; the resume journals a `config_reloaded`
  * with the build fields that changed, right after its `engine_resumed`,
- * and the gates after it run the new prepare command. A bad config keeps
- * the run's own and journals why, and the run goes on. A new run with a bad
+ * and the gates after it run the new prepare command. A new run with a bad
  * config still stops, as before.
+ *
+ * What a resume journals for an unchanged config, frozen fields, or a bad
+ * config (refused, keeping the run's own) is checked without a run in
+ * `decide-config-reload.test.ts` (#566).
  */
 
-let root = ''
 let lines: string[] = []
 const log = (line: string) => {
     lines.push(line)
 }
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
-    lines = []
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
 
 const OLD_PREPARE = 'echo old-prepare'
 const NEW_PREPARE = 'echo new-prepare'
@@ -74,7 +75,7 @@ const recordsOf = ({ runs_dir }: { runs_dir: string }): JournalRecord[] =>
  * A run of the practice spec on a repo whose config has `OLD_PREPARE`,
  * cut off at its implementer's launch.
  */
-const crashedRun = async () => {
+const crashedRun = async ({ root }: { root: string }) => {
     const { repo } = await makePracticeRepo({ root, config: STARTED_CONFIG })
     const runs_dir = join(root, 'runs')
     const tracker = practiceTracker()
@@ -147,72 +148,93 @@ const gateCommands = ({
 const resumedSeq = (records: JournalRecord[]) =>
     records.find((record) => record.kind === 'engine_resumed')?.seq ?? -1
 
-describe('a resume adopts the repo’s new build fields', () => {
-    test('a changed prepare is journaled right after engine_resumed, and the gates run the new one', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
+describe('a resume adopts the repo’s new build fields, on one run', () => {
+    // One run, crashed at its implementer, then resumed after its config
+    // got a new prepare, a prepare time limit, and a test time limit; built
+    // once (#566).
+    let root = ''
+    let end: Awaited<ReturnType<typeof resume>>
+    let records: JournalRecord[] = []
+    let tracker: ReturnType<typeof practiceTracker>
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
+        lines = []
+        const crashed = await crashedRun({ root })
+        tracker = crashed.tracker
         await writeConfig({
-            repo,
+            repo: crashed.repo,
             config: {
                 ...STARTED_CONFIG,
                 prepare: NEW_PREPARE,
                 prepare_timeout_ms: 120_000,
+                test_timeout_ms: 600_000,
             },
         })
+        end = await resume({ runs_dir: crashed.runs_dir, tracker })
+        records = recordsOf({ runs_dir: crashed.runs_dir })
+    }, 180_000)
 
-        const end = await resume({ runs_dir, tracker })
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
+    const changesOf = () => {
+        const reloaded = records.find(
+            (record) => record.kind === 'config_reloaded'
+        )
+        return reloaded?.kind === 'config_reloaded'
+            ? reloaded.content.changes
+            : []
+    }
+
+    test('a changed prepare is journaled right after engine_resumed, and the gates run the new one', () => {
         expect(end.ok).toBe(true)
         expect(tracker.pullRequests()).toHaveLength(1)
-        const records = recordsOf({ runs_dir })
         expect(kindsAfterResume(records).slice(0, 2)).toEqual([
             'engine_resumed',
             'config_reloaded',
         ])
-        const reloaded = records.find(
-            (record) => record.kind === 'config_reloaded'
-        )
-        expect(
-            reloaded?.kind === 'config_reloaded' && reloaded.content
-        ).toEqual({
-            changes: [
-                { field: 'prepare', from: OLD_PREPARE, to: NEW_PREPARE },
-                { field: 'prepare_timeout_ms', from: null, to: 120_000 },
-            ],
-        })
+        expect(changesOf()).toEqual([
+            { field: 'prepare', from: OLD_PREPARE, to: NEW_PREPARE },
+            { field: 'prepare_timeout_ms', from: null, to: 120_000 },
+            { field: 'test_timeout_ms', from: null, to: 600_000 },
+        ])
         const after = resumedSeq(records)
         const prepares = gateCommands({ records, after, name: 'prepare' })
         expect(prepares.length).toBeGreaterThan(0)
         expect(prepares.every((command) => command === NEW_PREPARE)).toBe(true)
         expect(lines.some((line) => line.includes('prepare'))).toBe(true)
-    }, 120_000)
+    })
 
-    test('a changed test time limit is journaled after engine_resumed (#542)', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
-        await writeConfig({
-            repo,
-            config: { ...STARTED_CONFIG, test_timeout_ms: 600_000 },
-        })
-
-        const end = await resume({ runs_dir, tracker })
-
+    test('a changed test time limit is journaled after engine_resumed (#542)', () => {
         expect(end.ok).toBe(true)
-        const records = recordsOf({ runs_dir })
         expect(kindsAfterResume(records).slice(0, 2)).toEqual([
             'engine_resumed',
             'config_reloaded',
         ])
-        const reloaded = records.find(
-            (record) => record.kind === 'config_reloaded'
-        )
-        expect(
-            reloaded?.kind === 'config_reloaded' && reloaded.content
-        ).toEqual({
-            changes: [{ field: 'test_timeout_ms', from: null, to: 600_000 }],
+        expect(changesOf()).toContainEqual({
+            field: 'test_timeout_ms',
+            from: null,
+            to: 600_000,
         })
-    }, 120_000)
+    })
+})
+
+describe('a resume after a removed prepare', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
+        lines = []
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
     test('a removed prepare stops the gates running one', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
+        const { repo, runs_dir, tracker } = await crashedRun({ root })
         await writeConfig({ repo, config: PRACTICE_ENGINE_CONFIG })
 
         const end = await resume({ runs_dir, tracker })
@@ -229,105 +251,18 @@ describe('a resume adopts the repo’s new build fields', () => {
     }, 120_000)
 })
 
-describe('a resume with nothing to adopt', () => {
-    test('an unchanged config adds no record', async () => {
-        const { runs_dir, tracker } = await crashedRun()
-
-        const end = await resume({ runs_dir, tracker })
-
-        expect(end.ok).toBe(true)
-        const kinds = kindsAfterResume(recordsOf({ runs_dir }))
-        expect(kinds).not.toContain('config_reloaded')
-        expect(kinds).not.toContain('config_reload_refused')
-    }, 120_000)
-
-    test('changes to frozen fields are left out: the run keeps its checks and patterns', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
-        await writeConfig({
-            repo,
-            config: {
-                ...STARTED_CONFIG,
-                checks: { ...STARTED_CONFIG.checks, lint: 'exit 1' },
-                test_file_patterns: ['nowhere/**/*.test.ts'],
-                rule_files: ['AGENTS.md'],
-                run_budget_tokens: 1,
-            },
-        })
-
-        const end = await resume({ runs_dir, tracker })
-
-        expect(end.ok).toBe(true)
-        const records = recordsOf({ runs_dir })
-        expect(kindsAfterResume(records)).not.toContain('config_reloaded')
-        expect(
-            gateCommands({ records, after: resumedSeq(records), name: 'lint' })
-        ).not.toContain('exit 1')
-    }, 120_000)
-})
-
-describe('a resume with a bad config keeps the run’s own and goes on', () => {
-    const refusalOf = (records: JournalRecord[]) => {
-        const refused = records.find(
-            (record) => record.kind === 'config_reload_refused'
-        )
-        return refused?.kind === 'config_reload_refused'
-            ? refused.content.reason
-            : null
-    }
-
-    test('a config that is not JSON is journaled as refused, and the old prepare still runs', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
-        await writeConfigText({ repo, text: '{ "checks": ' })
-
-        const end = await resume({ runs_dir, tracker })
-
-        expect(end.ok).toBe(true)
-        expect(tracker.pullRequests()).toHaveLength(1)
-        const records = recordsOf({ runs_dir })
-        expect(kindsAfterResume(records).slice(0, 2)).toEqual([
-            'engine_resumed',
-            'config_reload_refused',
-        ])
-        expect(refusalOf(records)).toContain('not valid JSON')
-        expect(
-            gateCommands({
-                records,
-                after: resumedSeq(records),
-                name: 'prepare',
-            }).every((command) => command === OLD_PREPARE)
-        ).toBe(true)
-        expect(lines.some((line) => line.includes('not valid JSON'))).toBe(true)
-    }, 120_000)
-
-    test('a missing config is journaled as refused', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
-        await rm(join(repo, '.luca', 'config.json'))
-
-        const end = await resume({ runs_dir, tracker })
-
-        expect(end.ok).toBe(true)
-        expect(refusalOf(recordsOf({ runs_dir }))).toContain(
-            'No engine config found'
-        )
-    }, 120_000)
-
-    test('a config intake would refuse (no test command) is refused, with intake’s words', async () => {
-        const { repo, runs_dir, tracker } = await crashedRun()
-        await writeConfig({
-            repo,
-            config: { ...STARTED_CONFIG, checks: {}, prepare: NEW_PREPARE },
-        })
-
-        const end = await resume({ runs_dir, tracker })
-
-        expect(end.ok).toBe(true)
-        const records = recordsOf({ runs_dir })
-        expect(refusalOf(records)).toContain('has no test command')
-        expect(kindsAfterResume(records)).not.toContain('config_reloaded')
-    }, 120_000)
-})
-
 describe('a new run', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
+        lines = []
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
     test('a bad config still stops it before its journal starts', async () => {
         const { repo } = await makePracticeRepo({ root })
         const runs_dir = join(root, 'runs')

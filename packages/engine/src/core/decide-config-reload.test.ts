@@ -1,8 +1,16 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, test } from 'bun:test'
 
 import { decide, type EngineAction } from './decide'
+import { recordConfigReload } from './execute'
 
-import type { JournalEntry } from '../journal/journal-record'
+import { configReloadText } from '../cli/run-modes'
+import { loadEngineConfig } from '../config/engine-config'
+import type { Journal } from '../journal/journal'
+import type { JournalEntry, JournalRecord } from '../journal/journal-record'
 import { JournalRecordSchema } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import {
@@ -228,5 +236,123 @@ describe('an old journal, with neither record', () => {
         expect(promptOf(nextOf([...UP_TO_TESTS, resumed]))).toContain(
             OLD_PREPARE
         )
+    })
+})
+
+/**
+ * The run's journal up to a resume, in memory: intake on a config with
+ * `OLD_PREPARE`, then #11 up to its test-writer, then `engine_resumed`.
+ */
+const resumedJournal = (): Journal => {
+    const records: JournalRecord[] = recordsFrom({
+        entries: journal([...UP_TO_TESTS, resumed]),
+    })
+    return {
+        file: '',
+        append: (entry) => {
+            const record = JournalRecordSchema.parse({
+                ...entry,
+                seq: records.length + 1,
+                time: '2026-10-05T12:00:00.000Z',
+            })
+            records.push(record)
+            return record
+        },
+        read: () => [...records],
+    }
+}
+
+/**
+ * What a resume journals when the repo's `.luca/config.json` holds `text`
+ * (no file when `null`), as `luca-run --resume` reads it.
+ */
+const reloadWith = async ({ text }: { text: string | null }) => {
+    const repo_root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
+    try {
+        if (text !== null) {
+            await mkdir(join(repo_root, '.luca'))
+            await writeFile(join(repo_root, '.luca', 'config.json'), text)
+        }
+        const run = resumedJournal()
+        const before = run.read().length
+        const reload = recordConfigReload({
+            journal: run,
+            loaded: await loadEngineConfig({ repo_root }),
+        })
+        return { reload, added: run.read().slice(before) }
+    } finally {
+        await rm(repo_root, { recursive: true, force: true })
+    }
+}
+
+const STARTED = { ...BUILD_CONFIG, prepare: OLD_PREPARE }
+
+// Moved from `run-config-reload.e2e.test.ts` (#566): what a resume journals
+// from the repo's config file needs no run. The run after a reload, and the
+// gates running the new prepare, are still end to end there.
+describe('what a resume journals from the repo’s config file', () => {
+    test('an unchanged config adds no record', async () => {
+        const { reload, added } = await reloadWith({
+            text: JSON.stringify(STARTED, null, 4),
+        })
+
+        expect(reload).toBeNull()
+        expect(added).toEqual([])
+    })
+
+    test('changes to frozen fields are left out: no record, so the run keeps its checks and patterns', async () => {
+        const { reload, added } = await reloadWith({
+            text: JSON.stringify({
+                ...STARTED,
+                checks: { ...STARTED.checks, lint: 'exit 1' },
+                test_file_patterns: ['nowhere/**/*.test.ts'],
+                rule_files: ['AGENTS.md'],
+                run_budget_tokens: 1,
+            }),
+        })
+
+        expect(reload).toBeNull()
+        expect(added).toEqual([])
+    })
+
+    test('a config that is not JSON is journaled as refused, and the log says why', async () => {
+        const { reload, added } = await reloadWith({ text: '{ "checks": ' })
+
+        expect(added.map(({ kind }) => kind)).toEqual(['config_reload_refused'])
+        expect(
+            reload?.kind === 'config_reload_refused'
+                ? reload.content.reason
+                : null
+        ).toContain('not valid JSON')
+        if (reload === null) throw new Error('no record')
+        expect(configReloadText({ reload })).toContain('not valid JSON')
+    })
+
+    test('a missing config is journaled as refused', async () => {
+        const { reload, added } = await reloadWith({ text: null })
+
+        expect(added).toHaveLength(1)
+        expect(
+            reload?.kind === 'config_reload_refused'
+                ? reload.content.reason
+                : null
+        ).toContain('No engine config found')
+    })
+
+    test('a config intake would refuse (no test command) is refused, with intake’s words, and none of it adopted', async () => {
+        const { reload, added } = await reloadWith({
+            text: JSON.stringify({
+                ...STARTED,
+                checks: {},
+                prepare: NEW_PREPARE,
+            }),
+        })
+
+        expect(added.map(({ kind }) => kind)).toEqual(['config_reload_refused'])
+        expect(
+            reload?.kind === 'config_reload_refused'
+                ? reload.content.reason
+                : null
+        ).toContain('has no test command')
     })
 })
