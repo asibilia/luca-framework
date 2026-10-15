@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { Journal } from '../journal/journal'
@@ -22,17 +22,10 @@ import {
  * changeset step stages only its own file, and edits left uncommitted in
  * the run branch's worktree at a `ship` reply get their own commit before
  * the changeset, named in the PR's open findings as not reviewed.
+ *
+ * Two stuck runs, each built once (#566): one shipped with edits left
+ * uncommitted, one shipped with none.
  */
-
-let root = ''
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-ship-uncommitted-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
 
 const changesetConfig = (): string =>
     JSON.stringify(
@@ -169,13 +162,7 @@ const openFindingsOf = (body: string): string => {
  * stuck at its cap. Returns the practice repo, the stuck run, and the run
  * branch's worktree (kept for a retry).
  */
-const runToStuckFinalReview = async ({
-    under = root,
-}: {
-    /** The folder to make the practice repo in. Defaults to `root`. */
-    under?: string
-} = {}) => {
-    await mkdir(under, { recursive: true })
+const runToStuckFinalReview = async ({ under }: { under: string }) => {
     const practice = await createPracticeRepo({
         root: under,
         files: CHANGESET_FILES,
@@ -197,11 +184,17 @@ const runToStuckFinalReview = async ({
     return { practice, stuck, worktree: runBranchPathIn(stuck.records) }
 }
 
-/** The spec owner replies `ship`, and the engine carries on to the PR. */
+/**
+ * The spec owner replies `ship`, and the engine carries on to the PR, its
+ * journal wrapped by `journal` if given.
+ */
 const ship = async ({
     practice,
     stuck,
-}: Awaited<ReturnType<typeof runToStuckFinalReview>>) => {
+    journal,
+}: Awaited<ReturnType<typeof runToStuckFinalReview>> & {
+    journal?: (real: Journal) => Journal
+}) => {
     stuck.tracker.addComment({
         number: 10,
         author: SPEC_OWNER,
@@ -212,6 +205,7 @@ const ship = async ({
         resume: true,
         stop_before: [],
         clock: { now: () => Date.now(), sleep: async () => undefined },
+        journal,
     })
     expect(shipped.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
     const pulls = shipped.tracker.pullRequests()
@@ -221,72 +215,29 @@ const ship = async ({
     return { shipped, pr }
 }
 
-describe('the changeset commit', () => {
-    test('holds only the changeset file when the run branch has other uncommitted edits', async () => {
-        const practice = await createPracticeRepo({
-            root,
-            files: CHANGESET_FILES,
-        })
-        // Once the final review passed, edits sit uncommitted in the run
-        // branch's worktree: a changed tracked file and a new one.
-        let left = false
-        const leaveEdits = (real: Journal): Journal => ({
-            ...real,
-            append: (entry) => {
-                const record = real.append(entry)
-                if (entry.kind === 'final_review_passed' && !left) {
-                    left = true
-                    const worktree = runBranchPathIn(real.read())
-                    writeFileSync(
-                        join(worktree, 'src/sum.test.ts'),
-                        SUM_TEST_EDITED
-                    )
-                    writeFileSync(
-                        join(worktree, 'src/sum-one.test.ts'),
-                        NEW_TEST
-                    )
-                }
-                return record
-            },
-        })
+describe('a shipped final review with uncommitted edits, on one run', () => {
+    // One stuck run, shipped with a changed test file and a new one left
+    // uncommitted in the run branch's worktree, built once (#566).
+    let root = ''
+    let origin = ''
+    let before = ''
+    let pr: Awaited<ReturnType<typeof ship>>['pr']
 
-        const { action, tracker, records } = await practice.run({
-            turns: ticketTurns(),
-            journal: leaveEdits,
-        })
-
-        expect(left).toBe(true)
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const written = records.findLast(
-            (record) => record.kind === 'changeset_written'
-        )
-        if (written?.kind !== 'changeset_written') {
-            throw new Error('No changeset was written.')
-        }
-        const path = written.content.path ?? ''
-        expect(path).toMatch(/^\.changeset\/[^/]+\.md$/)
-        const head = tracker.pullRequests()[0]?.head ?? ''
-        const [newest] = await subjectsPastMain({
-            cwd: practice.origin,
-            head,
-        })
-        expect(newest).toBe(CHANGESET_MESSAGE)
-        expect(await filesOf({ cwd: practice.origin, ref: head })).toEqual([
-            path,
-        ])
-    }, 120_000)
-})
-
-describe('a shipped final review with uncommitted edits', () => {
-    test('the edits get their own commit, named for the shipped round, before the changeset commit', async () => {
-        const stuck = await runToStuckFinalReview()
-        const before = await git(stuck.worktree, 'rev-parse', 'HEAD')
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-ship-uncommitted-'))
+        const stuck = await runToStuckFinalReview({ under: root })
+        before = await git(stuck.worktree, 'rev-parse', 'HEAD')
         writeFileSync(join(stuck.worktree, 'src/sum.test.ts'), SUM_TEST_EDITED)
         writeFileSync(join(stuck.worktree, 'src/sum-one.test.ts'), NEW_TEST)
+        ;({ pr } = await ship(stuck))
+        origin = stuck.practice.origin
+    }, 180_000)
 
-        const { pr } = await ship(stuck)
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
-        const { origin } = stuck.practice
+    test('the edits get their own commit, named for the shipped round, before the changeset commit', async () => {
         const [newest, second] = await subjectsPastMain({
             cwd: origin,
             head: pr.head,
@@ -305,30 +256,17 @@ describe('a shipped final review with uncommitted edits', () => {
         expect(
             await git(origin, 'show', `${pr.head}:src/sum-one.test.ts`)
         ).toBe(NEW_TEST)
-    }, 180_000)
+    })
 
     test('the changeset commit holds only the changeset, not the uncommitted edits', async () => {
-        const stuck = await runToStuckFinalReview()
-        writeFileSync(join(stuck.worktree, 'src/sum.test.ts'), SUM_TEST_EDITED)
-        writeFileSync(join(stuck.worktree, 'src/sum-one.test.ts'), NEW_TEST)
-
-        const { pr } = await ship(stuck)
-
-        const { origin } = stuck.practice
         const [newest] = await subjectsPastMain({ cwd: origin, head: pr.head })
         expect(newest).toBe(CHANGESET_MESSAGE)
         const files = await filesOf({ cwd: origin, ref: pr.head })
         expect(files).toHaveLength(1)
         expect(files[0]).toMatch(/^\.changeset\/[^/]+\.md$/)
-    }, 180_000)
+    })
 
-    test("the PR's open findings list the edits' files as uncommitted fixer edits, not reviewed", async () => {
-        const stuck = await runToStuckFinalReview()
-        writeFileSync(join(stuck.worktree, 'src/sum.test.ts'), SUM_TEST_EDITED)
-        writeFileSync(join(stuck.worktree, 'src/sum-one.test.ts'), NEW_TEST)
-
-        const { pr } = await ship(stuck)
-
+    test("the PR's open findings list the edits' files as uncommitted fixer edits, not reviewed", () => {
         expect(pr.body.startsWith('## Open findings')).toBe(true)
         const open = openFindingsOf(pr.body)
         expect(open).toMatch(NOT_REVIEWED)
@@ -336,57 +274,78 @@ describe('a shipped final review with uncommitted edits', () => {
         expect(open).toContain('src/sum-one.test.ts')
         // The lens's finding is still listed too.
         expect(open).toContain('security-S1')
-    }, 180_000)
+    })
 })
 
-describe('a shipped final review with no uncommitted edits', () => {
-    test('of the same stuck run shipped twice, only the one with uncommitted edits gets the extra commit; the one without makes none', async () => {
-        const withEdits = await runToStuckFinalReview({
-            under: join(root, 'with-edits'),
-        })
-        const withoutEdits = await runToStuckFinalReview({
-            under: join(root, 'without-edits'),
-        })
-        const beforeWith = await git(withEdits.worktree, 'rev-parse', 'HEAD')
-        const beforeWithout = await git(
-            withoutEdits.worktree,
-            'rev-parse',
-            'HEAD'
-        )
-        writeFileSync(
-            join(withEdits.worktree, 'src/sum.test.ts'),
-            SUM_TEST_EDITED
-        )
+describe('a shipped final review with no uncommitted edits, on one run', () => {
+    // One stuck run, shipped with nothing left uncommitted, built once
+    // (#566). Right after the ship is journaled, edits appear in the run
+    // branch's worktree (a changed tracked file and a new one), so they sit
+    // uncommitted when the changeset is written.
+    let root = ''
+    let origin = ''
+    let before = ''
+    let left = false
+    let pr: Awaited<ReturnType<typeof ship>>['pr']
+    let records: JournalRecord[] = []
 
-        const shippedWith = await ship(withEdits)
-        const shippedWithout = await ship(withoutEdits)
-
-        // With edits: the edits' commit, then the changeset's.
-        const subjectsWith = await subjectsPastMain({
-            cwd: withEdits.practice.origin,
-            head: shippedWith.pr.head,
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-ship-uncommitted-'))
+        const stuck = await runToStuckFinalReview({ under: root })
+        before = await git(stuck.worktree, 'rev-parse', 'HEAD')
+        const leaveEdits = (real: Journal): Journal => ({
+            ...real,
+            append: (entry) => {
+                const record = real.append(entry)
+                if (entry.kind === 'final_review_shipped' && !left) {
+                    left = true
+                    writeFileSync(
+                        join(stuck.worktree, 'src/sum.test.ts'),
+                        SUM_TEST_EDITED
+                    )
+                    writeFileSync(
+                        join(stuck.worktree, 'src/sum-one.test.ts'),
+                        NEW_TEST
+                    )
+                }
+                return record
+            },
         })
-        expect(subjectsWith[0]).toBe(CHANGESET_MESSAGE)
-        expect(subjectsWith[1]).toMatch(SHIPPED_EDITS_SUBJECT)
-        expect(
-            await git(
-                withEdits.practice.origin,
-                'rev-parse',
-                `${shippedWith.pr.head}~2`
-            )
-        ).toBe(beforeWith)
+        const shipped = await ship({ ...stuck, journal: leaveEdits })
+        pr = shipped.pr
+        records = shipped.shipped.records
+        origin = stuck.practice.origin
+    }, 180_000)
 
-        // Without: only the changeset's, right on the stuck run branch.
-        const { origin } = withoutEdits.practice
-        const { pr } = shippedWithout
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('makes no extra commit: the changeset commit sits right on the stuck run branch, and the PR names no unreviewed edits', async () => {
         const subjects = await subjectsPastMain({ cwd: origin, head: pr.head })
         expect(subjects[0]).toBe(CHANGESET_MESSAGE)
         expect(
             subjects.filter((subject) => SHIPPED_EDITS_SUBJECT.test(subject))
         ).toEqual([])
-        expect(await git(origin, 'rev-parse', `${pr.head}~1`)).toBe(
-            beforeWithout
-        )
+        expect(await git(origin, 'rev-parse', `${pr.head}~1`)).toBe(before)
         expect(pr.body).not.toMatch(NOT_REVIEWED)
-    }, 300_000)
+    })
+
+    test('the changeset commit holds only the changeset file when the run branch has other uncommitted edits', async () => {
+        expect(left).toBe(true)
+        const written = records.findLast(
+            (record) => record.kind === 'changeset_written'
+        )
+        if (written?.kind !== 'changeset_written') {
+            throw new Error('No changeset was written.')
+        }
+        const path = written.content.path ?? ''
+        expect(path).toMatch(/^\.changeset\/[^/]+\.md$/)
+        const [newest] = await subjectsPastMain({
+            cwd: origin,
+            head: pr.head,
+        })
+        expect(newest).toBe(CHANGESET_MESSAGE)
+        expect(await filesOf({ cwd: origin, ref: pr.head })).toEqual([path])
+    })
 })
