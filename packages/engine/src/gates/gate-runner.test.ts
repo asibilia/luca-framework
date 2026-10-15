@@ -41,7 +41,7 @@ describe('prepareCheck', () => {
 
         const check = await prepareCheck({ config, cwd: tmpdir() })
 
-        expect(check).toEqual({
+        expect(check).toMatchObject({
             name: 'prepare',
             command: 'echo built',
             ok: true,
@@ -49,6 +49,24 @@ describe('prepareCheck', () => {
             output: '',
         })
     })
+
+    test('every check says how long it ran, and a prepare how long it waited for a slot (#518)', async () => {
+        const config = EngineConfigSchema.parse({
+            prepare: 'sleep 0.3',
+            prepare_concurrency: 1,
+        })
+        const [first, second] = await Promise.all([
+            prepareCheck({ config, cwd: tmpdir() }),
+            prepareCheck({ config, cwd: tmpdir() }),
+        ])
+        expect(first?.duration_ms).toBeGreaterThanOrEqual(250)
+        expect(second?.duration_ms).toBeGreaterThanOrEqual(250)
+        const waits = [first?.wait_ms ?? -1, second?.wait_ms ?? -1].toSorted(
+            (a, b) => a - b
+        )
+        expect(waits[0]).toBeLessThan(100)
+        expect(waits[1]).toBeGreaterThanOrEqual(250)
+    }, 20_000)
 })
 
 describe('prepareCheck: one at a time (#492)', () => {
@@ -190,6 +208,16 @@ describe('runGates: the test time limit (#542)', () => {
             ['lint', true],
         ])
     }, 20_000)
+
+    test('each gate check carries duration_ms (#518)', async () => {
+        const { checks } = await gates({
+            config: EngineConfigSchema.parse({
+                checks: { test: 'true', types: 'true' },
+            }),
+        })
+        for (const check of checks)
+            expect(check.duration_ms).toBeGreaterThanOrEqual(0)
+    })
 })
 
 describe('runBunTests: the test time limit (#542)', () => {

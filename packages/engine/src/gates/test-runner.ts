@@ -25,7 +25,9 @@ const attribute = ({
 
 /**
  * Reads bun's JUnit report: one `<testsuite file=..>` per file, a nested
- * `<testsuite>` per describe, and a `<testcase>` per test.
+ * `<testsuite>` per describe, and a `<testcase>` per test. Each case keeps
+ * its `time`, in whole milliseconds, and its `assertions` count when the
+ * report has them (#518, #581).
  */
 export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
     const cases: TestCase[] = []
@@ -46,10 +48,18 @@ export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
                 continue
             }
             const name = attribute({ attrs, name: 'name' }) ?? ''
+            const seconds = Number(attribute({ attrs, name: 'time' }))
+            const assertions = Number(attribute({ attrs, name: 'assertions' }))
             cases.push({
                 file: attribute({ attrs, name: 'file' }) ?? suites[0] ?? '',
                 full_name: [...suites.slice(1), name].join(' > '),
                 status: 'passed',
+                ...(Number.isFinite(seconds)
+                    ? { duration_ms: Math.round(seconds * 1000) }
+                    : {}),
+                ...(Number.isInteger(assertions) && assertions >= 0
+                    ? { assertions }
+                    : {}),
             })
             open = selfClosing ? -1 : cases.length - 1
         } else if (open >= 0 && !closing) {

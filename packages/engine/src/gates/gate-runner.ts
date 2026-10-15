@@ -16,11 +16,15 @@ import {
     timedOutLine,
 } from '../shell/run-command'
 
+/** Milliseconds since `started` (from `performance.now()`), whole (#518). */
+const msSince = (started: number): number =>
+    Math.round(performance.now() - started)
+
 /**
  * Runs one shell command as a named check: `ok` on exit 0, with the clipped
  * output only when it failed. One that runs past `timeout_ms` is stopped,
  * with everything it started, and its output starts by saying so, then
- * `timeout_hint`, if any.
+ * `timeout_hint`, if any. The check says how long the command ran (#518).
  *
  * @example
  * const install = await shellCheck({ name: 'install', command: 'bun install', cwd })
@@ -41,6 +45,7 @@ export const shellCheck = async ({
     timeout_hint?: string
 }): Promise<GateCheck> => {
     const limit = timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS
+    const started = performance.now()
     const result = await runShell({ command, cwd, timeout_ms: limit })
     const ok = result.exit_code === 0
     const timedOut = result.timed_out
@@ -54,6 +59,7 @@ export const shellCheck = async ({
         output: ok
             ? ''
             : `${timedOut}${clipOutput({ text: `${result.stdout}\n${result.stderr}` })}`,
+        duration_ms: msSince(started),
     }
 }
 
@@ -66,7 +72,8 @@ export const shellCheck = async ({
  *
  * At most `prepareConcurrencyOf` prepare runs go at once in the engine (see
  * `PREPARE_SLOTS`); the rest wait their turn. The time limit starts when a
- * run starts, so waiting for a turn never counts toward it.
+ * run starts, so waiting for a turn never counts toward it. The check says
+ * how long it waited for its turn, as `wait_ms` (#518).
  *
  * @example
  * const prepare = await prepareCheck({ config, cwd })
@@ -81,17 +88,21 @@ export const prepareCheck = async ({
 }): Promise<GateCheck | null> => {
     const { prepare } = config
     if (prepare === undefined) return null
+    const asked = performance.now()
     return PREPARE_SLOTS.run({
         limit: prepareConcurrencyOf({ config }),
-        work: () =>
-            shellCheck({
+        work: async () => {
+            const wait_ms = msSince(asked)
+            const check = await shellCheck({
                 name: 'prepare',
                 command: prepare,
                 cwd,
                 timeout_ms: prepareTimeoutOf({ config }),
                 timeout_hint:
                     'To give it longer, raise `prepare_timeout_ms` in `.luca/config.json`.',
-            }),
+            })
+            return { ...check, wait_ms }
+        },
     })
 }
 
@@ -164,6 +175,7 @@ export const runGates = async ({
             )
             continue
         }
+        const started = performance.now()
         const run = await runTests({
             cwd,
             command,
@@ -177,6 +189,7 @@ export const runGates = async ({
             ok: run.ok,
             exit_code: run.exit_code,
             output: run.ok ? '' : run.output,
+            duration_ms: msSince(started),
         })
     }
     const others: { name: GateName; command: string | undefined }[] = [
