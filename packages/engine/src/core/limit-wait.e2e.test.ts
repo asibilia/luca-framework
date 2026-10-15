@@ -19,6 +19,10 @@ import {
  * Seam 2 for plan limits: the practice ticket, end to end, with a scripted
  * agent cut off by the plan, a fake clock, and the in-memory tracker. Nothing
  * really waits, and nothing is posted anywhere but in memory.
+ *
+ * A restart in the middle of a wait is decided in `decide-crash-recovery`'s
+ * "a crash during a limit wait"; the wait from a later time, or past its
+ * end, is `decide-limits.test.ts`'s "the limit wait itself" (#566).
  */
 
 let root = ''
@@ -34,20 +38,12 @@ afterEach(async () => {
 })
 
 /** A clock that starts at `start` and moves only when slept. */
-const fakeClock = ({
-    start,
-    crash_on_sleep,
-}: {
-    start: string
-    /** Throw on the first sleep, as if the engine died mid-wait. */
-    crash_on_sleep?: boolean
-}) => {
+const fakeClock = ({ start }: { start: string }) => {
     let now = Date.parse(start)
     const slept: number[] = []
     const clock: EngineClock = {
         now: () => now,
         sleep: async (ms) => {
-            if (crash_on_sleep) throw new Error('The engine died mid-wait.')
             slept.push(ms)
             now += ms
         },
@@ -129,63 +125,6 @@ describe('limit waits', () => {
         expect(comments).toHaveLength(1)
         expect(comments[0]).toContain('five-hour')
         expect(comments[0]).toContain(RESET)
-    }, 60_000)
-
-    test('a limit wait survives a restart: the new engine waits out the rest and does not post again', async () => {
-        const { testWriter, implementer, reviewer } = happyTurns()
-        const tracker = practiceTracker()
-        const reading = rateLimitReading({
-            status: 'rejected',
-            rate_limit_type: 'seven_day',
-            resets_at: '2026-09-26T11:00:00.000Z',
-        })
-
-        await expect(
-            practice.run({
-                turns: [cutOff([reading])],
-                tracker,
-                clock: fakeClock({ start: START, crash_on_sleep: true }).clock,
-            })
-        ).rejects.toThrow('The engine died mid-wait.')
-        expect(kinds(practice.journal.read())).toContain('limit_wait_started')
-
-        const later = fakeClock({ start: '2026-09-25T00:00:00.000Z' })
-        const { action } = await practice.run({
-            turns: [testWriter, implementer, reviewer],
-            tracker,
-            clock: later.clock,
-            resume: true,
-        })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        expect(later.now()).toBe('2026-09-26T11:01:00.000Z')
-        expect(tracker.commentsOn({ number: 10 })).toHaveLength(1)
-    }, 60_000)
-
-    test('a wait whose reset passed while the engine was down ends at once', async () => {
-        const { testWriter, implementer, reviewer } = happyTurns()
-        await expect(
-            practice.run({
-                turns: [
-                    cutOff([
-                        rateLimitReading({
-                            status: 'rejected',
-                            resets_at: RESET,
-                        }),
-                    ]),
-                ],
-                clock: fakeClock({ start: START, crash_on_sleep: true }).clock,
-            })
-        ).rejects.toThrow('The engine died mid-wait.')
-
-        const after = fakeClock({ start: '2026-09-24T00:00:00.000Z' })
-        const { action } = await practice.run({
-            turns: [testWriter, implementer, reviewer],
-            clock: after.clock,
-            resume: true,
-        })
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        expect(after.slept).toEqual([])
     }, 60_000)
 })
 

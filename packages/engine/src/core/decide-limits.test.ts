@@ -4,6 +4,11 @@ import { decide } from './decide'
 
 import type { JournalEntry } from '../journal/journal-record'
 import {
+    LIMIT_WAIT_NAP_MS,
+    waitUntil,
+    type EngineClock,
+} from '../limits/limit-wait'
+import {
     agentSession,
     agentStarted,
     billingStopped,
@@ -648,4 +653,52 @@ describe('decision step: limit waits during a ticket review', () => {
             ).toEqual(step)
         }
     )
+})
+
+/** A clock that starts at `start` and moves only when slept. */
+const fakeClock = ({ start }: { start: string }) => {
+    let now = Date.parse(start)
+    const slept: number[] = []
+    const clock: EngineClock = {
+        now: () => now,
+        sleep: async (ms) => {
+            slept.push(ms)
+            now += ms
+        },
+    }
+    return { clock, slept, now: () => new Date(now).toISOString() }
+}
+
+// Moved from `limit-wait.e2e.test.ts` (#566): a restarted engine's wait.
+// What it decides after the restart (the same `until`, nothing new on the
+// spec, the cut-off step again after the wait) is in
+// `decide-crash-recovery.test.ts`'s "a crash during a limit wait"; this is
+// the wait itself. A real run's whole wait is still end to end there.
+describe('the limit wait itself (waitUntil)', () => {
+    test('a restarted engine waits out the rest, in naps, until the same time', async () => {
+        const time = fakeClock({ start: '2026-09-25T00:00:00.000Z' })
+
+        await waitUntil({
+            clock: time.clock,
+            until: '2026-09-26T11:01:00.000Z',
+        })
+
+        expect(time.now()).toBe('2026-09-26T11:01:00.000Z')
+        expect(time.slept.every((ms) => ms <= LIMIT_WAIT_NAP_MS)).toBe(true)
+        expect(time.slept.reduce((sum, ms) => sum + ms, 0)).toBe(
+            Date.parse('2026-09-26T11:01:00.000Z') -
+                Date.parse('2026-09-25T00:00:00.000Z')
+        )
+    })
+
+    test('a wait whose end passed while the engine was down ends at once', async () => {
+        const time = fakeClock({ start: '2026-09-24T00:00:00.000Z' })
+
+        await waitUntil({
+            clock: time.clock,
+            until: '2026-09-23T14:01:00.000Z',
+        })
+
+        expect(time.slept).toEqual([])
+    })
 })

@@ -2088,7 +2088,9 @@ rate-limit readings (allowed, allowed_warning, rejected days away, the Opus
 weekly cap, overage, isUsingOverage, a billing error) and usage readings.
 `src/core/limit-wait.e2e.test.ts` runs the practice ticket with an agent the
 plan cuts off, a fake clock, and the in-memory tracker: the wait, its one
-comment, a restart mid-wait, and a billing stop that sticks.
+comment, and a billing stop that sticks. A restart mid-wait is decided in
+`src/core/decide-crash-recovery.test.ts`, and `decide-limits.test.ts` checks
+the wait itself from a later time, or past its end.
 
 `src/core/decide-memory.test.ts` covers memory at the decision step: memory
 off changes nothing, each recall point's search and query, tickets searching
