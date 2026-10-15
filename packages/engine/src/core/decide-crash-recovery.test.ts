@@ -208,6 +208,45 @@ describe('a crash mid agent turn', () => {
         })
     })
 
+    test('the restart journals one run_resumed naming the cut-off follow-up, and its fresh launch hears that the gates failed and of the crash', () => {
+        const full = journal(gatesFailed())
+        const cut = [
+            ...startStep(full, FOLLOW_UP_IMPL),
+            agentStarted({
+                ticket: 11,
+                role: 'implementer',
+                follow_up_of: SESSIONS.implementer,
+            }),
+        ]
+
+        expect(resumeEntry({ records: recordsFrom({ entries: cut }) })).toEqual(
+            {
+                kind: 'run_resumed',
+                ticket: null,
+                role: null,
+                content: {
+                    interrupted: [
+                        {
+                            key: '11',
+                            step: 'follow_up_agent:implementer',
+                            ticket: 11,
+                            role: 'implementer',
+                            started_seq: nextSeq(full),
+                            first_seq: null,
+                        },
+                    ],
+                },
+            }
+        )
+        const step = stepOf(restart(cut))
+        expect(step).toMatchObject({
+            type: 'launch_agent',
+            role: 'implementer',
+        })
+        expect(promptOf(step)).toContain('The gates failed.')
+        expect(promptOf(step)).toContain(CRASH_SECTION)
+    })
+
     test('a cut-off red check follow-up becomes a fresh test-writer with the red check message', () => {
         const full = journal([
             ...started(),
@@ -496,6 +535,8 @@ describe('a crash while stuck', () => {
         expect(stepsOf(full)).toEqual([
             { type: 'wait_for_reply', spec_number: 10, since_id: 111 },
         ])
+        // The report is the engine's own comment, never a reply.
+        expect(stateOf(full).engine_comments).toEqual([111])
     })
 
     test('a reply posted while the engine was down is read and taken', () => {

@@ -881,7 +881,11 @@ describe('sessions close on every other way a step ends, end to end', () => {
         const before = practice.journal.read()
         const cutStep = before.findLast(({ kind }) => kind === 'step_started')
         expect(cutStep).toMatchObject({
-            content: { step: 'follow_up_agent:implementer' },
+            content: {
+                key: '11',
+                step: 'follow_up_agent:implementer',
+                first_seq: null,
+            },
         })
         expect(
             before.some(
@@ -915,5 +919,30 @@ describe('sessions close on every other way a step ends, end to end', () => {
         expect(closedIn(records)).toEqual(
             [...launchedBy(crashed), ...launchedBy(resumed)].toSorted(byId)
         )
+
+        // The restart journaled the cut-off step first, and redid it as a
+        // fresh launch, not a follow-up; every step it started, it saw end.
+        expect(resumedAt).toMatchObject({
+            seq: before.length + 1,
+            content: {
+                interrupted: [
+                    {
+                        key: '11',
+                        step: 'follow_up_agent:implementer',
+                        ticket: 11,
+                        role: 'implementer',
+                        started_seq: cutStep?.seq,
+                        first_seq: null,
+                    },
+                ],
+            },
+        })
+        expect(
+            resumed.launches().some(({ kind }) => kind === 'follow_up')
+        ).toBe(false)
+        const after = records.slice(before.length)
+        const count = (kind: string) =>
+            after.filter((record) => record.kind === kind).length
+        expect(count('step_started')).toBe(count('step_ended'))
     }, 90_000)
 })

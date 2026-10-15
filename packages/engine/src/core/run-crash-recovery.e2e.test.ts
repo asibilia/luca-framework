@@ -4,13 +4,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { CRASH_SECTION } from './fix-loop-text'
-
 import type { AgentLauncher } from '../agents/agent-launcher'
-import {
-    createScriptedLauncher,
-    type ScriptedTurn,
-} from '../agents/scripted-launcher'
+import { createScriptedLauncher } from '../agents/scripted-launcher'
 import type { GitAdapter } from '../git/git-adapter'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
@@ -45,17 +40,6 @@ afterEach(async () => {
     await rm(root, { recursive: true, force: true })
 })
 
-/** An implementer whose code fails the tests, so the gates fail. */
-const WRONG: ScriptedTurn = {
-    role: 'implementer',
-    ticket: 11,
-    files: {
-        'src/sum.ts': 'export const sum = (): number => 42\n',
-        'src/index.ts': "export { sum } from './sum'\n",
-    },
-    result: IMPLEMENTER_RESULT,
-}
-
 /** A launcher whose calls throw, as if the engine died mid-turn. */
 const crashingOn = ({
     launcher,
@@ -75,31 +59,6 @@ const crashingOn = ({
     closeSession: (args) => launcher.closeSession(args),
 })
 
-/**
- * A tracker whose `comment` on issue `number` posts for real, then throws
- * once, as if the engine died before journaling the comment.
- */
-const crashAfterComment = ({
-    tracker,
-    number,
-}: {
-    tracker: InMemoryTracker
-    number: number
-}): InMemoryTracker => {
-    let crashed = false
-    return {
-        ...tracker,
-        comment: async (args) => {
-            const posted = await tracker.comment(args)
-            if (!crashed && args.number === number) {
-                crashed = true
-                throw new Error('The engine crashed.')
-            }
-            return posted
-        },
-    }
-}
-
 const ofKind = <Kind extends JournalRecord['kind']>(
     records: JournalRecord[],
     kind: Kind
@@ -110,66 +69,6 @@ const ofKind = <Kind extends JournalRecord['kind']>(
     )
 
 describe('crash recovery, end to end', () => {
-    test('a follow-up cut off by a crash is taken again by a fresh agent carrying its message', async () => {
-        const practice = await createPracticeRepo({ root })
-        const { testWriter, implementer, reviewer } = happyTurns()
-
-        const crashed = practice.run({
-            launcher: crashingOn({
-                launcher: createScriptedLauncher({
-                    turns: [testWriter, WRONG],
-                }),
-                kind: 'follow_up',
-            }),
-        })
-        await expect(crashed).rejects.toThrow('The engine crashed.')
-        const before = practice.journal.read()
-        const open = ofKind(before, 'step_started').at(-1)
-        expect(open?.content).toEqual({
-            key: '11',
-            step: 'follow_up_agent:implementer',
-            first_seq: null,
-        })
-        expect(ofKind(before, 'step_ended').at(-1)?.seq ?? 0).toBeLessThan(
-            open?.seq ?? 0
-        )
-
-        const { action, launches } = await practice.run({
-            resume: true,
-            turns: [implementer, reviewer],
-        })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const after = practice.journal.read()
-        expect(ofKind(after, 'run_resumed')).toEqual([
-            expect.objectContaining({
-                seq: before.length + 1,
-                content: {
-                    interrupted: [
-                        {
-                            key: '11',
-                            step: 'follow_up_agent:implementer',
-                            ticket: 11,
-                            role: 'implementer',
-                            started_seq: open?.seq,
-                            first_seq: null,
-                        },
-                    ],
-                },
-            }),
-        ])
-        const redo = launches.find(({ role }) => role === 'implementer')
-        expect(redo).toMatchObject({ kind: 'launch', role: 'implementer' })
-        expect(redo?.prompt).toContain('The gates failed.')
-        expect(redo?.prompt).toContain(CRASH_SECTION)
-        expect(launches.some(({ kind }) => kind === 'follow_up')).toBe(false)
-        // Every step the resumed engine started, it saw end.
-        const resumed = after.slice(before.length)
-        expect(ofKind(resumed, 'step_started')).toHaveLength(
-            ofKind(resumed, 'step_ended').length
-        )
-    }, 60_000)
-
     test("a redone step's step_started names its first try", async () => {
         const practice = await createPracticeRepo({ root })
         const { testWriter, implementer, reviewer } = happyTurns()
@@ -197,46 +96,6 @@ describe('crash recovery, end to end', () => {
         expect(starts.map(({ content }) => content.first_seq)).toEqual([
             null,
             first?.seq ?? -1,
-        ])
-    }, 60_000)
-
-    test('a stuck report is posted once when a crash came between posting and journaling it', async () => {
-        const practice = await createPracticeRepo({ root })
-        const tracker = practiceTracker()
-        const crashingLauncher = crashingOn({
-            launcher: createScriptedLauncher({ turns: [] }),
-            kind: 'launch',
-        })
-        // The test-writer's launch is cut off three times: the ticket is stuck.
-        for (const resume of [false, true, true]) {
-            await expect(
-                practice.run({ tracker, resume, launcher: crashingLauncher })
-            ).rejects.toThrow('The engine crashed.')
-        }
-
-        await expect(
-            practice.run({
-                resume: true,
-                tracker: crashAfterComment({ tracker, number: 10 }),
-                launcher: crashingLauncher,
-            })
-        ).rejects.toThrow('The engine crashed.')
-        const { action, records } = await practice.run({
-            resume: true,
-            tracker,
-            launcher: crashingLauncher,
-        })
-
-        expect(action).toMatchObject({ type: 'wait_for_reply' })
-        const comments = tracker.commentsOn({ number: 10 })
-        expect(comments).toHaveLength(1)
-        expect(comments[0]).toContain('Ticket #11 is stuck')
-        const reports = ofKind(records, 'stuck_reported')
-        expect(reports).toHaveLength(1)
-        const state = replayRun({ records })
-        expect(state.tickets[11]?.stuck?.reason).toBe('crashed')
-        expect(state.engine_comments).toEqual([
-            reports[0]?.content.comment_id ?? -1,
         ])
     }, 60_000)
 
