@@ -2,7 +2,15 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import type { GitAdapter } from '../git/git-adapter'
 import {
@@ -23,17 +31,11 @@ import type { InMemoryTracker } from '../tracker/in-memory-tracker'
  * changed (minus the config's `ignore`), with the bump from the spec's
  * `release:*` label (patch with none), and the spec's title and link as its
  * summary.
+ *
+ * Which bump each label names, the summary's text, and which packages a
+ * change names are decisions, checked in `decide-changesets.test.ts`
+ * (#566). Here are the changesets real runs commit.
  */
-
-let root = ''
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-changeset-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
 
 const SPEC_URL = `https://github.com/acme/app/issues/${PRACTICE_SPEC_NUMBER}`
 
@@ -191,15 +193,15 @@ const runToPr = async ({
     files,
     changed,
     labels = [],
-    under = root,
+    under,
 }: {
     files: Record<string, string>
     /** Files the implementer changes besides `src/`. */
     changed: Record<string, string>
     /** The spec's labels besides `ready-for-agent`. */
     labels?: string[]
-    /** The folder to make the practice repo in. Defaults to `root`. */
-    under?: string
+    /** The folder to make the practice repo in. */
+    under: string
 }) => {
     await mkdir(under, { recursive: true })
     const practice = await createPracticeRepo({ root: under, files })
@@ -211,12 +213,67 @@ const runToPr = async ({
     return { ...ran, practice }
 }
 
-describe('the changeset on a run PR, end to end', () => {
-    test('the PR branch has one changeset naming only the package the run changed, as a patch with no release label', async () => {
-        const { tracker, practice } = await runToPr({
+/** The commits on `head` past main, newest first, by subject. */
+const subjectsPastMain = async ({
+    origin,
+    head,
+}: {
+    origin: string
+    head: string
+}): Promise<string[]> =>
+    (await git(origin, 'log', '--format=%s', `main..${head}`))
+        .split('\n')
+        .filter((subject) => subject !== '')
+
+/** The `.changeset/` files `head` adds past main. */
+const changesetsAddedPastMain = async ({
+    origin,
+    head,
+}: {
+    origin: string
+    head: string
+}): Promise<string[]> =>
+    (
+        await git(
+            origin,
+            'diff',
+            '--name-only',
+            '--diff-filter=A',
+            `main..${head}`,
+            '--',
+            '.changeset/'
+        )
+    )
+        .split('\n')
+        .filter((path) => path !== '')
+
+const AGENT_CHANGESET = '.changeset/add-double.md'
+
+describe('the changeset on a run PR, end to end, on one run', () => {
+    // One run, built once (#566): the spec has no release label, and the
+    // implementer changes @practice/math and writes its own changeset too.
+    let root = ''
+    let ran: Awaited<ReturnType<typeof runToPr>>
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-changeset-'))
+        ran = await runToPr({
             files: CHANGESET_FILES,
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
+            changed: {
+                'packages/math/index.ts': MATH_CHANGE,
+                [AGENT_CHANGESET]:
+                    '---\n"@practice/math": minor\n---\n\nAdd double\n',
+            },
+            under: root,
         })
+    }, 120_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('the PR branch has one changeset naming only the package the run changed, as a patch with no release label', async () => {
+        const { tracker, practice } = ran
 
         const { changesets } = await prChangesets({
             origin: practice.origin,
@@ -224,13 +281,10 @@ describe('the changeset on a run PR, end to end', () => {
         })
         expect(changesets).toHaveLength(1)
         expect(changesets[0]?.releases).toEqual({ '@practice/math': 'patch' })
-    }, 90_000)
+    })
 
     test("the changeset's summary is the spec's title with a link to the spec", async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
-        })
+        const { tracker, practice } = ran
 
         const { changesets } = await prChangesets({
             origin: practice.origin,
@@ -239,13 +293,10 @@ describe('the changeset on a run PR, end to end', () => {
         expect(changesets).toHaveLength(1)
         expect(changesets[0]?.summary).toContain('Practice spec')
         expect(changesets[0]?.summary).toContain(SPEC_URL)
-    }, 90_000)
+    })
 
     test('the changeset is committed on the run branch, past main, and main keeps none', async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
-        })
+        const { tracker, practice } = ran
 
         const { head } = await prChangesets({
             origin: practice.origin,
@@ -254,79 +305,57 @@ describe('the changeset on a run PR, end to end', () => {
         expect(
             await changesetsAt({ cwd: practice.origin, ref: 'main' })
         ).toEqual([])
-        const added = (
-            await git(
-                practice.origin,
-                'diff',
-                '--name-only',
-                '--diff-filter=A',
-                `main..${head}`,
-                '--',
-                '.changeset/'
-            )
-        )
-            .split('\n')
-            .filter((path) => path !== '')
+        const added = await changesetsAddedPastMain({
+            origin: practice.origin,
+            head,
+        })
         expect(added).toHaveLength(1)
         expect(added[0]).toMatch(/^\.changeset\/[^/]+\.md$/)
-    }, 90_000)
+    })
 
-    test('a spec labeled release:minor gets a minor bump', async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
-            labels: ['release:minor'],
-        })
+    test("an agent's own changeset (#507) is dropped and journaled, the ticket isn't stuck, and the PR holds only the engine's changeset", async () => {
+        const { tracker, practice, records } = ran
 
-        const { changesets } = await prChangesets({
+        expect(latestStuck(records)).toBeNull()
+        const dropped = records.filter(
+            (record) => record.kind === 'changeset_dropped'
+        )
+        expect(dropped.map((record) => record.ticket)).toContain(11)
+        expect(
+            dropped.flatMap((record) =>
+                record.kind === 'changeset_dropped' ? record.content.paths : []
+            )
+        ).toContain(AGENT_CHANGESET)
+        const { head, changesets } = await prChangesets({
             origin: practice.origin,
             tracker,
         })
         expect(changesets.map(({ releases }) => releases)).toEqual([
-            { '@practice/math': 'minor' },
+            { '@practice/math': 'patch' },
         ])
-    }, 90_000)
+        expect(
+            await changesetsAt({ cwd: practice.origin, ref: head })
+        ).not.toContain(AGENT_CHANGESET)
+    })
+})
 
-    test('a spec labeled release:major names both changed packages with a major bump', async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: {
-                'packages/math/index.ts': MATH_CHANGE,
-                'packages/text/index.ts': TEXT_CHANGE,
-            },
-            labels: ['release:major'],
-        })
+describe('the changeset on other runs, end to end', () => {
+    let root = ''
 
-        const { changesets } = await prChangesets({
-            origin: practice.origin,
-            tracker,
-        })
-        expect(changesets.map(({ releases }) => releases)).toEqual([
-            { '@practice/math': 'major', '@practice/text': 'major' },
-        ])
-    }, 90_000)
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-changeset-'))
+    })
 
-    test('a spec labeled release:patch gets a patch bump', async () => {
-        const { tracker, practice } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: { 'packages/text/index.ts': TEXT_CHANGE },
-            labels: ['release:patch'],
-        })
-
-        const { changesets } = await prChangesets({
-            origin: practice.origin,
-            tracker,
-        })
-        expect(changesets.map(({ releases }) => releases)).toEqual([
-            { '@practice/text': 'patch' },
-        ])
-    }, 90_000)
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
     test('a spec labeled release:none gets a PR branch with no new changeset file and no changeset commit', async () => {
         const { tracker, practice, records } = await runToPr({
             files: CHANGESET_FILES,
             changed: { 'packages/math/index.ts': MATH_CHANGE },
             labels: ['release:none'],
+            under: root,
         })
 
         const { head, changesets } = await prChangesets({
@@ -334,26 +363,12 @@ describe('the changeset on a run PR, end to end', () => {
             tracker,
         })
         expect(changesets).toEqual([])
-        const added = (
-            await git(
-                practice.origin,
-                'diff',
-                '--name-only',
-                '--diff-filter=A',
-                `main..${head}`,
-                '--',
-                '.changeset/'
-            )
-        )
-            .split('\n')
-            .filter((path) => path !== '')
-        expect(added).toEqual([])
-        const subjects = (
-            await git(practice.origin, 'log', '--format=%s', `main..${head}`)
-        )
-            .split('\n')
-            .filter((subject) => subject !== '')
-        expect(subjects).toEqual([
+        expect(
+            await changesetsAddedPastMain({ origin: practice.origin, head })
+        ).toEqual([])
+        expect(
+            await subjectsPastMain({ origin: practice.origin, head })
+        ).toEqual([
             'feat: build #11 Add sum',
             'test: add failing tests for #11 Add sum',
         ])
@@ -378,6 +393,7 @@ describe('the changeset on a run PR, end to end', () => {
                 'packages/math/index.ts': MATH_CHANGE,
                 'packages/text/index.ts': TEXT_CHANGE,
             },
+            under: root,
         })
 
         const { changesets } = await prChangesets({
@@ -389,9 +405,12 @@ describe('the changeset on a run PR, end to end', () => {
         ])
     }, 90_000)
 
-    test('of the same run on two repos, only the one with a changesets config gets a changeset', async () => {
+    test('of the same run on two repos, only the one with a changesets config gets a changeset: both changed packages, with the release:minor bump', async () => {
         const run = {
-            changed: { 'packages/math/index.ts': MATH_CHANGE },
+            changed: {
+                'packages/math/index.ts': MATH_CHANGE,
+                'packages/text/index.ts': TEXT_CHANGE,
+            },
             labels: ['release:minor'],
         }
         const withConfig = await runToPr({
@@ -405,13 +424,13 @@ describe('the changeset on a run PR, end to end', () => {
             under: join(root, 'without-config'),
         })
 
-        // With the config: one changeset.
+        // With the config: one changeset, naming both packages.
         const configured = await prChangesets({
             origin: withConfig.practice.origin,
             tracker: withConfig.tracker,
         })
         expect(configured.changesets.map(({ releases }) => releases)).toEqual([
-            { '@practice/math': 'minor' },
+            { '@practice/math': 'minor', '@practice/text': 'minor' },
         ])
 
         // Without it: no `.changeset/` folder, and no commit past the ticket's.
@@ -427,54 +446,26 @@ describe('the changeset on a run PR, end to end', () => {
                 '.changeset/'
             )
         ).toBe('')
-        const subjects = (
-            await git(practice.origin, 'log', '--format=%s', `main..${head}`)
-        )
-            .split('\n')
-            .filter((subject) => subject !== '')
-        expect(subjects).toEqual([
+        expect(
+            await subjectsPastMain({ origin: practice.origin, head })
+        ).toEqual([
             'feat: build #11 Add sum',
             'test: add failing tests for #11 Add sum',
         ])
     }, 90_000)
 })
 
-describe("an agent's own changeset (#507)", () => {
-    test("is dropped and journaled, the ticket isn't stuck, and the PR holds only the engine's changeset", async () => {
-        const agent_changeset = '.changeset/add-double.md'
-        const { tracker, practice, records } = await runToPr({
-            files: CHANGESET_FILES,
-            changed: {
-                'packages/math/index.ts': MATH_CHANGE,
-                [agent_changeset]:
-                    '---\n"@practice/math": minor\n---\n\nAdd double\n',
-            },
-        })
-
-        expect(latestStuck(records)).toBeNull()
-        const dropped = records.filter(
-            (record) => record.kind === 'changeset_dropped'
-        )
-        expect(dropped.map((record) => record.ticket)).toContain(11)
-        expect(
-            dropped.flatMap((record) =>
-                record.kind === 'changeset_dropped' ? record.content.paths : []
-            )
-        ).toContain(agent_changeset)
-        const { head, changesets } = await prChangesets({
-            origin: practice.origin,
-            tracker,
-        })
-        expect(changesets.map(({ releases }) => releases)).toEqual([
-            { '@practice/math': 'patch' },
-        ])
-        expect(
-            await changesetsAt({ cwd: practice.origin, ref: head })
-        ).not.toContain(agent_changeset)
-    }, 90_000)
-})
-
 describe('the changeset after a crash', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-changeset-'))
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
     test('a run restarted after the changeset was committed does not write a second one', async () => {
         const practice = await createPracticeRepo({
             root,

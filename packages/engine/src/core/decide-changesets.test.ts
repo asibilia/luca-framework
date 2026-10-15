@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { changedPackages, changesetText } from './changeset'
 import { decideSteps, type EngineAction } from './decide'
 
 import type { LensName } from '../agents/role-results'
@@ -22,6 +23,7 @@ import {
     withInstalls,
 } from '../testing/build-fixtures'
 import {
+    finalReviewClean,
     finalReviewFixing,
     finalReviewStarted,
     lensFinding,
@@ -501,5 +503,172 @@ describe('every reviewer in a repo with changesets (#545)', () => {
         for (const prompt of prompts) {
             expect(prompt).not.toMatch(/changeset/i)
         }
+    })
+})
+
+/**
+ * The steps once ticket #11 is pushed and the final review passed, on a spec
+ * with these labels besides `ready-for-agent`, and these entries after.
+ */
+const stepsBeforePr = ({
+    changesets,
+    labels,
+    after,
+}: {
+    changesets: boolean
+    labels: string[]
+    after?: JournalEntry[]
+}): EngineAction[] =>
+    decideSteps({
+        records: recordsFrom({
+            entries: [
+                ...intakePassed({ tickets: [TICKET] }).map(
+                    (entry): JournalEntry =>
+                        entry.kind === 'spec_snapshot'
+                            ? {
+                                  ...entry,
+                                  content: {
+                                      ...entry.content,
+                                      spec: {
+                                          ...entry.content.spec,
+                                          labels: [
+                                              'ready-for-agent',
+                                              ...labels,
+                                          ],
+                                      },
+                                  },
+                              }
+                            : entry
+                ),
+                ...withInstalls({
+                    entries: [
+                        branchCreated({ changesets }),
+                        ...ticketBuilt({ ticket: 11 }),
+                        ...finalReviewClean(),
+                        ...(after ?? []),
+                    ],
+                }),
+            ],
+        }),
+    })
+
+const MATH = { name: '@practice/math', dir: 'packages/math' }
+const TEXT = { name: '@practice/text', dir: 'packages/text' }
+
+// Moved from `run-changeset.e2e.test.ts` (#566): the label's bump, the
+// summary, and the packages are decisions on plain data. The changeset a
+// real run commits to origin is still checked end to end there.
+describe("the run's changeset (#461)", () => {
+    test("once the final review passes, a repo with changesets writes the run's changeset before the PR: a patch with no release label, summed up by the spec's title and link", () => {
+        expect(stepsBeforePr({ changesets: true, labels: [] })).toEqual([
+            {
+                type: 'write_changeset',
+                branch: RUN_BRANCH,
+                bump: 'patch',
+                summary:
+                    'Practice spec ([#10](https://github.com/acme/app/issues/10))',
+                message: 'chore: add the changeset for #10 Practice spec',
+            },
+        ])
+    })
+
+    test('each release label names its bump; release:none names none', () => {
+        const bumps = [
+            'release:major',
+            'release:minor',
+            'release:patch',
+            'release:none',
+        ].map((label) =>
+            stepsBeforePr({ changesets: true, labels: [label] }).map((step) =>
+                step.type === 'write_changeset' ? step.bump : step.type
+            )
+        )
+
+        expect(bumps).toEqual([['major'], ['minor'], ['patch'], ['none']])
+    })
+
+    test('a repo without changesets opens the PR with no changeset step, whatever the label', () => {
+        expect(
+            stepsBeforePr({ changesets: false, labels: ['release:minor'] }).map(
+                ({ type }) => type
+            )
+        ).toEqual(['open_pull_request'])
+    })
+
+    test('once the changeset is written, the PR is opened, and no second changeset', () => {
+        expect(
+            stepsBeforePr({
+                changesets: true,
+                labels: ['release:minor'],
+                after: [
+                    {
+                        kind: 'changeset_written',
+                        ticket: null,
+                        role: null,
+                        content: {
+                            path: '.changeset/luca-spec-10-run.md',
+                            bump: 'minor',
+                            packages: ['@practice/math'],
+                            sha: 'c1',
+                        },
+                    },
+                ],
+            }).map(({ type }) => type)
+        ).toEqual(['open_pull_request'])
+    })
+
+    test('it names every package the run changed, once each and sorted, and only those', () => {
+        expect(
+            changedPackages({
+                packages: [MATH, TEXT],
+                files: [
+                    'packages/text/index.ts',
+                    'packages/math/index.ts',
+                    'packages/math/double.ts',
+                    'src/sum.ts',
+                    '.changeset/add-double.md',
+                ],
+                ignore: [],
+            })
+        ).toEqual(['@practice/math', '@practice/text'])
+        expect(
+            changedPackages({
+                packages: [MATH, TEXT],
+                files: ['packages/math/index.ts'],
+                ignore: [],
+            })
+        ).toEqual(['@practice/math'])
+    })
+
+    test('packages the changesets config ignores, by name or glob, are left out', () => {
+        const files = ['packages/math/index.ts', 'packages/text/index.ts']
+
+        expect(
+            changedPackages({
+                packages: [MATH, TEXT],
+                files,
+                ignore: ['@practice/text'],
+            })
+        ).toEqual(['@practice/math'])
+        expect(
+            changedPackages({
+                packages: [MATH, TEXT],
+                files,
+                ignore: ['@practice/*'],
+            })
+        ).toEqual([])
+    })
+
+    test('its text names each package with the bump, then the summary', () => {
+        expect(
+            changesetText({
+                packages: ['@practice/math', '@practice/text'],
+                bump: 'major',
+                summary:
+                    'Practice spec ([#10](https://github.com/acme/app/issues/10))',
+            })
+        ).toBe(
+            '---\n"@practice/math": major\n"@practice/text": major\n---\n\nPractice spec ([#10](https://github.com/acme/app/issues/10))\n'
+        )
     })
 })
