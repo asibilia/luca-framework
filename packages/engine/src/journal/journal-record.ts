@@ -14,6 +14,7 @@ import {
     LeftoverHitSchema,
     LeftoverPassSchema,
     RedCheckResultSchema,
+    TestCaseSchema,
     TestRunSchema,
 } from '../gates/gate-schemas'
 import {
@@ -630,7 +631,15 @@ const GatesRunTargetSchema = z.enum([...GateTargetSchema.options, 'final_slow'])
 const WorktreeResetEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('worktree_reset'),
-    content: z.object({ sha: z.string().min(1) }),
+    content: z.object({
+        sha: z.string().min(1),
+        /**
+         * The engine found this mapped test checks nothing (#581); a fresh
+         * test-writer replaces it. Left out when the implementer sent a test
+         * back.
+         */
+        bad_test: BadTestSchema.optional(),
+    }),
 })
 
 /**
@@ -655,6 +664,11 @@ const GatesRunEntrySchema = z.object({
         target: GatesRunTargetSchema,
         ok: z.boolean(),
         checks: z.array(GateCheckSchema),
+        /**
+         * A ticket's gates only: the test cases of the ticket's red test
+         * files, with their `expect()` counts (#581). Missing in old journals.
+         */
+        cases: z.array(TestCaseSchema).optional(),
     }),
 })
 

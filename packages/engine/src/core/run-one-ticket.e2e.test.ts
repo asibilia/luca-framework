@@ -4,6 +4,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { EMPTY_TEST_REASON } from './decide-build'
+
 import { createScriptedLauncher } from '../agents/scripted-launcher'
 import {
     CLEAN_LENS_TURNS,
@@ -29,6 +31,22 @@ const PASSING_SUM_TEST = SUM_TEST.replace(
     "import { sum } from './sum'",
     'const sum = ({ numbers }: { numbers: number[] }) =>\n    numbers.reduce((a, b) => a + b, 0)'
 )
+
+/** A sum test that fails now (sum is missing) but runs no expect(), so it checks nothing (#581). */
+const EMPTY_SUM_TEST = `import { describe, test } from 'bun:test'
+
+import { sum } from './sum'
+
+describe('sum', () => {
+    test('adds two numbers', () => {
+        sum({ numbers: [1, 2] })
+    })
+
+    test('of no numbers is zero', () => {
+        sum({ numbers: [] })
+    })
+})
+`
 
 /**
  * A repo with a local workspace package that nothing depends on yet. Bun
@@ -202,6 +220,34 @@ describe('one ticket, end to end, with scripted agents', () => {
             'ticket',
             'run_branch',
         ])
+
+        // The ticket's gates journal the cases of its red test files, each
+        // with its expect() count (#581); the join's gates journal none.
+        const [ticketGates, joinGates] = find('gates_run')
+        expect(
+            ticketGates?.content.cases?.map(
+                ({ file, full_name, status, assertions }) => ({
+                    file,
+                    full_name,
+                    status,
+                    assertions,
+                })
+            )
+        ).toEqual([
+            {
+                file: 'src/sum.test.ts',
+                full_name: 'sum > adds two numbers',
+                status: 'passed',
+                assertions: 1,
+            },
+            {
+                file: 'src/sum.test.ts',
+                full_name: 'sum > of no numbers is zero',
+                status: 'passed',
+                assertions: 1,
+            },
+        ])
+        expect(joinGates?.content.cases).toBeUndefined()
 
         // The leftover scan ran clean before each commit.
         expect(find('leftover_scan').map((scan) => scan.content)).toEqual([
@@ -490,6 +536,80 @@ describe('one ticket, end to end, with scripted agents', () => {
         const body = tracker.pullRequests()[0]?.body ?? ''
         expect(body).toContain('- #11: sum takes a list of numbers.')
         expect(body).toContain('- #11: 1 + 2 is 3.')
+    }, 90_000)
+
+    test('a mapped test that runs no expect() goes back to a fresh test-writer, and the run still ends in one PR (#581)', async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const launcher = createScriptedLauncher({
+            turns: [
+                // 1. The test-writer's tests fail now (no sum yet), but check nothing.
+                { ...testWriter, files: { 'src/sum.test.ts': EMPTY_SUM_TEST } },
+                // 2. The implementer's code makes them pass: with no expect().
+                implementer,
+                // 3. A fresh test-writer, told the engine found them empty, replaces them.
+                { ...testWriter, files: { 'src/sum.test.ts': SUM_TEST } },
+                // 4. A fresh implementer writes the code again.
+                implementer,
+                reviewer,
+                ...CLEAN_LENS_TURNS(10),
+            ],
+        })
+        const { action, tracker, records } = await runPractice({
+            root,
+            turns: [],
+            launcher,
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const calls = launcher.launches().filter(({ ticket }) => ticket === 11)
+        expect(calls.map(({ kind, role }) => `${kind} ${role}`)).toEqual([
+            'launch test-writer',
+            'launch implementer',
+            'launch test-writer',
+            'launch implementer',
+            'launch ticket-reviewer',
+        ])
+        const [, , tw2] = calls
+        expect(tw2?.prompt).toContain(
+            'The engine found this test checks nothing'
+        )
+        expect(tw2?.prompt).toContain('src/sum.test.ts')
+        expect(tw2?.prompt).toContain('sum > adds two numbers')
+
+        // The reset names the test and why; the gates before it saw no
+        // expect(), and the gates after it saw one in each test.
+        const [reset, ...more] = records.filter(
+            (record) => record.kind === 'worktree_reset'
+        )
+        expect(more).toHaveLength(0)
+        expect(reset?.content).toMatchObject({
+            bad_test: {
+                file: 'src/sum.test.ts',
+                name: 'sum > adds two numbers',
+                reason: EMPTY_TEST_REASON,
+            },
+        })
+        const counts = records.flatMap((record) =>
+            record.kind === 'gates_run' && record.content.target === 'ticket'
+                ? [record.content.cases?.map(({ assertions }) => assertions)]
+                : []
+        )
+        expect(counts).toEqual([
+            [0, 0],
+            [1, 1],
+        ])
+
+        // The new tests get their own red commit, which says a bad test was replaced.
+        const messages = records.flatMap((record) =>
+            record.kind === 'commit_made' ? [record.content.message] : []
+        )
+        expect(messages).toEqual([
+            'test: add failing tests for #11 Add sum',
+            'test: replace a bad test for #11 Add sum',
+            'feat: build #11 Add sum',
+        ])
+        expect(tracker.pullRequests()).toHaveLength(1)
     }, 90_000)
 
     test('a ticket that adds a package gets the install from the engine, and the lockfile in its green commit', async () => {

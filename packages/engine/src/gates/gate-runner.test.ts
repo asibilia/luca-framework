@@ -408,6 +408,76 @@ describe("a ticket's own slow test files in the gates (#564)", () => {
             await rm(folder, { recursive: true, force: true })
         }
     }, 20_000)
+
+    test("the gates' test cases are those of the fast runs and the own-files run, with their expect() counts (#581)", async () => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
+        try {
+            await Bun.write(join(folder, 'fast.test.ts'), PASSING)
+            await Bun.write(
+                join(folder, 'own.e2e.test.ts'),
+                "import { test } from 'bun:test'; test('own', () => {})"
+            )
+            const ran = await runGates({
+                cwd: folder,
+                config,
+                install: null,
+                test_files: ['fast.test.ts', 'own.e2e.test.ts'],
+                report_file: join(folder, 'report.xml'),
+                own_test_files: ['own.e2e.test.ts'],
+            })
+
+            expect(ran.ok).toBe(true)
+            expect(
+                ran.cases.map(({ file, full_name, status, assertions }) => ({
+                    file,
+                    full_name,
+                    status,
+                    assertions,
+                }))
+            ).toEqual([
+                {
+                    file: 'fast.test.ts',
+                    full_name: 'fast',
+                    status: 'passed',
+                    assertions: 1,
+                },
+                {
+                    file: 'own.e2e.test.ts',
+                    full_name: 'own',
+                    status: 'passed',
+                    assertions: 0,
+                },
+            ])
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }, 20_000)
+
+    test('a pass_fail command, and gates that stop at a failed install, give no cases', async () => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
+        try {
+            const passFail = await runGates({
+                cwd: folder,
+                config: EngineConfigSchema.parse({ checks: { test: 'true' } }),
+                install: null,
+                test_files: [],
+                report_file: join(folder, 'report.xml'),
+            })
+            expect(passFail.cases).toEqual([])
+
+            const noInstall = await runGates({
+                cwd: folder,
+                config,
+                install: 'false',
+                test_files: [],
+                report_file: join(folder, 'report.xml'),
+            })
+            expect(noInstall.ok).toBe(false)
+            expect(noInstall.cases).toEqual([])
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }, 20_000)
 })
 
 describe("runSlowTests: the final review's slow tests (#563)", () => {

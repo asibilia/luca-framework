@@ -433,6 +433,21 @@ describe("stuck text keeps the implementer's reason (#490)", () => {
         ).toBe('src/sum.test.ts > sum > adds: Wrong sum.')
     })
 
+    test('a test the engine found checks nothing says so first (#581)', () => {
+        const bad_test = {
+            file: 'src/sum.test.ts',
+            name: 'sum > adds',
+            reason: 'It runs no expect().',
+        }
+
+        expect(badTestDetail({ bad_test, by: 'engine' })).toBe(
+            'The engine found this test checks nothing: src/sum.test.ts > sum > adds: It runs no expect().'
+        )
+        expect(badTestDetail({ bad_test, by: 'implementer' })).toBe(
+            badTestDetail({ bad_test })
+        )
+    })
+
     test('a long reason is clipped like other outputs', () => {
         const reason = `${'a'.repeat(5000)}${'b'.repeat(5000)}`
         const detail = badTestDetail({

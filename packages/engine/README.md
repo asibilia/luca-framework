@@ -186,6 +186,8 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
               second red commit, fresh implementer (once)               ──> worktree_reset
   run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
+    a mapped test passed with no expect(): reset_ticket_worktree, then as for
+              a bad test, counted toward the same cap (#581)            ──> worktree_reset (with bad_test)
   commit_ticket green     leftover scan, then commit                     ──> leftover_scan, commit_made
   launch_agent ticket-reviewer  a fresh reviewer: the diff, the gate results ──> agent_started, agent_finished
     blockers or should-fixes: a review fix round, ≤ 3 rounds
@@ -703,6 +705,23 @@ test on a refactor ticket. Every bad-test stuck detail, and so the spec
 comment, names the test's file and name and quotes the implementer's reason,
 clipped like other outputs (#490). It says "no reason given" only when the
 implementer gave none.
+
+**A test that checks nothing** (#581). A ticket's gates journal `cases` in
+`gates_run`: the test cases of the ticket's red test files, from the fast runs
+and the run of its own slow test files, each with its `expect()` count (join
+and final gates leave them out). Once the gates pass, a mapped test that
+passed with `assertions` of 0 sends the ticket back the way a bad test does:
+`reset_ticket_worktree` journals `worktree_reset` with a `bad_test` (the
+file, the name, and why), and a fresh test-writer is told "The engine found
+this test checks nothing". It counts toward the same cap
+(`MAX_BAD_TEST_BOUNCES`), so a second empty test, or one after the implementer
+already sent a test back, is stuck (`bad_test`). A mapped test the gates did
+not run or that did not pass is left to the other checks, an older journal's
+cases carry no count so nothing is sent back, and a refactor ticket (no map)
+or a ticket rejoining after a rebase (its code is already reviewed) is not
+checked. A review fix's gates are not checked either: their tests are not
+red-checked. Replay keeps who sent the test back as `bad_test_by`
+(`implementer` or `engine`), which words the prompt and the stuck text.
 
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,

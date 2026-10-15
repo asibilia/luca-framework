@@ -38,6 +38,7 @@ import type {
     GateCheck,
     LeftoverHit,
     RedCheckResult,
+    TestCase,
     TestRun,
 } from '../gates/gate-schemas'
 import type {
@@ -113,8 +114,16 @@ type TestsSentBackContent = Extract<
     { kind: 'tests_sent_back' }
 >['content']
 
-/** One gate run, as journaled. */
-export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
+/**
+ * One gate run, as journaled. A ticket's gates also carry the test cases of
+ * its red test files, with their `expect()` counts (#581); none in an older
+ * journal, or in a join's or the final review's gates.
+ */
+export type ReplayedGates = {
+    ok: boolean
+    checks: GateCheck[]
+    cases?: TestCase[]
+}
 
 /** The red check's verdict, plus the test run's (clipped) output. */
 export type ReplayedRedCheck = RedCheckResult & { output: string }
@@ -195,6 +204,12 @@ export type TicketProgress = {
     bad_test_bounces: number
     /** The latest test sent back as bad, for the fresh test-writer's prompt. */
     bad_test: BadTest | null
+    /**
+     * Who sent `bad_test` back: the implementer, or the engine, which found a
+     * mapped test that passes with no `expect()` (#581). The prompt and the
+     * stuck text word it differently.
+     */
+    bad_test_by: 'implementer' | 'engine'
     /** The session each role's latest turn ran in, for follow-ups. */
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
@@ -626,6 +641,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     gate_fix_rounds: 0,
     bad_test_bounces: 0,
     bad_test: null,
+    bad_test_by: 'implementer',
     sessions: {},
     assumptions: [],
     review: null,
@@ -1859,6 +1875,7 @@ const resultChange = ({
                         ? { bad_test: null }
                         : {
                               bad_test,
+                              bad_test_by: 'implementer',
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1873,6 +1890,7 @@ const resultChange = ({
                         ? {}
                         : {
                               bad_test,
+                              bad_test_by: 'implementer',
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1896,6 +1914,7 @@ const resultChange = ({
                     : {
                           bad_test_bounces: progress.bad_test_bounces + 1,
                           bad_test,
+                          bad_test_by: 'implementer',
                       }
             const round: Partial<TicketProgress> =
                 progress.gates === null
@@ -2129,8 +2148,17 @@ const progressChange = ({
             })
         case 'worktree_reset':
             // A fresh test-writer and implementer start over on a clean
-            // worktree; the bad test and its count stay.
+            // worktree; the bad test and its count stay. A reset that carries
+            // a bad test is the engine's own finding (#581): it sets the bad
+            // test, names the engine as its source, and counts as a bounce.
             return {
+                ...(record.content.bad_test === undefined
+                    ? {}
+                    : {
+                          bad_test: record.content.bad_test,
+                          bad_test_by: 'engine' as const,
+                          bad_test_bounces: progress.bad_test_bounces + 1,
+                      }),
                 test_writer: null,
                 red_check: null,
                 red_tests: [],
@@ -2164,9 +2192,16 @@ const progressChange = ({
                 },
             }
         case 'gates_run': {
-            const { ok, checks } = record.content
+            const { ok, checks, cases } = record.content
+            // Only a ticket's own gates keep their cases (#581).
             return record.content.target === 'ticket'
-                ? { gates: { ok, checks } }
+                ? {
+                      gates: {
+                          ok,
+                          checks,
+                          ...(cases === undefined ? {} : { cases }),
+                      },
+                  }
                 : { join_gates: { ok, checks } }
         }
         case 'ticket_joined':

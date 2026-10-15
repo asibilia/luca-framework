@@ -1,4 +1,4 @@
-import type { GateCheck, GateName, TestRun } from './gate-schemas'
+import type { GateCheck, GateName, TestCase, TestRun } from './gate-schemas'
 import { PREPARE_SLOTS } from './prepare-slots'
 import {
     fileTestsCommand,
@@ -234,6 +234,10 @@ const testChecks = async ({
  * gives no results (its files don't load) adds no check after a failed fast
  * run, which already fails the gate.
  *
+ * Also returns `cases`, the test cases of the fast `bun` runs and the
+ * own-files run, each with its `expect()` count, so the engine can find a
+ * mapped test that checks nothing (#581). A `pass_fail` command has none.
+ *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
  * would only fail on the missing packages. The config's prepare command
@@ -242,7 +246,7 @@ const testChecks = async ({
  * what it made).
  *
  * @example
- * const { ok, checks } = await runGates({ cwd, config, test_files, report_file, install: null })
+ * const { ok, checks, cases } = await runGates({ cwd, config, test_files, report_file, install: null })
  */
 export const runGates = async ({
     cwd,
@@ -279,7 +283,7 @@ export const runGates = async ({
      * `test_case_timeout_ms` by measured time (#580); left out, none.
      */
     measured_files?: string[]
-}): Promise<{ ok: boolean; checks: GateCheck[] }> => {
+}): Promise<{ ok: boolean; checks: GateCheck[]; cases: TestCase[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
         const installed = await shellCheck({
@@ -288,13 +292,13 @@ export const runGates = async ({
             cwd,
         })
         checks.push(installed)
-        if (!installed.ok) return { ok: false, checks }
+        if (!installed.ok) return { ok: false, checks, cases: [] }
     }
     const prepare = () => prepareCheck({ config, cwd })
     const prepared = await (around_prepare?.(prepare) ?? prepare())
     if (prepared !== null) {
         checks.push(prepared)
-        if (!prepared.ok) return { ok: false, checks }
+        if (!prepared.ok) return { ok: false, checks, cases: [] }
     }
     const { types, lint } = config.checks
     const timeout_ms = testTimeoutOf({ config })
@@ -314,6 +318,8 @@ export const runGates = async ({
                 : { limit_ms, measured_files: measured_files ?? [] },
     })
     checks.push(...fastChecks.checks)
+    // The test cases the gates saw, for the empty-test check (#581).
+    const cases = fastChecks.runs.flatMap((run) => run.cases)
     // A file with no fast bun run at all has no run to have given it results,
     // so it is not one the fast run left out.
     const unrun = (own_test_files ?? []).filter(
@@ -335,6 +341,7 @@ export const runGates = async ({
             }),
             timeout_ms,
         })
+        cases.push(...run.cases)
         // A run with no results at all means its files don't load. After a
         // failed fast run that is no news (the gate fails anyway, and the
         // slow file's load error shows on the next run, once that is fixed);
@@ -371,7 +378,7 @@ export const runGates = async ({
         if (command === undefined) continue
         checks.push(await shellCheck({ name, command, cwd }))
     }
-    return { ok: checks.every(({ ok }) => ok), checks }
+    return { ok: checks.every(({ ok }) => ok), checks, cases }
 }
 
 /**

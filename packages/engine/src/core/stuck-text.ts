@@ -364,7 +364,8 @@ export const setupChangeDetail = ({
 /**
  * A test sent back as bad, for a stuck detail: its file and name, then the
  * implementer's reason, clipped like other outputs (#490). "no reason given"
- * only when there is none.
+ * only when there is none. A test the engine found checks nothing (#581,
+ * `by: 'engine'`) says so first.
  *
  * @example
  * badTestDetail({ bad_test: { file: 'src/sum.test.ts', name: 'sum > adds', reason: 'Wrong sum.' } })
@@ -372,8 +373,11 @@ export const setupChangeDetail = ({
  */
 export const badTestDetail = ({
     bad_test,
+    by,
 }: {
     bad_test: BadTest | null
+    /** Who sent the test back. Defaults to the implementer. */
+    by?: 'implementer' | 'engine'
 }): string => {
     const reason =
         bad_test === null || bad_test.reason.trim() === ''
@@ -383,7 +387,10 @@ export const badTestDetail = ({
         bad_test === null
             ? ''
             : [bad_test.file, bad_test.name].filter(Boolean).join(' > ')
-    return where === '' ? reason : `${where}: ${reason}`
+    const detail = where === '' ? reason : `${where}: ${reason}`
+    return by === 'engine'
+        ? `The engine found this test checks nothing: ${detail}`
+        : detail
 }
 
 /** The comment a skipped ticket gets on its own issue. */

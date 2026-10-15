@@ -1290,11 +1290,26 @@ export const gatesIn = async ({
         own_test_files,
         measured_files: changed_test_files,
     })
+    // A ticket's gates journal the cases of its red test files, with their
+    // expect() counts, so a mapped test that checks nothing is found (#581).
+    // Join and final gates leave them out, which keeps journals small.
+    const red_files =
+        target === 'ticket' && ticket !== null
+            ? (context.state.tickets[ticket]?.red_tests ?? []).map(
+                  ({ file }) => file
+              )
+            : []
+    const cases = result.cases.filter(({ file }) => red_files.includes(file))
     context.journal.append({
         kind: 'gates_run',
         ticket,
         role: null,
-        content: { target, ...result },
+        content: {
+            target,
+            ok: result.ok,
+            checks: result.checks,
+            ...(cases.length === 0 ? {} : { cases }),
+        },
     })
 }
 
@@ -1561,7 +1576,12 @@ export const executeBuildAction = async ({
                 kind: 'worktree_reset',
                 ticket: action.ticket,
                 role: null,
-                content: { sha },
+                content: {
+                    sha,
+                    ...(action.bad_test === undefined
+                        ? {}
+                        : { bad_test: action.bad_test }),
+                },
             })
             return
         }

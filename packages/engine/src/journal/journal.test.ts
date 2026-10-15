@@ -16,6 +16,8 @@ import { replayRun } from './replay'
 
 import { AgentRoleSchema } from '../agents/role-results'
 import {
+    gatesRun,
+    implemented,
     intakePassed,
     practiceTicket,
     redCheck,
@@ -474,5 +476,128 @@ describe("replay: a ticket's red tests", () => {
                 worktreeReset({ ticket: 11 }),
             ])
         ).toEqual([])
+    })
+})
+
+/**
+ * A mapped test the engine found checks nothing (#581): the reset it causes
+ * is journaled with the `bad_test`, which replay keeps for the fresh
+ * test-writer, counts toward the bad-test cap, and names as the engine's.
+ */
+describe('replay: a bad test the engine found (#581)', () => {
+    const BAD_TEST = {
+        file: 'src/sum.test.ts',
+        name: 'sum adds two numbers',
+        reason: 'It passes but runs no expect(), so it checks nothing (#581).',
+    }
+
+    const progressAfter = (
+        entries: Parameters<typeof recordsFrom>[0]['entries']
+    ) =>
+        replayRun({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassed({
+                        tickets: [practiceTicket({ number: 11 })],
+                    }),
+                    ticketWorktreeCreated({ ticket: 11 }),
+                    ...entries,
+                ],
+            }),
+        }).tickets[11]
+
+    test('a reset with a bad_test sets it, names the engine as its source, and adds one to the bounces', () => {
+        const progress = progressAfter([
+            worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+        ])
+
+        expect(progress?.bad_test).toEqual(BAD_TEST)
+        expect(progress?.bad_test_by).toBe('engine')
+        expect(progress?.bad_test_bounces).toBe(1)
+        // The rest of the reset is as for any reset.
+        expect(progress?.implementer).toBeNull()
+        expect(progress?.gates).toBeNull()
+    })
+
+    test('a reset without one changes none of the three', () => {
+        const fresh = progressAfter([worktreeReset({ ticket: 11 })])
+
+        expect(fresh?.bad_test).toBeNull()
+        expect(fresh?.bad_test_by).toBe('implementer')
+        expect(fresh?.bad_test_bounces).toBe(0)
+
+        const bounced = progressAfter([
+            implemented({ ticket: 11, outcome: 'bad_test' }),
+            worktreeReset({ ticket: 11 }),
+        ])
+        expect(bounced?.bad_test?.reason).toBe('Wrong sum.')
+        expect(bounced?.bad_test_by).toBe('implementer')
+        expect(bounced?.bad_test_bounces).toBe(1)
+    })
+
+    test("an implementer's bad test after the engine's names the implementer, and adds to the count", () => {
+        const progress = progressAfter([
+            worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+            implemented({ ticket: 11, outcome: 'bad_test' }),
+        ])
+
+        expect(progress?.bad_test?.reason).toBe('Wrong sum.')
+        expect(progress?.bad_test_by).toBe('implementer')
+        expect(progress?.bad_test_bounces).toBe(2)
+    })
+
+    test("a ticket's gates keep the cases they journal; join gates and older records have none", () => {
+        const cases = [
+            {
+                file: 'src/sum.test.ts',
+                full_name: 'sum adds two numbers',
+                status: 'passed' as const,
+                assertions: 2,
+            },
+        ]
+        const ticket = progressAfter([
+            gatesRun({ ticket: 11, target: 'ticket', ok: true, cases }),
+        ])
+        expect(ticket?.gates?.cases).toEqual(cases)
+
+        const older = progressAfter([
+            gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+        ])
+        expect(older?.gates?.ok).toBe(true)
+        expect(older?.gates?.cases).toBeUndefined()
+
+        const join = progressAfter([
+            gatesRun({ ticket: 11, target: 'run_branch', ok: true, cases }),
+        ])
+        expect(join?.join_gates?.cases).toBeUndefined()
+    })
+
+    test('records from an older engine still read: gates_run without cases, worktree_reset without bad_test', () => {
+        const read = (record: unknown) => JournalEntrySchema.safeParse(record)
+
+        expect(
+            read({
+                kind: 'gates_run',
+                ticket: 11,
+                role: null,
+                content: { target: 'ticket', ok: true, checks: [] },
+            }).success
+        ).toBe(true)
+        expect(
+            read({
+                kind: 'worktree_reset',
+                ticket: 11,
+                role: null,
+                content: { sha: 'red-sha' },
+            }).success
+        ).toBe(true)
+        expect(
+            read({
+                kind: 'worktree_reset',
+                ticket: 11,
+                role: null,
+                content: { sha: 'red-sha', bad_test: BAD_TEST },
+            }).success
+        ).toBe(true)
     })
 })

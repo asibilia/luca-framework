@@ -56,6 +56,7 @@ import {
 } from '../agents/role-prompts'
 import type { AgentRole, BadTest, CriterionTests } from '../agents/role-results'
 import { endedText } from '../gates/gate-schemas'
+import { findCase } from '../gates/red-check'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     ChangesetBump,
@@ -166,9 +167,11 @@ export type BuildAction =
       }
     /**
      * Throw away every uncommitted change in the ticket's worktree, so a
-     * fresh test-writer starts clean after a bad test.
+     * fresh test-writer starts clean after a bad test. With a `bad_test`, the
+     * engine itself found the test checks nothing (#581); without one, the
+     * implementer sent it back.
      */
-    | { type: 'reset_ticket_worktree'; ticket: number }
+    | { type: 'reset_ticket_worktree'; ticket: number; bad_test?: BadTest }
     /** Prove every criterion has a test, new tests fail, old tests pass. */
     | {
           type: 'run_red_check'
@@ -450,6 +453,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         // A test update names the bad test in its own section.
         bad_test: progress.test_update === null ? progress.bad_test : null,
+        bad_test_by: progress.bad_test_by,
         sections: [
             ...promptSections({ role, progress }),
             ...(follow_up === undefined
@@ -514,7 +518,7 @@ const commitStep = ({
 
 /** The latest bad test, for a stuck detail (#490). */
 const badTestText = ({ progress }: { progress: TicketProgress }): string =>
-    badTestDetail({ bad_test: progress.bad_test })
+    badTestDetail({ bad_test: progress.bad_test, by: progress.bad_test_by })
 
 /**
  * The test-writer's half of a ticket: fresh tests, the red check and its fix
@@ -658,8 +662,55 @@ const codeStep = ({
     }
     return (
         gateStep({ snapshot, ticket, progress, run_notes }) ??
+        emptyTestStep({ ticket, progress }) ??
         commitStep({ stage: 'green', ticket, progress })
     )
+}
+
+/** Why the engine sends back a mapped test that checks nothing (#581). */
+export const EMPTY_TEST_REASON =
+    'It passes but runs no expect(), so it checks nothing (#581).'
+
+/**
+ * After a ticket's gates pass: a mapped test that passed with no `expect()`
+ * goes back to a fresh test-writer, like a bad test (#581), and counts toward
+ * the same cap. Not on a refactor ticket (it has no map), and not after a
+ * rebase (the code is already reviewed). An older journal's cases carry no
+ * count, so nothing is sent back. `null`: go on.
+ *
+ * It is not part of `gateStep`, which the review's fixes also use: their
+ * tests are not red-checked.
+ */
+const emptyTestStep = ({
+    ticket,
+    progress,
+}: {
+    ticket: TicketSnapshot
+    progress: TicketProgress
+}): BuildAction | null => {
+    if (isRefactorTicket({ ticket }) || progress.rejoin !== null) return null
+    const cases = progress.gates?.cases ?? []
+    const empty = progress.red_tests.find((test) => {
+        const found = findCase({ cases, test })
+        return found?.status === 'passed' && found.assertions === 0
+    })
+    if (empty === undefined) return null
+    if (progress.bad_test_bounces >= MAX_BAD_TEST_BOUNCES) {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'bad_test',
+            detail: `A mapped test still checks nothing after a fresh test-writer: "${empty.name}" in ${empty.file} runs no expect().`,
+        })
+    }
+    return {
+        type: 'reset_ticket_worktree',
+        ticket: ticket.number,
+        bad_test: {
+            file: empty.file,
+            name: empty.name,
+            reason: EMPTY_TEST_REASON,
+        },
+    }
 }
 
 /**
