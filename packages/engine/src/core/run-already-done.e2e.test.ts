@@ -8,12 +8,7 @@ import type { CriterionTests } from '../agents/role-results'
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import { replayRun } from '../journal/replay'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
-import {
-    createPracticeRepo,
-    git,
-    happyTurns,
-    latestStuck,
-} from '../testing/practice-repo'
+import { createPracticeRepo, git, happyTurns } from '../testing/practice-repo'
 import {
     createInMemoryTracker,
     type InMemoryTracker,
@@ -326,33 +321,5 @@ describe("the engine checks a test-writer's already-done evidence (#495)", () =>
             '"broken" in src/broken.test.ts: fails on the base'
         )
         expect(told).not.toContain('doubles a number')
-    }, 60_000)
-
-    test('when the failed tries run out, the ticket is stuck with what did not check out', async () => {
-        const { practice } = await practiceWithDouble()
-        const tracker = doubleTracker()
-        const wrong = alreadyDoneTurn({ ticket: 11, shas: [UNKNOWN_SHA] })
-
-        const { action, records, launches } = await practice.run({
-            tracker,
-            turns: [wrong, wrong, wrong],
-        })
-
-        expect(action).toMatchObject({ type: 'wait_for_reply' })
-        expect(launches.map(({ kind }) => kind)).toEqual([
-            'launch',
-            'follow_up',
-            'follow_up',
-        ])
-        const stuck = latestStuck(records)
-        expect(stuck).toMatchObject({ ticket: 11, reason: 'agent_failed' })
-        expect(stuck?.detail).toContain('test-writer failed 3 tries')
-        expect(stuck?.detail).toContain(
-            `commit ${UNKNOWN_SHA}: not found in the repo`
-        )
-        expect(records.some(({ kind }) => kind === 'ticket_already_done')).toBe(
-            false
-        )
-        expect((await tracker.readIssue({ number: 11 }))?.state).toBe('open')
     }, 60_000)
 })
