@@ -1,9 +1,12 @@
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+
+import { shipFinalReview } from './execute-final-review'
+import { MAX_FIX_ROUNDS } from './loop-caps'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { Journal } from '../journal/journal'
@@ -24,7 +27,10 @@ import {
  * the changeset, named in the PR's open findings as not reviewed.
  *
  * Two stuck runs, each built once (#566): one shipped with edits left
- * uncommitted, one shipped with none.
+ * uncommitted, one shipped with none. The first also checks a stuck final
+ * review end to end: told on the spec, waiting for the owner's `ship`
+ * (moved here from `final-review.e2e.test.ts`, which ran the same stuck
+ * review).
  */
 
 const changesetConfig = (): string =>
@@ -222,19 +228,63 @@ describe('a shipped final review with uncommitted edits, on one run', () => {
     let origin = ''
     let before = ''
     let pr: Awaited<ReturnType<typeof ship>>['pr']
+    let stuck: Awaited<ReturnType<typeof runToStuckFinalReview>>
+    let shipped: Awaited<ReturnType<typeof ship>>['shipped']
+    let keptWhileStuck = false
 
     beforeAll(async () => {
         root = await mkdtemp(join(tmpdir(), 'luca-ship-uncommitted-'))
-        const stuck = await runToStuckFinalReview({ under: root })
+        stuck = await runToStuckFinalReview({ under: root })
+        keptWhileStuck = existsSync(stuck.worktree)
         before = await git(stuck.worktree, 'rev-parse', 'HEAD')
         writeFileSync(join(stuck.worktree, 'src/sum.test.ts'), SUM_TEST_EDITED)
         writeFileSync(join(stuck.worktree, 'src/sum-one.test.ts'), NEW_TEST)
-        ;({ pr } = await ship(stuck))
+        // Someone else's `ship` doesn't count; the spec owner's (from
+        // `ship`) does.
+        stuck.stuck.tracker.addComment({
+            number: 10,
+            author: 'passer-by',
+            body: 'ship',
+        })
+        ;({ pr, shipped } = await ship(stuck))
         origin = stuck.practice.origin
     }, 180_000)
 
     afterAll(async () => {
         await rm(root, { recursive: true, force: true })
+    })
+
+    test(`stuck after ${MAX_FIX_ROUNDS} fix rounds, told on the spec; only the owner's ship reply opens the PR, and the run branch's worktree, kept while stuck, then goes`, () => {
+        // The run waited for a reply; the spec issue heard why.
+        const [report] = stuck.stuck.tracker.commentsOn({ number: 10 })
+        expect(report).toContain('The final review is stuck')
+        expect(report).toContain(
+            'Why: The final review still asks for changes.'
+        )
+        expect(report).toContain('`ship`')
+        expect(
+            stuck.stuck.launches.filter(({ role }) => role === 'security-lens')
+        ).toHaveLength(MAX_FIX_ROUNDS + 1)
+        expect(keptWhileStuck).toBe(true)
+
+        expect(
+            shipped.records
+                .filter((record) => record.kind === 'reply_received')
+                .map((record) => record.content)
+        ).toEqual([
+            expect.objectContaining({
+                word: 'ship',
+                ticket: null,
+                author: SPEC_OWNER,
+            }),
+        ])
+        expect(pr.body).toContain(
+            '- security lens, should-fix (src/sum.ts): security-S1 Name the accumulator for what it holds'
+        )
+        expect(existsSync(stuck.worktree)).toBe(false)
+        expect(
+            shipFinalReview({ journal: stuck.practice.journal })
+        ).toMatchObject({ ok: false })
     })
 
     test('the edits get their own commit, named for the shipped round, before the changeset commit', async () => {

@@ -1,17 +1,20 @@
-import { existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-
-import { shipFinalReview } from './execute-final-review'
-import { MAX_FIX_ROUNDS } from './loop-caps'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
 import type { ScriptedCall, ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
-import { SPEC_OWNER } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     git,
@@ -27,17 +30,12 @@ import {
  * Seam 2, the final review: the practice ticket end to end with scripted
  * agents, then the five lenses on the whole run branch. The gates, commits,
  * pushes, and PR are real. Final review agents run as spec #10's.
+ *
+ * A final review stuck at its cap, told on the spec, and shipped by the
+ * owner's reply runs end to end in `run-ship-uncommitted.e2e.test.ts`; its
+ * decisions are in `decide-stuck.test.ts` and `decide-final-review.test.ts`
+ * (#566).
  */
-
-let root = ''
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-engine-final-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
 
 const SUM_TEST_WITH_NEGATIVES = SUM_TEST.replace(
     "    test('of no numbers is zero'",
@@ -108,11 +106,32 @@ const commitsOf = (records: JournalRecord[]) =>
 const lensCalls = (launches: ScriptedCall[]) =>
     launches.filter(({ role }) => role.endsWith('-lens'))
 
-describe('the final review, end to end', () => {
-    test('a clean final review of the whole run branch opens the PR', async () => {
-        const practice = await createPracticeRepo({ root })
-        const run = await practice.run({ turns: HAPPY_TURNS })
+describe('a clean final review, end to end, on one run', () => {
+    // One clean run, built once (#566), in a repo whose config names a rule
+    // file it has and one that is missing.
+    let root = ''
+    let run: Awaited<
+        ReturnType<Awaited<ReturnType<typeof createPracticeRepo>>['run']>
+    >
 
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-final-'))
+        const practice = await createPracticeRepo({
+            root,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                rule_files: ['RULES.md', '~/.luca-missing-rule-for-tests.md'],
+            },
+            files: { 'RULES.md': '# Rules\n\nNever abbreviate a name.\n' },
+        })
+        run = await practice.run({ turns: HAPPY_TURNS })
+    }, 120_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('a clean final review of the whole run branch opens the PR', () => {
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const lenses = lensCalls(run.launches)
         expect(lenses.map(({ role }) => role).toSorted()).toEqual(
@@ -159,7 +178,34 @@ describe('the final review, end to end', () => {
             run.records.findIndex(({ kind }) => kind === 'pull_request_opened')
         )
         expect(run.tracker.pullRequests()).toHaveLength(1)
-    }, 60_000)
+    })
+
+    test("the rules lens's prompt holds the config's rule files", () => {
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const rules = lensCalls(run.launches).find(
+            ({ role }) => role === 'rules-lens'
+        )
+        expect(rules?.prompt).toContain('### RULES.md')
+        expect(rules?.prompt).toContain('Never abbreviate a name.')
+        expect(rules?.prompt).toContain('### ~/.luca-missing-rule-for-tests.md')
+        expect(rules?.prompt).toContain('The engine could not read this file.')
+        const security = lensCalls(run.launches).find(
+            ({ role }) => role === 'security-lens'
+        )
+        expect(security?.prompt).not.toContain('Never abbreviate a name.')
+    })
+})
+
+describe('the final review, end to end', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-final-'))
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
     test('a code finding and a test finding are fixed on the whole run branch, then re-reviewed', async () => {
         const practice = await createPracticeRepo({ root })
@@ -294,129 +340,5 @@ describe('the final review, end to end', () => {
         expect(securityAgain?.prompt).toContain('security-S1')
         expect(securityAgain?.prompt).toContain('Fixer: fixed.')
         expect(securityAgain?.prompt).not.toContain('architecture-A1')
-    }, 60_000)
-
-    test(`stuck after ${MAX_FIX_ROUNDS} fix rounds, told on the spec; the owner's ship reply then opens the PR with the open findings at the top`, async () => {
-        const practice = await createPracticeRepo({ root })
-        const stubborn = lensTurn({
-            lens: 'security',
-            findings: [{ ...SECURITY_FINDING, id: 'security-S1' }],
-        })
-        const refuse: ScriptedTurn = {
-            role: 'implementer',
-            ticket: 10,
-            result: {
-                ...IMPLEMENTER_RESULT,
-                finding_responses: [
-                    {
-                        finding_id: 'security-S1',
-                        response: 'wont_fix',
-                        reason: 'No.',
-                    },
-                ],
-            },
-        }
-        const stuck = await practice.run({
-            turns: [
-                ...Object.values(happyTurns()),
-                stubborn,
-                refuse,
-                stubborn,
-                refuse,
-                stubborn,
-                refuse,
-                stubborn,
-            ],
-        })
-
-        // The run waits for a reply; the spec issue heard why.
-        expect(stuck.action).toMatchObject({ type: 'wait_for_reply' })
-        expect(stuck.tracker.pullRequests()).toEqual([])
-        const [report] = stuck.tracker.commentsOn({ number: 10 })
-        expect(report).toContain('The final review is stuck')
-        expect(report).toContain(
-            'Why: The final review still asks for changes.'
-        )
-        expect(report).toContain('`ship`')
-        expect(
-            stuck.launches.filter(({ role }) => role === 'security-lens')
-        ).toHaveLength(MAX_FIX_ROUNDS + 1)
-        // The run branch's worktree stays for a retry.
-        const runBranch = stuck.records.find(
-            (record) => record.kind === 'run_branch_created'
-        )
-        const runBranchPath =
-            runBranch?.kind === 'run_branch_created'
-                ? runBranch.content.path
-                : ''
-        expect(existsSync(runBranchPath)).toBe(true)
-
-        // Someone else's `ship` doesn't count; the spec owner's does.
-        stuck.tracker.addComment({
-            number: 10,
-            author: 'passer-by',
-            body: 'ship',
-        })
-        stuck.tracker.addComment({
-            number: 10,
-            author: SPEC_OWNER,
-            body: 'ship',
-        })
-        const shipped = await practice.run({
-            tracker: stuck.tracker,
-            resume: true,
-            stop_before: [],
-            clock: { now: () => Date.now(), sleep: async () => undefined },
-        })
-
-        expect(shipped.action).toMatchObject({
-            type: 'done',
-            outcome: 'pr_opened',
-        })
-        expect(
-            shipped.records
-                .filter((record) => record.kind === 'reply_received')
-                .map((record) => record.content)
-        ).toEqual([
-            expect.objectContaining({
-                word: 'ship',
-                ticket: null,
-                author: SPEC_OWNER,
-            }),
-        ])
-        const [pr] = shipped.tracker.pullRequests()
-        expect(pr?.body.startsWith('## Open findings')).toBe(true)
-        expect(pr?.body).toContain(
-            '- security lens, should-fix (src/sum.ts): security-S1 Name the accumulator for what it holds'
-        )
-        expect(existsSync(runBranchPath)).toBe(false)
-        expect(shipFinalReview({ journal: practice.journal })).toMatchObject({
-            ok: false,
-        })
-    }, 60_000)
-
-    test("the rules lens's prompt holds the config's rule files", async () => {
-        const practice = await createPracticeRepo({
-            root,
-            config: {
-                ...PRACTICE_ENGINE_CONFIG,
-                rule_files: ['RULES.md', '~/.luca-missing-rule-for-tests.md'],
-            },
-            files: { 'RULES.md': '# Rules\n\nNever abbreviate a name.\n' },
-        })
-        const run = await practice.run({ turns: HAPPY_TURNS })
-
-        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const rules = lensCalls(run.launches).find(
-            ({ role }) => role === 'rules-lens'
-        )
-        expect(rules?.prompt).toContain('### RULES.md')
-        expect(rules?.prompt).toContain('Never abbreviate a name.')
-        expect(rules?.prompt).toContain('### ~/.luca-missing-rule-for-tests.md')
-        expect(rules?.prompt).toContain('The engine could not read this file.')
-        const security = lensCalls(run.launches).find(
-            ({ role }) => role === 'security-lens'
-        )
-        expect(security?.prompt).not.toContain('Never abbreviate a name.')
     }, 60_000)
 })

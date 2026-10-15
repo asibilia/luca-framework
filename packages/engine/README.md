@@ -2013,11 +2013,12 @@ the gates and their fix loop, the fix commit and push, re-reviews of only the
 new changes by only the lenses with findings, pushback, the round cap, failed
 lens and fixer tries, and a stuck final review ending the run, then `ship`
 opening the PR with the open findings at the top. `src/core/final-review.e2e.test.ts`
-runs it end to end with scripted lenses: a clean one, a code and a test
+runs it end to end with scripted lenses: a clean one, with the rules lens
+reading a rule file from the practice repo's config, and a code and a test
 finding fixed on the whole run branch (the fix commit on origin, the fixers'
-and re-reviewers' prompts), one stuck at the cap and then shipped with
-`shipFinalReview`, and the rules lens reading a rule file from the practice
-repo's config.
+and re-reviewers' prompts). `src/core/run-ship-uncommitted.e2e.test.ts` runs
+one stuck at the cap and then shipped, after which `shipFinalReview` refuses
+it.
 `src/core/agent-guards.e2e.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
 and retries that follow. Its rule breaks share three runs, each with up to two
@@ -2048,10 +2049,10 @@ comment, other tickets building, the join undone, each reply word, named
 tickets when several are stuck, replies from others ignored, retry with and
 without ticket edits, skip with dependents and the PR, stop, a test setup
 change, and a stuck final review's replies (`ship`, `retry`, `stop`, and
-`skip` sent back). `src/core/final-review.e2e.test.ts` runs a final review
-stuck after its fix rounds, told on the spec, then shipped by the owner's
-`ship` reply on the tracker, ending in a PR that starts with the open
-findings. `src/core/run-stuck.e2e.test.ts` runs it end to end, with a
+`skip` sent back). `src/core/run-ship-uncommitted.e2e.test.ts` runs a final
+review stuck after its fix rounds, told on the spec, then shipped by the
+owner's `ship` reply on the tracker (someone else's is ignored), ending in a
+PR that starts with the open findings. `src/core/run-stuck.e2e.test.ts` runs it end to end, with a
 scripted person replying on the in-memory tracker through a fake clock:
 retry keeping the owner's fix, retry after a ticket edit, and skip while
 another ticket builds and pushes. `src/core/decide-stuck.test.ts` checks
