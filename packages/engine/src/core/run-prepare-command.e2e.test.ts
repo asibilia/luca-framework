@@ -2,7 +2,15 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -11,6 +19,7 @@ import {
     happyTurns,
     latestStuck,
     PRACTICE_ENGINE_CONFIG,
+    type PracticeRun,
     SUM,
     SUM_TEST,
     TEST_WRITER_RESULT,
@@ -112,16 +121,6 @@ const MAP_TEST_WRITER_RESULT = {
     ],
 }
 
-let root = ''
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-engine-prepare-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
-
 const byKind = <K extends JournalRecord['kind']>(
     records: JournalRecord[],
     kind: K
@@ -145,18 +144,30 @@ const prepareTurns = () => {
     }
 }
 
-describe('a prepare command, end to end', () => {
-    test('a repo whose tests need the ignored output of its prepare command passes its baseline, red check, and gates, and joins', async () => {
+describe('a prepare command on one practice run, end to end', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
+    let root = ''
+    let run: Omit<PracticeRun, 'origin'>
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-prepare-'))
         const practice = await createPracticeRepo({
             root,
             config: PREPARE_CONFIG,
             files: PREPARE_FILES,
         })
         const { testWriter, implementer, reviewer } = prepareTurns()
-
-        const { action, records } = await practice.run({
+        run = await practice.run({
             turns: [testWriter, implementer, reviewer],
         })
+    }, 90_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('a repo whose tests need the ignored output of its prepare command passes its baseline, red check, and gates, and joins', () => {
+        const { action, records } = run
 
         expect(latestStuck(records)).toBeNull()
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
@@ -189,7 +200,34 @@ describe('a prepare command, end to end', () => {
         expect(records.some((record) => record.kind === 'ticket_joined')).toBe(
             true
         )
-    }, 90_000)
+    })
+
+    test('the test-writer and implementer prompts name the prepare command', () => {
+        const { action, launches } = run
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const prompts = launches.filter(({ ticket }) => ticket === 11)
+        const testWriterPrompt = prompts.find(
+            ({ role }) => role === 'test-writer'
+        )?.prompt
+        const implementerPrompt = prompts.find(
+            ({ role }) => role === 'implementer'
+        )?.prompt
+        expect(testWriterPrompt).toContain(PREPARE_COMMAND)
+        expect(implementerPrompt).toContain(PREPARE_COMMAND)
+    })
+})
+
+describe('a prepare command, end to end', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-prepare-'))
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
 
     test('the prepare command runs again before every later test run, so its output follows the latest code', async () => {
         const practice = await createPracticeRepo({
@@ -346,29 +384,5 @@ describe('a prepare command, end to end', () => {
         expect(stuck?.detail).toContain('Timed out after 0.5 seconds')
         expect(stuck?.detail).toContain('`prepare_timeout_ms`')
         expect(stuck?.detail).not.toContain('exit none')
-    }, 90_000)
-
-    test('the test-writer and implementer prompts name the prepare command', async () => {
-        const practice = await createPracticeRepo({
-            root,
-            config: PREPARE_CONFIG,
-            files: PREPARE_FILES,
-        })
-        const { testWriter, implementer, reviewer } = prepareTurns()
-
-        const { action, launches } = await practice.run({
-            turns: [testWriter, implementer, reviewer],
-        })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const prompts = launches.filter(({ ticket }) => ticket === 11)
-        const testWriterPrompt = prompts.find(
-            ({ role }) => role === 'test-writer'
-        )?.prompt
-        const implementerPrompt = prompts.find(
-            ({ role }) => role === 'implementer'
-        )?.prompt
-        expect(testWriterPrompt).toContain(PREPARE_COMMAND)
-        expect(implementerPrompt).toContain(PREPARE_COMMAND)
     }, 90_000)
 })
