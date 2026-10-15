@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { decide } from './decide'
 import { MAX_FIX_ROUNDS } from './decide-build'
 
-import type { Finding } from '../agents/role-results'
+import { parseRoleResult, type Finding } from '../agents/role-results'
 import type { JournalEntry } from '../journal/journal-record'
 import {
     agentFailed,
@@ -438,5 +438,38 @@ describe('decision step: nits and declined findings in the PR', () => {
         expect(action.body).toContain('Sum drops negatives')
         expect(action.body).toContain('Negatives are out of scope.')
         expect(action.body).toContain('The spec says integers only.')
+    })
+})
+
+// Moved from `ticket-review.e2e.test.ts` (#566): a reviewer's verdict that
+// disagrees with its findings. The run's judging of a result that does not
+// fit is still end to end in `agent-guards.e2e.test.ts`.
+describe('decision step: a verdict that disagrees with the findings', () => {
+    test("is no result: the ticket reviewer's try fails, saying why, and a fresh reviewer is launched", () => {
+        const judged = parseRoleResult({
+            role: 'ticket-reviewer',
+            output: { verdict: 'approve', findings: [TEST] },
+        })
+        expect(judged.ok).toBe(false)
+        expect(judged.ok ? '' : judged.error).toContain(
+            'verdict "approve" does not match its findings'
+        )
+
+        expect(
+            decideAfter([
+                ...committed(),
+                agentFailed({
+                    ticket: 11,
+                    role: 'ticket-reviewer',
+                    failure: 'result',
+                    error: judged.ok ? '' : judged.error,
+                }),
+            ])
+        ).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'ticket-reviewer',
+            may_edit_tests: false,
+        })
     })
 })

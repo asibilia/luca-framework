@@ -2001,10 +2001,10 @@ and the ticket is stuck before any agent.
 `src/core/decide-review.test.ts` tests the ticket review through the decision
 step: the reviewer's prompt, findings to the right fixer in the right order,
 the gates and the fix commit, re-reviews of only the new changes, pushback,
-the round cap, and nits and declined findings in the PR.
+the round cap, a verdict that disagrees with its findings, and nits and
+declined findings in the PR.
 `src/core/ticket-review.e2e.test.ts` runs it end to end with scripted reviewers:
-findings fixed and pushed back on, a re-review of the new changes only, the
-round cap, and a verdict that disagrees with its findings.
+findings fixed and pushed back on, and a re-review of the new changes only.
 `src/core/decide-final-review.test.ts` tests the final review through the
 decision step: it runs before the PR even for one ticket, the five lens
 prompts (the whole branch's diff, the rule files), clean → passed → PR, test
