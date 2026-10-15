@@ -3,13 +3,23 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import {
     resumeRun,
     runDemo,
     runSpec,
     unfinishedRuns,
+    type DecisionModelSetup,
+    type RunEnd,
     type RunLauncher,
 } from './run-modes'
 
@@ -26,7 +36,7 @@ import {
 import type { DecisionModelFetch } from '../jev/clef-client'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
-import { createFakeMuninn } from '../testing/fake-muninn'
+import { createFakeMuninn, type FakeMuninn } from '../testing/fake-muninn'
 import {
     EMPTY_LEARNER_TURN,
     git,
@@ -35,6 +45,12 @@ import {
     PRACTICE_ENGINE_CONFIG,
     practiceTracker,
 } from '../testing/practice-repo'
+import type { InMemoryTracker } from '../tracker/in-memory-tracker'
+
+/**
+ * `luca-run`'s run modes on practice repos (#566: each run built once, its
+ * tests only reading what it left).
+ */
 
 /**
  * A stand-in for the Claude launcher: scripted turns, plus a `closeAll`
@@ -85,22 +101,38 @@ const recordingBoard = () => {
     }
 }
 
-let root = ''
-const logs: string[] = []
-const log = (line: string) => {
-    logs.push(line)
+/** The records of run `run_id` in `runs_dir`. */
+const recordsOf = ({
+    runs_dir,
+    run_id,
+}: {
+    runs_dir: string
+    run_id: string
+}): JournalRecord[] =>
+    createJournal({ file: runJournalPath({ runs_dir, run_id }) }).read()
+
+/** The kinds of a run's records, oldest first. */
+const kindsIn = (records: JournalRecord[]) => records.map(({ kind }) => kind)
+
+/** A fresh folder for each test's practice repo, and a fresh log. */
+const eachRoot = () => {
+    const folder = { root: '', logs: [] as string[] }
+    beforeEach(async () => {
+        folder.root = await mkdtemp(join(tmpdir(), 'luca-run-modes-'))
+        folder.logs = []
+    })
+    afterEach(async () => {
+        await rm(folder.root, { recursive: true, force: true })
+    })
+    return folder
 }
 
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-run-modes-'))
-    logs.length = 0
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
-
 describe('luca-run --demo', () => {
+    const logs: string[] = []
+    const log = (line: string) => {
+        logs.push(line)
+    }
+
     test('builds both practice tickets, opens one PR, tells the board, and cleans up', async () => {
         const recorder = recordingBoard()
         const realFetch = globalThis.fetch
@@ -152,25 +184,67 @@ describe('luca-run --demo', () => {
     }, 120_000)
 })
 
-describe('luca-run --spec', () => {
-    test('builds the spec with the launcher it is given, opens the PR, and closes the sessions', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const recorder = recordingBoard()
-        const claude = fakeClaudeLauncher({ turns: HAPPY_TURNS })
+describe('luca-run --spec, on one happy run', () => {
+    // One happy run, built once: the board records it, the decision model
+    // has no credentials, and `main` is named as the base. Then the same
+    // call again, which resumes it (#566).
+    let root = ''
+    let repo = ''
+    let file = ''
+    const recorder = recordingBoard()
+    const claude = fakeClaudeLauncher({ turns: HAPPY_TURNS })
+    let first: RunEnd
+    let second: RunEnd
+    let closedAfterFirst = 0
+    let firstRecords: JournalRecord[] = []
+    let firstLogs: string[] = []
+    let secondRecords: JournalRecord[] = []
+    let secondLogs: string[] = []
 
-        const result = await runSpec({
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-run-modes-'))
+        ;({ repo } = await makePracticeRepo({ root }))
+        file = join(root, 'config', 'luca', '.env')
+        const runs_dir = join(root, 'runs')
+        const logs: string[] = []
+        const args = {
             spec_number: 10,
             repo,
             run_id: 'run-1',
-            base_branch: null,
-            runs_dir: join(root, 'runs'),
+            base_branch: 'main',
+            runs_dir,
             tracker: practiceTracker(),
             launcher: claude.launcher,
-            board: recorder.board,
-            log,
-        })
+            decision_model: {
+                credentials: {
+                    ok: false,
+                    missing: ['CLOUDFLARE_API_TOKEN'],
+                    file,
+                },
+                fetch: async () => {
+                    throw new Error('fetch must not be called')
+                },
+            } satisfies DecisionModelSetup,
+            log: (line: string) => {
+                logs.push(line)
+            },
+        }
 
-        expect(result).toEqual({
+        first = await runSpec({ ...args, board: recorder.board })
+        closedAfterFirst = claude.closed()
+        firstRecords = recordsOf({ runs_dir, run_id: 'run-1' })
+        firstLogs = [...logs]
+        second = await runSpec({ ...args, board: null })
+        secondRecords = recordsOf({ runs_dir, run_id: 'run-1' })
+        secondLogs = logs.slice(firstLogs.length)
+    }, 120_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('builds the spec with the launcher it is given, opens the PR, and closes the sessions', () => {
+        expect(first).toEqual({
             ok: true,
             message: expect.stringContaining('PR opened'),
         })
@@ -184,25 +258,80 @@ describe('luca-run --spec', () => {
         expect(
             roles.filter((role) => role.endsWith('-lens')).toSorted()
         ).toEqual(LENS_ROLES.toSorted())
-        expect(claude.closed()).toBe(1)
+        expect(closedAfterFirst).toBe(1)
         expect(recorder.kinds()).toContain('agent_finished')
         expect(recorder.kinds().slice(-2)).toEqual([
             'pull_request_opened',
             'worktrees_removed',
         ])
-        expect(recorder.endings()).toEqual([result])
-    }, 60_000)
+        expect(recorder.endings()).toEqual([first])
+    })
 
-    test('with credentials, asks Clef in shadow mode with the config’s model', async () => {
+    test('with no credentials, the decision model is off: one line, one record, and no asks', () => {
+        expect(first.ok).toBe(true)
+        const kinds = kindsIn(firstRecords)
+        expect(
+            kinds.filter((kind) => kind === 'decision_model_off')
+        ).toHaveLength(1)
+        expect(kinds).not.toContain('jev_asked')
+        expect(kinds).not.toContain('jev_failed')
+        const off = firstRecords.find(
+            ({ kind }) => kind === 'decision_model_off'
+        )
+        expect(off?.content).toEqual({
+            model: '@cf/cloudflare/clef',
+            reason: 'no_credentials',
+            detail: expect.stringContaining(file),
+        })
+        const lines = firstLogs.filter((line) =>
+            line.includes('decision model')
+        )
+        expect(lines).toHaveLength(1)
+        expect(lines[0]).toContain(file)
+        expect(lines[0]).toContain('CLOUDFLARE_API_TOKEN')
+    })
+
+    test('the run_started record keeps the repo, so a resume can find it', () => {
+        const [started] = firstRecords
+        expect(started).toMatchObject({
+            kind: 'run_started',
+            content: { spec_number: 10, base_branch: 'main', repo },
+        })
+    })
+
+    test('a run id with a journal already resumes it instead of starting again', () => {
+        expect(first.ok).toBe(true)
+        expect(second).toEqual(first)
+        expect(
+            secondRecords.filter((record) => record.kind === 'run_started')
+        ).toHaveLength(1)
+        expect(secondLogs).toContain(
+            '[luca-run] resuming the run from its journal'
+        )
+    })
+})
+
+describe('luca-run --spec with Clef and memory, on one run', () => {
+    // One run, built once (#566), whose config names a Clef model and a
+    // memory vault, with credentials, a fake fetch, and a fake MuninnDB.
+    let root = ''
+    const logs: string[] = []
+    const recorder = recordingBoard()
+    const urls: string[] = []
+    const muninn = createFakeMuninn()
+    let result: RunEnd
+    let records: JournalRecord[] = []
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-run-modes-'))
         const { repo } = await makePracticeRepo({
             root,
             config: {
                 ...PRACTICE_ENGINE_CONFIG,
                 decision_model: { model: '@cf/cloudflare/clef-flash' },
+                muninn: { vault: 'practice-vault' },
             },
         })
-        const recorder = recordingBoard()
-        const urls: string[] = []
         const fetch: DecisionModelFetch = async (url) => {
             urls.push(url)
             return new Response(
@@ -213,14 +342,16 @@ describe('luca-run --spec', () => {
             )
         }
 
-        const result = await runSpec({
+        result = await runSpec({
             spec_number: 10,
             repo,
             run_id: 'run-1',
             base_branch: null,
             runs_dir: join(root, 'runs'),
             tracker: practiceTracker(),
-            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
+            launcher: fakeClaudeLauncher({
+                turns: [...HAPPY_TURNS, EMPTY_LEARNER_TURN(10)],
+            }).launcher,
             decision_model: {
                 credentials: {
                     ok: true,
@@ -230,10 +361,20 @@ describe('luca-run --spec', () => {
                 },
                 fetch,
             },
+            memory: { client: muninn },
             board: recorder.board,
-            log,
+            log: (line) => {
+                logs.push(line)
+            },
         })
+        records = recordsOf({ runs_dir: join(root, 'runs'), run_id: 'run-1' })
+    }, 120_000)
 
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('with credentials, asks Clef in shadow mode with the config’s model', () => {
         expect(result.ok).toBe(true)
         expect(recorder.kinds()).toContain('jev_asked')
         expect(recorder.kinds()).toContain('jev_answered')
@@ -246,91 +387,10 @@ describe('luca-run --spec', () => {
         ).toBe(true)
         expect(logs.join('\n')).toContain('@cf/cloudflare/clef-flash')
         expect(logs.join('\n')).not.toContain('not-real-tok')
-    }, 60_000)
+    })
 
-    test('with no credentials, the decision model is off: one line, one record, and no asks', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const file = join(root, 'config', 'luca', '.env')
-
-        const result = await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir: join(root, 'runs'),
-            tracker: practiceTracker(),
-            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
-            decision_model: {
-                credentials: {
-                    ok: false,
-                    missing: ['CLOUDFLARE_API_TOKEN'],
-                    file,
-                },
-                fetch: async () => {
-                    throw new Error('fetch must not be called')
-                },
-            },
-            board: null,
-            log,
-        })
-
+    test('with a memory client, memory is on with the config’s vault, and the client is closed', () => {
         expect(result.ok).toBe(true)
-        const records = createJournal({
-            file: runJournalPath({
-                runs_dir: join(root, 'runs'),
-                run_id: 'run-1',
-            }),
-        }).read()
-        const kinds = records.map(({ kind }) => kind)
-        expect(
-            kinds.filter((kind) => kind === 'decision_model_off')
-        ).toHaveLength(1)
-        expect(kinds).not.toContain('jev_asked')
-        expect(kinds).not.toContain('jev_failed')
-        const off = records.find(({ kind }) => kind === 'decision_model_off')
-        expect(off?.content).toEqual({
-            model: '@cf/cloudflare/clef',
-            reason: 'no_credentials',
-            detail: expect.stringContaining(file),
-        })
-        const lines = logs.filter((line) => line.includes('decision model'))
-        expect(lines).toHaveLength(1)
-        expect(lines[0]).toContain(file)
-        expect(lines[0]).toContain('CLOUDFLARE_API_TOKEN')
-    }, 60_000)
-
-    test('with a memory client, memory is on with the config’s vault, and the client is closed', async () => {
-        const { repo } = await makePracticeRepo({
-            root,
-            config: {
-                ...PRACTICE_ENGINE_CONFIG,
-                muninn: { vault: 'practice-vault' },
-            },
-        })
-        const muninn = createFakeMuninn()
-
-        const result = await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir: join(root, 'runs'),
-            tracker: practiceTracker(),
-            launcher: fakeClaudeLauncher({
-                turns: [...HAPPY_TURNS, EMPTY_LEARNER_TURN(10)],
-            }).launcher,
-            memory: { client: muninn },
-            board: null,
-            log,
-        })
-
-        expect(result.ok).toBe(true)
-        const records = createJournal({
-            file: runJournalPath({
-                runs_dir: join(root, 'runs'),
-                run_id: 'run-1',
-            }),
-        }).read()
         const [started] = records
         expect(
             started?.kind === 'run_started' ? started.content.memory : null
@@ -342,12 +402,16 @@ describe('luca-run --spec', () => {
                 .map(({ vault }) => vault)
                 .slice(0, 2)
         ).toEqual(['practice-vault', 'default'])
-        expect(records.map(({ kind }) => kind)).toContain('memories_saved')
+        expect(kindsIn(records)).toContain('memories_saved')
         expect(muninn.closed()).toBe(true)
-    }, 60_000)
+    })
+})
+
+describe('luca-run --spec, a stop', () => {
+    const folder = eachRoot()
 
     test('a launcher stop ends the run with its reason, and the sessions are closed', async () => {
-        const { repo } = await makePracticeRepo({ root })
+        const { repo } = await makePracticeRepo({ root: folder.root })
         const recorder = recordingBoard()
         const claude = fakeClaudeLauncher({
             turns: [
@@ -365,11 +429,13 @@ describe('luca-run --spec', () => {
             repo,
             run_id: 'run-1',
             base_branch: null,
-            runs_dir: join(root, 'runs'),
+            runs_dir: join(folder.root, 'runs'),
             tracker: practiceTracker(),
             launcher: claude.launcher,
             board: recorder.board,
-            log,
+            log: (line) => {
+                folder.logs.push(line)
+            },
         })
 
         expect(result).toEqual({
@@ -381,64 +447,7 @@ describe('luca-run --spec', () => {
         expect(recorder.endings()).toEqual([result])
         expect(claude.closed()).toBe(1)
     }, 60_000)
-
-    test('a run id with a journal already resumes it instead of starting again', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-        const args = {
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker: practiceTracker(),
-            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
-            board: null,
-            log,
-        }
-
-        const first = await runSpec(args)
-        const second = await runSpec(args)
-
-        expect(first.ok).toBe(true)
-        expect(second).toEqual(first)
-        const journal = createJournal({
-            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
-        })
-        expect(
-            journal.read().filter((record) => record.kind === 'run_started')
-        ).toHaveLength(1)
-        expect(logs).toContain('[luca-run] resuming the run from its journal')
-    }, 60_000)
-
-    test('the run_started record keeps the repo, so a resume can find it', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-
-        await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: 'main',
-            runs_dir,
-            tracker: practiceTracker(),
-            launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
-            board: null,
-            log,
-        })
-
-        const [started] = createJournal({
-            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
-        }).read()
-        expect(started).toMatchObject({
-            kind: 'run_started',
-            content: { spec_number: 10, base_branch: 'main', repo },
-        })
-    }, 60_000)
 })
-
-/** The kinds of a run's records, oldest first. */
-const kindsIn = (records: JournalRecord[]) => records.map(({ kind }) => kind)
 
 /**
  * A launcher whose first launch of `role` throws, as if the engine died in
@@ -458,18 +467,37 @@ const crashingOnLaunch = ({
             : launcher.launch(args),
 })
 
-describe('luca-run --resume', () => {
-    test('a run that crashed after a commit is resumed by its id and finishes: one PR, one of each commit, no comment twice', async () => {
-        const { repo, origin } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-        const tracker = practiceTracker()
+describe('luca-run --resume, on one crashed run', () => {
+    // One run with memory on, built once (#566): the first engine commits
+    // the red tests, then dies launching the implementer; `resumeRun`
+    // finishes it with a second memory client.
+    let root = ''
+    let repo = ''
+    let origin = ''
+    let runs_dir = ''
+    const tracker: InMemoryTracker = practiceTracker()
+    const first: FakeMuninn = createFakeMuninn()
+    const second: FakeMuninn = createFakeMuninn()
+    const recorder = recordingBoard()
+    let crashed: RunEnd
+    let crashedRecords: JournalRecord[] = []
+    let unfinishedAfterCrash: string[] = []
+    let firstClosedAfterCrash = false
+    let trackerRepo = ''
+    let resumed: ReturnType<typeof fakeClaudeLauncher>
+    let end: RunEnd
+    let records: JournalRecord[] = []
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-run-modes-'))
+        ;({ repo, origin } = await makePracticeRepo({ root }))
+        runs_dir = join(root, 'runs')
         const [testWriter, implementer, ...rest] = HAPPY_TURNS
         expect(testWriter?.role).toBe('test-writer')
         expect(implementer?.role).toBe('implementer')
+        const log = () => undefined
 
-        // The first engine commits the red tests, then dies launching the
-        // implementer.
-        const crashed = await runSpec({
+        crashed = await runSpec({
             spec_number: 10,
             repo,
             run_id: 'run-1',
@@ -480,45 +508,57 @@ describe('luca-run --resume', () => {
                 launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
                 role: 'implementer',
             }),
+            memory: { client: first },
             board: null,
             log,
         })
+        crashedRecords = recordsOf({ runs_dir, run_id: 'run-1' })
+        unfinishedAfterCrash = unfinishedRuns({ runs_dir })
+        firstClosedAfterCrash = first.closed()
+
+        resumed = fakeClaudeLauncher({
+            turns: [
+                ...[implementer, ...rest].flatMap((turn) =>
+                    turn === undefined ? [] : [turn]
+                ),
+                EMPTY_LEARNER_TURN(10),
+            ],
+        })
+        end = await resumeRun({
+            run_id: 'run-1',
+            runs_dir,
+            repo: null,
+            tracker: ({ repo: at }) => {
+                trackerRepo = at
+                return tracker
+            },
+            launcher: resumed.launcher,
+            memory: { client: second },
+            board: recorder.board,
+            log,
+        })
+        records = recordsOf({ runs_dir, run_id: 'run-1' })
+    }, 120_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('a run that crashed after a commit is resumed by its id and finishes: one PR, one of each commit, no comment twice', async () => {
         expect(crashed).toEqual({
             ok: false,
             message:
                 'The engine crashed: The engine was killed. To go on from its journal, run luca-run --resume run-1.',
         })
-        const journal = createJournal({
-            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
-        })
-        expect(kindsIn(journal.read())).toContain('commit_made')
-        expect(unfinishedRuns({ runs_dir })).toEqual(['run-1'])
+        expect(kindsIn(crashedRecords)).toContain('commit_made')
+        expect(unfinishedAfterCrash).toEqual(['run-1'])
 
-        const recorder = recordingBoard()
-        const resumed = fakeClaudeLauncher({
-            turns: [implementer, ...rest].flatMap((turn) =>
-                turn === undefined ? [] : [turn]
-            ),
-        })
-        const end = await resumeRun({
-            run_id: 'run-1',
-            runs_dir,
-            repo: null,
-            tracker: ({ repo: at }) => {
-                expect(at).toBe(repo)
-                return tracker
-            },
-            launcher: resumed.launcher,
-            board: recorder.board,
-            log,
-        })
-
+        expect(trackerRepo).toBe(repo)
         expect(end).toEqual({
             ok: true,
             message: expect.stringContaining('PR opened'),
         })
         expect(recorder.endings()).toEqual([end])
-        const records = journal.read()
         expect(
             kindsIn(records).filter((kind) => kind === 'run_started')
         ).toHaveLength(1)
@@ -538,57 +578,15 @@ describe('luca-run --resume', () => {
             expect(bodies).toEqual([...new Set(bodies)])
         }
         expect(unfinishedRuns({ runs_dir })).toEqual([])
-    }, 120_000)
+    })
 
-    test('a run with memory on goes on with memory: the resume uses its client and closes it', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-        const tracker = practiceTracker()
-        const [, implementer, ...rest] = HAPPY_TURNS
-        const first = createFakeMuninn()
-
-        await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker,
-            launcher: crashingOnLaunch({
-                launcher: fakeClaudeLauncher({ turns: HAPPY_TURNS }).launcher,
-                role: 'implementer',
-            }),
-            memory: { client: first },
-            board: null,
-            log,
-        })
-        expect(first.closed()).toBe(true)
-
-        const second = createFakeMuninn()
-        const end = await resumeRun({
-            run_id: 'run-1',
-            runs_dir,
-            repo: null,
-            tracker: () => tracker,
-            launcher: fakeClaudeLauncher({
-                turns: [
-                    ...[implementer, ...rest].flatMap((turn) =>
-                        turn === undefined ? [] : [turn]
-                    ),
-                    EMPTY_LEARNER_TURN(10),
-                ],
-            }).launcher,
-            memory: { client: second },
-            board: null,
-            log,
-        })
-
+    test('a run with memory on goes on with memory: the resume uses its client and closes it', () => {
+        expect(firstClosedAfterCrash).toBe(true)
         expect(end.ok).toBe(true)
-        const records = createJournal({
-            file: runJournalPath({ runs_dir, run_id: 'run-1' }),
-        }).read()
         expect(kindsIn(records)).toContain('run_resumed')
         expect(kindsIn(records)).toContain('memories_saved')
         expect(second.closed()).toBe(true)
-    }, 120_000)
+        // The resume searched with its own client.
+        expect(second.calls().some(({ op }) => op === 'recall')).toBe(true)
+    })
 })
