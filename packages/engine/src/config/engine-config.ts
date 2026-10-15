@@ -34,6 +34,12 @@ const TestCommandEntrySchema = z.union([
     }),
 ])
 
+/** A test command setting: one command, or a list of them (see `testCommands`). */
+const TestCommandsSchema = z.union([
+    z.string().min(1),
+    z.array(TestCommandEntrySchema),
+])
+
 /** The config's `muninn` block. */
 export const MuninnConfigSchema = z.object({
     /** The project's memory vault. */
@@ -59,14 +65,19 @@ export const DecisionModelConfigSchema = z.object({
  * The test command is optional here on purpose. A config without it still
  * loads, and intake refuses the run with a clear message instead.
  * `checks.test` is one command or a list of them (see `testCommands`); it is
- * kept as written.
+ * kept as written. `checks.slow_test` has the same shape (see
+ * `slowTestCommands`, #563).
  */
 export const EngineConfigSchema = z.object({
     checks: z
         .object({
-            test: z
-                .union([z.string().min(1), z.array(TestCommandEntrySchema)])
-                .optional(),
+            test: TestCommandsSchema.optional(),
+            /**
+             * The slow tests (#563): the tests `test` leaves out, run only at
+             * the final review. Same shape as `test`. Left out, nothing
+             * changes.
+             */
+            slow_test: TestCommandsSchema.optional(),
             types: z.string().min(1).optional(),
             lint: z.string().min(1).optional(),
         })
@@ -191,6 +202,19 @@ export const isBunTestCommand = (run: string): boolean =>
 const defaultResults = (run: string): TestResults =>
     isBunTestCommand(run) ? 'bun' : 'pass_fail'
 
+/** Reads a test command setting (`checks.test` or `checks.slow_test`) into commands. */
+const commandsOf = (value: EngineConfig['checks']['test']): TestCommand[] => {
+    if (value === undefined) return []
+    return (typeof value === 'string' ? [value] : value).map((entry) =>
+        typeof entry === 'string'
+            ? { run: entry, results: defaultResults(entry) }
+            : {
+                  run: entry.run,
+                  results: entry.results ?? defaultResults(entry.run),
+              }
+    )
+}
+
 /**
  * Every test command in the config, in order, each with its results kind.
  * A missing `results` is `bun` for a `bun test` command, else `pass_fail`.
@@ -204,18 +228,25 @@ export const testCommands = ({
     config,
 }: {
     config: EngineConfig
-}): TestCommand[] => {
-    const { test } = config.checks
-    if (test === undefined) return []
-    return (typeof test === 'string' ? [test] : test).map((entry) =>
-        typeof entry === 'string'
-            ? { run: entry, results: defaultResults(entry) }
-            : {
-                  run: entry.run,
-                  results: entry.results ?? defaultResults(entry.run),
-              }
-    )
-}
+}): TestCommand[] => commandsOf(config.checks.test)
+
+/**
+ * Every slow test command (#563), in order, each with its results kind, like
+ * `testCommands`. Empty when the config has none.
+ *
+ * @example
+ * slowTestCommands({ config: { ...config, checks: { test: 'bun test src', slow_test: 'bun test .e2e.test' } } })
+ * // [{ run: 'bun test .e2e.test', results: 'bun' }]
+ */
+export const slowTestCommands = ({
+    config,
+}: {
+    config: EngineConfig
+}): TestCommand[] => commandsOf(config.checks.slow_test)
+
+/** Whether the config has a slow test command (#563). */
+export const hasSlowTests = ({ config }: { config: EngineConfig }): boolean =>
+    slowTestCommands({ config }).length > 0
 
 /** The test commands whose per-test results the engine reads. */
 export const bunTestCommands = ({

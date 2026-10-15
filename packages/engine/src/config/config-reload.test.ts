@@ -145,6 +145,18 @@ describe('configChanges', () => {
     })
 })
 
+describe('configChanges: the slow command (#563)', () => {
+    test('a resume keeps the slow command the run started with (#563)', () => {
+        const current = EngineConfigSchema.parse({
+            checks: { test: 'bun test', slow_test: 'bun test .e2e.test' },
+        })
+        const next = EngineConfigSchema.parse({
+            checks: { test: 'bun test', slow_test: 'bun test e2e/' },
+        })
+        expect(configChanges({ current, next })).toEqual([])
+    })
+})
+
 describe('withConfigChanges', () => {
     test('sets a changed field and drops a removed one, leaving the rest', () => {
         const next = withConfigChanges({

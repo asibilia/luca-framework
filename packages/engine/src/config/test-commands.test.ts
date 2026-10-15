@@ -4,7 +4,13 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { loadEngineConfig, testCommands } from './engine-config'
+import {
+    EngineConfigSchema,
+    hasSlowTests,
+    loadEngineConfig,
+    slowTestCommands,
+    testCommands,
+} from './engine-config'
 
 /**
  * Several test commands per repo (#428): `checks.test` is one command
@@ -164,6 +170,45 @@ describe('engine config: several test commands', () => {
     })
 })
 
+describe('the slow test command (#563)', () => {
+    test('checks.slow_test loads as a string and as a list, with the same kinds as checks.test', () => {
+        const one = EngineConfigSchema.parse({
+            checks: { test: 'bun test src', slow_test: 'bun test .e2e.test' },
+        })
+        expect(slowTestCommands({ config: one })).toEqual([
+            { run: 'bun test .e2e.test', results: 'bun' },
+        ])
+        const many = EngineConfigSchema.parse({
+            checks: {
+                test: 'bun test',
+                slow_test: ['bun test e2e', { run: 'bun run e2e:workers' }],
+            },
+        })
+        expect(slowTestCommands({ config: many })).toEqual([
+            { run: 'bun test e2e', results: 'bun' },
+            { run: 'bun run e2e:workers', results: 'pass_fail' },
+        ])
+        expect(hasSlowTests({ config: many })).toBe(true)
+    })
+
+    test('left out, there are no slow commands', () => {
+        const config = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+        })
+        expect(slowTestCommands({ config })).toEqual([])
+        expect(hasSlowTests({ config })).toBe(false)
+    })
+
+    test('a bad checks.slow_test is refused with the usual message', async () => {
+        await writeConfig({
+            config: { checks: { test: 'bun test', slow_test: '' } },
+        })
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+        expect(result.ok).toBe(false)
+        if (!result.ok) expect(result.error).toContain('slow_test')
+    })
+})
+
 describe('the engine README', () => {
     test('documents test command lists and their results kinds', async () => {
         const text = await Bun.file(
@@ -171,6 +216,7 @@ describe('the engine README', () => {
         ).text()
 
         expect(text).toContain('checks.test')
+        expect(text).toContain('checks.slow_test')
         expect(text).toContain('pass_fail')
         expect(text).toMatch(/`results`|"results"/)
     })

@@ -218,7 +218,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
       start_final_fix                                                     ──> final_review_fixing
       launch_final_fixer test-writer   (fresh) the test findings, if any
       launch_final_fixer implementer   (fresh) the code findings, if any
-      run_final_gates                  (and the gate fix loop, in the implementer's session) ──> gates_run
+      run_final_gates                  (and the gate fix loop, in the implementer's session); also the slow tests (#563) ──> gates_run
       commit_final_fix                 leftover scan, then commit         ──> leftover_scan, commit_made
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
@@ -397,6 +397,31 @@ It holds for both kinds of test command (`bun` and `pass_fail`). Types and
 lint keep 5 minutes. A test command that runs out of time fails, and its
 output starts with "Timed out after 5 minutes" and says to raise
 `test_timeout_ms`.
+
+**Slow tests (#563).** A repo with a long end-to-end suite names it in
+`checks.slow_test`, and leaves it out of `checks.test`. It has the same shape
+as `checks.test`: one command, or a list of commands and `{ run, results }`
+entries. This repo splits its suite in two:
+
+```json
+{
+    "checks": {
+        "test": "bun test packages --path-ignore-patterns='**/*.e2e.test.ts'",
+        "slow_test": "bun test .e2e.test"
+    }
+}
+```
+
+The engine runs the slow tests only in the final review's gates (the
+`run_final_gates` step, and so its fix rounds' gates), as `slow_test` checks
+after the `test` checks and before `types`. A ticket's gates, a join's
+gates, the baseline, and the red check never run them. A failed slow test
+goes into the final review's gate fix loop like any failed gate. Slow
+commands get the same time limit as the others, `test_timeout_ms`, and a
+slow command that runs out of time says so. Agents may run each slow
+command, like the test commands (a `bun` one may take extra arguments), and
+the implementer's instructions say they run at the final review. Left out,
+nothing changes: no `slow_test` check, no extra command.
 
 **One prepare at a time (#492).** A build uses a lot of CPU, so builds at
 the same time only slow each other down. HeartGold's first build takes 8 to
@@ -831,7 +856,9 @@ runs, even for a one-ticket spec.
   session, up to 3 times; with only test findings, a fresh implementer gets
   the failure), then the leftover scan (the spec and every ticket may name a
   new markdown file) and one commit, `fix: final review round <n> for spec
-  #<n>` (nothing changed: the current commit, no files), then a push.
+  #<n>` (nothing changed: the current commit, no files), then a push. The
+  final review's gates are the only ones that also run the config's slow
+  tests (`checks.slow_test`, #563), as `slow_test` checks.
 - **Re-reviews.** Only the lenses that had blocking findings look again, and
   only at the new changes (`git diff <last round's head>..<head>`), with
   their earlier findings and each fixer's answer; they rule on each "won't
@@ -1370,6 +1397,9 @@ and throwaway repos, with fakes for every tool.
   Intake refuses a run with no `bun` command unless every open ticket is a
   refactor ticket. Agents may run each test command exactly; `bun` ones may
   also take extra arguments. A repo with no test files passes the baseline.
+- **Slow test commands (#563):** `checks.slow_test` is a test command setting
+  of the same shape as `checks.test`, for the tests `checks.test` leaves out.
+  See "Slow tests (#563)" above. It is frozen for a run, like `checks.test`.
 - **A new test file that doesn't load yet** (it imports code not written yet)
   reports no results. Its tests count as failing if their names are in it.
 - **Engine commits skip git hooks** (`--no-verify`): the engine already ran

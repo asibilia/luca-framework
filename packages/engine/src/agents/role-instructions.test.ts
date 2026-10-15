@@ -46,6 +46,25 @@ describe('instructions with several test commands', () => {
     })
 })
 
+test("the implementer's gate line names the slow command and says it runs at the final review (#563)", () => {
+    const config = EngineConfigSchema.parse({
+        checks: {
+            test: 'bun test src',
+            slow_test: 'bun test .e2e.test',
+            types: 'tsc',
+        },
+    })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).toContain('Make every gate pass: `bun test src`, `tsc`.')
+    expect(text).toContain(
+        'The slow tests (`bun test .e2e.test`) run at the final review; you may run them yourself.'
+    )
+})
+
 describe("the learner's instructions", () => {
     const learner = () =>
         roleInstructions({

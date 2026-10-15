@@ -1204,6 +1204,9 @@ export const gatesIn = async ({
             ticket,
             label: `gates-${target}`,
         }),
+        // The final review's gates also run the slow tests (#563); a ticket's
+        // and a join's never do.
+        with_slow_tests: ticket === null,
     })
     context.journal.append({
         kind: 'gates_run',

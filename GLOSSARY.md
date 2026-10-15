@@ -60,6 +60,10 @@ _Avoid_: mode, persona
 A check the engine runs itself, such as the tests or the type checker, that must pass before the run moves on.
 _Avoid_: hook, checks
 
+**Slow tests**:
+End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs and runs them at the final review.
+_Avoid_: e2e gate, long tests
+
 **Red check**:
 The gate that proves a ticket's new tests fail, and every old test still passes, before any code is written.
 _Avoid_: fail-first check

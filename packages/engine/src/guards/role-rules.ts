@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import type { AgentRole } from '../agents/role-results'
 import {
+    slowTestCommands,
     testCommands,
     type EngineConfig,
     type TestCommand,
@@ -221,7 +222,7 @@ const startsWith = ({
 
 /**
  * The check commands from the config a role may run: each test command,
- * types, lint. A `bun` test command may take extra arguments; the rest run
+ * each slow test command (#563), types, lint. A `bun` test command may take extra arguments; the rest run
  * only as written.
  */
 export const checkCommands = ({
@@ -234,7 +235,7 @@ export const checkCommands = ({
     if (!isWriter(role)) return { tests: [], others: [] }
     const { types, lint } = config.checks
     return {
-        tests: testCommands({ config }),
+        tests: [...testCommands({ config }), ...slowTestCommands({ config })],
         others: [types, lint].filter(
             (command): command is string => command !== undefined
         ),

@@ -220,6 +220,66 @@ describe('runGates: the test time limit (#542)', () => {
     })
 })
 
+describe('slow tests in the gates (#563)', () => {
+    const config = EngineConfigSchema.parse({
+        checks: { test: 'echo fast', slow_test: 'echo slow', types: 'true' },
+    })
+    const gates = async ({
+        config,
+        with_slow_tests,
+    }: {
+        config: ReturnType<typeof EngineConfigSchema.parse>
+        with_slow_tests?: boolean
+    }) => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-gates-'))
+        try {
+            return await runGates({
+                cwd: folder,
+                config,
+                install: null,
+                test_files: [],
+                report_file: join(folder, 'report.xml'),
+                with_slow_tests,
+            })
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }
+
+    test('without with_slow_tests, the gates never run the slow command', async () => {
+        const { checks } = await gates({ config })
+        expect(checks.map(({ name, command }) => `${name}:${command}`)).toEqual(
+            ['test:echo fast', 'types:true']
+        )
+    })
+
+    test('with_slow_tests runs it after the test commands, before types, as slow_test', async () => {
+        const { checks } = await gates({ config, with_slow_tests: true })
+        expect(checks.map(({ name, command }) => `${name}:${command}`)).toEqual(
+            ['test:echo fast', 'slow_test:echo slow', 'types:true']
+        )
+    })
+
+    test('a slow command past test_timeout_ms is stopped and says to raise it', async () => {
+        const slow = EngineConfigSchema.parse({
+            checks: { test: 'true', slow_test: 'sleep 5' },
+            test_timeout_ms: 300,
+        })
+        const { checks } = await gates({ config: slow, with_slow_tests: true })
+        const check = checks.find(({ name }) => name === 'slow_test')
+        expect(check?.ok).toBe(false)
+        expect(check?.output).toContain('raise `test_timeout_ms`')
+    }, 20_000)
+
+    test('a repo with no slow_test sees the same checks with the flag on', async () => {
+        const plain = EngineConfigSchema.parse({
+            checks: { test: 'echo fast', types: 'true' },
+        })
+        const { checks } = await gates({ config: plain, with_slow_tests: true })
+        expect(checks.map(({ name }) => name)).toEqual(['test', 'types'])
+    })
+})
+
 describe('runBunTests: the test time limit (#542)', () => {
     test('stops each command at the limit given and says how to raise it', async () => {
         const folder = await mkdtemp(join(tmpdir(), 'luca-test-timeout-'))

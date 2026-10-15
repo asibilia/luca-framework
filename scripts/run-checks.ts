@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Runs every check in the repo's `.luca/config.json` (its test commands,
- * then `types`, then `lint`), read from that file, so the PR check and
+ * then its slow test commands, then `types`, then `lint`), read from that file, so the PR check and
  * Luca's own gates can't drift apart.
  *
  * Every check runs, even after one fails; the script exits 1 if any failed.
@@ -12,6 +12,7 @@ import { join } from 'node:path'
 
 import {
     loadEngineConfig,
+    slowTestCommands,
     testCommands,
 } from '../packages/engine/src/config/engine-config'
 
@@ -37,6 +38,7 @@ if (!result.ok) {
 const { types, lint } = result.config.checks
 const commands = [
     ...testCommands({ config: result.config }).map(({ run }) => run),
+    ...slowTestCommands({ config: result.config }).map(({ run }) => run),
     ...(types === undefined ? [] : [types]),
     ...(lint === undefined ? [] : [lint]),
 ]

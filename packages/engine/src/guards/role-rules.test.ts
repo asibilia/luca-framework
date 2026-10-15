@@ -558,6 +558,46 @@ describe('several test commands', () => {
     })
 })
 
+describe('the slow test command (#563)', () => {
+    const config = EngineConfigSchema.parse({
+        ...CONFIG,
+        checks: {
+            ...CONFIG.checks,
+            test: 'bun test src',
+            slow_test: 'bun test .e2e.test',
+        },
+    })
+    const run = (role: GuardRole, command: string) =>
+        checkToolCall({
+            role,
+            may_edit_tests: usual(role),
+            tool_name: 'Bash',
+            tool_input: { command },
+            worktree: WORKTREE,
+            config,
+        }).allow
+
+    test('a writer may run the slow command too, with extra arguments (#563)', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(run(role, 'bun test .e2e.test')).toBe(true)
+            expect(run(role, 'bun test .e2e.test ./src/run.e2e.test.ts')).toBe(
+                true
+            )
+        }
+        expect(run('reviewer', 'bun test .e2e.test')).toBe(false)
+    })
+
+    test('the slow command gets its permission rule, with a wildcard (#563)', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun test .e2e.test)')
+        expect(allowed).toContain('Bash(bun test .e2e.test *)')
+    })
+})
+
 describe('permissionRules', () => {
     test('a refactor implementer may edit tests but not setup files', () => {
         const refactor = permissionRules({

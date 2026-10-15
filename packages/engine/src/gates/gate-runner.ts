@@ -1,13 +1,15 @@
-import type { GateCheck, GateName } from './gate-schemas'
+import type { GateCheck, GateName, TestRun } from './gate-schemas'
 import { PREPARE_SLOTS } from './prepare-slots'
 import { reportFileFor, runTests, TEST_TIMEOUT_HINT } from './test-runner'
 
 import {
     prepareConcurrencyOf,
     prepareTimeoutOf,
+    slowTestCommands,
     testCommands,
     testTimeoutOf,
     type EngineConfig,
+    type TestCommand,
 } from '../config/engine-config'
 import {
     clipOutput,
@@ -106,9 +108,68 @@ export const prepareCheck = async ({
     })
 }
 
+/** Runs test commands as gate checks named `name`, in order (see `runGates`). */
+const testChecks = async ({
+    commands,
+    name,
+    cwd,
+    test_files,
+    report_file,
+    first_index,
+    timeout_ms,
+}: {
+    commands: TestCommand[]
+    name: 'test' | 'slow_test'
+    cwd: string
+    test_files: string[]
+    report_file: string
+    /** The first command's index, so each command gets its own report file. */
+    first_index: number
+    timeout_ms: number
+}): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
+    const checks: GateCheck[] = []
+    const runs: TestRun[] = []
+    for (const [offset, { run: command, results }] of commands.entries()) {
+        if (results === 'pass_fail') {
+            checks.push(
+                await shellCheck({
+                    name,
+                    command,
+                    cwd,
+                    timeout_ms,
+                    timeout_hint: TEST_TIMEOUT_HINT,
+                })
+            )
+            continue
+        }
+        const started = performance.now()
+        const run = await runTests({
+            cwd,
+            command,
+            test_files,
+            report_file: reportFileFor({
+                report_file,
+                index: first_index + offset,
+            }),
+            timeout_ms,
+        })
+        runs.push(run)
+        checks.push({
+            name,
+            command,
+            ok: run.ok,
+            exit_code: run.exit_code,
+            output: run.ok ? '' : run.output,
+            duration_ms: msSince(started),
+        })
+    }
+    return { checks, runs }
+}
+
 /**
  * Runs every gate the engine config names, in order: each test command,
- * types, lint. All must pass. Unset gates are left out; intake refuses a
+ * then (the final review's gates only) each slow test command, types, lint.
+ * All must pass. Unset gates are left out; intake refuses a
  * config with no test command. A `bun` test command runs with bun's JUnit
  * reporter; a `pass_fail` one runs as written and is judged by its exit code.
  * Each test command gets the config's time limit (see `testTimeoutOf`);
@@ -131,6 +192,7 @@ export const runGates = async ({
     report_file,
     install,
     around_prepare,
+    with_slow_tests,
 }: {
     cwd: string
     config: EngineConfig
@@ -141,6 +203,11 @@ export const runGates = async ({
     around_prepare?: (
         prepare: () => Promise<GateCheck | null>
     ) => Promise<GateCheck | null>
+    /**
+     * The final review's gates also run the config's slow tests (#563), after
+     * the test commands, as `slow_test` checks. Left out, they don't.
+     */
+    with_slow_tests?: boolean
 }): Promise<{ ok: boolean; checks: GateCheck[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -160,37 +227,28 @@ export const runGates = async ({
     }
     const { types, lint } = config.checks
     const timeout_ms = testTimeoutOf({ config })
-    for (const [index, { run: command, results }] of testCommands({
-        config,
-    }).entries()) {
-        if (results === 'pass_fail') {
-            checks.push(
-                await shellCheck({
-                    name: 'test',
-                    command,
-                    cwd,
-                    timeout_ms,
-                    timeout_hint: TEST_TIMEOUT_HINT,
-                })
-            )
-            continue
-        }
-        const started = performance.now()
-        const run = await runTests({
+    const fast = testCommands({ config })
+    const fastChecks = await testChecks({
+        commands: fast,
+        name: 'test',
+        cwd,
+        test_files,
+        report_file,
+        first_index: 0,
+        timeout_ms,
+    })
+    checks.push(...fastChecks.checks)
+    if (with_slow_tests === true) {
+        const slow = await testChecks({
+            commands: slowTestCommands({ config }),
+            name: 'slow_test',
             cwd,
-            command,
             test_files,
-            report_file: reportFileFor({ report_file, index }),
+            report_file,
+            first_index: fast.length,
             timeout_ms,
         })
-        checks.push({
-            name: 'test',
-            command,
-            ok: run.ok,
-            exit_code: run.exit_code,
-            output: run.ok ? '' : run.output,
-            duration_ms: msSince(started),
-        })
+        checks.push(...slow.checks)
     }
     const others: { name: GateName; command: string | undefined }[] = [
         { name: 'types', command: types },

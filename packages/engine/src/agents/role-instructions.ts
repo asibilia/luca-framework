@@ -1,6 +1,10 @@
 import { lensOf, type AgentRole, type LensName } from './role-results'
 
-import { testCommands, type EngineConfig } from '../config/engine-config'
+import {
+    slowTestCommands,
+    testCommands,
+    type EngineConfig,
+} from '../config/engine-config'
 import {
     checkCommands,
     guardRoleOf,
@@ -111,6 +115,14 @@ const testFileRule = ({
         ? `- You may follow renames and moves into test files (${config.test_file_patterns.join(', ')}), but never change what a test checks. Never touch a test setup file${setupFiles({ config })}.`
         : `- Never create, edit, or delete a test file (${config.test_file_patterns.join(', ')}) or a test setup file${setupFiles({ config })}.`
 
+/** The implementer's line about the slow tests (#563), or nothing without them. */
+const slowLine = ({ config }: { config: EngineConfig }): string => {
+    const slow = slowTestCommands({ config }).map(({ run }) => `\`${run}\``)
+    return slow.length === 0
+        ? ''
+        : ` The slow tests (${slow.join(', ')}) run at the final review; you may run them yourself.`
+}
+
 const IMPLEMENTER = ({
     config,
     may_edit_tests,
@@ -128,7 +140,7 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
 ]
     .filter((command) => command !== undefined)
     .map((command) => `\`${command}\``)
-    .join(', ')}.
+    .join(', ')}.${slowLine({ config })}
 ${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
 - If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.

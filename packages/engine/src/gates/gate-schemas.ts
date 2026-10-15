@@ -32,13 +32,15 @@ export type TestRun = z.infer<typeof TestRunSchema>
 
 /**
  * The gates the engine config can name, plus `install`: the engine's own
- * install, run first when a package manifest changed, and `prepare`: the
- * config's prepare command, run before the tests.
+ * install, run first when a package manifest changed, `prepare`: the
+ * config's prepare command, run before the tests, and `slow_test`: the
+ * config's slow tests, run only at the final review (#563).
  */
 export const GateNameSchema = z.enum([
     'install',
     'prepare',
     'test',
+    'slow_test',
     'types',
     'lint',
 ])
