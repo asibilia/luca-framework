@@ -15,9 +15,10 @@ This document defines the coding standards and patterns for the Luca Framework c
 3. [Functions API](#functions-api)
 4. [Types & Validation](#types--validation)
 5. [Collections](#collections)
-6. [Verification](#verification)
-7. [Commit Conventions](#commit-conventions)
-8. [Quick-Start Checklist](#quick-start-checklist)
+6. [Testing](#testing)
+7. [Verification](#verification)
+8. [Commit Conventions](#commit-conventions)
+9. [Quick-Start Checklist](#quick-start-checklist)
 
 ---
 
@@ -279,9 +280,19 @@ tickets.sort((a, b) => a.started_seq - b.started_seq) // mutates; use sortBy
 
 ---
 
+## Testing
+
+- **One test per behavior, at the public seam.** A test checks what a caller sees, not private helpers. Mocks only when the spec asks.
+- **Fast tests stay fast.** A fast test must finish within 2 s (`test_case_timeout_ms`). A test that builds a practice repo is end-to-end: it lives in a `*.e2e.test.ts` file and runs at the final review (`checks.slow_test`).
+- **Few tests per criterion.** Write the fewest tests that prove each acceptance criterion: at most 3. Every test you add is mapped to the criterion it checks.
+- **Every test checks something.** A test that runs no `expect()` is sent back.
+- **Every test file belongs to a feature.** A new test file is listed under its feature in `docs/feature-map.md`.
+
+---
+
 ## Verification
 
-The engine's gates are the checks in `.luca/config.json`: the tests (`bun test packages`), both type checks (`bunx --bun tsc --noEmit` and `bunx --bun tsc --noEmit -p packages/board`), and the linter (`bun run lint`). All of them must pass. New behavior comes with tests.
+The engine's gates are the checks in `.luca/config.json`: the fast tests (`bun test packages --path-ignore-patterns='**/*.e2e.test.ts'`), the slow tests (`bun test .e2e.test`, run at the final review), both type checks (`bunx --bun tsc --noEmit` and `bunx --bun tsc --noEmit -p packages/board`), and the linter (`bun run lint`). All of them must pass. New behavior comes with tests.
 
 ---
 

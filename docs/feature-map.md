@@ -5,7 +5,7 @@ This is the map of what Luca does, and which tests prove it (#583). Each section
 Why it exists: an agent that adds a test should know where the feature already has tests, and put the new one beside them. This repo's `.luca/config.json` sets `feature_map` to this file, so:
 
 - The red check refuses a new test file that no section lists.
-- The test-writer adds a new test file under the feature it tests, in the same change. It may edit this file; no other role may.
+- The test-writer adds a new test file under the feature it tests, in the same change. It may edit this file, though it may write nothing else outside test files.
 - `packages/engine/src/gates/feature-map-docs.test.ts` checks that every `*.test.ts` file under `packages/` is listed here, and that every listed file exists.
 
 To add a feature, add a section: a heading, one sentence, a `Reached by:` line, and a `Tests:` list with each path in backticks. The words come from `GLOSSARY.md`; the engine and board READMEs say how each feature works.
@@ -22,6 +22,7 @@ Tests:
 - `packages/engine/src/core/engine.test.ts`
 - `packages/engine/src/core/run-from-origin.e2e.test.ts`
 - `packages/engine/src/core/run-from-origin.test.ts`
+- `packages/engine/src/core/decide-release-labels.test.ts`
 
 ## Tickets a run leaves out
 
@@ -97,6 +98,7 @@ Reached by: `checks.slow_test` and `test_case_timeout_ms` in a repo's `.luca/con
 Tests:
 
 - `packages/engine/src/config/test-timeout.test.ts`
+- `packages/engine/src/gates/test-runner.test.ts`
 - `packages/engine/src/core/decide-slow-tests.test.ts`
 - `packages/engine/src/core/run-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
@@ -111,6 +113,7 @@ Reached by: `prepare` in a repo's `.luca/config.json`.
 Tests:
 
 - `packages/engine/src/config/prepare-command.test.ts`
+- `packages/engine/src/gates/gate-runner.test.ts`
 - `packages/engine/src/gates/prepare-slots.test.ts`
 - `packages/engine/src/core/run-prepare-command.e2e.test.ts`
 - `packages/engine/src/core/run-prepare-concurrency.e2e.test.ts`
@@ -207,6 +210,7 @@ Tests:
 - `packages/board/server/reply-post.test.ts`
 - `packages/engine/skills/luca-unstick/skill-text.test.ts`
 - `packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts`
+- `packages/board/server/board-panel-state.test.ts`
 
 ## Looking back at a run
 
@@ -265,6 +269,7 @@ Tests:
 - `packages/engine/src/core/usage-line-wait.test.ts`
 - `packages/engine/src/limits/usage-line.test.ts`
 - `packages/board/server/usage-line-panel.test.ts`
+- `packages/board/server/board-panel-state.test.ts`
 
 ## Token counts and the run budget
 
