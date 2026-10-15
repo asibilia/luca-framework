@@ -617,6 +617,13 @@ export const GateTargetSchema = z.enum(['ticket', 'run_branch'])
 export type GateTarget = z.infer<typeof GateTargetSchema>
 
 /**
+ * Where a `gates_run` ran: a ticket's worktree, the run branch, or the
+ * final review's slow tests on the run branch (#563), which start with
+ * round 1's lenses and are not the fix round's gates.
+ */
+const GatesRunTargetSchema = z.enum([...GateTargetSchema.options, 'final_slow'])
+
+/**
  * The engine threw away every uncommitted change in a ticket's worktree, back
  * to `sha`, so a fresh test-writer starts clean after a bad test.
  */
@@ -645,7 +652,7 @@ const GatesRunEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('gates_run'),
     content: z.object({
-        target: GateTargetSchema,
+        target: GatesRunTargetSchema,
         ok: z.boolean(),
         checks: z.array(GateCheckSchema),
     }),
@@ -1038,6 +1045,11 @@ const FinalReviewStartedEntrySchema = z.object({
         rules: z.array(
             z.object({ path: z.string(), text: z.string().nullable() })
         ),
+        /**
+         * Round 1 with a slow test command: its slow tests are due alongside
+         * the lenses (#563). An older engine's record has none.
+         */
+        slow_due: z.boolean().optional(),
     }),
 })
 

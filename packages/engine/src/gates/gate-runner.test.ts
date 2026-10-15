@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 
-import { prepareCheck, runGates, shellCheck } from './gate-runner'
+import { prepareCheck, runGates, runSlowTests, shellCheck } from './gate-runner'
 import { runBunTests } from './test-runner'
 
 import { EngineConfigSchema } from '../config/engine-config'
@@ -278,6 +278,77 @@ describe('slow tests in the gates (#563)', () => {
         const { checks } = await gates({ config: plain, with_slow_tests: true })
         expect(checks.map(({ name }) => name)).toEqual(['test', 'types'])
     })
+})
+
+describe("runSlowTests: the final review's slow tests (#563)", () => {
+    const slowTests = async ({
+        config,
+    }: {
+        config: ReturnType<typeof EngineConfigSchema.parse>
+    }) => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-slow-tests-'))
+        try {
+            return await runSlowTests({
+                cwd: folder,
+                config,
+                test_files: [],
+                report_file: join(folder, 'report.xml'),
+            })
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }
+
+    test('runs prepare, then only each slow command, as slow_test', async () => {
+        const { ok, checks } = await slowTests({
+            config: EngineConfigSchema.parse({
+                checks: {
+                    test: 'echo fast',
+                    slow_test: [
+                        'echo one',
+                        { run: 'exit 1', results: 'pass_fail' },
+                    ],
+                    types: 'true',
+                    lint: 'true',
+                },
+                prepare: 'true',
+            }),
+        })
+
+        expect(ok).toBe(false)
+        expect(
+            checks.map(({ name, command, ok }) => `${name}:${command}:${ok}`)
+        ).toEqual([
+            'prepare:true:true',
+            'slow_test:echo one:true',
+            'slow_test:exit 1:false',
+        ])
+    })
+
+    test('a failed prepare stops there', async () => {
+        const { ok, checks } = await slowTests({
+            config: EngineConfigSchema.parse({
+                checks: { test: 'echo fast', slow_test: 'echo slow' },
+                prepare: 'exit 3',
+            }),
+        })
+
+        expect(ok).toBe(false)
+        expect(checks.map(({ name }) => name)).toEqual(['prepare'])
+    })
+
+    test('a slow command past test_timeout_ms is stopped and says to raise it', async () => {
+        const { ok, checks } = await slowTests({
+            config: EngineConfigSchema.parse({
+                checks: { test: 'true', slow_test: 'sleep 5' },
+                test_timeout_ms: 300,
+            }),
+        })
+
+        expect(ok).toBe(false)
+        expect(checks).toHaveLength(1)
+        expect(checks[0]?.output).toContain('raise `test_timeout_ms`')
+    }, 20_000)
 })
 
 describe('runBunTests: the test time limit (#542)', () => {

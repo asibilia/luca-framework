@@ -355,6 +355,12 @@ export type FinalReviewState = {
     commit: { sha: string; files: string[] } | null
     /** The open fix round's push. */
     pushed: string | null
+    /** This round's slow tests are due (#563): round 1, with a slow command. */
+    slow_due: boolean
+    /** This round's slow test run (`gates_run` `final_slow`), once journaled. */
+    slow_tests: ReplayedGates | null
+    /** The run branch commit the slow tests last passed on (#563). */
+    slow_ok_at: string | null
     /** Every nit the lenses reported, one per id. */
     nits: FinalFinding[]
     declined: FinalDeclined[]
@@ -402,6 +408,9 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     leftovers: null,
     commit: null,
     pushed: null,
+    slow_due: false,
+    slow_tests: null,
+    slow_ok_at: null,
     nits: [],
     declined: [],
     assumptions: [],
@@ -1431,11 +1440,22 @@ const namespaced = ({
 })
 
 /**
- * The final review once every due lens finished its round: settles the
- * last fix round's "won't fix" answers per lens (see `declinedBy`), keeps
- * the nits, and opens a fix round on the blocking findings of every due
- * lens, with its fixers, gates, commit, and push afresh (and fresh fixer
- * sessions). No blocking finding leaves `fix` null: the review is clean.
+ * Every due lens finished this round, and its slow tests ran if they were
+ * due (#563): the round can settle.
+ */
+const roundDone = ({ review }: { review: FinalReviewState }): boolean =>
+    review.lenses_due.every((lens) => review.results[lens] !== undefined) &&
+    (!review.slow_due || review.slow_tests !== null)
+
+/**
+ * The final review once every due lens finished its round (and its slow
+ * tests ran, if due): settles the last fix round's "won't fix" answers per
+ * lens (see `declinedBy`), keeps the nits, and opens a fix round on the
+ * blocking findings of every due lens, with its fixers, gates, commit, and
+ * push afresh (and fresh fixer sessions). Failed slow tests open one too,
+ * even with no blocking finding (#563): its findings are empty, so only its
+ * gates (and their fix loop) run. No blocking finding and no failed slow
+ * test leaves `fix` null: the review is clean.
  */
 const settleRound = ({
     review,
@@ -1483,7 +1503,8 @@ const settleRound = ({
             ),
         ],
     }
-    if (blocking.length === 0) return { ...settled, fix: null }
+    const slowFailed = review.slow_due && review.slow_tests?.ok === false
+    if (blocking.length === 0 && !slowFailed) return { ...settled, fix: null }
     return {
         ...settled,
         fix: {
@@ -1542,10 +1563,9 @@ const finalResultChange = ({
                 [lens]: namespaced({ lens, result: finished.result }),
             },
         }
-        const pending = next.lenses_due.some(
-            (due) => next.results[due] === undefined
-        )
-        return pending ? next : settleRound({ review: next })
+        return roundDone({ review: next })
+            ? settleRound({ review: next })
+            : next
     }
     if (finished.role === 'test-writer') {
         if (fix === null || fix.tests_answered) return review
@@ -1605,6 +1625,8 @@ const finalReviewAfter = ({
                 lenses_due: lenses,
                 rules,
                 results: {},
+                slow_due: record.content.slow_due ?? false,
+                slow_tests: null,
             }
         }
         case 'agent_started':
@@ -1679,11 +1701,24 @@ const finalReviewAfter = ({
                 },
             }
         }
-        case 'gates_run':
-            return {
-                ...review,
-                gates: { ok: record.content.ok, checks: record.content.checks },
+        case 'gates_run': {
+            const { ok, checks, target } = record.content
+            // Round 1's slow tests (#563): not the fix round's gates.
+            if (target === 'final_slow') {
+                const next = {
+                    ...review,
+                    slow_tests: { ok, checks },
+                    slow_ok_at: ok ? review.head_sha : review.slow_ok_at,
+                }
+                // The round settles on whichever comes last, the lenses or
+                // the slow tests; a run no round was waiting for settles none.
+                const awaited = review.slow_due && review.slow_tests === null
+                return awaited && roundDone({ review: next })
+                    ? settleRound({ review: next })
+                    : next
             }
+            return { ...review, gates: { ok, checks } }
+        }
         case 'leftover_scan':
             return { ...review, leftovers: record.content.hits }
         case 'commit_made':
@@ -1695,7 +1730,17 @@ const finalReviewAfter = ({
                 },
             }
         case 'run_branch_pushed':
-            return { ...review, pushed: record.content.sha }
+            return {
+                ...review,
+                pushed: record.content.sha,
+                // The fix round's gates ran the slow tests on what was
+                // pushed (#563).
+                slow_ok_at:
+                    review.gates?.ok === true &&
+                    review.gates.checks.some(({ name }) => name === 'slow_test')
+                        ? record.content.sha
+                        : review.slow_ok_at,
+            }
     }
 }
 
@@ -2481,9 +2526,12 @@ const rebasedChange = ({
     }
 }
 
-/** The final review's scheduler keys: `final`, and `lens:<lens>`. */
+/**
+ * The final review's scheduler keys: `final`, every `final:<name>` (such as
+ * `final:slow`, its slow tests, #563), and `lens:<lens>`.
+ */
 export const isFinalKey = (key: string): boolean =>
-    key === 'final' || key.startsWith('lens:')
+    key === 'final' || key.startsWith('final:') || key.startsWith('lens:')
 
 /** The crash counts without the final review's keys, for its `retry`. */
 const omitFinalKeys = ({ crashes }: { crashes: CrashCounts }): CrashCounts =>

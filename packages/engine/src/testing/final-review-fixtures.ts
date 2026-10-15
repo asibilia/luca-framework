@@ -23,6 +23,7 @@ export const finalReviewStarted = ({
     lenses,
     files,
     rules,
+    slow_due,
 }: {
     round: number
     /** Defaults to `b0`, where the fixtures' run branch starts. */
@@ -34,6 +35,11 @@ export const finalReviewStarted = ({
     /** Defaults to `src/sum.ts` and its test. */
     files?: string[]
     rules?: { path: string; text: string | null }[]
+    /**
+     * Round 1's slow tests are due (#563). Left out, the record has no
+     * `slow_due`, as an older engine's has none.
+     */
+    slow_due?: boolean
 }): JournalEntry => ({
     kind: 'final_review_started',
     ticket: null,
@@ -45,6 +51,7 @@ export const finalReviewStarted = ({
         lenses: lenses ?? [...LENS_NAMES],
         files: files ?? ['src/sum.test.ts', 'src/sum.ts'],
         rules: rules ?? [],
+        ...(slow_due === undefined ? {} : { slow_due }),
     },
 })
 
@@ -159,6 +166,7 @@ export const lensRound = ({
     findings,
     from_sha,
     head_sha,
+    slow_due,
 }: {
     round: number
     /** Defaults to every lens. */
@@ -166,15 +174,46 @@ export const lensRound = ({
     findings?: Partial<Record<LensName, Finding[]>>
     from_sha?: string
     head_sha?: string
+    /** The round's slow tests are due (#563); see `finalReviewStarted`. */
+    slow_due?: boolean
 }): JournalEntry[] => {
     const due = lenses ?? [...LENS_NAMES]
     return [
-        finalReviewStarted({ round, lenses: due, from_sha, head_sha }),
+        finalReviewStarted({
+            round,
+            lenses: due,
+            from_sha,
+            head_sha,
+            slow_due,
+        }),
         ...due.flatMap((lens) =>
             lensReviewed({ lens, round, findings: findings?.[lens] })
         ),
     ]
 }
+
+/**
+ * The final review's slow tests on the run branch (#563): `bun test
+ * .e2e.test`, passing or failing.
+ */
+export const slowTestsRun = ({ ok }: { ok: boolean }): JournalEntry => ({
+    kind: 'gates_run',
+    ticket: null,
+    role: null,
+    content: {
+        target: 'final_slow',
+        ok,
+        checks: [
+            {
+                name: 'slow_test',
+                command: 'bun test .e2e.test',
+                ok,
+                exit_code: ok ? 0 : 1,
+                output: ok ? '' : '1 fail',
+            },
+        ],
+    },
+})
 
 /** A final review fix round starts. */
 export const finalReviewFixing = ({

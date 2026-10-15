@@ -394,6 +394,21 @@ export const describeRecord = ({
                       tone: 'info',
                   })
         case 'gates_run': {
+            const failed = record.content.checks
+                .filter((check) => !check.ok)
+                .map((check) => check.name)
+            // The final review's slow tests, beside round 1's lenses (#563).
+            if (record.content.target === 'final_slow') {
+                return record.content.ok
+                    ? event({
+                          text: 'Final review: slow tests passed.',
+                          tone: 'success',
+                      })
+                    : event({
+                          text: `Final review: slow tests failed: ${failed.join(', ') || 'no detail'}.`,
+                          tone: 'danger',
+                      })
+            }
             const where =
                 record.ticket === null
                     ? ' on the fixes'
@@ -401,9 +416,6 @@ export const describeRecord = ({
                       ? ' after joining'
                       : ''
             const who = record.ticket === null ? 'Final review: ' : at
-            const failed = record.content.checks
-                .filter((check) => !check.ok)
-                .map((check) => check.name)
             return record.content.ok
                 ? event({
                       text: `${who}checks passed${where}.`,

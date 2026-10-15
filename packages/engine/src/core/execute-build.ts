@@ -25,7 +25,12 @@ import {
     type EngineConfig,
 } from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
-import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
+import {
+    prepareCheck,
+    runGates,
+    runSlowTests,
+    shellCheck,
+} from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import {
     importStem,
@@ -1213,6 +1218,40 @@ export const gatesIn = async ({
         ticket,
         role: null,
         content: { target, ...result },
+    })
+}
+
+/**
+ * The final review's slow tests (#563) in the run branch's worktree, beside
+ * round 1's lenses: prepare (noting what it made), then each slow test
+ * command, journaled as `gates_run` with `target: 'final_slow'` and no
+ * ticket. They are not the fix round's gates.
+ */
+export const slowTestsIn = async ({
+    context,
+    worktree,
+}: {
+    context: BuildContext
+    worktree: ReplayedWorktree
+}) => {
+    const { path: cwd } = worktree
+    const result = await runSlowTests({
+        cwd,
+        config: context.config,
+        around_prepare: (run) =>
+            watchPrepare({ context, cwd, ticket: null, run }),
+        test_files: await testFilesIn({ context, cwd }),
+        report_file: await reportFile({
+            context,
+            ticket: null,
+            label: 'final-slow',
+        }),
+    })
+    context.journal.append({
+        kind: 'gates_run',
+        ticket: null,
+        role: null,
+        content: { target: 'final_slow', ...result },
     })
 }
 

@@ -213,8 +213,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
 once every ticket pushed, the final review, on the run branch's worktree:
   start_final_review        HEAD, the files since, the rule files         ──> final_review_started
   launch_lens × 5           at once, each a fresh read-only lens          ──> lens_started, agent_started, agent_finished, lens_finished
-  pass_final_review         every lens due this round approved            ──> final_review_passed
-    blockers or should-fixes: a final review fix round, ≤ 3 rounds
+  run_final_slow_tests      round 1 with checks.slow_test (#563), beside the lenses ──> gates_run (target final_slow)
+  pass_final_review         every lens due this round approved (and the slow tests passed) ──> final_review_passed
+    blockers or should-fixes, or failed slow tests: a final review fix round, ≤ 3 rounds
       start_final_fix                                                     ──> final_review_fixing
       launch_final_fixer test-writer   (fresh) the test findings, if any
       launch_final_fixer implementer   (fresh) the code findings, if any
@@ -222,6 +223,7 @@ once every ticket pushed, the final review, on the run branch's worktree:
       commit_final_fix                 leftover scan, then commit         ──> leftover_scan, commit_made
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
+                                       (a fix round only failed slow tests opened passes here instead)
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (edits left uncommitted get their own commit
       "fix: final review round N, shipped with open findings", then shipFinalReview ──> final_review_shipped) opens the PR anyway
@@ -412,11 +414,14 @@ entries. This repo splits its suite in two:
 }
 ```
 
-The engine runs the slow tests only in the final review's gates (the
-`run_final_gates` step, and so its fix rounds' gates), as `slow_test` checks
-after the `test` checks and before `types`. A ticket's gates, a join's
-gates, the baseline, and the red check never run them. A failed slow test
-goes into the final review's gate fix loop like any failed gate. Slow
+The engine runs the slow tests only at the final review: beside round 1's
+lenses (the `run_final_slow_tests` step, after the prepare command, journaled
+as `gates_run` with `target: final_slow`), and in the final review's gates
+(the `run_final_gates` step, and so its fix rounds' gates), as `slow_test`
+checks after the `test` checks and before `types`. A ticket's gates, a
+join's gates, the baseline, and the red check never run them. Failed slow
+tests open a final review fix round, and in it they go into the gate fix
+loop like any failed gate (see "The final review"). Slow
 commands get the same time limit as the others, `test_timeout_ms`, and a
 slow command that runs out of time says so. Agents may run each slow
 command, like the test commands (a `bun` one may take extra arguments), and
@@ -859,6 +864,24 @@ runs, even for a one-ticket spec.
   #<n>` (nothing changed: the current commit, no files), then a push. The
   final review's gates are the only ones that also run the config's slow
   tests (`checks.slow_test`, #563), as `slow_test` checks.
+- **Slow tests (#563).** With a slow test command, round 1 also runs the
+  slow tests (`run_final_slow_tests`: prepare, then each slow command, in the
+  run branch's worktree) beside its lenses, under their own scheduler key
+  (`final:slow`), so neither waits for the other. `final_review_started`
+  says they're due (`slow_due: true` in round 1, `false` later; a config
+  with none journals no `slow_due`), and they're journaled as `gates_run`
+  with `target: final_slow`, which isn't the fix round's gates. The round
+  settles only once every due lens finished and the slow tests ran, whichever
+  comes last. Failing slow tests open the round's fix round (or join it, with
+  the lenses' findings). A fix round they alone opened has no findings, so
+  its gates run first (the slow tests again among them), a fresh implementer
+  gets their failure as it gets failed gates, and the gate fix loop runs
+  until they pass, then the commit and the push. It ends there:
+  the review passes, with no lens round after it. Still failing at the gate
+  fix loop's cap, the final review is stuck with `gates_failed`, naming
+  `slow_test`. Clean lenses and passing slow tests pass the review, so it
+  only ever passes once the slow tests passed on the run branch's latest
+  commit (replay keeps that commit as `slow_ok_at`).
 - **Re-reviews.** Only the lenses that had blocking findings look again, and
   only at the new changes (`git diff <last round's head>..<head>`), with
   their earlier findings and each fixer's answer; they rule on each "won't
