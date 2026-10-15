@@ -65,7 +65,7 @@ const ofKind = <Kind extends JournalRecord['kind']>(
             record.kind === kind
     )
 
-describe('crash recovery, end to end', () => {
+describe('crash recovery: intake refusals', () => {
     test('intake refusal comments are posted once when a crash cut the refusal off', async () => {
         const journal = createJournal({
             file: runJournalPath({ runs_dir: root, run_id: 'run-1' }),

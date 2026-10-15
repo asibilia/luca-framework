@@ -2037,7 +2037,7 @@ commits), #22 is fixed on top through the gate fix loop, re-reviewed, and
 joins. `src/core/run-limit-many-tickets.e2e.test.ts` hits a plan limit while
 #11's and #12's test-writers are both in flight: one wait (by a fake clock),
 then both launch again with the same prompts and the run builds to its PR.
-`src/core/run-rebase-reinstall.test.ts` rebases a ticket across another's
+`src/core/run-rebase-reinstall.e2e.test.ts` rebases a ticket across another's
 new workspace dependency and checks the moved worktree's frozen install.
 `src/core/decide-many-tickets.test.ts` covers the same rules at the decision
 step, limits and billing stops with two tickets in flight included.
