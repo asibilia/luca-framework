@@ -267,6 +267,16 @@ describe('agent messages and run notes across tickets building at once', () => {
         )
         expect(later.length).toBeGreaterThan(0)
         for (const call of later) expect(call.prompt).toContain(line)
+        // The journal keeps the note in the test-writer's result.
+        const finished = ofKind(run.records, 'agent_finished').find(
+            ({ ticket, content }) =>
+                ticket === 11 && content.role === 'test-writer'
+        )
+        expect(
+            finished?.content.role === 'test-writer'
+                ? finished.content.result.run_notes
+                : []
+        ).toEqual([NOTE])
     })
 
     test('reviewers were handed no messages', () => {

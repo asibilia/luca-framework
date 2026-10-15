@@ -4,12 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { MAX_FIX_ROUNDS } from './decide-build'
-
-import {
-    createScriptedLauncher,
-    type ScriptedTurn,
-} from '../agents/scripted-launcher'
+import { createScriptedLauncher } from '../agents/scripted-launcher'
 import {
     CLEAN_LENS_TURNS,
     git,
@@ -109,10 +104,11 @@ afterEach(async () => {
 
 describe('one ticket, end to end, with scripted agents', () => {
     test('builds the ticket, joins the run branch, pushes it, and opens one PR', async () => {
-        const { action, tracker, records, origin } = await runPractice({
-            root,
-            turns: HAPPY_TURNS,
-        })
+        const { action, tracker, records, launches, origin } =
+            await runPractice({
+                root,
+                turns: HAPPY_TURNS,
+            })
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
 
@@ -222,6 +218,12 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(find('agent_started')[0]?.content.prompt).toContain(
             'AC2: sum of no numbers is zero'
         )
+        // The lenses start at once, so compare without their order.
+        expect(
+            find('agent_started')
+                .map((start) => start.content.prompt)
+                .toSorted()
+        ).toEqual(launches.map(({ prompt }) => prompt).toSorted())
 
         // The red commit holds only the tests; the green commit, the code.
         const commits = find('commit_made').map((commit) => commit.content)
@@ -489,60 +491,6 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(body).toContain('- #11: sum takes a list of numbers.')
         expect(body).toContain('- #11: 1 + 2 is 3.')
     }, 90_000)
-
-    test(`a test that still passes after ${MAX_FIX_ROUNDS} fix rounds leaves the ticket stuck`, async () => {
-        const [testWriter, implementer, reviewer] = HAPPY_TURNS
-        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const passingAlready: ScriptedTurn = {
-            ...testWriter,
-            files: { 'src/sum.test.ts': PASSING_SUM_TEST },
-        }
-        const launcher = createScriptedLauncher({
-            turns: [
-                // The first try, then one turn per follow-up.
-                ...Array.from(
-                    { length: MAX_FIX_ROUNDS + 1 },
-                    () => passingAlready
-                ),
-                implementer,
-                reviewer,
-            ],
-        })
-        const { action, records } = await runPractice({
-            root,
-            turns: [],
-            launcher,
-        })
-
-        expect(action).toMatchObject({ type: 'wait_for_reply' })
-        expect(latestStuck(records)).toMatchObject({
-            reason: 'red_check_failed',
-        })
-        expect(latestStuck(records)?.detail).toContain('passes already')
-        expect(
-            records.filter((record) => record.kind === 'red_check')
-        ).toHaveLength(MAX_FIX_ROUNDS + 1)
-        // Every follow-up went to the first test-writer's session.
-        const calls = launcher.launches()
-        const [first, ...followUps] = calls
-        expect(first?.kind).toBe('launch')
-        expect(followUps).toHaveLength(MAX_FIX_ROUNDS)
-        for (const call of followUps) {
-            expect(call).toMatchObject({
-                kind: 'follow_up',
-                role: 'test-writer',
-                session_id: first?.session_id,
-            })
-            expect(call.prompt).toContain('passes already')
-        }
-        expect(records.at(-2)).toMatchObject({
-            kind: 'ticket_stuck',
-            content: { reason: 'red_check_failed' },
-        })
-        expect(records.some((record) => record.kind === 'commit_made')).toBe(
-            false
-        )
-    }, 60_000)
 
     test('a ticket that adds a package gets the install from the engine, and the lockfile in its green commit', async () => {
         const [testWriter, implementer, reviewer] = HAPPY_TURNS
@@ -862,60 +810,6 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(records.some((record) => record.kind === 'gates_run')).toBe(
             false
         )
-    }, 60_000)
-})
-
-describe('run notes, end to end', () => {
-    test("a test-writer's run note reaches the implementer's prompt, word for word", async () => {
-        const [testWriter, implementer, reviewer] = HAPPY_TURNS
-        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
-        const note = 'Tests import from ./sum; export it from src/index.ts.'
-        const launcher = createScriptedLauncher({
-            turns: [
-                {
-                    ...testWriter,
-                    result: { ...TEST_WRITER_RESULT, run_notes: [note] },
-                },
-                implementer,
-                reviewer,
-                ...CLEAN_LENS_TURNS(10),
-            ],
-        })
-        const { action, records } = await runPractice({
-            root,
-            turns: [],
-            launcher,
-        })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const prompts = launcher
-            .launches()
-            .map(({ role, prompt }) => ({ role, prompt }))
-        expect(prompts[0]?.prompt).not.toContain('Run notes')
-        expect(prompts[1]?.role).toBe('implementer')
-        expect(prompts[1]?.prompt).toContain(`- ${note} (test-writer, #11)`)
-        expect(prompts[2]?.prompt).toContain(`- ${note} (test-writer, #11)`)
-        // The final review's lenses get the run's notes too.
-        const lensPrompts = prompts.filter(({ role }) => role.endsWith('-lens'))
-        expect(lensPrompts).toHaveLength(5)
-        for (const { prompt } of lensPrompts) {
-            expect(prompt).toContain(`- ${note} (test-writer, #11)`)
-        }
-        const started = records.flatMap((record) =>
-            record.kind === 'agent_started' ? [record.content.prompt] : []
-        )
-        expect(started[1]).toBe(prompts[1]?.prompt ?? '')
-        const finished = records.find(
-            (record) =>
-                record.kind === 'agent_finished' &&
-                record.role === 'test-writer'
-        )
-        expect(
-            finished?.kind === 'agent_finished' &&
-                finished.content.role === 'test-writer'
-                ? finished.content.result.run_notes
-                : []
-        ).toEqual([note])
     }, 60_000)
 })
 

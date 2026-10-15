@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { decide } from './decide'
+import { decide, decideSteps } from './decide'
 import {
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
@@ -34,7 +34,10 @@ import {
     worktreeReset,
     worktreesRemoved,
 } from '../testing/build-fixtures'
-import { finalReviewClean } from '../testing/final-review-fixtures'
+import {
+    finalReviewClean,
+    finalReviewStarted,
+} from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
@@ -449,6 +452,56 @@ describe('decision step: the red check fix loop', () => {
         if (action.type !== 'mark_stuck') throw new Error(action.type)
         expect(action.detail).toContain(`after ${MAX_FIX_ROUNDS} fix rounds`)
         expect(action.detail).toContain('"sum adds two numbers" passes already')
+    })
+
+    test(`a test that still passes goes back to the first test-writer's session every round, and after ${MAX_FIX_ROUNDS} rounds the ticket is stuck with no commit`, () => {
+        const decided: string[] = []
+        let entries = stepsUpTo(2)
+        for (let round = 1; round <= MAX_FIX_ROUNDS; round += 1) {
+            decided.push(decideAfter(entries).type)
+            entries = [...entries, redCheck({ ticket: 11, ok: false })]
+            const action = decideAfter(entries)
+            decided.push(action.type)
+            expect(action).toMatchObject({
+                ticket: 11,
+                role: 'test-writer',
+                session_id: SESSIONS['test-writer'],
+            })
+            if (action.type !== 'follow_up_agent') throw new Error(action.type)
+            expect(action.message).toContain('passes already')
+            entries = [
+                ...entries,
+                agentStarted({
+                    ticket: 11,
+                    role: 'test-writer',
+                    follow_up_of: SESSIONS['test-writer'],
+                }),
+                testsWritten({ ticket: 11 }),
+            ]
+        }
+        decided.push(decideAfter(entries).type)
+        const stuck = decideAfter([
+            ...entries,
+            redCheck({ ticket: 11, ok: false }),
+        ])
+        decided.push(stuck.type)
+
+        // MAX_FIX_ROUNDS + 1 red checks, a follow-up after each but the
+        // last, then stuck: never a commit.
+        expect(decided).toEqual([
+            ...Array.from({ length: MAX_FIX_ROUNDS }, () => [
+                'run_red_check',
+                'follow_up_agent',
+            ]).flat(),
+            'run_red_check',
+            'mark_stuck',
+        ])
+        expect(stuck).toMatchObject({
+            ticket: 11,
+            reason: 'red_check_failed',
+        })
+        if (stuck.type !== 'mark_stuck') throw new Error(stuck.type)
+        expect(stuck.detail).toContain('passes already')
     })
 
     test('a follow-up that started but never finished is sent again to the same session, not counted', () => {
@@ -1291,6 +1344,39 @@ describe('decision step: run notes', () => {
         )
         expect(prompt).toContain('# Your role: ticket-reviewer')
         expect(prompt).toContain('- Uses bun. (test-writer, #11)')
+    })
+
+    test("the final review's lenses get the run's notes too", () => {
+        const steps = decideSteps({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassed({ tickets: [TICKET] }),
+                    ...withInstalls({
+                        entries: [
+                            runBranchCreated(),
+                            ...ticketBuilt({ ticket: 11 }).map((entry) =>
+                                entry.kind === 'agent_finished' &&
+                                entry.content.role === 'test-writer'
+                                    ? testsWritten({
+                                          ticket: 11,
+                                          run_notes: ['Uses bun.'],
+                                      })
+                                    : entry
+                            ),
+                            finalReviewStarted({ round: 1 }),
+                        ],
+                    }),
+                ],
+            }),
+        })
+
+        const lenses = steps.flatMap((step) =>
+            step.type === 'launch_lens' ? [step.prompt] : []
+        )
+        expect(lenses).toHaveLength(5)
+        for (const prompt of lenses) {
+            expect(prompt).toContain('- Uses bun. (test-writer, #11)')
+        }
     })
 
     test('a follow-up does not repeat the notes', () => {
