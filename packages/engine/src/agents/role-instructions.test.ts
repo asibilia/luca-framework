@@ -65,6 +65,34 @@ test("the implementer's gate line names the slow command and says it runs at the
     )
 })
 
+test("the implementer's prompt names the fast test limit and the bad_test way out (#580)", () => {
+    const config = EngineConfigSchema.parse({
+        checks: { test: 'bun test' },
+        test_case_timeout_ms: 2000,
+    })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).toContain(
+        'Each fast test must finish within 2000 ms. If one of the ticket\'s tests can\'t, answer "bad_test".'
+    )
+    // One bullet per line: the limit line sits right after the gate line.
+    expect(text).toMatch(/Make every gate pass: [^\n]*\n- Each fast test/)
+})
+
+test('left out, the implementer prompt has no limit line and no blank line (#580)', () => {
+    const config = EngineConfigSchema.parse({ checks: { test: 'bun test' } })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).not.toContain('Each fast test must finish')
+    expect(text).toMatch(/Make every gate pass: [^\n]*\n- Never create/)
+})
+
 describe("the learner's instructions", () => {
     const learner = () =>
         roleInstructions({

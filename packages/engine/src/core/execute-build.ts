@@ -1238,15 +1238,20 @@ export const gatesIn = async ({
         context.state.prepare_made
     )
     const test_files = await testFilesIn({ context, cwd })
-    // A ticket's own gates also run the test files it changed that the fast
-    // tests leave out (#564), with a slow command; a join's never do.
-    const own_test_files =
-        target === 'ticket' && hasSlowTests({ config: context.config })
+    // The test files a ticket changed: its own gates hold their tests to the
+    // fast test speed limit by measured time (#580), and, with a slow
+    // command, also run the ones the fast tests leave out (#564). A join's
+    // and the final review's gates do neither.
+    const changed_test_files =
+        target === 'ticket'
             ? testFilesAmong({
                   files: changed,
                   test_file_patterns: context.config.test_file_patterns,
               }).filter((file) => test_files.includes(file))
             : []
+    const own_test_files = hasSlowTests({ config: context.config })
+        ? changed_test_files
+        : []
     const result = await runGates({
         cwd,
         config: context.config,
@@ -1262,6 +1267,7 @@ export const gatesIn = async ({
         // and a join's never do.
         with_slow_tests: ticket === null,
         own_test_files,
+        measured_files: changed_test_files,
     })
     context.journal.append({
         kind: 'gates_run',

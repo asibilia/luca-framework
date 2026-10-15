@@ -104,6 +104,12 @@ export const EngineConfigSchema = z.object({
      */
     test_timeout_ms: z.number().int().positive().optional(),
     /**
+     * How long one fast test may take, in milliseconds (#580): passed to every
+     * `bun` command of `checks.test` as `--timeout`, and checked on a ticket's
+     * own test files by their measured time. Left out, no limit.
+     */
+    test_case_timeout_ms: z.number().int().positive().optional(),
+    /**
      * Glob patterns for more new markdown the leftover scan lets through,
      * beyond doc folders, READMEs, and files the repo names (#520), such as
      * `design/*.md`; left out, none.
@@ -248,7 +254,36 @@ export const slowTestCommands = ({
 export const hasSlowTests = ({ config }: { config: EngineConfig }): boolean =>
     slowTestCommands({ config }).length > 0
 
-/** The test commands whose per-test results the engine reads. */
+/** The fast test speed limit (#580), or `null` with none. */
+export const caseLimitOf = ({
+    config,
+}: {
+    config: EngineConfig
+}): number | null => config.test_case_timeout_ms ?? null
+
+/**
+ * A fast `bun` test command with the speed limit (#580): `--timeout=<n>` at
+ * its end, or the command as written with no limit.
+ *
+ * @example
+ * fastBunCommand({ run: 'bun test src', config: { ...config, test_case_timeout_ms: 2000 } }) // 'bun test src --timeout=2000'
+ */
+export const fastBunCommand = ({
+    run,
+    config,
+}: {
+    run: string
+    config: EngineConfig
+}): string => {
+    const limit = caseLimitOf({ config })
+    return limit === null ? run : `${run} --timeout=${limit}`
+}
+
+/**
+ * The test commands whose per-test results the engine reads, each with the
+ * fast test speed limit (#580) when the config has one. Used by the baseline,
+ * the red check and the already-done check; `testCommands` stays as written.
+ */
 export const bunTestCommands = ({
     config,
 }: {
@@ -256,7 +291,7 @@ export const bunTestCommands = ({
 }): string[] =>
     testCommands({ config })
         .filter(({ results }) => results === 'bun')
-        .map(({ run }) => run)
+        .map(({ run }) => fastBunCommand({ run, config }))
 
 export type LoadEngineConfigResult =
     | { ok: true; config: EngineConfig }

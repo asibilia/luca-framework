@@ -8,6 +8,7 @@ import {
 } from './test-runner'
 
 import {
+    caseLimitOf,
     prepareConcurrencyOf,
     prepareTimeoutOf,
     slowTestCommands,
@@ -113,7 +114,17 @@ export const prepareCheck = async ({
     })
 }
 
-/** Runs test commands as gate checks named `name`, in order (see `runGates`). */
+/** What to do about a fast test over the speed limit (#580). */
+export const FAST_TEST_HINT = ({ limit_ms }: { limit_ms: number }): string =>
+    `A fast test may take at most ${limit_ms} ms (\`test_case_timeout_ms\`). Make it faster, or move it to the slow tests.`
+
+/**
+ * Runs test commands as gate checks named `name`, in order (see `runGates`).
+ * With a `limit` (#580, the fast call only), each `bun` command gets
+ * `--timeout=<limit_ms>`, and a passing test in one of `measured_files` that
+ * took longer than that fails the check: a test's own timeout option
+ * overrides `--timeout`, so only its measured time tells.
+ */
 const testChecks = async ({
     commands,
     name,
@@ -122,6 +133,7 @@ const testChecks = async ({
     report_file,
     first_index,
     timeout_ms,
+    limit,
 }: {
     commands: TestCommand[]
     name: 'test' | 'slow_test'
@@ -131,6 +143,11 @@ const testChecks = async ({
     /** The first command's index, so each command gets its own report file. */
     first_index: number
     timeout_ms: number
+    /**
+     * The fast test speed limit (#580), or `null` for none. Only the fast
+     * call has one; slow tests never do.
+     */
+    limit: { limit_ms: number; measured_files: string[] } | null
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
     const runs: TestRun[] = []
@@ -150,7 +167,10 @@ const testChecks = async ({
         const started = performance.now()
         const run = await runTests({
             cwd,
-            command,
+            command:
+                limit === null
+                    ? command
+                    : `${command} --timeout=${limit.limit_ms}`,
             test_files,
             report_file: reportFileFor({
                 report_file,
@@ -159,12 +179,35 @@ const testChecks = async ({
             timeout_ms,
         })
         runs.push(run)
+        const tooSlow =
+            limit === null
+                ? []
+                : run.cases.filter(
+                      ({ file, status, duration_ms }) =>
+                          status === 'passed' &&
+                          limit.measured_files.includes(file) &&
+                          (duration_ms ?? 0) > limit.limit_ms
+                  )
+        const timedOut = /timed out after \d+ms/.test(run.output)
+        const hint =
+            limit === null || (tooSlow.length === 0 && !timedOut)
+                ? ''
+                : `${FAST_TEST_HINT({ limit_ms: limit.limit_ms })}\n`
+        const slowLines = tooSlow
+            .map(
+                ({ file, full_name, duration_ms }) =>
+                    `- ${file} > ${full_name}: ${duration_ms} ms`
+            )
+            .join('\n')
+        const ok = run.ok && tooSlow.length === 0
         checks.push({
             name,
-            command,
-            ok: run.ok,
+            command: run.command,
+            ok,
             exit_code: run.exit_code,
-            output: run.ok ? '' : run.output,
+            output: ok
+                ? ''
+                : `${hint}${slowLines === '' ? '' : `Too slow for a fast test:\n${slowLines}\n`}${run.output}`,
             duration_ms: msSince(started),
         })
     }
@@ -179,6 +222,11 @@ const testChecks = async ({
  * reporter; a `pass_fail` one runs as written and is judged by its exit code.
  * Each test command gets the config's time limit (see `testTimeoutOf`);
  * types and lint get the engine's default.
+ *
+ * With a fast test speed limit (`test_case_timeout_ms`, #580), every `bun`
+ * command of `checks.test` gets `--timeout=<limit>`, and the tests in
+ * `measured_files` are also held to it by measured time. Slow commands, the
+ * own-files run, and `pass_fail` commands never get it.
  *
  * With `own_test_files` (a ticket's gates, with a slow command, #564), the
  * ones the fast runs gave no results for run next on their own with plain
@@ -205,6 +253,7 @@ export const runGates = async ({
     around_prepare,
     with_slow_tests,
     own_test_files,
+    measured_files,
 }: {
     cwd: string
     config: EngineConfig
@@ -225,6 +274,11 @@ export const runGates = async ({
      * for are run on their own, as one more `test` check. Left out, none.
      */
     own_test_files?: string[]
+    /**
+     * A ticket's changed test files: their tests are held to
+     * `test_case_timeout_ms` by measured time (#580); left out, none.
+     */
+    measured_files?: string[]
 }): Promise<{ ok: boolean; checks: GateCheck[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -244,6 +298,7 @@ export const runGates = async ({
     }
     const { types, lint } = config.checks
     const timeout_ms = testTimeoutOf({ config })
+    const limit_ms = caseLimitOf({ config })
     const fast = testCommands({ config })
     const fastChecks = await testChecks({
         commands: fast,
@@ -253,6 +308,10 @@ export const runGates = async ({
         report_file,
         first_index: 0,
         timeout_ms,
+        limit:
+            limit_ms === null
+                ? null
+                : { limit_ms, measured_files: measured_files ?? [] },
     })
     checks.push(...fastChecks.checks)
     // A file with no fast bun run at all has no run to have given it results,
@@ -300,6 +359,7 @@ export const runGates = async ({
             report_file,
             first_index: fast.length,
             timeout_ms,
+            limit: null,
         })
         checks.push(...slow.checks)
     }
@@ -352,6 +412,7 @@ export const runSlowTests = async ({
         report_file,
         first_index: 0,
         timeout_ms: testTimeoutOf({ config }),
+        limit: null,
     })
     const all = prepared === null ? checks : [prepared, ...checks]
     return { ok: all.every(({ ok }) => ok), checks: all }

@@ -76,6 +76,9 @@ describe('runShell', () => {
                 'perl -MPOSIX -e "POSIX::setsid(); exec q(sleep), 20" & echo $!; sleep 20',
             cwd: tmpdir(),
             timeout_ms: 300,
+            // A short grace keeps this a fast test (#580); the escaped child
+            // still holds the pipe for 20 seconds.
+            pipe_grace_ms: 200,
         })
         const took = Date.now() - started
         const escaped = firstPid(result.stdout)
@@ -89,6 +92,8 @@ describe('runShell', () => {
 
         expect(result.timed_out).toBe(true)
         expect(result.exit_code).toBeNull()
-        expect(took).toBeLessThan(8_000)
+        // The time limit and the grace, with room: far from the 20 seconds
+        // the escaped child holds the pipe, and inside a fast test's limit.
+        expect(took).toBeLessThan(1_500)
     }, 30_000)
 })

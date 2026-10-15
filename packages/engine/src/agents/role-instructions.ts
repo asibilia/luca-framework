@@ -1,6 +1,7 @@
 import { lensOf, type AgentRole, type LensName } from './role-results'
 
 import {
+    caseLimitOf,
     slowTestCommands,
     testCommands,
     type EngineConfig,
@@ -123,6 +124,17 @@ const slowLine = ({ config }: { config: EngineConfig }): string => {
         : ` The slow tests (${slow.join(', ')}) run at the final review; you may run them yourself.`
 }
 
+/**
+ * The implementer's line about the fast test limit (#580), or nothing without
+ * one.
+ */
+const limitLine = ({ config }: { config: EngineConfig }): string => {
+    const limit = caseLimitOf({ config })
+    return limit === null
+        ? ''
+        : `- Each fast test must finish within ${limit} ms. If one of the ticket's tests can't, answer "bad_test".\n`
+}
+
 const IMPLEMENTER = ({
     config,
     may_edit_tests,
@@ -141,7 +153,7 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
     .filter((command) => command !== undefined)
     .map((command) => `\`${command}\``)
     .join(', ')}.${slowLine({ config })}
-${testFileRule({ config, may_edit_tests })}
+${limitLine({ config })}${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
 - If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.

@@ -10,9 +10,10 @@ import { EngineConfigSchema, type EngineConfig } from './engine-config'
 
 /**
  * A resume re-reads the repo's config (#516): only the build fields
- * (`prepare`, `prepare_timeout_ms`, `prepare_concurrency`) and the test
- * time limit (`test_timeout_ms`, #542) may change in a run; every other
- * field stays as the run started with it.
+ * (`prepare`, `prepare_timeout_ms`, `prepare_concurrency`), the test time
+ * limit (`test_timeout_ms`, #542) and the fast test speed limit
+ * (`test_case_timeout_ms`, #580) may change in a run; every other field
+ * stays as the run started with it.
  */
 
 const STARTED: EngineConfig = {
@@ -128,6 +129,21 @@ describe('configChanges', () => {
         ).toEqual([{ field: 'test_timeout_ms', from: null, to: 900_000 }])
     })
 
+    test('a changed fast test speed limit is a change (#580)', () => {
+        expect(
+            configChanges({
+                current: { ...STARTED, test_case_timeout_ms: 2000 },
+                next: { ...STARTED, test_case_timeout_ms: 5000 },
+            })
+        ).toEqual([{ field: 'test_case_timeout_ms', from: 2000, to: 5000 }])
+        expect(
+            configChanges({
+                current: STARTED,
+                next: { ...STARTED, test_case_timeout_ms: 2000 },
+            })
+        ).toEqual([{ field: 'test_case_timeout_ms', from: null, to: 2000 }])
+    })
+
     test('changes to frozen fields are not changes', () => {
         expect(
             configChanges({
@@ -192,5 +208,22 @@ describe('withConfigChanges', () => {
 
         expect(removed).toEqual(STARTED)
         expect('test_timeout_ms' in removed).toBe(false)
+    })
+
+    test('sets a new fast test speed limit, and drops a removed one (#580)', () => {
+        const set = withConfigChanges({
+            config: STARTED,
+            changes: [{ field: 'test_case_timeout_ms', from: null, to: 2000 }],
+        })
+
+        expect(set).toEqual({ ...STARTED, test_case_timeout_ms: 2000 })
+
+        const removed = withConfigChanges({
+            config: set,
+            changes: [{ field: 'test_case_timeout_ms', from: 2000, to: null }],
+        })
+
+        expect(removed).toEqual(STARTED)
+        expect('test_case_timeout_ms' in removed).toBe(false)
     })
 })

@@ -20,6 +20,8 @@ import type { EngineConfig } from './engine-config'
  *   one counts from the next prepare run.
  * - `test_timeout_ms`: how long each test command may run (#542). Each run
  *   of a test command reads it then, so a new one counts from the next.
+ * - `test_case_timeout_ms`: how long one fast test may take (#580). Each run
+ *   of a fast test command reads it then, so a new one counts from the next.
  * - `leftover_allow`: more new markdown the leftover scan lets through
  *   (#520). Each scan reads it then, so a run stuck on a leftover can be
  *   unstuck by allowing the file and resuming.
@@ -29,6 +31,7 @@ export const RELOADED_FIELDS = [
     'prepare_timeout_ms',
     'prepare_concurrency',
     'test_timeout_ms',
+    'test_case_timeout_ms',
     'leftover_allow',
 ] as const
 
@@ -95,6 +98,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         to: positiveInt,
     }),
     z.object({
+        field: z.literal('test_case_timeout_ms'),
+        from: positiveInt,
+        to: positiveInt,
+    }),
+    z.object({
         field: z.literal('leftover_allow'),
         from: patterns,
         to: patterns,
@@ -141,6 +149,11 @@ export const configChanges = ({
             to: next.test_timeout_ms ?? null,
         },
         {
+            field: 'test_case_timeout_ms',
+            from: current.test_case_timeout_ms ?? null,
+            to: next.test_case_timeout_ms ?? null,
+        },
+        {
             field: 'leftover_allow',
             from: current.leftover_allow ?? null,
             to: next.leftover_allow ?? null,
@@ -173,6 +186,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'test_timeout_ms')
                 : { ...config, test_timeout_ms: change.to }
+        case 'test_case_timeout_ms':
+            return change.to === null
+                ? omit(config, 'test_case_timeout_ms')
+                : { ...config, test_case_timeout_ms: change.to }
         case 'leftover_allow':
             return change.to === null
                 ? omit(config, 'leftover_allow')

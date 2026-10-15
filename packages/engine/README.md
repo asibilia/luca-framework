@@ -457,6 +457,37 @@ file as a quoted `./` path (never the fast command plus the files: Bun's
 Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
 runs the same commands as before.
 
+**The fast test speed limit (#580).** A fast test should be fast. A repo says
+how fast with `test_case_timeout_ms` (a positive whole number of
+milliseconds) in `.luca/config.json`; this repo's is 2000:
+
+```json
+{ "checks": { "test": "bun test" }, "test_case_timeout_ms": 2000 }
+```
+
+- It goes to every `bun` command of `checks.test` as `--timeout=<n>`, in every
+  run of it: the baseline, the red check, the already-done check, and the
+  gates (`bunTestCommands` and the gates' fast test call). `scripts/run-checks.ts`
+  does the same, so the PR check and the gates agree. Agents' own `bun test`
+  runs stay as they wrote them.
+- A test's own timeout option (`test(name, fn, 30_000)`) overrides
+  `--timeout`, so the flag alone does not hold a test that sets its own. In a
+  ticket's gates, the tests in the files the ticket changed are also checked
+  by their measured time (`duration_ms`): a test that passed but took longer
+  than the limit fails the `test` check. Tests in files the ticket did not
+  change are not measured (a flaky old test must not fail an unrelated
+  ticket), and neither are a join's or the final review's gates.
+- A test that fails the limit, by `--timeout` or by its measured time, gets
+  this line at the top of the check's output: "A fast test may take at most
+  2000 ms (`test_case_timeout_ms`). Make it faster, or move it to the slow
+  tests." A measured-time failure also lists each slow test with its time
+  (`- src/a.test.ts > a > b: 2300 ms`), under "Too slow for a fast test:".
+  The implementer's instructions name the limit, and say that a ticket test
+  that can't meet it is a `bad_test`.
+- `checks.slow_test`, a ticket's own slow files (#564), and `pass_fail`
+  commands never get the flag: they are not fast tests. Left out, every
+  command runs exactly as written.
+
 **One prepare at a time (#492).** A build uses a lot of CPU, so builds at
 the same time only slow each other down. HeartGold's first build takes 8 to
 10 minutes alone; four at once took 19 to 25 minutes each. So the engine
@@ -798,7 +829,8 @@ its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:
 `prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test time
-limit `test_timeout_ms` (#542), and the leftover scan's `leftover_allow`
+limit `test_timeout_ms` (#542), the fast test speed limit
+`test_case_timeout_ms` (#580), and the leftover scan's `leftover_allow`
 (#520), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
