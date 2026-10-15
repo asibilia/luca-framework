@@ -243,6 +243,28 @@ export const fileTestsCommand = ({ files }: { files: string[] }): string =>
     onlyTestFiles({ command: 'bun test', files })
 
 /**
+ * A fast run with a ticket's own-files run (#564) joined on (see
+ * `joinRuns`). An own run that gave no results at all means every file in it
+ * still doesn't load, which the fast run already said: it changes nothing,
+ * so the fast run, its command, and its output stay exactly as they are.
+ * (A fast test file that can't load yet, the usual red state, is such a
+ * file: it is not run twice in the journal.)
+ *
+ * @example
+ * const current = withOwnRun({ fast, own: await runTests({ ... }), test_files })
+ */
+export const withOwnRun = ({
+    fast,
+    own,
+    test_files,
+}: {
+    fast: TestRun
+    own: TestRun
+    test_files: string[]
+}): TestRun =>
+    own.cases.length === 0 ? fast : joinRuns({ runs: [fast, own], test_files })
+
+/**
  * Several test runs as one: every case, `ok` only when all passed, and a test
  * file without results only when no run gave it any. One run is itself. No
  * run (a run of refactor tickets only, which the red check skips) gives an

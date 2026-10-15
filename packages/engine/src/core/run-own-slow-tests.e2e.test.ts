@@ -103,6 +103,14 @@ test('double of zero is zero', () => {
 })
 `
 
+/** A slow test on `main` that passes, so the final review's slow run has one. */
+const OK_SLOW_TEST = `import { expect, test } from 'bun:test'
+
+test('ok', () => {
+    expect(1).toBe(1)
+})
+`
+
 const EXPORT_SUM = "export { sum } from './sum'\n"
 
 /** The test-writer: the fast sum tests, and this slow file for AC1. */
@@ -421,6 +429,39 @@ describe("a ticket's own slow tests, end to end", () => {
         } finally {
             await rm(root, { recursive: true, force: true })
         }
+    }, 120_000)
+
+    test("a new fast test that can't load yet leaves the red run, and its output, as the fast command's alone", async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practiceRun({
+            config: SLOW_CONFIG,
+            // The final review's slow tests need one to run.
+            files: { 'src/ok.e2e.test.ts': OK_SLOW_TEST },
+            turns: [testWriter, implementer, reviewer],
+        })
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+
+        // sum.test.ts imports code not written yet, so the fast run gave it
+        // no results and it ran again on its own, and gave none again: the
+        // red run is the fast run, not two runs joined.
+        const [red] = redChecks(records)
+        expect(red?.ok).toBe(true)
+        expect(red?.tests.command).toBe(FAST_TEST)
+        expect(red?.tests.output).not.toContain('$ bun test')
+        expect(red?.tests.files_without_results).toContain('src/sum.test.ts')
+
+        const ticketGates = gatesRuns(records).filter(
+            ({ ticket, target }) => ticket === 11 && target === 'ticket'
+        )
+        expect(ticketGates.map(({ ok }) => ok)).toEqual([true])
+        expect(ticketGates[0]?.checks.map(({ command }) => command)[0]).toBe(
+            FAST_TEST
+        )
+        expect(ticketGates[0]?.checks.map(({ name }) => name)).toEqual([
+            'test',
+            'types',
+            'lint',
+        ])
     }, 120_000)
 
     test('a repo with no slow command runs exactly the commands it runs today', async () => {

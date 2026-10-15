@@ -332,6 +332,49 @@ describe("a ticket's own slow test files in the gates (#564)", () => {
         }
     }, 20_000)
 
+    test('an own run that gives no results adds its check only when no fast run failed', async () => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
+        try {
+            // A changed slow file that can't load: its own run has no cases.
+            await Bun.write(
+                join(folder, 'own.e2e.test.ts'),
+                "import { test } from 'bun:test'; import './missing'; test('own', () => {})"
+            )
+            const gates = async ({ fast }: { fast: string }) => {
+                await Bun.write(join(folder, 'fast.test.ts'), fast)
+                return runGates({
+                    cwd: folder,
+                    config,
+                    install: null,
+                    test_files: ['fast.test.ts', 'own.e2e.test.ts'],
+                    report_file: join(folder, 'report.xml'),
+                    own_test_files: ['own.e2e.test.ts'],
+                })
+            }
+
+            // A fast failure already fails the gate; the slow file's load
+            // error shows on the next run, once that is fixed.
+            const fastFailed = await gates({ fast: FAILING })
+            expect(fastFailed.ok).toBe(false)
+            expect(fastFailed.checks.map(({ command }) => command)).toEqual([
+                config.checks.test as string,
+            ])
+
+            // With every fast run passing, a slow file that can't load is a
+            // real failure of its own.
+            const fastPassed = await gates({ fast: PASSING })
+            expect(fastPassed.ok).toBe(false)
+            expect(
+                fastPassed.checks.map(({ command, ok }) => [command, ok])
+            ).toEqual([
+                [config.checks.test as string, true],
+                ["bun test './own.e2e.test.ts'", false],
+            ])
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }, 20_000)
+
     test('a file a fast run gave results for, or one with no fast bun run at all, is never run again', async () => {
         const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
         try {

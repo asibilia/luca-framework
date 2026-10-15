@@ -182,7 +182,9 @@ const testChecks = async ({
  *
  * With `own_test_files` (a ticket's gates, with a slow command, #564), the
  * ones the fast runs gave no results for run next on their own with plain
- * `bun test`, as one more `test` check, with the same time limit.
+ * `bun test`, as one more `test` check, with the same time limit. A run that
+ * gives no results (its files don't load) adds no check after a failed fast
+ * run, which already fails the gate.
  *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
@@ -274,14 +276,20 @@ export const runGates = async ({
             }),
             timeout_ms,
         })
-        checks.push({
-            name: 'test',
-            command: run.command,
-            ok: run.ok,
-            exit_code: run.exit_code,
-            output: run.ok ? '' : run.output,
-            duration_ms: msSince(started),
-        })
+        // A run with no results at all means its files don't load. After a
+        // failed fast run that is no news (the gate fails anyway, and the
+        // slow file's load error shows on the next run, once that is fixed);
+        // with every fast run passing, it is a real failure of its own.
+        if (run.cases.length > 0 || fastChecks.checks.every(({ ok }) => ok)) {
+            checks.push({
+                name: 'test',
+                command: run.command,
+                ok: run.ok,
+                exit_code: run.exit_code,
+                output: run.ok ? '' : run.output,
+                duration_ms: msSince(started),
+            })
+        }
     }
     if (with_slow_tests === true) {
         const slow = await testChecks({

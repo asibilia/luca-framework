@@ -109,12 +109,7 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
         const red = run.records.find((record) => record.kind === 'red_check')
         if (red?.kind !== 'red_check') throw new Error('no red check')
         expect(red.content.ok).toBe(true)
-        // The fast command, then (#564) the ticket's new test file on its own:
-        // it can't load before the code exists, so the fast run gave it no
-        // results. The slow suite itself is never run.
-        expect(red.content.tests.command).toBe(
-            `${FAST_TEST} && bun test './src/sum.test.ts'`
-        )
+        expect(red.content.tests.command).toBe(FAST_TEST)
         expect(
             [baseline.content.command, red.content.tests.command].some(
                 (command) => command.includes(SLOW_TEST)

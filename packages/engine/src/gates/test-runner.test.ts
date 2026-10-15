@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { TestRun } from './gate-schemas'
-import { fileTestsCommand, joinRuns, parseJunit } from './test-runner'
+import {
+    fileTestsCommand,
+    joinRuns,
+    parseJunit,
+    withOwnRun,
+} from './test-runner'
 
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="bun test" tests="3" assertions="3" failures="1" skipped="1" time="0.5">
@@ -94,5 +99,63 @@ describe("a ticket's own slow test files (#564)", () => {
         expect(joined.ok).toBe(false)
         expect(joined.files_without_results).toEqual(['c.e2e.test.ts'])
         expect(joined.command).toBe("bun test && bun test './b.e2e.test.ts'")
+    })
+
+    test('joinRuns of one run is that run, and of none is an empty passing run', () => {
+        const only = run({
+            command: 'bun test src',
+            ok: false,
+            exit_code: 1,
+            cases: [{ file: 'a.test.ts', full_name: 'a', status: 'failed' }],
+            files_without_results: ['b.test.ts'],
+            output: 'one run',
+        })
+        expect(joinRuns({ runs: [only], test_files: ['a.test.ts'] })).toBe(only)
+
+        expect(joinRuns({ runs: [], test_files: ['a.test.ts'] })).toEqual(
+            run({
+                command: '',
+                output: 'No test command with bun results to run.',
+            })
+        )
+    })
+
+    test('withOwnRun joins an own run that gave results, and leaves the fast run as it is when it gave none', () => {
+        const fast = run({
+            command: "bun test --path-ignore-patterns='**/*.e2e.test.ts'",
+            ok: false,
+            exit_code: 1,
+            files_without_results: ['src/sum.test.ts', 'src/sum.e2e.test.ts'],
+            output: 'error: Cannot find module "./sum"\n 0 pass\n 1 fail',
+        })
+        const test_files = ['src/sum.test.ts', 'src/sum.e2e.test.ts']
+        const nothing = run({
+            command: "bun test './src/sum.test.ts' './src/sum.e2e.test.ts'",
+            ok: false,
+            exit_code: 1,
+            files_without_results: test_files,
+            output: 'error: Cannot find module "./sum"',
+        })
+
+        // Every own file still doesn't load, which the fast run said already.
+        expect(withOwnRun({ fast, own: nothing, test_files })).toBe(fast)
+
+        const some = run({
+            command: "bun test './src/sum.e2e.test.ts'",
+            ok: false,
+            exit_code: 1,
+            cases: [
+                {
+                    file: 'src/sum.e2e.test.ts',
+                    full_name: 's',
+                    status: 'failed',
+                },
+            ],
+            files_without_results: [],
+        })
+        const joined = withOwnRun({ fast, own: some, test_files })
+        expect(joined.command).toBe(`${fast.command} && ${some.command}`)
+        expect(joined.cases).toHaveLength(1)
+        expect(joined.files_without_results).toEqual(['src/sum.test.ts'])
     })
 })

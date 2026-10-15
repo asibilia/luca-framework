@@ -51,11 +51,11 @@ import {
 import { checkRed } from '../gates/red-check'
 import {
     fileTestsCommand,
-    joinRuns,
     onlyTestFiles,
     runBunTests,
     runTests,
     testFilesAmong,
+    withOwnRun,
 } from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
 import { outsideLinks } from '../git/outside-links'
@@ -318,7 +318,8 @@ const runRedCheck = async ({
     // With a slow command, the fast tests leave out every slow test file
     // (#564): the files the test map names or the ticket changed, that the
     // fast run gave no results for, run on their own, with plain `bun test`.
-    // A file that still gives no results is one that doesn't load, as before.
+    // A run that gives no results at all leaves the fast run as it is (see
+    // `withOwnRun`): its files don't load, as the fast run said already.
     const own = hasSlowTests({ config: context.config })
         ? uniq([
               ...files,
@@ -331,21 +332,19 @@ const runRedCheck = async ({
     const current =
         own.length === 0
             ? fast
-            : joinRuns({
-                  runs: [
-                      fast,
-                      await runTests({
-                          cwd: path,
-                          command: fileTestsCommand({ files: own }),
-                          test_files: own,
-                          report_file: await reportFile({
-                              context,
-                              ticket: action.ticket,
-                              label: 'red-own',
-                          }),
-                          timeout_ms: testTimeoutOf({ config: context.config }),
+            : withOwnRun({
+                  fast,
+                  own: await runTests({
+                      cwd: path,
+                      command: fileTestsCommand({ files: own }),
+                      test_files: own,
+                      report_file: await reportFile({
+                          context,
+                          ticket: action.ticket,
+                          label: 'red-own',
                       }),
-                  ],
+                      timeout_ms: testTimeoutOf({ config: context.config }),
+                  }),
                   test_files,
               })
     const sources: Record<string, string | null> = {}

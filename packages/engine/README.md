@@ -423,7 +423,10 @@ join's gates, the baseline, and the red check never run the slow suite. Failed s
 tests open a final review fix round, and in it they go into the gate fix
 loop like any failed gate (see "The final review"). Slow
 commands get the same time limit as the others, `test_timeout_ms`, and a
-slow command that runs out of time says so.
+slow command that runs out of time says so. Agents may run each slow
+command, like the test commands (a `bun` one may take extra arguments), and
+the implementer's instructions say they run at the final review. Left out,
+nothing changes: no `slow_test` check, no extra command.
 
 **A ticket's own slow tests (#564).** The fast command leaves out every slow
 test file, so a ticket that adds or changes one would never run it. With a
@@ -433,22 +436,26 @@ file as a quoted `./` path (never the fast command plus the files: Bun's
 `--path-ignore-patterns` leaves out even files named on the command line):
 
 - The **red check** runs the files the test map names or the ticket changed,
-  after `checks.test`, as one more run joined to the fast run's results. A
-  new slow test that fails counts as failing, one that passes already is
-  refused, and a file that still gives no results is one that doesn't load,
-  as before. The journaled `red_check` run's `command` shows both commands.
-  The comparison with the baseline's old tests is unchanged.
+  after `checks.test`. When that run gives results, it is joined to the fast
+  run's: a new slow test that fails counts as failing, one that passes
+  already is refused, and the journaled `red_check` run's `command` shows
+  both commands. When it gives no results at all (every file still doesn't
+  load, as a new fast test file usually doesn't before its code exists), the
+  fast run stands as it is: its command and output are what they were before
+  #564, and a slow file that doesn't load still counts its named tests as
+  failing. The comparison with the baseline's old tests is unchanged.
 - A **ticket's gates** run the test files it changed since its base, after
   `checks.test`, as one more `test` check. A failure is a failed test gate
-  with its output, and goes into the gate fix loop. A join's gates don't.
+  with its output, and goes into the gate fix loop. A run that gives no
+  results adds no check after a failed fast run (the gate fails anyway, and
+  the load error shows on the next run, once that is fixed); with every fast
+  run passing, a changed slow file that can't load is a failure. A join's
+  gates don't.
 - The **already-done check** runs the named test files with plain `bun test`,
   so a named slow test really runs.
 
 Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
-runs the same commands as before. Agents may run each slow
-command, like the test commands (a `bun` one may take extra arguments), and
-the implementer's instructions say they run at the final review. Left out,
-nothing changes: no `slow_test` check, no extra command.
+runs the same commands as before.
 
 **One prepare at a time (#492).** A build uses a lot of CPU, so builds at
 the same time only slow each other down. HeartGold's first build takes 8 to
