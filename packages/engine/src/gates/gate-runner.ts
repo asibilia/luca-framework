@@ -1,6 +1,11 @@
 import type { GateCheck, GateName, TestRun } from './gate-schemas'
 import { PREPARE_SLOTS } from './prepare-slots'
-import { reportFileFor, runTests, TEST_TIMEOUT_HINT } from './test-runner'
+import {
+    fileTestsCommand,
+    reportFileFor,
+    runTests,
+    TEST_TIMEOUT_HINT,
+} from './test-runner'
 
 import {
     prepareConcurrencyOf,
@@ -175,6 +180,10 @@ const testChecks = async ({
  * Each test command gets the config's time limit (see `testTimeoutOf`);
  * types and lint get the engine's default.
  *
+ * With `own_test_files` (a ticket's gates, with a slow command, #564), the
+ * ones the fast runs gave no results for run next on their own with plain
+ * `bun test`, as one more `test` check, with the same time limit.
+ *
  * With an `install` command (see `installCommand`), the engine runs it first,
  * as the `install` check. A failed install stops there: the other gates
  * would only fail on the missing packages. The config's prepare command
@@ -193,6 +202,7 @@ export const runGates = async ({
     install,
     around_prepare,
     with_slow_tests,
+    own_test_files,
 }: {
     cwd: string
     config: EngineConfig
@@ -208,6 +218,11 @@ export const runGates = async ({
      * the test commands, as `slow_test` checks. Left out, they don't.
      */
     with_slow_tests?: boolean
+    /**
+     * A ticket's changed test files (#564): those no fast run gave results
+     * for are run on their own, as one more `test` check. Left out, none.
+     */
+    own_test_files?: string[]
 }): Promise<{ ok: boolean; checks: GateCheck[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -238,6 +253,36 @@ export const runGates = async ({
         timeout_ms,
     })
     checks.push(...fastChecks.checks)
+    // A file with no fast bun run at all has no run to have given it results,
+    // so it is not one the fast run left out.
+    const unrun = (own_test_files ?? []).filter(
+        (file) =>
+            fastChecks.runs.length > 0 &&
+            fastChecks.runs.every(({ files_without_results }) =>
+                files_without_results.includes(file)
+            )
+    )
+    if (unrun.length > 0) {
+        const started = performance.now()
+        const run = await runTests({
+            cwd,
+            command: fileTestsCommand({ files: unrun }),
+            test_files: unrun,
+            report_file: reportFileFor({
+                report_file,
+                index: fast.length + slowTestCommands({ config }).length,
+            }),
+            timeout_ms,
+        })
+        checks.push({
+            name: 'test',
+            command: run.command,
+            ok: run.ok,
+            exit_code: run.exit_code,
+            output: run.ok ? '' : run.output,
+            duration_ms: msSince(started),
+        })
+    }
     if (with_slow_tests === true) {
         const slow = await testChecks({
             commands: slowTestCommands({ config }),

@@ -21,6 +21,7 @@ import {
 } from '../agents/role-results'
 import {
     bunTestCommands,
+    hasSlowTests,
     testTimeoutOf,
     type EngineConfig,
 } from '../config/engine-config'
@@ -49,8 +50,11 @@ import {
 } from '../gates/lockfile-install'
 import { checkRed } from '../gates/red-check'
 import {
+    fileTestsCommand,
+    joinRuns,
     onlyTestFiles,
     runBunTests,
+    runTests,
     testFilesAmong,
 } from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
@@ -297,7 +301,10 @@ const runRedCheck = async ({
         ticket: action.ticket,
         run: () => prepareCheck({ config: context.config, cwd: path }),
     })
-    const current = await runBunTests({
+    const files = uniq(
+        action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const fast = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
         test_files,
@@ -308,9 +315,39 @@ const runRedCheck = async ({
             label: 'red',
         }),
     })
-    const files = uniq(
-        action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
-    )
+    // With a slow command, the fast tests leave out every slow test file
+    // (#564): the files the test map names or the ticket changed, that the
+    // fast run gave no results for, run on their own, with plain `bun test`.
+    // A file that still gives no results is one that doesn't load, as before.
+    const own = hasSlowTests({ config: context.config })
+        ? uniq([
+              ...files,
+              ...testFilesAmong({
+                  files: changed.map((change) => change.path),
+                  test_file_patterns: context.config.test_file_patterns,
+              }),
+          ]).filter((file) => fast.files_without_results.includes(file))
+        : []
+    const current =
+        own.length === 0
+            ? fast
+            : joinRuns({
+                  runs: [
+                      fast,
+                      await runTests({
+                          cwd: path,
+                          command: fileTestsCommand({ files: own }),
+                          test_files: own,
+                          report_file: await reportFile({
+                              context,
+                              ticket: action.ticket,
+                              label: 'red-own',
+                          }),
+                          timeout_ms: testTimeoutOf({ config: context.config }),
+                      }),
+                  ],
+                  test_files,
+              })
     const sources: Record<string, string | null> = {}
     for (const file of files) {
         sources[file] = await pathText({ path: join(path, file) })
@@ -356,8 +393,9 @@ const runRedCheck = async ({
  * finds each named commit, next to the commit the worktree started from,
  * and a run of just the named test files that exist, are test files, and
  * are as they are on the base, after the prepare command if the config has
- * one. What the check means is `checkAlreadyDone`'s; replay makes a failed
- * one a failed try for the test-writer.
+ * one. With a slow command (#564), the named files, slow ones included, run
+ * with plain `bun test`. What the check means is `checkAlreadyDone`'s; replay
+ * makes a failed one a failed try for the test-writer.
  */
 const checkAlreadyDoneIn = async ({
     context,
@@ -416,9 +454,13 @@ const checkAlreadyDoneIn = async ({
             ? null
             : await runBunTests({
                   cwd: path,
-                  commands: bunTestCommands(context).map((command) =>
-                      onlyTestFiles({ command, files: runnable })
-                  ),
+                  // With a slow command, the fast command would leave out
+                  // the slow files named (#564): plain `bun test` runs all.
+                  commands: hasSlowTests({ config: context.config })
+                      ? [fileTestsCommand({ files: runnable })]
+                      : bunTestCommands(context).map((command) =>
+                            onlyTestFiles({ command, files: runnable })
+                        ),
                   test_files: runnable,
                   timeout_ms: testTimeoutOf({ config: context.config }),
                   report_file: await reportFile({
@@ -1192,18 +1234,26 @@ export const gatesIn = async ({
     ticket: number | null
 }) => {
     const { path: cwd, base_sha } = worktree
+    const changed = difference(
+        await context.git.changedSince({ cwd, from: base_sha }),
+        context.state.prepare_made
+    )
+    const test_files = await testFilesIn({ context, cwd })
+    // A ticket's own gates also run the test files it changed that the fast
+    // tests leave out (#564), with a slow command; a join's never do.
+    const own_test_files =
+        target === 'ticket' && hasSlowTests({ config: context.config })
+            ? testFilesAmong({
+                  files: changed,
+                  test_file_patterns: context.config.test_file_patterns,
+              }).filter((file) => test_files.includes(file))
+            : []
     const result = await runGates({
         cwd,
         config: context.config,
-        install: installCommand({
-            changed_files: difference(
-                await context.git.changedSince({ cwd, from: base_sha }),
-                context.state.prepare_made
-            ),
-            target,
-        }),
+        install: installCommand({ changed_files: changed, target }),
         around_prepare: (run) => watchPrepare({ context, cwd, ticket, run }),
-        test_files: await testFilesIn({ context, cwd }),
+        test_files,
         report_file: await reportFile({
             context,
             ticket,
@@ -1212,6 +1262,7 @@ export const gatesIn = async ({
         // The final review's gates also run the slow tests (#563); a ticket's
         // and a join's never do.
         with_slow_tests: ticket === null,
+        own_test_files,
     })
     context.journal.append({
         kind: 'gates_run',

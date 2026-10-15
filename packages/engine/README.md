@@ -419,11 +419,33 @@ lenses are in (the `run_final_slow_tests` step, after the prepare command,
 journaled as `gates_run` with `target: final_slow`), and in the final
 review's gates (the `run_final_gates` step, and so its fix rounds' gates),
 as `slow_test` checks after the `test` checks and before `types`. A ticket's gates, a
-join's gates, the baseline, and the red check never run them. Failed slow
+join's gates, the baseline, and the red check never run the slow suite. Failed slow
 tests open a final review fix round, and in it they go into the gate fix
 loop like any failed gate (see "The final review"). Slow
 commands get the same time limit as the others, `test_timeout_ms`, and a
-slow command that runs out of time says so. Agents may run each slow
+slow command that runs out of time says so.
+
+**A ticket's own slow tests (#564).** The fast command leaves out every slow
+test file, so a ticket that adds or changes one would never run it. With a
+slow command, three steps also run the test files a ticket touches that the
+fast run gave no results for, on their own, with plain `bun test` and each
+file as a quoted `./` path (never the fast command plus the files: Bun's
+`--path-ignore-patterns` leaves out even files named on the command line):
+
+- The **red check** runs the files the test map names or the ticket changed,
+  after `checks.test`, as one more run joined to the fast run's results. A
+  new slow test that fails counts as failing, one that passes already is
+  refused, and a file that still gives no results is one that doesn't load,
+  as before. The journaled `red_check` run's `command` shows both commands.
+  The comparison with the baseline's old tests is unchanged.
+- A **ticket's gates** run the test files it changed since its base, after
+  `checks.test`, as one more `test` check. A failure is a failed test gate
+  with its output, and goes into the gate fix loop. A join's gates don't.
+- The **already-done check** runs the named test files with plain `bun test`,
+  so a named slow test really runs.
+
+Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
+runs the same commands as before. Agents may run each slow
 command, like the test commands (a `bun` one may take extra arguments), and
 the implementer's instructions say they run at the final review. Left out,
 nothing changes: no `slow_test` check, no extra command.

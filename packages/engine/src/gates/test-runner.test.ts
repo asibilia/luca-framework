@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { parseJunit } from './test-runner'
+import type { TestRun } from './gate-schemas'
+import { fileTestsCommand, joinRuns, parseJunit } from './test-runner'
 
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="bun test" tests="3" assertions="3" failures="1" skipped="1" time="0.5">
@@ -48,5 +49,50 @@ describe('parseJunit: times and expect() counts (#518, #581)', () => {
         expect(parseJunit({ xml: old })).toEqual([
             { file: 'a.test.ts', full_name: 'x', status: 'passed' },
         ])
+    })
+})
+
+const run = (over: Partial<TestRun>): TestRun => ({
+    command: 'bun test',
+    ok: true,
+    exit_code: 0,
+    no_test_files: false,
+    cases: [],
+    files_without_results: [],
+    output: '',
+    ...over,
+})
+
+describe("a ticket's own slow test files (#564)", () => {
+    test('run with plain bun test and each file as a quoted ./ path', () => {
+        expect(
+            fileTestsCommand({
+                files: ['src/a b.e2e.test.ts', "src/it's.e2e.test.ts"],
+            })
+        ).toBe(`bun test './src/a b.e2e.test.ts' './src/it'\\''s.e2e.test.ts'`)
+    })
+
+    test('joinRuns keeps every case, and a file without results only if no run gave it any', () => {
+        const fast = run({
+            cases: [{ file: 'a.test.ts', full_name: 'a', status: 'passed' }],
+            files_without_results: ['b.e2e.test.ts', 'c.e2e.test.ts'],
+        })
+        const own = run({
+            command: "bun test './b.e2e.test.ts'",
+            ok: false,
+            exit_code: 1,
+            cases: [
+                { file: 'b.e2e.test.ts', full_name: 'b', status: 'failed' },
+            ],
+            files_without_results: [],
+        })
+        const joined = joinRuns({
+            runs: [fast, own],
+            test_files: ['a.test.ts', 'b.e2e.test.ts', 'c.e2e.test.ts'],
+        })
+        expect(joined.cases).toHaveLength(2)
+        expect(joined.ok).toBe(false)
+        expect(joined.files_without_results).toEqual(['c.e2e.test.ts'])
+        expect(joined.command).toBe("bun test && bun test './b.e2e.test.ts'")
     })
 })

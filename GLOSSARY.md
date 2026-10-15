@@ -61,7 +61,7 @@ A check the engine runs itself, such as the tests or the type checker, that must
 _Avoid_: hook, checks
 
 **Slow tests**:
-End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs and runs them at the final review.
+End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs, apart from the slow test files that ticket names or changes, and runs them all at the final review.
 _Avoid_: e2e gate, long tests
 
 **Red check**:

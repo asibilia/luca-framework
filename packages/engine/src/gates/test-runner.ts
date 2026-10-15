@@ -228,6 +228,37 @@ export const runBunTests = async ({
             })
         )
     }
+    return joinRuns({ runs, test_files })
+}
+
+/**
+ * A command that runs just these test files with plain `bun test` (#564):
+ * never the config's command plus the files, because Bun's
+ * `--path-ignore-patterns` leaves out even files named on the command line.
+ *
+ * @example
+ * fileTestsCommand({ files: ['src/a.e2e.test.ts'] }) // "bun test './src/a.e2e.test.ts'"
+ */
+export const fileTestsCommand = ({ files }: { files: string[] }): string =>
+    onlyTestFiles({ command: 'bun test', files })
+
+/**
+ * Several test runs as one: every case, `ok` only when all passed, and a test
+ * file without results only when no run gave it any. One run is itself. No
+ * run (a run of refactor tickets only, which the red check skips) gives an
+ * empty passing run. Used for the baseline and the red check
+ * (`runBunTests`) and for a ticket's own slow test files (#564).
+ *
+ * @example
+ * const run = joinRuns({ runs: [fast, own], test_files })
+ */
+export const joinRuns = ({
+    runs,
+    test_files,
+}: {
+    runs: TestRun[]
+    test_files: string[]
+}): TestRun => {
     const [first] = runs
     if (first === undefined) {
         return {
@@ -244,7 +275,7 @@ export const runBunTests = async ({
     const cases = runs.flatMap((run) => run.cases)
     const withResults = new Set(cases.map(({ file }) => file))
     return {
-        command: commands.join(' && '),
+        command: runs.map(({ command }) => command).join(' && '),
         ok: runs.every(({ ok }) => ok),
         exit_code: runs.find(({ ok }) => !ok)?.exit_code ?? first.exit_code,
         no_test_files: runs.every(({ no_test_files }) => no_test_files),
