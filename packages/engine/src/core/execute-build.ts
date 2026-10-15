@@ -26,6 +26,7 @@ import {
     type EngineConfig,
 } from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
+import { featureMapFiles } from '../gates/feature-map'
 import {
     prepareCheck,
     runGates,
@@ -269,6 +270,34 @@ const ticketChanges = async ({
 export const NO_RED_CHANGES =
     'No file changed, so the red commit would be empty: write the tests for the criteria in the worktree (new or changed test files).'
 
+/**
+ * The repo's feature map as the red check needs it (#583), read from the
+ * worktree at `cwd`: its configured path, and the test files it lists.
+ * `files` is `null` when the file is missing or can't be read, so the red
+ * check can name it rather than crash. `null` when the config names no map.
+ */
+const featureMapIn = async ({
+    context,
+    cwd,
+}: {
+    context: BuildContext
+    cwd: string
+}): Promise<{ path: string; files: string[] | null } | null> => {
+    const path = context.config.feature_map
+    if (path === undefined) return null
+    const text = await pathText({ path: join(cwd, path) })
+    return {
+        path,
+        files:
+            text === null
+                ? null
+                : featureMapFiles({
+                      text,
+                      test_file_patterns: context.config.test_file_patterns,
+                  }),
+    }
+}
+
 const runRedCheck = async ({
     context,
     action,
@@ -379,6 +408,7 @@ const runRedCheck = async ({
         test_files,
         sources,
         changed_test_sources,
+        feature_map: await featureMapIn({ context, cwd: path }),
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,

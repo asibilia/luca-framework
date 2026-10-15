@@ -95,6 +95,7 @@ on with a run from its journal (#369).
 | `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
 | `src/gates/red-check.ts` | The **red check**. Pure. |
+| `src/gates/feature-map.ts` | Pure: the test files a repo's feature map lists (`featureMapFiles`, #583). |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/prepare-slots.ts` | Lets only so many prepare runs go at once (`prepare_concurrency`, 1 by default); the rest wait their turn. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
@@ -730,6 +731,53 @@ red-checked. The latest bounce's source also words the fresh test-writer's
 prompt ("The engine found this test checks nothing", or "The implementer says
 this test is wrong").
 
+**The feature map (#583).** Left alone, tickets add new test files wherever
+they like and the suite sprawls. A repo can keep a **feature map**, a markdown
+file that says which test files prove which feature, and name it in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "feature_map": "docs/feature-map.md" }
+```
+
+The path is relative to the repo root. The file is plain markdown, one section
+per feature:
+
+```markdown
+## Running one ticket
+
+Reached by: `luca run` on a spec with one ticket.
+
+Tests:
+- `packages/engine/src/core/run-one-ticket.e2e.test.ts`
+- `packages/engine/src/core/decide-build.test.ts`
+```
+
+`## Feature` is the feature's name, `Reached by:` says how a user gets to it,
+and `Tests:` lists its test files. The engine reads only the backticked
+paths: `featureMapFiles` in `gates/feature-map.ts` keeps each one that matches
+`test_file_patterns`, once each, so a backticked source file in the prose is
+ignored.
+
+- **The red check refuses an unlisted new test file.** A test file the ticket
+  created (it is not in the ticket's base) must be listed, or the red check
+  has the problem "src/new.test.ts: a new test file the feature map doesn't
+  list (add it under a feature in docs/feature-map.md)", and the test-writer
+  tries again. A test file the ticket only edited is never checked. A
+  configured map that is missing or unreadable is a problem too, "The feature
+  map docs/feature-map.md is missing: restore it, or add it with the new test
+  file listed", not a crash; it is raised only when the ticket created a test
+  file.
+- **The test-writer may edit the map.** `mayWrite` and the test-writer's
+  permission rules allow the map's path, besides test files, and its
+  instructions say to read the map first, to put new tests in a feature's
+  existing files when it can, and to list a new file under its feature.
+  Nothing else changes for the other roles.
+- **It is frozen on resume.** `feature_map` is in `FROZEN_FIELDS`, like
+  `test_file_patterns`: a run keeps the map path it started with.
+- Left out, nothing changes: no red-check problem, no extra write permission,
+  and no lines in the test-writer's instructions.
+
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,
 so a crashed run decides the same way again. An `agent` (an error result, a
@@ -867,7 +915,8 @@ them. A resume with nothing changed adds no record. Every other field stays
 as the run started with it (`FROZEN_FIELDS` in `config/config-reload.ts`
 says why for each): `checks` above all, since a ticket's baseline, its red
 check, and its gates compare test results across the run, and a baseline
-taken with old commands is not comparable with new ones. A config that is
+taken with old commands is not comparable with new ones. `feature_map`
+(#583) is frozen too, as `test_file_patterns` is. A config that is
 missing, not JSON, not a valid config, or one intake would refuse (no test
 command, say; intake's own `configProblems`) is not taken: the engine logs
 why, journals `config_reload_refused { reason }`, and the run goes on with
@@ -1711,7 +1760,7 @@ to its rules; each one alone should hold.
 
 | Role | Writes | Runs |
 | --- | --- | --- |
-| test-writer | test files only (`test_file_patterns`), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
+| test-writer | test files only (`test_file_patterns`), and the `feature_map` file (#583), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
 | implementer | anything but `test_setup_files`, and test files only with `may_edit_tests` (a refactor ticket) | the same |
 | reviewer (the ticket reviewer and every lens) | nothing | read-only commands only |
 | learner (#370) | nothing | no shell |

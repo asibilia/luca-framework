@@ -122,7 +122,8 @@ type GuardArgs = {
 
 /**
  * Whether an agent may create, change, or delete a worktree-relative path.
- * Test-writers write test files only; implementers write anything but test
+ * Test-writers write test files only, and the feature map when the repo has
+ * one (#583); implementers write anything but test
  * files (unless they may edit tests) and test setup files; reviewers and the
  * learner write nothing. No role writes a test setup file, `.git`, what
  * the package install writes (lockfiles, `node_modules`), or outside its
@@ -149,7 +150,10 @@ export const mayWrite = ({
     if (config.test_setup_files.includes(clean)) return false
     if (isInstallPath(clean)) return false
     const test = isTestFile({ path: clean, config })
-    if (role === 'test-writer') return test && may_edit_tests
+    // The test-writer may also write the repo's feature map, when it has one (#583).
+    if (role === 'test-writer') {
+        return may_edit_tests && (test || clean === config.feature_map)
+    }
     return !test || may_edit_tests
 }
 
@@ -673,12 +677,15 @@ export const permissionRules = ({
     ]
     const setup = config.test_setup_files.map((path) => `Edit(${path})`)
     const tests = config.test_file_patterns.map((glob) => `Edit(${glob})`)
+    // The feature map is the test-writer's too (#583).
+    const map =
+        config.feature_map === undefined ? [] : [`Edit(${config.feature_map})`]
     const writes: Record<
         GuardRole,
         { allowed: string[]; disallowed: string[] }
     > = {
         'test-writer': may_edit_tests
-            ? { allowed: [...tests, 'Bash(rm *)'], disallowed: setup }
+            ? { allowed: [...tests, ...map, 'Bash(rm *)'], disallowed: setup }
             : { allowed: [], disallowed: ['Edit', 'Write'] },
         implementer: {
             allowed: ['Edit(**)', 'Bash(rm *)'],

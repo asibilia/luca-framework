@@ -139,3 +139,94 @@ describe('the red check: honest new tests (#581)', () => {
         ).toHaveLength(2)
     })
 })
+
+describe('the red check: the feature map (#583)', () => {
+    const base = {
+        criteria_ids: ['AC1'],
+        mapping: [
+            {
+                criterion_id: 'AC1',
+                tests: [{ file: 'src/new.test.ts', name: 'new > a' }],
+            },
+        ],
+        baseline: run([]),
+        current: run([], ['src/new.test.ts']),
+        test_files: ['src/new.test.ts'],
+        sources: {
+            'src/new.test.ts': "describe('new', () => { test('a', () => {}) })",
+        },
+        changed_test_sources: [
+            {
+                file: 'src/new.test.ts',
+                base: null,
+                current: "describe('new', () => { test('a', () => {}) })",
+            },
+        ],
+    }
+    const edited = {
+        ...base,
+        changed_test_sources: [
+            {
+                file: 'src/new.test.ts',
+                base: "describe('new', () => {})",
+                current: base.sources['src/new.test.ts'],
+            },
+        ],
+    }
+
+    test("a new test file the map doesn't list is refused", () => {
+        const result = checkRed({
+            ...base,
+            feature_map: {
+                path: 'docs/feature-map.md',
+                files: ['src/old.test.ts'],
+            },
+        })
+        expect(result.problems).toContain(
+            "src/new.test.ts: a new test file the feature map doesn't list (add it under a feature in docs/feature-map.md)"
+        )
+    })
+
+    test('a listed one passes', () => {
+        expect(
+            checkRed({
+                ...base,
+                feature_map: {
+                    path: 'docs/feature-map.md',
+                    files: ['src/new.test.ts'],
+                },
+            }).ok
+        ).toBe(true)
+    })
+
+    test('a configured map that is missing is a problem naming it, not a crash', () => {
+        expect(
+            checkRed({
+                ...base,
+                feature_map: { path: 'docs/feature-map.md', files: null },
+            }).problems
+        ).toContain(
+            'The feature map docs/feature-map.md is missing: restore it, or add it with the new test file listed'
+        )
+    })
+
+    test('without a feature map, nothing is checked', () => {
+        expect(checkRed({ ...base, feature_map: null }).ok).toBe(true)
+        expect(checkRed(base).ok).toBe(true)
+    })
+
+    test('an edited (not new) test file is never checked against the map', () => {
+        expect(
+            checkRed({ ...edited, feature_map: { path: 'm.md', files: [] } }).ok
+        ).toBe(true)
+    })
+
+    test('a missing map is no problem when no test file is new', () => {
+        expect(
+            checkRed({
+                ...edited,
+                feature_map: { path: 'docs/feature-map.md', files: null },
+            }).ok
+        ).toBe(true)
+    })
+})

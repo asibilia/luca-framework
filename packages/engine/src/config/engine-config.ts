@@ -115,6 +115,12 @@ export const EngineConfigSchema = z.object({
      * `design/*.md`; left out, none.
      */
     leftover_allow: z.array(z.string().min(1)).optional(),
+    /**
+     * A markdown file listing each feature and the test files that prove it
+     * (#583), relative to the repo root. The red check refuses a new test file
+     * it doesn't list, and the test-writer may edit it. Left out, no map.
+     */
+    feature_map: z.string().min(1).optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),

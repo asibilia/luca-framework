@@ -50,6 +50,10 @@ export const RELOADED_FIELDS = [
  * - `test_file_patterns`: which files are tests decides the red check, the
  *   role rules, and which commits were the test-writer's.
  * - `test_setup_files`: part of what the tests are, as `checks` is.
+ * - `feature_map`: says which test files belong to which feature (#583), as
+ *   `test_file_patterns` says which files are tests: the red check holds a
+ *   ticket's new test files to it, and the role rules let the test-writer
+ *   edit it.
  * - `rule_files`: the rules lens judges against them; tickets already
  *   reviewed were judged on the old ones.
  * - `muninn`: the run's memory vault is fixed at start (`run_started.memory`).
@@ -62,6 +66,7 @@ export const FROZEN_FIELDS = [
     'checks',
     'test_file_patterns',
     'test_setup_files',
+    'feature_map',
     'rule_files',
     'muninn',
     'run_budget_tokens',

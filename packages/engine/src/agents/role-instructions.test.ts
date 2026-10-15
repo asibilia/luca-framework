@@ -181,3 +181,47 @@ describe('the test-writer and the per-criterion cap (#581)', () => {
         )
     })
 })
+
+describe('the test-writer and the feature map (#583)', () => {
+    const withMap = EngineConfigSchema.parse({
+        checks: { test: 'bun test' },
+        feature_map: 'docs/feature-map.md',
+    })
+
+    test('is told to read the feature map first and list a new test file in it', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: withMap,
+        })
+        expect(text).toContain(
+            'Read docs/feature-map.md first: it lists each feature and the test files that prove it.'
+        )
+        expect(text).toContain(
+            "Put new tests in a feature's existing test files when you can. A new test file must be listed under its feature in docs/feature-map.md; you may edit that file."
+        )
+    })
+
+    test('may edit the map, so the "only test files" line names it too', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: withMap,
+        })
+        expect(text).toContain(
+            'Create or edit ONLY test files (**/*.test.ts) and the feature map docs/feature-map.md.'
+        )
+    })
+
+    test('without a feature map, the test-writer is not told about one', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+        expect(text).not.toContain('feature map')
+        expect(text).toContain(
+            'Create or edit ONLY test files (src/**/*.test.ts). No other file:'
+        )
+    })
+})

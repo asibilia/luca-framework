@@ -89,6 +89,7 @@ const checkNewTest = ({
 /**
  * The red check. Pure: proves every criterion has a test, and at most
  * `MAX_TESTS_PER_CRITERION`, every test the ticket added is mapped, every
+ * test file it created is in the feature map (when the repo has one), every
  * new test fails, and every old test that passed before still passes.
  *
  * @param baseline - The test run before the test-writer started.
@@ -99,6 +100,10 @@ const checkNewTest = ({
  *   at the ticket's base and as it is now: a new test is a name in the
  *   second the first doesn't have (#581). Read from the files' text, so a
  *   file that doesn't load yet still counts.
+ * @param feature_map - The repo's feature map, when the config names one
+ *   (#583): its `path`, and `files`, the test files it lists (from
+ *   `featureMapFiles`), `null` when the map file is missing. A test file the
+ *   ticket created must be among them. Left out or `null`, nothing is checked.
  *
  * @example
  * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
@@ -112,6 +117,7 @@ export const checkRed = ({
     test_files,
     sources,
     changed_test_sources,
+    feature_map,
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -120,6 +126,7 @@ export const checkRed = ({
     test_files: string[]
     sources: Record<string, string | null>
     changed_test_sources: ChangedTestSource[]
+    feature_map?: { path: string; files: string[] | null } | null
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -159,6 +166,26 @@ export const checkRed = ({
                 problems.push(
                     `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)`
                 )
+            }
+        }
+    }
+    if (feature_map !== undefined && feature_map !== null) {
+        // A test file the ticket created (not one it edited) must be listed
+        // under a feature, so tests grow inside their feature's files (#583).
+        const created = changed_test_sources.filter(
+            ({ base, current: text }) => base === null && text !== null
+        )
+        if (created.length > 0 && feature_map.files === null) {
+            problems.push(
+                `The feature map ${feature_map.path} is missing: restore it, or add it with the new test file listed`
+            )
+        } else {
+            for (const { file } of created) {
+                if (!(feature_map.files ?? []).includes(file)) {
+                    problems.push(
+                        `${file}: a new test file the feature map doesn't list (add it under a feature in ${feature_map.path})`
+                    )
+                }
             }
         }
     }

@@ -37,6 +37,10 @@ describe('the fields a resume reloads', () => {
         expect(FROZEN_FIELDS).toContain('checks')
     })
 
+    test('feature_map is frozen, like test_file_patterns (#583)', () => {
+        expect(FROZEN_FIELDS).toContain('feature_map')
+    })
+
     test('leftover_allow is reloaded, not frozen (#520)', () => {
         expect(RELOADED_FIELDS).toContain('leftover_allow')
         expect(FROZEN_FIELDS).not.toContain('leftover_allow')
@@ -142,6 +146,21 @@ describe('configChanges', () => {
                 next: { ...STARTED, test_case_timeout_ms: 2000 },
             })
         ).toEqual([{ field: 'test_case_timeout_ms', from: null, to: 2000 }])
+    })
+
+    test('a changed feature map is not a change (#583)', () => {
+        expect(
+            configChanges({
+                current: { ...STARTED, feature_map: 'docs/feature-map.md' },
+                next: { ...STARTED, feature_map: 'docs/other-map.md' },
+            })
+        ).toEqual([])
+        expect(
+            configChanges({
+                current: STARTED,
+                next: { ...STARTED, feature_map: 'docs/feature-map.md' },
+            })
+        ).toEqual([])
     })
 
     test('changes to frozen fields are not changes', () => {
