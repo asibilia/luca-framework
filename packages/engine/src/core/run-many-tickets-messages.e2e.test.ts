@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -144,19 +144,22 @@ const ofKind = <K extends Kind>(records: JournalRecord[], kind: K) =>
     )
 
 describe('agent messages and run notes across tickets building at once', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
     let run: ManyTicketsRun
 
-    test('the run still opens its PR', async () => {
+    beforeAll(async () => {
         const root = await mkdtemp(join(tmpdir(), 'luca-engine-messages-'))
         roots.push(root)
         run = await runManyTickets({ root, scenario: MESSAGES })
+    }, 120_000)
 
+    test('the run still opens its PR', () => {
         expect(run.action).toMatchObject({
             type: 'done',
             outcome: 'pr_opened',
         })
         expect(ofKind(run.records, 'agent_failed')).toEqual([])
-    }, 120_000)
+    })
 
     test('every message was queued; "all" reached the live test-writer on the other ticket', () => {
         expect(
