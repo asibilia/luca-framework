@@ -286,14 +286,20 @@ const runRedCheck = async ({
     })
     const test_files = await testFilesIn({ context, cwd: path })
     // Before prepare runs, so what it makes now can't count as a change.
-    const changed = await ticketChanges({
+    const leave_out = await leaveOutIn({
         context,
         cwd: path,
-        leave_out: await leaveOutIn({
-            context,
-            cwd: path,
-            ticket: action.ticket,
-        }),
+        ticket: action.ticket,
+    })
+    const changed = await ticketChanges({ context, cwd: path, leave_out })
+    // Every test file that differs from the ticket's base, not only from
+    // HEAD: after a bad-test bounce, HEAD may still hold an old red commit,
+    // whose test files the fresh test-writer may not touch (#581).
+    const base_changed = testFilesAmong({
+        files: (
+            await context.git.changedSince({ cwd: path, from: base_sha })
+        ).filter((file) => !leave_out.includes(file)),
+        test_file_patterns: context.config.test_file_patterns,
     })
     const prepare = await watchPrepare({
         context,
@@ -351,14 +357,10 @@ const runRedCheck = async ({
     for (const file of files) {
         sources[file] = await pathText({ path: join(path, file) })
     }
-    // Every test file the ticket changed, as it was at the ticket's base
-    // (not HEAD: after a bad-test bounce, HEAD may still hold an old red
-    // commit) and as it is now, so the red check can find each new test (#581).
+    // Each of those test files as it was at the ticket's base and as it is
+    // now, so the red check can find each new test (#581).
     const changed_test_sources: ChangedTestSource[] = []
-    for (const file of testFilesAmong({
-        files: changed.map((change) => change.path),
-        test_file_patterns: context.config.test_file_patterns,
-    })) {
+    for (const file of base_changed) {
         changed_test_sources.push({
             file,
             base: await context.git.fileAt({

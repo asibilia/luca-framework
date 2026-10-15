@@ -26,6 +26,30 @@ describe('sum', () => {
     })
 })
 
+describe('test names: only real test calls (#581)', () => {
+    test('a member call named test or it is not a test', () => {
+        const source = [
+            "expect(/^\\d+$/.test('123')).toBe(true)",
+            'expect(pattern.test("abc")).toBe(false)',
+            "expect(cache.it('x')).toBe(1)",
+            "expect($.test('y')).toBe(1)",
+        ].join('\n')
+        expect(testNamesIn({ source })).toEqual([])
+    })
+
+    test("reads Bun's concurrent and serial modifiers", () => {
+        const source =
+            "test.concurrent('runs together', () => {})\nit.serial('runs alone', () => {})"
+        expect(testNamesIn({ source })).toEqual(['runs together', 'runs alone'])
+    })
+
+    test('a test call right after a bracket or a space is still a test', () => {
+        const source =
+            "describe('d', () => { test('a', () => {}) })\n\ttest('b', () => {})"
+        expect(testNamesIn({ source })).toEqual(['a', 'b'])
+    })
+})
+
 describe('the tests a change added (#581)', () => {
     test('a new file adds all its tests', () => {
         expect(

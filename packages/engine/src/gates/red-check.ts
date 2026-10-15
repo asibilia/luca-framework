@@ -142,14 +142,20 @@ export const checkRed = ({
         }
     }
     for (const { file, base, current: text } of changed_test_sources) {
-        const mapped = new Set(
-            mapping
-                .flatMap(({ tests }) => tests)
-                .filter((test) => test.file === file)
-                .map(({ name }) => lastPart(name))
-        )
+        // A mapped name is the full name bun prints, so it ends with the
+        // test's own name after " > ". Not split on the last " > ": a test
+        // name may hold one itself.
+        const mapped = mapping
+            .flatMap(({ tests }) => tests)
+            .filter((test) => test.file === file)
+            .map(({ name }) => name.trim())
         for (const name of addedTestNames({ base, current: text })) {
-            if (!mapped.has(name.trim())) {
+            const own = name.trim()
+            if (
+                !mapped.some(
+                    (full) => full === own || full.endsWith(` > ${own}`)
+                )
+            ) {
                 problems.push(
                     `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)`
                 )

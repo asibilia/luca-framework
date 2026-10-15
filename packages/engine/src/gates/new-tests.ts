@@ -3,6 +3,9 @@
  * and `it` calls (with `.only`, `.skip`, `.todo`, `.failing`), in any quote.
  * A template name with `${}` and a `test.each` table are left out: their
  * names aren't known until they run. The test-writer must use plain names.
+ * A call on something else, like `pattern.test('abc')`, is not a test. This
+ * is a text scan, not a parse, so a `test('...')` inside a string or comment
+ * of a changed file counts as a test name.
  *
  * @example
  * testNamesIn({ source: "test('adds', () => {})" }) // ['adds']
@@ -10,7 +13,7 @@
 export const testNamesIn = ({ source }: { source: string }): string[] => {
     const names: string[] = []
     const call =
-        /\b(?:test|it)(?:\.(?:only|skip|todo|failing))?\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g
+        /(?<![\w$.])(?:test|it)(?:\.(?:only|skip|todo|failing|concurrent|serial))?\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g
     for (const match of source.matchAll(call)) {
         const [, quote, raw = ''] = match
         if (quote === '`' && raw.includes('${')) continue

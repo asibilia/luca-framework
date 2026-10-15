@@ -77,6 +77,23 @@ describe('the red check: honest new tests (#581)', () => {
         )
     })
 
+    test('a test whose name has " > " in it is mapped by its full name', () => {
+        const name = 'returns true when a > b'
+        const result = red({ names: [name], mapped: [name] })
+        expect(result.problems).toEqual([])
+        expect(result.ok).toBe(true)
+    })
+
+    test('a new test with " > " in its name that the map does not name is still refused', () => {
+        const result = red({
+            names: ['a', 'returns true when a > b'],
+            mapped: ['a'],
+        })
+        expect(result.problems).toContain(
+            '"returns true when a > b" in src/sum.test.ts: a new test the map doesn\'t name (map it to a criterion, or remove it)'
+        )
+    })
+
     test('a test that was already in the base file is not new', () => {
         const result = red({
             names: ['old', 'a'],
