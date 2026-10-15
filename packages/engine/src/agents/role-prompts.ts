@@ -201,6 +201,26 @@ export const prepareSection = ({ command }: { command: string }): string =>
     ].join('\n\n')
 
 /**
+ * The section a test-writer gets when the repo has a feature map (#583): the
+ * one file besides test files it may edit. It comes after the task's "Edit
+ * test files only", so it reads as that line's exception.
+ *
+ * @param path - The map's path, as `featureMapPath` gives it.
+ *
+ * @example
+ * featureMapSection({ path: 'docs/feature-map.md' })
+ * // '## The feature map\n\nBesides test files, you may edit the feature map, `docs/feature-map.md`. ...'
+ */
+export const featureMapSection = ({ path }: { path: string }): string =>
+    [
+        '## The feature map',
+        `Besides test files, you may edit the feature map, \`${path}\`. ` +
+            'Read it first: it lists each feature and the test files that prove it. ' +
+            "Put new tests in a feature's existing test files when you can; " +
+            'a new test file must be listed under its feature in the map.',
+    ].join('\n\n')
+
+/**
  * The section a test-writer or implementer (a ticket's or the final
  * review's fixers) gets in a repo with changesets: the engine writes the
  * run's one changeset, so an agent's own is extra.

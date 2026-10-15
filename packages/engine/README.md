@@ -740,8 +740,11 @@ file that says which test files prove which feature, and name it in
 { "checks": { "test": "bun test" }, "feature_map": "docs/feature-map.md" }
 ```
 
-The path is relative to the repo root. The file is plain markdown, one section
-per feature:
+The path is relative to the repo root, and every part of the engine reads it
+through `featureMapPath` (`config/engine-config.ts`), which cleans it the way a
+worktree path is cleaned everywhere else: `./docs/feature-map.md` and
+`docs//feature-map.md` are `docs/feature-map.md`. The file is plain markdown,
+one section per feature:
 
 ```markdown
 ## Running one ticket
@@ -756,8 +759,8 @@ Tests:
 `## Feature` is the feature's name, `Reached by:` says how a user gets to it,
 and `Tests:` lists its test files. The engine reads only the backticked
 paths: `featureMapFiles` in `gates/feature-map.ts` keeps each one that matches
-`test_file_patterns`, once each, so a backticked source file in the prose is
-ignored.
+`test_file_patterns`, once each (a leading `./` is dropped), so a backticked
+source file in the prose is ignored.
 
 - **The red check refuses an unlisted new test file.** A test file the ticket
   created (it is not in the ticket's base) must be listed, or the red check
@@ -771,8 +774,10 @@ ignored.
 - **The test-writer may edit the map.** `mayWrite` and the test-writer's
   permission rules allow the map's path, besides test files, and its
   instructions say to read the map first, to put new tests in a feature's
-  existing files when it can, and to list a new file under its feature.
-  Nothing else changes for the other roles.
+  existing files when it can, and to list a new file under its feature. Its
+  launch prompt, which says "Edit test files only", gets a "The feature map"
+  section after it that names the map as the exception (`decideBuild` adds it
+  to a test-writer's launches only). Nothing else changes for the other roles.
 - **It is frozen on resume.** `feature_map` is in `FROZEN_FIELDS`, like
   `test_file_patterns`: a run keeps the map path it started with.
 - Left out, nothing changes: no red-check problem, no extra write permission,

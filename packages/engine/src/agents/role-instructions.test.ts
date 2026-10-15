@@ -213,6 +213,28 @@ describe('the test-writer and the feature map (#583)', () => {
         )
     })
 
+    test.each([['./docs/feature-map.md'], ['docs//feature-map.md']])(
+        'a map spelled %s is named by its clean path',
+        (spelled) => {
+            const text = roleInstructions({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: EngineConfigSchema.parse({
+                    checks: { test: 'bun test' },
+                    feature_map: spelled,
+                }),
+            })
+            expect(text).toContain('Read docs/feature-map.md first:')
+            expect(text).toContain(
+                'listed under its feature in docs/feature-map.md; you may edit that file.'
+            )
+            expect(text).toContain(
+                ' and the feature map docs/feature-map.md. No other file:'
+            )
+            expect(text).not.toContain(spelled)
+        }
+    )
+
     test('without a feature map, the test-writer is not told about one', () => {
         const text = roleInstructions({
             role: 'test-writer',

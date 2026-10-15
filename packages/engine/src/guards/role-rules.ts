@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import type { AgentRole } from '../agents/role-results'
 import {
+    featureMapPath,
     slowTestCommands,
     testCommands,
     type EngineConfig,
@@ -152,7 +153,7 @@ export const mayWrite = ({
     const test = isTestFile({ path: clean, config })
     // The test-writer may also write the repo's feature map, when it has one (#583).
     if (role === 'test-writer') {
-        return may_edit_tests && (test || clean === config.feature_map)
+        return may_edit_tests && (test || clean === featureMapPath({ config }))
     }
     return !test || may_edit_tests
 }
@@ -678,8 +679,8 @@ export const permissionRules = ({
     const setup = config.test_setup_files.map((path) => `Edit(${path})`)
     const tests = config.test_file_patterns.map((glob) => `Edit(${glob})`)
     // The feature map is the test-writer's too (#583).
-    const map =
-        config.feature_map === undefined ? [] : [`Edit(${config.feature_map})`]
+    const map_path = featureMapPath({ config })
+    const map = map_path === null ? [] : [`Edit(${map_path})`]
     const writes: Record<
         GuardRole,
         { allowed: string[]; disallowed: string[] }

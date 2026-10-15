@@ -121,6 +121,39 @@ describe('mayWrite', () => {
         }
     )
 
+    test.each([
+        ['./docs/feature-map.md'],
+        ['docs//feature-map.md'],
+        ['docs/../docs/feature-map.md'],
+    ])(
+        'a feature map spelled %s still lets the test-writer write docs/feature-map.md (#583)',
+        (spelled) => {
+            const config = { ...CONFIG, feature_map: spelled }
+            for (const path of [
+                'docs/feature-map.md',
+                './docs/feature-map.md',
+                'docs//feature-map.md',
+            ]) {
+                expect(
+                    mayWrite({
+                        role: 'test-writer',
+                        may_edit_tests: true,
+                        path,
+                        config,
+                    })
+                ).toBe(true)
+            }
+            expect(
+                mayWrite({
+                    role: 'test-writer',
+                    may_edit_tests: true,
+                    path: 'docs/other.md',
+                    config,
+                })
+            ).toBe(false)
+        }
+    )
+
     test('without a feature map, the test-writer may not write the map path (#583)', () => {
         expect(
             mayWrite({
@@ -773,6 +806,19 @@ describe('permissionRules', () => {
             'Edit(docs/feature-map.md)'
         )
     })
+
+    test.each([['./docs/feature-map.md'], ['docs//feature-map.md']])(
+        'a feature map spelled %s gets the clean Edit rule (#583)',
+        (spelled) => {
+            const { allowed } = permissionRules({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: { ...CONFIG, feature_map: spelled },
+            })
+            expect(allowed).toContain('Edit(docs/feature-map.md)')
+            expect(allowed).not.toContain(`Edit(${spelled})`)
+        }
+    )
 
     test('each role gets only its own tools', () => {
         expect(

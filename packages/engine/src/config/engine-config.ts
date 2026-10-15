@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { join, normalize } from 'node:path'
 
 import { z } from 'zod'
 
@@ -266,6 +266,26 @@ export const caseLimitOf = ({
 }: {
     config: EngineConfig
 }): number | null => config.test_case_timeout_ms ?? null
+
+/**
+ * The feature map's path (#583), in the form a worktree-relative path takes
+ * everywhere else (`normalize`, no leading `./`), or `null` with no map.
+ * `./docs/feature-map.md` and `docs//feature-map.md` are both
+ * `docs/feature-map.md`. The role rules, the permission rules, the prompts,
+ * and the red check all read the map's path here, so they agree on it
+ * whatever way the config spells it.
+ *
+ * @example
+ * featureMapPath({ config: { ...config, feature_map: './docs/feature-map.md' } }) // 'docs/feature-map.md'
+ */
+export const featureMapPath = ({
+    config,
+}: {
+    config: EngineConfig
+}): string | null =>
+    config.feature_map === undefined
+        ? null
+        : normalize(config.feature_map).replace(/^\.\//, '')
 
 /**
  * A fast `bun` test command with the speed limit (#580): `--timeout=<n>` at

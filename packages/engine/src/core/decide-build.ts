@@ -54,12 +54,14 @@ import {
 import {
     CHANGESETS_LENS_SECTION,
     CHANGESETS_SECTION,
+    featureMapSection,
     prepareSection,
     rejoinSection,
     rolePrompt,
     testUpdateSection,
 } from '../agents/role-prompts'
 import type { AgentRole, BadTest, CriterionTests } from '../agents/role-results'
+import { featureMapPath } from '../config/engine-config'
 import { endedText } from '../gates/gate-schemas'
 import { findCase } from '../gates/red-check'
 import type { TicketSnapshot } from '../intake/intake-schemas'
@@ -1374,24 +1376,40 @@ export const decideBuild = ({
                       section: prepareSection({ command }),
                   })
               )
-    return state.changesets ? prepared.map(withChangesetsSections) : prepared
+    const map =
+        state.config === null ? null : featureMapPath({ config: state.config })
+    const mapped =
+        map === null
+            ? prepared
+            : prepared.map((step) =>
+                  withWriterSection({
+                      step,
+                      section: featureMapSection({ path: map }),
+                      only: 'test-writer',
+                  })
+              )
+    return state.changesets ? mapped.map(withChangesetsSections) : mapped
 }
 
 /**
  * A fresh test-writer's or implementer's launch (a ticket's or the final
  * review's fixers), with `section` added to its prompt, such as the repo's
- * prepare command. Any other step as it is.
+ * prepare command. Any other step as it is. With `only`, just that role's
+ * launches get it (the feature map is the test-writer's, #583).
  */
 const withWriterSection = ({
     step,
     section,
+    only,
 }: {
     step: BuildAction
     section: string
+    only?: 'test-writer' | 'implementer'
 }): BuildAction => {
     const writesCode =
         (step.type === 'launch_agent' || step.type === 'launch_final_fixer') &&
-        (step.role === 'test-writer' || step.role === 'implementer')
+        (step.role === 'test-writer' || step.role === 'implementer') &&
+        (only === undefined || step.role === only)
     return writesCode
         ? { ...step, prompt: `${step.prompt}\n\n${section}` }
         : step

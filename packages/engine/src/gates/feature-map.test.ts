@@ -27,4 +27,36 @@ describe('the feature map (#583)', () => {
             'packages/engine/src/core/decide-build.test.ts',
         ])
     })
+
+    test('a path written with a leading ./ is the path without it', () => {
+        expect(
+            featureMapFiles({
+                text: 'Tests:\n- `./src/sum.test.ts`\n- `src/other.test.ts`',
+                test_file_patterns: ['src/**/*.test.ts'],
+            })
+        ).toEqual(['src/sum.test.ts', 'src/other.test.ts'])
+    })
+
+    test('a file named twice, even as ./ and plain, is listed once, in the order first named', () => {
+        expect(
+            featureMapFiles({
+                text: [
+                    '- `src/sum.test.ts`',
+                    '- `src/other.test.ts`',
+                    '- `./src/sum.test.ts`',
+                    '- `src/other.test.ts`',
+                ].join('\n'),
+                test_file_patterns: ['src/**/*.test.ts'],
+            })
+        ).toEqual(['src/sum.test.ts', 'src/other.test.ts'])
+    })
+
+    test('a map that names no test file lists none', () => {
+        expect(
+            featureMapFiles({
+                text: '# Feature map\n\nNothing yet, see `src/sum.ts`.',
+                test_file_patterns: ['src/**/*.test.ts'],
+            })
+        ).toEqual([])
+    })
 })

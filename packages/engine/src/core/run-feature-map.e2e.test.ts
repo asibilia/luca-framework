@@ -48,15 +48,17 @@ Tests:
 const practiceRun = async ({
     files,
     turns,
+    config = MAP_CONFIG,
 }: {
     files?: Record<string, string>
     turns: ScriptedTurn[]
+    config?: object
 }) => {
     const root = await mkdtemp(join(tmpdir(), 'luca-engine-feature-map-'))
     try {
         const practice = await createPracticeRepo({
             root,
-            config: MAP_CONFIG,
+            config,
             files,
         })
         return await practice.run({ turns })
@@ -64,6 +66,9 @@ const practiceRun = async ({
         await rm(root, { recursive: true, force: true })
     }
 }
+
+/** The same map, its test files written with a leading `./`. */
+const MAP_WITH_DOT_SLASH = MAP_WITH_SUM.replace('`src/sum', '`./src/sum')
 
 const redChecks = (records: JournalRecord[]) =>
     records.flatMap((record) =>
@@ -106,6 +111,28 @@ describe('the feature map, end to end', () => {
 
         const [first, second] = redChecks(records)
         expect(first?.ok).toBe(false)
+        expect(first?.problems).toContain(
+            `The feature map ${MAP_PATH} is missing: restore it, or add it with the new test file listed`
+        )
+        expect(second).toMatchObject({ ok: true, problems: [] })
+        expect(latestStuck(records)).toBeNull()
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+    }, 120_000)
+
+    test('a map spelled "./docs/feature-map.md", listing its files with "./", still works: the test-writer may write it and the red check finds the entry', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practiceRun({
+            config: { ...PRACTICE_ENGINE_CONFIG, feature_map: `./${MAP_PATH}` },
+            turns: [
+                testWriter,
+                { ...testWriter, files: { [MAP_PATH]: MAP_WITH_DOT_SLASH } },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        const [first, second] = redChecks(records)
+        // The first problem names the map by its clean path.
         expect(first?.problems).toContain(
             `The feature map ${MAP_PATH} is missing: restore it, or add it with the new test file listed`
         )

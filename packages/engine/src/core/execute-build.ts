@@ -21,6 +21,7 @@ import {
 } from '../agents/role-results'
 import {
     bunTestCommands,
+    featureMapPath,
     hasSlowTests,
     testTimeoutOf,
     type EngineConfig,
@@ -283,8 +284,8 @@ const featureMapIn = async ({
     context: BuildContext
     cwd: string
 }): Promise<{ path: string; files: string[] | null } | null> => {
-    const path = context.config.feature_map
-    if (path === undefined) return null
+    const path = featureMapPath({ config: context.config })
+    if (path === null) return null
     const text = await pathText({ path: join(cwd, path) })
     return {
         path,
