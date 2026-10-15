@@ -113,7 +113,11 @@ test('ok', () => {
 
 const EXPORT_SUM = "export { sum } from './sum'\n"
 
-/** The test-writer: the fast sum tests, and this slow file for AC1. */
+/**
+ * The test-writer: the fast sum tests, and this slow file for AC1. AC1 maps
+ * both of its tests, since the red check refuses a new test the map doesn't
+ * name (#581).
+ */
 const writerTurn = ({
     slow_source,
     mapped,
@@ -135,7 +139,16 @@ const writerTurn = ({
         result: {
             outcome: 'tests_written',
             criteria: [
-                { criterion_id: 'AC1', tests: [mapped] },
+                {
+                    criterion_id: 'AC1',
+                    tests: [
+                        mapped,
+                        {
+                            file: 'src/sum.test.ts',
+                            name: 'sum > adds two numbers',
+                        },
+                    ],
+                },
                 {
                     criterion_id: 'AC2',
                     tests: [

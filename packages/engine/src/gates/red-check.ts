@@ -1,6 +1,18 @@
 import type { RedCheckResult, TestCase, TestRun } from './gate-schemas'
+import { addedTestNames } from './new-tests'
 
 import type { CriterionTests, TestRef } from '../agents/role-results'
+import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
+
+/**
+ * A test file the ticket changed, as it was at the ticket's base and as it
+ * is now (`null`: not there).
+ */
+export type ChangedTestSource = {
+    file: string
+    base: string | null
+    current: string | null
+}
 
 const lastPart = (name: string): string =>
     (name.split(' > ').at(-1) ?? name).trim()
@@ -75,16 +87,21 @@ const checkNewTest = ({
 }
 
 /**
- * The red check. Pure: proves every criterion has a test, every new test
- * fails, and every old test that passed before still passes.
+ * The red check. Pure: proves every criterion has a test, and at most
+ * `MAX_TESTS_PER_CRITERION`, every test the ticket added is mapped, every
+ * new test fails, and every old test that passed before still passes.
  *
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
  * @param test_files - The worktree's test files, per the engine config.
  * @param sources - The text of each mapped test file, `null` if missing.
+ * @param changed_test_sources - Each test file the ticket changed, as it was
+ *   at the ticket's base and as it is now: a new test is a name in the
+ *   second the first doesn't have (#581). Read from the files' text, so a
+ *   file that doesn't load yet still counts.
  *
  * @example
- * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources })
+ * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
  * if (!result.ok) console.error(result.problems)
  */
 export const checkRed = ({
@@ -94,6 +111,7 @@ export const checkRed = ({
     current,
     test_files,
     sources,
+    changed_test_sources,
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -101,6 +119,7 @@ export const checkRed = ({
     current: TestRun
     test_files: string[]
     sources: Record<string, string | null>
+    changed_test_sources: ChangedTestSource[]
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -113,6 +132,28 @@ export const checkRed = ({
     for (const { criterion_id } of mapping) {
         if (!criteria_ids.includes(criterion_id)) {
             notes.push(`unknown criterion id ${criterion_id}`)
+        }
+    }
+    for (const { criterion_id, tests } of mapping) {
+        if (tests.length > MAX_TESTS_PER_CRITERION) {
+            problems.push(
+                `${criterion_id} has ${tests.length} tests; write at most ${MAX_TESTS_PER_CRITERION} per criterion`
+            )
+        }
+    }
+    for (const { file, base, current: text } of changed_test_sources) {
+        const mapped = new Set(
+            mapping
+                .flatMap(({ tests }) => tests)
+                .filter((test) => test.file === file)
+                .map(({ name }) => lastPart(name))
+        )
+        for (const name of addedTestNames({ base, current: text })) {
+            if (!mapped.has(name.trim())) {
+                problems.push(
+                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)`
+                )
+            }
         }
     }
     const testFiles = new Set(test_files)

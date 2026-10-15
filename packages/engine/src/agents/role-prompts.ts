@@ -219,8 +219,8 @@ const LENS_TASK_TEXT =
 
 const ROLE_TASKS: Record<AgentRole, string> = {
     'test-writer':
-        'Write failing tests for every acceptance criterion below. Edit test files only. ' +
-        'Map each criterion id to the tests that check it.',
+        'Write failing tests for every acceptance criterion below: the fewest that prove each one. Edit test files only. ' +
+        'Map every test you add to the criterion it checks.',
     implementer:
         'Make every gate pass. Never edit a test file. ' +
         'If a test is wrong, answer "bad_test" with your reason. ' +

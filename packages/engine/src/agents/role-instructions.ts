@@ -6,6 +6,7 @@ import {
     testCommands,
     type EngineConfig,
 } from '../config/engine-config'
+import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
 import {
     checkCommands,
     guardRoleOf,
@@ -90,7 +91,8 @@ You write the failing tests for ONE ticket, before any code exists.
 - Create or edit ONLY test files (${config.test_file_patterns.join(', ')}). No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
-- Every acceptance criterion needs at least one test. Old tests must keep passing.
+- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
+- Map every test you add. The red check refuses a new test the map doesn't name.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 
 Your result (structured output):

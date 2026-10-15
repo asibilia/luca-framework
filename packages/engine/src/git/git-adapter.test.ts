@@ -42,6 +42,25 @@ const headOf = async (): Promise<string> =>
 const undoReplay = (args: { first_sha: string; only: string[] }) =>
     createGitAdapter({ repo_root: repo }).undoReplay({ cwd: repo, ...args })
 
+describe('fileAt', () => {
+    test('reads a file as it was at a commit, or null if it was not there', async () => {
+        await Bun.write(join(repo, 'a.txt'), 'one')
+        await git(repo, 'add', '-A')
+        await git(repo, 'commit', '-q', '-m', 'a.txt')
+        const sha = await headOf()
+        await Bun.write(join(repo, 'a.txt'), 'two')
+        await git(repo, 'commit', '-q', '-a', '-m', 'a.txt again')
+
+        const adapter = createGitAdapter({ repo_root: repo })
+        expect(await adapter.fileAt({ cwd: repo, sha, path: 'a.txt' })).toBe(
+            'one'
+        )
+        expect(
+            await adapter.fileAt({ cwd: repo, sha, path: 'missing.txt' })
+        ).toBeNull()
+    })
+})
+
 describe('undoReplay', () => {
     test('undoes the join on top of the branch and names its commits', async () => {
         const base = await headOf()

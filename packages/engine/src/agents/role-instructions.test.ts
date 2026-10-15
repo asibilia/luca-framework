@@ -165,3 +165,19 @@ describe("the integration lens's instructions (#513)", () => {
         expect(text).not.toContain('merge_danger')
     })
 })
+
+describe('the test-writer and the per-criterion cap (#581)', () => {
+    test('is told the cap, and to map every test it adds', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+        expect(text).toContain(
+            'Every acceptance criterion needs at least one test, and at most 3: write the fewest tests that prove it.'
+        )
+        expect(text).toContain(
+            "Map every test you add. The red check refuses a new test the map doesn't name."
+        )
+    })
+})

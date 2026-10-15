@@ -48,7 +48,7 @@ import {
     newWorktreeInstall,
     rebaseNeedsInstall,
 } from '../gates/lockfile-install'
-import { checkRed } from '../gates/red-check'
+import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
     fileTestsCommand,
     onlyTestFiles,
@@ -276,7 +276,7 @@ const runRedCheck = async ({
     context: BuildContext
     action: Extract<BuildAction, { type: 'run_red_check' }>
 }) => {
-    const { path } = ticketWorktree({
+    const { path, base_sha } = ticketWorktree({
         state: context.state,
         ticket: action.ticket,
     })
@@ -351,6 +351,24 @@ const runRedCheck = async ({
     for (const file of files) {
         sources[file] = await pathText({ path: join(path, file) })
     }
+    // Every test file the ticket changed, as it was at the ticket's base
+    // (not HEAD: after a bad-test bounce, HEAD may still hold an old red
+    // commit) and as it is now, so the red check can find each new test (#581).
+    const changed_test_sources: ChangedTestSource[] = []
+    for (const file of testFilesAmong({
+        files: changed.map((change) => change.path),
+        test_file_patterns: context.config.test_file_patterns,
+    })) {
+        changed_test_sources.push({
+            file,
+            base: await context.git.fileAt({
+                cwd: path,
+                sha: base_sha,
+                path: file,
+            }),
+            current: await pathText({ path: join(path, file) }),
+        })
+    }
     const checked = checkRed({
         criteria_ids: action.criteria_ids,
         mapping: action.mapping,
@@ -358,6 +376,7 @@ const runRedCheck = async ({
         current,
         test_files,
         sources,
+        changed_test_sources,
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,

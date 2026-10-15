@@ -65,6 +65,12 @@ export type GitAdapter = {
      * included.
      */
     changedSince: (args: { cwd: string; from: string }) => Promise<string[]>
+    /** The text of `path` at commit `sha`, or `null` if it wasn't there (#581). */
+    fileAt: (args: {
+        cwd: string
+        sha: string
+        path: string
+    }) => Promise<string | null>
     /** Paths that differ between two commits. */
     filesBetween: (args: {
         cwd: string
@@ -442,6 +448,13 @@ export const createGitAdapter = ({
             )
             return uniq([...tracked, ...untracked]).toSorted()
         },
+        fileAt: async ({ cwd, sha, path }) => {
+            const result = await gitRun({
+                cwd,
+                args: ['show', `${sha}:${path}`],
+            })
+            return result.exit_code === 0 ? result.stdout : null
+        },
         filesBetween: async ({ cwd, from, to }) =>
             lines(
                 await gitOk({ cwd, args: ['diff', '--name-only', from, to] })
@@ -683,6 +696,7 @@ export const createGitAdapter = ({
         createWorktree: serial(raw.createWorktree),
         changes: serial(raw.changes),
         changedSince: serial(raw.changedSince),
+        fileAt: serial(raw.fileAt),
         filesBetween: serial(raw.filesBetween),
         untracked: serial(raw.untracked),
         listFiles: serial(raw.listFiles),

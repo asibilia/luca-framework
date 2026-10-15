@@ -25,6 +25,12 @@ export const MAX_BAD_TEST_BOUNCES = 1
 export const MAX_TEST_UPDATES = 2
 
 /**
+ * The most tests a test-writer may map to one acceptance criterion (#581):
+ * the red check refuses more. Write the fewest tests that prove it.
+ */
+export const MAX_TESTS_PER_CRITERION = 3
+
+/**
  * Engine failures in a row (the SDK crashed, or a follow-up's session was
  * gone) after which a ticket is stuck. Each one before it starts a fresh
  * agent without using up a try.

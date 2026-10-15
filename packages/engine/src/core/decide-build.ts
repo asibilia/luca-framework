@@ -81,6 +81,7 @@ export {
     MAX_FIX_ROUNDS,
     MAX_REJOINS,
     MAX_TEST_UPDATES,
+    MAX_TESTS_PER_CRITERION,
 } from './loop-caps'
 
 /**
