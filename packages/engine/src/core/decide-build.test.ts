@@ -1058,6 +1058,39 @@ describe('decision step: failed tries', () => {
         })
     })
 
+    test("a test-writer that breaks its rules on every try is stuck after the third, with the last guard's error", () => {
+        const fail = agentFailed({
+            ticket: 11,
+            role: 'test-writer',
+            failure: 'guard',
+            error: GUARD_ERROR,
+        })
+        const retry = agentStarted({
+            ticket: 11,
+            role: 'test-writer',
+            follow_up_of: 'tw-1',
+        })
+        const two = [
+            ...stepsUpTo(1),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            fail,
+            retry,
+            fail,
+        ]
+
+        expect(decideAfter(two)).toMatchObject({
+            type: 'follow_up_agent',
+            role: 'test-writer',
+            session_id: 'tw-1',
+        })
+        expect(decideAfter([...two, retry, fail])).toEqual({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'agent_failed',
+            detail: `The test-writer failed 3 tries; the last one: ${GUARD_ERROR}`,
+        })
+    })
+
     test('failed tries add up over the ticket, even across successes', () => {
         const fail = () =>
             agentFailed({ ticket: 11, role: 'implementer', failure: 'agent' })

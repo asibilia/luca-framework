@@ -2020,7 +2020,9 @@ and re-reviewers' prompts), one stuck at the cap and then shipped with
 repo's config.
 `src/core/agent-guards.e2e.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
-and retries that follow.
+and retries that follow. Its rule breaks share three runs, each with up to two
+per role. `src/core/decide-build.test.ts` checks the caps: a third failed try,
+or a third engine failure in a row, makes the ticket stuck.
 `src/core/run-many-tickets.e2e.test.ts` runs three tickets through
 `src/testing/many-tickets.ts`: #11 and #12 build at the same time (each
 test-writer waits until the other has started), #12 finishes and joins first,
