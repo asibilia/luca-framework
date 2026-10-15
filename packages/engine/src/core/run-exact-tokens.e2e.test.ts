@@ -6,8 +6,6 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { AgentSessionSchema } from '../agents/agent-launcher'
 import type { ScriptedTurn } from '../agents/scripted-launcher'
-import type { JournalRecord } from '../journal/journal-record'
-import { countedTokens } from '../limits/plan-usage'
 import {
     APPROVE,
     happyTurns,
@@ -18,8 +16,8 @@ import {
 /**
  * Seam 2 for exact tokens (#433): the practice ticket, end to end, with
  * scripted agents that report their tokens per model, a subagent's model
- * included. Those counts land in the journal, and the usage records add
- * them up.
+ * included. Those counts land in the journal. How the usage records add
+ * them up is decide-exact-tokens.test.ts's to check (#565).
  */
 
 let root = ''
@@ -115,22 +113,6 @@ const turnsWithTokens = (): ScriptedTurn[] => {
     ]
 }
 
-/** Input + output + cache-creation tokens over every model. */
-const counted = (model_usage: Record<string, Tokens>): number =>
-    Object.values(model_usage).reduce(
-        (total, each) =>
-            total +
-            each.input_tokens +
-            each.output_tokens +
-            each.cache_creation_input_tokens,
-        0
-    )
-
-const usageRecords = (records: JournalRecord[]) =>
-    records.flatMap((record) =>
-        record.kind === 'usage_recorded' ? [record.content] : []
-    )
-
 describe('exact tokens in the practice run', () => {
     test("each scripted agent's tokens per model, a subagent's model included, land in the journal", async () => {
         const { action, records } = await runPractice({
@@ -145,39 +127,5 @@ describe('exact tokens in the practice run', () => {
         expect(sessions.map((session) => session.model_usage)).toEqual(
             MODEL_USAGE
         )
-    }, 60_000)
-
-    test('the ticket and run usage records total input + output + cache-creation tokens, and the journal adds up to the run total', async () => {
-        const { records } = await runPractice({
-            root,
-            turns: turnsWithTokens(),
-        })
-
-        const usage = usageRecords(records)
-        expect(usage).toMatchObject([
-            {
-                scope: 'ticket',
-                ticket: 11,
-                agent_turns: 3,
-                tokens: tokens(3100, 6900, 150_400, 9100),
-            },
-            {
-                scope: 'run',
-                ticket: null,
-                agent_turns: 4,
-                tokens: tokens(3300, 7200, 160_400, 9200),
-            },
-        ])
-        const totals = usage.map((each) =>
-            countedTokens({ tokens: each.tokens })
-        )
-        expect(totals).toEqual([19_100, 19_700])
-        const journaled = records.flatMap((record) =>
-            record.kind === 'agent_session'
-                ? [counted(record.content.session.model_usage)]
-                : []
-        )
-        const sum = journaled.reduce((total, each) => total + each, 0)
-        expect(totals.at(-1)).toBe(sum)
     }, 60_000)
 })
