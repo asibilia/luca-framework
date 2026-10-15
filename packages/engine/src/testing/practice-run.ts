@@ -20,7 +20,7 @@ import {
  * with a second ticket on top, so the board shows a blocked ticket waiting
  * and then building. No GitHub, no models, no setup.
  *
- * Seam 2 (`core/run-one-ticket.test.ts`) runs on `practice-repo.ts` itself.
+ * Seam 2 (`core/run-one-ticket.e2e.test.ts`) runs on `practice-repo.ts` itself.
  */
 
 export { makePracticeRepo, PRACTICE_SPEC_NUMBER }
