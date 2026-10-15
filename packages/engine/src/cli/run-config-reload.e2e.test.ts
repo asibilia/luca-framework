@@ -30,12 +30,15 @@ import {
  * auto-restart run). A run crashes at its implementer; the repo's
  * `.luca/config.json` changes; the resume journals a `config_reloaded`
  * with the build fields that changed, right after its `engine_resumed`,
- * and the gates after it run the new prepare command. A new run with a bad
+ * and the gates after it run the new prepare command. A bad config keeps
+ * the run's own and journals why, and the run goes on. A new run with a bad
  * config still stops, as before.
  *
- * What a resume journals for an unchanged config, frozen fields, or a bad
- * config (refused, keeping the run's own) is checked without a run in
- * `decide-config-reload.test.ts` (#566).
+ * What a resume journals for an unchanged config, frozen fields, or a
+ * config that is missing or one intake would refuse is checked without a
+ * run in `decide-config-reload.test.ts` (#566). A config that is not JSON
+ * runs here: it is the one `runSpec` itself reads as not ok, so this run
+ * shows a resume does not stop on it.
  */
 
 let lines: string[] = []
@@ -248,6 +251,50 @@ describe('a resume after a removed prepare', () => {
                 name: 'prepare',
             })
         ).toEqual([])
+    }, 120_000)
+})
+
+describe('a resume with a bad config keeps the run’s own and goes on', () => {
+    let root = ''
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-config-reload-'))
+        lines = []
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('a config that is not JSON is journaled as refused, and the run goes on with its own: the PR opens and the old prepare still runs', async () => {
+        const { repo, runs_dir, tracker } = await crashedRun({ root })
+        await writeConfigText({ repo, text: '{ "checks": ' })
+
+        const end = await resume({ runs_dir, tracker })
+
+        expect(end.ok).toBe(true)
+        expect(tracker.pullRequests()).toHaveLength(1)
+        const records = recordsOf({ runs_dir })
+        expect(kindsAfterResume(records).slice(0, 2)).toEqual([
+            'engine_resumed',
+            'config_reload_refused',
+        ])
+        const refused = records.find(
+            (record) => record.kind === 'config_reload_refused'
+        )
+        expect(
+            refused?.kind === 'config_reload_refused'
+                ? refused.content.reason
+                : null
+        ).toContain('not valid JSON')
+        const prepares = gateCommands({
+            records,
+            after: resumedSeq(records),
+            name: 'prepare',
+        })
+        expect(prepares.length).toBeGreaterThan(0)
+        expect(prepares.every((command) => command === OLD_PREPARE)).toBe(true)
+        expect(lines.some((line) => line.includes('not valid JSON'))).toBe(true)
     }, 120_000)
 })
 
