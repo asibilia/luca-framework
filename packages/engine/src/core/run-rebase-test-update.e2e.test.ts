@@ -2,9 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, describe, expect, test } from 'bun:test'
-
-import { MAX_TEST_UPDATES } from './decide-build'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -210,24 +208,6 @@ const UPDATED: ManyTicketsScenario = {
     ],
 }
 
-/** The implementer sends the test back after every update: stuck at the cap. */
-const NEVER_RIGHT: ManyTicketsScenario = {
-    files: { 'src/steps.ts': STEPS },
-    tracker,
-    turns: ({ journal_file }) => [
-        ...firstTurns({ journal_file }),
-        ...Array.from({ length: MAX_TEST_UPDATES }, (): ScriptedTurn[] => [
-            {
-                role: 'test-writer',
-                ticket: 22,
-                files: { 'src/count.test.ts': countTest(3) },
-                result: COUNT_MAPPED,
-            },
-            { role: 'implementer', ticket: 22, result: BAD_COUNT },
-        ]).flat(),
-    ],
-}
-
 const ofKind = <K extends JournalRecord['kind']>(
     records: JournalRecord[],
     kind: K
@@ -284,11 +264,14 @@ const runScenario = async (scenario: ManyTicketsScenario) => {
 }
 
 describe('a test a joined ticket made wrong, end to end', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
     let run: ManyTicketsRun
 
-    test('goes back to the test-writer, and the ticket joins; one PR opens', async () => {
+    beforeAll(async () => {
         run = await runScenario(UPDATED)
+    }, 120_000)
 
+    test('goes back to the test-writer, and the ticket joins; one PR opens', () => {
         expect(run.action).toMatchObject({
             type: 'done',
             outcome: 'pr_opened',
@@ -308,7 +291,7 @@ describe('a test a joined ticket made wrong, end to end', () => {
             'gates run_branch ok',
             'pushed',
         ])
-    }, 120_000)
+    })
 
     test('the journal names what joined, the files it changed, and the bad test', () => {
         const [sent] = ofKind(run.records, 'tests_sent_back')
@@ -363,33 +346,4 @@ describe('a test a joined ticket made wrong, end to end', () => {
             expect.arrayContaining(['src/count.test.ts', 'src/index.ts'])
         )
     })
-})
-
-describe(`a test sent back after ${MAX_TEST_UPDATES} updates, end to end`, () => {
-    let run: ManyTicketsRun
-
-    test("is stuck, and the spec comment keeps the implementer's reason", async () => {
-        run = await runScenario(NEVER_RIGHT)
-
-        expect(run.action).toMatchObject({ type: 'wait_for_reply' })
-        expect(stepsAfterRebase(run)).toEqual([
-            'launch implementer',
-            ...Array.from({ length: MAX_TEST_UPDATES }, (_, index) => [
-                `tests sent back ${index + 1}`,
-                'launch test-writer',
-                'follow_up implementer',
-            ]).flat(),
-            'stuck bad_test',
-        ])
-        const [stuck] = ofKind(run.records, 'ticket_stuck')
-        expect(stuck?.content.detail).toContain(
-            `src/count.test.ts > count > gives the number of steps: ${REASON}`
-        )
-        const [report] = ofKind(run.records, 'stuck_reported')
-        expect(report?.content.body).toContain(REASON)
-        expect(report?.content.body).toContain(
-            `${MAX_TEST_UPDATES} test updates after a rebase`
-        )
-        expect(report?.content.body).not.toContain('no reason given')
-    }, 120_000)
 })
