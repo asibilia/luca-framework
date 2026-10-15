@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { JournalRecord } from '../journal/journal-record'
 import {
@@ -23,6 +23,7 @@ import { git } from '../testing/practice-repo'
  */
 
 let root = ''
+/** One run, built once: every test reads it, and none changes it (#565). */
 let run: ManyTicketsRun
 
 afterAll(async () => {
@@ -63,10 +64,12 @@ const stepsOf22 = ({ after_seq }: { after_seq: number }): string[] =>
     })
 
 describe('gates that fail after joining, end to end', () => {
-    test('undoes the join, fixes the ticket on top of the run branch, and opens one PR', async () => {
+    beforeAll(async () => {
         root = await mkdtemp(join(tmpdir(), 'luca-engine-broken-join-'))
         run = await runManyTickets({ root, scenario: BROKEN_JOIN })
+    }, 120_000)
 
+    test('undoes the join, fixes the ticket on top of the run branch, and opens one PR', () => {
         expect(run.action).toMatchObject({
             type: 'done',
             outcome: 'pr_opened',
@@ -74,7 +77,7 @@ describe('gates that fail after joining, end to end', () => {
         expect(ofKind(run.records, 'ticket_stuck')).toEqual([])
         expect(ofKind(run.records, 'agent_failed')).toEqual([])
         expect(run.tracker.pullRequests()).toHaveLength(1)
-    }, 120_000)
+    })
 
     test('#21 joins first; #22 joins, its gates fail on the run branch, and the join is undone', () => {
         const joins = ofKind(run.records, 'ticket_joined')
