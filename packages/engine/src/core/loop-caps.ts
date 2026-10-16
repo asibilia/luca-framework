@@ -11,8 +11,10 @@
 export const MAX_FIX_ROUNDS = 3
 
 /**
- * Times an implementer may send a test back as bad, each to a fresh
- * test-writer. The bounce after these makes the ticket stuck.
+ * Times a test may be sent back as bad, each to a fresh test-writer: by the
+ * implementer, or by the engine when a mapped test passes with no `expect()`
+ * (#581). The two share this cap. The bounce after these makes the ticket
+ * stuck.
  */
 export const MAX_BAD_TEST_BOUNCES = 1
 
@@ -23,6 +25,12 @@ export const MAX_BAD_TEST_BOUNCES = 1
  * ticket stuck.
  */
 export const MAX_TEST_UPDATES = 2
+
+/**
+ * The most tests a test-writer may map to one acceptance criterion (#581):
+ * the red check refuses more. Write the fewest tests that prove it.
+ */
+export const MAX_TESTS_PER_CRITERION = 3
 
 /**
  * Engine failures in a row (the SDK crashed, or a follow-up's session was

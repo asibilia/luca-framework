@@ -20,6 +20,8 @@ import type { EngineConfig } from './engine-config'
  *   one counts from the next prepare run.
  * - `test_timeout_ms`: how long each test command may run (#542). Each run
  *   of a test command reads it then, so a new one counts from the next.
+ * - `test_case_timeout_ms`: how long one fast test may take (#580). Each run
+ *   of a fast test command reads it then, so a new one counts from the next.
  * - `leftover_allow`: more new markdown the leftover scan lets through
  *   (#520). Each scan reads it then, so a run stuck on a leftover can be
  *   unstuck by allowing the file and resuming.
@@ -29,6 +31,7 @@ export const RELOADED_FIELDS = [
     'prepare_timeout_ms',
     'prepare_concurrency',
     'test_timeout_ms',
+    'test_case_timeout_ms',
     'leftover_allow',
 ] as const
 
@@ -47,6 +50,10 @@ export const RELOADED_FIELDS = [
  * - `test_file_patterns`: which files are tests decides the red check, the
  *   role rules, and which commits were the test-writer's.
  * - `test_setup_files`: part of what the tests are, as `checks` is.
+ * - `feature_map`: says which test files belong to which feature (#583), as
+ *   `test_file_patterns` says which files are tests: the red check holds a
+ *   ticket's new test files to it, and the role rules let the test-writer
+ *   edit it.
  * - `rule_files`: the rules lens judges against them; tickets already
  *   reviewed were judged on the old ones.
  * - `muninn`: the run's memory vault is fixed at start (`run_started.memory`).
@@ -59,6 +66,7 @@ export const FROZEN_FIELDS = [
     'checks',
     'test_file_patterns',
     'test_setup_files',
+    'feature_map',
     'rule_files',
     'muninn',
     'run_budget_tokens',
@@ -91,6 +99,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
     }),
     z.object({
         field: z.literal('test_timeout_ms'),
+        from: positiveInt,
+        to: positiveInt,
+    }),
+    z.object({
+        field: z.literal('test_case_timeout_ms'),
         from: positiveInt,
         to: positiveInt,
     }),
@@ -141,6 +154,11 @@ export const configChanges = ({
             to: next.test_timeout_ms ?? null,
         },
         {
+            field: 'test_case_timeout_ms',
+            from: current.test_case_timeout_ms ?? null,
+            to: next.test_case_timeout_ms ?? null,
+        },
+        {
             field: 'leftover_allow',
             from: current.leftover_allow ?? null,
             to: next.leftover_allow ?? null,
@@ -173,6 +191,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'test_timeout_ms')
                 : { ...config, test_timeout_ms: change.to }
+        case 'test_case_timeout_ms':
+            return change.to === null
+                ? omit(config, 'test_case_timeout_ms')
+                : { ...config, test_case_timeout_ms: change.to }
         case 'leftover_allow':
             return change.to === null
                 ? omit(config, 'leftover_allow')

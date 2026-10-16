@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
-import { decide } from './decide'
+import { decide, decideSteps } from './decide'
 import {
+    EMPTY_TEST_REASON,
     MAX_ENGINE_FAILURES,
     MAX_FIX_ROUNDS,
     MAX_RUN_NOTES,
 } from './decide-build'
 
+import type { TestCase } from '../gates/gate-schemas'
 import type { JournalEntry } from '../journal/journal-record'
 import {
     agentFailed,
@@ -16,12 +18,15 @@ import {
     dependenciesInstalled,
     gatesRun,
     implemented,
+    finding,
     intakePassed,
+    joinClashed,
     leftoverScan,
     nothingNewToTest,
     practiceTicket,
     pullRequestOpened,
     redCheck,
+    reviewed,
     RUN_BRANCH,
     RUN_BRANCH_PATH,
     runBranchCreated,
@@ -29,12 +34,16 @@ import {
     testsWritten,
     ticketBuilt,
     ticketPath,
+    ticketRebased,
     ticketWorktreeCreated,
     withInstalls,
     worktreeReset,
     worktreesRemoved,
 } from '../testing/build-fixtures'
-import { finalReviewClean } from '../testing/final-review-fixtures'
+import {
+    finalReviewClean,
+    finalReviewStarted,
+} from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
@@ -451,6 +460,56 @@ describe('decision step: the red check fix loop', () => {
         expect(action.detail).toContain('"sum adds two numbers" passes already')
     })
 
+    test(`a test that still passes goes back to the first test-writer's session every round, and after ${MAX_FIX_ROUNDS} rounds the ticket is stuck with no commit`, () => {
+        const decided: string[] = []
+        let entries = stepsUpTo(2)
+        for (let round = 1; round <= MAX_FIX_ROUNDS; round += 1) {
+            decided.push(decideAfter(entries).type)
+            entries = [...entries, redCheck({ ticket: 11, ok: false })]
+            const action = decideAfter(entries)
+            decided.push(action.type)
+            expect(action).toMatchObject({
+                ticket: 11,
+                role: 'test-writer',
+                session_id: SESSIONS['test-writer'],
+            })
+            if (action.type !== 'follow_up_agent') throw new Error(action.type)
+            expect(action.message).toContain('passes already')
+            entries = [
+                ...entries,
+                agentStarted({
+                    ticket: 11,
+                    role: 'test-writer',
+                    follow_up_of: SESSIONS['test-writer'],
+                }),
+                testsWritten({ ticket: 11 }),
+            ]
+        }
+        decided.push(decideAfter(entries).type)
+        const stuck = decideAfter([
+            ...entries,
+            redCheck({ ticket: 11, ok: false }),
+        ])
+        decided.push(stuck.type)
+
+        // MAX_FIX_ROUNDS + 1 red checks, a follow-up after each but the
+        // last, then stuck: never a commit.
+        expect(decided).toEqual([
+            ...Array.from({ length: MAX_FIX_ROUNDS }, () => [
+                'run_red_check',
+                'follow_up_agent',
+            ]).flat(),
+            'run_red_check',
+            'mark_stuck',
+        ])
+        expect(stuck).toMatchObject({
+            ticket: 11,
+            reason: 'red_check_failed',
+        })
+        if (stuck.type !== 'mark_stuck') throw new Error(stuck.type)
+        expect(stuck.detail).toContain('passes already')
+    })
+
     test('a follow-up that started but never finished is sent again to the same session, not counted', () => {
         const once = decideAfter([
             ...stepsUpTo(2),
@@ -824,6 +883,289 @@ describe('decision step: a refactor ticket', () => {
     })
 })
 
+/**
+ * A new test that checks nothing (#581). Ticket #11's red test is "sum adds
+ * two numbers" in `src/sum.test.ts`.
+ */
+describe('a new test that checks nothing (#581)', () => {
+    const RED_TEST = { file: 'src/sum.test.ts', name: 'sum adds two numbers' }
+
+    /** The gates' case for the red test, with this many expect() calls. */
+    const ranWith = (assertions: number | undefined): TestCase[] => [
+        {
+            file: RED_TEST.file,
+            full_name: RED_TEST.name,
+            status: 'passed',
+            ...(assertions === undefined ? {} : { assertions }),
+        },
+    ]
+
+    /** The passing gates of ticket #11, with these cases. */
+    const passingGates = (cases: TestCase[]) =>
+        gatesRun({ ticket: 11, target: 'ticket', ok: true, cases })
+
+    /** Up to and including the passing gates of ticket #11. */
+    const toGates = (cases: TestCase[]) => [
+        ...stepsUpTo(6),
+        passingGates(cases),
+    ]
+
+    /** The engine's bad test, as its reset record journals it. */
+    const BAD_TEST = { ...RED_TEST, reason: EMPTY_TEST_REASON }
+
+    /** After the engine's reset: fresh tests, a passing red check, the second red commit. */
+    const replacedByEngine = (): JournalEntry[] => [
+        ...toGates(ranWith(0)),
+        worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+        testsWritten({ ticket: 11, session_id: 'tw-2' }),
+        redCheck({ ticket: 11, ok: true }),
+        leftoverScan({ ticket: 11, stage: 'red' }),
+        commitMade({ ticket: 11, stage: 'red' }),
+    ]
+
+    const GREEN = { type: 'commit_ticket', stage: 'green' }
+
+    test('a mapped test that passed with no expect() sends the ticket back to a fresh test-writer', () => {
+        expect(decideAfter(toGates(ranWith(0)))).toEqual({
+            type: 'reset_ticket_worktree',
+            ticket: 11,
+            bad_test: {
+                file: 'src/sum.test.ts',
+                name: 'sum adds two numbers',
+                reason: 'It passes but runs no expect(), so it checks nothing (#581).',
+            },
+        })
+    })
+
+    test('with expect() calls, or with no count (an older journal), it goes on to the green commit', () => {
+        expect(decideAfter(toGates(ranWith(2)))).toMatchObject(GREEN)
+        expect(decideAfter(toGates(ranWith(undefined)))).toMatchObject(GREEN)
+    })
+
+    test('a mapped test the gates did not run, or did not pass, is left to the other checks', () => {
+        const [empty] = ranWith(0)
+        if (!empty) throw new Error('case')
+
+        // Gates that journal no cases at all (an older journal).
+        expect(decideAfter(toGates([]))).toMatchObject(GREEN)
+        expect(
+            decideAfter([
+                ...stepsUpTo(6),
+                gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+            ])
+        ).toMatchObject(GREEN)
+        // Other tests, and the same name in another file.
+        expect(
+            decideAfter(
+                toGates([
+                    { ...empty, full_name: 'sum subtracts' },
+                    { ...empty, file: 'src/other.test.ts' },
+                ])
+            )
+        ).toMatchObject(GREEN)
+        // A test that did not pass.
+        expect(
+            decideAfter(toGates([{ ...empty, status: 'skipped' }]))
+        ).toMatchObject(GREEN)
+        expect(
+            decideAfter(toGates([{ ...empty, status: 'failed' }]))
+        ).toMatchObject(GREEN)
+    })
+
+    test('a test is found as the red check finds it: by the last part of its name', () => {
+        expect(
+            decideAfter(
+                toGates([
+                    {
+                        file: RED_TEST.file,
+                        full_name: 'a suite > sum adds two numbers',
+                        status: 'passed',
+                        assertions: 0,
+                    },
+                ])
+            )
+        ).toMatchObject({ type: 'reset_ticket_worktree', ticket: 11 })
+    })
+
+    test("after the reset, a fresh test-writer gets the engine's finding in its prompt", () => {
+        const action = decideAfter([
+            ...toGates(ranWith(0)),
+            worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+            may_edit_tests: true,
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain(
+            'The engine found this test checks nothing'
+        )
+        expect(action.prompt).toContain('src/sum.test.ts')
+        expect(action.prompt).toContain('sum adds two numbers')
+        expect(action.prompt).toContain(EMPTY_TEST_REASON)
+        expect(action.prompt).not.toContain('The implementer says')
+    })
+
+    test("a test the implementer sent back keeps the implementer's wording in the prompt", () => {
+        const action = decideAfter(bounced())
+
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain(
+            'The implementer says this test is wrong'
+        )
+        expect(action.prompt).not.toContain('The engine found')
+    })
+
+    test('the new tests get a red commit that says a bad test was replaced, then a fresh implementer', () => {
+        expect(
+            decideAfter([
+                ...toGates(ranWith(0)),
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+                testsWritten({ ticket: 11, session_id: 'tw-2' }),
+                redCheck({ ticket: 11, ok: true }),
+            ])
+        ).toMatchObject({
+            type: 'commit_ticket',
+            stage: 'red',
+            message: 'test: replace a bad test for #11 Add sum',
+        })
+        expect(decideAfter(replacedByEngine())).toMatchObject({
+            type: 'launch_agent',
+            role: 'implementer',
+            may_edit_tests: false,
+        })
+    })
+
+    /**
+     * The second bounce makes the ticket stuck, whichever sent each one
+     * back; the detail names both, in order. Both bounces share one cap.
+     */
+    describe('the second bounce is stuck, and the detail names who sent each one back', () => {
+        /** The latest decision after a second implementer turn with this ending. */
+        const secondTurn = ({
+            entries,
+            ending,
+        }: {
+            entries: JournalEntry[]
+            ending: 'empty' | 'bad_test'
+        }) => {
+            const action = decideAfter([
+                ...entries,
+                ending === 'empty'
+                    ? implemented({ ticket: 11, session_id: 'impl-2' })
+                    : implemented({
+                          ticket: 11,
+                          outcome: 'bad_test',
+                          session_id: 'impl-2',
+                          reason: 'Still wrong.',
+                      }),
+                ...(ending === 'empty' ? [passingGates(ranWith(0))] : []),
+            ])
+            expect(action).toMatchObject({
+                type: 'mark_stuck',
+                ticket: 11,
+                reason: 'bad_test',
+            })
+            if (action.type !== 'mark_stuck') throw new Error(action.type)
+            return action.detail
+        }
+
+        test('the implementer, then the implementer again', () => {
+            expect(
+                secondTurn({ entries: replaced(), ending: 'bad_test' })
+            ).toBe(
+                'The implementer sent a test back as bad a second time: src/sum.test.ts > sum adds two numbers: Still wrong.'
+            )
+        })
+
+        test('the engine, then the engine again', () => {
+            expect(
+                secondTurn({ entries: replacedByEngine(), ending: 'empty' })
+            ).toBe(
+                'A mapped test still checks nothing after a fresh test-writer: "sum adds two numbers" in src/sum.test.ts runs no expect().'
+            )
+        })
+
+        test('the implementer, then the engine: the first bounce is not called an empty test', () => {
+            expect(secondTurn({ entries: replaced(), ending: 'empty' })).toBe(
+                'The implementer sent a test back as bad, and then, after a fresh test-writer, the engine found a mapped test that checks nothing: "sum adds two numbers" in src/sum.test.ts runs no expect().'
+            )
+        })
+
+        test('the engine, then the implementer: the first bounce is not blamed on the implementer', () => {
+            expect(
+                secondTurn({ entries: replacedByEngine(), ending: 'bad_test' })
+            ).toBe(
+                'The engine found a mapped test that checks nothing, and then, after a fresh test-writer, the implementer sent a test back as bad: src/sum.test.ts > sum adds two numbers: Still wrong.'
+            )
+        })
+    })
+
+    test('a refactor ticket is not checked: it has no map', () => {
+        expect(
+            decideRefactorAfter([
+                implemented({ ticket: 11 }),
+                passingGates(ranWith(0)),
+            ])
+        ).toEqual({
+            type: 'commit_ticket',
+            ticket: 11,
+            stage: 'green',
+            message: 'refactor: #11 Split sum into its own file',
+        })
+    })
+
+    test('a ticket rejoining after a rebase is not checked: its code is already reviewed', () => {
+        expect(
+            decideAfter([
+                ...stepsUpTo(10),
+                joinClashed({ ticket: 11 }),
+                ticketRebased({
+                    ticket: 11,
+                    cause: 'clash',
+                    code: ['src/index.ts'],
+                }),
+                agentStarted({
+                    ticket: 11,
+                    role: 'implementer',
+                    follow_up_of: SESSIONS.implementer,
+                }),
+                implemented({ ticket: 11 }),
+                passingGates(ranWith(0)),
+            ])
+        ).toEqual({
+            type: 'commit_ticket',
+            ticket: 11,
+            stage: 'green',
+            message: 'fix: rejoin #11 Add sum onto the run branch',
+        })
+    })
+
+    test("a review's fixes are not checked: their tests are not red-checked", () => {
+        const fixed = (cases: TestCase[]) =>
+            decideAfter([
+                ...stepsUpTo(9),
+                reviewed({
+                    ticket: 11,
+                    findings: [finding({ id: 'R1-1' })],
+                }),
+                implemented({
+                    ticket: 11,
+                    finding_responses: [
+                        { finding_id: 'R1-1', response: 'fixed', reason: '' },
+                    ],
+                }),
+                passingGates(cases),
+            ])
+
+        expect(fixed(ranWith(0))).toEqual(fixed(ranWith(2)))
+        expect(fixed(ranWith(0)).type).not.toBe('reset_ticket_worktree')
+    })
+})
+
 describe('decision step: a ticket gets stuck', () => {
     test('leftovers found before a commit make the ticket stuck, with no commit', () => {
         expect(
@@ -1002,6 +1344,39 @@ describe('decision step: failed tries', () => {
             ticket: 11,
             reason: 'agent_failed',
             detail: 'The implementer failed 3 tries; the last one: third',
+        })
+    })
+
+    test("a test-writer that breaks its rules on every try is stuck after the third, with the last guard's error", () => {
+        const fail = agentFailed({
+            ticket: 11,
+            role: 'test-writer',
+            failure: 'guard',
+            error: GUARD_ERROR,
+        })
+        const retry = agentStarted({
+            ticket: 11,
+            role: 'test-writer',
+            follow_up_of: 'tw-1',
+        })
+        const two = [
+            ...stepsUpTo(1),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            fail,
+            retry,
+            fail,
+        ]
+
+        expect(decideAfter(two)).toMatchObject({
+            type: 'follow_up_agent',
+            role: 'test-writer',
+            session_id: 'tw-1',
+        })
+        expect(decideAfter([...two, retry, fail])).toEqual({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'agent_failed',
+            detail: `The test-writer failed 3 tries; the last one: ${GUARD_ERROR}`,
         })
     })
 
@@ -1291,6 +1666,39 @@ describe('decision step: run notes', () => {
         )
         expect(prompt).toContain('# Your role: ticket-reviewer')
         expect(prompt).toContain('- Uses bun. (test-writer, #11)')
+    })
+
+    test("the final review's lenses get the run's notes too", () => {
+        const steps = decideSteps({
+            records: recordsFrom({
+                entries: [
+                    ...intakePassed({ tickets: [TICKET] }),
+                    ...withInstalls({
+                        entries: [
+                            runBranchCreated(),
+                            ...ticketBuilt({ ticket: 11 }).map((entry) =>
+                                entry.kind === 'agent_finished' &&
+                                entry.content.role === 'test-writer'
+                                    ? testsWritten({
+                                          ticket: 11,
+                                          run_notes: ['Uses bun.'],
+                                      })
+                                    : entry
+                            ),
+                            finalReviewStarted({ round: 1 }),
+                        ],
+                    }),
+                ],
+            }),
+        })
+
+        const lenses = steps.flatMap((step) =>
+            step.type === 'launch_lens' ? [step.prompt] : []
+        )
+        expect(lenses).toHaveLength(5)
+        for (const prompt of lenses) {
+            expect(prompt).toContain('- Uses bun. (test-writer, #11)')
+        }
     })
 
     test('a follow-up does not repeat the notes', () => {

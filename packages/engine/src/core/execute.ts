@@ -811,13 +811,16 @@ const SLOW_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'check_already_done',
     'run_gates',
     'run_final_gates',
+    'run_final_slow_tests',
 ])
 
 /**
  * Actions that read or move the run branch. At most one runs at a time, so
  * joins, their gates, pushes, and new worktrees see one run branch. The
- * final review's fixers, gates, commit, and push work in the run branch's
- * worktree; its lenses only read it.
+ * final review's fixers, gates, slow tests (#563), commit, and push work in
+ * the run branch's worktree; its lenses only read it. Nothing writes there
+ * while a lens runs, though: its after-turn guard judges that worktree, so
+ * the slow tests wait for round 1's lenses (see `decideFinalReview`).
  */
 const usesRunBranch = (action: EngineAction): boolean => {
     switch (action.type) {
@@ -829,6 +832,7 @@ const usesRunBranch = (action: EngineAction): boolean => {
         case 'launch_final_fixer':
         case 'follow_up_final_fixer':
         case 'run_final_gates':
+        case 'run_final_slow_tests':
         case 'commit_final_fix':
         case 'push_final_fixes':
         case 'write_changeset':

@@ -253,6 +253,23 @@ describe("decision step: the engine checks a test-writer's already-done evidence
         })
     })
 
+    test('a second answer that does not check out still goes back to the same session', () => {
+        expect(
+            at([
+                ...answered,
+                alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+                alreadyDone({ ticket: 11 }),
+                alreadyDoneChecked({ ticket: 11, problems: [NOT_FOUND] }),
+            ])
+        ).toMatchObject({
+            type: 'follow_up_agent',
+            ticket: 11,
+            role: 'test-writer',
+            session_id: SESSIONS['test-writer'],
+            message: expect.stringContaining(NOT_FOUND),
+        })
+    })
+
     test('when the failed tries run out, the ticket is stuck with what did not check out', () => {
         const failing =
             '"sum adds two numbers" in src/sum.test.ts: fails on the base'

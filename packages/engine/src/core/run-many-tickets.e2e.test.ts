@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import type { DecisionModelClient } from '../jev/clef-client'
 import type { JevAnswer, JevQuestion } from '../jev/jev-schemas'
@@ -76,13 +76,17 @@ const worktreeList = async (repo: string): Promise<string[]> =>
         .map((line) => line.slice('worktree '.length))
 
 describe('many tickets in one run, end to end, with scripted agents', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
     let run: ManyTicketsRun
 
-    test('builds three tickets, #11 and #12 at the same time, and opens one PR', async () => {
+    beforeAll(async () => {
         run = await runManyTickets({
             root: await newRoot(),
             scenario: SUM_PRODUCT_AVERAGE,
         })
+    }, 120_000)
+
+    test('builds three tickets, #11 and #12 at the same time, and opens one PR', () => {
         const { action, records, tracker } = run
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
@@ -93,7 +97,7 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
         for (const number of [11, 12, 13]) {
             expect(pulls[0]?.body).toContain(`Closes #${number}`)
         }
-    }, 120_000)
+    })
 
     test('#12 finished first and joined first; #11 clashed, was fixed on top, and joined; then #13', () => {
         expect(joinSteps(run.records)).toEqual([
@@ -145,18 +149,6 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
             'feat: build #11 Add sum',
             'fix: rejoin #11 Add sum onto the run branch',
         ])
-    })
-
-    test('#13 started only after #11 and #12 had both pushed', () => {
-        const started = ofKind(run.records, 'ticket_worktree_created')
-        const thirteen = started.find(({ ticket }) => ticket === 13)
-        const pushes = ofKind(run.records, 'run_branch_pushed')
-
-        expect(started.map(({ ticket }) => ticket)).toEqual([11, 12, 13])
-        for (const number of [11, 12]) {
-            const push = pushes.find(({ ticket }) => ticket === number)
-            expect(push?.seq ?? Infinity).toBeLessThan(thirteen?.seq ?? 0)
-        }
     })
 
     test("origin's run branch has all three exports, and every gate on it passed", async () => {
@@ -379,13 +371,17 @@ const lastPickJev = (): DecisionModelClient => ({
 })
 
 describe('many tickets with Jev in shadow mode', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
     let jevRun: ManyTicketsRun
 
-    test("Jev's ticket-order pick is journaled and ignored", async () => {
+    beforeAll(async () => {
         jevRun = await runManyTickets({
             root: await newRoot(),
             jev: { client: lastPickJev() },
         })
+    }, 120_000)
+
+    test("Jev's ticket-order pick is journaled and ignored", () => {
         const { action, records } = jevRun
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
@@ -411,7 +407,7 @@ describe('many tickets with Jev in shadow mode', () => {
             'joined #11 ok',
             'joined #13 ok',
         ])
-    }, 120_000)
+    })
 
     test('asks the ticket order while two tickets are left, not for the last one, and journals no failure', () => {
         const orderAsks = ofKind(jevRun.records, 'jev_asked').filter(

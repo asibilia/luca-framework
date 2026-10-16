@@ -5,7 +5,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
+    bunTestCommands,
+    caseLimitOf,
     EngineConfigSchema,
+    fastBunCommand,
     loadEngineConfig,
     testTimeoutOf,
 } from './engine-config'
@@ -73,6 +76,52 @@ describe('engine config: the test time limit (#542)', () => {
             expect(
                 EngineConfigSchema.safeParse({ test_timeout_ms: value }).success
             ).toBe(false)
+        }
+    )
+})
+
+describe('the fast test speed limit (#580)', () => {
+    test('test_case_timeout_ms is kept, and fast bun commands get --timeout', () => {
+        const config = EngineConfigSchema.parse({
+            checks: { test: ['bun test src', 'bun run x'] },
+            test_case_timeout_ms: 2000,
+        })
+
+        expect(caseLimitOf({ config })).toBe(2000)
+        expect(fastBunCommand({ run: 'bun test src', config })).toBe(
+            'bun test src --timeout=2000'
+        )
+        expect(bunTestCommands({ config })).toEqual([
+            'bun test src --timeout=2000',
+        ])
+    })
+
+    test('left out, commands are exactly as written', () => {
+        const config = EngineConfigSchema.parse({
+            checks: { test: 'bun test src' },
+        })
+
+        expect(caseLimitOf({ config })).toBeNull()
+        expect(fastBunCommand({ run: 'bun test src', config })).toBe(
+            'bun test src'
+        )
+        expect(bunTestCommands({ config })).toEqual(['bun test src'])
+    })
+
+    test.each([0, -1, 1.5, '2000', null])(
+        'test_case_timeout_ms of %p is an error naming it',
+        (value) => {
+            const parsed = EngineConfigSchema.safeParse({
+                checks: { test: 'bun test' },
+                test_case_timeout_ms: value,
+            })
+
+            expect(parsed.success).toBe(false)
+            if (!parsed.success) {
+                expect(JSON.stringify(parsed.error.issues)).toContain(
+                    'test_case_timeout_ms'
+                )
+            }
         }
     )
 })

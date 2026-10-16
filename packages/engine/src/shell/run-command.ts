@@ -12,8 +12,9 @@ export const DEFAULT_COMMAND_TIMEOUT_MS = 300_000
 
 /**
  * After a timed-out command is killed, how long the engine still waits for
- * its output. A child that left the command's process group can hold the
- * output pipe open; past this, the engine stops reading and moves on.
+ * its output when the caller doesn't say (`pipe_grace_ms`). A child that left
+ * the command's process group can hold the output pipe open; past this, the
+ * engine stops reading and moves on.
  */
 const PIPE_GRACE_MS = 2_000
 
@@ -99,8 +100,8 @@ const collectText = (
  * The command runs in its own process group. One that runs past
  * `timeout_ms` is killed with everything it started (the whole group) and
  * marked `timed_out`, with `exit_code: null`. The engine then waits at most
- * a moment more for its output, so a child that left the group can't hold
- * the engine.
+ * a moment more for its output (`pipe_grace_ms`, default `PIPE_GRACE_MS`), so
+ * a child that left the group can't hold the engine.
  *
  * @example
  * const result = await runCommand({ cmd: ['git', 'status'], cwd })
@@ -111,6 +112,7 @@ export const runCommand = async ({
     cwd,
     timeout_ms,
     env,
+    pipe_grace_ms,
 }: {
     cmd: string[]
     cwd: string
@@ -118,6 +120,11 @@ export const runCommand = async ({
     timeout_ms?: number
     /** Variables set on top of the engine's own environment. */
     env?: Record<string, string>
+    /**
+     * How long to keep reading output after a timeout kill; defaults to
+     * `PIPE_GRACE_MS`. Tests of that wait pass a short one (#580).
+     */
+    pipe_grace_ms?: number
 }): Promise<CommandResult> => {
     stopCommandsOnExit()
     const proc = Bun.spawn({
@@ -142,7 +149,7 @@ export const runCommand = async ({
         grace = setTimeout(() => {
             stdout.stop()
             stderr.stop()
-        }, PIPE_GRACE_MS)
+        }, pipe_grace_ms ?? PIPE_GRACE_MS)
     }, timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS)
     const [out, err, exitCode] = await Promise.all([
         stdout.text,
@@ -165,12 +172,20 @@ export const runShell = ({
     command,
     cwd,
     timeout_ms,
+    pipe_grace_ms,
 }: {
     command: string
     cwd: string
     timeout_ms?: number
+    /** See `runCommand`. */
+    pipe_grace_ms?: number
 }): Promise<CommandResult> =>
-    runCommand({ cmd: ['sh', '-c', command], cwd, timeout_ms })
+    runCommand({
+        cmd: ['sh', '-c', command],
+        cwd,
+        timeout_ms,
+        pipe_grace_ms,
+    })
 
 /** A time limit in words: `30 minutes`, `1 minute`, `0.3 seconds`. */
 export const durationText = (ms: number): string => {

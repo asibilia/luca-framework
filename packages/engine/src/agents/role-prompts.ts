@@ -1,4 +1,4 @@
-import type { AgentRole, BadTest, Finding } from './role-results'
+import type { AgentRole, BadTest, BadTestSource, Finding } from './role-results'
 
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 import type { RejoinCause } from '../journal/journal-record'
@@ -137,11 +137,21 @@ const REFACTOR_TASK =
     'Make every gate pass. You may follow renames and moves into test files, but you must not change what a test checks. ' +
     'If a test is wrong, answer "bad_test" with your reason.'
 
-/** What a fresh test-writer is told when it replaces a bad test. */
-const badTestSection = ({ bad_test }: { bad_test: BadTest }): string =>
+/**
+ * What a fresh test-writer is told when it replaces a bad test: the
+ * implementer sent it back, or the engine found it passes with no
+ * `expect()`, so it checks nothing (#581).
+ */
+const badTestSection = ({
+    bad_test,
+    by,
+}: {
+    bad_test: BadTest
+    by: BadTestSource
+}): string =>
     [
         '## A test was sent back as a bad test',
-        `The implementer says this test is wrong:\n\n- File: ${bad_test.file}\n- Test: ${bad_test.name}\n- Reason: ${bad_test.reason}`,
+        `${by === 'engine' ? 'The engine found this test checks nothing' : 'The implementer says this test is wrong'}:\n\n- File: ${bad_test.file}\n- Test: ${bad_test.name}\n- Reason: ${bad_test.reason}`,
         'Fix or replace it so it checks what its criterion asks. Keep the other tests unless they are wrong too. ' +
             'Answer with the full criterion mapping again: every criterion, the kept tests included.',
     ].join('\n\n')
@@ -191,6 +201,26 @@ export const prepareSection = ({ command }: { command: string }): string =>
     ].join('\n\n')
 
 /**
+ * The section a test-writer gets when the repo has a feature map (#583): the
+ * one file besides test files it may edit. It comes after the task's "Edit
+ * test files only", so it reads as that line's exception.
+ *
+ * @param path - The map's path, as `featureMapPath` gives it.
+ *
+ * @example
+ * featureMapSection({ path: 'docs/feature-map.md' })
+ * // '## The feature map\n\nBesides test files, you may edit the feature map, `docs/feature-map.md`. ...'
+ */
+export const featureMapSection = ({ path }: { path: string }): string =>
+    [
+        '## The feature map',
+        `Besides test files, you may edit the feature map, \`${path}\`. ` +
+            'Read it first: it lists each feature and the test files that prove it. ' +
+            "Put new tests in a feature's existing test files when you can; " +
+            'a new test file must be listed under its feature in the map.',
+    ].join('\n\n')
+
+/**
  * The section a test-writer or implementer (a ticket's or the final
  * review's fixers) gets in a repo with changesets: the engine writes the
  * run's one changeset, so an agent's own is extra.
@@ -219,8 +249,8 @@ const LENS_TASK_TEXT =
 
 const ROLE_TASKS: Record<AgentRole, string> = {
     'test-writer':
-        'Write failing tests for every acceptance criterion below. Edit test files only. ' +
-        'Map each criterion id to the tests that check it.',
+        'Write failing tests for every acceptance criterion below: the fewest that prove each one. Edit test files only. ' +
+        'Map every test you add to the criterion it checks.',
     implementer:
         'Make every gate pass. Never edit a test file. ' +
         'If a test is wrong, answer "bad_test" with your reason. ' +
@@ -259,7 +289,10 @@ export const roleTask = ({ role }: { role: AgentRole }): string =>
  * @param refactor - The ticket is a refactor ticket: the implementer gets
  *   the refactor task (no new behavior; it may follow renames into tests).
  * @param bad_test - For a fresh test-writer after a bad-test bounce: the
- *   test the implementer sent back, and why.
+ *   test the implementer sent back, or the engine found checks nothing
+ *   (#581), and why.
+ * @param bad_test_by - Who sent `bad_test` back: the implementer (the
+ *   default) or the engine.
  * @param sections - More sections for the end, such as a reviewer's diff
  *   and gate results, or a review fixer's findings.
  * @param run_notes - Notes earlier agents in the run left, oldest first,
@@ -274,6 +307,7 @@ export const rolePrompt = ({
     ticket,
     refactor,
     bad_test,
+    bad_test_by,
     sections,
     run_notes,
 }: {
@@ -282,6 +316,7 @@ export const rolePrompt = ({
     ticket: TicketSnapshot
     refactor?: boolean
     bad_test?: BadTest | null
+    bad_test_by?: BadTestSource
     sections?: string[]
     run_notes?: PromptRunNote[]
 }): string =>
@@ -303,7 +338,7 @@ export const rolePrompt = ({
         '## Acceptance criteria',
         ticket.criteria.map(({ id, text }) => `- ${id}: ${text}`).join('\n'),
         ...(role === 'test-writer' && bad_test
-            ? [badTestSection({ bad_test })]
+            ? [badTestSection({ bad_test, by: bad_test_by ?? 'implementer' })]
             : []),
         ...(sections ?? []),
         // Recalled memories (#370) are added after these by the decision step.

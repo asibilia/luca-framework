@@ -2,7 +2,15 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
 import { MAX_FIX_ROUNDS } from './loop-caps'
 
@@ -29,6 +37,7 @@ import {
     EMPTY_LEARNER_TURN,
     happyTurns,
     IMPLEMENTER_RESULT,
+    type PracticeRun,
     practiceTracker,
     SUM,
     SUM_TEST,
@@ -44,13 +53,16 @@ import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 
 let root = ''
 
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-session-close-'))
-})
+/** A fresh `root` for each test of the describe it is called in. */
+const rootPerTest = () => {
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-session-close-'))
+    })
 
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+}
 
 /**
  * A scripted launcher with these turns, then a clean final review of spec
@@ -237,25 +249,21 @@ const ownerClock = ({
     }
 }
 
-describe('finished agents’ sessions close, end to end', () => {
-    test('a clean run leaves no session open, and the journal records each close once', async () => {
-        const practice = await createPracticeRepo({ root })
-        const launcher = scriptedWith(Object.values(happyTurns()))
+describe('finished agents’ sessions close on one clean run, end to end', () => {
+    /** One run, built once: every test reads it, and none changes it (#565). */
+    let sharedRoot = ''
+    let launcher: ScriptedLauncher
+    let run: Omit<PracticeRun, 'origin'>
+    /** The sessions open while each watched agent worked. */
+    const seen: Record<string, string[]> = {}
 
-        const { action, records } = await practice.run({ launcher })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        expect(launchedBy(launcher).length).toBeGreaterThanOrEqual(8)
-        expectEveryoneClosed({ launcher, records })
-    }, 60_000)
-
-    test("the test-writer's session closes with the red commit, the implementer's with the green commit, and the reviewer's once its review is ruled on", async () => {
-        const practice = await createPracticeRepo({ root })
+    beforeAll(async () => {
+        sharedRoot = await mkdtemp(join(tmpdir(), 'luca-session-close-'))
+        const practice = await createPracticeRepo({ root: sharedRoot })
         const { testWriter, implementer, reviewer } = happyTurns()
-        const seen: Record<string, string[]> = {}
         const [firstLens] = CLEAN_LENS_TURNS(10)
         if (firstLens === undefined) throw new Error('lenses')
-        const launcher: ScriptedLauncher = scriptedWith([
+        launcher = scriptedWith([
             testWriter,
             {
                 ...implementer,
@@ -276,8 +284,23 @@ describe('finished agents’ sessions close, end to end', () => {
                 },
             },
         ])
+        run = await practice.run({ launcher })
+    }, 60_000)
 
-        const { action, records } = await practice.run({ launcher })
+    afterAll(async () => {
+        await rm(sharedRoot, { recursive: true, force: true })
+    })
+
+    test('a clean run leaves no session open, and the journal records each close once', () => {
+        const { action, records } = run
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(launchedBy(launcher).length).toBeGreaterThanOrEqual(8)
+        expectEveryoneClosed({ launcher, records })
+    })
+
+    test("the test-writer's session closes with the red commit, the implementer's with the green commit, and the reviewer's once its review is ruled on", () => {
+        const { action, records } = run
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const [writer, coder, review] = callsOf(launcher, 11)
@@ -318,7 +341,11 @@ describe('finished agents’ sessions close, end to end', () => {
             role: 'test-writer',
         })
         expectEveryoneClosed({ launcher, records })
-    }, 60_000)
+    })
+})
+
+describe('finished agents’ sessions close, end to end', () => {
+    rootPerTest()
 
     test('same-session fix rounds reuse their open session until the loop is over, and a bounced agent’s session closes', async () => {
         const practice = await createPracticeRepo({ root })
@@ -573,6 +600,8 @@ describe('finished agents’ sessions close, end to end', () => {
 })
 
 describe('sessions close on every other way a step ends, end to end', () => {
+    rootPerTest()
+
     test('a stuck ticket leaves none of its sessions open while it waits for a reply', async () => {
         const practice = await createPracticeRepo({ root })
         const { testWriter } = happyTurns()
@@ -852,7 +881,11 @@ describe('sessions close on every other way a step ends, end to end', () => {
         const before = practice.journal.read()
         const cutStep = before.findLast(({ kind }) => kind === 'step_started')
         expect(cutStep).toMatchObject({
-            content: { step: 'follow_up_agent:implementer' },
+            content: {
+                key: '11',
+                step: 'follow_up_agent:implementer',
+                first_seq: null,
+            },
         })
         expect(
             before.some(
@@ -870,7 +903,9 @@ describe('sessions close on every other way a step ends, end to end', () => {
 
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const records = practice.journal.read()
-        const resumedAt = records.find(({ kind }) => kind === 'run_resumed')
+        const resumes = records.filter(({ kind }) => kind === 'run_resumed')
+        expect(resumes).toHaveLength(1)
+        const [resumedAt] = resumes
         const redo = records.find(
             (record) =>
                 record.seq > (resumedAt?.seq ?? 0) &&
@@ -886,5 +921,30 @@ describe('sessions close on every other way a step ends, end to end', () => {
         expect(closedIn(records)).toEqual(
             [...launchedBy(crashed), ...launchedBy(resumed)].toSorted(byId)
         )
+
+        // The restart journaled the cut-off step first, and redid it as a
+        // fresh launch, not a follow-up; every step it started, it saw end.
+        expect(resumedAt).toMatchObject({
+            seq: before.length + 1,
+            content: {
+                interrupted: [
+                    {
+                        key: '11',
+                        step: 'follow_up_agent:implementer',
+                        ticket: 11,
+                        role: 'implementer',
+                        started_seq: cutStep?.seq,
+                        first_seq: null,
+                    },
+                ],
+            },
+        })
+        expect(
+            resumed.launches().some(({ kind }) => kind === 'follow_up')
+        ).toBe(false)
+        const after = records.slice(before.length)
+        const count = (kind: string) =>
+            after.filter((record) => record.kind === kind).length
+        expect(count('step_started')).toBe(count('step_ended'))
     }, 90_000)
 })

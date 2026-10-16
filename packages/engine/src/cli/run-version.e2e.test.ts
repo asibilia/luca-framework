@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
 import { resumeRun, runSpec, type RunLauncher } from './run-modes'
 
@@ -22,21 +22,15 @@ import {
  * (`luca_version`), and each resume (`luca-run --resume`, or a run id whose
  * journal already exists) appends an `engine_resumed` with the version it
  * resumed on. A journal from before the version was recorded still resumes.
+ *
+ * Two runs, each built once (#566); the tests only read what they left.
  */
 
-let root = ''
 const log = () => undefined
-
-beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'luca-run-version-'))
-})
-
-afterEach(async () => {
-    await rm(root, { recursive: true, force: true })
-})
 
 const STARTED_ON = '14.0.0-alpha.1'
 const UPGRADED_TO = '14.0.0-alpha.2'
+const LATER = '14.0.0-alpha.3'
 
 /** A launcher whose first launch of `role` throws, as if the engine died then. */
 const crashingOnLaunch = ({
@@ -76,112 +70,54 @@ const resumedOn = (records: JournalRecord[]) =>
         record.kind === 'engine_resumed' ? [record.content.luca_version] : []
     )
 
-describe("a run's start records Luca's version", () => {
-    test('a new run records the version it started on in run_started', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-
-        const end = await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker: practiceTracker(),
-            launcher: createScriptedLauncher({ turns: HAPPY_TURNS }),
-            board: null,
-            log,
-            luca_version: STARTED_ON,
-        })
-
-        expect(end.ok).toBe(true)
-        const records = recordsOf({ runs_dir })
-        expect(startedOn(records)).toBe(STARTED_ON)
-        expect(resumedOn(records)).toEqual([])
-    }, 60_000)
-
-    test("a new run with no version given records the engine's own version", async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-
-        await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker: practiceTracker(),
-            launcher: createScriptedLauncher({ turns: HAPPY_TURNS }),
-            board: null,
-            log,
-        })
-
-        expect(startedOn(recordsOf({ runs_dir }))).toBe(lucaVersion())
-    }, 60_000)
+/** The run's args for `runSpec`, on `repo` with run id `run-1`. */
+const specArgs = ({
+    repo,
+    runs_dir,
+    tracker,
+}: {
+    repo: string
+    runs_dir: string
+    tracker: ReturnType<typeof practiceTracker>
+}) => ({
+    spec_number: 10,
+    repo,
+    run_id: 'run-1',
+    base_branch: null,
+    runs_dir,
+    tracker,
+    board: null,
+    log,
 })
 
-describe("each resume records Luca's version", () => {
-    test('a run id whose journal exists records the version of each resume, and run_started keeps the first', async () => {
+describe("Luca's version on a run's start and each resume, on one run", () => {
+    // One run, built once (#566): it starts on STARTED_ON and crashes at its
+    // implementer; `resumeRun` finishes it on UPGRADED_TO; then the same run
+    // id is started twice more, on UPGRADED_TO again and on a third version.
+    let root = ''
+    const tracker = practiceTracker()
+    let crashed: Awaited<ReturnType<typeof runSpec>>
+    let end: Awaited<ReturnType<typeof resumeRun>>
+    let atStart: JournalRecord[] = []
+    let afterResume: JournalRecord[] = []
+    let atEnd: JournalRecord[] = []
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-run-version-'))
         const { repo } = await makePracticeRepo({ root })
         const runs_dir = join(root, 'runs')
-        const args = {
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker: practiceTracker(),
-            board: null,
-            log,
-        }
+        const args = specArgs({ repo, runs_dir, tracker })
 
-        await runSpec({
+        crashed = await runSpec({
             ...args,
-            launcher: createScriptedLauncher({ turns: HAPPY_TURNS }),
-            luca_version: STARTED_ON,
-        })
-        await runSpec({
-            ...args,
-            launcher: createScriptedLauncher({ turns: [] }),
-            luca_version: STARTED_ON,
-        })
-        await runSpec({
-            ...args,
-            launcher: createScriptedLauncher({ turns: [] }),
-            luca_version: UPGRADED_TO,
-        })
-
-        const records = recordsOf({ runs_dir })
-        expect(
-            records.filter((record) => record.kind === 'run_started')
-        ).toHaveLength(1)
-        expect(startedOn(records)).toBe(STARTED_ON)
-        expect(resumedOn(records)).toEqual([STARTED_ON, UPGRADED_TO])
-    }, 60_000)
-
-    test('a crashed run resumed on a different version finishes, with both versions in its journal', async () => {
-        const { repo } = await makePracticeRepo({ root })
-        const runs_dir = join(root, 'runs')
-        const tracker = practiceTracker()
-
-        const crashed = await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker,
             launcher: crashingOnLaunch({
                 launcher: createScriptedLauncher({ turns: HAPPY_TURNS }),
                 role: 'implementer',
             }),
-            board: null,
-            log,
             luca_version: STARTED_ON,
         })
-        expect(crashed.ok).toBe(false)
-
-        const end = await resumeRun({
+        atStart = recordsOf({ runs_dir })
+        end = await resumeRun({
             run_id: 'run-1',
             runs_dir,
             repo: null,
@@ -191,49 +127,85 @@ describe("each resume records Luca's version", () => {
             log,
             luca_version: UPGRADED_TO,
         })
+        afterResume = recordsOf({ runs_dir })
+        await runSpec({
+            ...args,
+            launcher: createScriptedLauncher({ turns: [] }),
+            luca_version: UPGRADED_TO,
+        })
+        await runSpec({
+            ...args,
+            launcher: createScriptedLauncher({ turns: [] }),
+            luca_version: LATER,
+        })
+        atEnd = recordsOf({ runs_dir })
+    }, 180_000)
 
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('a new run records the version it started on in run_started', () => {
+        expect(startedOn(atStart)).toBe(STARTED_ON)
+        expect(resumedOn(atStart)).toEqual([])
+    })
+
+    test('a crashed run resumed on a different version finishes, with both versions in its journal', () => {
+        expect(crashed.ok).toBe(false)
         expect(end.ok).toBe(true)
         expect(tracker.pullRequests()).toHaveLength(1)
-        const records = recordsOf({ runs_dir })
-        expect(startedOn(records)).toBe(STARTED_ON)
-        expect(resumedOn(records)).toEqual([UPGRADED_TO])
+        expect(startedOn(afterResume)).toBe(STARTED_ON)
+        expect(resumedOn(afterResume)).toEqual([UPGRADED_TO])
         // The resume is recorded before the engine launches the implementer
         // again. The crashed run's own implementer start comes before it:
         // the engine journals `agent_started` before the launch that threw.
-        const resumedAt = records.findIndex(
+        const resumedAt = afterResume.findIndex(
             (record) => record.kind === 'engine_resumed'
         )
         const isImplementerStart = (record: JournalRecord) =>
             record.kind === 'agent_started' && record.role === 'implementer'
-        const relaunchedAt = records.findIndex(
+        const relaunchedAt = afterResume.findIndex(
             (record, index) => index > resumedAt && isImplementerStart(record)
         )
         expect(resumedAt).toBeGreaterThan(-1)
-        expect(records.slice(0, resumedAt).some(isImplementerStart)).toBe(true)
+        expect(afterResume.slice(0, resumedAt).some(isImplementerStart)).toBe(
+            true
+        )
         expect(relaunchedAt).toBeGreaterThan(resumedAt)
-    }, 120_000)
+    })
+
+    test('a run id whose journal exists records the version of each resume, and run_started keeps the first', () => {
+        expect(
+            atEnd.filter((record) => record.kind === 'run_started')
+        ).toHaveLength(1)
+        expect(startedOn(atEnd)).toBe(STARTED_ON)
+        expect(resumedOn(atEnd)).toEqual([UPGRADED_TO, UPGRADED_TO, LATER])
+    })
 })
 
-describe('a journal written before the version was recorded', () => {
-    test('it still resumes and finishes, and the resume records its version', async () => {
+describe('a run with no version given, made an old journal, on one run', () => {
+    // One run, built once (#566): started with no version given, it crashes
+    // at its implementer; its journal is then rewritten as one from before
+    // #460 (no version anywhere), and `resumeRun` finishes it.
+    let root = ''
+    const tracker = practiceTracker()
+    let startedWith: string | null | undefined
+    let rewritten: JournalRecord[] = []
+    let end: Awaited<ReturnType<typeof resumeRun>>
+    let records: JournalRecord[] = []
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-run-version-'))
         const { repo } = await makePracticeRepo({ root })
         const runs_dir = join(root, 'runs')
-        const tracker = practiceTracker()
         await runSpec({
-            spec_number: 10,
-            repo,
-            run_id: 'run-1',
-            base_branch: null,
-            runs_dir,
-            tracker,
+            ...specArgs({ repo, runs_dir, tracker }),
             launcher: crashingOnLaunch({
                 launcher: createScriptedLauncher({ turns: HAPPY_TURNS }),
                 role: 'implementer',
             }),
-            board: null,
-            log,
-            luca_version: STARTED_ON,
         })
+        startedWith = startedOn(recordsOf({ runs_dir }))
         // Make it an old journal: no version anywhere, as before #460.
         const file = runJournalPath({ runs_dir, run_id: 'run-1' })
         const lines = (await readFile(file, 'utf8'))
@@ -248,9 +220,9 @@ describe('a journal written before the version was recorded', () => {
             })
             .filter((line) => !line.includes('"engine_resumed"'))
         await writeFile(file, `${lines.join('\n')}\n`)
-        expect(startedOn(recordsOf({ runs_dir }))).toBeNull()
+        rewritten = recordsOf({ runs_dir })
 
-        const end = await resumeRun({
+        end = await resumeRun({
             run_id: 'run-1',
             runs_dir,
             repo: null,
@@ -260,11 +232,22 @@ describe('a journal written before the version was recorded', () => {
             log,
             luca_version: UPGRADED_TO,
         })
+        records = recordsOf({ runs_dir })
+    }, 180_000)
 
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test("a new run with no version given records the engine's own version", () => {
+        expect(startedWith).toBe(lucaVersion())
+    })
+
+    test('a journal written before the version was recorded still resumes and finishes, and the resume records its version', () => {
+        expect(startedOn(rewritten)).toBeNull()
         expect(end.ok).toBe(true)
         expect(tracker.pullRequests()).toHaveLength(1)
-        const records = recordsOf({ runs_dir })
         expect(startedOn(records)).toBeNull()
         expect(resumedOn(records)).toEqual([UPGRADED_TO])
-    }, 120_000)
+    })
 })

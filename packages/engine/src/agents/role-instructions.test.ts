@@ -46,6 +46,53 @@ describe('instructions with several test commands', () => {
     })
 })
 
+test("the implementer's gate line names the slow command and says it runs at the final review (#563)", () => {
+    const config = EngineConfigSchema.parse({
+        checks: {
+            test: 'bun test src',
+            slow_test: 'bun test .e2e.test',
+            types: 'tsc',
+        },
+    })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).toContain('Make every gate pass: `bun test src`, `tsc`.')
+    expect(text).toContain(
+        "The slow tests (`bun test .e2e.test`) run at the final review, and the ticket's gates also run the slow test files it added or changed; you may run them yourself."
+    )
+})
+
+test("the implementer's prompt names the fast test limit and the bad_test way out (#580)", () => {
+    const config = EngineConfigSchema.parse({
+        checks: { test: 'bun test' },
+        test_case_timeout_ms: 2000,
+    })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).toContain(
+        'Each fast test must finish within 2000 ms. If one of the ticket\'s tests can\'t, answer "bad_test".'
+    )
+    // One bullet per line: the limit line sits right after the gate line.
+    expect(text).toMatch(/Make every gate pass: [^\n]*\n- Each fast test/)
+})
+
+test('left out, the implementer prompt has no limit line and no blank line (#580)', () => {
+    const config = EngineConfigSchema.parse({ checks: { test: 'bun test' } })
+    const text = roleInstructions({
+        role: 'implementer',
+        may_edit_tests: false,
+        config,
+    })
+    expect(text).not.toContain('Each fast test must finish')
+    expect(text).toMatch(/Make every gate pass: [^\n]*\n- Never create/)
+})
+
 describe("the learner's instructions", () => {
     const learner = () =>
         roleInstructions({
@@ -116,5 +163,87 @@ describe("the integration lens's instructions (#513)", () => {
         const text = lens('security-lens')
         expect(text).not.toContain('summary_picture')
         expect(text).not.toContain('merge_danger')
+    })
+})
+
+describe('the test-writer and the per-criterion cap (#581)', () => {
+    test('is told the cap, and to map every test it adds', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+        expect(text).toContain(
+            'Every acceptance criterion needs at least one test, and at most 3: write the fewest tests that prove it.'
+        )
+        expect(text).toContain(
+            "Map every test you add. The red check refuses a new test your criterion mapping doesn't name."
+        )
+    })
+})
+
+describe('the test-writer and the feature map (#583)', () => {
+    const withMap = EngineConfigSchema.parse({
+        checks: { test: 'bun test' },
+        feature_map: 'docs/feature-map.md',
+    })
+
+    test('is told to read the feature map first and list a new test file in it', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: withMap,
+        })
+        expect(text).toContain(
+            'Read docs/feature-map.md first: it lists each feature and the test files that prove it.'
+        )
+        expect(text).toContain(
+            "Put new tests in a feature's existing test files when you can. A new test file must be listed under its feature in docs/feature-map.md; you may edit that file."
+        )
+    })
+
+    test('may edit the map, so the "only test files" line names it too', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: withMap,
+        })
+        expect(text).toContain(
+            'Create or edit ONLY test files (**/*.test.ts) and the feature map docs/feature-map.md.'
+        )
+    })
+
+    test.each([['./docs/feature-map.md'], ['docs//feature-map.md']])(
+        'a map spelled %s is named by its clean path',
+        (spelled) => {
+            const text = roleInstructions({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: EngineConfigSchema.parse({
+                    checks: { test: 'bun test' },
+                    feature_map: spelled,
+                }),
+            })
+            expect(text).toContain('Read docs/feature-map.md first:')
+            expect(text).toContain(
+                'listed under its feature in docs/feature-map.md; you may edit that file.'
+            )
+            expect(text).toContain(
+                ' and the feature map docs/feature-map.md. No other file:'
+            )
+            expect(text).not.toContain(spelled)
+        }
+    )
+
+    test('without a feature map, the test-writer is not told about one', () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+        expect(text).not.toContain('feature map')
+        expect(text).toContain(
+            'Create or edit ONLY test files (src/**/*.test.ts). No other file:'
+        )
     })
 })

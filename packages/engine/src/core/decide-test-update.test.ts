@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { decideSteps } from './decide'
 import { MAX_TEST_UPDATES } from './decide-build'
-import { badTestDetail } from './stuck-text'
+import { badTestDetail, badTestTwiceText } from './stuck-text'
 
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
@@ -282,6 +282,64 @@ describe('decision step: a bad test after a rebase goes back to the test-writer 
         expect(step.detail).not.toContain('no reason given')
     })
 
+    test(`a test sent back after every update goes to a fresh test-writer, then the implementer's session, ${MAX_TEST_UPDATES} times; then the ticket is stuck, and the spec comment keeps the reason`, () => {
+        let entries = [...rebased(), ...badTest()]
+        for (let round = 1; round <= MAX_TEST_UPDATES; round += 1) {
+            expect(only(entries)).toMatchObject({
+                type: 'send_tests_back',
+                ticket: 11,
+                round,
+            })
+            entries = [
+                ...entries,
+                testsSentBack({ ticket: 11, round, reason: REASON }),
+            ]
+            expect(only(entries)).toMatchObject({
+                type: 'launch_agent',
+                ticket: 11,
+                role: 'test-writer',
+            })
+            entries = [
+                ...entries,
+                agentStarted({ ticket: 11, role: 'test-writer' }),
+                testsWritten({ ticket: 11, session_id: `tw-update-${round}` }),
+            ]
+            expect(only(entries)).toMatchObject({
+                type: 'follow_up_agent',
+                ticket: 11,
+                role: 'implementer',
+                session_id: SESSIONS.implementer,
+            })
+            entries = [...entries, ...badTest()]
+        }
+
+        const stuck = only(entries)
+        expect(stuck).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 11,
+            reason: 'bad_test',
+        })
+        if (stuck.type !== 'mark_stuck') throw new Error(stuck.type)
+        expect(stuck.detail).toContain(
+            `src/sum.test.ts > sum adds two numbers: ${REASON}`
+        )
+        const report = only([
+            ...entries,
+            ticketStuck({
+                ticket: 11,
+                reason: stuck.reason,
+                detail: stuck.detail,
+            }),
+        ])
+        expect(report).toMatchObject({ type: 'report_stuck', ticket: 11 })
+        if (report.type !== 'report_stuck') throw new Error(report.type)
+        expect(report.body).toContain(REASON)
+        expect(report.body).toContain(
+            `${MAX_TEST_UPDATES} test updates after a rebase`
+        )
+        expect(report.body).not.toContain('no reason given')
+    })
+
     test('an update that leaves a criterion without a test is stuck', () => {
         const ticket = practiceTicket({
             number: 11,
@@ -373,6 +431,25 @@ describe("stuck text keeps the implementer's reason (#490)", () => {
                 },
             })
         ).toBe('src/sum.test.ts > sum > adds: Wrong sum.')
+    })
+
+    test('two bounces are worded from who sent each back, in order (#581)', () => {
+        expect(
+            badTestTwiceText({ earlier: 'implementer', latest: 'implementer' })
+        ).toBe('The implementer sent a test back as bad a second time')
+        expect(badTestTwiceText({ earlier: 'engine', latest: 'engine' })).toBe(
+            'A mapped test still checks nothing after a fresh test-writer'
+        )
+        expect(
+            badTestTwiceText({ earlier: 'implementer', latest: 'engine' })
+        ).toBe(
+            'The implementer sent a test back as bad, and then, after a fresh test-writer, the engine found a mapped test that checks nothing'
+        )
+        expect(
+            badTestTwiceText({ earlier: 'engine', latest: 'implementer' })
+        ).toBe(
+            'The engine found a mapped test that checks nothing, and then, after a fresh test-writer, the implementer sent a test back as bad'
+        )
     })
 
     test('a long reason is clipped like other outputs', () => {

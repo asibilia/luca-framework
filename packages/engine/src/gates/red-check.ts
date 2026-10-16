@@ -1,12 +1,53 @@
 import type { RedCheckResult, TestCase, TestRun } from './gate-schemas'
+import { addedTestNames } from './new-tests'
 
 import type { CriterionTests, TestRef } from '../agents/role-results'
+import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
+
+/**
+ * A test file the ticket changed, as it was at the ticket's base and as it
+ * is now (`null`: not there).
+ */
+export type ChangedTestSource = {
+    file: string
+    base: string | null
+    current: string | null
+}
 
 const lastPart = (name: string): string =>
     (name.split(' > ').at(-1) ?? name).trim()
 
 /** Quote-insensitive text, so a test name found in source matches its printed name. */
 const loose = (text: string): string => text.replace(/[\\'"`]/g, '')
+
+/**
+ * Said after a new unmapped test found in the text of a test file that does
+ * not load yet: with no results to check against, a `test(` inside a string
+ * or a comment counts as a test too (#581).
+ */
+const NOT_LOADED_HINT =
+    '. The file does not load yet, so every test( in its text counts, even one inside a string or a comment'
+
+/**
+ * Whether a test name written in a file's text (`own`) is the test bun prints
+ * as `full_name`: equal to it, at its end after " > " (not split on the last
+ * " > ": a test name may hold one itself), or the same last part. One rule
+ * for a mapped name and for a name found in the text.
+ */
+const namesTest = ({
+    full_name,
+    own,
+}: {
+    full_name: string
+    own: string
+}): boolean => {
+    const full = full_name.trim()
+    return (
+        full === own ||
+        full.endsWith(` > ${own}`) ||
+        lastPart(full) === lastPart(own)
+    )
+}
 
 /**
  * The test case a named test is, in its file: the one whose full name
@@ -75,16 +116,28 @@ const checkNewTest = ({
 }
 
 /**
- * The red check. Pure: proves every criterion has a test, every new test
- * fails, and every old test that passed before still passes.
+ * The red check. Pure: proves every criterion has a test, and at most
+ * `MAX_TESTS_PER_CRITERION`, every test the ticket added is mapped, every
+ * test file it created is in the feature map (when the repo has one), every
+ * new test fails, and every old test that passed before still passes.
  *
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
  * @param test_files - The worktree's test files, per the engine config.
  * @param sources - The text of each mapped test file, `null` if missing.
+ * @param changed_test_sources - Each test file the ticket changed, as it was
+ *   at the ticket's base and as it is now: a new test is a name in the
+ *   second the first doesn't have (#581). For a file that has results in
+ *   `current`, only a name of a case that ran counts, so a `test(` inside a
+ *   string (a fixture) or a comment does not. A file that doesn't load yet
+ *   has none, so its text alone decides, and every `test(` in it counts.
+ * @param feature_map - The repo's feature map, when the config names one
+ *   (#583): its `path`, and `files`, the test files it lists (from
+ *   `featureMapFiles`), `null` when the map file is missing. A test file the
+ *   ticket created must be among them. Left out or `null`, nothing is checked.
  *
  * @example
- * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources })
+ * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
  * if (!result.ok) console.error(result.problems)
  */
 export const checkRed = ({
@@ -94,6 +147,8 @@ export const checkRed = ({
     current,
     test_files,
     sources,
+    changed_test_sources,
+    feature_map,
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -101,6 +156,8 @@ export const checkRed = ({
     current: TestRun
     test_files: string[]
     sources: Record<string, string | null>
+    changed_test_sources: ChangedTestSource[]
+    feature_map?: { path: string; files: string[] | null } | null
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -113,6 +170,59 @@ export const checkRed = ({
     for (const { criterion_id } of mapping) {
         if (!criteria_ids.includes(criterion_id)) {
             notes.push(`unknown criterion id ${criterion_id}`)
+        }
+    }
+    for (const { criterion_id, tests } of mapping) {
+        if (tests.length > MAX_TESTS_PER_CRITERION) {
+            problems.push(
+                `${criterion_id} has ${tests.length} tests; write at most ${MAX_TESTS_PER_CRITERION} per criterion`
+            )
+        }
+    }
+    for (const { file, base, current: text } of changed_test_sources) {
+        const mapped = mapping
+            .flatMap(({ tests }) => tests)
+            .filter((test) => test.file === file)
+            .map(({ name }) => name.trim())
+        // A file that loaded has results: a name in its text is a new test
+        // only if a case of that name ran, so a `test('x'` inside a string
+        // (a fixture) or a comment is not one. A file with none (it doesn't
+        // load yet) is read from its text alone.
+        const loaded = !current.files_without_results.includes(file)
+        const ran = current.cases.filter((found) => found.file === file)
+        for (const name of addedTestNames({ base, current: text })) {
+            const own = name.trim()
+            if (
+                loaded &&
+                !ran.some(({ full_name }) => namesTest({ full_name, own }))
+            ) {
+                continue
+            }
+            if (!mapped.some((full) => namesTest({ full_name: full, own }))) {
+                problems.push(
+                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)${loaded ? '' : NOT_LOADED_HINT}`
+                )
+            }
+        }
+    }
+    if (feature_map !== undefined && feature_map !== null) {
+        // A test file the ticket created (not one it edited) must be listed
+        // under a feature, so tests grow inside their feature's files (#583).
+        const created = changed_test_sources.filter(
+            ({ base, current: text }) => base === null && text !== null
+        )
+        if (created.length > 0 && feature_map.files === null) {
+            problems.push(
+                `The feature map ${feature_map.path} is missing: restore it, or add it with the new test file listed`
+            )
+        } else {
+            for (const { file } of created) {
+                if (!(feature_map.files ?? []).includes(file)) {
+                    problems.push(
+                        `${file}: a new test file the feature map doesn't list (add it under a feature in ${feature_map.path})`
+                    )
+                }
+            }
         }
     }
     const testFiles = new Set(test_files)

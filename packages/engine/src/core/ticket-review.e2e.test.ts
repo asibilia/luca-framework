@@ -4,8 +4,6 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { MAX_FIX_ROUNDS } from './decide-build'
-
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
 import {
@@ -13,7 +11,6 @@ import {
     git,
     happyTurns,
     IMPLEMENTER_RESULT,
-    latestStuck,
     SUM_TEST,
     TEST_WRITER_RESULT,
 } from '../testing/practice-repo'
@@ -22,6 +19,11 @@ import {
  * Seam 2, the ticket review: the practice ticket end to end with scripted
  * agents whose reviewer reports findings. The gates, commits, join, and PR
  * are real.
+ *
+ * The round cap is a decision, in `decide-review.test.ts`'s "still asking for
+ * changes after 3 fix rounds is stuck" (a fix round with nothing to commit
+ * is `commit-in.test.ts`'s), and so is a verdict that disagrees with its
+ * findings, in "is no result: …" there (#566).
  */
 
 let root = ''
@@ -232,95 +234,5 @@ describe('the ticket review, end to end', () => {
             pr?.head ?? 'none'
         )
         expect(log).toContain('fix: review round 1 for #11 Add sum')
-    }, 60_000)
-
-    test(`a review still asking for changes after ${MAX_FIX_ROUNDS} fix rounds is stuck, and no PR opens`, async () => {
-        const { testWriter, implementer } = happyTurns()
-        const stubborn = {
-            role: 'ticket-reviewer' as const,
-            ticket: 11,
-            result: {
-                verdict: 'changes_requested',
-                findings: [FIRST_REVIEW.findings[0]],
-            },
-        }
-        const refuse = {
-            role: 'implementer' as const,
-            ticket: 11,
-            result: {
-                ...IMPLEMENTER_RESULT,
-                finding_responses: [
-                    { finding_id: 'R1-1', response: 'wont_fix', reason: 'No.' },
-                ],
-            },
-        }
-        const run = await practice.run({
-            turns: [
-                testWriter,
-                implementer,
-                stubborn,
-                refuse,
-                stubborn,
-                refuse,
-                stubborn,
-                refuse,
-                stubborn,
-            ],
-        })
-
-        expect(run.action).toMatchObject({ type: 'wait_for_reply' })
-        expect(latestStuck(run.records)).toMatchObject({
-            reason: 'changes_requested',
-        })
-        expect(
-            run.launches.filter(({ role }) => role === 'ticket-reviewer')
-        ).toHaveLength(MAX_FIX_ROUNDS + 1)
-        expect(run.tracker.pullRequests()).toEqual([])
-        // Every "won't fix" changed nothing, so no fix commit was made.
-        expect(commits(run.records).map(({ stage }) => stage)).toEqual([
-            'red',
-            'green',
-            'fix',
-            'fix',
-            'fix',
-        ])
-        const [green, ...fixes] = commits(run.records).slice(1)
-        const green_sha = green?.sha ?? 'none'
-        expect(fixes.map(({ sha }) => sha)).toEqual([
-            green_sha,
-            green_sha,
-            green_sha,
-        ])
-    }, 60_000)
-
-    test('a verdict that disagrees with the findings is a failed try, and a fresh reviewer tries again', async () => {
-        const { testWriter, implementer, reviewer } = happyTurns()
-        const run = await practice.run({
-            turns: [
-                testWriter,
-                implementer,
-                {
-                    role: 'ticket-reviewer',
-                    ticket: 11,
-                    result: {
-                        verdict: 'approve',
-                        findings: [FIRST_REVIEW.findings[1]],
-                    },
-                },
-                reviewer,
-            ],
-        })
-
-        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const failed = run.records.find(({ kind }) => kind === 'agent_failed')
-        expect(failed).toMatchObject({
-            content: { role: 'ticket-reviewer', failure: 'result' },
-        })
-        expect(
-            run.launches
-                .filter(({ ticket }) => ticket === 11)
-                .map(({ kind, role }) => `${kind} ${role}`)
-                .slice(2)
-        ).toEqual(['launch ticket-reviewer', 'launch ticket-reviewer'])
     }, 60_000)
 })

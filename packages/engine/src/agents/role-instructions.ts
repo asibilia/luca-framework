@@ -1,6 +1,13 @@
 import { lensOf, type AgentRole, type LensName } from './role-results'
 
-import { testCommands, type EngineConfig } from '../config/engine-config'
+import {
+    caseLimitOf,
+    featureMapPath,
+    slowTestCommands,
+    testCommands,
+    type EngineConfig,
+} from '../config/engine-config'
+import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
 import {
     checkCommands,
     guardRoleOf,
@@ -74,6 +81,20 @@ Sometimes other tickets joined the run branch after this ticket's tests were wri
 - Every criterion still needs a test. Your updated tests may pass now, since the code is there; that is fine. The engine runs every test in the gates after the implementer's turn.
 - Answer "tests_written" with the full criterion mapping again.`
 
+/** The test-writer's lines about the feature map (#583), or nothing without one. */
+const featureMapLines = ({ config }: { config: EngineConfig }): string => {
+    const path = featureMapPath({ config })
+    return path === null
+        ? ''
+        : `- Read ${path} first: it lists each feature and the test files that prove it.\n- Put new tests in a feature's existing test files when you can. A new test file must be listed under its feature in ${path}; you may edit that file.\n`
+}
+
+/** What the test-writer's "ONLY test files" line adds for the feature map, or nothing. */
+const featureMapClause = ({ config }: { config: EngineConfig }): string => {
+    const path = featureMapPath({ config })
+    return path === null ? '' : ` and the feature map ${path}`
+}
+
 const TEST_WRITER = ({
     config,
 }: {
@@ -82,10 +103,11 @@ const TEST_WRITER = ({
 
 You write the failing tests for ONE ticket, before any code exists.
 
-- Create or edit ONLY test files (${config.test_file_patterns.join(', ')}). No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
+- Create or edit ONLY test files (${config.test_file_patterns.join(', ')})${featureMapClause({ config })}. No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
-- Every acceptance criterion needs at least one test. Old tests must keep passing.
+${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
+- Map every test you add. The red check refuses a new test your criterion mapping doesn't name.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 
 Your result (structured output):
@@ -111,6 +133,25 @@ const testFileRule = ({
         ? `- You may follow renames and moves into test files (${config.test_file_patterns.join(', ')}), but never change what a test checks. Never touch a test setup file${setupFiles({ config })}.`
         : `- Never create, edit, or delete a test file (${config.test_file_patterns.join(', ')}) or a test setup file${setupFiles({ config })}.`
 
+/** The implementer's line about the slow tests (#563), or nothing without them. */
+const slowLine = ({ config }: { config: EngineConfig }): string => {
+    const slow = slowTestCommands({ config }).map(({ run }) => `\`${run}\``)
+    return slow.length === 0
+        ? ''
+        : ` The slow tests (${slow.join(', ')}) run at the final review, and the ticket's gates also run the slow test files it added or changed; you may run them yourself.`
+}
+
+/**
+ * The implementer's line about the fast test limit (#580), or nothing without
+ * one.
+ */
+const limitLine = ({ config }: { config: EngineConfig }): string => {
+    const limit = caseLimitOf({ config })
+    return limit === null
+        ? ''
+        : `- Each fast test must finish within ${limit} ms. If one of the ticket's tests can't, answer "bad_test".\n`
+}
+
 const IMPLEMENTER = ({
     config,
     may_edit_tests,
@@ -128,8 +169,8 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
 ]
     .filter((command) => command !== undefined)
     .map((command) => `\`${command}\``)
-    .join(', ')}.
-${testFileRule({ config, may_edit_tests })}
+    .join(', ')}.${slowLine({ config })}
+${limitLine({ config })}${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
 - If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.

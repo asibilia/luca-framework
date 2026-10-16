@@ -220,6 +220,66 @@ describe('the final review as the engine journals it', () => {
         )
     })
 
+    test("the slow tests after round 1's lenses (#563) are a row; failing, a tried line, and the fix round says what it fixes", async () => {
+        /** The slow tests' run, as the engine journals it once the lenses are in. */
+        const slowTests = ({ ok }: { ok: boolean }): Entry => ({
+            kind: 'gates_run',
+            ticket: null,
+            role: null,
+            content: {
+                target: 'final_slow',
+                ok,
+                checks: [
+                    {
+                        name: 'slow_test',
+                        command: 'bun test .e2e.test',
+                        ok,
+                        exit_code: ok ? 0 : 1,
+                        output: ok ? '' : '1 fail',
+                    },
+                ],
+            },
+        })
+        const { run_id, token, reply } = await runWith({
+            entries: [
+                ...allTickets(),
+                {
+                    ...engineFinalReviewStarted({ round: 1 }),
+                    content: {
+                        ...(engineFinalReviewStarted({ round: 1 })
+                            .content as object),
+                        slow_due: true,
+                    },
+                },
+                ...LENSES.flatMap((lens) => engineLensTurn({ lens, round: 1 })),
+                slowTests({ ok: false }),
+                finalReviewFixing({ round: 1 }),
+            ],
+        })
+        expect(reply.ok).toBe(true)
+
+        const fixing = await harness.state()
+        expect(fixing.final_review.tried).toEqual([
+            "The final review's slow tests failed: slow_test",
+            'Fix round 1/3 on the failed slow tests',
+        ])
+        expect(eventTexts()).toContain(
+            'Final review: slow tests failed: slow_test.'
+        )
+        // The slow tests are no lens: every lens stays clean.
+        expect(await lensStates()).toEqual(
+            LENSES.map((lens) => [lens, 'clean'])
+        )
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: reply.next_seq,
+            entries: [slowTests({ ok: true })],
+        })
+        expect(eventTexts()).toContain('Final review: slow tests passed.')
+    })
+
     test('a stuck final review asks for a reply; a ship resolves it and the PR opens', async () => {
         const { run_id, token, reply } = await runWith({
             entries: [

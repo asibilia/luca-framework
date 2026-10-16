@@ -94,7 +94,9 @@ on with a run from its journal (#369).
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
-| `src/gates/red-check.ts` | The **red check**. Pure. |
+| `src/gates/red-check.ts` | The **red check**. Pure. At most `MAX_TESTS_PER_CRITERION` tests per criterion, every new test mapped (#581), and every new test file in the feature map (#583). |
+| `src/gates/new-tests.ts` | Pure: the test names in a test file's text (`testNamesIn`), and the ones a change added (`addedTestNames`, #581). |
+| `src/gates/feature-map.ts` | Pure: the test files a repo's feature map lists (`featureMapFiles`, #583). |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/prepare-slots.ts` | Lets only so many prepare runs go at once (`prepare_concurrency`, 1 by default); the rest wait their turn. |
 | `src/gates/lockfile-install.ts` | Which install to run: in a new worktree, or before the gates when a manifest changed. Pure. |
@@ -177,7 +179,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
       failed: follow_up_agent test-writer (same session), a failed try, ≤ 3 tries
       then mark_already_done  comment on the spec issue; the ticket
                           is done, like a pushed one                     ──> ticket_already_done
-  run_red_check           criteria covered, new tests fail, old pass,
+  run_red_check           criteria covered (≤ 3 tests each), every new test
+                          mapped, a new test file listed in the feature map
+                          (if the repo has one), new tests fail, old pass,
                           and some file changed                          ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
   commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
@@ -186,6 +190,8 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
               second red commit, fresh implementer (once)               ──> worktree_reset
   run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
+    a mapped test passed with no expect(): reset_ticket_worktree, then as for
+              a bad test, counted toward the same cap (#581)            ──> worktree_reset (with bad_test)
   commit_ticket green     leftover scan, then commit                     ──> leftover_scan, commit_made
   launch_agent ticket-reviewer  a fresh reviewer: the diff, the gate results ──> agent_started, agent_finished
     blockers or should-fixes: a review fix round, ≤ 3 rounds
@@ -213,15 +219,17 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
 once every ticket pushed, the final review, on the run branch's worktree:
   start_final_review        HEAD, the files since, the rule files         ──> final_review_started
   launch_lens × 5           at once, each a fresh read-only lens          ──> lens_started, agent_started, agent_finished, lens_finished
-  pass_final_review         every lens due this round approved            ──> final_review_passed
-    blockers or should-fixes: a final review fix round, ≤ 3 rounds
+  run_final_slow_tests      round 1 with checks.slow_test (#563), once every lens is in ──> gates_run (target final_slow)
+  pass_final_review         every lens due this round approved (and the slow tests passed) ──> final_review_passed
+    blockers or should-fixes, or failed slow tests: a final review fix round, ≤ 3 rounds
       start_final_fix                                                     ──> final_review_fixing
       launch_final_fixer test-writer   (fresh) the test findings, if any
       launch_final_fixer implementer   (fresh) the code findings, if any
-      run_final_gates                  (and the gate fix loop, in the implementer's session) ──> gates_run
+      run_final_gates                  (and the gate fix loop, in the implementer's session); also the slow tests (#563) ──> gates_run
       commit_final_fix                 leftover scan, then commit         ──> leftover_scan, commit_made
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
+                                       (a fix round only failed slow tests opened passes here instead)
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (edits left uncommitted get their own commit
       "fix: final review round N, shipped with open findings", then shipFinalReview ──> final_review_shipped) opens the PR anyway
@@ -397,6 +405,101 @@ It holds for both kinds of test command (`bun` and `pass_fail`). Types and
 lint keep 5 minutes. A test command that runs out of time fails, and its
 output starts with "Timed out after 5 minutes" and says to raise
 `test_timeout_ms`.
+
+**Slow tests (#563).** A repo with a long end-to-end suite names it in
+`checks.slow_test`, and leaves it out of `checks.test`. It has the same shape
+as `checks.test`: one command, or a list of commands and `{ run, results }`
+entries. This repo splits its suite in two:
+
+```json
+{
+    "checks": {
+        "test": "bun test packages --path-ignore-patterns='**/*.e2e.test.ts'",
+        "slow_test": "bun test .e2e.test"
+    }
+}
+```
+
+The engine runs the slow tests only at the final review: once round 1's
+lenses are in (the `run_final_slow_tests` step, after the prepare command,
+journaled as `gates_run` with `target: final_slow`), and in the final
+review's gates (the `run_final_gates` step, and so its fix rounds' gates),
+as `slow_test` checks after the `test` checks and before `types`. A ticket's gates, a
+join's gates, the baseline, and the red check never run the slow suite. Failed slow
+tests open a final review fix round, and in it they go into the gate fix
+loop like any failed gate (see "The final review"). Slow
+commands get the same time limit as the others, `test_timeout_ms`, and a
+slow command that runs out of time says so. Agents may run each slow
+command, like the test commands (a `bun` one may take extra arguments), and
+the implementer's instructions say they run at the final review, and that the
+ticket's gates also run the slow test files it added or changed (see the next
+paragraph). Left out, nothing changes: no `slow_test` check, no extra command.
+
+**A ticket's own slow tests (#564).** The fast command leaves out every slow
+test file, so a ticket that adds or changes one would never run it. With a
+slow command, three steps also run the test files a ticket touches that the
+fast run gave no results for, on their own, with plain `bun test` and each
+file as a quoted `./` path (never the fast command plus the files: Bun's
+`--path-ignore-patterns` leaves out even files named on the command line):
+
+- The **red check** runs the files the test map names or the ticket changed,
+  after `checks.test`. When that run gives results, it is joined to the fast
+  run's: a new slow test that fails counts as failing, one that passes
+  already is refused, and the journaled `red_check` run's `command` shows
+  both commands. When it gives no results at all (every file still doesn't
+  load, as a new fast test file usually doesn't before its code exists), the
+  fast run stands as it is: its command and output are what they were before
+  #564, and a slow file that doesn't load still counts its named tests as
+  failing. The comparison with the baseline's old tests is unchanged.
+- A **ticket's gates** run the test files it changed since its base, after
+  `checks.test`, as one more `test` check. A failure is a failed test gate
+  with its output, and goes into the gate fix loop. A run that gives no
+  results adds no check after a failed fast run (the gate fails anyway, and
+  the load error shows on the next run, once that is fixed); with every fast
+  run passing, a changed slow file that can't load is a failure. A join's
+  gates don't.
+- The **already-done check** runs the named test files with plain `bun test`,
+  so a named slow test really runs.
+
+Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
+runs the same commands as before.
+
+**The fast test speed limit (#580).** A fast test should be fast. A repo says
+how fast with `test_case_timeout_ms` (a positive whole number of
+milliseconds) in `.luca/config.json`; this repo's is 2000:
+
+```json
+{ "checks": { "test": "bun test" }, "test_case_timeout_ms": 2000 }
+```
+
+- It goes to every `bun` command of `checks.test` as `--timeout=<n>`, in every
+  run of it: the baseline, the red check, the already-done check, and the
+  gates (`bunTestCommands` and the gates' fast test call). The one exception
+  is the already-done check when `checks.slow_test` is set: it runs the named
+  files with plain `bun test` (so a named slow test really runs), which gets no
+  `--timeout`. `scripts/run-checks.ts` does the same, so the PR check and the
+  gates agree. Agents' own `bun test` runs stay as they wrote them.
+- It applies to every fast test with no timeout of its own, old ones too, in
+  the baseline, red check, join, and final runs. A test that was always
+  close to the limit can time out on a busy machine; if one does, raise
+  `test_case_timeout_ms`.
+- A test's own timeout option (`test(name, fn, 30_000)`) overrides
+  `--timeout`, so the flag alone does not hold a test that sets its own. In a
+  ticket's gates, the tests in the files the ticket changed are also checked
+  by their measured time (`duration_ms`): a test that passed but took longer
+  than the limit fails the `test` check. Tests in files the ticket did not
+  change are not measured (a flaky old test must not fail an unrelated
+  ticket), and neither are a join's or the final review's gates.
+- A test that fails the limit, by `--timeout` or by its measured time, gets
+  this line at the top of the check's output: "A fast test may take at most
+  2000 ms (`test_case_timeout_ms`). Make it faster, or move it to the slow
+  tests." A measured-time failure also lists each slow test with its time
+  (`- src/a.test.ts > a > b: 2300 ms`), under "Too slow for a fast test:".
+  The implementer's instructions name the limit, and say that a ticket test
+  that can't meet it is a `bad_test`.
+- `checks.slow_test`, a ticket's own slow files (#564), and `pass_fail`
+  commands never get the flag: they are not fast tests. Left out, every
+  command runs exactly as written.
 
 **One prepare at a time (#492).** A build uses a lot of CPU, so builds at
 the same time only slow each other down. HeartGold's first build takes 8 to
@@ -609,10 +712,117 @@ ignored files kept) and sends the ticket to a fresh test-writer, told which
 test was bad and why. Its tests get their own red check and their own red
 commit (`test: replace a bad test for ...`), then a fresh implementer builds.
 The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
-test on a refactor ticket. Every bad-test stuck detail, and so the spec
-comment, names the test's file and name and quotes the implementer's reason,
-clipped like other outputs (#490). It says "no reason given" only when the
-implementer gave none.
+test on a refactor ticket. A bad-test stuck detail, and so the spec comment,
+names the test's file and name and, for a test the implementer sent back,
+quotes its reason, clipped like other outputs (#490). It says "no reason
+given" only when the implementer gave none. A test the engine sent back (see
+below) names the test and says it runs no `expect()`. The "Why" line is the
+same whoever sent it back; the detail says who sent each of the two bounces.
+
+**The cap and unmapped tests (#581).** A test-writer may map at most
+`MAX_TESTS_PER_CRITERION` (3, in `core/loop-caps.ts`) tests to a criterion; a
+fourth is the red check problem "AC1 has 4 tests; write at most 3 per
+criterion". Every test the ticket adds must be in the map too. The red check
+reads each test file the ticket changed as it was at the ticket's base and as
+it is now (`addedTestNames` in `gates/new-tests.ts`: the plain string names
+of its `test(` and `it(` calls, not a `test.each` or a template name), and a
+name only the new text has is a new test. One that no mapped name equals, or
+ends with after " > ", is the problem `"extra" in src/sum.test.ts: a new test
+the map doesn't name (map it to a criterion, or remove it)`. The names come
+from a text scan, so the red check trusts them only as far as it can check
+them. In a file that ran (it has results in the red run), a name counts as a
+new test only if a test of that name ran, so a `test('x', ...)` inside a
+template-string fixture is not one. A file that doesn't load yet (its code
+isn't written) has no results, so every `test(` in its text counts, even one
+inside a string or a comment; the problem then adds "The file does not load
+yet, so every test( in its text counts, even one inside a string or a
+comment".
+
+**Timings (#518).** The journal records how long things took. A gate check
+has `duration_ms`, how long its command ran, and the `prepare` check also
+`wait_ms`, how long it waited for a prepare slot. A test case in a test run
+has `duration_ms` (from bun's JUnit `time`) and `assertions` (its `expect()`
+count, #581). All of them are optional: a journal written before they existed
+has none, and nothing that reads them needs them.
+
+**A test that checks nothing** (#581). A ticket's gates journal `cases` in
+`gates_run`: the test cases of the ticket's red test files, from the fast runs
+and the run of its own slow test files, each with its `expect()` count (join
+and final gates leave them out). Once the gates pass, a mapped test that
+passed with `assertions` of 0 sends the ticket back the way a bad test does:
+`reset_ticket_worktree` journals `worktree_reset` with a `bad_test` (the
+file, the name, and why), and a fresh test-writer is told "The engine found
+this test checks nothing". It counts toward the same cap
+(`MAX_BAD_TEST_BOUNCES`), so a second empty test, or one after the implementer
+already sent a test back (or the other way round), is stuck (`bad_test`). Replay
+keeps who sent each bounce, oldest first, as `bad_test_sources`, so the stuck
+detail words both ("The implementer sent a test back as bad, and then, after a
+fresh test-writer, the engine found a mapped test that checks nothing", say).
+A mapped test the gates did not run or that did not pass is left to the other
+checks, an older journal's
+cases carry no count so nothing is sent back, and a refactor ticket (no map)
+or a ticket rejoining after a rebase (its code is already reviewed) is not
+checked. A review fix's gates are not checked either: their tests are not
+red-checked. The latest bounce's source also words the fresh test-writer's
+prompt ("The engine found this test checks nothing", or "The implementer says
+this test is wrong"). Replay keeps it as `bad_test_source`, beside `bad_test`:
+a `retry` clears `bad_test_sources` with the bounce count, but keeps the bad
+test and who sent it, so a test-writer started again after a retry is told the
+same thing.
+
+**The feature map (#583).** Left alone, tickets add new test files wherever
+they like and the suite sprawls. A repo can keep a **feature map**, a markdown
+file that says which test files prove which feature, and name it in
+`.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "feature_map": "docs/feature-map.md" }
+```
+
+The path is relative to the repo root and names a file inside the repo: an
+absolute path, one that leaves the repo with `..`, the repo root, or a folder
+(a trailing `/`) is a config error naming `feature_map`. Every part of the
+engine reads it through `featureMapPath` (`config/engine-config.ts`), which
+cleans it the way a worktree path is cleaned everywhere else:
+`./docs/feature-map.md` and `docs//feature-map.md` are `docs/feature-map.md`.
+The file is plain markdown, one section per feature:
+
+```markdown
+## Running one ticket
+
+Reached by: `luca run` on a spec with one ticket.
+
+Tests:
+- `packages/engine/src/core/run-one-ticket.e2e.test.ts`
+- `packages/engine/src/core/decide-build.test.ts`
+```
+
+`## Feature` is the feature's name, `Reached by:` says how a user gets to it,
+and `Tests:` lists its test files. The engine reads only the backticked
+paths: `featureMapFiles` in `gates/feature-map.ts` keeps each one that matches
+`test_file_patterns`, once each (a leading `./` is dropped), so a backticked
+source file in the prose is ignored.
+
+- **The red check refuses an unlisted new test file.** A test file the ticket
+  created (it is not in the ticket's base) must be listed, or the red check
+  has the problem "src/new.test.ts: a new test file the feature map doesn't
+  list (add it under a feature in docs/feature-map.md)", and the test-writer
+  tries again. A test file the ticket only edited is never checked. A
+  configured map that is missing or unreadable is a problem too, "The feature
+  map docs/feature-map.md is missing: restore it, or add it with the new test
+  file listed", not a crash; it is raised only when the ticket created a test
+  file.
+- **The test-writer may edit the map.** `mayWrite` and the test-writer's
+  permission rules allow the map's path, besides test files, and its
+  instructions say to read the map first, to put new tests in a feature's
+  existing files when it can, and to list a new file under its feature. Its
+  launch prompt, which says "Edit test files only", gets a "The feature map"
+  section after it that names the map as the exception (`decideBuild` adds it
+  to a test-writer's launches only). Nothing else changes for the other roles.
+- **It is frozen on resume.** `feature_map` is in `FROZEN_FIELDS`, like
+  `test_file_patterns`: a run keeps the map path it started with.
+- Left out, nothing changes: no red-check problem, no extra write permission,
+  and no lines in the test-writer's instructions.
 
 **Failed tries.** A failed agent turn is journaled once as `agent_failed`
 with its `failure` kind and session; the decision step picks what comes next,
@@ -739,7 +949,8 @@ its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:
 `prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test time
-limit `test_timeout_ms` (#542), and the leftover scan's `leftover_allow`
+limit `test_timeout_ms` (#542), the fast test speed limit
+`test_case_timeout_ms` (#580), and the leftover scan's `leftover_allow`
 (#520), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
@@ -750,7 +961,8 @@ them. A resume with nothing changed adds no record. Every other field stays
 as the run started with it (`FROZEN_FIELDS` in `config/config-reload.ts`
 says why for each): `checks` above all, since a ticket's baseline, its red
 check, and its gates compare test results across the run, and a baseline
-taken with old commands is not comparable with new ones. A config that is
+taken with old commands is not comparable with new ones. `feature_map`
+(#583) is frozen too, as `test_file_patterns` is. A config that is
 missing, not JSON, not a valid config, or one intake would refuse (no test
 command, say; intake's own `configProblems`) is not taken: the engine logs
 why, journals `config_reload_refused { reason }`, and the run goes on with
@@ -831,7 +1043,27 @@ runs, even for a one-ticket spec.
   session, up to 3 times; with only test findings, a fresh implementer gets
   the failure), then the leftover scan (the spec and every ticket may name a
   new markdown file) and one commit, `fix: final review round <n> for spec
-  #<n>` (nothing changed: the current commit, no files), then a push.
+  #<n>` (nothing changed: the current commit, no files), then a push. The
+  final review's gates are the only ones that also run the config's slow
+  tests (`checks.slow_test`, #563), as `slow_test` checks.
+- **Slow tests (#563).** With a slow test command, round 1 also runs the
+  slow tests (`run_final_slow_tests`: prepare, then each slow command, in the
+  run branch's worktree) once every lens is in, never while a lens runs: a
+  lens's after-turn guard judges the run branch's worktree, so nothing else
+  may write there while it runs. `final_review_started` says they're due
+  (`slow_due: true` in round 1, `false` later; a config with none journals
+  no `slow_due`), and they're journaled as `gates_run` with
+  `target: final_slow`, which isn't the fix round's gates. The round settles
+  only once they ran too. Failing slow tests open the round's fix round (or
+  join it, with the lenses' findings). A fix round they alone opened has no
+  findings, so its gates run first (the slow tests again among them), a
+  fresh implementer gets their failure as it gets failed gates, and the gate
+  fix loop runs until they pass, then the commit and the push. It ends there:
+  the review passes, with no lens round after it. Still failing at the gate
+  fix loop's cap, the final review is stuck with `gates_failed`, naming
+  `slow_test`. So the review only passes once the slow tests passed on the
+  run branch's latest commit: round 1 passes only after they passed on its
+  HEAD, and every later commit comes from a fix round whose gates ran them.
 - **Re-reviews.** Only the lenses that had blocking findings look again, and
   only at the new changes (`git diff <last round's head>..<head>`), with
   their earlier findings and each fixer's answer; they rule on each "won't
@@ -1370,6 +1602,9 @@ and throwaway repos, with fakes for every tool.
   Intake refuses a run with no `bun` command unless every open ticket is a
   refactor ticket. Agents may run each test command exactly; `bun` ones may
   also take extra arguments. A repo with no test files passes the baseline.
+- **Slow test commands (#563):** `checks.slow_test` is a test command setting
+  of the same shape as `checks.test`, for the tests `checks.test` leaves out.
+  See "Slow tests (#563)" above. It is frozen for a run, like `checks.test`.
 - **A new test file that doesn't load yet** (it imports code not written yet)
   reports no results. Its tests count as failing if their names are in it.
 - **Engine commits skip git hooks** (`--no-verify`): the engine already ran
@@ -1571,7 +1806,7 @@ to its rules; each one alone should hold.
 
 | Role | Writes | Runs |
 | --- | --- | --- |
-| test-writer | test files only (`test_file_patterns`), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
+| test-writer | test files only (`test_file_patterns`), and the `feature_map` file (#583), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
 | implementer | anything but `test_setup_files`, and test files only with `may_edit_tests` (a refactor ticket) | the same |
 | reviewer (the ticket reviewer and every lens) | nothing | read-only commands only |
 | learner (#370) | nothing | no shell |
@@ -1987,7 +2222,7 @@ The tests go through the seams spec #359 sets: the decision step (`decide`
 given a journal), the engine with the in-memory tracker, the journal file
 (append and replay), and the config loader.
 
-`src/core/run-one-ticket.test.ts` is seam 2, the end-to-end test. Through
+`src/core/run-one-ticket.e2e.test.ts` is seam 2, the end-to-end test. Through
 `src/testing/practice-repo.ts`, it makes a throwaway git repo in a temp folder
 with a local bare repo as its `origin`,
 fills the in-memory tracker with a practice spec and ticket, and runs the
@@ -2001,10 +2236,10 @@ and the ticket is stuck before any agent.
 `src/core/decide-review.test.ts` tests the ticket review through the decision
 step: the reviewer's prompt, findings to the right fixer in the right order,
 the gates and the fix commit, re-reviews of only the new changes, pushback,
-the round cap, and nits and declined findings in the PR.
-`src/core/ticket-review.test.ts` runs it end to end with scripted reviewers:
-findings fixed and pushed back on, a re-review of the new changes only, the
-round cap, and a verdict that disagrees with its findings.
+the round cap, a verdict that disagrees with its findings, and nits and
+declined findings in the PR.
+`src/core/ticket-review.e2e.test.ts` runs it end to end with scripted reviewers:
+findings fixed and pushed back on, and a re-review of the new changes only.
 `src/core/decide-final-review.test.ts` tests the final review through the
 decision step: it runs before the PR even for one ticket, the five lens
 prompts (the whole branch's diff, the rule files), clean → passed → PR, test
@@ -2012,32 +2247,35 @@ findings to a fresh test-writer then code findings to a fresh implementer,
 the gates and their fix loop, the fix commit and push, re-reviews of only the
 new changes by only the lenses with findings, pushback, the round cap, failed
 lens and fixer tries, and a stuck final review ending the run, then `ship`
-opening the PR with the open findings at the top. `src/core/final-review.test.ts`
-runs it end to end with scripted lenses: a clean one, a code and a test
+opening the PR with the open findings at the top. `src/core/final-review.e2e.test.ts`
+runs it end to end with scripted lenses: a clean one, with the rules lens
+reading a rule file from the practice repo's config, and a code and a test
 finding fixed on the whole run branch (the fix commit on origin, the fixers'
-and re-reviewers' prompts), one stuck at the cap and then shipped with
-`shipFinalReview`, and the rules lens reading a rule file from the practice
-repo's config.
-`src/core/agent-guards.test.ts` runs the practice ticket with agents that
+and re-reviewers' prompts). `src/core/run-ship-uncommitted.e2e.test.ts` runs
+one stuck at the cap and then shipped, after which `shipFinalReview` refuses
+it.
+`src/core/agent-guards.e2e.test.ts` runs the practice ticket with agents that
 break their role's rules, fail, crash, or stop, and checks the failed tries
-and retries that follow.
-`src/core/run-many-tickets.test.ts` runs three tickets through
+and retries that follow. Its rule breaks share three runs, each with up to two
+per role. `src/core/decide-build.test.ts` checks the caps: a third failed try,
+or a third engine failure in a row, makes the ticket stuck.
+`src/core/run-many-tickets.e2e.test.ts` runs three tickets through
 `src/testing/many-tickets.ts`: #11 and #12 build at the same time (each
 test-writer waits until the other has started), #12 finishes and joins first,
 #11 clashes on `src/index.ts`, is fixed on top of the run branch, re-reviewed,
 and joins, and #13 starts only after both pushed. It checks the order of the
 joins, the follow-up and re-review prompts, origin's run branch, and that the
 worktrees are gone. A second run with a decision model that always picks another ticket
-shows its pick journaled and ignored. `src/core/run-broken-join.test.ts` runs
+shows its pick journaled and ignored. `src/core/run-broken-join.e2e.test.ts` runs
 `BROKEN_JOIN`: #21 adds `double` on top of `helper` in `src/util.ts`, and
 #22 renames `helper`, so both pass alone and git sees no clash, but the
 types gate fails on the run branch after #22 joins. The join is undone (the
 run branch goes back to #21's push, and origin never gets the broken
 commits), #22 is fixed on top through the gate fix loop, re-reviewed, and
-joins. `src/core/run-limit-many-tickets.test.ts` hits a plan limit while
+joins. `src/core/run-limit-many-tickets.e2e.test.ts` hits a plan limit while
 #11's and #12's test-writers are both in flight: one wait (by a fake clock),
 then both launch again with the same prompts and the run builds to its PR.
-`src/core/run-rebase-reinstall.test.ts` rebases a ticket across another's
+`src/core/run-rebase-reinstall.e2e.test.ts` rebases a ticket across another's
 new workspace dependency and checks the moved worktree's frozen install.
 `src/core/decide-many-tickets.test.ts` covers the same rules at the decision
 step, limits and billing stops with two tickets in flight included.
@@ -2046,13 +2284,15 @@ comment, other tickets building, the join undone, each reply word, named
 tickets when several are stuck, replies from others ignored, retry with and
 without ticket edits, skip with dependents and the PR, stop, a test setup
 change, and a stuck final review's replies (`ship`, `retry`, `stop`, and
-`skip` sent back). `src/core/final-review.test.ts` runs a final review
-stuck after its fix rounds, told on the spec, then shipped by the owner's
-`ship` reply on the tracker, ending in a PR that starts with the open
-findings. `src/core/run-stuck.test.ts` runs it end to end, with a
+`skip` sent back). `src/core/run-ship-uncommitted.e2e.test.ts` runs a final
+review stuck after its fix rounds, told on the spec, then shipped by the
+owner's `ship` reply on the tracker (someone else's is ignored), ending in a
+PR that starts with the open findings. `src/core/run-stuck.e2e.test.ts` runs it end to end, with a
 scripted person replying on the in-memory tracker through a fake clock:
-retry keeping the owner's fix, retry after a ticket edit, skip while another
-ticket builds and pushes, stop, and a test setup change. The other
+retry keeping the owner's fix, retry after a ticket edit, and skip while
+another ticket builds and pushes. `src/core/decide-stuck.test.ts` checks
+`stop` and a test setup change, and both run end to end in
+`src/core/run-session-close.e2e.test.ts`. The other
 end-to-end tests stop at the first `wait_for_reply` (the practice harnesses'
 default `stop_before`).
 
@@ -2063,16 +2303,19 @@ server in memory, and runs the delivery hooks as the SDK would.
 `src/messages/agent-messages.test.ts` tests the message rules on journals;
 `src/messages/agent-messaging.test.ts` runs it on a real journal file, a
 resumed engine included. The one-ticket end-to-end test sends a message from
-the test-writer to the implementer, and a run note between them;
-`src/core/run-many-tickets-messages.test.ts` runs the many-ticket practice
+the test-writer to the implementer, and `src/core/decide-build.test.ts` checks
+which prompts a run note reaches;
+`src/core/run-many-tickets-messages.e2e.test.ts` runs the many-ticket practice
 run with messages across #11 and #12 while both build, `all`, a message
 that waits for #11's clash follow-up, and a run note reaching #12 and #13.
 `src/guards/*.test.ts` table-test the guard rules and the sandbox.
 
-`src/jev/jev-shadow.test.ts` runs the same practice repo with a fake
-decision model, one that disagrees with everything, throws, never answers,
-has no credentials, or has its token turned down (one ask, then off), and
-checks the run matches a run without one. `src/jev/clef-client.test.ts`
+`src/jev/jev-shadow.e2e.test.ts` runs the same practice repo with a fake
+decision model that disagrees with everything, or has its token turned down
+(one ask, then off, and the next run asks again), and checks the run matches
+a run without one. `src/jev/jev-shadow.test.ts` checks one that throws,
+never answers, or has no credentials on `shadowAsker` itself: it journals
+the failure and never throws, so the run goes on. `src/jev/clef-client.test.ts`
 tests the Clef client with a fake `fetch`, and
 `src/jev/decision-model-credentials.test.ts` reads Luca's env file from a
 temp home; no test reaches the network or reads the real home folder.
@@ -2080,9 +2323,11 @@ temp home; no test reaches the network or reads the real home folder.
 `src/core/decide-limits.test.ts` hands the decision step scripted
 rate-limit readings (allowed, allowed_warning, rejected days away, the Opus
 weekly cap, overage, isUsingOverage, a billing error) and usage readings.
-`src/core/limit-wait.test.ts` runs the practice ticket with an agent the
+`src/core/limit-wait.e2e.test.ts` runs the practice ticket with an agent the
 plan cuts off, a fake clock, and the in-memory tracker: the wait, its one
-comment, a restart mid-wait, and a billing stop that sticks.
+comment, and a billing stop that sticks. A restart mid-wait is decided in
+`src/core/decide-crash-recovery.test.ts`, and `decide-limits.test.ts` checks
+the wait itself from a later time, or past its end.
 
 `src/core/decide-memory.test.ts` covers memory at the decision step: memory
 off changes nothing, each recall point's search and query, tickets searching
@@ -2093,7 +2338,7 @@ skipped, its routing by type and scope (unknown types and missing or
 unknown scopes refused), feedback, the PR's "New
 memories", the spec comment, a failed learner's tries and `learning_skipped`,
 and no learner on a billing stop or a refused run.
-`src/core/run-memory.test.ts` runs it end to end with a fake MuninnDB:
+`src/core/run-memory.e2e.test.ts` runs it end to end with a fake MuninnDB:
 memories reach the agents at every point, the learner's memories are updated
 or added and fed back, the PR lists them, a stopped run comments them on the
 spec, and a MuninnDB that errors or hangs still lets the run open its PR,
@@ -2105,17 +2350,23 @@ connection; no test reaches a real MuninnDB.
 
 `src/board/board-sync.test.ts` runs the engine with a board in memory: records
 arrive in seq order, a board that restarted gets a replay, and a failing board
-never breaks the run. `src/cli/run-modes.test.ts` runs the demo, and the
+never breaks the run. `src/board/board-sync.e2e.test.ts` runs a practice repo
+and checks that a slow test-writer turn reaches the board while it runs.
+`src/cli/run-modes.e2e.test.ts` runs the demo, and the
 real-run path with the in-memory tracker and a scripted stand-in for the
 Claude launcher: it builds to a PR and closes the sessions, asks Clef
 through a fake `fetch` with the config's model, turns the decision model off
-with no credentials, ends on a launcher stop, resumes a journal, and reports a missing
-config. Its `--resume` test crashes a real run after its red commit, lists it
+with no credentials, ends on a launcher stop, and resumes a journal.
+`src/cli/run-modes.test.ts` keeps what needs no practice repo: a repo with no
+config, a run id with no journal, an empty journal, and the unfinished-runs
+list. The `--resume` test in `run-modes.e2e.test.ts` crashes a real run after its red commit, lists it
 in `unfinishedRuns`, then `resumeRun` finishes it: one PR, each commit once,
 no comment twice, and `run_resumed` in the journal. `src/core/decide-crash-recovery.test.ts`
 cuts journals anywhere and checks what the decision step does next, and
-`src/core/run-crash-recovery.test.ts` crashes practice runs inside a step
-(after a comment, a PR, a worktree, a commit, a join) and runs them again.
+`src/core/run-crash-recovery.e2e.test.ts` crashes practice runs inside a step
+(after a comment, a PR, a worktree, a commit, a join) and runs them again;
+`src/core/run-crash-recovery.test.ts` keeps the intake refusals, which need
+only the in-memory tracker.
 
 ```bash
 bun test              # in packages/engine

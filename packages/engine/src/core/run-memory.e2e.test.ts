@@ -24,6 +24,9 @@ import {
  * and they are listed in the PR, or on the spec after a `stop`. A MuninnDB
  * that errors or hangs never keeps a run from finishing. No real MuninnDB,
  * no models.
+ *
+ * Routing the learner's memories by scope, and what a `stop` reply makes
+ * the learner do, are decisions, checked in `decide-memory.test.ts` (#566).
  */
 
 let root = ''
@@ -294,177 +297,6 @@ describe('memory, end to end', () => {
         expect(pull?.body).not.toContain('session')
     }, 60_000)
 
-    test('the learner’s repo-only memories are saved to the project vault, useful-anywhere ones to default, a missing scope is refused and journaled, and the PR shows each vault', async () => {
-        const practice = await createPracticeRepo({ root })
-        const muninn = seededMuninn()
-        const { testWriter, implementer, reviewer } = happyTurns()
-        const learner: ScriptedTurn = {
-            role: 'learner',
-            ticket: 10,
-            result: {
-                memories: [
-                    {
-                        type: 'pitfall',
-                        scope: 'repo',
-                        concept: 'engine-readme-guard-docs',
-                        content:
-                            'The engine README’s guard docs drift from the guard code.',
-                        summary: 'Guard docs drift',
-                    },
-                    {
-                        type: 'pattern',
-                        scope: 'anywhere',
-                        concept: 'one-command-per-call',
-                        content: 'Run one shell command per call.',
-                        summary: 'One command per call',
-                    },
-                    {
-                        type: 'pitfall',
-                        concept: 'no-scope',
-                        content: 'A lesson with no scope.',
-                        summary: '',
-                    },
-                ],
-                helped: [],
-            },
-        }
-
-        const { action, records, tracker } = await practice.run({
-            turns: [testWriter, implementer, reviewer, learner],
-            memory: { client: muninn, project_vault: PROJECT },
-        })
-
-        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
-        const [saved] = savedOf(records)
-        const byConcept = (concept: string) =>
-            saved?.saves.find((save) => save.concept.includes(concept))
-        expect(byConcept('engine-readme-guard-docs')).toMatchObject({
-            type: 'pitfall',
-            concept: 'pitfall:engine-readme-guard-docs',
-            vault: PROJECT,
-            outcome: 'added',
-        })
-        expect(byConcept('one-command-per-call')).toMatchObject({
-            type: 'pattern',
-            concept: 'pattern:one-command-per-call',
-            vault: 'default',
-            outcome: 'added',
-        })
-        expect(byConcept('no-scope')).toMatchObject({
-            type: 'pitfall',
-            vault: null,
-            outcome: 'refused',
-            id: null,
-            error: expect.stringContaining('scope'),
-        })
-        expect(
-            muninn
-                .stored(PROJECT)
-                .map(({ concept }) => concept)
-                .includes('pitfall:engine-readme-guard-docs')
-        ).toBe(true)
-        expect(
-            muninn
-                .stored('default')
-                .map(({ concept }) => concept)
-                .includes('pattern:one-command-per-call')
-        ).toBe(true)
-        for (const vault of [PROJECT, 'default']) {
-            expect(
-                muninn
-                    .stored(vault)
-                    .some(({ concept }) => concept.includes('no-scope'))
-            ).toBe(false)
-        }
-
-        const [pull] = tracker.pullRequests()
-        expect(pull?.body).toContain(
-            `- pitfall in \`${PROJECT}\`: pitfall:engine-readme-guard-docs (`
-        )
-        expect(pull?.body).toContain(
-            '- pattern in `default`: pattern:one-command-per-call ('
-        )
-        expect(pull?.body).not.toContain('no-scope')
-    }, 60_000)
-
-    test('a stopped run still learns, and its new memories go on the spec issue', async () => {
-        const practice = await createPracticeRepo({ root })
-        const muninn = seededMuninn()
-        const tracker = practiceTracker()
-        let replied = false
-        const clock: EngineClock = {
-            now: () => Date.now(),
-            sleep: async () => {
-                await Bun.sleep(5)
-                const state = replayRun({ records: practice.journal.read() })
-                if (
-                    replied ||
-                    (state.tickets[11]?.stuck_report ?? null) === null
-                ) {
-                    return
-                }
-                replied = true
-                tracker.addComment({
-                    number: 10,
-                    author: SPEC_OWNER,
-                    body: 'stop',
-                })
-            },
-        }
-
-        const { action, records, launches } = await practice.run({
-            tracker,
-            clock,
-            stop_before: [],
-            memory: { client: muninn, project_vault: PROJECT },
-            turns: [
-                {
-                    role: 'test-writer',
-                    ticket: 11,
-                    result: { outcome: 'nothing_new_to_test' },
-                },
-                {
-                    role: 'learner',
-                    ticket: 10,
-                    result: {
-                        memories: [
-                            {
-                                type: 'pitfall',
-                                scope: 'anywhere',
-                                concept: 'label-refactors',
-                                content:
-                                    'A ticket that changes no behavior needs the refactor label.',
-                                summary: 'Label refactors',
-                            },
-                        ],
-                        helped: [],
-                    },
-                },
-            ],
-        })
-
-        expect(action).toEqual({ type: 'done', outcome: 'stopped_by_user' })
-        expect(tracker.pullRequests()).toEqual([])
-        expect(launchOf(launches, 'learner')?.prompt).toContain(
-            'replied `stop`'
-        )
-        const comments = tracker.commentsOn({ number: 10 })
-        const listing = comments.find((body) =>
-            body.includes('pitfall:label-refactors')
-        )
-        expect(listing).toContain('(fake-1), added')
-        expect(
-            records.find(({ kind }) => kind === 'memories_reported')
-        ).toMatchObject({
-            content: { count: 1 },
-        })
-        // The learner ran after the stop reply, before the run ended.
-        const kinds = records.map(({ kind }) => kind)
-        expect(kinds.lastIndexOf('memories_reported')).toBeGreaterThan(
-            kinds.indexOf('reply_received')
-        )
-    }, 60_000)
-
     test('a MuninnDB that errors or hangs still lets the run finish, with the errors journaled', async () => {
         const practice = await createPracticeRepo({ root })
         const muninn = seededMuninn({
@@ -690,7 +522,11 @@ describe('memory across a crash (#369)', () => {
         expectSavedOnce({ muninn, records })
     }, 60_000)
 
-    test("the memories' comment on the spec is posted once when a crash came between posting and journaling it", async () => {
+    // A stopped run still learns, and its new memories go on the spec
+    // issue. The decisions (the learner after the stop reply, then the
+    // save, then the comment) are in `decide-memory.test.ts`'s "a stop reply
+    // runs the learner first, …"; this run posts the real comment (#566).
+    test("a stopped run's new memories go on the spec issue, posted once when a crash came between posting and journaling them", async () => {
         const practice = await createPracticeRepo({ root })
         const muninn = seededMuninn()
         const memory = { client: muninn, project_vault: PROJECT }
@@ -765,9 +601,18 @@ describe('memory across a crash (#369)', () => {
         })
 
         expect(action).toEqual({ type: 'done', outcome: 'stopped_by_user' })
+        expect(tracker.pullRequests()).toEqual([])
         expect(listings()).toHaveLength(1)
-        expect(
-            records.filter(({ kind }) => kind === 'memories_reported')
-        ).toHaveLength(1)
+        expect(listings()[0]).toContain('(fake-1), added')
+        const reported = records.filter(
+            ({ kind }) => kind === 'memories_reported'
+        )
+        expect(reported).toHaveLength(1)
+        expect(reported[0]).toMatchObject({ content: { count: 1 } })
+        // The learner ran after the stop reply, before the run ended.
+        const kinds = records.map(({ kind }) => kind)
+        expect(kinds.lastIndexOf('memories_reported')).toBeGreaterThan(
+            kinds.indexOf('reply_received')
+        )
     }, 60_000)
 })

@@ -21,11 +21,19 @@ import {
 } from '../agents/role-results'
 import {
     bunTestCommands,
+    featureMapPath,
+    hasSlowTests,
     testTimeoutOf,
     type EngineConfig,
 } from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
-import { prepareCheck, runGates, shellCheck } from '../gates/gate-runner'
+import { featureMapFiles } from '../gates/feature-map'
+import {
+    prepareCheck,
+    runGates,
+    runSlowTests,
+    shellCheck,
+} from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import {
     importStem,
@@ -42,11 +50,14 @@ import {
     newWorktreeInstall,
     rebaseNeedsInstall,
 } from '../gates/lockfile-install'
-import { checkRed } from '../gates/red-check'
+import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
+    fileTestsCommand,
     onlyTestFiles,
     runBunTests,
+    runTests,
     testFilesAmong,
+    withOwnRun,
 } from '../gates/test-runner'
 import type { FileChange, GitAdapter } from '../git/git-adapter'
 import { outsideLinks } from '../git/outside-links'
@@ -260,6 +271,34 @@ const ticketChanges = async ({
 export const NO_RED_CHANGES =
     'No file changed, so the red commit would be empty: write the tests for the criteria in the worktree (new or changed test files).'
 
+/**
+ * The repo's feature map as the red check needs it (#583), read from the
+ * worktree at `cwd`: its configured path, and the test files it lists.
+ * `files` is `null` when the file is missing or can't be read, so the red
+ * check can name it rather than crash. `null` when the config names no map.
+ */
+const featureMapIn = async ({
+    context,
+    cwd,
+}: {
+    context: BuildContext
+    cwd: string
+}): Promise<{ path: string; files: string[] | null } | null> => {
+    const path = featureMapPath({ config: context.config })
+    if (path === null) return null
+    const text = await pathText({ path: join(cwd, path) })
+    return {
+        path,
+        files:
+            text === null
+                ? null
+                : featureMapFiles({
+                      text,
+                      test_file_patterns: context.config.test_file_patterns,
+                  }),
+    }
+}
+
 const runRedCheck = async ({
     context,
     action,
@@ -267,7 +306,7 @@ const runRedCheck = async ({
     context: BuildContext
     action: Extract<BuildAction, { type: 'run_red_check' }>
 }) => {
-    const { path } = ticketWorktree({
+    const { path, base_sha } = ticketWorktree({
         state: context.state,
         ticket: action.ticket,
     })
@@ -277,14 +316,20 @@ const runRedCheck = async ({
     })
     const test_files = await testFilesIn({ context, cwd: path })
     // Before prepare runs, so what it makes now can't count as a change.
-    const changed = await ticketChanges({
+    const leave_out = await leaveOutIn({
         context,
         cwd: path,
-        leave_out: await leaveOutIn({
-            context,
-            cwd: path,
-            ticket: action.ticket,
-        }),
+        ticket: action.ticket,
+    })
+    const changed = await ticketChanges({ context, cwd: path, leave_out })
+    // Every test file that differs from the ticket's base, not only from
+    // HEAD: after a bad-test bounce, HEAD may still hold an old red commit,
+    // whose test files the fresh test-writer may not touch (#581).
+    const base_changed = testFilesAmong({
+        files: (
+            await context.git.changedSince({ cwd: path, from: base_sha })
+        ).filter((file) => !leave_out.includes(file)),
+        test_file_patterns: context.config.test_file_patterns,
     })
     const prepare = await watchPrepare({
         context,
@@ -292,7 +337,10 @@ const runRedCheck = async ({
         ticket: action.ticket,
         run: () => prepareCheck({ config: context.config, cwd: path }),
     })
-    const current = await runBunTests({
+    const files = uniq(
+        action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
+    )
+    const fast = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
         test_files,
@@ -303,12 +351,55 @@ const runRedCheck = async ({
             label: 'red',
         }),
     })
-    const files = uniq(
-        action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
-    )
+    // With a slow command, the fast tests leave out every slow test file
+    // (#564): the files the test map names or the ticket changed, that the
+    // fast run gave no results for, run on their own, with plain `bun test`.
+    // A run that gives no results at all leaves the fast run as it is (see
+    // `withOwnRun`): its files don't load, as the fast run said already.
+    const own = hasSlowTests({ config: context.config })
+        ? uniq([
+              ...files,
+              ...testFilesAmong({
+                  files: changed.map((change) => change.path),
+                  test_file_patterns: context.config.test_file_patterns,
+              }),
+          ]).filter((file) => fast.files_without_results.includes(file))
+        : []
+    const current =
+        own.length === 0
+            ? fast
+            : withOwnRun({
+                  fast,
+                  own: await runTests({
+                      cwd: path,
+                      command: fileTestsCommand({ files: own }),
+                      test_files: own,
+                      report_file: await reportFile({
+                          context,
+                          ticket: action.ticket,
+                          label: 'red-own',
+                      }),
+                      timeout_ms: testTimeoutOf({ config: context.config }),
+                  }),
+                  test_files,
+              })
     const sources: Record<string, string | null> = {}
     for (const file of files) {
         sources[file] = await pathText({ path: join(path, file) })
+    }
+    // Each of those test files as it was at the ticket's base and as it is
+    // now, so the red check can find each new test (#581).
+    const changed_test_sources: ChangedTestSource[] = []
+    for (const file of base_changed) {
+        changed_test_sources.push({
+            file,
+            base: await context.git.fileAt({
+                cwd: path,
+                sha: base_sha,
+                path: file,
+            }),
+            current: await pathText({ path: join(path, file) }),
+        })
     }
     const checked = checkRed({
         criteria_ids: action.criteria_ids,
@@ -317,6 +408,8 @@ const runRedCheck = async ({
         current,
         test_files,
         sources,
+        changed_test_sources,
+        feature_map: await featureMapIn({ context, cwd: path }),
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,
@@ -351,8 +444,9 @@ const runRedCheck = async ({
  * finds each named commit, next to the commit the worktree started from,
  * and a run of just the named test files that exist, are test files, and
  * are as they are on the base, after the prepare command if the config has
- * one. What the check means is `checkAlreadyDone`'s; replay makes a failed
- * one a failed try for the test-writer.
+ * one. With a slow command (#564), the named files, slow ones included, run
+ * with plain `bun test`. What the check means is `checkAlreadyDone`'s; replay
+ * makes a failed one a failed try for the test-writer.
  */
 const checkAlreadyDoneIn = async ({
     context,
@@ -411,9 +505,13 @@ const checkAlreadyDoneIn = async ({
             ? null
             : await runBunTests({
                   cwd: path,
-                  commands: bunTestCommands(context).map((command) =>
-                      onlyTestFiles({ command, files: runnable })
-                  ),
+                  // With a slow command, the fast command would leave out
+                  // the slow files named (#564): plain `bun test` runs all.
+                  commands: hasSlowTests({ config: context.config })
+                      ? [fileTestsCommand({ files: runnable })]
+                      : bunTestCommands(context).map((command) =>
+                            onlyTestFiles({ command, files: runnable })
+                        ),
                   test_files: runnable,
                   timeout_ms: testTimeoutOf({ config: context.config }),
                   report_file: await reportFile({
@@ -1187,29 +1285,96 @@ export const gatesIn = async ({
     ticket: number | null
 }) => {
     const { path: cwd, base_sha } = worktree
+    const changed = difference(
+        await context.git.changedSince({ cwd, from: base_sha }),
+        context.state.prepare_made
+    )
+    const test_files = await testFilesIn({ context, cwd })
+    // The test files a ticket changed: its own gates hold their tests to the
+    // fast test speed limit by measured time (#580), and, with a slow
+    // command, also run the ones the fast tests leave out (#564). A join's
+    // and the final review's gates do neither.
+    const changed_test_files =
+        target === 'ticket'
+            ? testFilesAmong({
+                  files: changed,
+                  test_file_patterns: context.config.test_file_patterns,
+              }).filter((file) => test_files.includes(file))
+            : []
+    const own_test_files = hasSlowTests({ config: context.config })
+        ? changed_test_files
+        : []
     const result = await runGates({
         cwd,
         config: context.config,
-        install: installCommand({
-            changed_files: difference(
-                await context.git.changedSince({ cwd, from: base_sha }),
-                context.state.prepare_made
-            ),
-            target,
-        }),
+        install: installCommand({ changed_files: changed, target }),
         around_prepare: (run) => watchPrepare({ context, cwd, ticket, run }),
-        test_files: await testFilesIn({ context, cwd }),
+        test_files,
         report_file: await reportFile({
             context,
             ticket,
             label: `gates-${target}`,
         }),
+        // The final review's gates also run the slow tests (#563); a ticket's
+        // and a join's never do.
+        with_slow_tests: ticket === null,
+        own_test_files,
+        measured_files: changed_test_files,
     })
+    // A ticket's gates journal the cases of its red test files, with their
+    // expect() counts, so a mapped test that checks nothing is found (#581).
+    // Join and final gates leave them out, which keeps journals small.
+    const red_files =
+        target === 'ticket' && ticket !== null
+            ? (context.state.tickets[ticket]?.red_tests ?? []).map(
+                  ({ file }) => file
+              )
+            : []
+    const cases = result.cases.filter(({ file }) => red_files.includes(file))
     context.journal.append({
         kind: 'gates_run',
         ticket,
         role: null,
-        content: { target, ...result },
+        content: {
+            target,
+            ok: result.ok,
+            checks: result.checks,
+            ...(cases.length === 0 ? {} : { cases }),
+        },
+    })
+}
+
+/**
+ * The final review's slow tests (#563) in the run branch's worktree, once
+ * round 1's lenses are in: prepare (noting what it made), then each slow test
+ * command, journaled as `gates_run` with `target: 'final_slow'` and no
+ * ticket. They are not the fix round's gates.
+ */
+export const slowTestsIn = async ({
+    context,
+    worktree,
+}: {
+    context: BuildContext
+    worktree: ReplayedWorktree
+}) => {
+    const { path: cwd } = worktree
+    const result = await runSlowTests({
+        cwd,
+        config: context.config,
+        around_prepare: (run) =>
+            watchPrepare({ context, cwd, ticket: null, run }),
+        test_files: await testFilesIn({ context, cwd }),
+        report_file: await reportFile({
+            context,
+            ticket: null,
+            label: 'final-slow',
+        }),
+    })
+    context.journal.append({
+        kind: 'gates_run',
+        ticket: null,
+        role: null,
+        content: { target: 'final_slow', ...result },
     })
 }
 
@@ -1442,7 +1607,12 @@ export const executeBuildAction = async ({
                 kind: 'worktree_reset',
                 ticket: action.ticket,
                 role: null,
-                content: { sha },
+                content: {
+                    sha,
+                    ...(action.bad_test === undefined
+                        ? {}
+                        : { bad_test: action.bad_test }),
+                },
             })
             return
         }

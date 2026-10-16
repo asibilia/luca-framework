@@ -176,6 +176,12 @@ export const BadTestSchema = z.object({
 export type BadTest = z.infer<typeof BadTestSchema>
 
 /**
+ * Who sent a test back as bad: the implementer, who says it is wrong, or the
+ * engine, which found a mapped test that passes with no `expect()` (#581).
+ */
+export type BadTestSource = 'implementer' | 'engine'
+
+/**
  * The implementer's result. `bad_test` sends a wrong test back;
  * `needs_setup_change` says the gates can't pass without a change to a test
  * setup file (`setup_change`), which only the user may make.

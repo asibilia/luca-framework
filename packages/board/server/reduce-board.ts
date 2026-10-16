@@ -53,7 +53,8 @@ const STUCK_REASONS: Record<string, string> = {
     leftovers_found:
         'The leftover scan found files that must not be committed.',
     gates_failed: 'The checks failed.',
-    bad_test: 'The implementer sent back a bad test.',
+    bad_test:
+        'A test was sent back as bad, by the implementer or because it checks nothing.',
     changes_requested: 'The ticket review asked for changes.',
     join_failed: "The ticket couldn't join the run branch.",
     join_gates_failed: 'The checks failed after the ticket joined.',
@@ -437,6 +438,7 @@ const STEP_WORDS: Record<string, string> = {
     run_red_check: 'running the red check',
     run_gates: 'running the checks',
     run_final_gates: 'running the checks',
+    run_final_slow_tests: 'running the slow tests',
     join_run_branch: 'joining the run branch',
     push_run_branch: 'pushing the run branch',
     push_final_fixes: 'pushing the run branch',
@@ -1533,7 +1535,16 @@ const applyKind = ({
                     fix_round: record.content.round,
                     tried: withTried({
                         tried: review.tried,
-                        line: `Fix round ${record.content.round}/${LOOP_CAP} on the lenses' findings`,
+                        // Every lens finished clean: only failed slow tests
+                        // open a fix round then (#563).
+                        line: `Fix round ${record.content.round}/${LOOP_CAP} on ${
+                            review.lenses.length > 0 &&
+                            review.lenses.every(
+                                (lens) => lens.state === 'clean'
+                            )
+                                ? 'the failed slow tests'
+                                : "the lenses' findings"
+                        }`,
                     }),
                 }),
             })
@@ -1807,6 +1818,15 @@ const gatesRun = ({
         .map((check) => check.name)
         .join(', ')
     const afterJoin = target === 'run_branch'
+    // The final review's slow tests, after round 1's lenses (#563).
+    if (target === 'final_slow') {
+        return ok
+            ? state
+            : finalTried({
+                  state,
+                  line: `The final review's slow tests failed: ${failed || 'no detail'}`,
+              })
+    }
     // The final review's fixes are checked on the run branch, with no ticket.
     if (record.ticket === null) {
         return ok

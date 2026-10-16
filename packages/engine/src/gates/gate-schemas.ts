@@ -6,6 +6,10 @@ export const TestCaseSchema = z.object({
     /** Describe names and the test name joined by " > ". */
     full_name: z.string(),
     status: z.enum(['passed', 'failed', 'skipped']),
+    /** How long it ran, from bun's JUnit `time` (#518). Missing in old journals. */
+    duration_ms: z.number().int().nonnegative().optional(),
+    /** How many `expect()` calls it made, from bun's JUnit `assertions` (#581). */
+    assertions: z.number().int().nonnegative().optional(),
 })
 
 export type TestCase = z.infer<typeof TestCaseSchema>
@@ -28,13 +32,15 @@ export type TestRun = z.infer<typeof TestRunSchema>
 
 /**
  * The gates the engine config can name, plus `install`: the engine's own
- * install, run first when a package manifest changed, and `prepare`: the
- * config's prepare command, run before the tests.
+ * install, run first when a package manifest changed, `prepare`: the
+ * config's prepare command, run before the tests, and `slow_test`: the
+ * config's slow tests, run only at the final review (#563).
  */
 export const GateNameSchema = z.enum([
     'install',
     'prepare',
     'test',
+    'slow_test',
     'types',
     'lint',
 ])
@@ -48,6 +54,10 @@ export const GateCheckSchema = z.object({
     ok: z.boolean(),
     exit_code: z.number().int().nullable(),
     output: z.string(),
+    /** How long the command ran (#518). Missing in old journals. */
+    duration_ms: z.number().int().nonnegative().optional(),
+    /** `prepare` only: how long it waited for a prepare slot (#518). */
+    wait_ms: z.number().int().nonnegative().optional(),
 })
 
 export type GateCheck = z.infer<typeof GateCheckSchema>

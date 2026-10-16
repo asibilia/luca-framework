@@ -24,6 +24,7 @@ import {
     ticketSkipped,
     ticketStuck,
     testsWritten,
+    worktreeReset,
     worktreesRemoved,
     RUN_BRANCH_PATH,
     ticketWorktreeCreated,
@@ -97,6 +98,49 @@ const gatesFailedForGood = (): JournalEntry[] => [
     }),
 ]
 
+/**
+ * #11's one mapped test passed with no expect() twice (#581): the engine sent
+ * it back once, and the second time the ticket is stuck as `bad_test`.
+ */
+const emptyTestForGood = (): JournalEntry[] => {
+    const emptyGates = gatesRun({
+        ticket: 11,
+        target: 'ticket',
+        ok: true,
+        cases: [
+            {
+                file: 'src/sum.test.ts',
+                full_name: 'sum adds two numbers',
+                status: 'passed',
+                assertions: 0,
+            },
+        ],
+    })
+    return [
+        ticketWorktreeCreated({ ticket: 11 }),
+        baselineTests({ ticket: 11 }),
+        ...ticketBuilt({ ticket: 11 }).slice(2, 6),
+        implemented({ ticket: 11 }),
+        emptyGates,
+        worktreeReset({
+            ticket: 11,
+            bad_test: {
+                file: 'src/sum.test.ts',
+                name: 'sum adds two numbers',
+                reason: 'It passes but runs no expect(), so it checks nothing (#581).',
+            },
+        }),
+        ...ticketBuilt({ ticket: 11 }).slice(2, 6),
+        implemented({ ticket: 11, session_id: 'impl-2' }),
+        emptyGates,
+        ticketStuck({
+            ticket: 11,
+            reason: 'bad_test',
+            detail: 'A mapped test still checks nothing after a fresh test-writer.',
+        }),
+    ]
+}
+
 /** #12 has its worktree and baseline: its test-writer is next. */
 const productStarted = (): JournalEntry[] => [
     ticketWorktreeCreated({ ticket: 12 }),
@@ -125,6 +169,19 @@ describe('a stuck ticket reaches the spec owner', () => {
         expect(body).toContain('`retry #11`')
         expect(body).toContain('`skip #11`')
         expect(body).toContain('`stop`')
+    })
+
+    test("a bad test the engine found is not blamed on the implementer in the spec issue's comment (#581)", () => {
+        const steps = oneSteps([runBranchCreated(), ...emptyTestForGood()])
+
+        const body = steps[0]?.type === 'report_stuck' ? steps[0].body : ''
+        expect(body).toContain(
+            'Why: A test was sent back as bad (by the implementer, or because it checks nothing), and it cannot go back again.'
+        )
+        expect(body).not.toContain('The implementer sent')
+        expect(body).toContain(
+            'A mapped test still checks nothing after a fresh test-writer.'
+        )
     })
 
     test('other tickets keep building while one is stuck', () => {
@@ -365,6 +422,27 @@ describe('retry', () => {
         ticketRetried({ ticket: 11, mode }),
     ]
 
+    test('a retried bad test the engine found is told to the fresh agent without blaming the implementer (#581)', () => {
+        const [step] = oneSteps([
+            runBranchCreated(),
+            ...emptyTestForGood(),
+            stuckReported({ ticket: 11, comment_id: 111 }),
+            commentRead({ comment_id: 120, body: 'retry' }),
+            replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
+        ])
+
+        expect(step).toMatchObject({
+            type: 'launch_agent',
+            role: 'implementer',
+        })
+        const prompt = step?.type === 'launch_agent' ? step.prompt : ''
+        expect(prompt).toContain(
+            'A test was sent back as bad (by the implementer, or because it checks nothing)'
+        )
+        expect(prompt).not.toContain('The implementer sent a test back')
+    })
+
     test('an unchanged ticket resumes with a fresh agent, told why it got stuck, not a follow-up in the old session', () => {
         const [step] = oneSteps(retried('resume'))
         expect(step).toMatchObject({
@@ -508,6 +586,51 @@ describe('retry', () => {
         })
     })
 
+    test('a test-writer retried after the engine found an empty test still hears the engine found it, not the implementer (#581)', () => {
+        const [step] = oneSteps([
+            runBranchCreated(),
+            ticketWorktreeCreated({ ticket: 11 }),
+            baselineTests({ ticket: 11 }),
+            ...ticketBuilt({ ticket: 11 }).slice(2, 6),
+            implemented({ ticket: 11 }),
+            gatesRun({
+                ticket: 11,
+                target: 'ticket',
+                ok: true,
+                cases: [
+                    {
+                        file: 'src/sum.test.ts',
+                        full_name: 'sum adds two numbers',
+                        status: 'passed',
+                        assertions: 0,
+                    },
+                ],
+            }),
+            worktreeReset({
+                ticket: 11,
+                bad_test: {
+                    file: 'src/sum.test.ts',
+                    name: 'sum adds two numbers',
+                    reason: 'It passes but runs no expect(), so it checks nothing (#581).',
+                },
+            }),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            ticketStuck({ ticket: 11, reason: 'red_check_failed' }),
+            stuckReported({ ticket: 11 }),
+            replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
+        ])
+
+        expect(step).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+        })
+        const prompt = step?.type === 'launch_agent' ? step.prompt : ''
+        expect(prompt).toContain('The engine found this test checks nothing')
+        expect(prompt).not.toContain('The implementer says')
+    })
+
     test('a ticket stuck after its join undid joins again on retry, with fresh rebases', () => {
         expect(
             twoSteps([
@@ -641,31 +764,32 @@ describe('stop', () => {
 })
 
 describe('a test setup file change', () => {
-    test('an agent that needs a test setup file changed makes the ticket stuck with a clear message', () => {
-        expect(
-            oneSteps([
-                runBranchCreated(),
-                ticketWorktreeCreated({ ticket: 11 }),
-                baselineTests({ ticket: 11 }),
-                ...ticketBuilt({ ticket: 11 }).slice(2, 6),
-                {
-                    kind: 'agent_finished',
-                    ticket: 11,
-                    role: 'implementer',
-                    content: {
-                        role: 'implementer',
-                        session_id: SESSIONS.implementer,
-                        result: {
-                            outcome: 'needs_setup_change',
-                            setup_change: {
-                                file: 'test/setup.ts',
-                                reason: 'The fake clock must be installed before each test.',
-                            },
-                        },
+    /** #11's implementer answers that it needs `test/setup.ts` changed. */
+    const needsSetupChange = (): JournalEntry[] => [
+        runBranchCreated(),
+        ticketWorktreeCreated({ ticket: 11 }),
+        baselineTests({ ticket: 11 }),
+        ...ticketBuilt({ ticket: 11 }).slice(2, 6),
+        {
+            kind: 'agent_finished',
+            ticket: 11,
+            role: 'implementer',
+            content: {
+                role: 'implementer',
+                session_id: SESSIONS.implementer,
+                result: {
+                    outcome: 'needs_setup_change',
+                    setup_change: {
+                        file: 'test/setup.ts',
+                        reason: 'The fake clock must be installed before each test.',
                     },
                 },
-            ])
-        ).toEqual([
+            },
+        },
+    ]
+
+    test('an agent that needs a test setup file changed makes the ticket stuck with a clear message', () => {
+        expect(oneSteps(needsSetupChange())).toEqual([
             {
                 type: 'mark_stuck',
                 ticket: 11,
@@ -675,6 +799,30 @@ describe('a test setup file change', () => {
                 ),
             },
         ])
+    })
+
+    test('the spec issue hears that only its owner may change a test setup file, which file and why, and what to do', () => {
+        const [stuck] = oneSteps(needsSetupChange())
+        if (stuck?.type !== 'mark_stuck') throw new Error(stuck?.type)
+
+        const steps = oneSteps([
+            ...needsSetupChange(),
+            ticketStuck({
+                ticket: 11,
+                reason: stuck.reason,
+                detail: stuck.detail,
+            }),
+        ])
+
+        expect(steps).toMatchObject([{ type: 'report_stuck', ticket: 11 }])
+        const body = steps[0]?.type === 'report_stuck' ? steps[0].body : ''
+        expect(body).toContain(
+            'An agent needs a test setup file changed, and only you may change one.'
+        )
+        expect(body).toContain(
+            'The implementer needs the test setup file `test/setup.ts` changed: The fake clock must be installed before each test.'
+        )
+        expect(body).toContain('Make that change yourself in the worktree')
     })
 })
 

@@ -24,6 +24,12 @@ const CONFIG: EngineConfig = {
     rule_files: [],
 }
 
+/** `CONFIG` with a feature map (#583). */
+const WITH_MAP: EngineConfig = {
+    ...CONFIG,
+    feature_map: 'docs/feature-map.md',
+}
+
 const WORKTREE = '/runs/run-1/tickets/11'
 
 /** `may_edit_tests` as the engine sets it on a normal (not refactor) ticket. */
@@ -66,6 +72,10 @@ describe('mayWrite', () => {
         ['test-writer', true, 'src/sum.ts', false],
         ['test-writer', true, 'README.md', false],
         ['test-writer', true, 'src/test-setup.ts', false],
+        // The feature map, when one is configured (#583).
+        ['test-writer', true, 'docs/feature-map.md', true],
+        ['test-writer', true, 'docs/other.md', false],
+        ['test-writer', false, 'docs/feature-map.md', false],
         // A test-writer that may not edit tests writes nothing.
         ['test-writer', false, 'src/sum.test.ts', false],
         ['implementer', false, 'src/sum.ts', true],
@@ -106,10 +116,54 @@ describe('mayWrite', () => {
         '%s (may edit tests: %p) writing %s: %p',
         (role, may_edit_tests, path, expected) => {
             expect(
-                mayWrite({ role, may_edit_tests, path, config: CONFIG })
+                mayWrite({ role, may_edit_tests, path, config: WITH_MAP })
             ).toBe(expected)
         }
     )
+
+    test.each([
+        ['./docs/feature-map.md'],
+        ['docs//feature-map.md'],
+        ['docs/../docs/feature-map.md'],
+    ])(
+        'a feature map spelled %s still lets the test-writer write docs/feature-map.md (#583)',
+        (spelled) => {
+            const config = { ...CONFIG, feature_map: spelled }
+            for (const path of [
+                'docs/feature-map.md',
+                './docs/feature-map.md',
+                'docs//feature-map.md',
+            ]) {
+                expect(
+                    mayWrite({
+                        role: 'test-writer',
+                        may_edit_tests: true,
+                        path,
+                        config,
+                    })
+                ).toBe(true)
+            }
+            expect(
+                mayWrite({
+                    role: 'test-writer',
+                    may_edit_tests: true,
+                    path: 'docs/other.md',
+                    config,
+                })
+            ).toBe(false)
+        }
+    )
+
+    test('without a feature map, the test-writer may not write the map path (#583)', () => {
+        expect(
+            mayWrite({
+                role: 'test-writer',
+                may_edit_tests: true,
+                path: 'docs/feature-map.md',
+                config: CONFIG,
+            })
+        ).toBe(false)
+    })
 })
 
 describe('checkToolCall: file tools', () => {
@@ -558,6 +612,46 @@ describe('several test commands', () => {
     })
 })
 
+describe('the slow test command (#563)', () => {
+    const config = EngineConfigSchema.parse({
+        ...CONFIG,
+        checks: {
+            ...CONFIG.checks,
+            test: 'bun test src',
+            slow_test: 'bun test .e2e.test',
+        },
+    })
+    const run = (role: GuardRole, command: string) =>
+        checkToolCall({
+            role,
+            may_edit_tests: usual(role),
+            tool_name: 'Bash',
+            tool_input: { command },
+            worktree: WORKTREE,
+            config,
+        }).allow
+
+    test('a writer may run the slow command too, with extra arguments (#563)', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(run(role, 'bun test .e2e.test')).toBe(true)
+            expect(run(role, 'bun test .e2e.test ./src/run.e2e.test.ts')).toBe(
+                true
+            )
+        }
+        expect(run('reviewer', 'bun test .e2e.test')).toBe(false)
+    })
+
+    test('the slow command gets its permission rule, with a wildcard (#563)', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun test .e2e.test)')
+        expect(allowed).toContain('Bash(bun test .e2e.test *)')
+    })
+})
+
 describe('permissionRules', () => {
     test('a refactor implementer may edit tests but not setup files', () => {
         const refactor = permissionRules({
@@ -662,6 +756,8 @@ describe('permissionRules', () => {
         })
         expect(testWriter.allowed).toContain('Edit(src/**/*.test.ts)')
         expect(testWriter.allowed).not.toContain('Edit(**)')
+        // No feature map configured, so no Edit rule for one (#583).
+        expect(testWriter.allowed).not.toContain('Edit(docs/feature-map.md)')
 
         const reviewer = permissionRules({
             role: 'reviewer',
@@ -686,6 +782,43 @@ describe('permissionRules', () => {
             expect(rules.disallowed).toContain('Skill')
         }
     })
+
+    test('the test-writer may edit the feature map when one is set, in the same form as its test globs (#583)', () => {
+        const withMap = permissionRules({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: WITH_MAP,
+        })
+        expect(withMap.allowed).toContain('Edit(src/**/*.test.ts)')
+        expect(withMap.allowed).toContain('Edit(docs/feature-map.md)')
+        const noEdit = permissionRules({
+            role: 'test-writer',
+            may_edit_tests: false,
+            config: WITH_MAP,
+        })
+        expect(noEdit.allowed).not.toContain('Edit(docs/feature-map.md)')
+        const implementer = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config: WITH_MAP,
+        })
+        expect(implementer.disallowed).not.toContain(
+            'Edit(docs/feature-map.md)'
+        )
+    })
+
+    test.each([['./docs/feature-map.md'], ['docs//feature-map.md']])(
+        'a feature map spelled %s gets the clean Edit rule (#583)',
+        (spelled) => {
+            const { allowed } = permissionRules({
+                role: 'test-writer',
+                may_edit_tests: true,
+                config: { ...CONFIG, feature_map: spelled },
+            })
+            expect(allowed).toContain('Edit(docs/feature-map.md)')
+            expect(allowed).not.toContain(`Edit(${spelled})`)
+        }
+    )
 
     test('each role gets only its own tools', () => {
         expect(

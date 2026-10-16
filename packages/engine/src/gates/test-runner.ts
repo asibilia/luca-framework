@@ -25,7 +25,9 @@ const attribute = ({
 
 /**
  * Reads bun's JUnit report: one `<testsuite file=..>` per file, a nested
- * `<testsuite>` per describe, and a `<testcase>` per test.
+ * `<testsuite>` per describe, and a `<testcase>` per test. Each case keeps
+ * its `time`, in whole milliseconds, and its `assertions` count when the
+ * report has them (#518, #581).
  */
 export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
     const cases: TestCase[] = []
@@ -46,10 +48,18 @@ export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
                 continue
             }
             const name = attribute({ attrs, name: 'name' }) ?? ''
+            const seconds = Number(attribute({ attrs, name: 'time' }))
+            const assertions = Number(attribute({ attrs, name: 'assertions' }))
             cases.push({
                 file: attribute({ attrs, name: 'file' }) ?? suites[0] ?? '',
                 full_name: [...suites.slice(1), name].join(' > '),
                 status: 'passed',
+                ...(Number.isFinite(seconds)
+                    ? { duration_ms: Math.round(seconds * 1000) }
+                    : {}),
+                ...(Number.isInteger(assertions) && assertions >= 0
+                    ? { assertions }
+                    : {}),
             })
             open = selfClosing ? -1 : cases.length - 1
         } else if (open >= 0 && !closing) {
@@ -218,6 +228,59 @@ export const runBunTests = async ({
             })
         )
     }
+    return joinRuns({ runs, test_files })
+}
+
+/**
+ * A command that runs just these test files with plain `bun test` (#564):
+ * never the config's command plus the files, because Bun's
+ * `--path-ignore-patterns` leaves out even files named on the command line.
+ *
+ * @example
+ * fileTestsCommand({ files: ['src/a.e2e.test.ts'] }) // "bun test './src/a.e2e.test.ts'"
+ */
+export const fileTestsCommand = ({ files }: { files: string[] }): string =>
+    onlyTestFiles({ command: 'bun test', files })
+
+/**
+ * A fast run with a ticket's own-files run (#564) joined on (see
+ * `joinRuns`). An own run that gave no results at all means every file in it
+ * still doesn't load, which the fast run already said: it changes nothing,
+ * so the fast run, its command, and its output stay exactly as they are.
+ * (A fast test file that can't load yet, the usual red state, is such a
+ * file: it is not run twice in the journal.)
+ *
+ * @example
+ * const current = withOwnRun({ fast, own: await runTests({ ... }), test_files })
+ */
+export const withOwnRun = ({
+    fast,
+    own,
+    test_files,
+}: {
+    fast: TestRun
+    own: TestRun
+    test_files: string[]
+}): TestRun =>
+    own.cases.length === 0 ? fast : joinRuns({ runs: [fast, own], test_files })
+
+/**
+ * Several test runs as one: every case, `ok` only when all passed, and a test
+ * file without results only when no run gave it any. One run is itself. No
+ * run (a run of refactor tickets only, which the red check skips) gives an
+ * empty passing run. Used for the baseline and the red check
+ * (`runBunTests`) and for a ticket's own slow test files (#564).
+ *
+ * @example
+ * const run = joinRuns({ runs: [fast, own], test_files })
+ */
+export const joinRuns = ({
+    runs,
+    test_files,
+}: {
+    runs: TestRun[]
+    test_files: string[]
+}): TestRun => {
     const [first] = runs
     if (first === undefined) {
         return {
@@ -234,7 +297,7 @@ export const runBunTests = async ({
     const cases = runs.flatMap((run) => run.cases)
     const withResults = new Set(cases.map(({ file }) => file))
     return {
-        command: commands.join(' && '),
+        command: runs.map(({ command }) => command).join(' && '),
         ok: runs.every(({ ok }) => ok),
         exit_code: runs.find(({ ok }) => !ok)?.exit_code ?? first.exit_code,
         no_test_files: runs.every(({ no_test_files }) => no_test_files),

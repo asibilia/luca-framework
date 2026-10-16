@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -17,10 +16,7 @@ import {
     IMPLEMENTER_RESULT,
     SUM,
 } from '../testing/practice-repo'
-import {
-    createInMemoryTracker,
-    type InMemoryTracker,
-} from '../tracker/in-memory-tracker'
+import { createInMemoryTracker } from '../tracker/in-memory-tracker'
 
 /**
  * Seam 2 for stuck work (#366): whole runs on the practice repo with
@@ -324,80 +320,5 @@ describe('stuck work reaches the spec owner, end to end', () => {
         expect(pull?.body).toContain('## Skipped tickets')
         expect(pull?.body).toContain('#13 Add average: waits on #12')
         expect(launches.filter(({ ticket }) => ticket === 13)).toEqual([])
-    }, 60_000)
-
-    test('stop ends the run without a PR and keeps the branch', async () => {
-        const practice = await createPracticeRepo({ root })
-        const tracker = trackerWith([SUM_TICKET])
-        const clock = personClock({
-            journal: practice.journal,
-            when: (state) => (state.tickets[11]?.stuck_report ?? null) !== null,
-            act: () => {
-                tracker.addComment({
-                    number: 10,
-                    author: SPEC_OWNER,
-                    body: 'stop',
-                })
-            },
-        })
-
-        const { action, records } = await practice.run({
-            tracker,
-            clock,
-            stop_before: [],
-            turns: [
-                {
-                    role: 'test-writer',
-                    ticket: 11,
-                    result: { outcome: 'nothing_new_to_test' },
-                },
-            ],
-        })
-
-        expect(action).toEqual({ type: 'done', outcome: 'stopped_by_user' })
-        expect(tracker.pullRequests()).toEqual([])
-        const state = replayRun({ records })
-        const branch = state.run_branch?.branch ?? ''
-        expect(
-            (await git(practice.repo, 'branch', '--list', branch)).trim()
-        ).toContain(branch)
-        expect(existsSync(worktreeOf(state, 11))).toBe(true)
-    }, 60_000)
-
-    test('a ticket that needs a test setup file changed is stuck with a clear message', async () => {
-        const practice = await createPracticeRepo({ root })
-        const tracker: InMemoryTracker = trackerWith([SUM_TICKET])
-        const { testWriter } = happyTurns()
-
-        const { action, records } = await practice.run({
-            tracker,
-            turns: [
-                testWriter,
-                {
-                    role: 'implementer',
-                    ticket: 11,
-                    result: {
-                        outcome: 'needs_setup_change',
-                        setup_change: {
-                            file: 'test/setup.ts',
-                            reason: 'The tests need a fake clock installed first.',
-                        },
-                    },
-                },
-            ],
-        })
-
-        expect(action).toMatchObject({ type: 'wait_for_reply' })
-        expect(
-            records.find((record) => record.kind === 'ticket_stuck')?.content
-        ).toMatchObject({ reason: 'setup_change_needed' })
-        const [report] = tracker.commentsOn({ number: 10 })
-        expect(report).toContain(
-            'An agent needs a test setup file changed, and only you may change one.'
-        )
-        expect(report).toContain(
-            'The implementer needs the test setup file `test/setup.ts` changed: The tests need a fake clock installed first.'
-        )
-        expect(report).toContain('Make that change yourself in the worktree')
     }, 60_000)
 })

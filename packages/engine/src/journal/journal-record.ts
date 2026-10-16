@@ -14,6 +14,7 @@ import {
     LeftoverHitSchema,
     LeftoverPassSchema,
     RedCheckResultSchema,
+    TestCaseSchema,
     TestRunSchema,
 } from '../gates/gate-schemas'
 import {
@@ -617,13 +618,28 @@ export const GateTargetSchema = z.enum(['ticket', 'run_branch'])
 export type GateTarget = z.infer<typeof GateTargetSchema>
 
 /**
+ * Where a `gates_run` ran: a ticket's worktree, the run branch, or the
+ * final review's slow tests on the run branch (#563), which run once
+ * round 1's lenses are in and are not the fix round's gates.
+ */
+const GatesRunTargetSchema = z.enum([...GateTargetSchema.options, 'final_slow'])
+
+/**
  * The engine threw away every uncommitted change in a ticket's worktree, back
  * to `sha`, so a fresh test-writer starts clean after a bad test.
  */
 const WorktreeResetEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('worktree_reset'),
-    content: z.object({ sha: z.string().min(1) }),
+    content: z.object({
+        sha: z.string().min(1),
+        /**
+         * The engine found this mapped test checks nothing (#581); a fresh
+         * test-writer replaces it. Left out when the implementer sent a test
+         * back.
+         */
+        bad_test: BadTestSchema.optional(),
+    }),
 })
 
 /**
@@ -645,9 +661,14 @@ const GatesRunEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('gates_run'),
     content: z.object({
-        target: GateTargetSchema,
+        target: GatesRunTargetSchema,
         ok: z.boolean(),
         checks: z.array(GateCheckSchema),
+        /**
+         * A ticket's gates only: the test cases of the ticket's red test
+         * files, with their `expect()` counts (#581). Missing in old journals.
+         */
+        cases: z.array(TestCaseSchema).optional(),
     }),
 })
 
@@ -1038,6 +1059,11 @@ const FinalReviewStartedEntrySchema = z.object({
         rules: z.array(
             z.object({ path: z.string(), text: z.string().nullable() })
         ),
+        /**
+         * Round 1 with a slow test command: its slow tests are due once its
+         * lenses are in (#563). An older engine's record has none.
+         */
+        slow_due: z.boolean().optional(),
     }),
 })
 

@@ -49,6 +49,8 @@ export type FinalReviewAction =
       }
     /** Start a fresh, read-only lens reviewer on the run branch. */
     | { type: 'launch_lens'; lens: LensName; role: LensRole; prompt: string }
+    /** Run the config's slow tests on the run branch (#563), once round 1's lenses are in. */
+    | { type: 'run_final_slow_tests' }
     /** Every lens due this round approved. */
     | { type: 'pass_final_review' }
     /** A fix round on the lenses' findings starts. */
@@ -81,6 +83,7 @@ const FINAL_REVIEW_ACTION_TYPES: ReadonlySet<string> = new Set<
 >([
     'start_final_review',
     'launch_lens',
+    'run_final_slow_tests',
     'pass_final_review',
     'start_final_fix',
     'launch_final_fixer',
@@ -349,7 +352,12 @@ const fixStep = (args: DecideArgs): FinalReviewAction | null => {
  * the run branch, and a push. Then only the lenses that had blocking
  * findings re-review only the new changes (from the last round's HEAD),
  * with their earlier findings and the fixers' answers, and rule on each
- * "won't fix". A review still asking for changes after `MAX_FIX_ROUNDS` fix
+ * "won't fix". With a slow test command (#563), round 1 also runs the slow
+ * tests once every lens finished, and settles only once they ran; failing
+ * ones open the fix round (or join it). A fix round with no finding, opened only
+ * by them, is just its gates (which run the slow tests again) with their
+ * fix loop, the commit, and the push, and the review passes there.
+ * A review still asking for changes after `MAX_FIX_ROUNDS` fix
  * rounds is stuck, and so is a failed fix loop, a bad test, or a leftover.
  * Failed tries are capped per role like a ticket's. A stuck final review
  * waits for a reply; `ship` opens the PR anyway. A final review step cut
@@ -398,9 +406,21 @@ export const decideFinalReview = (args: DecideArgs): FinalReviewDecision => {
         )
         return working(stop === undefined ? steps : [stop])
     }
+    // Round 1's slow tests run once its lenses are in, never beside them:
+    // a lens's after-turn guard judges the run branch's worktree, so nothing
+    // else may write there while a lens runs. The round waits for them (#563).
+    if (review.slow_due && review.slow_tests === null) {
+        return working([{ type: 'run_final_slow_tests' }])
+    }
     if (review.fix === null) return working([{ type: 'pass_final_review' }])
     const step = fixStep(args)
     if (step !== null) return working([step])
+    // A fix round opened only by failing slow tests ends at its push: its
+    // gates ran the slow tests on what was pushed, and no lens had a finding
+    // to look at again (#563).
+    if (review.fix.findings.length === 0) {
+        return working([{ type: 'pass_final_review' }])
+    }
     // The fixes are pushed: the lenses with blocking findings look again.
     return working([
         {

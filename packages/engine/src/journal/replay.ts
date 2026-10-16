@@ -21,6 +21,7 @@ import {
     lensOf,
     type AgentRole,
     type BadTest,
+    type BadTestSource,
     type Finding,
     type FindingResponse,
     type ImplementerResult,
@@ -38,6 +39,7 @@ import type {
     GateCheck,
     LeftoverHit,
     RedCheckResult,
+    TestCase,
     TestRun,
 } from '../gates/gate-schemas'
 import type {
@@ -113,8 +115,16 @@ type TestsSentBackContent = Extract<
     { kind: 'tests_sent_back' }
 >['content']
 
-/** One gate run, as journaled. */
-export type ReplayedGates = { ok: boolean; checks: GateCheck[] }
+/**
+ * One gate run, as journaled. A ticket's gates also carry the test cases of
+ * its red test files, with their `expect()` counts (#581); none in an older
+ * journal, or in a join's or the final review's gates.
+ */
+export type ReplayedGates = {
+    ok: boolean
+    checks: GateCheck[]
+    cases?: TestCase[]
+}
 
 /** The red check's verdict, plus the test run's (clipped) output. */
 export type ReplayedRedCheck = RedCheckResult & { output: string }
@@ -191,10 +201,26 @@ export type TicketProgress = {
     implementer: ImplementerResult | null
     /** Follow-ups the implementer answered after failed gates. */
     gate_fix_rounds: number
-    /** How many times an implementer sent a test back as bad. */
+    /**
+     * How many times a test was sent back as bad, by the implementer or by
+     * the engine, which found a mapped test that passes with no `expect()`
+     * (#581). Both count toward `MAX_BAD_TEST_BOUNCES`.
+     */
     bad_test_bounces: number
     /** The latest test sent back as bad, for the fresh test-writer's prompt. */
     bad_test: BadTest | null
+    /**
+     * Who sent each bounce counted in `bad_test_bounces`, oldest first (the
+     * last is who sent `bad_test`). The prompt and the stuck details word each
+     * bounce from its source (#581).
+     */
+    bad_test_sources: BadTestSource[]
+    /**
+     * Who sent `bad_test`, kept beside it. A retry clears `bad_test_sources`
+     * but keeps this, so a fresh test-writer's prompt still words the bounce
+     * from its source (#581).
+     */
+    bad_test_source: BadTestSource | null
     /** The session each role's latest turn ran in, for follow-ups. */
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
@@ -355,6 +381,10 @@ export type FinalReviewState = {
     commit: { sha: string; files: string[] } | null
     /** The open fix round's push. */
     pushed: string | null
+    /** This round's slow tests are due (#563): round 1, with a slow command. */
+    slow_due: boolean
+    /** This round's slow test run (`gates_run` `final_slow`), once journaled. */
+    slow_tests: ReplayedGates | null
     /** Every nit the lenses reported, one per id. */
     nits: FinalFinding[]
     declined: FinalDeclined[]
@@ -402,6 +432,8 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     leftovers: null,
     commit: null,
     pushed: null,
+    slow_due: false,
+    slow_tests: null,
     nits: [],
     declined: [],
     assumptions: [],
@@ -620,6 +652,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     gate_fix_rounds: 0,
     bad_test_bounces: 0,
     bad_test: null,
+    bad_test_sources: [],
+    bad_test_source: null,
     sessions: {},
     assumptions: [],
     review: null,
@@ -1431,11 +1465,22 @@ const namespaced = ({
 })
 
 /**
- * The final review once every due lens finished its round: settles the
- * last fix round's "won't fix" answers per lens (see `declinedBy`), keeps
- * the nits, and opens a fix round on the blocking findings of every due
- * lens, with its fixers, gates, commit, and push afresh (and fresh fixer
- * sessions). No blocking finding leaves `fix` null: the review is clean.
+ * Every due lens finished this round, and its slow tests ran if they were
+ * due (#563): the round can settle.
+ */
+const roundDone = ({ review }: { review: FinalReviewState }): boolean =>
+    review.lenses_due.every((lens) => review.results[lens] !== undefined) &&
+    (!review.slow_due || review.slow_tests !== null)
+
+/**
+ * The final review once every due lens finished its round (and its slow
+ * tests ran, if due): settles the last fix round's "won't fix" answers per
+ * lens (see `declinedBy`), keeps the nits, and opens a fix round on the
+ * blocking findings of every due lens, with its fixers, gates, commit, and
+ * push afresh (and fresh fixer sessions). Failed slow tests open one too,
+ * even with no blocking finding (#563): its findings are empty, so only its
+ * gates (and their fix loop) run. No blocking finding and no failed slow
+ * test leaves `fix` null: the review is clean.
  */
 const settleRound = ({
     review,
@@ -1483,7 +1528,8 @@ const settleRound = ({
             ),
         ],
     }
-    if (blocking.length === 0) return { ...settled, fix: null }
+    const slowFailed = review.slow_due && review.slow_tests?.ok === false
+    if (blocking.length === 0 && !slowFailed) return { ...settled, fix: null }
     return {
         ...settled,
         fix: {
@@ -1503,6 +1549,19 @@ const settleRound = ({
         pushed: null,
     }
 }
+
+/**
+ * The bounce sources once `by` sends one more test back as bad (#581), each
+ * kept in order so a stuck detail can name who sent the first and who the
+ * second. They go together with `bad_test_bounces`.
+ */
+const bouncedBy = ({
+    progress,
+    by,
+}: {
+    progress: TicketProgress
+    by: BadTestSource
+}): BadTestSource[] => [...progress.bad_test_sources, by]
 
 /** A fixer's bad test, or the implementer's summary as its reason. */
 const badTestOf = (result: ImplementerResult): BadTest | null =>
@@ -1542,10 +1601,9 @@ const finalResultChange = ({
                 [lens]: namespaced({ lens, result: finished.result }),
             },
         }
-        const pending = next.lenses_due.some(
-            (due) => next.results[due] === undefined
-        )
-        return pending ? next : settleRound({ review: next })
+        return roundDone({ review: next })
+            ? settleRound({ review: next })
+            : next
     }
     if (finished.role === 'test-writer') {
         if (fix === null || fix.tests_answered) return review
@@ -1605,6 +1663,8 @@ const finalReviewAfter = ({
                 lenses_due: lenses,
                 rules,
                 results: {},
+                slow_due: record.content.slow_due ?? false,
+                slow_tests: null,
             }
         }
         case 'agent_started':
@@ -1679,11 +1739,20 @@ const finalReviewAfter = ({
                 },
             }
         }
-        case 'gates_run':
-            return {
-                ...review,
-                gates: { ok: record.content.ok, checks: record.content.checks },
+        case 'gates_run': {
+            const { ok, checks, target } = record.content
+            // Round 1's slow tests (#563): not the fix round's gates.
+            if (target === 'final_slow') {
+                const next = { ...review, slow_tests: { ok, checks } }
+                // They run once the lenses are in, so they settle the round;
+                // a run no round was waiting for settles none.
+                const awaited = review.slow_due && review.slow_tests === null
+                return awaited && roundDone({ review: next })
+                    ? settleRound({ review: next })
+                    : next
             }
+            return { ...review, gates: { ok, checks } }
+        }
         case 'leftover_scan':
             return { ...review, leftovers: record.content.hits }
         case 'commit_made':
@@ -1828,9 +1897,14 @@ const resultChange = ({
                     implementer: result,
                     test_update: null,
                     ...(bad_test === null
-                        ? { bad_test: null }
+                        ? { bad_test: null, bad_test_source: null }
                         : {
                               bad_test,
+                              bad_test_source: 'implementer',
+                              bad_test_sources: bouncedBy({
+                                  progress,
+                                  by: 'implementer',
+                              }),
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1845,6 +1919,11 @@ const resultChange = ({
                         ? {}
                         : {
                               bad_test,
+                              bad_test_source: 'implementer',
+                              bad_test_sources: bouncedBy({
+                                  progress,
+                                  by: 'implementer',
+                              }),
                               bad_test_bounces: progress.bad_test_bounces + 1,
                           }),
                 }
@@ -1868,6 +1947,11 @@ const resultChange = ({
                     : {
                           bad_test_bounces: progress.bad_test_bounces + 1,
                           bad_test,
+                          bad_test_source: 'implementer',
+                          bad_test_sources: bouncedBy({
+                              progress,
+                              by: 'implementer',
+                          }),
                       }
             const round: Partial<TicketProgress> =
                 progress.gates === null
@@ -2101,8 +2185,21 @@ const progressChange = ({
             })
         case 'worktree_reset':
             // A fresh test-writer and implementer start over on a clean
-            // worktree; the bad test and its count stay.
+            // worktree; the bad test and its count stay. A reset that carries
+            // a bad test is the engine's own finding (#581): it sets the bad
+            // test and counts as a bounce, with the engine as its source.
             return {
+                ...(record.content.bad_test === undefined
+                    ? {}
+                    : {
+                          bad_test: record.content.bad_test,
+                          bad_test_source: 'engine',
+                          bad_test_sources: bouncedBy({
+                              progress,
+                              by: 'engine',
+                          }),
+                          bad_test_bounces: progress.bad_test_bounces + 1,
+                      }),
                 test_writer: null,
                 red_check: null,
                 red_tests: [],
@@ -2136,9 +2233,16 @@ const progressChange = ({
                 },
             }
         case 'gates_run': {
-            const { ok, checks } = record.content
+            const { ok, checks, cases } = record.content
+            // Only a ticket's own gates keep their cases (#581).
             return record.content.target === 'ticket'
-                ? { gates: { ok, checks } }
+                ? {
+                      gates: {
+                          ok,
+                          checks,
+                          ...(cases === undefined ? {} : { cases }),
+                      },
+                  }
                 : { join_gates: { ok, checks } }
         }
         case 'ticket_joined':
@@ -2355,6 +2459,7 @@ const resumedProgress = ({
         red_fix_rounds: 0,
         gate_fix_rounds: 0,
         bad_test_bounces: 0,
+        bad_test_sources: [],
         rejoins: 0,
         test_updates: 0,
         test_update: null,

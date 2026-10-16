@@ -2,13 +2,14 @@ import { SPEC_OWNER } from './intake-fixtures'
 
 import type {
     AgentRole,
+    BadTest,
     CriterionTests,
     Finding,
     FindingResponse,
     FindingRuling,
 } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
-import type { TestRun } from '../gates/gate-schemas'
+import type { TestCase, TestRun } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     CommitStage,
@@ -501,11 +502,14 @@ export const gatesRun = ({
     ticket,
     target,
     ok,
+    cases,
 }: {
     /** `null` for the final review. */
     ticket: number | null
     target: 'ticket' | 'run_branch'
     ok: boolean
+    /** The test cases a ticket's gates journal (#581). Defaults to none. */
+    cases?: TestCase[]
 }): JournalEntry => ({
     kind: 'gates_run',
     ticket,
@@ -513,6 +517,7 @@ export const gatesRun = ({
     content: {
         target,
         ok,
+        ...(cases === undefined ? {} : { cases }),
         checks: [
             {
                 name: 'test',
@@ -611,16 +616,24 @@ export const agentFailed = ({
     },
 })
 
-/** The engine threw away a ticket worktree's uncommitted changes. */
+/**
+ * The engine threw away a ticket worktree's uncommitted changes. With a
+ * `bad_test`, the engine found that test checks nothing (#581).
+ */
 export const worktreeReset = ({
     ticket,
+    bad_test,
 }: {
     ticket: number
+    bad_test?: BadTest
 }): JournalEntry => ({
     kind: 'worktree_reset',
     ticket,
     role: null,
-    content: { sha: 'red-sha' },
+    content: {
+        sha: 'red-sha',
+        ...(bad_test === undefined ? {} : { bad_test }),
+    },
 })
 
 export const joined = ({ ticket }: { ticket: number }): JournalEntry => ({

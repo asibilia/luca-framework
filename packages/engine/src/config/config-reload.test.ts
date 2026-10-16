@@ -10,9 +10,10 @@ import { EngineConfigSchema, type EngineConfig } from './engine-config'
 
 /**
  * A resume re-reads the repo's config (#516): only the build fields
- * (`prepare`, `prepare_timeout_ms`, `prepare_concurrency`) and the test
- * time limit (`test_timeout_ms`, #542) may change in a run; every other
- * field stays as the run started with it.
+ * (`prepare`, `prepare_timeout_ms`, `prepare_concurrency`), the test time
+ * limit (`test_timeout_ms`, #542) and the fast test speed limit
+ * (`test_case_timeout_ms`, #580) may change in a run; every other field
+ * stays as the run started with it.
  */
 
 const STARTED: EngineConfig = {
@@ -34,6 +35,10 @@ describe('the fields a resume reloads', () => {
 
     test('checks are frozen', () => {
         expect(FROZEN_FIELDS).toContain('checks')
+    })
+
+    test('feature_map is frozen, like test_file_patterns (#583)', () => {
+        expect(FROZEN_FIELDS).toContain('feature_map')
     })
 
     test('leftover_allow is reloaded, not frozen (#520)', () => {
@@ -128,6 +133,36 @@ describe('configChanges', () => {
         ).toEqual([{ field: 'test_timeout_ms', from: null, to: 900_000 }])
     })
 
+    test('a changed fast test speed limit is a change (#580)', () => {
+        expect(
+            configChanges({
+                current: { ...STARTED, test_case_timeout_ms: 2000 },
+                next: { ...STARTED, test_case_timeout_ms: 5000 },
+            })
+        ).toEqual([{ field: 'test_case_timeout_ms', from: 2000, to: 5000 }])
+        expect(
+            configChanges({
+                current: STARTED,
+                next: { ...STARTED, test_case_timeout_ms: 2000 },
+            })
+        ).toEqual([{ field: 'test_case_timeout_ms', from: null, to: 2000 }])
+    })
+
+    test('a changed feature map is not a change (#583)', () => {
+        expect(
+            configChanges({
+                current: { ...STARTED, feature_map: 'docs/feature-map.md' },
+                next: { ...STARTED, feature_map: 'docs/other-map.md' },
+            })
+        ).toEqual([])
+        expect(
+            configChanges({
+                current: STARTED,
+                next: { ...STARTED, feature_map: 'docs/feature-map.md' },
+            })
+        ).toEqual([])
+    })
+
     test('changes to frozen fields are not changes', () => {
         expect(
             configChanges({
@@ -142,6 +177,18 @@ describe('configChanges', () => {
                 },
             })
         ).toEqual([])
+    })
+})
+
+describe('configChanges: the slow command (#563)', () => {
+    test('a resume keeps the slow command the run started with (#563)', () => {
+        const current = EngineConfigSchema.parse({
+            checks: { test: 'bun test', slow_test: 'bun test .e2e.test' },
+        })
+        const next = EngineConfigSchema.parse({
+            checks: { test: 'bun test', slow_test: 'bun test e2e/' },
+        })
+        expect(configChanges({ current, next })).toEqual([])
     })
 })
 
@@ -180,5 +227,22 @@ describe('withConfigChanges', () => {
 
         expect(removed).toEqual(STARTED)
         expect('test_timeout_ms' in removed).toBe(false)
+    })
+
+    test('sets a new fast test speed limit, and drops a removed one (#580)', () => {
+        const set = withConfigChanges({
+            config: STARTED,
+            changes: [{ field: 'test_case_timeout_ms', from: null, to: 2000 }],
+        })
+
+        expect(set).toEqual({ ...STARTED, test_case_timeout_ms: 2000 })
+
+        const removed = withConfigChanges({
+            config: set,
+            changes: [{ field: 'test_case_timeout_ms', from: 2000, to: null }],
+        })
+
+        expect(removed).toEqual(STARTED)
+        expect('test_case_timeout_ms' in removed).toBe(false)
     })
 })

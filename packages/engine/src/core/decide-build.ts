@@ -44,18 +44,26 @@ import {
     reviewFixSection,
     reviewSections,
 } from './review-text'
-import { badTestDetail, retrySection, setupChangeDetail } from './stuck-text'
+import {
+    badTestDetail,
+    badTestTwiceText,
+    retrySection,
+    setupChangeDetail,
+} from './stuck-text'
 
 import {
     CHANGESETS_LENS_SECTION,
     CHANGESETS_SECTION,
+    featureMapSection,
     prepareSection,
     rejoinSection,
     rolePrompt,
     testUpdateSection,
 } from '../agents/role-prompts'
 import type { AgentRole, BadTest, CriterionTests } from '../agents/role-results'
+import { featureMapPath } from '../config/engine-config'
 import { endedText } from '../gates/gate-schemas'
+import { findCase } from '../gates/red-check'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type {
     ChangesetBump,
@@ -81,6 +89,7 @@ export {
     MAX_FIX_ROUNDS,
     MAX_REJOINS,
     MAX_TEST_UPDATES,
+    MAX_TESTS_PER_CRITERION,
 } from './loop-caps'
 
 /**
@@ -165,9 +174,11 @@ export type BuildAction =
       }
     /**
      * Throw away every uncommitted change in the ticket's worktree, so a
-     * fresh test-writer starts clean after a bad test.
+     * fresh test-writer starts clean after a bad test. With a `bad_test`, the
+     * engine itself found the test checks nothing (#581); without one, the
+     * implementer sent it back.
      */
-    | { type: 'reset_ticket_worktree'; ticket: number }
+    | { type: 'reset_ticket_worktree'; ticket: number; bad_test?: BadTest }
     /** Prove every criterion has a test, new tests fail, old tests pass. */
     | {
           type: 'run_red_check'
@@ -449,6 +460,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         // A test update names the bad test in its own section.
         bad_test: progress.test_update === null ? progress.bad_test : null,
+        bad_test_by: progress.bad_test_source ?? undefined,
         sections: [
             ...promptSections({ role, progress }),
             ...(follow_up === undefined
@@ -648,7 +660,7 @@ const codeStep = ({
             return stuck({
                 ticket: number,
                 reason: 'bad_test',
-                detail: `The implementer sent a test back as bad a second time: ${badTestText({ progress })}`,
+                detail: `${badTestTwiceText({ earlier: progress.bad_test_sources.at(-2) ?? 'implementer', latest: 'implementer' })}: ${badTestText({ progress })}`,
             })
         }
         // Throw away the implementer's work; replay then clears the ticket's
@@ -657,8 +669,55 @@ const codeStep = ({
     }
     return (
         gateStep({ snapshot, ticket, progress, run_notes }) ??
+        emptyTestStep({ ticket, progress }) ??
         commitStep({ stage: 'green', ticket, progress })
     )
+}
+
+/** Why the engine sends back a mapped test that checks nothing (#581). */
+export const EMPTY_TEST_REASON =
+    'It passes but runs no expect(), so it checks nothing (#581).'
+
+/**
+ * After a ticket's gates pass: a mapped test that passed with no `expect()`
+ * goes back to a fresh test-writer, like a bad test (#581), and counts toward
+ * the same cap. Not on a refactor ticket (it has no map), and not after a
+ * rebase (the code is already reviewed). An older journal's cases carry no
+ * count, so nothing is sent back. `null`: go on.
+ *
+ * It is not part of `gateStep`, which the review's fixes also use: their
+ * tests are not red-checked.
+ */
+const emptyTestStep = ({
+    ticket,
+    progress,
+}: {
+    ticket: TicketSnapshot
+    progress: TicketProgress
+}): BuildAction | null => {
+    if (isRefactorTicket({ ticket }) || progress.rejoin !== null) return null
+    const cases = progress.gates?.cases ?? []
+    const empty = progress.red_tests.find((test) => {
+        const found = findCase({ cases, test })
+        return found?.status === 'passed' && found.assertions === 0
+    })
+    if (empty === undefined) return null
+    if (progress.bad_test_bounces >= MAX_BAD_TEST_BOUNCES) {
+        return stuck({
+            ticket: ticket.number,
+            reason: 'bad_test',
+            detail: `${badTestTwiceText({ earlier: progress.bad_test_sources.at(-1) ?? 'implementer', latest: 'engine' })}: "${empty.name}" in ${empty.file} runs no expect().`,
+        })
+    }
+    return {
+        type: 'reset_ticket_worktree',
+        ticket: ticket.number,
+        bad_test: {
+            file: empty.file,
+            name: empty.name,
+            reason: EMPTY_TEST_REASON,
+        },
+    }
 }
 
 /**
@@ -1317,24 +1376,40 @@ export const decideBuild = ({
                       section: prepareSection({ command }),
                   })
               )
-    return state.changesets ? prepared.map(withChangesetsSections) : prepared
+    const map =
+        state.config === null ? null : featureMapPath({ config: state.config })
+    const mapped =
+        map === null
+            ? prepared
+            : prepared.map((step) =>
+                  withWriterSection({
+                      step,
+                      section: featureMapSection({ path: map }),
+                      only: 'test-writer',
+                  })
+              )
+    return state.changesets ? mapped.map(withChangesetsSections) : mapped
 }
 
 /**
  * A fresh test-writer's or implementer's launch (a ticket's or the final
  * review's fixers), with `section` added to its prompt, such as the repo's
- * prepare command. Any other step as it is.
+ * prepare command. Any other step as it is. With `only`, just that role's
+ * launches get it (the feature map is the test-writer's, #583).
  */
 const withWriterSection = ({
     step,
     section,
+    only,
 }: {
     step: BuildAction
     section: string
+    only?: 'test-writer' | 'implementer'
 }): BuildAction => {
     const writesCode =
         (step.type === 'launch_agent' || step.type === 'launch_final_fixer') &&
-        (step.role === 'test-writer' || step.role === 'implementer')
+        (step.role === 'test-writer' || step.role === 'implementer') &&
+        (only === undefined || step.role === only)
     return writesCode
         ? { ...step, prompt: `${step.prompt}\n\n${section}` }
         : step

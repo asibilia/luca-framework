@@ -9,10 +9,12 @@ import {
     leaveOutIn,
     need,
     runTurn,
+    slowTestsIn,
     type BuildContext,
 } from './execute-build'
 import { closeSessions, openSessionsIn } from './session-close'
 
+import { hasSlowTests } from '../config/engine-config'
 import type { EngineCommit } from '../git/git-adapter'
 import type { Journal } from '../journal/journal'
 import {
@@ -119,6 +121,12 @@ export const executeFinalReviewAction = async ({
                         paths: config.rule_files,
                         worktree: worktree.path,
                     }),
+                    // Round 1's slow tests run once its lenses are in (#563);
+                    // a later round's ran in the fix round's gates. A config
+                    // with no slow command journals none, as before.
+                    ...(hasSlowTests({ config })
+                        ? { slow_due: action.round === 1 }
+                        : {}),
                 },
             })
             return
@@ -169,6 +177,8 @@ export const executeFinalReviewAction = async ({
             })
             return
         }
+        case 'run_final_slow_tests':
+            return slowTestsIn({ context, worktree })
         case 'pass_final_review':
             journal.append({
                 kind: 'final_review_passed',

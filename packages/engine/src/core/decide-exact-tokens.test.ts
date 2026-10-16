@@ -149,6 +149,70 @@ describe('decision step: exact tokens', () => {
         expect(usage && countedTokens({ tokens: usage.tokens })).toBe(19_100)
     })
 
+    test("the run's usage record adds the final review's turns to the tickets', and its total is every journaled turn's input + output + cache-creation tokens", () => {
+        const writer = {
+            [OPUS]: tokens(1000, 2000, 50_000, 3000),
+            [HAIKU]: tokens(100, 200, 400, 300),
+        }
+        const coder = { [OPUS]: tokens(1500, 4000, 80_000, 5000) }
+        const reviewer = { [OPUS]: tokens(500, 700, 20_000, 800) }
+        const lens = { [OPUS]: tokens(200, 300, 10_000, 100) }
+        const built = builtWith([
+            turnSession({ role: 'test-writer', model_usage: writer }),
+            turnSession({ role: 'implementer', model_usage: coder }),
+            turnSession({ role: 'ticket-reviewer', model_usage: reviewer }),
+        ])
+        const ticketUsage = decideAfter(built)
+        if (ticketUsage.type !== 'record_usage') {
+            throw new Error(ticketUsage.type)
+        }
+        const lensSession: JournalEntry = {
+            kind: 'agent_session',
+            ticket: null,
+            role: 'architecture-lens',
+            content: {
+                role: 'architecture-lens',
+                session: {
+                    session_id: 'lens',
+                    usage: tokens(1, 1, 1, 1),
+                    model_usage: lens,
+                    rate_limit_events: [],
+                    billing_error: false,
+                },
+            },
+        }
+
+        const action = decideAfter([
+            ...built,
+            {
+                kind: 'usage_recorded',
+                ticket: 11,
+                role: null,
+                content: ticketUsage.usage,
+            },
+            lensSession,
+            PR_OPENED,
+            worktreesRemoved({ paths: [ticketPath(11), RUN_BRANCH_PATH] }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'record_usage',
+            usage: {
+                scope: 'run',
+                ticket: null,
+                agent_turns: 4,
+                tokens: tokens(3300, 7200, 160_400, 9200),
+            },
+        })
+        const usage = action.type === 'record_usage' ? action.usage : null
+        const total = usage && countedTokens({ tokens: usage.tokens })
+        expect(total).toBe(19_700)
+        const journaled = [writer, coder, reviewer, lens]
+            .flatMap((model_usage) => Object.values(model_usage))
+            .reduce((sum, each) => sum + countedTokens({ tokens: each }), 0)
+        expect(total).toBe(journaled)
+    })
+
     test("an older journal, with no tokens per model, still replays: the run's usage counts each turn by its main loop's usage", () => {
         const steps = ticketBuilt({ ticket: 11 })
         const ticketUsage: JournalEntry = {

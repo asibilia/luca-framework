@@ -4,7 +4,11 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { loadEngineConfig } from './engine-config'
+import {
+    EngineConfigSchema,
+    featureMapPath,
+    loadEngineConfig,
+} from './engine-config'
 
 let repoRoot = ''
 
@@ -155,5 +159,93 @@ describe('engine config', () => {
 
         expect(result.ok).toBe(false)
         if (!result.ok) expect(result.error).toContain('checks.test')
+    })
+})
+
+describe('the feature map path (#583)', () => {
+    const configWith = (feature_map?: string) =>
+        EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            ...(feature_map === undefined ? {} : { feature_map }),
+        })
+
+    test('is the path as written when it is already clean', () => {
+        expect(
+            featureMapPath({ config: configWith('docs/feature-map.md') })
+        ).toBe('docs/feature-map.md')
+    })
+
+    test.each([
+        ['./docs/feature-map.md'],
+        ['docs//feature-map.md'],
+        ['docs/../docs/feature-map.md'],
+        ['./docs/./feature-map.md'],
+    ])('%s is docs/feature-map.md', (spelled) => {
+        expect(featureMapPath({ config: configWith(spelled) })).toBe(
+            'docs/feature-map.md'
+        )
+    })
+
+    test('is null with no feature map', () => {
+        expect(featureMapPath({ config: configWith() })).toBeNull()
+    })
+
+    test.each([
+        ['../feature-map.md'],
+        ['docs/../../feature-map.md'],
+        ['./../feature-map.md'],
+        ['/etc/feature-map.md'],
+        ['docs/'],
+        ['./'],
+        ['..'],
+        ['.'],
+    ])(
+        'a feature_map of %s is an error naming the field: it is not a file inside the repo',
+        async (feature_map) => {
+            await writeConfig({
+                text: JSON.stringify({
+                    checks: { test: 'bun test' },
+                    feature_map,
+                }),
+            })
+
+            const result = await loadEngineConfig({ repo_root: repoRoot })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain('feature_map')
+                expect(result.error).toContain('a file inside the repo')
+            }
+        }
+    )
+
+    test.each([
+        ['docs/feature-map.md'],
+        ['./docs/feature-map.md'],
+        ['docs/../docs/feature-map.md'],
+        ['FEATURES.md'],
+    ])('a feature_map of %s is accepted', async (feature_map) => {
+        await writeConfig({
+            text: JSON.stringify({ checks: { test: 'bun test' }, feature_map }),
+        })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(true)
+    })
+
+    test('the config keeps the path as written', async () => {
+        await writeConfig({
+            text: JSON.stringify({
+                checks: { test: 'bun test' },
+                feature_map: './docs/feature-map.md',
+            }),
+        })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok && result.config.feature_map).toBe(
+            './docs/feature-map.md'
+        )
     })
 })
