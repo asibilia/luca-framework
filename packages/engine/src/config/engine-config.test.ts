@@ -190,6 +190,50 @@ describe('the feature map path (#583)', () => {
         expect(featureMapPath({ config: configWith() })).toBeNull()
     })
 
+    test.each([
+        ['../feature-map.md'],
+        ['docs/../../feature-map.md'],
+        ['./../feature-map.md'],
+        ['/etc/feature-map.md'],
+        ['docs/'],
+        ['./'],
+        ['..'],
+        ['.'],
+    ])(
+        'a feature_map of %s is an error naming the field: it is not a file inside the repo',
+        async (feature_map) => {
+            await writeConfig({
+                text: JSON.stringify({
+                    checks: { test: 'bun test' },
+                    feature_map,
+                }),
+            })
+
+            const result = await loadEngineConfig({ repo_root: repoRoot })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain('feature_map')
+                expect(result.error).toContain('a file inside the repo')
+            }
+        }
+    )
+
+    test.each([
+        ['docs/feature-map.md'],
+        ['./docs/feature-map.md'],
+        ['docs/../docs/feature-map.md'],
+        ['FEATURES.md'],
+    ])('a feature_map of %s is accepted', async (feature_map) => {
+        await writeConfig({
+            text: JSON.stringify({ checks: { test: 'bun test' }, feature_map }),
+        })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(true)
+    })
+
     test('the config keeps the path as written', async () => {
         await writeConfig({
             text: JSON.stringify({

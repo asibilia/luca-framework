@@ -1,4 +1,4 @@
-import { join, normalize } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 
 import { z } from 'zod'
 
@@ -54,6 +54,22 @@ export const MuninnConfigSchema = z.object({
 export const DecisionModelConfigSchema = z.object({
     model: DecisionModelIdSchema.default(DEFAULT_DECISION_MODEL),
 })
+
+/**
+ * Whether a config path names a file inside the repo (#583): not absolute,
+ * not ending in `/` (a folder), and, once cleaned (`normalize`), neither the
+ * repo root nor a path that climbs out of it with `..`.
+ */
+const isFileInsideRepo = (path: string): boolean => {
+    const clean = normalize(path)
+    return (
+        !isAbsolute(path) &&
+        !path.endsWith('/') &&
+        clean !== '.' &&
+        clean !== '..' &&
+        !clean.startsWith('../')
+    )
+}
 
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule
@@ -117,10 +133,19 @@ export const EngineConfigSchema = z.object({
     leftover_allow: z.array(z.string().min(1)).optional(),
     /**
      * A markdown file listing each feature and the test files that prove it
-     * (#583), relative to the repo root. The red check refuses a new test file
-     * it doesn't list, and the test-writer may edit it. Left out, no map.
+     * (#583), relative to the repo root: a file inside the repo, so not an
+     * absolute path, not one that climbs out with `..`, and not a folder (no
+     * trailing `/`). The red check refuses a new test file it doesn't list,
+     * and the test-writer may edit it. Left out, no map.
      */
-    feature_map: z.string().min(1).optional(),
+    feature_map: z
+        .string()
+        .min(1)
+        .refine(isFileInsideRepo, {
+            message:
+                'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not a folder',
+        })
+        .optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
