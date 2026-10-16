@@ -21,6 +21,35 @@ const lastPart = (name: string): string =>
 const loose = (text: string): string => text.replace(/[\\'"`]/g, '')
 
 /**
+ * Said after a new unmapped test found in the text of a test file that does
+ * not load yet: with no results to check against, a `test(` inside a string
+ * or a comment counts as a test too (#581).
+ */
+const NOT_LOADED_HINT =
+    '. The file does not load yet, so every test( in its text counts, even one inside a string or a comment'
+
+/**
+ * Whether a test name written in a file's text (`own`) is the test bun prints
+ * as `full_name`: equal to it, at its end after " > " (not split on the last
+ * " > ": a test name may hold one itself), or the same last part. One rule
+ * for a mapped name and for a name found in the text.
+ */
+const namesTest = ({
+    full_name,
+    own,
+}: {
+    full_name: string
+    own: string
+}): boolean => {
+    const full = full_name.trim()
+    return (
+        full === own ||
+        full.endsWith(` > ${own}`) ||
+        lastPart(full) === lastPart(own)
+    )
+}
+
+/**
  * The test case a named test is, in its file: the one whose full name
  * matches, else the only one whose last part does. `undefined` if none (or
  * more than one) does.
@@ -98,8 +127,10 @@ const checkNewTest = ({
  * @param sources - The text of each mapped test file, `null` if missing.
  * @param changed_test_sources - Each test file the ticket changed, as it was
  *   at the ticket's base and as it is now: a new test is a name in the
- *   second the first doesn't have (#581). Read from the files' text, so a
- *   file that doesn't load yet still counts.
+ *   second the first doesn't have (#581). For a file that has results in
+ *   `current`, only a name of a case that ran counts, so a `test(` inside a
+ *   string (a fixture) or a comment does not. A file that doesn't load yet
+ *   has none, so its text alone decides, and every `test(` in it counts.
  * @param feature_map - The repo's feature map, when the config names one
  *   (#583): its `path`, and `files`, the test files it lists (from
  *   `featureMapFiles`), `null` when the map file is missing. A test file the
@@ -149,22 +180,27 @@ export const checkRed = ({
         }
     }
     for (const { file, base, current: text } of changed_test_sources) {
-        // A mapped name is the full name bun prints, so it ends with the
-        // test's own name after " > ". Not split on the last " > ": a test
-        // name may hold one itself.
         const mapped = mapping
             .flatMap(({ tests }) => tests)
             .filter((test) => test.file === file)
             .map(({ name }) => name.trim())
+        // A file that loaded has results: a name in its text is a new test
+        // only if a case of that name ran, so a `test('x'` inside a string
+        // (a fixture) or a comment is not one. A file with none (it doesn't
+        // load yet) is read from its text alone.
+        const loaded = !current.files_without_results.includes(file)
+        const ran = current.cases.filter((found) => found.file === file)
         for (const name of addedTestNames({ base, current: text })) {
             const own = name.trim()
             if (
-                !mapped.some(
-                    (full) => full === own || full.endsWith(` > ${own}`)
-                )
+                loaded &&
+                !ran.some(({ full_name }) => namesTest({ full_name, own }))
             ) {
+                continue
+            }
+            if (!mapped.some((full) => namesTest({ full_name: full, own }))) {
                 problems.push(
-                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)`
+                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)${loaded ? '' : NOT_LOADED_HINT}`
                 )
             }
         }

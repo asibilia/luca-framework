@@ -123,8 +123,103 @@ describe('the red check: honest new tests (#581)', () => {
             ],
         })
         expect(result.problems).toContain(
-            '"b" in src/new.test.ts: a new test the map doesn\'t name (map it to a criterion, or remove it)'
+            '"b" in src/new.test.ts: a new test the map doesn\'t name (map it to a criterion, or remove it). The file does not load yet, so every test( in its text counts, even one inside a string or a comment'
         )
+    })
+
+    const SUM_FILE = 'src/sum.test.ts'
+    const redOf = ({
+        source,
+        ran,
+        mapped,
+    }: {
+        source: string
+        ran: string[]
+        mapped: string[]
+    }) =>
+        checkRed({
+            criteria_ids: ['AC1'],
+            mapping: [
+                {
+                    criterion_id: 'AC1',
+                    tests: mapped.map((name) => ({ file: SUM_FILE, name })),
+                },
+            ],
+            baseline: run([]),
+            current: run(
+                ran.map((full_name) => ({
+                    file: SUM_FILE,
+                    full_name,
+                    status: 'failed' as const,
+                }))
+            ),
+            test_files: [SUM_FILE],
+            sources: { [SUM_FILE]: source },
+            changed_test_sources: [
+                { file: SUM_FILE, base: null, current: source },
+            ],
+        })
+
+    test('a test( inside a template string of a file that loaded is a fixture, not a new test', () => {
+        const source = [
+            "describe('sum', () => {",
+            "  test('real', () => {",
+            "    const fixture = `test('fixture name', () => {})`",
+            '  })',
+            '})',
+        ].join('\n')
+        const result = redOf({
+            source,
+            ran: ['sum > real'],
+            mapped: ['sum > real'],
+        })
+        expect(result.problems).toEqual([])
+        expect(result.ok).toBe(true)
+    })
+
+    test('a real unmapped test in a file that loaded is refused, next to a fixture that is not', () => {
+        const source = [
+            "describe('sum', () => {",
+            "  test('a', () => {})",
+            "  test('extra', () => {})",
+            "  test('holder', () => { const f = `test('fixture name', () => {})` })",
+            '})',
+        ].join('\n')
+        const result = redOf({
+            source,
+            ran: ['sum > a', 'sum > extra', 'sum > holder'],
+            mapped: ['sum > a'],
+        })
+        const unmapped = result.problems.filter((p) =>
+            p.includes("a new test the map doesn't name")
+        )
+        expect(unmapped.map((p) => p.split('"')[1]).sort()).toEqual([
+            'extra',
+            'holder',
+        ])
+        expect(unmapped.every((p) => !p.includes('does not load'))).toBe(true)
+    })
+
+    test('a loaded test inside nested describes is found by the end of its full name', () => {
+        const source =
+            "describe('outer', () => { describe('inner', () => { test('deep', () => {}) }) })"
+        const result = redOf({
+            source,
+            ran: ['outer > inner > deep'],
+            mapped: [],
+        })
+        expect(result.problems.some((p) => p.includes('"deep"'))).toBe(true)
+    })
+
+    test('a loaded test whose name holds " > " is found by the end of its full name', () => {
+        const source =
+            "describe('sum', () => { test('a > b', () => {}); test('fixture', () => { const f = `test('c > d', () => {})` }) })"
+        const result = redOf({
+            source,
+            ran: ['sum > a > b', 'sum > fixture'],
+            mapped: ['sum > a > b', 'sum > fixture'],
+        })
+        expect(result.problems).toEqual([])
     })
 
     test('the cap and an unmapped test are both reported', () => {

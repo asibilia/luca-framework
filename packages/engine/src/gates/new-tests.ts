@@ -5,7 +5,9 @@
  * names aren't known until they run. The test-writer must use plain names.
  * A call on something else, like `pattern.test('abc')`, is not a test. This
  * is a text scan, not a parse, so a `test('...')` inside a string or comment
- * of a changed file counts as a test name.
+ * of a changed file counts as a test name. The red check trusts the scan
+ * alone only for a file that doesn't load yet; for a file that ran, it keeps
+ * just the names of cases that ran.
  *
  * @example
  * testNamesIn({ source: "test('adds', () => {})" }) // ['adds']
