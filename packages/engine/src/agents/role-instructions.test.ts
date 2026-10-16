@@ -61,7 +61,7 @@ test("the implementer's gate line names the slow command and says it runs at the
     })
     expect(text).toContain('Make every gate pass: `bun test src`, `tsc`.')
     expect(text).toContain(
-        'The slow tests (`bun test .e2e.test`) run at the final review, and the ticket\'s gates also run the slow test files it added or changed; you may run them yourself.'
+        "The slow tests (`bun test .e2e.test`) run at the final review, and the ticket's gates also run the slow test files it added or changed; you may run them yourself."
     )
 })
 
