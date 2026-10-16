@@ -94,7 +94,8 @@ on with a run from its journal (#369).
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 | `src/gates/test-runner.ts` | Runs the config's `bun` test commands with bun's JUnit reporter. |
-| `src/gates/red-check.ts` | The **red check**. Pure. |
+| `src/gates/red-check.ts` | The **red check**. Pure. At most `MAX_TESTS_PER_CRITERION` tests per criterion, every new test mapped (#581), and every new test file in the feature map (#583). |
+| `src/gates/new-tests.ts` | Pure: the test names in a test file's text (`testNamesIn`), and the ones a change added (`addedTestNames`, #581). |
 | `src/gates/feature-map.ts` | Pure: the test files a repo's feature map lists (`featureMapFiles`, #583). |
 | `src/gates/gate-runner.ts` | Runs the config's **gates**: each test command, types, lint. First, the install when a manifest changed. |
 | `src/gates/prepare-slots.ts` | Lets only so many prepare runs go at once (`prepare_concurrency`, 1 by default); the rest wait their turn. |
@@ -178,7 +179,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
       failed: follow_up_agent test-writer (same session), a failed try, ≤ 3 tries
       then mark_already_done  comment on the spec issue; the ticket
                           is done, like a pushed one                     ──> ticket_already_done
-  run_red_check           criteria covered, new tests fail, old pass,
+  run_red_check           criteria covered (≤ 3 tests each), every new test
+                          mapped, a new test file listed in the feature map
+                          (if the repo has one), new tests fail, old pass,
                           and some file changed                          ──> red_check
     failed: follow_up_agent test-writer (same session), check again, ≤ 3 rounds
   commit_ticket red       leftover scan, then commit                     ──> leftover_scan, commit_made
@@ -428,8 +431,9 @@ loop like any failed gate (see "The final review"). Slow
 commands get the same time limit as the others, `test_timeout_ms`, and a
 slow command that runs out of time says so. Agents may run each slow
 command, like the test commands (a `bun` one may take extra arguments), and
-the implementer's instructions say they run at the final review. Left out,
-nothing changes: no `slow_test` check, no extra command.
+the implementer's instructions say they run at the final review, and that the
+ticket's gates also run the slow test files it added or changed (see the next
+paragraph). Left out, nothing changes: no `slow_test` check, no extra command.
 
 **A ticket's own slow tests (#564).** The fast command leaves out every slow
 test file, so a ticket that adds or changes one would never run it. With a
@@ -470,9 +474,15 @@ milliseconds) in `.luca/config.json`; this repo's is 2000:
 
 - It goes to every `bun` command of `checks.test` as `--timeout=<n>`, in every
   run of it: the baseline, the red check, the already-done check, and the
-  gates (`bunTestCommands` and the gates' fast test call). `scripts/run-checks.ts`
-  does the same, so the PR check and the gates agree. Agents' own `bun test`
-  runs stay as they wrote them.
+  gates (`bunTestCommands` and the gates' fast test call). The one exception
+  is the already-done check when `checks.slow_test` is set: it runs the named
+  files with plain `bun test` (so a named slow test really runs), which gets no
+  `--timeout`. `scripts/run-checks.ts` does the same, so the PR check and the
+  gates agree. Agents' own `bun test` runs stay as they wrote them.
+- It applies to every fast test with no timeout of its own, old ones too, in
+  the baseline, red check, join, and final runs. A test that was always
+  close to the limit can time out on a busy machine; if one does, raise
+  `test_case_timeout_ms`.
 - A test's own timeout option (`test(name, fn, 30_000)`) overrides
   `--timeout`, so the flag alone does not hold a test that sets its own. In a
   ticket's gates, the tests in the files the ticket changed are also checked
@@ -709,6 +719,32 @@ given" only when the implementer gave none. A test the engine sent back (see
 below) names the test and says it runs no `expect()`. The "Why" line is the
 same whoever sent it back; the detail says who sent each of the two bounces.
 
+**The cap and unmapped tests (#581).** A test-writer may map at most
+`MAX_TESTS_PER_CRITERION` (3, in `core/loop-caps.ts`) tests to a criterion; a
+fourth is the red check problem "AC1 has 4 tests; write at most 3 per
+criterion". Every test the ticket adds must be in the map too. The red check
+reads each test file the ticket changed as it was at the ticket's base and as
+it is now (`addedTestNames` in `gates/new-tests.ts`: the plain string names
+of its `test(` and `it(` calls, not a `test.each` or a template name), and a
+name only the new text has is a new test. One that no mapped name equals, or
+ends with after " > ", is the problem `"extra" in src/sum.test.ts: a new test
+the map doesn't name (map it to a criterion, or remove it)`. The names come
+from a text scan, so the red check trusts them only as far as it can check
+them. In a file that ran (it has results in the red run), a name counts as a
+new test only if a test of that name ran, so a `test('x', ...)` inside a
+template-string fixture is not one. A file that doesn't load yet (its code
+isn't written) has no results, so every `test(` in its text counts, even one
+inside a string or a comment; the problem then adds "The file does not load
+yet, so every test( in its text counts, even one inside a string or a
+comment".
+
+**Timings (#518).** The journal records how long things took. A gate check
+has `duration_ms`, how long its command ran, and the `prepare` check also
+`wait_ms`, how long it waited for a prepare slot. A test case in a test run
+has `duration_ms` (from bun's JUnit `time`) and `assertions` (its `expect()`
+count, #581). All of them are optional: a journal written before they existed
+has none, and nothing that reads them needs them.
+
 **A test that checks nothing** (#581). A ticket's gates journal `cases` in
 `gates_run`: the test cases of the ticket's red test files, from the fast runs
 and the run of its own slow test files, each with its `expect()` count (join
@@ -729,7 +765,10 @@ or a ticket rejoining after a rebase (its code is already reviewed) is not
 checked. A review fix's gates are not checked either: their tests are not
 red-checked. The latest bounce's source also words the fresh test-writer's
 prompt ("The engine found this test checks nothing", or "The implementer says
-this test is wrong").
+this test is wrong"). Replay keeps it as `bad_test_source`, beside `bad_test`:
+a `retry` clears `bad_test_sources` with the bounce count, but keeps the bad
+test and who sent it, so a test-writer started again after a retry is told the
+same thing.
 
 **The feature map (#583).** Left alone, tickets add new test files wherever
 they like and the suite sprawls. A repo can keep a **feature map**, a markdown
@@ -740,11 +779,13 @@ file that says which test files prove which feature, and name it in
 { "checks": { "test": "bun test" }, "feature_map": "docs/feature-map.md" }
 ```
 
-The path is relative to the repo root, and every part of the engine reads it
-through `featureMapPath` (`config/engine-config.ts`), which cleans it the way a
-worktree path is cleaned everywhere else: `./docs/feature-map.md` and
-`docs//feature-map.md` are `docs/feature-map.md`. The file is plain markdown,
-one section per feature:
+The path is relative to the repo root and names a file inside the repo: an
+absolute path, one that leaves the repo with `..`, the repo root, or a folder
+(a trailing `/`) is a config error naming `feature_map`. Every part of the
+engine reads it through `featureMapPath` (`config/engine-config.ts`), which
+cleans it the way a worktree path is cleaned everywhere else:
+`./docs/feature-map.md` and `docs//feature-map.md` are `docs/feature-map.md`.
+The file is plain markdown, one section per feature:
 
 ```markdown
 ## Running one ticket

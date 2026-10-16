@@ -64,8 +64,12 @@ _Avoid_: hook, checks
 End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs, apart from the slow test files that ticket names or changes, and runs them all at the final review.
 _Avoid_: e2e gate, long tests
 
+**Feature map**:
+A markdown file a repo names in `feature_map` that lists each feature and the test files that prove it. The red check refuses a new test file the map doesn't list, so tickets add tests to a feature's files instead of scattering new ones.
+_Avoid_: test index, test registry
+
 **Red check**:
-The gate that proves a ticket's new tests fail, and every old test still passes, before any code is written.
+The gate that proves a ticket's new tests fail, and every old test still passes, before any code is written. It also refuses more than three tests for one criterion, and any new test the test-writer's criterion mapping doesn't name.
 _Avoid_: fail-first check
 
 **Fix loop**:
