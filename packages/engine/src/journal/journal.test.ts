@@ -581,6 +581,26 @@ describe('replay: a bad test the engine found (#581)', () => {
 
         expect(progress?.bad_test_bounces).toBe(0)
         expect(progress?.bad_test_sources).toEqual([])
+        // The bad test stays for the fresh test-writer, and so does who sent it.
+        expect(progress?.bad_test).toEqual(BAD_TEST)
+        expect(progress?.bad_test_source).toBe('engine')
+    })
+
+    test('the latest source stays beside the bad test: none at first, the implementer, then the engine', () => {
+        const sourceAfter = (
+            entries: Parameters<typeof recordsFrom>[0]['entries']
+        ) => progressAfter(entries)?.bad_test_source
+
+        expect(sourceAfter([])).toBeNull()
+        expect(
+            sourceAfter([implemented({ ticket: 11, outcome: 'bad_test' })])
+        ).toBe('implementer')
+        expect(
+            sourceAfter([
+                implemented({ ticket: 11, outcome: 'bad_test' }),
+                worktreeReset({ ticket: 11, bad_test: BAD_TEST }),
+            ])
+        ).toBe('engine')
     })
 
     test("a ticket's gates keep the cases they journal; join gates and older records have none", () => {

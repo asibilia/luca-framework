@@ -460,7 +460,7 @@ const launch = ({
         refactor: isRefactorTicket({ ticket }),
         // A test update names the bad test in its own section.
         bad_test: progress.test_update === null ? progress.bad_test : null,
-        bad_test_by: progress.bad_test_sources.at(-1),
+        bad_test_by: progress.bad_test_source ?? undefined,
         sections: [
             ...promptSections({ role, progress }),
             ...(follow_up === undefined

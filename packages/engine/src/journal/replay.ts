@@ -215,6 +215,12 @@ export type TicketProgress = {
      * bounce from its source (#581).
      */
     bad_test_sources: BadTestSource[]
+    /**
+     * Who sent `bad_test`, kept beside it. A retry clears `bad_test_sources`
+     * but keeps this, so a fresh test-writer's prompt still words the bounce
+     * from its source (#581).
+     */
+    bad_test_source: BadTestSource | null
     /** The session each role's latest turn ran in, for follow-ups. */
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
@@ -647,6 +653,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     bad_test_bounces: 0,
     bad_test: null,
     bad_test_sources: [],
+    bad_test_source: null,
     sessions: {},
     assumptions: [],
     review: null,
@@ -1890,9 +1897,10 @@ const resultChange = ({
                     implementer: result,
                     test_update: null,
                     ...(bad_test === null
-                        ? { bad_test: null }
+                        ? { bad_test: null, bad_test_source: null }
                         : {
                               bad_test,
+                              bad_test_source: 'implementer',
                               bad_test_sources: bouncedBy({
                                   progress,
                                   by: 'implementer',
@@ -1911,6 +1919,7 @@ const resultChange = ({
                         ? {}
                         : {
                               bad_test,
+                              bad_test_source: 'implementer',
                               bad_test_sources: bouncedBy({
                                   progress,
                                   by: 'implementer',
@@ -1938,6 +1947,7 @@ const resultChange = ({
                     : {
                           bad_test_bounces: progress.bad_test_bounces + 1,
                           bad_test,
+                          bad_test_source: 'implementer',
                           bad_test_sources: bouncedBy({
                               progress,
                               by: 'implementer',
@@ -2183,6 +2193,7 @@ const progressChange = ({
                     ? {}
                     : {
                           bad_test: record.content.bad_test,
+                          bad_test_source: 'engine',
                           bad_test_sources: bouncedBy({
                               progress,
                               by: 'engine',

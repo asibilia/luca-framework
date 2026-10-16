@@ -586,6 +586,51 @@ describe('retry', () => {
         })
     })
 
+    test('a test-writer retried after the engine found an empty test still hears the engine found it, not the implementer (#581)', () => {
+        const [step] = oneSteps([
+            runBranchCreated(),
+            ticketWorktreeCreated({ ticket: 11 }),
+            baselineTests({ ticket: 11 }),
+            ...ticketBuilt({ ticket: 11 }).slice(2, 6),
+            implemented({ ticket: 11 }),
+            gatesRun({
+                ticket: 11,
+                target: 'ticket',
+                ok: true,
+                cases: [
+                    {
+                        file: 'src/sum.test.ts',
+                        full_name: 'sum adds two numbers',
+                        status: 'passed',
+                        assertions: 0,
+                    },
+                ],
+            }),
+            worktreeReset({
+                ticket: 11,
+                bad_test: {
+                    file: 'src/sum.test.ts',
+                    name: 'sum adds two numbers',
+                    reason: 'It passes but runs no expect(), so it checks nothing (#581).',
+                },
+            }),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            ticketStuck({ ticket: 11, reason: 'red_check_failed' }),
+            stuckReported({ ticket: 11 }),
+            replyReceived({ word: 'retry', ticket: 11, comment_id: 120 }),
+            ticketRetried({ ticket: 11, mode: 'resume' }),
+        ])
+
+        expect(step).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+        })
+        const prompt = step?.type === 'launch_agent' ? step.prompt : ''
+        expect(prompt).toContain('The engine found this test checks nothing')
+        expect(prompt).not.toContain('The implementer says')
+    })
+
     test('a ticket stuck after its join undid joins again on retry, with fresh rebases', () => {
         expect(
             twoSteps([
