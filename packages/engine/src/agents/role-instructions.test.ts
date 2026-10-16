@@ -61,7 +61,7 @@ test("the implementer's gate line names the slow command and says it runs at the
     })
     expect(text).toContain('Make every gate pass: `bun test src`, `tsc`.')
     expect(text).toContain(
-        'The slow tests (`bun test .e2e.test`) run at the final review; you may run them yourself.'
+        'The slow tests (`bun test .e2e.test`) run at the final review, and the ticket\'s gates also run the slow test files it added or changed; you may run them yourself.'
     )
 })
 
@@ -177,7 +177,7 @@ describe('the test-writer and the per-criterion cap (#581)', () => {
             'Every acceptance criterion needs at least one test, and at most 3: write the fewest tests that prove it.'
         )
         expect(text).toContain(
-            "Map every test you add. The red check refuses a new test the map doesn't name."
+            "Map every test you add. The red check refuses a new test your criterion mapping doesn't name."
         )
     })
 })

@@ -107,7 +107,7 @@ You write the failing tests for ONE ticket, before any code exists.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 ${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
-- Map every test you add. The red check refuses a new test the map doesn't name.
+- Map every test you add. The red check refuses a new test your criterion mapping doesn't name.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 
 Your result (structured output):
@@ -138,7 +138,7 @@ const slowLine = ({ config }: { config: EngineConfig }): string => {
     const slow = slowTestCommands({ config }).map(({ run }) => `\`${run}\``)
     return slow.length === 0
         ? ''
-        : ` The slow tests (${slow.join(', ')}) run at the final review; you may run them yourself.`
+        : ` The slow tests (${slow.join(', ')}) run at the final review, and the ticket's gates also run the slow test files it added or changed; you may run them yourself.`
 }
 
 /**
