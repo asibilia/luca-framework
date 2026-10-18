@@ -67,6 +67,7 @@ const folderText = async ({
  * The test files a worktree's feature map lists (#583, #597). A path ending
  * in `.md` is one file, read as it always was; any other path is a folder,
  * and every `*.md` page under it, in sorted order, together is the map.
+ * (`loadEngineConfig` refuses a map file whose name doesn't end in `.md`.)
  *
  * @param cwd - The worktree.
  * @param path - The map's worktree-relative path, as the config spells it.

@@ -200,7 +200,10 @@ same "is missing" problem as a missing file. The test-writer may write any
 `*.md` page under the folder (`Edit(docs/feature-map/**/*.md)`), but not the
 folder path itself or a file of another kind, and its instructions say to read
 the pages first and to list a new test file on its area's page. A map path
-ending in `.md` is one file, read exactly as before.
+ending in `.md` is one file, read exactly as before. So a map file must end in
+`.md`: `loadEngineConfig` refuses a `feature_map` that doesn't but is a file
+(`FEATURES`, `docs/map.txt`), naming the field, rather than treat it as a
+folder.
 
 - **The red check refuses an unlisted new test file.** A test file the ticket
   created (it is not in the ticket's base) must be listed, or the red check
