@@ -19,7 +19,7 @@
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
 | `src/core/decide-crashes.ts` | The crash half of the decision step: a run-level step cut off by `MAX_CRASHES` crashes in a row stops the run for good. |
 | `src/core/decide-stuck.ts` | The stuck half of the decision step: undoing a stuck ticket's join, telling the spec issue, reading replies, and acting on `retry`, `skip`, and `stop`. |
-| `src/core/stuck-text.ts` | The stuck comment (ticket, why, what was tried, last error, suggestion, replies), a skipped ticket's comment, answers to replies that can't be used, and the retry note in a fresh agent's prompt. |
+| `src/core/stuck-text.ts` | A skipped ticket's comment and answers to unusable replies; re-exports the stuck texts ([its modules](role-and-stuck-modules.md)). |
 | `src/core/execute-stuck.ts` | Carries out the stuck steps on the tracker (comments, reading replies, skips), and `retry` (re-read the ticket: resume, start over, or refuse). |
 | `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
 | `src/gates/already-done-check.ts` | Pure: the check of a test-writer's `already_done` evidence (#495). Each commit is on the base, each criterion names a test, and each named test exists, is as it is on the base, and passes there. |
@@ -56,14 +56,14 @@
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
 | `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
-| `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt. |
+| `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt ([its modules](role-and-stuck-modules.md)). |
 | `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act (sending and receiving agent messages too), return a result or a failure, and record each launch and follow-up with its session and what it was handed. |
 | `src/agents/message-tool.ts` | The engine's in-process MCP server `luca` with its `send_message` tool, and the hook that hands messages over after each tool call. |
 | `src/messages/agent-messages.ts` | **Agent messages'** rules. Pure: journal records in, a message's fate (queued, not delivered, refused) or what waits for an agent out. |
 | `src/messages/agent-messaging.ts` | One agent's messaging, backed by the journal: journals each message and each delivery word for word. |
 | `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
 | `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids, its address for messages, and the run's newest **run notes**), and its section after a clash: the clashed tests, the clashed code, or "re-review only the new changes". |
-| `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`). |
+| `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`) ([its modules](role-and-stuck-modules.md)). |
 | `src/guards/guard-hook.ts` | The guard as the SDK's `PreToolUse` hook. |
 | `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths. |
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
