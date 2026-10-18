@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
-import { featureMapFiles } from './feature-map'
+import { readFeatureMap } from './feature-map'
 
 const ROOT = join(import.meta.dir, '../../../..')
 
@@ -33,18 +33,14 @@ describe("this repo's feature map (#583)", async () => {
         await Bun.file(join(ROOT, '.luca/config.json')).json()
     )
     const patterns = config.test_file_patterns
-    // The map is the file the config names, or every page under the folder
-    // it names (#597).
-    const pages = statSync(join(ROOT, config.feature_map)).isDirectory()
-        ? pagesIn(config.feature_map)
-        : [config.feature_map]
-    const texts = await Promise.all(
-        pages.map((page) => Bun.file(join(ROOT, page)).text())
-    )
-    const listed = featureMapFiles({
-        text: texts.join('\n'),
+    // Read the map the way the red check does: the file the config names, or
+    // every page under the folder it names (#597). `null` when it can't be read.
+    const map = await readFeatureMap({
+        cwd: ROOT,
+        path: config.feature_map,
         test_file_patterns: patterns,
     })
+    const listed = map ?? []
     const testFiles = [
         ...new Set(
             patterns.flatMap((pattern) => [
@@ -67,6 +63,7 @@ describe("this repo's feature map (#583)", async () => {
 
     test('the config names it', () => {
         expect(existsSync(join(ROOT, config.feature_map))).toBe(true)
+        expect(map).not.toBeNull()
     })
 
     test('the config names the docs/feature-map folder, and the old single file is gone (#597)', () => {

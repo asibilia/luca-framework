@@ -42,7 +42,13 @@ Each topic has its own page under `docs/`:
 
 | Page | What it covers |
 | --- | --- |
-| [Modules](docs/modules.md) | Every module in `src/` and `skills/`, and what it does. |
+| [Modules in `src/core/`](docs/modules-core.md) | The decision step and the code that carries out its actions, with the modules split out of `decide-build.ts` and `stuck-text.ts`. |
+| [Modules in `src/journal/`](docs/modules-journal.md) | The journal, its record kinds, and replay, with the modules split out of `replay.ts` and `journal-record.ts`. |
+| [Modules in `src/agents/`](docs/modules-agents.md) | Launching agents, their instructions, prompts, and results, with the modules split out of `role-instructions.ts`. |
+| [Modules in `src/guards/`](docs/modules-guards.md) | The guard, with the modules split out of `role-rules.ts`. |
+| [Modules in `src/gates/`](docs/modules-gates.md) | The red check, the gates, installs, and the leftover scan. |
+| [Modules in `src/cli/`](docs/modules-cli.md) | The `luca-run` and `luca` command lines, and their adapters. |
+| [Modules in the other folders](docs/modules-other.md) | `src/config/`, `intake/`, `limits/`, `messages/`, `git/`, `shell/`, `tracker/`, `testing/`, `jev/`, `memory/`, `board/`, and `skills/`. |
 | [How a run moves](docs/how-a-run-moves.md) | Each step of a run, many tickets at once, a shared baseline, plan limits with many tickets, a clash on the run branch, a test the run branch made wrong, and installs after a rebase. |
 | [Prepare, tests, and commits](docs/prepare-and-tests.md) | The prepare command and its limits, the test time limit, slow tests, the fast test speed limit, files prepare makes, what never gets committed, the leftover scan's allowlists, and changesets. |
 | [A ticket's tries, fix loops, and review](docs/ticket-steps.md) | Cleaning up, already-done tickets, tickets for a person, fix loops, bad and unmapped tests, tests that check nothing, the feature map, failed tries, and the ticket review. |
