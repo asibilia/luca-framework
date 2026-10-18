@@ -89,6 +89,20 @@ describe('the feature map in the launch prompts (#583)', () => {
         )
     })
 
+    test("with a map folder, the test-writer's launch prompt names the folder and says to list a new test file on its area's page (#597)", () => {
+        const action = decideWith({
+            config: { ...BUILD_CONFIG, feature_map: 'docs/feature-map' },
+            entries: UP_TO_TESTS,
+        })
+
+        expect(action).toMatchObject({ role: 'test-writer' })
+        const prompt = promptOf(action)
+        expect(prompt).toContain('## The feature map')
+        expect(prompt).toContain('`docs/feature-map')
+        expect(prompt).not.toContain('docs/feature-map.md')
+        expect(prompt).toContain("area's page")
+    })
+
     test('the implementer is not told about the map', () => {
         const action = decideWith({
             config: { ...BUILD_CONFIG, feature_map: 'docs/feature-map.md' },

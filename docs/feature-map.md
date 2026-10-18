@@ -70,7 +70,9 @@ Reached by: `feature_map` in a repo's `.luca/config.json`.
 Tests:
 
 - `packages/engine/src/gates/feature-map.test.ts`
+- `packages/engine/src/gates/feature-map-folder.test.ts`
 - `packages/engine/src/gates/feature-map-docs.test.ts`
+- `packages/engine/src/guards/role-rules-feature-map.test.ts`
 - `packages/engine/src/core/decide-feature-map.test.ts`
 - `packages/engine/src/core/run-feature-map.e2e.test.ts`
 

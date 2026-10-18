@@ -98,6 +98,44 @@ describe('the feature map, end to end', () => {
         expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
     }, 120_000)
 
+    test('with a map folder, a new test file on no page sends the test-writer back naming the folder, and it may list the file on a new page (#597)', async () => {
+        const folder = 'docs/feature-map'
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const { action, records } = await practiceRun({
+            config: { ...PRACTICE_ENGINE_CONFIG, feature_map: folder },
+            files: {
+                [`${folder}/index.md`]: '# Feature map\n\nOne page per area.\n',
+                [`${folder}/readme.md`]: MAP_WITHOUT_SUM,
+            },
+            turns: [
+                testWriter,
+                {
+                    ...testWriter,
+                    files: {
+                        [`${folder}/numbers.md`]:
+                            '## Adding numbers\n\nTests:\n- `src/sum.test.ts`\n',
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        const [first, second] = redChecks(records)
+        expect(first?.ok).toBe(false)
+        expect(
+            (first?.problems ?? []).filter(
+                (problem) =>
+                    problem.startsWith(
+                        "src/sum.test.ts: a new test file the feature map doesn't list"
+                    ) && problem.includes(folder)
+            )
+        ).toHaveLength(1)
+        expect(second).toMatchObject({ ok: true, problems: [] })
+        expect(latestStuck(records)).toBeNull()
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+    }, 120_000)
+
     test('a configured map that is missing is a problem naming it, and the test-writer may add it', async () => {
         const { testWriter, implementer, reviewer } = happyTurns()
         const { action, records } = await practiceRun({

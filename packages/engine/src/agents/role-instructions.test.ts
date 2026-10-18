@@ -247,3 +247,20 @@ describe('the test-writer and the feature map (#583)', () => {
         )
     })
 })
+
+describe('the test-writer and a feature map folder (#597)', () => {
+    test("names the folder, says to read its pages first, and to list a new test file on its area's page", () => {
+        const text = roleInstructions({
+            role: 'test-writer',
+            may_edit_tests: true,
+            config: EngineConfigSchema.parse({
+                checks: { test: 'bun test' },
+                feature_map: 'docs/feature-map',
+            }),
+        })
+        expect(text).toContain('docs/feature-map')
+        expect(text).not.toContain('docs/feature-map.md')
+        expect(text).toMatch(/pages[^\n]*first/)
+        expect(text).toContain("area's page")
+    })
+})

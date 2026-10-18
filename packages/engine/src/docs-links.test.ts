@@ -52,4 +52,16 @@ describe("the engine's docs", () => {
                 .map(({ page, target }) => `${page}: ${target}`)
         ).toEqual([])
     })
+
+    test('a page describes a feature map folder, with a config example naming one (#597)', async () => {
+        const texts = await Promise.all(
+            PAGES.map((page) => Bun.file(join(ENGINE_DIR, page)).text())
+        )
+        const described = texts.filter(
+            (text) =>
+                /"feature_map":\s*"docs\/feature-map\/?"/.test(text) &&
+                text.includes('*.md')
+        )
+        expect(described.length).toBeGreaterThan(0)
+    })
 })
