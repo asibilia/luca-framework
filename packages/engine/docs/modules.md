@@ -13,7 +13,7 @@
 | `src/journal/step-records.ts` | Pure: the steps a crash cut off (`resumeEntry`, the `run_resumed` a restarted engine appends), each step's crashes in a row, and a redo's first try. |
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot, with the tickets left out for a person (#499). |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
-| `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. |
+| `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. Its parts: [decide-build modules](decide-build-modules.md). |
 | `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
 | `src/core/loop-caps.ts` | The caps of every fix loop (`MAX_FIX_ROUNDS`, ...), shared by the ticket steps and the final review. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
