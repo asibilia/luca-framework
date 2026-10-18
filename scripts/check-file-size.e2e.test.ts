@@ -93,6 +93,23 @@ describe('check-file-size --staged', () => {
     })
 })
 
+describe('check-file-size paths', () => {
+    test('catches a renamed file and a name with a space and unicode', async () => {
+        const dir = await makeRepo({ branch: 'main' })
+        writeFileSync(join(dir, 'old-name.ts'), 'a'.repeat(21000))
+        await git(dir, 'add', '.')
+        await git(dir, 'commit', '-q', '-m', 'big')
+        await git(dir, 'mv', 'old-name.ts', 'new name \u00e9\u6f22.ts')
+        writeFileSync(join(dir, 'odd \u00fcber file.ts'), 'b'.repeat(21000))
+        await git(dir, 'add', 'odd \u00fcber file.ts')
+        const { code, stderr } = await check({ dir, staged: true })
+        expect(code).toBe(1)
+        expect(stderr).toContain('new name \u00e9\u6f22.ts')
+        expect(stderr).toContain('odd \u00fcber file.ts')
+        expect(stderr).not.toContain('old-name.ts')
+    })
+})
+
 describe('check-file-size (branch mode)', () => {
     test('checks files changed since main, committed or untracked', async () => {
         const dir = await makeRepo({ branch: 'main' })
