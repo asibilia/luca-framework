@@ -212,7 +212,7 @@ describe('the slow test command (#563)', () => {
 describe('the engine README', () => {
     test('documents test command lists and their results kinds', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'choices-made.md')
         ).text()
 
         expect(text).toContain('checks.test')

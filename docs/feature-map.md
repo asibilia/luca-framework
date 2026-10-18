@@ -437,6 +437,7 @@ Tests:
 
 - `packages/engine/src/cli/luca-command.test.ts`
 - `packages/engine/src/cli/setup.test.ts`
+- `packages/engine/src/cli/setup-checks.test.ts`
 - `packages/engine/src/cli/init.test.ts`
 - `packages/engine/src/cli/doctor.test.ts`
 - `packages/engine/src/doctor/v13-manifest.test.ts`
@@ -453,6 +454,16 @@ Reached by: `bun add -g @alecsibilia/luca`.
 Tests:
 
 - `packages/luca/pack.test.ts`
+
+## The engine's docs
+
+The engine's README is a short index of topic pages under `packages/engine/docs/`.
+
+Reached by: reading `packages/engine/README.md`.
+
+Tests:
+
+- `packages/engine/src/docs-links.test.ts`
 
 ## Repo tooling
 
