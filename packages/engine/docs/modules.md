@@ -7,7 +7,7 @@
 | `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
 | `src/config/config-reload.ts` | Pure: the config fields a resume takes again (`RELOADED_FIELDS`) and the ones it keeps (`FROZEN_FIELDS`), what changed (`configChanges`), and a config with the changes (`withConfigChanges`). |
 | `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
-| `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas. |
+| `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas, from one module per area ([journal entries](journal-entries.md)). |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
 | `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
 | `src/journal/step-records.ts` | Pure: the steps a crash cut off (`resumeEntry`, the `run_resumed` a restarted engine appends), each step's crashes in a row, and a redo's first try. |
