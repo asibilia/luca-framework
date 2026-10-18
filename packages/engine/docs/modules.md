@@ -36,7 +36,13 @@
 | `src/core/pull-request-text.ts` | The PR title and body: a shipped final review's open findings first, then the tickets it closes (an already-done one with its commits), the spec's open tickets not in the run, the tickets for a person and the ones waiting on them (#499), the agents' **assumptions**, the reviews' nits, and declined findings (the final review's too). |
 | `src/core/not-in-run.ts` | Just before the PR: the spec's open sub-issues that aren't in the run (#484). |
 | `src/core/left-out.ts` | The words for tickets left out for a person (#499): why each is out, the PR's "For a person" and "Waiting on a person", and why a run had nothing to do. |
-| `src/core/execute.ts` | Carries out an action (tracker calls, journal appends), and `runEngine`: the scheduler that runs tickets' steps at the same time. |
+| `src/core/execute.ts` | `runEngine`: the scheduler that runs tickets' steps at the same time. |
+| `src/core/execute-action.ts` | Carries out one action. |
+| `src/core/schedule-rules.ts` | An action's scheduler key, step name, and kind. |
+| `src/core/execute-with-jev.ts` | An action with the decision model in shadow mode. |
+| `src/core/run-start.ts` | A run's start, resume, and config reload records. |
+| `src/core/execute-intake.ts` | Reads intake, or refuses the run. |
+| `src/core/execute-waits.ts` | Limit waits, the billing stop, usage-line waits. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |

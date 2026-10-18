@@ -1,0 +1,105 @@
+/**
+ * Carries out one action with the decision model asked around it in shadow
+ * mode.
+ */
+import type { EngineAction } from './decide'
+import { isFinalReviewAction } from './decide-final-review'
+import { executeAction, type StepTry } from './execute-action'
+import type { BuildDeps } from './execute-build'
+import { ticketOf } from './schedule-rules'
+
+import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
+import type { ShadowAsker } from '../jev/jev-shadow'
+import type { Journal } from '../journal/journal'
+import type { JournalRecord } from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
+import type { EngineClock } from '../limits/limit-wait'
+import type { UsageLines } from '../limits/usage-line'
+import type { MemoryDeps } from '../memory/memory-client'
+import type { Tracker } from '../tracker/tracker'
+
+/**
+ * Carries out one action with the decision model in shadow mode: asks it
+ * before the action (ticket order, model, skills), then after it about the
+ * records it appended (failure kinds, finding severities). Only the action's
+ * own ticket's new records count, since other tickets append at the same
+ * time. The answers change nothing.
+ */
+export const executeWithJev = async ({
+    ask,
+    action,
+    journal,
+    tracker,
+    build,
+    clock,
+    reply_poll_ms,
+    memory,
+    step,
+    read_usage_lines,
+}: {
+    ask: ShadowAsker
+    action: EngineAction
+    journal: Journal
+    tracker: Tracker
+    build?: BuildDeps
+    clock?: EngineClock
+    reply_poll_ms?: number
+    memory?: MemoryDeps
+    step?: StepTry
+    read_usage_lines?: () => Promise<UsageLines>
+}): Promise<void> => {
+    await ask(
+        jevAsksBefore({
+            action,
+            state: replayRun({ records: journal.read() }),
+        })
+    )
+    const lastSeq = journal.read().at(-1)?.seq ?? 0
+    await executeAction({
+        action,
+        journal,
+        tracker,
+        build,
+        clock,
+        reply_poll_ms,
+        memory,
+        step,
+        read_usage_lines,
+    })
+    const records = journal.read()
+    await ask(
+        jevAsksAfter({
+            records: records.filter(
+                (record) =>
+                    record.seq > lastSeq && ownsRecord({ action, record })
+            ),
+            state: replayRun({ records }),
+        })
+    )
+}
+
+/**
+ * Whether a record appended while `action` ran is that action's own, since
+ * other tickets (or other lenses) append at the same time: a ticket's
+ * records for a ticket's step, a lens's for its lens, and the final
+ * review's other ticket-less records for its other steps.
+ */
+const ownsRecord = ({
+    action,
+    record,
+}: {
+    action: EngineAction
+    record: JournalRecord
+}): boolean => {
+    if (action.type === 'launch_lens') {
+        return (
+            record.ticket === null &&
+            (record.role === null || record.role === action.role)
+        )
+    }
+    if (isFinalReviewAction(action)) {
+        return record.ticket === null && !record.role?.endsWith('-lens')
+    }
+    const ticket = ticketOf(action)
+    return ticket === null || record.ticket === ticket
+}
