@@ -9,7 +9,7 @@
 | `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 | `src/journal/journal-record.ts` | The journal's record kinds and their content, as Zod schemas, from one module per area ([journal entries](journal-entries.md)). |
 | `src/journal/journal.ts` | One append-only JSONL journal per run, outside git. |
-| `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. |
+| `src/journal/replay.ts` | Rebuilds a run's state from its journal. There is no status file. Its parts: [replay modules](replay-modules.md). |
 | `src/journal/step-records.ts` | Pure: the steps a crash cut off (`resumeEntry`, the `run_resumed` a restarted engine appends), each step's crashes in a row, and a redo's first try. |
 | `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot, with the tickets left out for a person (#499). |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
