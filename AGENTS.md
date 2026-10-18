@@ -21,7 +21,7 @@
 | ------ | ------- |
 | Install deps | `bun install` |
 | Type check | `bunx --bun tsc --noEmit` |
-| Lint | `bun run lint` |
+| Lint (and the file size check) | `bun run lint` |
 | Interactive conventional commit | `bun run commit` |
 
 ## Intent-First Response
@@ -53,6 +53,7 @@ Key patterns:
 - Zod schemas with `z.infer<>` for types (never separate interface + schema)
 - No `any` type, no `as` type casting, no `!` assertions
 - File names: `kebab-case.ts`
+- Files stay under 5,000 tokens (bytes / 4, so 20,000 bytes). `bun run lint` and the pre-commit hook enforce it; split by responsibility if you go over. See the Verification section of the coding standards.
 
 ## PR Guidelines
 

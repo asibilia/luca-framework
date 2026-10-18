@@ -453,3 +453,14 @@ Reached by: `bun add -g @alecsibilia/luca`.
 Tests:
 
 - `packages/luca/pack.test.ts`
+
+## Repo tooling
+
+The repo's own scripts, outside the packages. The file size limit fails any file of more than 5,000 tokens (bytes / 4), in the pre-commit hook and in `bun run lint`.
+
+Reached by: `bun scripts/check-file-size.ts [--staged]`, the `.githooks/pre-commit` hook, and `bun run lint`.
+
+Tests:
+
+- `scripts/check-file-size.test.ts`
+- `scripts/check-file-size.e2e.test.ts`

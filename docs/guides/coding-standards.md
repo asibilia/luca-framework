@@ -292,7 +292,9 @@ tickets.sort((a, b) => a.started_seq - b.started_seq) // mutates; use sortBy
 
 ## Verification
 
-The engine's gates are the checks in `.luca/config.json`: the fast tests (`bun test packages --path-ignore-patterns='**/*.e2e.test.ts'`), the slow tests (`bun test .e2e.test`, run at the final review), both type checks (`bunx --bun tsc --noEmit` and `bunx --bun tsc --noEmit -p packages/board`), and the linter (`bun run lint`). All of them must pass. New behavior comes with tests.
+The engine's gates are the checks in `.luca/config.json`: the fast tests (`bun test packages scripts --path-ignore-patterns='**/*.e2e.test.ts'`), the slow tests (`bun test .e2e.test`, run at the final review), both type checks (`bunx --bun tsc --noEmit` and `bunx --bun tsc --noEmit -p packages/board`), and the linter (`bun run lint`, which also runs the file size check). All of them must pass. New behavior comes with tests.
+
+- **File size.** A file an agent writes stays under 5,000 tokens, counted as bytes / 4 (so no more than 20,000 bytes). The limit is strict: a file that is already over it must be split the next time it changes. Lockfiles (`bun.lock`), changelogs, `.changeset/` files, generated files (`packages/engine/src/doctor/v13-files.json`) and binary files are skipped. `scripts/check-file-size.ts` checks it: in the pre-commit hook (`.githooks/pre-commit`, on after `bun install`) for the staged files, and in `bun run lint` for every file changed on the branch. The failure message says how to split each kind of file.
 
 ---
 
