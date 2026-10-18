@@ -133,17 +133,18 @@ export const EngineConfigSchema = z.object({
     leftover_allow: z.array(z.string().min(1)).optional(),
     /**
      * A markdown file listing each feature and the test files that prove it
-     * (#583), relative to the repo root: a file inside the repo, so not an
-     * absolute path, not one that climbs out with `..`, and not a folder (no
-     * trailing `/`). The red check refuses a new test file it doesn't list,
-     * and the test-writer may edit it. Left out, no map.
+     * (#583), relative to the repo root: a path inside the repo, so not an
+     * absolute path, not one that climbs out with `..`, and not ending in
+     * `/`. A path not ending in `.md` names a folder (#597): every `*.md`
+     * page under it together is the map. The red check refuses a new test
+     * file it doesn't list, and the test-writer may edit it. Left out, no map.
      */
     feature_map: z
         .string()
         .min(1)
         .refine(isFileInsideRepo, {
             message:
-                'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not a folder',
+                'must be a file inside the repo, or a folder of pages in it, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
         })
         .optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
@@ -311,6 +312,18 @@ export const featureMapPath = ({
     config.feature_map === undefined
         ? null
         : normalize(config.feature_map).replace(/^\.\//, '')
+
+/**
+ * Whether a feature map path names a folder of pages (#597): any path not
+ * ending in `.md`. The path alone decides, so the guard and the prompts,
+ * which never read the disk, agree with the red check.
+ *
+ * @example
+ * isFeatureMapFolder({ path: 'docs/feature-map' }) // true
+ * isFeatureMapFolder({ path: 'docs/feature-map.md' }) // false
+ */
+export const isFeatureMapFolder = ({ path }: { path: string }): boolean =>
+    !path.toLowerCase().endsWith('.md')
 
 /**
  * A fast `bun` test command with the speed limit (#580): `--timeout=<n>` at

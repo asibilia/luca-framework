@@ -65,7 +65,7 @@ End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of eve
 _Avoid_: e2e gate, long tests
 
 **Feature map**:
-A markdown file a repo names in `feature_map` that lists each feature and the test files that prove it. The red check refuses a new test file the map doesn't list, so tickets add tests to a feature's files instead of scattering new ones.
+A markdown file (or a folder of markdown pages, one per area) a repo names in `feature_map` that lists each feature and the test files that prove it. The red check refuses a new test file the map doesn't list, so tickets add tests to a feature's files instead of scattering new ones.
 _Avoid_: test index, test registry
 
 **Red check**:

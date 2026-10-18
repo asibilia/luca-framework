@@ -67,7 +67,7 @@ to its rules; each one alone should hold.
 
 | Role | Writes | Runs |
 | --- | --- | --- |
-| test-writer | test files only (`test_file_patterns`), and the `feature_map` file (#583), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
+| test-writer | test files only (`test_file_patterns`), and the `feature_map` file (#583) or any `*.md` page of a folder map (#597), and only with `may_edit_tests` | read-only commands, the config's checks, `rm` of what it may write |
 | implementer | anything but `test_setup_files`, and test files only with `may_edit_tests` (a refactor ticket) | the same |
 | reviewer (the ticket reviewer and every lens) | nothing | read-only commands only |
 | learner (#370) | nothing | no shell |

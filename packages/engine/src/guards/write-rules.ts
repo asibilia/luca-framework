@@ -5,7 +5,11 @@ import { basename, isAbsolute, normalize, relative, resolve } from 'node:path'
 
 import { isWriter, type GuardArgs } from './guard-roles'
 
-import { featureMapPath, type EngineConfig } from '../config/engine-config'
+import {
+    featureMapPath,
+    isFeatureMapFolder,
+    type EngineConfig,
+} from '../config/engine-config'
 import { testFilesAmong } from '../gates/test-runner'
 
 /**
@@ -41,6 +45,25 @@ const isTestFile = ({
         test_file_patterns: config.test_file_patterns,
     }).length > 0
 
+/**
+ * Whether a clean worktree-relative path is part of the repo's feature map
+ * (#583): the map file itself, or, when the map is a folder (#597), any
+ * `*.md` page under it.
+ */
+const isFeatureMapPage = ({
+    path,
+    config,
+}: {
+    path: string
+    config: EngineConfig
+}): boolean => {
+    const map = featureMapPath({ config })
+    if (map === null) return false
+    return isFeatureMapFolder({ path: map })
+        ? path.startsWith(`${map}/`) && path.endsWith('.md')
+        : path === map
+}
+
 /** The lockfiles a package install writes. The engine owns them. */
 export const LOCKFILES = [
     'bun.lock',
@@ -68,7 +91,7 @@ export const isInstallPath = (path: string): boolean =>
 /**
  * Whether an agent may create, change, or delete a worktree-relative path.
  * Test-writers write test files only, and the feature map when the repo has
- * one (#583); implementers write anything but test
+ * one (#583), or any page of a folder map (#597); implementers write anything but test
  * files (unless they may edit tests) and test setup files; reviewers and the
  * learner write nothing. No role writes a test setup file, `.git`, what
  * the package install writes (lockfiles, `node_modules`), or outside its
@@ -95,9 +118,13 @@ export const mayWrite = ({
     if (config.test_setup_files.includes(clean)) return false
     if (isInstallPath(clean)) return false
     const test = isTestFile({ path: clean, config })
-    // The test-writer may also write the repo's feature map, when it has one (#583).
+    // The test-writer may also write the repo's feature map, when it has one
+    // (#583): the file, or any page of a folder map (#597).
     if (role === 'test-writer') {
-        return may_edit_tests && (test || clean === featureMapPath({ config }))
+        return (
+            may_edit_tests &&
+            (test || isFeatureMapPage({ path: clean, config }))
+        )
     }
     return !test || may_edit_tests
 }

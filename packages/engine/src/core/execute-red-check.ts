@@ -23,7 +23,7 @@ import {
     hasSlowTests,
     testTimeoutOf,
 } from '../config/engine-config'
-import { featureMapFiles } from '../gates/feature-map'
+import { readFeatureMap } from '../gates/feature-map'
 import { prepareCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import { checkRed, type ChangedTestSource } from '../gates/red-check'
@@ -45,9 +45,10 @@ export const NO_RED_CHANGES =
 
 /**
  * The repo's feature map as the red check needs it (#583), read from the
- * worktree at `cwd`: its configured path, and the test files it lists.
- * `files` is `null` when the file is missing or can't be read, so the red
- * check can name it rather than crash. `null` when the config names no map.
+ * worktree at `cwd`: its configured path (a file or a folder of pages,
+ * #597), and the test files it lists. `files` is `null` when the map is
+ * missing or can't be read, so the red check can name it rather than crash.
+ * `null` when the config names no map.
  */
 const featureMapIn = async ({
     context,
@@ -58,16 +59,13 @@ const featureMapIn = async ({
 }): Promise<{ path: string; files: string[] | null } | null> => {
     const path = featureMapPath({ config: context.config })
     if (path === null) return null
-    const text = await pathText({ path: join(cwd, path) })
     return {
         path,
-        files:
-            text === null
-                ? null
-                : featureMapFiles({
-                      text,
-                      test_file_patterns: context.config.test_file_patterns,
-                  }),
+        files: await readFeatureMap({
+            cwd,
+            path,
+            test_file_patterns: context.config.test_file_patterns,
+        }),
     }
 }
 

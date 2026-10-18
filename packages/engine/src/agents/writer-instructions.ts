@@ -7,6 +7,7 @@ import { REVIEW_FIXER, setupFiles } from './common-instructions'
 import {
     caseLimitOf,
     featureMapPath,
+    isFeatureMapFolder,
     slowTestCommands,
     testCommands,
     type EngineConfig,
@@ -20,18 +21,26 @@ Sometimes other tickets joined the run branch after this ticket's tests were wri
 - Every criterion still needs a test. Your updated tests may pass now, since the code is there; that is fine. The engine runs every test in the gates after the implementer's turn.
 - Answer "tests_written" with the full criterion mapping again.`
 
-/** The test-writer's lines about the feature map (#583), or nothing without one. */
+/**
+ * The test-writer's lines about the feature map (#583), or nothing without
+ * one. A folder map (#597) is read page by page, and a new test file goes on
+ * its area's page.
+ */
 const featureMapLines = ({ config }: { config: EngineConfig }): string => {
     const path = featureMapPath({ config })
-    return path === null
-        ? ''
+    if (path === null) return ''
+    return isFeatureMapFolder({ path })
+        ? `- Read the feature map's pages (the *.md files under ${path}/) first: they list each feature and the test files that prove it.\n- Put new tests in a feature's existing test files when you can. A new test file must be listed under its feature on its area's page in ${path}/; you may edit or add those pages.\n`
         : `- Read ${path} first: it lists each feature and the test files that prove it.\n- Put new tests in a feature's existing test files when you can. A new test file must be listed under its feature in ${path}; you may edit that file.\n`
 }
 
 /** What the test-writer's "ONLY test files" line adds for the feature map, or nothing. */
 const featureMapClause = ({ config }: { config: EngineConfig }): string => {
     const path = featureMapPath({ config })
-    return path === null ? '' : ` and the feature map ${path}`
+    if (path === null) return ''
+    return isFeatureMapFolder({ path })
+        ? ` and the feature map's pages (*.md under ${path}/)`
+        : ` and the feature map ${path}`
 }
 
 export const TEST_WRITER = ({

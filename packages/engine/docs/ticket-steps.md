@@ -159,9 +159,9 @@ file that says which test files prove which feature, and name it in
 { "checks": { "test": "bun test" }, "feature_map": "docs/feature-map.md" }
 ```
 
-The path is relative to the repo root and names a file inside the repo: an
-absolute path, one that leaves the repo with `..`, the repo root, or a folder
-(a trailing `/`) is a config error naming `feature_map`. Every part of the
+The path is relative to the repo root and names a path inside the repo: an
+absolute path, one that leaves the repo with `..`, the repo root, or one with
+a trailing `/` is a config error naming `feature_map`. Every part of the
 engine reads it through `featureMapPath` (`config/engine-config.ts`), which
 cleans it the way a worktree path is cleaned everywhere else:
 `./docs/feature-map.md` and `docs//feature-map.md` are `docs/feature-map.md`.
@@ -182,6 +182,25 @@ and `Tests:` lists its test files. The engine reads only the backticked
 paths: `featureMapFiles` in `gates/feature-map.ts` keeps each one that matches
 `test_file_patterns`, once each (a leading `./` is dropped), so a backticked
 source file in the prose is ignored.
+
+**A folder map (#597).** One file can outgrow the file-size limit, so
+`feature_map` may name a folder instead, one page per area:
+
+```json
+{ "checks": { "test": "bun test" }, "feature_map": "docs/feature-map" }
+```
+
+A path that doesn't end in `.md` is a folder (`isFeatureMapFolder`); the path
+alone decides, so the guard and the prompts, which never read the disk, agree
+with the red check. Every `*.md` page under the folder, nested ones too, read
+in sorted order of their paths, together is the map: `readFeatureMap` in
+`gates/feature-map.ts` joins their text and hands it to `featureMapFiles`, so a
+test file listed on any page counts once. A missing or unreadable folder is the
+same "is missing" problem as a missing file. The test-writer may write any
+`*.md` page under the folder (`Edit(docs/feature-map/**/*.md)`), but not the
+folder path itself or a file of another kind, and its instructions say to read
+the pages first and to list a new test file on its area's page. A map path
+ending in `.md` is one file, read exactly as before.
 
 - **The red check refuses an unlisted new test file.** A test file the ticket
   created (it is not in the ticket's base) must be listed, or the red check
