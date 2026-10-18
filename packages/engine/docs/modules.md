@@ -44,6 +44,14 @@
 | `src/core/execute-intake.ts` | Reads intake, or refuses the run. |
 | `src/core/execute-waits.ts` | Limit waits, the billing stop, usage-line waits. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
+| `src/core/build-context.ts` | `BuildContext` and the lookups every build step shares. |
+| `src/core/worktree-changes.ts` | A worktree's changes, less what prepare made and outside links. |
+| `src/core/agent-turn.ts` | One agent turn (`runTurn`), guarded and journaled; launches and follow-ups. |
+| `src/core/execute-red-check.ts` | The red check step. |
+| `src/core/execute-already-done-check.ts` | The already-done check step. |
+| `src/core/commit-in.ts` | The leftover scan, then an engine commit (`commitIn`). |
+| `src/core/execute-gates.ts` | Gates, the final slow tests, and the install in a worktree. |
+| `src/core/execute-join.ts` | Undoing a join, rebasing a ticket, and sending its tests back. |
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
