@@ -37,7 +37,12 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
+| `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. It holds the `GitAdapter` type and `createGitAdapter`, which joins the five modules below and runs their calls in turn. |
+| `src/git/git-run.ts` | Runs `git` in a folder: `gitRun` returns the result as it is, `gitOk` throws when git fails. Also the line splitter and `head` the other git modules share. |
+| `src/git/git-worktrees.ts` | The adapter's worktree calls, the ones that need the repo's root: fetch the base branch, make the run branch and each ticket's worktree (safe to repeat after a crash), remove them. |
+| `src/git/git-read.ts` | The adapter's reads: what changed in a worktree or between commits, which files exist, and where a commit is. None of them changes the repo. |
+| `src/git/git-commits.ts` | The adapter's commits and clean-ups: stage and commit all or some paths, read the last commit, throw away or reset a worktree's changes, push. |
+| `src/git/git-join.ts` | The adapter's moves between branches: list the commits between two, replay them onto the run branch, undo a replay, move a worktree's change onto another commit. |
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 
