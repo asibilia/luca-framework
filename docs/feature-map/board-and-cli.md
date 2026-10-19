@@ -18,6 +18,12 @@ Tests:
 - `packages/board/server/journal-rebuild.test.ts`
 - `packages/board/server/two-runs-at-once.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
+- `packages/board/server/board-panel-state-usage.test.ts`
+- `packages/board/server/board-panel-state-waits-and-stops.test.ts`
+- `packages/board/server/board-panel-state-fix-loops.test.ts`
+- `packages/board/server/board-panel-state-final-review.test.ts`
+- `packages/board/server/board-panel-state-run-branch.test.ts`
+- `packages/board/server/board-panel-state-agent-messages.test.ts`
 - `packages/board/server/ticket-stages-panel.test.ts`
 - `packages/board/server/current-step-panel.test.ts`
 - `packages/board/server/current-step-text.test.ts`

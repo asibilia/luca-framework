@@ -83,7 +83,8 @@ Tests:
 - `packages/engine/src/core/usage-line-wait.test.ts`
 - `packages/engine/src/limits/usage-line.test.ts`
 - `packages/board/server/usage-line-panel.test.ts`
-- `packages/board/server/board-panel-state.test.ts`
+- `packages/board/server/board-panel-state-usage.test.ts`
+- `packages/board/server/board-panel-state-waits-and-stops.test.ts`
 
 ## One run per repo: the repo wait
 
