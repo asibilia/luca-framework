@@ -73,6 +73,9 @@ Reached by: every agent turn; the board shows outside changes to the shared `.gi
 Tests:
 
 - `packages/engine/src/guards/role-rules.test.ts`
+- `packages/engine/src/guards/role-rules-bash.test.ts`
+- `packages/engine/src/guards/role-rules-check-commands.test.ts`
+- `packages/engine/src/guards/role-rules-permissions.test.ts`
 - `packages/engine/src/guards/sandbox-settings.test.ts`
 - `packages/engine/src/guards/worktree-state.test.ts`
 - `packages/engine/src/guards/shared-git-filters.test.ts`
