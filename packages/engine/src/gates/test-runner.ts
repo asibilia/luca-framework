@@ -131,16 +131,26 @@ export const runTests = async ({
     test_files: string[]
     report_file: string
     timeout_ms: number
-    /** The config's `test_concurrency`; left out, no slot is taken. */
+    /** The config's `test_concurrency`; left out, no cap. */
     test_concurrency?: number
 }): Promise<TestRun> =>
     inTestSlot({
         test_concurrency,
         work: () =>
-            runTestsNow({ cwd, command, test_files, report_file, timeout_ms }),
+            runTestsInHeldSlot({
+                cwd,
+                command,
+                test_files,
+                report_file,
+                timeout_ms,
+            }),
     })
 
-const runTestsNow = async ({
+/**
+ * `runTests` for a caller that already holds a test slot (see `inTestSlot`):
+ * it runs at once, taking no slot of its own.
+ */
+export const runTestsInHeldSlot = async ({
     cwd,
     command,
     test_files,

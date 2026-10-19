@@ -3,7 +3,7 @@ import { inTestSlot, PREPARE_SLOTS } from './prepare-slots'
 import {
     fileTestsCommand,
     reportFileFor,
-    runTests,
+    runTestsInHeldSlot,
     TEST_TIMEOUT_HINT,
 } from './test-runner'
 
@@ -205,7 +205,7 @@ const testChecks = async ({
      * call has one; slow tests never do.
      */
     limit: SpeedLimit | null
-    /** The config's `test_concurrency`; left out, no slot is taken. */
+    /** The config's `test_concurrency`; left out, no cap. */
     test_concurrency: number | undefined
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
@@ -232,7 +232,7 @@ const testChecks = async ({
                 test_concurrency,
                 work: async () => {
                     const started = performance.now()
-                    const run = await runTests({
+                    const run = await runTestsInHeldSlot({
                         cwd,
                         command:
                             limit === null
@@ -378,7 +378,7 @@ export const runGates = async ({
             test_concurrency,
             work: async () => {
                 const started = performance.now()
-                const run = await runTests({
+                const run = await runTestsInHeldSlot({
                     cwd,
                     command: fileTestsCommand({ files: unrun }),
                     test_files: unrun,

@@ -36,11 +36,12 @@ repo caps how many test runs go at once across the run with
   `wait_ms`, on the test run (`baseline_tests`, `red_check`) or on the gate
   check. With a cap, every run records it, `0` when it didn't wait.
 - The slots also have an exclusive take: it waits until no test run holds a
-  slot, then holds them all, so nothing else starts until it ends.
+  slot, then holds them all, so nothing else starts until it ends. It works
+  with or without a cap: every test run holds a slot either way.
 - A resume reloads it (see [Crash recovery](crash-recovery.md)), so a
   running run's cap can be lowered.
-- Left out, there is no cap: nothing waits, and no run or check has
-  `wait_ms`.
+- Left out, there is no cap: nothing waits (except behind an exclusive
+  take), and no run or check has `wait_ms`.
 
 **Slow tests (#563).** A repo with a long end-to-end suite names it in
 `checks.slow_test`, and leaves it out of `checks.test`. It has the same shape
