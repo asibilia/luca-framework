@@ -116,6 +116,27 @@ describe('Jev in shadow mode on a run with a failed red check and review finding
         expect((ask?.seq ?? 0) > (finished?.seq ?? Infinity)).toBe(true)
     })
 
+    test("a fix-loop follow-up runs on its session's model, and its agent_started says so", () => {
+        const { run } = changes()
+
+        const followUps = run.launches.filter(
+            ({ kind }) => kind === 'follow_up'
+        )
+        expect(followUps.map(({ role }) => role)).toEqual(['test-writer'])
+        const session = run.launches.find(
+            ({ kind, session_id }) =>
+                kind === 'launch' && session_id === followUps[0]?.session_id
+        )
+        expect(session?.model).toBe('opus')
+        expect(followUps.map(({ model }) => model)).toEqual(['opus'])
+        const started = run.records.flatMap((record) =>
+            record.kind === 'agent_started' && record.content.follow_up_of
+                ? [record.content.model]
+                : []
+        )
+        expect(started).toEqual(['opus'])
+    })
+
     test('is asked the kind of a failure, with the engine routing it to the test-writer', () => {
         const { run, without } = changes()
 

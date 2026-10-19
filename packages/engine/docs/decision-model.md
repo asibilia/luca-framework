@@ -12,7 +12,7 @@ reads these records, so the run goes exactly as it would without it.
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
-| `ticket_model` | Before a ticket's worktree: which model? | `claude-opus-5-5`. |
+| `ticket_model` | Before a ticket's worktree: which model (`opus`, `sonnet` or `haiku`)? | `opus`. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |

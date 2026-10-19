@@ -32,15 +32,11 @@ export type JevAsk = {
     fixed: JevFixed
 }
 
-/** The models Jev may pick for a ticket. */
-export const JEV_MODEL_OPTIONS = [
-    'claude-opus-5-5',
-    'claude-sonnet-5',
-    'claude-haiku-4-5',
-] as const
+/** The models Jev may pick for a ticket, by short name. */
+export const JEV_MODEL_OPTIONS = ['opus', 'sonnet', 'haiku'] as const
 
 /** The model the engine really uses for every ticket. */
-export const JEV_FIXED_MODEL = 'claude-opus-5-5'
+export const JEV_FIXED_MODEL = 'opus'
 
 /**
  * The stock skills Jev may give an agent. The engine gives agents none, so

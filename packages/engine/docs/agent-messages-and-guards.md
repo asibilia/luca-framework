@@ -61,8 +61,14 @@ from memory, so a resumed run hands over exactly what is still waiting.
 
 ## Guards
 
-Every agent runs Claude Opus 5.5 (`claude-opus-5-5`) at `high` effort. The
-launcher refuses Fable and non-Claude models. Three layers keep each **role**
+Every agent runs on `opus` at `high` effort. The engine names models only by
+short name (`opus`, `sonnet`, `haiku`), and Claude Code turns each into its
+newest version; the exact version is journaled from the session's init. Each
+launch takes its own model, and a follow-up runs on its session's; its
+`agent_started` records the `model`. Before a launch the launcher refuses
+every other name (`fable`, and short names such as `best` or `opusplan` that
+resolve to Fable or switch models mid-session); on the init it refuses a
+Fable or non-Claude model id. Three layers keep each **role**
 to its rules; each one alone should hold.
 
 | Role | Writes | Runs |

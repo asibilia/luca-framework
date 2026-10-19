@@ -8,6 +8,7 @@ import { mayEditTests, type BuildAction } from './decide-build'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
+import { CLAUDE_MODEL } from '../agents/claude-options'
 import {
     parseRoleResult,
     type AgentRole,
@@ -16,7 +17,7 @@ import {
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
-import type { AgentFailure } from '../journal/journal-record'
+import type { AgentFailure, JournalRecord } from '../journal/journal-record'
 import type { ReplayedWorktree } from '../journal/replay'
 import { sessionSignal } from '../limits/plan-signals'
 import { createAgentMessaging } from '../messages/agent-messaging'
@@ -169,6 +170,59 @@ export const runTurn = async ({
     return checked.value
 }
 
+/** The session a record names, if any. */
+const sessionOf = (record: JournalRecord): string | null => {
+    switch (record.kind) {
+        case 'agent_session':
+            return record.content.session.session_id
+        case 'agent_finished':
+        case 'agent_failed':
+            return record.content.session_id
+        default:
+            return null
+    }
+}
+
+/**
+ * The model a session launched on, from the journal: the `agent_started` of
+ * the launch the session's first record came after (same ticket and role),
+ * or of an earlier follow-up to it. `null` if the journal names none, as in
+ * journals from before #600.
+ *
+ * @example
+ * sessionModel({ records: journal.read(), session_id }) // 'opus'
+ */
+export const sessionModel = ({
+    records,
+    session_id,
+}: {
+    records: JournalRecord[]
+    session_id: string
+}): string | null => {
+    const followed = records.findLast(
+        (record) =>
+            record.kind === 'agent_started' &&
+            record.content.follow_up_of === session_id &&
+            record.content.model !== null
+    )
+    if (followed?.kind === 'agent_started') return followed.content.model
+    const first = records.findIndex(
+        (record) => sessionOf(record) === session_id
+    )
+    if (first === -1) return null
+    const { ticket, role } = records[first] ?? {}
+    const started = records
+        .slice(0, first)
+        .findLast(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.ticket === ticket &&
+                record.role === role &&
+                record.content.follow_up_of === null
+        )
+    return started?.kind === 'agent_started' ? started.content.model : null
+}
+
 export const launchAgent = async ({
     context,
     action,
@@ -177,11 +231,12 @@ export const launchAgent = async ({
     action: Extract<BuildAction, { type: 'launch_agent' }>
 }) => {
     const { ticket, role, prompt, may_edit_tests } = action
+    const model = CLAUDE_MODEL
     context.journal.append({
         kind: 'agent_started',
         ticket,
         role,
-        content: { role, prompt, follow_up_of: null },
+        content: { role, prompt, follow_up_of: null, model },
     })
     await runTurn({
         context,
@@ -202,6 +257,7 @@ export const launchAgent = async ({
                     ticket,
                     role,
                 }),
+                model,
             }),
     })
 }
@@ -218,11 +274,15 @@ export const followUpAgent = async ({
         value: context.state.snapshot?.tickets[ticket],
         what: `snapshot of #${ticket}`,
     })
+    // Journals from before #600 name no model: every agent ran Opus then.
+    const model =
+        sessionModel({ records: context.journal.read(), session_id }) ??
+        CLAUDE_MODEL
     context.journal.append({
         kind: 'agent_started',
         ticket,
         role,
-        content: { role, prompt: message, follow_up_of: session_id },
+        content: { role, prompt: message, follow_up_of: session_id, model },
     })
     await runTurn({
         context,

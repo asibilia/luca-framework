@@ -85,9 +85,9 @@ describe('Jev in shadow mode on the happy run', () => {
             modelReply?.kind === 'jev_answered' && modelReply.content.answers
         ).toEqual({
             model: {
-                value: 'claude-haiku-4-5',
+                value: 'haiku',
                 confidence: 0.7,
-                raw: { choice: 'claude-haiku-4-5', confidence: 0.7 },
+                raw: { choice: 'haiku', confidence: 0.7 },
             },
         })
 
@@ -113,6 +113,41 @@ describe('Jev in shadow mode on the happy run', () => {
                     record.kind === 'agent_started' && record.seq > skill.seq
             )
             expect(started?.role).toBe(skill.role)
+        }
+    })
+
+    test('every agent, reviewers and lenses included, launches on opus whatever the decision model picks, and its agent_started says so', () => {
+        const { run, without } = happy()
+
+        for (const each of [run, without]) {
+            const launches = each.launches.filter(
+                ({ kind }) => kind === 'launch'
+            )
+            expect(launches.map(({ role }) => role)).toEqual(
+                expect.arrayContaining([
+                    'test-writer',
+                    'implementer',
+                    'ticket-reviewer',
+                    'architecture-lens',
+                    'rules-lens',
+                ])
+            )
+            expect(new Set(launches.map(({ model }) => model))).toEqual(
+                new Set(['opus'])
+            )
+            const started = each.records.filter(
+                (record) => record.kind === 'agent_started'
+            )
+            expect(started).toHaveLength(each.launches.length)
+            expect(
+                new Set(
+                    started.map((record) =>
+                        record.kind === 'agent_started'
+                            ? record.content.model
+                            : null
+                    )
+                )
+            ).toEqual(new Set(['opus']))
         }
     })
 

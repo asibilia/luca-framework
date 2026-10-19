@@ -20,8 +20,10 @@ export {
     agentOptions,
     BANNED_ENV,
     CLAUDE_MODEL,
+    checkLaunchModel,
     checkModel,
     MAX_TURNS,
+    MODEL_NAMES,
     resultJsonSchema,
 } from './agents/claude-options'
 export {

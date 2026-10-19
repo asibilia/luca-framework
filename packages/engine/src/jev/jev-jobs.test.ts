@@ -154,6 +154,23 @@ describe('jevAsksBefore', () => {
         expect(asks.map(({ job }) => job)).toEqual(['ticket_model'])
     })
 
+    test('the model ask offers opus, sonnet and haiku, and its fixed choice is opus', () => {
+        const asks = jevAsksBefore({
+            action: createWorktree(11),
+            state: runWith({ tickets: [11] }),
+        })
+        const model = asks.find(({ request }) => 'model' in request.questions)
+
+        expect(
+            Object.keys(
+                model?.request.questions.model?.type === 'choice'
+                    ? model.request.questions.model.criteria
+                    : {}
+            )
+        ).toEqual(['opus', 'sonnet', 'haiku'])
+        expect(model?.fixed).toEqual({ model: 'opus' })
+    })
+
     test('asks the ticket order as before when two tickets are left', () => {
         const asks = jevAsksBefore({
             action: createWorktree(12),

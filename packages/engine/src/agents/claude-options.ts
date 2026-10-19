@@ -22,8 +22,14 @@ import { lucaVersion } from '../config/luca-version'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
-/** Every role runs on Claude Opus 5.5. */
-export const CLAUDE_MODEL = 'claude-opus-5-5'
+/**
+ * The models an agent may launch on, by short name. Claude Code turns each
+ * into its newest version; the session's init names the exact one.
+ */
+export const MODEL_NAMES = ['opus', 'sonnet', 'haiku'] as const
+
+/** Every role runs on Opus. */
+export const CLAUDE_MODEL = 'opus'
 
 /** Every role runs at the same effort level. */
 export const AGENT_EFFORT: EffortLevel = 'high'
@@ -42,11 +48,31 @@ export const MAX_TURNS: Record<AgentRole, number> = {
 }
 
 /**
- * Why a model id may not run an agent, or `null` if it may. Only Claude
- * models run, and never a Fable model.
+ * Why a model may not launch an agent, or `null` if it may: exactly one of
+ * `MODEL_NAMES`. Every other short name is refused, since some (such as
+ * `best` or `opusplan`) resolve to Fable or switch models mid-session.
  *
  * @example
- * checkModel({ model: 'claude-opus-5-5' }) // null
+ * checkLaunchModel({ model: 'sonnet' }) // null
+ * checkLaunchModel({ model: 'fable' }) // 'Fable models are refused: fable'
+ */
+export const checkLaunchModel = ({
+    model,
+}: {
+    model: string
+}): string | null => {
+    if (/fable/i.test(model)) return `Fable models are refused: ${model}`
+    if (!(MODEL_NAMES as readonly string[]).includes(model))
+        return `Agents launch only on ${MODEL_NAMES.join(', ')}: ${model}`
+    return null
+}
+
+/**
+ * Why the model a session's init names may not run an agent, or `null` if it
+ * may. Only Claude model ids run, and never a Fable model.
+ *
+ * @example
+ * checkModel({ model: 'gpt-5' }) // 'Only Claude models run agents: gpt-5'
  * checkModel({ model: 'claude-fable-5' }) // 'Fable models are refused: claude-fable-5'
  */
 export const checkModel = ({ model }: { model: string }): string | null => {
@@ -133,7 +159,7 @@ export const resultJsonSchema = ({
 }
 
 /**
- * The SDK options for one agent: Opus 5.5 at one effort for every role, the
+ * The SDK options for one agent: its model at one effort for every role, the
  * role's instructions, its result schema, `dontAsk` with only its own
  * pre-approved calls, the guard hook, the sandbox, a clean environment, and
  * nothing loaded from the machine: no settings, MCP servers, or skills.

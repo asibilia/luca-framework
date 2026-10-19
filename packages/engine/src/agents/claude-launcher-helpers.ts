@@ -9,6 +9,7 @@ import { afterEach, beforeEach } from 'bun:test'
 
 import type { AgentMessaging, AgentTurn } from './agent-launcher'
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
+import { CLAUDE_MODEL } from './claude-options'
 import type { AgentRole } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -210,7 +211,6 @@ export const launch = ({
 }): Promise<AgentTurn> =>
     createClaudeLauncher({
         query,
-        model,
         claude_path: CLAUDE_PATH,
         turn_timeout_ms,
     }).launch({
@@ -221,6 +221,7 @@ export const launch = ({
         may_edit_tests: role === 'test-writer',
         config: CONFIG,
         messaging: messaging ?? null,
+        model: model ?? CLAUDE_MODEL,
     })
 
 export const IMPLEMENTER_DONE = {

@@ -1,6 +1,7 @@
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 
+import { sessionModel } from './agent-turn'
 import type { FinalReviewAction } from './decide-final-review'
 import {
     commitIn,
@@ -14,6 +15,7 @@ import {
 } from './execute-build'
 import { closeSessions, openSessionsIn } from './session-close'
 
+import { CLAUDE_MODEL } from '../agents/claude-options'
 import { hasSlowTests } from '../config/engine-config'
 import type { EngineCommit } from '../git/git-adapter'
 import type { Journal } from '../journal/journal'
@@ -144,7 +146,12 @@ export const executeFinalReviewAction = async ({
                 kind: 'agent_started',
                 ticket: null,
                 role,
-                content: { role, prompt, follow_up_of: null },
+                content: {
+                    role,
+                    prompt,
+                    follow_up_of: null,
+                    model: CLAUDE_MODEL,
+                },
             })
             const result = await runTurn({
                 context,
@@ -162,6 +169,7 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Lenses are reviewers: no agent messages.
                         messaging: null,
+                        model: CLAUDE_MODEL,
                     }),
             })
             if (result === null || !('verdict' in result.result)) return
@@ -201,7 +209,12 @@ export const executeFinalReviewAction = async ({
                 kind: 'agent_started',
                 ticket: null,
                 role,
-                content: { role, prompt, follow_up_of: null },
+                content: {
+                    role,
+                    prompt,
+                    follow_up_of: null,
+                    model: CLAUDE_MODEL,
+                },
             })
             await runTurn({
                 context,
@@ -219,17 +232,26 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Every ticket is over, so nobody is left to talk to.
                         messaging: null,
+                        model: CLAUDE_MODEL,
                     }),
             })
             return
         }
         case 'follow_up_final_fixer': {
             const { role, session_id, message } = action
+            const model =
+                sessionModel({ records: journal.read(), session_id }) ??
+                CLAUDE_MODEL
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
                 role,
-                content: { role, prompt: message, follow_up_of: session_id },
+                content: {
+                    role,
+                    prompt: message,
+                    follow_up_of: session_id,
+                    model,
+                },
             })
             await runTurn({
                 context,

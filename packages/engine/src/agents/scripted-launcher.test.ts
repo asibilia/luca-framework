@@ -34,6 +34,7 @@ describe('scripted launcher: follow-ups', () => {
             may_edit_tests: true,
             config: BUILD_CONFIG,
             messaging: null,
+            model: 'opus',
         })
         const second = await launcher.launch({
             role: 'test-writer',
@@ -43,6 +44,7 @@ describe('scripted launcher: follow-ups', () => {
             may_edit_tests: true,
             config: BUILD_CONFIG,
             messaging: null,
+            model: 'opus',
         })
 
         expect(first.ok && second.ok).toBe(true)
@@ -70,6 +72,7 @@ describe('scripted launcher: follow-ups', () => {
             may_edit_tests: false,
             config: BUILD_CONFIG,
             messaging: null,
+            model: 'opus',
         })
         if (!first.ok) throw new Error(first.error)
         const next = await launcher.followUp({
@@ -87,7 +90,7 @@ describe('scripted launcher: follow-ups', () => {
             structured_output: { n: 2 },
         })
         expect(await Bun.file(join(cwd, 'a.ts')).text()).toBe('fixed')
-        expect(launcher.launches()).toEqual([
+        expect(launcher.launches()).toMatchObject([
             {
                 kind: 'launch',
                 role: 'implementer',
@@ -105,6 +108,41 @@ describe('scripted launcher: follow-ups', () => {
                 session_id: first.session_id,
                 delivered: [],
             },
+        ])
+    })
+
+    test("a launch records the model it asked for, and its follow-up records that session's model", async () => {
+        const launcher = createScriptedLauncher({
+            turns: [
+                { role: 'implementer', ticket: 11, result: { n: 1 } },
+                { role: 'implementer', ticket: 11, result: { n: 2 } },
+            ],
+        })
+        const first = await launcher.launch({
+            role: 'implementer',
+            ticket: 11,
+            prompt: 'p',
+            cwd,
+            may_edit_tests: false,
+            config: BUILD_CONFIG,
+            messaging: null,
+            model: 'sonnet',
+        })
+        if (!first.ok) throw new Error(first.error)
+        await launcher.followUp({
+            session_id: first.session_id,
+            role: 'implementer',
+            ticket: 11,
+            message: 'lint failed',
+            cwd,
+            config: BUILD_CONFIG,
+        })
+
+        expect(
+            launcher.launches().map(({ kind, model }) => ({ kind, model }))
+        ).toEqual([
+            { kind: 'launch', model: 'sonnet' },
+            { kind: 'follow_up', model: 'sonnet' },
         ])
     })
 
@@ -137,6 +175,7 @@ describe('scripted launcher: follow-ups', () => {
             may_edit_tests: false,
             config: BUILD_CONFIG,
             messaging: null,
+            model: 'opus',
         })
         if (!first.ok) throw new Error(first.error)
 
@@ -166,6 +205,7 @@ describe('scripted launcher: closing sessions', () => {
             may_edit_tests: role === 'test-writer',
             config: BUILD_CONFIG,
             messaging: null,
+            model: 'opus',
         })
 
     test('a launched session is counted as open until it is closed', async () => {

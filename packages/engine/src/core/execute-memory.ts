@@ -1,6 +1,7 @@
 import type { MemoryAction, MemorySaveStep } from './decide-memory'
 import { buildContext, need, runTurn, type BuildDeps } from './execute-build'
 
+import { CLAUDE_MODEL } from '../agents/claude-options'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
@@ -415,6 +416,7 @@ export const executeMemoryAction = async ({
                     role: 'learner',
                     prompt: action.prompt,
                     follow_up_of: null,
+                    model: CLAUDE_MODEL,
                 },
             })
             await runTurn({
@@ -433,6 +435,7 @@ export const executeMemoryAction = async ({
                         config: built.config,
                         // The learner writes nothing and talks to nobody.
                         messaging: null,
+                        model: CLAUDE_MODEL,
                     }),
             })
             return

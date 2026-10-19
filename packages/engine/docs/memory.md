@@ -53,7 +53,7 @@ learn), not after a billing stop (starting any agent then could bill per
 token), and not after a stop for crashes (the run stopped for good). A
 learner's turn a crash cut off is taken again by a fresh learner (step
 `launch_learner:learner`, under the run's key). The learner is a fresh agent (role `learner`: Read, Grep, Glob; no
-shell, writes nothing, no messages) on Opus 5.5 like every role. Its prompt
+shell, writes nothing, no messages) on `opus` like every role. Its prompt
 is a digest of the journal built by pure code (`learnerPrompt`): the
 failures (failed red checks and gates with their output's end, clashes), fix
 loops, failed tries, review and final review findings, stuck points,
