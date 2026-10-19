@@ -83,4 +83,14 @@ Layout:
     - `reduce-board-reasons.ts`: stuck reasons in words.
     - `reduce-board-update.ts`: the small state updates every handler uses.
     - `reduce-board-create.ts`: the starting shapes of a new board and a new ticket card.
+  - The server, `board-server.ts`, wires `createBoardServer` from modules by responsibility (each module is a factory that takes the config and the pieces before it):
+    - `board-server-types.ts`: the server's types, and `BoardServerConfig` (what it is given, every side effect injected).
+    - `board-server-util.ts`: the run phases that need no engine, and the error text.
+    - `board-server-store.ts`: the runs this plugin started, kept in memory and rebuilt from their journals, with the queue that keeps a run's work in order and the rows added to the chat.
+    - `board-server-engine.ts`: running the engine: its environment, finding it from the settings, the one-at-a-time lock on engine work, and spawning it with `--resume`.
+    - `board-server-start.ts`: `run.start`.
+    - `board-server-resume.ts`: `/luca-run resume <run id>`.
+    - `board-server-events.ts`: `engine.event`.
+    - `board-server-read.ts`: `board.read` and `reply.post`, and the runs the plugin didn't start, read from their journals.
+    - `board-server-check.ts`: the engine check: restarting a run whose engine is gone, or marking it stopped.
 - `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme.
