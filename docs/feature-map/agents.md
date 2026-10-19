@@ -77,6 +77,8 @@ Tests:
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
 - `packages/engine/src/core/run-session-close.e2e.test.ts`
+- `packages/engine/src/core/run-session-close-interruptions.e2e.test.ts`
+- `packages/engine/src/core/run-session-close-ticket-ends.e2e.test.ts`
 
 ## The GitHub tracker
 
