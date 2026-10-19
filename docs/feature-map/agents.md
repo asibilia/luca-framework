@@ -80,6 +80,9 @@ Tests:
 - `packages/engine/src/guards/worktree-state.test.ts`
 - `packages/engine/src/guards/shared-git-filters.test.ts`
 - `packages/engine/src/core/agent-guards.e2e.test.ts`
+- `packages/engine/src/core/agent-guards-git-state.e2e.test.ts`
+- `packages/engine/src/core/agent-guards-refs.e2e.test.ts`
+- `packages/engine/src/core/agent-guards-own-runs.e2e.test.ts`
 - `packages/board/server/shared-git-panel.test.ts`
 
 ## Agents and their launcher
@@ -91,6 +94,7 @@ Reached by: every agent turn of a real run; scripted stand-in agents run the end
 Tests:
 
 - `packages/engine/src/agents/claude-launcher.test.ts`
+- `packages/engine/src/agents/claude-launcher-options.test.ts`
 - `packages/engine/src/agents/claude-launcher-follow-ups.test.ts`
 - `packages/engine/src/agents/claude-launcher-messages.test.ts`
 - `packages/engine/src/agents/claude-launcher-result.test.ts`

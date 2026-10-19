@@ -50,6 +50,8 @@ Tests:
 - `packages/engine/src/core/run-crash-recovery.e2e.test.ts`
 - `packages/engine/src/core/run-crash-recovery-git.e2e.test.ts`
 - `packages/board/server/engine-restart.test.ts`
+- `packages/board/server/engine-restart-not-restarted.test.ts`
+- `packages/board/server/engine-restart-failures.test.ts`
 
 ## The engine config and its reload
 
@@ -83,7 +85,8 @@ Tests:
 - `packages/engine/src/core/usage-line-wait.test.ts`
 - `packages/engine/src/limits/usage-line.test.ts`
 - `packages/board/server/usage-line-panel.test.ts`
-- `packages/board/server/board-panel-state.test.ts`
+- `packages/board/server/board-panel-state-usage.test.ts`
+- `packages/board/server/board-panel-state-waits-and-stops.test.ts`
 
 ## One run per repo: the repo wait
 
