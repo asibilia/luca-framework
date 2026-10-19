@@ -106,6 +106,30 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
    live excludes, fsmonitor, and hooks.
    This holds for every launcher and every turn, follow-ups too.
 
+### Helpers
+
+Any agent may hand repo searches to **helpers** (#627): read-only Haiku
+sessions it starts itself with the SDK's `Agent` tool, so its own model goes
+to the real work. Every launch passes one helper definition in the SDK's
+`agents` option, the `searcher`: it runs on `haiku` (the short name, so
+always the newest), with only `Read`, `Grep` and `Glob`, and a short
+read-only prompt. Clef and the model floors don't apply to helpers.
+
+The guard hook refuses a helper call, as a guard denial for the agent's role,
+when it asks for another type than `searcher`, another model than `haiku`
+(a Fable model is refused by name), a background run, or an isolation, and
+when it would be a fourth helper while 3 of that agent's helpers run. A
+helper counts as running from its allowed call until its result comes back.
+A tool call from inside a helper (the hook input's `agent_id`) may only be
+`Read`, `Grep` or `Glob`, whatever its agent may do. The helper's tool list
+is the first fence, the guard hook the second, and the after-turn check,
+which undoes any write the role may not make, the third. Helpers run in the
+foreground, so each one ends inside its agent's turn.
+
+A helper's tokens are in its turn's `model_usage` (subagents included), so
+they count toward the run budget. `agent_session` counts the turn's helpers
+in `helpers_started` (0 in older journals).
+
 Before each launch, the launcher checks `accountInfo()` for a Claude plan
 (pro, max, team, or enterprise) and no API key, before the prompt is sent.
 The agent's environment comes from an allow-list, so `ANTHROPIC_API_KEY`,

@@ -66,6 +66,11 @@ export const AgentSessionSchema = z.object({
     rate_limit_events: z.array(z.record(z.string(), z.unknown())).default([]),
     /** An assistant message came back with `error: "billing_error"`. */
     billing_error: z.boolean().default(false),
+    /**
+     * How many helpers (#627) the turn started. Their tokens are in
+     * `model_usage`. Older journals have none.
+     */
+    helpers_started: z.number().int().min(0).default(0),
 })
 
 export type AgentSession = z.infer<typeof AgentSessionSchema>

@@ -102,6 +102,7 @@ export const createLaunch = ({
 
         const summary: AgentSession = AgentSessionSchema.parse({})
         const stderr: string[] = []
+        const helpers = new Set<string>()
         const options = agentOptions({
             role,
             may_edit_tests,
@@ -120,6 +121,10 @@ export const createLaunch = ({
                 config,
                 // The summary is swapped each turn, so this reads it late.
                 on_deny: (denial) => open.summary.guard_denials.push(denial),
+                helpers,
+                on_helper: () => {
+                    open.summary.helpers_started += 1
+                },
             }),
             // Kept in the session's options, so its follow-ups have them too.
             luca_server:
@@ -152,6 +157,7 @@ export const createLaunch = ({
             running,
             input,
             summary,
+            helpers,
             model_totals: {},
             waiter: null,
             ended: null,

@@ -13,6 +13,7 @@ import {
     type GuardArgs,
     type ToolDecision,
 } from './guard-roles'
+import { checkHelperCall, HELPER_TOOL } from './helper-rules'
 import { checkBash } from './shell-rules'
 import { insideWorktree, mayWrite } from './write-rules'
 
@@ -55,7 +56,7 @@ const SEND_MESSAGE_TOOL = 'mcp__luca__send_message'
 /**
  * The guard's decision for one tool call, made before it runs (the SDK's
  * PreToolUse hook). Reviewers and the learner may not send agent messages.
- * It fails closed: an unknown tool, an input of the wrong
+ * An `Agent` call starts a helper (`checkHelperCall`). It fails closed: an unknown tool, an input of the wrong
  * shape, a path outside the worktree, or a shell command off the role's list
  * is denied with a reason the agent can act on.
  *
@@ -81,6 +82,7 @@ export const checkToolCall = ({
         return deny(`A ${role} may not send agent messages.`)
     }
     if (isEngineTool(tool_name)) return ALLOW
+    if (tool_name === HELPER_TOOL) return checkHelperCall({ tool_input })
     if (!TOOLS[role].includes(tool_name) && !WRITE_TOOLS.includes(tool_name)) {
         return deny(`A ${role} may not use ${tool_name}.`)
     }

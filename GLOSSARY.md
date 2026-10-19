@@ -52,6 +52,10 @@ _Avoid_: deploy, install
 One model session doing one role on one ticket.
 _Avoid_: subagent, worker
 
+**Helper**:
+A read-only Haiku session an agent starts to search the repo; not an agent.
+_Avoid_: subagent, searcher agent
+
 **Role**:
 The job an agent does in a run, such as test-writer, implementer, or reviewer.
 _Avoid_: mode, persona
