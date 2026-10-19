@@ -32,6 +32,7 @@ Tests:
 - `packages/board/server/ticket-stages-panel-final-review.test.ts`
 - `packages/board/server/ticket-stages-panel-old-journals.test.ts`
 - `packages/board/server/current-step-panel.test.ts`
+- `packages/board/server/current-step-panel-finished-steps.test.ts`
 - `packages/board/server/current-step-text.test.ts`
 - `packages/board/server/run-tabs-fold.test.ts`
 
