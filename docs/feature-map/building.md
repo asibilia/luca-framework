@@ -77,6 +77,19 @@ Tests:
 - `packages/engine/src/core/decide-feature-map.test.ts`
 - `packages/engine/src/core/run-feature-map.e2e.test.ts`
 
+## Test helpers
+
+A repo can name non-test files the test-writer may also write, such as shared fakes and fixtures: the guard lets it, the red check and the feature map leave them alone, and the leftover scan lets them through.
+
+Reached by: `test_helper_patterns` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/guards/role-rules-test-helpers.test.ts`
+- `packages/engine/src/config/test-helper-patterns.test.ts`
+- `packages/engine/src/core/commit-in-test-helpers.test.ts`
+- `packages/engine/src/core/run-test-helpers.e2e.test.ts`
+
 ## Test commands and the gates
 
 The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed.
