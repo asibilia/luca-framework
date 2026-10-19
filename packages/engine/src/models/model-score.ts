@@ -1,5 +1,5 @@
-import { MODEL_NAMES } from '../agents/claude-options'
 import type { FindingSeverity } from '../agents/role-results'
+import { ModelNameSchema, type ModelName } from '../config/engine-config'
 import type { JournalRecord } from '../journal/journal-record'
 import { countedTokens } from '../limits/plan-usage'
 
@@ -29,8 +29,6 @@ const EPSILON = 1e-9
 export const SCORED_ROLES = ['test-writer', 'implementer'] as const
 
 export type ScoredRole = (typeof SCORED_ROLES)[number]
-
-export type ModelName = (typeof MODEL_NAMES)[number]
 
 export type Verdict = 'not enough data' | 'worse' | 'about the same'
 
@@ -124,7 +122,9 @@ type RunFacts = {
 const familyOf = (name: unknown): ModelName | null => {
     if (typeof name !== 'string') return null
     const lower = name.toLowerCase()
-    return MODEL_NAMES.find((model) => lower.includes(model)) ?? null
+    return (
+        ModelNameSchema.options.find((model) => lower.includes(model)) ?? null
+    )
 }
 
 const isScored = (role: string | null): role is ScoredRole =>
@@ -412,16 +412,20 @@ export const scoreModels = ({
         .flatMap((run) => run.tickets)
         .filter(({ models }) => Object.keys(models).length > 0)
     const scores = SCORED_ROLES.flatMap((role) =>
-        MODEL_NAMES.map((model) => scoreOf({ tickets, role, model }))
+        ModelNameSchema.options.map((model) =>
+            scoreOf({ tickets, role, model })
+        )
     ).filter(({ tickets, baseline }) => tickets > 0 || baseline.tickets > 0)
     const learner = facts.flatMap((run) => run.learner)
     return {
         runs: runs.length,
         scores,
-        learner: MODEL_NAMES.map((model) => ({
-            model,
-            agents: learner.filter((ran) => ran === model).length,
-        })).filter(({ agents }) => agents > 0),
+        learner: ModelNameSchema.options
+            .map((model) => ({
+                model,
+                agents: learner.filter((ran) => ran === model).length,
+            }))
+            .filter(({ agents }) => agents > 0),
         final_review: {
             routed: finalReviewOf(facts.filter(({ routed }) => routed)),
             not_routed: finalReviewOf(facts.filter(({ routed }) => !routed)),

@@ -410,6 +410,7 @@ export const executeMemoryAction = async ({
             })
             const { model, model_reason } = launchPick({
                 records: journal.read(),
+                state: built.state,
                 config: built.config,
                 ticket: null,
                 role: 'learner',

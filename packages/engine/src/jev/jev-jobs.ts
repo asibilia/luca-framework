@@ -11,7 +11,7 @@ import {
 import { offeredModels, type RoutedRole } from './model-pick'
 
 import type { Finding } from '../agents/role-results'
-import { modelsOf } from '../config/engine-config'
+import { DEFAULT_MODEL, modelsOf } from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
@@ -39,11 +39,8 @@ export type JevAsk = {
     acted?: boolean
 }
 
-/** The models Jev may pick for an agent, by short name. */
-export const JEV_MODEL_OPTIONS = ['opus', 'sonnet', 'haiku'] as const
-
 /** The model the engine falls back on, and every reviewer's. */
-export const JEV_FIXED_MODEL = 'opus'
+export const JEV_FIXED_MODEL = DEFAULT_MODEL
 
 /**
  * The stock skills Jev may give an agent. The engine gives agents none, so
@@ -249,7 +246,7 @@ const ROUTED_TICKET_ROLES: readonly RoutedRole[] = [
 ]
 
 const isRoutedTicketRole = (role: string): role is RoutedRole =>
-    (ROUTED_TICKET_ROLES as readonly string[]).includes(role)
+    ROUTED_TICKET_ROLES.some((routed) => routed === role)
 
 /**
  * The asks to make before the engine carries out `action`: ticket order

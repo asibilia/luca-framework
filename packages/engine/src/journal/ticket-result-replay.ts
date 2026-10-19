@@ -6,6 +6,7 @@
 import {
     badTestOf,
     declinedBy,
+    ranCheaper,
     type FinishedContent,
 } from './agent-turn-replay'
 import type { JournalRecord } from './journal-record'
@@ -13,9 +14,33 @@ import type { TicketProgress } from './ticket-progress'
 
 import {
     isBlocking,
+    type AgentRole,
     type BadTestSource,
     type TicketReviewResult,
 } from '../agents/role-results'
+
+/**
+ * A failed try for `role` on its ticket: one more of its tries used up,
+ * and, if its agent ran on a model cheaper than Opus, its later fresh
+ * agents on the ticket step up to Opus (#604). Engine failures are no try.
+ */
+export const failedTryChange = ({
+    progress,
+    role,
+}: {
+    progress: TicketProgress
+    role: AgentRole
+}): Pick<TicketProgress, 'failed_tries' | 'failed_cheaper'> => ({
+    failed_tries: {
+        ...progress.failed_tries,
+        [role]: (progress.failed_tries[role] ?? 0) + 1,
+    },
+    failed_cheaper:
+        ranCheaper(progress.launched_on[role]) &&
+        !progress.failed_cheaper.includes(role)
+            ? [...progress.failed_cheaper, role]
+            : progress.failed_cheaper,
+})
 
 /**
  * The bounce sources once `by` sends one more test back as bad (#581), each
@@ -267,9 +292,6 @@ export const alreadyDoneCheckedChange = ({
             session_id: progress.sessions[role] ?? null,
         },
         engine_failures: 0,
-        failed_tries: {
-            ...progress.failed_tries,
-            [role]: (progress.failed_tries[role] ?? 0) + 1,
-        },
+        ...failedTryChange({ progress, role }),
     }
 }

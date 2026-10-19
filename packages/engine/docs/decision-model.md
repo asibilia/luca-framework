@@ -13,7 +13,7 @@ reads these records. The one exception is the model pick for a role whose
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
-| `agent_model` | Before each fresh test-writer and implementer, and the learner: which model? It offers the models at or above the role's floor (all three, `opus`, `sonnet` and `haiku`, when the floor is `opus`). Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens. | `opus`. |
+| `agent_model` | Before each fresh test-writer and implementer, and the learner: which model? It offers the models at or above the role's floor (all three, `opus`, `sonnet` and `haiku`, when the floor is `opus`). Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens, nor after the role failed a try on the ticket on a cheaper model, nor on a crash redo that kept its first try's model. | `opus`. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
@@ -77,15 +77,24 @@ run at start. The launch step reads the answer it just journaled and picks
 the model (`pickModel` in `jev/model-pick.ts`); the first match wins:
 
 1. The ticket reviewer or a lens: `opus`, reason `locked`.
-2. The role's floor is `opus`: `opus`, reason `floor`.
-3. No answer (off, timed out, errored, or not asked): `opus`, `no_answer`.
-4. Confidence below the bar or missing, or a model not offered: `opus`,
+2. The role already used up a try on this ticket on a model cheaper than
+   Opus (#604): `opus`, reason `after_failure`, with no `agent_model` ask.
+   Only a failure that counts as a try counts, so an `engine` failure
+   doesn't; it is per ticket, and an owner's `retry` keeps it.
+3. The role's floor is `opus`: `opus`, reason `floor`.
+4. No answer (off, timed out, errored, or not asked): `opus`, `no_answer`.
+5. Confidence below the bar or missing, or a model not offered: `opus`,
    `unsure`.
-5. Otherwise the decision model's pick, reason `decision_model`.
+6. Otherwise the decision model's pick, reason `decision_model`.
+
+A launch step a crash cut off is redone on the model and reason its first
+try journaled, with no new ask; if it journaled none, it picks as above.
 
 Each `agent_started` names its `model` and `model_reason` (older journals
-read the reason as `null`); a follow-up keeps its session's. The final
-review's fixers always launch on `opus`, reason `locked`.
+read both as `null`). A follow-up, a failed try's included, keeps its
+session's model and reason, so one session never switches models; the
+step-up comes at the role's next fresh agent. The final review's fixers
+always launch on `opus`, reason `locked`.
 
 ```ts
 import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'

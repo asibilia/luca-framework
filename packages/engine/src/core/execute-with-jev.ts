@@ -53,13 +53,14 @@ export const executeWithJev = async ({
     read_usage_lines?: () => Promise<UsageLines>
 }): Promise<void> => {
     const before = journal.read()
+    const state = replayRun({ records: before })
     await ask(
-        jevAsksBefore({ action, state: replayRun({ records: before }) }).filter(
+        jevAsksBefore({ action, state }).filter(
             // No model ask once the launch's model is set without one (#604).
             ({ job, ticket, role }) =>
                 job !== 'agent_model' ||
                 role === null ||
-                asksModel({ records: before, ticket, role, step })
+                asksModel({ records: before, state, ticket, role, step })
         )
     )
     const lastSeq = journal.read().at(-1)?.seq ?? 0

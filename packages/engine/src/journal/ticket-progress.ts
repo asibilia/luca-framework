@@ -220,6 +220,17 @@ export type TicketProgress = {
      * this ticket, in all. Engine failures never count here.
      */
     failed_tries: Partial<Record<AgentRole, number>>
+    /**
+     * The model each role's latest agent on this ticket launched on
+     * (#604); `null` in older journals.
+     */
+    launched_on: Partial<Record<AgentRole, string | null>>
+    /**
+     * The roles that used up a try (as `failed_tries` counts one) on a
+     * model cheaper than Opus (#604): their later fresh agents on this
+     * ticket run Opus. A retry keeps it.
+     */
+    failed_cheaper: AgentRole[]
     /** Engine failures in a row; any other turn's end resets it. */
     engine_failures: number
     leftovers: Record<CommitStage, LeftoverHit[] | null>
@@ -297,6 +308,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     test_update: null,
     agent_failure: null,
     failed_tries: {},
+    launched_on: {},
+    failed_cheaper: [],
     engine_failures: 0,
     leftovers: { red: null, green: null, fix: null },
     commits: { red: null, green: null, fix: null },

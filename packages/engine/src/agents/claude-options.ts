@@ -17,19 +17,20 @@ import {
     type AgentRole,
 } from './role-results'
 
-import type { EngineConfig } from '../config/engine-config'
+import {
+    DEFAULT_MODEL,
+    ModelNameSchema,
+    type EngineConfig,
+} from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
-/**
- * The models an agent may launch on, by short name. Claude Code turns each
- * into its newest version; the session's init names the exact one.
- */
-export const MODEL_NAMES = ['opus', 'sonnet', 'haiku'] as const
+/** The models an agent may launch on, by short name (`ModelNameSchema`). */
+export const MODEL_NAMES = ModelNameSchema.options
 
 /** The model reviewers run on, and every agent the decision model doesn't route (#603). */
-export const CLAUDE_MODEL = 'opus'
+export const CLAUDE_MODEL = DEFAULT_MODEL
 
 /** Every role runs at the same effort level. */
 export const AGENT_EFFORT: EffortLevel = 'high'
@@ -62,7 +63,7 @@ export const checkLaunchModel = ({
     model: string
 }): string | null => {
     if (/fable/i.test(model)) return `Fable models are refused: ${model}`
-    if (!(MODEL_NAMES as readonly string[]).includes(model))
+    if (!ModelNameSchema.safeParse(model).success)
         return `Agents launch only on ${MODEL_NAMES.join(', ')}: ${model}`
     return null
 }

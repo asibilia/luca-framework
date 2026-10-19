@@ -12,6 +12,7 @@ import { EMPTY_TICKET_PROGRESS, type TicketProgress } from './ticket-progress'
 import {
     alreadyDoneCheckedChange,
     bouncedBy,
+    failedTryChange,
     resultChange,
     setupChangeOf,
 } from './ticket-result-replay'
@@ -96,7 +97,14 @@ const progressChange = ({
                 baseline_sha: progress.worktree?.base_sha ?? null,
             }
         case 'agent_started':
-            return { retried: null, crashed_turn: null }
+            return {
+                retried: null,
+                crashed_turn: null,
+                launched_on: {
+                    ...progress.launched_on,
+                    [record.content.role]: record.content.model,
+                },
+            }
         case 'agent_finished': {
             const finished = record.content
             return {
@@ -129,10 +137,7 @@ const progressChange = ({
             return {
                 agent_failure,
                 engine_failures: 0,
-                failed_tries: {
-                    ...progress.failed_tries,
-                    [role]: (progress.failed_tries[role] ?? 0) + 1,
-                },
+                ...failedTryChange({ progress, role }),
             }
         }
         case 'red_check': {

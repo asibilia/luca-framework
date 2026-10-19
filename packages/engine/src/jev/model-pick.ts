@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { AgentRole } from '../agents/role-results'
 import {
+    DEFAULT_MODEL,
     ModelNameSchema,
     modelsOf,
     ROUTED_ROLES,
@@ -10,6 +11,7 @@ import {
     type ModelsConfig,
 } from '../config/engine-config'
 import type { JournalRecord } from '../journal/journal-record'
+import type { RunState } from '../journal/replay'
 
 /**
  * Which model each fresh agent launches on (#603): the pick rule, and the
@@ -43,13 +45,16 @@ export type ModelReason = z.infer<typeof ModelReasonSchema>
 export type ModelPick = { model: ModelName; model_reason: ModelReason }
 
 /** Reviewers, lenses, and the final review's fixers: always Opus. */
-export const LOCKED_PICK: ModelPick = { model: 'opus', model_reason: 'locked' }
+export const LOCKED_PICK: ModelPick = {
+    model: DEFAULT_MODEL,
+    model_reason: 'locked',
+}
 
 export type RoutedRole = (typeof ROUTED_ROLES)[number]
 
 /** Whether a role has a model floor, so the decision model may pick its model. */
 export const isRoutedRole = (role: string): role is RoutedRole =>
-    (ROUTED_ROLES as readonly string[]).includes(role)
+    ROUTED_ROLES.some((routed) => routed === role)
 
 /**
  * The models an `agent_model` ask offers for a role with this floor: the
@@ -162,36 +167,23 @@ export const modelAnswerOf = ({
 
 /**
  * Whether this role failed a try on this ticket on a model cheaper than
- * Opus (#604): a failure the decision step counts as a try (not an
- * `engine` one, so a crashed SDK doesn't count), in a turn whose
- * `agent_started` named a model other than `opus`.
+ * Opus (#604), as replay counts a try (`failed_cheaper`): the learner's at
+ * the end of a run, with no ticket.
  */
 export const failedCheaper = ({
-    records,
+    state,
     ticket,
     role,
 }: {
-    records: JournalRecord[]
+    state: RunState
     ticket: number | null
     role: string
-}): boolean => {
-    let model: string | null = null
-    for (const record of records) {
-        if (record.ticket !== ticket) continue
-        if (record.kind === 'agent_started' && record.content.role === role) {
-            model = record.content.model
-        }
-        const failed =
-            (record.kind === 'agent_failed' &&
-                record.content.role === role &&
-                record.content.failure !== 'engine') ||
-            (record.kind === 'already_done_checked' &&
-                !record.content.ok &&
-                role === 'test-writer')
-        if (failed && model !== null && model !== 'opus') return true
-    }
-    return false
-}
+}): boolean =>
+    ticket === null
+        ? role === 'learner' && state.memory.learner.failed_cheaper
+        : (state.tickets[ticket]?.failed_cheaper ?? []).some(
+              (failed) => failed === role
+          )
 
 /**
  * The model a launch step's earlier try journaled before a crash cut it
@@ -234,11 +226,13 @@ export type LaunchTry = { first_seq: number; redo: boolean }
  */
 export const asksModel = ({
     records,
+    state,
     ticket,
     role,
     step,
 }: {
     records: JournalRecord[]
+    state: RunState
     ticket: number | null
     role: string
     step: LaunchTry | undefined
@@ -247,7 +241,7 @@ export const asksModel = ({
         (step?.redo === true &&
             redonePick({ records, first_seq: step.first_seq, ticket, role }) !==
                 null) ||
-        failedCheaper({ records, ticket, role })
+        failedCheaper({ state, ticket, role })
     )
 
 /**
@@ -257,12 +251,14 @@ export const asksModel = ({
  */
 export const launchPick = ({
     records,
+    state,
     config,
     ticket,
     role,
     step,
 }: {
     records: JournalRecord[]
+    state: RunState
     config: EngineConfig
     ticket: number | null
     role: AgentRole
@@ -274,6 +270,6 @@ export const launchPick = ({
     pickModel({
         role,
         models: modelsOf({ config }),
-        failed_cheaper: failedCheaper({ records, ticket, role }),
+        failed_cheaper: failedCheaper({ state, ticket, role }),
         answer: modelAnswerOf({ records, ticket, role }),
     })

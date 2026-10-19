@@ -8,12 +8,12 @@ import { mayEditTests, type BuildAction } from './decide-build'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
-import { CLAUDE_MODEL } from '../agents/claude-options'
 import {
     parseRoleResult,
     type AgentRole,
     type RoleResult,
 } from '../agents/role-results'
+import { DEFAULT_MODEL } from '../config/engine-config'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
@@ -240,7 +240,7 @@ export const followUpModel = ({
     session_id: string
 }): SessionModel =>
     sessionModel({ records, session_id }) ?? {
-        model: CLAUDE_MODEL,
+        model: DEFAULT_MODEL,
         model_reason: null,
     }
 
@@ -257,6 +257,7 @@ export const launchAgent = async ({
     // the model its first try journaled.
     const { model, model_reason } = launchPick({
         records: context.journal.read(),
+        state: context.state,
         config: context.config,
         ticket,
         role,

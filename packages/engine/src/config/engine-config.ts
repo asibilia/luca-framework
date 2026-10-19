@@ -57,12 +57,17 @@ export const DecisionModelConfigSchema = z.object({
 })
 
 /**
- * A model by short name, as agents launch on it (`MODEL_NAMES` in
- * `agents/claude-options.ts`), strongest first.
+ * The models an agent may launch on, by short name, strongest first: the
+ * one list the launcher, the floors, and the decision model's options read.
+ * Claude Code turns each into its newest version; the session's init names
+ * the exact one.
  */
 export const ModelNameSchema = z.enum(['opus', 'sonnet', 'haiku'])
 
 export type ModelName = z.infer<typeof ModelNameSchema>
+
+/** The model reviewers run on, and every fallback of the model pick (#603). */
+export const DEFAULT_MODEL: ModelName = ModelNameSchema.enum.opus
 
 /** The roles with a model floor (#603); every other role always runs Opus. */
 export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
@@ -73,9 +78,9 @@ export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
  */
 const ModelFloorsSchema = z.strictObject(
     {
-        'test-writer': ModelNameSchema.default('opus'),
-        implementer: ModelNameSchema.default('opus'),
-        learner: ModelNameSchema.default('opus'),
+        'test-writer': ModelNameSchema.default(DEFAULT_MODEL),
+        implementer: ModelNameSchema.default(DEFAULT_MODEL),
+        learner: ModelNameSchema.default(DEFAULT_MODEL),
     },
     {
         error: (issue) =>

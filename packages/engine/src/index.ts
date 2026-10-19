@@ -224,7 +224,6 @@ export {
     JEV_CANDIDATE_SKILLS,
     JEV_FAILURE_TEXT_CHARS,
     JEV_FIXED_MODEL,
-    JEV_MODEL_OPTIONS,
     jevAsksAfter,
     jevAsksBefore,
     type JevAsk,
