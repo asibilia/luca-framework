@@ -23,7 +23,7 @@
     },
     "packages/board": {
       "name": "@luca/board",
-      "version": "14.0.0-alpha.15",
+      "version": "14.0.0-alpha.16",
       "dependencies": {
         "zod": "catalog:",
       },
@@ -39,7 +39,7 @@
     },
     "packages/engine": {
       "name": "@luca/engine",
-      "version": "14.0.0-alpha.15",
+      "version": "14.0.0-alpha.16",
       "bin": {
         "luca-run": "src/cli/luca-run.ts",
       },
@@ -58,7 +58,7 @@
     },
     "packages/luca": {
       "name": "@alecsibilia/luca",
-      "version": "14.0.0-alpha.15",
+      "version": "14.0.0-alpha.16",
       "bin": {
         "luca": "engine/cli/luca.ts",
         "luca-run": "engine/cli/luca-run.ts",
