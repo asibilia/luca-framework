@@ -94,6 +94,7 @@ Reached by: every agent turn of a real run; scripted stand-in agents run the end
 Tests:
 
 - `packages/engine/src/agents/claude-launcher.test.ts`
+- `packages/engine/src/agents/claude-launcher-options.test.ts`
 - `packages/engine/src/agents/claude-launcher-follow-ups.test.ts`
 - `packages/engine/src/agents/claude-launcher-messages.test.ts`
 - `packages/engine/src/agents/claude-launcher-result.test.ts`
