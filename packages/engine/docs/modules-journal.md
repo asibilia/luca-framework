@@ -33,10 +33,13 @@ folder is on its folder's page; the [README](../README.md) lists them.
 
 ## Journal entry modules
 
-`src/journal/journal-record.ts` builds the journal's record kinds from one module per area, and re-exports what they export.
+`src/journal/journal-record.ts` re-exports the journal's record kinds, built from one module per area, and what they export. A new kind is added to the three modules at the top of the table: the entry union, the record union, and the list of kinds.
 
 | Module | What it does |
 | --- | --- |
+| `src/journal/journal-entry-schema.ts` | `JournalEntrySchema` (what a caller hands the journal to append) and `JournalEntry`: every kind's entry schema in one union. |
+| `src/journal/journal-record-schema.ts` | `JournalRecordSchema` (one line of a journal, with `seq` and `time`) and `JournalRecord`: the same union, stamped. |
+| `src/journal/journal-kinds.ts` | `JournalKindSchema`, `JournalKind`, and `JOURNAL_KINDS`: every record kind's name. |
 | `src/journal/entry-fields.ts` | The fields every entry has. |
 | `src/journal/run-entries.ts` | Run start, resume, stop, and step entries. |
 | `src/journal/intake-entries.ts` | Intake entries. |
