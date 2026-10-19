@@ -236,6 +236,33 @@ describe('the models block (#603)', () => {
     })
 })
 
+describe("this repo's models block (#604)", () => {
+    const ROOT = join(import.meta.dir, '../../../..')
+
+    test("sets only the test-writer's floor, to sonnet", async () => {
+        const raw: unknown = await Bun.file(
+            join(ROOT, '.luca', 'config.json')
+        ).json()
+
+        expect(raw).toHaveProperty('models', {
+            floors: { 'test-writer': 'sonnet' },
+        })
+        expect(await loadEngineConfig({ repo_root: ROOT })).toMatchObject({
+            ok: true,
+            config: {
+                models: {
+                    floors: {
+                        'test-writer': 'sonnet',
+                        implementer: 'opus',
+                        learner: 'opus',
+                    },
+                    confidence_bar: 0.8,
+                },
+            },
+        })
+    })
+})
+
 describe('the feature map path (#583)', () => {
     const configWith = (feature_map?: string) =>
         EngineConfigSchema.parse({

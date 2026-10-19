@@ -46,6 +46,7 @@ Reached by: the `models` block (`floors`, `confidence_bar`) in a repo's `.luca/c
 Tests:
 
 - `packages/engine/src/jev/jev-model-pick.e2e.test.ts`
+- `packages/engine/src/jev/jev-model-safety.e2e.test.ts`
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`
 - `packages/engine/src/models/model-score-verdicts.test.ts`
