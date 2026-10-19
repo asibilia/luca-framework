@@ -16,6 +16,8 @@ Tests:
 - `packages/board/server/board-server.test.ts`
 - `packages/board/server/engine-event-protocol.test.ts`
 - `packages/board/server/journal-rebuild.test.ts`
+- `packages/board/server/journal-rebuild-resend.test.ts`
+- `packages/board/server/journal-rebuild-not-started.test.ts`
 - `packages/board/server/two-runs-at-once.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
 - `packages/board/server/board-panel-state-usage.test.ts`
