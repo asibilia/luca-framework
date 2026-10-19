@@ -80,7 +80,8 @@ as the run started with it (`FROZEN_FIELDS` in `config/config-reload.ts`
 says why for each): `checks` above all, since a ticket's baseline, its red
 check, and its gates compare test results across the run, and a baseline
 taken with old commands is not comparable with new ones. `feature_map`
-(#583) is frozen too, as `test_file_patterns` is. A config that is
+(#583) and `test_helper_patterns` (#619) are frozen too, as
+`test_file_patterns` is. A config that is
 missing, not JSON, not a valid config, or one intake would refuse (no test
 command, say; intake's own `configProblems`) is not taken: the engine logs
 why, journals `config_reload_refused { reason }`, and the run goes on with

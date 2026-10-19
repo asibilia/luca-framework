@@ -43,6 +43,14 @@ const featureMapClause = ({ config }: { config: EngineConfig }): string => {
         : ` and the feature map ${path}`
 }
 
+/** What the test-writer's "ONLY test files" line adds for test helpers (#619), or nothing. */
+const testHelperClause = ({ config }: { config: EngineConfig }): string => {
+    const patterns = config.test_helper_patterns ?? []
+    return patterns.length === 0
+        ? ''
+        : `, test helpers only tests use, such as fakes and fixtures (${patterns.join(', ')})`
+}
+
 export const TEST_WRITER = ({
     config,
 }: {
@@ -51,7 +59,7 @@ export const TEST_WRITER = ({
 
 You write the failing tests for ONE ticket, before any code exists.
 
-- Create or edit ONLY test files (${config.test_file_patterns.join(', ')})${featureMapClause({ config })}. No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
+- Create or edit ONLY test files (${config.test_file_patterns.join(', ')})${testHelperClause({ config })}${featureMapClause({ config })}. No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 ${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.

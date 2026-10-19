@@ -53,6 +53,8 @@ export const RELOADED_FIELDS = [
  *   for the red check).
  * - `test_file_patterns`: which files are tests decides the red check, the
  *   role rules, and which commits were the test-writer's.
+ * - `test_helper_patterns`: which non-test files the test-writer may write
+ *   (#619), as `test_file_patterns` says which test files it may.
  * - `test_setup_files`: part of what the tests are, as `checks` is.
  * - `feature_map`: says which test files belong to which feature (#583), as
  *   `test_file_patterns` says which files are tests: the red check holds a
@@ -71,6 +73,7 @@ export const RELOADED_FIELDS = [
 export const FROZEN_FIELDS = [
     'checks',
     'test_file_patterns',
+    'test_helper_patterns',
     'test_setup_files',
     'feature_map',
     'rule_files',

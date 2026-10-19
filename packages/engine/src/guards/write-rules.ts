@@ -64,6 +64,21 @@ const isFeatureMapPage = ({
         : path === map
 }
 
+/**
+ * Whether a clean worktree-relative path matches the repo's
+ * `test_helper_patterns` (#619): a non-test file the test-writer may write.
+ */
+export const isTestHelper = ({
+    path,
+    config,
+}: {
+    path: string
+    config: EngineConfig
+}): boolean =>
+    (config.test_helper_patterns ?? []).some((pattern) =>
+        new Bun.Glob(pattern).match(path)
+    )
+
 /** The lockfiles a package install writes. The engine owns them. */
 export const LOCKFILES = [
     'bun.lock',
@@ -90,8 +105,9 @@ export const isInstallPath = (path: string): boolean =>
 
 /**
  * Whether an agent may create, change, or delete a worktree-relative path.
- * Test-writers write test files only, and the feature map when the repo has
- * one (#583), or any page of a folder map (#597); implementers write anything but test
+ * Test-writers write test files only, the feature map when the repo has
+ * one (#583), or any page of a folder map (#597), and files matching
+ * `test_helper_patterns` (#619); implementers write anything but test
  * files (unless they may edit tests) and test setup files; reviewers and the
  * learner write nothing. No role writes a test setup file, `.git`, what
  * the package install writes (lockfiles, `node_modules`), or outside its
@@ -119,11 +135,14 @@ export const mayWrite = ({
     if (isInstallPath(clean)) return false
     const test = isTestFile({ path: clean, config })
     // The test-writer may also write the repo's feature map, when it has one
-    // (#583): the file, or any page of a folder map (#597).
+    // (#583): the file, or any page of a folder map (#597); and its test
+    // helpers (#619).
     if (role === 'test-writer') {
         return (
             may_edit_tests &&
-            (test || isFeatureMapPage({ path: clean, config }))
+            (test ||
+                isFeatureMapPage({ path: clean, config }) ||
+                isTestHelper({ path: clean, config }))
         )
     }
     return !test || may_edit_tests

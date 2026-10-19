@@ -204,6 +204,12 @@ export const EngineConfigSchema = z.object({
         })
         .optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
+    /**
+     * Glob patterns for non-test files the test-writer may also write
+     * (#619), such as shared test helpers and fixtures. They aren't tests:
+     * the red check and the feature map leave them alone. Left out, none.
+     */
+    test_helper_patterns: z.array(z.string().min(1)).optional(),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
     muninn: MuninnConfigSchema.optional(),
