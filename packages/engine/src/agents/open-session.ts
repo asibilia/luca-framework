@@ -21,6 +21,7 @@ import {
 } from './claude-messages'
 import type { createInputChannel } from './input-channel'
 import type { AgentRole } from './role-results'
+import type { TurnProgressKeeper } from './turn-progress'
 
 import { planSignal } from '../limits/plan-signals'
 
@@ -54,6 +55,8 @@ export type OpenSession = {
      * hook adds one, and its result (or the turn's end) takes it out.
      */
     helpers: Set<string>
+    /** The turn's live progress (#628), told to the turn's `on_progress`. */
+    progress: TurnProgressKeeper
     /** The SDK's running tokens per model, as of the session's last result. */
     model_totals: Record<string, ModelTokens>
     /** Resolves the turn waiting for the session's next outcome. */
@@ -175,6 +178,7 @@ export const pumpMessages = async ({
     try {
         for await (const raw of open.running) {
             const outcome = watch({ open, raw })
+            open.progress.heard(raw)
             if (outcome === null) continue
             deliver({ open, outcome })
             if (open.ended !== null) break

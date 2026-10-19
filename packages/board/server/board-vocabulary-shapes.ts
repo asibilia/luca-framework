@@ -84,7 +84,7 @@ const WindowReadingSchema = z.looseObject({
  * readings carry no top-level `utilization`; each window's is in
  * `unifiedWindows`, keyed by window name (`five_hour`, `seven_day`, ...).
  */
-const RateLimitReadingSchema = z.looseObject({
+export const RateLimitReadingSchema = z.looseObject({
     rateLimitType: z.string().optional().catch(undefined),
     utilization: z.number().optional().catch(undefined),
     resetsAt: z.number().optional().catch(undefined),

@@ -32,6 +32,7 @@ import { CurrentStepSchema, TicketCardSchema } from './board-state-ticket'
 import { PlanUsedSchema, USAGE_LABEL, UsageSchema } from './board-state-usage'
 
 export * from './board-state-counts'
+export * from './board-state-live'
 export * from './board-state-review'
 export * from './board-state-run'
 export * from './board-state-ticket'

@@ -39,6 +39,19 @@ Tests:
 - `packages/board/client/model-line-panel.test.ts`
 - `packages/board/client/wait-line-panel.test.ts`
 
+## The board: the live file
+
+While a run goes, the engine keeps `live.json` in the run folder, never journaled: what each agent in a turn is doing now, its tokens so far, and the first plan-usage reading. The board reads it for every run it shows, so each card says who is working and on what, and its tokens count up.
+
+Reached by: a busy card on the "Luca board" tab, for a run started from Paseo or from the command line.
+
+Tests:
+
+- `packages/engine/src/agents/claude-launcher-progress.test.ts`
+- `packages/engine/src/core/run-live-file.e2e.test.ts`
+- `packages/engine/src/cli/run-modes.e2e.test.ts`
+- `packages/board/client/live-card-panel.test.ts`
+
 ## The board: starting a run from Paseo
 
 The board starts the engine as a detached process, and `/luca-run resume <run id>` picks a run back up, with the repo's `.env` and `bunfig.toml` kept out of the engine.

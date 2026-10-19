@@ -137,4 +137,5 @@ export const newTicket = ({
     agent_tokens: {},
     tried: [],
     plan_used: [],
+    live: null,
 })

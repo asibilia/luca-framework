@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -232,5 +232,17 @@ describe('luca-run --resume, on one crashed run', () => {
         expect(second.closed()).toBe(true)
         // The resume searched with its own client.
         expect(second.calls().some(({ op }) => op === 'recall')).toBe(true)
+    })
+
+    test('a run from the command line keeps its live file in its run folder, written last with no agents (#628)', () => {
+        const file = join(runs_dir, 'run-1', 'live.json')
+
+        expect(existsSync(file)).toBe(true)
+        const live = JSON.parse(readFileSync(file, 'utf8')) as {
+            written_at: string
+            agents: unknown[]
+        }
+        expect(Number.isNaN(Date.parse(live.written_at))).toBe(false)
+        expect(live.agents).toEqual([])
     })
 })

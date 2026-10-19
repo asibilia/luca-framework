@@ -201,3 +201,7 @@ _Avoid_: savepoint, snapshot
 **Board**:
 The live view of a run: its tickets, its agents, and what each one is doing.
 _Avoid_: dashboard, statusline
+
+**Live file**:
+A small file the engine keeps in the run folder with what each agent in a turn is doing now, for the board to show between journal records. Each write replaces it whole; it is never part of the journal and never replayed.
+_Avoid_: status file, live journal

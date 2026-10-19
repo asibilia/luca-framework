@@ -36,6 +36,44 @@ The link finds the daemon at `PASEO_HOST`, or the `listen` field of
 `ws://<listen>/ws` as a `cli` client (with `PASEO_PASSWORD` if set), keeps
 that connection for the run, and reconnects once when a send fails.
 
+## The live file
+
+While a run goes, the engine keeps its **live file**, `live.json`, in the
+run folder beside the journal (`runLiveFilePath`, `src/core/live-file.ts`),
+for the board to show what is happening between journal records (#628). It
+is never journaled and never replayed, so a run's journal is the same with
+it or without it. `runSpec` gives `runEngine` its path; without `live_file`
+(the demo, most tests) there is none.
+
+```ts
+{
+  written_at: string,            // ISO; set on every write
+  plan_usage: object | null,     // the run's first rate_limit_event reading, with arrived_at
+  agents: [{
+    ticket: number, role: string, model: string | null,
+    tokens: number,              // the turn's tokens so far, cache reads included
+    action: { tool, target, at } | null,              // the latest action
+    open_call: { tool, target, started_at } | null,   // a tool call still running
+  }],
+}
+```
+
+A `target` is a path relative to the worktree, or the first words of a
+command; the file never holds a prompt, a file's contents or a command's
+output. Each write replaces the whole file (written aside, then renamed),
+at most once a second while something changed and at least every 5
+seconds while the engine runs, so its `written_at` tells a quiet agent from
+a dead engine. When the run ends, it is written one last time with no
+agents.
+
+What goes in comes from the launcher: `launch` and `followUp` take an
+optional `on_progress`, which the Claude launcher calls each time the turn
+changes (`src/agents/turn-progress.ts`): the tokens of each SDK message so
+far, the latest tool call it saw, the call the guard hook let through until
+its result comes back, and the turn's plan-usage readings, the first of
+them within seconds. `runEngine` wraps its launcher so each turn's progress
+lands in the file while the turn runs.
+
 ## The command line: `luca-run`
 
 ```bash

@@ -1,16 +1,19 @@
 /**
  * A ticket's card in the panel: its number and title, its stage pill, the
  * step dots, its agent's model and Clef's line, the fix and review counters, its tokens and tests, and its
- * details when opened. Each line stays on one line (`one-line.tsx`): the
+ * details when opened. With an entry in the run's live file (#628), the
+ * step text gives way to what its agent is doing now, and its tokens count
+ * up with the turn, followed by the latest action's age. Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
 import { Icon } from '@getpaseo/plugin/client/react-native'
 import { Pressable, Text, View } from 'react-native'
 
-import { stageColor, tokensText } from './board-look'
+import { stageColor, tokensText, useNow } from './board-look'
 import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { liveAgeText, liveText } from './live-line'
 import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
 import { StepDots } from './step-dots'
@@ -38,8 +41,11 @@ export const TicketCardView = ({
     onToggle: () => void
 } & Look) => {
     const bubbles = useBubbles()
+    const now = useNow()
     // A ticket waiting on purpose between steps reads "waiting", in amber.
     const wait = ticketWait({ state, ticket })
+    // What its agent is doing now, from the live file, in place of the step text.
+    const doing = liveText({ live: ticket.live, now })
     const color = wait
         ? theme.colors.statusWarning
         : stageColor({ stage: ticket.stage, theme })
@@ -98,15 +104,15 @@ export const TicketCardView = ({
                     <StepDots ticket={ticket} theme={theme} styles={styles} />
                     {wait ? (
                         <WaitLine wait={wait} theme={theme} styles={styles} />
-                    ) : ticket.role ? (
+                    ) : doing || ticket.role ? (
                         <CutLine
-                            text={ticket.role}
+                            text={doing ?? ticket.role ?? ''}
                             style={styles.text}
                             styles={styles}
                         />
                     ) : null}
                 </View>
-                {ticket.current_step ? (
+                {ticket.current_step && doing === null ? (
                     <StepLine
                         step={ticket.current_step}
                         prefix=""
@@ -135,7 +141,9 @@ export const TicketCardView = ({
                         styles={styles}
                     />
                     <Text style={[styles.mono, styles.fixed]} numberOfLines={1}>
-                        {tokensText({ tokens: ticket.tokens })} tokens
+                        {`${tokensText({
+                            tokens: ticket.tokens + (ticket.live?.tokens ?? 0),
+                        })} tokens${liveAgeText({ live: ticket.live, now })}`}
                     </Text>
                     {ticket.plan_used.length > 0 ? (
                         <CutLine

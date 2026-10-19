@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import type { AgentRole } from './role-results'
+import type { ProgressListener } from './turn-progress'
 
 import type { EngineConfig } from '../config/engine-config'
 
@@ -167,6 +168,11 @@ export type AgentLauncher = {
          * follow-ups run on it too.
          */
         model: string
+        /**
+         * Hears the turn's live progress (#628) each time it changes, before
+         * the turn ends, for the engine's live file. Left out, nothing hears it.
+         */
+        on_progress?: ProgressListener
     }) => Promise<AgentTurn>
     /**
      * Sends a follow-up message to an agent session that is still open, such
@@ -185,6 +191,8 @@ export type AgentLauncher = {
         message: string
         cwd: string
         config: EngineConfig
+        /** Hears the follow-up turn's live progress, as for `launch`. */
+        on_progress?: ProgressListener
     }) => Promise<AgentTurn>
     /**
      * Closes one agent session once nothing can send it a follow-up anymore,

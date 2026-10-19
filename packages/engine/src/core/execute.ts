@@ -10,6 +10,7 @@ import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
 import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
 import { executeWithJev } from './execute-with-jev'
+import { createLiveFile } from './live-file'
 import {
     agentRoleOf,
     crashesIn,
@@ -112,6 +113,10 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * is going waits for it before intake: a **repo wait** (see
  * `decide-repo-wait.ts`).
  *
+ * With `live_file`, the engine keeps the run's live file there while it
+ * runs (`live-file.ts`, #628): what each agent in a turn is doing now,
+ * never journaled. It is written a last time, with no agents, at the end.
+ *
  * Crash recovery: every step it starts (not a wait) is journaled between a
  * `step_started` and a `step_ended` (none when the step throws). On start,
  * a step with no `step_ended` was cut off by a crash: one `run_resumed`
@@ -141,6 +146,7 @@ export const runEngine = async ({
     memory,
     usage,
     going_runs,
+    live_file,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -168,13 +174,20 @@ export const runEngine = async ({
      * intake. Left out, there is no repo wait.
      */
     going_runs?: GoingRunsReader
+    /**
+     * Where to keep the run's live file (#628), such as
+     * `runLiveFilePath({ runs_dir, run_id })`. Left out, there is none.
+     */
+    live_file?: string
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
+    const live =
+        live_file === undefined ? null : createLiveFile({ file: live_file })
     const build =
         git === undefined || launcher === undefined
             ? undefined
-            : { git, launcher }
+            : { git, launcher: live?.launcher(launcher) ?? launcher }
     const inFlight = new Map<string, InFlight>()
     let started = 0
     // The run's own asker, so turning the decision model off lasts this run.
@@ -389,5 +402,7 @@ export const runEngine = async ({
         // The run ends here, so no session stays open.
         await closeFinished({ all: true })
         throw error
+    } finally {
+        live?.close()
     }
 }

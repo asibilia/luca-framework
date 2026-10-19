@@ -4,6 +4,7 @@
  */
 import { z } from 'zod'
 
+import { LiveAgentSchema } from './board-state-live'
 import { PlanUsedSchema } from './board-state-usage'
 
 /** The steps of a ticket, shown as dots on its card. */
@@ -239,6 +240,12 @@ export const TicketCardSchema = z.object({
     tried: z.array(z.string()),
     /** How much of the plan the ticket used, per window; empty until known. */
     plan_used: z.array(PlanUsedSchema),
+    /**
+     * Its agent's entry in the run's live file (#628), `null` with none.
+     * Laid over the state on each read, never journaled. Defaulted, so a
+     * board state from before it still parses.
+     */
+    live: LiveAgentSchema.nullable().default(null),
 })
 
 export type TicketCard = z.infer<typeof TicketCardSchema>

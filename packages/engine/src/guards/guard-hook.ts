@@ -33,6 +33,7 @@ export const createGuardHook = ({
     on_deny,
     helpers = new Set(),
     on_helper,
+    on_allow,
 }: {
     role: GuardRole
     /** Whether the agent may edit test files. */
@@ -46,6 +47,12 @@ export const createGuardHook = ({
     helpers?: Set<string>
     /** Called for each helper started, such as to count it. */
     on_helper?: () => void
+    /** Called for each of the agent's own calls let through (not a helper's), such as to show it running. */
+    on_allow?: (call: {
+        tool_name: string
+        tool_input: unknown
+        tool_use_id: string
+    }) => void
 }): HookCallback => {
     const denied = (reason: string): HookJSONOutput => ({
         hookSpecificOutput: {
@@ -80,6 +87,13 @@ export const createGuardHook = ({
                 if (input.tool_name === HELPER_TOOL) {
                     helpers.add(tool_use_id ?? input.tool_use_id)
                     on_helper?.()
+                }
+                if (!fromHelper) {
+                    on_allow?.({
+                        tool_name: input.tool_name,
+                        tool_input: input.tool_input,
+                        tool_use_id: tool_use_id ?? input.tool_use_id,
+                    })
                 }
                 return {}
             }

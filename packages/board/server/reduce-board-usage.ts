@@ -48,7 +48,7 @@ const percentOf = ({ utilization }: { utilization: number }): number =>
 const isoOf = ({ seconds }: { seconds: number }): string =>
     new Date(seconds * 1000).toISOString()
 
-type Reading = SessionContent['session']['rate_limit_events'][number]
+export type Reading = SessionContent['session']['rate_limit_events'][number]
 
 /**
  * One reading's windows as `{ type, utilization, resetsAt }`: its top-level
@@ -80,27 +80,27 @@ const windowsOf = ({
 }
 
 /**
- * The plan usage after a session's rate-limit readings. The latest
+ * The plan usage after rate-limit readings, such as a session's. The latest
  * `five_hour` reading sets the five-hour window (and when it resets); the
  * latest reading of any `seven_day*` type sets the weekly one, and inside
  * one reading the highest `seven_day*` window wins, since the tightest
  * weekly cap is the one that binds. A window with no reading keeps what it
  * had. `null` while no window has a reading.
  */
-const usageAfter = ({
+export const usageAfter = ({
     usage,
-    session,
+    readings,
     time,
 }: {
     usage: Usage | null
-    session: SessionContent['session']
+    readings: Reading[]
     time: string
 }): Usage | null => {
     let five_hour = usage?.five_hour_percent ?? null
     let weekly = usage?.weekly_percent ?? null
     let resets_at = usage?.resets_at ?? null
     let read = false
-    for (const reading of session.rate_limit_events) {
+    for (const reading of readings) {
         const windows = windowsOf({ reading })
         const fiveHour = windows.filter(({ type }) => type === 'five_hour')
         const latest = fiveHour.at(-1)
@@ -196,7 +196,7 @@ export const applyUsageKind = ({
                 run_tokens: state.run_tokens + countedTokens(record.content),
                 usage: usageAfter({
                     usage: state.usage,
-                    session: record.content.session,
+                    readings: record.content.session.rate_limit_events,
                     time: record.time,
                 }),
             }
