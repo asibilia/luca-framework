@@ -9,7 +9,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { useNow } from './board-look'
 import type { Look, Styles } from './board-panel-styles'
-import { CutLine } from './one-line'
+import { CutLine, useCloseBubble } from './one-line'
 
 import {
     LOOP_CAP,
@@ -78,6 +78,7 @@ export const StageHeader = ({
     folded: boolean | null
     onPress: (() => void) | null
 } & Look) => {
+    const closeBubble = useCloseBubble()
     const empty = count === 0
     const tint = empty ? theme.colors.foregroundMuted : color
     const content = (
@@ -108,7 +109,10 @@ export const StageHeader = ({
         <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${title}, ${count}. ${folded ? 'Open' : 'Fold'} this stage`}
-            onPress={onPress}
+            onPress={() => {
+                closeBubble()
+                onPress()
+            }}
             style={style}
         >
             {content}

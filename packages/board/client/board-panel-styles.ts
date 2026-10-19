@@ -18,6 +18,8 @@ export const makeStyles = ({
     return StyleSheet.create({
         screen: { flex: 1, backgroundColor: colors.surface0 },
         content: { padding: compact ? 10 : 16, gap: 8 },
+        /** Fills the scroll area, so a tap on its blank part lands too. */
+        fill: { flexGrow: 1 },
         row: {
             flexDirection: 'row',
             alignItems: 'center',

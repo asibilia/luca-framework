@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { Fragment, createElement } from 'react'
 
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
 
@@ -34,6 +34,8 @@ import { ROW_KIND } from '../shared/board-rows'
 import { BoardStateSchema, type BoardState } from '../shared/board-state'
 
 const { makeStyles } = await import('./board-panel-styles')
+const { StageHeader } = await import('./board-panel-parts')
+const { SharedBubbles } = await import('./one-line')
 const { RunFooter } = await import('./run-footer')
 const { EventRowLine, RunRowCard } = await import('./timeline-rows')
 const { TicketCardView } = await import('./ticket-card-view')
@@ -298,6 +300,59 @@ describe('card lines and the footer stay on one line (#626)', () => {
         expect(bubbleShows({ shown, text: LONG_TITLE })).toBe(true)
 
         shown.press(cardOf({ shown }))
+        expect(bubbleShows({ shown, text: LONG_TITLE })).toBe(false)
+    })
+
+    test('a tap anywhere else on the panel closes the bubble: a stage header, or the blank footer', async () => {
+        const { state } = await stateAfter({ entries: implementerAtWork() })
+        const ticket = state.tickets.find((card) => card.number === 13)
+        if (!ticket) throw new Error('no ticket #13')
+        const shared = look()
+        const folds: string[] = []
+        const shown = render(
+            createElement(SharedBubbles, {
+                style: shared.styles.content,
+                children: createElement(
+                    Fragment,
+                    null,
+                    createElement(StageHeader, {
+                        title: 'Building',
+                        hint: '',
+                        icon: 'Hammer',
+                        count: 1,
+                        color: THEME.colors.foreground,
+                        folded: false,
+                        onPress: () => folds.push('Building'),
+                        ...shared,
+                    }),
+                    createElement(TicketCardView, {
+                        ticket,
+                        state,
+                        open: false,
+                        onToggle: () => undefined,
+                        ...shared,
+                    }),
+                    createElement(RunFooter, { state, ...shared })
+                ),
+            })
+        )
+        screen = shown
+        const open = () => {
+            shown.press(lineWith({ shown, text: LONG_TITLE }))
+            expect(bubbleShows({ shown, text: LONG_TITLE })).toBe(true)
+        }
+
+        open()
+        shown.press(textNode({ shown, text: 'BUILDING' }))
+        expect(bubbleShows({ shown, text: LONG_TITLE })).toBe(false)
+        expect(folds).toEqual(['Building'])
+
+        open()
+        const rule = shown
+            .all()
+            .find((node) => node.props.style === shared.styles.rule)
+        if (!rule) throw new Error('no footer rule')
+        shown.press(rule)
         expect(bubbleShows({ shown, text: LONG_TITLE })).toBe(false)
     })
 

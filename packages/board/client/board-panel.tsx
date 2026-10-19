@@ -102,11 +102,8 @@ export const BoardPanel = ({
     const chat_agent_id = board.data?.chat_agent_id ?? null
 
     return (
-        <ScrollView
-            style={styles.screen}
-            contentContainerStyle={styles.content}
-        >
-            <SharedBubbles>
+        <ScrollView style={styles.screen} contentContainerStyle={styles.fill}>
+            <SharedBubbles style={[styles.content, styles.fill]}>
                 <RunHeader
                     state={state}
                     runs={runs}

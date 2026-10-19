@@ -1,8 +1,8 @@
 /**
  * The side panel's one-line rule (#626): every card line and the footer
  * stay on one line, cut at the end with "…". A tap on a cut line opens a
- * bubble with its full text; a second tap, or a tap elsewhere on the card,
- * closes it. On a computer, hovering opens it too.
+ * bubble with its full text; a second tap, or a tap anywhere else, closes
+ * it. On a computer, hovering opens it too.
  *
  * A card or the footer is a bubble scope (`useBubbles` and `BubbleScope`):
  * it shows the open bubble of its lines under them. Inside the panel
@@ -19,7 +19,13 @@ import {
     type SetStateAction,
 } from 'react'
 
-import { Pressable, Text, type StyleProp, type TextStyle } from 'react-native'
+import {
+    Pressable,
+    Text,
+    type StyleProp,
+    type TextStyle,
+    type ViewStyle,
+} from 'react-native'
 
 import type { Styles } from './board-panel-styles'
 
@@ -44,14 +50,35 @@ const SharedContext = createContext<Shared | null>(null)
 
 const ScopeContext = createContext<Bubbles | null>(null)
 
-/** One open bubble for the whole panel. */
-export const SharedBubbles = ({ children }: { children: ReactNode }) => {
+/**
+ * One open bubble for the whole panel. A tap on any part of the panel that
+ * isn't a button of its own closes it.
+ */
+export const SharedBubbles = ({
+    style,
+    children,
+}: {
+    style: StyleProp<ViewStyle>
+    children: ReactNode
+}) => {
     const [open, show] = useState<OpenBubble | null>(null)
     return (
         <SharedContext.Provider value={{ open, show }}>
-            {children}
+            <Pressable
+                accessible={false}
+                onPress={() => show(null)}
+                style={style}
+            >
+                {children}
+            </Pressable>
         </SharedContext.Provider>
     )
+}
+
+/** Closes the panel's open bubble: for a button's tap that does more. */
+export const useCloseBubble = (): (() => void) => {
+    const shared = useContext(SharedContext)
+    return () => shared?.show(null)
 }
 
 /** A card's or the footer's bubbles: the panel's, or its own outside one. */
