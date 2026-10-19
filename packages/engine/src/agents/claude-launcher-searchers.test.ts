@@ -1,7 +1,10 @@
 import type { HookJSONOutput, Options } from '@anthropic-ai/claude-agent-sdk'
 import { describe, expect, test } from 'bun:test'
 
+import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import {
+    CLAUDE_PATH,
+    CONFIG,
     fakeQuery,
     IMPLEMENTER_DONE,
     INIT,
@@ -153,6 +156,112 @@ describe('helpers', () => {
             { tool_name: 'Agent', reason: expect.any(String) },
             { tool_name: 'Agent', reason: expect.any(String) },
         ])
+    })
+
+    test("a searcher's result frees its slot, so a new searcher may start while 3 others ran", async () => {
+        const answers: HookJSONOutput[] = []
+        const started: string[] = []
+        const freed = {
+            type: 'user',
+            message: { role: 'user', content: [] as unknown[] },
+            parent_tool_use_id: null,
+            session_id: 'session-1',
+        }
+        const ask = (options: Options) =>
+            preToolUse({
+                options,
+                tool_name: 'Agent',
+                tool_input: helperCall({ subagent_type: 'searcher' }),
+            })
+        const fake = fakeQuery({
+            messages: [
+                INIT,
+                freed,
+                result({ structured_output: IMPLEMENTER_DONE }),
+            ],
+            during: async (call) => {
+                for (let index = 0; index < 3; index += 1) {
+                    answers.push(await ask(call.options))
+                    started.push(`tool-${toolCount}`)
+                }
+                freed.message.content.push({
+                    type: 'tool_result',
+                    tool_use_id: started[0],
+                    content: 'Found 2 callers.',
+                })
+            },
+        })
+        // Asks again once the launcher has read the helper's result.
+        const query: AgentQuery = (params) => {
+            const inner = fake.query(params)
+            return {
+                ...inner,
+                [Symbol.asyncIterator]: async function* () {
+                    for await (const message of inner) {
+                        yield message
+                        if (message !== freed) continue
+                        answers.push(await ask(params.options))
+                        answers.push(await ask(params.options))
+                    }
+                },
+            }
+        }
+        await launch({ query, role: 'implementer' })
+
+        expect(answers.slice(0, 3)).toEqual([{}, {}, {}])
+        expect(answers[3]).toEqual({})
+        expect(answers[4]).toMatchObject(DENIED)
+    })
+
+    test('a follow-up turn starts with no helpers running, since the last result ended them', async () => {
+        const answers: HookJSONOutput[][] = [[], []]
+        const fake = fakeQuery({
+            turns: [
+                [INIT, result({ structured_output: { n: 1 } })],
+                [result({ structured_output: IMPLEMENTER_DONE })],
+            ],
+            during: async (call, turn) => {
+                const count = turn === 0 ? 3 : 4
+                for (let index = 0; index < count; index += 1) {
+                    answers[turn]?.push(
+                        await preToolUse({
+                            options: call.options,
+                            tool_name: 'Agent',
+                            tool_input: helperCall({
+                                subagent_type: 'searcher',
+                            }),
+                        })
+                    )
+                }
+            },
+        })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        await launcher.launch({
+            role: 'implementer',
+            ticket: 11,
+            prompt: 'Build ticket #11.',
+            cwd: repo,
+            may_edit_tests: false,
+            config: CONFIG,
+            messaging: null,
+            model: 'opus',
+        })
+        await launcher.followUp({
+            session_id: 'session-1',
+            role: 'implementer',
+            ticket: 11,
+            message: 'lint failed: fix it.',
+            cwd: repo,
+            config: CONFIG,
+        })
+        await launcher.closeAll()
+
+        expect(answers[0]).toEqual([{}, {}, {}])
+        expect(answers[1]?.slice(0, 3)).toEqual([{}, {}, {}])
+        expect(answers[1]?.[3]).toMatchObject(DENIED)
     })
 
     test('a searcher asked to run on a Fable model is refused', async () => {
