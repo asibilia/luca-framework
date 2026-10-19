@@ -137,6 +137,34 @@ describe('Jev in shadow mode on a run with a failed red check and review finding
         expect(started).toEqual(['opus'])
     })
 
+    test('asks agent_model only before fresh test-writers and implementers: never a follow-up, the ticket reviewer, or a lens', () => {
+        const { run } = changes()
+
+        const models = asked(run.records).filter(
+            ({ content }) => content.job === 'agent_model'
+        )
+        // The test-writer, the implementer, and the implementer answering
+        // the review: the red check's follow-up and both reviews get none.
+        expect(models.map(({ role }) => role)).toEqual([
+            'test-writer',
+            'implementer',
+            'implementer',
+        ])
+        for (const model of models) {
+            const next = run.records.find(
+                (record) =>
+                    record.kind === 'agent_started' && record.seq > model.seq
+            )
+            expect(next?.role).toBe(model.role)
+            expect(
+                next?.kind === 'agent_started' && next.content.follow_up_of
+            ).toBeNull()
+        }
+        expect(
+            asked(run.records).map(({ content }) => content.acted)
+        ).not.toContain(true)
+    })
+
     test('is asked the kind of a failure, with the engine routing it to the test-writer', () => {
         const { run, without } = changes()
 

@@ -50,8 +50,9 @@ describe('Jev in shadow mode on the happy run', () => {
         const asks = asked(run.records).filter(
             ({ content }) => content.job !== 'ticket_order'
         )
-        expect(asks.map(({ content }) => content.job)).toEqual([
-            'ticket_model',
+        expect(asks.map(({ content }) => content.job).toSorted()).toEqual([
+            'agent_model',
+            'agent_model',
             'agent_skills',
             'agent_skills',
             'agent_skills',
@@ -74,22 +75,46 @@ describe('Jev in shadow mode on the happy run', () => {
             expect(reply?.role).toBe(ask.role)
         }
 
-        const [model, ...skills] = asks
-        expect(model?.content.fixed).toEqual({ model: JEV_FIXED_MODEL })
-        expect(model?.content.request.state).toMatchObject({
-            spec: 'Practice spec',
-            ticket: '#11 Add sum',
-        })
-        const modelReply = model && replyTo(run.records, model)
-        expect(
-            modelReply?.kind === 'jev_answered' && modelReply.content.answers
-        ).toEqual({
-            model: {
-                value: 'haiku',
-                confidence: 0.7,
-                raw: { choice: 'haiku', confidence: 0.7 },
-            },
-        })
+        // One model ask before each fresh test-writer and implementer, with
+        // its role and try; Clef picks haiku, yet each launches on opus.
+        const models = asks.filter(
+            ({ content }) => content.job === 'agent_model'
+        )
+        const skills = asks.filter(
+            ({ content }) => content.job === 'agent_skills'
+        )
+        expect(models.map(({ role }) => role)).toEqual([
+            'test-writer',
+            'implementer',
+        ])
+        for (const model of models) {
+            expect(model.content.fixed).toEqual({ model: JEV_FIXED_MODEL })
+            expect(model.content.request.state).toMatchObject({
+                spec: 'Practice spec',
+                ticket: '#11 Add sum',
+                role: model.role ?? '',
+                try: '1',
+            })
+            const modelReply = replyTo(run.records, model)
+            expect(
+                modelReply?.kind === 'jev_answered' &&
+                    modelReply.content.answers
+            ).toEqual({
+                model: {
+                    value: 'haiku',
+                    confidence: 0.7,
+                    raw: { choice: 'haiku', confidence: 0.7 },
+                },
+            })
+            const started = run.records.find(
+                (record) =>
+                    record.kind === 'agent_started' && record.seq > model.seq
+            )
+            expect(started?.role).toBe(model.role)
+        }
+        expect(new Set(run.launches.map(({ model }) => model))).toEqual(
+            new Set(['opus'])
+        )
 
         // One skills ask per agent, just before it starts, all fixed at no.
         expect(skills.map(({ role }) => role)).toEqual([
@@ -154,13 +179,24 @@ describe('Jev in shadow mode on the happy run', () => {
     test('with one ticket, asks no ticket order, sends no one-option choice, and journals no failure', () => {
         const { run, jev } = happy()
 
-        expect(asked(run.records).map(({ content }) => content.job)).toEqual([
-            'ticket_model',
+        const jobs = asked(run.records).map(({ content }) => content.job)
+        expect(jobs.toSorted()).toEqual([
+            'agent_model',
+            'agent_model',
             'agent_skills',
             'agent_skills',
             'agent_skills',
         ])
-        expect(jev.signals).toHaveLength(4)
+        expect(jobs).not.toContain('ticket_model')
+        // Shadow mode: no ask's answer can change anything.
+        expect(asked(run.records).map(({ content }) => content.acted)).toEqual([
+            false,
+            false,
+            false,
+            false,
+            false,
+        ])
+        expect(jev.signals).toHaveLength(5)
         expect(jev.requests.filter(hasOneOptionChoice)).toEqual([])
         expect(
             run.records.filter((record) => record.kind === 'jev_failed')

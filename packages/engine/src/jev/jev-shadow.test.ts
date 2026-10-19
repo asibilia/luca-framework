@@ -156,7 +156,7 @@ describe('shadowAsker', () => {
             'jev_asked',
             'jev_answered',
         ])
-        expect(records[0]?.content).toEqual({
+        expect(records[0]?.content).toMatchObject({
             job: 'ticket_model',
             request: valid.request,
             fixed: valid.fixed,
@@ -168,6 +168,98 @@ describe('shadowAsker', () => {
             answers: {
                 pick: { value: 'claude-haiku-4-5', confidence: 0.7 },
             },
+        })
+    })
+
+    test('journals every ask with acted false, since no answer changes anything', async () => {
+        const root = await newRoot()
+        const journal = createJournal({ file: join(root, 'journal.jsonl') })
+        const ask = shadowAsker({ jev: { client: disagreeingJev() }, journal })
+
+        await ask([
+            twoOptionAsk('agent_skills'),
+            {
+                ...twoOptionAsk('agent_model'),
+                request: {
+                    state: { spec: 'Practice spec', role: 'test-writer' },
+                    questions: {
+                        model: {
+                            type: 'choice',
+                            instructions: 'Which model?',
+                            criteria: { opus: null, sonnet: null, haiku: null },
+                        },
+                    },
+                },
+                fixed: { model: 'opus' },
+            },
+        ])
+
+        const asks = journal
+            .read()
+            .filter((record) => record.kind === 'jev_asked')
+        expect(asks.map(({ content }) => content)).toEqual([
+            expect.objectContaining({ job: 'agent_skills', acted: false }),
+            expect.objectContaining({ job: 'agent_model', acted: false }),
+        ])
+    })
+
+    test("an older journal's ticket_model ask and answer still read, the ask with acted false", async () => {
+        const root = await newRoot()
+        const file = join(root, 'journal.jsonl')
+        const time = '2026-10-01T00:00:00.000Z'
+        const old = [
+            {
+                seq: 1,
+                time,
+                kind: 'jev_asked',
+                ticket: 11,
+                role: null,
+                content: {
+                    job: 'ticket_model',
+                    request: twoOptionAsk('ticket_model').request,
+                    fixed: { model: 'opus' },
+                    model: FAKE_MODEL,
+                },
+            },
+            {
+                seq: 2,
+                time,
+                kind: 'jev_answered',
+                ticket: 11,
+                role: null,
+                content: {
+                    job: 'ticket_model',
+                    asked_seq: 1,
+                    answers: {
+                        model: {
+                            value: 'sonnet',
+                            confidence: 0.9,
+                            raw: { choice: 'sonnet', confidence: 0.9 },
+                        },
+                    },
+                    ms: 120,
+                    model: FAKE_MODEL,
+                },
+            },
+        ]
+        await Bun.write(
+            file,
+            `${old.map((record) => JSON.stringify(record)).join('\n')}\n`
+        )
+
+        const records = createJournal({ file }).read()
+        expect(records.map(({ kind }) => kind)).toEqual([
+            'jev_asked',
+            'jev_answered',
+        ])
+        expect(records[0]?.content).toMatchObject({
+            job: 'ticket_model',
+            fixed: { model: 'opus' },
+            acted: false,
+        })
+        expect(records[1]?.content).toMatchObject({
+            job: 'ticket_model',
+            answers: { model: { value: 'sonnet', confidence: 0.9 } },
         })
     })
 })

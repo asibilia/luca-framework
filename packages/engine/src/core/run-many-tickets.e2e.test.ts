@@ -438,12 +438,19 @@ describe('many tickets with Jev in shadow mode', () => {
             expect(options).toContain(`ticket_${ask.ticket}`)
             expect(options).toContain('ticket_13')
         }
-        // #13 still gets its model ask.
+        // #13 still gets its agents' model asks, and no ticket is asked
+        // the old ticket_model.
+        const modelAsks = ofKind(jevRun.records, 'jev_asked').filter(
+            ({ content }) => content.job === 'agent_model'
+        )
         expect(
-            ofKind(jevRun.records, 'jev_asked')
-                .filter(({ content }) => content.job === 'ticket_model')
-                .map(({ ticket }) => ticket)
+            [...new Set(modelAsks.map(({ ticket }) => ticket))].toSorted()
         ).toEqual([11, 12, 13])
+        expect(
+            ofKind(jevRun.records, 'jev_asked').filter(
+                ({ content }) => content.job === 'ticket_model'
+            )
+        ).toEqual([])
         expect(ofKind(jevRun.records, 'jev_failed')).toEqual([])
     })
 })
