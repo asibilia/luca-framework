@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { roleInstructions } from './role-instructions'
+import { AgentRoleSchema } from './role-results'
 
 import { EngineConfigSchema } from '../config/engine-config'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
@@ -262,5 +263,26 @@ describe('the test-writer and a feature map folder (#597)', () => {
         expect(text).not.toContain('docs/feature-map.md')
         expect(text).toMatch(/pages[^\n]*first/)
         expect(text).toContain("area's page")
+    })
+})
+
+describe('helpers (#627)', () => {
+    test("every role's instructions have a helpers section: the searcher, when it's worth it, that it only reads, and the limit of 3", () => {
+        for (const role of AgentRoleSchema.options) {
+            const text = roleInstructions({
+                role,
+                may_edit_tests: role === 'test-writer',
+                config: PRACTICE_ENGINE_CONFIG,
+            })
+            const section =
+                text
+                    .split(/^(?=## )/m)
+                    .find((part) => /^## Helpers/.test(part)) ?? ''
+
+            expect(section).toContain('searcher')
+            expect(section).toContain('callers')
+            expect(section).toMatch(/only read|read-only/i)
+            expect(section).toMatch(/\b3\b/)
+        }
     })
 })

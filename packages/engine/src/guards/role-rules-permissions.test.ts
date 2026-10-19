@@ -131,7 +131,6 @@ describe('permissionRules', () => {
         expect(learner.disallowed).toContain('Bash')
         for (const rules of [writer, testWriter, reviewer, learner]) {
             expect(rules.disallowed).toContain('WebFetch')
-            expect(rules.disallowed).toContain('Agent')
             expect(rules.disallowed).toContain('Skill')
         }
     })
@@ -174,33 +173,44 @@ describe('permissionRules', () => {
     )
 
     test('each role gets only its own tools', () => {
+        // Besides `Agent`, which every role may have for helpers (#627).
+        const own = (tools: string[]) =>
+            tools.filter((tool) => tool !== 'Agent')
         expect(
-            permissionRules({
-                role: 'test-writer',
-                may_edit_tests: true,
-                config: CONFIG,
-            }).tools
+            own(
+                permissionRules({
+                    role: 'test-writer',
+                    may_edit_tests: true,
+                    config: CONFIG,
+                }).tools
+            )
         ).toEqual(['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'])
         expect(
-            permissionRules({
-                role: 'implementer',
-                may_edit_tests: false,
-                config: CONFIG,
-            }).tools
+            own(
+                permissionRules({
+                    role: 'implementer',
+                    may_edit_tests: false,
+                    config: CONFIG,
+                }).tools
+            )
         ).toEqual(['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'])
         expect(
-            permissionRules({
-                role: 'reviewer',
-                may_edit_tests: false,
-                config: CONFIG,
-            }).tools
+            own(
+                permissionRules({
+                    role: 'reviewer',
+                    may_edit_tests: false,
+                    config: CONFIG,
+                }).tools
+            )
         ).toEqual(['Read', 'Grep', 'Glob', 'Bash'])
         expect(
-            permissionRules({
-                role: 'learner',
-                may_edit_tests: false,
-                config: CONFIG,
-            }).tools
+            own(
+                permissionRules({
+                    role: 'learner',
+                    may_edit_tests: false,
+                    config: CONFIG,
+                }).tools
+            )
         ).toEqual(['Read', 'Grep', 'Glob'])
     })
 })
