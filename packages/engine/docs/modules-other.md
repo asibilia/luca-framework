@@ -92,6 +92,12 @@ with a page of its own is listed in the [README](../README.md).
 | `src/jev/jev-jobs.ts` | What to ask the decision model around each step, with the engine's fixed choice. Pure. |
 | `src/jev/jev-shadow.ts` | Asks the decision model in **shadow mode**, journals each call and answer, and turns it off for the run when Cloudflare turns the token down. |
 
+## `src/models/`
+
+| Module | What it does |
+| --- | --- |
+| `src/models/model-score.ts` | The model score report `luca models` prints (`scoreModels`, `formatModelReport`): each routed role per model, from the first ticket review's weighted findings per 100 changed lines, fix rounds, stuck tickets and tokens, against its shadow-pick baseline. Its weights and verdict edges are named constants. Pure. |
+
 ## `src/memory/`
 
 | Module | What it does |

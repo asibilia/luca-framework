@@ -49,7 +49,12 @@ const parseLine = ({
     return parsed.data
 }
 
-const readRecords = ({ file }: { file: string }): JournalRecord[] => {
+/**
+ * Reads and checks every record of the journal at `file`, oldest first,
+ * without opening it for appends: none when it has no file. Throws on a
+ * line that isn't a record.
+ */
+export const readRecords = ({ file }: { file: string }): JournalRecord[] => {
     if (!existsSync(file)) return []
     return readFileSync(file, 'utf8')
         .split('\n')
