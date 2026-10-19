@@ -344,6 +344,50 @@ describe('jevAsksBefore', () => {
         expect(unasked.flatMap(modelAsks)).toEqual([])
     })
 
+    test("the agent_model ask offers only the models at or above the role's floor, and the fixed choice stays opus (#603)", () => {
+        // The run started with a test-writer floor of sonnet and an
+        // implementer floor of haiku; the learner's is left out, so opus.
+        const [runStarted, ...rest] = intakePassed({
+            tickets: [practiceTicket({ number: 11 })],
+        })
+        if (runStarted?.kind !== 'run_started') throw new Error('no start')
+        const floored = replayRun({
+            records: stamp([
+                {
+                    ...runStarted,
+                    content: {
+                        ...runStarted.content,
+                        config: {
+                            ...runStarted.content.config,
+                            models: {
+                                floors: {
+                                    'test-writer': 'sonnet',
+                                    implementer: 'haiku',
+                                },
+                            },
+                        },
+                    },
+                },
+                ...rest,
+                ticketWorktreeCreated({ ticket: 11 }),
+            ]),
+        })
+        const modelAsk = (action: EngineAction) =>
+            jobsOf(jevAsksBefore({ action, state: floored }), 'agent_model')[0]
+
+        const writer = modelAsk(launchAgent(11, 'test-writer'))
+        expect(modelOptions(writer).toSorted()).toEqual(['opus', 'sonnet'])
+        expect(writer?.fixed).toEqual({ model: 'opus' })
+        expect(
+            modelOptions(modelAsk(launchAgent(11, 'implementer'))).toSorted()
+        ).toEqual(['haiku', 'opus', 'sonnet'])
+        expect(
+            modelOptions(
+                modelAsk({ type: 'launch_learner', prompt: 'Learn.' })
+            ).toSorted()
+        ).toEqual(['haiku', 'opus', 'sonnet'])
+    })
+
     test('asks the ticket order as before when two tickets are left', () => {
         const asks = jobsOf(
             jevAsksBefore({

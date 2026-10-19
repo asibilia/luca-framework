@@ -23,7 +23,8 @@ import type { Tracker } from '../tracker/tracker'
  * before the action (ticket order, model, skills), then after it about the
  * records it appended (failure kinds, finding severities). Only the action's
  * own ticket's new records count, since other tickets append at the same
- * time. The answers change nothing.
+ * time. The answers change nothing, but for the model pick of a role whose
+ * floor is below Opus, which the launch step reads (#603).
  */
 export const executeWithJev = async ({
     ask,

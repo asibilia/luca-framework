@@ -8,8 +8,10 @@ import {
     type JevQuestion,
     type JevRequest,
 } from './jev-schemas'
+import { offeredModels, type RoutedRole } from './model-pick'
 
 import type { Finding } from '../agents/role-results'
+import { modelsOf } from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
@@ -30,12 +32,17 @@ export type JevAsk = {
     role: string | null
     request: JevRequest
     fixed: JevFixed
+    /**
+     * Whether the answer can change what the engine does (#603); left out,
+     * a shadow ask.
+     */
+    acted?: boolean
 }
 
 /** The models Jev may pick for an agent, by short name. */
 export const JEV_MODEL_OPTIONS = ['opus', 'sonnet', 'haiku'] as const
 
-/** The model the engine really uses for every agent. */
+/** The model the engine falls back on, and every reviewer's. */
 export const JEV_FIXED_MODEL = 'opus'
 
 /**
@@ -166,7 +173,9 @@ const createTicketWorktreeAsks = ({
 
 /**
  * Which model a fresh agent of a routed role should run on: the ticket's
- * facts, the role, and which try this is (#602).
+ * facts, the role, and which try this is (#602). It offers the models at or
+ * above the role's floor (#603), and is acted on when that floor is below
+ * Opus; a floor of Opus is asked with all three, in shadow mode.
  */
 const agentModelAsk = ({
     state,
@@ -176,27 +185,33 @@ const agentModelAsk = ({
 }: {
     state: RunState
     ticket: number | null
-    role: string
+    role: RoutedRole
     attempt: number
-}): JevAsk => ({
-    job: 'agent_model',
-    ticket,
-    role,
-    request: {
-        state: {
-            ...ticketState({ state, ticket }),
-            role,
-            try: String(attempt),
+}): JevAsk => {
+    const models =
+        state.config === null ? null : modelsOf({ config: state.config })
+    const floor = models?.floors[role] ?? JEV_FIXED_MODEL
+    return {
+        job: 'agent_model',
+        ticket,
+        role,
+        request: {
+            state: {
+                ...ticketState({ state, ticket }),
+                role,
+                try: String(attempt),
+            },
+            questions: {
+                model: choice({
+                    instructions: `Which model should the ${role} agent run on? Pick the cheapest that will get it right.`,
+                    options: offeredModels({ floor }),
+                }),
+            },
         },
-        questions: {
-            model: choice({
-                instructions: `Which model should the ${role} agent run on? Pick the cheapest that will get it right.`,
-                options: JEV_MODEL_OPTIONS,
-            }),
-        },
-    },
-    fixed: { model: JEV_FIXED_MODEL },
-})
+        fixed: { model: JEV_FIXED_MODEL },
+        acted: floor !== JEV_FIXED_MODEL,
+    }
+}
 
 const agentSkillsAsk = ({
     state,
@@ -228,7 +243,13 @@ const agentSkillsAsk = ({
 })
 
 /** The roles whose fresh agents get an `agent_model` ask on a ticket. */
-const ROUTED_TICKET_ROLES: readonly string[] = ['test-writer', 'implementer']
+const ROUTED_TICKET_ROLES: readonly RoutedRole[] = [
+    'test-writer',
+    'implementer',
+]
+
+const isRoutedTicketRole = (role: string): role is RoutedRole =>
+    (ROUTED_TICKET_ROLES as readonly string[]).includes(role)
 
 /**
  * The asks to make before the engine carries out `action`: ticket order
@@ -249,7 +270,7 @@ export const jevAsksBefore = ({
             const { ticket, role } = action
             const failed = state.tickets[ticket]?.failed_tries[role] ?? 0
             return [
-                ...(ROUTED_TICKET_ROLES.includes(role)
+                ...(isRoutedTicketRole(role)
                     ? [
                           agentModelAsk({
                               state,

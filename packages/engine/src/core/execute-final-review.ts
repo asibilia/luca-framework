@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 
-import { sessionModel } from './agent-turn'
+import { followUpModel } from './agent-turn'
 import type { FinalReviewAction } from './decide-final-review'
 import {
     commitIn,
@@ -15,9 +15,9 @@ import {
 } from './execute-build'
 import { closeSessions, openSessionsIn } from './session-close'
 
-import { CLAUDE_MODEL } from '../agents/claude-options'
 import { hasSlowTests } from '../config/engine-config'
 import type { EngineCommit } from '../git/git-adapter'
+import { LOCKED_PICK } from '../jev/model-pick'
 import type { Journal } from '../journal/journal'
 import {
     replayRun,
@@ -150,7 +150,7 @@ export const executeFinalReviewAction = async ({
                     role,
                     prompt,
                     follow_up_of: null,
-                    model: CLAUDE_MODEL,
+                    ...LOCKED_PICK,
                 },
             })
             const result = await runTurn({
@@ -169,7 +169,7 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Lenses are reviewers: no agent messages.
                         messaging: null,
-                        model: CLAUDE_MODEL,
+                        model: LOCKED_PICK.model,
                     }),
             })
             if (result === null || !('verdict' in result.result)) return
@@ -205,6 +205,7 @@ export const executeFinalReviewAction = async ({
             return
         case 'launch_final_fixer': {
             const { role, prompt, may_edit_tests } = action
+            // The last fixes before the PR are never routed: always Opus.
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
@@ -213,7 +214,7 @@ export const executeFinalReviewAction = async ({
                     role,
                     prompt,
                     follow_up_of: null,
-                    model: CLAUDE_MODEL,
+                    ...LOCKED_PICK,
                 },
             })
             await runTurn({
@@ -232,16 +233,17 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Every ticket is over, so nobody is left to talk to.
                         messaging: null,
-                        model: CLAUDE_MODEL,
+                        model: LOCKED_PICK.model,
                     }),
             })
             return
         }
         case 'follow_up_final_fixer': {
             const { role, session_id, message } = action
-            const model =
-                sessionModel({ records: journal.read(), session_id }) ??
-                CLAUDE_MODEL
+            const { model, model_reason } = followUpModel({
+                records: journal.read(),
+                session_id,
+            })
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
@@ -251,6 +253,7 @@ export const executeFinalReviewAction = async ({
                     prompt: message,
                     follow_up_of: session_id,
                     model,
+                    model_reason,
                 },
             })
             await runTurn({

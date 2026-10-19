@@ -4,6 +4,7 @@ import { ENTRY_FIELDS } from './entry-fields'
 
 import { AgentSessionSchema } from '../agents/agent-launcher'
 import { AgentRoleSchema, RoleResultSchema } from '../agents/role-results'
+import { ModelReasonSchema } from '../jev/model-pick'
 
 /**
  * The journal entries of agent turns: started, finished or failed, their
@@ -15,7 +16,9 @@ import { AgentRoleSchema, RoleResultSchema } from '../agents/role-results'
  * fix loop names the session it went to in `follow_up_of`, and `prompt` holds
  * the follow-up message. `model` is the short name it launched on (a
  * follow-up's is its session's); `null` in journals from before #600. The
- * exact version is in the turn's `agent_session`.
+ * exact version is in the turn's `agent_session`. `model_reason` is why it
+ * launched on that model (#603; a follow-up's is its session's); `null` in
+ * journals from before it.
  */
 export const AgentStartedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -25,6 +28,7 @@ export const AgentStartedEntrySchema = z.object({
         prompt: z.string(),
         follow_up_of: z.string().nullable().default(null),
         model: z.string().nullable().default(null),
+        model_reason: ModelReasonSchema.nullable().default(null),
     }),
 })
 

@@ -288,6 +288,50 @@ describe('journal', () => {
         expect(older?.content).toMatchObject({ model: null })
     })
 
+    test('agent_started keeps why it launched on its model, and older records read the reason as null (#603)', async () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'agent_started',
+            ticket: 11,
+            role: 'test-writer',
+            content: {
+                role: 'test-writer',
+                prompt: 'p',
+                follow_up_of: null,
+                model: 'sonnet',
+                model_reason: 'decision_model',
+            },
+        })
+        const old = {
+            seq: 2,
+            time: '2026-01-01T00:00:00.000Z',
+            kind: 'agent_started',
+            ticket: 11,
+            role: 'implementer',
+            content: {
+                role: 'implementer',
+                prompt: 'p',
+                follow_up_of: null,
+                model: 'opus',
+            },
+        }
+        await Bun.write(
+            file,
+            `${await readFile(file, 'utf8')}${JSON.stringify(old)}\n`
+        )
+
+        const [launched, older] = journal.read()
+        expect(launched?.content).toMatchObject({
+            model: 'sonnet',
+            model_reason: 'decision_model',
+        })
+        expect(older?.content).toMatchObject({
+            model: 'opus',
+            model_reason: null,
+        })
+    })
+
     test('Jev records from before Clef (#534) read and replay', async () => {
         const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
         const journal = createJournal({ file })

@@ -162,6 +162,80 @@ describe('engine config', () => {
     })
 })
 
+describe('the models block (#603)', () => {
+    const loadModels = async (models: unknown) => {
+        await writeConfig({
+            text: JSON.stringify({ checks: { test: 'bun test' }, models }),
+        })
+        return loadEngineConfig({ repo_root: repoRoot })
+    }
+
+    test('floors and the bar parse, a role left out is opus, and the bar defaults to 0.8', async () => {
+        expect(await loadModels({})).toMatchObject({
+            ok: true,
+            config: {
+                models: {
+                    floors: {
+                        'test-writer': 'opus',
+                        implementer: 'opus',
+                        learner: 'opus',
+                    },
+                    confidence_bar: 0.8,
+                },
+            },
+        })
+        expect(
+            await loadModels({
+                floors: { 'test-writer': 'sonnet', learner: 'haiku' },
+                confidence_bar: 0.9,
+            })
+        ).toMatchObject({
+            ok: true,
+            config: {
+                models: {
+                    floors: {
+                        'test-writer': 'sonnet',
+                        implementer: 'opus',
+                        learner: 'haiku',
+                    },
+                    confidence_bar: 0.9,
+                },
+            },
+        })
+    })
+
+    test('a floor that is not opus, sonnet or haiku, or a bar outside 0 to 1, is an error naming the field', async () => {
+        for (const model of ['fable', 'best', 'claude-sonnet-5', 'Opus']) {
+            const result = await loadModels({
+                floors: { 'test-writer': model },
+            })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('models')
+        }
+        for (const confidence_bar of [1.5, -0.1, 'high']) {
+            const result = await loadModels({ confidence_bar })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('confidence_bar')
+        }
+    })
+
+    test('a floor for the ticket reviewer or a lens is an error naming the role and saying reviewers always run Opus', async () => {
+        for (const role of ['ticket-reviewer', 'security-lens', 'rules-lens']) {
+            const result = await loadModels({
+                floors: { 'test-writer': 'sonnet', [role]: 'sonnet' },
+            })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain(role)
+                expect(result.error).toContain('reviewers always run Opus')
+            }
+        }
+    })
+})
+
 describe('the feature map path (#583)', () => {
     const configWith = (feature_map?: string) =>
         EngineConfigSchema.parse({

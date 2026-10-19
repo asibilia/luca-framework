@@ -7,12 +7,13 @@ it, TypeSafe's Jev, so the code's folder and the journal's record kinds keep
 the `jev` name and old journals still read). `runEngine({ ..., jev })` asks
 it around each step in **shadow mode**: every call and answer goes in the
 journal, and the engine still acts on its own fixed choices. `decide` never
-reads these records, so the run goes exactly as it would without it.
+reads these records. The one exception is the model pick for a role whose
+**model floor** is below Opus (see below).
 
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
-| `agent_model` | Before each fresh test-writer and implementer, and the learner: which model (`opus`, `sonnet` or `haiku`)? Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens. | `opus`. |
+| `agent_model` | Before each fresh test-writer and implementer, and the learner: which model? It offers the models at or above the role's floor (all three, `opus`, `sonnet` and `haiku`, when the floor is `opus`). Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens. | `opus`. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
@@ -21,8 +22,9 @@ reads these records, so the run goes exactly as it would without it.
 asked; old journals with it still read.
 
 Each call writes `jev_asked` (the job, the request, the fixed choice, the
-`model` asked, and `acted`: `false` for a shadow ask, as every ask is
-today; old journals read it as `false`), then `jev_answered` (the answers, each with its value
+`model` asked, and `acted`: `true` for an `agent_model` ask of a role whose
+floor is below Opus, `false` for a shadow ask; old journals read it as
+`false`), then `jev_answered` (the answers, each with its value
 and confidence, and the `model` that answered) or `jev_failed`
 (`missing_credentials`, `rejected`, `timeout`, or `error`; old journals also
 hold Jev's `missing_key`). Both point back with `asked_seq`. An error or a
@@ -59,6 +61,31 @@ belongs to the run (each `runEngine` call), never the process.
 `@cf/cloudflare/clef` (the default, the accurate one) or
 `@cf/cloudflare/clef-flash` (the fast one). It is fixed for a run at start,
 like `checks`, so a run's asks are all of one model.
+
+**Model floors (#603).** The `models` block in `.luca/config.json` sets
+each routed role's floor, the cheapest model it may run on, and the
+`confidence_bar` (default 0.8):
+
+```json
+{ "models": { "floors": { "test-writer": "sonnet" }, "confidence_bar": 0.8 } }
+```
+
+Only `test-writer`, `implementer` and `learner` have floors; one left out is
+`opus`, and a floor for any other role fails the config check, since
+reviewers always run Opus. Like `decision_model`, the block is fixed for a
+run at start. The launch step reads the answer it just journaled and picks
+the model (`pickModel` in `jev/model-pick.ts`); the first match wins:
+
+1. The ticket reviewer or a lens: `opus`, reason `locked`.
+2. The role's floor is `opus`: `opus`, reason `floor`.
+3. No answer (off, timed out, errored, or not asked): `opus`, `no_answer`.
+4. Confidence below the bar or missing, or a model not offered: `opus`,
+   `unsure`.
+5. Otherwise the decision model's pick, reason `decision_model`.
+
+Each `agent_started` names its `model` and `model_reason` (older journals
+read the reason as `null`); a follow-up keeps its session's. The final
+review's fixers always launch on `opus`, reason `locked`.
 
 ```ts
 import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'

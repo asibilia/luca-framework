@@ -28,7 +28,7 @@ import { sandboxSettings } from '../guards/sandbox-settings'
  */
 export const MODEL_NAMES = ['opus', 'sonnet', 'haiku'] as const
 
-/** Every role runs on Opus. */
+/** The model reviewers run on, and every agent the decision model doesn't route (#603). */
 export const CLAUDE_MODEL = 'opus'
 
 /** Every role runs at the same effort level. */
