@@ -137,11 +137,12 @@ connection; no test reaches a real MuninnDB.
 arrive in seq order, a board that restarted gets a replay, and a failing board
 never breaks the run. `src/board/board-sync.e2e.test.ts` runs a practice repo
 and checks that a slow test-writer turn reaches the board while it runs.
-`src/cli/run-modes.e2e.test.ts` runs the demo, and the
-real-run path with the in-memory tracker and a scripted stand-in for the
-Claude launcher: it builds to a PR and closes the sessions, asks Clef
+`src/cli/run-modes.e2e.test.ts` runs the demo and resumes a journal;
+`src/cli/run-modes-spec.e2e.test.ts` and `src/cli/run-modes-clef.e2e.test.ts`
+run the real-run path with the in-memory tracker and a scripted stand-in for
+the Claude launcher: it builds to a PR and closes the sessions, asks Clef
 through a fake `fetch` with the config's model, turns the decision model off
-with no credentials, ends on a launcher stop, and resumes a journal.
+with no credentials, and ends on a launcher stop.
 `src/cli/run-modes.test.ts` keeps what needs no practice repo: a repo with no
 config, a run id with no journal, an empty journal, and the unfinished-runs
 list. The `--resume` test in `run-modes.e2e.test.ts` crashes a real run after its red commit, lists it
