@@ -2,6 +2,11 @@ import { decideBuild, type BuildAction } from './decide-build'
 import { decideCrashes, type CrashAction } from './decide-crashes'
 import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
+import {
+    decideRepoWait,
+    type RepoWaitAction,
+    type RepoWaitRun,
+} from './decide-repo-wait'
 import { decideRunBudget, type RunBudgetAction } from './decide-run-budget'
 import { decideUsage, type UsageAction } from './decide-usage'
 import { decideUsageLine, type UsageLineAction } from './decide-usage-line'
@@ -16,6 +21,8 @@ import type { UsageLines } from '../limits/usage-line'
 export type EngineAction =
     /** The journal cannot be a run (for example it has no `run_started`). */
     | { type: 'invalid_journal'; reason: string }
+    /** Wait for earlier runs on the same repo, before intake (#615). */
+    | RepoWaitAction
     /** Read the spec, its sub-tickets, and outside blockers from the tracker. */
     | { type: 'read_intake'; spec_number: number }
     /** Tell each bad ticket what is missing, then end the run. */
@@ -50,8 +57,10 @@ export type EngineAction =
  * It never reads the tracker, the disk, or the clock.
  *
  * Crashes come first: a run-level step cut off by a crash `MAX_CRASHES`
- * times in a row stops the run for good (`decide-crashes.ts`). Then the
- * plan: a limit wait or a billing stop is the only action,
+ * times in a row stops the run for good (`decide-crashes.ts`). Before
+ * intake, a run with `earlier_runs` going on its repo waits for them
+ * (`decide-repo-wait.ts`). After intake, the
+ * plan:a limit wait or a billing stop is the only action,
  * for the whole run, however many tickets are in flight (the scheduler lets
  * them settle first, then every cut-off step is taken again after the
  * wait). Then the run budget: a run whose tokens reached it is stuck, and
@@ -70,12 +79,18 @@ export const decideSteps = ({
     records,
     usage_lines,
     shared_readings,
+    earlier_runs,
 }: {
     records: JournalRecord[]
     /** The `luca-board` usage lines. Left out, there is no usage line. */
     usage_lines?: UsageLines
     /** The newest raw readings every run shared, each with its `arrived_at`. */
     shared_readings?: unknown[]
+    /**
+     * The earlier runs going on the run's repo (`earlierRuns`), read before
+     * intake. Left out, there is no repo wait to start.
+     */
+    earlier_runs?: RepoWaitRun[]
 }): EngineAction[] => {
     const state = replayRun({ records })
     const { phase, spec_number } = state
@@ -88,6 +103,11 @@ export const decideSteps = ({
                 : null
         return [usage ?? crash]
     }
+    const repoWait =
+        spec_number === null
+            ? null
+            : decideRepoWait({ state, records, spec_number, earlier_runs })
+    if (repoWait !== null) return repoWait
     if (phase !== 'intake_passed' || spec_number === null) {
         return [decideIntake({ state })]
     }
@@ -138,12 +158,19 @@ export const decide = ({
     records,
     usage_lines,
     shared_readings,
+    earlier_runs,
 }: {
     records: JournalRecord[]
     usage_lines?: UsageLines
     shared_readings?: unknown[]
+    earlier_runs?: RepoWaitRun[]
 }): EngineAction => {
-    const [first] = decideSteps({ records, usage_lines, shared_readings })
+    const [first] = decideSteps({
+        records,
+        usage_lines,
+        shared_readings,
+        earlier_runs,
+    })
     return (
         first ?? {
             type: 'invalid_journal',

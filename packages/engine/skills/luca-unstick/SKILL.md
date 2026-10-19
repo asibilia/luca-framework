@@ -76,6 +76,7 @@ Find the stuck reason: `ticket_stuck` (a ticket), `final_review_stuck` (the fina
 | `undo_refused` | The ticket's join is still on the run branch, but undoing it would have rewound the run branch over other work (its join isn't on the branch, or other commits sit on top of it), so Luca left the run branch alone. Nothing new starts or joins until it's sorted (#519). | Look at the run branch's log next to the joins in the journal. Put the run branch back so the ticket's join is on top, or take its join off by hand (ask the owner first), then `retry #n`. Or `skip #n`. |
 | `run_budget` | The whole run used up its budget of tokens. | Look at what used them (a ticket stuck in fix loops?). A bare `retry` gives one more full budget; `stop` ends the run. |
 | `pull_request_failed` | Every ticket is done, but `gh pr create` failed, so the run's PR didn't open. The run branch is pushed, and the PR's full text is in the run folder's `pull-request.md`. | Read `gh`'s error. A GitHub or sign-in hiccup: a bare `retry` opens the PR. If you open it by hand from the run branch first, `retry` reuses it and never opens a second one. |
+| `repo_busy` | The run waited 24 hours, before intake, for an earlier run on the same repo that is still going. Nothing was built yet. | Check the earlier run the detail names: is it really still going, or stuck waiting for a reply? A bare `retry` waits up to 24 hours more; `stop` ends this run, to start again later or with `luca-run --alongside`. |
 
 The final review, when `final_review_stuck`:
 

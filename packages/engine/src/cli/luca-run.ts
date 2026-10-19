@@ -30,6 +30,8 @@
  */
 import { homedir } from 'node:os'
 
+import { defaultRegistryPath, goingRuns } from './going-runs'
+import { listProcesses } from './live-runs'
 import { parseRunArgs, type RunArgs } from './run-args'
 import {
     DEMO_TURN_DELAY_MS,
@@ -89,6 +91,20 @@ const decisionModelSetup = async () => ({
 })
 
 /**
+ * The unfinished runs on this computer, for the repo wait (#615): every
+ * journal in the runs folder and the board's registry, checked with `ps`.
+ */
+const goingRunsNow = () =>
+    goingRuns({
+        runs_dir: defaultRunsDir(),
+        registry_path: defaultRegistryPath({
+            env: process.env,
+            home_dir: homedir(),
+        }),
+        list_processes: listProcesses,
+    })
+
+/**
  * The usage line (#434): the `luca-board` plugin's lines, and the readings
  * every run shares, both in Luca's state folder.
  */
@@ -137,6 +153,7 @@ const run = async ({
             decision_model: await decisionModelSetup(),
             memory: await memoryOf(),
             usage: usageLine(),
+            going_runs: goingRunsNow,
             board,
             log,
         })
@@ -156,6 +173,8 @@ const run = async ({
         decision_model: await decisionModelSetup(),
         memory: await memoryOf(),
         usage: usageLine(),
+        going_runs: goingRunsNow,
+        alongside: args.alongside === true,
         board,
         log,
     })

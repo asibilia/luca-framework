@@ -132,6 +132,10 @@ _Avoid_: stuck, throttled
 The share of a plan window, such as the weekly or the 5-hour window, that Luca may use across all its runs before they pause in a limit wait.
 _Avoid_: quota, threshold, cap
 
+**Repo wait**:
+A pause before intake while an earlier run on the same repo is still going, so two runs on one repo don't slow each other down. The run tells its spec issue once which run it waits for, goes on by itself once that run ends or stops, and is stuck after 24 hours. A run started with `luca-run --alongside` never waits.
+_Avoid_: queue, lock
+
 **Run budget**:
 The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.
 _Avoid_: quota, token limit

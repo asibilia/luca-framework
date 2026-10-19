@@ -1,4 +1,5 @@
 import { pendingReplies, waitForReply, type StuckAction } from './decide-stuck'
+import { repoBusyStuckComment } from './repo-wait-text'
 import {
     pullRequestStuckComment,
     runBudgetDetail,
@@ -8,6 +9,24 @@ import {
 import type { JournalRecord, RunStuckReason } from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
 import { runBudgetOf, runTokensIn } from '../limits/run-budget'
+
+/** The spec issue's comment for the stuck run, by why it is stuck. */
+const stuckBody = ({
+    stuck,
+    budget,
+}: {
+    stuck: { reason: RunStuckReason; detail: string }
+    budget: number
+}): string => {
+    switch (stuck.reason) {
+        case 'pull_request_failed':
+            return pullRequestStuckComment({ detail: stuck.detail })
+        case 'repo_busy':
+            return repoBusyStuckComment({ detail: stuck.detail })
+        case 'run_budget':
+            return runStuckComment({ detail: stuck.detail, budget })
+    }
+}
 
 /** The run's steps with its budget of tokens (#435). */
 export type RunBudgetAction =
@@ -62,10 +81,7 @@ export const decideRunBudget = ({
             {
                 type: 'report_run_stuck',
                 spec_number,
-                body:
-                    stuck.reason === 'pull_request_failed'
-                        ? pullRequestStuckComment({ detail: stuck.detail })
-                        : runStuckComment({ detail: stuck.detail, budget }),
+                body: stuckBody({ stuck, budget }),
             },
         ]
     }

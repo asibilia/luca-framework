@@ -9,12 +9,14 @@ import { errorText } from './run-end'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 
-/** What a run's `run_started` says: its spec, base branch, and repo. */
+/** What a run's `run_started` says: its spec, base branch, repo, and time. */
 export type RunStart = {
     spec_number: number
     base_branch: string
     /** `null` in journals from before the repo was kept. */
     repo: string | null
+    /** When `run_started` was journaled. */
+    started_at: string
 }
 
 /**
@@ -72,5 +74,8 @@ export const readRunStart = ({
         }
     }
     const { spec_number, base_branch, repo } = first.content
-    return { ok: true, start: { spec_number, base_branch, repo } }
+    return {
+        ok: true,
+        start: { spec_number, base_branch, repo, started_at: first.time },
+    }
 }

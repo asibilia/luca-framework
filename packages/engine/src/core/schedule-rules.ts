@@ -104,6 +104,7 @@ export const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     'wait_for_reply',
     'wait_for_limit',
     'wait_for_usage_line',
+    'wait_for_repo',
 ])
 
 /**

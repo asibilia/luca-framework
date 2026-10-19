@@ -43,6 +43,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/agent-entries.ts` | Agent turn and session entries. |
 | `src/journal/agent-message-entries.ts` | Agent message entries. |
 | `src/journal/limit-entries.ts` | Plan limit and usage entries. |
+| `src/journal/repo-wait-entries.ts` | The repo wait's entries (#615): started, ended, skipped. |
 | `src/journal/gate-entries.ts` | Red check, install, and gates entries. |
 | `src/journal/commit-entries.ts` | Leftover scan and commit entries. |
 | `src/journal/join-entries.ts` | Join, rebase, and push entries. |

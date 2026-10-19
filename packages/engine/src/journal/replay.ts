@@ -269,6 +269,21 @@ const applyRecord = ({
         case 'usage_line_wait_started':
         case 'usage_line_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
+        case 'repo_wait_started':
+            return {
+                ...next,
+                repo_wait: { status: 'waiting', since: record.time },
+            }
+        case 'repo_wait_ended':
+            return {
+                ...next,
+                repo_wait: { ...state.repo_wait, status: 'ended' },
+            }
+        case 'repo_wait_skipped':
+            return {
+                ...next,
+                repo_wait: { ...state.repo_wait, status: 'skipped' },
+            }
         case 'run_stopped':
             return {
                 ...next,

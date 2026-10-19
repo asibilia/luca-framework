@@ -4,8 +4,10 @@
  * `executeAction` from the modules that carry them out.
  */
 import { decideSteps, type EngineAction } from './decide'
+import { repoWaitUnchecked } from './decide-repo-wait'
 import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
+import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
 import { executeWithJev } from './execute-with-jev'
 import {
     agentRoleOf,
@@ -101,6 +103,10 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * decision it shares its readings with every run, reads the newest shared
  * ones and the lines, and pauses at a line (see `decide-usage-line.ts`).
  *
+ * With `going_runs`, a run started while an earlier run on the same repo
+ * is going waits for it before intake: a **repo wait** (see
+ * `decide-repo-wait.ts`).
+ *
  * Crash recovery: every step it starts (not a wait) is journaled between a
  * `step_started` and a `step_ended` (none when the step throws). On start,
  * a step with no `step_ended` was cut off by a crash: one `run_resumed`
@@ -129,6 +135,7 @@ export const runEngine = async ({
     reply_poll_ms,
     memory,
     usage,
+    going_runs,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -151,6 +158,11 @@ export const runEngine = async ({
     memory?: MemoryDeps
     /** The usage lines and the shared readings. Left out, there is no usage line. */
     usage?: UsageLineDeps
+    /**
+     * Lists the unfinished runs (`goingRuns`), for the repo wait before
+     * intake. Left out, there is no repo wait.
+     */
+    going_runs?: GoingRunsReader
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -175,6 +187,7 @@ export const runEngine = async ({
                   memory,
                   step,
                   read_usage_lines: usage?.read_lines,
+                  going_runs,
               })
             : executeWithJev({
                   ask,
@@ -187,18 +200,27 @@ export const runEngine = async ({
                   memory,
                   step,
                   read_usage_lines: usage?.read_lines,
+                  going_runs,
               })
 
-    /** The decision step, with the usage line when the run has one. */
+    /**
+     * The decision step, with the usage line when the run has one, and the
+     * earlier runs on the repo while the run has yet to look for them.
+     */
     const decideNow = async (
         records: JournalRecord[]
     ): Promise<EngineAction[]> => {
-        if (usage === undefined) return decideSteps({ records })
+        const earlier_runs =
+            going_runs !== undefined && repoWaitUnchecked({ records })
+                ? await readEarlierRuns({ going_runs, journal })
+                : undefined
+        if (usage === undefined) return decideSteps({ records, earlier_runs })
         await usage.share(runReadings({ records }))
         return decideSteps({
             records,
             usage_lines: await usage.read_lines(),
             shared_readings: await usage.read_shared(),
+            earlier_runs,
         })
     }
     const settleAll = () =>

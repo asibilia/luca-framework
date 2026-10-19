@@ -78,6 +78,11 @@ import {
     PullRequestOpenedEntrySchema,
 } from './pull-request-entries'
 import {
+    RepoWaitEndedEntrySchema,
+    RepoWaitSkippedEntrySchema,
+    RepoWaitStartedEntrySchema,
+} from './repo-wait-entries'
+import {
     ConfigReloadedEntrySchema,
     ConfigReloadRefusedEntrySchema,
     EngineResumedEntrySchema,
@@ -225,6 +230,9 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     EngineResumedEntrySchema,
     ConfigReloadedEntrySchema,
     ConfigReloadRefusedEntrySchema,
+    RepoWaitStartedEntrySchema,
+    RepoWaitEndedEntrySchema,
+    RepoWaitSkippedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */
@@ -309,6 +317,9 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     EngineResumedEntrySchema.extend(STAMP_FIELDS),
     ConfigReloadedEntrySchema.extend(STAMP_FIELDS),
     ConfigReloadRefusedEntrySchema.extend(STAMP_FIELDS),
+    RepoWaitStartedEntrySchema.extend(STAMP_FIELDS),
+    RepoWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    RepoWaitSkippedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>
@@ -392,6 +403,9 @@ export const JournalKindSchema = z.enum([
     'engine_resumed',
     'config_reloaded',
     'config_reload_refused',
+    'repo_wait_started',
+    'repo_wait_ended',
+    'repo_wait_skipped',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

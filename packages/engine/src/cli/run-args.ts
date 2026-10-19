@@ -10,7 +10,7 @@ export const BOARD_TOKEN_ENV = 'LUCA_BOARD_TOKEN'
 
 /** How to call `luca-run`, shown with every argument error. */
 export const RUN_USAGE = `Usage:
-  luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
+  luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--alongside] [--board-plugin <id>]
   luca-run --demo [--run-id <id>] [--board-plugin <id>]
   luca-run --resume <run-id> [--repo <path>] [--board-plugin <id>]
   luca-run --unfinished
@@ -26,6 +26,8 @@ export const RUN_USAGE = `Usage:
                         (for --resume, to the repo the run started in).
   --run-id <id>         The run's id and folder name. Defaults to a new one.
   --base <branch>       The branch the run starts from. Defaults to main.
+  --alongside           Start now, even while an earlier run on the repo is
+                        going. Without it, the run waits for that run first.
   --board-plugin <id>   Send the journal to this Paseo board plugin; the
                         per-run token comes from $${BOARD_TOKEN_ENV}.`
 
@@ -67,6 +69,7 @@ const resumeArgsSchema = ({ cwd }: { cwd: string }) =>
             demo: z.undefined('Give only one of --resume or --demo.'),
             run_id: z.undefined('--resume <run-id> is the run id.'),
             base: z.undefined('--resume takes the base from the journal.'),
+            alongside: z.undefined('--alongside is for a new run (--spec).'),
         })
         .refine(({ board_plugin, token }) => board_plugin === null || token, {
             message: BOARD_TOKEN_MESSAGE,
@@ -91,6 +94,7 @@ const unfinishedArgsSchema = z
         repo: z.undefined(UNFINISHED_ALONE),
         run_id: z.undefined(UNFINISHED_ALONE),
         base: z.undefined(UNFINISHED_ALONE),
+        alongside: z.undefined(UNFINISHED_ALONE),
         board_plugin: z.undefined(UNFINISHED_ALONE),
     })
     .transform((): RunArgs => ({ mode: 'unfinished' }))
@@ -107,26 +111,42 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
                 .transform((path) => resolve(cwd, path)),
             run_id: RunIdSchema.default(() => makeRunId()),
             base: z.string().min(1).nullable().default(null),
+            alongside: z.boolean().default(false),
             board_plugin: z.string().min(1).nullable().default(null),
             token: z.string().nullable().default(null),
         })
         .refine(({ spec, demo }) => (spec === undefined) === demo, {
             message: 'Give exactly one of --spec <n> or --demo.',
         })
+        .refine(({ demo, alongside }) => !(demo && alongside), {
+            message: '--alongside is for a run of a spec (--spec).',
+        })
         .refine(({ board_plugin, token }) => board_plugin === null || token, {
             message: BOARD_TOKEN_MESSAGE,
         })
         .transform(
-            ({ spec, repo, run_id, base, board_plugin, token }): RunArgs => {
+            ({
+                spec,
+                repo,
+                run_id,
+                base,
+                alongside,
+                board_plugin,
+                token,
+            }): RunArgs => {
                 const common = {
                     repo,
                     run_id,
                     base_branch: base,
                     board: boardOf({ board_plugin, token }),
                 }
-                return spec === undefined
-                    ? { mode: 'demo', ...common }
-                    : { mode: 'spec', spec_number: spec, ...common }
+                if (spec === undefined) return { mode: 'demo', ...common }
+                return {
+                    mode: 'spec',
+                    spec_number: spec,
+                    ...common,
+                    ...(alongside ? { alongside: true } : {}),
+                }
             }
         )
 
@@ -142,7 +162,12 @@ type RunArgsCommon = {
 
 /** What `luca-run` was asked to do. */
 export type RunArgs =
-    | (RunArgsCommon & { mode: 'spec'; spec_number: number })
+    | (RunArgsCommon & {
+          mode: 'spec'
+          spec_number: number
+          /** Skip the repo wait (`--alongside`); left out, the run waits. */
+          alongside?: true
+      })
     | (RunArgsCommon & { mode: 'demo' })
     | {
           mode: 'resume'
@@ -189,6 +214,7 @@ export const parseRunArgs = ({
                 repo: { type: 'string' },
                 'run-id': { type: 'string' },
                 base: { type: 'string' },
+                alongside: { type: 'boolean' },
                 'board-plugin': { type: 'string' },
             },
         }).values
@@ -210,6 +236,7 @@ export const parseRunArgs = ({
         repo: values.repo,
         run_id: values['run-id'],
         base: values.base,
+        alongside: values.alongside,
         board_plugin: values['board-plugin'],
         token: env[BOARD_TOKEN_ENV],
     })

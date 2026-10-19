@@ -18,7 +18,8 @@ import { replayRun } from '../journal/replay'
 /**
  * Starts a run by writing its first record. The spec and config it names are
  * what every later step of the run works from; the Luca version it names is
- * the one the run started on.
+ * the one the run started on. A run started `alongside` journals right away
+ * that it skips the repo wait (`repo_wait_skipped`, #615).
  */
 export const startRun = ({
     journal,
@@ -27,6 +28,7 @@ export const startRun = ({
     base_branch,
     memory,
     repo,
+    alongside,
     luca_version = lucaVersion(),
 }: {
     journal: Journal
@@ -41,10 +43,12 @@ export const startRun = ({
     memory?: { project_vault: string | null }
     /** The repo the run is on, so a resume can find it. Defaults to `null`. */
     repo?: string | null
+    /** Never wait for another run on the repo (`luca-run --alongside`). */
+    alongside?: boolean
     /** Luca's version. Defaults to the engine's own. */
     luca_version?: string
-}): JournalRecord =>
-    journal.append({
+}): JournalRecord => {
+    const started = journal.append({
         kind: 'run_started',
         ticket: null,
         role: null,
@@ -57,6 +61,16 @@ export const startRun = ({
             luca_version,
         },
     })
+    if (alongside === true) {
+        journal.append({
+            kind: 'repo_wait_skipped',
+            ticket: null,
+            role: null,
+            content: {},
+        })
+    }
+    return started
+}
 
 /**
  * Records that the engine started again on a run's journal, on Luca's

@@ -115,6 +115,15 @@ tickets and notes a run has.
   (`isCrossRepository`) is never taken for the run's. Its PR comments are
   posted once, even on a redo after a crash.
 
+### A repo busy for a day (#615)
+
+A run's repo wait (see "The repo wait" in the command line docs) that
+lasts 24 hours journals the run stuck (`run_stuck`, reason `repo_busy`),
+before intake, naming the earlier runs still going. The spec issue is told
+why, and the run waits: a bare `retry` waits up to 24 hours more, and
+`stop` ends the run. Start it again later, or with `luca-run --alongside`
+to run both at once.
+
 ### Getting a stuck run moving (#504)
 
 Picking the right reply takes reading: the journal, the ticket's worktree,
