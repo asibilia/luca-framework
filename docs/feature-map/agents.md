@@ -73,6 +73,10 @@ Reached by: every agent turn of a real run; scripted stand-in agents run the end
 Tests:
 
 - `packages/engine/src/agents/claude-launcher.test.ts`
+- `packages/engine/src/agents/claude-launcher-follow-ups.test.ts`
+- `packages/engine/src/agents/claude-launcher-messages.test.ts`
+- `packages/engine/src/agents/claude-launcher-result.test.ts`
+- `packages/engine/src/agents/claude-launcher-stops.test.ts`
 - `packages/engine/src/agents/role-instructions.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
