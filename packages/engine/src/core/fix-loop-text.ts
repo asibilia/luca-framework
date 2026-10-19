@@ -52,7 +52,11 @@ const FAILED_TRY_OPENINGS: Record<Exclude<AgentFailure, 'engine'>, string> = {
     guard: 'Your last turn changed things your role may not change.',
     evidence:
         'The engine checked the evidence in your "already_done" answer, and some of it did not check out.',
+    chore: 'The engine could not do every chore your last result asked for ("file_modes", "run_generators").',
 }
+
+const FIX_CHORES =
+    'Your work is still in the worktree, with every chore the engine could do. Fix what the error names (ask only for paths your role may write and generators the repo names, and fix what made a generator fail), then answer with your full result.'
 
 const TRY_AGAIN =
     "The engine undid every change your role may not make; the rest of your work is still in the worktree. Try again, keeping to your role's rules, then answer with your full result."
@@ -61,13 +65,20 @@ const CHECK_EVIDENCE_AGAIN =
     'If you named the wrong commits or tests, answer "already_done" again with the right ones: commits on the base branch, and tests that exist and pass there. ' +
     'If the work is not all on the base branch, or a criterion has no passing test there, write the tests and answer "tests_written" instead.'
 
+/** What to do next, for a failure whose closing isn't `TRY_AGAIN`. */
+const FAILED_TRY_CLOSINGS: Partial<Record<AgentFailure, string>> = {
+    evidence: CHECK_EVIDENCE_AGAIN,
+    chore: FIX_CHORES,
+}
+
 /**
  * The follow-up an agent gets after a failed try (its turn failed, gave no
  * usable result, or broke its role's rules): what failed, the error, that
  * the engine undid every change the role may not make, and to try again.
  * A test-writer whose `already_done` evidence did not check out (#495)
  * hears what did not, and to fix its answer or write the tests instead.
- * The engine journals it word for word.
+ * A writer whose chores the engine could not do (#618) hears to fix what
+ * the error names. The engine journals it word for word.
  *
  * @example
  * const message = failedTryMessage({ failure: 'guard', error: '- wrote src/sum.ts, which a test-writer may not write' })
@@ -82,7 +93,7 @@ export const failedTryMessage = ({
     [
         FAILED_TRY_OPENINGS[failure],
         `## Error\n\n${clipOutput({ text: error })}`,
-        failure === 'evidence' ? CHECK_EVIDENCE_AGAIN : TRY_AGAIN,
+        FAILED_TRY_CLOSINGS[failure] ?? TRY_AGAIN,
     ].join('\n\n')
 
 /**

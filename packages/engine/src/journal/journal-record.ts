@@ -6,6 +6,7 @@ import {
     AgentSessionClosedEntrySchema,
     AgentSessionEntrySchema,
     AgentStartedEntrySchema,
+    ChoresDoneEntrySchema,
     SharedGitChangedEntrySchema,
 } from './agent-entries'
 import {
@@ -168,6 +169,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     AgentStartedEntrySchema,
     AgentFinishedEntrySchema,
     AgentFailedEntrySchema,
+    ChoresDoneEntrySchema,
     RedCheckEntrySchema,
     AlreadyDoneCheckedEntrySchema,
     LeftoverScanEntrySchema,
@@ -255,6 +257,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     AgentStartedEntrySchema.extend(STAMP_FIELDS),
     AgentFinishedEntrySchema.extend(STAMP_FIELDS),
     AgentFailedEntrySchema.extend(STAMP_FIELDS),
+    ChoresDoneEntrySchema.extend(STAMP_FIELDS),
     RedCheckEntrySchema.extend(STAMP_FIELDS),
     AlreadyDoneCheckedEntrySchema.extend(STAMP_FIELDS),
     LeftoverScanEntrySchema.extend(STAMP_FIELDS),
@@ -341,6 +344,7 @@ export const JournalKindSchema = z.enum([
     'agent_started',
     'agent_finished',
     'agent_failed',
+    'chores_done',
     'red_check',
     'already_done_checked',
     'leftover_scan',

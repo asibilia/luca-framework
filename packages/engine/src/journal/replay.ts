@@ -396,6 +396,10 @@ const applyRecord = ({
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
             return next
+        // A writer's chores (#618): noted; one the engine could not do is
+        // the `agent_failed` after it.
+        case 'chores_done':
+            return next
         // An agent's changeset the engine removed: noted, never acted on.
         case 'changeset_dropped':
             return next

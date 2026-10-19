@@ -66,6 +66,33 @@ Sometimes you are sent a ticket review's findings to fix, after the ticket's wor
 - In "finding_responses", answer EACH finding by id: "fixed", or "wont_fix" with a reason if the finding is wrong. Push back only when the finding is truly wrong; a fresh reviewer rules on your reason.
 - The engine runs the gates again, commits your fixes, and a fresh reviewer checks only the new changes.`
 
+/** The repo's generators, as a prompt list, or a line saying it names none. */
+const generatorLines = ({ config }: { config: EngineConfig }): string => {
+    const named = Object.entries(config.generators ?? {})
+    return named.length === 0
+        ? '- This repo names no generators, so leave "run_generators" empty.'
+        : [
+              '- To rebuild a generated file, name the repo\'s generator in "run_generators": the engine runs it in your worktree after your turn, before the checks, and commits what it writes. Its generators:',
+              ...named.map(
+                  ([name, command]) => `  - "${name}": \`${command}\``
+              ),
+          ].join('\n')
+}
+
+/**
+ * The two owner chores the engine does for a writer (#618): file modes,
+ * and the repo's named generators.
+ */
+export const engineChores = ({
+    config,
+}: {
+    config: EngineConfig
+}): string => `## Chores the engine does for you
+You can't run \`chmod\` or a generator yourself. Ask the engine in your result instead:
+- To make a file executable, or not, list it in "file_modes" as { path, executable }. The engine applies it after your turn, before it commits. A path your role may not write is refused, and your try counts as failed.
+${generatorLines({ config })}
+- Never run a generator yourself. An unknown name or a failing generator comes back to you as a problem.`
+
 export const setupFiles = ({ config }: { config: EngineConfig }): string =>
     config.test_setup_files.length > 0
         ? ` (${config.test_setup_files.join(', ')})`

@@ -39,7 +39,9 @@ export type TestRun = z.infer<typeof TestRunSchema>
  * The gates the engine config can name, plus `install`: the engine's own
  * install, run first when a package manifest changed, `prepare`: the
  * config's prepare command, run before the tests, and `slow_test`: the
- * config's slow tests, run only at the final review (#563).
+ * config's slow tests, run only at the final review (#563). `generate` is
+ * one of the config's generators, run after a writer's turn when it asked
+ * (#618); it is journaled in `chores_done`, never in the gates.
  */
 export const GateNameSchema = z.enum([
     'install',
@@ -48,6 +50,7 @@ export const GateNameSchema = z.enum([
     'slow_test',
     'types',
     'lint',
+    'generate',
 ])
 
 export type GateName = z.infer<typeof GateNameSchema>

@@ -12,7 +12,8 @@ are removed; the rest stay for later. Branches and the journal always stay.
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
-how it failed), `shared_git_changed` (something else changed the shared
+how it failed), `chores_done` (the chores a writer asked for; see Engine
+chores below), `shared_git_changed` (something else changed the shared
 `.git` during the turn; see Guards), or `run_stopped` (see Guards). Once
 nothing can send an agent a follow-up, its session's close is journaled as
 `agent_session_closed`. Any step may be preceded by a
@@ -87,6 +88,21 @@ try; a failure after the last one is stuck. The rounds are counted from the
 order of journal records (a test-writer result after a red check is an
 answered round), so a crashed run counts them the same way, and a follow-up
 that started but never finished is sent again, not counted.
+
+**Engine chores (#618).** No agent can run `chmod` or a generator, so a
+writer (a test-writer or implementer, in a ticket or as a final review
+fixer) asks the engine in its result. `file_modes: [{ path, executable }]`
+makes each file executable, or not; `run_generators: [name]` runs each of
+the repo's generators, named in `.luca/config.json` as `generators` (a name
+and its command, frozen on resume). Right after the turn, before any check,
+leftover scan or commit, the engine sets each mode on a path the role may
+write (`mayWrite`), then runs each generator in the worktree with
+`test_timeout_ms`, as a `generate` check. It journals `chores_done { role,
+file_modes, checks, problems }`. What they change is committed with the
+ticket, so git records the new mode, and the leftover scan still runs. A
+path the role may not write (left as it was), an unknown generator, or a
+failing one is a problem: the turn fails as a `chore` failed try, and the
+role's next turn gets the problems.
 
 **A bad test** (the implementer answers `bad_test`) throws away the
 implementer's uncommitted work (`git reset --hard` and `git clean -fd`,

@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { ENTRY_FIELDS } from './entry-fields'
 
 import { AgentSessionSchema } from '../agents/agent-launcher'
-import { AgentRoleSchema, RoleResultSchema } from '../agents/role-results'
+import {
+    AgentRoleSchema,
+    FileModeSchema,
+    RoleResultSchema,
+} from '../agents/role-results'
+import { GateCheckSchema } from '../gates/gate-schemas'
 import { ModelReasonSchema } from '../jev/model-pick'
 
 /**
@@ -66,6 +71,9 @@ export const AgentFinishedEntrySchema = z.object({
  * - `evidence`: a test-writer's `already_done` evidence did not check out
  *   (#495). Replay makes it from a failed `already_done_checked`, not from
  *   an `agent_failed` record.
+ * - `chore`: a chore the writer's result asked the engine for could not be
+ *   done (#618): a file mode on a path the role may not write, an unknown
+ *   generator, or a failed one. See `chores_done`.
  *
  * The decision step counts all but `engine` as failed tries; an engine
  * failure starts a fresh agent without using one.
@@ -76,6 +84,7 @@ export const AgentFailureSchema = z.enum([
     'guard',
     'engine',
     'evidence',
+    'chore',
 ])
 
 export type AgentFailure = z.infer<typeof AgentFailureSchema>
@@ -89,6 +98,25 @@ export const AgentFailedEntrySchema = z.object({
         error: z.string(),
         failure: AgentFailureSchema.default('agent'),
         ...SESSION_FIELDS,
+    }),
+})
+
+/**
+ * The engine did the chores a writer's result asked for (#618), after its
+ * turn and before the checks: `file_modes` it set, and `checks`, one
+ * `generate` check per named generator it ran. `problems` lists what it
+ * could not do (a path the role may not write, an unknown generator, a
+ * failed one); with any, an `agent_failed` (`chore`) follows, for the
+ * role's fix loop.
+ */
+export const ChoresDoneEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('chores_done'),
+    content: z.object({
+        role: AgentRoleSchema,
+        file_modes: z.array(FileModeSchema),
+        checks: z.array(GateCheckSchema),
+        problems: z.array(z.string()),
     }),
 })
 

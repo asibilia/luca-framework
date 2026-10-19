@@ -187,6 +187,14 @@ export const EngineConfigSchema = z.object({
      */
     leftover_allow: z.array(z.string().min(1)).optional(),
     /**
+     * The repo's generators (#618): each name a writer may ask the engine to
+     * run (`run_generators`), with its command, such as `bun run gen:parser`.
+     * The engine runs them in the worktree after the writer's turn, before
+     * the checks, and commits their output. Agents never run them. Left out,
+     * none.
+     */
+    generators: z.record(z.string().min(1), z.string().min(1)).optional(),
+    /**
      * A markdown file listing each feature and the test files that prove it
      * (#583), relative to the repo root: a path inside the repo, so not an
      * absolute path, not one that climbs out with `..`, and not ending in

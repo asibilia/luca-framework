@@ -176,6 +176,18 @@ Tests:
 - `packages/engine/src/git/outside-links.test.ts`
 - `packages/engine/src/git/path-text.test.ts`
 
+## File modes and generators
+
+The engine does two owner chores for a writer: it makes the files the writer names executable (or not) before the commit, and runs the generators the repo names, before the gates, as a `generate` check whose output is committed with the ticket.
+
+Reached by: `file_modes` and `run_generators` in a writer's result; `generators` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/core/run-engine-chores.e2e.test.ts`
+- `packages/engine/src/config/generators-config.test.ts`
+- `packages/engine/src/agents/writer-chores-instructions.test.ts`
+
 ## Many tickets, joins and rebases
 
 Tickets build at the same time, share a baseline test run, join the run branch one at a time, and a clash, a broken join, or a test a joined ticket made wrong is fixed on top of the run branch.

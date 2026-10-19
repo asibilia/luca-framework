@@ -69,6 +69,8 @@ export const RELOADED_FIELDS = [
  *   are all of one model and can be scored together.
  * - `models`: the model floors and the confidence bar (#603), so one run's
  *   routing stays consistent.
+ * - `generators`: the commands writers may ask the engine to run (#618),
+ *   whose output is committed with the tickets, as the prompts named them.
  */
 export const FROZEN_FIELDS = [
     'checks',
@@ -81,6 +83,7 @@ export const FROZEN_FIELDS = [
     'run_budget_tokens',
     'decision_model',
     'models',
+    'generators',
 ] as const
 
 const positiveInt = z.number().int().positive().nullable()

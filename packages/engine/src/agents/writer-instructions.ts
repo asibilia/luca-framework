@@ -2,7 +2,7 @@
  * The task sections of the roles that write: the test-writer and the
  * implementer.
  */
-import { REVIEW_FIXER, setupFiles } from './common-instructions'
+import { engineChores, REVIEW_FIXER, setupFiles } from './common-instructions'
 
 import {
     caseLimitOf,
@@ -80,7 +80,10 @@ Your result (structured output):
 ${environmentLine({ check: 'the red check' })}
 - done_by: empty, unless the outcome is "already_done".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
+- file_modes, run_generators: empty, unless you need a chore below.
 - summary, assumptions, run_notes.
+
+${engineChores({ config })}
 
 ${TEST_UPDATE}
 
@@ -141,6 +144,8 @@ ${environmentLine({ check: 'a gate' })}
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.
 - Leave nothing behind: no scratch files, logs, notes, or unused scripts. The engine scans for leftovers before it commits.
 
-Your result (structured output): outcome ("done", "bad_test", "needs_setup_change", or "environment"), bad_test (null unless outcome is "bad_test"), setup_change (null unless outcome is "needs_setup_change"), environment (null unless outcome is "environment"), finding_responses (empty unless you were sent ticket review findings), summary, assumptions, run_notes.
+Your result (structured output): outcome ("done", "bad_test", "needs_setup_change", or "environment"), bad_test (null unless outcome is "bad_test"), setup_change (null unless outcome is "needs_setup_change"), environment (null unless outcome is "environment"), finding_responses (empty unless you were sent ticket review findings), file_modes and run_generators (empty unless you need a chore below), summary, assumptions, run_notes.
+
+${engineChores({ config })}
 
 ${REVIEW_FIXER}`

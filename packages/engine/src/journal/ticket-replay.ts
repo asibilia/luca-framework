@@ -50,6 +50,7 @@ type TicketRecord = Exclude<
             | 'agent_message'
             | 'agent_message_delivered'
             | 'shared_git_changed'
+            | 'chores_done'
             | 'changeset_dropped'
             | 'final_review_started'
             | 'lens_started'

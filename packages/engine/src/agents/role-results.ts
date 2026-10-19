@@ -137,6 +137,24 @@ const ENVIRONMENT_FIELDS = {
     environment: EnvironmentSchema.nullable().default(null),
 }
 
+/** A file mode a writer asks the engine to set (#618). */
+export const FileModeSchema = z.object({
+    /** Worktree-relative path of the file. */
+    path: z.string().min(1),
+    executable: z.boolean(),
+})
+
+export type FileMode = z.infer<typeof FileModeSchema>
+
+/**
+ * The owner chores a writer asks the engine to do after its turn (#618):
+ * file modes to set, and the repo's generators to run, by name.
+ */
+const CHORE_FIELDS = {
+    file_modes: z.array(FileModeSchema).default([]),
+    run_generators: z.array(z.string().min(1)).default([]),
+}
+
 const SHARED_FIELDS = {
     summary: z.string().default(''),
     /** Calls the agent made by itself when something was unclear. */
@@ -182,6 +200,7 @@ export const TestWriterResultSchema = z.object({
     done_by: z.array(DoneCommitSchema).default([]),
     ...SETUP_FIELDS,
     ...ENVIRONMENT_FIELDS,
+    ...CHORE_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })
@@ -215,6 +234,7 @@ export const ImplementerResultSchema = z.object({
     bad_test: BadTestSchema.nullable().default(null),
     ...SETUP_FIELDS,
     ...ENVIRONMENT_FIELDS,
+    ...CHORE_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })

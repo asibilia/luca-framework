@@ -38,6 +38,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/build-context.ts` | `BuildContext` and the lookups every build step shares. |
 | `src/core/worktree-changes.ts` | A worktree's changes, less what prepare made and outside links. |
 | `src/core/agent-turn.ts` | One agent turn (`runTurn`), guarded and journaled; launches and follow-ups. |
+| `src/core/engine-chores.ts` | The chores a writer's result asks the engine for (#618): file modes, and the repo's named generators, as `generate` checks. |
 | `src/core/execute-red-check.ts` | The red check step. |
 | `src/core/execute-already-done-check.ts` | The already-done check step. |
 | `src/core/commit-in.ts` | The leftover scan, then an engine commit (`commitIn`). |
