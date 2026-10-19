@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.16
+
+### Patch Changes
+
+- b4bebd0: Spec: room for Wave 2 — split the big files Wave 2 touches, and a feature map folder ([#588](https://github.com/asibilia/luca-framework/issues/588))
+
 ## 14.0.0-alpha.15
 
 ### Minor Changes
