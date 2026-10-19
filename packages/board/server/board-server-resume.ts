@@ -123,6 +123,7 @@ export const createResumer = ({
                         ...memory.state,
                         run: { ...memory.state.run, engine_ended: null },
                         latest: RESUMED_TEXT,
+                        latest_at: now().toISOString(),
                     }
                     void enqueue({
                         run_id,

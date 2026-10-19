@@ -13,6 +13,7 @@ import { FOR_A_PERSON, TICKET_STAGES, type Key } from './board-panel-stages'
 import { makeStyles } from './board-panel-styles'
 import { FinalReviewStack } from './final-review-stack'
 import { NeedsYouSection } from './needs-you-section'
+import { SharedBubbles } from './one-line'
 import { RunFooter } from './run-footer'
 import { RunHeader } from './run-header'
 import { TicketStack } from './ticket-stack'
@@ -35,7 +36,8 @@ import {
  * `run-picker.tsx` and `usage-line.tsx`), `needs-you-section.tsx`,
  * `ticket-stack.tsx` (with `ticket-card-view.tsx`, `ticket-detail.tsx` and
  * `step-dots.tsx`), `final-review-stack.tsx` and `run-footer.tsx`. They share
- * `board-panel-styles.ts`, `board-panel-stages.ts` and `board-panel-parts.tsx`.
+ * `board-panel-styles.ts`, `board-panel-stages.ts` and `board-panel-parts.tsx`,
+ * and `one-line.tsx` keeps one bubble open at a time across the panel.
  * This module keeps what a person has opened, folded and picked.
  */
 
@@ -104,34 +106,36 @@ export const BoardPanel = ({
             style={styles.screen}
             contentContainerStyle={styles.content}
         >
-            <RunHeader
-                state={state}
-                runs={runs}
-                setPicked={setPicked}
-                layout={layout}
-                {...look}
-            />
-            <NeedsYouSection
-                state={state}
-                posted={posted}
-                chat_agent_id={chat_agent_id}
-                {...look}
-            />
-            <TicketStack
-                state={state}
-                folded={folded}
-                setFolded={setFolded}
-                openCards={openCards}
-                setOpenCards={setOpenCards}
-                {...look}
-            />
-            {showsFinalReview({ state }) ? (
-                <>
-                    <View style={styles.rule} />
-                    <FinalReviewStack state={state} {...look} />
-                </>
-            ) : null}
-            <RunFooter state={state} styles={styles} />
+            <SharedBubbles>
+                <RunHeader
+                    state={state}
+                    runs={runs}
+                    setPicked={setPicked}
+                    layout={layout}
+                    {...look}
+                />
+                <NeedsYouSection
+                    state={state}
+                    posted={posted}
+                    chat_agent_id={chat_agent_id}
+                    {...look}
+                />
+                <TicketStack
+                    state={state}
+                    folded={folded}
+                    setFolded={setFolded}
+                    openCards={openCards}
+                    setOpenCards={setOpenCards}
+                    {...look}
+                />
+                {showsFinalReview({ state }) ? (
+                    <>
+                        <View style={styles.rule} />
+                        <FinalReviewStack state={state} {...look} />
+                    </>
+                ) : null}
+                <RunFooter state={state} {...look} />
+            </SharedBubbles>
         </ScrollView>
     )
 }

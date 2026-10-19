@@ -95,6 +95,7 @@ export const createBoardState = ({
     current_step: null,
     event_count: 0,
     latest: null,
+    latest_at: null,
 })
 
 export const newTicket = ({

@@ -140,6 +140,11 @@ export const BoardStateSchema = z.object({
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */
     latest: z.string().nullable(),
+    /**
+     * When `latest` happened (its record's time), so the footer can say how
+     * long ago. Defaulted, so a board state from before it still parses.
+     */
+    latest_at: z.string().nullable().default(null),
 })
 
 export type BoardState = z.infer<typeof BoardStateSchema>

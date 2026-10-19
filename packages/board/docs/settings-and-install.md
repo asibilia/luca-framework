@@ -99,7 +99,8 @@ Layout:
   - `ticket-stack.tsx`: the tickets as a stack of stages, then the tickets left out for a person.
   - `ticket-card-view.tsx`: one ticket's card. It opens into `ticket-detail.tsx` and shows the step dots from `step-dots.tsx`.
   - `final-review-stack.tsx`: the final review and its lenses.
-  - `run-footer.tsx`: the run id, the latest thing that happened, and the counters.
+  - `run-footer.tsx`: the run id, the latest thing that happened and how long ago, and the counters.
+  - `one-line.tsx`: the one-line rule: a line cut with "…", and the bubble a tap on it opens with its full text.
   - `board-panel-styles.ts`: the styles made from the theme, and the `Look` every piece takes.
   - `board-panel-stages.ts`: the stages tickets and lenses are stacked in, and the keys of opened and folded cards.
   - `board-panel-parts.tsx`: the small pieces the sections share (counter, running step, stage header, banner, section).

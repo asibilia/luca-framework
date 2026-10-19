@@ -9,6 +9,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { useNow } from './board-look'
 import type { Look, Styles } from './board-panel-styles'
+import { CutLine } from './one-line'
 
 import {
     LOOP_CAP,
@@ -29,13 +30,16 @@ export const Counter = ({
               ? theme.colors.statusWarning
               : theme.colors.foregroundMuted
     return (
-        <Text style={[styles.counter, { color, borderColor: color }]}>
+        <Text
+            style={[styles.counter, { color, borderColor: color }]}
+            numberOfLines={1}
+        >
             {label} {value}/{LOOP_CAP}
         </Text>
     )
 }
 
-/** A running step with its time, counting up by itself. */
+/** A running step with its time, counting up by itself, on one line. */
 export const StepLine = ({
     step,
     prefix,
@@ -47,10 +51,11 @@ export const StepLine = ({
 }) => {
     const now = useNow()
     return (
-        <Text style={styles.muted} numberOfLines={1}>
-            {prefix}
-            {currentStepText({ step, now })}
-        </Text>
+        <CutLine
+            text={`${prefix}${currentStepText({ step, now })}`}
+            style={styles.muted}
+            styles={styles}
+        />
     )
 }
 

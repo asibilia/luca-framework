@@ -132,7 +132,9 @@ export const createRunStore = ({ config }: { config: BoardServerConfig }) => {
             after,
             record: read.record,
         })
-        memory.state = described ? { ...after, latest: described.text } : after
+        memory.state = described
+            ? { ...after, latest: described.text, latest_at: read.record.time }
+            : after
         return rowsForRecord({ run_id, before, after, record: read.record })
     }
 

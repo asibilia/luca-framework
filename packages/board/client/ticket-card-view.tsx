@@ -1,7 +1,9 @@
 /**
  * A ticket's card in the panel: its number and title, its stage pill, the
  * step dots, the fix and review counters, its tokens and tests, and its
- * details when opened.
+ * details when opened. Each line stays on one line (`one-line.tsx`): the
+ * number, pill, dots, counters and tokens keep their size, the text beside
+ * them is cut, and a tap on it shows it whole in a bubble.
  */
 import { Icon } from '@getpaseo/plugin/client/react-native'
 import { Pressable, Text, View } from 'react-native'
@@ -9,6 +11,7 @@ import { Pressable, Text, View } from 'react-native'
 import { stageColor, tokensText } from './board-look'
 import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { BubbleScope, CutLine, useBubbles } from './one-line'
 import { StepDots } from './step-dots'
 import { TicketDetail } from './ticket-detail'
 
@@ -31,6 +34,7 @@ export const TicketCardView = ({
     open: boolean
     onToggle: () => void
 } & Look) => {
+    const bubbles = useBubbles()
     const color = stageColor({ stage: ticket.stage, theme })
     const failing =
         ticket.tests &&
@@ -45,86 +49,106 @@ export const TicketCardView = ({
         <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ticket ${ticket.number}, ${ticket.stage}. ${open ? 'Hide' : 'Show'} details`}
-            onPress={onToggle}
+            onPress={() => {
+                // A tap beside an open bubble only closes it.
+                if (bubbles.open) bubbles.show(null)
+                else onToggle()
+            }}
             style={({ pressed }) => [
                 styles.card,
                 pressed ? styles.cardPressed : null,
             ]}
         >
-            <View style={styles.cardTop}>
-                <Text style={styles.number}>#{ticket.number}</Text>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                    {ticket.title}
-                </Text>
-                {ticket.refactor ? (
-                    <Text style={styles.tag}>refactor</Text>
-                ) : null}
-                <View style={styles.spacer} />
-                <Text style={[styles.pill, { color, borderColor: color }]}>
-                    {ticket.activity}
-                </Text>
-                <Icon
-                    name={open ? 'ChevronDown' : 'ChevronRight'}
-                    size={14}
-                    color={theme.colors.foregroundMuted}
-                />
-            </View>
-            <View style={styles.row}>
-                <StepDots ticket={ticket} theme={theme} styles={styles} />
-                <Text style={styles.text} numberOfLines={1}>
-                    {ticket.role ?? ''}
-                </Text>
-            </View>
-            {ticket.current_step ? (
-                <StepLine
-                    step={ticket.current_step}
-                    prefix=""
-                    styles={styles}
-                />
-            ) : null}
-            <View style={styles.row}>
-                <Counter
-                    label="fix"
-                    value={ticket.fix_round}
-                    theme={theme}
-                    styles={styles}
-                />
-                <Counter
-                    label="review"
-                    value={ticket.review_round}
-                    theme={theme}
-                    styles={styles}
-                />
-                <Text style={styles.mono}>
-                    {tokensText({ tokens: ticket.tokens })} tokens
-                </Text>
-                {ticket.plan_used.length > 0 ? (
-                    <Text style={styles.mono}>
-                        plan:{' '}
-                        {planUsedText({ used: ticket.plan_used, sign: '+' })}
+            <BubbleScope bubbles={bubbles} styles={styles}>
+                <View style={styles.cardTop}>
+                    <Text style={styles.number} numberOfLines={1}>
+                        #{ticket.number}
                     </Text>
-                ) : null}
-                {failing ? (
+                    <CutLine
+                        text={ticket.title}
+                        style={styles.cardTitle}
+                        styles={styles}
+                    />
+                    {ticket.refactor ? (
+                        <Text style={styles.tag} numberOfLines={1}>
+                            refactor
+                        </Text>
+                    ) : null}
+                    <View style={styles.spacer} />
                     <Text
-                        style={[
-                            styles.muted,
-                            { color: theme.colors.statusDanger },
-                        ]}
+                        style={[styles.pill, { color, borderColor: color }]}
+                        numberOfLines={1}
                     >
-                        {failing.failing} of {failing.total} tests failing
+                        {ticket.activity}
                     </Text>
+                    <Icon
+                        name={open ? 'ChevronDown' : 'ChevronRight'}
+                        size={14}
+                        color={theme.colors.foregroundMuted}
+                    />
+                </View>
+                <View style={styles.line}>
+                    <StepDots ticket={ticket} theme={theme} styles={styles} />
+                    {ticket.role ? (
+                        <CutLine
+                            text={ticket.role}
+                            style={styles.text}
+                            styles={styles}
+                        />
+                    ) : null}
+                </View>
+                {ticket.current_step ? (
+                    <StepLine
+                        step={ticket.current_step}
+                        prefix=""
+                        styles={styles}
+                    />
                 ) : null}
-                {blockers > 0 ? (
-                    <Text
-                        style={[
-                            styles.muted,
-                            { color: theme.colors.statusWarning },
-                        ]}
-                    >
-                        {blockers} blocker from the ticket review
+                <View style={styles.line}>
+                    <Counter
+                        label="fix"
+                        value={ticket.fix_round}
+                        theme={theme}
+                        styles={styles}
+                    />
+                    <Counter
+                        label="review"
+                        value={ticket.review_round}
+                        theme={theme}
+                        styles={styles}
+                    />
+                    <Text style={[styles.mono, styles.fixed]} numberOfLines={1}>
+                        {tokensText({ tokens: ticket.tokens })} tokens
                     </Text>
-                ) : null}
-            </View>
+                    {ticket.plan_used.length > 0 ? (
+                        <CutLine
+                            text={`plan: ${planUsedText({ used: ticket.plan_used, sign: '+' })}`}
+                            style={styles.mono}
+                            styles={styles}
+                        />
+                    ) : null}
+                    {failing ? (
+                        <CutLine
+                            text={`${failing.failing} of ${failing.total} tests failing`}
+                            style={[
+                                styles.muted,
+                                { color: theme.colors.statusDanger },
+                            ]}
+                            styles={styles}
+                        />
+                    ) : null}
+                    {blockers > 0 ? (
+                        <CutLine
+                            text={`${blockers} blocker from the ticket review`}
+                            style={[
+                                styles.muted,
+                                { color: theme.colors.statusWarning },
+                            ]}
+                            styles={styles}
+                        />
+                    ) : null}
+                </View>
+            </BubbleScope>
             {open ? (
                 <TicketDetail ticket={ticket} state={state} styles={styles} />
             ) : null}

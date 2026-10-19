@@ -110,11 +110,13 @@ export const createEngineChecks = ({
         }
         const restart = memory.entry.restarts + 1
         updateEntry({ memory, change: { restarts: restart } })
-        const row = restartRow({ run_id, restart, time: now().toISOString() })
+        const time = now().toISOString()
+        const row = restartRow({ run_id, restart, time })
         memory.state = {
             ...memory.state,
             run: { ...memory.state.run, engine_ended: null },
             latest: restartText({ restart }),
+            latest_at: time,
         }
         log(
             `[${run_id}] restarted ${engine.command} with --resume (pid ${pid ?? '?'}, restart ${restart} of ${MAX_AUTO_RESTARTS}), log ${log_path}`

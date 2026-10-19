@@ -24,6 +24,27 @@ export const makeStyles = ({
             flexWrap: 'wrap',
             gap: compact ? 6 : 10,
         },
+        /** A row that stays on one line: its cut lines give way. */
+        line: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: compact ? 6 : 10,
+        },
+        /** A part that never shrinks or gets cut: a number, tag or time. */
+        fixed: { flexShrink: 0 },
+        /** What holds a cut line: it gives way, down to nothing. */
+        cut: { flexShrink: 1, minWidth: 0 },
+        /** The bubble a tap on a cut line opens, with its full text. */
+        bubble: {
+            color: colors.foreground,
+            backgroundColor: colors.surface2,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 5,
+            fontSize: 12,
+        },
         title: { color: colors.foreground, fontSize: 16, fontWeight: '700' },
         spacer: { flex: 1 },
         text: { color: colors.foreground, fontSize: 13 },
@@ -31,6 +52,7 @@ export const makeStyles = ({
         mono: { color: colors.foregroundMuted, fontSize: 12, fontFamily: MONO },
         small: { color: colors.foregroundMuted, fontSize: 11 },
         pill: {
+            flexShrink: 0,
             borderWidth: 1,
             borderRadius: 999,
             paddingHorizontal: 7,
@@ -94,6 +116,7 @@ export const makeStyles = ({
         cardPressed: { backgroundColor: colors.surface2 },
         cardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
         number: {
+            flexShrink: 0,
             color: colors.foregroundMuted,
             fontSize: 12,
             fontWeight: '700',
@@ -106,6 +129,7 @@ export const makeStyles = ({
             flexShrink: 1,
         },
         tag: {
+            flexShrink: 0,
             color: colors.foregroundMuted,
             borderColor: colors.border,
             borderWidth: 1,
@@ -113,7 +137,7 @@ export const makeStyles = ({
             paddingHorizontal: 4,
             fontSize: 10,
         },
-        dots: { flexDirection: 'row', alignItems: 'center' },
+        dots: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
         dotCell: { flexDirection: 'row', alignItems: 'center' },
         link: { width: compact ? 7 : 10, height: 2 },
         dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
@@ -121,6 +145,7 @@ export const makeStyles = ({
         dotSkip: { borderStyle: 'dashed' },
         stepLabel: { fontSize: 12, fontWeight: '600', marginLeft: 6 },
         counter: {
+            flexShrink: 0,
             borderWidth: 1,
             borderRadius: 5,
             paddingHorizontal: 5,
