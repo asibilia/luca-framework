@@ -5,6 +5,7 @@
  */
 import { decideSteps, type EngineAction } from './decide'
 import { repoWaitUnchecked } from './decide-repo-wait'
+import { decideWaits } from './decide-waits'
 import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
 import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
@@ -94,6 +95,10 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  *
  * With `board`, the whole journal is sent to the board once before the
  * first step and again after each step settles.
+ *
+ * A ticket held on purpose between steps (another ticket's shared
+ * baseline, the join queue, the start queue) gets one `ticket_waiting` as
+ * its wait starts (`decideWaits`), sent to the board at once.
  *
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
@@ -304,7 +309,24 @@ export const runEngine = async ({
                 return stop
             }
             let slowStarted = false
+            let waited = false
             if (stop === undefined) {
+                // A wait between steps is journaled once, as it starts, and
+                // shows on the board at once: the step it waits on may run
+                // for minutes.
+                for (const wait of decideWaits({ records })) {
+                    journal.append({
+                        kind: 'ticket_waiting',
+                        ticket: wait.ticket,
+                        role: null,
+                        content: {
+                            for: wait.for,
+                            on_ticket: wait.on_ticket,
+                            since: new Date().toISOString(),
+                        },
+                    })
+                    waited = true
+                }
                 for (const action of actions) {
                     const key = keyOf(action)
                     if (!canStart({ action, key })) continue
@@ -329,8 +351,11 @@ export const runEngine = async ({
                     if (SLOW_ACTIONS.has(action.type)) slowStarted = true
                 }
             }
-            // A slow step shows on the board while it runs, not only once it ends.
-            if (slowStarted) await board?.sync({ records: journal.read() })
+            // A slow step shows on the board while it runs, not only once it
+            // ends; so does a wait.
+            if (slowStarted || waited) {
+                await board?.sync({ records: journal.read() })
+            }
             if (inFlight.size === 0) {
                 throw new Error(
                     `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`

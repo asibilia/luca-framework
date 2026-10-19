@@ -15,6 +15,8 @@ import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
 import { StepDots } from './step-dots'
 import { TicketDetail } from './ticket-detail'
+import { ticketWait } from './ticket-wait'
+import { WaitLine } from './wait-line'
 
 import {
     planUsedText,
@@ -36,7 +38,11 @@ export const TicketCardView = ({
     onToggle: () => void
 } & Look) => {
     const bubbles = useBubbles()
-    const color = stageColor({ stage: ticket.stage, theme })
+    // A ticket waiting on purpose between steps reads "waiting", in amber.
+    const wait = ticketWait({ state, ticket })
+    const color = wait
+        ? theme.colors.statusWarning
+        : stageColor({ stage: ticket.stage, theme })
     const failing =
         ticket.tests &&
         ticket.tests.failing > 0 &&
@@ -80,7 +86,7 @@ export const TicketCardView = ({
                         style={[styles.pill, { color, borderColor: color }]}
                         numberOfLines={1}
                     >
-                        {ticket.activity}
+                        {wait ? 'waiting' : ticket.activity}
                     </Text>
                     <Icon
                         name={open ? 'ChevronDown' : 'ChevronRight'}
@@ -90,7 +96,9 @@ export const TicketCardView = ({
                 </View>
                 <View style={styles.line}>
                     <StepDots ticket={ticket} theme={theme} styles={styles} />
-                    {ticket.role ? (
+                    {wait ? (
+                        <WaitLine wait={wait} theme={theme} styles={styles} />
+                    ) : ticket.role ? (
                         <CutLine
                             text={ticket.role}
                             style={styles.text}

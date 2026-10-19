@@ -20,7 +20,12 @@ nothing can send an agent a follow-up, its session's close is journaled as
 limit wait or a billing stop, and a finished ticket and the run's end by
 `usage_recorded` (see Plan limits and billing). The scheduler wraps every
 step but a wait in `step_started` and `step_ended`, and a restarted engine
-may append `run_resumed` (see Crash recovery).
+may append `run_resumed` (see Crash recovery). A ticket the engine holds on
+purpose between steps gets one `ticket_waiting { for, on_ticket, since }`
+when the wait starts (#559): `baseline` while another ticket runs the
+baseline tests they share, `join` while it waits in the join queue, `start`
+while it waits in the start queue; `on_ticket` is the ticket it waits on.
+Its next `step_started` ends the wait. Only the board reads it.
 
 While a test-writer or implementer works, it may send **agent messages**
 (`agent_message`), and each tool call it makes may hand it messages waiting

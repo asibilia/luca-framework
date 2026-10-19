@@ -71,6 +71,32 @@ export const CurrentStepSchema = z.object({
 
 export type CurrentStep = z.infer<typeof CurrentStepSchema>
 
+/** The baseline tests' step (`run_baseline_tests`) in words. */
+export const BASELINE_STEP_TEXT = 'running the baseline tests'
+
+/**
+ * What a ticket waits for between steps (#559): `baseline` another
+ * ticket's shared baseline tests, `join` the join queue, `start` the start
+ * queue, each on `on_ticket`. From the engine's `ticket_waiting`.
+ */
+export const WaitForSchema = z.enum(['baseline', 'join', 'start'])
+
+export type WaitFor = z.infer<typeof WaitForSchema>
+
+/**
+ * A ticket between steps, since `since`: from `ticket_waiting` with what it
+ * waits for, or from its last `step_ended` with `for` and `on_ticket` null
+ * (an old journal's wait, worked out from the board). Cleared by the
+ * ticket's next `step_started`.
+ */
+export const TicketWaitSchema = z.object({
+    for: WaitForSchema.nullable(),
+    on_ticket: z.number().int().nullable(),
+    since: z.string(),
+})
+
+export type TicketWait = z.infer<typeof TicketWaitSchema>
+
 /**
  * A time span in words: seconds under a minute, then minutes and seconds,
  * then hours and minutes.
@@ -172,6 +198,11 @@ export const TicketCardSchema = z.object({
      * board state from before it still parses.
      */
     current_step: CurrentStepSchema.nullable().default(null),
+    /**
+     * The ticket between steps, `null` in a step or before its first.
+     * Defaulted, so a board state from before it still parses.
+     */
+    wait: TicketWaitSchema.nullable().default(null),
     /** Fix rounds in the current fix loop; back to 0 once its check passes. */
     fix_round: z.number().int().min(0),
     review_round: z.number().int().min(0),

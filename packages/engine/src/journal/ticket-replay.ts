@@ -69,6 +69,7 @@ type TicketRecord = Exclude<
             | 'memories_reported'
             | 'step_started'
             | 'step_ended'
+            | 'ticket_waiting'
             | 'run_resumed'
             | 'engine_resumed'
             | 'config_reloaded'

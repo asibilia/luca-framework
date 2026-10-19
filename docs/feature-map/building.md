@@ -202,7 +202,7 @@ Tests:
 
 ## Many tickets, joins and rebases
 
-Tickets build at the same time, share a baseline test run, join the run branch one at a time, and a clash, a broken join, or a test a joined ticket made wrong is fixed on top of the run branch.
+Tickets build at the same time, share a baseline test run, join the run branch one at a time, and a clash, a broken join, or a test a joined ticket made wrong is fixed on top of the run branch. A ticket that waits between steps (for a shared baseline, the join queue, or the start queue) is journaled as `ticket_waiting`.
 
 Reached by: any run with more than one ticket.
 
@@ -210,6 +210,7 @@ Tests:
 
 - `packages/engine/src/core/decide-many-tickets.test.ts`
 - `packages/engine/src/core/run-many-tickets.e2e.test.ts`
+- `packages/engine/src/core/run-ticket-waits.e2e.test.ts`
 - `packages/engine/src/core/decide-baseline-reuse.test.ts`
 - `packages/board/server/baseline-reused-panel.test.ts`
 - `packages/engine/src/core/run-broken-join.e2e.test.ts`

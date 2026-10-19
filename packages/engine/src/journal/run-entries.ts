@@ -130,6 +130,23 @@ export const StepEndedEntrySchema = z.object({
     }),
 })
 
+/**
+ * A ticket began to wait on purpose between steps (#559): `baseline` for
+ * another ticket's shared baseline tests, `join` for the join queue,
+ * `start` for the start queue, each on `on_ticket`. Journaled once when the
+ * wait starts, since `since`; the ticket's next `step_started` ends it.
+ * Only the board reads it.
+ */
+export const TicketWaitingEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('ticket_waiting'),
+    content: z.object({
+        for: z.enum(['baseline', 'join', 'start']),
+        on_ticket: z.number().int().positive().nullable(),
+        since: z.iso.datetime(),
+    }),
+})
+
 /** One step a crash cut off: its `step_started` had no `step_ended`. */
 export const InterruptedStepSchema = z.object({
     key: z.string().min(1),

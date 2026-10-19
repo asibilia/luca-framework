@@ -124,6 +124,7 @@ export const newTicket = ({
     model_answer: null,
     model_answers: {},
     current_step: null,
+    wait: null,
     fix_round: 0,
     review_round: 0,
     review_fix_round: 0,

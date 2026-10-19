@@ -156,6 +156,14 @@ export const makeStyles = ({
         dotCurrent: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
         dotSkip: { borderStyle: 'dashed' },
         stepLabel: { fontSize: 12, fontWeight: '600', marginLeft: 6 },
+        /** A waiting card's amber bar, where a heartbeat would be. */
+        waitBar: {
+            flexShrink: 0,
+            width: 28,
+            height: 4,
+            borderRadius: 2,
+            opacity: 0.8,
+        },
         counter: {
             flexShrink: 0,
             borderWidth: 1,

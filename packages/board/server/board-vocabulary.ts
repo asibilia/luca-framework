@@ -94,6 +94,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'memories_reported' }),
     entry({ kind: 'step_started' }),
     entry({ kind: 'step_ended' }),
+    entry({ kind: 'ticket_waiting' }),
 ])
 
 /** A record the board understands, with its content parsed. */

@@ -301,6 +301,9 @@ const applyRecord = ({
         case 'step_started':
         case 'step_ended':
             return next
+        // A wait between steps changes no step: only the board reads it.
+        case 'ticket_waiting':
+            return next
         // Only a join's redo reads it (see `openJoin`).
         case 'join_started':
             return next

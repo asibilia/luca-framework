@@ -1,7 +1,9 @@
 /**
  * Each ticket's next build step (`ticketSteps`): its worktree, the step its
  * progress calls for, a skip, a crash, or its stuck steps, with the join queue
- * deciding which approved ticket joins the run branch. Pure.
+ * deciding which approved ticket joins the run branch. A ticket with no step
+ * now because it waits on purpose (`ticketWaits`) waits for another
+ * ticket's shared baseline, the join queue, or the start queue. Pure.
  */
 import sortBy from 'lodash/sortBy'
 
@@ -9,9 +11,29 @@ import { stuck, type BuildAction } from './build-action'
 import type { BuildView } from './decide-build-view'
 import { crashDetail, crashedOut } from './decide-crashes'
 import { skipDependent } from './decide-stuck'
-import { nextTicketStep, sharedBaselineStep } from './decide-ticket'
+import {
+    baselineRunner,
+    nextTicketStep,
+    sharedBaselineStep,
+} from './decide-ticket'
 
 import type { RunState, TicketProgress } from '../journal/replay'
+
+/**
+ * A ticket held on purpose between steps (#559): for `baseline`, another
+ * ticket's shared baseline tests; for `join`, the join queue; for `start`,
+ * the start queue; each on `on_ticket`.
+ */
+export type TicketWait = {
+    ticket: number
+    for: 'baseline' | 'join' | 'start'
+    on_ticket: number | null
+}
+
+/** A ticket's next steps, or the wait that holds it. */
+type TicketPlan = { steps: BuildAction[]; wait: TicketWait | null }
+
+const NOTHING: TicketPlan = { steps: [], wait: null }
 
 /**
  * Whether a ticket's review finally approved it (no fix round open) and it
@@ -22,14 +44,14 @@ const inJoinQueue = (progress: TicketProgress): boolean =>
     progress.review_fix === null &&
     progress.pushed === null
 
-/** The next step of each ticket that can move now, at most one per ticket. */
-export const ticketSteps = ({
+/** Each ticket's plan: its next step, at most one, or what it waits for. */
+const ticketPlans = ({
     state,
     view,
 }: {
     state: RunState
     view: BuildView
-}): BuildAction[] => {
+}): TicketPlan[] => {
     const {
         spec_number,
         snapshot,
@@ -67,52 +89,73 @@ export const ticketSteps = ({
             progress(number).pushed === null
     )
     const joiner = stuckJoinOnRunBranch ? null : (queue[0] ?? null)
+    const can_move = (other: number) =>
+        !finished(other) && !skipped(other) && !isStuck(other)
 
-    const steps = numbers.flatMap((number): BuildAction[] => {
+    return numbers.map((number): TicketPlan => {
         const ticket = snapshot.tickets[number]
         const ticketProgress = progress(number)
-        if (ticket === undefined || finished(number)) return []
-        if (skipped(number)) return []
+        if (ticket === undefined || finished(number)) return NOTHING
+        if (skipped(number)) return NOTHING
         // The same step cut off by crashes too often is not taken again.
         const crash = crashedOut({
             crashes: state.crashes,
             keys: (key) => key === String(number),
         })
         if (crash !== null) {
-            return [
-                stuck({
-                    ticket: number,
-                    reason: 'crashed',
-                    detail: crashDetail({ crash }),
-                }),
-            ]
+            return {
+                steps: [
+                    stuck({
+                        ticket: number,
+                        reason: 'crashed',
+                        detail: crashDetail({ crash }),
+                    }),
+                ],
+                wait: null,
+            }
         }
-        if (isStuck(number)) return stuckSteps(number)
+        if (isStuck(number)) return { steps: stuckSteps(number), wait: null }
         const skippedBlocker = ticket.blockers.find(skipped)
         if (skippedBlocker !== undefined) {
-            return [
-                skipDependent({
-                    ticket: number,
-                    because: skippedBlocker,
-                    spec_number,
-                }),
-            ]
+            return {
+                steps: [
+                    skipDependent({
+                        ticket: number,
+                        because: skippedBlocker,
+                        spec_number,
+                    }),
+                ],
+                wait: null,
+            }
         }
         if (ticketProgress.worktree === null) {
-            const ready =
-                queue.length === 0 &&
-                !stuckJoinOnRunBranch &&
-                ticket.blockers.every(finished)
-            return ready
-                ? [
-                      {
-                          type: 'create_ticket_worktree',
+            const unblocked =
+                !stuckJoinOnRunBranch && ticket.blockers.every(finished)
+            if (unblocked && queue.length === 0) {
+                return {
+                    steps: [
+                        {
+                            type: 'create_ticket_worktree',
+                            ticket: number,
+                            run_branch: run_branch.branch,
+                        },
+                    ],
+                    wait: null,
+                }
+            }
+            // Unblocked, it starts once the join queue is empty.
+            return unblocked
+                ? {
+                      steps: [],
+                      wait: {
                           ticket: number,
-                          run_branch: run_branch.branch,
+                          for: 'start',
+                          on_ticket: queue[0] ?? null,
                       },
-                  ]
-                : []
+                  }
+                : NOTHING
         }
+        const baseline = { number, numbers, progress, can_move }
         const step = nextTicketStep({
             snapshot,
             ticket,
@@ -124,19 +167,38 @@ export const ticketSteps = ({
             setup_files: state.config?.test_setup_files ?? [],
             baseline_step:
                 ticketProgress.baseline === null
-                    ? sharedBaselineStep({
-                          number,
-                          numbers,
-                          progress,
-                          can_move: (other) =>
-                              !finished(other) &&
-                              !skipped(other) &&
-                              !isStuck(other),
-                      })
+                    ? sharedBaselineStep(baseline)
                     : null,
         })
-        return step === null ? [] : [step]
+        if (step !== null) return { steps: [step], wait: null }
+        if (ticketProgress.baseline === null) {
+            return {
+                steps: [],
+                wait: {
+                    ticket: number,
+                    for: 'baseline',
+                    on_ticket: baselineRunner(baseline),
+                },
+            }
+        }
+        return inJoinQueue(ticketProgress) && number !== joiner
+            ? {
+                  steps: [],
+                  wait: { ticket: number, for: 'join', on_ticket: joiner },
+              }
+            : NOTHING
     })
-
-    return steps
 }
+
+/** The next step of each ticket that can move now, at most one per ticket. */
+export const ticketSteps = (args: {
+    state: RunState
+    view: BuildView
+}): BuildAction[] => ticketPlans(args).flatMap(({ steps }) => steps)
+
+/** The tickets that wait on purpose between steps now, in ticket order. */
+export const ticketWaits = (args: {
+    state: RunState
+    view: BuildView
+}): TicketWait[] =>
+    ticketPlans(args).flatMap(({ wait }) => (wait === null ? [] : [wait]))

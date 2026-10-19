@@ -37,6 +37,7 @@ Tests:
 - `packages/board/server/run-tabs-fold.test.ts`
 - `packages/board/client/one-line-panel.test.ts`
 - `packages/board/client/model-line-panel.test.ts`
+- `packages/board/client/wait-line-panel.test.ts`
 
 ## The board: starting a run from Paseo
 

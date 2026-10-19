@@ -394,6 +394,7 @@ export const describeRecord = ({
         case 'lens_started':
         case 'step_started':
         case 'step_ended':
+        case 'ticket_waiting':
             return null
     }
 }
