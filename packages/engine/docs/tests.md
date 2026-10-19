@@ -63,7 +63,8 @@ then both launch again with the same prompts and the run builds to its PR.
 new workspace dependency and checks the moved worktree's frozen install.
 `src/core/decide-many-tickets.test.ts` covers the same rules at the decision
 step, limits and billing stops with two tickets in flight included.
-`src/core/decide-stuck.test.ts` covers stuck work at the decision step: the
+`src/core/decide-stuck.test.ts`, with the `decide-stuck-*.test.ts` files
+beside it, covers stuck work at the decision step: the
 comment, other tickets building, the join undone, each reply word, named
 tickets when several are stuck, replies from others ignored, retry with and
 without ticket edits, skip with dependents and the PR, stop, a test setup
@@ -75,7 +76,7 @@ PR that starts with the open findings. `src/core/run-stuck.e2e.test.ts` runs it 
 scripted person replying on the in-memory tracker through a fake clock:
 retry keeping the owner's fix, retry after a ticket edit, and skip while
 another ticket builds and pushes. `src/core/decide-stuck.test.ts` checks
-`stop` and a test setup change, and both run end to end in
+`stop` and `src/core/decide-stuck-setup-file.test.ts` a test setup change, and both run end to end in
 `src/core/run-session-close.e2e.test.ts`. The other
 end-to-end tests stop at the first `wait_for_reply` (the practice harnesses'
 default `stop_before`).
